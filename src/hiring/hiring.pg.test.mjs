@@ -92,8 +92,8 @@ describe("hiring pipeline", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =
     const roles = (await db.query(
       `SELECT key, scorecard, comp FROM hiring_roles WHERE org_id = $1 ORDER BY key`, [org])).rows;
     assert.deepStrictEqual(roles.map((r) => r.key),
-      ["closer", "csm", "sales_coordinator", "setter"],
-      "051 seeded three reqs; 294 added csm");
+      ["closer", "coo", "csm", "sales_coordinator", "setter"],
+      "051 seeded three reqs; 294 added csm; 480 added coo (owner-set 2026-10-13)");
 
     /* ONLY THE ROLES 052 ACTUALLY FILLED IN ARE CHECKED FOR STRUCTURE.
        csm was created later by 294 with an empty scorecard, deliberately: 051's

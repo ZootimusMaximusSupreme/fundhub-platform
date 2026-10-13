@@ -188,6 +188,10 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "page:join/index.html":
+    "Hiring funnel VSL page for job applicants, not customers. No money moves and no client reads it. Its ping is the page itself in the morning pulse.",
+  "page:join/apply/index.html":
+    "Hiring funnel application for job applicants, not customers. No money moves. It posts to hiring/apply, whose GET is pinged as reg:hiring/apply.",
   "desk:morning-brief.html":
     "Owner-only report page: it opens from the secret link in Chris's own morning and evening text and never reaches a customer. Its guard is the brief-link beat.",
   "route:public/morning-brief":

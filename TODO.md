@@ -28,6 +28,14 @@ The original 10:00 AM departure target has passed. Protect the remaining filming
 - [ ] Verify the setter's complete appointment-setting process.
 - [ ] Confirm the closer is connected, ready, and receiving the setter handoff correctly.
 
+### 3b. Hiring funnel (fundhub.ai/join/) — built 2026-10-13
+
+- [ ] Send the sales manager's calendar link (setter, closer, CSM seats). Until it is saved, qualified applicants see "we will reach out."
+- [ ] Send Chris's calendar link for the COO seat.
+- [ ] Fill in pay per seat in `marketing/vsl/hiring-vsl.md` cue 9.
+- [ ] Film the hiring VSL in 4K from `marketing/vsl/hiring-vsl.md`. The finished file goes to `public/funnel/hiring-vsl.mp4`, then remove the noindex line on `/join/`.
+- [ ] Decide whether the old `/careers.html` form stays or points to `/join/`.
+
 ### 4. Sales and system checks
 
 - [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).

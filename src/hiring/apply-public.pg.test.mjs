@@ -34,6 +34,7 @@ import {
   HOW_HEARD
 } from "./apply-public.mjs";
 import handler from "../../api/hiring/apply.mjs";
+import { questionsFor, SURVEY_VERSION } from "./survey.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 const TAG = "careertest";
@@ -460,6 +461,132 @@ describe("careers intake — against the database", { skip: !HAVE_DB ? "no DATAB
       await db.query(`UPDATE hiring_roles SET active = true WHERE org_id = $1 AND key = 'setter'`, [org]);
       await resetAttempts(db, { orgId: org });
     }
+  });
+
+  // ------------------------------------------------- the hiring funnel (/join/)
+
+  /* Owner-set 2026-10-13. The funnel sends the owner's survey and a Loom, and
+     the reply tells the page which screen is next. Three things are proved
+     against the real tables: the answers and the Loom are stored, a held-back
+     applicant is still a saved, OPEN application, and the reply is identical
+     for a person and a bot with the same answers. */
+  function funnelAnswers(roleKey, over = {}) {
+    const out = {};
+    for (const q of questionsFor(roleKey)) out[q.key] = q.opts[0];
+    if (roleKey === "closer") out.closer_top_ticket = "$5,000 to $10,000";
+    return { ...out, ...over };
+  }
+  function funnelPost(roleKey, who, over = {}) {
+    return {
+      funnel: "join", role: roleKey, name: `${TAG} ${who}`, email: `${TAG}-${who}@example.test`,
+      phone: "6025550142", linkedin: `linkedin.com/in/${TAG}-${who}`,
+      loom: `https://www.loom.com/share/${who}`, answers: funnelAnswers(roleKey), ...over
+    };
+  }
+  async function withBookingUrl(roleKey, url, fn) {
+    const prev = (await db.query(
+      `SELECT interview_booking_url FROM hiring_roles WHERE org_id = $1 AND key = $2`,
+      [org, roleKey])).rows[0]?.interview_booking_url ?? null;
+    await db.query(`UPDATE hiring_roles SET interview_booking_url = $3 WHERE org_id = $1 AND key = $2`,
+      [org, roleKey, url]);
+    try { return await fn(); } finally {
+      await db.query(`UPDATE hiring_roles SET interview_booking_url = $3 WHERE org_id = $1 AND key = $2`,
+        [org, roleKey, prev]);
+    }
+  }
+
+  test("migration 480 opened the COO seat, routed to the owner", async () => {
+    const r = (await db.query(
+      `SELECT name, owner_role, active, bench_target FROM hiring_roles WHERE org_id = $1 AND key = 'coo'`,
+      [org])).rows[0];
+    assert.ok(r, "the coo req exists");
+    assert.equal(r.owner_role, "owner", "COO applications go to Chris, not the sales manager");
+    assert.equal(r.active, true);
+    assert.equal(r.bench_target, 0);
+  });
+
+  test("a funnel application stores the answers word for word and the Loom", async () => {
+    await resetAttempts(db, { orgId: org });
+    const res = await call({ body: funnelPost("closer", "fun1"), ip: "198.51.100.61" });
+    assert.equal(res.statusCode, 200);
+    const row = (await db.query(
+      `SELECT a.answers, a.video_url, a.status, s.key AS stage, c.linkedin_profile_url
+         FROM candidate_applications a
+         JOIN candidates c ON c.id = a.candidate_id
+         JOIN pipeline_stages s ON s.id = a.stage_id
+        WHERE c.email = $1`, [`${TAG}-fun1@example.test`])).rows[0];
+    assert.ok(row, "the application was saved");
+    assert.equal(row.answers.closer_top_ticket, "$5,000 to $10,000");
+    assert.equal(row.answers.survey_version, SURVEY_VERSION);
+    assert.deepStrictEqual(row.answers.review_flags, []);
+    assert.equal(row.video_url, "https://www.loom.com/share/fun1");
+    assert.equal(row.linkedin_profile_url, `https://linkedin.com/in/${TAG}-fun1`);
+    assert.equal(row.status, "open");
+    assert.equal(row.stage, "applied");
+  });
+
+  test("with no booking link set, a qualified applicant is told we will reach out", async () => {
+    await resetAttempts(db, { orgId: org });
+    await withBookingUrl("setter", null, async () => {
+      const res = await call({ body: funnelPost("setter", "fun2"), ip: "198.51.100.62" });
+      assert.equal(res.statusCode, 200);
+      assert.deepStrictEqual(res.body, { ok: true, received: true, next: "book_pending" });
+    });
+  });
+
+  test("with a booking link set, a qualified applicant gets that seat's calendar", async () => {
+    await resetAttempts(db, { orgId: org });
+    await withBookingUrl("closer", "https://cal.example.test/sales-manager", async () => {
+      const res = await call({ body: funnelPost("closer", "fun3"), ip: "198.51.100.63" });
+      assert.deepStrictEqual(res.body, {
+        ok: true, received: true, next: "book", bookingUrl: "https://cal.example.test/sales-manager"
+      });
+    });
+  });
+
+  test("a held-back applicant sees the thank-you, and the application stays open", async () => {
+    await resetAttempts(db, { orgId: org });
+    await withBookingUrl("closer", "https://cal.example.test/sales-manager", async () => {
+      const body = funnelPost("closer", "fun4", {
+        answers: funnelAnswers("closer", { closer_top_ticket: "Under $3,000" }) });
+      const res = await call({ body, ip: "198.51.100.64" });
+      assert.deepStrictEqual(res.body, { ok: true, received: true, next: "review" },
+        "the calendar link is not handed out");
+    });
+    const row = (await db.query(
+      `SELECT a.status, a.answers FROM candidate_applications a
+         JOIN candidates c ON c.id = a.candidate_id WHERE c.email = $1`,
+      [`${TAG}-fun4@example.test`])).rows[0];
+    assert.equal(row.status, "open", "held back is never rejected by software");
+    assert.deepStrictEqual(row.answers.review_flags, ["closer_under_3000"]);
+    const decisions = (await db.query(
+      `SELECT count(*)::int AS n FROM hiring_decisions d
+         JOIN candidate_applications a ON a.id = d.application_id
+         JOIN candidates c ON c.id = a.candidate_id WHERE c.email = $1`,
+      [`${TAG}-fun4@example.test`])).rows[0].n;
+    assert.equal(decisions, 0, "no decision row is written");
+  });
+
+  test("a bot with the same answers gets the identical reply and writes nothing", async () => {
+    await resetAttempts(db, { orgId: org });
+    await withBookingUrl("csm", "https://cal.example.test/sales-manager", async () => {
+      const person = await call({ body: funnelPost("csm", "fun5"), ip: "198.51.100.65" });
+      const bot = await call({ body: funnelPost("csm", "fun6", { website: "spam.example" }),
+        ip: "198.51.100.66" });
+      assert.deepStrictEqual(bot.body, person.body);
+    });
+    const n = (await db.query(`SELECT count(*)::int AS n FROM candidates WHERE email = $1`,
+      [`${TAG}-fun6@example.test`])).rows[0].n;
+    assert.equal(n, 0, "the honeypot still drops the bot");
+  });
+
+  test("the reply is identical for a new address and one already on file", async () => {
+    await resetAttempts(db, { orgId: org });
+    await withBookingUrl("setter", null, async () => {
+      const first = await call({ body: funnelPost("setter", "fun7"), ip: "198.51.100.67" });
+      const again = await call({ body: funnelPost("setter", "fun7"), ip: "198.51.100.68" });
+      assert.deepStrictEqual(again.body, first.body);
+    });
   });
 
   // ---------------------------------------------------------------- helpers

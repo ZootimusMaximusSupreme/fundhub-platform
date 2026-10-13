@@ -27,13 +27,12 @@
 //      presence means something is trying to feed protected data into an AEDT.
 //      That deserves a 400, not a quiet strip.
 //
-//   3. NO QUESTIONS ARE ASKED, BECAUSE NONE ARE WRITTEN DOWN. 051's `applied`
-//      rubric grades effort, honesty, income-goal fit, relevant experience, sales
-//      inputs and work history — but the QUESTIONS that produce those answers
-//      live in external documents that are not in this repository. Inventing them
-//      would put made-up screening criteria in front of real applicants, so this
-//      module collects contact details and sourcing only, and `answers` is
-//      written as an empty object. See the gap note at the bottom of this file.
+//   3. ONLY THE OWNER'S QUESTIONS ARE ASKED. Until 2026-10-13 none were written
+//      down, so this module stored contact details only. Chris has now written
+//      the hiring funnel survey (src/hiring/survey.mjs). A body marked
+//      funnel: "join" must answer exactly those questions, with exactly the
+//      words on the buttons; any other body carrying `answers` is refused. See
+//      the gap note at the bottom of this file.
 //
 //   4. NOTHING HERE REJECTS ANYBODY. There is no code path in this file that sets
 //      a terminal status, writes a hiring_decisions row, or scores an
@@ -43,6 +42,12 @@
 
 import { isProtected } from "./grading.mjs";
 import { apply } from "./pipeline.mjs";
+import {
+  SURVEY_VERSION,
+  parseSurveyAnswers,
+  routeFor,
+  loomUrl
+} from "./survey.mjs";
 import { withTransaction } from "../db/with-transaction.mjs";
 import { normalizeIp } from "../auth/session.mjs";
 
@@ -189,9 +194,15 @@ export function parseApplyBody(body) {
     return { ok: false, error: "protected_field_refused" };
   }
 
-  /* No free-text answer set is accepted, because no application questionnaire
-     exists to define one (rule 3). A body carrying `answers` is not our form. */
-  if (body.answers !== undefined) {
+  /* THE FUNNEL IS THE ONLY FORM THAT SENDS ANSWERS. The hiring funnel at
+     /join/apply/ marks itself with funnel: "join", and its answers are checked
+     against the owner's questions in src/hiring/survey.mjs. Any other body
+     carrying `answers` is not our form and is still refused (rule 3). */
+  const isFunnel = body.funnel === "join";
+  if (body.funnel !== undefined && !isFunnel) {
+    return { ok: false, error: "unsupported_field" };
+  }
+  if (!isFunnel && body.answers !== undefined) {
     return { ok: false, error: "unsupported_field" };
   }
 
@@ -219,7 +230,7 @@ export function parseApplyBody(body) {
   const howHeard = clean(body.how_heard || body.source, 40).toLowerCase();
   const source = HOW_HEARD_KEYS.has(howHeard) ? howHeard : "inbound";
 
-  return {
+  const base = {
     ok: true,
     roleKey,
     fullName,
@@ -229,6 +240,34 @@ export function parseApplyBody(body) {
     source,
     sourceDetail: sourceDetail || null,
     botSuspected
+  };
+  if (!isFunnel) return base;
+
+  /* Funnel only. Owner-set 2026-10-13: LinkedIn is required for every role, and
+     so are a phone number and a Loom. The old careers form keeps them optional. */
+  if (!linkedinProfileUrl) return { ok: false, error: "linkedin_required" };
+  if (!base.phone) return { ok: false, error: "phone_required" };
+  const loom = loomUrl(body.loom || body.loom_url);
+  if (loom === null) return { ok: false, error: "loom_url_invalid" };
+  if (!loom) return { ok: false, error: "loom_required" };
+
+  const survey = parseSurveyAnswers(roleKey, body.answers);
+  if (!survey.ok) return { ok: false, error: survey.error };
+  const route = routeFor(roleKey, survey.answers);
+
+  return {
+    ...base,
+    funnel: "join",
+    loomUrl: loom,
+    route,
+    /* What is stored on candidate_applications.answers: the answers word for
+       word, which version of the questions they answered, and why the calendar
+       was held back (empty when it was not). */
+    answers: {
+      ...survey.answers,
+      survey_version: SURVEY_VERSION,
+      review_flags: route.flags
+    }
   };
 }
 
@@ -400,8 +439,10 @@ export async function submitApplication(db, parsed, { orgId } = {}) {
         phone: parsed.phone,
         source: parsed.source,
         sourceDetail: parsed.sourceDetail,
-        // Rule 3: no questionnaire exists, so no answers are stored.
-        answers: {}
+        /* Rule 3: only the funnel carries answers, and only to the owner's
+           questions (src/hiring/survey.mjs). The old careers form stores none. */
+        answers: parsed.answers || {},
+        videoUrl: parsed.loomUrl || null
       });
     } catch (err) {
       /* apply() throws on an unknown or inactive role. That is the ONLY expected
@@ -441,14 +482,49 @@ export async function submitApplication(db, parsed, { orgId } = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// What the funnel page shows next
+// ---------------------------------------------------------------------------
+
+/* nextStepFor(db, parsed, { orgId }) → { next, bookingUrl? }
+
+   Funnel only. Tells the page which screen to show after the application is
+   saved:
+
+     book          the calendar, from hiring_roles.interview_booking_url for this
+                   seat (the sales manager's link for setter, closer and CSM;
+                   Chris's for COO)
+     book_pending  they would see the calendar, but no link is set for the seat
+                   yet, so the page says we will reach out
+     review        a review rule held the calendar back (src/hiring/survey.mjs);
+                   the application is saved and open for the sales manager
+
+   RULE 1 STILL HOLDS. The answer depends on the seat and the answers the caller
+   sent, and on the seat's public booking link — never on whether the address is
+   already on file, and never on whether the honeypot caught a bot. A bot is
+   shown the same screen a person with the same answers would see. */
+export async function nextStepFor(db, parsed, { orgId } = {}) {
+  if (!orgId) throw new Error("nextStepFor: orgId is required");
+  if (!parsed || parsed.funnel !== "join") return { next: "received" };
+  if (parsed.route?.next !== "book") return { next: "review" };
+  const { rows } = await db.query(
+    `SELECT interview_booking_url
+       FROM hiring_roles
+      WHERE org_id = $1 AND key = $2 AND active`,
+    [orgId, parsed.roleKey]);
+  const url = rows[0]?.interview_booking_url;
+  return url && /^https:\/\/\S+$/.test(url)
+    ? { next: "book", bookingUrl: url }
+    : { next: "book_pending" };
+}
+
+// ---------------------------------------------------------------------------
 // GAPS — absences found while building this, recorded rather than invented.
 // ---------------------------------------------------------------------------
 //
-// 1. NO APPLICATION QUESTIONS EXIST. 051's `applied` rubric scores six
-//    categories; the questions that produce those answers are in external
-//    documents outside this repository. Until they are written down, an
-//    application carries contact details only and `answers` is '{}'. A reviewer
-//    scoring one of these has nothing to read but a name and a source.
+// 1. (CLOSED 2026-10-13) THE FUNNEL ASKS THE OWNER'S QUESTIONS. Chris wrote the
+//    survey down; it lives in src/hiring/survey.mjs and only the funnel at
+//    /join/apply/ sends it. The old careers form still sends contact details
+//    only. Nothing is scored automatically: 051's rubric still needs a person.
 //
 // 2. NOTHING NOTIFIES A HUMAN. apply() opens the application in `applied` and
 //    stops. There is no task and no message, so an application is seen only when

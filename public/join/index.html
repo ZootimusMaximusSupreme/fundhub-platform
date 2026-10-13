@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A0A0A">
+<title>Careers | Fundhub</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Fundhub is hiring setters, closers, client success managers and a COO. Watch the video, then apply.">
+<!-- NOINDEX UNTIL THE HIRING VSL IS FILMED. The video slot below shows a
+     placeholder until public/funnel/hiring-vsl.mp4 exists. Delete this one line
+     once the video is up. -->
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The hiring funnel's front door. Same identity as the book-a-call funnel's
+   watch page (marketing/landing-pages/01-vsl.html): one fixed grid layer, a
+   centered hero, a 16:9 video card, one blue button. */
+:root{
+  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
+  --paper:#FCFCFC;--ink:#0A0A0A;--ink2:#18181B;--gray:#52525B;--gray2:#8A8A93;
+  --line:#E4E4E7;--soft:#F4F4F5;--card:#111113;--cardline:#26262B;--blue:#188bf6;--blue2:#0b78dd;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-color:var(--paper);
+  background-image:linear-gradient(rgba(10,10,10,.048) 1px,transparent 1px),linear-gradient(90deg,rgba(10,10,10,.048) 1px,transparent 1px);
+  background-size:44px 44px}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px}
+@media(min-width:640px){.wrap{padding:0 24px}}
+
+header{padding:18px 0 0;text-align:center}
+.logo{font-weight:700;font-size:24px;letter-spacing:-.045em;color:var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);display:inline-block}
+.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
+
+.hero{text-align:center;padding:34px 0 8px}
+.hero h1{font-size:clamp(30px,5.2vw,50px);font-weight:700;letter-spacing:-.045em;line-height:1.02;margin:20px auto 0;max-width:20ch;text-wrap:balance}
+.hero .lede{margin:20px auto 0;font-size:16.5px;color:var(--gray);max-width:50ch}
+@media(max-width:640px){.hero{padding:22px 0 4px}.hero .lede{font-size:15px}}
+
+.media{margin:30px auto 0;aspect-ratio:16/9;border-radius:12px;background:var(--card);border:1px solid var(--cardline);overflow:hidden;box-shadow:0 18px 44px rgba(10,10,10,.16);position:relative}
+.media video{width:100%;height:100%;object-fit:cover;display:block}
+.media .soon{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#D4D4D8;text-align:center;padding:24px}
+.media .soon b{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#A1A1AA;font-weight:500}
+.media .soon span{font-size:15px;max-width:34ch}
+.unmute{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,.28);transition:opacity .2s;z-index:2;border:0;cursor:pointer;width:100%}
+.unmute.hidden{opacity:0;pointer-events:none}
+.unmute-pill{display:flex;align-items:center;gap:10px;background:var(--blue);color:#fff;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:14px 22px;border-radius:999px}
+.unmute-pill svg{width:16px;height:16px}
+
+.btn{display:block;width:100%;max-width:420px;margin:30px auto 0;background:var(--blue);color:#fff;font-size:17px;font-weight:600;padding:18px 26px;border:0;border-radius:9px;cursor:pointer;text-align:center;box-shadow:0 10px 24px -12px rgba(24,139,246,.9)}
+.btn:hover{background:var(--blue2)}
+.cta-note{margin-top:14px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
+
+.marq{margin-top:48px;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:12px 0}
+.marq-track{display:flex;width:max-content;animation:marq 34s linear infinite}
+.marq-set{display:flex;align-items:center}
+.marq-set span{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray);white-space:nowrap;padding:0 16px}
+.marq-set i{width:10px;height:2px;background:var(--spectrum);border-radius:1px;flex:0 0 auto}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+section.block{padding:56px 0 0}
+.block h2{text-align:center;font-size:clamp(24px,3.6vw,32px);font-weight:700;letter-spacing:-.035em;line-height:1.1;margin-top:14px}
+.block .center{text-align:center}
+.facts{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+@media(min-width:720px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fact{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.fact .n{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue)}
+.fact h3{margin-top:8px;font-size:16px;font-weight:700;letter-spacing:-.015em}
+.fact p{margin-top:6px;font-size:14.5px;line-height:1.6;color:var(--gray)}
+
+.roles{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+@media(min-width:720px){.roles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.role{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;transition:border-color .15s,box-shadow .15s}
+.role:hover{border-color:rgba(24,139,246,.55);box-shadow:0 10px 24px -16px rgba(10,10,10,.35)}
+.role h3{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.role p{margin-top:6px;font-size:14.5px;line-height:1.6;color:var(--gray);flex:1}
+.role .go{margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:600}
+
+.closer{padding:56px 0 64px;text-align:center}
+
+footer{background:#fff;border-top:1px solid var(--line);padding:28px 0 36px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--gray)}
+footer a{color:var(--ink2);text-decoration:underline;text-underline-offset:3px}
+
+@media(prefers-reduced-motion:reduce){.marq-track{animation:none}}
+</style>
+</head>
+<body>
+
+<header><span class="logo" role="img" aria-label="Fundhub">fundhub.</span></header>
+
+<main class="wrap">
+  <section class="hero">
+    <span class="eyebrow">Now hiring · Setters · Closers · CSMs · COO</span>
+    <h1>We're Hiring Setters, Closers, CSMs, and a COO</h1>
+    <p class="lede">Watch the video, then apply. The application takes about 5 minutes, and the best fits pick a time with our sales manager right after.</p>
+  </section>
+
+  <!-- The VSL. Drop the filmed file at public/funnel/hiring-vsl.mp4 (4K, it is
+       not an ad) and this slot plays it with no other change. Until then it
+       shows the placeholder. -->
+  <div class="media" id="vsl" data-src="/funnel/hiring-vsl.mp4">
+    <div class="soon" id="vsl-soon"><b>Video</b><span>The video is on its way. Everything you need to know is below.</span></div>
+  </div>
+
+  <a class="btn" href="/join/apply/">Apply Now</a>
+  <div class="cta-note">5-minute application · Pick your interview time right after</div>
+</main>
+
+<div class="marq" aria-hidden="true"><div class="marq-track">
+  <div class="marq-set"><span>Close to a decade in funding</span><i></i><span>Hundreds of files</span><i></i><span>Thousands of data points</span><i></i><span>Inbound leads from paid ads</span><i></i><span>Affiliate partners</span><i></i><span>UnderwriteIQ</span><i></i></div>
+  <div class="marq-set"><span>Close to a decade in funding</span><i></i><span>Hundreds of files</span><i></i><span>Thousands of data points</span><i></i><span>Inbound leads from paid ads</span><i></i><span>Affiliate partners</span><i></i><span>UnderwriteIQ</span><i></i></div>
+</div></div>
+
+<div class="wrap">
+  <section class="block" aria-labelledby="know-h">
+    <div class="center"><span class="eyebrow">What you need to know</span></div>
+    <h2 id="know-h">How Fundhub Works</h2>
+    <div class="facts">
+      <div class="fact"><span class="n">01 · Who we are</span><h3>A funding company with its own underwriting</h3><p>Fundhub has close to a decade in funding, hundreds of files and thousands of data points behind it. Our own software, UnderwriteIQ, reviews every file the way a lender does.</p></div>
+      <div class="fact"><span class="n">02 · What we sell</span><h3>Credit card stacking and credit optimization</h3><p>Business owners come to us to get funded with 0% intro APR business cards, and to optimize their credit when the file needs work first. Most of them already know what stacking is when they book.</p></div>
+      <div class="fact"><span class="n">03 · Where leads come from</span><h3>Our ads and our affiliate partners</h3><p>Paid ads and affiliate partners send the leads, so you work people who already asked to talk to us.</p></div>
+      <div class="fact"><span class="n">04 · Who does well here</span><h3>Coachable people who track their numbers</h3><p>You'll do well here if you take coaching, know your numbers every week, and show up to every huddle.</p></div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="roles-h">
+    <div class="center"><span class="eyebrow">Open seats</span></div>
+    <h2 id="roles-h">Pick Your Seat</h2>
+    <div class="roles">
+      <a class="role" href="/join/apply/?role=setter"><h3>Setter</h3><p>Work inbound leads from our ads and affiliates fast, and book qualified calls for the closers.</p><span class="go">Apply for this seat →</span></a>
+      <a class="role" href="/join/apply/?role=closer"><h3>Closer</h3><p>Run the booked calls, find the right path for each person, and close.</p><span class="go">Apply for this seat →</span></a>
+      <a class="role" href="/join/apply/?role=csm"><h3>Client Success Manager</h3><p>Own each client after the sale, keep their steps moving, and get them ready to fund.</p><span class="go">Apply for this seat →</span></a>
+      <a class="role" href="/join/apply/?role=coo"><h3>Chief Operating Officer</h3><p>Run the operating rhythm: the team, the numbers, and the weekly meetings.</p><span class="go">Apply for this seat →</span></a>
+    </div>
+  </section>
+
+  <section class="closer">
+    <a class="btn" href="/join/apply/">Apply Now</a>
+    <div class="cta-note">LinkedIn and a 90-second Loom are part of the application</div>
+  </section>
+</div>
+
+<footer>
+  © 2026 Fundhub LLC &nbsp;·&nbsp; <a href="/privacy/">Privacy Policy</a> &nbsp;·&nbsp; <a href="/terms/">Terms of Service</a>
+</footer>
+
+<script>
+(function () {
+  /* Play the VSL only once the file is really there. A HEAD that is not a 200
+     video leaves the placeholder up, so a missing file never shows a broken
+     player. */
+  var box = document.getElementById('vsl');
+  var src = box && box.getAttribute('data-src');
+  if (!src || !window.fetch) return;
+  fetch(src, { method: 'HEAD' }).then(function (r) {
+    var type = r.headers.get('content-type') || '';
+    if (!r.ok || type.indexOf('video') !== 0) return;
+    var v = document.createElement('video');
+    v.src = src; v.autoplay = true; v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.setAttribute('playsinline', '');
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'unmute';
+    b.innerHTML = '<span class="unmute-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>Tap for sound</span>';
+    b.addEventListener('click', function () {
+      v.muted = false; v.currentTime = 0; v.controls = true;
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
+      b.classList.add('hidden');
+    });
+    var soon = document.getElementById('vsl-soon');
+    if (soon) soon.remove();
+    box.appendChild(v); box.appendChild(b);
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

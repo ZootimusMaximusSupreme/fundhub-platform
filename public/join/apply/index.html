@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A0A0A">
+<title>Apply | Fundhub Careers</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Apply to join Fundhub as a setter, closer, client success manager or COO.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* The hiring funnel's application. Built on the book-a-call funnel's survey
+   (marketing/landing-pages/apply-survey.html): faint grid ground, centered
+   hero, one white card, one question per screen, then the calendar below. */
+:root{
+  --bg:#FCFCFC;--grid:#EFEFF1;--ink:#0A0A0A;--ink2:#27272A;--gray:#52525B;--gray2:#9C9CA5;
+  --line:#E4E4E7;--panel:#F5F5F6;--blue:63,124,239;--good:#15803D;--bad:#B42318;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme:light}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px;color:var(--ink);font-family:var(--sans);padding-inline:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding-block:16px 48px}
+.logo{display:block;text-align:center;font-weight:700;font-size:22px;letter-spacing:-.04em;color:var(--ink);text-decoration:none}
+.hero{text-align:center;margin-top:10px}
+.kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gray2)}
+h1{font-size:clamp(28px,5vw,42px);font-weight:700;letter-spacing:-.045em;line-height:1.05;margin:12px 0 0;text-wrap:balance}
+.lede{margin:12px auto 0;max-width:48ch;font-size:15.5px;line-height:1.6;color:var(--gray)}
+.card{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(10,10,10,.08);overflow:hidden}
+.card[hidden]{display:none}
+.bar{height:6px;background:var(--panel)}
+.bar i{display:block;height:100%;width:0;background:rgb(var(--blue));transition:width .35s cubic-bezier(.4,0,.2,1)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 22px 0;min-height:34px}
+.step{font-family:var(--mono);font-size:11px;color:var(--gray)}
+.step b{color:rgb(var(--blue));font-weight:600}
+.back{border:0;background:none;font:500 13px var(--sans);color:var(--gray);cursor:pointer;padding:6px 0}
+.back[hidden]{display:none}
+.body{padding:10px 22px 24px}
+.q{animation:in .3s ease-out both}
+@keyframes in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.q h2{font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.2;margin:4px 0 0}
+.q .hint{margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--gray)}
+.opts{display:grid;gap:8px;margin-top:18px}
+.opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font:500 15px/1.35 var(--sans);color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s}
+.opt:hover{border-color:rgba(var(--blue),.55)}
+.opt .mk{flex:0 0 20px;width:20px;height:20px;border:1.5px solid var(--gray2);border-radius:50%;display:grid;place-items:center}
+.opt .tx{display:flex;flex-direction:column;gap:3px}
+.opt .tx small{font-size:13px;font-weight:400;line-height:1.45;color:var(--gray)}
+.opt[aria-checked="true"]{border-color:rgb(var(--blue));background:rgba(var(--blue),.06)}
+.opt[aria-checked="true"] .mk{border-color:rgb(var(--blue));background:rgb(var(--blue))}
+.opt[aria-checked="true"] .mk::after{content:"";width:8px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.opt:focus-visible,.btn:focus-visible,input:focus-visible,.back:focus-visible{outline:3px solid rgba(var(--blue),.35);outline-offset:2px}
+.fields{display:grid;gap:12px;margin-top:18px}
+.fields .half{grid-template-columns:1fr 1fr;display:grid;gap:10px}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+input[type=text],input[type=email],input[type=tel],input[type=url]{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:10px;font:500 15px var(--sans);color:var(--ink);background:#fff}
+input:focus{border-color:rgb(var(--blue));outline:none}
+.fieldnote{margin-top:6px;font-size:12px;line-height:1.5;color:var(--gray)}
+.prompt{margin-top:16px;padding:14px 16px;border-radius:12px;background:rgba(var(--blue),.07);font-size:15px;line-height:1.55;color:var(--ink2)}
+.prompt b{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgb(var(--blue));margin-bottom:4px;font-weight:600}
+.err{min-height:18px;margin-top:8px;font-size:13px;color:var(--bad)}
+.err:empty{display:none}
+.actions{display:flex;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.btn{border:0;border-radius:10px;padding:14px 26px;font:600 15px var(--sans);color:#fff;background:rgb(var(--blue));cursor:pointer;box-shadow:0 8px 20px -10px rgba(var(--blue),.8);text-decoration:none;display:inline-block}
+.btn:disabled{opacity:.45;cursor:default}
+.trust{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--gray)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.done{text-align:center;padding:26px 22px 28px}
+.done .ok{width:48px;height:48px;border-radius:50%;background:rgba(21,128,61,.1);color:var(--good);display:grid;place-items:center;margin:0 auto;font-size:22px;font-weight:700;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.done h2{margin:14px 0 0;font-size:24px;font-weight:700;letter-spacing:-.03em}
+.done p{margin:8px auto 0;max-width:44ch;font-size:15px;line-height:1.6;color:var(--gray)}
+.cal{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(10,10,10,.08);padding:22px;scroll-margin-top:16px}
+.cal[hidden]{display:none}
+.cal h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.03em}
+.cal .sub{margin:6px 0 0;font-size:14px;color:var(--gray)}
+.cal .newtab{display:inline-block;margin-top:10px;font-size:13px;font-weight:600;color:rgb(var(--blue));text-decoration:underline;text-underline-offset:3px}
+.embed{margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#fff}
+.embed iframe{display:block;width:100%;height:860px;min-height:600px;border:0;background:#fff}
+@media(max-width:520px){
+  h1{font-size:26px;margin-top:8px}.lede{font-size:14px;margin-top:6px}.card{margin-top:12px}.logo{font-size:19px}
+  .top{padding:12px 16px 0}.body{padding:8px 16px 18px}.q h2{font-size:19px}.q .hint{font-size:13px}
+  .opts{gap:6px;margin-top:14px}.opt{padding:12px 13px;font-size:14px}.fields{gap:10px;margin-top:14px}
+  .fields .half{grid-template-columns:1fr}
+  input[type=text],input[type=email],input[type=tel],input[type=url]{padding:12px;font-size:16px}
+  .actions .btn{width:100%}
+  .embed iframe{height:760px}
+}
+@media(prefers-reduced-motion:reduce){.q,.done .ok{animation:none}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logo" href="/join/" aria-label="Fundhub careers">fundhub.</a>
+  <div class="hero" id="hero">
+    <span class="kicker" id="kicker">Application · Step 1 of 2</span>
+    <h1 id="title">Apply to Join Fundhub</h1>
+    <p class="lede" id="lede">About 5 minutes. The best fits pick an interview time right after.</p>
+  </div>
+
+  <form class="card" id="sv" novalidate>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="top"><button type="button" class="back" id="back" hidden>← Back</button><span class="step" id="count"></span></div>
+    <div class="body" id="body" aria-live="polite"></div>
+    <!-- Honeypot. A person never sees or fills this; a form-filling bot does.
+         The server answers a bot exactly as it answers a person. -->
+    <div class="hp" aria-hidden="true"><label for="f-website">Website</label><input type="text" id="f-website" name="website" tabindex="-1" autocomplete="off"></div>
+  </form>
+
+  <div class="card" id="done" hidden></div>
+
+  <section class="cal" id="cal" hidden aria-labelledby="cal-h">
+    <h2 id="cal-h">Pick a Time for Your Interview</h2>
+    <p class="sub" id="cal-sub">You'll meet with our sales manager.</p>
+    <a class="newtab" id="cal-newtab" href="#" target="_blank" rel="noopener">Calendar not loading? Open it in a new tab</a>
+    <div class="embed"><iframe id="cal-frame" title="Book your Fundhub interview"></iframe></div>
+  </section>
+
+  <div class="trust" id="trust"><span>About 5 minutes</span><span>·</span><span>LinkedIn required</span><span>·</span><span>90-second Loom</span></div>
+</div>
+
+<!-- The questions. This block is pageSurvey() from src/hiring/survey.mjs, word
+     for word; src/hiring/survey.test.mjs fails the build if they drift. Edit the
+     module, then paste its output here. -->
+<script type="application/json" id="fh-join-survey">
+{
+  "version": "join-2026-10-13",
+  "roles": [
+    {
+      "key": "setter",
+      "label": "Setter",
+      "blurb": "Work inbound leads from our ads and affiliates fast, and book qualified calls for the closers.",
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+    },
+    {
+      "key": "closer",
+      "label": "Closer",
+      "blurb": "Run the booked calls, find the right path for each person, and close.",
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+    },
+    {
+      "key": "csm",
+      "label": "Client Success Manager",
+      "blurb": "Own each client after the sale, keep their steps moving, and get them ready to fund.",
+      "loomPrompt": "Using what you heard in the video, pitch a Fundhub funding consult in 60 seconds."
+    },
+    {
+      "key": "coo",
+      "label": "Chief Operating Officer",
+      "blurb": "Run the operating rhythm: the team, the numbers, and the weekly meetings.",
+      "loomPrompt": "In 90 seconds, walk us through an operation you built and the numbers it moved."
+    }
+  ],
+  "questions": [
+    {
+      "key": "years_in_role",
+      "roles": [
+        "setter",
+        "closer",
+        "csm",
+        "coo"
+      ],
+      "title": "How long have you done this kind of work?",
+      "opts": [
+        "Less than 1 year",
+        "1 to 2 years",
+        "3 to 5 years",
+        "5+ years"
+      ]
+    },
+    {
+      "key": "hours",
+      "roles": [
+        "setter",
+        "closer",
+        "csm",
+        "coo"
+      ],
+      "title": "What hours can you work?",
+      "hint": "Arizona time.",
+      "opts": [
+        "Full-time, Monday to Friday",
+        "Full-time, plus evenings or weekends",
+        "Part-time only"
+      ]
+    },
+    {
+      "key": "start",
+      "roles": [
+        "setter",
+        "closer",
+        "csm",
+        "coo"
+      ],
+      "title": "When can you start?",
+      "opts": [
+        "Right away",
+        "Within 2 weeks",
+        "Within 30 days",
+        "More than 30 days out"
+      ]
+    },
+    {
+      "key": "closer_top_ticket",
+      "roles": [
+        "closer"
+      ],
+      "title": "What's the highest-ticket offer you've closed?",
+      "opts": [
+        "Under $3,000",
+        "$3,000 to $5,000",
+        "$5,000 to $10,000",
+        "$10,000+"
+      ]
+    },
+    {
+      "key": "closer_close_rate",
+      "roles": [
+        "closer"
+      ],
+      "title": "What was your close rate over the last 90 days?",
+      "opts": [
+        "Under 15%",
+        "15% to 25%",
+        "25% to 35%",
+        "35%+",
+        "I don't track it"
+      ]
+    },
+    {
+      "key": "closer_cash_last_month",
+      "roles": [
+        "closer"
+      ],
+      "title": "How much cash did you collect last month?",
+      "opts": [
+        "Under $10,000",
+        "$10,000 to $25,000",
+        "$25,000 to $50,000",
+        "$50,000 to $100,000",
+        "$100,000+"
+      ]
+    },
+    {
+      "key": "setter_dials",
+      "roles": [
+        "setter"
+      ],
+      "title": "How many dials do you make in a day?",
+      "opts": [
+        "Under 50",
+        "50 to 100",
+        "100 to 200",
+        "200+"
+      ]
+    },
+    {
+      "key": "setter_set_rate",
+      "roles": [
+        "setter"
+      ],
+      "title": "What's your set rate?",
+      "hint": "Of the leads you talk to, how many book a call.",
+      "opts": [
+        "Under 10%",
+        "10% to 20%",
+        "20% to 30%",
+        "30%+",
+        "I don't track it"
+      ]
+    },
+    {
+      "key": "setter_show_rate",
+      "roles": [
+        "setter"
+      ],
+      "title": "What's your show rate?",
+      "hint": "Of the calls you book, how many show up.",
+      "opts": [
+        "Under 50%",
+        "50% to 70%",
+        "70% to 85%",
+        "85%+",
+        "I don't track it"
+      ]
+    },
+    {
+      "key": "setter_dm",
+      "roles": [
+        "setter"
+      ],
+      "title": "Have you set appointments over DMs?",
+      "opts": [
+        "Yes",
+        "No"
+      ]
+    },
+    {
+      "key": "csm_onboarding_retention",
+      "roles": [
+        "csm"
+      ],
+      "title": "Have you run client onboarding or retention?",
+      "opts": [
+        "Yes, both",
+        "Onboarding only",
+        "Retention only",
+        "Not yet"
+      ]
+    },
+    {
+      "key": "csm_credit_finance",
+      "roles": [
+        "csm"
+      ],
+      "title": "Do you have a credit or finance background?",
+      "opts": [
+        "Yes, credit",
+        "Yes, finance or lending",
+        "Both",
+        "No"
+      ]
+    },
+    {
+      "key": "coo_team_size",
+      "roles": [
+        "coo"
+      ],
+      "title": "What's the biggest team you've managed?",
+      "opts": [
+        "1 to 5 people",
+        "6 to 15 people",
+        "16 to 50 people",
+        "50+ people"
+      ]
+    },
+    {
+      "key": "coo_company_size",
+      "roles": [
+        "coo"
+      ],
+      "title": "What's the biggest company you've run operations for?",
+      "hint": "Monthly revenue.",
+      "opts": [
+        "Under $100,000",
+        "$100,000 to $500,000",
+        "$500,000 to $1,000,000",
+        "$1,000,000+"
+      ]
+    },
+    {
+      "key": "coo_kpi_cadence",
+      "roles": [
+        "coo"
+      ],
+      "title": "Have you run a weekly KPI meeting with a scorecard?",
+      "opts": [
+        "Yes, every week",
+        "Sometimes",
+        "Not yet"
+      ]
+    }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  var S = JSON.parse(document.getElementById('fh-join-survey').textContent);
+  var ENDPOINT = "/api/hiring/apply";
+  var ROLE_KEYS = S.roles.map(function (r) { return r.key; });
+  var state = { role: null, contact: {}, answers: {}, loom: '' };
+  var at = 0;
+
+  var preset = new URLSearchParams(location.search).get('role');
+  if (preset && ROLE_KEYS.indexOf(preset) > -1) { state.role = preset; at = 1; }
+
+  var body = document.getElementById('body');
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function roleOf(key) { for (var i = 0; i < S.roles.length; i++) if (S.roles[i].key === key) return S.roles[i]; return null; }
+  function questions() { return S.questions.filter(function (q) { return state.role && q.roles.indexOf(state.role) > -1; }); }
+  function steps() {
+    var out = [{ type: 'role' }, { type: 'contact' }];
+    questions().forEach(function (q) { out.push({ type: 'q', q: q }); });
+    out.push({ type: 'loom' });
+    return out;
+  }
+  /* Who the applicant meets. Owner-set 2026-10-13: the COO books with Chris. */
+  function meets() { return state.role === 'coo' ? 'Chris, our CEO' : 'our sales manager'; }
+
+  function render() {
+    var list = steps(), st = list[at];
+    var pct = Math.round(at / list.length * 90);
+    document.getElementById('bar').style.width = Math.max(pct, 4) + '%';
+    document.getElementById('count').innerHTML = '<b>' + pct + '%</b> · Step ' + (at + 1) + ' of ' + list.length;
+    document.getElementById('back').hidden = at === 0;
+    var h = '<div class="q">';
+    if (st.type === 'role') {
+      h += '<h2>Which Seat Are You Applying For?</h2><p class="hint">Pick one. You can apply for another seat after.</p><div class="opts" role="radiogroup">';
+      S.roles.forEach(function (r) {
+        h += '<button type="button" class="opt" role="radio" aria-checked="' + (state.role === r.key) + '" data-role="' + esc(r.key) + '"><span class="mk"></span><span class="tx">' + esc(r.label) + '<small>' + esc(r.blurb) + '</small></span></button>';
+      });
+      h += '</div>';
+    } else if (st.type === 'contact') {
+      var c = state.contact;
+      h += '<h2>Your Info</h2><p class="hint">So ' + esc(meets()) + ' knows who they’re meeting.</p>' +
+        '<div class="fields"><div class="half">' +
+        '<div><label for="f-first">First name</label><input type="text" id="f-first" autocomplete="given-name" maxlength="60" value="' + esc(c.first || '') + '"></div>' +
+        '<div><label for="f-last">Last name</label><input type="text" id="f-last" autocomplete="family-name" maxlength="60" value="' + esc(c.last || '') + '"></div></div>' +
+        '<div><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" maxlength="160" value="' + esc(c.email || '') + '"></div>' +
+        '<div><label for="f-phone">Phone number</label><input type="tel" id="f-phone" autocomplete="tel" inputmode="tel" placeholder="(555) 555-5555" maxlength="14" value="' + esc(c.phone || '') + '"><div class="fieldnote">Only used to set up your interview.</div></div>' +
+        '<div><label for="f-linkedin">LinkedIn profile</label><input type="url" id="f-linkedin" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="linkedin.com/in/yourname" maxlength="300" value="' + esc(c.linkedin || '') + '"><div class="fieldnote">Required. We look at it before your interview.</div></div>' +
+        '</div><div class="err" id="err"></div><div class="actions"><button type="button" class="btn" id="next">Next</button></div>';
+    } else if (st.type === 'q') {
+      var q = st.q, cur = state.answers[q.key];
+      h += '<h2>' + esc(q.title) + '</h2>' + (q.hint ? '<p class="hint">' + esc(q.hint) + '</p>' : '') + '<div class="opts" role="radiogroup">';
+      q.opts.forEach(function (o, i) {
+        h += '<button type="button" class="opt" role="radio" aria-checked="' + (cur === o) + '" data-i="' + i + '"><span class="mk"></span><span class="tx">' + esc(o) + '</span></button>';
+      });
+      h += '</div><div class="err" id="err"></div>';
+    } else {
+      var r = roleOf(state.role);
+      h += '<h2>Record a 90-Second Loom</h2><p class="hint">Record it on loom.com, copy the share link, and paste it here. A free Loom account works.</p>' +
+        '<div class="prompt"><b>Your prompt</b>' + esc(r ? r.loomPrompt : '') + '</div>' +
+        '<div class="fields"><div><label for="f-loom">Loom share link</label><input type="url" id="f-loom" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="loom.com/share/…" maxlength="300" value="' + esc(state.loom) + '"></div></div>' +
+        '<div class="err" id="err"></div><div class="actions"><button type="button" class="btn" id="submit">Submit Application</button></div>';
+    }
+    body.innerHTML = h + '</div>';
+    wire(st);
+  }
+
+  function err(msg) { var e = document.getElementById('err'); if (e) e.textContent = msg || ''; }
+  function go(n) { at = n; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function next() { go(Math.min(at + 1, steps().length - 1)); }
+
+  function wire(st) {
+    if (st.type === 'role') {
+      body.querySelectorAll('.opt').forEach(function (b) {
+        b.addEventListener('click', function () {
+          body.querySelectorAll('.opt').forEach(function (x) { x.setAttribute('aria-checked', 'false'); });
+          b.setAttribute('aria-checked', 'true');
+          var picked = b.getAttribute('data-role');
+          if (picked !== state.role) {
+            /* Keep only the answers the new seat is asked; the server refuses
+               any question that is not for the seat. */
+            var keep = {};
+            S.questions.forEach(function (q) {
+              if (q.roles.indexOf(picked) > -1 && state.answers[q.key] != null) keep[q.key] = state.answers[q.key];
+            });
+            state.answers = keep;
+            state.role = picked;
+          }
+          setTimeout(next, 220);
+        });
+      });
+    } else if (st.type === 'q') {
+      body.querySelectorAll('.opt').forEach(function (b) {
+        b.addEventListener('click', function () {
+          body.querySelectorAll('.opt').forEach(function (x) { x.setAttribute('aria-checked', 'false'); });
+          b.setAttribute('aria-checked', 'true');
+          state.answers[st.q.key] = st.q.opts[+b.getAttribute('data-i')];
+          setTimeout(next, 220);
+        });
+      });
+    } else if (st.type === 'contact') {
+      wireContact();
+      document.getElementById('next').addEventListener('click', function () { if (readContact()) next(); });
+      document.getElementById('f-first').focus();
+    } else {
+      var lm = document.getElementById('f-loom');
+      lm.addEventListener('input', function () { state.loom = lm.value.trim(); });
+      document.getElementById('submit').addEventListener('click', submit);
+      lm.focus();
+    }
+  }
+
+  function capName(v) { return v.replace(/\s+/g, ' ').replace(/(^|[\s\-'])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+  function fmtPhone(v) {
+    var d = v.replace(/\D/g, '').replace(/^1/, '').slice(0, 10);
+    if (d.length < 4) return d.length ? '(' + d : '';
+    if (d.length < 7) return '(' + d.slice(0, 3) + ') ' + d.slice(3);
+    return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+  }
+  function wireContact() {
+    ['f-first', 'f-last'].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener('blur', function () { el.value = capName(el.value.trim()); });
+    });
+    var ph = document.getElementById('f-phone');
+    ph.value = fmtPhone(ph.value);
+    ph.addEventListener('input', function () { ph.value = fmtPhone(ph.value); });
+  }
+  function isLinkedIn(v) { return /^(https?:\/\/)?([a-z0-9-]+\.)*linkedin\.com\/\S+/i.test(v); }
+  function isLoom(v) { return /^(https?:\/\/)?([a-z0-9-]+\.)*loom\.com\/\S+/i.test(v); }
+  function readContact() {
+    var c = {
+      first: capName(document.getElementById('f-first').value.trim()),
+      last: capName(document.getElementById('f-last').value.trim()),
+      email: document.getElementById('f-email').value.trim().toLowerCase(),
+      phone: document.getElementById('f-phone').value.trim(),
+      linkedin: document.getElementById('f-linkedin').value.trim()
+    };
+    state.contact = c;
+    if (!c.first || !c.last) { err('Add your first and last name.'); return false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) { err('Check your email address.'); return false; }
+    if (c.phone.replace(/\D/g, '').length !== 10) { err('Add a 10-digit phone number.'); return false; }
+    if (!isLinkedIn(c.linkedin)) { err('Add your LinkedIn profile link, like linkedin.com/in/yourname.'); return false; }
+    return true;
+  }
+
+  /* Server error → what the applicant reads, and which step to send them to. */
+  var ERRORS = {
+    name_email_required: ['Check your name and email.', 1],
+    phone_required: ['Add a 10-digit phone number.', 1],
+    linkedin_required: ['Add your LinkedIn profile link, like linkedin.com/in/yourname.', 1],
+    linkedin_url_invalid: ['That LinkedIn link did not work. Use your profile link, like linkedin.com/in/yourname.', 1],
+    loom_required: ['Paste your Loom share link.', -1],
+    loom_url_invalid: ['That link is not a Loom share link. It looks like loom.com/share/…', -1],
+    survey_incomplete: ['One answer is missing. Go back through the questions and pick one for each.', 2],
+    survey_answer_unknown: ['Something in your answers did not match. Go back through the questions.', 2],
+    role_unavailable: ['That seat just closed. Pick another seat.', 0],
+    rate_limited: ['Too many tries in a row. Wait 15 minutes, then submit again.', -1]
+  };
+
+  function attribution() {
+    var p = new URLSearchParams(location.search);
+    if (p.get('utm_source')) return { how_heard: 'ads', how_heard_detail: (p.get('utm_campaign') || p.get('utm_source') || '').slice(0, 200) };
+    return {};
+  }
+
+  var sending = false;
+  function submit() {
+    if (sending) return;
+    var lm = document.getElementById('f-loom');
+    state.loom = lm.value.trim();
+    if (!isLoom(state.loom)) { err('Paste your Loom share link. It looks like loom.com/share/…'); return; }
+    var answers = {};
+    questions().forEach(function (q) { if (state.answers[q.key] != null) answers[q.key] = state.answers[q.key]; });
+    var payload = {
+      funnel: "join",
+      role: state.role,
+      name: state.contact.first + ' ' + state.contact.last,
+      email: state.contact.email,
+      phone: state.contact.phone,
+      linkedin: state.contact.linkedin,
+      loom: state.loom,
+      answers: answers,
+      website: document.getElementById('f-website').value
+    };
+    var a = attribution();
+    if (a.how_heard) { payload.how_heard = a.how_heard; payload.how_heard_detail = a.how_heard_detail; }
+
+    sending = true;
+    var btn = document.getElementById('submit');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'server' }; }); })
+      .then(function (res) {
+        sending = false;
+        if (res && res.ok) return finish(res);
+        var e = ERRORS[res && res.error];
+        if (e && e[1] >= 0 && e[1] !== at) { go(e[1]); }
+        else { btn.disabled = false; btn.textContent = 'Submit Application'; }
+        err(e ? e[0] : 'Something went wrong on our side. Try again in a minute.');
+      })
+      .catch(function () {
+        sending = false; btn.disabled = false; btn.textContent = 'Submit Application';
+        err('Could not reach us. Check your connection and try again.');
+      });
+  }
+
+  function finish(res) {
+    document.getElementById('sv').hidden = true;
+    document.getElementById('trust').hidden = true;
+    var done = document.getElementById('done');
+    var first = esc(state.contact.first || '');
+    var who = esc(meets());
+    var h;
+    if (res.next === 'book' && /^https:\/\//.test(res.bookingUrl || '')) {
+      document.getElementById('kicker').textContent = 'Application · Step 2 of 2';
+      document.getElementById('title').textContent = 'One Step Left';
+      document.getElementById('lede').textContent = 'Pick a time for your interview below.';
+      h = '<div class="done"><div class="ok">✓</div><h2>Application received, ' + first + '</h2><p>Pick a time below to meet with ' + who + '.</p></div>';
+      var cal = document.getElementById('cal');
+      document.getElementById('cal-sub').textContent = 'You’ll meet with ' + meets() + '.';
+      document.getElementById('cal-frame').src = res.bookingUrl;
+      document.getElementById('cal-newtab').href = res.bookingUrl;
+      cal.hidden = false;
+      done.innerHTML = h; done.hidden = false;
+      setTimeout(function () { cal.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+      return;
+    }
+    document.getElementById('kicker').textContent = 'Application received';
+    document.getElementById('title').textContent = 'Thanks for Applying';
+    document.getElementById('lede').textContent = '';
+    if (res.next === 'book' || res.next === 'book_pending') {
+      h = '<div class="done"><div class="ok">✓</div><h2>You’re all set, ' + first + '</h2><p>We got your application. ' + capFirst(who) + ' will reach out to set up your interview.</p></div>';
+    } else {
+      h = '<div class="done"><div class="ok">✓</div><h2>We got your application, ' + first + '</h2><p>' + capFirst(who) + ' reviews every application and reaches out to the best fits.</p></div>';
+    }
+    done.innerHTML = h; done.hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  document.getElementById('back').addEventListener('click', function () { if (at > 0) go(at - 1); });
+  render();
+})();
+</script>
+</body>
+</html>

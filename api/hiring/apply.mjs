@@ -41,7 +41,8 @@ import {
   listOpenRoles,
   checkApplyRate,
   recordAttempt,
-  submitApplication
+  submitApplication,
+  nextStepFor
 } from "../../src/hiring/apply-public.mjs";
 
 /* The same body reader the other public handlers use. The Netlify shim may hand
@@ -131,7 +132,14 @@ export default async function handler(req, res) {
     await submitApplication(db, parsed, { orgId });
     /* `received`, not `created`. The outcome is deliberately not in the reply —
        see the header. */
-    return res.status(200).json(RECEIVED);
+    if (parsed.funnel !== "join") return res.status(200).json(RECEIVED);
+
+    /* The hiring funnel (/join/apply/) also needs to know which screen comes
+       next: the calendar, "we'll reach out", or the thank-you. nextStepFor()
+       answers from the seat and the answers sent, never from what is on file,
+       so the reply still says nothing about whether the address was known. */
+    const step = await nextStepFor(db, parsed, { orgId });
+    return res.status(200).json({ ...RECEIVED, ...step });
   } catch (err) {
     if (err && err.code === "ROLE_UNAVAILABLE") {
       return res.status(400).json({ ok: false, error: "role_unavailable" });
