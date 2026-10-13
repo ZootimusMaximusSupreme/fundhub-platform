@@ -10,7 +10,7 @@ Make sure leads from Blake Evertsen, Fundhub Funnel, and iCloud show their sourc
 | --- | --- | --- | --- |
 | Source rules | agent | DONE | Find existing mappings, docs, and tests. No edits. |
 | Live record check | agent | DONE | Check the named live lead and available records. No edits. |
-| Repair and proof | root | OPEN | The page data has no Blake or iCloud provenance to repair safely. |
+| Repair and proof | root | DONE | Label verified Blake, Funnel, and iCloud sources; publish and prove the private page. |
 
 ## Prompts
 
@@ -43,7 +43,8 @@ The page now derives the shown source without changing the original private lead
 
 - L001-L014 show `Blake Evertsen`, based on Gmail referral-phone matches.
 - The 20 rows whose stored tag is `clickfunnels` show `Fundhub Funnel`.
-- iCloud remains open because no data source identifies which generic `Phone contact` rows came from iCloud.
+- The two existing matching contacts (L030 and L032) show `iCloud`.
+- 3,649 new, unique iCloud contacts show `iCloud`. They come from the owner's Drive CSV `Funding Leads Fundub LLC Pre Validated.csv` and meet at least one of these rules: Business Owner, Self-Employed, positive business revenue, or a business keyword (Credit, Repair, Funding, Client, Lead, Business, Company, LLC, Inc, Corp, Enterprise, Capital, Merchant, Finance, Loan, or Lending).
 
 Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
 
@@ -51,3 +52,5 @@ Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
 
 - Netlify production deploy `6ace2b5e005be44dc216ba80` reached `ready` at 2026-10-13 06:02 Arizona time.
 - A fresh live-page reload showed L001-L014 as `Blake Evertsen` and L065-L084 as `Fundhub Funnel`.
+- The Drive CSV has 4,675 rows. The business scan selected 3,652 rows, removed one already-present phone number and two duplicate phone numbers, and imported 3,649 unique contacts.
+- Netlify production deploy `6ace2fb9f2bdbec257cfc0a7` completed successfully. A direct live-page check confirmed its iCloud data file contains 3,649 iCloud leads; the page now contains 3,733 leads total.
