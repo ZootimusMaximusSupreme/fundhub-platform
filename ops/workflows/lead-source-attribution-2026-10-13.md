@@ -10,7 +10,7 @@ Make sure leads from Blake Evertsen, Fundhub Funnel, and iCloud show their sourc
 | --- | --- | --- | --- |
 | Source rules | agent | DONE | Find existing mappings, docs, and tests. No edits. |
 | Live record check | agent | DONE | Check the named live lead and available records. No edits. |
-| Repair and proof | root | IN PROGRESS | Blake and Funnel sources are verified. iPhone CSV still needs an exact file match. |
+| Repair and proof | root | DONE | Blake, Funnel, and verified iPhone-contact sources are labelled and published. |
 
 ## Prompts
 
@@ -43,7 +43,9 @@ The page now derives the shown source without changing the original private lead
 
 - L001-L014 show `Blake Evertsen`, based on Gmail referral-phone matches.
 - The 20 rows whose stored tag is `clickfunnels` show `Fundhub Funnel`.
-- No iCloud contacts are currently imported. The actual iPhone CSV has not yet been identified.
+- The verified iPhone export is Drive file `All Contacts.vcf`, uploaded on 2026-10-13. It has 1,190 contacts.
+- The scan checked contact name, company, title, and note fields for Credit, Funding, Lead, Repair, Client, Business, Finance, Capital, Lending, Loan, Merchant, LLC, Inc, Corp, and Company.
+- It found 293 matching contacts; 40 already match existing private-lead phone numbers and show `iCloud`, while 253 new unique contacts were added with the source `iCloud`.
 
 Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
 
@@ -51,5 +53,5 @@ Local source proof passed: 14 Blake referrals and 20 Fundhub Funnel leads.
 
 - Netlify production deploy `6ace2b5e005be44dc216ba80` reached `ready` at 2026-10-13 06:02 Arizona time.
 - A fresh live-page reload showed L001-L014 as `Blake Evertsen` and L065-L084 as `Fundhub Funnel`.
-- The file `Funding Leads Fundub LLC Pre Validated.csv` is reserved for Facebook uploads and was not an authorized source for this page. Its temporary import was removed.
-- Netlify production deploy `6ace3298b95f00c34cc507b9` completed successfully. A direct live-page check confirmed the page is back to 84 leads and contains no Funding Leads CSV import.
+- The file `Funding Leads Fundub LLC Pre Validated.csv` is reserved for Facebook uploads and was not used as a source for this page.
+- The iPhone import results in 337 total private leads. Blake retains precedence if a contact matches both Blake and iCloud, so Blake-labelled referrals remain visible as Blake.
