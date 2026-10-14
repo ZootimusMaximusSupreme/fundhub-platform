@@ -42,16 +42,38 @@ const CARDS = [
   mineCard("Elsewhere", { org_id: OTHER_ORG_ID, client_id: FOREIGN_CLIENT, credit_limit_cents: "9000000" }),
   mineCard("Other client", { client_id: FOREIGN_CLIENT, credit_limit_cents: "4000000" }),
 ];
-const scoped = (rows, table) => shelf(rows, [
-  clause(new RegExp(`FROM ${table} WHERE org_id = \\$1`), (row, [org]) => row.org_id === org),
-  clause(/ client_id = \$2/, (row, p) => row.client_id === p[1]),
+// Every one of the five reads is a stand-in table that keeps a row only while the
+// SQL text carries that row's condition: this company (orgRe) and, when the SQL
+// names one, this client (the $n after "client_id = " says which parameter).
+const scoped = (rows, orgRe) => shelf(rows, [
+  clause(orgRe, (row, [org]) => row.org_id === org),
+  clause(/\bclient_id = \$(\d)/, (row, params, [, n]) => row.client_id === params[n - 1]),
 ]);
+const mineRow = (over) => ({ org_id: ORG_ID, client_id: CLIENT_ID, ...over });
+const theirsRow = (over) => mineRow({ org_id: OTHER_ORG_ID, client_id: FOREIGN_CLIENT, ...over });
+const sibling = (over) => mineRow({ client_id: FOREIGN_CLIENT, ...over });
+// Oldest day first, as the SQL's ORDER BY hands them over.
+const HOLDINGS = [
+  mineRow({ current_value_cents: "75000" }),
+  sibling({ current_value_cents: "40000" }),
+  theirsRow({ current_value_cents: "9000000" }),
+];
+const CASH_DAYS = [
+  theirsRow({ day: "2026-10-10", inflow_cents: "9000000", outflow_cents: "100" }),
+  sibling({ day: "2026-10-11", inflow_cents: "30000", outflow_cents: "10000" }),
+  mineRow({ day: "2026-10-12", inflow_cents: "120000", outflow_cents: "45000" }),
+];
+// Ad spend has no client on it (header note in the handler): both are business rows.
+const SPEND_DAYS = [
+  { org_id: OTHER_ORG_ID, day: "2026-10-12", spend_cents: "8000000" },
+  { org_id: ORG_ID, day: "2026-10-12", spend_cents: "30000" },
+];
 const COMMAND_RULES = [
-  [/FROM bank_accounts WHERE org_id/, scoped(BANKS, "bank_accounts")],
-  [/FROM tradelines WHERE org_id/, scoped(CARDS, "tradelines")],
-  [/FROM investment_holdings ih/, [{ current_value_cents: "75000" }]],
-  [/FROM bank_transactions/, [{ day: "2026-10-12", inflow_cents: "120000", outflow_cents: "45000" }]],
-  [/FROM ad_metrics_daily m/, [{ day: "2026-10-12", spend_cents: "30000" }]],
+  [/FROM bank_accounts WHERE org_id/, scoped(BANKS, /FROM bank_accounts WHERE org_id = \$1/)],
+  [/FROM tradelines WHERE org_id/, scoped(CARDS, /FROM tradelines WHERE org_id = \$1/)],
+  [/FROM investment_holdings ih/, scoped(HOLDINGS, /WHERE ih\.org_id = \$1/)],
+  [/FROM bank_transactions/, scoped(CASH_DAYS, /WHERE org_id = \$1 AND posted_on/)],
+  [/FROM ad_metrics_daily m/, scoped(SPEND_DAYS, /WHERE m\.org_id = \$1 AND m\.date/)],
 ];
 const CLIENTS = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, shelf(
   [{ id: CLIENT_ID, org_id: ORG_ID }, { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID }],
@@ -69,13 +91,17 @@ test("read/finance-command rolls up this company's cash, credit available and ow
   assert.equal(t.cash_cents, 250000 + 50000 + 888000, "this company's open accounts; the closed one and the other company's are not counted");
   assert.equal(t.credit_available_cents, 1000000 + 500000 + 4000000);
   assert.equal(t.credit_owed_cents, 200000 + 100000 + 200000);
-  assert.equal(t.investment_cents, 75000);
+  assert.equal(t.investment_cents, 75000 + 40000, "both of this company's clients; the other company's holding is not counted");
   assert.deepEqual(res.body.window, { from: "2026-10-07", to: "2026-10-13", days: 7 });
-  assert.equal(res.body.cashflow_series[0].net_cents, 75000);
-  assert.equal(res.body.marketing_series[0].spend_cents, 30000);
+  assert.deepEqual(res.body.cashflow_series.map((r) => [r.date, r.net_cents]), [["2026-10-11", 20000], ["2026-10-12", 75000]],
+    "this company's days only: not the other company's 9,000,000 inflow");
+  assert.deepEqual(res.body.marketing_series.map((r) => [r.date, r.spend_cents]), [["2026-10-12", 30000]],
+    "this company's spend only: not the other company's 8,000,000");
   const combined = res.body.combined_series.find((r) => r.date === "2026-10-12");
   assert.equal(combined.outflow_cents, 75000, "cash out includes marketing spend on the business-wide view");
-  assert.ok(fake.find(/FROM bank_accounts/).every((c) => c.params[0] === ORG_ID), "every read carries the session's company");
+  const reads = fake.calls.filter((c) => /FROM (bank_accounts|tradelines|investment_holdings|bank_transactions|ad_metrics_daily)/.test(c.sql));
+  assert.equal(reads.length, 5, "the five money reads");
+  assert.ok(reads.every((c) => c.params[0] === ORG_ID), "every read carries the session's company");
 });
 
 test("read/finance-command scoped to one client keeps spend separate, and refuses another company's client", async () => {
@@ -84,9 +110,14 @@ test("read/finance-command scoped to one client keeps spend separate, and refuse
   assert.equal(mine.res.statusCode, 200);
   assert.equal(mine.res.body.totals.cash_cents, 250000 + 50000, "only that client's open accounts");
   assert.equal(mine.res.body.totals.credit_available_cents, 1000000 + 500000);
+  assert.equal(mine.res.body.totals.investment_cents, 75000, "only that client's holding: not the sibling client's, not the other company's");
+  assert.deepEqual(mine.res.body.cashflow_series.map((r) => [r.date, r.net_cents]), [["2026-10-12", 75000]], "only that client's cash days");
+  assert.deepEqual(mine.res.body.marketing_series.map((r) => [r.date, r.spend_cents]), [["2026-10-12", 30000]],
+    "spend stays the business-wide figure under a client filter");
   assert.equal(mine.res.body.combined_series, null);
   assert.match(mine.res.body.combined_series_unavailable_reason, /cannot be attributed to one client/);
   assert.deepEqual(mine.fake.find(/FROM bank_accounts/)[0].params, [ORG_ID, CLIENT_ID]);
+  assert.deepEqual(mine.fake.find(/FROM investment_holdings/)[0].params, [ORG_ID, CLIENT_ID]);
 
   const theirs = await run(financeCommand, req("GET", { query: { client_id: FOREIGN_CLIENT } }),
     [staffSession(), CLIENTS, ...COMMAND_RULES], ONE_YEAR);
@@ -137,17 +168,22 @@ const referral = (id, affiliateId, first, over) => ({
 });
 const PORTAL_ROWS = [
   [/FROM affiliates\s+WHERE id = \$1 AND org_id = \$2/, AFFILIATES],
-  [/FROM affiliate_commission_rules r/, [
-    { tier: "direct", calc_method: "percent", percent: "20", name: "Direct", affiliate_id: null },
-    { tier: "downline", calc_method: "percent", percent: "5", name: "Downline", affiliate_id: null },
-  ]],
+  // Each read also holds another company's row: for the same affiliate, so only
+  // the company condition in the SQL keeps it out.
+  [/FROM affiliate_commission_rules r/, shelf([
+    { tier: "direct", calc_method: "percent", percent: "20", name: "Direct", affiliate_id: null, org_id: ORG_ID },
+    { tier: "downline", calc_method: "percent", percent: "5", name: "Downline", affiliate_id: null, org_id: ORG_ID },
+    { tier: "direct", calc_method: "percent", percent: "50", name: "Elsewhere direct", affiliate_id: null, org_id: OTHER_ORG_ID },
+  ], [clause(/WHERE r\.org_id = \$1/, (row, [org]) => row.org_id === org)])],
   [/FROM affiliate_referrals r\s+JOIN clients/, mineOrOthers([
     referral("ae000000-0000-4000-8000-000000000001", AFFILIATE_ID, "Sarah", {}),
     referral("ae000000-0000-4000-8000-000000000002", OTHER_AFFILIATE, "Stranger", { commission_due: "777.00" }),
+    referral("ae000000-0000-4000-8000-000000000003", AFFILIATE_ID, "Elsewhere", { org_id: OTHER_ORG_ID, commission_due: "555.00" }),
   ])],
   [/FROM affiliate_payouts po/, mineOrOthers([
     { id: "b1", affiliate_id: AFFILIATE_ID, org_id: ORG_ID, amount: "25.50", currency: "USD", status: "held", hold_reason: "license_unsigned", line_count: "2" },
     { id: "b2", affiliate_id: OTHER_AFFILIATE, org_id: ORG_ID, amount: "800.00", currency: "USD", status: "paid", hold_reason: null, line_count: "9" },
+    { id: "b3", affiliate_id: AFFILIATE_ID, org_id: OTHER_ORG_ID, amount: "4000.00", currency: "USD", status: "paid", hold_reason: null, line_count: "7" },
   ])],
 ];
 
@@ -160,6 +196,7 @@ test("read/affiliate-portal shows an affiliate their own referrals, rates, payou
   assert.equal(res.body.affiliate.balanceDue, 125.5);
   assert.equal(res.body.rates.direct.percent, 20);
   assert.equal(res.body.rates.downline.percent, 5);
+  assert.deepEqual(res.body.rates.direct.rules.map((r) => r.name), ["Direct"], "this company's rules only");
   assert.deepEqual(res.body.referrals.map((r) => [r.name, r.commissionDue, r.basisAmount]), [["Sarah Lee", 100, 500]]);
   assert.deepEqual(res.body.payouts.map((p) => [p.amount, p.status, p.holdReason, p.lineCount]), [[25.5, "held", "license_unsigned", 2]]);
   assert.equal(res.body.gates.license.signed, false, "unsigned license holds the payout");

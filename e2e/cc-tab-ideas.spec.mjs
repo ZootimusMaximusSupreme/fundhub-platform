@@ -305,6 +305,12 @@ for (const size of SIZES) {
         "POST marketing/funnels/rename": ({ body }) => { path = "/" + body.path; return { ok: true, funnel: blueprintFunnel({ path }) }; },
         "POST marketing/funnels/push-live": { status: 202, body: { ok: true, queued: true, job: { id: "job-push", kind: "funnel_push", status: "queued" }, url: "https://apply.fundhub.ai/blueprint-vip", worker: { started: true, reason: null } } }
       });
+      // A tap returns before the browser's request reaches the stand-in, so wait
+      // for the one write to land, then read its body.
+      const sent = async (p) => {
+        await expect.poll(() => writesTo(posts, p).length, `one POST to ${p}`).toBe(1);
+        return writesTo(posts, p)[0].body;
+      };
       /* Make the funnel: cost first, then the automatic address. */
       await expect(page.locator("#cci-funnel-cost")).toContainText("Writes 3 pages with one model call.");
       await page.locator("#cci-funnel-go").click();
@@ -312,8 +318,9 @@ for (const size of SIZES) {
       await expect(make).toContainText("Cost: unknown, not measured yet.");
       expect(writesTo(posts, "marketing/funnels/create")).toHaveLength(0);
       await make.getByRole("button", { name: "Make the funnel" }).click();
-      expect(writesTo(posts, "marketing/funnels/create")[0].body).toMatchObject({ offer_key: "capital_blueprint" });
-      expect(writesTo(posts, "marketing/funnels/create")[0].body.path).toBeUndefined();
+      const created = await sent("marketing/funnels/create");
+      expect(created).toMatchObject({ offer_key: "capital_blueprint" });
+      expect(created.path).toBeUndefined();
       await expect(page.locator('[data-say="funnels"]')).toHaveText("Made. Its address is https://apply.fundhub.ai/blueprint-2. Tag fnl-blueprint-2.");
       const fresh = page.locator('[data-funnel="00000000-0000-4000-8000-000000000604"]');
       await expect(fresh).toContainText("Writing the 3 pages.");
@@ -331,7 +338,7 @@ for (const size of SIZES) {
       await row.getByRole("button", { name: "Change the address" }).click();
       await row.locator("#cci-rn-00000000-0000-4000-8000-000000000603").fill("blueprint-vip");
       await row.getByRole("button", { name: "Save the address" }).click();
-      expect(writesTo(posts, "marketing/funnels/rename")[0].body).toMatchObject({ id: "00000000-0000-4000-8000-000000000603", path: "blueprint-vip" });
+      expect(await sent("marketing/funnels/rename")).toMatchObject({ id: "00000000-0000-4000-8000-000000000603", path: "blueprint-vip" });
       await expect(row).toContainText("apply.fundhub.ai/blueprint-vip");
 
       /* Page previews: sandboxed, no scripts. */
@@ -351,9 +358,7 @@ for (const size of SIZES) {
       expect(writesTo(posts, "marketing/funnels/push-live"), "first tap sends nothing").toHaveLength(0);
       if (size.width === 390) await shoot(page, "x8-05-push-live-confirm-390.png", "Push live: the second tap names the address", [{ locator: confirm.getByRole("button", { name: "Push live to apply.fundhub.ai/blueprint-vip" }), caption: "Second tap names the URL" }]);
       await confirm.getByRole("button", { name: "Push live to apply.fundhub.ai/blueprint-vip" }).click();
-      const w = writesTo(posts, "marketing/funnels/push-live");
-      expect(w).toHaveLength(1);
-      expect(w[0].body).toMatchObject({ id: "00000000-0000-4000-8000-000000000603", confirm_url: "https://apply.fundhub.ai/blueprint-vip" });
+      expect(await sent("marketing/funnels/push-live")).toMatchObject({ id: "00000000-0000-4000-8000-000000000603", confirm_url: "https://apply.fundhub.ai/blueprint-vip" });
       await expect(row).toContainText("Pushing live: making the pages and checking them.");
     });
 

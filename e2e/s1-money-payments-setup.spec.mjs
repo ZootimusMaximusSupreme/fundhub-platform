@@ -88,10 +88,11 @@ for (const [where, url, clientUrl] of PAGES) {
     test("Record payment sends the plan and the amount as cents, then re-reads the plan", async ({ page }) => {
       const posts = await openPayments(page, url);
       const form = page.locator(`.fh-payments form[data-form="record"][data-plan="${PLAN.id}"]`);
-      await form.locator('input[name="amount"]').fill("$500.00");
+      // The box opens on a 500.00 hint and the fixture plan owes 500.00: type neither.
+      await form.locator('input[name="amount"]').fill("$731.25");
       await form.locator('button[type="submit"]').click();
       await expect.poll(() => posts.length).toBe(1);
-      expect(posts[0]).toEqual({ action: "record_payment", plan_id: PLAN.id, amount_cents: 50000, client_id: CLIENT });
+      expect(posts[0]).toEqual({ action: "record_payment", plan_id: PLAN.id, amount_cents: 73125, client_id: CLIENT });
     });
 
     test("Record payment with no amount says so and sends nothing", async ({ page }) => {

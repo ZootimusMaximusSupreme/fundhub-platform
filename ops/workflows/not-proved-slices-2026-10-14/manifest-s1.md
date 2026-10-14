@@ -2,8 +2,60 @@
 
 Branch `prf/s1-money`, built from `origin/main` at `cda3951d4`. Nothing was pushed.
 
-This file has two rounds. Round 2 (the repair) is first, because it changes the
-numbers. Round 1 (the first build) is kept below it.
+This file has three rounds. Round 3 (the last checker's five leftovers) is
+first. Round 2 (the repair) is next, because it changed the numbers. Round 1
+(the first build) is kept at the bottom.
+
+## Round 3 — five proofs that still stayed green (all five strengthened)
+
+A second checker broke the product again and found five proofs that stayed green.
+None was taken back. Each now goes red on exactly the break it missed. No product
+code was changed. The count of rows not proved did not move (55 before, 55
+after), because every row stayed proved.
+
+| # | Row | Why it stayed green | What changed | Break that is now red |
+|---|---|---|---|---|
+| 1 | read/finance-command (company and client conditions of investments, cash flow and ad spend) | Those three reads answered one fixed row each. Only bank accounts and credit lines were judged. | Each of the five reads is now a small table with this company's row, another client's row and another company's row. It keeps a row only while the SQL text carries that condition. The answer is checked in full: investments, cash days, ad spend, and the same under one client. File: `s1-door-money-reads.test.mjs`. | Company condition removed from investments, cash flow, ad spend (3 red); client condition removed from investments and cash flow (2 red); investments company swapped to the wrong parameter (1 red). |
+| 2 | read/affiliate-portal (company on referrals, payouts, rates) | Every fixture row sat in the same company. | Each of the three reads now also holds another company's row for the same affiliate. The test checks rates, referrals and payouts hold none of them. Same file. | Company condition removed from referrals, payouts, rates and the affiliate lookup (4 red). |
+| 3 | Record payment (money-payments.html and FinanceOS Payments) | The test typed 500, and the box already hints 500.00. | The test types $731.25 and expects 73125 cents. Both pages run it. File: `e2e/s1-money-payments-setup.spec.mjs`. | Amount fixed at 50000 (red on both pages); amount read from the hint instead of the typed value (red). |
+| 4 | Stat tiles, ACTIVE RULES | Both reads that paint the tile said 3, and the rule list always landed last. | One new test holds the product read back and gives it a different count (5 against 3), so the tile is seen showing 3, then 5 once the product read lands. The row is bound to the new test too. Files: `e2e/s1-products-commissions.spec.mjs`, `s1-display-specs.mjs`. | Product writer removed, counting products, or off by one (3 red); rule list writer off by one (red). |
+| 5 | Ideas funnels: Push live (flaky) | The test read the first write straight after a tap, before the request had reached the stand-in. | A small wait for the one write, then the body is read. Used at the three places that read a write in that test (make, rename, push live). File: `e2e/cc-tab-ideas.spec.mjs`. | The push-live body without the address, or with a wrong address (red, both sizes). That test ran 20 of 20 green, 10 repeats at each size. |
+
+Item 4 note: the tile still has two writers, and the last one to answer wins. That
+is product finding 7 below. The new test pins both writers; it does not fix it.
+
+Every break was made in the product file, the test was run and went red, and the
+file was restored with `git checkout -- <file>`.
+
+Nothing else was looked for. The rest of `cc-tab-ideas.spec.mjs` has the same
+read-right-after-a-tap pattern in other tests; those were not touched.
+
+### Tests run in round 3
+
+Measured on this branch while other builders ran on the same Mac (load average
+17 to 80).
+
+- Rows not proved for slice 1, counted with the four lanes offline (stub fetch
+  that answers 200 with an empty body): 55 before, 55 after. No row was taken
+  back and none was added. `generated.json` did not change when rebuilt.
+- `s1-door-money-reads.test.mjs`: 9 of 9 pass (no database).
+- The new and changed browser tests, each run 10 times alone: Record payment 20
+  of 20 (two pages), ACTIVE RULES tile and the four tiles 20 of 20, Ideas funnels
+  Push live 20 of 20 (two sizes).
+- The group command (every catalog, gap-catalog and gap-door-batch test file, 1,339
+  tests), three times:
+  - run 1: 1,338 pass, 1 fail. The fail is `teleprompter-take-flow` "last script
+    word keeps one take recording for two full seconds", a timing test inside the
+    staff batch. It is not a slice 1 file.
+  - run 2: 1,336 pass, 3 fail. The staff batch lost three `teleprompter-touch`
+    timing tests (counted twice, because `display-proof-cases` runs the same
+    batch), and `closer-deck.test.mjs` timed out inside `flow-result-proofs`.
+  - run 3: 1,337 pass, 2 fail. `closer-deck` timed out again, and
+    `agent-editor-promote-demote` waited 5 seconds for a select to fill.
+  - All 15 runner tests that press a slice 1 browser spec (including the three
+    this round touched) passed in all three runs. None of the failing tests is a
+    slice 1 file. They are the same slow-Mac failures listed in round 2.
+- `npm run lint`: 3,467 files parse clean.
 
 ## Round 2 — the repair (checker found proofs that stayed green)
 

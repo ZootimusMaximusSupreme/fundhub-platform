@@ -43,15 +43,15 @@ function rule(n, name) {
 }
 const RULES = { ok: true, count: 3, rules: [rule(1, "Closer front-end"), rule(2, "Closer back-end"), rule(3, "Manager override")] };
 
-async function open(page, { connections = CONNECTIONS } = {}) {
+async function open(page, { connections = CONNECTIONS, products = PRODUCTS, rules = RULES } = {}) {
   const productWrites = [];
   const sloWrites = [];
   await freezeClock(page, "2026-10-13T12:00:00Z");
   await openScreen(page, "/app/products-commissions.html", OWNER, {
-    "/api/read/products": PRODUCTS,
+    "/api/read/products": products,
     "/api/read/commissions": LEDGER,
     "/api/read/slo-connections": connections,
-    "/api/commission-rules": RULES,
+    "/api/commission-rules": rules,
     "/api/products": async (route, { method }) => {
       if (method !== "POST") return json(route, PRODUCTS);
       const body = route.request().postDataJSON();
@@ -87,6 +87,20 @@ test.describe("Products & Commissions: the ladder and the tiles", () => {
     await expect(page.locator("#kRules")).toHaveText("3");
     await expect(page.locator("#kAccrued")).toHaveText("$450.00");
     await expect(page.locator("#kPaid")).toHaveText("$90.00");
+  });
+
+  // Two reads paint ACTIVE RULES (the product list's sum of rules, and the rule
+  // list's own length), and the ledger read repaints it too. Whichever lands last
+  // wins. Hold the product read back and make its sum differ from the rule list,
+  // so each writer is seen on its own.
+  test("ACTIVE RULES shows the rule list's count, and the products' rule count when the product read lands last", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const products = { ...PRODUCTS, items: PRODUCTS.items.map((p) => ({ ...p, active_rules: p.active_rules + 1 })) };
+    await open(page, { products: async (route) => { await held; await json(route, products); } });
+    await expect(page.locator("#kRules")).toHaveText("3");
+    release();
+    await expect(page.locator("#kRules")).toHaveText("5");
   });
 });
 
