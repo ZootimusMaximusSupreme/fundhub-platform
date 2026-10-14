@@ -48,7 +48,8 @@ async function startServer() {
 
 /**
  * Start the local page server and one browser. Both close when the test ends.
- * open(pathName, { session, handlers, viewport, init, clock }) returns { page, errors }.
+ * open(pathName, { session, handlers, viewport, init, clock, before }) returns { page, errors }.
+ * before(page) runs just before the page loads, for routes that must exist from the first request.
  * handlers is the wireApi map: URL fragment -> body, or (route, {url, method}) => ...
  */
 export async function startScreens(t) {
@@ -59,16 +60,18 @@ export async function startScreens(t) {
     await new Promise((resolve) => server.close(resolve));
   });
 
-  async function open(pathName, { session = OWNER, handlers = {}, viewport = { width: 1280, height: 900 }, init = null, clock = false } = {}) {
+  async function open(pathName, { session = OWNER, handlers = {}, viewport = { width: 1280, height: 900 }, init = null, clock = false, before = null } = {}) {
     const page = await browser.newPage({ baseURL: origin, viewport });
     // clock: the page's timers wait for page.clock.fastForward(), so a 30 second refresh needs no 30 second wait.
     if (clock) await page.clock.install();
     const errors = [];
     page.on("pageerror", (error) => errors.push(String(error)));
     await page.route((url) => url.origin !== origin, (route) => route.abort());
-    await withSession(page, session);
+    // session: null opens the page signed out (login and other public pages).
+    if (session) await withSession(page, session);
     if (init) await page.addInitScript(init);
-    await wireApi(page, session, handlers);
+    await wireApi(page, session || OWNER, handlers);
+    if (before) await before(page);
     await page.goto(pathName);
     await page.waitForLoadState("domcontentloaded");
     return { page, errors };

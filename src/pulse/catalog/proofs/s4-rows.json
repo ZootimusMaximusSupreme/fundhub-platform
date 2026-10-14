@@ -451,5 +451,72 @@
     "Repair offers: 'Stage letters' (enroll, then write round R1 letters)"
    ]
   }
+ ],
+ "s4-public-contract-sign.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:contract.html#go",
+   "controls": [
+    "Sign: posts the typed name and tick to /api/contracts/sign (the signature, time and IP)."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:contract.html#barGo",
+   "controls": [
+    "Sign (sticky bar copy of the same button)."
+   ]
+  }
+ ],
+ "s4-public-forms.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:affiliates/index.html#pform",
+   "controls": [
+    "Partner application form: name, email, phone, company, track, audience, SMS consent. Posts to /api/public/partner-apply, which makes an affiliate or partner application row and queues the partner welcome."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "link:crm.html -> /app/",
+   "controls": [
+    "Link 'Continue to Fundhub' to /app/"
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:education/enroll/index.html#enroll-form",
+   "controls": [
+    "Enrollment application: program, name, email, phone, SMS consent. Posts to /api/public/education-enroll, which saves an education_enrollments row. No card is taken."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:index.html#appform",
+   "controls": [
+    "Homepage survey: a multi-step form drawn by homepage-survey.js; the last step posts to /api/public/survey-submit, which emits entry.captured and survey.submitted and returns the redirect."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:login.html#f",
+   "controls": [
+    "Staff and demo sign-in: email and password. Posts to /api/auth/login and sets the session cookie."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:optimize-plan.html#intake",
+   "controls": [
+    "Roadmap intake: first name, last name, email, goal. Calls /api/public/optimize?view=roadmap to build the Audit roadmap on the page."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:roadmap/pull.html#pull",
+   "controls": [
+    "Pull form after paying: name, date of birth, SSN, address, soft-pull consent. Posts to /api/public/slo-pull, which stores identity against the paid file and emits diagnostic.paid."
+   ]
+  }
  ]
 }
