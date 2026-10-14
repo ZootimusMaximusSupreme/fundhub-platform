@@ -41,8 +41,8 @@ function ranTests(report) {
 }
 
 test("every bound row is one exact map row and its spec file exists and is not a live-site spec", () => {
-  assert.equal(S1_DISPLAY_SPEC_PROOFS.length, 48);
-  assert.equal(new Set(S1_DISPLAY_SPEC_PROOFS.map((p) => p.rowKey)).size, 48);
+  assert.equal(S1_DISPLAY_SPEC_PROOFS.length, 58);
+  assert.equal(new Set(S1_DISPLAY_SPEC_PROOFS.map((p) => p.rowKey)).size, 58);
   const maps = new Map();
   for (const proof of S1_DISPLAY_SPEC_PROOFS) {
     if (!maps.has(proof.sourceFile)) {
