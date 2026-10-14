@@ -44,6 +44,7 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 ### 6. After the priority work
 
 - [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
+- [ ] Make the CRM mobile friendly — every CRM screen works on the phone. (Owner added 2026-10-13.)
 - [ ] Continue the existing refactor plan: `ops/workflows/company-refactor-plan-2026-10-12.md`. Goals: less duplicate code, lower AI token use, stronger architecture, better performance, and roughly half the code where justified. Measure improvements and preserve behavior.
 - [ ] Repository cleanup — code only. Identify required non-code dependencies before deleting clutter; protect working code and other sessions' unfinished work.
 
