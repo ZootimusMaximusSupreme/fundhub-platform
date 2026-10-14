@@ -8,6 +8,7 @@
 
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
 import { send as sendWhatsApp } from "../messaging/providers/twilio-whatsapp.mjs";
+import { send as sendEmail } from "../messaging/providers/resend.mjs";
 import { inTextWindow, HELD } from "./quiet-hours.mjs";
 
 /* TEXTING HOURS (owner law 2026-10-09, .claude/rules/texting-hours.md). textChris and textMorningBrief text
@@ -140,15 +141,40 @@ export function last4(number) {
   return digits.length >= 4 ? digits.slice(-4) : null;
 }
 
+/* THE EMAIL COPY (owner-set 2026-10-14: "we can just do emails for now"). Texts to Chris stopped when the
+   Twilio account went inactive, so every owner text also goes to PULSE_EMAIL_TO by Resend. Same body, same
+   texting hours. The alert counts as delivered when the text OR the email went out. Unset = no email,
+   exactly as before. */
+export const PULSE_EMAIL_TO_ENV = "PULSE_EMAIL_TO";
+
+export function chrisPulseEmailTo(env = process.env) {
+  const raw = String((env && env[PULSE_EMAIL_TO_ENV]) || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) ? raw : null;
+}
+
+async function emailCopy({ body, env, emailImpl }) {
+  const to = chrisPulseEmailTo(env);
+  if (!to) return null;
+  try {
+    const subject = `Fundhub pulse: ${String(body || "").replace(/\s+/g, " ").slice(0, 70)}`;
+    const r = await emailImpl({ to, subject, body, channel: "email" }, { env });
+    return { status: r?.status === "sent" ? "sent" : "failed", error: r?.status === "sent" ? null : String(r?.error || "email failed").slice(0, 200) };
+  } catch (err) {
+    return { status: "failed", error: String((err && err.message) || err).slice(0, 200) };
+  }
+}
+
 export async function textMorningBrief({
   body,
   env = process.env,
   dryRun = true,
   sendImpl = sendSms,
+  emailImpl = sendEmail,
   now = new Date()
 } = {}) {
   const to = chrisPulseSmsTo(env);
-  if (!to) {
+  const hasEmail = Boolean(chrisPulseEmailTo(env));
+  if (!to && !hasEmail) {
     return {
       delivery_status: "no_number",
       sent_to_last4: null,
@@ -162,12 +188,20 @@ export async function textMorningBrief({
   if (!inTextWindow(now)) {
     return { delivery_status: HELD, sent_to_last4: last4(to), error: null, provider_message_id: null };
   }
-  const result = await sendImpl({ to, body, channel: "sms" }, { env });
-  const sent = result?.status === "sent";
+  const [result, email] = await Promise.all([
+    to ? sendImpl({ to, body, channel: "sms" }, { env }) : Promise.resolve({ status: "failed", error: `${PULSE_SMS_TO_ENV} unset` }),
+    emailCopy({ body, env, emailImpl })
+  ]);
+  const textSent = result?.status === "sent";
+  const emailSent = email?.status === "sent";
+  const sent = textSent || emailSent;
+  const textErr = textSent ? null : String(result?.error || "send failed").slice(0, 200);
   return {
     delivery_status: sent ? "sent" : "failed",
     sent_to_last4: last4(to),
-    error: sent ? null : String(result?.error || "send failed").slice(0, 300),
-    provider_message_id: sent ? (result?.providerMessageId || null) : null
+    error: sent ? null : `${textErr}${email ? `; email: ${email.error}` : ""}`.slice(0, 300),
+    provider_message_id: textSent ? (result?.providerMessageId || null) : null,
+    text_status: textSent ? "sent" : "failed",
+    email_status: email ? email.status : null
   };
 }

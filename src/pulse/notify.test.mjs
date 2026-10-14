@@ -140,3 +140,51 @@ test("texting hours: textMorningBrief and textChris hold at night and send in th
     assert.equal(sends.length - before, goes ? 2 : 0, `sends ${iso}`);
   }
 });
+
+/* The email copy (owner-set 2026-10-14): texts are dead while Twilio is inactive, so the same body also goes
+   to PULSE_EMAIL_TO. The alert counts as delivered when the text OR the email went out. */
+test("email copy: a failed text with a sent email still counts as delivered", async () => {
+  const { textMorningBrief, PULSE_EMAIL_TO_ENV } = await import("./notify.mjs");
+  const env = { [PULSE_SMS_TO_ENV]: FAKE_PULSE_SMS, [PULSE_EMAIL_TO_ENV]: "owner@fundhub.ai" };
+  const now = new Date("2026-10-09T18:00:00Z"); // 11 a.m. Arizona
+  const emails = [];
+  const sendImpl = async () => ({ status: "failed", error: "account not active" });
+  const emailImpl = async (m) => { emails.push(m); return { status: "sent" }; };
+  const r = await textMorningBrief({ body: "BROKEN: checkout", env, dryRun: false, now, sendImpl, emailImpl });
+  assert.equal(r.delivery_status, "sent");
+  assert.equal(r.text_status, "failed");
+  assert.equal(r.email_status, "sent");
+  assert.equal(emails.length, 1);
+  assert.equal(emails[0].to, "owner@fundhub.ai");
+  assert.equal(emails[0].body, "BROKEN: checkout");
+  assert.match(emails[0].subject, /^Fundhub pulse: BROKEN: checkout/);
+});
+
+test("email copy: text and email both failing is a failed alert, and email alone works with no phone set", async () => {
+  const { textMorningBrief, PULSE_EMAIL_TO_ENV } = await import("./notify.mjs");
+  const now = new Date("2026-10-09T18:00:00Z");
+  const sendImpl = async () => ({ status: "failed", error: "account not active" });
+  const both = await textMorningBrief({
+    body: "x", env: { [PULSE_SMS_TO_ENV]: FAKE_PULSE_SMS, [PULSE_EMAIL_TO_ENV]: "owner@fundhub.ai" },
+    dryRun: false, now, sendImpl, emailImpl: async () => ({ status: "failed", error: "resend 403" })
+  });
+  assert.equal(both.delivery_status, "failed");
+  assert.match(both.error, /account not active; email: resend 403/);
+  const thrown = await textMorningBrief({
+    body: "x", env: { [PULSE_SMS_TO_ENV]: FAKE_PULSE_SMS, [PULSE_EMAIL_TO_ENV]: "owner@fundhub.ai" },
+    dryRun: false, now, sendImpl, emailImpl: async () => { throw new Error("boom"); }
+  });
+  assert.equal(thrown.delivery_status, "failed");
+  const emailOnly = await textMorningBrief({
+    body: "x", env: { [PULSE_EMAIL_TO_ENV]: "owner@fundhub.ai" },
+    dryRun: false, now, sendImpl, emailImpl: async () => ({ status: "sent" })
+  });
+  assert.equal(emailOnly.delivery_status, "sent");
+  const night = await textMorningBrief({
+    body: "x", env: { [PULSE_EMAIL_TO_ENV]: "owner@fundhub.ai" },
+    dryRun: false, now: new Date("2026-10-10T09:07:00Z"), sendImpl, emailImpl: async () => { throw new Error("must not send at night"); }
+  });
+  assert.equal(night.delivery_status, "held_quiet_hours");
+  const unset = await textMorningBrief({ body: "x", env: {}, dryRun: false, now, sendImpl, emailImpl: async () => ({ status: "sent" }) });
+  assert.equal(unset.delivery_status, "no_number");
+});
