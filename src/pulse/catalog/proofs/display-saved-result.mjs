@@ -249,10 +249,6 @@ SELECT count(*)::int AS sample_count,
  WHERE ac.org_id = $1::uuid AND ac.kind = 'client' AND ac.affiliate_id IS NOT NULL`;
 
 export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
-  gap("Save agent button", "The pulse needs the agent code plus the submitted name, prompt, guardrails, channel, class, runtime, and runtime reference to compare with the saved agent row."),
-  gap("Promote to live button (saves first, then promotes, confirm dialog)", "The pulse needs a promotion receipt naming the agent code and the saved live state; agents.status merely being live is not proof this click promoted it."),
-  gap("Return to shadow button (demote, confirm dialog)", "The pulse needs a demotion receipt naming the agent code and the saved shadow state; an unrelated shadow agent is not proof."),
-  gap("Prompt textarea", "The pulse needs the agent code and exact submitted prompt so the saved prompt can be compared byte for byte."),
   query("Mark round submitted button", "A card-stacking round.submitted receipt must carry the client, stage, source, and round number.", "round-submitted", ROUND_SUBMITTED_SQL),
   query("Mark funded… button, amount box, Save funded, Cancel", "The round.funded receipt must link to the same funding round and preserve the exact funded amount.", "round-funded", ROUND_FUNDED_SQL),
   query("Close round button", "A card-stacking round.closeout receipt must name the closed stage and engagement-complete result.", "round-closed", ROUND_CLOSED_SQL),
@@ -281,7 +277,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Record consent: call_recording", "The saved consent must be the call_recording kind with frozen words, version, capture method, and one exact granter.", "consent-call-recording", consentSql("call_recording")),
   query("Record consent: marketing_use (permission to use what the client said in ads)", "The saved consent must be the marketing_use kind with frozen words, version, capture method, and one exact granter.", "consent-marketing-use", consentSql("marketing_use")),
   query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
-  gap("Contract cell: Remind button (re-sends the signing request to one signer)", "The pulse needs a reminder receipt linking the contract, signer, queued message, template, and provider delivery result."),
   gap("Contract cell: Void button (asks for a reason in a prompt; owner/admin only)", "The pulse needs a void receipt containing the contract id, submitted reason, actor, and saved void state."),
   query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
   gap("Held-for-quiet-hours result: text deferred to the next window and the words stay in the box", "The saved message has a future schedule but no durable field saying quiet hours caused it, so the exact deferred outcome cannot be proved."),
