@@ -209,9 +209,23 @@ is `s2-message-routes-outbound.test.mjs`, 328).
 12. **New.** The catalog says the Ops & Admin page has an alert-address field. It does not. The
     alert address can only be set by calling the API.
 
-## Tests I ran at the end (all on this branch)
+## Tests I ran at the end (all on this branch, commit after `11839c852`)
 
-See "Final run" below.
+- `node --test src/pulse/catalog/**/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs
+  src/pulse/coverage/gap-door-batch*.test.mjs`: 1,352 tests, 1,352 pass, 0 fail, 0 skipped.
+  (The first build ran 1,350; the first run of this repair found only the five number guards
+  that the un-attached row moved, and they are updated.)
+- `npm run lint`: 3,474 files parse clean.
+- `node scripts/pulse/compile-catalog.mjs --check`: fresh.
+- The flaky spec `e2e/s2-agent-editor-save.spec.mjs`, alone, 10 times: 280 of 280 pass (3
+  workers). Before the fix the same spec failed 5 of 144 at 8 workers (trigger test 4,
+  "escalate to" start 1).
+- The whole screen group (`s2-display-contracts.test.mjs`, every spec in one run), 3 times:
+  3 of 3 pass.
+- `e2e/agent-editor-promote-demote.spec.mjs`: 96 of 96 twice at 12 workers (it failed 17 of 108
+  before the fix).
+- The two money-alert specs and the control panel spec, 3 times each at 4 workers: all pass.
+- Measured count: 52 of slice 2's 205 rows still say NOT_PROVED (routes 1, screens 28, flows 23).
 
 ## Run notes
 
@@ -219,4 +233,4 @@ See "Final run" below.
   Mac. Run the browser wrapper tests one at a time if one shows a 30 second timeout.
 - The Mac was at a load average of 25 to 60 while I worked (five builders and a checker). Single
   browser tests took 4 to 12 seconds instead of 1. Everything below passed under that load.
-- The flaky test is proved fixed by running it alone and under load (numbers in "Final run").
+- The flaky test is proved fixed by running it alone and under load (numbers above).
