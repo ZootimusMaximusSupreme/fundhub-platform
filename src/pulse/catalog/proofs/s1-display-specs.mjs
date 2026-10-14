@@ -4,6 +4,9 @@
 // named spec test opens the same page the row is on. The runner test next to
 // this file runs the bound spec tests and fails if any of them does not pass.
 //
+// `tests` names only the node test that runs the specs; the spec files are named
+// in `evidence` so the catalog counts them as executable targets.
+//
 // Not here on purpose: rows whose page has no spec that presses that control,
 // and rows an always-red saved-result contract holds (Deal calculator: Draw
 // amount input, Locked tile editor: price shown box).
@@ -305,6 +308,48 @@ const ENTRIES = [
     spec: "e2e/s1-money-payments-setup.spec.mjs",
     titles: ["Setup steps on the standalone page Run soft pull asks for the approval form"],
   },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "Page open: product ladder",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["Page open draws one ladder row per product"],
+  },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "Product editor fields: name, category, default price, Variable pricing switch, minimum, maximum (page refuses min > max and a default outside the band)",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["a name is required, and a minimum above the maximum","a valid new product sends create","editing a fixed-price product sends save"],
+  },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "SLO connections 'Save connection': maps a ClickFunnels funnel + product to a Fundhub product (a paid webhook then writes that product)",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["Save connection sends the typed ids","clicking a row opens it for editing and Save sends that row's id"],
+  },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "SLO connections: 'Add connection', row click, name / funnel id / product id / Fundhub product fields, On switch",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["Add connection opens an empty form","Save connection sends the typed ids","clicking a row opens it for editing and Save sends that row's id"],
+  },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "SLO connections: table and live count (which ClickFunnels product maps to which Fundhub product)",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["the tab lists each connection with its ids and product"],
+  },
+  {
+    sourceFile: "desks-f.json",
+    surface: "products-commissions.html",
+    control: "Stat tiles: PRODUCTS, ACTIVE RULES, ACCRUED, PAID MTD",
+    spec: "e2e/s1-products-commissions.spec.mjs",
+    titles: ["the four tiles read the products, the active rules"],
+  },
 ];
 
 export const S1_DISPLAY_SPEC_PROOFS = Object.freeze(ENTRIES.map((entry) => Object.freeze({
@@ -316,5 +361,5 @@ export const S1_DISPLAY_SPEC_PROOFS = Object.freeze(ENTRIES.map((entry) => Objec
   titles: Object.freeze([...entry.titles]),
   depth: "deep",
   evidence: [S1_DISPLAY_RUNNER_TEST, entry.spec].join(" "),
-  tests: Object.freeze([S1_DISPLAY_RUNNER_TEST, entry.spec]),
+  tests: Object.freeze([S1_DISPLAY_RUNNER_TEST]),
 })));
