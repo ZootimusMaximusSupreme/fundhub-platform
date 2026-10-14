@@ -20,7 +20,7 @@ export const CLIENT = { ok: true, staff: { ...OWNER.staff, role: "client" } };
 export const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 
 /**
- * A fake /api/money/<resource>. GET answers `read()`; POST records the body and
+ * A fake /api/money/<resource> (or a full path such as /api/blueprint/declines). GET answers `read()`; POST records the body and
  * answers `write(body)` (default: ok). Both are logged in order on `log`.
  */
 export function moneyResource(resource, { read, readStatus = 200, write = () => ({ status: 200, body: { ok: true } }) }) {
@@ -35,7 +35,8 @@ export function moneyResource(resource, { read, readStatus = 200, write = () => 
     log.reads.push(new URL(url).search);
     return json(route, typeof read === "function" ? read() : read, readStatus);
   };
-  return { log, handlers: { [`/api/money/${resource}`]: handler } };
+  const path = resource.startsWith("/") ? resource : `/api/money/${resource}`;
+  return { log, handlers: { [path]: handler } };
 }
 
 /** Where a money section opens: the standalone page, or its tab in the frame. */
