@@ -341,5 +341,19 @@
     "Upload a PDF: button, file picker, name prompt"
    ]
   }
+ ],
+ "s4-content-admin.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "content-admin.html",
+   "controls": [
+    "Locked tile editor: client-facing name box",
+    "Locked tile editor: outcome copy box (one line shown to the client)",
+    "Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
+    "Save changes button (saves tiles and the tier-to-video map)",
+    "Upload welcome video: Choose file button and drag-and-drop box",
+    "Upload welcome video: Title, Duration, Assign to tier"
+   ]
+  }
  ]
 }
