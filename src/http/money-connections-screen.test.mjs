@@ -58,6 +58,20 @@ test("full state: tiles with a comparison, three processor cards, month table pe
   assert.match(html, /data-act="disable"/);
 });
 
+test("the four tiles each carry their own month figure and their own comparison", () => {
+  const d = fixture();
+  const totals = d.summary.totals;
+  const last = totals[totals.length - 1];
+  const before = totals[totals.length - 2];
+  Object.assign(last, { sales_cents: 500000, sale_count: 5, refunds_cents: 11100, fees_cents: 22200, payouts_cents: 333300 });
+  Object.assign(before, { sales_cents: 400000, sale_count: 4, refunds_cents: 1100, fees_cents: 2200, payouts_cents: 303300 });
+  const t = text(M.render(d, null));
+  assert.match(t, /Sales this month \$5,000\.00 5 sales · up \$1,000\.00 vs last month/);
+  assert.match(t, /Refunds this month \$111\.00 up \$100\.00 vs last month/);
+  assert.match(t, /Fees this month \$222\.00 up \$200\.00 vs last month/);
+  assert.match(t, /Paid out to your bank \$3,333\.00 up \$300\.00 vs last month/);
+});
+
 test("status is said in words, never colour alone (UI-STANDARDS §12.6)", () => {
   const html = M.render(fixture(), null);
   assert.match(html, /class="state state-active">Connected</);

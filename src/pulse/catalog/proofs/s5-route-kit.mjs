@@ -2,6 +2,8 @@
 // proof reads as: who calls, what the stand-in database holds, what came back.
 // Nothing here reaches a real database, a vendor, or a network.
 
+import assert from "node:assert/strict";
+
 import {
   ORG_ID,
   accountSession,
@@ -39,6 +41,39 @@ export async function hit(handler, {
 // Every SQL call that matched a pattern, with its bound parameters.
 export function sqlCalls(result, pattern) {
   return result.db.calls.filter((call) => pattern.test(call.sql));
+}
+
+// Every kind of staff sign-in a gate has to tell apart. "partner" and "client"
+// are included on purpose: a staff door must refuse them too.
+export const EVERY_ROLE = [
+  "owner", "admin", "sales_manager", "closer", "funding_advisor", "inquiry_specialist", "csm", "setter", "partner", "client",
+];
+
+// Signs in as EVERY role and judges the gate both ways: each role in `allowed`
+// gets past it, and each other role is refused with a 403 before any data is
+// read or written. A gate that was only ever tried with the roles it admits
+// proves nothing, and a role added to the allowed set by mistake turns this red.
+// `request` is what hit() takes (method, body, query, rules).
+export async function assertRoleGate(handler, allowed, request = {}) {
+  assert.ok(allowed.every((role) => EVERY_ROLE.includes(role)), "allowed roles must be known roles");
+  for (const role of EVERY_ROLE) {
+    let result;
+    try {
+      result = await hit(handler, { ...request, role });
+    } catch (error) {
+      // A handler that gets past the gate and then trips on an empty stand-in
+      // database was let in. Only a refusal is judged here.
+      assert.ok(allowed.includes(role), `${role} was not refused: ${error.message}`);
+      continue;
+    }
+    if (allowed.includes(role)) {
+      assert.ok(![401, 403].includes(result.status), `${role} must be let in, got ${result.status}`);
+      continue;
+    }
+    assert.equal(result.status, 403, `${role} must be refused`);
+    const reads = result.db.calls.filter((call) => !/FROM live JOIN staff/.test(call.sql));
+    assert.deepEqual(reads.map((call) => call.sql), [], `${role} is refused before any data is read or written`);
+  }
 }
 
 // Bookkeeping so a proof file can only claim rows that exist in the registry,

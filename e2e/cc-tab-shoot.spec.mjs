@@ -114,6 +114,20 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
       await expect(page.getByText(/sign in/i)).toHaveCount(0);
     });
 
+    test("rows mark takes: Got it marks its own script, and a marked row does not offer it again", async ({ page }) => {
+      const posts = [];
+      const errors = await host(page, { get: PAGE, posts });
+      const rows = page.locator("ol.rows > li");
+      await expect(rows.nth(0)).toContainText("Got it");
+      await expect(rows.nth(0).getByRole("button", { name: "Got it" }), "a row already marked has no Got it button").toHaveCount(0);
+      await expect(rows.nth(1).getByRole("button", { name: "Got it" })).toHaveCount(1);
+      await rows.nth(1).getByRole("button", { name: "Got it" }).click();
+      await expect.poll(() => posts.length).toBe(1);
+      expect(posts[0]).toMatchObject({ path: "marketing/shoot/mark", body: { shoot_id: PAGE.shoot.id, root_script_id: TWO.root_script_id, mark: "got_it" } });
+      expect(posts[0].body.request_id).toMatch(/^[A-Za-z0-9._:-]{8,200}$/);
+      expect(errors).toEqual([]);
+    });
+
     test("with a shoot: the teleprompter is the filled button, rows mark takes, the board and the two-tap close", async ({ page }) => {
       const posts = [];
       const errors = await host(page, { get: PAGE, posts });

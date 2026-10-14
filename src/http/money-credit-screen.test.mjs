@@ -64,6 +64,19 @@ test("full: three bureau scores with pulled dates, words beside each, and the sa
   assert.equal((html.match(/class="gauge-fill"/g) || []).length, 3, "no gauge drawn for the missing business score");
 });
 
+test("the sample banner shows only when the read says sample, never on a real pull", () => {
+  const sample = fixture();
+  assert.equal(sample.sample, true);
+  assert.match(C.render(sample), /Sample report/);
+  assert.match(text(C.render(sample)), /These scores came from a sample credit report, not a real bureau pull\./);
+  const real = fixture();
+  real.sample = false;
+  assert.doesNotMatch(C.render(real), /Sample report|sample credit report/);
+  const unsaid = fixture();
+  delete unsaid.sample;
+  assert.doesNotMatch(C.render(unsaid), /Sample report|sample credit report/);
+});
+
 test("the business score is a dash with words when nothing is stored, never 0", () => {
   const t = text(C.render(fixture()));
   assert.match(t, /Business · Experian — No business score on file yet/);
@@ -125,6 +138,28 @@ test("accounts table lists every line from the read", () => {
     assert.match(html, new RegExp(lender));
   }
   assert.match(text(html), /CHASE CARD SERVICES Card \$1,200 \$20,000 6%/);
+});
+
+test("accounts table: each line says its own type, opened date, and Open or Closed, column by column", () => {
+  const d = fixture();
+  d.accounts.list = [
+    { lender: "TOYOTA MOTOR CREDIT", kind: "installment", last4: null, limit_cents: 3400000, balance_cents: 1120000, opened_on: "2023-06-28", open: true },
+    { lender: "AMEX", kind: "revolving", last4: "4321", limit_cents: 1500000, balance_cents: 85000, opened_on: "2021-05-28", open: false },
+    { lender: "FIRST BANK LOC", kind: "loc", last4: null, limit_cents: 500000, balance_cents: 0, opened_on: null, open: true },
+  ];
+  const html = C.render(d);
+  const head = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(head, ["Lender", "Type", "Balance", "Limit or loan", "Used", "Opened", "Status"]);
+  const rows = [...html.match(/<tbody>[\s\S]*?<\/tbody>/)[0].matchAll(/<tr>([\s\S]*?)<\/tr>/g)]
+    .map((tr) => [...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => text(td[1]).trim()));
+  const cell = (row, column) => rows[row][head.indexOf(column)];
+  assert.equal(rows.length, 3, "one table row per account in the read");
+  assert.deepEqual(rows.map((_, i) => cell(i, "Status")), ["Open", "Closed", "Open"], "an open account is never called closed");
+  assert.deepEqual(rows.map((_, i) => cell(i, "Opened")), ["Jun 28, 2023", "May 28, 2021", "—"], "no opened date is a dash, never a made-up date");
+  assert.deepEqual(rows.map((_, i) => cell(i, "Type")), ["Loan", "Card", "Line of credit"]);
+  assert.equal(cell(1, "Lender"), "AMEX ••4321");
+  assert.deepEqual(rows.map((_, i) => cell(i, "Balance")), ["$11,200", "$850", "$0"]);
+  assert.equal(cell(0, "Used"), "—", "a loan has no used percent");
 });
 
 test("empty: no pull and no business score → 'No credit pull yet' and one link to setup", () => {

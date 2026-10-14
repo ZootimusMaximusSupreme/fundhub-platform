@@ -8,7 +8,7 @@ import test from "node:test";
 import agentsHandler from "../../../../api/agents.mjs";
 import creativeActionsHandler from "../../../../api/creative/actions.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
-import { ORG_ID, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-writes.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -39,6 +39,7 @@ test("agents promote goes live only with a 60 character prompt and a real guardr
   assert.equal(ok.body.agent.runtime, "internal", "a missing runtime is filled in on promote");
   const [update] = sqlCalls(ok, /UPDATE agents SET\s+status = 'live'/);
   assert.deepEqual(update.params.slice(0, 3), [ORG_ID, "AG-01", "internal"]);
+  assert.match(update.sql, /WHERE org_id = \$1::uuid AND code = \$2/, "only this company's agent is flipped");
 
   const twoKeys = await hit(agentsHandler, {
     method: "POST", body: { action: "promote", code: "AG-01" },
@@ -66,6 +67,7 @@ test("agents promote goes live only with a 60 character prompt and a real guardr
   assert.equal(back.body.agent.status, "shadow");
   const [demote] = sqlCalls(back, /UPDATE agents SET\s+status = 'shadow'/);
   assert.deepEqual(demote.params, [ORG_ID, "AG-01", "internal", "kept"]);
+  assert.match(demote.sql, /WHERE org_id = \$1::uuid AND code = \$2/, "only this company's agent is flipped back");
 
   const retired = await hit(agentsHandler, { method: "POST", body: { action: "promote", code: "AG-01" }, rules: agentRules(agent({ status: "retired" }), "live") });
   assert.equal(retired.status, 409);
@@ -94,6 +96,8 @@ test("creative/actions approve clears the blocked reasons, reject records why, a
   assert.deepEqual(approve.body, { ok: true, action: "approve", asset: asset({ compliance_state: "approved", blocked_reasons: [] }) });
   assert.deepEqual(sqlCalls(approve, /SELECT \* FROM creative_assets/)[0].params, [ASSET, PARTNER], "a partner_id in the body is ignored");
   assert.deepEqual(sqlCalls(approve, /SET compliance_state = 'approved'/)[0].params, [ASSET, PARTNER]);
+  assert.match(sqlCalls(approve, /SELECT \* FROM creative_assets/)[0].sql, /WHERE id = \$1 AND partner_id = \$2/);
+  assert.match(sqlCalls(approve, /SET compliance_state = 'approved'/)[0].sql, /WHERE id = \$1 AND partner_id = \$2/, "only the signed-in partner's asset is approved");
 
   const archivedAsset = await hit(creativeActionsHandler, {
     method: "POST", account: partnerAccount, body: { action: "approve", asset_id: ASSET },
@@ -110,7 +114,7 @@ test("creative/actions approve clears the blocked reasons, reject records why, a
   assert.equal(reject.status, 200);
   const [rejectCall] = sqlCalls(reject, /SET compliance_state = 'blocked'/);
   assert.deepEqual(JSON.parse(rejectCall.params[2]), [{ code: "human_reject", rule_set: "approval", message: "Makes an income claim" }]);
-  assert.match(rejectCall.sql, /archived_at IS NULL/);
+  assert.match(rejectCall.sql, /WHERE id = \$1 AND partner_id = \$2 AND archived_at IS NULL/, "only the signed-in partner's live asset is rejected");
 
   const archive = await hit(creativeActionsHandler, {
     method: "POST", account: partnerAccount, body: { action: "archive", asset_id: ASSET },
@@ -118,6 +122,7 @@ test("creative/actions approve clears the blocked reasons, reject records why, a
   });
   assert.equal(archive.body.asset.archived_at, "2026-10-13T00:00:00.000Z");
   assert.deepEqual(sqlCalls(archive, /SET archived_at = now\(\)/)[0].params, [ASSET, PARTNER]);
+  assert.match(sqlCalls(archive, /SET archived_at = now\(\)/)[0].sql, /WHERE id = \$1 AND partner_id = \$2 AND archived_at IS NULL/);
 
   const unknown = await hit(creativeActionsHandler, { method: "POST", account: partnerAccount, body: { action: "delete", asset_id: ASSET }, rules: [find] });
   assert.equal(unknown.status, 400);
@@ -130,6 +135,28 @@ test("creative/actions approve clears the blocked reasons, reject records why, a
   const get = await hit(creativeActionsHandler, { method: "GET", account: partnerAccount, rules: [] });
   assert.equal(get.status, 405);
   log.mark("creative-actions");
+});
+
+// Agents: the whole floor may use the screen today (ROLE_SETS.STAFF); a partner or client may not.
+test("agents lets in exactly the staff roles and refuses partner and client before any data is read", async () => {
+  await assertRoleGate(
+    agentsHandler,
+    ["owner", "admin", "sales_manager", "closer", "funding_advisor", "inquiry_specialist", "csm", "setter"],
+    { method: "POST", body: { action: "promote", code: "AG-01" }, rules: agentRules(agent(), "live") },
+  );
+});
+
+// creative/actions serves a partner sign-in or a staff sign-in naming a partner. Nobody else.
+test("creative/actions refuses a client or affiliate account before anything is read or written", async () => {
+  for (const kind of ["client", "affiliate"]) {
+    const refused = await hit(creativeActionsHandler, {
+      method: "POST", account: { kind, clientId: kind === "client" ? ASSET : null },
+      body: { action: "approve", asset_id: ASSET, partner_id: PARTNER },
+      rules: [[/SELECT \* FROM creative_assets/, [asset()]]],
+    });
+    assert.equal(refused.status, 403, `a ${kind} account is refused`);
+    assert.equal(sqlCalls(refused, /creative_assets/).length, 0);
+  }
 });
 
 test("every registry row for this file was exercised", () => {

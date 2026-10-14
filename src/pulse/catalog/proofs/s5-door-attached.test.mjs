@@ -12,10 +12,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { S5_ROUTE_ROWS, s5DoorProof } from "./s5-door-contracts.mjs";
+import { assertRoleGate } from "./s5-route-kit.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
@@ -53,3 +54,13 @@ test("rows proved by an older handler test still name real cases in a test that 
     assert.equal(typeof ROUTES[key], "function", `${row.name}: ${key} is not a routed handler`);
   }
 });
+
+// The older tests try a gate with one refused role (a closer). This sweeps all
+// of them: every role that is not in the row's allowed list must be refused
+// with a 403 before any data is read, and every allowed role must get past.
+for (const row of attached.filter((item) => item.gate)) {
+  test(`${row.name}: ${row.surface} lets in exactly ${row.gate.allowed.join(", ")} and refuses every other role`, async () => {
+    const module = await import(pathToFileURL(path.join(ROOT, row.handler)).href);
+    await assertRoleGate(module.default, row.gate.allowed, row.gate.request);
+  });
+}

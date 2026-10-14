@@ -10,7 +10,7 @@ import funnelHandler from "../../../../api/marketing/funnel.mjs";
 import scriptHandler from "../../../../api/marketing/script.mjs";
 import scriptsHandler from "../../../../api/marketing/scripts.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
-import { ORG_ID, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-marketing-reads.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -71,8 +71,12 @@ test("marketing/script returns one script with every version, newest first, and 
   assert.equal(done.body.script.id, SCRIPT_ID);
   assert.equal(done.body.script.version, 2);
   assert.deepEqual(done.body.versions.map((v) => v.version), [2, 1]);
+  assert.deepEqual(done.body.script.check_results, { flagged: true }, "the check results ride along with the script");
+  assert.equal(done.body.script.flagged, true);
+  assert.deepEqual(done.body.versions.map((v) => v.check_results), [{ flagged: true }, { flagged: true }]);
   assert.deepEqual(sqlCalls(done, /WHERE s\.id = \$1 AND s\.org_id = \$2/)[0].params, [SCRIPT_ID, ORG_ID]);
   assert.deepEqual(sqlCalls(done, /WHERE s\.root_script_id/)[0].params, [ROOT_ID, ORG_ID]);
+  assert.match(sqlCalls(done, /WHERE s\.root_script_id/)[0].sql, /ORDER BY s\.version DESC/, "newest version first");
 
   const missing = await hit(scriptHandler, { query: { id: SCRIPT_ID }, rules: [] });
   assert.equal(missing.status, 404);
@@ -135,6 +139,12 @@ test("marketing/funnel returns one built funnel with its pages (words and HTML) 
   assert.deepEqual(done.body.jobs.map((j) => [j.id, j.status, j.finished_at]), [["job-9", "succeeded", "2026-10-02T10:00:00.000Z"]]);
   assert.equal(done.body.as_of, NOW.toISOString());
   assert.deepEqual(sqlCalls(done, /FROM marketing_funnels WHERE id/)[0].params, [FUNNEL_ID, ORG_ID]);
+  const [pageCall] = sqlCalls(done, /FROM marketing_funnel_pages/);
+  assert.deepEqual(pageCall.params, [FUNNEL_ID, ORG_ID]);
+  assert.match(pageCall.sql, /WHERE funnel_id = \$1 AND org_id = \$2/, "the pages are read for this company only");
+  const [jobCall] = sqlCalls(done, /FROM marketing_jobs/);
+  assert.deepEqual(jobCall.params.slice(0, 3), [ORG_ID, FUNNEL_ID, ["funnel", "funnel_push"]], "only this funnel's build and push jobs");
+  assert.match(jobCall.sql, /WHERE org_id = \$1 AND kind = ANY\(\$3::text\[\]\) AND payload->>'funnel_id' = \$2/);
 
   const missing = await hit(funnelHandler, { query: { id: FUNNEL_ID }, rules: [] });
   assert.equal(missing.status, 404);
@@ -142,6 +152,20 @@ test("marketing/funnel returns one built funnel with its pages (words and HTML) 
   assert.equal(noId.status, 400);
   log.mark("marketing-funnel");
 });
+
+// Owner and admin only, written out here so a role slipped into the gate turns this red.
+const GATES = [
+  ["marketing/scripts", scriptsHandler, { query: {} }],
+  ["marketing/script", scriptHandler, { query: { id: SCRIPT_ID } }],
+  ["marketing/batches", batchesHandler, {}],
+  ["marketing/funnel", funnelHandler, { query: { id: FUNNEL_ID } }],
+];
+
+for (const [route, handler, request] of GATES) {
+  test(`${route} lets in exactly owner and admin and refuses every other role before any data is read`, async () => {
+    await assertRoleGate(handler, ["owner", "admin"], request);
+  });
+}
 
 test("every registry row for this file was exercised", () => {
   assert.deepEqual(log.missing(), []);

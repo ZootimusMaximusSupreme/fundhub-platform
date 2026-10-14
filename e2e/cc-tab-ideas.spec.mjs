@@ -40,6 +40,26 @@ const CHAT_WORDS = /runs in chat|still in chat|copy the chat command|in chat\b/i
 
 function writesTo(posts, p) { return posts.filter((x) => x.path === p); }
 
+/* One row per card that can fail. route is the read that fails, list is the
+   card's own list, said is its error sentence, painted is what the real read
+   puts there once Try again has read it again. */
+const RETRY_PARTS = [
+  { title: "Try again on the failed ideas list reads it again and paints it", route: "marketing/ideas", list: "#cci-idea-list",
+    said: "Your ideas did not load. The rest of this page is current.", painted: "Lenders read two files" },
+  { title: "Try again on the failed planner suggestions reads them again and paints them", route: "marketing/batches/next", list: "#cci-suggest-list",
+    said: "The planner's suggestions did not load. The rest of this page is current.", painted: "$412.00 spend, 9 leads, $45.78 a lead" },
+  { title: "Try again on the failed angle list reads it again and paints it", route: "marketing/angles", list: "#cci-angle-list",
+    said: "The angle list did not load. The rest of this page is current.", painted: "Inquiries off first" },
+  { title: "Try again on the failed research list reads it again and paints it", route: "marketing/research", list: "#cci-research-list",
+    said: "Your research did not load. The rest of this page is current.", painted: "What do banks check before a business credit line?" },
+  { title: "Try again on the failed offer and market steps reads them again and paints them", route: "marketing/flywheel", list: "#cci-stage-list",
+    said: "The offer and market steps did not load.", painted: "Who we sell to" },
+  { title: "Try again on the failed funnels list reads it again and paints it", route: "marketing/funnels", list: "#cci-funnel-list",
+    said: "The funnels did not load. The rest of this page is current.", painted: "Capital Blueprint book a call" },
+  { title: "Try again on the failed quick copy list reads it again and paints it", route: "marketing/today", list: "#cci-quick-list",
+    said: "The house account did not load, so Quick copy cannot write yet.", painted: "Your bank said no. Here is what it read first." }
+];
+
 async function shoot(page, file, legend, marks) {
   if (!OUT) return;
   const boxes = [];
@@ -118,6 +138,24 @@ for (const size of SIZES) {
       await expect(page.locator("#cci-idea-list")).toContainText("Banks read the business file first.");
     });
 
+    test("Drop an idea with no format and no funnel sends only the words, and an empty box sends nothing", async ({ page }) => {
+      const { posts } = await mountIdeas(page, {
+        "POST marketing/ideas": ({ body }) => ({ ok: true, idea: { id: "new-2", source: "chris", raw_points: body.raw_points, status: "new", created_at: "2026-10-06T15:00:00Z" } })
+      });
+      await page.locator("#cci-save-idea").click();
+      await expect(page.locator('[data-say="ideas"]')).toHaveText("Type or say an idea first.");
+      expect(writesTo(posts, "marketing/ideas"), "an empty box sends nothing").toHaveLength(0);
+      await page.locator("#cci-idea-text").fill("Banks read the business file first.");
+      await page.locator("#cci-save-idea").click();
+      await expect(page.locator('[data-say="ideas"]')).toHaveText("Saved. It goes in the next batch.");
+      const w = writesTo(posts, "marketing/ideas");
+      expect(w).toHaveLength(1);
+      expect(w[0].body.raw_points).toBe("Banks read the business file first.");
+      expect(w[0].body, "no format and no funnel were chosen, so neither is sent").not.toHaveProperty("script_format");
+      expect(w[0].body).not.toHaveProperty("funnel_key");
+      await expect(page.locator("#cci-idea-text")).toHaveValue("");
+    });
+
     test("Write now from an idea shows the cost first, then writes one script", async ({ page }) => {
       const { posts } = await mountIdeas(page, {
         "POST marketing/batches/write-now": { status: 202, body: { ok: true, queued: true, batch_id: "b1", job_id: "j1" } }
@@ -150,6 +188,22 @@ for (const size of SIZES) {
       expect(w).toHaveLength(2);
       expect(w[0].body).toMatchObject({ source: "suggestion", angle_key: "two-files" });
       expect(w[1].body).toMatchObject({ angle_key: "two-files" });
+    });
+
+    test("each of the three suggestions has its own Accept, and each saves its own angle", async ({ page }) => {
+      const { posts } = await mountIdeas(page, {
+        "POST marketing/ideas": ({ body }) => ({ ok: true, idea: { id: "i-" + body.angle_key, raw_points: body.raw_points, status: "new", source: "suggestion" } })
+      });
+      const accepts = page.locator("#cci-suggest-list").getByRole("button", { name: "Accept" });
+      await expect(accepts).toHaveCount(3);
+      for (const left of [2, 1, 0]) {
+        await accepts.first().click();
+        await expect(accepts).toHaveCount(left);
+      }
+      const w = writesTo(posts, "marketing/ideas");
+      expect(w.map((x) => x.body.angle_key)).toEqual(["two-files", "inquiries-off", "rates-rising"]);
+      expect(w.every((x) => x.body.source === "suggestion")).toBe(true);
+      await expect(page.locator("#cci-suggest-list")).toContainText("In the next batch");
     });
 
     test("Build the avatar: cost and caps under the button, sheet, then the run and its live step", async ({ page }) => {
@@ -246,6 +300,46 @@ for (const size of SIZES) {
       await page.getByRole("button", { name: "Start a flywheel" }).click();
       await expect(page.locator('[data-say="flywheel"]')).toContainText("Started.");
       expect(writesTo(posts, "marketing/flywheel/campaign")[0].body).toMatchObject({ key: "UWIQ_DELIVERABLES" });
+    });
+
+    test("the Which offer picker reads the flywheel of the offer it is switched to", async ({ page }) => {
+      const asked = [];
+      await mountIdeas(page, {
+        "GET marketing/flywheel": ({ query }) => {
+          const campaign = query.get("campaign");
+          asked.push(campaign);
+          const base = flywheel({});
+          const stages = base.stages.map((st) => (st.n === 1 ? { ...st, sentence: "Not started for " + (campaign || "partner") + "." } : st));
+          return { ...base, campaign: campaign || base.campaign, stages };
+        }
+      });
+      const picker = page.locator("#cci-campaign");
+      await expect(picker).toHaveValue("partner");
+      await expect(page.locator("#cci-stage-1")).toContainText("Not started for partner.");
+      await picker.selectOption("capital-blueprint");
+      await expect(page.locator("#cci-stage-1")).toContainText("Not started for capital-blueprint.");
+      await expect(picker).toHaveValue("capital-blueprint");
+      expect(asked, "the first read names no offer; the switch names the chosen one").toEqual([null, "capital-blueprint"]);
+    });
+
+    test("Make the funnel sends the chosen offer and the typed address, then clears the address", async ({ page }) => {
+      const { posts } = await mountIdeas(page, {
+        "POST marketing/funnels/create": () => ({
+          ok: true,
+          funnel: blueprintFunnel({ id: "00000000-0000-4000-8000-000000000605", key: "my-own-address", path: "/my-own-address", pages: "empty" }),
+          job: { id: "job-f5", kind: "funnel", status: "queued", created_at: "2026-10-06T15:00:00Z" },
+          worker: { started: true, reason: null }
+        })
+      });
+      await page.locator("#cci-funnel-offer").selectOption("funding_dfy");
+      await page.locator("#cci-funnel-path").fill("my-own-address");
+      await page.locator("#cci-funnel-go").click();
+      await page.getByRole("dialog", { name: "Make a new funnel?" }).getByRole("button", { name: "Make the funnel" }).click();
+      await expect(page.locator('[data-say="funnels"]')).toContainText("Made. Its address is https://apply.fundhub.ai/my-own-address.");
+      const sent = writesTo(posts, "marketing/funnels/create");
+      expect(sent).toHaveLength(1);
+      expect(sent[0].body).toMatchObject({ offer_key: "funding_dfy", path: "my-own-address" });
+      await expect(page.locator("#cci-funnel-path")).toHaveValue("");
     });
 
     test("Deep research: stop amount first, cost from the server's limits, then the run", async ({ page }) => {
@@ -438,6 +532,27 @@ for (const size of SIZES) {
       expect(writesTo(posts, "creative/run")[0].body).toMatchObject({ max_jobs: 1 });
     });
 
+    for (const { title, offer } of [
+      { title: "Quick copy sends the chosen offer: Funding", offer: "funding" },
+      { title: "Quick copy sends the chosen offer: Credit cards", offer: "credit_cards" },
+      { title: "Quick copy sends the chosen offer: Credit repair", offer: "credit_repair" }
+    ]) {
+      test(title, async ({ page }) => {
+        const { posts } = await mountIdeas(page, {
+          "POST creative/generate": { ok: true, created: true, provider_ready: true, job: { id: "cj1" } },
+          "POST creative/run": { ok: true, jobs: [{ job_id: "cj1", status: "succeeded", assets: [] }] }
+        });
+        await page.locator("#cci-quick-angle").fill("Turned down by the bank");
+        await page.locator("#cci-quick-offer").selectOption(offer);
+        await page.locator("#cci-quick-go").click();
+        await page.getByRole("dialog", { name: "Write one piece of quick copy?" }).getByRole("button", { name: "Write it" }).click();
+        await expect(page.locator('[data-say="quick"]')).toContainText("Done.");
+        const sent = writesTo(posts, "creative/generate");
+        expect(sent).toHaveLength(1);
+        expect(sent[0].body.spec).toMatchObject({ offerType: offer, assetKind: "copy", prompt: "Turned down by the bank" });
+      });
+    }
+
     test("not deployed yet: honest sentences, unknown costs, and no dead buttons", async ({ page }) => {
       await mountIdeas(page, {
         "GET marketing/costs": null,
@@ -471,5 +586,32 @@ for (const size of SIZES) {
       await expect(page.locator("#cci-funnel-list").getByRole("button", { name: "Try again" })).toBeVisible();
       await expect(page.locator("#cci-idea-list")).toContainText("Lenders read two files");
     });
+
+    /* The button on each failed card does one job: read that part again and
+       paint it. Every card is tried, so a Try again that does nothing for any
+       one of them is red. The error words go away and the real rows come in. */
+    for (const part of RETRY_PARTS) {
+      test(part.title, async ({ page }) => {
+        let failing = true;
+        let reads = 0;
+        const answer = fixtures()["GET " + part.route];
+        await mountIdeas(page, {
+          ["GET " + part.route]: () => {
+            reads += 1;
+            return failing ? { status: 500, body: { ok: false, error: "internal_error" } } : answer;
+          }
+        });
+        const list = page.locator(part.list);
+        await expect(list).toContainText(part.said);
+        await expect(list).not.toContainText(part.painted);
+        const before = reads;
+        failing = false;
+        await list.getByRole("button", { name: "Try again" }).click();
+        await expect(list).toContainText(part.painted);
+        await expect(list).not.toContainText(part.said);
+        await expect(list.getByRole("button", { name: "Try again" })).toHaveCount(0);
+        expect(reads, "Try again reads that part once more").toBe(before + 1);
+      });
+    }
   });
 }

@@ -18,7 +18,7 @@ import sloConnectionsHandler from "../../../../api/read/slo-connections.mjs";
 import videoStatsHandler from "../../../../api/read/video-stats.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { STAFF_ID } from "../../../testing/handler-harness.mjs";
-import { ORG_ID, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-staff-reads.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -114,6 +114,7 @@ test("read/funnel-pages answers the company's page views and conversions and the
   assert.equal(done.status, 200);
   assert.deepEqual(done.body, { ok: true, pages, connection });
   assert.deepEqual(sqlCalls(done, /FROM funnel_page_stats/)[0].params, [ORG_ID]);
+  assert.match(sqlCalls(done, /FROM funnel_page_stats/)[0].sql, /WHERE org_id = \$1/, "this company's pages only");
   assert.deepEqual(sqlCalls(done, /FROM analytics_connections/)[0].params, [ORG_ID]);
   assert.match(sqlCalls(done, /FROM analytics_connections/)[0].sql, /platform = 'clickfunnels'/);
 
@@ -138,6 +139,7 @@ test("read/video-stats answers the watch-time rows and the connection's own heal
     connection: { state: "error", last_synced_at: "2026-10-11T06:00:00.000Z", last_error: "refresh token revoked" },
   });
   assert.deepEqual(sqlCalls(done, /FROM video_watch_stats/)[0].params, [ORG_ID, 5]);
+  assert.match(sqlCalls(done, /FROM video_watch_stats/)[0].sql, /WHERE vws\.org_id = \$1 AND c\.platform = 'youtube'/, "this company's YouTube rows only");
   const unbounded = await hit(videoStatsHandler, { query: { limit: "99999" }, rules });
   assert.deepEqual(sqlCalls(unbounded, /FROM video_watch_stats/)[0].params, [ORG_ID, 200], "the limit is capped");
   const noChannel = await hit(videoStatsHandler, { rules: [] });
@@ -161,11 +163,23 @@ test("read/call-outcomes shows a closer only their own calls and lets the financ
   assert.equal(own.body.items[0].belief_label, null);
   assert.deepEqual(sqlCalls(own, /FROM call_outcomes/)[0].params, [ORG_ID, STAFF_ID, CLIENT, 51, 0],
     "a closer's own id is bound; a staff_id in the URL changes nothing");
+  assert.match(sqlCalls(own, /FROM call_outcomes/)[0].sql, /WHERE org_id = \$1 AND staff_id = \$2 AND client_id = \$3/);
 
   const floor = await hit(callOutcomesHandler, { role: "sales_manager", query: { staff_id: OTHER_STAFF }, rules });
   assert.deepEqual(sqlCalls(floor, /FROM call_outcomes/)[0].params, [ORG_ID, OTHER_STAFF, 51, 0]);
   const everyone = await hit(callOutcomesHandler, { role: "owner", rules });
   assert.deepEqual(sqlCalls(everyone, /FROM call_outcomes/)[0].params, [ORG_ID, 51, 0]);
+  assert.match(sqlCalls(everyone, /FROM call_outcomes/)[0].sql, /WHERE org_id = \$1\s+ORDER BY logged_at DESC/, "the floor is every call of this company");
+
+  // Every staff role that is not in the finance set sees only its own calls.
+  for (const role of ["closer", "funding_advisor", "inquiry_specialist", "csm", "setter"]) {
+    const mine = await hit(callOutcomesHandler, { role, query: { staff_id: OTHER_STAFF }, rules });
+    assert.deepEqual(sqlCalls(mine, /FROM call_outcomes/)[0].params, [ORG_ID, STAFF_ID, 51, 0], `${role} reads only its own calls`);
+  }
+  for (const role of ["owner", "admin", "sales_manager"]) {
+    const floorRead = await hit(callOutcomesHandler, { role, rules });
+    assert.deepEqual(sqlCalls(floorRead, /FROM call_outcomes/)[0].params, [ORG_ID, 51, 0], `${role} reads the floor`);
+  }
   const partner = await hit(callOutcomesHandler, { role: "partner", rules });
   assert.equal(partner.status, 403);
   log.mark("read-call-outcomes");
@@ -187,6 +201,9 @@ test("read/agent-shadow-log answers the would-be sends for one agent, shaped for
     "(no_reply) no body",
   ]);
   assert.deepEqual(sqlCalls(done, /FROM agent_shadow_log/)[0].params, [ORG_ID, "AG-01", 3]);
+  assert.match(sqlCalls(done, /FROM agent_shadow_log/)[0].sql, /WHERE org_id = \$1\s+AND \(\$2::text IS NULL OR agent_code = \$2\)/, "this company's log, narrowed to the agent asked for");
+  const wholeOrg = await hit(shadowLogHandler, { query: {}, rules: [[/FROM agent_shadow_log/, rows]] });
+  assert.deepEqual(sqlCalls(wholeOrg, /FROM agent_shadow_log/)[0].params, [ORG_ID, null, 50], "no agent named means the whole company's log");
   const noOrg = await hit(shadowLogHandler, { staff: { org_id: null }, rules: [[/FROM agent_shadow_log/, rows]] });
   assert.deepEqual(noOrg.body, { ok: true, rows: [], log: [] });
   assert.equal(sqlCalls(noOrg, /FROM agent_shadow_log/).length, 0, "no company on the session reads nothing");
@@ -208,12 +225,35 @@ test("read/ai-bureau-config answers the IVR routing table for this company and s
   ]);
   assert.deepEqual(done.body.meta, { empty: false });
   assert.deepEqual(sqlCalls(done, /FROM ai_bureau_config/)[0].params, [ORG_ID]);
+  assert.match(sqlCalls(done, /FROM ai_bureau_config/)[0].sql, /WHERE org_id = \$1::uuid/, "this company's routing table only");
   const empty = await hit(aiBureauHandler, { rules: [] });
   assert.deepEqual(empty.body, { ok: true, configs: [], meta: { empty: true } });
   const partner = await hit(aiBureauHandler, { role: "partner", rules: [] });
   assert.equal(partner.status, 403);
   log.mark("read-ai-bureau-config");
 });
+
+// Who may open each door, written out so a role slipped into a gate turns this red.
+const OWNER_ADMIN = ["owner", "admin"];
+const WHOLE_FLOOR = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "inquiry_specialist", "csm", "setter"];
+const GATES = [
+  ["read/failed-events", failedEventsHandler, OWNER_ADMIN, {}],
+  ["read/commissions", commissionsHandler, ["owner", "admin", "sales_manager"], {}],
+  ["read/documents", documentsHandler, WHOLE_FLOOR, {}],
+  ["read/eeo-aggregate", eeoHandler, OWNER_ADMIN, {}],
+  ["read/slo-connections", sloConnectionsHandler, OWNER_ADMIN, {}],
+  ["read/funnel-pages", funnelPagesHandler, WHOLE_FLOOR, {}],
+  ["read/video-stats", videoStatsHandler, WHOLE_FLOOR, {}],
+  ["read/call-outcomes", callOutcomesHandler, WHOLE_FLOOR, {}],
+  ["read/agent-shadow-log", shadowLogHandler, WHOLE_FLOOR, {}],
+  ["read/ai-bureau-config", aiBureauHandler, WHOLE_FLOOR, {}],
+];
+
+for (const [route, handler, allowed, request] of GATES) {
+  test(`${route} lets in exactly ${allowed.join(", ")} and refuses every other role before any data is read`, async () => {
+    await assertRoleGate(handler, allowed, request);
+  });
+}
 
 test("every registry row for this file was exercised", () => {
   assert.deepEqual(log.missing(), []);

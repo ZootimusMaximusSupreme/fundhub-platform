@@ -92,5 +92,7 @@ export async function newStaffPage(lab, { role = "owner", width = 1440, height =
 export async function waitForShell(page) {
   await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
   await page.locator("#fh-shell-chip").waitFor({ state: "attached" });
-  await page.waitForFunction(() => !document.getElementById("fh-gate-style"));
+  // Polled on a timer, not on animation frames: a page that is starved of frames
+  // under load still answers a timer, and a frame wait would hang on it.
+  await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
 }

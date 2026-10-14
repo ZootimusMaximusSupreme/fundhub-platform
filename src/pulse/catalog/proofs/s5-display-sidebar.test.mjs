@@ -55,7 +55,7 @@ test("the eleven left-out rows really are on no role's rail", { timeout: 180_000
     const page = await newStaffPage(lab, { role });
     await page.goto(`${lab.origin}/app/sales-floor.html`, { waitUntil: "domcontentloaded" });
     await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
-    await page.waitForFunction(() => !document.getElementById("fh-gate-style"));
+    await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
     await page.evaluate(() => document.querySelectorAll("#side .navgroup").forEach((g) => g.classList.remove("closed")));
     const shown = await page.evaluate(() => [...document.querySelectorAll("#side a.navitem")]
       .filter((a) => a.getClientRects().length > 0).map((a) => a.getAttribute("href")));
