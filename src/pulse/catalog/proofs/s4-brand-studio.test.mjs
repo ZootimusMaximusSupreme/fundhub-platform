@@ -11,7 +11,6 @@ import { waitFor } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
 const PARTNER_ID = "pppppppp-1111-4111-8111-111111111111";
-const PAGE_ID = "99999999-1111-4111-8111-111111111111";
 // A one pixel PNG, built here so no image file is needed.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 

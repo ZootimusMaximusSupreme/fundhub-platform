@@ -18,11 +18,12 @@ const READ = {
   pricing: { base_cents: 3200, business_addon_cents: 1000, max_businesses: 20, base_display: "$32", business_addon_display: "$10" },
 };
 
-async function openApproval(open, { query = LINK, read = READ } = {}) {
+async function openApproval(open, { query = LINK, read = READ, down = false } = {}) {
   const gets = [];
   const posts = [];
   const handlers = {
     "/api/soft-pull-approve": async (route, { method, url }) => {
+      if (down) return route.abort();
       if (method === "POST") {
         posts.push(JSON.parse(route.request().postData() || "{}"));
         return json(route, { ok: true, pricing: { total_display: "$42" }, checkout: { checkout_url: "https://pay.example.test/c/abc", amount_display: "$42" } });
@@ -80,16 +81,33 @@ test("the signed link is read first; the wording, price and name come from the s
 test("a link missing a part, or refused by the server, shows a wall and no form", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Link wall: 'This page needs a full link'/, async () => {
-    const partial = await openApproval(open, { query: "?org=org-1" });
-    await partial.page.waitForFunction(() => document.querySelector("h1")?.textContent === "Link problem");
-    assert.equal(await partial.page.locator(".err").innerText(), "This page needs a full link from your advisor.");
-    assert.deepEqual(partial.gets, [], "a half link asks the server nothing");
-    await partial.page.close();
+    const wall = async (opened, words) => {
+      await opened.page.waitForFunction(() => document.querySelector("h1")?.textContent === "Link problem");
+      assert.equal(await opened.page.locator(".err").innerText(), words);
+      assert.equal(await opened.page.locator("#f").count(), 0, "no form behind a wall");
+      await opened.page.close();
+    };
 
-    const expired = await openApproval(open, { read: { ok: false, error: "link_expired", message: "This link has expired." } });
-    await expired.page.waitForFunction(() => /This link has expired\./.test(document.body.innerText));
-    assert.equal(await expired.page.locator("#f").count(), 0);
-    await expired.page.close();
+    // a link missing any one of its four parts asks the server nothing
+    for (const part of ["org", "client", "exp", "sig"]) {
+      const query = `?${LINK.slice(1).split("&").filter((pair) => !pair.startsWith(`${part}=`)).join("&")}`;
+      const partial = await openApproval(open, { query });
+      await partial.page.waitForFunction(() => document.querySelector("h1")?.textContent === "Link problem");
+      assert.deepEqual(partial.gets, [], `without ${part} the server is not asked`);
+      await wall(partial, "This page needs a full link from your advisor.");
+    }
+
+    // a link the server refuses: its own words are shown; with no words, a plain sentence
+    for (const read of [
+      { ok: false, error: "link_expired", message: "This link has expired." },
+      { ok: false, error: "bad_signature", message: "This link is not valid." },
+      { ok: false },
+    ]) {
+      await wall(await openApproval(open, { read }), read.message || "Could not open this link.");
+    }
+
+    // no server at all
+    await wall(await openApproval(open, { down: true }), "Could not reach the server.");
   });
 });
 

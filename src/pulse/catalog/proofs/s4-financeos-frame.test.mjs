@@ -16,12 +16,22 @@ test("the frame lists every tab, names the client and shows the sandbox note", {
   const { open } = await startScreens(t);
   await proof.check(/^Page itself loads/, async () => {
     const overview = { ...sampleAnswer("money-overview.sandbox.json"), sandbox: true };
-    const { page, errors } = await open("/app/financeos.html", { session: CLIENT, handlers: { "/api/money/overview": overview } });
+    const refusedScripts = [];
+    const watchScripts = (page) => page.on("response", (response) => {
+      if (/\.js$/.test(new URL(response.url()).pathname) && response.status() !== 200) refusedScripts.push(`${response.status()} ${response.url()}`);
+    });
+    const { page, errors } = await open("/app/financeos.html", { session: CLIENT, handlers: { "/api/money/overview": overview }, before: watchScripts });
     await page.waitForFunction((name) => document.querySelector("#fos-client")?.textContent === name, overview.client.name);
     assert.deepEqual(await page.locator(".fos-tabs a").evaluateAll((els) => els.map((e) => e.id.replace("tab-", ""))), TABS);
     assert.equal(await page.locator("#fos-sandbox").isVisible(), true, "the sandbox note shows for test data");
     const missing = await page.evaluate((keys) => keys.filter((k) => !(window.FinanceOS.sections[k] && typeof window.FinanceOS.sections[k].mount === "function")), TABS);
     assert.deepEqual(missing, [], "every tab has its section script loaded");
+    // 17 section scripts (the sixteen tabs and the trends script), then the frame's own
+    const scripts = await page.evaluate(() => [...document.scripts].map((el) => el.getAttribute("src")).filter(Boolean));
+    assert.equal(scripts.length, 18);
+    assert.equal(scripts.at(-1), "financeos.js", "the frame script loads after every section");
+    assert.deepEqual(refusedScripts, [], "every script answered");
+    assert.equal(await page.evaluate(() => typeof window.FinanceOS.trends?.mount + "/" + typeof window.FinanceOS.extras?.connections?.mount), "function/function");
     for (const tab of TABS) {
       await page.locator(`#tab-${tab}`).click();
       await page.waitForFunction((k) => document.querySelector(`#tab-${k}`).getAttribute("aria-selected") === "true", tab);
