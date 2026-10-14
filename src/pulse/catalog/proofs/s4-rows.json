@@ -73,5 +73,57 @@
     "Sales column 'Survey Complete' (survey_complete): shows count and funding est.; accepts a dropped card"
    ]
   }
+ ],
+ "s4-money-banks.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "money-banks.html",
+   "controls": [
+    "'Add a bank to the plan' form (staff): bank name, kind (business/personal), container, day to open, deposit",
+    "Banks near you: per-bank 'Add to plan' form (staff): container, day to open, deposit ($, blank = book minimum)",
+    "Next funding sequence 'Save date' form (staff; Blueprint buyers only)",
+    "Page gate: client reads own file; staff (owner, admin, sales_manager, closer) need ?client_id=; only staff see plan controls",
+    "Relationship row (opened): 'Add deposit' form (amount $, day)",
+    "Relationship row (planned): 'Day opened' + 'Mark opened' form",
+    "Relationship row: 'Skip this bank' button"
+   ]
+  },
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "financeos.html#banks",
+   "controls": [
+    "Staff only: 'Add deposit' (amount, day)",
+    "Staff only: 'Add to plan' on a bank card and 'Add bank to plan' form (bank, kind, container, day to open, deposit)",
+    "Staff only: 'Mark opened' / 'Save the day opened'",
+    "Staff only: 'Save date' for the next funding sequence ready date",
+    "Staff only: 'Skip this bank'"
+   ]
+  }
+ ],
+ "s4-money-accounts.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "money-accounts.html",
+   "controls": [
+    "'Add a business' form: business name + 13 info fields (legal name, DBA, EIN last 4, entity type, state formed, start month, industry, address, city, state, ZIP, phone, website) + 'Add business'",
+    "'Add account by hand' form: name, type (checking, savings, credit card, loan), belongs to, last 4, balance, limit (card), due day, minimum + 'Save account'",
+    "'Connect a bank' button (loads cdn.plaid.com link, then exchanges the public token)",
+    "'You' container: 'Add personal container' form (name) when none exists",
+    "Business card 'Edit business info' / 'Add business info' form + 'Save business info'",
+    "Page gate: a client sees only their own file; staff (owner, admin, sales_manager, closer) need ?client_id=; no session goes to sign-in",
+    "Per-account 'Move to...' select (a business, you, or 'Not sorted yet'); credit-report accounts have no move control"
+   ]
+  },
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "financeos.html#accounts",
+   "controls": [
+    "'Add personal container' form",
+    "'Move to...' select on each account (assign or unassign a container)",
+    "Add a business form and 'Save business info' (name, entity type, EIN last 4, etc.)",
+    "Add account form (name, type: checking, savings, credit card, loan; last 4 only; due day and minimum for loans)",
+    "Connect a bank button (Plaid Link; same flow as Overview)"
+   ]
+  }
  ]
 }

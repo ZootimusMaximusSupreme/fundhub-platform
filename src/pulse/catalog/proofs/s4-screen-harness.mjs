@@ -90,25 +90,26 @@ export function proofRows(testFile) {
   if (!groups) throw new Error(`s4-rows.json has no rows for ${name}`);
   const controls = groups.flatMap((group) => group.controls.map((control) => ({ ...group, control })));
   const claimed = new Set();
-  const find = (matcher) => {
-    const hits = controls.filter((row) => (matcher instanceof RegExp ? matcher.test(row.control) : row.control === matcher));
-    if (hits.length !== 1) throw new Error(`expected one listed row for ${matcher}, found ${hits.length}`);
+  const find = (matcher, surface = null) => {
+    const hits = controls.filter((row) => (!surface || row.surface === surface)
+      && (matcher instanceof RegExp ? matcher.test(row.control) : row.control === matcher));
+    if (hits.length !== 1) throw new Error(`expected one listed row for ${matcher} on ${surface || "any surface"}, found ${hits.length}`);
     return hits[0];
   };
   return {
     rows: controls,
     controlsOf: (matcher) => controls.filter((row) => matcher.test(row.control)).map((row) => row.control),
-    async check(matcher, run) {
-      const row = find(matcher);
+    async check(matcher, run, surface = null) {
+      const row = find(matcher, surface);
       await run(row.control);
-      claimed.add(row.control);
+      claimed.add(`${row.surface}\0${row.control}`);
     },
-    claim(control) {
-      if (!controls.some((row) => row.control === control)) throw new Error(`not a listed row: ${control}`);
-      claimed.add(control);
+    claim(control, surface = null) {
+      const row = find(control, surface);
+      claimed.add(`${row.surface}\0${row.control}`);
     },
     assertAllClaimed() {
-      const missing = controls.filter((row) => !claimed.has(row.control)).map((row) => row.control);
+      const missing = controls.filter((row) => !claimed.has(`${row.surface}\0${row.control}`)).map((row) => row.control);
       if (missing.length) throw new Error(`listed rows never exercised:\n${missing.join("\n")}`);
     },
   };
