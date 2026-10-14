@@ -428,5 +428,15 @@
     "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)"
    ]
   }
+ ],
+ "s4-messaging-inbox.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "messaging.html",
+   "controls": [
+    "Conversation list row: click opens the thread",
+    "Page load: inbox read (Needs-reply tab first), refreshes on a timer while the tab is visible"
+   ]
+  }
  ]
 }
