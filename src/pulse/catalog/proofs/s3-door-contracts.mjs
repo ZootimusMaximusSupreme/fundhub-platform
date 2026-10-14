@@ -147,6 +147,8 @@ const DEFINITIONS = [
   ["a9d4d5bda17f8b83d096", ["src/http/s3-repair-handler.test.mjs"]],
   // routes-1 repair/exceptions: POST action=confirm_parse {responseId, outcomes} (a person confirms wh
   ["de26dd73e719868cbddc", ["src/http/s3-repair-handler.test.mjs"]],
+  // routes-1 read/closer-deck: GET ?client_id= or ?contact= (the live closer-deck payload for Present
+  ["35301fc89a2ee57c04af", ["src/http/s3-closer-deck-handler.test.mjs"]],
 ];
 
 export function s3DoorRowId(sourceFile, row) {
