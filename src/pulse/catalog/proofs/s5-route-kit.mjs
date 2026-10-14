@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   ORG_ID,
+  OTHER_ORG_ID,
   accountSession,
   fakeDb,
   makeRes,
@@ -15,7 +16,7 @@ import {
 } from "../../../testing/handler-harness.mjs";
 import { S5_ROUTE_ROWS } from "./s5-door-contracts.mjs";
 
-export { ORG_ID };
+export { ORG_ID, OTHER_ORG_ID };
 
 // hit(handler, options) runs the REAL api/ handler once.
 //   role / staff  who is signed in (staffSession answers the session check)
@@ -36,6 +37,17 @@ export async function hit(handler, {
   const response = makeRes();
   await runWithSharedDb(database, () => (deps ? handler(request, response, deps) : handler(request, response)));
   return { status: response.statusCode, body: response.body, headers: response.headers, db: database };
+}
+
+// A stand-in table that holds the rows of TWO companies and answers the way the
+// SQL text says. Each row carries org_id. `condition` is the company condition
+// as the product writes it, and `at` is which bound value is the company. While
+// the SQL still carries the condition, only the bound company's rows come back.
+// If the condition is lost from the SQL, every company's rows come back, so a
+// scope that survives only in the bound values turns the proof red.
+export function companyRows(rows, condition, at) {
+  const strip = ({ org_id: _company, ...rest }) => rest;
+  return (sql, params) => rows.filter((row) => !condition.test(sql) || row.org_id === params[at]).map(strip);
 }
 
 // Every SQL call that matched a pattern, with its bound parameters.

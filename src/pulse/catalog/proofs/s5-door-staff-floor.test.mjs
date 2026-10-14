@@ -18,6 +18,7 @@ const THIS_FILE = "src/pulse/catalog/proofs/s5-door-staff-floor.test.mjs";
 const log = exerciseLog(THIS_FILE);
 const TARGET = "5b000000-0000-4000-8000-0000000000a1";
 const CLIENT = "c1000000-0000-4000-8000-0000000000c1";
+const PARTNER = "9a000000-0000-4000-8000-000000000001";
 
 test("staff/monitoring-consent lets only the owner grant or revoke, and reports the on or off state", async () => {
   assert.equal(ROUTES["staff/monitoring-consent"], consentHandler);
@@ -97,6 +98,20 @@ test("staff/telemetry reads one person's consent, shifts and activity inside thi
   log.mark("staff-telemetry");
 });
 
+// A client, affiliate or partner login is not staff. It gets a 403 on every
+// read and every clock, and no row of hours is read or written for it.
+async function assertNoShiftsForLogins(requests) {
+  const hours = [[/shifts/, [{ id: "shift-7", staff_id: STAFF_ID, started_at: "2026-10-13T15:00:00.000Z", ended_at: null }]]];
+  for (const kind of ["client", "affiliate", "partner"]) {
+    const account = { kind, clientId: kind === "client" ? CLIENT : null, partnerId: kind === "partner" ? PARTNER : null };
+    for (const request of requests) {
+      const refused = await hit(shiftsHandler, { ...request, account, rules: hours });
+      assert.equal(refused.status, 403, `a ${kind} login is refused (${request.method || "GET"} ${JSON.stringify(request.query || request.body || {})})`);
+      assert.equal(sqlCalls(refused, /shifts/).length, 0, `a ${kind} login touches no hours`);
+    }
+  }
+}
+
 test("shifts reads the caller's open shift and the roster, and clocks in and out only for the caller", async () => {
   assert.equal(ROUTES.shifts, shiftsHandler);
   const open = { id: "shift-7", org_id: ORG_ID, staff_id: STAFF_ID, started_at: "2026-10-13T15:00:00.000Z", ended_at: null };
@@ -112,6 +127,7 @@ test("shifts reads the caller's open shift and the roster, and clocks in and out
   assert.deepEqual(everyone.body, { ok: true, roster });
   assert.deepEqual(sqlCalls(everyone, /FROM shifts sh/)[0].params, [ORG_ID]);
   assert.match(sqlCalls(everyone, /FROM shifts sh/)[0].sql, /WHERE sh\.org_id = \$1\s+AND sh\.ended_at IS NULL/, "the roster is this company's open shifts");
+  await assertNoShiftsForLogins([{}, { query: { roster: "1" } }]);
   log.mark("shifts-read");
 
   const clockIn = await hit(shiftsHandler, { method: "POST", body: { action: "clock_in" }, rules: [[/INSERT INTO shifts/, [open]]] });
@@ -138,6 +154,7 @@ test("shifts reads the caller's open shift and the roster, and clocks in and out
   assert.equal(forged.status, 400);
   assert.equal(forged.body.error, "staff_id_not_accepted");
   assert.equal(sqlCalls(forged, /INSERT INTO shifts/).length, 0, "nobody clocks in another person");
+  await assertNoShiftsForLogins([{ method: "POST", body: { action: "clock_in" } }, { method: "POST", body: { action: "clock_out" } }]);
   log.mark("shifts-clock");
 });
 

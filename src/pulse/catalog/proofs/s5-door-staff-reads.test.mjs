@@ -18,7 +18,7 @@ import sloConnectionsHandler from "../../../../api/read/slo-connections.mjs";
 import videoStatsHandler from "../../../../api/read/video-stats.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { STAFF_ID } from "../../../testing/handler-harness.mjs";
-import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, OTHER_ORG_ID, assertRoleGate, companyRows, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-staff-reads.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -107,16 +107,19 @@ test("read/funnel-pages answers the company's page views and conversions and the
     { funnel_name: "SLO", page_name: "Thank you", stat_date: "2026-10-12", views: 31, conversions: 31 },
   ];
   const connection = { state: "active", last_synced_at: "2026-10-13T06:00:00.000Z", last_error: null };
+  // Two companies' connections sit in the stand-in; it answers the way the SQL says.
+  const SCOPE = /WHERE org_id = \$1 AND platform = 'clickfunnels'/;
+  const elsewhere = { org_id: OTHER_ORG_ID, state: "error", last_synced_at: "2026-10-01T00:00:00.000Z", last_error: "another company's token expired" };
   const done = await hit(funnelPagesHandler, {
     role: "csm",
-    rules: [[/FROM funnel_page_stats/, pages], [/FROM analytics_connections/, [connection]]],
+    rules: [[/FROM funnel_page_stats/, pages], [/FROM analytics_connections/, companyRows([elsewhere, { ...connection, org_id: ORG_ID }], SCOPE, 0)]],
   });
   assert.equal(done.status, 200);
   assert.deepEqual(done.body, { ok: true, pages, connection });
   assert.deepEqual(sqlCalls(done, /FROM funnel_page_stats/)[0].params, [ORG_ID]);
   assert.match(sqlCalls(done, /FROM funnel_page_stats/)[0].sql, /WHERE org_id = \$1/, "this company's pages only");
   assert.deepEqual(sqlCalls(done, /FROM analytics_connections/)[0].params, [ORG_ID]);
-  assert.match(sqlCalls(done, /FROM analytics_connections/)[0].sql, /platform = 'clickfunnels'/);
+  assert.match(sqlCalls(done, /FROM analytics_connections/)[0].sql, SCOPE, "this company's ClickFunnels connection only");
 
   const none = await hit(funnelPagesHandler, { rules: [] });
   assert.deepEqual(none.body, { ok: true, pages: [], connection: null });

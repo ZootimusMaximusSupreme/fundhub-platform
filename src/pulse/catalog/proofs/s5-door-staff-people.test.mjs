@@ -14,7 +14,7 @@ import adminResetHandler from "../../../../api/auth/admin-reset.mjs";
 import authorizedRepHandler from "../../../../api/auth/authorized-rep.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { STAFF_ID } from "../../../testing/handler-harness.mjs";
-import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, OTHER_ORG_ID, assertRoleGate, companyRows, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-staff-people.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -93,8 +93,15 @@ test("auth/staff-role changes one job inside the company and never mints or rewr
 test("auth/staff-update saves a clean profile, refuses a taken email and an owner rename", async () => {
   assert.equal(ROUTES["auth/staff-update"], staffUpdateHandler);
   const saved = { id: TARGET, email: "pat.target@fundhub.ai", name: "Pat Target", role: "closer", status: "active", phone: "602-555-0100", start_date: "2026-10-01", employee_code: "E-014", notify_booked_call_sms: true };
+  // The stand-in holds two companies' logins under the one id. It answers the way
+  // the SQL says, so a lost company condition hands back the other company's owner.
+  const LOGIN = /WHERE id = \$1 AND org_id = \$2/;
+  const logins = [
+    { org_id: OTHER_ORG_ID, id: TARGET, role: "owner", email: "boss@elsewhere.test", name: "Boss Elsewhere" },
+    { org_id: ORG_ID, id: TARGET, role: "closer", email: "old.pat@fundhub.ai", name: "Old Pat" },
+  ];
   const base = [
-    [/SELECT id, role, email, name FROM staff WHERE id/, [{ id: TARGET, role: "closer", email: "old.pat@fundhub.ai", name: "Old Pat" }]],
+    [/SELECT id, role, email, name FROM staff WHERE id/, companyRows(logins, LOGIN, 1)],
     [/UPDATE staff\s+SET name = \$2/, [saved]],
   ];
   const body = { staff_id: TARGET, name: "  Pat Target ", email: "PAT.Target@Fundhub.ai", phone: "602-555-0100", start_date: "2026-10-01", notify_booked_call_sms: true };
@@ -104,6 +111,7 @@ test("auth/staff-update saves a clean profile, refuses a taken email and an owne
   const [updateCall] = sqlCalls(done, /UPDATE staff\s+SET name = \$2/);
   assert.deepEqual(updateCall.params, [TARGET, "Pat Target", "pat.target@fundhub.ai", "602-555-0100", "2026-10-01", ORG_ID, true]);
   assert.match(updateCall.sql, /WHERE id = \$1 AND org_id = \$6/, "only a login of the signed-in company is edited");
+  assert.match(sqlCalls(done, /SELECT id, role, email, name FROM staff/)[0].sql, LOGIN, "only a login of the signed-in company is looked up");
   assert.match(updateCall.sql, /notify_booked_call_sms = COALESCE\(\$7, notify_booked_call_sms\)/, "the booked-call text switch is saved");
   assert.match(sqlCalls(done, /FROM staff WHERE org_id = \$1 AND lower\(email\) = \$2 AND id <> \$3/)[0].sql, /id <> \$3/, "another login with the same email is looked for");
 
@@ -125,8 +133,12 @@ test("auth/staff-update saves a clean profile, refuses a taken email and an owne
 
 test("auth/invite makes a new login with a company address and a 7 day hashed link", async () => {
   assert.equal(ROUTES["auth/invite"], inviteHandler);
+  // Another company already has an active login for this person. The lookup for
+  // an existing login must not see it, or the new login is refused.
+  const EXISTING = /WHERE org_id = \$1 AND lower\(email\) = \$2/;
   const rules = [
     [/SELECT lower\(email\) AS email FROM staff WHERE org_id/, [{ email: "sam.rivera@fundhub.ai" }]],
+    [/SELECT id, status, name, role FROM staff WHERE/, companyRows([{ org_id: OTHER_ORG_ID, id: TARGET, status: "active", name: "Sam Rivera", role: "closer" }], EXISTING, 0)],
     [/INSERT INTO staff \(org_id, name, role, email, status\)/, (sql, params) => [
       { id: TARGET, email: params[3], name: params[1], role: params[2], status: "invited" },
     ]],
@@ -141,6 +153,7 @@ test("auth/invite makes a new login with a company address and a 7 day hashed li
   assert.deepEqual(sqlCalls(done, /INSERT INTO staff/)[0].params, [ORG_ID, "Sam Rivera", "closer", "sam.rivera2@fundhub.ai"]);
   assert.match(sqlCalls(done, /INSERT INTO staff/)[0].sql, /\(org_id, name, role, email, status\)\s+VALUES\s+\(\$1,\$2,\$3,\$4,'invited'\)/, "the new login belongs to the signed-in company and starts as invited");
   assert.match(sqlCalls(done, /SELECT lower\(email\) AS email FROM staff/)[0].sql, /WHERE org_id = \$1/);
+  assert.match(sqlCalls(done, /SELECT id, status, name, role FROM staff/)[0].sql, EXISTING, "an existing login is looked for in this company only");
   const stored = sqlCalls(done, /INSERT INTO password_resets/)[0].params;
   assert.equal(stored[1], TARGET);
   assert.match(stored[2], /^[0-9a-f]{64}$/);

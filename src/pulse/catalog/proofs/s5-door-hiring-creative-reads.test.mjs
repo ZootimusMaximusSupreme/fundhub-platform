@@ -18,7 +18,7 @@ import brandKitsHandler from "../../../../api/creative/brand-kits.mjs";
 import jobsHandler from "../../../../api/creative/jobs.mjs";
 import libraryHandler from "../../../../api/creative/library.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
-import { ORG_ID, assertRoleGate, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { ORG_ID, OTHER_ORG_ID, assertRoleGate, companyRows, exerciseLog, hit, sqlCalls } from "./s5-route-kit.mjs";
 
 const THIS_FILE = "src/pulse/catalog/proofs/s5-door-hiring-creative-reads.test.mjs";
 const log = exerciseLog(THIS_FILE);
@@ -80,8 +80,13 @@ test("hiring/postings (careers sync screen) reads every channel by default, newe
 
 test("hiring/application returns one application in full: answers, every score with its rubric, interviews, decisions", async () => {
   assert.equal(ROUTES["hiring/application"], applicationHandler);
+  // The stand-in holds two companies' applications under the one id. It answers
+  // the way the SQL says, so a lost company condition hands back the other one.
+  const SCOPE = /WHERE a\.id = \$1\s+AND a\.org_id = \$2/;
+  const own = { org_id: ORG_ID, application_id: APP_ID, status: "open", answers: { why: "I like calls" }, full_name: "Riley Applicant", email: "riley@example.test", stage_key: "group_interview", role_key: "closer", scorecard: {}, comp: {} };
+  const elsewhere = { ...own, org_id: OTHER_ORG_ID, full_name: "Casey Elsewhere", email: "casey@example.test" };
   const rules = [
-    [/FROM candidate_applications a\s+JOIN candidates c/, [{ application_id: APP_ID, status: "open", answers: { why: "I like calls" }, full_name: "Riley Applicant", email: "riley@example.test", stage_key: "group_interview", role_key: "closer", scorecard: {}, comp: {} }]],
+    [/FROM candidate_applications a\s+JOIN candidates c/, companyRows([elsewhere, own], SCOPE, 1)],
     [/FROM application_scores sc/, [
       { id: "sc-1", stage_key: "applied", rubric_version: "v1", average: "3.5", recommendation: "advance", flags: [], is_automated: true, scored_by_name: null },
       { id: "sc-2", stage_key: "screening", rubric_version: "v2", average: "4.1", recommendation: "advance", flags: ["fast"], is_automated: false, scored_by_name: "Ada Admin" },
@@ -98,6 +103,13 @@ test("hiring/application returns one application in full: answers, every score w
   assert.deepEqual(done.body.decisions.map((d) => [d.decision, d.human_decided]), [["advance", true]]);
   assert.match(done.body.scoring_notice, /named human and a written reason/);
   assert.deepEqual(sqlCalls(done, /FROM candidate_applications a\s+JOIN candidates c/)[0].params, [APP_ID, ORG_ID], "only this company's application");
+  assert.match(sqlCalls(done, /FROM candidate_applications a\s+JOIN candidates c/)[0].sql, SCOPE, "the SQL itself names the company");
+  assert.equal(done.body.full_name, "Riley Applicant", "this company's applicant, never another company's");
+
+  // An application of another company is not found, and nothing else is read.
+  const foreign = await hit(applicationHandler, { query: { id: APP_ID }, rules: [[rules[0][0], companyRows([elsewhere], SCOPE, 1)]] });
+  assert.equal(foreign.status, 404);
+  assert.equal(sqlCalls(foreign, /application_scores|hiring_interview_attendees|hiring_decisions/).length, 0);
 
   const missing = await hit(applicationHandler, { query: { id: APP_ID }, rules: [] });
   assert.equal(missing.status, 404);

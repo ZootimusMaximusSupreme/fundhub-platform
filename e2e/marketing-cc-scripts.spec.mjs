@@ -421,6 +421,10 @@ test.describe("Scripts tab on a phone (390x844)", () => {
   for (const part of FAILED_PARTS) {
     test(part.title, async ({ page }) => {
       const a = api();
+      /* Nothing is writing, so the tab's 5 second poll has nothing to ask for.
+         Only the button can read the part again. With a batch "writing" the poll
+         heals a dead Try again button by itself, about 5 seconds later. */
+      a.db.batches = { ...a.db.batches, batches: a.db.batches.batches.map((b) => ({ ...b, status: "released" })) };
       const real = a.routes[part.route];
       let failing = true;
       let reads = 0;

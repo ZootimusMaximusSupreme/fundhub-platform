@@ -20,6 +20,26 @@ Before the repair pass the number was 182. One screen row went back to "not prov
 
 I measured this by running the four lanes offline. I used the stub fetch (status 200, empty bodies), and I counted rows from `slice-5.json` that still print `NOT_PROVED`.
 
+## The last pass: seven proofs that stayed green
+
+A second checker broke the product on purpose and found seven proofs that stayed green. I closed all seven. None of the seven needed a row taken back. The not-proved count did not move: it was **608** before and **608** after (same rows, measured with the four lanes offline and the stub fetch).
+
+The route proofs now keep a second company's row in the stand-in. The stand-in answers the way the SQL text says. If the SQL loses its company condition, the other company's row comes back, and the proof goes red. Each proof also matches the condition in the SQL text. The helper is `companyRows` in `s5-route-kit.mjs`.
+
+| # | Row | What was missing | What I added | Break that now goes red |
+|---|---|---|---|---|
+| 1 | `route:hiring/application` | The company test was bound as a value but never read in the SQL | Two companies' applications in the stand-in, a "not found for another company" case, and the SQL text matched | Delete `AND a.org_id = $2` |
+| 2 | `route:read/funnel-pages` | Only the page stats query and the platform were checked | Two companies' ClickFunnels connections, and the connection query's company condition matched | Delete `org_id = $1` from the connection query |
+| 3 | `route:auth/staff-update` | Only the UPDATE's company condition was checked | Two companies' logins under one id (the other one an owner), and the lookup's condition matched | Delete `AND org_id = $2` from the staff lookup |
+| 4 | `route:auth/invite` | Only the taken-emails query was checked | Another company has an active login for the same person, and the existing-login lookup's condition matched | Delete `org_id = $1` from the existing-login lookup |
+| 5 | `route:finance/alerts` (evaluate) | Both company conditions were only bound, never read in the SQL | New case in `src/http/finance-alerts.test.mjs` (named on the row): two companies' clients and scores, and both SQL texts matched | Delete `AND org_id = $2` from `ownsClient`. Delete `org_id = $1` from the score read |
+| 6 | `route:shifts` (read and clock) | No client, affiliate or partner login was ever tried | A client, an affiliate and a partner login each try every read and every clock and must get 403, with no hours touched | Open the gate to `client`, to `affiliate`, or to `partner` |
+| 7 | Scripts tab "Try again" cases | See below | The three cases now keep every batch out of "writing" | Make `scripts-retry`, `ideas-retry` or `batches-retry` do nothing |
+
+**Item 7, what was really wrong.** The three Try again cases in `e2e/marketing-cc-scripts.spec.mjs` waited 5 seconds for the list to come back. The tab also asks the server again every 5 seconds by itself while a batch is "writing", and the test data had one batch "writing". So a dead Try again button was healed by the timer a moment later, and the case passed or failed on a race. Under load it passed. Now no batch is "writing" in those three cases, so the timer has nothing to ask for and only the button can read the part again. I made each button do nothing, one at a time, and let the case wait 14 seconds. All three still went red.
+
+The row `cc-scripts-retry` was already taken back before this pass, and it stays not proved (the Rules fold and the Every version fold ask the server again without end, see "One row I took back"). No row names these three cases, so no row needed to move. The Ideas tab (`cc-ideas-retry`) has its own timer, 10 seconds and only while something runs, so it cannot heal inside the 5 second wait. I checked three of its buttons with a 14 second wait. They stayed red.
+
 ## The repair pass: what the checker found, what I did
 
 The checker broke the product on purpose and found proofs that stayed green. Each one is now strong enough to go red on the exact break it named, and I repeated the break to prove it.
@@ -40,7 +60,7 @@ I went through every proof for the four classes the checker named and fixed what
 **1. A role gate tried only with roles it lets in, or with one role it refuses.**
 
 - New helper `assertRoleGate` in `s5-route-kit.mjs`. It signs in as ten roles (owner, admin, sales manager, closer, funding advisor, inquiry specialist, CSM, setter, partner, client). Each role that is not allowed must get a 403 before any data is read. Each allowed role must get past the gate. The allowed list is written by hand in the test, so a role slipped into the gate by mistake turns it red.
-- Used for the 29 staff doors in my own test files, and for the 8 older-test rows through `s5-door-attached.test.mjs` (each such row now has a `gate` in `s5-door-contracts.mjs`). `shifts` has no role gate (any signed-in staff), so it is not in the sweep.
+- Used for the 29 staff doors in my own test files, and for the 8 older-test rows through `s5-door-attached.test.mjs` (each such row now has a `gate` in `s5-door-contracts.mjs`). `shifts` has no role gate (any signed-in staff), so it is not in the role sweep. A client, affiliate and partner login are each tried on it by hand and must get 403 (last pass, item 6).
 - Doors that serve a partner or staff (creative, campaigns): a client account and an affiliate account must both be refused, with no data read.
 - `read/call-outcomes`: every role that is not in the finance set now has to read only its own calls. Before, only a closer was tried.
 - The Command Center page gate: owner and admin stay on the page, and sales manager, funding advisor, inquiry specialist, CSM and setter are all sent away. Before, only a closer was tried.
@@ -91,7 +111,7 @@ I went through every proof for the four classes the checker named and fixed what
 
 `Scripts: 'Try again' buttons on a failed part` (`cc-scripts-retry`) is back to NOT_PROVED.
 
-The scripts list, the ideas list and the batch history Try again buttons are all proved now (new cases in `e2e/marketing-cc-scripts.spec.mjs`). The Rules fold and the "Every version" fold are not. When their read fails, `public/app/marketing-cc-scripts.js` asks the server again on every repaint, so the failed read repeats without end (627 reads in 1.2 seconds in the test). The Try again button is repainted faster than it can be clicked. I cannot honestly say all the buttons work, so the row is not attached. This is a product problem. I did not fix it.
+The scripts list, the ideas list and the batch history Try again buttons are all proved now (new cases in `e2e/marketing-cc-scripts.spec.mjs`). They were not proved when I first wrote this: the tab's own 5 second timer healed a dead button. See "The last pass", item 7. The Rules fold and the "Every version" fold are not. When their read fails, `public/app/marketing-cc-scripts.js` asks the server again on every repaint, so the failed read repeats without end (627 reads in 1.2 seconds in the test). The Try again button is repainted faster than it can be clicked. I cannot honestly say all the buttons work, so the row is not attached. This is a product problem. I did not fix it.
 
 ## What proves each row
 
@@ -134,6 +154,7 @@ For each proof I changed the product on purpose, ran the test, saw red, and rest
 | other specs | 10 (shoot Got it, shoot retry, numbers angle, numbers dates, numbers retry x4, settings retry, page gate) | yes |
 | money screen render tests | 12 (credit x3, connections x3, helper x2, fundability x2, next, plus plan, setup and payments spot checks) | yes |
 | money-chrome | 1 (a nav link pointed at the wrong place) | yes |
+| last pass (seven proofs) | 12 (application company, funnel connection company, staff lookup company, invite lookup company, finance client check, finance score read, shifts gate open to client, affiliate and partner, scripts, ideas and batches Try again made dead) | yes |
 
 Two breaks stayed green on purpose, and I wrote them down because they are not product breaks:
 
