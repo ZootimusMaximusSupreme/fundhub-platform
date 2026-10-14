@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Bank outreach cost</title>
+  <desc>Estimated cost to find and reach bankers at every bank and credit union in the U.S.: about $250 to $450 one time, then about $100 to $200 a month plus the team.</desc>
+  <defs>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F2A69B"/>
+      <stop offset="0.2" stop-color="#F5CE8F"/>
+      <stop offset="0.4" stop-color="#F2E39B"/>
+      <stop offset="0.6" stop-color="#A8D8B0"/>
+      <stop offset="0.8" stop-color="#A9C6E8"/>
+      <stop offset="1" stop-color="#C4B3E5"/>
+    </linearGradient>
+    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M56 0H0V56" fill="none" stroke="#FFFFFF" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1080" height="1350" fill="#0A0A0A"/>
+  <rect width="1080" height="1350" fill="url(#grid)"/>
+  <rect width="1080" height="6" fill="url(#spectrum)"/>
+
+  <rect x="80" y="82" width="22" height="3" rx="1.5" fill="url(#spectrum)"/>
+  <text x="114" y="90" font-family="'JetBrains Mono', 'DejaVu Sans Mono', monospace" font-size="17" letter-spacing="3" fill="#A1A1AA">B-01 / BANK OUTREACH</text>
+
+  <text x="80" y="172" font-size="56" font-weight="600" fill="#FCFCFC">What it costs to reach</text>
+  <text x="80" y="238" font-size="56" font-weight="600" fill="#FCFCFC">every bank in the U.S.</text>
+  <text x="80" y="292" font-size="24" fill="#A1A1AA">Every bank and credit union, every state. Estimates until the Arizona test.</text>
+
+  <rect x="80" y="340" width="440" height="200" rx="18" fill="#111113" stroke="#26262B"/>
+  <text x="112" y="392" font-family="'JetBrains Mono', 'DejaVu Sans Mono', monospace" font-size="16" letter-spacing="3" fill="#C4B3E5">ONE-TIME BUILD</text>
+  <text x="110" y="476" font-size="64" font-weight="700" fill="#FCFCFC">$250–$450</text>
+  <text x="112" y="514" font-size="20" fill="#A1A1AA">The full list of bankers, once</text>
+
+  <rect x="560" y="340" width="440" height="200" rx="18" fill="#111113" stroke="#26262B"/>
+  <text x="592" y="392" font-family="'JetBrains Mono', 'DejaVu Sans Mono', monospace" font-size="16" letter-spacing="3" fill="#A8D8B0">EVERY MONTH</text>
+  <text x="590" y="476" font-size="64" font-weight="700" fill="#FCFCFC">$100–$200</text>
+  <text x="592" y="514" font-size="20" fill="#A1A1AA">Plus the team working the list</text>
+
+  <text x="80" y="612" font-family="'JetBrains Mono', 'DejaVu Sans Mono', monospace" font-size="16" letter-spacing="3" fill="#C4B3E5">ONE-TIME BUILD</text>
+  <rect x="290" y="606" width="710" height="1" fill="#26262B"/>
+
+  <text x="80" y="668" font-size="24" fill="#E4E4E7">Government bank lists</text>
+  <rect x="450" y="652" width="380" height="14" rx="7" fill="#18181B"/>
+  <circle cx="457" cy="659" r="7" fill="#C4B3E5"/>
+  <text x="1000" y="668" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">Free</text>
+
+  <text x="80" y="723" font-size="24" fill="#E4E4E7">Brave LinkedIn searches</text>
+  <rect x="450" y="707" width="380" height="14" rx="7" fill="#18181B"/>
+  <rect x="450" y="707" width="380" height="14" rx="7" fill="#C4B3E5" fill-opacity="0.35"/>
+  <rect x="450" y="707" width="253" height="14" rx="7" fill="#C4B3E5"/>
+  <text x="1000" y="723" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">$200–$300</text>
+
+  <text x="80" y="778" font-size="24" fill="#E4E4E7">AI cleanup of results</text>
+  <rect x="450" y="762" width="380" height="14" rx="7" fill="#18181B"/>
+  <rect x="450" y="762" width="190" height="14" rx="7" fill="#C4B3E5" fill-opacity="0.35"/>
+  <rect x="450" y="762" width="63" height="14" rx="7" fill="#C4B3E5"/>
+  <text x="1000" y="778" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">$50–$150</text>
+
+  <text x="80" y="862" font-family="'JetBrains Mono', 'DejaVu Sans Mono', monospace" font-size="16" letter-spacing="3" fill="#A8D8B0">EVERY MONTH</text>
+  <rect x="270" y="856" width="730" height="1" fill="#26262B"/>
+
+  <text x="80" y="918" font-size="24" fill="#E4E4E7">Refresh for new hires</text>
+  <rect x="450" y="902" width="380" height="14" rx="7" fill="#18181B"/>
+  <rect x="450" y="902" width="95" height="14" rx="7" fill="#A8D8B0" fill-opacity="0.35"/>
+  <rect x="450" y="902" width="32" height="14" rx="7" fill="#A8D8B0"/>
+  <text x="1000" y="918" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">$25–$75</text>
+
+  <text x="80" y="973" font-size="24" fill="#E4E4E7">10 email mailboxes</text>
+  <rect x="450" y="957" width="380" height="14" rx="7" fill="#18181B"/>
+  <rect x="450" y="957" width="89" height="14" rx="7" fill="#A8D8B0"/>
+  <text x="1000" y="973" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">about $70</text>
+
+  <text x="80" y="1028" font-size="24" fill="#E4E4E7">AI reply agent</text>
+  <rect x="450" y="1012" width="380" height="14" rx="7" fill="#18181B"/>
+  <rect x="450" y="1012" width="63" height="14" rx="7" fill="#A8D8B0" fill-opacity="0.35"/>
+  <text x="1000" y="1028" font-size="24" font-weight="600" fill="#FCFCFC" text-anchor="end">under $50</text>
+
+  <rect x="80" y="1080" width="293" height="150" rx="18" fill="#111113" stroke="#26262B"/>
+  <text x="106" y="1148" font-size="44" font-weight="700" fill="#F5CE8F">~9,000</text>
+  <text x="108" y="1186" font-size="18" fill="#A1A1AA">banks and credit unions</text>
+
+  <rect x="393" y="1080" width="293" height="150" rx="18" fill="#111113" stroke="#26262B"/>
+  <text x="419" y="1148" font-size="44" font-weight="700" fill="#A9C6E8">~8,000</text>
+  <text x="421" y="1186" font-size="18" fill="#A1A1AA">cold emails a month</text>
+
+  <rect x="706" y="1080" width="294" height="150" rx="18" fill="#111113" stroke="#26262B"/>
+  <text x="732" y="1148" font-size="44" font-weight="700" fill="#F2A69B">~800</text>
+  <text x="734" y="1186" font-size="18" fill="#A1A1AA">bankers a month on LinkedIn</text>
+
+  <text x="80" y="1294" font-size="32" font-weight="700" fill="#FCFCFC">fundhub.</text>
+  <text x="1000" y="1284" font-size="16" fill="#71717A" text-anchor="end">Brave Search: $5 per 1,000 searches · FDIC and NCUA lists are free</text>
+  <text x="1000" y="1308" font-size="16" fill="#71717A" text-anchor="end">Employee pay is separate</text>
+</svg>
