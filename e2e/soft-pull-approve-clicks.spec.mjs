@@ -81,6 +81,18 @@ test.describe("soft-pull approval page", () => {
     await expect(page.locator("#total_line")).toContainText("Total due: $42");
   });
 
+  test("+ Add a business stops at 20: the button goes off, and the total stops at $232", async ({ page }) => {
+    await open(page);
+    for (let i = 0; i < 20; i += 1) await page.locator("#add_biz").click();
+    await expect(page.locator("[data-rm]")).toHaveCount(20);
+    await expect(page.locator("#add_biz")).toBeDisabled();
+    await expect(page.locator("#total_line")).toContainText("Total due: $232");
+    await expect(page.locator("#total_line")).toContainText("20 × $10");
+    await page.locator('[data-rm="19"]').click();
+    await expect(page.locator("#add_biz")).toBeEnabled();
+    await expect(page.locator("#total_line")).toContainText("Total due: $222");
+  });
+
   test("an address of only spaces is refused before anything is sent", async ({ page }) => {
     const { posts } = await open(page);
     await fillPerson(page, { street: "   " });

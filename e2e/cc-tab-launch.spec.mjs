@@ -191,6 +191,8 @@ test("Turn on stays off with the reason when the budget is unknown: nothing is a
   await page.setViewportSize({ width: 390, height: 844 });
   const { sent } = await open(page);
   const row94 = page.locator(".ccl-row", { hasText: "Ad 94" });
+  await expect(row94.getByRole("button", { name: "Turn on" })).toBeDisabled();
+  await expect(row94).toContainText("Turn on is off: we cannot see this ad set's daily budget yet.");
   await row94.getByRole("button", { name: "Turn on" }).click({ force: true });
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(posts(sent)).toEqual([]);

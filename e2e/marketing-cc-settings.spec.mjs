@@ -455,6 +455,17 @@ test("a month cap under what is already spent warns before it saves", async ({ p
   expect(posts.settings[0].patch).toEqual({ max_month_cost_usd: 10 });
 });
 
+test("the batch cap box saves its own number, and a batch cap does not trip the month warning", async ({ page }) => {
+  const { posts } = await open(page);
+  await expect(page.locator("#set-cap-batch")).toHaveValue("40");
+  await page.locator("#set-cap-batch").fill("25");
+  await expect(page.locator('[data-live="cap-warn"]')).toBeHidden();
+  await save(page).click();
+  await expect(page.locator("#setSay")).toHaveText("Saved 8:04 AM.");
+  expect(posts.settings).toHaveLength(1);
+  expect(posts.settings[0].patch).toEqual({ max_batch_cost_usd: 25 });
+});
+
 test("a bad box is named in plain words and nothing is sent", async ({ page }) => {
   const { posts } = await open(page);
   await page.locator("#set-per-day").fill("0");
