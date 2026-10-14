@@ -55,7 +55,7 @@ For each proof file I changed the product on purpose, ran the test, saw red, and
 | sidebar | 2 | yes |
 | money-chrome | 6 | yes |
 | money screen render tests | 9 pages, then 2 more for next and connections | yes after I chose lines the tests really read |
-| command center specs | 12 | 9 red. 3 stayed green, so I dropped those 3 rows. |
+| command center specs | 15 | 12 red. 3 stayed green (5-minute reload, gear, tab strip), so I dropped those 3 rows. |
 
 Rows I dropped because I could not make a break go red: the Command Center frame rows for the 5-minute reload, the gear button, and the tab strip.
 
