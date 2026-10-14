@@ -1,0 +1,295 @@
+{
+ "s4-pipeline-board.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/pipeline.html",
+   "controls": [
+    "Affiliates + White Label column 'Active' (active): shows count and funding est.; accepts a dropped card",
+    "Affiliates + White Label column 'Agreement Signed' (agreement_signed): shows count and funding est.; accepts a dropped card",
+    "Affiliates + White Label column 'Invited' (invited): shows count and funding est.; accepts a dropped card",
+    "Affiliates + White Label column 'Paused' (paused): shows count and funding est.; accepts a dropped card",
+    "Affiliates + White Label column 'Recruiting' (recruiting): shows count and funding est.; accepts a dropped card",
+    "AR / Collections column 'Escalation' (escalation): shows count and funding est.; accepts a dropped card",
+    "AR / Collections column 'Invoice Sent' (invoice_sent): shows count and funding est.; accepts a dropped card",
+    "AR / Collections column 'Paid' (paid): shows count and funding est.; accepts a dropped card",
+    "AR / Collections column 'Reminder' (reminder): shows count and funding est.; accepts a dropped card",
+    "AR / Collections column 'Written Off' (written_off): shows count and funding est.; accepts a dropped card",
+    "Card: click the card body (opens the right-hand client drawer)",
+    "Card: DEL button then modal 'Archive this contact?' (type DELETE, Archive / Cancel)",
+    "Card: drag the card (pointer) to another column on the same rail",
+    "Card: MOVE button (opens the route menu for that card)",
+    "Drawer: Archive and Close buttons, Escape key",
+    "Funding: Card Stacking column 'Action Required' (action_required): shows count and funding est.; accepts a dropped card",
+    "Hiring column '1:1 Interview' (one_on_one): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Applied' (applied): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Group Interview' (group_interview): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Hired' (hired): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Not Moving Forward' (rejected): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Offer' (offer): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Onboarding' (onboarding): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Performing' (performing): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Ramp (60-day trial)' (ramp): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Screening' (screening): shows count and funding est.; accepts a dropped card",
+    "Hiring column 'Withdrawn' (withdrawn): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Awaiting Documents' (awaiting_documents): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Calls In Progress' (calls_in_progress): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Hold' (hold): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Letters Sent' (letters_sent): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Removed' (removed): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Requested' (requested): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Resume Funding' (resume_funding): shows count and funding est.; accepts a dropped card",
+    "Inquiry Removal column 'Specialist Assigned' (specialist_assigned): shows count and funding est.; accepts a dropped card",
+    "MOVE menu: AR / Collections -> ar_collections / invoice_sent",
+    "MOVE menu: Inquiry Removal -> inquiry_removal / requested",
+    "MOVE menu: Mark Lost -> sales / lost",
+    "MOVE menu: Repair Rounds -> optimization / round_sent",
+    "Open the page (all staff roles; owner and admin land here; closers can open it)",
+    "Optimization (Repair) Rounds column 'Analysis' (analysis): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Awaiting Documents' (awaiting_documents): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Awaiting Response' (awaiting_response): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Bureau Processing (legacy)' (bureau_processing): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Cancelled' (cancelled): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'In Transit' (in_transit): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Intake' (intake): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Letters Generated' (letters_generated): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'On Hold' (on_hold): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Portal Updated (legacy)' (portal_updated): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Program Complete' (program_complete): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Ready to Send' (ready_to_send): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Response Received' (response_received): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Round Complete' (round_complete): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Round Sent (legacy)' (round_sent): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Stalled' (stalled): shows count and funding est.; accepts a dropped card",
+    "Optimization (Repair) Rounds column 'Upgrade Invite (legacy)' (upgrade_invite): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Booked' (booked): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Closed Won (deposit)' (closed_won): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Confirmed' (confirmed): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Decision Rendered' (decision_rendered): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Diagnostic Paid' (diagnostic_paid): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Downsell' (downsell): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Lost' (lost): shows count and funding est.; accepts a dropped card",
+    "Sales column 'New Lead' (new_lead): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Showed' (showed): shows count and funding est.; accepts a dropped card",
+    "Sales column 'Survey Complete' (survey_complete): shows count and funding est.; accepts a dropped card"
+   ]
+  }
+ ],
+ "s4-contracts-wording.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "contracts.html",
+   "controls": [
+    "Archive / Turn back on",
+    "Editor: 'Blanks you fill in when sending' rows (key, label, needed) and Add a blank / x",
+    "New wording button and editor boxes: short name, name, type, filing label, the words, signature sentence",
+    "PDF editor: Add a signer",
+    "PDF editor: field type chips (Text, Date, Tick box, Signature, Initials), Belongs to, Filled from, selected-box name / kind / signer / source / must-fill / Remove",
+    "PDF viewer (pdf.js, vendored)",
+    "Upload a PDF: button, file picker, name prompt"
+   ],
+   "notAttached": [
+    "Save (create a new wording)",
+    "Save (edit an existing wording)"
+   ]
+  }
+ ],
+ "s4-content-admin.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "content-admin.html",
+   "controls": [
+    "Upload welcome video: Choose file button and drag-and-drop box",
+    "Upload welcome video: Title, Duration, Assign to tier"
+   ],
+   "notAttached": [
+    "Locked tile editor: client-facing name box",
+    "Locked tile editor: outcome copy box (one line shown to the client)",
+    "Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
+    "Save changes button (saves tiles and the tier-to-video map)"
+   ]
+  }
+ ],
+ "s4-consent-capture.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "consent-capture.html",
+   "controls": [
+    "How did they agree: 'They typed their name' / 'They ticked a box' / 'They signed' buttons",
+    "Name box, Expires date box",
+    "Signature pad (draw) and its Clear button; empty pad refused"
+   ],
+   "notAttached": [
+    "Consent wording, version badge and current status banner (read from the server, never typed in the page)"
+   ]
+  }
+ ],
+ "s4-soft-pull-approve.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "soft-pull-approve.html",
+   "controls": [
+    "Disclosure card: the soft-pull authorization words and version (server copy, never from the body)",
+    "Form fields: full legal name, SSN, date of birth, street, city, state, ZIP",
+    "Link wall: 'This page needs a full link' / 'Link problem' (missing field, bad signature, expired link, no server)",
+    "Page open: verifies the signed link and reads the disclosure, price and contact (no staff login; HMAC org, client, exp, sig)"
+   ],
+   "notAttached": [
+    "Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner"
+   ]
+  }
+ ],
+ "s4-staff-desks-small.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "documents.html",
+   "controls": [],
+   "notAttached": [
+    "Contract cell: Void button (asks for a reason in a prompt; owner/admin only)"
+   ]
+  },
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "csm-queue.html",
+   "controls": [
+    "Interview form: 'How did you speak to them' select, one answer box per question, 'Anything else' notes box"
+   ]
+  }
+ ],
+ "s4-closer-call-outcome.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "closer-dashboard.html",
+   "controls": [
+    "Before you close: 5 compliance checkboxes (recorded, guarantee, month-14 cliff, bank decides, incorporation verified)",
+    "Outcome buttons 1-5: Deposit, Downsell, Callback, No show, Not a fit (also keys 1-5)",
+    "Repair referral checkbox",
+    "Save · next call button"
+   ]
+  }
+ ],
+ "s4-lenders.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
+    "AI bureau config row Save button (feeds the AI inquiry caller's dial number and IVR path)"
+   ],
+   "notAttached": [
+    "Apply dialog: Copy proxy string, End session, Close (manual fallback when the Chrome extension is absent)",
+    "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)"
+   ]
+  }
+ ],
+ "s4-messaging-inbox.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "messaging.html",
+   "controls": [
+    "Conversation list row: click opens the thread",
+    "Page load: inbox read (Needs-reply tab first), refreshes on a timer while the tab is visible"
+   ]
+  }
+ ],
+ "s4-present-deck.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "present.html (+ present.js, contract-send.js)",
+   "controls": [
+    "'Repair referral' checkbox (kept in page state, sent with the disposition)",
+    "Discovery: 'Save month / year' per business (incorporation date, re-reads the deck so the pre-approval figure re-prices)",
+    "Open the deck: reads the client file for ?contact= (also ?client_id, ?id, ?client)",
+    "Repair offers: 'Send letters now' (mails the staged letters to the bureaus through PostGrid)",
+    "Repair offers: 'Stage letters' (enroll, then write round R1 letters)"
+   ]
+  }
+ ],
+ "s4-public-contract-sign.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:contract.html#go",
+   "controls": [
+    "Sign: posts the typed name and tick to /api/contracts/sign (the signature, time and IP)."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:contract.html#barGo",
+   "controls": [
+    "Sign (sticky bar copy of the same button)."
+   ]
+  }
+ ],
+ "s4-public-forms.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:affiliates/index.html#pform",
+   "controls": [
+    "Partner application form: name, email, phone, company, track, audience, SMS consent. Posts to /api/public/partner-apply, which makes an affiliate or partner application row and queues the partner welcome."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "link:crm.html -> /app/",
+   "controls": [
+    "Link 'Continue to Fundhub' to /app/"
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:education/enroll/index.html#enroll-form",
+   "controls": [
+    "Enrollment application: program, name, email, phone, SMS consent. Posts to /api/public/education-enroll, which saves an education_enrollments row. No card is taken."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:index.html#appform",
+   "controls": [
+    "Homepage survey: a multi-step form drawn by homepage-survey.js; the last step posts to /api/public/survey-submit, which emits entry.captured and survey.submitted and returns the redirect."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:login.html#f",
+   "controls": [
+    "Staff and demo sign-in: email and password. Posts to /api/auth/login and sets the session cookie."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:optimize-plan.html#intake",
+   "controls": [
+    "Roadmap intake: first name, last name, email, goal. Calls /api/public/optimize?view=roadmap to build the Audit roadmap on the page."
+   ]
+  },
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "form:roadmap/pull.html#pull",
+   "controls": [
+    "Pull form after paying: name, date of birth, SSN, address, soft-pull consent. Posts to /api/public/slo-pull, which stores identity against the paid file and emits diagnostic.paid."
+   ]
+  }
+ ],
+ "s4-brand-studio.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "brand-studio.html",
+   "controls": [
+    "Business address input",
+    "Copy history: Use this version (restore) button",
+    "Copy voice select (plain, technical, warm)",
+    "Create pages from selected funnels button",
+    "Domain input",
+    "Funnel cards (5): Application, Diagnostic, Education, Affiliate recruit, Booking (toggle selection)",
+    "Legal entity input (injected into every disclosure)",
+    "Page row: Publish button",
+    "Page row: Unpublish button",
+    "Save & apply button",
+    "Submit for approval button (partner mode)",
+    "Support email input",
+    "Verify button (DNS TXT check; owner and admin only)",
+    "Wordmark file input (SVG or PNG under 400 KB)"
+   ]
+  }
+ ]
+}
