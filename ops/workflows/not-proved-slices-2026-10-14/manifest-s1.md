@@ -227,4 +227,31 @@ number the tests print.
 
 ## Tests run (final, round 2)
 
-TESTS_RUN_PLACEHOLDER
+Round 2, on this branch, with other builders running on the same Mac (load
+average 10 to 177):
+
+- The ten route files plus `commissions-handler.test.mjs`: 79 tests, 79 pass, no
+  database.
+- `s1-door-contracts.test.mjs` (the guard): 6 pass.
+- The four lanes, offline, counted for the slice: 55 NOT_PROVED of 149 (52 before
+  the repair).
+- Each of the 24 browser tests I added or changed, run 10 times alone with
+  `--repeat-each=10`: 240 of 240 pass.
+- Every catalog, gap-catalog and gap-door-batch test file (70 files, 1,339
+  tests), the group command, run three times:
+  - run 1: 3 failed. One was real and fixed (the display red count, now 1,006).
+    Two were pre-existing tests that timed out under load (`closer-deck.test.mjs`
+    took 44 s inside `flow-result-proofs`; `display-contracts-ef-public-2` lost a
+    row). Both pass alone (27 of 27 and 8 of 8).
+  - run 2: 1 failed, `read-reviewed-e2e` (the `agent-editor-promote-demote` spec,
+    which waits 5 s for a select to fill).
+  - run 3: 3 failed, the same `closer-deck` timeout and the same
+    `agent-editor-promote-demote` wait, counted twice by two suites.
+  None of the failing tests touch a file in this slice. They pass alone:
+  `agent-editor-promote-demote` 3 times in a row (24 of 24), `closer-deck` 27 of
+  27, and the four suites `flow-result-proofs`, `display-proof-cases`,
+  `s1-display-specs` and `read-reviewed-e2e` passed together except the
+  `agent-editor-promote-demote` wait again (28 of 29). I did not change those
+  tests. They need a longer wait or a quieter Mac.
+- `npm run lint`: 3,467 files parse clean.
+
