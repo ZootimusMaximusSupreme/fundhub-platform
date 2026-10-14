@@ -40,7 +40,7 @@ test("each handler test file exists and calls a real api/ handler", () => {
   for (const file of files) {
     assert.ok(existsSync(new URL(file, ROOT)), `${file} is missing`);
     const text = readFileSync(new URL(file, ROOT), "utf8");
-    assert.match(text, /from "\.\.\/\.\.\/api\/[^"]+\.mjs"/, `${file} imports no api/ handler`);
+    assert.match(text, /(?:from |import\()\s*"\.\.\/\.\.\/api\/[^"]+\.mjs"/, `${file} imports no api/ handler`);
     assert.match(text, /\btest\(/, `${file} has no test`);
     assert.doesNotMatch(file, /\.pg\.test\.mjs$/, "a Postgres test is not a stand-in proof");
   }

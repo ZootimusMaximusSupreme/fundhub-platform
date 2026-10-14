@@ -61,6 +61,48 @@ const DEFINITIONS = [
   ["4fc565bbbc58b2ab520b", ["src/http/s3-blueprint-bank-handler.test.mjs"]],
   // routes-1 money/banks: POST action=plan_bank|open_account|record_deposit|set_state|set_next_s
   ["94e9b4b5756805319c53", ["src/http/s3-blueprint-bank-handler.test.mjs"]],
+  // routes-3 finance/containers: GET a client's containers (one per person and business) with what each
+  ["3e84ef4f0874d1eb7cad", ["src/http/finance-containers.test.mjs", "src/http/s3-finance-handler.test.mjs"]],
+  // routes-3 finance/soft-pull: POST {client_id, reason, cost_cents?} records one queued soft-pull req
+  ["dd97290ff06c3051b808", ["src/http/s3-finance-handler.test.mjs"]],
+  // routes-2 finance/bank-accounts: GET/POST /api/finance/bank-accounts — a client's bank accounts entered
+  ["5c35731a27547d8b02fa", ["src/http/bank-accounts-endpoints.test.mjs"]],
+  // routes-1 finance/cashflow: GET ?client_id=&horizon_days= (day-by-day cash projection, payment win
+  ["e670ae3311986801a714", ["src/http/bills-cashflow-endpoints.test.mjs"]],
+  // routes-1 finance/cashflow: POST action=save_settings|save_reminders|acknowledge_reminder (min buf
+  ["0a4e0673c53eee9faede", ["src/http/bills-cashflow-endpoints.test.mjs"]],
+  // routes-2 finance/cashflow: GET/POST /api/finance/cashflow — GET the day-by-day cash projection, p
+  ["574650c9ad97b32a530b", ["src/http/bills-cashflow-endpoints.test.mjs"]],
+  // routes-3 finance/bills: GET recurring bills detected from bank transactions (and low-confidenc
+  ["913a8ca3f2288206bcb3", ["src/http/bills-cashflow-endpoints.test.mjs"]],
+  // routes-3 finance/liabilities: GET a client's card stack and totals or one card's history; POST add_c
+  ["6963f86c683f79642699", ["src/http/finance-liabilities.test.mjs"]],
+  // routes-0 finance/crs-pull: Staff order a real credit-bureau pull (TU, EX or EQ) for one client: q
+  ["aa986a577d3c9da12f0d", ["src/http/finance-crs-pull.test.mjs"]],
+  // routes-1 banking/revoke: GET ?client_id= (list a client's connected bank logins)
+  ["77b8178194ebe488a652", ["src/http/banking-revoke.test.mjs"]],
+  // routes-1 banking/revoke: POST {item_id, reason} disconnect a bank login: deletes the stored cre
+  ["c45736df7b335c4a294b", ["src/http/banking-revoke.test.mjs"]],
+  // routes-3 dashboard/client-archive: POST {client_id, confirm:'DELETE'} soft archive: removes the client's 
+  ["c8edb3e22ae38fbe686b", ["src/http/client-archive.test.mjs"]],
+  // routes-2 partner-brand/verify-domain: POST /api/partner-brand/verify-domain — real DNS TXT check that a part
+  ["17020c20671b0c807b4c", ["src/http/partner-brand-verify-domain-handler.test.mjs"]],
+  // routes-1 inquiry-cases: POST action=create|update (open or edit an inquiry removal case for a 
+  ["9cf32efe4c1da606db38", ["src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-1 inquiry-cases: POST action=close|mark_cleared|clear_inquiry (finish a case; Completed
+  ["4132e9d84908aa3cc202", ["src/http/inquiry-cases-actions-handler.test.mjs", "src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-1 inquiry-cases: POST action=generate (build the removal letter draft from the client's
+  ["9a7b791ecc849b35655a", ["src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-1 inquiry-cases: POST action=send {mail, portal} (mail the bureau letter on the client'
+  ["4bf572fddb1ef89eff8c", ["src/http/inquiry-cases-actions-handler.test.mjs"]],
+  // routes-1 inquiry-cases: POST action=gate_override (staff overrides the bureau gate on a case)
+  ["5ca82f080c6a61360d24", ["src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-2 inquiry-cases (clear_inquiry): POST /api/inquiry-cases action clear_inquiry — marks one inquiry clear
+  ["72fad5cb5f5f84a3aa0f", ["src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-2 inquiry-cases (create, update, close, mark_cleared, generate, gate_override): POST /api/inquiry-cases actions create, update, close, mark_cleared (e
+  ["5725e57ed8afcb3c7504", ["src/http/s3-inquiry-cases-handler.test.mjs", "src/http/inquiry-cases-actions-handler.test.mjs"]],
+  // routes-2 inquiry-cases (send): POST /api/inquiry-cases action send — sends the inquiry-removal letter
+  ["af74d4321e47c5c9eddc", ["src/http/inquiry-cases-actions-handler.test.mjs"]],
 ];
 
 export function s3DoorRowId(sourceFile, row) {
