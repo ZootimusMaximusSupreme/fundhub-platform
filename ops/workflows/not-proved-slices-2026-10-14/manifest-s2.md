@@ -33,7 +33,9 @@ the slice's ids. By lane: routes 18 to 1, screen controls 64 to 28, flows 123 to
   `agent-editor-promote-demote`, `documents-clicks` specs). Server half: the real handler
   (`s2-agents-save`, the s2 route tests, the existing `money-alerts.test.mjs`). Attached by
   `s2-display-contracts.mjs`; its wrapper test `s2-display-contracts.test.mjs` runs every spec.
-- **Message flows (7) and consulting pages (2).** Attached by `s2-flow-contracts.mjs`.
+- **Message flows (7) and consulting pages (2).** Attached by `s2-flow-contracts.mjs`; their
+  browser half runs from the small wrapper `s2-flow-pages.test.mjs` (the flow guard gives each
+  test file 120 seconds).
   Message rows also name `gate.test.mjs` and `dispatch.test.mjs`, which the existing guard
   requires. Two rows (`slo-connections#1`, `optimize#2`) already had rendered-page proofs and
   only left the gap monitor.
@@ -112,6 +114,18 @@ Smallest possible edits. Numbers are the real ones I measured on this branch.
    gate that answers "forbidden" only after the body is read (`partner-marketing/*`,
    `social/*`, `brand/review`, `money/setup`) cannot be told apart by an empty request. The
    test names them and does not count them.
+
+## Tests I ran at the end (all on this branch)
+
+- `node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/*.test.mjs
+  src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs`:
+  1,350 tests. The first full run had 2 failures, both explained and rechecked: the flow guard
+  timed out my big browser wrapper (fixed by the small wrapper) and one existing
+  agent-editor spec timed out under load (passes alone, 8 of 8). After the fixes, the long
+  guards (`flow-result-proofs`, `display-proof-cases`) pass 12 of 12, `read-reviewed-e2e`
+  passes, and the 38 gap lane tests pass.
+- `npm run lint`: 3,468 files parse clean.
+- `node scripts/pulse/compile-catalog.mjs --check`: fresh.
 
 ## Run notes
 
