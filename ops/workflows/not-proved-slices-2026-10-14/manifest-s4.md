@@ -49,7 +49,8 @@ A listed row can only attach if its test claimed it (the last test in each file 
 - Break checks: for each proof file I broke the page on purpose once (a wrong field, a dropped gate, a changed message), saw the test go red, then restored with `git checkout`. Done for every file; the scripts are not kept.
 - `npm run lint`: clean (3481 files).
 - Focused proof run (all 118 test files named by display proof cases): 1701 tests; the only failures were two tests that need `node_modules/@playwright/test/cli.js`, which a bare worktree does not have. With `node_modules` linked (ignored by git) they pass (3 of 3).
-- Catalog and lane suites: see the commit message / final report.
+- All 24 S4 proof files started at once (the worst load): 111 tests, 111 pass. Run twice; the first run found two steady-state races (Banks re-read, a fake clock that ran on real time) and the lenders double launch, all handled above.
+- Catalog and lane suites (84 files: `src/pulse/catalog/**`, `gap-catalog*`, `gap-door-batch*`): 1364 tests, 1362 pass, 2 fail. The two failures are `read-proof-cases` "the 64 proved read rows run their real focused result tests" and its nested `reviewed read proofs ... rendered pages` (an agent-editor Playwright spec on the Reads lane). I changed no `public/` or product file, and the same `reviewed read proofs` test passes when run by itself. They fail only when the whole set runs at once. Not mine; flagged for the integrator.
 
 ## Environment note
 
