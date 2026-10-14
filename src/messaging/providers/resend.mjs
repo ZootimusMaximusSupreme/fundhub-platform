@@ -15,7 +15,10 @@
 
 import { readFile } from "node:fs/promises";
 import { postJson, classify, success, failure, rejection, redact } from "./http.mjs";
-import { resolveMessageAsset } from "../assets.mjs";
+/* The asset folder is loaded only when an email names an asset. assets.mjs finds its folder from
+   import.meta.url, which the one-file hourly pulse bundle does not have, so a top-level import stopped
+   that bundle from loading (2026-10-14, when pulse alerts started sending email). */
+const loadAssets = () => import("../assets.mjs");
 
 /** Must equal the `provider` value in message_channel_routing. */
 export const PROVIDER = "resend";
@@ -86,6 +89,7 @@ async function loadAttachments(list) {
       continue;
     }
     const key = item && (item.asset || item.key);
+    const { resolveMessageAsset } = await loadAssets();
     const asset = resolveMessageAsset(key);
     if (!asset) {
       return { files: [], error: `unknown attachment asset: ${String(key || "")}` };
