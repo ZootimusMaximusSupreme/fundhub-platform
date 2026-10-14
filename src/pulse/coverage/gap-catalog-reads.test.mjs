@@ -19,9 +19,9 @@ function rowsFor(sourceFile) {
 }
 
 test("every known read gap owns one exact map row", () => {
-  assert.equal(READ_GAPS.length, 27);
-  assert.equal(CHECK_IDS.length, 27);
-  assert.equal(new Set(CHECK_IDS).size, 27);
+  assert.equal(READ_GAPS.length, 15);
+  assert.equal(CHECK_IDS.length, 15);
+  assert.equal(new Set(CHECK_IDS).size, 15);
 
   for (const item of READ_GAPS) {
     const sourceFile = sourceFileForReadSurface(item.surface);
