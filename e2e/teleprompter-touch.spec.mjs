@@ -583,6 +583,24 @@ test.describe("single tap is play and pause only (owner call 2026-10-09)", () =>
     expect(n.ranges).toBe(0);
   });
 
+  test("holding a line opens no editor and no keyboard; typing changes nothing (owner call 2026-10-13)", async ({ page }) => {
+    const { server } = await open(page);
+    const before = await page.locator("#content").innerText();
+    const m = await middle(page);
+    const f = await finger(page);
+    await f.hold(m.x, m.y, 900);
+    await page.waitForTimeout(200);
+    const n = await noCursor(page);
+    expect(n.focused).toBe(false);
+    expect(n.editable).toBeNull();
+    expect(n.wording).toBe(false);
+    expect(await page.locator("#content [contenteditable]").count()).toBe(0);
+    await page.keyboard.type("ZEBRA ");
+    await page.waitForTimeout(800);
+    expect(await page.locator("#content").innerText()).toBe(before);
+    expect(server.posts).toHaveLength(0);
+  });
+
   test("after a double-tap and X, the next single tap still shows no cursor", async ({ page }) => {
     await open(page);
     const m = await middle(page);
