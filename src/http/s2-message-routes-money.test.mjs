@@ -129,7 +129,9 @@ describe("POST /api/payment-links action=send and action=expire", () => {
         // The ask is found by its id AND the signed-in person's company.
         [/SELECT \* FROM payment_links WHERE id = \$1 AND org_id = \$2/, (_s, p) => (row && p[0] === row.id && p[1] === row.org_id ? [row] : [])],
         [/UPDATE payment_links\s+SET status = 'sent'/, (_s, p) => (row.status === "created" ? [{ ...row, status: "sent", sent_at: p[2] }] : [])],
-        [/UPDATE payment_links\s+SET status = 'expired'/, (_s, p) => (["created", "sent"].includes(row.status) ? [{ ...row, status: "expired", expired_at: p[2] }] : [])],
+        // The expire statement carries the statuses it may change ($4); the stand-in reads that list, so
+        // a handler that lets a paid ask be expired is not saved by a rule written into the stand-in.
+        [/UPDATE payment_links\s+SET status = 'expired'/, (_s, p) => (p[3].includes(row.status) ? [{ ...row, status: "expired", expired_at: p[2] }] : [])],
       ],
     });
     const res = makeRes();

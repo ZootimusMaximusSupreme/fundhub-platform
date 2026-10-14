@@ -30,6 +30,22 @@ async function save(body, role = "owner", row = current, session = [staffSession
   return { res, fake };
 }
 
+// An agent whose prompt (80 characters) and guardrails (two keys) are written.
+const ready = { ...current, prompt: "x".repeat(80), guardrails: { block: "y".repeat(40), triggers: ["entry.captured"] } };
+
+// Run promote or demote against a stand-in that hands back the row it was given.
+async function lifecycle(action, row) {
+  const fake = fakeDb([
+    staffSession({ role: "owner" }),
+    found(row),
+    [/UPDATE agents SET\s+status = 'live'/, (_s, p) => [{ ...row, status: "live", runtime: p[2] }]],
+    [/UPDATE agents SET\s+status = 'shadow'/, (_s, p) => [{ ...row, status: "shadow", runtime: p[2] }]],
+  ]);
+  const res = makeRes();
+  await runWithSharedDb(fake, () => handler(req("POST", { body: { action, code: row.code } }), res));
+  return { res, fake };
+}
+
 const GUARDRAILS = {
   block: "Never quote a number. Hand off on any complaint.",
   triggers: ["entry.captured", "payment.received"],
@@ -76,29 +92,40 @@ describe("POST /api/agents action=save", () => {
   });
 
   test("promote sets the agent live only when its prompt and guardrails are written, and demote returns it to shadow", async () => {
-    const ready = { ...current, prompt: "x".repeat(80), guardrails: { block: "y".repeat(40), triggers: ["entry.captured"] } };
-    const run = async (action, row) => {
-      const fake = fakeDb([
-        staffSession({ role: "owner" }),
-        found(row),
-        [/UPDATE agents SET\s+status = 'live'/, (_s, p) => [{ ...row, status: "live", runtime: p[2] }]],
-        [/UPDATE agents SET\s+status = 'shadow'/, (_s, p) => [{ ...row, status: "shadow", runtime: p[2] }]],
-      ]);
-      const res = makeRes();
-      await runWithSharedDb(fake, () => handler(req("POST", { body: { action, code: "AG-01" } }), res));
-      return { res, fake };
-    };
-    const live = await run("promote", ready);
+    const live = await lifecycle("promote", ready);
     assert.equal(live.res.statusCode, 200);
     assert.equal(live.res.body.agent.status, "live");
     assert.equal(live.res.body.agent.runtime, "internal");
-    const blocked = await run("promote", { ...ready, prompt: "short" });
+    const blocked = await lifecycle("promote", { ...ready, prompt: "short" });
     assert.equal(blocked.res.statusCode, 409);
     assert.equal(blocked.res.body.error, "promotion_blocked");
     assert.equal(blocked.fake.find(/UPDATE agents SET/).length, 0);
-    const shadow = await run("demote", { ...ready, status: "live", runtime: "internal" });
+    const shadow = await lifecycle("demote", { ...ready, status: "live", runtime: "internal" });
     assert.equal(shadow.res.statusCode, 200);
     assert.equal(shadow.res.body.agent.status, "shadow");
+  });
+
+  test("promote needs a prompt of 60 characters AND a guardrail block of 20 (or two guardrail keys): one under either line is refused and nothing is written", async () => {
+    const cases = [
+      // [what the agent holds, prompt, guardrails, does it go live]
+      ["a prompt of exactly 60", "x".repeat(60), ready.guardrails, true],
+      ["a prompt one short of 60", "x".repeat(59), ready.guardrails, false],
+      ["a lone guardrail block of exactly 20", "x".repeat(60), { block: "y".repeat(20) }, true],
+      ["a lone guardrail block one short of 20", "x".repeat(60), { block: "y".repeat(19) }, false],
+      ["a written prompt and an empty guardrail object", "x".repeat(60), {}, false],
+      ["a written prompt and no guardrails at all", "x".repeat(60), null, false],
+    ];
+    for (const [why, prompt, guardrails, goesLive] of cases) {
+      const { res, fake } = await lifecycle("promote", { ...ready, prompt, guardrails });
+      assert.equal(res.statusCode, goesLive ? 200 : 409, why);
+      if (goesLive) {
+        assert.equal(res.body.agent.status, "live", why);
+        assert.equal(fake.find(/UPDATE agents SET\s+status = 'live'/).length, 1, why);
+      } else {
+        assert.equal(res.body.error, "promotion_blocked", why);
+        assert.equal(fake.find(/UPDATE agents SET/).length, 0, why);
+      }
+    }
   });
 
   test("every staff role in the app's staff set may save; a client, partner or affiliate login and no login may not", async () => {
@@ -122,7 +149,6 @@ describe("POST /api/agents action=save", () => {
   });
 
   test("an agent in another company is 404: it is not saved, promoted or returned to shadow", async () => {
-    const ready = { ...current, prompt: "x".repeat(80), guardrails: { block: "y".repeat(40), triggers: ["entry.captured"] } };
     for (const body of [
       { action: "save", code: "AG-01", name: "Renamed" },
       { action: "promote", code: "AG-01" },

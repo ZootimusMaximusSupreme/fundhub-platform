@@ -22,8 +22,8 @@ import {
 } from "../testing/handler-harness.mjs";
 import { call, refuseNetwork, splitRoles, CLIENT } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 import {
-  EMAIL, OTHER_CLIENT, OWNER_ADMIN, clientByEmail, clientRow, hammered, inOrg, linkInsert, noAccount,
-  noLimit, org, queued, template,
+  EMAIL, OTHER_CLIENT, OWNER_ADMIN, QUEUE_REFUSES, clientByEmail, clientRow, hammered, inOrg, linkInsert,
+  noAccount, noLimit, org, queued, template,
 } from "../pulse/catalog/proofs/s2-auth-fixtures.mjs";
 
 const netCalls = refuseNetwork({ before, after });
@@ -143,6 +143,17 @@ describe("POST /api/auth/send-portal-link", () => {
     // The URL read back is the link in the queued email.
     const token = new URL(res.body.url).searchParams.get("t");
     assert.ok(mail.params[4].includes(token));
+  });
+
+  test("when the queue refuses the email the answer is sent:false, the link is still shown, and nothing is queued", async () => {
+    for (const [why, refuses] of Object.entries(QUEUE_REFUSES)) {
+      const { res, fake } = await send([staffSession({ role: "owner" }), clientInOrg, clientEmail, refuses, ...issuePath]);
+      assert.equal(res.statusCode, 200, why);
+      assert.equal(res.body.ok, true, why);
+      assert.equal(res.body.sent, false, why);
+      assert.match(res.body.url, /\/portal-login\.html\?t=[A-Za-z0-9_-]+$/, why);
+      assert.equal(fake.find(/INSERT INTO messages/).length, 0, why);
+    }
   });
 
   test("only an owner or an admin may send; every other staff role is refused and nothing is issued", async () => {

@@ -29,5 +29,15 @@ export const clientRow = [/FROM clients WHERE id = \$1 LIMIT 1/, [{
 }]];
 export const queued = [/INSERT INTO messages/, [{ id: MSG_ROW, created_at: "2026-10-13T17:00:00Z" }]];
 
+/**
+ * The ways the queue says no once the link itself is made. Put one of these
+ * BEFORE `template` in a case's rules and sendTemplated queues nothing and
+ * answers sent:false, so the doors must too.
+ */
+export const QUEUE_REFUSES = Object.freeze({
+  "the template is not approved": [/FROM message_templates/, [{ ...template[1][0], compliance_passed: false }]],
+  "there is no such template": [/FROM message_templates/, []],
+});
+
 /** "Is this client in this company" for the statements the two handlers ask. */
 export const inOrg = (re, row) => clientIn(re, row);

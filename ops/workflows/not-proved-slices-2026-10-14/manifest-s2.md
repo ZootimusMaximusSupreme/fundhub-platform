@@ -14,6 +14,9 @@ fetch and counting the slice's ids: routes 1, screen controls 28, flows 23, read
 
 First build left 51. The repair gave one row back (see "Un-attached" below), so it is 52.
 
+Round 3 (four proofs made stronger, see below) un-attached nothing. Measured again with the same
+four lanes: still 52 (routes 1, screens 28, flows 23, reads 0).
+
 ## What the checker found, and what I did
 
 | Finding | What I did |
@@ -102,6 +105,26 @@ than its test covers. What I changed:
   (proved by their own screen rows). The alert address can only be set through the API
   (proved by the server test). A row that names a control that is not on the page cannot be
   proved, so it is back in the Flow gap monitor.
+
+## Round 3: four proofs that stayed green on a break
+
+A second checker broke the product on purpose and found four proofs that stayed green. All four
+are now stronger. None was un-attached, so the count did not move (52 before, 52 after, measured).
+Each break below was made in the product file, the test went red, and the file was put back with
+`git checkout`.
+
+| # | What stayed green | What I added | The breaks that now turn it red |
+|---|---|---|---|
+| 1 | The "sent" yes/no on the portal link and the authorized rep. Forcing `sent: true` changed nothing, because no test made the queue say no. | One shared list of ways the queue says no (`QUEUE_REFUSES` in `s2-auth-fixtures.mjs`: template not approved, no such template). Two small tests, one per door: the answer is `sent: false`, the link is still shown, and nothing is queued. | `sent: true` forced in `api/auth/send-portal-link.mjs`; in `api/auth/authorized-rep.mjs`; in `src/auth/magic-link.mjs` at three places (the queue result, the returned flag, the portal helper). |
+| 2 | Password reset "one hour link". The stored `expires_at` was never read. | The test now fixes the clock and asserts the stored time is exactly now plus one hour, for staff, partner and affiliate. | A 2 hour life, a 30 minute life, and a link that is already over (`now - ttl`) on the staff path and on the partner path. |
+| 3 | Promote "only when prompt and guardrails are written". Only the prompt half was tested. | A table with the boundary on both minimums: prompt 60 and 59, guardrail block 20 and 19 on its own, an empty guardrail, and no guardrails. | Dropping `\|\| !guardOk`; prompt minimum 60 to 6 and to 61; guardrail minimum 20 to 0 and to 21; dropping the prompt half. |
+| 4 | "A paid one cannot be expired" passed because the stand-in had its own rule. | The stand-in now reads the status list the handler sends in the statement ($4). | `OPEN_STATUSES` widened to include `paid`, and to include `paid` and `expired`. |
+
+Files touched: `src/http/s2-message-routes-auth.test.mjs`, `src/http/s2-message-routes-reset-rep.test.mjs`,
+`src/http/s2-agents-save.test.mjs`, `src/http/s2-message-routes-money.test.mjs`,
+`src/pulse/catalog/proofs/s2-auth-fixtures.mjs`. No product file changed. The agents test also
+moved two helpers (the ready agent and the promote runner) to the top of its file so the new table
+reuses them; the old tests still make the same checks.
 
 ## Every proof was broken on purpose
 
@@ -226,6 +249,19 @@ is `s2-message-routes-outbound.test.mjs`, 328).
   before the fix).
 - The two money-alert specs and the control panel spec, 3 times each at 4 workers: all pass.
 - Measured count: 52 of slice 2's 205 rows still say NOT_PROVED (routes 1, screens 28, flows 23).
+
+## Tests I ran at the end of round 3
+
+- `node --test src/pulse/catalog/**/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs
+  src/pulse/coverage/gap-door-batch*.test.mjs`, three times in a row: 1,352 tests, 1,352 pass,
+  0 fail, 0 skipped, each time. (The count is the same as before: the new cases are inside
+  existing files that these wrappers run, so the wrappers still count one test per file.)
+- The slice 2 server tests alone (`src/http/s2-*.test.mjs` and `money-alerts.test.mjs`): 131
+  tests, 131 pass. Three of those are new this round (one per door: portal link, authorized rep,
+  and the promote boundaries); two others were made stronger in place.
+- `npm run lint`: 3,474 files parse clean.
+- `node scripts/pulse/compile-catalog.mjs --check`: fresh (no catalog change this round).
+- Every break listed in round 3 turned its test red and was restored with `git checkout`.
 
 ## Run notes
 

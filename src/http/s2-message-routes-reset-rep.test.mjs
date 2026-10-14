@@ -6,7 +6,7 @@
 //   route:auth/authorized-rep    owner or admin adds or replaces the person on a client's file
 //
 // The magic link and the portal link are in s2-message-routes-auth.test.mjs.
-import { test, describe, before, after, beforeEach } from "node:test";
+import { test, describe, before, after, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import reset from "../../api/auth/reset.mjs";
@@ -16,7 +16,7 @@ import {
 } from "../testing/handler-harness.mjs";
 import { call, refuseNetwork, splitRoles, CLIENT } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 import {
-  OTHER_CLIENT, OWNER_ADMIN, clientRow, inOrg, linkInsert, noLimit, org, queued, template,
+  OTHER_CLIENT, OWNER_ADMIN, QUEUE_REFUSES, clientRow, inOrg, linkInsert, noLimit, org, queued, template,
 } from "../pulse/catalog/proofs/s2-auth-fixtures.mjs";
 import { hashToken } from "../auth/session.mjs";
 
@@ -28,7 +28,11 @@ describe("POST /api/auth/reset action=request", () => {
   const asked = [];
   const keep = {};
   const FAKE_KEY = ["fake", "mail", "system", "value"].join("-");
+  // A fixed clock, so "one hour from now" is an exact moment and not a window.
+  const NOW = Date.parse("2026-10-14T15:00:00Z");
+  const ONE_HOUR_MS = 60 * 60 * 1000;
   before(() => {
+    mock.timers.enable({ apis: ["Date"], now: NOW });
     for (const k of ["RESEND_API_KEY", "RESEND_FROM", "MESSAGING_DRY_RUN"]) keep[k] = process.env[k];
     process.env.RESEND_API_KEY = FAKE_KEY;
     process.env.RESEND_FROM = "Fundhub <noreply@fundhub.test>";
@@ -40,6 +44,7 @@ describe("POST /api/auth/reset action=request", () => {
     };
   });
   after(() => {
+    mock.timers.reset();
     for (const [k, v] of Object.entries(keep)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
   });
   beforeEach(() => { asked.length = 0; });
@@ -77,6 +82,8 @@ describe("POST /api/auth/reset action=request", () => {
       // The mailed token is the one whose hash was stored, and never the reply.
       const [stored] = fake.find(insertShape);
       assert.deepEqual([stored.params[0], stored.params[1], stored.params[2]], [ORG_ID, login, hashToken(token)], email);
+      // The stored link dies exactly one hour from now: not already over, not two hours.
+      assert.equal(new Date(stored.params[3]).getTime(), NOW + ONE_HOUR_MS, email);
       assert.equal(JSON.stringify(res.body).includes(token), false);
     }
   });
@@ -187,6 +194,15 @@ describe("POST /api/auth/authorized-rep", () => {
     assert.deepEqual(link.params.slice(0, 3), [ORG_ID, REP_ACCOUNT, CLIENT]);
     const mail = fake.find(/INSERT INTO messages/);
     assert.deepEqual(mail.map((m) => m.params[6]), [REP_EMAIL]);
+  });
+
+  test("when the queue refuses the email the answer is sent:false and no email is queued", async () => {
+    for (const [why, refuses] of Object.entries(QUEUE_REFUSES)) {
+      const { res, fake } = await add(staffSession({ role: "owner" }), [noLiveRep, refuses]);
+      assert.equal(res.statusCode, 200, why);
+      assert.equal(res.body.sent, false, why);
+      assert.equal(fake.find(/INSERT INTO messages/).length, 0, why);
+    }
   });
 
   test("the same person added again is not a replacement: nothing is ended and no second link is made", async () => {
