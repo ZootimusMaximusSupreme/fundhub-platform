@@ -26,7 +26,7 @@ const AUTH_TEST = "src/http/s2-message-routes-auth.test.mjs";
 const CHAT_TEST = "src/http/s2-message-routes-chat.test.mjs";
 const WRITE_TEST = "src/http/s2-message-routes-write.test.mjs";
 const OUTBOUND_TEST = "src/http/s2-message-routes-outbound.test.mjs";
-const DISPLAY_WRAPPER = "src/pulse/catalog/proofs/s2-display-contracts.test.mjs";
+const FLOW_PAGES_WRAPPER = "src/pulse/catalog/proofs/s2-flow-pages.test.mjs";
 // The gate and the dispatcher: every message row's proof also runs these.
 const MESSAGE_CHAIN = Object.freeze(["src/messaging/gate.test.mjs", "src/messaging/dispatch.test.mjs"]);
 
@@ -38,13 +38,13 @@ const MESSAGE_TESTS = Object.freeze({
   "api:POST /api/chat/messages": ["src/http/chat-messages-handler.test.mjs", CHAT_TEST],
   "template:payment_link_notice": [CHAT_TEST],
   "api-action:payment-link-send": [CHAT_TEST],
-  "ui:ops-admin outbound mail panel": [DISPLAY_WRAPPER, OUTBOUND_TEST],
+  "ui:ops-admin outbound mail panel": [FLOW_PAGES_WRAPPER, OUTBOUND_TEST],
 });
 
 // journey surface -> the tests that judge its exact result
 const JOURNEY_TESTS = Object.freeze({
-  "journey:fh-consulting-intended#1-open-page": [DISPLAY_WRAPPER],
-  "journey:fh-consulting-intended#4-legal-pages": [DISPLAY_WRAPPER],
+  "journey:fh-consulting-intended#1-open-page": [FLOW_PAGES_WRAPPER],
+  "journey:fh-consulting-intended#4-legal-pages": [FLOW_PAGES_WRAPPER],
 });
 
 // These two already carry a rendered-page proof (flow-read-contracts.test.mjs,

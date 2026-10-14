@@ -86,11 +86,17 @@ export const S2_DISPLAY_GROUPS = Object.freeze([
     ]),
 ]);
 
-// Specs that prove Flow rows (not screen controls); the wrapper runs them too.
-export const S2_FLOW_SPECS = Object.freeze(["e2e/s2-consulting-pages.spec.mjs"]);
+// Specs that prove Flow rows. They run from their own small wrapper
+// (s2-flow-pages.test.mjs) because the flow-proof guard gives each test file
+// 120 seconds, which the whole screen suite above does not fit in.
+export const S2_FLOW_WRAPPER = "src/pulse/catalog/proofs/s2-flow-pages.test.mjs";
+export const S2_FLOW_SPECS = Object.freeze([
+  "e2e/ops-admin-outbound.spec.mjs",
+  "e2e/s2-consulting-pages.spec.mjs",
+]);
 
 export const S2_DISPLAY_SPECS = Object.freeze(
-  [...new Set([...S2_DISPLAY_GROUPS.flatMap((entry) => entry.specs), ...S2_FLOW_SPECS])].sort());
+  [...new Set(S2_DISPLAY_GROUPS.flatMap((entry) => entry.specs))].sort());
 
 /** Entries in the shape display-proof-cases.mjs reads. */
 export const S2_DISPLAY_PROOF_CASES = Object.freeze(S2_DISPLAY_GROUPS.flatMap((entry) =>
