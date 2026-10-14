@@ -96,6 +96,7 @@ describe("web push on the client portal", () => {
     const [upd] = fake.find(/UPDATE client_push_subscriptions\s+SET revoked_at/);
     assert.deepEqual(upd.params, [ORG_ID, CLIENT, crypto.createHash("sha256").update(endpoint).digest("hex")]);
     assert.match(upd.sql, /SET revoked_at = now\(\)/);
+    assert.match(upd.sql, /WHERE org_id = \$1 AND client_id = \$2 AND endpoint_hash = \$3/);
     assert.equal(fake.find(/DELETE FROM client_push_subscriptions/).length, 0);
   });
 

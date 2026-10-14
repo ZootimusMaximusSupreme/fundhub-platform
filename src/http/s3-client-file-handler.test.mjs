@@ -28,6 +28,7 @@ describe("POST /api/client-notes", () => {
     assert.deepEqual(res.body, { ok: true, client: { id: CLIENT, staff_notes: "Called twice. Wants $40k.", updated_at: "2026-10-13T12:00:00.000Z" } });
     const [write] = fake.find(/UPDATE clients\s+SET custom_fields/);
     assert.deepEqual(write.params, [CLIENT, ORG_ID, "Called twice. Wants $40k."]);
+    assert.match(write.sql, /WHERE id = \$1::uuid\s+AND org_id = \$2::uuid/);
   });
 
   test("20,001 characters is refused and nothing is written; 20,000 is accepted", async () => {
@@ -163,6 +164,7 @@ describe("GET /api/read/bank-inbox", () => {
     assert.deepEqual(res.body.items, [mail]);
     const [q] = fake.find(/FROM bank_inbox/);
     assert.deepEqual(q.params, [ORG_ID, CLIENT, 51, 0]);
+    assert.match(q.sql, /WHERE org_id = \$1::uuid\s+AND client_id = \$2::uuid/);
     assert.doesNotMatch(q.sql, /\braw\s*,|SELECT\s+raw\b|\*\s+FROM/);
     assert.equal(fake.find(/INSERT INTO bank_inbox|UPDATE bank_inbox|UPDATE applications/).length, 0);
   });
@@ -182,6 +184,7 @@ describe("GET /api/read/conversations", () => {
     assert.deepEqual(res.body.items, [thread]);
     const [q] = fake.find(/FROM conversations/);
     assert.deepEqual(q.params, [51, 0, CLIENT, ORG_ID]);
+    assert.match(q.sql, /WHERE org_id = \$4::uuid\s+AND client_id = \$3/);
     assert.match(q.sql, /ORDER BY last_pulse_at DESC NULLS LAST/);
   });
 
