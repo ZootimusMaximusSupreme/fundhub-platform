@@ -114,6 +114,80 @@ test("dry-run writes a board and does not send or fix", async () => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
+test("coverage N/A proof starts while the normal morning checks are still running", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pulse-na-overlap-"));
+  const order = [];
+  const catalogSql = [];
+  let releaseNaStart;
+  const naStarted = new Promise((resolve) => { releaseNaStart = resolve; });
+  const db = {
+    async query(sql) {
+      const text = String(sql);
+      if (/\bAS table_name\b/i.test(text)) {
+        catalogSql.push(text.replace(/\s+/g, " ").trim());
+        order.push("na-query");
+        releaseNaStart();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        order.push("na-query-done");
+        return { rows: [] };
+      }
+      if (/FROM orgs/i.test(text)) {
+        order.push("org-query");
+        return { rows: [{ id: "11111111-1111-4111-8111-111111111111" }] };
+      }
+      return { rows: [] };
+    }
+  };
+  const baseFetch = fakeFetch(LIVE_PAGES);
+  let firstFetch = true;
+  const fetchImpl = async (url) => {
+    if (firstFetch) {
+      firstFetch = false;
+      order.push("first-fetch-waiting");
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("N/A proof did not start during the web check")), 2000);
+        naStarted.then(() => {
+          clearTimeout(timer);
+          resolve();
+        }, reject);
+      });
+      order.push("first-fetch-done");
+    }
+    return baseFetch(url);
+  };
+  const coverageRow = {
+    id: "catalog-data:alerts",
+    checkId: "catalog-data:alerts",
+    sliceId: "gap-catalog-data",
+    kind: "coverage",
+    group: "backend",
+    status: "na",
+    detail: "alerts has no saved rows to judge.",
+    na: { code: "catalog-data-empty", args: { table: "alerts" } }
+  };
+
+  const result = await runDailyPulse({
+    dryRun: true,
+    sendPulseText: false,
+    recordRun: false,
+    persist: false,
+    db,
+    staffScope: (fn) => fn(db),
+    env: {},
+    fetchImpl,
+    boardDir: tmp,
+    gateRelayDirs: null,
+    coverageRows: [coverageRow],
+    functions: []
+  });
+
+  assert.ok(catalogSql.length > 0, "the real catalog N/A verifier read the fake database");
+  assert.ok(order.indexOf("na-query") < order.indexOf("first-fetch-done"), "N/A proof overlapped the web checks");
+  assert.ok(order.lastIndexOf("na-query-done") < order.indexOf("org-query"), "N/A proof settled before later database work");
+  assert.equal(result.checks.find((row) => row.id === coverageRow.id)?.status, "na");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
 test("a FAIL writes a suggested fix and still does not auto-fix", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pulse-"));
   const result = await runDailyPulse({

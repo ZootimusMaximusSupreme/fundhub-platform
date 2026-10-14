@@ -96,7 +96,10 @@ export const NAMED_PULSE_IDS = Object.freeze([
   ...MACHINE_CHECKS.map((c) => c.id)
 ]);
 
+// Each started condition gets this long to answer. Waiting for a worker slot does not spend it.
 export const AUDIT_BUDGET_MS = 2500;
+// The whole self-audit still stops below the 20 second lane limit.
+export const AUDIT_HARD_STOP_MS = 15000;
 const BRIEFS_READ_MS = 2000;
 const NA_CONCURRENCY = 8;
 const MAX_IDS = 10;
@@ -111,7 +114,7 @@ const DIED_WHY = Object.freeze({
   "bad-row": "sent back an empty row"
 });
 
-const KNOWN_RAW_STATUSES = new Set(["PASS", "FAIL", "skip", "up", "down", "na", "not checked"]);
+const KNOWN_RAW_STATUSES = new Set(["PASS", "FAIL", "NOT_PROVED", "skip", "up", "down", "na", "not checked"]);
 const CONTRACT_STATUSES = new Set(["green", "red", "na", "not_checked"]);
 
 export const BRIEFS_SENT_SQL = `
@@ -179,7 +182,9 @@ const UNWATCHED = "Part of Fundhub is not being watched, so a break there would 
 function withTimeout(promise, ms) {
   let timer;
   const cut = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("took too long")), ms);
+    const error = new Error("took too long");
+    error.code = "PULSE_NA_TIMEOUT";
+    timer = setTimeout(() => reject(error), Math.max(0, ms));
   });
   return Promise.race([Promise.resolve(promise), cut]).finally(() => clearTimeout(timer));
 }
@@ -331,15 +336,37 @@ export async function loadManifest({ functions = [], notLiveRows = null, ...rest
  * Returns undefined when the lane has no verifier (that counts as not true).
  */
 export function makeLaneNaVerify({ db = null, scope = null, now = new Date(), gapFiles = GAP_FILES } = {}) {
-  return async function laneNaVerify(sliceId, code, args) {
-    const lane = String(sliceId || "").replace(/\.mjs$/, "");
-    const entry = gapFiles.find(([name]) => name.replace(/\.mjs$/, "") === lane);
-    if (!entry) return undefined;
-    const mod = await entry[1]();
+  const entries = new Map(gapFiles.map(([name, load]) => [name.replace(/\.mjs$/, ""), load]));
+  const loaded = new Map();
+  const laneName = (sliceId) => {
+    const asked = String(sliceId || "").replace(/\.mjs$/, "");
+    if (entries.has(asked)) return asked;
+    const prefixed = `gap-${asked}`;
+    return entries.has(prefixed) ? prefixed : asked;
+  };
+  const loadLane = (sliceId) => {
+    const lane = laneName(sliceId);
+    const load = entries.get(lane);
+    if (!load) return Promise.resolve(undefined);
+    let pending = loaded.get(lane);
+    if (!pending) {
+      pending = Promise.resolve().then(load);
+      loaded.set(lane, pending);
+    }
+    return pending;
+  };
+  const laneNaVerify = async (sliceId, code, args) => {
+    const mod = await loadLane(sliceId);
     const fn = mod && mod.naVerify && mod.naVerify[code];
     if (typeof fn !== "function") return undefined;
     return fn(args, { db, scope, now });
   };
+  laneNaVerify.warm = async (rows = []) => {
+    const lanes = new Set(rows.map((row) => row?.sliceId || (typeof row?.id === "string" ? row.id.split(":")[0] : null)).filter(Boolean));
+    await Promise.all([...lanes].map(loadLane));
+  };
+  laneNaVerify.hasLane = (sliceId) => entries.has(laneName(sliceId));
+  return laneNaVerify;
 }
 
 // ── step 1: "nothing to judge" is checked again ──────────────────────────────
@@ -359,16 +386,64 @@ async function defaultVerifyNa() {
    fits "Said nothing to judge, but <reason> is not true." Piece A's verifyNa
    writes it that way ("no ad running", "the reason code "x" being one the
    computer knows"). The three reasons written here use the same shape. */
-async function verifyOne(row, ctx, verify, deadline) {
-  const left = deadline - Date.now();
-  if (left <= 0) return { ok: false, reason: "the audit having time left to check it again" };
-  try {
-    const res = await withTimeout(verify(row, ctx), left);
-    if (res && typeof res === "object") return { ok: res.ok === true, reason: clip(res.reason, 200) };
-    return { ok: false, reason: "the check giving an answer" };
-  } catch (err) {
-    return { ok: false, reason: `the condition being readable (the read failed: ${clip((err && err.message) || err, 120)})` };
+async function verifyOne(row, ctx, verify, timeoutMs, hardStopAt, hardStopMs) {
+  const perCheckMs = Math.max(0, Number(timeoutMs) || 0);
+  const hardLeft = hardStopAt - Date.now();
+  if (hardLeft <= 0) {
+    return {
+      ok: false,
+      problem: "hard-stop",
+      reason: `the audit reached its ${hardStopMs} ms safety stop before this check started`
+    };
   }
+  const waitMs = Math.min(perCheckMs, hardLeft);
+  if (waitMs <= 0) {
+    return { ok: false, problem: "timeout", reason: "the check was given no time to answer" };
+  }
+  const limitedByHardStop = hardLeft < perCheckMs;
+  let settled = false;
+  const pending = Promise.resolve().then(() => verify(row, ctx));
+  pending.then(
+    () => { settled = true; },
+    () => { settled = true; }
+  );
+  try {
+    const res = await withTimeout(pending, waitMs);
+    if (res && typeof res === "object") {
+      const ok = res.ok === true;
+      return { ok, problem: ok ? null : "stale", reason: clip(res.reason, 200) };
+    }
+    return { ok: false, problem: "unreadable", reason: "the checker did not give an answer" };
+  } catch (err) {
+    if (err && err.code === "PULSE_NA_TIMEOUT") {
+      const drainMs = Math.min(perCheckMs, Math.max(0, hardStopAt - Date.now()));
+      if (!settled && drainMs > 0) {
+        try { await withTimeout(pending, drainMs); } catch { /* result stays technical and visible below */ }
+      }
+      const answer = limitedByHardStop
+        ? {
+          ok: false,
+          problem: "hard-stop",
+          reason: `the audit reached its ${hardStopMs} ms safety stop while this check was running`
+        }
+        : {
+          ok: false,
+          problem: "timeout",
+          reason: `the check did not answer within ${perCheckMs} ms`
+        };
+      if (!settled) answer.openWork = true;
+      return answer;
+    }
+    return {
+      ok: false,
+      problem: "unreadable",
+      reason: `the read failed: ${clip((err && err.message) || err, 120)}`
+    };
+  }
+}
+
+export function naAuditHasOpenWork(outcome) {
+  return outcome instanceof Map && [...outcome.values()].some((result) => result?.openWork === true);
 }
 
 /* The memo key for one nothing-to-judge row. A lane code is answered by the lane
@@ -389,48 +464,134 @@ function naKeyOf(row) {
   }
 }
 
-/* Runs verifyNa for every `na` row. Same code + args + lane = one call. Eight
-   at a time. Returns a Map from the row object to { ok, reason }. */
-async function verifyAllNa(list, { verifyNa, ctx, budgetMs }) {
+/* Runs verifyNa for every `na` row. Same code + args + lane = one call. When
+   the pulse provides a database or staff scope, every check can reach its one
+   client, including checks not owned by a gap lane, so all run one at a time.
+   Without a database, only lane checks are serial and pure checks stay bounded
+   at eight workers. Each clock starts after its worker slot is acquired. */
+async function verifyAllNa(list, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome = null }) {
   const naRows = list.filter((r) => r && r.status === "na");
   const outcome = new Map();
   if (!naRows.length) return outcome;
-  const verify = verifyNa || await defaultVerifyNa();
-  const deadline = Date.now() + budgetMs;
-  const memo = new Map();
-  let next = 0;
-  async function worker() {
-    while (next < naRows.length) {
-      const row = naRows[next++];
+  const seededHasOpenWork = naAuditHasOpenWork(seededOutcome);
+  const seededByKey = new Map();
+  if (seededOutcome instanceof Map) {
+    for (const [row, result] of seededOutcome) {
       const key = naKeyOf(row);
-      let pending = key ? memo.get(key) : null;
-      if (!pending) {
-        pending = verifyOne(row, ctx, verify, deadline);
-        if (key) memo.set(key, pending);
-      }
-      outcome.set(row, await pending);
+      if (row && key) seededByKey.set(`${String(row.id)}\n${key}`, result);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(NA_CONCURRENCY, naRows.length) }, worker));
+  const pendingRows = [];
+  for (const row of naRows) {
+    const direct = seededOutcome instanceof Map ? seededOutcome.get(row) : null;
+    const key = naKeyOf(row);
+    const seeded = direct || (key ? seededByKey.get(`${String(row.id)}\n${key}`) : null);
+    if (seeded && (seededHasOpenWork || seeded.ok === true || seeded.problem === "stale")) {
+      outcome.set(row, seeded);
+    } else if (seededHasOpenWork) {
+      outcome.set(row, {
+        ok: false,
+        problem: "blocked",
+        reason: "an earlier database check is still running, so this check did not start"
+      });
+    } else {
+      pendingRows.push(row);
+    }
+  }
+  if (!pendingRows.length) return outcome;
+  const verify = verifyNa || await defaultVerifyNa();
+  const hardStopMs = Math.min(AUDIT_HARD_STOP_MS, Math.max(0, Number(totalBudgetMs) || 0));
+  const hardStopAt = Date.now() + hardStopMs;
+  if (typeof ctx?.laneNaVerify?.warm === "function") {
+    try {
+      await withTimeout(ctx.laneNaVerify.warm(pendingRows), Math.max(0, hardStopAt - Date.now()));
+    } catch {
+      // The real checks below keep the failure visible with the row's exact reason.
+    }
+  }
+  const memo = new Map();
+  async function runRows(rows, concurrency, stopAfterTimeout = false) {
+    let next = 0;
+    async function worker() {
+      while (next < rows.length) {
+        const row = rows[next++];
+        const key = naKeyOf(row);
+        let pending = key ? memo.get(key) : null;
+        if (!pending) {
+          pending = verifyOne(row, ctx, verify, budgetMs, hardStopAt, hardStopMs);
+          if (key) memo.set(key, pending);
+        }
+        const result = await pending;
+        outcome.set(row, result);
+        if (stopAfterTimeout && ["timeout", "hard-stop"].includes(result?.problem)) {
+          while (next < rows.length) {
+            outcome.set(rows[next++], {
+              ok: false,
+              problem: "blocked",
+              reason: "an earlier database check timed out, so this check did not start"
+            });
+          }
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+  }
+  const serialRows = [];
+  const parallelRows = [];
+  const hasSharedDatabase = typeof ctx?.scope === "function" || (ctx?.db && typeof ctx.db.query === "function");
+  for (const row of pendingRows) {
+    const lane = row.sliceId || (typeof row.id === "string" ? row.id.split(":")[0] : "");
+    const isLane = typeof ctx?.laneNaVerify?.hasLane === "function"
+      ? ctx.laneNaVerify.hasLane(lane)
+      : String(lane).startsWith("gap-");
+    (hasSharedDatabase || isLane ? serialRows : parallelRows).push(row);
+  }
+  await Promise.all([
+    runRows(serialRows, 1, true),
+    runRows(parallelRows, NA_CONCURRENCY)
+  ]);
   return outcome;
+}
+
+export async function prepareNaAudit(checks, {
+  verifyNa = null,
+  laneNaVerify = null,
+  db = null,
+  scope = null,
+  now = new Date(),
+  functions = null,
+  budgetMs = AUDIT_BUDGET_MS,
+  totalBudgetMs = AUDIT_HARD_STOP_MS
+} = {}) {
+  return verifyAllNa(Array.isArray(checks) ? checks : [], {
+    verifyNa,
+    ctx: { db, scope, now, functions, laneNaVerify },
+    budgetMs,
+    totalBudgetMs
+  });
 }
 
 /* "Said nothing to judge, but <why> is not true." <why> is the reason verifyNa
    gave, a short condition. Only when no reason came back does the row's own
    sentence stand in for it. */
-function failedNaRow(row, reason) {
+function failedNaRow(row, result) {
   const rest = { ...row };
   delete rest.na;
+  const reason = result && result.reason;
   const why = clip(reason, 200) || `"${clip(row.detail, 160) || "its reason"}"`;
+  const stale = result && result.problem === "stale";
+  const detail = stale
+    ? (/[.!?]$/.test(why)
+      ? `Said nothing to judge, but that is not true. ${why}`
+      : `Said nothing to judge, but ${why} is not true.`)
+    : `Said nothing to judge, but it could not be checked again: ${why}${/[.!?]$/.test(why) ? "" : "."}`;
   return {
     ...rest,
     status: "skip",
-    // verifyNa says what it FOUND as a whole sentence ("5 x.y events came since 10-06."). Read it after the
-    // plain line. A bare condition ("the audit having time left to check it again") reads inside the line.
-    detail: clip(/[.!?]$/.test(why)
-      ? `Said nothing to judge, but that is not true. ${why}`
-      : `Said nothing to judge, but ${why} is not true.`),
-    suggestedFix: "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs.",
+    detail: clip(detail),
+    suggestedFix: stale
+      ? "Make this a real check, or fix its nothing-to-judge condition in src/pulse/na-conditions.mjs."
+      : "Read this exact check reason. Fix the read or its time use, then run the pulse again.",
     customerSees: row.customerSees || null
   };
 }
@@ -597,18 +758,45 @@ async function checkRunRecorder({ db, scope, now, functions, sharedClient }) {
 
 function judgeNaVerified(naRows, outcome) {
   const failed = naRows.filter((r) => !(outcome.get(r) || {}).ok);
-  if (failed.length) {
-    const ids = failed.map((r) => String(r.id));
+  const stale = failed.filter((r) => (outcome.get(r) || {}).problem === "stale");
+  const unread = failed.filter((r) => (outcome.get(r) || {}).problem !== "stale");
+
+  if (stale.length) {
+    const staleIds = stale.map((r) => String(r.id));
+    const unreadIds = unread.map((r) => String(r.id));
+    const unreadDetail = unread.length
+      ? ` ${unread.length} more could not be checked again (${listIds(unreadIds)}); those are not called stale.`
+      : "";
     return auditRow(
       AUDIT_ROW_IDS.naVerified,
       "FAIL",
-      `${failed.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} ${plural(failed.length, "was", "were")} not true any more: ${listIds(ids)}. They now count as not checked.`,
+      `${stale.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} ${plural(stale.length, "was", "were")} not true any more: ${listIds(staleIds)}.${unreadDetail} They now count as not checked.`,
       {
-        fix: "Open each named row. If its reason is no longer true, the check has to run now. If the reason is wrong, fix its condition in src/pulse/na-conditions.mjs.",
+        fix: "Open each stale row. If its reason is no longer true, the check has to run now. For a row that could not be read, fix that read and run the pulse again.",
         sees: UNWATCHED
       }
     );
   }
+
+  if (unread.length) {
+    const timedOut = unread.filter((r) => (outcome.get(r) || {}).problem === "timeout");
+    const hardStopped = unread.filter((r) => (outcome.get(r) || {}).problem === "hard-stop");
+    const unreadable = unread.filter((r) => !["timeout", "hard-stop"].includes((outcome.get(r) || {}).problem));
+    const facts = [];
+    if (timedOut.length) facts.push(`${timedOut.length} timed out (${listIds(timedOut.map((r) => String(r.id)))})`);
+    if (hardStopped.length) facts.push(`${hardStopped.length} reached the lane safety stop (${listIds(hardStopped.map((r) => String(r.id)))})`);
+    if (unreadable.length) facts.push(`${unreadable.length} could not be read (${listIds(unreadable.map((r) => String(r.id)))})`);
+    return auditRow(
+      AUDIT_ROW_IDS.naVerified,
+      "skip",
+      `${unread.length} of ${naRows.length} "nothing to judge" ${plural(naRows.length, "row", "rows")} could not be checked again: ${facts.join("; ")}. None was called stale. They now count as not checked.`,
+      {
+        fix: "Read the named rows and their exact skip reasons. Fix the read or its time use, then run the pulse again.",
+        sees: UNWATCHED
+      }
+    );
+  }
+
   const detail = naRows.length
     ? `All ${naRows.length} "nothing to judge" ${plural(naRows.length, "row was", "rows were")} checked again and ${plural(naRows.length, "is", "are")} still true.`
     : "No row said nothing to judge today.";
@@ -781,7 +969,10 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
 
 function judgeNotChecked(rows, contract) {
   const id = AUDIT_ROW_IDS.notChecked;
-  const bad = rows.filter((r) => contract.toContractCheck(r).status === "not_checked").map((r) => String(r.id));
+  const bad = rows.filter((r) => {
+    const mapped = contract.toContractCheck(r);
+    return mapped.status === "not_checked" && mapped.not_proved !== true;
+  }).map((r) => String(r.id));
   if (bad.length) {
     return auditRow(
       id,
@@ -793,7 +984,9 @@ function judgeNotChecked(rows, contract) {
       }
     );
   }
-  return auditRow(id, "PASS", `${rows.length === 1 ? "The 1 check was" : `All ${rows.length} checks were`} green, red, or had a reason to say nothing to judge today. None were left not checked.`);
+  const notProved = rows.filter((r) => contract.toContractCheck(r).not_proved === true).length;
+  const note = notProved ? ` ${notProved} ${plural(notProved, "check is", "checks are")} counted as not proved.` : "";
+  return auditRow(id, "PASS", `${rows.length === 1 ? "The 1 check was" : `All ${rows.length} checks were`} green, red, not proved, or had a reason to say nothing to judge today. None were left not checked.${note}`);
 }
 
 /* `folded` is the count the pulse already folded (it is checked below).
@@ -819,6 +1012,8 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
   const red = counts.red || 0;
   const na = counts.na || 0;
   const notChecked = counts.not_checked || 0;
+  const notProved = counts.not_proved || 0;
+  const unread = Math.max(0, notChecked - notProved);
   const sum = green + red + na + notChecked;
   if (sum !== rows.length) problems.push(`the four counts add to ${sum}, but there are ${rows.length} rows`);
   if (folded != null && !(Number.isInteger(folded) && folded >= 0)) problems.push("the folded count is not a whole number");
@@ -838,7 +1033,7 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
   return auditRow(
     id,
     "PASS",
-    `The report's numbers add up: ${rows.length} rows = ${green} green + ${red} red + ${na} with nothing to judge + ${notChecked} not checked.${foldedNote}`
+    `The report's numbers add up: ${rows.length} rows = ${green} green + ${red} broken + ${notProved} not proved + ${na} with nothing to judge + ${unread} not checked.${foldedNote}`
   );
 }
 
@@ -857,7 +1052,9 @@ function judgeTotals(rows, folded, contract, foldedHere = 0) {
  *   laneNaVerify   (sliceId, code, args) => Promise<boolean|undefined>; see makeLaneNaVerify()
  *   orgId          the company for the morning-report read; the default company when left out
  * Wiring that tests inject, and the pulse leaves alone:
- *   verifyNa, sharedClient, notLiveRows, contract { toContractCheck, countChecks }, budgetMs
+ *   verifyNa, sharedClient, notLiveRows, contract { toContractCheck, countChecks },
+ *   budgetMs (per check), totalBudgetMs (whole audit safety stop),
+ *   naOutcome (an optional early prepareNaAudit result)
  *
  * Returns { checks, rows, folded }:
  *   checks  the input rows; every failed `na` row replaced by a `skip` row, and
@@ -881,34 +1078,47 @@ export async function auditPulse({
   sharedClient = null,
   notLiveRows = null,
   contract = null,
-  budgetMs = AUDIT_BUDGET_MS
+  budgetMs = AUDIT_BUDGET_MS,
+  totalBudgetMs = AUDIT_HARD_STOP_MS,
+  naOutcome = null
 } = {}) {
   try {
     if (!Array.isArray(checks)) throw new TypeError("auditPulse needs the list of checks");
     const api = contract || { toContractCheck, countChecks };
     const ctx = { db, scope, now, functions, laneNaVerify };
 
-    // The reads run side by side. The list of expected checks is only built
-    // here when the pulse did not hand one in.
+    // The list of expected checks is only built here when the pulse did not
+    // hand one in.
     const manifestJob = manifest
       ? Promise.resolve({ want: manifest, error: null })
       : loadManifest({ functions: Array.isArray(functions) ? functions : [], notLiveRows }).then(
         (want) => ({ want, error: null }),
         (err) => ({ want: null, error: clip((err && err.message) || err, 120) })
       );
-    const [outcome, briefs, built, recorder] = await Promise.all([
-      verifyAllNa(checks, { verifyNa, ctx, budgetMs }),
-      checkBriefsSent({ db, now, orgId }),
-      manifestJob,
-      checkRunRecorder({ db, scope, now, functions, sharedClient })
-    ]);
+    // N/A checks may share one transaction client. Finish them before the
+    // other audit database reads so no outside query can occupy that client's
+    // queue while an N/A check's own clock is running.
+    const outcome = await verifyAllNa(checks, { verifyNa, ctx, budgetMs, totalBudgetMs, seededOutcome: naOutcome });
+    const openNaWork = naAuditHasOpenWork(outcome);
+    const blocked = "An earlier nothing-to-judge database read is still running, so this read did not start.";
+    const [briefs, built, recorder] = openNaWork
+      ? [
+        auditRow(AUDIT_ROW_IDS.briefsSent, "skip", blocked),
+        await manifestJob,
+        auditRow(AUDIT_ROW_IDS.runRecorder, "skip", blocked)
+      ]
+      : await Promise.all([
+        checkBriefsSent({ db, now, orgId }),
+        manifestJob,
+        checkRunRecorder({ db, scope, now, functions, sharedClient })
+      ]);
 
     // 1. every failed "nothing to judge" row becomes a skip row.
     const naRows = checks.filter((r) => r && r.status === "na");
     const afterNa = checks.map((r) => {
       if (!r || r.status !== "na") return r;
       const res = outcome.get(r);
-      return res && res.ok ? r : failedNaRow(r, res && res.reason);
+      return res && res.ok ? r : failedNaRow(r, res);
     });
 
     // 2. the claims an audit row answers fold into it.

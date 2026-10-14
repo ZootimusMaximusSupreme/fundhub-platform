@@ -16,6 +16,7 @@ import { Inngest } from "inngest";
 
 import {
   AUDIT_BUDGET_MS,
+  AUDIT_HARD_STOP_MS,
   AUDIT_COVERS,
   BRIEFS_SENT_SQL,
   NAMED_PULSE_IDS,
@@ -25,6 +26,8 @@ import {
   laneCheckIds,
   loadManifest,
   makeLaneNaVerify,
+  naAuditHasOpenWork,
+  prepareNaAudit,
   middlewareNames,
   notLiveIds
 } from "./self-audit.mjs";
@@ -229,6 +232,16 @@ test("audit:not-checked is red and names the ids when a row lands not checked", 
   assert.match(r.suggestedFix, /src\/pulse\/na-conditions\.mjs/);
 });
 
+test("audit:not-checked keeps an explicit proof backlog counted without calling it broken", async () => {
+  const fx = fixture();
+  fx.checks.push({ id: "catalog-route:x", status: "NOT_PROVED", detail: "No exact result test yet." });
+  const res = await run({ contract: null }, fx);
+  const row = rowOf(res, "audit:not-checked");
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /1 check is counted as not proved/);
+  assert.match(rowOf(res, "audit:totals").detail, /1 not proved/);
+});
+
 test("audit:not-checked is one row, lists only the first ten ids, and counts the rest", async () => {
   const fx = fixture();
   for (let i = 0; i < 30; i++) fx.checks.push({ id: `bulk:${i}`, status: "not checked", detail: "Not checked." });
@@ -290,12 +303,14 @@ test("an unknown code or missing args (verifyNa says not ok) cannot stay quiet",
   assert.equal(res.checks.find((c) => c.id === "wf:no-object").status, "skip");
 });
 
-test("a verify that throws counts as not true and the error text is kept", async () => {
+test("a verify that throws stays not checked and keeps the exact read error", async () => {
   const res = await run({ verifyNa: async () => { throw new Error("events table gone"); } });
-  assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /2 could not be read \(wf:evt-a, wf:evt-off\)/);
   assert.equal(
     res.checks.find((c) => c.id === "wf:evt-a").detail,
-    "Said nothing to judge, but the condition being readable (the read failed: events table gone) is not true."
+    "Said nothing to judge, but it could not be checked again: the read failed: events table gone."
   );
 });
 
@@ -336,16 +351,15 @@ test("the three reasons the audit writes itself fit the same sentence", async ()
     const res = await run({ budgetMs: 40, verifyNa });
     seen.push(res.checks.find((c) => c.id === "wf:evt-a").detail);
   }
-  assert.deepEqual(seen.map((d) => d.replace(/\(the read failed: [^)]*\)/, "(the read failed: X)")), [
-    "Said nothing to judge, but the condition being readable (the read failed: X) is not true.",
-    "Said nothing to judge, but the check giving an answer is not true.",
-    "Said nothing to judge, but the condition being readable (the read failed: X) is not true."
+  assert.deepEqual(seen, [
+    "Said nothing to judge, but it could not be checked again: the read failed: events table gone.",
+    "Said nothing to judge, but it could not be checked again: the checker did not give an answer.",
+    "Said nothing to judge, but it could not be checked again: the check did not answer within 40 ms."
   ]);
-  // The audit's budget already spent: the reason is a condition too.
   const late = await run({ budgetMs: -1, verifyNa: okVerify });
   assert.equal(
     late.checks.find((c) => c.id === "wf:evt-a").detail,
-    "Said nothing to judge, but the audit having time left to check it again is not true."
+    "Said nothing to judge, but it could not be checked again: the check was given no time to answer."
   );
 });
 
@@ -485,8 +499,8 @@ test("rows with the same code, args and lane are checked once; different args ar
   assert.equal(calls, 4); // wf:evt-a, wf:evt-off, one for m1+m2 together, one for m3
 });
 
-test("at most eight nothing-to-judge checks run at the same time", async () => {
-  const fx = fixture();
+test("without a shared database, at most eight nothing-to-judge checks run at the same time", async () => {
+  const fx = fixture({ db: null });
   for (let i = 0; i < 40; i++) {
     fx.checks.push({ id: `wf:c${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
   }
@@ -504,13 +518,52 @@ test("at most eight nothing-to-judge checks run at the same time", async () => {
   assert.ok(peak > 1 && peak <= 8, `peak was ${peak}`);
 });
 
-test("a nothing-to-judge check that never answers is cut off inside the budget and counts as not true", async () => {
+test("waiting for a worker slot does not spend a check's own timeout", async () => {
+  const fx = fixture();
+  for (let i = 0; i < 24; i++) {
+    fx.checks.push({ id: `wf:queued-${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
+  }
+  const res = await run({
+    budgetMs: 220,
+    verifyNa: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 90));
+      return { ok: true, reason: "" };
+    }
+  }, fx);
+  assert.equal(rowOf(res, "audit:na-verified").status, "PASS");
+  assert.equal(res.checks.filter((row) => row.status === "na").length, 26);
+});
+
+test("the whole N/A audit stops below the lane limit without calling unread rows stale", async () => {
+  const fx = fixture();
+  for (let i = 0; i < 16; i++) {
+    fx.checks.push({ id: `wf:hung-${i}`, status: "na", detail: "x.", na: { code: "no-demand", args: { n: i } } });
+  }
+  const started = Date.now();
+  const res = await run({
+    budgetMs: 80,
+    totalBudgetMs: 120,
+    verifyNa: () => new Promise(() => {})
+  }, fx);
+  assert.ok(Date.now() - started < 1500, "the lane safety stop must end the audit");
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /timed out/);
+  assert.match(audit.detail, /could not be read/);
+  assert.match(audit.detail, /None was called stale/);
+});
+
+test("a nothing-to-judge check that never answers is cut off and stays not checked, not stale", async () => {
   const started = Date.now();
   const res = await run({ budgetMs: 60, verifyNa: () => new Promise(() => {}) });
   assert.ok(Date.now() - started < 1500, "the audit must not wait forever");
-  assert.equal(rowOf(res, "audit:na-verified").status, "FAIL");
-  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /took too long|having time left/);
+  const audit = rowOf(res, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /1 timed out \(wf:evt-a\)/);
+  assert.match(audit.detail, /1 could not be read \(wf:evt-off\)/);
+  assert.match(res.checks.find((c) => c.id === "wf:evt-a").detail, /did not answer within 60 ms/);
   assert.ok(AUDIT_BUDGET_MS <= 3000);
+  assert.ok(AUDIT_HARD_STOP_MS < 20_000);
 });
 
 test("a row that is not na is never sent to verifyNa", async () => {
@@ -526,7 +579,7 @@ test("audit:totals is green and shows how the numbers add up", async () => {
   const r = rowOf(await run(), "audit:totals");
   assert.equal(r.status, "PASS");
   // 8 checks - 1 claim the audit folds = 7, plus the 8 audit rows = 15.
-  assert.match(r.detail, /15 rows = 13 green \+ 0 red \+ 2 with nothing to judge \+ 0 not checked\./);
+  assert.match(r.detail, /15 rows = 13 green \+ 0 broken \+ 0 not proved \+ 2 with nothing to judge \+ 0 not checked\./);
   // 3 folded before the audit ran + 1 the audit folded itself.
   assert.match(r.detail, /4 claims were folded/);
 });
@@ -1055,6 +1108,266 @@ test("makeLaneNaVerify finds the real lane files by id (no verifier yet is undef
   const verify = makeLaneNaVerify({ gapFiles: GAP_FILES });
   const out = await verify("gap-closer", "no-real-lead", {});
   assert.ok(out === undefined || typeof out === "boolean");
+});
+
+test("cold lane module setup is warmed before a nothing-to-judge check starts its own timer", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let loads = 0;
+  let checks = 0;
+  const laneNaVerify = makeLaneNaVerify({
+    gapFiles: [["gap-cold.mjs", async () => {
+      loads += 1;
+      await wait(35);
+      return { naVerify: { "cold-empty": async () => { checks += 1; return true; } } };
+    }]]
+  });
+  const fx = fixture({ na: false });
+  fx.checks.push({
+    id: "cold:empty",
+    sliceId: "gap-cold",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  });
+  const result = await run({
+    laneNaVerify,
+    budgetMs: 10,
+    totalBudgetMs: 100,
+    verifyNa: async (row, ctx) => {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.find((row) => row.id === "cold:empty").status, "na");
+  assert.equal(loads, 1, "the warmed lane module is reused by the real check");
+  assert.equal(checks, 1);
+});
+
+test("lane checks do not spend their timer waiting behind one serial database client", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let chain = Promise.resolve();
+  const scope = async (fn) => fn({
+    query() {
+      const read = chain.then(async () => { await wait(8); return { rows: [] }; });
+      chain = read.catch(() => {});
+      return read;
+    }
+  });
+  const laneNaVerify = makeLaneNaVerify({
+    scope,
+    gapFiles: [
+      ["gap-built-funnels.mjs", async () => ({
+        naVerify: { "cold-empty": async (_args, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => true)) }
+      })],
+      ["gap-catalog-data.mjs", async () => ({
+        naVerify: { "cold-empty": async (_args, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => true)) }
+      })]
+    ]
+  });
+  const fx = fixture({ na: false });
+  for (let i = 0; i < 6; i += 1) {
+    const lane = i === 0 ? "built-funnels" : "catalog-data";
+    fx.checks.push({
+      id: `${lane}:queued-${i}`,
+      status: "na",
+      detail: "Nothing is here.",
+      na: { code: "cold-empty", args: { n: i } }
+    });
+  }
+  const result = await run({
+    laneNaVerify,
+    budgetMs: 25,
+    totalBudgetMs: 200,
+    verifyNa: async (row, ctx) => {
+      const lane = row.sliceId || row.id.split(":")[0];
+      const held = await ctx.laneNaVerify(lane, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.filter((row) => /^(built-funnels|catalog-data):queued-/.test(row.id) && row.status === "na").length, 6);
+});
+
+test("non-lane checks do not spend their timer waiting behind one serial database client", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let chain = Promise.resolve();
+  const scope = async (fn) => fn({
+    query() {
+      const read = chain.then(async () => { await wait(8); return { rows: [] }; });
+      chain = read.catch(() => {});
+      return read;
+    }
+  });
+  const fx = fixture({ na: false });
+  for (let i = 0; i < 6; i += 1) {
+    fx.checks.push({
+      id: `plain:queued-${i}`,
+      status: "na",
+      detail: "Nothing is here.",
+      na: { code: "plain-empty", args: { n: i } }
+    });
+  }
+  const result = await run({
+    scope,
+    budgetMs: 25,
+    totalBudgetMs: 200,
+    verifyNa: async (_row, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => ({ ok: true, reason: "nothing is here" })))
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.filter((row) => /^plain:queued-/.test(row.id) && row.status === "na").length, 6);
+});
+
+test("a real database timeout stops later serial checks before they can falsely time out in its queue", async () => {
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let chain = Promise.resolve();
+  let naReads = 0;
+  let auditReads = 0;
+  const scope = async (fn) => fn({
+    query(sql) {
+      if (sql === "SELECT 1") naReads += 1;
+      else auditReads += 1;
+      const delay = sql === "SELECT 1" && naReads === 1 ? 30 : 1;
+      const read = chain.then(async () => { await wait(delay); return { rows: [] }; });
+      chain = read.catch(() => {});
+      return read;
+    }
+  });
+  const fx = fixture({ na: false });
+  for (let i = 0; i < 3; i += 1) {
+    fx.checks.push({
+      id: `plain:timeout-${i}`,
+      status: "na",
+      detail: "Nothing is here.",
+      na: { code: "plain-empty", args: { n: i } }
+    });
+  }
+  const result = await run({
+    scope,
+    budgetMs: 12,
+    totalBudgetMs: 100,
+    verifyNa: async (_row, ctx) => ctx.scope((db) => db.query("SELECT 1").then(() => ({ ok: true, reason: "nothing is here" })))
+  }, fx);
+  const audit = rowOf(result, "audit:na-verified");
+  assert.equal(audit.status, "skip");
+  assert.match(audit.detail, /1 timed out/);
+  assert.match(audit.detail, /2 could not be read/);
+  assert.equal(naReads, 1, "later N/A reads never enter the serial client's queue");
+  assert.equal(auditReads, 0, "later audit reads do not enter the queue while timed-out work is still open");
+  assert.match(result.checks.find((row) => row.id === "plain:timeout-1").detail, /did not start/);
+});
+
+test("warming a lane never turns a measured break into nothing to judge", async () => {
+  const laneNaVerify = makeLaneNaVerify({
+    scope: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    gapFiles: [["gap-cold.mjs", async () => ({ naVerify: { "cold-empty": async () => false } })]]
+  });
+  const fx = fixture({ na: false });
+  fx.checks.push({
+    id: "cold:broken",
+    sliceId: "gap-cold",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  });
+  const result = await run({
+    laneNaVerify,
+    verifyNa: async (row, ctx) => {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return held === true ? { ok: true, reason: "nothing is here" } : { ok: false, reason: "a measured row exists" };
+    }
+  }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "FAIL");
+  assert.equal(result.checks.find((row) => row.id === "cold:broken").status, "skip");
+});
+
+test("an early N/A result is reused, while rows added later are still checked", async () => {
+  const earlyRow = {
+    id: "built-funnels:early",
+    sliceId: "gap-built-funnels",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "cold-empty", args: {} }
+  };
+  const laneNaVerify = makeLaneNaVerify({
+    gapFiles: [["gap-built-funnels.mjs", async () => ({ naVerify: { "cold-empty": async () => true } })]]
+  });
+  const asked = [];
+  const verifyNa = async (row, ctx) => {
+    asked.push(row.id);
+    if (row.id === earlyRow.id) {
+      const held = await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+      return { ok: held === true, reason: "nothing is here" };
+    }
+    return { ok: true, reason: "still no event" };
+  };
+  const naOutcome = await prepareNaAudit([earlyRow], { verifyNa, laneNaVerify, now: NOW });
+  const fx = fixture();
+  fx.checks.push({ ...earlyRow });
+  const result = await run({ verifyNa, laneNaVerify, naOutcome }, fx);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(asked.filter((id) => id === earlyRow.id).length, 1, "the early row is not read twice");
+  assert.ok(asked.includes("wf:evt-a") && asked.includes("wf:evt-off"), "later rows are still audited");
+});
+
+test("an early technical timeout is retried in the final audit instead of being reused", async () => {
+  const earlyRow = {
+    id: "catalog-data:alerts",
+    sliceId: "gap-catalog-data",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "catalog-data-empty", args: { table: "alerts" } }
+  };
+  const fx = fixture({ na: false });
+  fx.checks.push(earlyRow);
+  let calls = 0;
+  const result = await run({
+    naOutcome: new Map([[earlyRow, { ok: false, problem: "timeout", reason: "the cold read timed out" }]]),
+    verifyNa: async () => { calls += 1; return { ok: true, reason: "alerts is still empty" }; }
+  }, fx);
+  assert.equal(calls, 1);
+  assert.equal(rowOf(result, "audit:na-verified").status, "PASS");
+  assert.equal(result.checks.find((row) => row.id === earlyRow.id).status, "na");
+});
+
+test("an early N/A query still running is never started again by the final audit", async () => {
+  const earlyRow = {
+    id: "catalog-data:alerts",
+    sliceId: "gap-catalog-data",
+    status: "na",
+    detail: "Nothing is here.",
+    na: { code: "catalog-data-empty", args: { table: "alerts" } }
+  };
+  const lateRow = {
+    id: "catalog-data:events",
+    sliceId: "gap-catalog-data",
+    status: "na",
+    detail: "Nothing is here either.",
+    na: { code: "catalog-data-empty", args: { table: "events" } }
+  };
+  let reads = 0;
+  const laneNaVerify = makeLaneNaVerify({
+    gapFiles: [["gap-catalog-data.mjs", async () => ({
+      naVerify: { "catalog-data-empty": async () => { reads += 1; return new Promise(() => {}); } }
+    })]]
+  });
+  const verifyNa = async (row, ctx) => {
+    await ctx.laneNaVerify(row.sliceId, row.na.code, row.na.args);
+    return { ok: true, reason: "nothing is here" };
+  };
+  const naOutcome = await prepareNaAudit([earlyRow], {
+    verifyNa,
+    laneNaVerify,
+    budgetMs: 10,
+    totalBudgetMs: 25
+  });
+  assert.equal(naAuditHasOpenWork(naOutcome), true);
+  const fx = fixture({ na: false, db: null });
+  fx.checks.push(earlyRow, lateRow);
+  const result = await run({ verifyNa, laneNaVerify, naOutcome, db: null }, fx);
+  assert.equal(reads, 1, "the final audit starts no verifier while an early query is still open");
+  assert.equal(rowOf(result, "audit:na-verified").status, "skip");
+  assert.match(result.checks.find((row) => row.id === lateRow.id).detail, /did not start/);
 });
 
 // ── the manifest against the real code ───────────────────────────────────────

@@ -45,7 +45,7 @@ function alsoOf(check) {
 
 export const NA_NO_REASON = "Said nothing to judge but gave no reason the computer can check";
 
-/* One pulse check (PASS/FAIL/skip/na or up/down) → one contract row.
+/* One pulse check (PASS/FAIL/NOT_PROVED/skip/na or up/down) → one contract row.
    The stored statuses are green, red, na and not_checked. */
 export function toContractCheck(check) {
   const raw = String(check.status || "");
@@ -53,6 +53,7 @@ export function toContractCheck(check) {
   let status = "not_checked";
   if (raw === "PASS" || raw === "up") status = proof ? "green" : "not_checked";
   else if (raw === "FAIL" || raw === "down") status = "red";
+  else if (raw === "NOT_PROVED") status = "not_checked";
   else if (raw === "na" && !naProblem(check.na)) status = "na";
   const out = { id: String(check.id), group: groupOf(check), status };
   if (status === "green") out.proof = proof;
@@ -64,6 +65,10 @@ export function toContractCheck(check) {
     out.na_args = args;
   } else if (status === "not_checked") {
     out.reason = raw === "na" ? NA_NO_REASON : (proof || "passed with no proof — not counted");
+    if (raw === "NOT_PROVED") {
+      out.not_proved = true;
+      if (check.suggestedFix) out.fix = check.suggestedFix;
+    }
   } else {
     out.proof = proof;
     out.customer_sees = check.customerSees ||
@@ -99,15 +104,24 @@ export function applyRepeats(checks, { date, previous } = {}) {
 }
 
 export function countChecks(checks) {
-  const n = { green: 0, red: 0, na: 0, not_checked: 0 };
-  for (const c of checks) n[c.status] = (n[c.status] || 0) + 1;
+  const n = { green: 0, red: 0, na: 0, not_checked: 0, not_proved: 0 };
+  for (const c of checks) {
+    n[c.status] = (n[c.status] || 0) + 1;
+    if (c.status === "not_checked" && c.not_proved === true) n.not_proved += 1;
+  }
   return n;
 }
 
 export function buildScorecard({ checks = [], now = new Date(), previous = null } = {}) {
   const date = phoenixDate(now);
   const rows = applyRepeats(checks.map(toContractCheck), { date, previous });
-  return { date, ran_at: now.toISOString(), checks: rows };
+  const counts = countChecks(rows);
+  return {
+    date,
+    ran_at: now.toISOString(),
+    checks: rows,
+    counts: { broken: counts.red, not_proved: counts.not_proved },
+  };
 }
 
 export async function loadPreviousScorecard(db, orgId, date) {

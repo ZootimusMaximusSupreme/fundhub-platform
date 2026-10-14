@@ -1,5 +1,5 @@
 // Exact read-only saved-result judges for display controls. Browser contracts
-// prove the click. This lane proves the named durable result, or stays red.
+// prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
 
@@ -10,7 +10,7 @@ export const DISPLAY_TRACKING_CASES = Object.freeze(catalog.displayTrackingCases
 
 export const CHECK_IDS = Object.freeze(DISPLAY_TRACKING_CASES.map((entry) => entry.id));
 export const PASS_CAPABLE_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").length;
-export const ALWAYS_RED_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
+export const UNMEASURED_CONTRACT_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
 export const SQL_BATCHES = Object.freeze([
   ...new Set(DISPLAY_RESULT_CASES
     .filter((entry) => entry.contract.mode === "query")
@@ -31,17 +31,17 @@ export function judgeDisplayResult(entry, stats = null) {
   if (!entry.contract) {
     return result(
       entry.id,
-      "FAIL",
+      "NOT_PROVED",
       `${entry.surface} — ${entry.control}: no exact safe action/result contract is attached yet.`,
-      `Add a receipt that links this exact control's input to its saved result. Do not auto-fix. Chris fixes reds.`,
+      `Add a receipt that links this exact control's input to its saved result, then let the read-only pulse judge it.`,
     );
   }
   if (entry.contract.mode === "always-red") {
     return result(
       entry.id,
-      "FAIL",
+      "NOT_PROVED",
       `${entry.surface} — ${entry.control}: ${entry.contract.requirement}`,
-      `Add the missing exact input-to-result receipt for this control. Do not auto-fix. Chris fixes reds.`,
+      `Add the missing exact input-to-result receipt for this control, then let the read-only pulse judge it.`,
     );
   }
 
@@ -79,11 +79,11 @@ function skipped(entry, error) {
 
 async function retiredPageState(ctx = {}) {
   const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
-  if (typeof fetchImpl !== "function") return { status: "skip", detail: "the live retired-page redirect was not read: no fetch in this run." };
-  const base = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
-  const oldUrl = `${base}/partner/autopsy/`;
-  const menuUrl = `${base}/partner/menu/`;
+  if (typeof fetchImpl !== "function") return { status: "FAIL", detail: "the live retired-page redirect could not be proved because this run has no GET client." };
   try {
+    const base = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
+    const oldUrl = `${base}/partner/autopsy/`;
+    const menuUrl = `${base}/partner/menu/`;
     const response = await fetchImpl(oldUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
     const location = response.headers.get("location");
     if (response.status !== 302 || !location || new URL(location, oldUrl).href !== menuUrl) {
@@ -91,9 +91,14 @@ async function retiredPageState(ctx = {}) {
     }
     const menu = await fetchImpl(menuUrl, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
     if (menu.status !== 200) return { status: "FAIL", detail: "the retired page redirects, but the active offer menu does not open." };
+    const html = await menu.text();
+    if (!/<h1\b[^>]*>\s*Four Ways In\. You Can Start Anywhere\.\s*<\/h1>/i.test(html)
+      || !/<a\b[^>]*href=["']\/partner\/["']/i.test(html)) {
+      return { status: "FAIL", detail: "the retired page redirects, but its destination is not the active offer menu." };
+    }
     return { status: "na", detail: "the live retired page redirects to the active offer menu, and that menu opens." };
   } catch (error) {
-    return { status: "skip", detail: `the live retired-page redirect was not read: ${String(error?.message || error).slice(0, 120)}.` };
+    return { status: "FAIL", detail: `the live retired-page redirect could not be proved by GET: ${String(error?.message || error).slice(0, 120)}.` };
   }
 }
 

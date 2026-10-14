@@ -231,6 +231,7 @@ const manyRows = (n, make) => Array.from({ length: n }, (_, i) => make(i));
 const greenRow = (i) => ({ id: `reg:ok-${i}`, status: "green", proof: "answered 200" });
 const naRow = (i) => ({ id: `gap-ads:quiet-${i}`, status: "na", reason: "No ad is running. Judged the day one runs.", na_code: "no-running-ad", na_args: {} });
 const redRow = (id, extra = {}) => ({ id, status: "red", proof: "x", ...extra });
+const notProvedRow = (i) => ({ id: `catalog-route:${i}`, status: "not_checked", not_proved: true, reason: "No exact result test yet." });
 
 /* From the real tripwire map: a check id that is money only, one that is customer only,
    and one that is on both. */
@@ -255,9 +256,9 @@ test("the systems line counts green, red and 'nothing to judge' apart, and the n
   ];
   const s = summarizeSystems({ checks });
   assert.equal(checks.length, 757);
-  assert.equal(s.line, "Systems: 690 of 757 checks green. 3 red: job:one, job:two, job:three. 64 had nothing to judge today.");
-  assert.deepEqual([s.total, s.green, s.red, s.na, s.not_checked], [757, 690, 3, 64, 0]);
-  assert.equal(s.green + s.red + s.na + s.not_checked, s.total);
+  assert.equal(s.line, "Systems: 690 of 757 checks green. 3 broken: job:one, job:two, job:three. 64 had nothing to judge today.");
+  assert.deepEqual([s.total, s.green, s.red, s.broken, s.not_proved, s.na, s.not_checked], [757, 690, 3, 3, 0, 64, 0]);
+  assert.equal(s.green + s.red + s.not_proved + s.na + s.not_checked, s.total);
   assert.equal(s.reds.length, 3);
 });
 
@@ -281,6 +282,29 @@ test("'Nothing needs you' is never said while a row is red or not checked", () =
   assert.equal(clean.line, "Systems: 2 of 2 checks green. Nothing needs you.");
 });
 
+test("the systems line separates broken from not proved, and a marked real break stays broken", () => {
+  const s = summarizeSystems({ checks: [
+    greenRow(1),
+    redRow("meta-sync", { not_proved: true }),
+    notProvedRow(1),
+    notProvedRow(2),
+    { id: "gap-x:unread", status: "not_checked", reason: "database did not answer" },
+  ] });
+  assert.deepEqual(
+    { broken: s.broken, not_proved: s.not_proved, not_checked: s.not_checked },
+    { broken: 1, not_proved: 2, not_checked: 1 }
+  );
+  assert.equal(s.line, "Systems: 1 of 5 checks green. 1 broken: meta-sync. 2 not proved yet. 1 not checked.");
+  assert.doesNotMatch(s.line, /Nothing needs you/);
+});
+
+test("not-proved rows never go quiet or say nothing needs you", () => {
+  const s = summarizeSystems({ checks: [greenRow(1), notProvedRow(1), notProvedRow(2)] });
+  assert.equal(s.line, "Systems: 1 of 3 checks green. 2 not proved yet.");
+  assert.equal(s.not_proved, 2);
+  assert.doesNotMatch(s.line, /Nothing needs you/);
+});
+
 test("an odd status counts as not checked, never as green, red or na", () => {
   const s = summarizeSystems({ checks: [greenRow(1), { id: "a", status: "skip" }, { id: "b" }, { id: "c", status: "NA" }] });
   assert.deepEqual([s.green, s.red, s.na, s.not_checked], [1, 0, 0, 3]);
@@ -289,8 +313,8 @@ test("an odd status counts as not checked, never as green, red or na", () => {
 test("a missing scorecard still returns every key, with na at 0", () => {
   const s = summarizeSystems(null);
   assert.deepEqual(
-    { status: s.status, total: s.total, green: s.green, red: s.red, na: s.na, not_checked: s.not_checked, reds: s.reds },
-    { status: "missing", total: 0, green: 0, red: 0, na: 0, not_checked: 0, reds: [] }
+    { status: s.status, total: s.total, green: s.green, red: s.red, broken: s.broken, not_proved: s.not_proved, na: s.na, not_checked: s.not_checked, reds: s.reds },
+    { status: "missing", total: 0, green: 0, red: 0, broken: 0, not_proved: 0, na: 0, not_checked: 0, reds: [] }
   );
 });
 
@@ -316,7 +340,7 @@ test("reds are named in this order: new today, money tripwire, customer tripwire
     "job:plain-old",
     "job:plain-old-two"
   ]);
-  assert.match(s.line, /7 red: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
+  assert.match(s.line, /7 broken: job:plain-new, [^,]+, [^,]+, and 4 more in the report\./);
 });
 
 test("a new red that is a money tripwire comes before a new red that is plain", () => {
@@ -339,5 +363,5 @@ test("the sort never loses or changes a red, and the day suffix stays on reds pa
   const s = summarizeSystems({ checks });
   assert.equal(s.reds.length, 2);
   assert.equal(s.reds[1], checks[0], "the very same row objects");
-  assert.match(s.line, /2 red: job:b, job:a \(day 4\)\./);
+  assert.match(s.line, /2 broken: job:b, job:a \(day 4\)\./);
 });
