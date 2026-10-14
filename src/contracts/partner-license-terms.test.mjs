@@ -417,6 +417,9 @@ const STAMP_SITES = Object.freeze({
   "src/pulse/beats/lib/trip-partner-sql.mjs":
     "READS ONLY. The partner trip check selects the column to say whether a partner was waiting on the " +
     "signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/catalog/proofs/s1-door-contracts.mjs":
+    "NAMES ONLY. A proof contract: it carries the row's own words ('... agreement_signed_at ...') so the " +
+    "proof can be matched to its route row. It has no SQL and cannot write the partner row.",
   "src/pulse/coverage/trip-test-kit.mjs":
     "READS ONLY. A test helper for the trip lane SQL tests. It names the column in a made-up table " +
     "shape so a typo fails; it runs one SELECT inside BEGIN READ ONLY and always rolls back. No write."
