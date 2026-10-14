@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 
 import { S4_ROWS } from "./s4-rows.mjs";
 
+// A callback with nothing in it, or nothing but comments, proves nothing.
+const EMPTY_BODY = /^(?:async\s*)?(?:function\s*\w*\s*)?\(\s*\w*\s*\)\s*(?:=>\s*)?\{\s*\}$/;
+const isEmptyCallback = (run) => EMPTY_BODY.test(run.toString().replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "").trim());
+
 /**
  * The rows one test file proves, read from the row tables (s4-rows.mjs). A row cannot be
  * attached without being exercised: assertAllClaimed() names every listed row that never ran.
@@ -31,7 +35,7 @@ export function proofRows(testFile) {
     // A row is claimed only when its own assertions finish inside `run`. An empty
     // callback would claim a row without proving it, so it is refused.
     async check(matcher, run, surface = null) {
-      if (typeof run !== "function" || /^(async\s*)?\(\w*\)\s*=>\s*\{\s*\}$/.test(run.toString().trim())) {
+      if (typeof run !== "function" || isEmptyCallback(run)) {
         throw new Error("proof.check needs the row's own assertions in its callback, not an empty one");
       }
       const row = find(matcher, surface);

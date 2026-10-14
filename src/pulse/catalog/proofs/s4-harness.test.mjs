@@ -19,6 +19,17 @@ test("an empty callback is refused and claims nothing", async () => {
   assert.throws(() => proof.assertAllClaimed(), /Suggestion buttons x3/);
 });
 
+test("a callback that holds only comments is refused too", async () => {
+  const proof = proofRows(HELPER);
+  await assert.rejects(proof.check(SUGGESTIONS, async () => { /* the buttons are checked elsewhere */ }), /not an empty one/);
+  await assert.rejects(proof.check(SUGGESTIONS, async (row) => {
+    // TODO prove it
+    /* later */
+  }), /not an empty one/);
+  await assert.rejects(proof.check(SUGGESTIONS, async function () {}), /not an empty one/);
+  assert.throws(() => proof.assertAllClaimed(), /Suggestion buttons x3/);
+});
+
 test("a callback that fails leaves its row unclaimed", async () => {
   const proof = proofRows(HELPER);
   await assert.rejects(proof.check(SUGGESTIONS, async () => { assert.equal(1, 2); }));

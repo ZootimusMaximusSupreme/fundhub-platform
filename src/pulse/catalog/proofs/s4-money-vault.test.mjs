@@ -77,9 +77,16 @@ for (const target of [PAGE, FRAME]) {
         // a link that has lived its 15 minutes is not followed: the paper list is read again instead
         const old = await openVault(open, target, { expiresAt: "2000-01-01T00:00:00.000Z" });
         const reads = old.reads.length;
+        // A bubbling listener on window runs after the page's own click handler, so it sees whether
+        // the page cancelled the link. A cancelled link cannot open a tab, with no wait on a popup.
+        await old.page.evaluate(() => {
+          window.__s4Clicks = [];
+          window.addEventListener("click", (e) => window.__s4Clicks.push({ cancelled: e.defaultPrevented, link: !!e.target.closest("a.vt-view") }));
+        });
         await old.page.locator(`li.vt-doc[data-doc="${doc.id}"] a.vt-view`).click();
         await waitFor(() => old.reads.length === reads + 1);
         await old.page.waitForFunction(() => /That link timed out, so we made a fresh one\. Tap View again\./.test(document.body.innerText));
+        assert.deepEqual(await old.page.evaluate(() => window.__s4Clicks), [{ cancelled: true, link: true }], "the dead link click was cancelled");
         assert.equal(old.page.context().pages().length, 1, "the dead link was not opened");
         await old.page.close();
       }, surface);

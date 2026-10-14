@@ -80,10 +80,13 @@ const QUESTIONS = {
   post: [{ id: "result", prompt: "What happened with your funding?" }],
 };
 // One interview per stage: the halfway call asks the mid questions, the after-funding call the post ones.
+// `channel` is the way of speaking the box starts on for that stage.
 const INTERVIEWS = [
-  { stage: "mid", task: TASK, source: "customer-insights-mid", answerBox: "why_buy", answer: "I want a line of credit for inventory." },
-  { stage: "post", task: POST_TASK, source: "customer-insights-post", answerBox: "result", answer: "Two cards for $40,000." },
+  { stage: "mid", task: TASK, source: "customer-insights-mid", answerBox: "why_buy", answer: "I want a line of credit for inventory.", channel: "call" },
+  { stage: "post", task: POST_TASK, source: "customer-insights-post", answerBox: "result", answer: "Two cards for $40,000.", channel: "google_meet" },
 ];
+// The "How did you speak to them" box offers these three, in this order, for both stages.
+const CHANNELS = [["call", "Phone call"], ["google_meet", "Google Meet"], ["ai_reachout", "AI reach-out"]];
 
 async function openQueue(open) {
   const saves = [];
@@ -111,6 +114,9 @@ test("the interview form sends the channel, each answer and the notes, and nothi
       await page.waitForSelector(`#qa-${interview.answerBox}`);
       const boxes = await page.locator('[id^="qa-"]').evaluateAll((els) => els.map((el) => el.id.replace("qa-", "")));
       assert.deepEqual(boxes, QUESTIONS[interview.stage].map((q) => q.id), `${interview.stage}: one box per question for this stage`);
+      const chan = await page.locator("#qChan").evaluate((el) => ({ value: el.value, options: [...el.options].map((o) => [o.value, o.textContent]) }));
+      assert.deepEqual(chan.options, CHANNELS, `${interview.stage}: the three ways of speaking`);
+      assert.equal(chan.value, interview.channel, `${interview.stage}: the box starts on ${interview.channel}`);
       await page.locator(`[data-save="${interview.task}"]`).click();
       assert.equal(await page.locator("#qSay").innerText(), "Write down at least one answer before saving.");
       assert.deepEqual(saves, [], "nothing written, nothing sent");

@@ -30,6 +30,36 @@ A checker broke the product on purpose and judged the proofs. These are the fixe
 7. **One copy of the bank-link stub.** `bankLink()` in `s4-money-harness.mjs` replaces two copies of the Plaid script and the two link handlers.
 8. **A short queue for browsers.** `s4-browser-slots.mjs`: at most 3 S4 files hold a Chromium at the same time (set `S4_BROWSER_PLACES` to change). The focused proof run starts all 118+ files at once, and the extra Chromiums were crowding out the other browser specs (see "What I ran").
 
+## Second check round (finalizer, 2026-10-14)
+
+A second checker broke the product on purpose again and found three proofs that stayed green when the page was wrong. All three are now fixed in the tests. No product file was changed. No row was added or taken away, so the count stays 86 not proved and 193 proved (measured again with the same four lanes).
+
+1. **Vault "View" link that has timed out.** The old check counted open browser tabs right after the click. A new tab opens a moment late, so the check could pass even when the page let the dead link open. Now the test listens to the click itself and asks one question: did the page cancel it? If the page stops cancelling the click, the test goes red every time (3 of 3 runs). The tab count check is still there.
+2. **CSM queue, "How did you speak to them" box.** The test never looked at the choices or at which one is picked first. Now it checks, for both interview stages, that the box offers Phone call, Google Meet and AI reach-out in that order, and that the halfway call starts on Phone call and the after-funding call starts on Google Meet. Each of these breaks now turns the test red: Phone call removed, AI reach-out removed, after-funding call forced to start on Phone call.
+3. **The "empty callback" guard.** It only caught a callback with nothing inside it. A callback with only comments inside slipped through, and so did one written with the word `function`. Both are refused now, and `s4-harness.test.mjs` has a new test for it (it fails on the old guard, passes on the new one).
+
+Break checks for this round (each break made alone, the test run, then the file put back with git checkout; git status showed only the test files changed):
+
+| Break | Test file | Result |
+|---|---|---|
+| Vault: `e.preventDefault()` removed from the dead-link branch | `s4-money-vault.test.mjs` | RED 3 of 3 (the row is not claimed) |
+| CSM queue: Phone call option removed | `s4-staff-desks-small.test.mjs` | RED |
+| CSM queue: AI reach-out option removed | `s4-staff-desks-small.test.mjs` | RED |
+| CSM queue: after-funding call starts on Phone call | `s4-staff-desks-small.test.mjs` | RED |
+| Guard: old regex put back | `s4-harness.test.mjs` | RED (new test), green with the new guard |
+
+What I ran this round (all measured, load average 38 to 96 on 10 cores the whole time, from other builders):
+
+- Not proved count, same four lanes, same slice file: 86 before, 86 after. Proved: 193 before, 193 after.
+- The three files I changed, alone, 3 times: 14 tests, 14 pass, 0 fail, 0 skipped, each time.
+- `npm run lint`: clean (3485 files).
+- Catalog and lane suites (`src/pulse/catalog/**`, `gap-catalog*`, `gap-door-batch*`), 3 runs of 1372 tests each: run 1 = 1371 pass, 1 fail; run 2 = 1367 pass, 5 fail; run 3 = 1369 pass, 2 fail, 1 cancelled. No test was skipped. **No S4 test failed in any run** (every S4 test shows `ok` at every depth, and so does the new guard test). The failures are all in suites that are not S4, and all are time-outs under load:
+  - "every test named by a flow proof passes" (`flow-result-proofs.test.mjs`): all 3 runs. Runs 1 and 2: its child run of `src/sales/closer-deck.test.mjs` was killed after 24 of 24 tests had printed `ok` (two tests took 35 to 43 seconds). Run 3: the test hit its own 240 second limit.
+  - "reviewed read proofs pass through the real rendered pages" (`read-reviewed-e2e.test.mjs`): runs 2 and 3. Same `e2e/agent-editor-promote-demote.spec.mjs` wait for `#a_esc` that this file already lists as finding 8, and a 30 second spec time-out in `ccp-headline`. In run 2 the same failure also sat inside "the 64 proved read rows" and inside "the focused proof test runs every executable test named by every case".
+  - "the focused proof test runs every executable test named by every case": runs 2 and 3. Run 2 failed on the reviewed read proofs above. Run 3 failed on `e2e/teleprompter-touch.spec.mjs:715` (volume buttons, 373 of 374 passed).
+  - "public display contracts click every mapped control" (run 2): a 30 second click time-out in `display-batch-public-ui.test.mjs`.
+  - These are the same load flakes this file already described for the first round. I did not touch any of them.
+
 ## What I built (unchanged shape)
 
 One shared harness, one row table, one shard, and 27 test files. Every test opens the real page in Chromium, answers `/api` with fake data, clicks the control, and checks the exact request and what the screen then says.
