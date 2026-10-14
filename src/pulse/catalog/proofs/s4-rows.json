@@ -336,9 +336,11 @@
     "PDF editor: Add a signer",
     "PDF editor: field type chips (Text, Date, Tick box, Signature, Initials), Belongs to, Filled from, selected-box name / kind / signer / source / must-fill / Remove",
     "PDF viewer (pdf.js, vendored)",
-    "Save (create a new wording)",
-    "Save (edit an existing wording)",
     "Upload a PDF: button, file picker, name prompt"
+   ],
+   "notAttached": [
+    "Save (create a new wording)",
+    "Save (edit an existing wording)"
    ]
   }
  ],
@@ -347,12 +349,14 @@
    "sourceFile": "desks-b.json",
    "surface": "content-admin.html",
    "controls": [
+    "Upload welcome video: Choose file button and drag-and-drop box",
+    "Upload welcome video: Title, Duration, Assign to tier"
+   ],
+   "notAttached": [
     "Locked tile editor: client-facing name box",
     "Locked tile editor: outcome copy box (one line shown to the client)",
     "Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
-    "Save changes button (saves tiles and the tier-to-video map)",
-    "Upload welcome video: Choose file button and drag-and-drop box",
-    "Upload welcome video: Title, Duration, Assign to tier"
+    "Save changes button (saves tiles and the tier-to-video map)"
    ]
   }
  ],
@@ -361,10 +365,12 @@
    "sourceFile": "desks-b.json",
    "surface": "consent-capture.html",
    "controls": [
-    "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
     "How did they agree: 'They typed their name' / 'They ticked a box' / 'They signed' buttons",
     "Name box, Expires date box",
     "Signature pad (draw) and its Clear button; empty pad refused"
+   ],
+   "notAttached": [
+    "Consent wording, version badge and current status banner (read from the server, never typed in the page)"
    ]
   }
  ],
@@ -373,11 +379,13 @@
    "sourceFile": "desks-f.json",
    "surface": "soft-pull-approve.html",
    "controls": [
-    "Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner",
     "Disclosure card: the soft-pull authorization words and version (server copy, never from the body)",
     "Form fields: full legal name, SSN, date of birth, street, city, state, ZIP",
     "Link wall: 'This page needs a full link' / 'Link problem' (missing field, bad signature, expired link, no server)",
     "Page open: verifies the signed link and reads the disclosure, price and contact (no staff login; HMAC org, client, exp, sig)"
+   ],
+   "notAttached": [
+    "Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner"
    ]
   }
  ],
@@ -385,7 +393,8 @@
   {
    "sourceFile": "desks-b.json",
    "surface": "documents.html",
-   "controls": [
+   "controls": [],
+   "notAttached": [
     "Contract cell: Void button (asks for a reason in a prompt; owner/admin only)"
    ]
   },
@@ -406,6 +415,17 @@
     "Outcome buttons 1-5: Deposit, Downsell, Callback, No show, Not a fit (also keys 1-5)",
     "Repair referral checkbox",
     "Save · next call button"
+   ]
+  }
+ ],
+ "s4-lenders.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
+    "AI bureau config row Save button (feeds the AI inquiry caller's dial number and IVR path)",
+    "Apply dialog: Copy proxy string, End session, Close (manual fallback when the Chrome extension is absent)",
+    "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)"
    ]
   }
  ]

@@ -45,7 +45,8 @@ export function entryUrl(entry, { file, tab, clientId }) {
   return entry === "frame" ? `/app/financeos.html${query}#${tab}` : `/app/${file}${query}`;
 }
 
-export async function waitFor(done, ms = 4000) {
+// Generous, because the focused proof run starts every test file at once.
+export async function waitFor(done, ms = 20_000) {
   const end = Date.now() + ms;
   while (!done() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 25));
   if (!done()) throw new Error("timed out waiting for the page");

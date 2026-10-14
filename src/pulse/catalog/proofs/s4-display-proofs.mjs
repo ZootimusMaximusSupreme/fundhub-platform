@@ -1,6 +1,8 @@
 // Display proof cases for the S4 slice (customer-data screens). Each listed
 // control is exercised by the test file named beside it in s4-rows.json, which
-// drives the real page in Chromium against fake /api answers.
+// drives the real page in Chromium against fake /api answers. A control under
+// "notAttached" is also exercised, but its pulse contract asks for a saved
+// receipt, so it is left out here and stays reported as not proved.
 
 import S4_ROWS from "./s4-rows.json" with { type: "json" };
 

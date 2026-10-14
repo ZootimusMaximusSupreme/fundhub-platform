@@ -88,7 +88,9 @@ export function proofRows(testFile) {
   const name = path.basename(testFile.startsWith("file:") ? fileURLToPath(testFile) : testFile);
   const groups = S4_ROWS[name];
   if (!groups) throw new Error(`s4-rows.json has no rows for ${name}`);
-  const controls = groups.flatMap((group) => group.controls.map((control) => ({ ...group, control })));
+  // notAttached: exercised here, but the pulse lane still wants a saved receipt for
+  // that control, so the row is deliberately not handed to the catalog.
+  const controls = groups.flatMap((group) => [...group.controls, ...(group.notAttached || [])].map((control) => ({ ...group, control })));
   const claimed = new Set();
   const find = (matcher, surface = null) => {
     const hits = controls.filter((row) => (!surface || row.surface === surface)

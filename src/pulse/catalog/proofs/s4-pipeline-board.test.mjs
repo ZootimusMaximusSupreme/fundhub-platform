@@ -65,7 +65,7 @@ async function dragCard(page, fromCard, toColumn) {
   await page.mouse.up();
 }
 
-async function until(done, ms = 4000) {
+async function until(done, ms = 20_000) {
   const end = Date.now() + ms;
   while (!done() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 25));
 }
