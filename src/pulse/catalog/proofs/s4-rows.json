@@ -518,5 +518,27 @@
     "Pull form after paying: name, date of birth, SSN, address, soft-pull consent. Posts to /api/public/slo-pull, which stores identity against the paid file and emits diagnostic.paid."
    ]
   }
+ ],
+ "s4-brand-studio.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "brand-studio.html",
+   "controls": [
+    "Business address input",
+    "Copy history: Use this version (restore) button",
+    "Copy voice select (plain, technical, warm)",
+    "Create pages from selected funnels button",
+    "Domain input",
+    "Funnel cards (5): Application, Diagnostic, Education, Affiliate recruit, Booking (toggle selection)",
+    "Legal entity input (injected into every disclosure)",
+    "Page row: Publish button",
+    "Page row: Unpublish button",
+    "Save & apply button",
+    "Submit for approval button (partner mode)",
+    "Support email input",
+    "Verify button (DNS TXT check; owner and admin only)",
+    "Wordmark file input (SVG or PNG under 400 KB)"
+   ]
+  }
  ]
 }
