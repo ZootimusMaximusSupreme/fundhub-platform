@@ -271,5 +271,33 @@
     "I'm ready to get funded (the one primary button)"
    ]
   }
+ ],
+ "s4-money-vault.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money-vault.html",
+   "controls": [
+    "Open the page (client, or staff with ?client_id=); staff controls render only when a client id was passed AND the server says audience staff",
+    "Staff: Accept (button on a file waiting for review; opens a form when the paper needs months or a date)",
+    "Staff: Add a paper (title, whose paper, why the lender wants it, file type, how many files)",
+    "Staff: Change (re-open the other decision on an already decided file)",
+    "Staff: Files to sort - File and accept (pick which paper, months/years, date) and Reject (which paper it was meant to be, reason)",
+    "Staff: Reject (opens the reject form) + reason field + Reject file (the client reads the reason)",
+    "Upload / Upload more / Upload a new copy / Upload a newer one (per paper; hidden multi-file input, PDF JPG PNG)",
+    "View (link to the file; signed link lives 15 minutes, an expired one is replaced by a fresh read)"
+   ]
+  },
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "financeos.html#vault",
+   "controls": [
+    "Client: 'Send' / pick-file button on a paper (one or many files)",
+    "Papers list: progress, two groups, each paper's status in words, 'View' link (15-minute signed link)",
+    "Staff only: 'Accept' (asks months or end date when the paper needs it) and 'Accept file'",
+    "Staff only: 'Add a paper' form (name, whose paper, why the lender wants it, file type, how many files)",
+    "Staff only: 'Change' (flip an accepted file to rejected or back), 'Cancel'",
+    "Staff only: files to sort - 'File and accept' / 'Reject' with the paper picker"
+   ]
+  }
  ]
 }
