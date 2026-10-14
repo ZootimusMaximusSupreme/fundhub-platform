@@ -140,3 +140,4 @@ Write the manifest on the board when done. 4th grade English for Chris.
 ## Blockers and open questions
 
 - W1: waiting on the App Store Connect API key from Chris.
+- W1, 2026-10-13 night: Chris enrolled in the Apple Developer Program. His business partner's card paid the $99, so Apple asked for Chris's photo ID. Chris sent it. Enrollment is waiting on Apple's manual review (Apple gives no time; forum reports say a few days to 2+ weeks). The API key can only be made after Apple approves. If there is no answer by 2026-10-20, contact Apple with the Enrollment ID: https://developer.apple.com/contact/
