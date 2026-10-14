@@ -1,3 +1,5 @@
+import { isS2ProvedFlowRow } from "./s2-flow-contracts.mjs";
+
 export const FLOW_GAP_LANE = "src/pulse/coverage/gap-catalog-flow.mjs";
 export const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
 
@@ -52,12 +54,14 @@ export function isInactiveTemplateRow(row) {
 }
 
 export function needsMessageGapMonitor(row) {
+  if (isS2ProvedFlowRow(row)) return false;
   return isInactiveTemplateRow(row)
     || row?.surface === "template:payment_link_notice"
     || MESSAGE_CONTROL_SURFACES.has(row?.surface);
 }
 
 export function needsJourneyGapMonitor(row) {
+  if (isS2ProvedFlowRow(row)) return false;
   const roleAccess = /#(?:reach-.+|stays-blocked)$/.test(String(row?.surface || ""));
   return roleAccess || JOURNEY_RESULT_SURFACES.has(row?.surface);
 }
@@ -75,7 +79,7 @@ export function flowGapRows(messages, journeys, agents) {
 }
 
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
-  message: 177,
-  journey: 105,
+  message: 171,
+  journey: 11,
   agent: 1,
 });

@@ -68,12 +68,12 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("all 17 outbound message leftovers stay red without a final provider receipt", () => {
+test("all 11 outbound message leftovers stay red without a final provider receipt", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 17);
+  assert.equal(rows.length, 11);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }
@@ -89,16 +89,25 @@ test("the journeys proxy stays red without a fixed live prompt and judged runtim
   assert.deepEqual(proofTestFiles(rows[0].proof), [FLOW_GAP_TEST]);
 });
 
-test("route counts never prove signed-in role access", () => {
+test("route counts never prove signed-in role access: only a test that signs in does", () => {
   const rows = loadRows("journeys.json").filter((row) => (
     /#(?:reach-.+|stays-blocked)$/.test(String(row.surface || ""))
   ));
   assert.equal(rows.length, 90);
+  const probe = fs.readFileSync(new URL("src/pulse/catalog/proofs/s2-role-probe.mjs", ROOT), "utf8");
+  const reach = fs.readFileSync(new URL("src/pulse/catalog/proofs/s2-role-route-reach.test.mjs", ROOT), "utf8");
+  // The proof signs in as each role through the real adapter; a count alone is not it.
+  assert.match(probe, /staffSession|accountSession/);
+  assert.match(reach, /probeRoute\(api, key, journey\.name\)/);
   for (const row of rows) {
     const proof = proofForFlowRow("journeys.json", row);
     assert.ok(proof, row.surface);
-    assert.equal(proof.verdict, "red", row.surface);
-    assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.deepEqual(
+      proofTestFiles(proof),
+      ["src/pulse/catalog/proofs/s2-role-route-reach.test.mjs"],
+      row.surface,
+    );
   }
 });
 
