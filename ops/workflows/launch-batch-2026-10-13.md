@@ -1,5 +1,7 @@
 # Launch batch — 2026-10-13
 
+**PAUSED by Chris, 2026-10-13 7:56 p.m.** Nothing in this batch has started. Do not claim a row until he says go.
+
 Chris got the Apple developer account on 2026-10-13. He asked to launch four things:
 
 1. The teleprompter iPhone app
@@ -15,10 +17,10 @@ creates apps, bundle ids, keys or certificates in App Store Connect.
 
 | # | Workflow | Owner | Status | Model |
 |---|---|---|---|---|
-| W1 | Teleprompter iPhone app on Chris's phone through TestFlight | this session (Claude, branch `claude/teleprompter-ios-app`) | pending — waiting on Chris's go | Opus |
-| W2 | CRM for the team, working on a phone | open | pending | Sonnet |
-| W3 | Customer portal launch + what the Apple account can do for it | open | pending | Opus |
-| W4 | Finance OS launch, Fundhub as client #1 | open | pending | Opus |
+| W1 | Teleprompter iPhone app on Chris's phone through TestFlight | this session (Claude, branch `claude/teleprompter-ios-app`) | paused | Opus |
+| W2 | CRM for the team, working on a phone | open | paused | Sonnet |
+| W3 | Customer portal launch + what the Apple account can do for it | open | paused | Opus |
+| W4 | Finance OS launch, Fundhub as client #1 | open | paused | Opus |
 
 Status words: `pending` / `claimed` / `done` / `blocked`. Claim your row before you start.
 
