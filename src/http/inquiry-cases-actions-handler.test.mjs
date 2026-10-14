@@ -12,7 +12,9 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/inquiry-cases.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
-import { fakeDb, makeRes, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { makeRes, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
+import { assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const CASE = "1e000000-0000-4000-8000-000000000001";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -93,6 +95,10 @@ describe("POST /api/inquiry-cases — mark_cleared and close", () => {
     // mark_cleared always means Completed, whatever case_status the body sent
     assert.deepEqual(upd.params.slice(0, 3), [ORG_ID, CASE, "Completed"]);
     assert.equal(upd.params[3], "EX removed it");
+    assertSqlHas(upd.sql, {
+      "closed once, whatever the status": "closed_at = COALESCE(closed_at, now())",
+      "the completed stamp only when it is Completed": "completed_at = CASE WHEN $3::text = 'Completed' THEN COALESCE(completed_at, now()) ELSE completed_at END"
+    });
     assert.equal(events.length, 1);
     assert.equal(events[0].name, "inquiry.removed");
     assert.equal(events[0].payload.fundingRoundId, ROUND);

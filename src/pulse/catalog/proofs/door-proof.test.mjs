@@ -119,7 +119,7 @@ test("every door proof case names executable code and a focused test", async (t)
         assert.equal(recipe.proof.depth, "e2e");
         assert.match(recipe.proof.evidence, /src\/pulse\/coverage\/gap-door-batch-(?:routes|webhooks|jobs)\.mjs/);
       } else if (needDeep) {
-        const exactSafeHandler = /(?:door-batch-(?:job-final|webhook-final|route-exact)|door-contracts-(?:money-customer|routes-(?:01(?:-2)?|23))|s2-door-contracts|door-flow-read-contracts-2)\.test\.mjs/.test(recipe.proof.evidence);
+        const exactSafeHandler = /(?:door-batch-(?:job-final|webhook-final|route-exact)|door-contracts-(?:money-customer|routes-(?:01(?:-2)?|23))|s2-door-contracts|s3-door-contracts|door-flow-read-contracts-2)\.test\.mjs/.test(recipe.proof.evidence);
         assert.equal(exactSafeHandler || resolved.some((reference) =>
           /src\/pulse\/(?:coverage\/gap-|beats\/beat-)/.test(reference) && !reference.endsWith(".test.mjs")
         ), true, "deep proof must name the result lane, beat, or exact safe handler result");

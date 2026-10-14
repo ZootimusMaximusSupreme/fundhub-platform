@@ -6,6 +6,7 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
 import { db } from "../db.mjs";
 import archiveHandler from "../../api/dashboard/client-archive.mjs";
+import { assertBind } from "../testing/s3-scoped-rows.mjs";
 
 const TOKEN = "test-session-token";
 const CLIENT_ID = "11111111-2222-3333-4444-555555555555";
@@ -36,6 +37,7 @@ let deletedCards = [];
 let archived = [];
 
 async function stubQuery(sql, params = []) {
+  assertBind(sql, params);
   const text = String(sql).replace(/\s+/g, " ").trim();
 
   if (/FROM live JOIN staff/.test(text)) {

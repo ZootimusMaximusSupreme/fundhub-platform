@@ -11,6 +11,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 import handler, { readDays, readLimit, today, DEFAULT_DAYS, DEFAULT_LIMIT, MAX_LIMIT }
   from "../../api/read/transactions.mjs";
@@ -35,6 +36,7 @@ function makeDb({ clientRows = [{ id: "c1" }], entityRows = [], txRows = [] } = 
   return {
     calls,
     query(sql, params) {
+      assertBind(sql, params);
       calls.push({ sql, params });
       const from = (t) => sql.includes(`FROM ${t}`);
       if (from("clients")) return Promise.resolve({ rows: clientRows });
@@ -265,4 +267,25 @@ test("the handler is in the hardcoded ROUTES map", async () => {
   assert.equal(ROUTES["read/transactions"], handler);
   assert.equal(routePath("/api/read/transactions"), "read/transactions");
   assert.equal(routePath("/.netlify/functions/api/read/transactions"), "read/transactions");
+});
+
+test("the read names this client, this company, only this client's accounts, the window, and newest first", async () => {
+  const { db } = await call({});
+  const read = db.calls.find((c) => c.sql.includes("FROM bank_transactions"));
+  assertSqlHas(read.sql, {
+    "this client and company, and only this client's accounts, in this company":
+      "FROM bank_transactions WHERE client_id = $1 AND org_id = $2 AND bank_account_id IN ( SELECT id FROM bank_accounts WHERE client_id = $1 AND org_id = $2 )",
+    "inside the day window": "AND COALESCE(posted_on, authorized_on) >= ($3::date - ($4 || ' days')::interval)",
+    "newest first, then the last one saved": "ORDER BY COALESCE(posted_on, authorized_on) DESC NULLS LAST, created_at DESC",
+    "one page": "LIMIT $5"
+  });
+});
+
+test("a named container narrows the read to accounts of that kind, still inside this client and company", async () => {
+  const { db } = await call({ query: { entity_id: ENTITY_ID }, db: makeDb({ entityRows: [{ kind: "business" }] }) });
+  const read = db.calls.find((c) => c.sql.includes("FROM bank_transactions"));
+  assertSqlHas(read.sql, {
+    "only accounts of that kind of this client and company": "AND bank_account_id IN ( SELECT id FROM bank_accounts WHERE client_id = $1 AND org_id = $2 AND entity_kind = $5 )"
+  });
+  assertSqlHas(db.calls.find((c) => /FROM entities/.test(c.sql)).sql, { "the container is this client's, in this company": "WHERE id = $1 AND org_id = $2 AND client_id = $3" });
 });

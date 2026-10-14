@@ -15,6 +15,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 
 import handler, { readDays, readAmount, today, DEFAULT_DAYS, MAX_DAYS } from "../../api/read/money-map.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 /* ------------------------------------------------------------------ *
  * Harness
@@ -44,6 +45,7 @@ function makeDb(tables = {}, { clientRows = [CLIENT_ROW], settingsRows = [] } = 
   return {
     calls,
     query(sql, params) {
+      assertBind(sql, params);
       calls.push({ sql, params });
       const from = (t) => sql.includes(`FROM ${t}`);
       if (from("cashflow_settings")) return Promise.resolve({ rows: settingsRows });
@@ -376,4 +378,18 @@ test("the handler is in the hardcoded ROUTES map", async () => {
   assert.equal(ROUTES["read/money-map"], handler);
   assert.equal(routePath("/api/read/money-map"), "read/money-map");
   assert.equal(routePath("/.netlify/functions/api/read/money-map"), "read/money-map");
+});
+
+test("each read names this client and this company, and keeps the rows the map is about: confident bills, due unacknowledged reminders", async () => {
+  const { db } = await call({});
+  const sqlOf = (table) => db.calls.find((c) => c.sql.includes(`FROM ${table}`) && c.params.includes(CLIENT_ID)).sql;
+  assertSqlHas(sqlOf("tradelines"), { "tradelines": "WHERE client_id = $1 AND org_id = $2 ORDER BY apr ASC NULLS LAST, lender ASC" });
+  assertSqlHas(sqlOf("card_liabilities"), { "card bills, soonest due first": "WHERE client_id = $1 AND org_id = $2 ORDER BY payment_due_date ASC NULLS LAST, as_of DESC" });
+  assertSqlHas(sqlOf("bank_accounts"), { "accounts": "WHERE client_id = $1 AND org_id = $2 ORDER BY entity_kind, name NULLS LAST, id" });
+  assertSqlHas(sqlOf("recurring_bills"), {
+    "across every account, medium or high confidence only": "WHERE client_id = $1 AND org_id = $2 AND confidence_label IN ('medium', 'high') ORDER BY typical_amount_cents ASC, merchant_key ASC"
+  });
+  assertSqlHas(sqlOf("cashflow_reminders"), {
+    "due and not yet acknowledged, soonest first": "WHERE client_id = $1 AND org_id = $2 AND acknowledged_at IS NULL AND surface_at <= now() ORDER BY surface_at ASC, created_at ASC LIMIT 200"
+  });
 });

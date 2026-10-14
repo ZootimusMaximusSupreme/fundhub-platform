@@ -15,6 +15,7 @@ import assert from "node:assert";
 import { readFile } from "node:fs/promises";
 
 import handler from "../../api/read/underwrite.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER_ORG = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -45,6 +46,7 @@ function makeDb({ session = {}, client = undefined, tradelines = [], liabilities
   return {
     calls,
     async query(sql, params) {
+      assertBind(sql, params);
       calls.push({ sql, params });
 
       if (sql.includes("UPDATE sessions")) {
@@ -581,5 +583,20 @@ describe("the handler is actually reachable", () => {
     assert.equal(typeof ROUTES["read/underwrite"], "function",
       "api/read/underwrite.mjs must be wired into netlify/functions/api.mjs or it 404s");
     assert.equal(ROUTES["read/underwrite"], handler);
+  });
+});
+
+describe("the statements behind the read", () => {
+  test("every read names this client and this company, and the newest pull is the one the engine speaks from", async () => {
+    const res = makeRes();
+    const deps = fullDb();
+    await handler(req(), res, deps);
+    assert.equal(res.statusCode, 200);
+    const sqlOf = (re) => deps.db.calls.find((c) => re.test(c.sql)).sql;
+    assertSqlHas(sqlOf(/FROM clients/), { "the client, in this company": "WHERE id = $1 AND org_id = $2" });
+    assertSqlHas(sqlOf(/FROM tradelines/), { "this client's cards, lowest rate first": "WHERE client_id = $1 AND org_id = $2 ORDER BY apr ASC NULLS LAST, lender ASC" });
+    assertSqlHas(sqlOf(/FROM card_liabilities/), { "newest observation first": "WHERE client_id = $1 AND org_id = $2 ORDER BY as_of DESC" });
+    assertSqlHas(sqlOf(/FROM crs_results/), { "newest pull first": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC" });
+    assertSqlHas(sqlOf(/FROM businesses/), { "oldest company first": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at ASC" });
   });
 });
