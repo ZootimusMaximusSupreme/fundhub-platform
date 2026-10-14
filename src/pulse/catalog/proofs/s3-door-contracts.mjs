@@ -139,6 +139,14 @@ const DEFINITIONS = [
   ["18a47181b67209de88a2", ["src/http/repair-send.test.mjs"]],
   // routes-2 public/partner-apply: POST /api/public/partner-apply — the affiliate and white-label applica
   ["22c3733f1a94e65d9c96", ["src/http/partner-apply.test.mjs"]],
+  // routes-2 money/plan (POST mark pin): POST /api/money/plan {action:mark, source, pin_id, status: done|missed
+  ["f0dc3b0e5f65a0f00c22", ["src/http/s3-money-plan-handler.test.mjs"]],
+  // routes-1 read/inbox: GET ?needs_reply= (every conversation in the company, newest activity 
+  ["79a02d7a8cf785b09d29", ["src/http/s3-client-file-handler.test.mjs"]],
+  // routes-1 repair/exceptions: GET stalled repair cards and low-confidence dispute-response parses he
+  ["a9d4d5bda17f8b83d096", ["src/http/s3-repair-handler.test.mjs"]],
+  // routes-1 repair/exceptions: POST action=confirm_parse {responseId, outcomes} (a person confirms wh
+  ["de26dd73e719868cbddc", ["src/http/s3-repair-handler.test.mjs"]],
 ];
 
 export function s3DoorRowId(sourceFile, row) {

@@ -12,6 +12,7 @@ import entitlementsHandler from "../../api/read/entitlements.mjs";
 import bankInboxHandler from "../../api/read/bank-inbox.mjs";
 import conversationsHandler from "../../api/read/conversations.mjs";
 import attributionHandler from "../../api/read/ad-attribution.mjs";
+import inboxHandler from "../../api/read/inbox.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
 import { req, staffSession, accountSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 
@@ -219,5 +220,38 @@ describe("GET /api/read/ad-attribution", () => {
   test("a client from another company is a 404", async () => {
     const { res } = await callShared(attributionHandler, req("GET", { query: { client_id: CLIENT } }), [staffSession(), notInOrg]);
     assert.equal(res.statusCode, 404);
+  });
+});
+
+describe("GET /api/read/inbox", () => {
+  const thread = (id, over = {}) => ({
+    id, client_id: CLIENT, channel: "sms", summary: "Asked about the card", sentiment: null, first_name: "Dana", last_name: "Whitfield",
+    last_message_id: `m-${id}`, last_direction: "inbound", last_body: "Can you call me?", last_status: "received",
+    last_at: "2026-10-13T09:00:00.000Z", needs_reply: true, activity_at: "2026-10-13T09:00:00.000Z", ...over
+  });
+
+  test("every conversation in this company, newest activity first, with the last message and whether a reply is owed", async () => {
+    const rows = [thread("t1"), thread("t2", { last_direction: "outbound", needs_reply: false, last_body: "Sent you the plan" })];
+    const { res, fake } = await callShared(inboxHandler, req("GET"), [staffSession({ role: "setter" }), [/WITH page AS/, rows]]);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.items.map((i) => [i.id, i.needs_reply, i.last_body]), [["t1", true, "Can you call me?"], ["t2", false, "Sent you the plan"]]);
+    assert.equal(res.body.hasMore, false);
+    const [q] = fake.find(/WITH page AS/);
+    assert.deepEqual(q.params, [51, 0, ORG_ID, false]);
+    assert.match(q.sql, /WHERE c\.org_id = \$3::uuid/);
+  });
+
+  test("?needs_reply=1 asks the database for only the threads the client spoke last in, and one extra row sets hasMore", async () => {
+    const rows = [thread("t1"), thread("t2"), thread("t3")];
+    const { res, fake } = await callShared(inboxHandler, req("GET", { query: { needs_reply: "1", limit: "2" } }), [staffSession(), [/WITH page AS/, rows]]);
+    assert.equal(res.body.items.length, 2);
+    assert.equal(res.body.hasMore, true);
+    assert.deepEqual(fake.find(/WITH page AS/)[0].params, [3, 0, ORG_ID, true]);
+  });
+
+  test("a login that is not staff reads nothing", async () => {
+    const { res, fake } = await callShared(inboxHandler, req("GET"), [staffSession({ role: "affiliate" }), [/WITH page AS/, [thread("t1")]]]);
+    assert.equal(res.statusCode, 403);
+    assert.equal(fake.find(/WITH page AS/).length, 0);
   });
 });
