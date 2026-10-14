@@ -23,6 +23,7 @@ Fundhub warms up every bank in the U.S. on LinkedIn and email. We find the banke
 - Do it with an API, not by hand.
 - A couple of employees can run the outreach all day, every day.
 - The employee works from a dashboard in our CRM: takes calls, answers email from their work inbox, and the data they get lands in the system.
+- Everything runs on its own, LinkedIn included. People hop on a call only when a banker wants one.
 - Collect every piece of bank data we can: paper applications, application links, all of it.
 
 ## How it runs
@@ -33,8 +34,10 @@ flowchart TD
     B --> C[Brave search per row: state + bank + position on LinkedIn]
     C --> D[AI cleans results: name, title, bank, state, LinkedIn link]
     D --> E[Banker list in the CRM]
-    E --> F[Employee outreach: LinkedIn + email, AI drafts replies]
-    F --> G[Booked call or bank data saved to the bank record]
+    E --> F[Automatic email and LinkedIn sequences]
+    F --> G[AI answers replies and asks for the bank data points]
+    G --> H[Bank data saved to the bank record]
+    G --> I[Call booked with an employee only if the banker asks]
     C -. reruns monthly for new hires .-> C
 ```
 
@@ -65,15 +68,17 @@ Why Brave:
 | **One-time total** | **about $250–$450** |
 | Monthly refresh for new hires | about $25–$75 |
 | 10 email mailboxes on separate domains | about $70 a month |
+| LinkedIn automation tool, 2 accounts ($59–$100 per account) | about $120–$200 a month |
 | AI reply agent | under $50 a month |
-| **Monthly total** | **about $100–$200**, plus employee pay |
+| **Monthly total** | **about $220–$400**, plus employee pay |
 
 The search estimate assumes 15,000–25,000 searches for a basic pass, and more when big banks are split by city and title.
 
 ## Limits that set the pace
 
 - About 4,400 banks plus 4,565 federally insured credit unions, so about 9,000 in all.
-- Each LinkedIn account can send about 100 connection requests a week. Two employees reach about 800 bankers a month on LinkedIn.
+- Each LinkedIn account can send about 100–200 connection requests a week, automated or not. Two accounts reach about 800 bankers a month or more.
+- LinkedIn automation runs from a cloud tool (for example Dripify, HeyReach or Expandi). LinkedIn's terms bar automation tools, so a team account can get restricted. Run it on team accounts at a slow daily pace, never on Chris's own profile. The tool we pick needs an API so the AI agent can read and answer LinkedIn replies.
 - Each mailbox can safely send about 40 cold emails a day. 10 mailboxes send about 8,000 a month. More mailboxes, more reach.
 - Cold email goes out from a separate domain (for example getfundhub.com), still branded Fundhub, so fundhub.ai client email keeps landing.
 
