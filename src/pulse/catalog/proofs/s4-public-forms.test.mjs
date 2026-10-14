@@ -152,7 +152,7 @@ test("sign-in: email and password go to the server; a refusal is said; a good an
   await proof.check(/^Staff and demo sign-in: email and password/, async () => {
     const testWord = `pw-${Date.now()}`;
     const bad = recorder("/api/auth/login", { status: 401, body: { ok: false, error: "invalid_credentials" } });
-    const first = await open("/login.html?next=/app/messaging.html", { session: null, handlers: { ...bad.handlers } });
+    const first = await open("/login.html?next=/app/lenders.html", { session: null, handlers: { ...bad.handlers } });
     await first.page.locator("#email").fill("jordan@fundhub.ai");
     await first.page.locator("#pw").fill(testWord);
     await first.page.locator("#go").click();
@@ -164,12 +164,12 @@ test("sign-in: email and password go to the server; a refusal is said; a good an
 
     const good = recorder("/api/auth/login", { body: { ok: true, token: "session-token-for-test", staff: { id: "s1", name: "Jordan Blake", role: "Owner" } } });
     // the page it goes to is blank, so nothing rewrites the stored session before it is read
-    const blank = (page) => page.route((url) => url.pathname === "/app/messaging.html", (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>next</title>" }));
-    const second = await open("/login.html?next=/app/messaging.html", { session: null, handlers: { ...good.handlers }, before: blank });
+    const blank = (page) => page.route((url) => url.pathname === "/app/lenders.html", (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>next</title>" }));
+    const second = await open("/login.html?next=/app/lenders.html", { session: null, handlers: { ...good.handlers }, before: blank });
     await second.page.locator("#email").fill("jordan@fundhub.ai");
     await second.page.locator("#pw").fill(testWord);
     await second.page.locator("#go").click();
-    await second.page.waitForURL(/\/app\/messaging\.html$/);
+    await second.page.waitForURL((url) => url.pathname === "/app/lenders.html");
     await second.page.waitForFunction(() => localStorage.getItem("fh_token") === "session-token-for-test");
     await second.page.waitForFunction(() => localStorage.getItem("fh_role") === "owner");
     await second.page.close();
