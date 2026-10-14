@@ -1,73 +1,87 @@
-// The chat, helper and payment-ask doors that speak to a customer, run through
-// the REAL handlers with a stand-in database and no network:
+// The staff chat widget and the client portal chat widget, run through the REAL
+// handlers with a stand-in database and no network:
 //
-//   route:chat/messages        kind=client: staff sends a text or an email (email half)
+//   route:chat/messages        kind=client: staff sends a text or an email, through the compliance gate
 //   route:chat/portal-message  the portal widget: save the client's note, save the reply, never text it
-//   route:money/helper         POST send: the turn is saved and queued; the helper never texts
-//   route:payment-links        action=send texts the checkout link; action=expire kills a live ask
-import { test, describe, before, after } from "node:test";
+//
+// The helper and the payment-ask doors are in s2-message-routes-money.test.mjs.
+import { test, describe, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import chatMessages from "../../api/chat/messages.mjs";
 import portalMessage from "../../api/chat/portal-message.mjs";
-import moneyHelper from "../../api/money/helper.mjs";
-import paymentLinks from "../../api/payment-links.mjs";
 import {
-  accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID, STAFF_ID,
+  accountSession, makeRes, req, runWithSharedDb, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID,
 } from "../testing/handler-harness.mjs";
 import { queueDb } from "../pulse/catalog/proofs/s2-queue-db.mjs";
-import { dispatchOne, OUTCOME } from "../messaging/dispatch.mjs";
+import {
+  call, clientIn, refuseNetwork, CLIENT, DANA, STAFF_ROLES,
+} from "../pulse/catalog/proofs/s2-route-kit.mjs";
 import { recorded, reset } from "../messaging/providers/memory.mjs";
 
-const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const CONVO = "cc000000-0000-4000-8000-000000000001";
 const MSG = "ee000000-0000-4000-8000-000000000001";
-const LINK = "9f000000-0000-4000-8000-000000000001";
 
-const realFetch = globalThis.fetch;
-const netCalls = [];
+const netCalls = refuseNetwork({ before, after });
 const savedKey = process.env.ANTHROPIC_API_KEY;
-before(() => {
-  delete process.env.ANTHROPIC_API_KEY;
-  globalThis.fetch = async (url) => { netCalls.push(String(url)); throw new Error("network refused in this test"); };
-});
-after(() => {
-  globalThis.fetch = realFetch;
-  if (savedKey !== undefined) process.env.ANTHROPIC_API_KEY = savedKey;
-});
+before(() => { delete process.env.ANTHROPIC_API_KEY; });
+after(() => { if (savedKey !== undefined) process.env.ANTHROPIC_API_KEY = savedKey; });
 
-async function call(handler, request, rules) {
-  const fake = fakeDb(rules);
-  const res = makeRes();
-  await runWithSharedDb(fake, () => handler(request, res));
-  return { res, fake };
-}
-
-describe("POST /api/chat/messages kind=client by email", () => {
-  const clientInOrg = [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]];
-  const clientEmail = [/AS address FROM clients/, [{ address: "dana@example.test" }]];
+describe("POST /api/chat/messages kind=client", () => {
+  const clientInOrg = clientIn(/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, { id: CLIENT });
+  const clientAddress = [/AS address FROM clients/, (_s, p) => [{ address: p[0] === CLIENT ? (/SELECT phone/.test(_s) ? DANA.phone : DANA.email) : null }]];
   const convoUpsert = [/INSERT INTO conversations/, [{ id: CONVO, org_id: ORG_ID, client_id: CLIENT, channel: "email" }]];
   const msgInsert = [/INSERT INTO messages/, [{ id: MSG, created_at: "2026-10-13T17:00:00Z" }]];
+  const send = (body, role = "owner", org_id = ORG_ID) => call(chatMessages, req("POST", { body: { kind: "client", client_id: CLIENT, ...body } }),
+    [staffSession({ role, org_id }), clientInOrg, clientAddress, convoUpsert, msgInsert]);
 
-  test("an email to a client is queued for the compliance gate, to their own address, with the sender named", async () => {
+  test("a text or an email to a client is queued for the compliance gate, to the address of that channel, with the sender named", async () => {
     netCalls.length = 0;
-    const { res, fake } = await call(chatMessages, req("POST", {
-      body: { kind: "client", client_id: CLIENT, channel: "email", subject: "Your file", body: "  Hi Dana, your file is ready.  " },
-    }), [staffSession({ role: "owner" }), clientInOrg, clientEmail, convoUpsert, msgInsert]);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.ok, true);
-    assert.equal(res.body.kind, "client");
-    const [ins] = fake.find(/INSERT INTO messages/);
-    assert.match(ins.sql, /'queued',false/);
-    // org, client, conversation, channel, text, provider_ref, to, subject, sender
-    assert.equal(ins.params[0], ORG_ID);
-    assert.equal(ins.params[1], CLIENT);
-    assert.equal(ins.params[3], "email");
-    assert.equal(ins.params[4], "Hi Dana, your file is ready.");
-    assert.equal(ins.params[6], "dana@example.test");
-    assert.equal(ins.params[7], "Your file");
-    assert.equal(ins.params[8], STAFF_ID);
+    const cases = [
+      [{ channel: "email", subject: "Your file", body: "  Hi Dana, your file is ready.  " }, "email", "dana@example.test", "Your file"],
+      [{ channel: "sms", body: "  Hi Dana, your call is at 3.  " }, "sms", "+16025550100", null],
+    ];
+    for (const [input, channel, address, subject] of cases) {
+      const { res, fake } = await send(input);
+      assert.equal(res.statusCode, 200, channel);
+      assert.equal(res.body.ok, true);
+      assert.equal(res.body.kind, "client");
+      const writes = fake.find(/INSERT INTO messages/);
+      assert.equal(writes.length, 1, channel);
+      const [ins] = writes;
+      assert.match(ins.sql, /VALUES \(\$1,\$2,\$3,'outbound',\$4,\$5,\$6,'queued',false,\$7,\$8,\$9,'staff'/);
+      // org, client, conversation, channel, text, provider_ref, to, subject, sender
+      assert.equal(ins.params[0], ORG_ID);
+      assert.equal(ins.params[1], CLIENT);
+      assert.equal(ins.params[3], channel);
+      assert.equal(ins.params[4], input.body.trim());
+      assert.equal(ins.params[6], address, channel);
+      assert.equal(ins.params[7], subject, channel);
+      assert.equal(ins.params[8], STAFF_ID);
+    }
     assert.equal(netCalls.length, 0);
+  });
+
+  test("every staff role may send once it has a shift; a client's own login and a client in another company are never written to", async () => {
+    // The owner needs no shift; every other role is stopped without one (see
+    // chat-messages-handler.test.mjs). Here each role is judged WITH a shift.
+    const openShift = [/FROM shifts/, [{ id: "5f000000-0000-4000-8000-000000000001", staff_id: STAFF_ID, started_at: "2026-10-13T15:00:00Z", ended_at: null }]];
+    for (const role of STAFF_ROLES) {
+      const { res, fake } = await call(chatMessages, req("POST", { body: { kind: "client", client_id: CLIENT, channel: "sms", body: "Hello" } }),
+        [staffSession({ role }), openShift, clientInOrg, clientAddress, convoUpsert, msgInsert]);
+      assert.equal(res.statusCode, 200, role);
+      assert.equal(fake.find(/INSERT INTO messages/).length, 1, role);
+    }
+    // A signed-in client is not staff: they cannot use the staff widget to text anyone.
+    const portal = await call(chatMessages, req("POST", { body: { kind: "client", client_id: CLIENT, body: "Hello" } }),
+      [...accountSession({ kind: "client", clientId: CLIENT }), clientInOrg, clientAddress, convoUpsert, msgInsert]);
+    assert.ok([401, 403].includes(portal.res.statusCode));
+    assert.equal(portal.fake.find(/INSERT INTO messages/).length, 0);
+    const stranger = await send({ channel: "sms", body: "Hello" }, "owner", OTHER_ORG_ID);
+    assert.ok(stranger.res.statusCode >= 400);
+    assert.equal(stranger.res.body.ok, false);
+    assert.deepEqual(stranger.fake.find(/SELECT id FROM clients/)[0].params, [CLIENT, OTHER_ORG_ID]);
+    assert.equal(stranger.fake.find(/INSERT INTO messages/).length, 0);
   });
 });
 
@@ -75,10 +89,10 @@ describe("POST /api/chat/messages: from the staff widget to the provider receipt
   test("an owner's email to a client is queued, passes the gate and reaches the provider, once, at the client's address", async () => {
     reset();
     const fake = queueDb({
-      clients: { [CLIENT]: { first_name: "Dana", last_name: "Whitfield", email: "dana@example.test", phone: "+16025550100" } },
+      clients: { [CLIENT]: DANA },
       extra: [
         staffSession({ role: "owner" }),
-        [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]],
+        clientIn(/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, { id: CLIENT }),
       ],
     });
     const res = makeRes();
@@ -95,12 +109,60 @@ describe("POST /api/chat/messages: from the staff widget to the provider receipt
     assert.equal(recorded().length, 1);
   });
 
+  test("a text between 8 pm and 8 am Arizona is held until 8 am, a text at any other hour goes, and an email is never held", async () => {
+    const send = async (channel) => {
+      reset();
+      const fake = queueDb({
+        clients: { [CLIENT]: DANA },
+        extra: [staffSession({ role: "owner" }), clientIn(/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, { id: CLIENT })],
+      });
+      const res = makeRes();
+      await runWithSharedDb(fake, () => chatMessages(req("POST", {
+        body: { kind: "client", client_id: CLIENT, channel, body: "Hi Dana." },
+      }), res));
+      return { res, fake };
+    };
+    // [time in UTC (Phoenix is UTC-7, no daylight saving), is the text held, when it is released]
+    const clock = [
+      ["2026-10-14T02:55:00Z", false, null],                       // 7:55 pm
+      ["2026-10-14T03:05:00Z", true, "2026-10-14T15:00:00.000Z"],  // 8:05 pm
+      ["2026-10-14T06:30:00Z", true, "2026-10-14T15:00:00.000Z"],  // 11:30 pm
+      ["2026-10-14T14:55:00Z", true, "2026-10-14T15:00:00.000Z"],  // 7:55 am
+      ["2026-10-14T15:05:00Z", false, null],                       // 8:05 am
+      ["2026-10-14T19:00:00Z", false, null],                       // noon
+    ];
+    try {
+      for (const [at, held, release] of clock) {
+        mock.timers.reset();
+        mock.timers.enable({ apis: ["Date"], now: new Date(at) });
+        const text = await send("sms");
+        assert.equal(text.res.statusCode, 200, at);
+        const [row] = text.fake.state.messages;
+        if (held) {
+          assert.equal(recorded().length, 0, at);
+          assert.equal(row.status, "queued", at);
+          assert.equal(row.scheduled_at, release, at);
+        } else {
+          assert.deepEqual(recorded().map((m) => m.to), ["+16025550100"], at);
+          assert.equal(row.status, "sent", at);
+        }
+      }
+      mock.timers.reset();
+      mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-14T06:30:00Z") });
+      const email = await send("email");
+      assert.deepEqual(recorded().map((m) => m.to), ["dana@example.test"]);
+      assert.equal(email.fake.state.messages[0].status, "sent");
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
   test("a client who opted out is never sent the staff reply", async () => {
     reset();
     const fake = queueDb({
-      clients: { [CLIENT]: { first_name: "Dana", last_name: "Whitfield", email: "dana@example.test", phone: "+16025550100" } },
+      clients: { [CLIENT]: DANA },
       optedOut: [CLIENT],
-      extra: [staffSession({ role: "owner" }), [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]]],
+      extra: [staffSession({ role: "owner" }), clientIn(/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, { id: CLIENT })],
     });
     const res = makeRes();
     await runWithSharedDb(fake, () => chatMessages(req("POST", {
@@ -112,185 +174,73 @@ describe("POST /api/chat/messages: from the staff widget to the provider receipt
 });
 
 describe("/api/chat/portal-message", () => {
-  const session = () => accountSession({ kind: "client", clientId: CLIENT });
+  const session = (clientId = CLIENT) => accountSession({ kind: "client", clientId });
   const convoUpsert = [/INSERT INTO conversations/, [{ id: CONVO }]];
   const client = [/SELECT first_name, custom_fields FROM clients WHERE id = \$1 AND org_id = \$2/, [{ first_name: "Dana", custom_fields: {} }]];
   const inbound = (s) => /'inbound'/.test(s);
   const insertRow = [/INSERT INTO messages/, (s) => [{ id: inbound(s) ? MSG : "ee000000-0000-4000-8000-000000000002", direction: inbound(s) ? "inbound" : "outbound" }]];
   const link = [/UPDATE messages m\s+SET conversation_id/, (_s, p) => [{ id: p[0] }]];
+  const post = (body, rules) => call(portalMessage, req("POST", { body }), rules);
 
-  test("the client's note is saved as inbound, and the reply is saved delivered so it is never texted on top", async () => {
+  test("the client's note is saved as inbound on the channel they used, and the reply is saved delivered so it is never texted on top", async () => {
     netCalls.length = 0;
-    const { res, fake } = await call(portalMessage, req("POST", { body: { body: "  When is my call?  ", channel: "sms" } }),
-      [...session(), convoUpsert, insertRow, client, link]);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.ok, true);
-    assert.equal(res.body.conversation_id, CONVO);
-    assert.equal(res.body.reply.source, "fallback");
-    assert.ok(res.body.reply.text.length > 10);
+    for (const channel of ["sms", "email"]) {
+      const { res, fake } = await post({ body: "  When is my call?  ", channel }, [...session(), convoUpsert, insertRow, client, link]);
+      assert.equal(res.statusCode, 200, channel);
+      assert.equal(res.body.ok, true);
+      assert.equal(res.body.conversation_id, CONVO);
+      assert.equal(res.body.reply.source, "fallback");
+      assert.ok(res.body.reply.text.length > 10);
 
-    const writes = fake.find(/INSERT INTO messages/);
-    assert.equal(writes.length, 2);
-    const [note, reply] = writes;
-    assert.match(note.sql, /'inbound'.*'received'/s);
-    assert.deepEqual(note.params, [ORG_ID, CLIENT, CONVO, "sms", "When is my call?"]);
-    assert.match(reply.sql, /'outbound'.*'delivered', 'internal'/s);
-    assert.equal(reply.params[4], res.body.reply.text);
-    // No row is written as queued: nothing in this exchange can be dispatched.
-    assert.equal(writes.filter((w) => /'queued'/.test(w.sql)).length, 0);
+      const writes = fake.find(/INSERT INTO messages/);
+      assert.equal(writes.length, 2, channel);
+      const [note, reply] = writes;
+      // The channel and the words go into the statement through $4 and $5, not as a fixed value.
+      assert.match(note.sql, /VALUES \(\$1, \$2, \$3, 'inbound', \$4, \$5, 'received'/);
+      assert.deepEqual(note.params, [ORG_ID, CLIENT, CONVO, channel, "When is my call?"]);
+      assert.match(reply.sql, /VALUES \(\$1, \$2, \$3, 'outbound', \$4, \$5, 'delivered', 'internal'/);
+      assert.deepEqual([reply.params[0], reply.params[1], reply.params[2], reply.params[3]], [ORG_ID, CLIENT, CONVO, channel]);
+      assert.equal(reply.params[4], res.body.reply.text);
+      // No row is written as queued: nothing in this exchange can be dispatched.
+      assert.equal(writes.filter((w) => /'queued'/.test(w.sql)).length, 0, channel);
+    }
     assert.equal(netCalls.filter((u) => /anthropic/i.test(u)).length, 0);
   });
 
-  test("an empty note, a fax channel and a staff session are each refused with no write", async () => {
-    const empty = await call(portalMessage, req("POST", { body: { body: "   " } }), [...session(), convoUpsert, insertRow]);
-    assert.equal(empty.res.statusCode, 400);
-    const fax = await call(portalMessage, req("POST", { body: { body: "hi", channel: "fax" } }), [...session(), convoUpsert, insertRow]);
-    assert.equal(fax.res.statusCode, 400);
-    const staff = await call(portalMessage, req("POST", { body: { body: "hi" } }), [staffSession({ role: "owner" }), convoUpsert, insertRow]);
-    assert.equal(staff.res.statusCode, 403);
-    for (const r of [empty, fax, staff]) assert.equal(r.fake.find(/INSERT INTO messages/).length, 0);
+  test("the file is the one on the login, never one named in the request", async () => {
+    const other = "c9000000-0000-4000-8000-000000000009";
+    const { res, fake } = await post({ body: "hi", client_id: other, org_id: OTHER_ORG_ID }, [...session(), convoUpsert, insertRow, client, link]);
+    assert.equal(res.statusCode, 200);
+    const [note] = fake.find(/INSERT INTO messages/);
+    assert.deepEqual([note.params[0], note.params[1]], [ORG_ID, CLIENT]);
+    assert.deepEqual(fake.find(/INSERT INTO conversations/)[0].params.slice(0, 2), [ORG_ID, CLIENT]);
   });
 
-  test("GET reads only the client's own thread", async () => {
-    const { res, fake } = await call(portalMessage, req("GET"), [...session(), [/FROM conversations\s+WHERE org_id = \$1 AND client_id = \$2/, []]]);
+  test("an empty note, a fax channel, a staff login, another kind of login and no login are each refused with no write", async () => {
+    const refused = [
+      [await post({ body: "   " }, [...session(), convoUpsert, insertRow]), 400],
+      [await post({ body: "hi", channel: "fax" }, [...session(), convoUpsert, insertRow]), 400],
+      [await post({ body: "hi" }, [staffSession({ role: "owner" }), convoUpsert, insertRow]), 403],
+      [await post({ body: "hi" }, [...accountSession({ kind: "partner", partnerId: "b1000000-0000-4000-8000-000000000001" }), convoUpsert, insertRow]), 403],
+      [await post({ body: "hi" }, [...accountSession({ kind: "affiliate" }), convoUpsert, insertRow]), 403],
+      [await post({ body: "hi" }, [convoUpsert, insertRow]), 401],
+    ];
+    for (const [r, status] of refused) {
+      assert.equal(r.res.statusCode, status);
+      assert.equal(r.fake.find(/INSERT INTO messages/).length, 0);
+    }
+  });
+
+  test("GET reads only the signed-in client's own thread, and a staff login or no login gets nothing", async () => {
+    const own = [/FROM conversations\s+WHERE org_id = \$1 AND client_id = \$2/, []];
+    const { res, fake } = await call(portalMessage, req("GET"), [...session(), own]);
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { ok: true, conversation_id: null, messages: [] });
     assert.deepEqual(fake.find(/FROM conversations/)[0].params, [ORG_ID, CLIENT]);
-  });
-});
-
-describe("POST /api/money/helper action=send", () => {
-  const helperAgent = (status) => [/SELECT \* FROM agents WHERE org_id = \$1 AND code = \$2/, status
-    ? [{ code: "FOS-01", name: "Money helper", status, prompt: "p", guardrails: {} }] : []];
-  const bridgeOn = [/FROM agent_bridge_heartbeats/, [{ last_at: new Date().toISOString() }]];
-  const noHalt = [/FROM money_helper_threads/, []];
-  const noTurnsToday = [/count\(\*\)::int AS n FROM money_helper_turns/, [{ n: 0 }]];
-  const turnInsert = [/INSERT INTO money_helper_turns/, (_s, p) => [{
-    id: "74000000-0000-4000-8000-000000000001", org_id: p[0], client_id: p[1], kind: p[2], actor: p[3], input: p[5], status: p[7], reply: null,
-  }]];
-  const send = (body, rules) => call(moneyHelper, req("POST", { body }), [...accountSession({ kind: "client", clientId: CLIENT }), ...rules]);
-
-  test("a client's message is saved as a queued turn for the helper brain and nothing is texted", async () => {
-    const { res, fake } = await send({ action: "send", message: "  What is due this week?  " },
-      [helperAgent("shadow"), noHalt, noTurnsToday, bridgeOn, turnInsert]);
-    assert.equal(res.statusCode, 202);
-    assert.equal(res.body.ok, true);
-    assert.equal(res.body.queued, true);
-    assert.equal(res.body.turn.status, "queued");
-    const [turn] = fake.find(/INSERT INTO money_helper_turns/);
-    assert.deepEqual([turn.params[0], turn.params[1], turn.params[2], turn.params[3], turn.params[5], turn.params[7]],
-      [ORG_ID, CLIENT, "message", "client", "What is due this week?", "queued"]);
-    assert.equal(fake.find(/INSERT INTO messages/).length, 0);
-  });
-
-  test("a switched-off helper, a stopped thread, an empty message and a full day each refuse and save nothing", async () => {
-    const off = await send({ action: "send", message: "hi" }, [helperAgent(null), noHalt, noTurnsToday, bridgeOn, turnInsert]);
-    assert.equal(off.res.statusCode, 409);
-    assert.equal(off.res.body.error, "helper_off");
-    const halted = await send({ action: "send", message: "hi" },
-      [helperAgent("live"), [/FROM money_helper_threads/, [{ halted_at: "2026-10-12T00:00:00Z", halt_reason: "person" }]], noTurnsToday, bridgeOn, turnInsert]);
-    assert.equal(halted.res.statusCode, 409);
-    assert.equal(halted.res.body.error, "helper_stopped");
-    const empty = await send({ action: "send", message: "   " }, [helperAgent("live"), noHalt, noTurnsToday, bridgeOn, turnInsert]);
-    assert.equal(empty.res.statusCode, 400);
-    assert.equal(empty.res.body.error, "message_required");
-    const full = await send({ action: "send", message: "hi" },
-      [helperAgent("live"), noHalt, [/count\(\*\)::int AS n FROM money_helper_turns/, [{ n: 500 }]], bridgeOn, turnInsert]);
-    assert.equal(full.res.statusCode, 429);
-    assert.equal(full.res.body.error, "too_many");
-    for (const r of [off, halted, empty, full]) assert.equal(r.fake.find(/INSERT INTO money_helper_turns/).length, 0);
-  });
-
-  test("an unknown action is 400", async () => {
-    const { res } = await send({ action: "wire_money", message: "hi" }, [helperAgent("live"), noHalt, noTurnsToday, bridgeOn, turnInsert]);
-    assert.equal(res.statusCode, 400);
-    assert.equal(res.body.error, "unknown_action");
-  });
-});
-
-describe("POST /api/payment-links action=send and action=expire", () => {
-  const link = (over = {}) => ({
-    id: LINK, org_id: ORG_ID, client_id: CLIENT, status: "created", purpose: "setup", description: "Setup fee",
-    amount_cents: 49700, checkout_url: "https://pay.example.test/checkout/abc", ...over,
-  });
-  const TEMPLATE = { body: "Hi {{contact.first_name}}, pay {{payment_link.amount}} for {{payment_link.description}}: {{payment_link.url}}" };
-
-  async function ask(body, { role = "owner", row = link(), template = TEMPLATE } = {}) {
-    const fake = queueDb({
-      templates: template ? { payment_link_notice: template } : {},
-      clients: { [CLIENT]: { first_name: "Dana", last_name: "Whitfield", email: "dana@example.test", phone: "+16025550100" } },
-      extra: [
-        staffSession({ role }),
-        [/SELECT \* FROM payment_links WHERE id = \$1 AND org_id = \$2/, (_s, p) => (row && p[0] === row.id ? [row] : [])],
-        [/UPDATE payment_links\s+SET status = 'sent'/, (_s, p) => (row.status === "created" ? [{ ...row, status: "sent", sent_at: p[2] }] : [])],
-        [/UPDATE payment_links\s+SET status = 'expired'/, (_s, p) => (["created", "sent"].includes(row.status) ? [{ ...row, status: "expired", expired_at: p[2] }] : [])],
-      ],
-    });
-    const res = makeRes();
-    await runWithSharedDb(fake, () => paymentLinks(req("POST", { body }), res));
-    return { res, fake };
-  }
-
-  test("send texts the checkout link with the amount and marks the ask sent", async () => {
-    const { res, fake } = await ask({ action: "send", id: LINK });
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.message_queued, true);
-    assert.equal(res.body.link.status, "sent");
-    assert.equal(res.body.link.amount_display, "497.00");
-    const [text] = fake.state.messages;
-    assert.equal(text.channel, "sms");
-    assert.equal(text.template_key, "payment_link_notice");
-    assert.equal(text.to_address, "+16025550100");
-    assert.match(text.rendered_body, /Hi Dana, pay 497\.00 for Setup fee: https:\/\/pay\.example\.test\/checkout\/abc/);
-  });
-
-  test("the queued text reaches the provider at the client's phone with every placeholder filled", async () => {
-    reset();
-    const { fake } = await ask({ action: "send", id: LINK });
-    const [queuedRow] = fake.state.messages;
-    const claimed = { ...queuedRow, status: "sending", attempts: 1 };
-    const out = await dispatchOne(fake, claimed, { env: {}, now: () => new Date("2026-10-13T19:00:00Z") });
-    assert.equal(out.outcome, OUTCOME.SENT);
-    const [text] = recorded();
-    assert.equal(text.to, "+16025550100");
-    assert.doesNotMatch(text.body, /{{[^}]+}}/);
-    assert.match(text.body, /497\.00 for Setup fee: https:\/\/pay\.example\.test\/checkout\/abc/);
-  });
-
-  test("an unapproved text sends nothing and the ask stays unsent", async () => {
-    const { res, fake } = await ask({ action: "send", id: LINK }, { template: { ...TEMPLATE, compliance_passed: false } });
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.message_queued, false);
-    assert.equal(res.body.message_reason, "template_pending");
-    assert.equal(res.body.link.status, "created");
-    assert.equal(fake.state.messages.length, 0);
-  });
-
-  test("a paid or dead ask is never texted again", async () => {
-    for (const status of ["paid", "expired"]) {
-      const { res, fake } = await ask({ action: "send", id: LINK }, { row: link({ status }) });
-      assert.equal(res.statusCode, 409, status);
-      assert.match(res.body.error, new RegExp(`this link is ${status}`));
-      assert.equal(fake.state.messages.length, 0, status);
-    }
-  });
-
-  test("expire kills a live ask, and a paid one cannot be expired", async () => {
-    const live = await ask({ action: "expire", id: LINK }, { row: link({ status: "sent" }) });
-    assert.equal(live.res.statusCode, 200);
-    assert.equal(live.res.body.link.status, "expired");
-    assert.equal(live.fake.state.messages.length, 0);
-    const paid = await ask({ action: "expire", id: LINK }, { row: link({ status: "paid" }) });
-    assert.equal(paid.res.statusCode, 409);
-    assert.match(paid.res.body.error, /already paid or expired/);
-  });
-
-  test("a closer can create an ask but not send or expire one", async () => {
-    for (const action of ["send", "expire"]) {
-      const { res, fake } = await ask({ action, id: LINK }, { role: "closer" });
-      assert.equal(res.statusCode, 403, action);
-      assert.equal(res.body.error, "forbidden");
-      assert.equal(fake.state.messages.length, 0, action);
-    }
+    const staff = await call(portalMessage, req("GET"), [staffSession({ role: "owner" }), own]);
+    assert.equal(staff.res.statusCode, 403);
+    const nobody = await call(portalMessage, req("GET"), [own]);
+    assert.equal(nobody.res.statusCode, 401);
+    for (const r of [staff, nobody]) assert.equal(r.fake.find(/FROM conversations/).length, 0);
   });
 });

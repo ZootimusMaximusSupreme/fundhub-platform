@@ -4,8 +4,14 @@
 //   - the role journeys' "should be able to reach" and "should stay blocked"
 //     rows, proved by a signed-in probe of every route through the real adapter
 //     (s2-role-route-reach.test.mjs).
-//   - seven customer-message controls, proved by the real handler run with a
+//   - six customer-message controls, proved by the real handler run with a
 //     stand-in queue and the in-memory provider (the s2-message-routes tests).
+//
+// One row is NOT here on purpose: "ui:ops-admin outbound mail panel" names an
+// alert-address field on public/app/ops-admin.html, and the page has no such
+// field (the three buttons are proved by their own screen rows; the alert
+// address is only reachable through the API). A row that names a control that
+// does not exist cannot be proved, so it stays in the gap monitor.
 //
 // A surface listed here leaves the Flow gap monitor (flow-gap-cases.mjs) and its
 // row carries the proof below instead.
@@ -24,8 +30,8 @@ export function isS2RoleRow(row) {
 
 const AUTH_TEST = "src/http/s2-message-routes-auth.test.mjs";
 const CHAT_TEST = "src/http/s2-message-routes-chat.test.mjs";
+const MONEY_TEST = "src/http/s2-message-routes-money.test.mjs";
 const WRITE_TEST = "src/http/s2-message-routes-write.test.mjs";
-const OUTBOUND_TEST = "src/http/s2-message-routes-outbound.test.mjs";
 const FLOW_PAGES_WRAPPER = "src/pulse/catalog/proofs/s2-flow-pages.test.mjs";
 // The gate and the dispatcher: every message row's proof also runs these.
 const MESSAGE_CHAIN = Object.freeze(["src/messaging/gate.test.mjs", "src/messaging/dispatch.test.mjs"]);
@@ -36,9 +42,8 @@ const MESSAGE_TESTS = Object.freeze({
   "api:POST /api/auth/send-portal-link": [AUTH_TEST],
   "api:POST /api/auth/magic-link and magic-link-verify": [AUTH_TEST],
   "api:POST /api/chat/messages": ["src/http/chat-messages-handler.test.mjs", CHAT_TEST],
-  "template:payment_link_notice": [CHAT_TEST],
-  "api-action:payment-link-send": [CHAT_TEST],
-  "ui:ops-admin outbound mail panel": [FLOW_PAGES_WRAPPER, OUTBOUND_TEST],
+  "template:payment_link_notice": [MONEY_TEST],
+  "api-action:payment-link-send": [MONEY_TEST],
 });
 
 // journey surface -> the tests that judge its exact result

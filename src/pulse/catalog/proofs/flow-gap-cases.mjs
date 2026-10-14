@@ -79,7 +79,7 @@ export function flowGapRows(messages, journeys, agents) {
 }
 
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
-  message: 170,
+  message: 171,
   journey: 11,
   agent: 1,
 });

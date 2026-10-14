@@ -53,17 +53,20 @@ export function queueDb({
       const c = clients[p[0]];
       return [{ address: c ? (/SELECT phone/.test(_s) ? c.phone : c.email) : null }];
     }],
+    // An invoice is found by its id AND the asking company ($1, $2).
     [/FROM invoices i\s+JOIN clients c ON c\.id = i\.client_id\s+JOIN orgs o/, (_s, p) => {
       const inv = invoices[p[0]];
-      return inv ? [{ org_name: "Fundhub", currency: "USD", status: "sent", ...inv }] : [];
+      return inv && (inv.org_id ?? orgId) === p[1] ? [{ org_name: "Fundhub", currency: "USD", status: "sent", ...inv }] : [];
     }],
     [/UPDATE invoices/, (s, p) => {
       state.invoiceUpdates.push({ sql: s, params: p });
       if (invoices[p[0]]) invoices[p[0]].emailed_at = "2026-10-13T17:00:00Z";
       return [];
     }],
-    [/i\.status = 'sent'\s+AND i\.emailed_at IS NULL/, () => Object.values(invoices)
-      .filter((inv) => inv.status === "sent" && !inv.emailed_at)],
+    // The never-emailed list is one company's ($1) invoices, newest rules of the SQL kept.
+    [/i\.status = 'sent'\s+AND i\.emailed_at IS NULL/, (_s, p) => Object.values(invoices)
+      .filter((inv) => (inv.org_id ?? orgId) === p[0] && inv.status === "sent" && !inv.emailed_at)
+      .slice(0, p[1])],
     [/FROM client_authorized_reps/, []],
     [/FROM opt_outs/, (_s, p) => (optedOut.includes(p[0]) ? [{ "?column?": 1 }] : [])],
     [/FROM compliance_rules/, []],
@@ -90,11 +93,23 @@ export function queueDb({
       } else if (/\(\$1,\$2,'outbound','email'/.test(s) || /'outbound','email',\$3/.test(s)) {
         Object.assign(row, { channel: "email", template_key: p[2], rendered_body: p[3], provider_ref: p[4], to_address: p[5], subject: p[6] });
       }
+      // ON CONFLICT (org_id, provider_ref) DO NOTHING: a second row for the same
+      // reference is not written and nothing comes back, as in the database.
+      if (/ON CONFLICT \(org_id, provider_ref\)/.test(s)
+        && state.messages.some((m) => m.provider_ref && m.org_id === row.org_id && m.provider_ref === row.provider_ref)) {
+        return [];
+      }
       state.messages.push(row);
       return [{ id: row.id, created_at: "2026-10-13T17:00:00Z" }];
     }],
-    [/UPDATE messages m\s+SET status = 'sending'/, () => {
-      const due = state.messages.filter((m) => m.status === "queued");
+    [/SELECT id, created_at FROM messages WHERE org_id = \$1 AND provider_ref = \$2/, (_s, p) => state.messages
+      .filter((m) => m.org_id === p[0] && m.provider_ref === p[1]).slice(0, 1)
+      .map((m) => ({ id: m.id, created_at: "2026-10-13T17:00:00Z" }))],
+    // The batch claim: one company's ($1) queued rows, at most $2 of them, fewer than $4 attempts.
+    [/UPDATE messages m\s+SET status = 'sending'/, (_s, p) => {
+      const due = state.messages
+        .filter((m) => m.status === "queued" && (p[0] == null || m.org_id === p[0]) && m.attempts < p[3])
+        .slice(0, p[1]);
       state.claims += due.length;
       for (const m of due) { m.status = "sending"; m.attempts += 1; }
       return due.map((m) => ({ ...m }));
@@ -119,6 +134,13 @@ export function queueDb({
       const m = byId(p[0]);
       if (m) { m.status = "blocked"; m.blocked_reason = p[1]; }
       state.statusUpdates.push({ id: p[0], status: "blocked", detail: p[1] });
+      return [];
+    }],
+    // A text held for the night window goes back to queued with a send time.
+    [/UPDATE messages\s+SET status = 'queued', scheduled_at = \$2/, (_s, p) => {
+      const m = byId(p[0]);
+      if (m) { m.status = "queued"; m.scheduled_at = p[1]; m.attempts = Math.max(0, m.attempts - 1); }
+      state.statusUpdates.push({ id: p[0], status: "queued", scheduled_at: p[1] });
       return [];
     }],
     [/UPDATE messages SET status = \$2/, (s, p) => {

@@ -25,7 +25,9 @@ test("every slice-2 route proof names one exact catalog row and real handler tes
       assert.match(file, /^src\/http\/.+\.test\.mjs$/);
       assert.doesNotMatch(file, /\.pg\.test\.mjs$/);
       const source = fs.readFileSync(new URL(file, ROOT), "utf8");
-      assert.match(source, /runWithSharedDb|handler\(|handler,/, `${file} must run a real handler`);
+      // A real handler: imported from api/ and run against the stand-in database.
+      assert.match(source, /from "\.\.\/\.\.\/api\/[^"]+\.mjs"/, `${file} must import a real api/ handler`);
+      assert.match(source, /runWithSharedDb|\bcall\(/, `${file} must run it against the stand-in database`);
     }
     assert.equal(s2DoorProof(entry.sourceFile, matches[0]).depth, "deep");
   }

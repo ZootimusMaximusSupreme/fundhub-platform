@@ -10,6 +10,7 @@ export const S2_DISPLAY_WRAPPER = "src/pulse/catalog/proofs/s2-display-contracts
 
 const AGENT_SERVER = "src/http/s2-agents-save.test.mjs";
 const AUTH_SERVER = "src/http/s2-message-routes-auth.test.mjs";
+const REP_SERVER = "src/http/s2-message-routes-reset-rep.test.mjs";
 const OUTBOUND_SERVER = "src/http/s2-message-routes-outbound.test.mjs";
 const CONTRACTS_SERVER = "src/http/s2-message-routes-contracts.test.mjs";
 const MONEY_ALERTS_SERVER = "src/http/money-alerts.test.mjs";
@@ -50,6 +51,9 @@ export const S2_DISPLAY_GROUPS = Object.freeze([
   group("desks-a.json", "client-control-panel.html",
     ["e2e/s2-ccp-portal-access.spec.mjs"], [AUTH_SERVER], [
       "Send portal sign-in link button (owner/admin)",
+    ]),
+  group("desks-a.json", "client-control-panel.html",
+    ["e2e/s2-ccp-portal-access.spec.mjs"], [REP_SERVER], [
       "Authorized rep: Add this person to the file button and Name/Email/Phone inputs (owner/admin)",
     ]),
   group("desks-b.json", "documents.html",
@@ -91,7 +95,6 @@ export const S2_DISPLAY_GROUPS = Object.freeze([
 // 120 seconds, which the whole screen suite above does not fit in.
 export const S2_FLOW_WRAPPER = "src/pulse/catalog/proofs/s2-flow-pages.test.mjs";
 export const S2_FLOW_SPECS = Object.freeze([
-  "e2e/ops-admin-outbound.spec.mjs",
   "e2e/s2-consulting-pages.spec.mjs",
 ]);
 

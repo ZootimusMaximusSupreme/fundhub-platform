@@ -6,7 +6,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import handler from "../../api/agents.mjs";
-import { fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID } from "../testing/handler-harness.mjs";
+import { accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
+import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const current = {
   id: "a1000000-0000-4000-8000-000000000001", org_id: ORG_ID, code: "AG-01", name: "Lead Follow-up",
@@ -14,10 +15,14 @@ const current = {
   prompt: "old prompt", guardrails: { block: "old" }, owner_label: "Sarah Whitfield", sort_order: 1,
 };
 
-async function save(body, role = "owner", row = current) {
+// An agent is found by its company ($1) AND its code ($2).
+const found = (row) => [/FROM agents\s+WHERE org_id = \$1::uuid AND code = \$2/,
+  (_s, p) => (row && p[0] === row.org_id && p[1] === row.code ? [row] : [])];
+
+async function save(body, role = "owner", row = current, session = [staffSession({ role })]) {
   const fake = fakeDb([
-    staffSession({ role }),
-    [/FROM agents\s+WHERE org_id = \$1::uuid AND code = \$2/, row ? [row] : []],
+    ...session,
+    found(row),
     [/UPDATE agents SET\s+name = \$3/, (_s, p) => [{ ...current, name: p[2], channel: p[3], agent_class: p[4], owner_label: p[5], prompt: p[6], guardrails: JSON.parse(p[7]) }]],
   ]);
   const res = makeRes();
@@ -75,7 +80,7 @@ describe("POST /api/agents action=save", () => {
     const run = async (action, row) => {
       const fake = fakeDb([
         staffSession({ role: "owner" }),
-        [/FROM agents\s+WHERE org_id = \$1::uuid AND code = \$2/, [row]],
+        found(row),
         [/UPDATE agents SET\s+status = 'live'/, (_s, p) => [{ ...row, status: "live", runtime: p[2] }]],
         [/UPDATE agents SET\s+status = 'shadow'/, (_s, p) => [{ ...row, status: "shadow", runtime: p[2] }]],
       ]);
@@ -94,5 +99,45 @@ describe("POST /api/agents action=save", () => {
     const shadow = await run("demote", { ...ready, status: "live", runtime: "internal" });
     assert.equal(shadow.res.statusCode, 200);
     assert.equal(shadow.res.body.agent.status, "shadow");
+  });
+
+  test("every staff role in the app's staff set may save; a client, partner or affiliate login and no login may not", async () => {
+    const body = { action: "save", code: "AG-01", name: "Renamed" };
+    for (const role of STAFF_ROLES) {
+      const { res, fake } = await save(body, role);
+      assert.equal(res.statusCode, 200, role);
+      assert.equal(fake.find(/UPDATE agents SET/).length, 1, role);
+    }
+    const outsiders = [
+      accountSession({ kind: "client", clientId: "c1000000-0000-4000-8000-000000000001" }),
+      accountSession({ kind: "partner", partnerId: "b1000000-0000-4000-8000-000000000001" }),
+      accountSession({ kind: "affiliate" }),
+      [],
+    ];
+    for (const session of outsiders) {
+      const { res, fake } = await save(body, "owner", current, session);
+      assert.ok([401, 403].includes(res.statusCode), String(res.statusCode));
+      assert.equal(fake.find(/UPDATE agents SET/).length, 0);
+    }
+  });
+
+  test("an agent in another company is 404: it is not saved, promoted or returned to shadow", async () => {
+    const ready = { ...current, prompt: "x".repeat(80), guardrails: { block: "y".repeat(40), triggers: ["entry.captured"] } };
+    for (const body of [
+      { action: "save", code: "AG-01", name: "Renamed" },
+      { action: "promote", code: "AG-01" },
+      { action: "demote", code: "AG-01" },
+    ]) {
+      const fake = fakeDb([
+        staffSession({ role: "owner", org_id: OTHER_ORG_ID }),
+        found(ready),
+        [/UPDATE agents SET/, [{ ...ready }]],
+      ]);
+      const res = makeRes();
+      await runWithSharedDb(fake, () => handler(req("POST", { body }), res));
+      assert.equal(res.statusCode, 404, body.action);
+      assert.deepEqual(fake.find(/FROM agents/)[0].params, [OTHER_ORG_ID, "AG-01"], body.action);
+      assert.equal(fake.find(/UPDATE agents SET/).length, 0, body.action);
+    }
   });
 });

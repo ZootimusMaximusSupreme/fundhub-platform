@@ -23,14 +23,17 @@ const ORG = "org-1";
 const STAFF_ID = "5aff0000-0000-4000-8000-000000000001";
 
 const clientP = (clientId = MINE) => ({ kind: "client", accountId: "acc-1", orgId: ORG, clientId });
-const staffP = (role) => ({ kind: "staff", role, orgId: ORG, staff: { id: STAFF_ID, role, org_id: ORG } });
+const staffP = (role, orgId = ORG) => ({ kind: "staff", role, orgId, staff: { id: STAFF_ID, role, org_id: orgId } });
 const gateAs = (p) => async (_req, res, kinds) => {
   if (!p) { res.status(401).json({ ok: false, error: "unauthorized" }); return null; }
   if (!kinds.includes(p.kind)) { res.status(403).json({ ok: false, error: "forbidden" }); return null; }
   return p;
 };
+// A client is in a company when BOTH the client id ($1) and the company ($2) match.
 const db = (inOrg = [MINE]) => ({
-  query: async (sql, params) => (/FROM clients/.test(sql) ? { rows: inOrg.includes(params[0]) ? [{ "?column?": 1 }] : [] } : { rows: [] })
+  query: async (sql, params) => (/FROM clients/.test(sql)
+    ? { rows: inOrg.includes(params[0]) && params[1] === ORG ? [{ "?column?": 1 }] : [] }
+    : { rows: [] })
 });
 const NOW = () => new Date("2026-10-07T12:00:00Z");
 
@@ -87,11 +90,34 @@ describe("GET /api/money/alerts", () => {
     assert.equal(none.res.statusCode, 400);
   });
 
-  test("staff outside FINANCE (a closer, a CSM, an advisor) are refused", async () => {
-    for (const role of ["setter", "csm", "funding_advisor"]) {
+  test("only the FinanceOS roles may read: owner, admin, sales manager and closer; every other staff role is refused", async () => {
+    const ALLOWED = ["owner", "admin", "sales_manager", "closer"];
+    const REFUSED = ["funding_advisor", "inquiry_specialist", "setter", "csm"];
+    for (const role of ALLOWED) {
+      const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
+      assert.equal(res.statusCode, 200, role);
+      assert.equal(calls.read[0].clientId, MINE, role);
+    }
+    for (const role of REFUSED) {
       const { res, calls } = await call({ method: "GET", query: { client_id: MINE } }, staffP(role));
       assert.equal(res.statusCode, 403, role);
       assert.equal(calls.read, undefined, role);
+    }
+  });
+
+  test("staff of another company cannot read or change this company's client: 404, nothing read, nothing written", async () => {
+    const stranger = staffP("owner", "org-2");
+    const read = await call({ method: "GET", query: { client_id: MINE } }, stranger);
+    assert.equal(read.res.statusCode, 404);
+    assert.equal(read.calls.read, undefined);
+    for (const body of [
+      { action: "set_alert", kind: "new_credit", enabled: false, client_id: MINE },
+      { action: "set_promo", account_id: CARD, ends_on: "2026-12-06", apr_pct: 2.99, client_id: MINE },
+      { action: "set_statement_close_day", account_id: CARD, day: 12, client_id: MINE },
+    ]) {
+      const w = await call({ method: "POST", body }, stranger);
+      assert.equal(w.res.statusCode, 404, body.action);
+      assert.deepEqual(w.calls, {}, body.action);
     }
   });
 
@@ -217,12 +243,20 @@ describe("POST — shape", () => {
     assert.deepEqual(res.body.actions, [...ACTIONS]);
   });
 
-  test("a body that is not JSON is a 400; staff outside FINANCE cannot write", async () => {
+  test("a body that is not JSON is a 400; staff outside the FinanceOS roles cannot write, and the roles inside can", async () => {
     const bad = await call({ method: "POST", body: "{not json" }, clientP());
     assert.equal(bad.res.statusCode, 400);
-    const closer = await call({ method: "POST", body: { action: "set_alert", kind: "new_credit", enabled: false, client_id: MINE } }, staffP("setter"));
-    assert.equal(closer.res.statusCode, 403);
-    assert.equal(closer.calls.alert, undefined);
+    const write = { action: "set_alert", kind: "new_credit", enabled: false, client_id: MINE };
+    for (const role of ["owner", "admin", "sales_manager", "closer"]) {
+      const { res, calls } = await call({ method: "POST", body: write }, staffP(role));
+      assert.equal(res.statusCode, 200, role);
+      assert.equal(calls.alert[0].by, "staff", role);
+    }
+    for (const role of ["funding_advisor", "inquiry_specialist", "setter", "csm"]) {
+      const { res, calls } = await call({ method: "POST", body: write }, staffP(role));
+      assert.equal(res.statusCode, 403, role);
+      assert.equal(calls.alert, undefined, role);
+    }
   });
 
   test("a staff POST with no client_id is a 400", async () => {

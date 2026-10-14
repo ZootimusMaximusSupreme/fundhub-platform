@@ -5,7 +5,12 @@
 // only an owner or admin is offered either control.
 // NO BACKEND: page.route() answers /api/**; nothing is sent.
 import { test, expect } from "@playwright/test";
-import { openScreen, json, OWNER, CLOSER, CLIENT_ID } from "./harness.mjs";
+import { openScreen, json, OWNER, CLIENT_ID } from "./harness.mjs";
+import { ROLE_SETS } from "../src/http/read-api.mjs";
+
+// Every staff role the app has: the controls are offered to two of them only.
+const OFFERED_TO = ["owner", "admin"];
+const sessionFor = (role) => ({ ok: true, staff: { ...OWNER.staff, role } });
 
 async function open(page, { session = OWNER, portal = { ok: true, sent: true, url: "https://app.example.test/portal-login.html?t=abc", expiresAt: "2026-10-13T18:00:00Z" }, rep = { ok: true, account_id: "a1", sent: true, url: "https://app.example.test/portal-login.html?t=rep" } } = {}) {
   const writes = [];
@@ -42,10 +47,29 @@ test.describe("client control panel: portal access controls", () => {
     await expect(page.locator("#ccp-portal-link-status")).not.toContainText("Sent at");
   });
 
-  test("a closer is not offered the sign-in link or the representative form", async ({ page }) => {
-    await open(page, { session: CLOSER });
-    await expect(page.locator("#ccp-portal-link-wrap")).toBeHidden();
-    await expect(page.locator("#ccp-rep-wrap")).toBeHidden();
+  for (const role of ROLE_SETS.STAFF) {
+    const offered = OFFERED_TO.includes(role);
+    test(`${role} ${offered ? "is" : "is not"} offered the sign-in link and the representative form`, async ({ page }) => {
+      await open(page, { session: sessionFor(role) });
+      if (offered) {
+        await expect(page.locator("#ccp-portal-link-wrap")).toBeVisible();
+        await expect(page.locator("#ccp-rep-wrap")).toBeVisible();
+      } else {
+        await expect(page.locator("#ccp-portal-link-wrap")).toBeHidden();
+        await expect(page.locator("#ccp-rep-wrap")).toBeHidden();
+      }
+    });
+  }
+
+  test("a refusal from the server is said in its own words, never shown as sent, and the button is pressable again", async ({ page }) => {
+    const noEmail = "This client has no email address on file, so there is nowhere to send a link.";
+    const { writes } = await open(page, { portal: { ok: false, error: noEmail, code: "no_email_on_file" } });
+    await page.locator("#ccp-portal-link").click();
+    await expect.poll(() => writes.length).toBe(1);
+    await expect(page.locator("#ccp-portal-link-status")).toHaveText(noEmail);
+    await expect(page.locator("#ccp-portal-link-status")).not.toContainText("Sent at");
+    await expect(page.locator("#ccp-portal-link-label")).toHaveText("Send portal sign-in link");
+    await expect(page.locator("#ccp-portal-link")).toBeEnabled();
   });
 
   test("Add this person sends the name, email and phone typed for this client and shows the link back", async ({ page }) => {
@@ -61,6 +85,17 @@ test.describe("client control panel: portal access controls", () => {
     });
     await expect(page.locator("#ccp-rep-status")).toContainText("Added. The sign-in email is queued.");
     await expect(page.locator("#ccp-rep-url")).toHaveValue("https://app.example.test/portal-login.html?t=rep");
+  });
+
+  test("a representative added but not queued is said to be not queued, and the link is still shown", async ({ page }) => {
+    const { writes } = await open(page, { rep: { ok: true, account_id: "a1", sent: false, url: "https://app.example.test/portal-login.html?t=rep2" } });
+    await page.locator("#ccp-rep-name").fill("Pat Rep");
+    await page.locator("#ccp-rep-email").fill("pat.rep@example.test");
+    await page.locator("#ccp-rep-phone").fill("(602) 555-0142");
+    await page.locator("#ccp-rep-add").click();
+    await expect.poll(() => writes.length).toBe(1);
+    await expect(page.locator("#ccp-rep-status")).toHaveText("Added. The sign-in email did not queue. Use the link.");
+    await expect(page.locator("#ccp-rep-url")).toHaveValue("https://app.example.test/portal-login.html?t=rep2");
   });
 
   test("a refusal from the server is said in its own words and no link is shown", async ({ page }) => {

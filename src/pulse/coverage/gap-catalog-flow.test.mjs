@@ -28,15 +28,15 @@ function dbWith(rows) {
   };
 }
 
-test("the Flow monitor owns the exact 182 remaining catalog rows", () => {
+test("the Flow monitor owns the exact 183 remaining catalog rows", () => {
   const counts = FLOW_ROWS.reduce((out, row) => {
     out[row.family] = (out[row.family] || 0) + 1;
     return out;
   }, {});
   assert.deepEqual(counts, EXPECTED_FLOW_GAP_COUNTS);
-  assert.equal(FLOW_ROWS.length, 182);
-  assert.equal(CHECK_IDS.length, 182);
-  assert.equal(new Set(CHECK_IDS).size, 182);
+  assert.equal(FLOW_ROWS.length, 183);
+  assert.equal(CHECK_IDS.length, 183);
+  assert.equal(new Set(CHECK_IDS).size, 183);
   assert.equal(FLOW_ROWS.filter(isInactiveTemplateRow).length, 158);
 });
 
@@ -51,7 +51,7 @@ test("every inactive template gets its own checked nothing-to-judge row", async 
   const rows = await gapChecks({ db: fake.db, orgId: "00000000-0000-0000-0000-000000000001", now: NOW });
   const inactive = rows.filter((row) => row.id.startsWith("flow:message:template:") && row.status === "na");
 
-  assert.equal(rows.length, 182);
+  assert.equal(rows.length, 183);
   assert.equal(inactive.length, 158);
   assert.equal(fake.calls.length, 1);
   assert.equal(fake.calls[0].params[2].length, 158);
@@ -86,7 +86,7 @@ test("every missing active control emits one exact not-proved or checked inactiv
     assert.doesNotMatch(result.detail, /named control has no exact final-result checker/i, source.surface);
   }
 
-  assert.equal(rows.filter((row) => row.status === "NOT_PROVED").length, 22);
+  assert.equal(rows.filter((row) => row.status === "NOT_PROVED").length, 23);
   assert.equal(rows.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(rows.filter((row) => row.status === "na").length, 160);
 });

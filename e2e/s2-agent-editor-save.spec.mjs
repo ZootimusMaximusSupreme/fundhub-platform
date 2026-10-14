@@ -32,7 +32,13 @@ async function open(page) {
   const writes = [];
   await openScreen(page, "/app/agent-editor.html", OWNER, {
     "/api/read/staff": { ok: true, count: 2, limit: 200, offset: 0, hasMore: false, items: STAFF },
-    "/api/read/agents": { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [ROW] },
+    // The page blanks the saved "escalate to" person if the agents arrive before
+    // the staff list has painted its options. Serve the agents only after the
+    // people lists are painted, so the starting state is the same on every run.
+    "/api/read/agents": async (route) => {
+      await page.waitForFunction(() => document.querySelectorAll("#a_esc option").length > 1);
+      return json(route, { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [ROW] });
+    },
     "/api/agents": async (route) => {
       const body = route.request().postDataJSON();
       writes.push(body);
@@ -56,6 +62,11 @@ async function saveAndRead(page, writes) {
   const before = writes.length;
   await page.locator("#saveBtn").click();
   await expect.poll(() => writes.length).toBe(before + 1);
+  // The page re-selects the agent when the answer comes back, and that folds every
+  // card. Wait for the fold, then open them again, so the next touch can never land
+  // on a hidden control (it timed out 30 seconds when the click beat the fold).
+  await expect.poll(() => page.locator("details.card[open]").count()).toBe(0);
+  await openCards(page);
   const body = writes[writes.length - 1];
   expect(body.action).toBe("save");
   expect(body.code).toBe("AG-01");
@@ -93,17 +104,23 @@ test.describe("agent editor: each control reaches its own saved field", () => {
     expect(guardrails.flags).toEqual({ noamount: false, noscore: false, attorney: false, quiet: false });
   });
 
-  test("max messages per client per day is saved as a whole number", async ({ page }) => {
-    const { writes } = await open(page);
-    await page.locator("#a_msgcap").fill("7");
-    expect((await saveAndRead(page, writes)).guardrails.authority.msgcap).toBe(7);
-  });
+  for (const [typed, saved] of [["7", 7], ["12", 12], ["0", 0]]) {
+    test(`max messages per client per day ${typed} is saved as the whole number ${saved}`, async ({ page }) => {
+      const { writes } = await open(page);
+      await page.locator("#a_msgcap").fill(typed);
+      expect((await saveAndRead(page, writes)).guardrails.authority.msgcap).toBe(saved);
+    });
+  }
 
-  test("after no reply is saved as the chosen wait", async ({ page }) => {
-    const { writes } = await open(page);
-    await page.locator("#a_escafter").selectOption("48 hours");
-    expect((await saveAndRead(page, writes)).guardrails.escalation.after).toBe("48 hours");
-  });
+  for (const wait of ["15 minutes", "1 hour", "4 hours", "24 hours", "48 hours"]) {
+    test(`after no reply "${wait}" is saved as the chosen wait`, async ({ page }) => {
+      const { writes } = await open(page);
+      // The saved wait is "1 hour": start from a different one so an untouched value cannot pass.
+      await page.locator("#a_escafter").selectOption(wait === "15 minutes" ? "4 hours" : "15 minutes");
+      await page.locator("#a_escafter").selectOption(wait);
+      expect((await saveAndRead(page, writes)).guardrails.escalation.after).toBe(wait);
+    });
+  }
 
   test("escalate immediately when is saved word for word", async ({ page }) => {
     const { writes } = await open(page);
@@ -128,11 +145,15 @@ test.describe("agent editor: each control reaches its own saved field", () => {
     expect((await saveAndRead(page, writes)).guardrails.block).toBe(words);
   });
 
-  test("the channel select is saved as the lower-case channel", async ({ page }) => {
-    const { writes } = await open(page);
-    await page.locator("#a_chan").selectOption("Email");
-    expect((await saveAndRead(page, writes)).channel).toBe("email");
-  });
+  for (const [label, saved] of [["SMS", "sms"], ["Email", "email"], ["Voice", "voice"], ["Internal", "internal"]]) {
+    test(`the channel select "${label}" is saved as the lower-case channel "${saved}"`, async ({ page }) => {
+      const { writes } = await open(page);
+      // The agent starts on SMS: start from a different channel so an untouched value cannot pass.
+      await page.locator("#a_chan").selectOption(label === "Email" ? "Voice" : "Email");
+      await page.locator("#a_chan").selectOption(label);
+      expect((await saveAndRead(page, writes)).channel).toBe(saved);
+    });
+  }
 
   test("the prompt textarea is saved byte for byte", async ({ page }) => {
     const { writes } = await open(page);
@@ -141,13 +162,26 @@ test.describe("agent editor: each control reaches its own saved field", () => {
     expect((await saveAndRead(page, writes)).prompt).toBe(prompt);
   });
 
-  test("trigger events: picking one adds exactly that event, picking it again removes it", async ({ page }) => {
+  test("trigger events: each of the 13 toggles adds exactly its own event, and picking them all again removes them", async ({ page }) => {
     const { writes } = await open(page);
-    const buttons = page.locator("#evGrid .ev");
-    expect(await buttons.count()).toBe(13);
+    const events = await page.locator("#evGrid .ev").evaluateAll((els) => els.map((el) => el.dataset.e));
+    expect(events.length).toBe(13);
+    expect(new Set(events).size).toBe(13);
+    expect(events).toEqual(expect.arrayContaining(["entry.captured", "survey.submitted", "payment.received"]));
+    // entry.captured starts on: picking the other twelve must leave all thirteen on.
+    for (const event of events.filter((e) => e !== "entry.captured")) {
+      await page.locator(`#evGrid .ev[data-e="${event}"]`).click();
+    }
+    expect([...(await saveAndRead(page, writes)).guardrails.triggers].sort()).toEqual([...events].sort());
+    // Every one of them now picked again is every one of them off.
+    for (const event of events) await page.locator(`#evGrid .ev[data-e="${event}"]`).click();
+    expect((await saveAndRead(page, writes)).guardrails.triggers).toEqual([]);
+  });
+
+  test("trigger events: picking one leaves the others as they were", async ({ page }) => {
+    const { writes } = await open(page);
     await page.locator('#evGrid .ev[data-e="payment.received"]').click();
-    expect((await saveAndRead(page, writes)).guardrails.triggers.sort()).toEqual(["entry.captured", "payment.received"]);
-    await openCards(page);
+    expect([...(await saveAndRead(page, writes)).guardrails.triggers].sort()).toEqual(["entry.captured", "payment.received"]);
     await page.locator('#evGrid .ev[data-e="payment.received"]').click();
     expect((await saveAndRead(page, writes)).guardrails.triggers).toEqual(["entry.captured"]);
   });

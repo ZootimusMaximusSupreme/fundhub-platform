@@ -1,62 +1,33 @@
-// The sign-in mail doors, run through the REAL api/ handlers with a stand-in
-// database and no network. Each test judges the exact result the catalog row
-// names: what the caller is told, and what was queued for the compliance gate.
+// The portal sign-in link doors, run through the REAL api/ handlers with a
+// stand-in database and no network. Each test judges the exact result the
+// catalog row names: what the caller is told, and what was queued for the
+// compliance gate.
 //
 //   route:auth/magic-link        client types an email, a 15 minute single-use link is queued
 //   route:auth/send-portal-link  owner or admin queues a link and reads the URL back
-//   route:auth/reset             action=request mails a reset link, always answers ok
-//   route:auth/authorized-rep    owner or admin adds or replaces a representative
+//   (and magic-link-verify)      the link is spent once, then refused
 //
-// Nothing here can send: a queued row is only a row, and fetch is refused.
+// Password reset and the authorized representative are in
+// s2-message-routes-reset-rep.test.mjs. Nothing here can send: a queued row is
+// only a row, and fetch is refused.
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 
 import magicLink from "../../api/auth/magic-link.mjs";
 import sendPortalLink from "../../api/auth/send-portal-link.mjs";
-import reset from "../../api/auth/reset.mjs";
-import authorizedRep from "../../api/auth/authorized-rep.mjs";
 import magicLinkVerify from "../../api/auth/magic-link-verify.mjs";
-import { accountSession } from "../testing/handler-harness.mjs";
 import {
-  fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID,
+  accountSession, req, staffSession, ORG_ID, OTHER_ORG_ID,
 } from "../testing/handler-harness.mjs";
+import { call, refuseNetwork, splitRoles, CLIENT } from "../pulse/catalog/proofs/s2-route-kit.mjs";
+import {
+  EMAIL, OTHER_CLIENT, OWNER_ADMIN, clientByEmail, clientRow, hammered, inOrg, linkInsert, noAccount,
+  noLimit, org, queued, template,
+} from "../pulse/catalog/proofs/s2-auth-fixtures.mjs";
 
-const CLIENT = "c1000000-0000-4000-8000-000000000001";
-const OTHER_CLIENT = "c9000000-0000-4000-8000-000000000009";
+const netCalls = refuseNetwork({ before, after });
 const LINK_ROW = "1c000000-0000-4000-8000-000000000001";
-const MSG_ROW = "ee000000-0000-4000-8000-000000000001";
-const EMAIL = "dana.whitfield@example.test";
-
-const realFetch = globalThis.fetch;
-const netCalls = [];
-before(() => {
-  globalThis.fetch = async (url) => { netCalls.push(String(url)); throw new Error("network refused in this test"); };
-});
-after(() => { globalThis.fetch = realFetch; });
-
-async function call(handler, request, rules) {
-  const fake = fakeDb(rules);
-  const res = makeRes();
-  await runWithSharedDb(fake, () => handler(request, res));
-  return { res, fake };
-}
-
-const org = [/FROM orgs WHERE slug/, [{ id: ORG_ID }]];
-const noLimit = [/FROM account_magic_links m/, [{ email_count: 0, ip_count: 0 }]];
-const hammered = [/FROM account_magic_links m/, [{ email_count: 3, ip_count: 0 }]];
-const noAccount = [/FROM accounts\s+WHERE org_id = \$1 AND lower\(email\)/, []];
-const clientByEmail = [/FROM clients\s+WHERE org_id = \$1 AND lower\(email\)/, [{ id: CLIENT }]];
-const linkInsert = [/INSERT INTO account_magic_links/, [{ id: LINK_ROW }]];
-const template = [/FROM message_templates/, [{
-  body: "Hi {{contact.first_name}}, sign in here: {{magic_link.url}} (good for {{magic_link.expires_minutes}} minutes)",
-  subject: "Your Fundhub sign-in link",
-  compliance_passed: true,
-}]];
-const clientRow = [/FROM clients WHERE id = \$1 LIMIT 1/, [{
-  first_name: "Dana", last_name: "Whitfield", email: EMAIL, phone: "+16025550100", custom_fields: {},
-}]];
-const queued = [/INSERT INTO messages/, [{ id: MSG_ROW, created_at: "2026-10-13T17:00:00Z" }]];
 
 describe("POST /api/auth/magic-link", () => {
   test("a client's address queues one email with a 15 minute single-use link, and the caller is told only the uniform sentence", async () => {
@@ -73,6 +44,8 @@ describe("POST /api/auth/magic-link", () => {
     assert.deepEqual(Object.keys(res.body).sort(), ["message", "ok"]);
 
     const [link] = fake.find(/INSERT INTO account_magic_links/);
+    // The values sit in the statement's columns in the order the test reads them.
+    assert.match(link.sql, /\(org_id, email, account_id, client_id, token_hash, expires_at, outcome,[\s\S]*VALUES \(\$1,\$2,\$3,\$4,\$5,\$6,'issued'/);
     const [, email, accountId, clientId, tokenHash, expiresAt] = link.params;
     assert.equal(email, EMAIL);
     assert.equal(accountId, null);
@@ -114,15 +87,30 @@ describe("POST /api/auth/magic-link", () => {
     assert.equal(unknown.fake.find(/INSERT INTO messages/).length, 0);
   });
 
-  test("a throttled address gets 429 with Retry-After and nothing is written", async () => {
-    const { res, fake } = await call(
-      magicLink, req("POST", { body: { email: EMAIL } }), [org, hammered, noAccount, clientByEmail, linkInsert]
-    );
-    assert.equal(res.statusCode, 429);
-    assert.equal(res.body.error, "too_many_requests");
-    assert.equal(res.headers["retry-after"], "900");
-    assert.equal(fake.find(/INSERT INTO account_magic_links/).length, 0);
-    assert.equal(fake.find(/INSERT INTO messages/).length, 0);
+  test("three requests for one address, or fifteen from one source, in 15 minutes are throttled; one fewer is not", async () => {
+    const counted = (email_count, ip_count) => [/FROM account_magic_links m/, [{ email_count, ip_count }]];
+    const cases = [
+      [counted(2, 14), 200, "one under both limits"],
+      [counted(3, 0), 429, "the address limit"],
+      [counted(0, 15), 429, "the source limit"],
+    ];
+    for (const [counts, status, why] of cases) {
+      const { res, fake } = await call(
+        magicLink, req("POST", { body: { email: EMAIL }, headers: { "x-forwarded-for": "203.0.113.9" } }),
+        [org, counts, noAccount, clientByEmail, linkInsert, template, clientRow, queued]
+      );
+      assert.equal(res.statusCode, status, why);
+      // The count is asked for this company, this address, this source, over 15 minutes.
+      assert.deepEqual(fake.find(/FROM account_magic_links m/)[0].params, [ORG_ID, EMAIL, "203.0.113.9", 15], why);
+      if (status === 429) {
+        assert.equal(res.body.error, "too_many_requests", why);
+        assert.equal(res.headers["retry-after"], "900", why);
+        assert.equal(fake.find(/INSERT INTO account_magic_links/).length, 0, why);
+        assert.equal(fake.find(/INSERT INTO messages/).length, 0, why);
+      } else {
+        assert.equal(fake.find(/INSERT INTO messages/).length, 1, why);
+      }
+    }
   });
 
   test("a malformed address is 400 and a GET is 405, with no database work", async () => {
@@ -136,15 +124,13 @@ describe("POST /api/auth/magic-link", () => {
 });
 
 describe("POST /api/auth/send-portal-link", () => {
-  const clientInOrg = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, (_s, p) => (p[0] === CLIENT ? [{ "?column?": 1 }] : [])];
+  const clientInOrg = inOrg(/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, { "?column?": 1 });
   const clientEmail = [/SELECT email FROM clients WHERE id = \$1 AND org_id = \$2/, [{ email: EMAIL }]];
   const issuePath = [org, noLimit, noAccount, clientByEmail, linkInsert, template, clientRow, queued];
+  const send = (rules, body = { client_id: CLIENT }) => call(sendPortalLink, req("POST", { body }), rules);
 
   test("an owner gets the URL back and one email is queued to the client's own address", async () => {
-    const { res, fake } = await call(
-      sendPortalLink, req("POST", { body: { client_id: CLIENT } }),
-      [staffSession({ role: "owner" }), clientInOrg, clientEmail, ...issuePath]
-    );
+    const { res, fake } = await send([staffSession({ role: "owner" }), clientInOrg, clientEmail, ...issuePath]);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.equal(res.body.sent, true);
@@ -159,144 +145,52 @@ describe("POST /api/auth/send-portal-link", () => {
     assert.ok(mail.params[4].includes(token));
   });
 
-  test("a closer is refused and nothing is issued", async () => {
-    const { res, fake } = await call(
-      sendPortalLink, req("POST", { body: { client_id: CLIENT } }),
-      [staffSession({ role: "closer" }), clientInOrg, clientEmail, ...issuePath]
-    );
-    assert.equal(res.statusCode, 403);
-    assert.equal(fake.find(/INSERT INTO account_magic_links/).length, 0);
+  test("only an owner or an admin may send; every other staff role is refused and nothing is issued", async () => {
+    const { admitted, refused } = splitRoles(OWNER_ADMIN);
+    assert.deepEqual([...admitted].sort(), [...OWNER_ADMIN].sort());
+    for (const role of admitted) {
+      const { res } = await send([staffSession({ role }), clientInOrg, clientEmail, ...issuePath]);
+      assert.equal(res.statusCode, 200, role);
+    }
+    assert.equal(refused.length, 6);
+    for (const role of refused) {
+      const { res, fake } = await send([staffSession({ role }), clientInOrg, clientEmail, ...issuePath]);
+      assert.equal(res.statusCode, 403, role);
+      assert.equal(fake.find(/INSERT INTO account_magic_links/).length, 0, role);
+      assert.equal(fake.find(/INSERT INTO messages/).length, 0, role);
+    }
+    const nobody = await send([clientInOrg, clientEmail, ...issuePath]);
+    assert.equal(nobody.res.statusCode, 401);
+    assert.equal(nobody.fake.find(/INSERT INTO account_magic_links/).length, 0);
   });
 
-  test("another company's client is 404, no address is 409, a fresh request is 429", async () => {
-    const other = await call(
-      sendPortalLink, req("POST", { body: { client_id: OTHER_CLIENT } }),
-      [staffSession({ role: "owner" }), clientInOrg, ...issuePath]
-    );
-    assert.equal(other.res.statusCode, 404);
+  test("a client that is not in the signed-in person's company is 404 and nothing is issued", async () => {
+    // Same client id, signed in to a different company: the company parameter decides.
+    const otherCompany = await send([staffSession({ role: "owner", org_id: OTHER_ORG_ID }), clientInOrg, clientEmail, ...issuePath]);
+    assert.equal(otherCompany.res.statusCode, 404);
+    assert.deepEqual(otherCompany.fake.find(/SELECT 1 FROM clients/)[0].params, [CLIENT, OTHER_ORG_ID]);
+    // A client id nobody has, in the right company.
+    const unknown = await send([staffSession({ role: "owner" }), clientInOrg, ...issuePath], { client_id: OTHER_CLIENT });
+    assert.equal(unknown.res.statusCode, 404);
+    for (const r of [otherCompany, unknown]) {
+      assert.equal(r.fake.find(/INSERT INTO account_magic_links/).length, 0);
+      assert.equal(r.fake.find(/INSERT INTO messages/).length, 0);
+    }
+  });
 
-    const noEmail = await call(
-      sendPortalLink, req("POST", { body: { client_id: CLIENT } }),
-      [staffSession({ role: "admin" }), clientInOrg, [/SELECT email FROM clients/, [{ email: null }]], ...issuePath]
-    );
+  test("no email on file is 409, a request made a moment ago is 429, a bad id is 400", async () => {
+    const noEmail = await send([staffSession({ role: "admin" }), clientInOrg, [/SELECT email FROM clients/, [{ email: null }]], ...issuePath]);
     assert.equal(noEmail.res.statusCode, 409);
     assert.equal(noEmail.res.body.code, "no_email_on_file");
+    assert.equal(noEmail.fake.find(/INSERT INTO messages/).length, 0);
 
-    const limited = await call(
-      sendPortalLink, req("POST", { body: { client_id: CLIENT } }),
-      [staffSession({ role: "owner" }), clientInOrg, clientEmail, org, hammered, noAccount, clientByEmail, linkInsert]
-    );
+    const limited = await send([staffSession({ role: "owner" }), clientInOrg, clientEmail, org, hammered, noAccount, clientByEmail, linkInsert]);
     assert.equal(limited.res.statusCode, 429);
     assert.equal(limited.res.body.code, "rate_limited");
     assert.equal(limited.fake.find(/INSERT INTO messages/).length, 0);
 
-    const bad = await call(
-      sendPortalLink, req("POST", { body: { client_id: "not-a-uuid" } }), [staffSession({ role: "owner" })]
-    );
+    const bad = await send([staffSession({ role: "owner" })], { client_id: "not-a-uuid" });
     assert.equal(bad.res.statusCode, 400);
-  });
-});
-
-describe("POST /api/auth/reset action=request", () => {
-  test("a live staff address is asked for a reset and the reply is ok either way", async () => {
-    const live = await call(
-      reset, req("POST", { body: { action: "request", email: "casey@example.test" } }),
-      [
-        [/FROM staff/, [{ id: "5a000000-0000-4000-8000-000000000001", email: "casey@example.test", status: "active" }]],
-        [/INSERT INTO password_resets/, [{ id: "9e000000-0000-4000-8000-000000000001" }]],
-      ]
-    );
-    const nobody = await call(
-      reset, req("POST", { body: { action: "request", email: "nobody@example.test" } }), []
-    );
-    assert.equal(live.res.statusCode, 200);
-    assert.equal(nobody.res.statusCode, 200);
-    assert.equal(live.res.body.ok, true);
-    assert.equal(nobody.res.body.ok, true);
-    // No reset mail provider is configured here, so neither is "mailed", and
-    // neither reply names whether the address matched a login.
-    assert.equal(nobody.res.body.mailed, false);
-    assert.match(nobody.res.body.message, /Nothing was sent/);
-    assert.equal(Object.hasOwn(live.res.body, "token"), false);
-  });
-
-  test("an unknown action is 400 and a GET is 405", async () => {
-    const unknown = await call(reset, req("POST", { body: { action: "explode" } }), []);
-    assert.equal(unknown.res.statusCode, 400);
-    assert.equal(unknown.res.body.error, "unknown_action");
-    const get = await call(reset, req("GET"), []);
-    assert.equal(get.res.statusCode, 405);
-  });
-});
-
-describe("POST /api/auth/authorized-rep", () => {
-  const REP_EMAIL = "pat.rep@example.test";
-  const REP_ACCOUNT = "a0000000-0000-4000-8000-0000000000a1";
-  const clientInOrg = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, (_s, p) => (p[0] === CLIENT ? [{ "?column?": 1 }] : [])];
-  const clientOnFile = [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]];
-  const emailNotAClient = [/SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\)/, []];
-  const noExistingLogin = [/SELECT id, kind FROM accounts WHERE org_id = \$1 AND lower\(email\)/, []];
-  const newAccount = [/INSERT INTO accounts/, [{ id: REP_ACCOUNT }]];
-  const noLiveRep = [/SELECT account_id FROM client_authorized_reps/, []];
-  const repAsAuthorizedRep = [/FROM accounts\s+WHERE org_id = \$1 AND lower\(email\) = \$2 LIMIT 1/, [{
-    id: REP_ACCOUNT, kind: "authorized_rep", client_id: null, status: "active",
-  }]];
-  const repFile = [/SELECT client_id FROM client_authorized_reps/, [{ client_id: CLIENT }]];
-  const liveRep = [/JOIN accounts a ON a\.id = r\.account_id/, [{
-    account_id: REP_ACCOUNT, email: REP_EMAIL, phone: "+16025550142", name: "Pat Rep",
-  }]];
-  const body = { client_id: CLIENT, email: REP_EMAIL, name: "Pat Rep", phone: "(602) 555-0142" };
-
-  test("a closer is refused; the route is owner and admin only", async () => {
-    const { res, fake } = await call(authorizedRep, req("POST", { body }), [staffSession({ role: "closer" })]);
-    assert.equal(res.statusCode, 403);
-    assert.equal(fake.find(/INSERT INTO accounts|INSERT INTO client_authorized_reps/).length, 0);
-  });
-
-  test("an owner adds a representative: a login is made, linked to the file, and the sign-in link is queued to the rep", async () => {
-    const { res, fake } = await call(authorizedRep, req("POST", { body }), [
-      staffSession({ role: "owner" }), clientInOrg, clientOnFile, emailNotAClient, noExistingLogin,
-      newAccount, noLiveRep, org, noLimit, repAsAuthorizedRep, repFile, linkInsert, template, clientRow,
-      liveRep, queued,
-    ]);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.ok, true);
-    assert.equal(res.body.account_id, REP_ACCOUNT);
-    assert.equal(res.body.replaced, false);
-    assert.equal(res.body.sent, true);
-    assert.match(res.body.url, /portal-login\.html\?t=/);
-
-    const [account] = fake.find(/INSERT INTO accounts/);
-    assert.match(account.sql, /'authorized_rep'/);
-    assert.equal(account.params[1], REP_EMAIL);
-    assert.equal(account.params[3], "+16025550142");
-    const [link] = fake.find(/INSERT INTO client_authorized_reps/);
-    assert.deepEqual(link.params.slice(0, 3), [ORG_ID, REP_ACCOUNT, CLIENT]);
-
-    // The one email goes to the representative, not to the client's own address.
-    const mail = fake.find(/INSERT INTO messages/);
-    assert.equal(mail.length, 1);
-    assert.equal(mail[0].params[2], "email");
-    assert.equal(mail[0].params[3], "EMAIL-PORTAL-MAGIC-LINK");
-    assert.equal(mail[0].params[6], REP_EMAIL);
-    assert.equal(fake.count("COMMIT"), 1);
-  });
-
-  test("an address that is already a client, or a missing phone, is refused and nothing is linked", async () => {
-    const isClient = await call(authorizedRep, req("POST", { body }), [
-      staffSession({ role: "admin" }), clientInOrg, clientOnFile,
-      [/SELECT id FROM clients WHERE org_id = \$1 AND lower\(email\)/, [{ id: OTHER_CLIENT }]],
-    ]);
-    assert.equal(isClient.res.statusCode, 409);
-    assert.equal(isClient.res.body.code, "email_is_a_client");
-    assert.equal(isClient.fake.find(/INSERT INTO/).length, 0);
-
-    const noPhone = await call(authorizedRep, req("POST", { body: { ...body, phone: "" } }), [
-      staffSession({ role: "owner" }), clientInOrg,
-    ]);
-    assert.equal(noPhone.res.statusCode, 400);
-    assert.equal(noPhone.res.body.code, "phone_required");
-    assert.equal(noPhone.fake.find(/INSERT INTO/).length, 0);
   });
 });
 
