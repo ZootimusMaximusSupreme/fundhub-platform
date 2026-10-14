@@ -24,6 +24,9 @@ Fundhub warms up every bank in the U.S. on LinkedIn and email. We find the banke
 - A couple of employees can run the outreach all day, every day.
 - The employee works from a dashboard in our CRM: takes calls, answers email from their work inbox, and the data they get lands in the system.
 - Everything runs on its own, LinkedIn included. People hop on a call only when a banker wants one.
+- Covers every bank product for clients, personal and business, except mortgages.
+- Warm bankers move to one fundhub.ai inbox (for example relationships@fundhub.ai) with a monthly check-in for active partners and quarterly for quiet ones.
+- Plan to sell this bank data as a recurring offer at $4,000–$5,000 a month. To revisit.
 - Collect every piece of bank data we can: paper applications, application links, all of it.
 
 ## How it runs
