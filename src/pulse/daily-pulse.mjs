@@ -19,7 +19,7 @@ import { checkJobHeartbeats } from "./heartbeats.mjs";
 import { GAP_LANES, runCoverageSlices } from "./coverage/run-slices.mjs";
 import { foldCoverage } from "./coverage/link.mjs";
 import { checkWorkflowRuns } from "./workflow-runs.mjs";
-import { auditPulse, makeLaneNaVerify } from "./self-audit.mjs";
+import { auditPulse, makeLaneNaVerify, naAuditHasOpenWork, prepareNaAudit } from "./self-audit.mjs";
 import { checkPipelineMotion } from "./pipeline-motion.mjs";
 import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
 import { checkLivePlaywright } from "./live-playwright-check.mjs";
@@ -376,6 +376,20 @@ export async function runDailyPulse({
   const date = phoenixDate(now);
   const origin = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
   let checks = [];
+  const laneNaVerify = makeLaneNaVerify({ db, scope: staffScope, now });
+  /* Coverage rows were made in the earlier Inngest steps. Start their N/A proof
+     now, beside the five web checks, instead of adding that read time to the
+     end of the whole-morning step. A failed early job is not
+     hidden: auditPulse gets null and performs the normal proof itself. */
+  const earlyNaJob = Array.isArray(coverageRows)
+    ? prepareNaAudit(coverageRows, {
+      db,
+      scope: staffScope,
+      now,
+      functions,
+      laneNaVerify
+    }).catch(() => null)
+    : null;
 
   checks.push(await checkHealth({ fetchImpl, baseUrl: origin }));
   checks.push(await checkLogin({ fetchImpl, baseUrl: origin }));
@@ -408,8 +422,22 @@ export async function runDailyPulse({
         "Check https://fundhub.ai/api/health and the Supabase project first.")];
     }
   };
+  // Do not overlap database work with the calls below. A staffScope may use a
+  // transaction on one client; waiting here keeps its BEGIN/SET/COMMIT from
+  // interleaving with the pulse's later database checks. The early proof still
+  // runs beside the five web checks above.
+  const earlyNaOutcome = earlyNaJob ? await earlyNaJob : null;
+  const naDbBlocked = naAuditHasOpenWork(earlyNaOutcome);
+  if (naDbBlocked) {
+    dbDown = true;
+    checks.push(check(
+      "db",
+      "skip",
+      "A nothing-to-judge database read is still running, so no later database read started."
+    ));
+  }
   let resolvedOrg = orgId || null;
-  if (!resolvedOrg) {
+  if (!resolvedOrg && !naDbBlocked) {
     const [row] = await guard("db", async () => {
       resolvedOrg = await defaultOrgId(db);
       return [];
@@ -425,14 +453,18 @@ export async function runDailyPulse({
   checks.push(await checkGmail({ env, fetchImpl, gmailClient }));
   checks.push(...await guard("machine", () => checkMachine({ db: dbDown ? null : db, scope: dbDown ? null : staffScope, now })));
   checks.push(...await checkRegistry({ fetchImpl, baseUrl: origin }));
-  try {
-    checks.push(...await checkJobHeartbeats({ db, now }));
-  } catch (err) {
-    checks.push(check(
-      "jobs",
-      "skip",
-      `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
-    ));
+  if (naDbBlocked) {
+    checks.push(check("jobs", "skip", "Job heartbeats were not read because the earlier database read is still running."));
+  } else {
+    try {
+      checks.push(...await checkJobHeartbeats({ db, now }));
+    } catch (err) {
+      checks.push(check(
+        "jobs",
+        "skip",
+        `job heartbeats not read: ${String((err && err.message) || err).slice(0, 160)}`
+      ));
+    }
   }
   if (Array.isArray(coverageRows)) {
     checks.push(...coverageRows);
@@ -477,11 +509,12 @@ export async function runDailyPulse({
       folded,
       functions,
       gapLanes: GAP_LANES,
-      db,
-      scope: staffScope,
+      db: naDbBlocked ? null : db,
+      scope: naDbBlocked ? null : staffScope,
       now,
       orgId: resolvedOrg,
-      laneNaVerify: makeLaneNaVerify({ db, scope: staffScope, now })
+      laneNaVerify,
+      naOutcome: earlyNaOutcome
     });
     checks = [...audit.checks, ...audit.rows];
     folded += audit.folded || 0;
@@ -517,9 +550,9 @@ export async function runDailyPulse({
 
   let scorecard = null;
   try {
-    const previous = resolvedOrg ? await loadPreviousScorecard(db, resolvedOrg, date) : null;
+    const previous = resolvedOrg && !naDbBlocked ? await loadPreviousScorecard(db, resolvedOrg, date) : null;
     scorecard = buildScorecard({ checks, now, previous });
-    if (persist && resolvedOrg && db) await saveScorecard(db, resolvedOrg, scorecard);
+    if (persist && resolvedOrg && db && !naDbBlocked) await saveScorecard(db, resolvedOrg, scorecard);
   } catch (err) {
     if (!scorecard) {
       try { scorecard = buildScorecard({ checks, now }); } catch { scorecard = null; }
@@ -544,7 +577,7 @@ export async function runDailyPulse({
   }
 
   let agentRun = { recorded: false, reason: "dry_run_or_skipped" };
-  if (!dryRun && recordRun) {
+  if (!dryRun && recordRun && !naDbBlocked) {
     try {
       agentRun = await recordAgentRun(db, {
         orgId: resolvedOrg,

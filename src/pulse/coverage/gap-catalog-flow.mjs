@@ -1,6 +1,6 @@
 // Exact read-only checks for the Flow catalog rows that have no stronger proof.
 // An inactive template is checked by its exact key. Every other missing path
-// stays red by its exact surface name until a deeper result check replaces it.
+// stays not proved by its exact surface name until a deeper result check replaces it.
 
 import agents from "../../../ops/workflows/coverage-every-surface-2026-10-10/agents.json" with { type: "json" };
 import journeys from "../../../ops/workflows/coverage-every-surface-2026-10-10/journeys.json" with { type: "json" };
@@ -124,7 +124,7 @@ function staticResult(row) {
     const finding = MESSAGE_FINDINGS[row.surface];
     return result(
       row,
-      "FAIL",
+      "NOT_PROVED",
       `${row.surface}: ${finding || `the named control has no exact final-result checker: ${row.control}`}`,
       `Add or repair the exact read-only result check for ${row.surface}. Do not send from the pulse.`,
     );
@@ -134,7 +134,7 @@ function staticResult(row) {
     if (/#reach-/.test(row.surface)) {
       return result(
         row,
-        "FAIL",
+        "NOT_PROVED",
         `${row.surface}: no signed-in role probe proves this exact route group can be reached. Named result: ${row.control}`,
         `Add a read-only signed-role route probe for ${row.surface}.`,
       );
@@ -142,14 +142,14 @@ function staticResult(row) {
     if (row.surface.endsWith("#stays-blocked")) {
       return result(
         row,
-        "FAIL",
+        "NOT_PROVED",
         `${row.surface}: no signed-in role probe proves the exact blocked route group stays blocked. Named result: ${row.control}`,
         `Add a read-only denied-route probe for ${row.surface}.`,
       );
     }
     return result(
       row,
-      "FAIL",
+      "NOT_PROVED",
       `${row.surface}: no executable check walks this exact event order to its named result: ${row.control}`,
       `Add a read-only or fake-provider result check for ${row.surface}.`,
     );
@@ -157,7 +157,7 @@ function staticResult(row) {
 
   return result(
     row,
-    "FAIL",
+    "NOT_PROVED",
     `${row.surface}: the journeys proxy accepts caller-supplied system and user prompts, so there is no fixed active prompt and judged runtime result to prove.`,
     "Give this agent path a fixed server prompt and a fake-model result judge, then replace this red check.",
   );

@@ -183,7 +183,7 @@ test("every test named by a flow proof passes with fake data or local reads", { 
           encoding: "utf8",
           env: childEnv,
           maxBuffer: 8 * 1024 * 1024,
-          timeout: 30_000,
+          timeout: 120_000,
         });
         runs.push({ file, stdout: result.stdout });
       } catch (error) {

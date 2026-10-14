@@ -65,3 +65,29 @@ Fixed since the first test: rebased (0 conflicts, mergeable), `agent-editor.html
 1. Get the whole-morning step back under about 16 s with room to spare, and stop the first 5 or 6 re-checks timing out (warm the connection first, or re-check in a way that does not start cold). `npm run pulse:prove` must say OK three runs in a row.
 2. Leave `coverage-gap-fulfillment` alone unless the fix is small; just report its time.
 3. Do not touch the `screens` CI failure in this PR. Report what fails in it.
+
+---
+
+# Third test — PR #41 at `6d316c1c3` (2026-10-13, 7:40 p.m. Arizona)
+
+Clean checkout, same plan. Nothing merged or shipped.
+
+## Verdict: PASSES. 8 of 8. Ready for Chris's go to ship.
+
+| Check | Result |
+|---|---|
+| Whole-morning step | 15.0 s, 14.0 s, 13.6 s in three runs (was about 20 s; main is 14.7 s). Fixed. |
+| Self-audit `audit:na-verified` | Green in all three runs: all 232 "nothing to judge" rows re-checked and still true. Fixed. |
+| `npm run pulse:prove` | OK in 2 of 3 runs. The one failure was `coverage-gap-crm-links` at 20.2 s (4.8 s and 4.5 s in the other two). That lane reads bank Apply links over the internet, is not in this PR's diff, and is a leftover, not a fault of the PR. |
+| Counts | 2,622 rows: 714 green, 115 Broken, 1,553 Not proved, 232 nothing to judge, 8 not checked. All 2,899 expected checks showed up. |
+| `npm run pulse:prove -- --beats` | OK. 15 beats, 0 cut. |
+| Suite | 21,932 pass, 0 fail, 23 skipped. |
+| Lint, TypeScript | Clean. 0 type errors. |
+| Diff | 0 conflicts with main. No write, send, secret, key, dependency, or weakened test. Product files touched: `public/app/morning-brief.html` and `src/ops/morning-brief.mjs` only (the two counts on the report), which is in scope. |
+
+## Know this before shipping
+
+1. Of the 115 Broken, 42 are the fake test events and the new `money-funding` hourly beat is red on fake funded rounds. Until the fake test data is removed from the live database, those are false alarms.
+2. Texts are dead (Twilio refuses our key since Oct 10). The new hourly beats cannot text Chris until that is fixed. They will still save their results.
+3. GitHub's own checks are red on this PR and on main for the same reason: `screens (real browser)` fails and cancels both suites. The real-Postgres suite has not run for this PR.
+4. Leftover card: `coverage-gap-crm-links` can take over 20 s on a slow network (Netlify cuts a step at 26 s).

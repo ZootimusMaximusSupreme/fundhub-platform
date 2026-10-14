@@ -84,7 +84,9 @@ describe("POST /api/finance/paydown-simulator", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.entitled, true);
     assert.equal(res.body.subscriptionId, SUB);
+    assert.equal(res.body.preapprovalBefore, 40000);
     assert.equal(res.body.preapprovalProjected, 61000);
+    assert.deepEqual(res.body.allocations, [{ card: "Chase Ink", pay_cents: 120000 }]);
     assert.deepEqual(seen, [{ orgId: ORG_ID, clientId: CLIENT, cashOnHand: 5000 }]);
   });
 

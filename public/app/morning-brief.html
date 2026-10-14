@@ -91,7 +91,7 @@ section.card h2{font-size:var(--fs-title);font-weight:600;line-height:1.25;margi
   font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
 }
 .tile .big.word{font-size:var(--fs-title);line-height:1.6}
-/* Status is never colour alone (UI-STANDARDS §12.6): the label says "Red",
+/* Status is never colour alone (UI-STANDARDS §12.6): the label says "Broken",
    the stripe is the second signal. */
 .tile.is-red{background:var(--red-tint);box-shadow:inset 4px 0 0 var(--alert)}
 .tile.is-red .lb,.tile.is-red .big{color:var(--red-ink)}
@@ -240,10 +240,12 @@ section.card h2{font-size:var(--fs-title);font-weight:600;line-height:1.25;margi
       return s;
     }
     var red = Number(sys.red) || 0;
+    var notProved = Number(sys.not_proved) || 0;
     var notChecked = Number(sys.not_checked) || 0;
     var tiles = el("div", "tiles");
     add(tiles,
-      tile("Red", count(red), { tone: red ? "red" : null }),
+      tile("Broken", count(red), { tone: red ? "red" : null }),
+      tile("Not proved", count(notProved)),
       tile("Green", count(sys.green), { tone: "green" }),
       tile("Not checked", count(notChecked)));
     add(s, tiles);
@@ -251,18 +253,18 @@ section.card h2{font-size:var(--fs-title);font-weight:600;line-height:1.25;margi
     var lead = "Out of " + count(sys.total) + " checks.";
     if (from) lead += " " + from[1].charAt(0).toUpperCase() + from[1].slice(1) + ".";
     add(s, note(lead));
-    if (!red && !notChecked) add(s, el("p", "row-line", "Nothing needs you."));
+    if (!red && !notProved && !notChecked) add(s, el("p", "row-line", "Nothing needs you."));
 
     var reds = arr(sys.reds) || [];
     if (reds.length) {
       var list = el("ul", "list");
-      list.setAttribute("aria-label", "Red checks");
+      list.setAttribute("aria-label", "Broken checks");
       reds.forEach(function (c, i) {
         c = obj(c) || {};
         var li = el("li", "red-item");
         if (i >= REDS_SHOWN) li.hidden = true;
         var title = el("p", "row-title");
-        var day = isNum(c.day_count) && Number(c.day_count) > 1 ? "Red · day " + count(c.day_count) : "Red";
+        var day = isNum(c.day_count) && Number(c.day_count) > 1 ? "Broken · day " + count(c.day_count) : "Broken";
         add(title, el("span", "tag red", day), el("span", "mono", str(c.id) || "unnamed check"));
         add(li, title);
         var sees = str(c.customer_sees);
@@ -273,14 +275,14 @@ section.card h2{font-size:var(--fs-title);font-weight:600;line-height:1.25;margi
       });
       add(s, list);
       if (reds.length > REDS_SHOWN) {
-        var btn = el("button", "more", "Show all " + reds.length + " red checks");
+        var btn = el("button", "more", "Show all " + reds.length + " broken checks");
         btn.type = "button";
         btn.setAttribute("aria-expanded", "false");
         btn.addEventListener("click", function () {
           var open = btn.getAttribute("aria-expanded") !== "true";
           Array.prototype.forEach.call(list.children, function (li, i) { if (i >= REDS_SHOWN) li.hidden = !open; });
           btn.setAttribute("aria-expanded", open ? "true" : "false");
-          btn.textContent = open ? "Show only the first " + REDS_SHOWN : "Show all " + reds.length + " red checks";
+          btn.textContent = open ? "Show only the first " + REDS_SHOWN : "Show all " + reds.length + " broken checks";
         });
         add(s, btn);
       }

@@ -261,14 +261,14 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
     mark(openCase);
 
     const button = page.locator("section", { has: page.locator("h2", { hasText: "Systems" }) }).locator("button.more");
-    assert.equal(normalize(await button.textContent()), "Show all 6 red checks");
+    assert.equal(normalize(await button.textContent()), "Show all 6 broken checks");
     assert.equal(await page.locator("li.red-item:visible").count(), 5);
     await button.click();
     assert.equal(await page.locator("li.red-item:visible").count(), 6);
     assert.equal(normalize(await button.textContent()), "Show only the first 5");
     await button.click();
     assert.equal(await page.locator("li.red-item:visible").count(), 5);
-    assert.equal(normalize(await button.textContent()), "Show all 6 red checks");
+    assert.equal(normalize(await button.textContent()), "Show all 6 broken checks");
     mark(toggleCase);
     await page.close();
   });

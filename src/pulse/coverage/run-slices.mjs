@@ -504,7 +504,7 @@ function evaluateRow(row, sliceId, ctx) {
   return couldBeWorkflow ? withListError(answer, ctx) : answer;
 }
 
-const GAP_STATUSES = new Set(["PASS", "FAIL", "skip", "na"]);
+const GAP_STATUSES = new Set(["PASS", "FAIL", "NOT_PROVED", "skip", "na"]);
 
 function laneTokens(sliceId) {
   const stem = String(sliceId || "gap");
