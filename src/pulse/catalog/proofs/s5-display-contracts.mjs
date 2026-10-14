@@ -969,6 +969,306 @@ export const S5_DISPLAY_ROWS = Object.freeze([
       "unmatched Commas payments: a staff-only list, in words, and never on the client's page"
     ]
   }),
+  Object.freeze({
+    "name": "cc-make-funnel",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas funnels: 'Make the funnel' form (what it sells select, optional own address) -> 3 draft pages",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Funnels: make one (automatic address)"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-drop-idea",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Drop an idea' form: idea box, format select (optional), funnel select (optional), Save idea",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Drop an idea saves it with the format and funnel"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-quick-copy",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Quick copy' form (angle, offer select, 'Write one piece')",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Quick copy: cost first, then one piece through the copy runner"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-start-flywheel",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: flywheel 'Which offer' select (campaign) and 'Start a flywheel for' select + 'Start a flywheel' button",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Start a flywheel for any offer key"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-write-now-idea",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: idea row 'Write now from this idea' (writes one script; cost printed first)",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Write now from an idea shows the cost first"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-accept-suggestion",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: planner suggestions list: 'Accept' button on each of the 3 suggestions",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "Accept a suggestion and Make more of an angle make ideas"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-ideas-retry",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Ideas: 'Try again' buttons on a failed card",
+    "impact": "none",
+    "test": "e2e/cc-tab-ideas.spec.mjs",
+    "titles": [
+      "a part that fails says so and the rest stays painted"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-page-gate",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Page gate: owner and admin only; a closer is sent to their own home",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-command-center.spec.mjs",
+    "titles": [
+      "owner and admin only: a closer is sent to their own home"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-write-offer",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Write offer' button (starts an offer run and follows it until the card fills)",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-command-center.spec.mjs",
+    "titles": [
+      "Write offer: starts a run and follows it"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-write-copy",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Today: 'Write ad copy' form: angle box, 'What are we selling' select (funding, credit cards, credit repair), submit",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-command-center.spec.mjs",
+    "titles": [
+      "Write ad copy: generate, then run with max_jobs 1"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-scripts-approve",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Approve' button (locks the script, gives its ad number, moves to the next card)",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-scripts.spec.mjs",
+    "titles": [
+      "Approve gives the ad number and moves to the next card"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-scripts-reject",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: card 'Reject' (two taps: 'Reject it' / 'Keep it')",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-scripts.spec.mjs",
+    "titles": [
+      "Reject takes two taps, names what happens, and Keep it backs out"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-scripts-order",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: film order: 'Film first', 'Up', 'Down' on each approved script",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-scripts.spec.mjs",
+    "titles": [
+      "film order: Film first and the arrows send the root ids in order"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-scripts-versions",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: 'Every version' fold: loads all versions and their checks",
+    "impact": "none",
+    "test": "e2e/marketing-cc-scripts.spec.mjs",
+    "titles": [
+      "every version and its checks unfold on the card"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-scripts-retry",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Scripts: 'Try again' buttons on a failed part",
+    "impact": "none",
+    "test": "e2e/marketing-cc-scripts.spec.mjs",
+    "titles": [
+      "loading, an error in one part, and the empty inbox"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-settings-save",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 'Save' button (one save for settings and every changed funnel)",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-settings.spec.mjs",
+    "titles": [
+      "Save sends only what changed"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-settings-409",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 409 conflict: 'Keep mine' / 'Use the saved one'",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-settings.spec.mjs",
+    "titles": [
+      "a 409 shows both versions; Keep mine saves over the newer one; Use the saved one drops mine",
+      "Keep mine sends the same change again over the version that is saved now"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-settings-campaigns",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Settings: funnel card: Meta campaign checkboxes (links a campaign; another funnel's is disabled) and default ad set select",
+    "impact": "staffOnly",
+    "test": "e2e/marketing-cc-settings.spec.mjs",
+    "titles": [
+      "unticking a campaign clears its ad set",
+      "a campaign already on another funnel is disabled with the reason"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-settings-retry",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Settings: 'Try again' on a failed part",
+    "impact": "none",
+    "test": "e2e/marketing-cc-settings.spec.mjs",
+    "titles": [
+      "a part that does not load says so in words"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-shoot-close",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Close the shoot' (two taps: 'Close it' / 'Keep it open')",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-shoot.spec.mjs",
+    "titles": [
+      "Close still takes two taps"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-shoot-marks",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: row marks: 'Got it' and 'Another take'",
+    "impact": "staffOnly",
+    "test": "e2e/cc-tab-shoot.spec.mjs",
+    "titles": [
+      "rows mark takes"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-shoot-retry",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Shoot: 'Try again' on a failed read; refused-save message",
+    "impact": "none",
+    "test": "e2e/cc-tab-shoot.spec.mjs",
+    "titles": [
+      "error: a failed read says so",
+      "a refused save shows the server"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-numbers-filters",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Ads filters: window select (7/14/30 days...), funnel select, format select, angle select, first-day and last-day inputs, 'Clear filters'",
+    "impact": "none",
+    "test": "e2e/cc-tab-numbers.spec.mjs",
+    "titles": [
+      "Ads: filters send the right question, and Clear filters brings every ad back"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-numbers-sort",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Ads table: sortable column headers",
+    "impact": "none",
+    "test": "e2e/cc-tab-numbers.spec.mjs",
+    "titles": [
+      "Ads: tapping a header sorts; unknown stays last"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-numbers-switch",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: view switch: Ads / Angles / Funnels (keeps its place in the URL)",
+    "impact": "none",
+    "test": "e2e/cc-tab-numbers.spec.mjs",
+    "titles": [
+      "The view switch keeps its place in the URL and every view loads only its own numbers"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-numbers-retry",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: 'Try again' on a failed part",
+    "impact": "none",
+    "test": "e2e/cc-tab-numbers.spec.mjs",
+    "titles": [
+      "One part fails in plain words; Try again brings it back"
+    ]
+  }),
+  Object.freeze({
+    "name": "cc-numbers-link",
+    "sourceFile": "desks-c.json",
+    "surface": "marketing-command-center.html",
+    "control": "Numbers: Unmapped spend: 'Link to a funnel' button (opens Settings at the funnel mapping)",
+    "impact": "none",
+    "test": "e2e/cc-tab-numbers.spec.mjs",
+    "titles": [
+      "unmapped spend with a Link button"
+    ]
+  }),
 ]);
 
 // Same shape as the other display-contract plugins: display-proof-cases.mjs

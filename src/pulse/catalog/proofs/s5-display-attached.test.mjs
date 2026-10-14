@@ -42,8 +42,13 @@ test("rows proved by an older render test still name real cases in a test that r
   assert.ok(attached.length > 0);
   for (const row of attached) {
     const source = fs.readFileSync(path.join(ROOT, row.test), "utf8");
-    const page = row.surface.match(/([a-z-]+)\.html$/)[1];
-    assert.ok(source.includes(`${page}.js`), `${row.name}: ${row.test} no longer reads ${page}.js`);
+    if (row.test.endsWith(".spec.mjs")) {
+      // A browser spec: s5-display-specs.test.mjs runs it and checks each case passed.
+      assert.ok(source.includes("@playwright/test"), `${row.name}: ${row.test} is not a Playwright spec`);
+    } else {
+      const page = row.surface.match(/([a-z-]+)\.html$/)[1];
+      assert.ok(source.includes(`${page}.js`), `${row.name}: ${row.test} no longer reads ${page}.js`);
+    }
     assert.ok(row.titles.length >= 1);
     for (const title of row.titles) {
       assert.ok(source.includes(title), `${row.name}: ${row.test} lost the case "${title}"`);
