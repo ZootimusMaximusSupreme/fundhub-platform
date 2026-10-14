@@ -7,7 +7,9 @@
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
 //   npm run pulse:prove -- --beats      the HOURLY pulse: build netlify/functions/pulse-hourly.mjs the way Netlify does,
 //                                       unzip it, run the beats from inside it (see proveBeats() at the bottom)
-//   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every beat database read
+//   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every database round trip
+//   npm run pulse:prove -- --beats --slow-apply-links=10500 --read-delay=120
+//                                                      hold one worker for 10.5 s while the other 14 beats still run
 //   npm run pulse:prove -- --beats --fixture       also run one built-in fixture beat (green) through the runner
 //   npm run pulse:prove -- --beats --fixture=red   the same fixture, forced red: proves the text path with a fake sink
 //
@@ -343,7 +345,16 @@ async function proveBeats() {
   const readDelayArg = args.find((a) => a.startsWith("--read-delay="));
   const READ_DELAY_MS = readDelayArg ? Number(readDelayArg.split("=")[1]) : 0;
   if (!Number.isInteger(READ_DELAY_MS) || READ_DELAY_MS < 0 || READ_DELAY_MS > 1000) fail("--read-delay must be a whole number from 0 to 1000 ms");
+  const slowApplyArg = args.find((a) => a.startsWith("--slow-apply-links="));
+  const SLOW_APPLY_LINKS_MS = slowApplyArg ? Number(slowApplyArg.split("=")[1]) : 0;
+  if (!Number.isInteger(SLOW_APPLY_LINKS_MS) || SLOW_APPLY_LINKS_MS < 0 || SLOW_APPLY_LINKS_MS > 11_000) {
+    fail("--slow-apply-links must be a whole number from 0 to 11000 ms");
+  }
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const queryRoundTrip = async (client, ...queryArgs) => {
+    if (READ_DELAY_MS) await wait(READ_DELAY_MS);
+    return client.query(...queryArgs);
+  };
   const fixtureArg = args.find((a) => a === "--fixture" || a.startsWith("--fixture="));
   /* green (default) | red | and three NEGATIVE CONTROLS that must make the proof exit 1, so it is known to have teeth:
        hang    a step that never returns            -> "hit its own deadline"
@@ -351,6 +362,8 @@ async function proveBeats() {
        send    a POST made outside the sinks        -> "tried to send outside the declared sinks" */
   const FIXTURE = fixtureArg ? (fixtureArg.includes("=") ? fixtureArg.split("=")[1] : "green") : null;
   if (FIXTURE && !["green", "red", "hang", "refuse", "send"].includes(FIXTURE)) fail(`unknown fixture "${FIXTURE}"`);
+  if (FIXTURE && SLOW_APPLY_LINKS_MS) fail("--fixture and --slow-apply-links cannot be used together");
+  const DELAYED_DEADLINE_MODE = READ_DELAY_MS > 0 && !FIXTURE;
   const problems = [];
   const crashes = [];
 
@@ -461,7 +474,13 @@ async function proveBeats() {
   console.log(`  ${FROM_REPO ? "from this checkout" : `function bundle: ${rootFn}\n  proof bundle: ${rootProof}`}`);
   if (unlisted.length) console.log(`  ${unlisted.length} beat file(s) are on disk but not on the list, so they are not run here: ${unlisted.join(", ")}`);
   if (FIXTURE) console.log(`  fixture: ${FIXTURE}${["hang", "refuse", "send"].includes(FIXTURE) ? " (a negative control: this run MUST fail)" : ""}`);
-  if (READ_DELAY_MS) console.log(`  artificial delay: ${READ_DELAY_MS} ms before every beat database read`);
+  if (SLOW_APPLY_LINKS_MS) console.log(`  capacity fixture: apply-links holds one worker for ${SLOW_APPLY_LINKS_MS} ms; the full beat list still runs`);
+  if (READ_DELAY_MS) {
+    const timingRule = DELAYED_DEADLINE_MODE
+      ? "; real beats are judged against their full unchanged deadlines in this artificial-delay run"
+      : "; the built-in fixture keeps the normal under-half-deadline rule";
+    console.log(`  artificial delay: ${READ_DELAY_MS} ms before every database round trip${timingRule}`);
+  }
   console.log(`  cold load: ${coldMs} ms; listed beats: ${listed.length}${listed.length ? ` (${listed.join(", ")})` : " (the list is EMPTY)"}; loaded from the bundle: ${loadedBeats.length}`);
 
   // 2. Guards: GET and HEAD only.
@@ -486,8 +505,8 @@ async function proveBeats() {
   });
   client.on("error", () => {});
   await client.connect();
-  await client.query("BEGIN READ ONLY");
-  await client.query("SET LOCAL statement_timeout = '8s'");
+  await queryRoundTrip(client, "BEGIN READ ONLY");
+  await queryRoundTrip(client, "SET LOCAL statement_timeout = '8s'");
   let n = 0;
   let chain = Promise.resolve();
   const rdbLog = [];
@@ -507,7 +526,7 @@ async function proveBeats() {
         plainSettings.on("error", () => {});
         await plainSettings.connect();
       }
-      return plainSettings.query(sql);
+      return queryRoundTrip(plainSettings, sql);
     },
     query(sql, params) {
       const text = String(typeof sql === "string" ? sql : (sql && sql.text) || "");
@@ -518,14 +537,14 @@ async function proveBeats() {
       }
       const p = chain.then(async () => {
         const sp = `pb_${++n}`;
-        await client.query(`SAVEPOINT ${sp}`);
+        await queryRoundTrip(client, `SAVEPOINT ${sp}`);
         try {
-          const r = await client.query(sql, params);
-          await client.query(`RELEASE SAVEPOINT ${sp}`);
+          const r = await queryRoundTrip(client, sql, params);
+          await queryRoundTrip(client, `RELEASE SAVEPOINT ${sp}`);
           rdbLog.push({ sql: clip(text, 60), rows: r.rowCount });
           return r;
         } catch (err) {
-          try { await client.query(`ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* keep the real error */ }
+          try { await queryRoundTrip(client, `ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* keep the real error */ }
           rdbLog.push({ sql: clip(text, 60), error: clip(err && err.message, 120) });
           throw err;
         }
@@ -548,11 +567,7 @@ async function proveBeats() {
   const connect = async () => {
     const client = await boxPool.connect();
     return {
-      query: async (...queryArgs) => {
-        const input = queryArgs[0];
-        if (READ_DELAY_MS && typeof input === "object" && input?.queryMode === "extended") await wait(READ_DELAY_MS);
-        return client.query(...queryArgs);
-      },
+      query: (...queryArgs) => queryRoundTrip(client, ...queryArgs),
       release: (destroy) => client.release(destroy)
     };
   };
@@ -575,6 +590,25 @@ async function proveBeats() {
       return ctx.done("fixture ok");
     }
   };
+  let proofBeats = fixtureBeat ? [fixtureBeat] : null;
+  if (SLOW_APPLY_LINKS_MS) {
+    const matches = loadedBeats.filter((beat) => beat.id === "apply-links");
+    if (matches.length !== 1) {
+      problems.push(`the slow apply-links capacity fixture found ${matches.length} apply-links beats, expected exactly 1`);
+    } else {
+      const sourceBeat = matches[0];
+      const [slowStep, ...skippedSteps] = sourceBeat.steps;
+      const slowApplyBeat = {
+        ...sourceBeat,
+        async run(ctx) {
+          await ctx.step(slowStep, () => wait(SLOW_APPLY_LINKS_MS));
+          for (const step of skippedSteps) ctx.skipStep(step, "capacity proof: this apply-links run is the 10.5 second worker fixture");
+          return ctx.done(`capacity proof held apply-links for ${SLOW_APPLY_LINKS_MS} ms`);
+        }
+      };
+      proofBeats = loadedBeats.map((beat) => beat.id === "apply-links" ? slowApplyBeat : beat);
+    }
+  }
   const sinks = recordingSinks();
   const env = { ...process.env, URL: process.env.URL || "https://fundhub.ai", ADAPTERS_DRY_RUN: "0" };
   delete env.AWS_LAMBDA_FUNCTION_NAME;
@@ -583,12 +617,12 @@ async function proveBeats() {
   let out;
   const t1 = Date.now();
   try {
-    out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(fixtureBeat ? { beats: [fixtureBeat] } : {}) });
+    out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(proofBeats ? { beats: proofBeats } : {}) });
   } catch (err) {
     crashes.push(`runPulse threw: ${clip(err && err.message)}`);
   }
   const runMs = Date.now() - t1;
-  try { await client.query("ROLLBACK"); } catch { /* closing */ }
+  try { await queryRoundTrip(client, "ROLLBACK"); } catch { /* closing */ }
   try { await client.end(); } catch { /* closing */ }
   if (plainSettings) { try { await plainSettings.end(); } catch { /* closing */ } }
   const poolBefore = { total: boxPool.totalCount, idle: boxPool.idleCount, waiting: boxPool.waitingCount };
@@ -609,15 +643,35 @@ async function proveBeats() {
     if (!out.dbUp && out.ran) problems.push("the runner could not read the database before the beats ran");
     if (runMs > RUN_BUDGET_MS) problems.push(`the run took ${(runMs / 1000).toFixed(1)} s (budget ${RUN_BUDGET_MS / 1000} s)`);
     if (out.timedOut) problems.push(`${out.timedOut} beat(s) were cut at the beats-phase budget`);
-    const deadlines = new Map((fixtureBeat ? [fixtureBeat] : loadedBeats).map((beat) => [beat.id, beat.deadlineMs]));
+    const judgedBeats = proofBeats || loadedBeats;
+    const deadlines = new Map(judgedBeats.map((beat) => [beat.id, beat.deadlineMs]));
     for (const r of out.results) {
       if (/^deadline \d+ ms passed/.test(String(r.detail))) problems.push(`beat ${r.beatId} hit its own deadline: ${clip(r.detail, 120)}`);
       if (r.step === "no-refusals" || /^refused sql/.test(String(r.detail))) problems.push(`beat ${r.beatId} was refused: ${clip(r.detail, 140)}`);
       const deadlineMs = deadlines.get(r.beatId);
-      if (r.ms !== null && deadlineMs && r.ms >= deadlineMs / 2) problems.push(`beat ${r.beatId} took ${r.ms} ms, not under half its ${deadlineMs} ms deadline`);
+      const injectedSlowApply = Boolean(SLOW_APPLY_LINKS_MS && r.beatId === "apply-links");
+      if (injectedSlowApply && r.ms !== null) {
+        if (r.ms < SLOW_APPLY_LINKS_MS) problems.push(`the apply-links capacity fixture finished in ${r.ms} ms, before its ${SLOW_APPLY_LINKS_MS} ms hold elapsed`);
+        if (deadlineMs && r.ms >= deadlineMs) problems.push(`the apply-links capacity fixture took ${r.ms} ms and reached its ${deadlineMs} ms deadline`);
+        if (!String(r.detail).includes(`held apply-links for ${SLOW_APPLY_LINKS_MS} ms`)) problems.push("the apply-links capacity fixture did not return its expected proof detail");
+      } else if (r.ms !== null && deadlineMs) {
+        const timingLimitMs = DELAYED_DEADLINE_MODE ? deadlineMs : deadlineMs / 2;
+        if (r.ms >= timingLimitMs) {
+          const timingRule = DELAYED_DEADLINE_MODE
+            ? `reached its unchanged ${deadlineMs} ms deadline in artificial-delay mode`
+            : `was not under half its ${deadlineMs} ms deadline`;
+          problems.push(`beat ${r.beatId} took ${r.ms} ms and ${timingRule}`);
+        }
+      }
     }
+    if (SLOW_APPLY_LINKS_MS && out.ran !== loadedBeats.length) problems.push(`the slow apply-links capacity proof ran ${out.ran} beat(s), expected the full ${loadedBeats.length}`);
     if (!out.box) problems.push("the runner returned no read-box report");
-    else if (out.box.count !== READ_BOX_COUNT || out.box.reports?.length !== READ_BOX_COUNT) problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${READ_BOX_COUNT}`);
+    else {
+      const expectedBoxCount = Math.min(READ_BOX_COUNT, judgedBeats.length);
+      if (out.box.count !== expectedBoxCount || out.box.reports?.length !== expectedBoxCount) {
+        problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${expectedBoxCount}`);
+      }
+    }
     for (const [lane, report] of (out.box?.reports || []).entries()) {
       for (const x of report.refused || []) if (x.kind === "sql") problems.push(`read box ${lane + 1} refused SQL: ${clip(x.what, 120)}`);
       if (!report.began || !report.readOnlyVerified) problems.push(`read box ${lane + 1} did not prove BEGIN READ ONLY`);

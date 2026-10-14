@@ -229,23 +229,23 @@ describe("green", () => {
     assert.deepEqual(out.records, { written: true, error: null });
     assert.equal(h.rdb.state.beats.length, 2);
     assert.ok(h.rdb.state.beats.every((r) => r.ok === true));
-    // Exactly three boxes for the whole run, all read only and never committed.
-    assert.equal(h.pgs.length, 3);
+    // Never open more boxes than beats; every opened box is read only and never committed.
+    assert.equal(h.pgs.length, 2);
     for (const pg of h.pgs) {
       assert.equal(pg.commits, 0);
       assert.ok(pg.rollbacks >= 1);
       assert.deepEqual(pg.released, [true], "destroyed, never handed back to the pool");
       assert.equal(pg.texts()[0].startsWith("BEGIN READ ONLY"), true);
     }
-    assert.equal(out.box.count, 3);
-    assert.equal(out.box.reports.length, 3);
+    assert.equal(out.box.count, 2);
+    assert.equal(out.box.reports.length, 2);
     assert.equal(out.box.readOnlyVerified, true);
     assert.equal(out.box.commitsSent, 0);
     assert.equal(out.box.rolledBack, true);
     assert.ok(out.ms < 2000);
   });
 
-  test("15 delayed beats get their full own deadline when their lane starts", async () => {
+  test("15 delayed beats get their full own deadline when a worker starts them", async () => {
     const started = new Map();
     const delayed = Array.from({ length: 15 }, (_, index) => beat(`delay-${index}`, async (ctx) => {
       started.set(index, Date.now());
@@ -262,17 +262,18 @@ describe("green", () => {
     assert.equal(out.failed, 0);
     assert.equal(out.timedOut, 0);
     assert.equal(h.pgs.length, 3);
-    assert.ok(started.get(3) - started.get(0) >= 100, "the second beat in lane 0 starts after the first finishes");
-    assert.ok(started.get(12) - started.get(0) >= 450, "the fifth beat in lane 0 waits without spending its own deadline");
+    assert.ok(started.get(3) - started.get(0) >= 100, "the fourth beat starts after a worker finishes its first beat");
+    assert.ok(started.get(12) - started.get(0) >= 450, "a queued beat waits without spending its own deadline");
     for (const result of out.results) {
       assert.equal(result.ok, true, `${result.beatId}: ${result.detail}`);
       assert.ok(result.ms < 250, `${result.beatId} used ${result.ms} ms, not under half its 500 ms deadline`);
     }
     assert.equal(out.box.reads, 15);
-    assert.deepEqual(out.box.reports.map((r) => r.reads), [5, 5, 5]);
+    assert.equal(out.box.reports.reduce((count, report) => count + report.reads, 0), 15);
+    assert.ok(out.box.reports.every((report) => report.reads > 0));
   });
 
-  test("a measured break stays red inside a three-lane run", async () => {
+  test("a measured break stays red inside a three-worker run", async () => {
     const h = harness([greenBeat("a"), redBeat("broken"), greenBeat("c")]);
     const out = await h.go({ mode: "prove" });
     const broken = out.results.find((r) => r.beatId === "broken");
@@ -280,6 +281,57 @@ describe("green", () => {
     assert.equal(broken.step, "two");
     assert.match(broken.detail, /site said 500/);
     assert.equal(out.box.count, 3);
+  });
+
+  test("a crash after workers start aborts active work and closes every opened box", async () => {
+    const stray = [];
+    const onStray = (error) => stray.push(error);
+    process.on("unhandledRejection", onStray);
+    try {
+      let activeStarted = 0;
+      let queuedStarted = false;
+      const active = (id) => beat(id, async (ctx) => {
+        activeStarted++;
+        await ctx.step("one", async () => {
+          await sleep(200);
+          return (await ctx.read("SELECT 1 AS n")).rows;
+        });
+        ctx.skipStep("two", "x");
+        ctx.skipStep("three", "x");
+        return ctx.done("late");
+      });
+      const queued = beat("queued-after-crash", async (ctx) => {
+        queuedStarted = true;
+        await reads(ctx);
+        ctx.skipStep("two", "x");
+        ctx.skipStep("three", "x");
+        return ctx.done("must not run");
+      });
+      const h = harness([active("active-a"), active("active-b"), active("active-c"), queued]);
+
+      const out = await h.go({
+        mode: "prove",
+        onWorkersStarted: () => {
+          assert.equal(activeStarted, 3, "all workers have active beats before the planned crash");
+          throw new Error("planned crash with workers active");
+        }
+      });
+      const readsAtReturn = h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0);
+      assert.equal(out.ok, false);
+      assert.match(out.error, /planned crash with workers active/);
+      assert.equal(queuedStarted, false);
+      assert.equal(h.pgs.length, 3);
+      for (const pg of h.pgs) {
+        assert.ok(pg.rollbacks >= 1, "the opened transaction was rolled back");
+        assert.deepEqual(pg.released, [true], "the client was destroyed");
+      }
+      await sleep(300);
+      assert.equal(queuedStarted, false, "queued work never starts after the runner returns");
+      assert.equal(h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0), readsAtReturn, "active work cannot read from a closed box later");
+      assert.deepEqual(stray, [], "late active work leaves no unhandled rejection");
+    } finally {
+      process.off("unhandledRejection", onStray);
+    }
   });
 
   test("an empty beat list is BLIND, never green: live, it texts once, writes nothing, opens no box, and is not ok", async () => {
@@ -318,6 +370,8 @@ describe("green", () => {
     const out = await h.go();
     assert.equal(out.ok, true);
     assert.equal(out.error, undefined);
+    assert.equal(h.pgs.length, 1, "one beat opens one box, not three");
+    assert.equal(out.box.count, 1);
   });
 
   test("`only` runs just those beats; an unknown id is a plain error", async () => {
@@ -394,6 +448,28 @@ describe("red", () => {
 });
 
 describe("the beats phase is capped", () => {
+  test("a 10.5 second first beat does not strand later beats behind it", async () => {
+    const slow = beat("slow-first", async (ctx) => {
+      await ctx.step("one", async () => sleep(10_500));
+      ctx.skipStep("two", "x");
+      ctx.skipStep("three", "x");
+      return ctx.done("fine");
+    }, { deadlineMs: 12_000 });
+    const later = Array.from({ length: 14 }, (_, index) => beat(`later-${index}`, async (ctx) => {
+      await ctx.step("one", async () => sleep(750));
+      ctx.skipStep("two", "x");
+      ctx.skipStep("three", "x");
+      return ctx.done("fine");
+    }));
+    const h = harness([slow, ...later]);
+
+    const out = await h.go({ mode: "prove" });
+    assert.equal(out.ran, 15);
+    assert.equal(out.failed, 0);
+    assert.equal(out.timedOut, 0);
+    assert.ok(out.results.every((result) => result.ok), out.results.map((result) => `${result.beatId}: ${result.detail}`).join("\n"));
+  });
+
   test("a beat still running at the cut is red at its step, 'cut at the ... beat budget', time NULL, and the run still texts", async () => {
     const slow = beat("s", async (ctx) => { await ctx.step("two", async () => new Promise(() => {})); return ctx.done("never"); }, { deadlineMs: 12000 });
     const h = harness([slow, greenBeat("g")], { budgets: { beats: 250 } });
@@ -439,32 +515,32 @@ describe("the beats phase is capped", () => {
     }
   });
 
-  test("a beat still queued in its lane never starts after the phase cut", async () => {
+  test("a beat still in the shared queue never starts after the phase cut", async () => {
     const stray = [];
     const onStray = (error) => stray.push(error);
     process.on("unhandledRejection", onStray);
     try {
       let queuedStarted = false;
-      const slow = beat("slow-lane", async (ctx) => {
+      const slow = (id) => beat(id, async (ctx) => {
         await ctx.step("two", async () => sleep(220));
         ctx.skipStep("one", "x");
         ctx.skipStep("three", "x");
         return ctx.done("late");
       }, { deadlineMs: 12000 });
-      const queued = beat("queued-lane", async (ctx) => {
+      const queued = beat("queued-worker", async (ctx) => {
         queuedStarted = true;
         await reads(ctx);
         ctx.skipStep("two", "x");
         ctx.skipStep("three", "x");
         return ctx.done("must not run");
       });
-      const h = harness([slow, greenBeat("lane-one"), greenBeat("lane-two"), queued], { budgets: { beats: 100 } });
+      const h = harness([slow("slow-one"), slow("slow-two"), slow("slow-three"), queued], { budgets: { beats: 100 } });
       const out = await h.go({ mode: "prove" });
       const readsAtReturn = h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0);
-      assert.equal(out.timedOut, 2);
+      assert.equal(out.timedOut, 4);
       assert.equal(queuedStarted, false);
       await sleep(250);
-      assert.equal(queuedStarted, false, "the lane tail stayed closed after the active beat settled");
+      assert.equal(queuedStarted, false, "the shared queue stayed closed after the active beats settled");
       assert.equal(h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0), readsAtReturn, "no late read reached a closed box");
       assert.deepEqual(stray, []);
     } finally {
@@ -528,6 +604,32 @@ describe("the clock: the default caps are the ones in the cut", () => {
 
 describe("the database is down", () => {
   const readers = (ids) => ids.map((i) => greenBeat(i));
+
+  test("one failed box makes only its first beat red while healthy workers finish the queue", async () => {
+    const h = harness(readers(["a", "b", "c", "d", "e", "f", "g", "h"]));
+    let attempts = 0;
+    const opened = [];
+    const connect = async () => {
+      const worker = attempts++;
+      if (worker === 0) throw new Error("one box unavailable");
+      const pg = createFakePg({ answer: async () => { await sleep(40); return [{ n: 1 }]; } });
+      opened.push(pg);
+      return pg;
+    };
+
+    const out = await h.go({ connect });
+    assert.equal(out.dbUp, true);
+    assert.equal(out.failed, 1);
+    assert.equal(out.results.find((result) => result.beatId === "a").ok, false);
+    assert.match(out.results.find((result) => result.beatId === "a").detail, /^threw: db: /);
+    assert.ok(out.results.filter((result) => result.beatId !== "a").every((result) => result.ok));
+    assert.equal(out.results.filter((result) => result.ok).length, 7);
+    assert.equal(h.sinks.calls.text.length, 1);
+    assert.doesNotMatch(h.sinks.calls.text[0], /database is not answering/);
+    assert.match(h.sinks.calls.text[0], /^Fundhub BROKEN: Beat a\./);
+    assert.equal(out.box.count, 2);
+    for (const pg of opened) assert.deepEqual(pg.released, [true]);
+  });
 
   test("beats that read go red at 'db:'; the text says the database is down ONCE; no state, so it texts every hour", async () => {
     const h = harness(readers(["a", "b", "c", "d"]), { rdbOpts: { down: true } });

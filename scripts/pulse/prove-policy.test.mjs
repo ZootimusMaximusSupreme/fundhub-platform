@@ -56,3 +56,39 @@ test("live red and not-checked findings stay visible without becoming proof-engi
   assert.doesNotMatch(problems, /notChecked\.map/);
 });
 
+test("the hourly read delay wraps every database query round trip", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  const hourly = source.slice(source.indexOf("async function proveBeats()"));
+  const rawQueries = [...hourly.matchAll(/\b\w+\.query\(/g)].map((match) => match[0]);
+
+  assert.deepEqual(rawQueries, ["client.query("], "only queryRoundTrip may call a database client's query method directly");
+  assert.match(hourly, /const queryRoundTrip = async \(client, \.\.\.queryArgs\) => \{\s*if \(READ_DELAY_MS\) await wait\(READ_DELAY_MS\);\s*return client\.query\(\.\.\.queryArgs\);\s*\}/);
+  assert.match(hourly, /Math\.min\(READ_BOX_COUNT, judgedBeats\.length\)/);
+});
+
+test("the slow apply-links capacity fixture keeps the full list and delayed runs keep honest timing rules", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  const hourly = source.slice(source.indexOf("async function proveBeats()"));
+
+  assert.match(hourly, /proofBeats = loadedBeats\.map\(\(beat\) => beat\.id === "apply-links" \? slowApplyBeat : beat\)/);
+  assert.match(hourly, /await ctx\.step\(slowStep, \(\) => wait\(SLOW_APPLY_LINKS_MS\)\)/);
+  assert.match(hourly, /for \(const step of skippedSteps\) ctx\.skipStep\(step,/);
+  assert.match(hourly, /SLOW_APPLY_LINKS_MS && r\.beatId === "apply-links"/);
+  assert.match(hourly, /const DELAYED_DEADLINE_MODE = READ_DELAY_MS > 0 && !FIXTURE/);
+  assert.match(hourly, /const timingLimitMs = DELAYED_DEADLINE_MODE \? deadlineMs : deadlineMs \/ 2/);
+  assert.match(hourly, /reached its unchanged \$\{deadlineMs\} ms deadline in artificial-delay mode/);
+  assert.doesNotMatch(hourly, /r\.beatId === ["']money-funding["']/);
+  assert.match(hourly, /out\.ran !== loadedBeats\.length/);
+});
+
+test("prove rejects an unsafe slow apply-links duration before starting proof work", () => {
+  const result = spawnSync(process.execPath, [path.join(HERE, "prove.mjs"), "--beats", "--slow-apply-links=11001"], {
+    encoding: "utf8",
+    env: { ...process.env, DATABASE_URL: "" }
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /pulse:prove: --slow-apply-links must be a whole number from 0 to 11000 ms/);
+  assert.doesNotMatch(result.stdout, /building the pulse-hourly bundle|cold load:/);
+});
+
