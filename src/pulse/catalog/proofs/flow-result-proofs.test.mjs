@@ -68,12 +68,12 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("all 17 outbound message leftovers stay red without a final provider receipt", () => {
+test("all 10 outbound message leftovers stay red without a final provider receipt", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 17);
+  assert.equal(rows.length, 10);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }

@@ -16,6 +16,8 @@ import {
   accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID, STAFF_ID,
 } from "../testing/handler-harness.mjs";
 import { queueDb } from "../pulse/catalog/proofs/s2-queue-db.mjs";
+import { dispatchOne, OUTCOME } from "../messaging/dispatch.mjs";
+import { recorded, reset } from "../messaging/providers/memory.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const CONVO = "cc000000-0000-4000-8000-000000000001";
@@ -66,6 +68,46 @@ describe("POST /api/chat/messages kind=client by email", () => {
     assert.equal(ins.params[7], "Your file");
     assert.equal(ins.params[8], STAFF_ID);
     assert.equal(netCalls.length, 0);
+  });
+});
+
+describe("POST /api/chat/messages: from the staff widget to the provider receipt", () => {
+  test("an owner's email to a client is queued, passes the gate and reaches the provider, once, at the client's address", async () => {
+    reset();
+    const fake = queueDb({
+      clients: { [CLIENT]: { first_name: "Dana", last_name: "Whitfield", email: "dana@example.test", phone: "+16025550100" } },
+      extra: [
+        staffSession({ role: "owner" }),
+        [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]],
+      ],
+    });
+    const res = makeRes();
+    await runWithSharedDb(fake, () => chatMessages(req("POST", {
+      body: { kind: "client", client_id: CLIENT, channel: "email", subject: "Your file", body: "Hi Dana, your file is ready." },
+    }), res));
+    assert.equal(res.statusCode, 200);
+    const [row] = fake.state.messages;
+    assert.equal(row.sender_staff_id, STAFF_ID);
+    assert.equal(row.to_address, "dana@example.test");
+    assert.equal(row.status, "sent");
+    const [mail] = recorded();
+    assert.deepEqual([mail.to, mail.subject, mail.body.includes("Hi Dana, your file is ready.")], ["dana@example.test", "Your file", true]);
+    assert.equal(recorded().length, 1);
+  });
+
+  test("a client who opted out is never sent the staff reply", async () => {
+    reset();
+    const fake = queueDb({
+      clients: { [CLIENT]: { first_name: "Dana", last_name: "Whitfield", email: "dana@example.test", phone: "+16025550100" } },
+      optedOut: [CLIENT],
+      extra: [staffSession({ role: "owner" }), [/SELECT id FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT }]]],
+    });
+    const res = makeRes();
+    await runWithSharedDb(fake, () => chatMessages(req("POST", {
+      body: { kind: "client", client_id: CLIENT, channel: "email", body: "Hi Dana." },
+    }), res));
+    assert.equal(recorded().length, 0);
+    assert.equal(fake.state.messages[0]?.status, "blocked");
   });
 });
 
@@ -200,6 +242,19 @@ describe("POST /api/payment-links action=send and action=expire", () => {
     assert.equal(text.template_key, "payment_link_notice");
     assert.equal(text.to_address, "+16025550100");
     assert.match(text.rendered_body, /Hi Dana, pay 497\.00 for Setup fee: https:\/\/pay\.example\.test\/checkout\/abc/);
+  });
+
+  test("the queued text reaches the provider at the client's phone with every placeholder filled", async () => {
+    reset();
+    const { fake } = await ask({ action: "send", id: LINK });
+    const [queuedRow] = fake.state.messages;
+    const claimed = { ...queuedRow, status: "sending", attempts: 1 };
+    const out = await dispatchOne(fake, claimed, { env: {}, now: () => new Date("2026-10-13T19:00:00Z") });
+    assert.equal(out.outcome, OUTCOME.SENT);
+    const [text] = recorded();
+    assert.equal(text.to, "+16025550100");
+    assert.doesNotMatch(text.body, /{{[^}]+}}/);
+    assert.match(text.body, /497\.00 for Setup fee: https:\/\/pay\.example\.test\/checkout\/abc/);
   });
 
   test("an unapproved text sends nothing and the ask stays unsent", async () => {

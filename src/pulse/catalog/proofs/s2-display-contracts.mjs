@@ -9,6 +9,7 @@
 export const S2_DISPLAY_WRAPPER = "src/pulse/catalog/proofs/s2-display-contracts.test.mjs";
 
 const AGENT_SERVER = "src/http/s2-agents-save.test.mjs";
+const AUTH_SERVER = "src/http/s2-message-routes-auth.test.mjs";
 const OUTBOUND_SERVER = "src/http/s2-message-routes-outbound.test.mjs";
 const CONTRACTS_SERVER = "src/http/s2-message-routes-contracts.test.mjs";
 const MONEY_ALERTS_SERVER = "src/http/money-alerts.test.mjs";
@@ -46,6 +47,11 @@ export const S2_DISPLAY_GROUPS = Object.freeze([
       "Promote to live button (saves first, then promotes, confirm dialog)",
       "Return to shadow button (demote, confirm dialog)",
     ]),
+  group("desks-a.json", "client-control-panel.html",
+    ["e2e/s2-ccp-portal-access.spec.mjs"], [AUTH_SERVER], [
+      "Send portal sign-in link button (owner/admin)",
+      "Authorized rep: Add this person to the file button and Name/Email/Phone inputs (owner/admin)",
+    ]),
   group("desks-b.json", "documents.html",
     ["e2e/documents-clicks.spec.mjs"], [CONTRACTS_SERVER], [
       "Contract cell: Remind button (re-sends the signing request to one signer)",
@@ -80,8 +86,11 @@ export const S2_DISPLAY_GROUPS = Object.freeze([
     ]),
 ]);
 
+// Specs that prove Flow rows (not screen controls); the wrapper runs them too.
+export const S2_FLOW_SPECS = Object.freeze(["e2e/s2-consulting-pages.spec.mjs"]);
+
 export const S2_DISPLAY_SPECS = Object.freeze(
-  [...new Set(S2_DISPLAY_GROUPS.flatMap((entry) => entry.specs))].sort());
+  [...new Set([...S2_DISPLAY_GROUPS.flatMap((entry) => entry.specs), ...S2_FLOW_SPECS])].sort());
 
 /** Entries in the shape display-proof-cases.mjs reads. */
 export const S2_DISPLAY_PROOF_CASES = Object.freeze(S2_DISPLAY_GROUPS.flatMap((entry) =>

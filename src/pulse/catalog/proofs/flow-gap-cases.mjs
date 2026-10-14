@@ -54,6 +54,7 @@ export function isInactiveTemplateRow(row) {
 }
 
 export function needsMessageGapMonitor(row) {
+  if (isS2ProvedFlowRow(row)) return false;
   return isInactiveTemplateRow(row)
     || row?.surface === "template:payment_link_notice"
     || MESSAGE_CONTROL_SURFACES.has(row?.surface);
@@ -78,7 +79,7 @@ export function flowGapRows(messages, journeys, agents) {
 }
 
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
-  message: 177,
-  journey: 15,
+  message: 170,
+  journey: 11,
   agent: 1,
 });

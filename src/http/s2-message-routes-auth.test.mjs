@@ -16,6 +16,8 @@ import magicLink from "../../api/auth/magic-link.mjs";
 import sendPortalLink from "../../api/auth/send-portal-link.mjs";
 import reset from "../../api/auth/reset.mjs";
 import authorizedRep from "../../api/auth/authorized-rep.mjs";
+import magicLinkVerify from "../../api/auth/magic-link-verify.mjs";
+import { accountSession } from "../testing/handler-harness.mjs";
 import {
   fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID,
 } from "../testing/handler-harness.mjs";
@@ -295,5 +297,66 @@ describe("POST /api/auth/authorized-rep", () => {
     assert.equal(noPhone.res.statusCode, 400);
     assert.equal(noPhone.res.body.code, "phone_required");
     assert.equal(noPhone.fake.find(/INSERT INTO/).length, 0);
+  });
+});
+
+describe("POST /api/auth/magic-link-verify", () => {
+  const ACCOUNT = "ac000000-0000-4000-8000-000000000001";
+  const token = "fake-single-use-link-token-value-0001";
+  const tokenHash = crypto.createHash("sha256").update(token, "utf8").digest("hex");
+
+  // One link row. The claim statement spends it exactly once, like the database does.
+  function linkTable({ expiresInMs = 10 * 60 * 1000 } = {}) {
+    const row = { token_hash: tokenHash, consumed_at: null, expires_at: Date.now() + expiresInMs };
+    return [/UPDATE account_magic_links\s+SET consumed_at = now\(\)/, (_s, p) => {
+      if (p[0] !== row.token_hash || row.consumed_at || row.expires_at <= Date.now()) return [];
+      row.consumed_at = Date.now();
+      return [{ id: LINK_ROW, org_id: ORG_ID, email: EMAIL, account_id: ACCOUNT, client_id: CLIENT }];
+    }];
+  }
+  const rules = (table) => [
+    table,
+    [/SELECT id FROM accounts\s+WHERE id = \$1 AND status = 'active'/, [{ id: ACCOUNT }]],
+    [/INSERT INTO account_sessions/, [{ id: "5e000000-0000-4000-8000-000000000002", expires_at: new Date(Date.now() + 3600e3).toISOString() }]],
+    ...accountSession({ kind: "client", clientId: CLIENT }),
+  ];
+  const verify = (rulesList, body = { token }) => call(magicLinkVerify, req("POST", { body }), rulesList);
+
+  test("a fresh link signs the client in once: a session, the portal as next, and a cookie", async () => {
+    const table = linkTable();
+    const { res, fake } = await verify(rules(table));
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.principal, "client");
+    assert.equal(res.body.next, "/app/client-portal.html");
+    assert.ok(res.body.token && res.body.token.length > 20);
+    assert.match(res.headers["set-cookie"], /^fundhub_session=.+HttpOnly; Secure; SameSite=Lax/);
+    // The claim was keyed on the hash, never the token itself.
+    assert.equal(fake.find(/UPDATE account_magic_links/)[0].params[0], tokenHash);
+  });
+
+  test("the same link a second time, an expired link and a made-up link are all the same refusal", async () => {
+    const table = linkTable();
+    const first = await verify(rules(table));
+    assert.equal(first.res.statusCode, 200);
+    const again = await verify(rules(table));
+    assert.equal(again.res.statusCode, 401);
+    assert.equal(again.res.body.error, "invalid_link");
+    assert.match(again.res.body.message, /expired or already been used/);
+    assert.equal(again.res.body.token, undefined);
+
+    const expired = await verify(rules(linkTable({ expiresInMs: -1000 })));
+    assert.equal(expired.res.statusCode, 401);
+    const unknown = await verify(rules(linkTable()), { token: "not-a-real-token" });
+    assert.equal(unknown.res.statusCode, 401);
+    assert.deepEqual(unknown.res.body, expired.res.body);
+  });
+
+  test("no token is 400 and a GET is 405, with no database work", async () => {
+    const missing = await verify([org], {});
+    assert.equal(missing.res.statusCode, 400);
+    assert.equal(missing.fake.calls.length, 0);
+    const get = await call(magicLinkVerify, req("GET"), [org]);
+    assert.equal(get.res.statusCode, 405);
   });
 });

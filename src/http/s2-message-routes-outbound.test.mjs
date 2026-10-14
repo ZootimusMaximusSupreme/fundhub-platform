@@ -76,10 +76,12 @@ describe("POST /api/messages-outbound action=dispatch", () => {
     assert.equal(res.body.result.sent, 2);
     assert.equal(res.body.result.blocked, 0);
     assert.equal(res.body.message, "Sent 2 messages.");
-    assert.deepEqual(recorded().map((r) => [r.to, r.body]), [
-      ["dana@example.test", "Your file is ready."],
-      ["dana@example.test", "One more thing."],
-    ]);
+    // An email leaves with its unsubscribe link added when a signing secret is set,
+    // so judge that the approved words are in what was sent.
+    const receipts = recorded();
+    assert.deepEqual(receipts.map((r) => r.to), ["dana@example.test", "dana@example.test"]);
+    assert.ok(receipts[0].body.includes("Your file is ready."));
+    assert.ok(receipts[1].body.includes("One more thing."));
     assert.equal(fake.state.statusUpdates.filter((u) => u.status === "sent").length, 2);
   });
 

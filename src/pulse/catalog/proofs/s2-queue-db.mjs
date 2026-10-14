@@ -83,7 +83,9 @@ export function queueDb({
     }]],
     [/INSERT INTO messages/, (s, p) => {
       const row = { id: idOf(), org_id: p[0], client_id: p[1], channel: p[2], template_key: p[3], rendered_body: p[4], provider_ref: p[5], to_address: p[6], subject: p[7], status: "queued", attempts: 0, sql: s };
-      if (/'outbound','sms',\$3/.test(s)) {
+      if (/sender_staff_id/.test(s)) {
+        Object.assign(row, { client_id: p[1], channel: p[3], rendered_body: p[4], provider_ref: p[5], to_address: p[6], subject: p[7], template_key: null, sender_staff_id: p[8] });
+      } else if (/'outbound','sms',\$3/.test(s)) {
         Object.assign(row, { channel: "sms", template_key: p[2], rendered_body: p[3], provider_ref: p[4], to_address: p[5], subject: null });
       } else if (/\(\$1,\$2,'outbound','email'/.test(s) || /'outbound','email',\$3/.test(s)) {
         Object.assign(row, { channel: "email", template_key: p[2], rendered_body: p[3], provider_ref: p[4], to_address: p[5], subject: p[6] });
