@@ -367,5 +367,18 @@
     "Signature pad (draw) and its Clear button; empty pad refused"
    ]
   }
+ ],
+ "s4-soft-pull-approve.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "soft-pull-approve.html",
+   "controls": [
+    "Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner",
+    "Disclosure card: the soft-pull authorization words and version (server copy, never from the body)",
+    "Form fields: full legal name, SSN, date of birth, street, city, state, ZIP",
+    "Link wall: 'This page needs a full link' / 'Link problem' (missing field, bad signature, expired link, no server)",
+    "Page open: verifies the signed link and reads the disclosure, price and contact (no staff login; HMAC org, client, exp, sig)"
+   ]
+  }
  ]
 }

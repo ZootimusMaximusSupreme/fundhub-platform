@@ -59,7 +59,7 @@ test("the wording, the version and the status come from the server, never from t
     await valid.page.close();
 
     const withdrawn = await openScreen(open, { status: { valid: false, reason: "revoked", consent: { revoked_at: "2026-10-05T12:00:00Z", revoked_reason: "asked to stop" } } });
-    assert.match(await withdrawn.page.locator("#ccStatus").innerText(), /Consent was withdrawn[\s\S]*Reason given: asked to stop/);
+    assert.match(await withdrawn.page.locator("#ccStatus").innerText(), /Consent was withdrawn[\s\S]*Withdrawn on [A-Z][a-z]{2} \d{1,2}, 2026\. Reason given: asked to stop\./);
     await withdrawn.page.close();
 
     const noWords = await openScreen(open, { disclosure: false });
