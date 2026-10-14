@@ -13,6 +13,7 @@ import { DISPLAY_CONTRACTS_SHELLS_1 } from "./display-contracts-shells-1.mjs";
 import { DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES } from "./display-contracts-teams-social-1.mjs";
 import { DISPLAY_CONTRACTS_TELEPROMPTER_4 } from "./display-contracts-teleprompter-4.mjs";
 import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
+import { S1_DISPLAY_SPEC_PROOFS } from "./s1-display-specs.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -390,6 +391,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...DISPLAY_CONTRACTS_SHELLS_1,
   ...DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES,
   ...DISPLAY_CONTRACTS_TELEPROMPTER_4,
+  ...S1_DISPLAY_SPEC_PROOFS,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));
