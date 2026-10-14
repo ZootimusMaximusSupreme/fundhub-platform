@@ -313,5 +313,16 @@
     "Repeating charges panel"
    ]
   }
+ ],
+ "s4-financeos-frame.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "financeos.html (frame)",
+   "controls": [
+    "Page itself loads (static HTML, 17 section scripts, then financeos.js)",
+    "Sign-in redirect on any 401 (client to /portal-login.html, staff to /login.html, back to the same tab)",
+    "Staff view: who may open this page and which client is carried"
+   ]
+  }
  ]
 }
