@@ -62,8 +62,12 @@ export async function startScreens(t) {
 
   async function open(pathName, { session = OWNER, handlers = {}, viewport = { width: 1280, height: 900 }, init = null, clock = false, before = null } = {}) {
     const page = await browser.newPage({ baseURL: origin, viewport });
-    // clock: the page's timers wait for page.clock.fastForward(), so a 30 second refresh needs no 30 second wait.
-    if (clock) await page.clock.install();
+    // clock: the page's timers wait for page.clock.fastForward(), so a 30 second refresh needs no
+    // 30 second wait. It starts paused, so a slow machine cannot run the page's timers by itself.
+    if (clock) {
+      await page.clock.install({ time: 1_700_000_000_000 });
+      await page.clock.pauseAt(1_700_000_001_000);
+    }
     const errors = [];
     page.on("pageerror", (error) => errors.push(String(error)));
     await page.route((url) => url.origin !== origin, (route) => route.abort());

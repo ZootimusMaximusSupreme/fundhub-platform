@@ -63,8 +63,13 @@ test("staff plan controls post the exact request on the page and in the frame", 
     const { page, posts, reads } = ctx;
     await page.waitForSelector(".fh-banks .addbank");
     assert.deepEqual(reads, [`?client_id=${CLIENT_ID}`]);
+    // Every good save is followed by a re-read that repaints the section. Wait for it
+    // before the next press, or the repaint can wipe what the next press just wrote.
+    let expectedReads = reads.length;
     const posted = async (action) => {
       await waitFor(() => posts.some((p) => p.action === action));
+      expectedReads += 1;
+      await waitFor(() => reads.length === expectedReads);
       return posts.filter((p) => p.action === action).at(-1);
     };
 
@@ -77,9 +82,7 @@ test("staff plan controls post the exact request on the page and in the frame", 
       action: "plan_bank", bank: "Bank of America", account_kind: "business", planned_open_on: "2026-11-03",
       planned_deposit_cents: 500000, lender_id: "d9bd0743-5439-4041-bd11-18925ac8ecf3", container_id: BUSINESS, client_id: CLIENT_ID,
     });
-    await proof.check(rows.plan, async () => {
-      await waitFor(() => reads.length === 2);
-    }, target.surface);
+    await proof.check(rows.plan, async () => {}, target.surface);
 
     // free-typed "Add a bank to the plan"
     posts.length = 0;
@@ -121,6 +124,8 @@ test("staff plan controls post the exact request on the page and in the frame", 
       assert.deepEqual(posts.find((p) => p.relationship_id === id), {
         action: "open_account", relationship_id: id, opened_on: "2026-10-04", client_id: CLIENT_ID,
       });
+      expectedReads += 1;
+      await waitFor(() => reads.length === expectedReads);
     }
     await proof.check(rows.open, async () => {}, target.surface);
 

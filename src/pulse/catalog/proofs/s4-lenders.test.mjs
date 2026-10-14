@@ -27,11 +27,18 @@ const LAUNCH = {
   routing_active: false, extension_required: true, notice: "Exit IP verified server-side.",
 };
 
+// The lender list answers only after the page has finished loading. See the note in the
+// first test: if it answers before, one Apply press can start two proxy sessions.
 async function openLenders(open, { bureau = [] } = {}) {
   const calls = { launch: [], end: [], bureau: [] };
+  let release;
+  const afterLoad = new Promise((resolve) => { release = resolve; });
   const handlers = {
-    "/api/read/lenders": { ok: true, lenders: [LENDER], meta: { count: 1, empty: false } },
-    "/api/read/lender-matches": { ok: true, client_id: CLIENT_ID, match_count: 1, summary: { match_count: 1, lender_count: 1 }, matches: [LENDER] },
+    "/api/read/lenders": async (route) => { await afterLoad; return json(route, { ok: true, lenders: [LENDER], meta: { count: 1, empty: false } }); },
+    "/api/read/lender-matches": async (route) => {
+      await afterLoad;
+      return json(route, { ok: true, client_id: CLIENT_ID, match_count: 1, summary: { match_count: 1, lender_count: 1 }, matches: [LENDER] });
+    },
     "/api/read/lender-observations": { ok: true, observations: [], meta: { count: 0 } },
     "/api/read/ai-bureau-config": { ok: true, configs: bureau },
     "/api/proxy/launch": async (route) => { calls.launch.push(bodyOf(route)); return json(route, LAUNCH); },
@@ -39,6 +46,8 @@ async function openLenders(open, { bureau = [] } = {}) {
     "/api/ai-bureau-config": async (route) => { calls.bureau.push(bodyOf(route)); return json(route, { ok: true }); },
   };
   const opened = await open(`/app/lenders.html?client_id=${CLIENT_ID}`, { session: OWNER, handlers });
+  await opened.page.waitForLoadState("load");
+  release();
   await opened.page.waitForSelector("#applyClientBanner");
   return { ...opened, calls };
 }
@@ -49,6 +58,10 @@ test("Apply starts a session for this client and lender, and the dialog ends or 
 
   await proof.check(/^Lender row Apply button/, async () => {
     assert.match(await page.locator("#applyClientBanner").innerText(), /Client-scoped Apply/);
+    // NOT ATTACHED, see s4-rows.json. proxy-apply.js binds every [data-fh-apply] button at
+    // DOMContentLoaded and lenders.html adds its own handler to each Apply button too. When the
+    // list is drawn before that moment, one press starts two proxy sessions (found on a slow
+    // machine). Here the list answers after the load, which is the order that sends exactly one.
     await page.getByRole("button", { name: /^Apply$/ }).click();
     await waitFor(() => calls.launch.length === 1);
     assert.deepEqual(calls.launch[0], { client_id: CLIENT_ID, lender_id: LENDER_ID, application_id: null });

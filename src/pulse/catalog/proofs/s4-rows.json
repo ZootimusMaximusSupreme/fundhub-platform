@@ -423,7 +423,9 @@
    "sourceFile": "desks-c.json",
    "surface": "lenders.html",
    "controls": [
-    "AI bureau config row Save button (feeds the AI inquiry caller's dial number and IVR path)",
+    "AI bureau config row Save button (feeds the AI inquiry caller's dial number and IVR path)"
+   ],
+   "notAttached": [
     "Apply dialog: Copy proxy string, End session, Close (manual fallback when the Chrome extension is absent)",
     "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)"
    ]

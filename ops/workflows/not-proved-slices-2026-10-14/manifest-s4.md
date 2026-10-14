@@ -5,7 +5,7 @@ Branch `prf/s4-data-screens`, cut from `origin/main` (0a2160c97). Tests only. No
 ## The count
 
 - Rows in the slice: 279. All 279 were NOT_PROVED before.
-- NOT_PROVED after: 83. So 196 rows now have a real test attached.
+- NOT_PROVED after: 85. So 194 rows now have a real test attached.
 - Measured offline with the four lanes, the way the task said (route, display, flow, reads lanes, fake fetch). All 279 sit in `gap-catalog-display`.
 
 ## What I built
@@ -25,12 +25,12 @@ A listed row can only attach if its test claimed it (the last test in each file 
 ## Shared lines I touched (for the integrator)
 
 - `src/pulse/catalog/proofs/display-proof-cases.mjs`: two lines. One import of `S4_DISPLAY_PROOF_CASES`, and one `...S4_DISPLAY_PROOF_CASES,` at the end of the plugin list.
-- `src/pulse/catalog/proofs/display-proof-cases.test.mjs`: the red count `1_039` is now `862`. That is the real number measured with only my slice added. When the five slices are merged, re-measure it; it is the sum of everyone's drops.
+- `src/pulse/catalog/proofs/display-proof-cases.test.mjs`: the red count `1_039` is now `864`. That is the real number measured with only my slice added. When the five slices are merged, re-measure it; it is the sum of everyone's drops.
 - `src/pulse/catalog/generated.json`: regenerated with `node scripts/pulse/compile-catalog.mjs` (a guard test requires it). Re-run the compiler after merging; do not hand-merge this file.
 
 ## Rows I could not attach, and why
 
-- **9 rows are proved by a test but stay NOT_PROVED on purpose.** Their pulse contract is "always red until a saved receipt exists" (`display-saved-result.mjs`). The screen test cannot replace a database receipt. They are listed under `notAttached` in `s4-rows.json`: content admin (4: name box, outcome box, switch, Save changes), contracts (2: Save create, Save edit), consent capture (1: wording/version/status banner), documents (1: Void), soft-pull approve (1: Business fields).
+- **11 rows are exercised by a test but stay NOT_PROVED on purpose.** Their pulse contract is "always red until a saved receipt exists" (`display-saved-result.mjs`). The screen test cannot replace a database receipt. They are listed under `notAttached` in `s4-rows.json`: content admin (4: name box, outcome box, switch, Save changes), contracts (2: Save create, Save edit), consent capture (1: wording/version/status banner), documents (1: Void), soft-pull approve (1: Business fields), lenders (2: Apply button, Apply dialog; see finding 6).
 - **Not attempted (time):** inquiry-remover 36, client-control-panel 18, client-portal 9, money.html server rows 2 (link-token, link-exchange), money-vault documents-upload server row 1, partner-galaxy 1, social-studio 1, staff-teams 1, shell search 1.
 - **Product findings (left red, not fixed):** see the next section.
 
@@ -41,6 +41,7 @@ A listed row can only attach if its test claimed it (the last test in each file 
 3. **Leads list page is not in the repo.** The row names `public/leads/<32-hex>/index.html`; no such folder is committed, so nothing can be tested. Left NOT_PROVED.
 4. **Pipeline map text is stale for 46 columns.** The map says every column "shows count and funding est." The page deliberately shows the funding total only on the Sales, Card Stacking and altfin rails (owner call 2026-08-28, in the page comments). My proof checks the count, no funding total on the other rails, and the exact drop request. The row text should be fixed in the map. Not a product bug.
 5. **Content admin: Clear leaves the old file's title.** Pick a file, Clear, pick another: the Title box still holds the first file's name. Small. Not tied to a row.
+6. **Lenders: one Apply press can start two proxy sessions.** `proxy-apply.js` attaches a click handler to every `data-fh-apply` button when the page finishes loading, and `lenders.html` also attaches its own handler to each Apply button it draws. If the lender list is drawn before the page finishes loading (it happens on a slow or busy machine), one press sends two `/api/proxy/launch` requests. Two proxy sessions for one client and one bank. I kept the test (it makes the list answer after the load, the order that sends one request) and left both Apply rows NOT_PROVED.
 
 ## What I ran
 
