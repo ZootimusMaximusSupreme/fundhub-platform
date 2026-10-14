@@ -1,57 +1,80 @@
-# Slice 4 manifest — customer-data screens (builder S4)
+# Slice 4 manifest — customer-data screens (builder S4, repair round)
 
 Branch `prf/s4-data-screens`, cut from `origin/main` (0a2160c97). Tests only. No product code changed.
 
 ## The count
 
 - Rows in the slice: 279. All 279 were NOT_PROVED before.
-- NOT_PROVED after: 85. So 194 rows now have a real test attached.
-- Measured offline with the four lanes, the way the task said (route, display, flow, reads lanes, fake fetch). All 279 sit in `gap-catalog-display`.
+- NOT_PROVED after: 86. So 193 rows now have a real test attached.
+- Measured offline with the four lanes (route, display, flow, reads lanes, fake fetch that answers 200 with empty bodies). All 279 sit in `gap-catalog-display`. Script: counts the slice file's row ids that a lane still prints as NOT_PROVED.
+- Last round it was 85 and 194. The Banks "Page gate" row went back to NOT_PROVED on purpose (see "Rows I could not attach").
 
-## What I built
+## What the repair round changed
 
-One shared helper, one data table, one shard, and 26 test files. Every test opens the real page in Chromium, answers `/api` with fake data, clicks the control, and checks the exact request and what the screen then says.
+A checker broke the product on purpose and judged the proofs. These are the fixes, in plain words.
+
+1. **A row is now proved by its own assertions.** Before, 23 rows were claimed by an empty `proof.check(..., async () => {})` placed after the real asserts, and one by a bare `proof.claim()`. Now every claim is made inside the callback that asserts it. The bare claim is gone from the harness, and an empty callback is refused (`s4-screen-harness.mjs`). New unit test `s4-harness.test.mjs` proves the tracker: empty callback claims nothing, a failing callback claims nothing, a listed row never run fails the file.
+2. **Where a row covers two forms, the claim needs both.** Frame Banks "Add to plan" (per-bank form and free-typed form), frame Accounts "Add a business form and Save business info", frame Plan "Mark done and Mark missed", frame Overview "Connect a bank (header, and again in the empty state)", frame Declines paste form.
+3. **Role and gate cases were missing, now present** in the same table-driven files:
+   - Banks: a client opening the page and the frame gets none of the staff plan controls (checked inside every staff row).
+   - Plan: each mark button shows only when that pin's own `can_mark` lists it (client: none; a pin that allows only done: only Mark done). Both page and frame.
+   - Vault: staff controls need a client id AND the server's staff view (three cases). The sort form asks months and date for a statement.
+   - Documents Void: owner and admin offered, closer and csm not, signed contract not.
+   - Brand Studio Verify: owner and admin get it, partner does not.
+   - Pipeline: every staff role stays on the page, a client is sent away.
+   - Soft-pull approval now opens with no login at all.
+   - Money Accounts: no session goes to the right sign-in page and back.
+4. **Half-covered compound rows were finished.** Vault upload labels (all four, one multi-file input, JPG and PNG go through, an expired View link is not followed), Declines paste box (19 and 20 letters, 20,001 cannot be typed, the Social Security number is masked by the real save path over a stand-in table), Overview "Try again" on trends, Credit history from two pulls and UnderwriteIQ sentences, Transfers "who said yes", Finance OS hand-typed note absent when nothing is hand-typed, Brand Studio every box saved as typed (each row asserts the saved brand carries its own box; all three voices), Closer outcome each of the five ticks and five keys, CSM interview for both stages, Inbox hidden tab makes no read, Contracts box fields and signer saved, Content admin each tile row asserts what the one save carried.
+5. **No timer waits that depend on a quiet machine.** The helper's 3 second poll now runs on the page's held clock.
+6. **Files over 400 lines.** `s4-rows.json` (546 lines) is two files, `s4-rows-money.json` (253) and `s4-rows-screens.json` (295), joined by `s4-rows.mjs`. No S4 file is over 400 lines. The two older big files (`generated.json`, `display-proof-cases.mjs`) are not mine to split.
+7. **One copy of the bank-link stub.** `bankLink()` in `s4-money-harness.mjs` replaces two copies of the Plaid script and the two link handlers.
+8. **A short queue for browsers.** `s4-browser-slots.mjs`: at most 3 S4 files hold a Chromium at the same time (set `S4_BROWSER_PLACES` to change). The focused proof run starts all 118+ files at once, and the extra Chromiums were crowding out the other browser specs (see "What I ran").
+
+## What I built (unchanged shape)
+
+One shared harness, one row table, one shard, and 27 test files. Every test opens the real page in Chromium, answers `/api` with fake data, clicks the control, and checks the exact request and what the screen then says.
 
 | File (all in `src/pulse/catalog/proofs/`) | What it is |
 |---|---|
-| `s4-screen-harness.mjs` | Static server for `public/`, one Chromium, fake `/api`, and the "every listed row was exercised" tracker |
-| `s4-money-harness.mjs` | Helpers for the money tabs (page and frame entry, fake `/api/money/<x>`) |
-| `s4-rows.json` | The table: which control rows each test file proves |
+| `s4-screen-harness.mjs` | Static server for `public/`, one Chromium, fake `/api` |
+| `s4-proof-rows.mjs` | The "every listed row was exercised" tracker (no browser) |
+| `s4-browser-slots.mjs` | The three-place queue for browsers |
+| `s4-money-harness.mjs` | Helpers for the money tabs (page and frame entry, fake `/api/money/<x>`, bank link) |
+| `s4-rows.mjs`, `s4-rows-money.json`, `s4-rows-screens.json` | The table: which control rows each test file proves |
 | `s4-display-proofs.mjs` | Turns that table into proof cases for the catalog |
+| `s4-harness.test.mjs` | Tests the tracker |
 | `s4-*.test.mjs` (24 files) | The proofs: pipeline board, money banks, accounts, plan, payments, declines, helper, connections, overview, setup and strategy, panels, vault, FinanceOS frame, finance-os desk, contracts, content admin, consent, soft-pull approval, staff desks (void, interview), closer outcome, lenders, inbox, closer deck, Brand Studio, public forms, contract signing |
 
 A listed row can only attach if its test claimed it (the last test in each file fails if any listed row never ran).
 
 ## Shared lines I touched (for the integrator)
 
-- `src/pulse/catalog/proofs/display-proof-cases.mjs`: two lines. One import of `S4_DISPLAY_PROOF_CASES`, and one `...S4_DISPLAY_PROOF_CASES,` at the end of the plugin list.
-- `src/pulse/catalog/proofs/display-proof-cases.test.mjs`: the red count `1_039` is now `864`. That is the real number measured with only my slice added. When the five slices are merged, re-measure it; it is the sum of everyone's drops.
+- `src/pulse/catalog/proofs/display-proof-cases.mjs`: two lines (import of `S4_DISPLAY_PROOF_CASES`, and `...S4_DISPLAY_PROOF_CASES,` at the end of the plugin list). Unchanged this round.
+- `src/pulse/catalog/proofs/display-proof-cases.test.mjs`: the red count is now `865` (was `864` last round, `1_039` on main). It went up by one because the Banks "Page gate" row is no longer attached. When the five slices are merged, re-measure it; it is the sum of everyone's drops.
 - `src/pulse/catalog/generated.json`: regenerated with `node scripts/pulse/compile-catalog.mjs` (a guard test requires it). Re-run the compiler after merging; do not hand-merge this file.
 
 ## Rows I could not attach, and why
 
-- **11 rows are exercised by a test but stay NOT_PROVED on purpose.** Their pulse contract is "always red until a saved receipt exists" (`display-saved-result.mjs`). The screen test cannot replace a database receipt. They are listed under `notAttached` in `s4-rows.json`: content admin (4: name box, outcome box, switch, Save changes), contracts (2: Save create, Save edit), consent capture (1: wording/version/status banner), documents (1: Void), soft-pull approve (1: Business fields), lenders (2: Apply button, Apply dialog; see finding 6).
+- **12 rows are exercised by a test but stay NOT_PROVED on purpose.** Their pulse contract is "always red until a saved receipt exists" (`display-saved-result.mjs`), or the product does not do what the row says. They are listed under `notAttached` in the row tables: content admin (4: name box, outcome box, switch, Save changes), contracts (2: Save create, Save edit), consent capture (1: wording/version/status banner), documents (1: Void), soft-pull approve (1: Business fields), lenders (2: Apply button, Apply dialog; see finding 6), money banks (1: Page gate; see finding 7).
 - **Not attempted (time):** inquiry-remover 36, client-control-panel 18, client-portal 9, money.html server rows 2 (link-token, link-exchange), money-vault documents-upload server row 1, partner-galaxy 1, social-studio 1, staff-teams 1, shell search 1.
 - **Product findings (left red, not fixed):** see the next section.
 
 ## Product findings
 
-1. **Contracts, PDF editor: a dragged box does not move on screen.** Drag a box and the saved position changes (x 0.40 to 0.50), but the box on screen stays where it was drawn until something redraws it. The mouse-down redraws every box, then the drag moves a box that is already gone. Row left NOT_PROVED: "PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner to resize".
-2. **Climate page has no lead form.** `public/climate/index.html` is a lending climate dashboard. It has no "See how many banks in our book fit your state" button and no four-answers form. No page in `public/` calls `/api/public/climate-match`. Two rows describe controls that are not on the shipped page. Left NOT_PROVED.
-3. **Leads list page is not in the repo.** The row names `public/leads/<32-hex>/index.html`; no such folder is committed, so nothing can be tested. Left NOT_PROVED.
-4. **Pipeline map text is stale for 46 columns.** The map says every column "shows count and funding est." The page deliberately shows the funding total only on the Sales, Card Stacking and altfin rails (owner call 2026-08-28, in the page comments). My proof checks the count, no funding total on the other rails, and the exact drop request. The row text should be fixed in the map. Not a product bug.
+1. **Contracts, PDF editor: a dragged box does not move on screen.** Drag a box and the saved position changes (x 0.40 to 0.50), but the box on screen stays where it was drawn until something redraws it. Row left NOT_PROVED: "PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner to resize".
+2. **Climate page has no lead form.** `public/climate/index.html` has no "See how many banks in our book fit your state" button and no four-answers form. No page in `public/` calls `/api/public/climate-match`. Two rows describe controls that are not on the shipped page. Left NOT_PROVED.
+3. **Leads list page is not in the repo.** The row names `public/leads/<32-hex>/index.html`; no such folder is committed. Left NOT_PROVED.
+4. **Pipeline map text is stale for 46 columns.** The map says every column "shows count and funding est." The page deliberately shows the funding total only on the Sales and Card Stacking rails (owner call 2026-08-28). The proof checks the count, the funding total on those two rails, none on the other five, and the exact drop request. The row text should be fixed in the map. Not a product bug. Left attached on purpose: the proof goes red if the owner's call is undone.
 5. **Content admin: Clear leaves the old file's title.** Pick a file, Clear, pick another: the Title box still holds the first file's name. Small. Not tied to a row.
-6. **Lenders: one Apply press can start two proxy sessions.** `proxy-apply.js` attaches a click handler to every `data-fh-apply` button when the page finishes loading, and `lenders.html` also attaches its own handler to each Apply button it draws. If the lender list is drawn before the page finishes loading (it happens on a slow or busy machine), one press sends two `/api/proxy/launch` requests. Two proxy sessions for one client and one bank. I kept the test (it makes the list answer after the load, the order that sends one request) and left both Apply rows NOT_PROVED.
+6. **Lenders: one Apply press can start two proxy sessions.** `proxy-apply.js` binds every `data-fh-apply` button when the page finishes loading, and `lenders.html` also binds its own handler to each Apply button it draws. If the list is drawn before the page finishes loading, one press sends two `/api/proxy/launch` requests. Both Apply rows left NOT_PROVED.
+7. **Banks: the staff plan forms are switched on by a client id in the address, not by the person's role.** In `money-banks.js` the page draws the staff forms when `?client_id=` is present. A signed-in client who types `?client_id=` sees all ten staff plan controls (measured). The server is the real gate for what they can save (not checked here). The row "Page gate: ... only staff see plan controls" says staff only, so it was returned to NOT_PROVED instead of left green. The other Banks rows prove the controls work and that a client on their own file sees none.
 
 ## What I ran
 
-- Every new test file alone: green, and re-run 2 to 5 times each to check for flakes. Two flakes were found and fixed (a repaint race in content admin, and waits that were too short when 118 files start at once).
-- Break checks: for each proof file I broke the page on purpose once (a wrong field, a dropped gate, a changed message), saw the test go red, then restored with `git checkout`. Done for every file; the scripts are not kept.
-- `npm run lint`: clean (3481 files).
-- Focused proof run (all 118 test files named by display proof cases): 1701 tests; the only failures were two tests that need `node_modules/@playwright/test/cli.js`, which a bare worktree does not have. With `node_modules` linked (ignored by git) they pass (3 of 3).
-- All 24 S4 proof files started at once (the worst load): 111 tests, 111 pass. Run twice; the first run found two steady-state races (Banks re-read, a fake clock that ran on real time) and the lenders double launch, all handled above.
-- Catalog and lane suites (84 files: `src/pulse/catalog/**`, `gap-catalog*`, `gap-door-batch*`): 1364 tests, 1362 pass, 2 fail. The two failures are `read-proof-cases` "the 64 proved read rows run their real focused result tests" and its nested `reviewed read proofs ... rendered pages` (an agent-editor Playwright spec on the Reads lane). I changed no `public/` or product file, and the same `reviewed read proofs` test passes when run by itself. They fail only when the whole set runs at once. Not mine; flagged for the integrator.
+- Row tables, claims, lines: every claim is inside its own callback (a scan of every `proof.check(` found no callback without an assert or a call to a function that asserts). No S4 file is over 400 lines (largest: `s4-pipeline-board.test.mjs`, 331).
+- Break checks: 25 product breaks across 22 product files, one at a time, each restored after the run. Every one turned the matching proof RED: banks staff controls shown to a client; plan Mark missed on a pin that allows only done; vault rejected label, staff view without a client id, sort form without months, expired View link followed; declines 10 letters enough and SSN not masked; trends Try again does nothing; credit change line lost; transfers every approval "practice run"; finance-os note always shown; brand-studio partner offered Verify and technical voice missing; closer-call boxes swapped and key 5 wrong; documents Void to everyone; csm post asks mid questions; messaging hidden tab reads; accounts no sign-in redirect; pipeline funding on every rail; content-admin price in dollars; contracts box signer lost; helper polls every 10 seconds and never. The script is not kept.
+- RESULTS_PLACEHOLDER
 
 ## Environment note
 
-A bare git worktree has no `node_modules`. `display-batch-staff-ui.test.mjs` and `read-reviewed-e2e.test.mjs` fail there for that reason alone ("Playwright CLI is not installed"). Link `node_modules` from the main checkout to run them.
+A bare git worktree has no `node_modules`. `display-batch-staff-ui.test.mjs` and `read-reviewed-e2e.test.mjs` fail there for that reason alone ("Playwright CLI is not installed"). Link `node_modules` from the main checkout to run them. This machine was running five builders' suites at once while I measured (load average 20 to 60 on 10 cores), which is the setting the flake showed up in.

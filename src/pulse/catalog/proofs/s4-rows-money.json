@@ -7,10 +7,12 @@
     "'Add a bank to the plan' form (staff): bank name, kind (business/personal), container, day to open, deposit",
     "Banks near you: per-bank 'Add to plan' form (staff): container, day to open, deposit ($, blank = book minimum)",
     "Next funding sequence 'Save date' form (staff; Blueprint buyers only)",
-    "Page gate: client reads own file; staff (owner, admin, sales_manager, closer) need ?client_id=; only staff see plan controls",
     "Relationship row (opened): 'Add deposit' form (amount $, day)",
     "Relationship row (planned): 'Day opened' + 'Mark opened' form",
     "Relationship row: 'Skip this bank' button"
+   ],
+   "notAttached": [
+    "Page gate: client reads own file; staff (owner, admin, sales_manager, closer) need ?client_id=; only staff see plan controls"
    ]
   },
   {

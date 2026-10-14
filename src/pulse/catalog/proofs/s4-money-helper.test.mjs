@@ -13,9 +13,9 @@ const WORDS = ["What is due this week?", "Which card should I pay first?", "Got 
 const PAGE = { entry: "page", file: "money-helper.html", surface: "public/app/money-helper.html" };
 const FRAME = { entry: "frame", tab: "helper", surface: "financeos.html#helper" };
 
-async function openHelper(open, target, { session = CLIENT, clientId = "", read }) {
+async function openHelper(open, target, { session = CLIENT, clientId = "", read, clock = false }) {
   const resource = moneyResource("helper", { read, write: () => ({ status: 202, body: { ok: true } }) });
-  const opened = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers: resource.handlers });
+  const opened = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers: resource.handlers, clock });
   await opened.page.waitForSelector(".fh-helper, #mh-input");
   return { ...opened, ...resource.log };
 }
@@ -69,10 +69,15 @@ test("the thread shows messages, answers, the brain and the cards, and polls whi
     const answered = sampleAnswer("money-helper.sample.json");
     const waiting = { ...answered, turns: [{ ...answered.turns[0], id: "turn-wait", status: "queued", reply: null, answered_at: null, actions: [], brain: null }], pending: 1 };
     let calls = 0;
-    const { page } = await openHelper(open, FRAME, { read: () => (++calls === 1 ? waiting : answered) });
+    // The page's own clock is held, so the 3 second poll fires when the test says, not when a busy machine gets to it.
+    const { page } = await openHelper(open, FRAME, { read: () => (++calls === 1 ? waiting : answered), clock: true });
     await page.waitForFunction(() => /Thinking…/.test(document.body.innerText));
     assert.equal(await page.locator(".msg.is-thinking").count(), 1, "a queued turn shows Thinking…");
-    await page.waitForFunction(() => !/Thinking…/.test(document.body.innerText), null, { timeout: 10_000 });
+    await page.clock.fastForward(2_000);
+    await page.waitForTimeout(150);
+    assert.equal(calls, 1, "no second read before 3 seconds");
+    await page.clock.fastForward(1_500);
+    await page.waitForFunction(() => !/Thinking…/.test(document.body.innerText));
     assert.ok(calls >= 2, "the page asked again by itself");
     const first = answered.turns[0];
     const text = await page.locator("body").innerText();
