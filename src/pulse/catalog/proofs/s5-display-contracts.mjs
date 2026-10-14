@@ -506,6 +506,469 @@ export const S5_DISPLAY_ROWS = Object.freeze([
     "impact": "none",
     "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
   }),
+  Object.freeze({
+    "name": "money-credit-sentences",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "'What to work on' UnderwriteIQ sentences",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "UnderwriteIQ sentences are printed verbatim and escaped"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-accounts",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Accounts on your credit report table",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "accounts table lists every line from the read"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-business",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Business score tile (Experian Intelliscore, financial stability)",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "the business score is a dash with words when nothing is stored, never 0"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Empty state: Set up a soft pull link",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "empty: no pull and no business score"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-facts",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Facts tiles x4: Cards used %, Open accounts, Hard inquiries per bureau, Negative items",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "facts: cards used, open accounts, inquiries per bureau, negative items",
+      "a null anywhere is a dash, not 0"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-sample",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Sample report banner (scores from a sample file)",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "full: three bureau scores with pulled dates, words beside each, and the sample banner"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-scores",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Score tiles x3 (Experian, Equifax, TransUnion): score, band, change since last pull, pulled date",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "full: three bureau scores with pulled dates, words beside each, and the sample banner",
+      "history: no line from one pull; a chart and a change from two"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-credit-history",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-credit.html",
+    "control": "Scores over time chart (needs 2+ pulls)",
+    "impact": "none",
+    "test": "src/http/money-credit-screen.test.mjs",
+    "titles": [
+      "history: no line from one pull; a chart and a change from two"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-declines-select",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-declines.html",
+    "control": "'Which bank sent it?' select (applications with no decline yet + Another bank)",
+    "impact": "none",
+    "test": "src/http/money-declines-screen.test.mjs",
+    "titles": [
+      "the paste box lists the client's applications that have no decline yet, plus another bank"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-declines-cards",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-declines.html",
+    "control": "Declines we are working on: one card per decline (bank, status word + shape, reasons with the letter's own quote, person-will-read box, When lines)",
+    "impact": "none",
+    "test": "src/http/money-declines-screen.test.mjs",
+    "titles": [
+      "full: the likely reason in the letter's own words",
+      "status is a word and a shape, never colour alone"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-declines-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-declines.html",
+    "control": "Empty state (no applications, no declines)",
+    "impact": "none",
+    "test": "src/http/money-declines-screen.test.mjs",
+    "titles": [
+      "empty: no applications and no declines yet"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-declines-paste",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-declines.html",
+    "control": "Paste answer line (flash, duplicate, too many pastes, problem words)",
+    "impact": "none",
+    "test": "src/http/money-declines-screen.test.mjs",
+    "titles": [
+      "a paste problem is said in words; a duplicate says it is already here",
+      "after a paste the answer sits above the declines"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-declines-locked",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-declines.html",
+    "control": "Paste locked panel (not a Capital Blueprint buyer)",
+    "impact": "none",
+    "test": "src/http/money-declines-screen.test.mjs",
+    "titles": [
+      "not a Blueprint buyer: no paste box at all, and the page says why in words"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-add",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "Add business details / Add a business links",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "businesses: one card each, a container with no details asks for them, and nothing adds them up",
+      "no business yet: says what will appear and one way to make it appear"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "Empty state: Run your soft pull link",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "empty: no credit file"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-chart",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "Now and later chart: date column buttons (Today + 3 dates), click / hover / focus shows assumptions",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "the chart: today and three dates, a solid plan line, assumptions on the chosen date"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-now",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "Tile: Fundability now (x of 6 UnderwriteIQ checks, tier)",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "full: fundability now, the money, and the 12-month comparison"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-later",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "Tile: In N months (plan projection, 'if removed' line)",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "full: fundability now, the money, and the 12-month comparison",
+      "if removed: its own dashed line with open dots, and it always says it is not promised"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-drives",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "What drives it: six checks, each Pass / Not yet / Not on file",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "what drives it: six checks, each a word and a mark"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-moves",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "What moves it most (UnderwriteIQ sentences, tagged with the check)",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "UnderwriteIQ's sentence is printed verbatim, tagged with the check it moves, and escaped"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-fundability-cannot",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-fundability.html",
+    "control": "What this cannot look ahead on",
+    "impact": "none",
+    "test": "src/http/money-fundability-screen.test.mjs",
+    "titles": [
+      "what this cannot look ahead on is said in words"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-next-blueprint",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-next.html",
+    "control": "Capital Blueprint card: Book a call link (only for clients without it)",
+    "impact": "none",
+    "test": "src/http/money-next-screen.test.mjs",
+    "titles": [
+      "the Capital Blueprint card shows only to a client without it, and links to the call booking"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-next-checklist",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-next.html",
+    "control": "Open your checklist link (steps only the client can do)",
+    "impact": "none",
+    "test": "src/http/money-next-screen.test.mjs",
+    "titles": [
+      "a person step has Do task; a step only the client can do has no button and links to the checklist"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-next-ready",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-next.html",
+    "control": "Ready card states (none / sent to our team / a person has it / prep call done)",
+    "impact": "none",
+    "test": "src/http/money-next-screen.test.mjs",
+    "titles": [
+      "Ready to get funded: none"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-next-steps",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-next.html",
+    "control": "Step list rows (title, due or Late N days, who can do it, why, from)",
+    "impact": "none",
+    "test": "src/http/money-next-screen.test.mjs",
+    "titles": [
+      "full: the test client's two steps, late said in words, who can do each, and the Do task buttons"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-connections-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-connections.html",
+    "control": "Empty state: Add a business link",
+    "impact": "none",
+    "test": "src/http/money-connections-screen.test.mjs",
+    "titles": [
+      "empty: no business"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-connections-tiles",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-connections.html",
+    "control": "Four tiles: Sales / Refunds / Fees / Paid out this month, with vs-last-month",
+    "impact": "none",
+    "test": "src/http/money-connections-screen.test.mjs",
+    "titles": [
+      "full state: tiles with a comparison, three processor cards, month table per container"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-connections-months",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-connections.html",
+    "control": "Month over month tables (per business + All businesses)",
+    "impact": "none",
+    "test": "src/http/money-connections-screen.test.mjs",
+    "titles": [
+      "full state: tiles with a comparison, three processor cards, month table per container"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-connections-providers",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-connections.html",
+    "control": "Provider card x3 (Commas, Whop, Open API) status word",
+    "impact": "none",
+    "test": "src/http/money-connections-screen.test.mjs",
+    "titles": [
+      "status is said in words, never colour alone",
+      "full state: tiles with a comparison, three processor cards, month table per container"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-helper-bubbles",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-helper.html",
+    "control": "Chat bubbles: your message, the helper's answer, brain label (AI or Rules) with reason, time",
+    "impact": "none",
+    "test": "src/http/money-helper-screen.test.mjs",
+    "titles": [
+      "each message, then the helper's own words under it",
+      "which brain answered, in words, under every answer",
+      "time: relative under a day, a date after"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-helper-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-helper.html",
+    "control": "Empty thread state",
+    "impact": "none",
+    "test": "src/http/money-helper-screen.test.mjs",
+    "titles": [
+      "empty: says what will appear, with three ways to start"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-helper-status",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-helper.html",
+    "control": "Helper status tags (Texts off, AI on / AI off / Rules helper only)",
+    "impact": "none",
+    "test": "src/http/money-helper-screen.test.mjs",
+    "titles": [
+      "the helper's status in words: texts off, AI on"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-plan-detail",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-plan.html",
+    "control": "Detail panel facts (what, when, amount, status in words, why, source, See it on Payments link)",
+    "impact": "none",
+    "test": "src/http/money-plan-screen.test.mjs",
+    "titles": [
+      "what, when, how much, the status in words, why, and where it came from",
+      "a staff desk carries the client on the Payments link"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-plan-empty",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-plan.html",
+    "control": "Empty state: Add an account link",
+    "impact": "none",
+    "test": "src/http/money-plan-screen.test.mjs",
+    "titles": [
+      "empty: says what will appear and gives one action that makes it appear"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-plan-grid",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-plan.html",
+    "control": "Mon-Sun calendar grid (today ring, pins per day, status shapes)",
+    "impact": "none",
+    "test": "src/http/money-plan-screen.test.mjs",
+    "titles": [
+      "each pin sits on its own day, with its amount",
+      "today is a ring and the word, on the 7th only",
+      "status is a shape as well as a colour in a cell, and a word everywhere else"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-plan-pin",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-plan.html",
+    "control": "Pin button in a calendar cell / row in the day list (opens the detail panel)",
+    "impact": "none",
+    "test": "src/http/money-plan-screen.test.mjs",
+    "titles": [
+      "a pin opens its panel; staff Mark done posts the pin to its own source"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-plan-tiles",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-plan.html",
+    "control": "Tiles: Next up / This month / Missed",
+    "impact": "none",
+    "test": "src/http/money-plan-screen.test.mjs",
+    "titles": [
+      "the tiles: what is next, the month in numbers, and what was missed"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-setup-header",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-setup.html",
+    "control": "Header 'N of 4 steps done' and step markers (Done / now / later)",
+    "impact": "none",
+    "test": "src/http/money-setup-screen.test.mjs",
+    "titles": [
+      "done steps say Done in words, with dates; all done shows the live link"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-setup-step4",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-setup.html",
+    "control": "Step 4: Open Money link (when live)",
+    "impact": "none",
+    "test": "src/http/money-setup-screen.test.mjs",
+    "titles": [
+      "done steps say Done in words, with dates; all done shows the live link"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-payments-helperlog",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-payments.html",
+    "control": "What your money helper did (log sentences; never claims a text went out when it did not)",
+    "impact": "none",
+    "test": "src/http/money-payments-screen.test.mjs",
+    "titles": [
+      "the log never claims a text went out when it did not"
+    ]
+  }),
+  Object.freeze({
+    "name": "money-payments-unmatched",
+    "sourceFile": "desks-d.json",
+    "surface": "public/app/money-payments.html",
+    "control": "Staff only: Commas payments not matched to a plan",
+    "impact": "staffOnly",
+    "test": "src/http/money-payments-screen.test.mjs",
+    "titles": [
+      "unmatched Commas payments: a staff-only list, in words, and never on the client's page"
+    ]
+  }),
 ]);
 
 // Same shape as the other display-contract plugins: display-proof-cases.mjs
