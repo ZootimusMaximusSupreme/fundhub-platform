@@ -149,6 +149,8 @@ const DEFINITIONS = [
   ["de26dd73e719868cbddc", ["src/http/s3-repair-handler.test.mjs"]],
   // routes-1 read/closer-deck: GET ?client_id= or ?contact= (the live closer-deck payload for Present
   ["35301fc89a2ee57c04af", ["src/http/s3-closer-deck-handler.test.mjs"]],
+  // routes-1 read/finance-ask: POST {question, client_id?} answers a fixed set of question shapes (ca
+  ["3c3cd2b95737f6a4edbe", ["src/http/s3-finance-handler.test.mjs"]],
 ];
 
 export function s3DoorRowId(sourceFile, row) {

@@ -10,20 +10,20 @@ import {
   judgeRouteGap,
 } from "./gap-door-batch-routes.mjs";
 
-test("the route gap monitor owns the exact 240 rows", () => {
+test("the route gap monitor owns the exact 239 rows", () => {
   const counts = ROUTE_GAP_ROWS.reduce((out, row) => {
     out[row.sourceFile] = (out[row.sourceFile] || 0) + 1;
     return out;
   }, {});
   assert.deepEqual(counts, EXPECTED_ROUTE_GAP_COUNTS);
-  assert.equal(ROUTE_GAP_ROWS.length, 240);
-  assert.equal(CHECK_IDS.length, 240);
-  assert.equal(new Set(CHECK_IDS).size, 240);
+  assert.equal(ROUTE_GAP_ROWS.length, 239);
+  assert.equal(CHECK_IDS.length, 239);
+  assert.equal(new Set(CHECK_IDS).size, 239);
 });
 
 test("every missing route result emits one exact not-proved row", async () => {
   const results = await gapChecks();
-  assert.equal(results.length, 240);
+  assert.equal(results.length, 239);
   for (let index = 0; index < ROUTE_GAP_ROWS.length; index += 1) {
     const source = ROUTE_GAP_ROWS[index];
     const result = results[index];

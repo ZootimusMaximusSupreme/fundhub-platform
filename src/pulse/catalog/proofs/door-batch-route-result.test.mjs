@@ -60,7 +60,7 @@ test("Batch 4 refusal context never claims the remaining route business results 
       .map((row) => ({ file, row, key: routeKeyForDoor(row) }));
   });
 
-  assert.equal(rows.length, 240);
+  assert.equal(rows.length, 239);
   for (const { row, file } of rows) {
     const proof = makeRecipe(file, row).proof;
     assert.equal(proof.depth, "e2e");

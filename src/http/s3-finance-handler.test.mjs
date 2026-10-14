@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import containersHandler from "../../api/finance/containers.mjs";
 import softPullHandler from "../../api/finance/soft-pull.mjs";
+import askHandler from "../../api/read/finance-ask.mjs";
 import { makeRes, fakeDb, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
 
@@ -95,5 +96,62 @@ describe("POST /api/finance/soft-pull", () => {
     const noReason = await callShared(softPullHandler, req("POST", { body: { client_id: CLIENT } }), [staffSession({ role: "closer" }), owns, consent(true), insert]);
     assert.equal(noReason.res.statusCode, 400);
     for (const out of [other, setter, noReason]) assert.equal(out.fake.find(/INSERT INTO soft_pull_requests/).length, 0);
+  });
+});
+
+describe("POST /api/read/finance-ask", () => {
+  const CLIENT = "c1000000-0000-4000-8000-000000000001";
+  async function ask(question, { accounts = [], cards = [], client = CLIENT, rules = [] } = {}) {
+    const database = fakeDb([
+      ...rules,
+      [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ "?column?": 1 }]],
+      [/FROM bank_accounts WHERE org_id = \$1/, accounts],
+      [/FROM tradelines WHERE org_id = \$1/, cards],
+      [/FROM investment_holdings ih/, []]
+    ]);
+    const res = makeRes();
+    await askHandler({ method: "POST", body: { question, client_id: client } }, res, {
+      db: database, requireAuth: async () => ({ id: STAFF_ID, role: "closer", org_id: ORG_ID })
+    });
+    return { res, database };
+  }
+  const cash = (cents, over = {}) => ({ account_type: "depository", current_balance_cents: cents, closed_at: null, ...over });
+
+  test("can I afford $X is answered against the cash on hand, yes or no with the gap, and the question names this client only", async () => {
+    const yes = await ask("Can I afford $1,500?", { accounts: [cash(200000)] });
+    assert.equal(yes.res.statusCode, 200);
+    assert.equal(yes.res.body.answer.thin_data, false);
+    assert.match(yes.res.body.answer.text, /^Yes — known cash on hand is \$2000\.00, which covers \$1500\.00\./);
+    assert.deepEqual(yes.res.body.answer.figures, [{ label: "cash_on_hand", value: "$2000.00" }, { label: "asked", value: "$1500.00" }]);
+    for (const q of yes.database.find(/FROM (bank_accounts|tradelines) WHERE org_id/)) assert.deepEqual(q.params, [ORG_ID, CLIENT]);
+    const no = await ask("can i afford $2,500", { accounts: [cash(200000)] });
+    assert.match(no.res.body.answer.text, /^No — known cash on hand is \$2000\.00, short of the \$2500\.00 asked about by \$500\.00\./);
+  });
+
+  test("no balance on file is an honest cannot-answer, never a guessed number", async () => {
+    const { res } = await ask("can I afford $100", { accounts: [] });
+    assert.equal(res.body.answer.thin_data, true);
+    assert.match(res.body.answer.text, /Cash on hand is unknown/);
+    assert.deepEqual(res.body.answer.figures, []);
+  });
+
+  test("which card to pay down names the card with the highest use of its limit", async () => {
+    const cards = [
+      { client_id: CLIENT, lender: "Chase", credit_limit_cents: 1000000, current_balance_cents: 250000, closed_at: null },
+      { client_id: CLIENT, lender: "Amex", credit_limit_cents: 500000, current_balance_cents: 400000, closed_at: null },
+      { client_id: CLIENT, lender: "Old Card", credit_limit_cents: 500000, current_balance_cents: 499000, closed_at: "2025-01-01" }
+    ];
+    const { res } = await ask("Which card should I pay down first?", { cards });
+    assert.match(res.body.answer.text, /^Amex — it is at 80\.0% utilization, the highest of the 2 card\(s\) in scope\./);
+    assert.deepEqual(res.body.answer.figures, [{ label: "Amex", value: "80.0%" }, { label: "Chase", value: "25.0%" }]);
+  });
+
+  test("am I ready for another round is always a stated refusal, and a client of another company is a 404", async () => {
+    const ready = await ask("Am I ready for another funding round?", { accounts: [cash(900000)] });
+    assert.equal(ready.res.body.answer.thin_data, true);
+    assert.match(ready.res.body.answer.text, /no funding-readiness rule yet/);
+    const other = await ask("can I afford $5", { rules: [[/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, []]] });
+    assert.equal(other.res.statusCode, 404);
+    assert.equal(other.database.find(/FROM bank_accounts/).length, 0);
   });
 });
