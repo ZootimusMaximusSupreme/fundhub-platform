@@ -355,5 +355,17 @@
     "Upload welcome video: Title, Duration, Assign to tier"
    ]
   }
+ ],
+ "s4-consent-capture.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "consent-capture.html",
+   "controls": [
+    "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
+    "How did they agree: 'They typed their name' / 'They ticked a box' / 'They signed' buttons",
+    "Name box, Expires date box",
+    "Signature pad (draw) and its Clear button; empty pad refused"
+   ]
+  }
  ]
 }
