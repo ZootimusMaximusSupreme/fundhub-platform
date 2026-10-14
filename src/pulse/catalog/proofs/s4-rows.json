@@ -324,5 +324,22 @@
     "Staff view: who may open this page and which client is carried"
    ]
   }
+ ],
+ "s4-contracts-wording.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "contracts.html",
+   "controls": [
+    "Archive / Turn back on",
+    "Editor: 'Blanks you fill in when sending' rows (key, label, needed) and Add a blank / x",
+    "New wording button and editor boxes: short name, name, type, filing label, the words, signature sentence",
+    "PDF editor: Add a signer",
+    "PDF editor: field type chips (Text, Date, Tick box, Signature, Initials), Belongs to, Filled from, selected-box name / kind / signer / source / must-fill / Remove",
+    "PDF viewer (pdf.js, vendored)",
+    "Save (create a new wording)",
+    "Save (edit an existing wording)",
+    "Upload a PDF: button, file picker, name prompt"
+   ]
+  }
  ]
 }
