@@ -35,7 +35,7 @@ test("every known read gap owns one exact map row", () => {
   }
 });
 
-test("missing result probes stay red and name their exact control", async () => {
+test("missing result probes stay not proved and name their exact control", async () => {
   const rows = await gapChecks({
     db: { query: async () => { throw new Error("the catalog read gap lane must not query"); } },
     fetchImpl: async () => { throw new Error("the catalog read gap lane must not fetch"); },
@@ -45,7 +45,7 @@ test("missing result probes stay red and name their exact control", async () => 
   for (const [index, row] of rows.entries()) {
     const item = READ_GAPS[index];
     assert.equal(row.id, item.id);
-    assert.equal(row.status, "FAIL");
+    assert.equal(row.status, "NOT_PROVED");
     assert.match(row.detail, new RegExp(item.surface.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.ok(row.suggestedFix.includes(item.control));
     assert.match(row.suggestedFix, /Do not auto-fix\. Chris fixes reds\./);
@@ -58,5 +58,7 @@ test("the lane cannot send, write, or turn a missing result into pass", () => {
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|POST|PUT|PATCH)\b/i);
   assert.doesNotMatch(source, /fetch\s*\(|\.query\s*\(/);
   assert.doesNotMatch(source, /status:\s*["']PASS["']/);
+  assert.match(source, /status:\s*["']NOT_PROVED["']/);
+  assert.doesNotMatch(source, /status:\s*["']FAIL["']/);
   assert.doesNotMatch(source, /status:\s*["']na["']/);
 });

@@ -2,23 +2,21 @@
 
 ## Today — 2026-10-13
 
-Updated 10:42 AM Arizona/MST. Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: outreach, filming, then editing. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
+Afternoon update — owner reports it is about 2:30 PM Arizona/MST and plans to film in 15 minutes (about 2:45 PM). Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: filming now, then editing; outreach remains open. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
 
-### 1. Now — food, water, then outreach
+### 1. Film now, then edit
 
-- [ ] Get food and water at Trader Joe's — owner is there now.
-- [ ] Text Blake's leads first using the 661 number and owner's 480 number as planned.
-- [ ] Complete the group-text step for Blake — approximately 28 leads; confirm the count and grouping.
-- [ ] Finish texting the remaining people on the corrected lead list — owner now estimates 80–85 prior/current-client leads in total. The roughly 28 Blake leads are a subset, not a replacement total.
-
-### 2. Filming and editing
-
-- [ ] Confirm a short teleprompter recording plays back and saves, then get filming gear situated. Owner says Claude is finishing the repair and accepts front-camera 30 fps if the saved video is usable; readiness is still to be confirmed.
 - [ ] Film outside — four remaining ads and the remaining longer-form/thank-you videos; exact longer-video count/titles still need clarification.
 - [ ] Set up the green screen and film four green-screen videos at home.
 - [ ] Edit the videos and add B-roll — three uninterrupted hours. Lock cuts before adding animation overlays.
 
-The original 10:00 AM departure target has passed. Protect the remaining filming window before 2:00 PM. The teleprompter is reported nearly finished; confirm a saved take before filming. Owner accepts 30 fps for front-camera ads (10:35 AM update); the earlier 60 fps requirement below is superseded for that use. This does not verify a universal Safari cap or change other video-quality requirements.
+Start filming around 2:45 PM based on the owner's stated time and 15-minute plan. Earlier morning/before-2 targets are superseded. Reserve three uninterrupted hours for editing after filming. Front-camera 30 fps remains accepted for today's ads; the detailed technical proof backlog below is separate from this daily filming plan.
+
+### 2. Outreach
+
+- [ ] Text Blake's leads first using the 661 number and owner's 480 number as planned.
+- [ ] Complete the group-text step for Blake — approximately 28 leads; confirm the count and grouping.
+- [ ] Finish texting the remaining people on the corrected lead list — owner now estimates 80–85 prior/current-client leads in total. The roughly 28 Blake leads are a subset, not a replacement total.
 
 ### 3. Clients and setup
 
@@ -29,8 +27,6 @@ The original 10:00 AM departure target has passed. Protect the remaining filming
 - [ ] Confirm the closer is connected, ready, and receiving the setter handoff correctly.
 
 ### 4. Sales and system checks
-
-- [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
 
 - [ ] Finish heartbeat fixes — IN PROGRESS: Claude and Codex are working on it. Owner expects completion tonight; this is a target, not verified completion (10:36 AM update). Review results when the work is ready.
 - [ ] Do mock sales calls.
@@ -47,14 +43,16 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 
 ### 6. After the priority work
 
+- [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
 - [ ] Continue the existing refactor plan: `ops/workflows/company-refactor-plan-2026-10-12.md`. Goals: less duplicate code, lower AI token use, stronger architecture, better performance, and roughly half the code where justified. Measure improvements and preserve behavior.
 - [ ] Repository cleanup — code only. Identify required non-code dependencies before deleting clutter; protect working code and other sessions' unfinished work.
 
 ### 7. Personal
 
+- [ ] Food and water, if still needed.
 - [ ] Clean the house floors when back home.
 - [ ] Coffee at Panera, if still needed.
-- [ ] Optional sushi around 1:00–2:00 PM if filming allows.
+- [ ] Optional sushi if it fits after filming.
 - [ ] Full gym workout tonight before bed.
 
 ## Priority — iPhone teleprompter launch readiness (updated 2026-10-13)

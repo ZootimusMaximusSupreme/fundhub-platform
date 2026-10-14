@@ -73,21 +73,29 @@ test("one newly used inactive key turns only that exact template red", async () 
   assert.equal(af06.status, "na");
 });
 
-test("every missing active control emits one exact red or checked inactive result", async () => {
+test("every missing active control emits one exact not-proved or checked inactive result", async () => {
   const rows = await gapChecks({ db: dbWith([]).db, now: NOW });
   const byId = new Map(rows.map((row) => [row.id, row]));
 
   for (const source of FLOW_ROWS.filter((row) => !isInactiveTemplateRow(row))) {
     const result = byId.get(`flow:${source.family}:${source.surface}`);
     assert.ok(result, source.surface);
-    assert.ok(["FAIL", "na"].includes(result.status), source.surface);
+    assert.ok(["NOT_PROVED", "na"].includes(result.status), source.surface);
     assert.ok(result.detail.includes(source.surface), source.surface);
     assert.doesNotMatch(result.detail, /source (?:file )?(?:exists|was found)/i, source.surface);
     assert.doesNotMatch(result.detail, /named control has no exact final-result checker/i, source.surface);
   }
 
-  assert.equal(rows.filter((row) => row.status === "FAIL").length, 123);
+  assert.equal(rows.filter((row) => row.status === "NOT_PROVED").length, 123);
+  assert.equal(rows.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(rows.filter((row) => row.status === "na").length, 160);
+});
+
+test("a measured template break stays broken and can never be filed as not proved", async () => {
+  const rows = await gapChecks({ db: dbWith([{ template_key: "AF", n: 2 }]).db, now: NOW });
+  const measured = rows.find((row) => row.id === "flow:message:template:AF");
+  assert.equal(measured.status, "FAIL");
+  assert.notEqual(measured.status, "NOT_PROVED");
 });
 
 test("missing database access never turns an inactive template green", async () => {

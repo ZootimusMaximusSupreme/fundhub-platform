@@ -273,8 +273,8 @@ const ALLOWED_RAW_FETCH = {
     "GET page 1 of Commas checkout transactions. Proves the live keys are accepted. Never sends, never " +
     "creates or changes a vendor record, never reaches a client. Read 2026-10-09 before it was listed.",
   "src/pulse/coverage/gap-built-funnels.mjs": PULSE_GAP_READS,
-  "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-catalog-display.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer-setup.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-consent.mjs": PULSE_GAP_READS,

@@ -50,7 +50,7 @@ export function sourceFileForReadSurface(surface) {
 export async function gapChecks() {
   return READ_GAPS.map((item) => ({
     id: item.id,
-    status: "FAIL",
+    status: "NOT_PROVED",
     detail: `${item.surface}: ${item.finding}`,
     suggestedFix: `Add a safe result probe for: ${item.control} Do not auto-fix. Chris fixes reds.`,
   }));

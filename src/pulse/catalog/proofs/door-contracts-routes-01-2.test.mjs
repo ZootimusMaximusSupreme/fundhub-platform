@@ -716,7 +716,7 @@ const RUNNERS = new Map([
   ["9f6241af887043ee66ba", proveBankAccountsWrite],
 ]);
 
-test("Door 01 second shard exports only exact red rows with full real-handler result proof", async (t) => {
+test("Door 01 second shard exports only exact freshly compiled rows with full real-handler result proof", async (t) => {
   assert.equal(DOOR_CONTRACTS_ROUTES_01_2_PROOFS.length, 10);
   assert.equal(new Set(DOOR_CONTRACTS_ROUTES_01_2_ROW_KEYS).size, 10);
   assert.equal(
@@ -740,9 +740,10 @@ test("Door 01 second shard exports only exact red rows with full real-handler re
       assert.ok(generated, `missing generated row ${entry.generatedId}`);
       assert.equal(generated.sourceFile, entry.sourceFile);
       assert.equal(generated.surface, entry.surface);
-      assert.equal(generated.proofVerdict, undefined, `${entry.generatedId} stayed red after its executable proof compiled`);
+      assert.equal(generated.proofVerdict, undefined, `${entry.generatedId} stayed red after its result proof compiled`);
       assert.equal(generated.state, "wired");
-      assert.ok(generated.proof.tests.includes("src/pulse/catalog/proofs/door-contracts-routes-01-2.test.mjs"), `${entry.generatedId} lost its executable proof file`);
+      assert.equal(generated.proofDepth, entry.proof.depth);
+      assert.ok(generated.proof.tests.includes(entry.proof.evidence));
 
       const runner = RUNNERS.get(entry.generatedId);
       assert.equal(typeof runner, "function", `missing real-handler runner ${entry.generatedId}`);

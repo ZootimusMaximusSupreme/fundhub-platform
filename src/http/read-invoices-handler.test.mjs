@@ -56,17 +56,31 @@ describe("GET /api/read/invoices", () => {
     const { res, fake } = await call(
       req("GET", { query: { status: "open", client_id: CLIENT, limit: "5" } }),
       [staffSession({ role: "sales_manager" }),
-        [/FROM v_invoice_aging v/, [invoice("i1"), invoice("i2", { status: "reminded" })]]]
+        [/FROM v_invoice_aging v/, [
+          invoice("i1", { balance_due: "5000.00", days_overdue: 45, aging_bucket: "31-60" }),
+          invoice("i2", { status: "reminded", balance_due: "1250.00", days_overdue: 12, aging_bucket: "1-30" }),
+        ]]]
     );
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.count, 2);
     assert.equal(res.body.items[0].client_name, "Dana Whitfield");
+    assert.deepEqual(
+      res.body.items.map(({ id, balance_due, days_overdue, aging_bucket }) => ({
+        id, balance_due, days_overdue, aging_bucket
+      })),
+      [
+        { id: "i1", balance_due: "5000.00", days_overdue: 45, aging_bucket: "31-60" },
+        { id: "i2", balance_due: "1250.00", days_overdue: 12, aging_bucket: "1-30" },
+      ]
+    );
     const [q] = fake.find(/FROM v_invoice_aging v/);
     // limit + 1 (to learn hasMore), offset, client, exact status, org, open-only
     assert.deepEqual(q.params, [6, 0, CLIENT, null, ORG_ID, true]);
     assert.match(q.sql, /WHERE v\.org_id = \$5::uuid/);
     assert.match(q.sql, /COALESCE\(i\.is_demo, false\) = false/);
     assert.match(q.sql, /v\.open_balance > 0/);
+    assert.match(q.sql, /ORDER BY CASE WHEN \$6::boolean IS TRUE THEN v\.due_at END ASC NULLS LAST/);
+    assert.match(q.sql, /CASE WHEN \$6::boolean IS TRUE THEN v\.created_at END ASC/);
   });
 
   test("an exact stored status is passed through", async () => {

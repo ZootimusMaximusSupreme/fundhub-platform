@@ -142,23 +142,24 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
   test.describe(`daily brief at ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: vp, isMobile: true, hasTouch: true });
 
-    test("the real 2026-10-09 morning brief draws, red checks first, no sign-in", async ({ page }) => {
+    test("the real 2026-10-09 morning brief draws, broken checks first, no sign-in", async ({ page }) => {
       const { errors, calls } = await open(page);
       await expect(page.locator("h1")).toHaveText("Friday, October 9");
       await expect(page).toHaveURL(/\/app\/morning-brief\.html\?/); // no redirect to sign-in
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       expect(await page.locator("html").getAttribute("data-brief-page")).toBe("1");
-      // Systems: the three words and numbers, red first.
+      // Systems: broken and not proved are separate, with broken first.
       const sys = page.locator("section", { has: page.locator("h2", { hasText: "Systems" }) });
-      await expect(sys.locator(".tile").nth(0)).toContainText("Red14");
-      await expect(sys.locator(".tile").nth(1)).toContainText("Green695");
-      await expect(sys.locator(".tile").nth(2)).toContainText("Not checked299");
+      await expect(sys.locator(".tile").nth(0)).toContainText("Broken14");
+      await expect(sys.locator(".tile").nth(1)).toContainText("Not proved0");
+      await expect(sys.locator(".tile").nth(2)).toContainText("Green695");
+      await expect(sys.locator(".tile").nth(3)).toContainText("Not checked299");
       await expect(sys).toContainText("Out of 1,008 checks.");
       await expect(sys.locator("li.red-item:visible")).toHaveCount(5);
       await expect(sys.locator("li.red-item").first()).toContainText("live-playwright:desks");
       await expect(sys.locator("li.red-item").first()).toContainText("Fix: Run node scripts/live-playwright-sweep.mjs");
       await shot(page, `real-morning-${vp.width}.png`);
-      const more = sys.getByRole("button", { name: "Show all 14 red checks" });
+      const more = sys.getByRole("button", { name: "Show all 14 broken checks" });
       const box = await more.boundingBox();
       expect(box.height).toBeGreaterThanOrEqual(44);
       await more.click();
@@ -183,7 +184,7 @@ for (const vp of [{ width: 375, height: 812 }, { width: 320, height: 640 }]) {
       await expect(page.locator("h1")).toHaveText("Thursday, October 8");
       await expect(page.locator("h2")).toHaveText(SECTIONS);
       await expect(page.locator("body")).toContainText("From this morning's check at 6:01 AM.");
-      await expect(page.locator("body")).toContainText("Red · day 3");
+      await expect(page.locator("body")).toContainText("Broken · day 3");
       await expect(page.locator("body")).toContainText("What people see: A booked person gets no link to join the call.");
       await expect(page.locator("body")).toContainText("Cash collected$12,345.67");
       await expect(page.locator("body")).toContainText("Funded dollars$150,000.00");
