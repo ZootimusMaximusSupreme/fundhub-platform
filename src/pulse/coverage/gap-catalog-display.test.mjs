@@ -200,3 +200,18 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("emptyAs quiet: a control with no saved results yet is green, and red on the first wrong result", () => {
+  const entry = {
+    id: "x", surface: "s", control: "c",
+    contract: { mode: "query", emptyAs: "quiet", requirement: "R.", sql: "select 1" }
+  };
+  const quiet = judgeDisplayResult(entry, { sample_count: 0, bad_count: 0 });
+  assert.equal(quiet.status, "PASS");
+  assert.match(quiet.detail, /no saved results yet/);
+  assert.equal(judgeDisplayResult(entry, { sample_count: 2, bad_count: 1 }).status, "FAIL");
+  assert.equal(judgeDisplayResult(entry, { sample_count: 2, bad_count: 0 }).status, "PASS");
+  // Without emptyAs the old rule stands: no result at all is red.
+  const strict = { ...entry, contract: { ...entry.contract, emptyAs: undefined } };
+  assert.equal(judgeDisplayResult(strict, { sample_count: 0, bad_count: 0 }).status, "FAIL");
+});

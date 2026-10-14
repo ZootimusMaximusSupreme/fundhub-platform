@@ -47,6 +47,11 @@ export function judgeDisplayResult(entry, stats = null) {
 
   const samples = Number(stats?.sample_count || 0);
   const bad = Number(stats?.bad_count || 0);
+  if (samples === 0 && entry.contract.emptyAs === "quiet") {
+    // A control nobody has used yet leaves nothing to judge. It is green until the first wrong result,
+    // and it says so in plain words (owner-set 2026-10-14: deep checks that wait for the first real result).
+    return result(entry.id, "PASS", `${entry.control}: no saved results yet, so none are wrong. This check goes red on the first wrong result. ${entry.contract.requirement}`);
+  }
   if (samples === 0) {
     return result(
       entry.id,
