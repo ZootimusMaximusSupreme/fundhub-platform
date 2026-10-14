@@ -13,7 +13,7 @@ import clickHandler from "../../api/public/affiliate-click.mjs";
 import { signature } from "../messaging/unsubscribe.mjs";
 import { _resetOrgCache } from "../auth/org.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 import { req, accountSession, ORG_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -39,12 +39,37 @@ describe("web push on the client portal", () => {
     }
   });
   const listRows = [[/FROM client_push_subscriptions\s+WHERE org_id = \$1 AND client_id = \$2/, [{ id: "d1", device_label: "iphone", created_at: "2026-10-01T00:00:00.000Z", last_success_at: null, failure_count: 0 }]]];
+  const sha = (text) => crypto.createHash("sha256").update(text).digest("hex");
+  const PHONE = "https://push.example.test/send/abc123";
+  const TABLET = "https://push.example.test/send/def456";
+  const device = (over) => ({
+    id: "d1", org_id: ORG_ID, client_id: CLIENT, endpoint_hash: sha(PHONE), device_label: "iphone",
+    created_at: "2026-10-01T00:00:00.000Z", last_success_at: null, failure_count: 0, revoked_at: null, expired_at: null, ...over
+  });
+  // Two live devices of this client, one switched off, one expired, another client's live device with
+  // the same endpoint, and a live device of a client in another company. The order is the database's
+  // job (ORDER BY), so the stand-in keeps creation order and the statement text is pinned below.
+  const fleet = () => [
+    device({ id: "d1" }),
+    device({ id: "d2", endpoint_hash: sha(TABLET), device_label: "ipad", created_at: "2026-10-02T00:00:00.000Z" }),
+    device({ id: "d4", endpoint_hash: sha("https://push.example.test/send/off"), revoked_at: "2026-09-01T00:00:00.000Z" }),
+    device({ id: "d5", endpoint_hash: sha("https://push.example.test/send/old"), expired_at: "2026-09-02T00:00:00.000Z" }),
+    device({ id: "d3", client_id: OTHER_CLIENT }),
+    device({ id: "d6", org_id: "0b000000-0000-4000-8000-000000000002", client_id: "c3000000-0000-4000-8000-000000000003" })
+  ];
 
-  test("GET says how many devices are on, with no key material in the answer", async () => {
-    const { res, fake } = await callShared(subscribeHandler, req("GET"), [...clientLogin(), ...listRows]);
+  test("GET says how many devices are on, oldest first, only this client's live ones, with no key material in the answer", async () => {
+    const { res, fake } = await callShared(subscribeHandler, req("GET"), [...clientLogin(), ...tableRules("client_push_subscriptions", fleet())]);
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.body, { ok: true, count: 1, devices: [{ id: "d1", device_label: "iphone", created_at: "2026-10-01T00:00:00.000Z", last_success_at: null, failure_count: 0 }] });
-    assert.deepEqual(fake.find(/FROM client_push_subscriptions/)[0].params, [ORG_ID, CLIENT]);
+    assert.deepEqual(res.body.devices.map((d) => d.id), ["d1", "d2"]);
+    assert.equal(res.body.count, 2);
+    assert.deepEqual(Object.keys(res.body.devices[0]).sort(), ["created_at", "device_label", "failure_count", "id", "last_success_at"]);
+    const [q] = fake.find(/FROM client_push_subscriptions/);
+    assert.deepEqual(q.params, [ORG_ID, CLIENT]);
+    assertSqlHas(q.sql, {
+      "this company, this client, devices still on": "WHERE org_id = $1 AND client_id = $2 AND expired_at IS NULL AND revoked_at IS NULL",
+      "oldest first": "ORDER BY created_at ASC"
+    });
   });
 
   test("POST registers a new device encrypted at rest and answers 201 with the new count", async () => {
@@ -64,6 +89,22 @@ describe("web push on the client portal", () => {
       assert.ok(!stored.includes(sub.endpoint) && !stored.includes(sub.keys.auth));
     }
     assert.equal(ins.params[8], "iphone");
+    assertSqlHas(fake.find(/SELECT id, client_id FROM client_push_subscriptions/)[0].sql, {
+      "a live device of this company with this endpoint": "WHERE org_id = $1 AND endpoint_hash = $2 AND expired_at IS NULL AND revoked_at IS NULL"
+    });
+  });
+
+  test("a device another client of the company registered is switched off for them and a new row is written for this client", async () => {
+    const { res, fake } = await callShared(subscribeHandler, req("POST", { body: subscription() }), [
+      ...clientLogin(), [/SELECT id, client_id FROM client_push_subscriptions/, [{ id: "d9", client_id: OTHER_CLIENT }]], ...listRows
+    ]);
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.created, true);
+    const [off] = fake.find(/UPDATE client_push_subscriptions\s+SET revoked_at/);
+    assert.deepEqual(off.params, ["d9"]);
+    assertSqlHas(off.sql, { "only that one row": "SET revoked_at = now(), updated_at = now() WHERE id = $1" });
+    assert.equal(fake.find(/UPDATE client_push_subscriptions\s+SET encrypted_endpoint/).length, 0, "the other client's row is not handed over");
+    assert.equal(fake.find(/INSERT INTO client_push_subscriptions/)[0].params[2], CLIENT);
   });
 
   test("the same device again refreshes its keys and answers 200, not a second row", async () => {
@@ -74,7 +115,10 @@ describe("web push on the client portal", () => {
     assert.equal(res.body.created, false);
     assert.equal(res.body.subscription_id, "d1");
     assert.equal(fake.find(/INSERT INTO client_push_subscriptions/).length, 0);
-    assert.equal(fake.find(/UPDATE client_push_subscriptions\s+SET encrypted_endpoint/).length, 1);
+    const refresh = fake.find(/UPDATE client_push_subscriptions\s+SET encrypted_endpoint/);
+    assert.equal(refresh.length, 1);
+    assert.equal(refresh[0].params[0], "d1");
+    assertSqlHas(refresh[0].sql, { "only that device row": "failure_count = 0, updated_at = now() WHERE id = $1" });
   });
 
   test("a non-https endpoint is refused and nothing is stored", async () => {
@@ -85,24 +129,12 @@ describe("web push on the client portal", () => {
     assert.equal(fake.find(/INSERT INTO client_push_subscriptions/).length, 0);
   });
 
-  // Two devices of this client, and a device of another client in the same company
-  // that carries the very same endpoint. The stand-in answers each statement by the
-  // company, client and endpoint its SQL names, so a retire that lost its client
-  // condition would switch the other client's phone off too.
-  const sha = (text) => crypto.createHash("sha256").update(text).digest("hex");
-  const PHONE = "https://push.example.test/send/abc123";
-  const TABLET = "https://push.example.test/send/def456";
-  const device = (over) => ({
-    id: "d1", org_id: ORG_ID, client_id: CLIENT, endpoint_hash: sha(PHONE), device_label: "iphone",
-    created_at: "2026-10-01T00:00:00.000Z", last_success_at: null, failure_count: 0, revoked_at: null, expired_at: null, ...over
-  });
-  const fleet = () => [
-    device({ id: "d1" }),
-    device({ id: "d2", endpoint_hash: sha(TABLET), device_label: "ipad" }),
-    device({ id: "d3", client_id: OTHER_CLIENT })
-  ];
-  const retire = (row) => { row.revoked_at = "2026-10-13T12:00:00.000Z"; };
-  const revokedIds = (rows) => rows.filter((r) => r.revoked_at).map((r) => r.id);
+  // The stand-in answers each statement by the company, client and endpoint its SQL names, so a
+  // retire that lost its client condition would switch the other client's phone off too, and one that
+  // lost the "still on" condition would stamp the devices that were already off.
+  const STAMP = "2026-10-13T12:00:00.000Z";
+  const retire = (row) => { row.revoked_at = STAMP; };
+  const retiredNow = (rows) => rows.filter((r) => r.revoked_at === STAMP).map((r) => r.id).sort();
   const unsubscribe = (rows, body) => callShared(unsubscribeHandler, req("POST", { body }), [...clientLogin(), ...tableRules("client_push_subscriptions", rows, { set: retire })]);
 
   test("push unsubscribe retires one device by endpoint, only for this client, and reports what is left", async () => {
@@ -110,11 +142,11 @@ describe("web push on the client portal", () => {
     const { res, fake } = await unsubscribe(rows, { endpoint: PHONE });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { ok: true, retired: 1, count: 1 });
-    assert.deepEqual(revokedIds(rows), ["d1"], "the tablet stays on and so does the other client's device with the same endpoint");
+    assert.deepEqual(retiredNow(rows), ["d1"], "the tablet stays on and so does the other client's device with the same endpoint");
     const [upd] = fake.find(/UPDATE client_push_subscriptions\s+SET revoked_at/);
     assert.deepEqual(upd.params, [ORG_ID, CLIENT, sha(PHONE)]);
     assert.match(upd.sql, /SET revoked_at = now\(\)/);
-    assert.match(upd.sql, /WHERE org_id = \$1 AND client_id = \$2 AND endpoint_hash = \$3/);
+    assertSqlHas(upd.sql, { "this device of this client, still on": "WHERE org_id = $1 AND client_id = $2 AND endpoint_hash = $3 AND revoked_at IS NULL AND expired_at IS NULL" });
     assert.equal(fake.find(/DELETE FROM client_push_subscriptions/).length, 0, "retired, not deleted");
     const again = await unsubscribe(rows, { endpoint: PHONE });
     assert.deepEqual(again.res.body, { ok: true, retired: 0, count: 1 }, "an already-off device is a normal answer");
@@ -127,9 +159,10 @@ describe("web push on the client portal", () => {
     assert.deepEqual(res.body, { ok: true, retired: 2, count: 0 });
     const [upd] = fake.find(/UPDATE client_push_subscriptions/);
     assert.deepEqual(upd.params, [ORG_ID, CLIENT]);
-    assert.match(upd.sql, /WHERE org_id = \$1 AND client_id = \$2\s+AND revoked_at IS NULL/);
-    assert.deepEqual(revokedIds(rows), ["d1", "d2"]);
-    assert.equal(rows[2].revoked_at, null, "another client's device is untouched");
+    assertSqlHas(upd.sql, { "every device of this client that is still on": "WHERE org_id = $1 AND client_id = $2 AND revoked_at IS NULL AND expired_at IS NULL" });
+    assert.deepEqual(retiredNow(rows), ["d1", "d2"], "the switched-off and expired devices are not stamped again");
+    assert.equal(rows.find((r) => r.id === "d3").revoked_at, null, "another client's device is untouched");
+    assert.equal(rows.find((r) => r.id === "d4").revoked_at, "2026-09-01T00:00:00.000Z");
     const none = await unsubscribe(fleet(), {});
     assert.equal(none.res.statusCode, 400);
     assert.equal(none.fake.find(/UPDATE client_push_subscriptions/).length, 0);
@@ -155,11 +188,22 @@ describe("the unsubscribe link in every email", () => {
     return { org: parts.orgId, client: parts.clientId, channel: parts.channel, exp: String(parts.expiresAt), sig: signature({ ...parts, secret }) };
   }
 
-  test("GET reports state only and writes nothing", async () => {
-    const { res, fake } = await callShared(mailUnsubscribeHandler, { method: "GET", query: link(), headers: {} }, [[/FROM opt_outs/, [{ "?column?": 1 }]]]);
-    assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.body, { ok: true, channel: "email", already_unsubscribed: true });
-    assert.equal(fake.find(/INSERT INTO opt_outs/).length, 0);
+  test("GET reports state only, writes nothing, and answers from this client's own opt-out on this channel", async () => {
+    const off = (client_id, channel, opted_in_at = null) => ({ client_id, channel, opted_in_at });
+    const asks = [
+      ["opted out of email", [off(CLIENT, "email")], true],
+      ["opted out of text only", [off(CLIENT, "sms")], false],
+      ["another client opted out of email", [off(OTHER_CLIENT, "email")], false],
+      ["opted out and then back in", [off(CLIENT, "email", "2026-10-10T00:00:00.000Z")], false],
+      ["never opted out", [], false]
+    ];
+    for (const [name, rows, expected] of asks) {
+      const { res, fake } = await callShared(mailUnsubscribeHandler, { method: "GET", query: link(), headers: {} }, tableRules("opt_outs", rows));
+      assert.equal(res.statusCode, 200, name);
+      assert.deepEqual(res.body, { ok: true, channel: "email", already_unsubscribed: expected }, name);
+      assert.equal(fake.find(/INSERT INTO opt_outs|UPDATE opt_outs/).length, 0, name);
+      assertSqlHas(fake.find(/FROM opt_outs/)[0].sql, { [`${name}: this client, this channel, still opted out`]: "WHERE client_id = $1 AND channel = $2 AND opted_in_at IS NULL" });
+    }
   });
 
   test("POST records the opt-out for exactly the client and channel the signed link names", async () => {

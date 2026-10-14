@@ -46,6 +46,7 @@ import assert from "node:assert";
 
 import { db } from "../db.mjs";
 import handler from "../../api/finance/bank-accounts.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 /* Two orgs, deliberately. The caller belongs to ORG_A. ORG_B is the tenant whose
    ids get handed in. On a single-org database these are the same value and every
@@ -97,6 +98,7 @@ const ROW = {
    `client_id` with no FROM clients, so it is matched first. */
 const ROUTES = {
   ownsClient: { re: /SELECT\s+1\s+FROM\s+clients/i, rows: () => [{ "?column?": 1 }] },
+  ownsEntity: { re: /SELECT\s+1\s+FROM\s+entities/i, rows: () => [{ "?column?": 1 }] },
   ownsAccount: { re: /SELECT\s+id,\s*client_id\s+FROM\s+bank_accounts/i, rows: () => [{ id: ACCT, client_id: CID }] },
   insert: { re: /INSERT\s+INTO\s+bank_accounts/i, rows: () => [{ id: ACCT }] },
   classify: { re: /UPDATE\s+bank_accounts[\s\S]*entity_kind\s*=/i, rows: () => [{ id: ACCT, client_id: CID }] },
@@ -107,6 +109,7 @@ const ROUTES = {
 function stubDb({ role = "owner", orgId = ORG_A, authenticated = true, handlers = {} } = {}) {
   const queries = [];
   db.query = async (sql, params) => {
+    assertBind(sql, params);
     const text = String(sql);
     // verifySession's CTE — anything naming `sessions` and none of our tables.
     if (/FROM\s+sessions/i.test(text) || (/session/i.test(text) && !/bank_accounts|clients/i.test(text))) {
@@ -719,5 +722,24 @@ describe("nothing here reaches outside this process", () => {
     assert.doesNotMatch(src, /from\s+["'].*plaid/i, "no plaid import");
     assert.doesNotMatch(src, /\bfetch\s*\(/, "no outbound call");
     assert.doesNotMatch(src, /case\s+["']sync["']/, "no sync action");
+  });
+});
+
+describe("a container named on an add must be this client's, in this company", () => {
+  const BIZ = "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb";
+
+  test("the container is checked in its own statement, and a container that is not theirs is a 400 with nothing written", async () => {
+    const q = stubDb({});
+    const ok = await call({ body: { action: "add", client_id: CID, name: "Ink", account_type: "credit", entity_id: BIZ } });
+    assert.equal(ok.statusCode, 201, JSON.stringify(ok.body));
+    const owns = find(q, /FROM\s+entities/i);
+    assert.deepEqual(owns.params, [BIZ, ORG_A, CID]);
+    assertSqlHas(owns.sql, { "this container, this company, this client": "SELECT 1 FROM entities WHERE id = $1 AND org_id = $2 AND client_id = $3" });
+
+    const q2 = stubDb({ handlers: { ownsEntity: { rows: [] } } });
+    const no = await call({ body: { action: "add", client_id: CID, name: "Ink", account_type: "credit", entity_id: BIZ } });
+    assert.equal(no.statusCode, 400);
+    assert.match(no.body.error, /entity_id does not belong to this client/);
+    assert.equal(q2.some((x) => /INSERT\s+INTO\s+bank_accounts/i.test(x.sql)), false);
   });
 });

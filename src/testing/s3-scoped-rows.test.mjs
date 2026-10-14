@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { rowsWhere, tableRules } from "./s3-scoped-rows.mjs";
+import { rowsWhere, tableRules, plainSql, assertSqlHas, bindProblem } from "./s3-scoped-rows.mjs";
 
 const rows = [
   { id: "1", org_id: "A", client_id: "x", state: "open", closed: null },
@@ -31,6 +31,24 @@ test("literals, IS NULL, null-safe equality, the optional filter and any-of grou
   assert.deepEqual(ids("SELECT 1 FROM t WHERE org_id = $1 AND (client_id = $2 OR state = $3)", ["A", "y", "open"]), ["1", "2"]);
 });
 
+test("a flag-or-equality group is every row while the flag is true and the equality alone when it is not", () => {
+  assert.deepEqual(ids("SELECT 1 FROM t WHERE ($1::boolean OR org_id = $2::uuid) ORDER BY id", [false, "A"]), ["1", "2"]);
+  assert.deepEqual(ids("SELECT 1 FROM t WHERE ($1::boolean OR org_id = $2::uuid) ORDER BY id", [false, "B"]), ["3"]);
+  assert.deepEqual(ids("SELECT 1 FROM t WHERE ($1::boolean OR org_id = $2::uuid) ORDER BY id", [false, null]), []);
+  assert.deepEqual(ids("SELECT 1 FROM t WHERE ($1::boolean OR org_id = $2::uuid) ORDER BY id", [true, null]), ["1", "2", "3"]);
+});
+
+test("an exact-text pin goes red on a dropped, flipped or reworded clause and ignores comments and spacing", () => {
+  const sql = `SELECT x
+       FROM t -- the newest first
+      WHERE a = $1
+      ORDER BY created_at DESC`;
+  assert.equal(plainSql(sql), "SELECT x FROM t WHERE a = $1 ORDER BY created_at DESC");
+  assertSqlHas(sql, { order: "ORDER BY created_at   DESC", filter: "WHERE a = $1" });
+  assert.throws(() => assertSqlHas(sql.replace("DESC", "ASC"), { order: "ORDER BY created_at DESC" }), /order: the statement no longer says/);
+  assert.throws(() => assertSqlHas(sql.replace("a = $1", "$1 IS NOT NULL"), { filter: "WHERE a = $1" }), /filter/);
+});
+
 test("table rules answer SELECT, change only the rows UPDATE names, and DELETE only those", async () => {
   const live = rows.map((r) => ({ ...r }));
   const [del, upd, sel] = tableRules("t", live, { set: (row) => { row.state = "touched"; } });
@@ -47,4 +65,14 @@ test("table rules answer SELECT, change only the rows UPDATE names, and DELETE o
   const removed = await run(del, "DELETE FROM t WHERE client_id = $1 AND org_id = $2", ["x", "A"]);
   assert.equal(removed.rowCount, 1);
   assert.deepEqual(live.map((r) => r.id), ["2", "3"]);
+});
+
+test("a statement whose bound values are not all used as conditions is refused, as Postgres refuses it", () => {
+  const ok = "SELECT 1 FROM t WHERE org_id = $1 AND ($2::uuid IS NULL OR client_id = $2) LIMIT $3";
+  assert.equal(bindProblem(ok, ["A", null, 5]), null);
+  assert.match(bindProblem("SELECT 1 FROM t WHERE org_id = $1", ["A", "x"]), /\$2 is supplied but the statement never uses it/, "a dropped condition");
+  assert.match(bindProblem("SELECT 1 FROM t WHERE $1::uuid IS NOT NULL AND client_id = $2", ["A", "x"]), /\$1 is only ever tested for NULL/, "a condition turned into a no-op");
+  assert.match(bindProblem("SELECT 1 FROM t WHERE org_id = $1 AND client_id = $2", ["A"]), /uses \$2 but the call supplies 1/);
+  assert.equal(bindProblem("SELECT 'a $9 b' FROM t -- $4 here\n WHERE x = $1", ["v"]), null, "text in strings and comments is not a placeholder");
+  assert.equal(bindProblem("BEGIN"), null);
 });

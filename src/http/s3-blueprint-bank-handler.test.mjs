@@ -6,9 +6,10 @@ import assert from "node:assert/strict";
 
 import staffActions from "../../api/blueprint/staff-actions.mjs";
 import banksHandler from "../../api/money/banks.mjs";
-import { makeRes, fakeDb } from "../testing/handler-harness.mjs";
+import { makeRes } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import { gateAs, clientPrincipal, staffPrincipal } from "../testing/s3-mem-tasks-db.mjs";
-import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "0a000000-0000-4000-8000-000000000001";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -60,6 +61,9 @@ describe("POST /api/blueprint/staff-actions create_credit_partner", () => {
     assert.equal(res.body.partnerClientId, PARTNER);
     assert.equal(res.body.skipped, "already_linked");
     assert.equal(database.find(/INSERT INTO clients/).length, 0);
+    const [look] = database.find(/FROM credit_partner_links\s+WHERE org_id/);
+    assert.deepEqual(look.params, [ORG, CLIENT]);
+    assertSqlHas(look.sql, { "this buyer's live link in this company": "WHERE org_id = $1::uuid AND primary_client_id = $2::uuid AND removed_at IS NULL LIMIT 1" });
   });
 });
 
@@ -110,6 +114,8 @@ describe("POST /api/blueprint/staff-actions bank tracker", () => {
     assert.equal(res.statusCode, 409);
     assert.equal(res.body.error, "bank_tracker_not_offered");
     assert.equal(database.find(/INSERT INTO blueprint_bank_relationship_todos/).length, 0);
+    const [offered] = database.find(/SELECT custom_fields->>\$2 AS v FROM clients/);
+    assertSqlHas(offered.sql, { "this client's own flag": "SELECT custom_fields->>$2 AS v FROM clients WHERE id = $1" });
   });
 
   test("list_bank_todos returns this client's checklist, oldest first, bound to the company", async () => {
@@ -118,7 +124,7 @@ describe("POST /api/blueprint/staff-actions bank tracker", () => {
     assert.deepEqual(res.body, { ok: true, todos });
     const [q] = database.find(/FROM blueprint_bank_relationship_todos/);
     assert.deepEqual(q.params, [ORG, CLIENT]);
-    assert.match(q.sql, /ORDER BY created_at ASC/);
+    assertSqlHas(q.sql, { "this company, this client, oldest first": "WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at ASC" });
   });
 
   test("update_bank_todo_state moves one item in this company to done; an unknown item is a 404, a bad state a 400", async () => {
@@ -172,6 +178,11 @@ describe("POST /api/money/banks (staff plan the bank relationships)", () => {
     assert.deepEqual(res.body, { ok: true, action: "plan_bank", id: TODO, state: "open" });
     const [w] = database.find(/INSERT INTO blueprint_bank_relationship_todos AS t/);
     assert.deepEqual(w.params.slice(0, 10), [ORG, CLIENT, "chase", "business", "Chase", null, null, "2026-11-01", 250000, null]);
+    assertSqlHas(w.sql, {
+      "one row per client, bank and kind": "ON CONFLICT (client_id, bank_key, account_kind) DO UPDATE SET",
+      "a plan staff did not restate keeps its day and deposit": "planned_open_on = CASE WHEN $11 THEN EXCLUDED.planned_open_on ELSE t.planned_open_on END, planned_deposit_cents = CASE WHEN $12 THEN EXCLUDED.planned_deposit_cents ELSE t.planned_deposit_cents END",
+      "a skipped bank planned again is open again": "state = CASE WHEN t.state = 'skipped' THEN 'open' ELSE t.state END"
+    });
   });
 
   test("open_account marks the planned bank done on the day it really opened, in this client's own relationship only", async () => {

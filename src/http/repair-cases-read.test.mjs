@@ -4,6 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import handler from "../../api/read/repair-cases.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const CLIENT = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -37,6 +38,7 @@ function makeDb({
   return {
     calls,
     async query(sql, params) {
+      assertBind(sql, params);
       calls.push({ sql, params });
       const text = String(sql);
       if (text.includes("UPDATE sessions")) {
@@ -247,5 +249,32 @@ describe("GET /api/read/repair-cases — whose desk this is", () => {
       await handler(req(), res, { db: makeDb({ session: { role }, files: [baseFile] }) });
       assert.equal(res.statusCode, 200, role + " works this desk and was refused");
     }
+  });
+});
+
+describe("the statements behind the desk", () => {
+  const sqlOf = (calls, re) => calls.find((c) => re.test(c.sql)).sql;
+
+  test("the queue is this company's optimization cards, with each client's open cases and letters counted in the same company, newest first", async () => {
+    const db = makeDb({ files: [baseFile] });
+    await handler(req(), makeRes(), { db });
+    const queue = sqlOf(db.calls, /FROM cards c/);
+    assertSqlHas(queue, {
+      "what each file row carries": "SELECT c.id AS card_id, c.client_id, cl.first_name, cl.last_name, cl.email, ps.key AS stage_key, c.updated_at, c.entered_at, dc.round, dc.bureaus, dc.response_due_at, COALESCE(dc.case_count, 0) AS case_count, COALESCE(dl.letters_ready, 0) AS letters_ready, COALESCE(dl.letters_sent, 0) AS letters_sent",
+      "only optimization pipelines": "JOIN pipelines p ON p.id = c.pipeline_id AND p.key = 'optimization'",
+      "the client joined inside the company": "LEFT JOIN clients cl ON cl.id = c.client_id AND cl.org_id = c.org_id",
+      "open cases only, this company and client": "FROM dispute_cases WHERE org_id = c.org_id AND client_id = c.client_id AND status NOT IN ('closed', 'cancelled')",
+      "letters of this company and client": "FROM dispute_letters WHERE org_id = c.org_id AND client_id = c.client_id",
+      "this company": "WHERE c.org_id = $1::uuid",
+      "the files that need a person first, then newest": "ORDER BY (sub.stage_key = ANY($2::text[])) DESC, sub.updated_at DESC LIMIT $3"
+    });
+  });
+
+  test("one file adds its letters and items for this company and client, newest first", async () => {
+    const db = makeDb({ files: [baseFile], letters: [{ id: "l1", bureau: "EX", round: "R1", status: "ready", body_text: "x", rule_ids: [], target: "bureau" }] });
+    await handler(req({ query: { client_id: CLIENT } }), makeRes(), { db });
+    assertSqlHas(sqlOf(db.calls, /FROM cards c/), { "this one client": "AND c.client_id = $2::uuid LIMIT 1" });
+    assertSqlHas(sqlOf(db.calls, /SELECT id, bureau, round, status, body_text/), { "this company and client, newest first": "WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at DESC LIMIT 50" });
+    assertSqlHas(sqlOf(db.calls, /FROM dispute_items di/), { "this company and client": "WHERE di.org_id = $1::uuid AND di.client_id = $2::uuid" });
   });
 });

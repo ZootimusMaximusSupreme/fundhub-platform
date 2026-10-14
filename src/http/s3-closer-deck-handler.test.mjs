@@ -6,7 +6,9 @@ import assert from "node:assert/strict";
 
 import deckHandler from "../../api/closer-deck.mjs";
 import readDeck from "../../api/read/closer-deck.mjs";
-import { makeRes, fakeDb, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { makeRes, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
+import { assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 
@@ -101,6 +103,21 @@ describe("GET /api/read/closer-deck (the payload Present draws)", () => {
     assert.ok(res.body.offers.some((o) => o.key === "FUNDING_DFY"));
     assert.ok(res.body.soft_pull && typeof res.body.soft_pull === "object");
     for (const q of database.find(/FROM (clients c|crs_results|businesses)/)) assert.ok(q.params.includes(ORG_ID), q.sql);
+    // Params alone would still be bound after a condition was lost, so each read's own words are pinned.
+    const sqlOf = (re) => database.find(re)[0].sql;
+    assertSqlHas(sqlOf(/FROM clients c\s+LEFT JOIN businesses b/), {
+      "this client, this company": "WHERE c.id = $1 AND c.org_id = $2",
+      "the business joined inside the company": "LEFT JOIN businesses b ON b.client_id = c.id AND b.org_id = c.org_id",
+      "the company's name": "b.name AS business_name"
+    });
+    assertSqlHas(sqlOf(/FROM crs_results\s+WHERE client_id = \$1 AND org_id = \$2/), { "the newest stored pull, one row": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at DESC LIMIT 1" });
+    assertSqlHas(sqlOf(/FROM businesses\s+WHERE client_id = \$1 AND org_id = \$2/), {
+      "this client's companies, oldest first": "WHERE client_id = $1 AND org_id = $2 ORDER BY created_at ASC",
+      "the incorporation month, from the entity data": "entity_data->>'incorporated_date' AS incorporated_date"
+    });
+    assertSqlHas(sqlOf(/FROM crs_results\s+WHERE org_id = \$1 AND client_id = \$2/), { "the soft-pull status reads the newest pull of this company and client": "WHERE org_id = $1 AND client_id = $2 ORDER BY created_at DESC LIMIT 1" });
+    assertSqlHas(sqlOf(/FROM payment_links/), { "this client's newest diagnostic order": "WHERE org_id = $1 AND client_id = $2 AND purpose = 'diagnostic' ORDER BY created_at DESC LIMIT 1" });
+    assertSqlHas(sqlOf(/FROM soft_pull_requests/), { "this client's newest pull request": "WHERE org_id = $1 AND client_id = $2 ORDER BY requested_at DESC LIMIT 1" });
   });
 
   test("a client from another company is a 404 and a setter is refused", async () => {

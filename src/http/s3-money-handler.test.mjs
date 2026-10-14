@@ -7,12 +7,16 @@ import assert from "node:assert/strict";
 import readyHandler from "../../api/money/ready-to-fund.mjs";
 import alertsHandler from "../../api/money/alerts.mjs";
 import paymentsHandler from "../../api/money/payments.mjs";
-import { makeRes, fakeDb } from "../testing/handler-harness.mjs";
+import { makeRes } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import {
   memTasksDb, gateAs, clientPrincipal, staffPrincipal, FINANCE_OS_ROLES, NOT_FINANCE_OS_ROLES
 } from "../testing/s3-mem-tasks-db.mjs";
 import { CSM_PREP_SOURCE, CSM_PREP_TITLE } from "../blueprint/closer-ready.mjs";
 import { requestReadyToFund, readyToFundStatus } from "../finance/ready-to-fund.mjs";
+import { createBlueprintCsmPrepCallTask } from "../blueprint/closer-ready.mjs";
+import { logMoneyAction } from "../finance/clarity-payments.mjs";
+import { assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "0a000000-0000-4000-8000-000000000001";
 const OTHER_ORG = "0b000000-0000-4000-8000-000000000002";
@@ -56,6 +60,36 @@ describe("POST /api/money/ready-to-fund", () => {
     assert.equal(second.body.created, false);
     assert.equal(mem.state.tasks.length, 1, "a second press while one is open adds no task");
     assert.equal(mem.state.log.length, 1);
+  });
+
+  // The stand-in rebuilds the join and the unique keys itself, so the clauses the product relies on are pinned in
+  // the text it sent: this company's tasks of this process for this client, the open round, and the claim.
+  test("the read joins only this company's prep-call tasks for this file, and the write claims are idempotent in the database", async () => {
+    const mem = fileDb({ csm: CSM });
+    await call(readyHandler, { method: "POST", body: {} }, clientPrincipal(CLIENT, ORG), mem);
+    const sqlOf = (re) => mem.sql.find((s) => re.test(s.sql)).sql;
+    assertSqlHas(sqlOf(/FROM clients c\s+LEFT JOIN tasks t/), {
+      "the file, in this company": "WHERE c.id = $1 AND c.org_id = $2",
+      "tasks of the same company and client": "ON t.client_id = c.id AND t.org_id = c.org_id",
+      "only the prep-call process": "AND t.source_workflow = $3",
+      "the first round or a later round": "AND (t.body = $4 OR t.body LIKE $5)"
+    });
+    assertSqlHas(sqlOf(/UPDATE money_agent_log SET task_id/), { "the log row it just wrote": "SET task_id = $2 WHERE id = $1" });
+    assertSqlHas(sqlOf(/INSERT INTO tasks/), { "a task that exists is absorbed, not an error": "ON CONFLICT DO NOTHING RETURNING id" });
+    assertSqlHas(sqlOf(/INSERT INTO money_agent_log/), { "a log row with this key is absorbed": "ON CONFLICT DO NOTHING RETURNING id" });
+  });
+
+  test("two presses that land together make one task and one log row: the second is absorbed by the database", async () => {
+    const mem = memTasksDb({ clients: [{ id: CLIENT, org_id: ORG, assigned_csm_staff_id: CSM }], race: true });
+    const first = await createBlueprintCsmPrepCallTask(mem, { orgId: ORG, clientId: CLIENT, eventId: "blueprint-csm-prep-call" });
+    const second = await createBlueprintCsmPrepCallTask(mem, { orgId: ORG, clientId: CLIENT, eventId: "blueprint-csm-prep-call" });
+    assert.equal(first.created, true);
+    assert.equal(second.created, false);
+    assert.equal(mem.state.tasks.length, 1);
+    const entry = { orgId: ORG, clientId: CLIENT, itemKind: "client", decidedOn: "2026-10-13", action: "ready_to_fund", idempotencyKey: `ready:${CLIENT}:r1` };
+    const logged = await logMoneyAction(mem, entry);
+    const again = await logMoneyAction(mem, entry);
+    assert.deepEqual([logged.created, again.created, mem.state.log.length], [true, false, 1]);
   });
 
   test("after the CSM finishes the call, a new press opens round 2", async () => {
@@ -151,7 +185,9 @@ describe("POST /api/money/alerts", () => {
     const res = await post({ action: "set_promo", account_id: CARD, ends_on: "2026-12-06", apr_pct: 0 }, database);
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.saved, { account_id: CARD, cleared: false, promo: { ends_on: "2026-12-06", apr: 0, source: "client", set_at: "2026-10-13T15:00:00Z" } });
-    assert.deepEqual(database.find(/INSERT INTO account_statement_cycles/)[0].params, [ORG, CLIENT, CARD, "2026-12-06", 0, "client"]);
+    const [promo] = database.find(/INSERT INTO account_statement_cycles/);
+    assert.deepEqual(promo.params, [ORG, CLIENT, CARD, "2026-12-06", 0, "client"]);
+    assertSqlHas(promo.sql, { "a cycle row that is another client's is never overwritten": "WHERE account_statement_cycles.org_id = EXCLUDED.org_id AND account_statement_cycles.client_id = EXCLUDED.client_id" });
     const clear = withClientCheck([card]);
     const cleared = await post({ action: "set_promo", account_id: CARD, ends_on: null }, clear);
     assert.equal(cleared.body.saved.cleared, true);
@@ -162,7 +198,9 @@ describe("POST /api/money/alerts", () => {
     const database = withClientCheck([card, [/INSERT INTO account_statement_cycles/, [{ statement_close_day: 15 }]]]);
     const res = await post({ action: "set_statement_close_day", account_id: CARD, day: 15 }, database);
     assert.deepEqual(res.body, { ok: true, action: "set_statement_close_day", saved: { account_id: CARD, statement_close_day: 15 } });
-    assert.deepEqual(database.find(/INSERT INTO account_statement_cycles/)[0].params, [ORG, CLIENT, CARD, 15]);
+    const [day] = database.find(/INSERT INTO account_statement_cycles/);
+    assert.deepEqual(day.params, [ORG, CLIENT, CARD, 15]);
+    assertSqlHas(day.sql, { "a cycle row that is another client's is never overwritten": "WHERE account_statement_cycles.org_id = EXCLUDED.org_id AND account_statement_cycles.client_id = EXCLUDED.client_id" });
     const bad = withClientCheck([card]);
     const refused = await post({ action: "set_statement_close_day", account_id: CARD, day: 32 }, bad);
     assert.equal(refused.statusCode, 400);
@@ -194,5 +232,15 @@ describe("POST /api/money/payments action=ask_for_person", () => {
     const again = await ask();
     assert.equal(again.body.created, false);
     assert.equal(mem.state.tasks.length, 1, "asking twice in one day is still one task");
+  });
+
+  test("two asks that land together still make one task: the second is absorbed by the database, not an error", async () => {
+    const mem = memTasksDb({ clients: [{ id: CLIENT, org_id: ORG, assigned_csm_staff_id: null }], race: true });
+    const ask = () => call(paymentsHandler, { method: "POST", body: { action: "ask_for_person", note: "Call me" } }, clientPrincipal(CLIENT, ORG), mem);
+    const first = await ask();
+    const second = await ask();
+    assert.deepEqual([first.statusCode, first.body.created], [200, true]);
+    assert.deepEqual([second.statusCode, second.body.created], [200, false]);
+    assert.equal(mem.state.tasks.length, 1);
   });
 });

@@ -6,13 +6,14 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import vaultHandler from "../../api/money/vault.mjs";
-import { makeRes, fakeDb } from "../testing/handler-harness.mjs";
+import { makeRes } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import {
   gateAs, clientPrincipal, staffPrincipal, FINANCE_OS_ROLES, NOT_FINANCE_OS_ROLES
 } from "../testing/s3-mem-tasks-db.mjs";
-import { clientsRule, tableRules } from "../testing/s3-scoped-rows.mjs";
+import { clientsRule, tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 import {
-  decideDocument, addCustomItem, retireItem, waiveItem, unwaiveItem, VaultError
+  decideDocument, addCustomItem, retireItem, waiveItem, unwaiveItem, readVault, VaultError
 } from "../finance/document-vault.mjs";
 
 const ORG = "0a000000-0000-4000-8000-000000000001";
@@ -97,6 +98,28 @@ describe("POST /api/money/vault", () => {
     const [write] = database.find(/INSERT INTO document_vault_reviews/);
     assert.equal(write.params[3], "rejected");
     assert.equal(write.params[8], "Photo is cut off");
+    // The stand-in cannot run a select list or a column order, so the clauses the reason travels through are pinned.
+    assertSqlHas(write.sql, {
+      "the reason goes in its own column, after the dates and before the staff id":
+        "(org_id, client_id, document_id, status, item_key, entity_id, covers, period_end, reason, reviewed_by_staff_id, reviewed_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9, $10, now())",
+      "a second ruling replaces the reason": "reason = EXCLUDED.reason"
+    });
+    assertSqlHas(database.find(/FROM entities/)[0].sql, { "business containers of this client, not archived": "WHERE org_id = $1 AND client_id = $2 AND kind = 'business' AND archived_at IS NULL" });
+    assertSqlHas(database.find(/FROM document_vault_reviews r/)[0].sql, {
+      "the reason is read back": "r.reason, r.reviewed_at",
+      "only this company's, this client's rulings": "WHERE r.org_id = $1 AND r.client_id = $2"
+    });
+    // What each side reads back after the write: the staff screen in the answer, and the client's own read.
+    const readBy = {
+      "staff, in the answer": res.body.vault,
+      "the client, reading the vault": await readVault(database, { orgId: ORG, clientId: CLIENT, audience: "client", now: NOW() })
+    };
+    for (const [who, vault] of Object.entries(readBy)) {
+      const seen = vault.items.flatMap((i) => i.documents).filter((d) => d.id === DOC);
+      assert.deepEqual(seen.map((d) => [d.status, d.reason, d.covers]), [["rejected", "Photo is cut off", null]], who);
+      const lineOfIt = vault.items.find((i) => i.documents.some((d) => d.id === DOC));
+      assert.deepEqual([lineOfIt.status, lineOfIt.have, lineOfIt.rejected], ["rejected", 0, 1], who);
+    }
     const refused = await post({ action: "reject", document_id: DOC });
     assert.equal(refused.res.statusCode, 400);
     assert.equal(writes(refused.database).length, 0);
@@ -108,6 +131,7 @@ describe("POST /api/money/vault", () => {
     assert.deepEqual(res.body.result, { id: "w1", created: true });
     assert.deepEqual(database.find(/INSERT INTO document_vault_items/)[0].params, [ORG, CLIENT, null, "tax_returns_personal", "Filed as a dependent", STAFF]);
     assert.match(database.find(/INSERT INTO document_vault_items/)[0].sql, /'waiver'/);
+    assertSqlHas(database.find(/INSERT INTO document_vault_items/)[0].sql, { "a second waive is absorbed, not an error": "VALUES ($1, $2, $3, $4, 'waiver', $5, $6) ON CONFLICT DO NOTHING RETURNING id" });
 
     const noReason = await post({ action: "waive", item_key: "tax_returns_personal" });
     assert.equal(noReason.res.statusCode, 400);
@@ -116,7 +140,9 @@ describe("POST /api/money/vault", () => {
     const back = await post({ action: "unwaive", item_key: "tax_returns_personal" }, { w: world({ items }) });
     assert.equal(back.res.statusCode, 200);
     assert.deepEqual(back.res.body.result, { id: "w1" });
-    assert.deepEqual(back.database.find(/UPDATE document_vault_items/)[0].params, [ORG, CLIENT, "tax_returns_personal", null, STAFF]);
+    const [put] = back.database.find(/UPDATE document_vault_items/);
+    assert.deepEqual(put.params, [ORG, CLIENT, "tax_returns_personal", null, STAFF]);
+    assertSqlHas(put.sql, { "only this client's live waiver for that line and business": "WHERE org_id = $1 AND client_id = $2 AND kind = 'waiver' AND item_key = $3 AND entity_id IS NOT DISTINCT FROM $4::uuid AND retired_at IS NULL" });
     assert.equal(items[0].retired_by, STAFF);
   });
 
@@ -135,7 +161,10 @@ describe("POST /api/money/vault", () => {
     const retired = await post({ action: "retire_item", item_id: ITEM }, { w: world({ items }) });
     assert.equal(retired.res.statusCode, 200);
     assert.deepEqual(retired.res.body.result, { id: ITEM });
-    assert.deepEqual(retired.database.find(/UPDATE document_vault_items/)[0].params, [ITEM, ORG, CLIENT, STAFF]);
+    const [off] = retired.database.find(/UPDATE document_vault_items/);
+    assert.deepEqual(off.params, [ITEM, ORG, CLIENT, STAFF]);
+    assertSqlHas(off.sql, { "only this client's live line": "WHERE id = $1 AND org_id = $2 AND client_id = $3 AND retired_at IS NULL" });
+    assertSqlHas(retired.database.find(/FROM document_vault_items/)[0].sql, { "the fresh read lists only lines still on": "WHERE org_id = $1 AND client_id = $2 AND retired_at IS NULL" });
     assert.equal(items[0].retired_by, STAFF, "the row stays and is marked retired");
     assert.equal(items[1].retired_at, null, "the other client's line is untouched");
     assert.ok(!JSON.stringify(retired.res.body.vault).includes("Other client lease"), "the fresh read shows this client's lines only");

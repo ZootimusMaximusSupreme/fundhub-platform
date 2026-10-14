@@ -9,9 +9,10 @@ import softPullHandler from "../../api/finance/soft-pull.mjs";
 import askHandler from "../../api/read/finance-ask.mjs";
 import cashflowHandler from "../../api/finance/cashflow.mjs";
 import bankAccountsHandler from "../../api/finance/bank-accounts.mjs";
-import { makeRes, fakeDb, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { makeRes, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { tableRules, clientsRule } from "../testing/s3-scoped-rows.mjs";
+import { tableRules, clientsRule, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const BUSINESS = "e1000000-0000-4000-8000-0000000000e1";
@@ -81,6 +82,7 @@ describe("POST /api/finance/soft-pull", () => {
     const [ins] = fake.find(/INSERT INTO soft_pull_requests/);
     assert.deepEqual(ins.params.slice(0, 7), [ORG_ID, CLIENT, "staff", STAFF_ID, null, "Closer asked on the Present screen", 1500]);
     assert.equal(ins.params[9], "internal");
+    assertSqlHas(ins.sql, { "queued, and a second open one is absorbed by the database": "'queued') ON CONFLICT DO NOTHING RETURNING" });
   });
 
   test("a client who has revoked consent is a 403 consent_required and nothing is queued", async () => {
@@ -99,6 +101,9 @@ describe("POST /api/finance/soft-pull", () => {
     assert.equal(res.body.reason, "already_open");
     assert.equal(res.body.request.id, "spr0");
     assert.equal(fake.find(/INSERT INTO soft_pull_requests/).length, 0);
+    assertSqlHas(fake.find(/FROM soft_pull_requests\s+WHERE client_id = \$1 AND status IN/)[0].sql, {
+      "this client's open request, the oldest": "WHERE client_id = $1 AND status IN ('queued', 'processing') ORDER BY requested_at ASC LIMIT 1"
+    });
   });
 
   test("a client from another company, a role outside the pull roles, and a missing reason queue nothing", async () => {
@@ -134,7 +139,7 @@ describe("GET /api/finance/soft-pull", () => {
     assert.ok(res.body.requests.every((r) => r.client_id === CLIENT));
     const [read] = fake.find(/FROM soft_pull_requests/);
     assert.equal(read.params[0], CLIENT);
-    assert.match(read.sql, /WHERE client_id = \$1\s+ORDER BY requested_at DESC/);
+    assertSqlHas(read.sql, { "this client, newest first": "WHERE client_id = $1 ORDER BY requested_at DESC, id DESC LIMIT $2" });
     assert.equal(fake.find(/^\s*(INSERT|UPDATE|DELETE)/i).filter((c) => !/sessions/.test(c.sql)).length, 0);
   });
 

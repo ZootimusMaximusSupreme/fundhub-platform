@@ -7,7 +7,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import planHandler from "../../api/money/plan.mjs";
-import { makeRes, fakeDb } from "../testing/handler-harness.mjs";
+import { makeRes } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import {
   gateAs, clientPrincipal, staffPrincipal, FINANCE_OS_ROLES, NOT_FINANCE_OS_ROLES
 } from "../testing/s3-mem-tasks-db.mjs";

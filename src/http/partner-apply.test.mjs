@@ -15,6 +15,8 @@ import handler, {
   approvePartnerApplication,
   placeWhiteLabelRailCard
 } from "../../api/public/partner-apply.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
+import { queueAffiliateTemplate } from "../affiliates/drip.mjs";
 
 function mockRes() {
   const out = { statusCode: 200, headers: {}, body: null };
@@ -36,6 +38,7 @@ function fakeClient(routes = []) {
     sawSql(pattern) { return calls.some((c) => pattern.test(c.sql)); },
     find(pattern) { return calls.find((c) => pattern.test(c.sql)) || null; },
     query: async (sql, params) => {
+      assertBind(sql, params);
       calls.push({ sql, params });
       if (/^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [] };
       for (const [pattern, rows] of routes) {
@@ -254,6 +257,7 @@ test("placeWhiteLabelRailCard inserts on affiliates_white_label when the rail ex
   const calls = [];
   const qx = {
     query: async (sql, params) => {
+      assertBind(sql, params);
       calls.push({ sql, params });
       if (/affiliates_white_label/i.test(sql)) {
         return { rows: [{ stage_id: "st-active", pipeline_id: "pipe-r08" }] };
@@ -576,4 +580,59 @@ test("approval needs a partner id", async () => {
   });
   assert.equal(result.ok, false);
   assert.equal(result.error, "partner_id_required");
+});
+
+test("the statements behind approval and the welcome say what they do", async () => {
+  const client = approvalClient();
+  await approvePartnerApplication(
+    { partnerId: "part-1", orgId: "org-1" },
+    {
+      db: { query: async () => ({ rows: [] }) },
+      connect: async () => client,
+      createAccount: async () => ({ id: "acct-1" }),
+      queuePartnerWelcome: async () => ({ ok: true }),
+      password: "approved-password-xyz"
+    }
+  );
+  assertSqlHas(client.find(/affiliates_white_label/i).sql, {
+    "this company's R-08 rail, the stage asked for": "WHERE p.key = 'affiliates_white_label' AND ps.key = $1 AND p.org_id = $2 AND ps.org_id = $2 LIMIT 1"
+  });
+  assertSqlHas(client.find(/INSERT INTO partner_brand/i).sql, { "a brand row already there is left alone": "ON CONFLICT (partner_id) DO NOTHING" });
+  assertSqlHas(client.find(/INSERT INTO partner_pages/i).sql, {
+    "the apply page is published once": "VALUES ($1, $2, 'apply', $3, 'apply', 'published', $4::jsonb, now()) ON CONFLICT (partner_id, slug) DO UPDATE SET status = 'published', published_at = COALESCE(partner_pages.published_at, now()), updated_at = now()"
+  });
+});
+
+test("a second application is matched on this company's partner with the same address, oldest first", async () => {
+  const client = fakeClient([
+    [/FROM accounts/i, []],
+    [/lower\(contact_email\)/i, [{ id: "part-1", status: "invited" }]],
+    ...RAIL_ROUTES
+  ]);
+  await runPartnerApply(PARTNER_APPLICANT, {
+    db: { query: async () => ({ rows: [] }) }, resolveDefaultOrg: async () => "org-1", connect: async () => client, createAccount: async () => ({ id: "acct-1" })
+  });
+  assertSqlHas(client.find(/lower\(contact_email\)/i).sql, { "same company, same address, the first one": "WHERE org_id = $1 AND lower(contact_email) = $2 ORDER BY created_at ASC LIMIT 1" });
+});
+
+test("the affiliate welcome reads this company's template by key and is queued once per login", async () => {
+  const calls = [];
+  const db = {
+    query: async (sql, params) => {
+      assertBind(sql, params);
+      calls.push({ sql, params });
+      if (/FROM message_templates/.test(sql)) return { rows: [{ body: "Hi {{contact.first_name}}", subject: "Welcome", compliance_passed: true }] };
+      if (/INSERT INTO messages/.test(sql)) return { rows: [{ id: "m1" }] };
+      return { rows: [] };
+    }
+  };
+  const out = await queueAffiliateTemplate(db, { orgId: "org-1", email: "Sam@Example.com", name: "Sam Rivera", trackingId: "fh1042", eventId: "ev-1" });
+  assert.equal(out.queued, true);
+  assertSqlHas(calls.find((c) => /FROM message_templates/.test(c.sql)).sql, { "this company's template for that key": "WHERE org_id = $1 AND template_key = $2 LIMIT 1" });
+  const insert = calls.find((c) => /INSERT INTO messages/.test(c.sql));
+  assert.equal(insert.params[3], "affiliate-drip:AF1:ev-1");
+  assertSqlHas(insert.sql, {
+    "an outbound email, queued, compliance already passed": "VALUES ($1, NULL, 'outbound', 'email', $2, $3, 'internal', $4, 'queued', true, $5, $6)",
+    "the same event is absorbed, not sent twice": "ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING RETURNING id"
+  });
 });

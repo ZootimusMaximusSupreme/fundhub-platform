@@ -13,6 +13,7 @@
 
 import { test, describe, mock } from "node:test";
 import assert from "node:assert";
+import { assertBind } from "../testing/s3-scoped-rows.mjs";
 
 const { default: handler } = await import("../../api/privacy/erasure.mjs");
 const dbModule = await import("../db.mjs");
@@ -72,6 +73,7 @@ const ERASE_FLOW = [
 function withFakePool(rows, { role = "owner", orgId = ORG } = {}) {
   const issued = [];
   const answer = async (sql, params) => {
+    assertBind(sql, params);
     issued.push({ sql: String(sql).replace(/\s+/g, " ").trim(), params });
     if (SESSION_SQL.test(sql)) return sessionRow(role, orgId);
     if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(String(sql).trim())) return { rows: [] };

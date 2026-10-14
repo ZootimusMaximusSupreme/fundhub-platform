@@ -24,6 +24,7 @@ import path from "node:path";
 import { db } from "../db.mjs";
 import handler from "../../api/read/finance-os-suggestions.mjs";
 import { mergeBureauReports } from "../finance/crs-map.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SANDBOX = path.resolve(HERE, "../../vendor/underwriteiq-full/api/lite/crs/sandbox");
@@ -68,6 +69,7 @@ function routedDb({ orgId = ORG_A, entitled = true, clientExists = true, storedC
   return {
     reads,
     query: async (sql, params) => {
+      assertBind(sql, params);
       reads.push({ sql, params });
       if (/^SELECT 1 FROM clients/.test(sql)) {
         return { rows: clientExists ? [{ 1: 1 }] : [] };
@@ -191,5 +193,21 @@ describe("the tenant boundary on the query itself, not only the gate", () => {
 
     const clientRead = rdb.reads.find((r) => /SELECT first_name/.test(r.sql));
     assert.equal(clientRead.params[1], ORG_B);
+  });
+});
+
+describe("what is read", () => {
+  test("the pull it speaks from is this client's newest one, and the client is read inside this company", async () => {
+    const routed = routedDb({});
+    db.query = routed.query;
+    await handler({ method: "GET", headers: { authorization: "Bearer session-token" }, query: { client_id: CID } }, makeRes()).catch(() => {});
+    const sqlOf = (re) => routed.reads.find((r) => re.test(r.sql)).sql;
+    assertSqlHas(sqlOf(/FROM crs_results/), { "this client, newest pull, one row": "WHERE client_id = $1 ORDER BY created_at DESC LIMIT 1" });
+    assertSqlHas(sqlOf(/SELECT first_name.*FROM clients/s), { "this client in this company": "WHERE id = $1 AND org_id = $2" });
+    const business = routed.reads.find((r) => /FROM businesses/.test(r.sql));
+    if (business) assertSqlHas(business.sql, { "this client's companies, oldest first": "WHERE client_id = $1 ORDER BY created_at ASC" });
+    assertSqlHas(sqlOf(/FROM subscriptions/), {
+      "this company's client, the finance-os tier, live today, the latest": "WHERE org_id = $1 AND client_id = $2 AND tier = $3 AND status = 'active' AND effective_from <= $4 AND (effective_to IS NULL OR effective_to > $4) ORDER BY effective_from DESC LIMIT 1"
+    });
   });
 });

@@ -60,6 +60,7 @@ import assert from "node:assert";
 import { db } from "../db.mjs";
 import bills from "../../api/finance/bills.mjs";
 import cashflow from "../../api/finance/cashflow.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 /* Two orgs, deliberately. The caller belongs to ORG_A. ORG_B is the tenant
    whose ids get handed in. On a single-org database these are the same value
@@ -161,6 +162,7 @@ function stubDb({
 } = {}) {
   const queries = [];
   db.query = async (sql, params) => {
+    assertBind(sql, params);
     const text = String(sql).replace(/\s+/g, " ").trim();
 
     // verifySession's CTE. Recognised by naming `sessions` and nothing of ours.
@@ -221,6 +223,7 @@ function stubDb({
   const txLog = [];
   db.connect = async () => ({
     query: async (sql, params) => {
+      assertBind(sql, params);
       const text = String(sql).replace(/\s+/g, " ").trim();
       if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(text)) { txLog.push(text.toUpperCase()); return { rows: [] }; }
       return db.query(sql, params);
@@ -240,6 +243,8 @@ async function call(handler, { method = "GET", query = {}, body = null } = {}) {
   );
   return res;
 }
+
+const sqlOf = (queries, re) => queries.find((q) => re.test(q.sql)).sql;
 
 /* Every parameter bound by every statement, flattened. Used to prove that a
    value NEVER reaches the database — the strongest form of "this endpoint
@@ -338,6 +343,11 @@ describe("bills — the charges behind one bill", () => {
       "getBillEvidence() takes no orgId and filters on none — the guard MUST run first, " +
       "and here it did not");
     assert.ok((q[guardAt].params ?? []).includes(ORG_A), "the guard did not bind the caller's org");
+    assertSqlHas(q[guardAt].sql, { "the bill, in this company": "WHERE id = $1 AND org_id = $2" });
+    assertSqlHas(q[joinAt].sql, {
+      "the charges linked to that one bill": "FROM recurring_bill_transactions l JOIN bank_transactions t ON t.id = l.bank_transaction_id WHERE l.recurring_bill_id = $1",
+      "oldest charge first": "ORDER BY t.posted_on ASC, t.provider_transaction_id ASC"
+    });
   });
 
   test("a bill this company does not own is refused and no evidence is read", async () => {
@@ -518,6 +528,13 @@ describe("bills — redetect", () => {
     assert.ok(insert.params.includes(CID),
       "the stored bill has no client — a bill with a NULL client_id is a bill no " +
       "client-scoped read will ever return");
+    // The statement texts the claims above rest on: what is read, the newest first cap, and the evidence link.
+    assertSqlHas(sqlOf(q, /FROM bank_transactions t/), {
+      "only this client's accounts, in this company, one account if asked": "WHERE t.org_id = $1 AND a.client_id = $2 AND ($3::uuid IS NULL OR t.bank_account_id = $3)",
+      "newest first": "ORDER BY t.posted_on DESC NULLS LAST, t.id ASC LIMIT $4"
+    });
+    assertSqlHas(sqlOf(q, /DELETE FROM recurring_bill_transactions/), { "the old evidence of that bill only": "WHERE recurring_bill_id = $1" });
+    assertSqlHas(sqlOf(q, /INSERT INTO recurring_bill_transactions/), { "a link that already exists is absorbed": "ON CONFLICT DO NOTHING" });
   });
 
   test("an account belonging to another client cannot be aimed at", async () => {
@@ -881,5 +898,35 @@ describe("cashflow — reminders", () => {
       method: "POST", body: { action: "acknowledge_reminder", reminder_id: "zzz" }
     });
     assert.equal(res.statusCode, 400);
+  });
+});
+
+describe("the statements behind the reads say what the rows are about", () => {
+
+  test("cashflow GET: this client's accounts, the card bills inside this company, the due reminders still open", async () => {
+    const q = stubDb({});
+    await call(cashflow, { query: { client_id: CID, horizon_days: "30" } });
+    assertSqlHas(sqlOf(q, /FROM bank_accounts/), { "this client's accounts, oldest first": "WHERE org_id = $1 AND client_id = $2 ORDER BY created_at ASC" });
+    assertSqlHas(sqlOf(q, /FROM card_liabilities/), {
+      "the card's own tradeline in this company": "JOIN tradelines t ON t.id = l.tradeline_id AND t.org_id = l.org_id",
+      "this client, newest statement per card": "WHERE l.org_id = $1 AND l.client_id = $2 ORDER BY l.tradeline_id, l.as_of DESC, l.created_at DESC"
+    });
+    assertSqlHas(sqlOf(q, /FROM recurring_bills/), {
+      "this company, optional account and client filters, confident bills": "WHERE org_id = $1 AND ($2::uuid IS NULL OR bank_account_id = $2) AND ($3::uuid IS NULL OR client_id = $3) AND ($4 = false OR confidence_label IN ('medium', 'high'))",
+      "smallest first": "ORDER BY typical_amount_cents ASC, merchant_key ASC"
+    });
+    assertSqlHas(sqlOf(q, /FROM cashflow_reminders/), {
+      "due, not acknowledged, this company and client, soonest first": "WHERE org_id = $1 AND surface_at <= $2 AND acknowledged_at IS NULL AND client_id = $4 ORDER BY surface_at ASC, created_at ASC LIMIT $3"
+    });
+    assertSqlHas(sqlOf(q, /FROM cashflow_settings/), { "this company's thresholds": "WHERE org_id = $1" });
+  });
+
+  test("bills GET: this client's bills and accounts, and the count of the transactions the detector read", async () => {
+    const q = stubDb({});
+    await call(bills, { query: { client_id: CID } });
+    assertSqlHas(sqlOf(q, /FROM bank_accounts/), { "this client's accounts, open ones first": "WHERE org_id = $1 AND client_id = $2 ORDER BY closed_at NULLS FIRST, created_at ASC" });
+    assertSqlHas(sqlOf(q, /count\(\*\)::bigint AS n FROM bank_transactions/), {
+      "only this client's accounts, in this company": "JOIN bank_accounts a ON a.id = t.bank_account_id AND a.org_id = t.org_id WHERE t.org_id = $1 AND a.client_id = $2"
+    });
   });
 });

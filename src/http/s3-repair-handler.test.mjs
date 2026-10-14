@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import exceptionsHandler from "../../api/repair/exceptions.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 import { req, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -28,6 +28,16 @@ describe("GET /api/repair/exceptions", () => {
     assert.deepEqual(fake.find(/FROM cards c/)[0].params, [ORG_ID]);
     assert.deepEqual(fake.find(/FROM dispute_responses/)[0].params, [ORG_ID]);
     assert.match(fake.find(/FROM dispute_responses/)[0].sql, /confidence < 0\.85/);
+    assertSqlHas(fake.find(/FROM cards c/)[0].sql, {
+      "only optimization pipelines": "JOIN pipelines p ON p.id = c.pipeline_id AND p.key = 'optimization'",
+      "this company, the stalled stage, newest first, a page": "WHERE c.org_id = $1 AND ps.key = 'stalled' ORDER BY c.updated_at DESC LIMIT 100"
+    });
+    assertSqlHas(fake.find(/FROM dispute_responses/)[0].sql, {
+      "this company, not yet confirmed": "WHERE org_id = $1 AND COALESCE(confirmed, false) = false",
+      "says which are held for a person": "= 'true' AS held_for_escalation",
+      "unsure, or held for a person to cross into R4": "AND ( (confidence IS NOT NULL AND confidence < 0.85) OR COALESCE(parse_json->>'heldForEscalation', 'false') = 'true' )",
+      "newest first, a page": "ORDER BY created_at DESC LIMIT 100"
+    });
   });
 
   test("a closer is refused and nothing is read", async () => {
@@ -55,6 +65,9 @@ describe("POST /api/repair/exceptions action=confirm_parse", () => {
     assert.equal(res.body.ok, true);
     assert.equal(res.body.status, "advanced");
     assert.equal(res.body.responseId, RESPONSE);
+    assertSqlHas(fake.find(/FROM dispute_items di\s+JOIN dispute_cases dc/)[0].sql, {
+      "this company's, this client's open items, oldest first": "WHERE di.org_id = $1 AND di.client_id = $2 AND di.status = ANY($3::text[]) ORDER BY di.created_at ASC"
+    });
     const [moved] = fake.find(/UPDATE dispute_items SET status = \$2/);
     assert.equal(moved.params[0], ITEM);
     assert.equal(moved.params[1], "deleted");

@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import erasureHandler from "../../api/privacy/erasure.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { rowsWhere, tableRules } from "../testing/s3-scoped-rows.mjs";
+import { rowsWhere, tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 import { req, staffSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -59,6 +59,14 @@ describe("POST /api/privacy/erasure", () => {
     assert.match(named(/DELETE FROM bank_accounts/).sql, /client_id = \$1 AND org_id = \$2/);
     assert.match(named(/UPDATE bank_transactions/).sql, /WHERE org_id = \$1 AND \(subject_client_id = \$2 OR client_id = \$2\)/);
     assert.match(named(/UPDATE clients/).sql, /WHERE id = \$1 AND org_id = \$2/);
+    // The stand-in empties the fields itself, so what the statements say they empty is pinned in their text.
+    assertSqlHas(named(/UPDATE clients/).sql, {
+      "name and every contact field out": "SET first_name = $3, last_name = $3, email = NULL, phone = NULL, ghl_contact_id = NULL, custom_fields = '{}'::jsonb, tags = '{}', updated_at = now()"
+    });
+    assertSqlHas(named(/UPDATE bank_transactions/).sql, { "merchant and raw payload out, row kept": "SET merchant_name = NULL, raw = '{}'::jsonb, updated_at = now()" });
+    assertSqlHas(named(/SELECT count\(\*\)::bigint AS n FROM bank_transactions/).sql, {
+      "the ledger is found by the durable anchor too": "WHERE org_id = $1 AND (subject_client_id = $2 OR client_id = $2)"
+    });
     assert.deepEqual(audit, [{ org: ORG_ID, client: CLIENT }]);
     assert.deepEqual(ids(tables.pii_identity), [NEIGHBOUR, FOREIGN]);
     assert.deepEqual(ids(tables.plaid_items), [NEIGHBOUR, FOREIGN]);

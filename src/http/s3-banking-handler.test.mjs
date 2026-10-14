@@ -11,8 +11,10 @@ import syncHandler from "../../api/banking/sync-liabilities.mjs";
 import revokeHandler from "../../api/banking/revoke.mjs";
 import { tableRules } from "../testing/s3-scoped-rows.mjs";
 import { encryptPlaidToken } from "../banking/plaid.mjs";
-import { makeRes, fakeDb, staffSession, req, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { makeRes, staffSession, req, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
+import { assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const ACCOUNT = "a1000000-0000-4000-8000-0000000000a1";
@@ -41,6 +43,16 @@ describe("GET /api/banking/accounts", () => {
     assert.equal(res.body.cycles[0].next_due.unknownReason, null);
     assert.deepEqual(res.body.holdings, []);
     assert.deepEqual(fake.find(/FROM bank_accounts\s+WHERE org_id/)[0].params, [ORG_ID, CLIENT]);
+    const sqlOf = (re) => fake.find(re)[0].sql;
+    assertSqlHas(sqlOf(/FROM account_statement_cycles c/), {
+      "the card named by its account": "SELECT c.*, a.name AS account_name, a.mask AS account_mask, a.credit_limit_cents, a.current_balance_cents FROM account_statement_cycles c JOIN bank_accounts a ON a.id = c.bank_account_id",
+      "this company and client, soonest due day first": "WHERE c.org_id = $1 AND c.client_id = $2 ORDER BY c.payment_due_day NULLS LAST, a.name NULLS LAST"
+    });
+    assertSqlHas(sqlOf(/FROM investment_holdings h/), {
+      "the account named": "SELECT h.*, a.name AS account_name FROM investment_holdings h JOIN bank_accounts a ON a.id = h.bank_account_id",
+      "this company and client": "WHERE h.org_id = $1 AND h.client_id = $2",
+      "largest position first": "ORDER BY h.current_value_cents DESC NULLS LAST, h.symbol"
+    });
   });
 
   test("a client from another company reads nothing", async () => {
@@ -71,6 +83,9 @@ describe("POST /api/banking/accounts (hand entry)", () => {
     assert.equal(row.current_balance_cents, 120050);
     assert.equal(row.plaid_item_id, null);
     assert.deepEqual(fake.find(/UPDATE bank_accounts\s+SET entity_kind/)[0].params, [ACCOUNT, "business"]);
+    assertSqlHas(fake.find(/UPDATE bank_accounts\s+SET entity_kind/)[0].sql, {
+      "marked as a person's reviewed choice, on that account only": "SET entity_kind = $2, entity_kind_source = 'staff_reviewed', entity_kind_set_at = now(), updated_at = now() WHERE id = $1 RETURNING *"
+    });
     assert.equal(fake.count("BEGIN"), 1);
     assert.equal(fake.count("COMMIT"), 1);
   });
@@ -128,6 +143,8 @@ describe("POST /api/banking/accounts (hand entry)", () => {
     assert.ok(order.indexOf("DELETE FROM investment_holdings") < order.indexOf("INSERT INTO investment_holdings"));
     const inserts = fake.find(/INSERT INTO investment_holdings/);
     assert.deepEqual(inserts.map((c) => [c.params[3], c.params[7]]), [["VTI", 250000], ["BND", 50000]]);
+    assertSqlHas(fake.find(/SELECT account_type FROM bank_accounts/)[0].sql, { "an investment account of this client, in this company": "WHERE id = $1 AND org_id = $2 AND client_id = $3" });
+    assertSqlHas(fake.find(/DELETE FROM investment_holdings/)[0].sql, { "only that account's old list": "WHERE bank_account_id = $1" });
     assert.equal(fake.count("COMMIT"), 1);
   });
 
@@ -193,6 +210,9 @@ describe("POST /api/banking/sync-liabilities", () => {
     assert.deepEqual(res.body.items.map((i) => [i.item_id, i.ok, i.written]), [["item-row-1", true, 1]]);
     assert.equal(plaidCalls.length, 1);
     assert.equal(plaidCalls[0].body.access_token, "access-sandbox-test");
+    assertSqlHas(database.find(/FROM plaid_items/)[0].sql, {
+      "this client's logins, linked, consented, with a real token, not a mock": "WHERE org_id = $1 AND client_id = $2 AND link_state = 'active' AND consent_granted_at IS NOT NULL AND encrypted_access_token IS NOT NULL AND plaid_item_id IS NOT NULL AND plaid_item_id NOT LIKE 'mock:%'"
+    });
     const row = byColumn(database.find(/INSERT INTO account_statement_cycles/)[0]);
     assert.equal(row.org_id, ORG_ID);
     assert.equal(row.client_id, CLIENT);

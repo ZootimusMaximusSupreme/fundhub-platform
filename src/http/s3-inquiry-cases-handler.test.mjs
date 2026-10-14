@@ -6,8 +6,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import handler from "../../api/inquiry-cases.mjs";
-import { fakeDb, makeRes, req, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
-import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { makeRes, req, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
+import { tableRules, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const CASE = "1e000000-0000-4000-8000-000000000001";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -110,6 +111,10 @@ describe("POST /api/inquiry-cases action=generate", () => {
       [ORG_ID, CLIENT, CASE, "EX", "Chase Bank"],
       [ORG_ID, CLIENT, CASE, "EX", "Amex"]
     ]);
+    // The file is the client's NEWEST pull in this company: the stand-in answers one row whatever the order.
+    const [pull] = fake.find(/FROM crs_results/);
+    assert.deepEqual(pull.params, [ORG_ID, CLIENT]);
+    assertSqlHas(pull.sql, { "this company, this client, newest pull, one row": "WHERE org_id = $1::uuid AND client_id = $2::uuid ORDER BY created_at DESC LIMIT 1" });
   });
 
   test("no credit file, or a case that names no bureau, writes nothing and says why", async () => {
@@ -162,6 +167,16 @@ describe("POST /api/inquiry-cases action=clear_inquiry", () => {
     assert.equal(res.body.case.case_status, "Completed");
     assert.equal(res.body.inquiry.status, "Cleared");
     assert.deepEqual(fake.find(/UPDATE inquiry_log SET\s+status = 'Cleared'/)[0].params, [INQ, STAFF_ID]);
+    assertSqlHas(fake.find(/UPDATE inquiry_log SET\s+status = 'Cleared'/)[0].sql, {
+      "the inquiry is closed and cleared once": "status = 'Cleared', is_open = false, cleared_at = COALESCE(cleared_at, now())",
+      "who worked it, only when a staff id is known": "worked_by = COALESCE($2::uuid, worked_by), worked_at = CASE WHEN $2::uuid IS NOT NULL THEN now() ELSE worked_at END",
+      "its call is marked completed": "call_state = 'completed'::inquiry_call_state",
+      "only that inquiry": "WHERE id = $1 RETURNING *"
+    });
+    assertSqlHas(fake.find(/UPDATE inquiry_removal_cases SET\s+case_status = 'Completed'/)[0].sql, {
+      "the case is completed, stamped once, with its call done": "case_status = 'Completed'::inquiry_case_status, cleared_at = COALESCE(cleared_at, now()), completed_at = COALESCE(completed_at, now()), master_call_state = 'completed'",
+      "only that case": "WHERE id = $1 RETURNING *"
+    });
     assert.equal(events.length, 1);
     assert.equal(events[0].name, "inquiry.removed");
     assert.equal(events[0].payload.source, "staff_clear_inquiry");
