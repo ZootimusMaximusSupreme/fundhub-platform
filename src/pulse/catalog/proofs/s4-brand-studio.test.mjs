@@ -65,9 +65,26 @@ async function openStudio(open, { role = "owner", brand = brandRead(), pages = [
   return { ...opened, calls };
 }
 
+// Each box row is proved by typing in it and pressing Save & apply: the saved brand must carry that box's value.
+// The saved brand is sent whole every time, so each press also shows the earlier boxes were kept.
+const BOXES = [
+  [/^Business address input/, "#bAddr", "fill", "1200 Main St Suite 400, Phoenix, AZ 85004", "entity_address", "1200 Main St Suite 400, Phoenix, AZ 85004"],
+  [/^Support email input/, "#bEmail", "fill", "support@meridiancapital.example", "support_email", "support@meridiancapital.example"],
+  [/^Copy voice select/, "#bVoice", "select", ["technical", "plain", "warm"], "voice", "warm"],
+  [/^Domain input/, "#bDomain", "fill", "https://meridiancapital.example/apply", "domain", "meridiancapital.example"],
+];
+
 test("every box and card is carried into the saved brand, and a blank legal entity stops the save", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page, calls } = await openStudio(open);
+  const SAVED = /Saved\. Tokens apply to this partner's funnels\./;
+  const save = async () => {
+    const before = calls.put.length;
+    await page.locator("#saveBtn").click();
+    await waitFor(() => calls.put.length === before + 1);
+    await page.waitForFunction((source) => new RegExp(source).test(document.querySelector("#saveMsg")?.innerText || ""), SAVED.source);
+    return calls.put.at(-1);
+  };
 
   await proof.check(/^Legal entity input/, async () => {
     assert.equal(await page.locator("#bEntity").inputValue(), "Meridian Capital Partners LLC", "the saved entity is on screen");
@@ -75,60 +92,85 @@ test("every box and card is carried into the saved brand, and a blank legal enti
     await page.locator("#saveBtn").click();
     assert.match(await page.locator("#saveMsg").innerText(), /Legal entity is required/);
     assert.deepEqual(calls.put, [], "no entity, nothing saved");
-    await page.locator("#bEntity").fill("Meridian Capital Partners LLC");
-    assert.match(await page.locator("#pvLegal").innerText(), /Meridian Capital Partners LLC/, "the entity goes into the preview disclosure");
+    await page.locator("#bEntity").fill("Meridian Capital LLC (typed)");
+    assert.match(await page.locator("#pvLegal").innerText(), /Meridian Capital LLC \(typed\)/, "the entity goes into the preview disclosure");
+    assert.equal((await save()).entity_name, "Meridian Capital LLC (typed)", "the typed entity is what is saved");
   });
-  await proof.check(/^Business address input/, async () => { await page.locator("#bAddr").fill("1200 Main St Suite 400, Phoenix, AZ 85004"); });
-  await proof.check(/^Support email input/, async () => { await page.locator("#bEmail").fill("support@meridiancapital.example"); });
-  await proof.check(/^Copy voice select/, async () => { await page.locator("#bVoice").selectOption("warm"); });
-  await proof.check(/^Domain input/, async () => {
-    await page.locator("#bDomain").fill("https://meridiancapital.example/apply");
-    assert.match(await page.locator("#dnsTxt").innerText(), /^awaiting dns$/i, "a typed domain is waiting for DNS");
-  });
+
+  const kept = {};
+  for (const [matcher, selector, how, typed, key, expected] of BOXES) {
+    await proof.check(matcher, async () => {
+      if (how === "select") {
+        const options = await page.locator(`${selector} option`).evaluateAll((els) => els.map((el) => el.value));
+        assert.deepEqual([...options].sort(), [...typed].sort(), `${selector} offers exactly the listed choices`);
+        // every choice is saved as chosen; the last one chosen is the one that stays
+        for (const choice of typed) {
+          await page.locator(selector).selectOption(choice);
+          assert.equal((await save())[key], choice, `${key} "${choice}" is saved as chosen`);
+        }
+      } else {
+        await page.locator(selector).fill(typed);
+        if (key === "domain") assert.match(await page.locator("#dnsTxt").innerText(), /^awaiting dns$/i, "a typed domain is waiting for DNS");
+      }
+      const sent = await save();
+      assert.equal(sent[key], expected, `${key} is saved as typed`);
+      kept[key] = expected;
+      for (const [earlier, value] of Object.entries(kept)) assert.equal(sent[earlier], value, `${earlier} is still carried`);
+    });
+  }
+
   await proof.check(/^Funnel cards \(5\)/, async () => {
     await page.locator('[data-f="diag"]').click();
     await page.locator('[data-f="apply"]').click();
     assert.equal(await page.locator("#kFun").innerText(), "1");
     await page.locator('[data-f="apply"]').click();
     assert.equal(await page.locator("#kFun").innerText(), "2");
+    assert.deepEqual((await save()).selected_funnels, ["diag", "apply"], "the ticked cards are what is saved, in the order ticked");
   });
+
   await proof.check(/^Wordmark file input/, async () => {
+    const before = calls.put.length;
     await page.locator("#bLogo").setInputFiles({ name: "huge.png", mimeType: "image/png", buffer: Buffer.alloc(401 * 1024) });
     await page.waitForFunction(() => /Logo must be under 400KB\./.test(document.querySelector("#saveMsg")?.innerText || ""));
+    assert.equal(calls.put.length, before, "a logo over 400 KB is refused without a save");
     await page.locator("#bLogo").setInputFiles({ name: "mark.png", mimeType: "image/png", buffer: PNG });
     await page.waitForFunction(() => /Wordmark loaded/.test(document.querySelector("#saveMsg")?.innerText || ""));
+    const sent = await save();
+    assert.equal(sent.wordmark_url, `data:image/png;base64,${PNG.toString("base64")}`, "the small logo is saved as the picture chosen");
   });
 
   await proof.check(/^Save & apply button/, async () => {
-    await page.locator("#saveBtn").click();
-    await waitFor(() => calls.put.length === 1);
-    const sent = calls.put[0];
-    assert.match(sent.wordmark_url, /^data:image\/png;base64,/);
+    const sent = await save();
     assert.deepEqual({ ...sent, wordmark_url: "(data url)" }, {
       partner_id: PARTNER_ID, ink: "#0A0A0A", paper: "#FCFCFC",
       ramp: ["#F2A69B", "#F5CE8F", "#F2E39B", "#A8D8B0", "#A9C6E8", "#C4B3E5"], display_face: "Inter", mono_face: "JetBrains Mono",
-      voice: "warm", entity_name: "Meridian Capital Partners LLC", entity_address: "1200 Main St Suite 400, Phoenix, AZ 85004",
+      voice: "warm", entity_name: "Meridian Capital LLC (typed)", entity_address: "1200 Main St Suite 400, Phoenix, AZ 85004",
       support_email: "support@meridiancapital.example", domain: "meridiancapital.example", selected_funnels: ["diag", "apply"],
       wordmark_url: "(data url)",
     });
-    await page.waitForFunction(() => /Saved\. Tokens apply to this partner's funnels\./.test(document.querySelector("#saveMsg")?.innerText || ""));
   });
   await page.close();
 });
 
-test("Verify is offered to an owner or admin and posts the partner; others do not get it", { timeout: 60_000 }, async (t) => {
+// The button is drawn only for a role the server admits (owner and admin). The partner is the other role that can
+// open this page (the shell sends every other role away from it), and gets no button.
+const VERIFY_ROLES = [["owner", true], ["admin", true], ["partner", false]];
+
+test("Verify is offered to an owner or admin and posts the partner; others do not get it", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Verify button \(DNS TXT check/, async () => {
-    const owner = await openStudio(open, { brand: brandRead({ domain: "meridiancapital.example" }) });
-    await owner.page.locator("#verifyBtn").click();
-    await waitFor(() => owner.calls.verify.length === 1);
-    assert.deepEqual(owner.calls.verify[0], { partner_id: PARTNER_ID });
-    await owner.page.waitForFunction(() => /DNS verified for meridiancapital\.example/.test(document.querySelector("#saveMsg")?.innerText || ""));
-    assert.match(await owner.page.locator("#kDomain").innerText(), /^dns verified$/i);
-    await owner.page.close();
-    const partner = await openStudio(open, { role: "partner", brand: brandRead({ domain: "meridiancapital.example" }) });
-    assert.equal(await partner.page.locator("#verifyBtn").count(), 0, "a partner is not shown a button that can only refuse");
-    await partner.page.close();
+    for (const [role, offered] of VERIFY_ROLES) {
+      const studio = await openStudio(open, { role, brand: brandRead({ domain: "meridiancapital.example" }) });
+      assert.equal(await studio.page.locator("#verifyBtn").count(), offered ? 1 : 0, `role "${role}": ${offered ? "gets" : "does not get"} the button`);
+      if (offered) {
+        await studio.page.locator("#verifyBtn").click();
+        await waitFor(() => studio.calls.verify.length === 1);
+        assert.deepEqual(studio.calls.verify[0], { partner_id: PARTNER_ID });
+        await studio.page.waitForFunction(() => /DNS verified for meridiancapital\.example/.test(document.querySelector("#saveMsg")?.innerText || ""));
+        assert.match(await studio.page.locator("#kDomain").innerText(), /^dns verified$/i);
+      }
+      await studio.page.close();
+    }
   });
 });
 

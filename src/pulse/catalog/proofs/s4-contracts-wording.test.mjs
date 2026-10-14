@@ -60,6 +60,13 @@ async function openDesk(open, { templates = [TEXT_TEMPLATE, PDF_TEMPLATE], write
 test("a new wording carries the typed name, type, words and blanks, and Save creates it", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   const { page, writes } = await openDesk(open);
+  const save = async () => {
+    await page.locator("#btnSaveTpl").click();
+    await waitFor(() => writes.length === 1);
+    const body = writes.pop();
+    await page.waitForFunction(() => /Saved\./.test(document.querySelector("#tplMsg")?.innerText || ""));
+    return body;
+  };
 
   await proof.check(/^New wording button and editor boxes/, async () => {
     await page.locator("#btnNewTpl").click();
@@ -70,9 +77,21 @@ test("a new wording carries the typed name, type, words and blanks, and Save cre
     await page.locator("#tBody").fill("Hi {{contact.first_name}}, the fee is {{field.fee}}.");
     assert.equal(await page.locator("#tTags").innerText(), "blanks used: contact.first_name, field.fee");
     assert.equal(await page.locator("#tStatement").inputValue(), SIGNATURE_WORDS, "the signature sentence starts filled in");
+    // every box is what Save sends (this row also holds "Save (create a new wording)")
+    await proof.check(/^Save \(create a new wording\)/, async () => {
+      assert.deepEqual(await save(), {
+        action: "create_template", template_key: "REPAIR-AGREEMENT", name: "Repair Agreement", kind: "authorization",
+        subtype: "repair_agreement", body: "Hi {{contact.first_name}}, the fee is {{field.fee}}.",
+        manual_fields: [], signature_statement: SIGNATURE_WORDS,
+      });
+    });
   });
 
   await proof.check(/^Editor: 'Blanks you fill in when sending'/, async () => {
+    await page.locator("#btnNewTpl").click();
+    await page.locator("#tKey").fill("FEE-AGREEMENT");
+    await page.locator("#tName").fill("Fee Agreement");
+    await page.locator("#tBody").fill("The fee is {{field.fee}}.");
     await page.locator("#btnAddField").click();
     await page.locator('#tFields .mfrow [data-k="key"]').fill("fee");
     await page.locator('#tFields .mfrow [data-k="label"]').fill("The fee");
@@ -81,17 +100,10 @@ test("a new wording carries the typed name, type, words and blanks, and Save cre
     assert.equal(await page.locator("#tFields .mfrow").count(), 2);
     await page.locator("#tFields .mfrow").nth(1).locator("[data-del]").click();
     assert.equal(await page.locator("#tFields .mfrow").count(), 1, "the x removes the row");
-  });
-
-  await proof.check(/^Save \(create a new wording\)/, async () => {
-    await page.locator("#btnSaveTpl").click();
-    await waitFor(() => writes.length === 1);
-    assert.deepEqual(writes[0], {
-      action: "create_template", template_key: "REPAIR-AGREEMENT", name: "Repair Agreement", kind: "authorization",
-      subtype: "repair_agreement", body: "Hi {{contact.first_name}}, the fee is {{field.fee}}.",
-      manual_fields: [{ key: "fee", label: "The fee", required: true }], signature_statement: SIGNATURE_WORDS,
-    });
-    await page.waitForFunction(() => /Saved\./.test(document.querySelector("#tplMsg")?.innerText || ""));
+    // what is left on the screen is what is saved
+    const sent = await save();
+    assert.deepEqual(sent.manual_fields, [{ key: "fee", label: "The fee", required: true }]);
+    assert.equal(sent.template_key, "FEE-AGREEMENT");
   });
   await page.close();
 });
@@ -186,6 +198,17 @@ test("the uploaded PDF shows in the viewer; boxes draw, select, change and remov
   await pg.locator('.box[data-id="f1"]').click({ position: { x: 4, y: 4 } });
   assert.equal(await pg.locator(".box.sel").getAttribute("data-id"), "f1", "a click on a box picks it");
 
+  // Save sends the whole box list; each row below is proved by what the saved boxes carry.
+  const saveFields = async () => {
+    const before = writes.length;
+    await page.locator("#btnSaveFields").click();
+    await waitFor(() => writes.length === before + 1);
+    const sent = writes.at(-1);
+    assert.equal(sent.action, "save_fields");
+    assert.equal(sent.id, PDF_TPL);
+    return sent;
+  };
+
   await proof.check(/^PDF editor: field type chips/, async () => {
     await page.locator("#bpLabel").fill("Owner signature");
     const autoSource = (await page.locator("#bpSource option").evaluateAll((els) => els.map((e) => e.value))).find((v) => v !== "manual");
@@ -199,6 +222,15 @@ test("the uploaded PDF shows in the viewer; boxes draw, select, change and remov
     await pg.locator('.box[data-id="f2"]').click({ position: { x: 4, y: 4 } });
     await page.locator("#bpDel").click();
     assert.equal(await pg.locator(".box").count(), 1, "Remove this box takes the box off");
+
+    // what was set on the picked box is what is saved, and the removed box is not
+    const sent = await saveFields();
+    assert.equal(sent.fields.length, 1, "the removed box is not saved");
+    const f = sent.fields[0];
+    assert.deepEqual({ page: f.page, type: f.type, source: f.source, required: f.required, label: f.label, id: f.id },
+      { page: 0, type: "signature", source: "manual", required: false, label: "Owner signature", id: "f1" });
+    for (const key of ["x", "y", "w", "h"]) assert.ok(f[key] > 0 && f[key] <= 1, `${key} is a fraction of the page`);
+    assert.ok(Math.abs(f.x - 0.40) < 0.03 && Math.abs(f.y - 0.45) < 0.03 && Math.abs(f.w - 0.30) < 0.03, "the drawn box is saved as page fractions");
   });
 
   await proof.check(/^PDF editor: Add a signer/, async () => {
@@ -206,20 +238,10 @@ test("the uploaded PDF shows in the viewer; boxes draw, select, change and remov
     assert.match(await page.locator("#signerRoles").innerText(), /1\. client\s*2\. signer 2/i);
     await page.locator('.box[data-id="f1"]').click({ position: { x: 4, y: 4 } });
     await page.locator("#bpSigner").selectOption("1");
+    const sent = await saveFields();
+    assert.deepEqual(sent.signer_roles.map((s) => s.label), ["Client", "Signer 2"]);
+    assert.equal(sent.fields[0].signer, 1, "the box now belongs to the second signer");
   });
-
-  await page.locator("#btnSaveFields").click();
-  await waitFor(() => writes.length === 1);
-  const sent = writes[0];
-  assert.equal(sent.action, "save_fields");
-  assert.equal(sent.id, PDF_TPL);
-  assert.deepEqual(sent.signer_roles.map((s) => s.label), ["Client", "Signer 2"]);
-  assert.equal(sent.fields.length, 1);
-  const f = sent.fields[0];
-  assert.deepEqual({ page: f.page, type: f.type, source: f.source, signer: f.signer, required: f.required, label: f.label, id: f.id },
-    { page: 0, type: "signature", source: "manual", signer: 1, required: false, label: "Owner signature", id: "f1" });
-  for (const key of ["x", "y", "w", "h"]) assert.ok(f[key] > 0 && f[key] <= 1, `${key} is a fraction of the page`);
-  assert.ok(Math.abs(f.x - 0.40) < 0.03 && Math.abs(f.y - 0.45) < 0.03 && Math.abs(f.w - 0.30) < 0.03, "the drawn box is saved as page fractions");
   await page.close();
 });
 

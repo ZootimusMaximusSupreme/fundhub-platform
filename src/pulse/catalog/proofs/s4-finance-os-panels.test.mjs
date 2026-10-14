@@ -136,6 +136,13 @@ test("bank accounts sort into their panels and say when balances were typed by h
     assert.match(await panelText(page, "Not classified"), /Old Savings.*\$88\.10/);
     assert.match(compact(await page.locator(".fos-notes").innerText()), /Some balances below were typed in by hand\./);
     await page.close();
+
+    // the note belongs to hand-typed balances only: with none typed in, it is not printed
+    const bank = { ...BANKS, details: { a1: { hand_entered: false }, b1: { hand_entered: false }, i1: { hand_entered: false }, u1: { hand_entered: false } } };
+    const synced = await openDesk(open, { banks: { status: 200, body: bank } });
+    assert.match(await panelText(synced.page, "Personal"), /Personal Checking/);
+    assert.doesNotMatch(await synced.page.locator("body").innerText(), /typed in by hand/);
+    await synced.page.close();
   });
 });
 

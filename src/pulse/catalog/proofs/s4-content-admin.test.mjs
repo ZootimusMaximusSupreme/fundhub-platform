@@ -50,27 +50,38 @@ test("edited tiles, the switch and the tier videos save exactly, price in whole 
   const { open } = await startScreens(t);
   const { page, saves, errors } = await openDesk(open);
 
+  // Edit the desk, press Save once, then each row is proved by what that one save carried.
+  await ed(page, "REPAIR").locator('[data-f="name"]').fill("Credit repair, done for you");
+  await ed(page, "REPAIR").locator('[data-f="copy"]').fill("We fix your file.");
+  await ed(page, "REPAIR").locator('[data-f="price"]').fill("1200");
+  await ed(page, "MASTERY").locator("[data-toggle]").click();
+  const mastery = await ed(page, "MASTERY").locator("[data-state]").innerText();
+  await ed(page, "REPAIR").locator("[data-toggle]").focus();
+  await page.keyboard.press(" ");
+  const afterOneSpace = await ed(page, "REPAIR").locator("[data-toggle]").getAttribute("aria-checked");
+  await page.keyboard.press(" ");
+  const afterTwoSpaces = await ed(page, "REPAIR").locator("[data-toggle]").getAttribute("aria-checked");
+  await page.locator('select[data-tier="repair"]').selectOption("v1");
+  assert.match(await page.locator("#liveTxt").innerText(), /unsaved/i);
+  await page.locator("#saveBtn").click();
+  await waitFor(() => saves.length === 1);
+
   await proof.check(/^Locked tile editor: client-facing name box/, async () => {
-    await ed(page, "REPAIR").locator('[data-f="name"]').fill("Credit repair, done for you");
+    assert.equal(saves[0].tiles.find((x) => x.code === "REPAIR").name, "Credit repair, done for you");
+    assert.equal(saves[0].tiles.find((x) => x.code === "MASTERY").name, "Funding Mastery", "a tile left alone keeps its name");
   });
   await proof.check(/^Locked tile editor: outcome copy box/, async () => {
-    await ed(page, "REPAIR").locator('[data-f="copy"]').fill("We fix your file.");
-    await ed(page, "REPAIR").locator('[data-f="price"]').fill("1200");
+    const repair = saves[0].tiles.find((x) => x.code === "REPAIR");
+    assert.equal(repair.copy, "We fix your file.");
+    assert.equal(repair.price_cents, 120000, "the price is saved in whole cents");
   });
   await proof.check(/^Locked tile editor: Showing\/Hidden switch/, async () => {
-    await ed(page, "MASTERY").locator("[data-toggle]").click();
-    assert.match(await ed(page, "MASTERY").locator("[data-state]").innerText(), /^hidden$/i);
-    await ed(page, "REPAIR").locator("[data-toggle]").focus();
-    await page.keyboard.press(" ");
-    assert.equal(await ed(page, "REPAIR").locator("[data-toggle]").getAttribute("aria-checked"), "false", "Space flips it too");
-    await page.keyboard.press(" ");
-    assert.equal(await ed(page, "REPAIR").locator("[data-toggle]").getAttribute("aria-checked"), "true");
+    assert.match(mastery, /^hidden$/i);
+    assert.equal(afterOneSpace, "false", "Space flips it too");
+    assert.equal(afterTwoSpaces, "true");
+    assert.deepEqual(saves[0].tiles.map((x) => [x.code, x.on]), [["REPAIR", true], ["MASTERY", false]], "the switches are what is saved");
   });
   await proof.check(/^Save changes button/, async () => {
-    await page.locator('select[data-tier="repair"]').selectOption("v1");
-    assert.match(await page.locator("#liveTxt").innerText(), /unsaved/i);
-    await page.locator("#saveBtn").click();
-    await waitFor(() => saves.length === 1);
     assert.deepEqual(saves[0], {
       action: "save",
       tiles: [

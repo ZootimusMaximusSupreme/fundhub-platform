@@ -31,7 +31,8 @@ async function openApproval(open, { query = LINK, read = READ } = {}) {
       return json(route, read, read.ok ? 200 : 410);
     },
   };
-  const opened = await open(`/app/soft-pull-approve.html${query}`, { handlers });
+  // The client opens this from a link in a message: no staff or portal login is on the browser.
+  const opened = await open(`/app/soft-pull-approve.html${query}`, { session: null, handlers });
   return { ...opened, gets, posts };
 }
 

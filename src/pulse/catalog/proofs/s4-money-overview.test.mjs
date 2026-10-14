@@ -6,36 +6,27 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { json, proofRows, startScreens } from "./s4-screen-harness.mjs";
-import { CLIENT, CLIENT_ID, STAFF, entryUrl, moneyResource, sampleAnswer, waitFor } from "./s4-money-harness.mjs";
+import { CLIENT, CLIENT_ID, STAFF, bankLink, entryUrl, moneyResource, sampleAnswer, waitFor } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
 const PAGE = { entry: "page", file: "money.html", surface: "public/app/money.html" };
 const FRAME = { entry: "frame", tab: "overview", surface: "financeos.html#overview" };
 
-async function openOverview(open, target, { session = CLIENT, clientId = "", read = () => sampleAnswer("money-overview.sandbox.json") } = {}) {
+async function openOverview(open, target, { session = CLIENT, clientId = "", read = () => sampleAnswer("money-overview.sandbox.json"), trendsDown = { value: false } } = {}) {
   const resource = moneyResource("overview", { read });
-  const link = [];
   const trends = [];
+  const link = bankLink();
   const handlers = {
     ...resource.handlers,
+    ...link.handlers,
     "/api/money/trends": async (route, { url }) => {
       trends.push(new URL(url).searchParams.get("range"));
+      if (trendsDown.value) return json(route, { ok: false, error: "server_error" }, 500);
       return json(route, { ok: true, range: new URL(url).searchParams.get("range"), daily: {}, monthly: { months: [] } });
-    },
-    "/api/banking/link-token": async (route) => {
-      link.push({ path: "link-token", body: JSON.parse(route.request().postData() || "{}") });
-      return json(route, { ok: true, link_token: "fake-link-token" });
-    },
-    "/api/banking/link-exchange": async (route) => {
-      link.push({ path: "link-exchange", body: JSON.parse(route.request().postData() || "{}") });
-      return json(route, { ok: true });
     },
   };
   const opened = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers });
-  await opened.page.route("https://cdn.plaid.com/**", (route) => route.fulfill({
-    contentType: "text/javascript",
-    body: "window.Plaid={create:function(c){return{open:function(){setTimeout(function(){c.onSuccess('fake-public-token',{institution:{institution_id:'ins_sample',name:'Sample Bank'}})},0)}}}};",
-  }));
+  await link.stubBankWindow(opened.page);
   return { ...opened, ...resource.log, link, trends };
 }
 
@@ -63,29 +54,29 @@ test("Connect a bank runs token, bank window and exchange, in the header and in 
     page: { header: /^Connect a bank \(header button/, empty: /^Connect a bank \(empty-state button/ },
     frame: { header: /^Connect a bank button \(header, and again in the empty state\)/ },
   };
-  for (const [target, readers] of [[PAGE, { header: undefined, empty }], [FRAME, { header: undefined, empty }]]) {
-    for (const kind of ["header", "empty"]) {
-      const { page, link, reads } = await openOverview(open, target, { session: STAFF, clientId: CLIENT_ID, read: readers[kind] });
-      await page.waitForSelector('[data-act="connect"]');
-      if (kind === "empty") assert.match(await page.locator("body").innerText(), /No bank accounts yet/);
-      await page.locator('[data-act="connect"]').first().click();
-      await waitFor(() => link.some((p) => p.path === "link-exchange"));
-      assert.deepEqual(link, [
-        { path: "link-token", body: { client_id: CLIENT_ID } },
-        { path: "link-exchange", body: { public_token: "fake-public-token", institution: { institution_id: "ins_sample", name: "Sample Bank" }, client_id: CLIENT_ID } },
-      ]);
-      await page.waitForFunction(() => /Bank connected\. Loading your accounts…/.test(document.body.innerText) || document.querySelector("h1"));
-      await waitFor(() => reads.length >= 2);
-      if (rows[target.entry][kind]) await proof.check(rows[target.entry][kind], async () => {}, target.surface);
-      await page.close();
-    }
-  }
+  // One connect run: the page loads in the named state, the button is pressed, and the exact flow is seen.
+  const connect = async (target, kind) => {
+    const { page, link, reads } = await openOverview(open, target, { session: STAFF, clientId: CLIENT_ID, read: kind === "empty" ? empty : undefined });
+    await page.waitForSelector('[data-act="connect"]');
+    if (kind === "empty") assert.match(await page.locator("body").innerText(), /No bank accounts yet/);
+    await page.locator('[data-act="connect"]').first().click();
+    await waitFor(() => link.posts.some((p) => p.path === "link-exchange"));
+    assert.deepEqual(link.posts, link.expected(CLIENT_ID));
+    await waitFor(() => reads.length >= 2);
+    await page.close();
+  };
+  // The page lists the header button and the empty-state button as two rows; the frame lists one row for both.
+  for (const kind of ["header", "empty"]) await proof.check(rows.page[kind], () => connect(PAGE, kind), PAGE.surface);
+  await proof.check(rows.frame.header, async () => {
+    for (const kind of ["header", "empty"]) await connect(FRAME, kind);
+  }, FRAME.surface);
 });
 
 test("Trends buttons ask for 30 days, 90 days or 12 months and keep the choice", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Trends: 30 days \/ 90 days \/ 12 months buttons/, async () => {
-    const { page, trends } = await openOverview(open, FRAME, { session: STAFF, clientId: CLIENT_ID });
+    const trendsDown = { value: false };
+    const { page, trends } = await openOverview(open, FRAME, { session: STAFF, clientId: CLIENT_ID, trendsDown });
     await page.waitForSelector(".trange-btn");
     assert.deepEqual(trends, ["90d"], "the default range is 90 days");
     await page.locator('.trange-btn[data-range="30d"]').click();
@@ -95,6 +86,19 @@ test("Trends buttons ask for 30 days, 90 days or 12 months and keep the choice",
     assert.deepEqual(trends, ["90d", "30d", "12m"]);
     assert.equal(await page.evaluate(() => sessionStorage.getItem("fos_trends_range")), "12m", "the choice is kept");
     assert.equal(await page.locator('.trange-btn[data-range="12m"]').getAttribute("aria-pressed"), "true");
+
+    // Try again: a failed read shows the button; pressing it asks again for the same range
+    trendsDown.value = true;
+    await page.locator('.trange-btn[data-range="30d"]').click();
+    await waitFor(() => trends.length === 4);
+    await page.waitForSelector("[data-trends-retry]");
+    trendsDown.value = false;
+    await page.locator("[data-trends-retry]").click();
+    await waitFor(() => trends.length === 5);
+    assert.deepEqual(trends.slice(3), ["30d", "30d"], "Try again asks for the range that failed");
+    await page.waitForSelector(".trange-btn");
+    assert.equal(await page.locator("[data-trends-retry]").count(), 0, "the error is gone once the read works");
+    assert.equal(await page.locator('.trange-btn[data-range="30d"]').getAttribute("aria-pressed"), "true");
     await page.close();
   }, FRAME.surface);
 });

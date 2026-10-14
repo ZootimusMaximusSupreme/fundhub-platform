@@ -58,7 +58,7 @@ test("Apply starts a session for this client and lender, and the dialog ends or 
 
   await proof.check(/^Lender row Apply button/, async () => {
     assert.match(await page.locator("#applyClientBanner").innerText(), /Client-scoped Apply/);
-    // NOT ATTACHED, see s4-rows.json. proxy-apply.js binds every [data-fh-apply] button at
+    // NOT ATTACHED, see s4-rows-screens.json. proxy-apply.js binds every [data-fh-apply] button at
     // DOMContentLoaded and lenders.html adds its own handler to each Apply button too. When the
     // list is drawn before that moment, one press starts two proxy sessions (found on a slow
     // machine). Here the list answers after the load, which is the order that sends exactly one.

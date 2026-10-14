@@ -21,7 +21,7 @@ export const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 
 /**
  * A fake /api/money/<resource> (or a full path such as /api/blueprint/declines). GET answers `read()`; POST records the body and
- * answers `write(body)` (default: ok). Both are logged in order on `log`.
+ * answers `write(body)` (default: ok; it may be async). Both are logged in order on `log`.
  */
 export function moneyResource(resource, { read, readStatus = 200, write = () => ({ status: 200, body: { ok: true } }) }) {
   const log = { reads: [], posts: [] };
@@ -29,7 +29,7 @@ export function moneyResource(resource, { read, readStatus = 200, write = () => 
     if (method === "POST") {
       const body = bodyOf(route);
       log.posts.push(body);
-      const out = write(body);
+      const out = await write(body);
       return route.fulfill({ status: out.status, contentType: "application/json", body: JSON.stringify(out.body) });
     }
     log.reads.push(new URL(url).search);
@@ -50,4 +50,30 @@ export async function waitFor(done, ms = 20_000) {
   const end = Date.now() + ms;
   while (!done() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 25));
   if (!done()) throw new Error("timed out waiting for the page");
+}
+
+/**
+ * The fake "Connect a bank" flow the Overview and Accounts screens share: the link
+ * token and exchange answers (logged in order on `posts`) and the bank's own
+ * window script (cdn.plaid.com), which finishes by itself.
+ */
+export function bankLink() {
+  const posts = [];
+  const answer = (name) => async (route) => {
+    posts.push({ path: name, body: bodyOf(route) });
+    return json(route, name === "link-token" ? { ok: true, link_token: "fake-link-token" } : { ok: true });
+  };
+  return {
+    posts,
+    handlers: { "/api/banking/link-token": answer("link-token"), "/api/banking/link-exchange": answer("link-exchange") },
+    stubBankWindow: (page) => page.route("https://cdn.plaid.com/**", (route) => route.fulfill({
+      contentType: "text/javascript",
+      body: "window.Plaid={create:function(c){return{open:function(){setTimeout(function(){c.onSuccess('fake-public-token',{institution:{institution_id:'ins_sample',name:'Sample Bank'}})},0)}}}};",
+    })),
+    // What the page must have sent, in order, for one finished connect.
+    expected: (clientId) => [
+      { path: "link-token", body: { client_id: clientId } },
+      { path: "link-exchange", body: { public_token: "fake-public-token", institution: { institution_id: "ins_sample", name: "Sample Bank" }, client_id: clientId } },
+    ],
+  };
 }

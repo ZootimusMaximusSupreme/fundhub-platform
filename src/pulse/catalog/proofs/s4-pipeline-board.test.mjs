@@ -1,6 +1,6 @@
 // Proves the pipeline board rows on public/app/pipeline.html in a real browser
 // with fake /api answers: what each column shows, what a dropped card posts,
-// the MOVE menu, the archive box and the drawer. Rows come from s4-rows.json.
+// the MOVE menu, the archive box and the drawer. Rows come from s4-rows-screens.json.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -96,44 +96,44 @@ test("every listed column shows its count and funding est., and a dropped card p
     }
     assert.ok(reads.includes(rail.key), `${label}: the board read asks for key=${rail.key}`);
 
-    for (const [i, col] of columns.entries()) {
-      const column = colName(page, col.stage);
-      assert.equal(await column.count(), 1, `${col.control}: one column`);
-      assert.equal(await column.locator(".col-name").innerText(), col.name);
-      assert.equal(await column.locator(".col-count").innerText(), String(7 + i));
-      const money = column.locator(".col-money");
-      if (rail.money) assert.equal(await money.innerText(), `${usd(50000 + i * 1000)} funding est.`);
-      else assert.equal(await money.count(), 0, `${label}: no funding total is drawn on this rail`);
-    }
+    // Last column first: dropping a card on column i takes one card from column i + 1, so every
+    // column's count and funding are still the ones the read gave when its own turn comes.
+    for (const [i, col] of [...columns.entries()].reverse()) {
+      await proof.check(col.control, async () => {
+        const column = colName(page, col.stage);
+        assert.equal(await column.count(), 1, `${col.control}: one column`);
+        assert.equal(await column.locator(".col-name").innerText(), col.name);
+        assert.equal(await column.locator(".col-count").innerText(), String(7 + i));
+        const money = column.locator(".col-money");
+        if (rail.money) assert.equal(await money.innerText(), `${usd(50000 + i * 1000)} funding est.`);
+        else assert.equal(await money.count(), 0, `${label}: no funding total is drawn on this rail`);
 
-    for (const [i, col] of columns.entries()) {
-      const neighbour = [...columns, SPARE][i + 1];
-      const target = colName(page, col.stage);
-      const source = colName(page, neighbour.stage);
-      const before = {
-        count: Number(await target.locator(".col-count").innerText()),
-        sourceCount: Number(await source.locator(".col-count").innerText()),
-        money: rail.money ? Number((await target.locator(".col-money").innerText()).replace(/[^0-9]/g, "")) : null,
-      };
-      writes.length = 0;
-      const moving = source.locator(".card").first();
-      const movingClient = await moving.getAttribute("data-client-id");
-      await dragCard(page, moving, target);
-      await until(() => writes.length > 0);
-      await page.waitForTimeout(150);
-      assert.equal(writes.length, 1, `${col.control}: exactly one move is posted`);
-      assert.deepEqual(writes[0], {
-        action: "move", client_id: movingClient,
-        pipeline_key: rail.key, stage_key: col.stage, from_pipeline_key: null,
-      }, col.control);
-      assert.equal(Number(await target.locator(".col-count").innerText()), before.count + 1, `${col.control}: count goes up`);
-      assert.equal(Number(await source.locator(".col-count").innerText()), before.sourceCount - 1, `${col.control}: source count goes down`);
-      if (rail.money) {
-        const after = Number((await target.locator(".col-money").innerText()).replace(/[^0-9]/g, ""));
-        assert.equal(after, before.money + CARD_AMOUNT, `${col.control}: funding est. grows by the card amount`);
-      }
-      assert.equal(await target.locator(`.card[data-client-id="${movingClient}"]`).count(), 1);
-      proof.claim(col.control);
+        const neighbour = [...columns, SPARE][i + 1];
+        const source = colName(page, neighbour.stage);
+        const before = {
+          count: Number(await column.locator(".col-count").innerText()),
+          sourceCount: Number(await source.locator(".col-count").innerText()),
+          money: rail.money ? Number((await column.locator(".col-money").innerText()).replace(/[^0-9]/g, "")) : null,
+        };
+        writes.length = 0;
+        const moving = source.locator(".card").first();
+        const movingClient = await moving.getAttribute("data-client-id");
+        await dragCard(page, moving, column);
+        await until(() => writes.length > 0);
+        await page.waitForTimeout(150);
+        assert.equal(writes.length, 1, `${col.control}: exactly one move is posted`);
+        assert.deepEqual(writes[0], {
+          action: "move", client_id: movingClient,
+          pipeline_key: rail.key, stage_key: col.stage, from_pipeline_key: null,
+        }, col.control);
+        assert.equal(Number(await column.locator(".col-count").innerText()), before.count + 1, `${col.control}: count goes up`);
+        assert.equal(Number(await source.locator(".col-count").innerText()), before.sourceCount - 1, `${col.control}: source count goes down`);
+        if (rail.money) {
+          const after = Number((await column.locator(".col-money").innerText()).replace(/[^0-9]/g, ""));
+          assert.equal(after, before.money + CARD_AMOUNT, `${col.control}: funding est. grows by the card amount`);
+        }
+        assert.equal(await column.locator(`.card[data-client-id="${movingClient}"]`).count(), 1);
+      });
     }
     assert.deepEqual(errors, [], `${label}: the page threw no errors`);
     await page.close();
@@ -192,10 +192,13 @@ async function openSales(open, { session = OWNER, extra = {} } = {}) {
   return { ...opened, writes, reads, calls };
 }
 
-test("the page opens for owner, admin and closer and reads the sales board", { timeout: 60_000 }, async (t) => {
+// Every staff role is on the shared staff surface, which includes the pipeline; a client is not.
+const STAFF_ROLES = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist"];
+
+test("the page opens for every staff role and reads the sales board; a client is sent elsewhere", { timeout: 120_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Open the page \(all staff roles/, async () => {
-    for (const role of ["owner", "admin", "closer"]) {
+    for (const role of STAFF_ROLES) {
       const session = { ok: true, staff: { ...OWNER.staff, role } };
       const { page, reads, errors } = await openSales(open, { session });
       assert.deepEqual(reads, ["sales"], `${role}: one sales board read on load`);
@@ -205,6 +208,11 @@ test("the page opens for owner, admin and closer and reads the sales board", { t
       assert.deepEqual(errors, []);
       await page.close();
     }
+    const client = { ok: true, staff: { ...OWNER.staff, role: "client" } };
+    const { page } = await open("/app/pipeline.html", { session: client, handlers: backend({ sales: salesBoard() }, [], []) });
+    await page.waitForURL((url) => !/\/app\/pipeline\.html$/.test(url.pathname));
+    assert.equal(await page.locator(".col").count(), 0, "a client sees no board");
+    await page.close();
   });
 });
 

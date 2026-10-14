@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 
 import { proofRows, startScreens } from "./s4-screen-harness.mjs";
 import { CLIENT, STAFF, CLIENT_ID, entryUrl, moneyResource, waitFor } from "./s4-money-harness.mjs";
+import { recordDecline } from "../../../blueprint/decline-defense.mjs";
+import { memoryDb, SIM_APPLICATIONS, TEST_CLIENT, TEST_ORG } from "../../../blueprint/decline-defense.test.db.mjs";
 
 const proof = proofRows(import.meta.url);
 const TARGETS = {
@@ -14,12 +16,16 @@ const TARGETS = {
   frame: { entry: "frame", tab: "declines", surface: "financeos.html#declines" },
 };
 const LETTER = "We reviewed your application and we are unable to approve it at this time because of recent inquiries.";
+const CHASE_LETTER = "Your application for the Ink Business card was not approved because of too many recent credit checks on your report.";
+const SSN = "123-45-6789";
+const LETTER_WITH_SSN = `${LETTER} Social Security number on file: ${SSN}.`;
+const [CHASE, AMEX] = SIM_APPLICATIONS.map((a) => a.id);
 
 const view = () => ({
   can_paste: true,
   applications: [
-    { id: "app-chase", bank: "Chase", product: "Ink Business", decline_id: null, status_words: "Applied", decline_words: null },
-    { id: "app-amex", bank: "American Express", product: "Blue Business", decline_id: "dec-1", status_words: "Declined", decline_words: "Declined. We are working on it." },
+    { id: CHASE, bank: "Chase", product: "Ink Business", decline_id: null, status_words: "Applied", decline_words: null },
+    { id: AMEX, bank: "American Express", product: "Blue Business", decline_id: "dec-1", status_words: "Declined", decline_words: "Declined. We are working on it." },
   ],
   declines: [{
     id: "dec-1", bank: "American Express", product: "Blue Business", declined_on: "2026-10-02", received_on: "2026-10-03",
@@ -32,14 +38,31 @@ const view = () => ({
   }],
 });
 
+// The paste POST is answered by the real save path (recordDecline) over an in-memory stand-in for the
+// tables, so what the screen sent is what gets stored: masked, counted and filed for the right bank.
 async function openDeclines(open, target, { session = CLIENT, clientId = "" } = {}) {
+  const db = memoryDb({ applications: SIM_APPLICATIONS.map((a) => ({ ...a })) });
+  const statusCalls = [];
+  const staff = session === STAFF;
   const resource = moneyResource("/api/blueprint/declines", {
     read: () => ({ ok: true, view: view() }),
-    write: (body) => ({ status: 200, body: { ok: true, decline: { id: "dec-2", bank: body.bank || "Chase" } } }),
+    write: async (body) => {
+      const out = await recordDecline(db, {
+        orgId: TEST_ORG, clientId: TEST_CLIENT, now: new Date("2026-10-13T12:00:00Z"),
+        by: staff ? { kind: "staff", staffId: "s1", name: "Dana Advisor" } : { kind: "client" },
+        staff: staff ? { id: "s1", name: "Dana Advisor", email: "dana@example.com" } : undefined,
+        source: staff ? "staff" : "client_paste",
+        input: { text: body.text, bank: body.bank, product: body.product, application_id: body.application_id || null },
+        deps: { setApplicationStatus: async (_db, args) => { statusCalls.push(args); return { id: args.applicationId, status: args.status }; } },
+      });
+      return out.ok
+        ? { status: 200, body: { ok: true, decline: { id: out.decline_id, bank: db.t.declines.at(-1).bank } } }
+        : { status: 400, body: { ok: false, error: out.error } };
+    },
   });
   const opened = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers: resource.handlers });
   await opened.page.waitForSelector(".fh-declines .dc-paste");
-  return { ...opened, ...resource.log };
+  return { ...opened, ...resource.log, db, statusCalls };
 }
 
 test("the list shows each decline with reasons, quotes, steps and what happens next", { timeout: 60_000 }, async (t) => {
@@ -70,42 +93,96 @@ test("the list shows each decline with reasons, quotes, steps and what happens n
 
 test("the paste box refuses a bad entry and posts the exact letter for the right bank", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
+  // The page lists the textarea and the button as two rows; the frame lists one row for the whole form.
   const rows = {
-    page: [/^Paste the bank's letter or email textarea/, /^Read my decline/],
-    frame: [/^Paste a decline letter: bank select/],
+    page: { box: /^Paste the bank's letter or email textarea/, button: /^Read my decline/ },
+    frame: { form: /^Paste a decline letter: bank select/ },
   };
   for (const target of Object.values(TARGETS)) {
-    const { page, posts } = await openDeclines(open, target, target.entry === "frame" ? { session: STAFF, clientId: CLIENT_ID } : {});
+    const staff = target.entry === "frame";
+    const { page, posts, db, statusCalls } = await openDeclines(open, target, staff ? { session: STAFF, clientId: CLIENT_ID } : {});
+    const clientPart = staff ? { client_id: CLIENT_ID } : {};
     const say = () => page.locator('[data-slot="result"]').innerText();
     const readIt = () => page.locator('[data-act="paste"]').click();
     const textBox = page.locator('[data-field="text"]');
+    const bank = page.locator('[data-field="bank"]');
+    // A good paste repaints the section; wait for the fresh button (the old one says "Reading…").
+    const saved = async (count) => {
+      await waitFor(() => posts.length === count);
+      await page.waitForFunction(() => {
+        const send = document.querySelector('[data-act="paste"]');
+        return send && !send.disabled && send.textContent === "Read my decline" && /We read your letter from /.test(document.body.innerText);
+      });
+    };
 
-    assert.equal(await textBox.getAttribute("maxlength"), "20000");
-    await readIt();
-    assert.match(await say(), /Pick the bank that sent the letter\./);
-    await page.locator('[data-field="bank"]').selectOption("__other");
-    await textBox.fill("too short");
-    await readIt();
-    assert.match(await say(), /Tell us which bank sent it\./);
-    await page.locator('[data-field="bank-name"]').fill("Mountain Credit Union");
-    await readIt();
-    assert.match(await say(), /Paste the whole letter or email from the bank\./);
-    assert.deepEqual(posts, [], "nothing is sent for a bad entry");
+    // the button: it needs a bank and the whole letter, then posts for the bank named or the application picked
+    const button = async () => {
+      await readIt();
+      assert.match(await say(), /Pick the bank that sent the letter\./);
+      await bank.selectOption("__other");
+      await textBox.fill("too short");
+      await readIt();
+      assert.match(await say(), /Tell us which bank sent it\./);
+      await page.locator('[data-field="bank-name"]').fill("Mountain Credit Union");
+      await readIt();
+      assert.match(await say(), /Paste the whole letter or email from the bank\./);
+      assert.deepEqual(posts, [], "nothing is sent for a bad entry");
 
-    await textBox.fill(LETTER);
-    await readIt();
-    await waitFor(() => posts.length === 1);
-    const clientPart = target.entry === "frame" ? { client_id: CLIENT_ID } : {};
-    assert.deepEqual(posts[0], { action: "paste", text: LETTER, bank: "Mountain Credit Union", ...clientPart });
-    await page.waitForFunction(() => /We read your letter from Mountain Credit Union\./.test(document.body.innerText));
+      await textBox.fill(LETTER);
+      await readIt();
+      await saved(1);
+      assert.deepEqual(posts[0], { action: "paste", text: LETTER, bank: "Mountain Credit Union", ...clientPart });
+      assert.equal(db.t.declines.at(-1).bank, "Mountain Credit Union", "the letter is filed under the bank typed");
+      await page.waitForFunction(() => /We read your letter from Mountain Credit Union\./.test(document.body.innerText));
 
-    await page.locator('[data-field="bank"]').selectOption("app-chase");
-    await textBox.fill(LETTER);
-    await readIt();
-    await waitFor(() => posts.length === 2);
-    assert.deepEqual(posts[1], { action: "paste", text: LETTER, application_id: "app-chase", ...clientPart });
+      await bank.selectOption(CHASE);
+      await textBox.fill(CHASE_LETTER);
+      await readIt();
+      await saved(2);
+      assert.deepEqual(posts[1], { action: "paste", text: CHASE_LETTER, application_id: CHASE, ...clientPart });
+      assert.equal(db.t.declines.at(-1).application_id, CHASE, "the letter is filed on the application picked");
+      // Staff recording a decline on an application marks it Denied; a client's paste never changes an application.
+      assert.deepEqual(statusCalls.map((c) => [c.applicationId, c.status]), staff ? [[CHASE, "Denied"]] : []);
+    };
 
-    for (const matcher of rows[target.entry]) await proof.check(matcher, async () => {}, target.surface);
+    // the box: 20 letters and numbers is the least it takes, 20,000 the most, and a Social Security number is masked when it is saved
+    const box = async () => {
+      assert.equal(await textBox.getAttribute("maxlength"), "20000");
+      await bank.selectOption("__other");
+      await page.locator('[data-field="bank-name"]').fill("Mountain Credit Union");
+      const before = posts.length;
+      await textBox.fill("a".repeat(19));
+      await readIt();
+      assert.match(await say(), /Paste the whole letter or email from the bank\./);
+      await textBox.fill(`${"a".repeat(10)} ${"b".repeat(9)}`);
+      await readIt();
+      assert.match(await say(), /Paste the whole letter or email from the bank\./, "spaces do not count toward the 20");
+      assert.equal(posts.length, before, "nothing is sent for 19 letters");
+      await textBox.fill("a".repeat(20001));
+      assert.equal((await textBox.inputValue()).length, 20000, "the box holds 20,000 at most");
+
+      await textBox.fill("a".repeat(20));
+      await readIt();
+      await saved(before + 1);
+      assert.equal(posts[before].text, "a".repeat(20), "20 is enough");
+
+      await bank.selectOption("__other");
+      await page.locator('[data-field="bank-name"]').fill("Mountain Credit Union");
+      await textBox.fill(LETTER_WITH_SSN);
+      await readIt();
+      await saved(before + 2);
+      assert.match(posts[before + 1].text, new RegExp(SSN), "the page sends the letter as it was pasted");
+      const stored = db.t.declines.at(-1).letter_text;
+      assert.doesNotMatch(stored, new RegExp(SSN), "the Social Security number is masked before it is stored");
+      assert.match(stored, /unable to approve/, "the rest of the letter is kept");
+    };
+
+    if (staff) {
+      await proof.check(rows.frame.form, async () => { await button(); await box(); }, target.surface);
+    } else {
+      await proof.check(rows.page.button, button, target.surface);
+      await proof.check(rows.page.box, box, target.surface);
+    }
     await page.close();
   }
 });

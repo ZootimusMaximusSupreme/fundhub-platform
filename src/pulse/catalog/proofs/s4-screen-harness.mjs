@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 
 import { OWNER, json, withSession, wireApi } from "../../../../e2e/harness.mjs";
-import S4_ROWS from "./s4-rows.json" with { type: "json" };
+import { S4_ROWS } from "./s4-rows.mjs";
 
 export { CLIENT_ID, OWNER, json } from "../../../../e2e/harness.mjs";
 
@@ -89,14 +89,14 @@ export function bodyOf(route) {
 }
 
 /**
- * The rows one test file proves, read from s4-rows.json. A test claims a row by
+ * The rows one test file proves, read from the row tables (s4-rows.mjs). A test claims a row by
  * running its assertions inside proof.check(); assertAllClaimed() fails the test
  * if a listed row never ran, so a row cannot be attached without being exercised.
  */
 export function proofRows(testFile) {
   const name = path.basename(testFile.startsWith("file:") ? fileURLToPath(testFile) : testFile);
   const groups = S4_ROWS[name];
-  if (!groups) throw new Error(`s4-rows.json has no rows for ${name}`);
+  if (!groups) throw new Error(`the S4 row tables have no rows for ${name}`);
   // notAttached: exercised here, but the pulse lane still wants a saved receipt for
   // that control, so the row is deliberately not handed to the catalog.
   const controls = groups.flatMap((group) => [...group.controls, ...(group.notAttached || [])].map((control) => ({ ...group, control })));
@@ -110,13 +110,14 @@ export function proofRows(testFile) {
   return {
     rows: controls,
     controlsOf: (matcher) => controls.filter((row) => matcher.test(row.control)).map((row) => row.control),
+    // A row is claimed only when its own assertions finish inside `run`. An empty
+    // callback would claim a row without proving it, so it is refused.
     async check(matcher, run, surface = null) {
+      if (typeof run !== "function" || /^(async\s*)?\(\w*\)\s*=>\s*\{\s*\}$/.test(run.toString().trim())) {
+        throw new Error("proof.check needs the row's own assertions in its callback, not an empty one");
+      }
       const row = find(matcher, surface);
       await run(row.control);
-      claimed.add(`${row.surface}\0${row.control}`);
-    },
-    claim(control, surface = null) {
-      const row = find(control, surface);
       claimed.add(`${row.surface}\0${row.control}`);
     },
     assertAllClaimed() {

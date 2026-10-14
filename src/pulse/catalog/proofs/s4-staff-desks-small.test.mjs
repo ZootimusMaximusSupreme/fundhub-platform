@@ -39,7 +39,10 @@ async function openDocuments(open, { role = "owner", status = "sent" } = {}) {
   return { ...opened, writes };
 }
 
-test("Void asks for a reason, sends it, and is offered only to an owner or admin on an unsigned contract", { timeout: 60_000 }, async (t) => {
+// Void is drawn for an owner or admin only, and only on a contract nobody has signed.
+const VOID_ROLES = [["owner", true], ["admin", true], ["closer", false], ["csm", false]];
+
+test("Void asks for a reason, sends it, and is offered only to an owner or admin on an unsigned contract", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Contract cell: Void button/, async () => {
     const { page, writes } = await openDocuments(open);
@@ -54,31 +57,39 @@ test("Void asks for a reason, sends it, and is offered only to an owner or admin
     await page.waitForFunction(() => /Contract voided\./.test(document.querySelector("#ctMsg")?.innerText || ""));
     await page.close();
 
-    const closer = await openDocuments(open, { role: "closer" });
-    assert.equal(await closer.page.locator('[data-ct="void"]').count(), 0, "a closer is not offered Void");
-    await closer.page.close();
+    for (const [role, offered] of VOID_ROLES) {
+      const desk = await openDocuments(open, { role });
+      assert.equal(await desk.page.locator('[data-ct="void"]').count(), offered ? 1 : 0, `${role}: ${offered ? "is offered" : "is not offered"} Void`);
+      await desk.page.close();
+    }
     const signed = await openDocuments(open, { status: "signed" });
     assert.equal(await signed.page.locator('[data-ct="void"]').count(), 0, "a signed contract cannot be voided");
     await signed.page.close();
   });
 });
 
-const QUEUE_ROW = {
-  task_id: TASK, client_id: CLIENT, client_name: "Dana Whitfield", client_code: "FH-000101",
-  title: "Halfway check-in call", due_at: new Date(Date.now() + 3_600_000).toISOString(),
+const queueRow = (task, source) => ({
+  task_id: task, client_id: CLIENT, client_name: "Dana Whitfield", client_code: "FH-000101",
+  title: "Check-in call", due_at: new Date(Date.now() + 3_600_000).toISOString(),
   owned_codes: ["funding_bundle"], balance_due: null, open_invoices: 0, assignee_staff_id: null,
-  source_workflow: "customer-insights-mid", meeting_url: null,
-};
+  source_workflow: source, meeting_url: null,
+});
+const POST_TASK = "7a000000-0000-4000-8000-000000000002";
 const QUESTIONS = {
   mid: [{ id: "why_buy", prompt: "Why did you buy?" }, { id: "surprise", prompt: "What surprised you so far?" }],
   post: [{ id: "result", prompt: "What happened with your funding?" }],
 };
+// One interview per stage: the halfway call asks the mid questions, the after-funding call the post ones.
+const INTERVIEWS = [
+  { stage: "mid", task: TASK, source: "customer-insights-mid", answerBox: "why_buy", answer: "I want a line of credit for inventory." },
+  { stage: "post", task: POST_TASK, source: "customer-insights-post", answerBox: "result", answer: "Two cards for $40,000." },
+];
 
 async function openQueue(open) {
   const saves = [];
   const handlers = {
     "/api/shifts": { ok: true, shift: null },
-    "/api/read/csm-queue": { ok: true, items: [QUEUE_ROW] },
+    "/api/read/csm-queue": { ok: true, items: INTERVIEWS.map((i) => queueRow(i.task, i.source)) },
     "/api/read/customer-insights": { ok: true, items: [], questions: QUESTIONS },
     "/api/customer-insights": async (route) => {
       saves.push(bodyOf(route));
@@ -91,27 +102,30 @@ async function openQueue(open) {
   return { ...opened, saves };
 }
 
-test("the interview form sends the channel, each answer and the notes, and nothing written sends nothing", { timeout: 60_000 }, async (t) => {
+test("the interview form sends the channel, each answer and the notes, and nothing written sends nothing", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Interview form: 'How did you speak to them' select/, async () => {
-    const { page, saves } = await openQueue(open);
-    await page.locator(`[data-open="${TASK}"]`).click();
-    await page.waitForSelector("#qa-why_buy");
-    assert.equal(await page.locator("#qa-surprise").isVisible(), true, "one box per question");
-    await page.locator(`[data-save="${TASK}"]`).click();
-    assert.equal(await page.locator("#qSay").innerText(), "Write down at least one answer before saving.");
-    assert.deepEqual(saves, [], "nothing written, nothing sent");
-    await page.locator("#qChan").selectOption("google_meet");
-    await page.locator("#qa-why_buy").fill("  I want a line of credit for inventory. ");
-    await page.locator("#qNotes").fill("Call back in May.");
-    await page.locator(`[data-save="${TASK}"]`).click();
-    await waitFor(() => saves.length === 1);
-    assert.deepEqual(saves[0], {
-      client_id: CLIENT, task_id: TASK, stage: "mid", channel: "google_meet",
-      answers: { why_buy: "I want a line of credit for inventory." }, notes: "Call back in May.",
-    });
-    await page.waitForFunction(() => /Answers saved for Dana Whitfield\./.test(document.body.innerText));
-    await page.close();
+    for (const interview of INTERVIEWS) {
+      const { page, saves } = await openQueue(open);
+      await page.locator(`[data-open="${interview.task}"]`).click();
+      await page.waitForSelector(`#qa-${interview.answerBox}`);
+      const boxes = await page.locator('[id^="qa-"]').evaluateAll((els) => els.map((el) => el.id.replace("qa-", "")));
+      assert.deepEqual(boxes, QUESTIONS[interview.stage].map((q) => q.id), `${interview.stage}: one box per question for this stage`);
+      await page.locator(`[data-save="${interview.task}"]`).click();
+      assert.equal(await page.locator("#qSay").innerText(), "Write down at least one answer before saving.");
+      assert.deepEqual(saves, [], "nothing written, nothing sent");
+      await page.locator("#qChan").selectOption("google_meet");
+      await page.locator(`#qa-${interview.answerBox}`).fill(`  ${interview.answer} `);
+      await page.locator("#qNotes").fill("Call back in May.");
+      await page.locator(`[data-save="${interview.task}"]`).click();
+      await waitFor(() => saves.length === 1);
+      assert.deepEqual(saves[0], {
+        client_id: CLIENT, task_id: interview.task, stage: interview.stage, channel: "google_meet",
+        answers: { [interview.answerBox]: interview.answer }, notes: "Call back in May.",
+      }, `${interview.stage}: the exact save`);
+      await page.waitForFunction(() => /Answers saved for Dana Whitfield\./.test(document.body.innerText));
+      await page.close();
+    }
   });
 });
 

@@ -61,6 +61,22 @@ test("the compliance ticks, outcome buttons, keys and referral tick are sent onl
     // Three of the five: the other two must go out as false, not as ticked.
     for (const id of ["d2", "d3", "d4"]) await page.locator(`#${id}`).check();
     assert.deepEqual(posted, [], "nothing is sent by ticking");
+
+    // Each box is its own field: ticking one box alone, and only that field goes out true.
+    const BOXES = { d1: "call_recorded", d2: "personal_guarantee", d3: "month_14_cliff", d4: "bank_decides", d5: "incorporation_verified" };
+    for (const [id, field] of Object.entries(BOXES)) {
+      const alone = await openCall(open);
+      await alone.page.locator(`#${id}`).check();
+      await alone.page.locator('[data-outcome="deposit"]').click();
+      await alone.page.locator("#fh-save-next").click();
+      await waitFor(() => alone.posted.length === 1);
+      assert.deepEqual(
+        Object.entries(alone.posted[0].checklist).filter(([, ticked]) => ticked).map(([name]) => name),
+        [field],
+        `ticking ${id} sends ${field} and nothing else`,
+      );
+      await alone.page.close();
+    }
   });
 
   await proof.check(/^Repair referral checkbox/, async () => {
@@ -71,11 +87,18 @@ test("the compliance ticks, outcome buttons, keys and referral tick are sent onl
   await proof.check(/^Outcome buttons 1-5/, async () => {
     const names = await page.locator("[data-outcome]").evaluateAll((els) => els.map((e) => e.getAttribute("data-outcome")));
     assert.deepEqual(names, ["deposit", "downsell", "callback", "no_show", "not_a_fit"]);
-    await page.locator('[data-outcome="deposit"]').click();
-    assert.match(await page.locator('[data-outcome="deposit"]').getAttribute("class"), /\bk\b/);
+    // Clicking a button and pressing its number both pick that outcome, and only that one.
+    const picked = () => page.locator("[data-outcome].k").evaluateAll((els) => els.map((e) => e.getAttribute("data-outcome")));
+    for (const [i, name] of names.entries()) {
+      await page.locator(`[data-outcome="${name}"]`).click();
+      assert.deepEqual(await picked(), [name], `clicking ${name} picks it alone`);
+      const other = names[(i + 1) % names.length];
+      await page.keyboard.press(String(((i + 1) % names.length) + 1));
+      assert.deepEqual(await picked(), [other], `key ${((i + 1) % names.length) + 1} picks ${other}`);
+    }
+    // end on Callback (key 3), the outcome Save sends below
     await page.keyboard.press("3");
-    assert.match(await page.locator('[data-outcome="callback"]').getAttribute("class"), /\bk\b/, "key 3 picks Callback");
-    assert.doesNotMatch((await page.locator('[data-outcome="deposit"]').getAttribute("class")) || "", /\bk\b/, "only one outcome is picked");
+    assert.deepEqual(await picked(), ["callback"]);
   });
 
   await proof.check(/^Save · next call button/, async () => {

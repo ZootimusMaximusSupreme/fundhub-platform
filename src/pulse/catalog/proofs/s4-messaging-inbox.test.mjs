@@ -69,6 +69,17 @@ test("it opens on Needs reply, asks the server for those threads only, and re-re
     assert.equal(calls.inbox.length, before, "no read before 30 seconds");
     await page.clock.fastForward(2_000);
     await waitFor(() => calls.inbox.length === before + 1);
+
+    // a tab nobody is looking at does not read; it reads again once it is on screen
+    const setHidden = (hidden) => page.evaluate((value) => Object.defineProperty(document, "hidden", { configurable: true, get: () => value }), hidden);
+    await setHidden(true);
+    const hiddenAt = calls.inbox.length;
+    await page.clock.fastForward(61_000);
+    await page.waitForTimeout(200);
+    assert.equal(calls.inbox.length, hiddenAt, "a hidden tab makes no read");
+    await setHidden(false);
+    await page.clock.fastForward(31_000);
+    await waitFor(() => calls.inbox.length > hiddenAt);
     assert.deepEqual(errors, []);
     await page.close();
   });
