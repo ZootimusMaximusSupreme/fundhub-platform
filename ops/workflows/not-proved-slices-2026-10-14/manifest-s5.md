@@ -199,12 +199,19 @@ A test that fails on unchanged code is not a proof, so I ran each new or changed
 |---|---|---|
 | All `s5-door-*` tests, the five money render tests I touched, `s5-display-attached` | 10 | 10 passed |
 | The 51 new or changed Playwright cases, at 390px and 1280px | 10 each (510 runs) | 510 passed |
-| `s5-display-money-chrome` alone | 10 | **9 passed, 1 failed** |
-| `s5-display-money-chrome`, three at once, five rounds | 15 | 15 passed after the fix |
+| `s5-display-money-chrome` alone | 10 | **9 passed, 1 failed** (then fixed, see below) |
+| `s5-display-money-chrome`, six at once with four busy loops, three rounds | 18 | 18 passed after the fix |
 | `s5-display-sidebar`, three at once, two rounds | 6 | 6 passed |
-| The whole catalog group, run three times | 3 | see the result line in the final report |
+| The whole catalog group (`src/pulse/catalog`, `gap-catalog*`, `gap-door-batch*`), run three times on the final commit | 3 | all of my files passed in all three. One run was fully green (1374 of 1374). The other two each had one failure in a test that is not mine (below) |
 
-The one failure was in the money-chrome Try again case. I could not make it fail again on a quiet machine, so I read the waits. Two were guesses: it counted the Try again buttons at a guessed moment, and a single click that a repaint could swallow. Now it waits for the button to show, taps again if no read was made (a dead button still never makes a read and still fails, I checked), and every wait is 30 seconds instead of 15.
+**The money-chrome flake, and what it really was.** It was not a timing guess. It was a false pass. On the money declines page, the retry read was answered with the stand-in's default body, which has no `view`. The page's own `classify` calls that a server error and paints the error again. The test only waited for "no Try again button". While the page was loading there is no button, so the test passed on a race, and failed when the polling happened to see the error come back. The test now answers the retry with a valid read for each page (credit, declines, fundability, helper) and waits for that page's own success words and no button. I broke the page on purpose (it paints the error again after the retry, and the button is dead) and both go red.
+
+**The two group failures that are not mine.**
+
+- `read-reviewed-e2e` and `display-proof-cases` run `e2e/agent-editor-promote-demote.spec.mjs`. Its line `#a_esc toHaveValue("Sarah Whitfield · Sales Manager")` times out after 5 seconds when five builders run browsers at once. Alone, that spec passed 40 of 40. I did not touch it.
+- "Display EF/Public wave 2" had a `page.goto` that took over 30 seconds under the same load.
+
+Both are in other builders' proofs and fail only under load. I am naming them so the integrator does not blame this slice.
 
 ## How to re-run
 
