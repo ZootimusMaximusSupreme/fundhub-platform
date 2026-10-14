@@ -380,5 +380,33 @@
     "Page open: verifies the signed link and reads the disclosure, price and contact (no staff login; HMAC org, client, exp, sig)"
    ]
   }
+ ],
+ "s4-staff-desks-small.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "documents.html",
+   "controls": [
+    "Contract cell: Void button (asks for a reason in a prompt; owner/admin only)"
+   ]
+  },
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "csm-queue.html",
+   "controls": [
+    "Interview form: 'How did you speak to them' select, one answer box per question, 'Anything else' notes box"
+   ]
+  }
+ ],
+ "s4-closer-call-outcome.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "closer-dashboard.html",
+   "controls": [
+    "Before you close: 5 compliance checkboxes (recorded, guarantee, month-14 cliff, bank decides, incorporation verified)",
+    "Outcome buttons 1-5: Deposit, Downsell, Callback, No show, Not a fit (also keys 1-5)",
+    "Repair referral checkbox",
+    "Save · next call button"
+   ]
+  }
  ]
 }
