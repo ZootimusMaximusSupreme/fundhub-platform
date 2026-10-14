@@ -16,6 +16,7 @@ import { READ_PROOF_CASES } from "./read-proof-cases.mjs";
 import { S2_DISPLAY_PROOF_CASES } from "./s2-display-contracts.mjs";
 import { S4_DISPLAY_PROOF_CASES } from "./s4-display-proofs.mjs";
 import { S1_DISPLAY_SPEC_PROOFS } from "./s1-display-specs.mjs";
+import { S5_DISPLAY_PROOF_CASES } from "./s5-display-contracts.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -396,6 +397,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...S2_DISPLAY_PROOF_CASES,
   ...S4_DISPLAY_PROOF_CASES,
   ...S1_DISPLAY_SPEC_PROOFS,
+  ...S5_DISPLAY_PROOF_CASES,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));

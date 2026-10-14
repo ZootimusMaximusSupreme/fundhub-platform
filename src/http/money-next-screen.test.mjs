@@ -122,6 +122,9 @@ test("the Capital Blueprint card shows only to a client without it, and links to
   const owned = JSON.parse(JSON.stringify(r));
   owned.offers.blueprint = { owned: true, name: "Capital Blueprint", sell: null };
   assert.equal(N.renderBlueprint(owned), "");
+  const ownedWithLink = JSON.parse(JSON.stringify(r));
+  ownedWithLink.offers.blueprint.owned = true;
+  assert.equal(N.renderBlueprint(ownedWithLink), "", "a client who owns it never sees the offer, even if the read still carries a link");
   assert.equal(N.renderBlueprint(null), "");
 });
 

@@ -147,8 +147,6 @@ test("an exact route gap monitor wires a row red when its old name-only evidence
 test("known partial rows use exact executable checkers without claiming the business result is green", () => {
   const samples = [
     ["routes-1.json", "route:closer-deck", /action=generate_letters/],
-    ["routes-0.json", "route:auth/authorized-rep", /authorized representative/],
-    ["routes-2.json", "route:auth/invite", /creates a staff login/],
     ["routes-3.json", "route:lender-observations", /^POST /],
     ["jobs.json", "function:ad-video-worker-background", /background function/],
     ["webhooks.json", "webhook:POST /api/webhooks/lendflow", /Lendflow/],

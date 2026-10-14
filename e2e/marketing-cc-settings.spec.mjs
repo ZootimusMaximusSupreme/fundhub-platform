@@ -576,6 +576,18 @@ test("a part that does not load says so in words; the rest of the tab stays", as
   ], { anchor: "#setProblem" });
 });
 
+test("the settings fail, the funnels stay; Try again reads the settings again and paints the dials", async ({ page }) => {
+  const notLive = [{ error: "not_ready", message: "Marketing settings is built, but its database table is not live yet." }, 503];
+  const { errors } = await open(page, { settings: [notLive, [{ settings: SETTINGS() }, 200]] });
+  await expect(page.locator("#setProblem")).toContainText("The settings did not load.");
+  await expect(page.locator("#set-days")).toHaveCount(0);
+  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
+  await page.locator('#setProblem [data-act="reload"]').click();
+  await expect(page.locator("#setProblem")).toHaveCount(0);
+  await expect(page.locator("#set-days")).toBeVisible();
+  await assertPageAlive(page, errors);
+});
+
 test("the funnels fail, the settings stay; Try again reads them again", async ({ page }) => {
   const posts = { settings: [], funnels: [] };
   await page.setViewportSize({ width: 390, height: 844 });

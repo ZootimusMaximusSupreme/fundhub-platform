@@ -117,6 +117,8 @@ async function call({
   body = undefined,
   authenticated = true,
   owns = true,
+  clients = null,             // two companies' client rows; answers the ownership check the way its SQL says
+  snapshots = null,           // two companies' score rows; answers the score read the way its SQL says
   alerts = [ALERT_ROW()],
   triggers = [],
   tradelines = [TRADELINE()],
@@ -138,6 +140,10 @@ async function call({
     }
     if (/FROM\s+clients\s+WHERE\s+id/i.test(s)) {
       record("ownsClient");
+      if (clients) {
+        const scoped = /AND\s+org_id\s*=\s*\$2/i.test(s);
+        return { rows: clients.filter((c) => c.id === params[0] && (!scoped || c.org_id === params[1])) };
+      }
       return { rows: owns ? [{ "?column?": 1 }] : [] };
     }
     if (/INSERT\s+INTO\s+upsell_triggers/i.test(s)) {
@@ -166,6 +172,10 @@ async function call({
     }
     if (/FROM\s+snapshots/i.test(s)) {
       record("score");
+      if (snapshots) {
+        const scoped = /WHERE\s+org_id\s*=\s*\$1/i.test(s);
+        return { rows: snapshots.filter((x) => x.client_id === params[1] && (!scoped || x.org_id === params[0])) };
+      }
       return { rows: snapshot ? [snapshot] : [] };
     }
     // verifySession's CTE. One live session for a staff member with this role.
@@ -330,6 +340,23 @@ describe("org scoping", () => {
     const r = await call({ query: { client_id: "zzz" } });
     assert.equal(r.status, 400);
     assert.deepEqual(r.reads, []);
+  });
+
+  test("a client or a score of another company is not read: the SQL itself carries the company condition", async () => {
+    const clients = [{ id: OTHER_CLIENT, org_id: ORG_B }, { id: CLIENT, org_id: ORG_A }];
+    const elsewhere = await post({ action: "evaluate", client_id: OTHER_CLIENT }, { clients });
+    assert.equal(elsewhere.status, 403, "another company's client is refused");
+    assert.ok(!elsewhere.reads.some((x) => x.kind === "tradelines" || x.kind === "score"), "nothing of it is read");
+
+    const snapshots = [
+      { org_id: ORG_B, client_id: CLIENT, score: 301, bureau: "Other", source: "crs", is_primary: true, created_at: "2026-07-03T00:00:00.000Z" },
+      { org_id: ORG_A, client_id: CLIENT, score: 640, bureau: "Equifax", source: "crs", is_primary: true, created_at: "2026-07-02T00:00:00.000Z" }
+    ];
+    const own = await post({ action: "evaluate", client_id: CLIENT }, { clients, snapshots });
+    assert.equal(own.status, 200);
+    assert.equal(own.body.inputs.score.score, 640, "this company's score, not the other company's");
+    assert.match(own.reads.find((x) => x.kind === "ownsClient").sql, /WHERE\s+id = \$1 AND org_id = \$2/);
+    assert.match(own.reads.find((x) => x.kind === "score").sql, /WHERE\s+org_id = \$1 AND client_id = \$2 AND score IS NOT NULL/);
   });
 
   test("evaluating reads only this org's cards and this org's score", async () => {

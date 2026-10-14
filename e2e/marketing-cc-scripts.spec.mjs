@@ -401,6 +401,51 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     await expect(page.getByText("No ideas yet. Type or say one above. It goes in the next batch.")).toBeVisible();
   });
 
+  /* A part that fails has a Try again, and it must read that part again and paint
+     it. The first read fails with a 500, the second is the real answer.
+
+     NOT HERE: the Rules fold and the Every version fold. When their read fails,
+     public/app/marketing-cc-scripts.js asks the server again on every repaint
+     (a toggle handler restarts the load while the status is "error"), so the
+     failed read repeats without end and the Try again button never settles. A
+     test cannot click a button that is repainted a few hundred times a second.
+     That is a product problem, written on the S5 board, not fixed here. */
+  const FAILED_PARTS = [
+    { title: "Try again on the failed scripts list reads it again and paints it", route: "GET marketing/scripts",
+      go: async () => {}, said: "The scripts did not load.", painted: "2 scripts waiting for you" },
+    { title: "Try again on the failed ideas list reads it again and paints it", route: "GET marketing/ideas",
+      go: async (page) => { await page.getByText("Ideas", { exact: true }).click(); }, said: "Your ideas did not load.", painted: "Lenders check the business file too." },
+    { title: "Try again on the failed batch history reads it again and paints it", route: "GET marketing/batches",
+      go: async (page) => { await page.getByText("Batch history", { exact: true }).click(); }, said: "Batch history did not load.", painted: "Weekly drop" }
+  ];
+  for (const part of FAILED_PARTS) {
+    test(part.title, async ({ page }) => {
+      const a = api();
+      /* Nothing is writing, so the tab's 5 second poll has nothing to ask for.
+         Only the button can read the part again. With a batch "writing" the poll
+         heals a dead Try again button by itself, about 5 seconds later. */
+      a.db.batches = { ...a.db.batches, batches: a.db.batches.batches.map((b) => ({ ...b, status: "released" })) };
+      const real = a.routes[part.route];
+      let failing = true;
+      let reads = 0;
+      a.routes[part.route] = (request) => {
+        reads += 1;
+        return failing ? [500, { error: "internal_error" }] : real(request);
+      };
+      await open(page, a);
+      await part.go(page);
+      const box = page.locator(".ccs-err");
+      await expect(box).toContainText(part.said);
+      await expect(page.locator("body")).not.toContainText(part.painted);
+      const before = reads;
+      failing = false;
+      await box.getByRole("button", { name: "Try again" }).click();
+      await expect(page.locator("body")).toContainText(part.painted);
+      await expect(page.locator(".ccs-err")).toHaveCount(0);
+      expect(reads, "Try again reads that part once more").toBe(before + 1);
+    });
+  }
+
   test("one column, no sideways scroll, text 11px or larger, taps 40px or larger", async ({ page }) => {
     await open(page);
     await page.getByText("Ideas", { exact: true }).click();
