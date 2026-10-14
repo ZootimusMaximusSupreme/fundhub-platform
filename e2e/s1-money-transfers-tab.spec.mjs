@@ -95,6 +95,12 @@ test.describe("FinanceOS Transfers tab: the client's yes", () => {
     });
   });
 
+  test("a client never sees the staff Set up this move form", async ({ page }) => {
+    await open(page);
+    await expect(page.locator('form[data-form="propose"]')).toHaveCount(0);
+    await expect(page.locator(".staff")).toHaveCount(0);
+  });
+
   test("Not now asks first: No sends nothing, Yes cancels that move only; Stop this move cancels the history move", async ({ page }) => {
     const { posts } = await open(page);
     let dialogs = answerDialogs(page, false);
@@ -107,6 +113,16 @@ test.describe("FinanceOS Transfers tab: the client's yes", () => {
     await card(page, "p1").locator('.wt-not [data-act="cancel"]').click();
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0]).toEqual({ action: "cancel", proposal_id: "p1" });
+    // Stop this move asks first too: a No sends nothing, a Yes cancels that history move only.
+    page.removeAllListeners("dialog");
+    dialogs = answerDialogs(page, false);
+    await page.locator('tr[data-id="p3"] [data-act="cancel"]').click();
+    await expect.poll(() => dialogs.length).toBe(1);
+    expect(dialogs[0]).toBe("Stop the $300.00 move? Nothing will move.");
+    await page.waitForTimeout(300);
+    expect(posts.length).toBe(1);
+    page.removeAllListeners("dialog");
+    dialogs = answerDialogs(page, true);
     await page.locator('tr[data-id="p3"] [data-act="cancel"]').click();
     await expect.poll(() => posts.length).toBe(2);
     expect(posts[1]).toEqual({ action: "cancel", proposal_id: "p3" });
@@ -127,6 +143,9 @@ test.describe("FinanceOS Transfers tab: staff on a client's file", () => {
   test("Set up this move sends the move in cents for that client, and a bad amount sends nothing", async ({ page }) => {
     const { posts } = await open(page, { query: `?client_id=${CLIENT}`, role: "funding_advisor" });
     const form = page.locator('form[data-form="propose"]');
+    // Suggested from and Date are moved off what the form opens on, so a box the page ignores shows.
+    await form.locator('select[name="from"]').selectOption("mm1");
+    await form.locator('input[name="due_on"]').fill("2026-10-15");
     await form.locator('input[name="amount"]').fill("abc");
     await form.locator('input[name="title"]').fill("Pay the setup fee");
     await form.locator('button[type="submit"]').click();
@@ -137,8 +156,19 @@ test.describe("FinanceOS Transfers tab: staff on a client's file", () => {
     await form.locator('button[type="submit"]').click();
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0]).toEqual({
-      action: "propose", to_kind: "fundhub", to_account_id: null, suggested_from_account_id: "chk1",
-      amount_cents: 150050, due_on: "2026-10-10", title: "Pay the setup fee", client_id: CLIENT
+      action: "propose", to_kind: "fundhub", to_account_id: null, suggested_from_account_id: "mm1",
+      amount_cents: 150050, due_on: "2026-10-15", title: "Pay the setup fee", client_id: CLIENT
+    });
+
+    // A move to one of the client's own accounts names that account (To left on the account it opens on).
+    await expect(form.locator('input[name="amount"]')).toHaveValue("");
+    await form.locator('input[name="amount"]').fill("250");
+    await form.locator('input[name="title"]').fill("Savings top-up");
+    await form.locator('button[type="submit"]').click();
+    await expect.poll(() => posts.length).toBe(2);
+    expect(posts[1]).toEqual({
+      action: "propose", to_kind: "bank_account", to_account_id: "sav1", suggested_from_account_id: "chk1",
+      amount_cents: 25000, due_on: "2026-10-10", title: "Savings top-up", client_id: CLIENT
     });
   });
 });

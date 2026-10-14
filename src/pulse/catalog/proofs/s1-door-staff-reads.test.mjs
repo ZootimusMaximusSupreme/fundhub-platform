@@ -11,8 +11,9 @@ import partners from "../../../../api/read/partners.mjs";
 import salesFloor from "../../../../api/read/sales-floor.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
-  ORG_ID, accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { STAFF_ROLES, clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const RULE_ID = "2e000000-0000-4000-8000-000000000001";
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
@@ -24,29 +25,33 @@ async function run(handler, request, rules) {
   return { res, fake };
 }
 
-test("commission-rules GET lists the company's effective-dated rules with tiers, finance roles only", async () => {
+const FINANCE_ROLES = ["admin", "owner", "sales_manager"];
+
+test("commission-rules GET lists only this company's effective-dated rules with tiers, and only owner, admin and sales manager get in", async () => {
   assert.equal(ROUTES["commission-rules"], commissionRules);
   const rule = {
-    id: RULE_ID, name: "Closer base", calc_method: "percent", percent: "10", effective_from: "2026-01-01",
+    id: RULE_ID, org_id: ORG_ID, name: "Closer base", calc_method: "percent", percent: "10", effective_from: "2026-01-01",
     effective_to: null, tiers: [],
   };
-  const { res, fake } = await run(commissionRules, req("GET"), [
-    staffSession({ role: "sales_manager" }),
-    [/FROM commission_rules r/, [rule]],
-  ]);
+  const otherCompany = { ...rule, id: "2e000000-0000-4000-8000-0000000000ff", org_id: OTHER_ORG_ID, name: "Other company rule" };
+  const rulesRead = [/FROM commission_rules r/, shelf([otherCompany, rule], [clause(/WHERE r\.org_id = \$1::uuid/, (row, [org]) => row.org_id === org)])];
+  const { res, fake } = await run(commissionRules, req("GET"), [staffSession({ role: "sales_manager" }), rulesRead]);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { ok: true, count: 1, rules: [rule] });
+  assert.deepEqual(res.body, { ok: true, count: 1, rules: [rule] }, "the other company's rule is not listed");
   assert.deepEqual(fake.find(/FROM commission_rules r/)[0].params, [ORG_ID]);
 
-  const closer = await run(commissionRules, req("GET"), [staffSession({ role: "closer" })]);
-  assert.equal(closer.res.statusCode, 403);
-  assert.equal(closer.fake.find(/FROM commission_rules/).length, 0);
+  const letIn = await rolesLetIn(async (role) => (await run(commissionRules, req("GET"), [staffSession({ role }), rulesRead])).res.statusCode);
+  assert.deepEqual(letIn, FINANCE_ROLES);
 });
 
 function supersedeRules(old) {
+  const lookup = shelf([old], [
+    clause(/WHERE id = \$1::uuid/, (row, [id]) => row.id === id),
+    clause(/AND org_id = \$2::uuid/, (row, [, org]) => row.org_id === org),
+  ]);
   return [
     staffSession(),
-    [/FOR UPDATE/, [old]],
+    [/FOR UPDATE/, lookup],
     [/UPDATE commission_rules\s+SET effective_to/, [{ id: RULE_ID, effective_from: old.effective_from, effective_to: "2026-11-01T00:00:00.000Z" }]],
     [/INSERT INTO commission_rules/, (sql, params) => [{ id: "2e000000-0000-4000-8000-000000000002", percent: params[9], effective_from: params[16], notes: params[18] }]],
   ];
@@ -88,6 +93,21 @@ test("commission-rules POST refuses a missing reason, a tiered rule, an earlier 
   await refused({ ...ok, effective_from: "2025-12-01" }, supersedeRules(OLD_RULE), { status: 400, error: "invalid_effective_from" });
   await refused({ ...ok, rate: -3 }, supersedeRules(OLD_RULE), { status: 400, error: "invalid_rate" });
   await refused({ ...ok }, supersedeRules({ ...OLD_RULE, effective_to: "2026-06-01" }), { status: 409, error: "rule_already_closed" });
+});
+
+test("commission-rules POST will not change another company's rule, and only owner, admin and sales manager may change a rate", async () => {
+  const body = { rule_id: RULE_ID, effective_from: "2026-11-01", rate: 12, reason: "why" };
+  const theirs = await run(commissionRules, req("POST", { body }), supersedeRules({ ...OLD_RULE, org_id: OTHER_ORG_ID }));
+  assert.equal(theirs.res.statusCode, 404);
+  assert.equal(theirs.res.body.error, "not_found");
+  assert.equal(theirs.fake.find(/UPDATE commission_rules|INSERT INTO commission_rules/).length, 0);
+
+  const letIn = await rolesLetIn(async (role) => {
+    const rules = supersedeRules(OLD_RULE);
+    rules[0] = staffSession({ role });
+    return (await run(commissionRules, req("POST", { body }), rules)).res.statusCode;
+  });
+  assert.deepEqual(letIn, FINANCE_ROLES);
 });
 
 const KPI_RULES = [
@@ -161,54 +181,87 @@ test("read/sales-floor totals the month's cash, deposits, held calls and booking
   const closer = await run(salesFloor, req("GET"), [staffSession({ role: "closer" })]);
   assert.equal(closer.res.statusCode, 403);
   assert.equal(closer.fake.find(/FROM call_outcomes/).length, 0);
+
+  const letIn = await rolesLetIn(async (role) => (await run(salesFloor, req("GET"), [staffSession({ role }), ...rules.slice(1)])).res.statusCode);
+  assert.deepEqual(letIn, FINANCE_ROLES, "owner, admin and sales manager only");
 });
 
-test("read/funding-rounds lists submitted, approved and funded amounts for the session's company, filtered by client and status", async () => {
+test("read/funding-rounds lists submitted, approved and funded amounts for the session's company only, filtered by client and status", async () => {
   assert.equal(ROUTES["read/funding-rounds"], fundingRounds);
-  const round = {
-    id: "f0000000-0000-4000-8000-000000000001", client_id: CLIENT_ID, round_number: 2, status: "funded",
+  const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
+  const round = (id, over) => ({
+    id, org_id: ORG_ID, client_id: CLIENT_ID, round_number: 2, status: "funded",
     product: "card_stacking", submitted_amount: "80000", approved_amount: "60000", funded_amount: "55000",
-    hold_reason: null, conditions: null, created_at: "2026-10-01T00:00:00Z",
-  };
+    hold_reason: null, conditions: null, created_at: "2026-10-01T00:00:00Z", ...over,
+  });
+  const mine = round("f0000000-0000-4000-8000-000000000001", {});
+  const books = [
+    mine,
+    round("f0000000-0000-4000-8000-000000000002", { org_id: OTHER_ORG_ID }),
+    round("f0000000-0000-4000-8000-000000000003", { client_id: OTHER_CLIENT }),
+    round("f0000000-0000-4000-8000-000000000004", { status: "submitted", funded_amount: null }),
+  ];
+  const read = [/FROM funding_rounds/, shelf(books, [
+    clause(/WHERE org_id = \$(\d+)::uuid/, (row, p, m) => row.org_id === p[m[1] - 1]),
+    clause(/\(\$(\d+)::uuid IS NULL OR client_id = \$\d+\)/, (row, p, m) => p[m[1] - 1] == null || row.client_id === p[m[1] - 1]),
+    clause(/\(\$(\d+)::text IS NULL OR status = \$\d+\)/, (row, p, m) => p[m[1] - 1] == null || row.status === p[m[1] - 1]),
+  ])];
   const { res, fake } = await run(
     fundingRounds,
     req("GET", { query: { client_id: CLIENT_ID, status: "funded" } }),
-    [staffSession({ role: "funding_advisor" }), [/FROM funding_rounds/, [round]]],
+    [staffSession({ role: "funding_advisor" }), read],
   );
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.count, 1);
+  assert.equal(res.body.count, 1, "not the other company's round, not another client's, not another status");
+  assert.equal(res.body.items[0].id, mine.id);
   assert.equal(res.body.items[0].funded_amount, "55000");
   assert.equal(res.body.items[0].approved_amount, "60000");
   assert.equal(res.body.items[0].submitted_amount, "80000");
   assert.deepEqual(fake.find(/FROM funding_rounds/)[0].params, [51, 0, CLIENT_ID, "funded", ORG_ID]);
 
+  const everyone = await run(fundingRounds, req("GET"), [staffSession({ role: "funding_advisor" }), read]);
+  assert.deepEqual(everyone.res.body.items.map((r) => r.id).sort(), books.filter((r) => r.org_id === ORG_ID).map((r) => r.id).sort());
+
   const anon = await run(fundingRounds, { method: "GET", query: {}, headers: {} }, []);
   assert.equal(anon.res.statusCode, 401);
+
+  const letIn = await rolesLetIn(async (role) => (await run(fundingRounds, req("GET"), [staffSession({ role }), read])).res.statusCode);
+  assert.deepEqual(letIn, [...STAFF_ROLES].sort(), "every staff role may read funding rounds");
 });
 
-test("read/partners shows each partner's accrued balance; staff see their company, a partner sees only their own row", async () => {
+test("read/partners shows each partner's accrued balance; staff see their company only, a partner sees only their own row", async () => {
   assert.equal(ROUTES["read/partners"], partners);
-  const row = { id: "9a000000-0000-4000-8000-000000000001", slug: "acme", name: "Acme", status: "active",
-    revenue_share_pct: "20", agreement_signed: true, balance_accrued: "1250.00", total_paid: "400.00", open_accruals: 3 };
+  const MINE = "9a000000-0000-4000-8000-000000000001";
+  const THEIRS = "9a000000-0000-4000-8000-000000000002";
+  const row = (id, org, name, balance) => ({
+    partner_id: id, org_id: org, slug: name.toLowerCase(), name, status: "active", revenue_share_pct: "20",
+    agreement_signed: true, balance_accrued: balance, total_paid: "400.00", open_accruals: 3,
+  });
+  const books = [
+    row(MINE, ORG_ID, "Acme", "1250.00"),
+    row(THEIRS, ORG_ID, "Beta", "90.00"),
+    row("9a000000-0000-4000-8000-000000000009", OTHER_ORG_ID, "Zed", "5.00"),
+  ];
+  const read = [/FROM v_partner_balance v/, (sql, p) => shelf(books, [
+    clause(/\(\$(\d+)::boolean OR v\.org_id = \$(\d+)::uuid\)/, (r, params, m) => params[m[1] - 1] === true || r.org_id === params[m[2] - 1]),
+    clause(/v\.partner_id = \$(\d+)/, (r, params, m) => r.partner_id === params[m[1] - 1]),
+  ])(sql, p).map((r) => ({ ...r, id: r.partner_id }))];
 
-  const staff = await run(partners, req("GET"), [staffSession({ role: "admin" }), [/FROM v_partner_balance v/, [row]]]);
+  const staff = await run(partners, req("GET"), [staffSession({ role: "admin" }), read]);
   assert.equal(staff.res.statusCode, 200);
+  assert.deepEqual(staff.res.body.items.map((r) => r.name), ["Acme", "Beta"], "their company's partners, not another company's");
   assert.equal(staff.res.body.items[0].balance_accrued, "1250.00");
   assert.equal(staff.res.body.items[0].revenue_share_pct, "20");
   const [staffRead] = staff.fake.find(/FROM v_partner_balance v/);
-  assert.equal(staffRead.params.at(-1), ORG_ID, "staff are pinned to their own company");
+  assert.equal(staffRead.params.at(-1), ORG_ID);
   assert.equal(staffRead.params.at(-2), false, "and are not treated as a partner");
 
-  const partnerId = "9a000000-0000-4000-8000-000000000001";
-  const own = await run(partners, req("GET"), [
-    ...accountSession({ kind: "partner", partnerId }),
-    [/FROM v_partner_balance v/, [row]],
-  ]);
+  const own = await run(partners, req("GET"), [...accountSession({ kind: "partner", partnerId: MINE }), read]);
   assert.equal(own.res.statusCode, 200);
+  assert.deepEqual(own.res.body.items.map((r) => r.name), ["Acme"], "a partner sees their own row and no other partner's");
   const [partnerRead] = own.fake.find(/FROM v_partner_balance v/);
-  assert.ok(partnerRead.params.includes(partnerId), "the partner's own id is bound into the read");
-  assert.equal(partnerRead.params.at(-1), null, "no company lookup replaces the partner's own scope");
+  assert.ok(partnerRead.params.includes(MINE), "the partner's own id is bound into the read");
 
-  const closer = await run(partners, req("GET"), [staffSession({ role: "closer" })]);
-  assert.equal(closer.res.statusCode, 403);
+  const letIn = await rolesLetIn(async (role) => (await run(partners, req("GET"), [staffSession({ role }), read])).res.statusCode);
+  assert.deepEqual(letIn, FINANCE_ROLES);
 });

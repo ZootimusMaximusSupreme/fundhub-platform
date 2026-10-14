@@ -7,8 +7,9 @@ import test from "node:test";
 import handler from "../../../../api/partner-addons.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
-  ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const PARTNER_ID = "9a000000-0000-4000-8000-000000000001";
 const LINK_ID = "11000000-0000-4000-8000-000000000001";
@@ -23,7 +24,16 @@ async function run(body, rules, { role = "owner", env = ENV } = {}) {
   return { res, fake };
 }
 
-const ownsPartner = [/FROM partners WHERE id = \$1 AND org_id = \$2/, [{ "?column?": 1 }]];
+const THEIR_PARTNER_ID = "9a000000-0000-4000-8000-0000000000ff";
+// Two partners, one in each company. The lookup keeps a row only while the SQL
+// still names both the partner id and the company.
+const ownsPartner = [/FROM partners WHERE id = \$1 AND org_id = \$2/, shelf(
+  [{ id: PARTNER_ID, org_id: ORG_ID }, { id: THEIR_PARTNER_ID, org_id: OTHER_ORG_ID }],
+  [
+    clause(/WHERE id = \$1/, (row, [id]) => row.id === id),
+    clause(/AND org_id = \$2/, (row, [, org]) => row.org_id === org),
+  ],
+)];
 
 // The INSERT answers with the row the handler's own parameters describe.
 const echoLink = [/INSERT INTO payment_links/, (sql, p) => [{
@@ -68,7 +78,8 @@ test("partner-addons buy refuses a missing unit count, an unknown add-on, a body
   await refused({ action: "buy", partner_id: PARTNER_ID, add_on: "lead-flow", units: 1, org_id: ORG_ID }, 400);
   const closed = await refused({ action: "buy", partner_id: PARTNER_ID, add_on: "lead-flow", units: 1 }, 503, {});
   assert.equal(closed.body.error, "commas_not_configured");
-  await refused({ action: "buy", partner_id: PARTNER_ID, add_on: "lead-flow", units: 1 }, 403, ENV, []);
+  const theirs = await refused({ action: "buy", partner_id: THEIR_PARTNER_ID, add_on: "lead-flow", units: 1 }, 403);
+  assert.equal(theirs.body.error, "forbidden");
 });
 
 const PAID_LINK = {
@@ -117,16 +128,40 @@ test("partner-addons activate starts the monthly add-on at the price the partner
   assert.equal(again.fake.find(/INSERT INTO subscriptions/).length, 0);
 });
 
-test("partner-addons cancel ends that one add-on at the named date and says so when there is nothing to cancel", async () => {
-  const cancelled = { id: "5b000000-0000-4000-8000-000000000001", tier: "dfy-marketing", status: "cancelled", price_cents: 249700 };
+// Four live subscriptions. Only the last one is the one cancel must end; the
+// others differ by partner, by company or by add-on. The statement keeps a row
+// only while its SQL still carries that row's condition, and the wrong rows are
+// listed FIRST, so a condition taken out of the SQL puts a wrong row on top.
+const sub = (id, over) => ({
+  id, org_id: ORG_ID, partner_id: PARTNER_ID, tier: "dfy-marketing", status: "active", price_cents: 249700,
+  effective_to: null, ...over,
+});
+const SUBSCRIPTIONS = [
+  sub("5b000000-0000-4000-8000-0000000000a1", { partner_id: THEIR_PARTNER_ID }),
+  sub("5b000000-0000-4000-8000-0000000000a2", { org_id: OTHER_ORG_ID }),
+  sub("5b000000-0000-4000-8000-0000000000a3", { tier: "creative-intelligence", price_cents: 29700 }),
+  sub("5b000000-0000-4000-8000-0000000000a4", { effective_to: "2026-09-01T00:00:00.000Z", status: "cancelled" }),
+  sub("5b000000-0000-4000-8000-0000000000a5", {}),
+];
+// The statement holds two parts (the UPDATE and a read of an already-cancelled
+// row). Only the UPDATE part decides which rows are ended, so only it is read.
+const endsRows = shelf(SUBSCRIPTIONS, [
+  clause(/org_id = \$1/, (row, p) => row.org_id === p[0]),
+  clause(/partner_id = \$2/, (row, p) => row.partner_id === p[1]),
+  clause(/effective_to IS NULL/, (row) => row.effective_to == null),
+  clause(/lower\(btrim\(tier\)\) = lower\(btrim\(\$5::text\)\)/, (row, p) => row.tier.toLowerCase() === String(p[4]).toLowerCase()),
+]);
+const cancelRead = [/WITH cancelled AS/, (sql, params) => endsRows(sql.slice(sql.indexOf("UPDATE subscriptions"), sql.indexOf("RETURNING")), params)];
+
+test("partner-addons cancel ends that one add-on of that one partner at the named date, and says so when there is nothing to cancel", async () => {
   const { res, fake } = await run(
     { action: "cancel", partner_id: PARTNER_ID, add_on: "dfy-marketing", at: "2026-10-05", ends_at: "2026-10-31" },
-    [ownsPartner, [/WITH cancelled AS/, [cancelled]]],
+    [ownsPartner, cancelRead],
   );
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.action, "cancel");
   assert.equal(res.body.add_on, "dfy-marketing");
-  assert.equal(res.body.subscription.status, "cancelled");
+  assert.equal(res.body.subscription.id, "5b000000-0000-4000-8000-0000000000a5", "this partner's live dfy-marketing add-on, not another partner's, company's or add-on");
   const [update] = fake.find(/WITH cancelled AS/);
   assert.equal(update.params[0], ORG_ID);
   assert.equal(update.params[1], PARTNER_ID);
@@ -134,13 +169,22 @@ test("partner-addons cancel ends that one add-on at the named date and says so w
   assert.equal(new Date(update.params[2]).toISOString().slice(0, 10), "2026-10-05");
   assert.equal(new Date(update.params[3]).toISOString().slice(0, 10), "2026-10-31");
 
-  const none = await run({ action: "cancel", partner_id: PARTNER_ID, add_on: "dfy-marketing" }, [ownsPartner]);
+  const none = await run({ action: "cancel", partner_id: PARTNER_ID, add_on: "lead-flow" }, [ownsPartner, cancelRead]);
   assert.equal(none.res.statusCode, 404);
   assert.match(none.res.body.error, /has no .* to cancel/);
 });
 
 test("partner-addons is for owners and admins only, and another company's partner is refused", async () => {
-  const closer = await run({ action: "cancel", partner_id: PARTNER_ID, add_on: "dfy-marketing" }, [ownsPartner], { role: "sales_manager" });
+  const closer = await run({ action: "cancel", partner_id: PARTNER_ID, add_on: "dfy-marketing" }, [ownsPartner, cancelRead], { role: "sales_manager" });
   assert.equal(closer.res.statusCode, 403);
   assert.equal(closer.fake.find(/subscriptions/).length, 0);
+
+  const letIn = await rolesLetIn(async (role) => (await run(
+    { action: "cancel", partner_id: PARTNER_ID, add_on: "dfy-marketing" }, [ownsPartner, cancelRead], { role },
+  )).res.statusCode);
+  assert.deepEqual(letIn, ["admin", "owner"]);
+
+  const theirs = await run({ action: "cancel", partner_id: THEIR_PARTNER_ID, add_on: "dfy-marketing" }, [ownsPartner, cancelRead]);
+  assert.equal(theirs.res.statusCode, 403);
+  assert.equal(theirs.fake.find(/WITH cancelled AS/).length, 0, "another company's partner is never touched");
 });

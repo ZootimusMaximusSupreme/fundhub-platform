@@ -8,10 +8,12 @@ import test, { after, before } from "node:test";
 import handler from "../../../../api/closer-deck.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
-  ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
+const FOREIGN_CLIENT = "c2000000-0000-4000-8000-000000000002";
 const LINK_ID = "11000000-0000-4000-8000-000000000001";
 const CHECKOUT_BASE = "https://pay.example.test/c/onboarding";
 const touched = ["COMMAS_CHECKOUT_BASE_URL", "FANBASIS_CHECKOUT_API_KEY", "DOCUMENT_URL_SECRET", "SLO_POST_PURCHASE_ENABLED"];
@@ -36,7 +38,14 @@ after(() => {
 function deckRules() {
   return [
     staffSession({ role: "closer" }),
-    [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ one: 1 }]],
+    // Two clients, one in each company: kept only while the SQL names both the id and the company.
+    [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, shelf(
+      [{ id: CLIENT_ID, org_id: ORG_ID }, { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID }],
+      [
+        clause(/WHERE id = \$1/, (row, [id]) => row.id === id),
+        clause(/AND org_id = \$2/, (row, [, org]) => row.org_id === org),
+      ],
+    )],
     [/FROM crs_results/, []],
     [/FROM products\s+WHERE org_id/, (sql, p) => [{ id: "ab000000-0000-4000-8000-000000000001", code: p[2] }]],
     [/INSERT INTO payment_links/, (sql, p) => [{
@@ -127,18 +136,21 @@ test("closer-deck send_soft_pull mints the fixed $32 pay link and sends the sign
   assert.equal(fake.find(/UPDATE payment_links\s+SET status = 'sent'/).length, 1);
 });
 
-test("closer-deck send_soft_pull sends nothing for a client in another company, and a setter cannot fire it", async () => {
-  const rules = deckRules();
-  rules[1] = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, []];
-  const other = await post({ action: "send_soft_pull", client_id: CLIENT_ID }, rules);
-  assert.equal(other.res.statusCode, 404);
-  assert.equal(other.fake.find(/INSERT INTO (payment_links|messages)/).length, 0);
+test("closer-deck sends nothing for another company's client, and only closer, sales manager, owner and admin may fire it", async () => {
+  for (const action of ["send_soft_pull", "send_pay_link"]) {
+    const other = await post({ action, client_id: FOREIGN_CLIENT, offer_key: "REPAIR_DFY" });
+    assert.equal(other.res.statusCode, 404, action);
+    assert.equal(other.fake.find(/INSERT INTO (payment_links|messages)/).length, 0, action);
+  }
 
-  const setter = deckRules();
-  setter[0] = staffSession({ role: "setter" });
-  const denied = await post({ action: "send_soft_pull", client_id: CLIENT_ID }, setter);
-  assert.equal(denied.res.statusCode, 403);
-  assert.equal(denied.fake.find(/INSERT INTO payment_links/).length, 0);
+  const letIn = await rolesLetIn(async (role) => {
+    const rules = deckRules();
+    rules[0] = staffSession({ role });
+    const { res, fake } = await post({ action: "send_soft_pull", client_id: CLIENT_ID }, rules);
+    if (res.statusCode === 403) assert.equal(fake.find(/INSERT INTO payment_links/).length, 0, `${role} was refused but a link was minted`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "closer", "owner", "sales_manager"]);
 });
 
 test("closer-deck refuses send_ebook: the action the catalog row names is not served", async () => {

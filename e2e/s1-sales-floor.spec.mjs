@@ -34,8 +34,24 @@ const FLOOR = {
     totals: { units: 4, sold_cents: 12800, collected_cents: 12800 },
   },
   closers: [
-    { staff_id: "s-chris", name: "Chris Stanbridge", on_shift: true, shift_elapsed_ms: 3900000, calls: 6, close_rate: 0.5, funded_rate: 0.5, cash_cents: 1800000, cash_display: "$18,000", action: "Call the two deposits that have not funded.", deposits: 2, offer_stack: null },
-    { staff_id: "s-casey", name: "Casey Reed", on_shift: false, calls: 2, close_rate: 0.25, funded_rate: null, cash_cents: 700000, cash_display: "$7,000", action: null, deposits: 1, offer_stack: null },
+    {
+      staff_id: "s-chris", name: "Chris Stanbridge", on_shift: true, shift_elapsed_ms: 3900000, calls: 6, close_rate: 0.5, funded_rate: 0.4,
+      cash_cents: 1800000, cash_display: "$18,000", action: "Call the two deposits that have not funded.", deposits: 2,
+      offer_stack: {
+        available: true,
+        items: [{ code: "REPAIR_DFY", name: "Repair, done-for-you", units: 1, sold_cents: 120000, collected_cents: 90000 }],
+        totals: { units: 1, sold_cents: 120000, collected_cents: 90000 },
+      },
+    },
+    {
+      staff_id: "s-casey", name: "Casey Reed", on_shift: false, calls: 2, close_rate: 0.25, funded_rate: null,
+      cash_cents: 700000, cash_display: "$7,000", action: null, deposits: 1,
+      offer_stack: {
+        available: true,
+        items: [{ code: "FUNDING_DFY", name: "Funding, done-for-you", units: 2, sold_cents: 640000, collected_cents: 310000 }],
+        totals: { units: 2, sold_cents: 640000, collected_cents: 310000 },
+      },
+    },
   ],
   beliefs: { beliefs: [], sources: [], period: {}, prior: {} },
   compliance: { available: false, reason: "Call recording flags are not scored yet.", items: [] },
@@ -90,11 +106,15 @@ test.describe("Sales floor: the roster, the offer stack and the cold deals", () 
     await expect(rows.nth(0)).toContainText("Chris Stanbridge");
     await expect(rows.nth(0)).toContainText("On shift · 1h 5m");
     await expect(rows.nth(0).locator(".c2")).toHaveText("6");
+    await expect(rows.nth(0).locator(".num").nth(1)).toHaveText("50%");
+    await expect(rows.nth(0).locator(".c4")).toHaveText("40%");
     await expect(rows.nth(0).locator(".c5")).toHaveText("$18,000");
     await expect(rows.nth(0).locator(".act")).toHaveText("Call the two deposits that have not funded.");
     await expect(rows.nth(1)).toContainText("Casey Reed");
     await expect(rows.nth(1)).toContainText("Off shift");
+    await expect(rows.nth(1).locator(".num").nth(1)).toHaveText("25%");
     await expect(rows.nth(1).locator(".c4")).toHaveText("—");
+    await expect(rows.nth(1).locator(".c5")).toHaveText("$7,000");
     await expect(rows.nth(1).locator(".act")).toHaveText("Nothing assigned");
   });
 
@@ -113,6 +133,23 @@ test.describe("Sales floor: the roster, the offer stack and the cold deals", () 
     await expect(stack).toContainText("These sales have no call outcome tied to a closer.");
     await expect(stack.locator(".ostack").nth(1)).toContainText("Soft pull");
     await expect(stack.locator(".ostack").nth(1)).toContainText("$128");
+  });
+
+  test("the offer stack is also shown per closer: picking a closer shows that closer's own offers", async ({ page }) => {
+    await open(page);
+    const focus = page.locator("#fh-closer-focus .focusbody");
+    const mine = focus.locator(".ostack .rrow");
+    await expect(focus).toContainText("Chris Stanbridge");
+    await expect(mine.nth(0)).toContainText("Repair, done-for-you");
+    await expect(mine.nth(0)).toContainText("$1,200");
+    await expect(mine.nth(0)).toContainText("$900");
+    await expect(mine.nth(1)).toContainText("All offers");
+    await page.locator("#fh-closer-next").click();
+    await expect(focus).toContainText("Casey Reed");
+    await expect(mine.nth(0)).toContainText("Funding, done-for-you");
+    await expect(mine.nth(0)).toContainText("$6,400");
+    await expect(mine.nth(0)).toContainText("$3,100");
+    await expect(focus).not.toContainText("Repair, done-for-you");
   });
 
   test("Deals going cold names each quiet deposit and how many days quiet", async ({ page }) => {

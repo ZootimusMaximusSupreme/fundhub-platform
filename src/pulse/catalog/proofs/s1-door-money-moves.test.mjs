@@ -11,8 +11,9 @@ import repairEnroll from "../../../../api/repair/enroll.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { encryptToken } from "../../../adplatforms/tokens.mjs";
 import {
-  ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, accountSession, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const ROUND_ID = "f0000000-0000-4000-8000-000000000001";
@@ -89,10 +90,20 @@ test("pipeline-cards: a Funded move with a bank yes that has no amount is refuse
 // ── repair/enroll ──────────────────────────────────────────────────────────
 const PROGRAM_ID = "7e000000-0000-4000-8000-000000000001";
 
+const FOREIGN_CLIENT = "c2000000-0000-4000-8000-000000000002";
+// Two clients, one in each company: kept only while the SQL names both the id and the company.
+const CLIENTS = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, shelf(
+  [{ id: CLIENT_ID, org_id: ORG_ID }, { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID }],
+  [
+    clause(/WHERE id = \$1/, (row, [id]) => row.id === id),
+    clause(/AND org_id = \$2/, (row, [, org]) => row.org_id === org),
+  ],
+)];
+
 function enrollRules() {
   return [
     staffSession({ role: "closer" }),
-    [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ one: 1 }]],
+    CLIENTS,
     [/INSERT INTO repair_programs/, (sql, p) => [{
       id: PROGRAM_ID, org_id: p[0], client_id: p[1], program: p[2], rounds_cap: p[3],
       price_total: String(p[4]), amount_paid: String(p[5]), status: "active",
@@ -101,6 +112,7 @@ function enrollRules() {
     [/SELECT ps\.id AS stage_id, ps\.pipeline_id FROM pipeline_stages/, [{ stage_id: "5e000000-0000-4000-8000-0000000000a1", pipeline_id: "9e000000-0000-4000-8000-000000000002" }]],
     [/FROM message_templates/, [{ body: "Welcome", subject: "Welcome", compliance_passed: true }]],
     [/SELECT first_name, last_name, email, phone, custom_fields FROM clients/, [{ first_name: "Ana", last_name: "Lee", email: "ana@example.test", phone: null, custom_fields: {} }]],
+    [/INSERT INTO conversations/, [{ id: "c0c00000-0000-4000-8000-000000000001" }]],
     [/INSERT INTO messages/, [{ id: "3e000000-0000-4000-8000-000000000001" }]],
     [/INSERT INTO events/, [{ id: "e0000000-0000-4000-8000-000000000002" }]],
   ];
@@ -138,9 +150,9 @@ test("repair/enroll records price and amount paid, grants the letter pack, fires
   assert.equal(email.params[1], CLIENT_ID);
 });
 
-test("repair/enroll refuses a setter, a bad program, a bad price and a client from another company; nothing is written", async () => {
-  const refused = async (body, rules, status, role = "closer") => {
-    const base = rules ?? enrollRules();
+test("repair/enroll refuses a bad program, a bad price and another company's client, and lets only owner, admin, closer and inquiry specialist in; nothing is written", async () => {
+  const refused = async (body, status, role = "closer") => {
+    const base = enrollRules();
     base[0] = staffSession({ role });
     const { res, fake } = await run(repairEnroll, req("POST", { body }), base);
     assert.equal(res.statusCode, status, JSON.stringify(body));
@@ -148,16 +160,23 @@ test("repair/enroll refuses a setter, a bad program, a bad price and a client fr
     return res;
   };
   const ok = { client_id: CLIENT_ID, program: "full", price_total: 1000, amount_paid: 0 };
-  await refused(ok, null, 403, "setter");
-  assert.equal((await refused({ ...ok, program: "gold" }, null, 400)).body.error, "invalid_program");
-  assert.equal((await refused({ ...ok, price_total: -5 }, null, 400)).body.error, "invalid_price");
-  const other = enrollRules();
-  other[1] = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, []];
-  assert.equal((await refused(ok, other, 404)).body.error, "not_found");
+  assert.equal((await refused({ ...ok, program: "gold" }, 400)).body.error, "invalid_program");
+  assert.equal((await refused({ ...ok, price_total: -5 }, 400)).body.error, "invalid_price");
+  assert.equal((await refused({ ...ok, client_id: FOREIGN_CLIENT }, 404)).body.error, "not_found");
+
+  const letIn = await rolesLetIn(async (role) => {
+    const rules = enrollRules();
+    rules[0] = staffSession({ role });
+    const { res, fake } = await run(repairEnroll, req("POST", { body: ok }), rules);
+    if (res.statusCode === 403) assert.equal(fake.find(/INSERT INTO repair_programs/).length, 0, `${role} was refused but a program was written`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "closer", "inquiry_specialist", "owner"]);
 });
 
 // ── campaigns/write resume_ad: turn ONE ad on, only the named staff ids ───
 const AD_ID = "ad000000-0000-4000-8000-000000000001";
+const FOREIGN_AD_ID = "ad000000-0000-4000-8000-0000000000ff";
 const PARTNER_ID = "9a000000-0000-4000-8000-000000000001";
 const META_AD = "120210000000000777";
 const ENV_KEY = "AD_TOKEN_ENC_KEY";
@@ -176,11 +195,22 @@ after(() => {
 function adRules(over = {}) {
   return [
     staffSession({ role: "owner" }),
-    [/FROM ads a\s+JOIN ad_platform_connections conn/, (sql, p) => (p[0] === AD_ID && p[1] === ORG_ID ? [{
-      id: AD_ID, org_id: ORG_ID, partner_id: PARTNER_ID, external_id: META_AD, status: "PAUSED", name: "Hook 7",
-      fundhub_ad_number: 7, connection_id: "c0000000-0000-4000-8000-0000000000c1", platform: "meta",
-      conn_partner_id: PARTNER_ID, encrypted_access_token: encrypted, external_ad_account_id: "act_100200300", ...over,
-    }] : [])],
+    // Our ad and another company's ad. Kept only while the SQL names the id and the company.
+    [/FROM ads a\s+JOIN ad_platform_connections conn/, (sql, p) => shelf([
+      {
+        id: AD_ID, org_id: ORG_ID, partner_id: PARTNER_ID, external_id: META_AD, status: "PAUSED", name: "Hook 7",
+        fundhub_ad_number: 7, connection_id: "c0000000-0000-4000-8000-0000000000c1", platform: "meta",
+        conn_partner_id: PARTNER_ID, encrypted_access_token: encrypted, external_ad_account_id: "act_100200300", ...over,
+      },
+      {
+        id: FOREIGN_AD_ID, org_id: OTHER_ORG_ID, partner_id: PARTNER_ID, external_id: "120210000000000888", status: "PAUSED",
+        name: "Hook 8", fundhub_ad_number: 8, connection_id: "c0000000-0000-4000-8000-0000000000c2", platform: "meta",
+        conn_partner_id: PARTNER_ID, encrypted_access_token: encrypted, external_ad_account_id: "act_100200300",
+      },
+    ], [
+      clause(/WHERE a\.id = \$1/, (row, [id]) => row.id === id),
+      clause(/AND a\.org_id = \$2/, (row, [, org]) => row.org_id === org),
+    ])(sql, p)],
     [/INSERT INTO action_log/, [{ id: "a1000000-0000-4000-8000-000000000001" }]],
   ];
 }
@@ -213,6 +243,12 @@ test("campaigns/write resume_ad turns exactly one ad ON at Meta, logs first, and
   const rowIdx = fake.calls.findIndex((c) => /UPDATE ads SET status = 'ACTIVE'/.test(c.sql));
   assert.ok(logIdx >= 0 && rowIdx > logIdx, "logged before our ad row says ACTIVE");
   assert.deepEqual(fake.calls[rowIdx].params, [AD_ID]);
+  const [logged] = fake.find(/INSERT INTO action_log/);
+  assert.equal(logged.params[2], "human", "a person's press, not an agent's");
+  assert.equal(logged.params[5], "ad");
+  assert.equal(logged.params[6], AD_ID, "the log names our ad row, not the Meta id");
+  assert.equal(JSON.parse(logged.params[10]).status, "PAUSED", "the log keeps what it was before");
+  assert.equal(JSON.parse(logged.params[11]).status, "ACTIVE", "and what it became");
   assert.equal(fake.find(/UPDATE campaigns|UPDATE ad_sets/).length, 0, "a campaign or ad set is never touched");
 });
 
@@ -223,6 +259,39 @@ test("campaigns/write resume_ad refuses a staff id that is not on the list, a Me
   assert.equal(first.res.statusCode, 403);
   assert.equal(first.res.body.message, "Only Chris can turn ads on.");
   assert.equal(notListed.calls.length, 0);
+
+  // Lock 3 again, from the other side: the list names someone else, so this staff id is not on it.
+  const elsewhere = metaRecorder();
+  const fourth = await run(campaignsWrite, req("POST", { body: { action: "resume_ad", ad_id: AD_ID } }), adRules(),
+    { env: { MARKETING_AD_SWITCH_STAFF_IDS: "5a000000-0000-4000-8000-0000000000ee" }, fetch: elsewhere.fetch });
+  assert.equal(fourth.res.statusCode, 403);
+  assert.equal(elsewhere.calls.length, 0);
+
+  // Lock 2: a staff id that is on the list still needs an owner or admin role.
+  const lettingIn = await rolesLetIn(async (role) => {
+    const meta = metaRecorder();
+    const rules = adRules();
+    rules[0] = staffSession({ role });
+    const { res } = await run(campaignsWrite, req("POST", { body: { action: "resume_ad", ad_id: AD_ID } }), rules,
+      { env: SWITCH_ENV, fetch: meta.fetch });
+    if (res.statusCode === 403) assert.equal(meta.calls.length, 0, `${role} was refused but Meta was called`);
+    return res.statusCode;
+  });
+  assert.deepEqual(lettingIn, ["admin", "owner"]);
+
+  // Lock 1: a client login is not a staff login, whatever list it is on.
+  const clientMeta = metaRecorder();
+  const asClient = await run(campaignsWrite, req("POST", { body: { action: "resume_ad", ad_id: AD_ID } }),
+    [...accountSession({ kind: "client", clientId: CLIENT_ID }), ...adRules().slice(1)], { env: SWITCH_ENV, fetch: clientMeta.fetch });
+  assert.ok([401, 403].includes(asClient.res.statusCode), `a client login got ${asClient.res.statusCode}`);
+  assert.equal(clientMeta.calls.length, 0);
+
+  // Another company's ad is not ours: 404, and Meta is not called.
+  const foreign = metaRecorder();
+  const fifth = await run(campaignsWrite, req("POST", { body: { action: "resume_ad", ad_id: FOREIGN_AD_ID } }), adRules(),
+    { env: SWITCH_ENV, fetch: foreign.fetch });
+  assert.equal(fifth.res.statusCode, 404);
+  assert.equal(foreign.calls.length, 0);
 
   const metaId = metaRecorder();
   const second = await run(campaignsWrite, req("POST", { body: { action: "resume_ad", ad_id: META_AD } }), adRules(),

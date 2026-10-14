@@ -9,8 +9,9 @@ import test from "node:test";
 import handler from "../../../../api/payment-links.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
-  ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const BASE = "https://pay.example.test/c/onboarding";
@@ -24,36 +25,57 @@ async function run(request, rules, { env = ENV } = {}) {
   return { res, fake };
 }
 
-const owns = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ one: 1 }]];
+const FOREIGN_CLIENT = "c2000000-0000-4000-8000-000000000002";
+// Two clients, one in each company: kept only while the SQL names both the id and the company.
+const owns = [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, shelf(
+  [{ id: CLIENT_ID, org_id: ORG_ID }, { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID }],
+  [
+    clause(/WHERE id = \$1/, (row, [id]) => row.id === id),
+    clause(/AND org_id = \$2/, (row, [, org]) => row.org_id === org),
+  ],
+)];
 const echoLink = [/INSERT INTO payment_links/, (sql, p) => [{
   id: "11000000-0000-4000-8000-000000000001", org_id: p[0], client_id: p[1], purpose: p[2], description: p[3],
   amount_cents: String(p[4]), currency: p[5], link_ref: p[6], checkout_url: p[7], status: "created", paid_amount_cents: null,
 }]];
 
-test("payment-links GET lists this client's links for the session's company, newest first, with the amount spelled out", async () => {
+const link = (id, over) => ({ id, org_id: ORG_ID, client_id: CLIENT_ID, purpose: "deposit", amount_cents: "250000", status: "sent", paid_amount_cents: null, checkout_url: `${BASE}?ref=${id}`, ...over });
+const linksRead = [/SELECT \* FROM payment_links WHERE org_id = \$1 AND client_id = \$2/, shelf([
+  link("a", {}),
+  link("b", { purpose: "diagnostic", amount_cents: "3200", status: "paid", paid_amount_cents: "3200" }),
+  link("x", { org_id: OTHER_ORG_ID, amount_cents: "999999" }),
+  link("y", { client_id: FOREIGN_CLIENT, amount_cents: "888888" }),
+], [
+  clause(/WHERE org_id = \$1/, (row, [org]) => row.org_id === org),
+  clause(/AND client_id = \$2/, (row, p) => row.client_id === p[1]),
+])];
+
+test("payment-links GET lists this client's links for the session's company, with the amount spelled out", async () => {
   assert.equal(ROUTES["payment-links"], handler);
   const { res, fake } = await run(req("GET", { query: { client_id: CLIENT_ID } }), [
-    staffSession({ role: "sales_manager" }), owns,
-    [/SELECT \* FROM payment_links WHERE org_id = \$1 AND client_id = \$2/, [
-      { id: "a", purpose: "deposit", amount_cents: "250000", status: "sent", paid_amount_cents: null, checkout_url: `${BASE}?ref=a` },
-      { id: "b", purpose: "diagnostic", amount_cents: "3200", status: "paid", paid_amount_cents: "3200", checkout_url: `${BASE}?ref=b` },
-    ]],
+    staffSession({ role: "sales_manager" }), owns, linksRead,
   ]);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body.items.map((l) => [l.id, l.amount_display, l.paid_amount_display]), [["a", "2500.00", null], ["b", "32.00", "32.00"]]);
+  assert.deepEqual(res.body.items.map((l) => [l.id, l.amount_display, l.paid_amount_display]), [["a", "2500.00", null], ["b", "32.00", "32.00"]],
+    "not another company's link, not another client's");
   assert.deepEqual(fake.find(/SELECT \* FROM payment_links/)[0].params, [ORG_ID, CLIENT_ID]);
 });
 
-test("payment-links GET refuses a client from another company, a bad id, a closer and a setter; no link is read", async () => {
+test("payment-links GET refuses another company's client and a bad id, and lets only owner, admin and sales manager read; no link is read", async () => {
   const refused = async (query, rules, status) => {
     const { res, fake } = await run(req("GET", { query }), rules);
     assert.equal(res.statusCode, status, JSON.stringify(query));
     assert.equal(fake.find(/FROM payment_links/).length, 0);
   };
-  await refused({ client_id: CLIENT_ID }, [staffSession(), [/SELECT 1 FROM clients/, []]], 403);
+  await refused({ client_id: FOREIGN_CLIENT }, [staffSession(), owns, linksRead], 403);
   await refused({ client_id: "nope" }, [staffSession()], 400);
-  await refused({ client_id: CLIENT_ID }, [staffSession({ role: "closer" }), owns], 403);
-  await refused({ client_id: CLIENT_ID }, [staffSession({ role: "setter" }), owns], 403);
+
+  const letIn = await rolesLetIn(async (role) => {
+    const { res, fake } = await run(req("GET", { query: { client_id: CLIENT_ID } }), [staffSession({ role }), owns, linksRead]);
+    if (res.statusCode === 403) assert.equal(fake.find(/FROM payment_links/).length, 0, `${role} was refused but links were read`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "owner", "sales_manager"], "a closer may create a link but may not list them");
 });
 
 test("payment-links POST create turns dollars into cents once and mints a hosted checkout link filed under the session's company", async () => {
@@ -84,9 +106,16 @@ test("payment-links POST create refuses a missing amount, a body org, another co
   const rules = [staffSession(), owns, echoLink];
   assert.match((await refused({ ...base, price: undefined }, rules, 400)).body.error, /an amount is required/);
   await refused({ ...base, org_id: ORG_ID }, rules, 400);
-  await refused(base, [staffSession(), [/SELECT 1 FROM clients/, []], echoLink], 403);
+  await refused({ ...base, client_id: FOREIGN_CLIENT }, rules, 403);
   const closed = await refused(base, rules, 503, {});
   assert.equal(closed.body.error, "commas_not_configured");
+
+  const letIn = await rolesLetIn(async (role) => {
+    const { res, fake } = await run(req("POST", { body: base }), [staffSession({ role }), owns, echoLink]);
+    if (res.statusCode === 403) assert.equal(fake.find(/INSERT INTO payment_links/).length, 0, `${role} was refused but a link was minted`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "closer", "owner", "sales_manager"], "the closer may ask for money; a setter or an advisor may not");
 });
 
 test("payment-links POST create purpose=invoice writes a DRAFT invoice row for the amount and mints no pay link", async () => {

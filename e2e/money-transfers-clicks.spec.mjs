@@ -48,7 +48,7 @@ function data(over = {}) {
   };
 }
 
-async function open(page, { query = "", role = "client", postAnswer, after } = {}) {
+async function open(page, { query = "", role = "client", postAnswer, after, fixture } = {}) {
   const posts = [];
   let gets = 0;
   await withSession(page, { staff: { role } });
@@ -66,7 +66,7 @@ async function open(page, { query = "", role = "client", postAnswer, after } = {
           return out;
         }
         gets += 1;
-        return gets > 1 && after ? after : data();
+        return gets > 1 && after ? after : (fixture || data());
       }
     }
   });
@@ -95,6 +95,48 @@ test.describe("Transfers: the client's yes", () => {
     await expect(c.locator('select[name="from_account_id"]')).toBeDisabled();
     await expect(c.locator('button[type="submit"]')).toHaveText("Yes, move $2,000.00");
     await expect(c.locator('[data-act="review"]')).toBeHidden();
+  });
+
+  test("From picker: with one account to send from it is fixed text, not a choice, and Yes sends that account", async ({ page }) => {
+    const oneAccount = data({ accounts: [
+      { id: "chk1", label: "Business Checking ••2202", available_balance_cents: 500000 },
+      { id: "sav1", label: "Savings ••7781", available_balance_cents: 1200000 }
+    ] });
+    const { posts } = await open(page, {
+      fixture: oneAccount,
+      postAnswer: () => ({ ok: true, transfer: { status: "approved", scheduled_for: "2026-10-12" } })
+    });
+    const c = card(page, "p1");
+    await expect(c.locator('select[name="from_account_id"]')).toHaveCount(0);
+    await expect(c.locator(".tx-from")).toHaveText("From Business Checking ••2202 · $5,000.00 available");
+    await expect(c.locator('input[type="hidden"][name="from_account_id"]')).toHaveValue("chk1");
+    await c.locator('[data-act="review"]').click();
+    await expect(c.locator('[data-role="sentence"]')).toHaveText("Move $2,000.00 from Business Checking ••2202 to Savings ••7781 on Oct 12, 2026?");
+    await c.locator('button[type="submit"]').click();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0].from_account_id).toBe("chk1");
+  });
+
+  test("Stop this move is offered only while the move has not reached the bank", async ({ page }) => {
+    const reached = {
+      id: "p4", amount_cents: 45000, title: "Rent reserve", to_kind: "bank_account", created_at: "2026-10-05T15:00:00Z",
+      transfer: {
+        status: "settled", debit_status: "settled", credit_status: "settled", date: "2026-10-05",
+        from_label: "Business Checking ••2202", to_label: "Savings ••7781", can_cancel: false,
+        approved_by: "client", approved_at: "2026-10-05T15:00:00Z", events: []
+      }
+    };
+    await open(page, { fixture: data({ history: [...data().history, reached] }) });
+    await expect(page.locator('tr[data-id="p3"] [data-act="cancel"]')).toHaveText("Stop this move");
+    await expect(page.locator('tr[data-id="p4"]')).toContainText("$450.00");
+    await expect(page.locator('tr[data-id="p4"] [data-act="cancel"]')).toHaveCount(0);
+    await expect(page.locator('tr[data-id="p4"]')).not.toContainText("Stop this move");
+  });
+
+  test("a client never sees the staff Set up this move form", async ({ page }) => {
+    await open(page);
+    await expect(page.locator('form[data-form="propose"]')).toHaveCount(0);
+    await expect(page.locator(".staff")).toHaveCount(0);
   });
 
   test("Go back hides the sentence and unlocks the picker", async ({ page }) => {
@@ -190,6 +232,9 @@ test.describe("Transfers: staff on a client's file", () => {
     const form = page.locator('form[data-form="propose"]');
     await expect(form.locator('select[name="from"]')).toHaveValue("chk1");
     await expect(form.locator('select[name="to"]')).toHaveValue("sav1");
+    // Suggested from and Date are moved off what the form opens on, so a box the page ignores shows.
+    await form.locator('select[name="from"]').selectOption("mm1");
+    await form.locator('input[name="due_on"]').fill("2026-10-15");
     await form.locator('input[name="amount"]').fill("abc");
     await form.locator('input[name="title"]').fill("Pay the setup fee");
     await form.locator('button[type="submit"]').click();
@@ -201,8 +246,19 @@ test.describe("Transfers: staff on a client's file", () => {
     await form.locator('button[type="submit"]').click();
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0]).toEqual({
-      action: "propose", to_kind: "fundhub", to_account_id: null, suggested_from_account_id: "chk1",
-      amount_cents: 150050, due_on: "2026-10-10", title: "Pay the setup fee", client_id: CLIENT
+      action: "propose", to_kind: "fundhub", to_account_id: null, suggested_from_account_id: "mm1",
+      amount_cents: 150050, due_on: "2026-10-15", title: "Pay the setup fee", client_id: CLIENT
+    });
+
+    // A move to one of the client's own accounts names that account (To left on the account it opens on).
+    await expect(form.locator('input[name="amount"]')).toHaveValue("");
+    await form.locator('input[name="amount"]').fill("250");
+    await form.locator('input[name="title"]').fill("Savings top-up");
+    await form.locator('button[type="submit"]').click();
+    await expect.poll(() => posts.length).toBe(2);
+    expect(posts[1]).toEqual({
+      action: "propose", to_kind: "bank_account", to_account_id: "sav1", suggested_from_account_id: "chk1",
+      amount_cents: 25000, due_on: "2026-10-10", title: "Savings top-up", client_id: CLIENT
     });
   });
 

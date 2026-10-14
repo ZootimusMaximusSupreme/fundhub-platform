@@ -21,7 +21,7 @@ function catalogue(slug, over = {}) {
   };
 }
 
-async function open(page, url, slug, { answer, catalogueOver } = {}) {
+async function open(page, url, slug, { answer, catalogueOver, gate } = {}) {
   const posts = [];
   await page.route("https://pay.example.test/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<title>pay</title>" }));
   await page.route("**/api/public/funnel-checkout", async (route) => {
@@ -29,6 +29,7 @@ async function open(page, url, slug, { answer, catalogueOver } = {}) {
       posts.push(route.request().postDataJSON());
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(answer ?? { ok: true, checkoutUrl: CHECKOUT }) });
     }
+    if (gate) await gate;
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(catalogue(slug, catalogueOver)) });
   });
   await page.goto(url);
@@ -38,9 +39,13 @@ async function open(page, url, slug, { answer, catalogueOver } = {}) {
 for (const [name, path, slug, box] of PAGES) {
   test.describe(`Buy form on ${name}`, () => {
     test("the button stays off until the price is read, then submits name and email and goes to the checkout it is given", async ({ page }) => {
-      const posts = await open(page, `${path}?track=ad-7&a1=DKOWAL`, slug);
+      let release;
+      const gate = new Promise((resolve) => { release = resolve; });
+      const posts = await open(page, `${path}?track=ad-7&a1=DKOWAL`, slug, { gate });
       const form = page.locator(`form[data-checkout="${slug}"]`);
       const button = form.locator("button[type=submit]");
+      await expect(button).toBeDisabled();
+      release();
       await expect(button).toBeEnabled();
       await page.locator(box.first).fill("Pat");
       await page.locator(box.last).fill("Partner");

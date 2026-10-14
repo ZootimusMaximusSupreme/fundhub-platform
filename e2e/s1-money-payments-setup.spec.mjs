@@ -22,12 +22,12 @@ async function answerExternal(page) {
 
 // ── payments ───────────────────────────────────────────────────────────────
 const PAGES = [
-  ["the standalone page", `/app/money-payments.html?client_id=${CLIENT}`],
-  ["the FinanceOS Payments tab", `/app/financeos.html?client_id=${CLIENT}#payments`],
+  ["the standalone page", `/app/money-payments.html?client_id=${CLIENT}`, "/app/money-payments.html"],
+  ["the FinanceOS Payments tab", `/app/financeos.html?client_id=${CLIENT}#payments`, "/app/financeos.html#payments"],
 ];
 
-async function openPayments(page, url, { settleAnswer = { ok: true } } = {}) {
-  await withSession(page, { staff: { role: "owner" } });
+async function openPayments(page, url, { settleAnswer = { ok: true }, client = false } = {}) {
+  await withSession(page, { staff: { role: client ? "client" : "owner" } });
   const posts = [];
   await page.route("**/api/**", (route) => json(route, { ok: true }));
   await page.route("**/api/money/overview**", (route) => json(route, { ok: true, client: { name: "Sample Client" }, sandbox: false }));
@@ -39,23 +39,36 @@ async function openPayments(page, url, { settleAnswer = { ok: true } } = {}) {
     return json(route, PAYMENTS);
   });
   await page.goto(url);
-  await expect(page.locator(".fh-payments .addplan")).toBeVisible();
+  // A client's page has no staff form to wait for: wait for the plan card.
+  await expect(page.locator(client ? ".fh-payments .plan" : ".fh-payments .addplan").first()).toBeVisible();
   return posts;
 }
 
-for (const [where, url] of PAGES) {
+for (const [where, url, clientUrl] of PAGES) {
   test.describe(`Payments, staff controls on ${where}`, () => {
+    test("a client's own page shows the plan and none of the staff controls", async ({ page }) => {
+      const posts = await openPayments(page, clientUrl, { client: true });
+      await expect(page.locator(`.fh-payments .plan[data-plan="${PLAN.id}"]`)).toBeVisible();
+      await expect(page.locator(".fh-payments .addplan")).toHaveCount(0);
+      await expect(page.locator('.fh-payments form[data-form="add"]')).toHaveCount(0);
+      await expect(page.locator('.fh-payments form[data-form="record"]')).toHaveCount(0);
+      await expect(page.locator('.fh-payments [data-act="settle"]')).toHaveCount(0);
+      await expect(page.locator(".fh-payments .staff")).toHaveCount(0);
+      expect(posts).toEqual([]);
+    });
+
     test("Add a payment plan sends the kind, who it is owed to, the name and the dated schedule in cents", async ({ page }) => {
       const posts = await openPayments(page, url);
       const form = page.locator('.fh-payments form[data-form="add"]');
       await form.locator('select[name="kind"]').selectOption("bnpl");
-      await form.locator('input[name="owed_to"]').fill("Fundhub LLC");
+      // The box opens on "Fundhub LLC": type something else so a box the page ignores shows.
+      await form.locator('input[name="owed_to"]').fill("Clarity Partners Inc");
       await form.locator('input[name="label"]').fill("Funding program balance");
       await form.locator('textarea[name="schedule"]').fill("2026-11-01, 500.00\n2026-12-01, 250.50");
       await form.locator('button[type="submit"]').click();
       await expect.poll(() => posts.length).toBe(1);
       expect(posts[0]).toEqual({
-        action: "add_plan", kind: "bnpl", owed_to: "Fundhub LLC", label: "Funding program balance",
+        action: "add_plan", kind: "bnpl", owed_to: "Clarity Partners Inc", label: "Funding program balance",
         installments: [{ due_on: "2026-11-01", amount_cents: 50000 }, { due_on: "2026-12-01", amount_cents: 25050 }],
         client_id: CLIENT,
       });

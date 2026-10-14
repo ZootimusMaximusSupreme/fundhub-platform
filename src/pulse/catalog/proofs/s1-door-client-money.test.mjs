@@ -9,8 +9,9 @@ import paidServices from "../../../../api/paid-services.mjs";
 import optimize from "../../../../api/public/optimize.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
-  ORG_ID, accountSession, fakeDb, makeRes, runWithSharedDb, staffSession,
+  ORG_ID, OTHER_ORG_ID, accountSession, fakeDb, makeRes, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { STAFF_ROLES, clause, rolesLetIn, shelf } from "./s1-proof-kit.mjs";
 
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const ACCOUNT_ID = "ac000000-0000-4000-8000-000000000001";
@@ -75,16 +76,27 @@ test("affiliates/refer is idempotent, writes no upline for a stranger, and refus
   assert.equal(noUpline.fake.find(/INSERT INTO affiliates/)[0].params[2], null);
   assert.equal(noUpline.fake.find(/UPDATE affiliates\s+SET tier_level/).length, 0);
 
-  const staff = await run(affiliatesRefer, asClient(), [staffSession({ role: "owner" })], { env: {} });
-  assert.equal(staff.res.statusCode, 403, "staff cannot become a light affiliate here");
-  assert.equal(staff.fake.find(/INSERT INTO affiliates/).length, 0);
+  for (const role of STAFF_ROLES) {
+    const staff = await run(affiliatesRefer, asClient(), [staffSession({ role })], { env: {} });
+    assert.equal(staff.res.statusCode, 403, `${role} cannot become a light affiliate here`);
+    assert.equal(staff.fake.find(/INSERT INTO affiliates/).length, 0, role);
+  }
 });
 
 // ── paid-services: the "do it for me" dispute round ──────────────────────
-function roundRules({ onPath = true, history = null } = {}) {
+const FOREIGN_CLIENT = "c2000000-0000-4000-8000-000000000002";
+
+function roundRules({ onPath = true, history = null, session = accountSession({ kind: "client", clientId: CLIENT_ID }) } = {}) {
   return [
-    ...accountSession({ kind: "client", clientId: CLIENT_ID }),
-    [/SELECT outcome_tier FROM clients/, [{ outcome_tier: "repair" }]],
+    ...session,
+    // Two clients, one in each company: kept only while the SQL names both the id and the company.
+    [/SELECT outcome_tier FROM clients/, shelf(
+      [{ id: CLIENT_ID, org_id: ORG_ID, outcome_tier: "repair" }, { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, outcome_tier: "repair" }],
+      [
+        clause(/WHERE id = \$1/, (row, [id]) => row.id === id),
+        clause(/AND org_id = \$2/, (row, [, org]) => row.org_id === org),
+      ],
+    )],
     [/FROM v_client_entitlements/, onPath ? [{ one: 1 }] : []],
     [/SELECT result\s+FROM crs_results/, history ? [{ result: history }] : []],
     [/SELECT COALESCE\(MAX\(round_no\), 0\) \+ 1 AS next/, [{ next: 1 }]],
@@ -127,6 +139,29 @@ test("paid-services POST prices the round, records the ask once and returns a ho
   assert.equal(minted.length, 1);
   assert.equal(minted[0].amountCents, total, "the checkout is minted for exactly the stored total");
   assert.equal(minted[0].orgId, ORG_ID);
+});
+
+test("paid-services lets staff name a client in their own company and no other, and every staff role may", async () => {
+  const mintFn = async () => ({ ok: true, checkoutUrl: "https://pay.example.test/c/round-1" });
+  const asStaff = (role) => roundRules({ session: [staffSession({ role })] });
+  const naming = (client_id) => asClient({ client_id, creditor_letter: true });
+
+  const own = await run(paidServices, naming(CLIENT_ID), asStaff("closer"), { mintFn, env: {} });
+  assert.equal(own.res.statusCode, 201, JSON.stringify(own.res.body));
+  assert.equal(own.res.body.created, true);
+  assert.equal(own.fake.find(/INSERT INTO paid_service_requests/)[0].params[4], "staff");
+
+  const theirs = await run(paidServices, naming(FOREIGN_CLIENT), asStaff("closer"), { mintFn, env: {} });
+  assert.equal(theirs.res.statusCode, 404);
+  assert.equal(theirs.res.body.error, "client_not_found");
+  assert.equal(theirs.fake.find(/INSERT INTO paid_service_requests/).length, 0);
+
+  const nobody = await run(paidServices, asClient({}), asStaff("closer"), { mintFn, env: {} });
+  assert.equal(nobody.res.statusCode, 400);
+  assert.equal(nobody.res.body.error, "client_id_required");
+
+  const letIn = await rolesLetIn(async (role) => (await run(paidServices, naming(CLIENT_ID), asStaff(role), { mintFn, env: {} })).res.statusCode);
+  assert.deepEqual(letIn, [...STAFF_ROLES].sort());
 });
 
 test("paid-services refuses a client off the offer path, one naming another client, and a client with nothing to dispute; nothing is recorded", async () => {

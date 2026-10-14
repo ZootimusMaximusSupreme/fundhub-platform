@@ -10,6 +10,7 @@ import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import {
   ORG_ID, STAFF_ID, fakeDb, makeRes, req, runWithSharedDb, staffSession,
 } from "../../../testing/handler-harness.mjs";
+import { rolesLetIn } from "./s1-proof-kit.mjs";
 
 const PARTNER_ID = "9a000000-0000-4000-8000-000000000001";
 const TRIAL_ID = "7a000000-0000-4000-8000-000000000001";
@@ -73,17 +74,20 @@ test("trials/provision stands up the partner, affiliate, login, draft brand and 
   assert.equal(fake.count("ROLLBACK"), 0);
 });
 
-test("trials/provision refuses a held sale with 409 and writes nothing; a closer cannot call it", async () => {
+test("trials/provision refuses a held sale with 409 and writes nothing; only owner and admin can call it", async () => {
   const held = await run(provision, req("POST", { body: { ...SELL, has_ad_account: false } }), provisionRules());
   assert.equal(held.res.statusCode, 409);
   assert.equal(held.res.body.error, "not_eligible");
   assert.equal(held.fake.find(/INSERT INTO (partners|affiliates|accounts|live_trials)/).length, 0);
 
-  const rules = provisionRules();
-  rules[0] = staffSession({ role: "closer" });
-  const closer = await run(provision, req("POST", { body: SELL }), rules);
-  assert.equal(closer.res.statusCode, 403);
-  assert.equal(closer.fake.find(/INSERT INTO partners/).length, 0);
+  const letIn = await rolesLetIn(async (role) => {
+    const rules = provisionRules();
+    rules[0] = staffSession({ role });
+    const { res, fake } = await run(provision, req("POST", { body: SELL }), rules);
+    if (res.statusCode === 403) assert.equal(fake.find(/INSERT INTO partners/).length, 0, `${role} was refused but a partner was written`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "owner"], "only owner and admin can stand up a trial");
 });
 
 // ── day 8: convert or decline ─────────────────────────────────────────────
@@ -131,7 +135,7 @@ test("trials/convert flips the partner active from a SIGNED licence, voids the t
   assert.equal(fake.find(/INSERT INTO live_trial_events/)[0].params[2], "converted");
 });
 
-test("trials/convert refuses with no signed licence (409) and without a signature moment (400); the payout gate stays shut", async () => {
+test("trials/convert refuses with no signed licence (409) and without a signature moment (400), and only owner and admin can call it; the payout gate stays shut", async () => {
   const unsigned = await run(convert, req("POST", {
     body: { partner_id: PARTNER_ID, decision: "convert", agreement_signed_at: SIGNED_AT },
   }), convertRules({ signedLicense: false }));
@@ -145,10 +149,14 @@ test("trials/convert refuses with no signed licence (409) and without a signatur
   assert.equal(noMoment.res.body.error, "agreement_signed_at_required");
   assert.equal(noMoment.fake.find(/UPDATE partners/).length, 0);
 
-  const closer = convertRules();
-  closer[0] = staffSession({ role: "closer" });
-  const denied = await run(convert, req("POST", { body: { partner_id: PARTNER_ID, decision: "convert", agreement_signed_at: SIGNED_AT } }), closer);
-  assert.equal(denied.res.statusCode, 403);
+  const letIn = await rolesLetIn(async (role) => {
+    const rules = convertRules();
+    rules[0] = staffSession({ role });
+    const { res, fake } = await run(convert, req("POST", { body: { partner_id: PARTNER_ID, decision: "convert", agreement_signed_at: SIGNED_AT } }), rules);
+    if (res.statusCode === 403) assert.equal(fake.find(/UPDATE partners/).length, 0, `${role} was refused but the payout gate moved`);
+    return res.statusCode;
+  });
+  assert.deepEqual(letIn, ["admin", "owner"], "only owner and admin can open the payout gate");
 });
 
 test("trials/convert decline pauses the partner, keeps the affiliate and every lead, and records the decision", async () => {

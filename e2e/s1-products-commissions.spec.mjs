@@ -14,11 +14,14 @@ const PRODUCTS = {
 };
 
 const LEDGER = {
-  ok: true, count: 3, limit: 200, offset: 0, hasMore: false,
+  ok: true, count: 5, limit: 200, offset: 0, hasMore: false,
   items: [
     { id: "1c000000-0000-4000-8000-000000000001", status: "earned", staff_name: "Casey Reed", amount: "300.00", basis: "3000.00", split_percent: "10", product_name_at_earning: "Funding Bundle", earned_at: "2026-10-02T12:00:00Z" },
     { id: "1c000000-0000-4000-8000-000000000002", status: "approved", staff_name: "Casey Reed", amount: "150.00", basis: "1500.00", split_percent: "10", product_name_at_earning: "Repair DFY", earned_at: "2026-09-28T12:00:00Z" },
     { id: "1c000000-0000-4000-8000-000000000003", status: "paid", staff_name: "Casey Reed", amount: "90.00", basis: "900.00", split_percent: "10", product_name_at_earning: "Repair trial", earned_at: "2026-10-01T12:00:00Z", paid_at: "2026-10-03T12:00:00Z" },
+    // Paid last month: not part of PAID MTD. Voided: not owed, so not part of ACCRUED.
+    { id: "1c000000-0000-4000-8000-000000000004", status: "paid", staff_name: "Casey Reed", amount: "70.00", basis: "700.00", split_percent: "10", product_name_at_earning: "Repair trial", earned_at: "2026-09-02T12:00:00Z", paid_at: "2026-09-05T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000005", status: "void", staff_name: "Casey Reed", amount: "40.00", basis: "400.00", split_percent: "10", product_name_at_earning: "Repair DFY", earned_at: "2026-10-04T12:00:00Z" },
   ],
 };
 
@@ -77,7 +80,7 @@ test.describe("Products & Commissions: the ladder and the tiles", () => {
     await expect(rows.nth(1)).toContainText("Fixed");
   });
 
-  test("the four tiles read the products, the active rules, and the accrued and paid ledger money", async ({ page }) => {
+  test("the four tiles read the products, the active rules, and the accrued and paid ledger money (paid counts this month only, voided is not owed)", async ({ page }) => {
     await open(page);
     await expect(page.locator("#kProd")).toHaveText("2");
     await expect(page.locator("#kProdVar")).toHaveText("1 with variable pricing");
@@ -117,6 +120,13 @@ test.describe("Products & Commissions: the product editor's own rules", () => {
     await page.locator("#edSave").click();
     await expect.poll(() => alerts.length).toBe(3);
     expect(alerts[2]).toBe("Default price must sit inside the min/max band.");
+
+    // The other side of the band: a default under the minimum.
+    await page.locator("#p_min").fill("3500");
+    await page.locator("#p_max").fill("4000");
+    await page.locator("#edSave").click();
+    await expect.poll(() => alerts.length).toBe(4);
+    expect(alerts[3]).toBe("Default price must sit inside the min/max band.");
     expect(productWrites).toEqual([]);
   });
 
@@ -124,6 +134,7 @@ test.describe("Products & Commissions: the product editor's own rules", () => {
     const { productWrites } = await open(page);
     await newProduct(page);
     await page.locator("#p_name").fill("Capital Blueprint");
+    await page.locator("#p_cat").selectOption("Partner");
     await page.locator("#p_var").click();
     await page.locator("#p_price").fill("3000");
     await page.locator("#p_min").fill("2500");
@@ -131,7 +142,8 @@ test.describe("Products & Commissions: the product editor's own rules", () => {
     await page.locator("#edSave").click();
     await expect.poll(() => productWrites.length).toBe(1);
     expect(productWrites[0]).toMatchObject({
-      action: "create", name: "Capital Blueprint", default_price: 3000, min_price: 2500, max_price: 4000, price_is_variable: true,
+      action: "create", name: "Capital Blueprint", category: "Partner",
+      default_price: 3000, min_price: 2500, max_price: 4000, price_is_variable: true,
     });
     await expect(page.locator("#prodBody tr[data-p]")).toHaveCount(3);
   });
@@ -141,10 +153,12 @@ test.describe("Products & Commissions: the product editor's own rules", () => {
     await page.locator('#prodBody tr[data-p="diy_letters"]').click();
     await expect(page.locator("#editor")).toBeVisible();
     await page.locator("#p_price").fill("1200");
+    await page.locator("#p_cat").selectOption("Funding");
     await page.locator("#edSave").click();
     await expect.poll(() => productWrites.length).toBe(1);
     expect(productWrites[0]).toMatchObject({
-      action: "save", code: "diy_letters", default_price: 1200, min_price: 1200, max_price: 1200, price_is_variable: false,
+      action: "save", code: "diy_letters", category: "Funding",
+      default_price: 1200, min_price: 1200, max_price: 1200, price_is_variable: false,
     });
   });
 });
