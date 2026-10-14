@@ -1,3 +1,5 @@
+import { isS2ProvedFlowRow } from "./s2-flow-contracts.mjs";
+
 export const FLOW_GAP_LANE = "src/pulse/coverage/gap-catalog-flow.mjs";
 export const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
 
@@ -58,6 +60,7 @@ export function needsMessageGapMonitor(row) {
 }
 
 export function needsJourneyGapMonitor(row) {
+  if (isS2ProvedFlowRow(row)) return false;
   const roleAccess = /#(?:reach-.+|stays-blocked)$/.test(String(row?.surface || ""));
   return roleAccess || JOURNEY_RESULT_SURFACES.has(row?.surface);
 }
@@ -76,6 +79,6 @@ export function flowGapRows(messages, journeys, agents) {
 
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
   message: 177,
-  journey: 105,
+  journey: 15,
   agent: 1,
 });
