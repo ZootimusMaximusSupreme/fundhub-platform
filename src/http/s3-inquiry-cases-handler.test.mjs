@@ -6,7 +6,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import handler from "../../api/inquiry-cases.mjs";
-import { fakeDb, makeRes, req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { fakeDb, makeRes, req, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { tableRules } from "../testing/s3-scoped-rows.mjs";
 
 const CASE = "1e000000-0000-4000-8000-000000000001";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -182,4 +183,29 @@ describe("POST /api/inquiry-cases action=clear_inquiry", () => {
     assert.equal(res.body.error, "inquiry_id_required");
     assert.equal(fake.find(/UPDATE inquiry_log/).length, 0);
   });
+});
+
+// The case sits in company B and company A's staff name its id. The stand-in table answers
+// each statement by the id and company its SQL names, so each 404 is the product's own.
+describe("another company's case", () => {
+  const actions = [
+    { action: "update", assigned_remover: "Ruth" },
+    { action: "close" },
+    { action: "mark_cleared" },
+    { action: "generate" },
+    { action: "gate_override" }
+  ];
+  for (const body of actions) {
+    test(`${body.action} is a 404 and the case, its inquiries and the bus are untouched`, async () => {
+      const cases = [caseRow({ org_id: OTHER_ORG_ID })];
+      const touched = [];
+      const set = (row, _params, sql) => { touched.push(sql.trim().split(/\s+/).slice(0, 2).join(" ")); row.case_status = "changed"; };
+      const { res, fake, events } = await call({ ...body, id: CASE }, tableRules("inquiry_removal_cases", cases, { set }), { role: "owner" });
+      assert.equal(res.statusCode, 404);
+      assert.deepEqual(touched, []);
+      assert.equal(cases[0].case_status, "Queued");
+      assert.deepEqual(events, []);
+      assert.equal(fake.find(/INSERT INTO|DELETE FROM/).length, 0);
+    });
+  }
 });

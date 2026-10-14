@@ -8,6 +8,8 @@ import crypto from "node:crypto";
 
 import accountsHandler from "../../api/banking/accounts.mjs";
 import syncHandler from "../../api/banking/sync-liabilities.mjs";
+import revokeHandler from "../../api/banking/revoke.mjs";
+import { tableRules } from "../testing/s3-scoped-rows.mjs";
 import { encryptPlaidToken } from "../banking/plaid.mjs";
 import { makeRes, fakeDb, staffSession, req, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
@@ -71,6 +73,24 @@ describe("POST /api/banking/accounts (hand entry)", () => {
     assert.deepEqual(fake.find(/UPDATE bank_accounts\s+SET entity_kind/)[0].params, [ACCOUNT, "business"]);
     assert.equal(fake.count("BEGIN"), 1);
     assert.equal(fake.count("COMMIT"), 1);
+  });
+
+  test("a blank amount is stored as unknown (NULL), never as 0", async () => {
+    const created = await post({ action: "create_account", name: "Chase Ink", account_type: "credit", credit_limit: "", current_balance: "" }, [
+      [/INSERT INTO bank_accounts/, (_s, p) => [{ id: ACCOUNT, org_id: p[0], client_id: p[1], name: p[4], account_type: p[7] }]]
+    ]);
+    assert.equal(created.res.statusCode, 201);
+    const row = byColumn(created.fake.find(/INSERT INTO bank_accounts/)[0]);
+    assert.equal(row.credit_limit_cents, null);
+    assert.equal(row.current_balance_cents, null);
+    const own = [/SELECT account_type FROM bank_accounts WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/, [{ account_type: "credit" }]];
+    const cycle = await post({ action: "set_cycle", bank_account_id: ACCOUNT, statement_close_day: 15, payment_due_day: 10, minimum_payment: "" }, [
+      own, [/INSERT INTO account_statement_cycles/, (_s, p) => [{ id: "cyc1", bank_account_id: p[2] }]]
+    ]);
+    assert.equal(cycle.res.statusCode, 200);
+    const cyc = byColumn(cycle.fake.find(/INSERT INTO account_statement_cycles/)[0]);
+    assert.equal(cyc.minimum_payment_cents, null);
+    assert.equal(cyc.last_statement_balance_cents, null);
   });
 
   test("set_cycle stores the card's close day, due day and minimum for a credit account only", async () => {
@@ -206,5 +226,53 @@ describe("POST /api/banking/sync-liabilities", () => {
     const other = await sync({ client_id: CLIENT }, [notInOrg]);
     assert.equal(other.res.statusCode, 404);
     assert.equal(plaidCalls.length, 0);
+  });
+});
+
+// Two companies each hold a bank login. The stand-in tables answer every statement by the id and
+// company its SQL names, so the 404 and the untouched rows are the product's own scoping.
+describe("POST /api/banking/revoke {item_id, reason}", () => {
+  const OTHER_ORG = "0b000000-0000-4000-8000-000000000002";
+  const ITEM = "d1000000-0000-4000-8000-0000000000d1";
+  const OTHER_ITEM = "d2000000-0000-4000-8000-0000000000d2";
+  const REASON = "client asked us to disconnect their Chase login";
+  const world = () => {
+    const items = [
+      { id: ITEM, org_id: ORG_ID, client_id: CLIENT, institution_name: "Chase", link_state: "active", has_access_token: true },
+      { id: OTHER_ITEM, org_id: OTHER_ORG, client_id: "c2000000-0000-4000-8000-000000000002", institution_name: "Wells", link_state: "active", has_access_token: true }
+    ];
+    const accounts = [
+      { id: "ac1", plaid_item_id: ITEM, org_id: ORG_ID },
+      { id: "ac2", plaid_item_id: OTHER_ITEM, org_id: OTHER_ORG }
+    ];
+    const audit = [];
+    const rules = [
+      staffSession({ role: "owner" }),
+      ...tableRules("plaid_items", items),
+      ...tableRules("bank_accounts", accounts),
+      [/subject_client_id IS NULL/i, [{ n: "0" }]],
+      [/count\(\*\)[\s\S]*bank_transactions/i, [{ n: "12" }]],
+      [/INSERT INTO erasure_requests/i, (_sql, p) => { audit.push({ org: p[0], client: p[1], item: p[2] }); return [{ id: "audit-1", created_at: "2026-10-13T00:00:00Z" }]; }]
+    ];
+    return { items, audit, rules };
+  };
+  const revoke = (itemId, rules) => callShared(revokeHandler, req("POST", { body: { item_id: itemId, reason: REASON } }), rules);
+
+  test("disconnects this company's login only, with one audit row naming its client", async () => {
+    const { items, audit, rules } = world();
+    const { res } = await revoke(ITEM, rules);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.revoked, true);
+    assert.deepEqual(items.map((i) => i.id), [OTHER_ITEM], "only the named login is deleted");
+    assert.deepEqual(audit, [{ org: ORG_ID, client: CLIENT, item: ITEM }]);
+  });
+
+  test("another company's login is a 404 and nothing is deleted or audited", async () => {
+    const { items, audit, rules } = world();
+    const { res, fake } = await revoke(OTHER_ITEM, rules);
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(items.map((i) => i.id), [ITEM, OTHER_ITEM]);
+    assert.deepEqual(audit, []);
+    assert.equal(fake.find(/DELETE FROM/).length, 0);
   });
 });

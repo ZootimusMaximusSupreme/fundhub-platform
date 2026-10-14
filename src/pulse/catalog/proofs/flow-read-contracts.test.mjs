@@ -192,9 +192,14 @@ test("every exported proof key is exercised by its real rendered page", async (t
     prompt_missing: false,
     guardrails_missing: false,
   };
+  // A draft with nothing written yet: every rule of the promotion gate fails on it.
+  const bareAgent = {
+    ...agent, code: "AG-BARE", name: "Bare Draft", prompt: "", prompt_missing: true, guardrails_missing: true,
+    guardrails: { block: "", triggers: [], escalation: {} },
+  };
   await usePage({ routes: [
     { pathname: "/api/read/staff", body: { ok: true, items: staff } },
-    { pathname: "/api/read/agents", body: { ok: true, items: [agent] } },
+    { pathname: "/api/read/agents", body: { ok: true, items: [agent, bareAgent] } },
     { pathname: "/api/read/agent-shadow-log", body: { ok: true, rows: [], log: [] } },
   ] }, async (page) => {
     await page.goto(`${origin}/app/agent-editor.html`, { waitUntil: "domcontentloaded" });
@@ -217,6 +222,36 @@ test("every exported proof key is exercised by its real rendered page", async (t
       "●\nEscalation path is set\nSam Manager · Sales Manager",
     ]);
     assert.equal(await page.locator("#gateBox .gaterow.pass").count(), 6);
+
+    // A draft with nothing written: all four rules fail, and no trigger reads "0 selected".
+    await page.evaluate(() => document.querySelectorAll("details").forEach((card) => { card.open = true; }));
+    const gateRow = (index) => page.locator("#gateBox .gaterow").nth(index);
+    const cleared = async (index) => (await gateRow(index).getAttribute("class")).split(" ").includes("pass");
+    await page.locator('.aitem[data-a="AG-BARE"]').click();
+    await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Bare Draft");
+    assert.deepEqual(await Promise.all([0, 1, 2, 3].map(cleared)), [false, false, false, false]);
+    assert.match(await gateRow(0).innerText(), /0 selected/);
+    assert.match(await gateRow(1).innerText(), /0 chars · 60 min/);
+    assert.match(await gateRow(2).innerText(), /0 chars · 20 min/);
+    assert.match(await gateRow(3).innerText(), /none/);
+    await page.locator('.aitem[data-a="AG-PROOF"]').click();
+    await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Proof Follow-up");
+    await page.evaluate(() => document.querySelectorAll("details").forEach((card) => { card.open = true; }));
+
+    // The edges of each rule: a row fails at one character under its minimum and passes at the minimum.
+    for (const [field, index, minimum] of [["#a_prompt", 1, 60], ["#a_guard", 2, 20]]) {
+      await page.locator(field).fill("x".repeat(minimum - 1));
+      assert.equal(await cleared(index), false, `${field} at ${minimum - 1} characters`);
+      assert.match(await gateRow(index).innerText(), new RegExp(`${minimum - 1} chars · ${minimum} min`));
+      await page.locator(field).fill("x".repeat(minimum));
+      assert.equal(await cleared(index), true, `${field} at ${minimum} characters`);
+    }
+    await page.locator("#a_prompt").fill(" ".repeat(80));
+    assert.equal(await cleared(1), false, "spaces do not count as a prompt");
+    await page.locator("#a_esc").selectOption("");
+    assert.equal(await cleared(3), false, "no escalation person");
+    await page.locator("#a_esc").selectOption({ label: "Sam Manager · Sales Manager" });
+    assert.equal(await cleared(3), true);
     proved("f2208943199577941fde");
   });
 

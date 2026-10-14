@@ -8,6 +8,7 @@ import repFileHandler from "../../api/auth/authorized-rep-file.mjs";
 import verifyHandler, { PORTAL_PATH } from "../../api/auth/magic-link-verify.mjs";
 import resetHandler from "../../api/auth/reset.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
+import { tableRules, clientsRule } from "../testing/s3-scoped-rows.mjs";
 import { req, staffSession, accountSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -26,12 +27,43 @@ describe("POST /api/auth/authorized-rep remove:true", () => {
     const { res, fake } = await callShared(repHandler, req("POST", { body: { client_id: CLIENT, remove: true } }), rules());
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { ok: true, removed: true });
-    assert.deepEqual(fake.find(/UPDATE client_authorized_reps SET removed_at/)[0].params, [ORG_ID, CLIENT]);
+    const [stamp] = fake.find(/UPDATE client_authorized_reps SET removed_at/);
+    assert.deepEqual(stamp.params, [ORG_ID, CLIENT]);
+    assert.match(stamp.sql, /WHERE org_id = \$1 AND client_id = \$2 AND removed_at IS NULL/);
     const [sessions] = fake.find(/UPDATE account_sessions/);
     assert.deepEqual(sessions.params, [REP_ACCOUNT, OTHER_CLIENT, CLIENT]);
     assert.match(sessions.sql, /active_client_id = \$3/);
     assert.equal(fake.count("BEGIN"), 1);
     assert.equal(fake.count("COMMIT"), 1);
+  });
+
+  // One rep linked to two files, a second rep on the first file's twin in another company,
+  // and one session each. The stand-in answers by the company, client and account the SQL
+  // names, so a removal that lost a condition would take the wrong link or session.
+  test("removal retires only this file's link and moves only this rep's sessions that sat on it", async () => {
+    const OTHER_REP = "ac000000-0000-4000-8000-000000000002";
+    const OTHER_ORG = "0b000000-0000-4000-8000-000000000002";
+    const link = (over) => ({ org_id: ORG_ID, account_id: REP_ACCOUNT, client_id: CLIENT, removed_at: null, created_at: "2026-10-01", ...over });
+    const links = [
+      link({}),
+      link({ client_id: OTHER_CLIENT, created_at: "2026-10-02" }),
+      link({ org_id: OTHER_ORG, account_id: OTHER_REP, client_id: "c3000000-0000-4000-8000-000000000003" }),
+      link({ account_id: OTHER_REP, client_id: OTHER_CLIENT })
+    ];
+    const sessions = [
+      { id: "s1", account_id: REP_ACCOUNT, active_client_id: CLIENT, revoked_at: null },
+      { id: "s2", account_id: REP_ACCOUNT, active_client_id: OTHER_CLIENT, revoked_at: null },
+      { id: "s3", account_id: OTHER_REP, active_client_id: CLIENT, revoked_at: null }
+    ];
+    const { res } = await callShared(repHandler, req("POST", { body: { client_id: CLIENT, remove: true } }), [
+      staffSession(),
+      clientsRule([{ id: CLIENT, org_id: ORG_ID }]),
+      ...tableRules("client_authorized_reps", links, { set: (row) => { row.removed_at = "2026-10-13"; } }),
+      ...tableRules("account_sessions", sessions, { set: (row, params) => { row.active_client_id = params[1]; } })
+    ]);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(links.map((l) => l.removed_at !== null), [true, false, false, false]);
+    assert.deepEqual(sessions.map((x) => x.active_client_id), [OTHER_CLIENT, OTHER_CLIENT, CLIENT]);
   });
 
   test("a rep with no other file has the session's active file cleared", async () => {

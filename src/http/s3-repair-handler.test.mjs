@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 
 import exceptionsHandler from "../../api/repair/exceptions.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
-import { req, staffSession, ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
+import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { req, staffSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const CASE = "1e000000-0000-4000-8000-000000000001";
@@ -70,6 +71,25 @@ describe("POST /api/repair/exceptions action=confirm_parse", () => {
     assert.equal(other.res.statusCode, 400);
     assert.equal(other.res.body.error, "not_found");
     assert.equal(other.fake.find(/UPDATE dispute_items|UPDATE dispute_responses/).length, 0);
+  });
+
+  // Two bureau answers with their own ids in two companies. The stand-in table answers by id and
+  // company, so the refusal and the untouched row come from the product's own SQL.
+  test("an answer of another company is not found and stays unconfirmed; this company's is confirmed alone", async () => {
+    const answers = [response(), response({ id: "9e000000-0000-4000-8000-000000000002", org_id: OTHER_ORG_ID })];
+    const run = (id) => callShared(exceptionsHandler, req("POST", { body: { action: "confirm_parse", responseId: id } }), [
+      staffSession({ role: "inquiry_specialist" }),
+      [/FROM dispute_items di\s+JOIN dispute_cases dc/, [item]],
+      ...tableRules("dispute_responses", answers, { set: (row) => { row.confirmed = true; } })
+    ]);
+    const foreign = await run("9e000000-0000-4000-8000-000000000002");
+    assert.equal(foreign.res.statusCode, 400);
+    assert.equal(foreign.res.body.error, "not_found");
+    assert.deepEqual(answers.map((a) => a.confirmed), [false, false]);
+    assert.equal(foreign.fake.find(/UPDATE dispute_items/).length, 0);
+    const own = await run(RESPONSE);
+    assert.equal(own.res.statusCode, 200);
+    assert.deepEqual(answers.map((a) => a.confirmed), [true, false]);
   });
 
   test("the typed outcomes win over what the machine read", async () => {

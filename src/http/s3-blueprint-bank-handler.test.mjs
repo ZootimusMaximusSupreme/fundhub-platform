@@ -8,6 +8,7 @@ import staffActions from "../../api/blueprint/staff-actions.mjs";
 import banksHandler from "../../api/money/banks.mjs";
 import { makeRes, fakeDb } from "../testing/handler-harness.mjs";
 import { gateAs, clientPrincipal, staffPrincipal } from "../testing/s3-mem-tasks-db.mjs";
+import { tableRules } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "0a000000-0000-4000-8000-000000000001";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -130,6 +131,25 @@ describe("POST /api/blueprint/staff-actions bank tracker", () => {
     const bad = await staffAction({ action: "update_bank_todo_state", todo_id: TODO, state: "finished" }, [inOrg]);
     assert.equal(bad.res.statusCode, 400);
     assert.equal(bad.database.find(/UPDATE blueprint_bank_relationship_todos/).length, 0);
+  });
+});
+
+describe("update_bank_todo_state across companies", () => {
+  const OTHER_ORG = "0b000000-0000-4000-8000-000000000002";
+  const OTHER_TODO = "b2000000-0000-4000-8000-0000000000b2";
+  const todo = (id, org) => ({ id, org_id: org, client_id: CLIENT, bank_key: "chase", account_kind: "personal", state: "open" });
+  const move = (id, todos, state = "done") => staffAction({ action: "update_bank_todo_state", todo_id: id, state }, [
+    inOrg, ...tableRules("blueprint_bank_relationship_todos", todos, { set: (row, p) => { row.state = p[2]; } })
+  ]);
+
+  test("moves only the named item of this company; another company's item is a 404 and stays open", async () => {
+    const todos = [todo(TODO, ORG), todo(OTHER_TODO, OTHER_ORG)];
+    const own = await move(TODO, todos);
+    assert.equal(own.res.statusCode, 200);
+    assert.deepEqual(todos.map((t) => t.state), ["done", "open"]);
+    const foreign = await move(OTHER_TODO, todos);
+    assert.equal(foreign.res.statusCode, 404);
+    assert.deepEqual(todos.map((t) => t.state), ["done", "open"]);
   });
 });
 
