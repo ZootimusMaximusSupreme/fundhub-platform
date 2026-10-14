@@ -438,5 +438,18 @@
     "Page load: inbox read (Needs-reply tab first), refreshes on a timer while the tab is visible"
    ]
   }
+ ],
+ "s4-present-deck.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "present.html (+ present.js, contract-send.js)",
+   "controls": [
+    "'Repair referral' checkbox (kept in page state, sent with the disposition)",
+    "Discovery: 'Save month / year' per business (incorporation date, re-reads the deck so the pre-approval figure re-prices)",
+    "Open the deck: reads the client file for ?contact= (also ?client_id, ?id, ?client)",
+    "Repair offers: 'Send letters now' (mails the staged letters to the bureaus through PostGrid)",
+    "Repair offers: 'Stage letters' (enroll, then write round R1 letters)"
+   ]
+  }
  ]
 }
