@@ -13,8 +13,8 @@ import { S5_DISPLAY_ROWS } from "./s5-display-contracts.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
-const rows = S5_DISPLAY_ROWS.filter((row) => row.test.endsWith(".spec.mjs"));
-const specs = [...new Set(rows.map((row) => row.test))].sort();
+const rows = S5_DISPLAY_ROWS.filter((row) => row.spec);
+const specs = [...new Set(rows.map((row) => row.spec))].sort();
 
 test("the browser specs behind the registry exist and make no live writes", () => {
   assert.ok(rows.length > 0);
@@ -38,8 +38,8 @@ test("every case a registry row names ran in a real browser and passed", { timeo
   for (const row of rows) {
     for (const title of row.titles) {
       assert.ok(
-        passed.some((line) => line.includes(path.basename(row.test)) && line.includes(title)),
-        `${row.name}: no passing case in ${row.test} with "${title}" in its name`,
+        passed.some((line) => line.includes(path.basename(row.spec)) && line.includes(title)),
+        `${row.name}: no passing case in ${row.spec} with "${title}" in its name`,
       );
     }
   }

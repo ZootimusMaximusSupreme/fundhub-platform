@@ -147,7 +147,7 @@ test("an exact route gap monitor wires a row red when its old name-only evidence
 test("known partial rows use exact executable checkers without claiming the business result is green", () => {
   const samples = [
     ["routes-0.json", "route:agent-call", /places a real Bland phone call/],
-    ["routes-0.json", "route:auth/authorized-rep", /authorized representative/],
+    ["routes-0.json", "route:marketing/research/approve", /Approve a finished deep-research report/],
     ["routes-2.json", "route:affiliates/refer", /Refer a friend/],
     ["routes-3.json", "route:lender-observations", /^POST /],
     ["jobs.json", "function:ad-video-worker-background", /background function/],

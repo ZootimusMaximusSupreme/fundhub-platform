@@ -7,1268 +7,143 @@
 // deleting or renaming the proving case turns the row back red. A row without
 // "titles" is proved by one of this slice's own browser or render tests.
 //
+// A row with "spec" is proved by a Playwright browser spec; its "test" is the
+// node runner (s5-display-specs.test.mjs) that runs the spec and checks that
+// every named case passed.
+//
 // A changed control text stops matching and the row goes back to not proved.
 
 export const S5_DISPLAY_ROWS = Object.freeze([
-  Object.freeze({
-    "name": "sidebar-pipeline",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Sales > Pipeline (pipeline.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-closer-dashboard",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Sales > Closer Dashboard (closer-dashboard.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-my-numbers",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Sales > My numbers (my-numbers.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-sales-floor",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Sales > Sales floor (sales-floor.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-calendar",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Sales > Calendar (calendar.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-lenders",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Funding > Lenders (lenders.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-client-control-panel",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Funding > Client Control Panel (client-control-panel.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-csm-queue",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Client ops > Client Success (csm-queue.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-messaging",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Client ops > Messaging (messaging.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-documents",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Client ops > Documents (documents.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-inquiry-remover",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Client ops > Specialist (inquiry-remover.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-company-brain",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Client ops > Company Brain (company-brain.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-marketing-command-center",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Marketing > Command Center (marketing-command-center.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-campaign-manager",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Marketing > Campaigns (campaign-manager.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-social-studio",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Marketing > Social Studio (social-studio.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-creative-factory",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Marketing > Creative Factory (creative-factory.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-content-admin",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Marketing > Content (content-admin.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-staff-teams",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Admin > Staff & Teams (staff-teams.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-products-commissions",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Admin > Products & Commissions (products-commissions.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-contracts",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Admin > Contract templates (contracts.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "sidebar-client-portal",
-    "sourceFile": "desks-f.json",
-    "surface": "sidebar.fragment.html",
-    "control": "Nav link: Portals > Client Portal (client-portal.html)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Page shell (inline styles, loads money-credit.js)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Credit read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-error",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Error state with Try again",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-declines-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Applications, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-declines-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-declines-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Page shell (loads money-declines.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-declines-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Applications and declines read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-declines-error",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Error state with Try again",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-fundability-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Fundability, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-fundability-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-fundability-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Page shell (loads money-fundability.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-fundability-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Fundability read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-fundability-error",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Error state with Try again",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-next-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup; no current-page marker)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-next-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-next-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Page shell (loads money-next.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-next-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Next steps read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-next-read1",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Ready-to-fund status read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-connections-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-connections-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-connections-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Page shell (header, loads money-connections.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-connections-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Connections read on page load (loading skeleton, then data)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-helper-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Money nav bar (Money, Plan, Helper, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-helper-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-helper-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Page shell (loads money-helper.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-helper-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Thread read on page load (turns, answers, what the helper did, which brain)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-helper-error",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Error state with Try again",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-plan-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Money nav bar (Money, Plan, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-plan-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-plan-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Page shell (loads money-plan.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-plan-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Plan month read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-setup-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-setup-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-setup-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Page shell (inline styles, loads money-setup.js)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-setup-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Setup status read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-payments-nav",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-payments-back",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "Back to my portal / Back to Finance OS (staff)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-payments-shell",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "Page shell (loads money-payments.js/css)",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-payments-read0",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "Payments read on page load",
-    "impact": "none",
-    "test": "src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"
-  }),
-  Object.freeze({
-    "name": "money-credit-sentences",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "'What to work on' UnderwriteIQ sentences",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "UnderwriteIQ sentences are printed verbatim and escaped"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-accounts",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Accounts on your credit report table",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "accounts table lists every line from the read"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-business",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Business score tile (Experian Intelliscore, financial stability)",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "the business score is a dash with words when nothing is stored, never 0"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Empty state: Set up a soft pull link",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "empty: no pull and no business score"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-facts",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Facts tiles x4: Cards used %, Open accounts, Hard inquiries per bureau, Negative items",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "facts: cards used, open accounts, inquiries per bureau, negative items",
-      "a null anywhere is a dash, not 0"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-sample",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Sample report banner (scores from a sample file)",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "full: three bureau scores with pulled dates, words beside each, and the sample banner"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-scores",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Score tiles x3 (Experian, Equifax, TransUnion): score, band, change since last pull, pulled date",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "full: three bureau scores with pulled dates, words beside each, and the sample banner",
-      "history: no line from one pull; a chart and a change from two"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-credit-history",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-credit.html",
-    "control": "Scores over time chart (needs 2+ pulls)",
-    "impact": "none",
-    "test": "src/http/money-credit-screen.test.mjs",
-    "titles": [
-      "history: no line from one pull; a chart and a change from two"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-declines-select",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "'Which bank sent it?' select (applications with no decline yet + Another bank)",
-    "impact": "none",
-    "test": "src/http/money-declines-screen.test.mjs",
-    "titles": [
-      "the paste box lists the client's applications that have no decline yet, plus another bank"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-declines-cards",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Declines we are working on: one card per decline (bank, status word + shape, reasons with the letter's own quote, person-will-read box, When lines)",
-    "impact": "none",
-    "test": "src/http/money-declines-screen.test.mjs",
-    "titles": [
-      "full: the likely reason in the letter's own words",
-      "status is a word and a shape, never colour alone"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-declines-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Empty state (no applications, no declines)",
-    "impact": "none",
-    "test": "src/http/money-declines-screen.test.mjs",
-    "titles": [
-      "empty: no applications and no declines yet"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-declines-paste",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Paste answer line (flash, duplicate, too many pastes, problem words)",
-    "impact": "none",
-    "test": "src/http/money-declines-screen.test.mjs",
-    "titles": [
-      "a paste problem is said in words; a duplicate says it is already here",
-      "after a paste the answer sits above the declines"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-declines-locked",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-declines.html",
-    "control": "Paste locked panel (not a Capital Blueprint buyer)",
-    "impact": "none",
-    "test": "src/http/money-declines-screen.test.mjs",
-    "titles": [
-      "not a Blueprint buyer: no paste box at all, and the page says why in words"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-add",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Add business details / Add a business links",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "businesses: one card each, a container with no details asks for them, and nothing adds them up",
-      "no business yet: says what will appear and one way to make it appear"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Empty state: Run your soft pull link",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "empty: no credit file"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-chart",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Now and later chart: date column buttons (Today + 3 dates), click / hover / focus shows assumptions",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "the chart: today and three dates, a solid plan line, assumptions on the chosen date"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-now",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Tile: Fundability now (x of 6 UnderwriteIQ checks, tier)",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "full: fundability now, the money, and the 12-month comparison"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-later",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "Tile: In N months (plan projection, 'if removed' line)",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "full: fundability now, the money, and the 12-month comparison",
-      "if removed: its own dashed line with open dots, and it always says it is not promised"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-drives",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "What drives it: six checks, each Pass / Not yet / Not on file",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "what drives it: six checks, each a word and a mark"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-moves",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "What moves it most (UnderwriteIQ sentences, tagged with the check)",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "UnderwriteIQ's sentence is printed verbatim, tagged with the check it moves, and escaped"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-fundability-cannot",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-fundability.html",
-    "control": "What this cannot look ahead on",
-    "impact": "none",
-    "test": "src/http/money-fundability-screen.test.mjs",
-    "titles": [
-      "what this cannot look ahead on is said in words"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-next-blueprint",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Capital Blueprint card: Book a call link (only for clients without it)",
-    "impact": "none",
-    "test": "src/http/money-next-screen.test.mjs",
-    "titles": [
-      "the Capital Blueprint card shows only to a client without it, and links to the call booking"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-next-checklist",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Open your checklist link (steps only the client can do)",
-    "impact": "none",
-    "test": "src/http/money-next-screen.test.mjs",
-    "titles": [
-      "a person step has Do task; a step only the client can do has no button and links to the checklist"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-next-ready",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Ready card states (none / sent to our team / a person has it / prep call done)",
-    "impact": "none",
-    "test": "src/http/money-next-screen.test.mjs",
-    "titles": [
-      "Ready to get funded: none"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-next-steps",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-next.html",
-    "control": "Step list rows (title, due or Late N days, who can do it, why, from)",
-    "impact": "none",
-    "test": "src/http/money-next-screen.test.mjs",
-    "titles": [
-      "full: the test client's two steps, late said in words, who can do each, and the Do task buttons"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-connections-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Empty state: Add a business link",
-    "impact": "none",
-    "test": "src/http/money-connections-screen.test.mjs",
-    "titles": [
-      "empty: no business"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-connections-tiles",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Four tiles: Sales / Refunds / Fees / Paid out this month, with vs-last-month",
-    "impact": "none",
-    "test": "src/http/money-connections-screen.test.mjs",
-    "titles": [
-      "full state: tiles with a comparison, three processor cards, month table per container"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-connections-months",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Month over month tables (per business + All businesses)",
-    "impact": "none",
-    "test": "src/http/money-connections-screen.test.mjs",
-    "titles": [
-      "full state: tiles with a comparison, three processor cards, month table per container"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-connections-providers",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-connections.html",
-    "control": "Provider card x3 (Commas, Whop, Open API) status word",
-    "impact": "none",
-    "test": "src/http/money-connections-screen.test.mjs",
-    "titles": [
-      "status is said in words, never colour alone",
-      "full state: tiles with a comparison, three processor cards, month table per container"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-helper-bubbles",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Chat bubbles: your message, the helper's answer, brain label (AI or Rules) with reason, time",
-    "impact": "none",
-    "test": "src/http/money-helper-screen.test.mjs",
-    "titles": [
-      "each message, then the helper's own words under it",
-      "which brain answered, in words, under every answer",
-      "time: relative under a day, a date after"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-helper-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Empty thread state",
-    "impact": "none",
-    "test": "src/http/money-helper-screen.test.mjs",
-    "titles": [
-      "empty: says what will appear, with three ways to start"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-helper-status",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-helper.html",
-    "control": "Helper status tags (Texts off, AI on / AI off / Rules helper only)",
-    "impact": "none",
-    "test": "src/http/money-helper-screen.test.mjs",
-    "titles": [
-      "the helper's status in words: texts off, AI on"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-plan-detail",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Detail panel facts (what, when, amount, status in words, why, source, See it on Payments link)",
-    "impact": "none",
-    "test": "src/http/money-plan-screen.test.mjs",
-    "titles": [
-      "what, when, how much, the status in words, why, and where it came from",
-      "a staff desk carries the client on the Payments link"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-plan-empty",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Empty state: Add an account link",
-    "impact": "none",
-    "test": "src/http/money-plan-screen.test.mjs",
-    "titles": [
-      "empty: says what will appear and gives one action that makes it appear"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-plan-grid",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Mon-Sun calendar grid (today ring, pins per day, status shapes)",
-    "impact": "none",
-    "test": "src/http/money-plan-screen.test.mjs",
-    "titles": [
-      "each pin sits on its own day, with its amount",
-      "today is a ring and the word, on the 7th only",
-      "status is a shape as well as a colour in a cell, and a word everywhere else"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-plan-pin",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Pin button in a calendar cell / row in the day list (opens the detail panel)",
-    "impact": "none",
-    "test": "src/http/money-plan-screen.test.mjs",
-    "titles": [
-      "a pin opens its panel; staff Mark done posts the pin to its own source"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-plan-tiles",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-plan.html",
-    "control": "Tiles: Next up / This month / Missed",
-    "impact": "none",
-    "test": "src/http/money-plan-screen.test.mjs",
-    "titles": [
-      "the tiles: what is next, the month in numbers, and what was missed"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-setup-header",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Header 'N of 4 steps done' and step markers (Done / now / later)",
-    "impact": "none",
-    "test": "src/http/money-setup-screen.test.mjs",
-    "titles": [
-      "done steps say Done in words, with dates; all done shows the live link"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-setup-step4",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-setup.html",
-    "control": "Step 4: Open Money link (when live)",
-    "impact": "none",
-    "test": "src/http/money-setup-screen.test.mjs",
-    "titles": [
-      "done steps say Done in words, with dates; all done shows the live link"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-payments-helperlog",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "What your money helper did (log sentences; never claims a text went out when it did not)",
-    "impact": "none",
-    "test": "src/http/money-payments-screen.test.mjs",
-    "titles": [
-      "the log never claims a text went out when it did not"
-    ]
-  }),
-  Object.freeze({
-    "name": "money-payments-unmatched",
-    "sourceFile": "desks-d.json",
-    "surface": "public/app/money-payments.html",
-    "control": "Staff only: Commas payments not matched to a plan",
-    "impact": "staffOnly",
-    "test": "src/http/money-payments-screen.test.mjs",
-    "titles": [
-      "unmatched Commas payments: a staff-only list, in words, and never on the client's page"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-make-funnel",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas funnels: 'Make the funnel' form (what it sells select, optional own address) -> 3 draft pages",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Funnels: make one (automatic address)"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-drop-idea",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: 'Drop an idea' form: idea box, format select (optional), funnel select (optional), Save idea",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Drop an idea saves it with the format and funnel"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-quick-copy",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: 'Quick copy' form (angle, offer select, 'Write one piece')",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Quick copy: cost first, then one piece through the copy runner"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-start-flywheel",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: flywheel 'Which offer' select (campaign) and 'Start a flywheel for' select + 'Start a flywheel' button",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Start a flywheel for any offer key"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-write-now-idea",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: idea row 'Write now from this idea' (writes one script; cost printed first)",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Write now from an idea shows the cost first"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-accept-suggestion",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: planner suggestions list: 'Accept' button on each of the 3 suggestions",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "Accept a suggestion and Make more of an angle make ideas"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-ideas-retry",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Ideas: 'Try again' buttons on a failed card",
-    "impact": "none",
-    "test": "e2e/cc-tab-ideas.spec.mjs",
-    "titles": [
-      "a part that fails says so and the rest stays painted"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-page-gate",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Page gate: owner and admin only; a closer is sent to their own home",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-command-center.spec.mjs",
-    "titles": [
-      "owner and admin only: a closer is sent to their own home"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-write-offer",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Today: 'Write offer' button (starts an offer run and follows it until the card fills)",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-command-center.spec.mjs",
-    "titles": [
-      "Write offer: starts a run and follows it"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-write-copy",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Today: 'Write ad copy' form: angle box, 'What are we selling' select (funding, credit cards, credit repair), submit",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-command-center.spec.mjs",
-    "titles": [
-      "Write ad copy: generate, then run with max_jobs 1"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-scripts-approve",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Scripts: card 'Approve' button (locks the script, gives its ad number, moves to the next card)",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-scripts.spec.mjs",
-    "titles": [
-      "Approve gives the ad number and moves to the next card"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-scripts-reject",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Scripts: card 'Reject' (two taps: 'Reject it' / 'Keep it')",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-scripts.spec.mjs",
-    "titles": [
-      "Reject takes two taps, names what happens, and Keep it backs out"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-scripts-order",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Scripts: film order: 'Film first', 'Up', 'Down' on each approved script",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-scripts.spec.mjs",
-    "titles": [
-      "film order: Film first and the arrows send the root ids in order"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-scripts-versions",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Scripts: 'Every version' fold: loads all versions and their checks",
-    "impact": "none",
-    "test": "e2e/marketing-cc-scripts.spec.mjs",
-    "titles": [
-      "every version and its checks unfold on the card"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-scripts-retry",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Scripts: 'Try again' buttons on a failed part",
-    "impact": "none",
-    "test": "e2e/marketing-cc-scripts.spec.mjs",
-    "titles": [
-      "loading, an error in one part, and the empty inbox"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-settings-save",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Settings: 'Save' button (one save for settings and every changed funnel)",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-settings.spec.mjs",
-    "titles": [
-      "Save sends only what changed"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-settings-409",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Settings: 409 conflict: 'Keep mine' / 'Use the saved one'",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-settings.spec.mjs",
-    "titles": [
-      "a 409 shows both versions; Keep mine saves over the newer one; Use the saved one drops mine",
-      "Keep mine sends the same change again over the version that is saved now"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-settings-campaigns",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Settings: funnel card: Meta campaign checkboxes (links a campaign; another funnel's is disabled) and default ad set select",
-    "impact": "staffOnly",
-    "test": "e2e/marketing-cc-settings.spec.mjs",
-    "titles": [
-      "unticking a campaign clears its ad set",
-      "a campaign already on another funnel is disabled with the reason"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-settings-retry",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Settings: 'Try again' on a failed part",
-    "impact": "none",
-    "test": "e2e/marketing-cc-settings.spec.mjs",
-    "titles": [
-      "a part that does not load says so in words"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-shoot-close",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Shoot: 'Close the shoot' (two taps: 'Close it' / 'Keep it open')",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-shoot.spec.mjs",
-    "titles": [
-      "Close still takes two taps"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-shoot-marks",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Shoot: row marks: 'Got it' and 'Another take'",
-    "impact": "staffOnly",
-    "test": "e2e/cc-tab-shoot.spec.mjs",
-    "titles": [
-      "rows mark takes"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-shoot-retry",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Shoot: 'Try again' on a failed read; refused-save message",
-    "impact": "none",
-    "test": "e2e/cc-tab-shoot.spec.mjs",
-    "titles": [
-      "error: a failed read says so",
-      "a refused save shows the server"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-numbers-filters",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Numbers: Ads filters: window select (7/14/30 days...), funnel select, format select, angle select, first-day and last-day inputs, 'Clear filters'",
-    "impact": "none",
-    "test": "e2e/cc-tab-numbers.spec.mjs",
-    "titles": [
-      "Ads: filters send the right question, and Clear filters brings every ad back"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-numbers-sort",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Numbers: Ads table: sortable column headers",
-    "impact": "none",
-    "test": "e2e/cc-tab-numbers.spec.mjs",
-    "titles": [
-      "Ads: tapping a header sorts; unknown stays last"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-numbers-switch",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Numbers: view switch: Ads / Angles / Funnels (keeps its place in the URL)",
-    "impact": "none",
-    "test": "e2e/cc-tab-numbers.spec.mjs",
-    "titles": [
-      "The view switch keeps its place in the URL and every view loads only its own numbers"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-numbers-retry",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Numbers: 'Try again' on a failed part",
-    "impact": "none",
-    "test": "e2e/cc-tab-numbers.spec.mjs",
-    "titles": [
-      "One part fails in plain words; Try again brings it back"
-    ]
-  }),
-  Object.freeze({
-    "name": "cc-numbers-link",
-    "sourceFile": "desks-c.json",
-    "surface": "marketing-command-center.html",
-    "control": "Numbers: Unmapped spend: 'Link to a funnel' button (opens Settings at the funnel mapping)",
-    "impact": "none",
-    "test": "e2e/cc-tab-numbers.spec.mjs",
-    "titles": [
-      "unmapped spend with a Link button"
-    ]
-  }),
+  Object.freeze({"name":"sidebar-pipeline","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Pipeline (pipeline.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-closer-dashboard","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Closer Dashboard (closer-dashboard.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-my-numbers","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > My numbers (my-numbers.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-sales-floor","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Sales floor (sales-floor.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-calendar","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Calendar (calendar.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-lenders","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Funding > Lenders (lenders.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-client-control-panel","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Funding > Client Control Panel (client-control-panel.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-csm-queue","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Client ops > Client Success (csm-queue.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-messaging","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Client ops > Messaging (messaging.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-documents","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Client ops > Documents (documents.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-inquiry-remover","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Client ops > Specialist (inquiry-remover.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-company-brain","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Client ops > Company Brain (company-brain.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-marketing-command-center","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Marketing > Command Center (marketing-command-center.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-campaign-manager","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Marketing > Campaigns (campaign-manager.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-social-studio","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Marketing > Social Studio (social-studio.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-creative-factory","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Marketing > Creative Factory (creative-factory.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-content-admin","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Marketing > Content (content-admin.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-staff-teams","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Admin > Staff & Teams (staff-teams.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-products-commissions","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Admin > Products & Commissions (products-commissions.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-contracts","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Admin > Contract templates (contracts.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"sidebar-client-portal","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Portals > Client Portal (client-portal.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
+  Object.freeze({"name":"money-credit-nav","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-credit-back","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-credit-shell","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Page shell (inline styles, loads money-credit.js)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-credit-read0","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Credit read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-credit-error","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Error state with Try again","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-declines-nav","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Money nav bar (Money, Accounts, Credit, Applications, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-declines-back","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-declines-shell","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Page shell (loads money-declines.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-declines-read0","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Applications and declines read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-declines-error","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Error state with Try again","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-fundability-nav","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Money nav bar (Money, Accounts, Credit, Fundability, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-fundability-back","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-fundability-shell","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Page shell (loads money-fundability.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-fundability-read0","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Fundability read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-fundability-error","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Error state with Try again","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-next-nav","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup; no current-page marker)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-next-back","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-next-shell","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Page shell (loads money-next.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-next-read0","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Next steps read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-next-read1","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Ready-to-fund status read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-connections-nav","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-connections-back","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-connections-shell","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Page shell (header, loads money-connections.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-connections-read0","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Connections read on page load (loading skeleton, then data)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-helper-nav","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Money nav bar (Money, Plan, Helper, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-helper-back","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-helper-shell","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Page shell (loads money-helper.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-helper-read0","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Thread read on page load (turns, answers, what the helper did, which brain)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-helper-error","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Error state with Try again","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-plan-nav","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Money nav bar (Money, Plan, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-plan-back","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-plan-shell","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Page shell (loads money-plan.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-plan-read0","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Plan month read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-setup-nav","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-setup-back","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-setup-shell","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Page shell (inline styles, loads money-setup.js)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-setup-read0","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Setup status read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-payments-nav","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"Money nav bar (Money, Accounts, Credit, Connections, Payments, Setup)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-payments-back","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"Back to my portal / Back to Finance OS (staff)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-payments-shell","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"Page shell (loads money-payments.js/css)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-payments-read0","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"Payments read on page load","impact":"none","test":"src/pulse/catalog/proofs/s5-display-money-chrome.test.mjs"}),
+  Object.freeze({"name":"money-credit-sentences","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"'What to work on' UnderwriteIQ sentences","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["UnderwriteIQ sentences are printed verbatim and escaped"]}),
+  Object.freeze({"name":"money-credit-accounts","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Accounts on your credit report table","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["accounts table lists every line from the read"]}),
+  Object.freeze({"name":"money-credit-business","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Business score tile (Experian Intelliscore, financial stability)","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["the business score is a dash with words when nothing is stored, never 0"]}),
+  Object.freeze({"name":"money-credit-empty","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Empty state: Set up a soft pull link","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["empty: no pull and no business score"]}),
+  Object.freeze({"name":"money-credit-facts","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Facts tiles x4: Cards used %, Open accounts, Hard inquiries per bureau, Negative items","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["facts: cards used, open accounts, inquiries per bureau, negative items","a null anywhere is a dash, not 0"]}),
+  Object.freeze({"name":"money-credit-sample","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Sample report banner (scores from a sample file)","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["full: three bureau scores with pulled dates, words beside each, and the sample banner"]}),
+  Object.freeze({"name":"money-credit-scores","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Score tiles x3 (Experian, Equifax, TransUnion): score, band, change since last pull, pulled date","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["full: three bureau scores with pulled dates, words beside each, and the sample banner","history: no line from one pull; a chart and a change from two"]}),
+  Object.freeze({"name":"money-credit-history","sourceFile":"desks-d.json","surface":"public/app/money-credit.html","control":"Scores over time chart (needs 2+ pulls)","impact":"none","test":"src/http/money-credit-screen.test.mjs","titles":["history: no line from one pull; a chart and a change from two"]}),
+  Object.freeze({"name":"money-declines-select","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"'Which bank sent it?' select (applications with no decline yet + Another bank)","impact":"none","test":"src/http/money-declines-screen.test.mjs","titles":["the paste box lists the client's applications that have no decline yet, plus another bank"]}),
+  Object.freeze({"name":"money-declines-cards","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Declines we are working on: one card per decline (bank, status word + shape, reasons with the letter's own quote, person-will-read box, When lines)","impact":"none","test":"src/http/money-declines-screen.test.mjs","titles":["full: the likely reason in the letter's own words","status is a word and a shape, never colour alone"]}),
+  Object.freeze({"name":"money-declines-empty","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Empty state (no applications, no declines)","impact":"none","test":"src/http/money-declines-screen.test.mjs","titles":["empty: no applications and no declines yet"]}),
+  Object.freeze({"name":"money-declines-paste","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Paste answer line (flash, duplicate, too many pastes, problem words)","impact":"none","test":"src/http/money-declines-screen.test.mjs","titles":["a paste problem is said in words; a duplicate says it is already here","after a paste the answer sits above the declines"]}),
+  Object.freeze({"name":"money-declines-locked","sourceFile":"desks-d.json","surface":"public/app/money-declines.html","control":"Paste locked panel (not a Capital Blueprint buyer)","impact":"none","test":"src/http/money-declines-screen.test.mjs","titles":["not a Blueprint buyer: no paste box at all, and the page says why in words"]}),
+  Object.freeze({"name":"money-fundability-add","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Add business details / Add a business links","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["businesses: one card each, a container with no details asks for them, and nothing adds them up","no business yet: says what will appear and one way to make it appear"]}),
+  Object.freeze({"name":"money-fundability-empty","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Empty state: Run your soft pull link","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["empty: no credit file"]}),
+  Object.freeze({"name":"money-fundability-chart","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Now and later chart: date column buttons (Today + 3 dates), click / hover / focus shows assumptions","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["the chart: today and three dates, a solid plan line, assumptions on the chosen date"]}),
+  Object.freeze({"name":"money-fundability-now","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Tile: Fundability now (x of 6 UnderwriteIQ checks, tier)","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["full: fundability now, the money, and the 12-month comparison"]}),
+  Object.freeze({"name":"money-fundability-later","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"Tile: In N months (plan projection, 'if removed' line)","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["full: fundability now, the money, and the 12-month comparison","if removed: its own dashed line with open dots, and it always says it is not promised"]}),
+  Object.freeze({"name":"money-fundability-drives","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"What drives it: six checks, each Pass / Not yet / Not on file","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["what drives it: six checks, each a word and a mark"]}),
+  Object.freeze({"name":"money-fundability-moves","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"What moves it most (UnderwriteIQ sentences, tagged with the check)","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["UnderwriteIQ's sentence is printed verbatim, tagged with the check it moves, and escaped"]}),
+  Object.freeze({"name":"money-fundability-cannot","sourceFile":"desks-d.json","surface":"public/app/money-fundability.html","control":"What this cannot look ahead on","impact":"none","test":"src/http/money-fundability-screen.test.mjs","titles":["what this cannot look ahead on is said in words"]}),
+  Object.freeze({"name":"money-next-blueprint","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Capital Blueprint card: Book a call link (only for clients without it)","impact":"none","test":"src/http/money-next-screen.test.mjs","titles":["the Capital Blueprint card shows only to a client without it, and links to the call booking"]}),
+  Object.freeze({"name":"money-next-checklist","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Open your checklist link (steps only the client can do)","impact":"none","test":"src/http/money-next-screen.test.mjs","titles":["a person step has Do task; a step only the client can do has no button and links to the checklist"]}),
+  Object.freeze({"name":"money-next-ready","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Ready card states (none / sent to our team / a person has it / prep call done)","impact":"none","test":"src/http/money-next-screen.test.mjs","titles":["Ready to get funded: none"]}),
+  Object.freeze({"name":"money-next-steps","sourceFile":"desks-d.json","surface":"public/app/money-next.html","control":"Step list rows (title, due or Late N days, who can do it, why, from)","impact":"none","test":"src/http/money-next-screen.test.mjs","titles":["full: the test client's two steps, late said in words, who can do each, and the Do task buttons"]}),
+  Object.freeze({"name":"money-connections-empty","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Empty state: Add a business link","impact":"none","test":"src/http/money-connections-screen.test.mjs","titles":["empty: no business"]}),
+  Object.freeze({"name":"money-connections-tiles","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Four tiles: Sales / Refunds / Fees / Paid out this month, with vs-last-month","impact":"none","test":"src/http/money-connections-screen.test.mjs","titles":["full state: tiles with a comparison, three processor cards, month table per container"]}),
+  Object.freeze({"name":"money-connections-months","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Month over month tables (per business + All businesses)","impact":"none","test":"src/http/money-connections-screen.test.mjs","titles":["full state: tiles with a comparison, three processor cards, month table per container"]}),
+  Object.freeze({"name":"money-connections-providers","sourceFile":"desks-d.json","surface":"public/app/money-connections.html","control":"Provider card x3 (Commas, Whop, Open API) status word","impact":"none","test":"src/http/money-connections-screen.test.mjs","titles":["status is said in words, never colour alone","full state: tiles with a comparison, three processor cards, month table per container"]}),
+  Object.freeze({"name":"money-helper-bubbles","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Chat bubbles: your message, the helper's answer, brain label (AI or Rules) with reason, time","impact":"none","test":"src/http/money-helper-screen.test.mjs","titles":["each message, then the helper's own words under it","which brain answered, in words, under every answer","time: relative under a day, a date after"]}),
+  Object.freeze({"name":"money-helper-empty","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Empty thread state","impact":"none","test":"src/http/money-helper-screen.test.mjs","titles":["empty: says what will appear, with three ways to start"]}),
+  Object.freeze({"name":"money-helper-status","sourceFile":"desks-d.json","surface":"public/app/money-helper.html","control":"Helper status tags (Texts off, AI on / AI off / Rules helper only)","impact":"none","test":"src/http/money-helper-screen.test.mjs","titles":["the helper's status in words: texts off, AI on"]}),
+  Object.freeze({"name":"money-plan-detail","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Detail panel facts (what, when, amount, status in words, why, source, See it on Payments link)","impact":"none","test":"src/http/money-plan-screen.test.mjs","titles":["what, when, how much, the status in words, why, and where it came from","a staff desk carries the client on the Payments link"]}),
+  Object.freeze({"name":"money-plan-empty","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Empty state: Add an account link","impact":"none","test":"src/http/money-plan-screen.test.mjs","titles":["empty: says what will appear and gives one action that makes it appear"]}),
+  Object.freeze({"name":"money-plan-grid","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Mon-Sun calendar grid (today ring, pins per day, status shapes)","impact":"none","test":"src/http/money-plan-screen.test.mjs","titles":["each pin sits on its own day, with its amount","today is a ring and the word, on the 7th only","status is a shape as well as a colour in a cell, and a word everywhere else"]}),
+  Object.freeze({"name":"money-plan-pin","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Pin button in a calendar cell / row in the day list (opens the detail panel)","impact":"none","test":"src/http/money-plan-screen.test.mjs","titles":["a pin opens its panel; staff Mark done posts the pin to its own source"]}),
+  Object.freeze({"name":"money-plan-tiles","sourceFile":"desks-d.json","surface":"public/app/money-plan.html","control":"Tiles: Next up / This month / Missed","impact":"none","test":"src/http/money-plan-screen.test.mjs","titles":["the tiles: what is next, the month in numbers, and what was missed"]}),
+  Object.freeze({"name":"money-setup-header","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Header 'N of 4 steps done' and step markers (Done / now / later)","impact":"none","test":"src/http/money-setup-screen.test.mjs","titles":["done steps say Done in words, with dates; all done shows the live link"]}),
+  Object.freeze({"name":"money-setup-step4","sourceFile":"desks-d.json","surface":"public/app/money-setup.html","control":"Step 4: Open Money link (when live)","impact":"none","test":"src/http/money-setup-screen.test.mjs","titles":["done steps say Done in words, with dates; all done shows the live link"]}),
+  Object.freeze({"name":"money-payments-helperlog","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"What your money helper did (log sentences; never claims a text went out when it did not)","impact":"none","test":"src/http/money-payments-screen.test.mjs","titles":["the log never claims a text went out when it did not"]}),
+  Object.freeze({"name":"money-payments-unmatched","sourceFile":"desks-d.json","surface":"public/app/money-payments.html","control":"Staff only: Commas payments not matched to a plan","impact":"staffOnly","test":"src/http/money-payments-screen.test.mjs","titles":["unmatched Commas payments: a staff-only list, in words, and never on the client's page"]}),
+  Object.freeze({"name":"cc-make-funnel","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas funnels: 'Make the funnel' form (what it sells select, optional own address) -> 3 draft pages","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Funnels: make one (automatic address)"]}),
+  Object.freeze({"name":"cc-drop-idea","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: 'Drop an idea' form: idea box, format select (optional), funnel select (optional), Save idea","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Drop an idea saves it with the format and funnel"]}),
+  Object.freeze({"name":"cc-quick-copy","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: 'Quick copy' form (angle, offer select, 'Write one piece')","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Quick copy: cost first, then one piece through the copy runner"]}),
+  Object.freeze({"name":"cc-start-flywheel","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: flywheel 'Which offer' select (campaign) and 'Start a flywheel for' select + 'Start a flywheel' button","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Start a flywheel for any offer key"]}),
+  Object.freeze({"name":"cc-write-now-idea","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: idea row 'Write now from this idea' (writes one script; cost printed first)","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Write now from an idea shows the cost first"]}),
+  Object.freeze({"name":"cc-accept-suggestion","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: planner suggestions list: 'Accept' button on each of the 3 suggestions","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["Accept a suggestion and Make more of an angle make ideas"]}),
+  Object.freeze({"name":"cc-ideas-retry","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Ideas: 'Try again' buttons on a failed card","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-ideas.spec.mjs","titles":["a part that fails says so and the rest stays painted"]}),
+  Object.freeze({"name":"cc-page-gate","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Page gate: owner and admin only; a closer is sent to their own home","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-command-center.spec.mjs","titles":["owner and admin only: a closer is sent to their own home"]}),
+  Object.freeze({"name":"cc-write-offer","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Today: 'Write offer' button (starts an offer run and follows it until the card fills)","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-command-center.spec.mjs","titles":["Write offer: starts a run and follows it"]}),
+  Object.freeze({"name":"cc-write-copy","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Today: 'Write ad copy' form: angle box, 'What are we selling' select (funding, credit cards, credit repair), submit","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-command-center.spec.mjs","titles":["Write ad copy: generate, then run with max_jobs 1"]}),
+  Object.freeze({"name":"cc-scripts-approve","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Scripts: card 'Approve' button (locks the script, gives its ad number, moves to the next card)","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-scripts.spec.mjs","titles":["Approve gives the ad number and moves to the next card"]}),
+  Object.freeze({"name":"cc-scripts-reject","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Scripts: card 'Reject' (two taps: 'Reject it' / 'Keep it')","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-scripts.spec.mjs","titles":["Reject takes two taps, names what happens, and Keep it backs out"]}),
+  Object.freeze({"name":"cc-scripts-order","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Scripts: film order: 'Film first', 'Up', 'Down' on each approved script","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-scripts.spec.mjs","titles":["film order: Film first and the arrows send the root ids in order"]}),
+  Object.freeze({"name":"cc-scripts-versions","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Scripts: 'Every version' fold: loads all versions and their checks","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-scripts.spec.mjs","titles":["every version and its checks unfold on the card"]}),
+  Object.freeze({"name":"cc-scripts-retry","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Scripts: 'Try again' buttons on a failed part","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-scripts.spec.mjs","titles":["loading, an error in one part, and the empty inbox"]}),
+  Object.freeze({"name":"cc-settings-save","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Settings: 'Save' button (one save for settings and every changed funnel)","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-settings.spec.mjs","titles":["Save sends only what changed"]}),
+  Object.freeze({"name":"cc-settings-409","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Settings: 409 conflict: 'Keep mine' / 'Use the saved one'","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-settings.spec.mjs","titles":["a 409 shows both versions; Keep mine saves over the newer one; Use the saved one drops mine","Keep mine sends the same change again over the version that is saved now"]}),
+  Object.freeze({"name":"cc-settings-campaigns","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Settings: funnel card: Meta campaign checkboxes (links a campaign; another funnel's is disabled) and default ad set select","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-settings.spec.mjs","titles":["unticking a campaign clears its ad set","a campaign already on another funnel is disabled with the reason"]}),
+  Object.freeze({"name":"cc-settings-retry","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Settings: 'Try again' on a failed part","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/marketing-cc-settings.spec.mjs","titles":["a part that does not load says so in words"]}),
+  Object.freeze({"name":"cc-shoot-close","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Shoot: 'Close the shoot' (two taps: 'Close it' / 'Keep it open')","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-shoot.spec.mjs","titles":["Close still takes two taps"]}),
+  Object.freeze({"name":"cc-shoot-marks","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Shoot: row marks: 'Got it' and 'Another take'","impact":"staffOnly","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-shoot.spec.mjs","titles":["rows mark takes"]}),
+  Object.freeze({"name":"cc-shoot-retry","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Shoot: 'Try again' on a failed read; refused-save message","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-shoot.spec.mjs","titles":["error: a failed read says so","a refused save shows the server"]}),
+  Object.freeze({"name":"cc-numbers-filters","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Numbers: Ads filters: window select (7/14/30 days...), funnel select, format select, angle select, first-day and last-day inputs, 'Clear filters'","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-numbers.spec.mjs","titles":["Ads: filters send the right question, and Clear filters brings every ad back"]}),
+  Object.freeze({"name":"cc-numbers-sort","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Numbers: Ads table: sortable column headers","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-numbers.spec.mjs","titles":["Ads: tapping a header sorts; unknown stays last"]}),
+  Object.freeze({"name":"cc-numbers-switch","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Numbers: view switch: Ads / Angles / Funnels (keeps its place in the URL)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-numbers.spec.mjs","titles":["The view switch keeps its place in the URL and every view loads only its own numbers"]}),
+  Object.freeze({"name":"cc-numbers-retry","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Numbers: 'Try again' on a failed part","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-numbers.spec.mjs","titles":["One part fails in plain words; Try again brings it back"]}),
+  Object.freeze({"name":"cc-numbers-link","sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Numbers: Unmapped spend: 'Link to a funnel' button (opens Settings at the funnel mapping)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-specs.test.mjs","spec":"e2e/cc-tab-numbers.spec.mjs","titles":["unmapped spend with a Link button"]}),
 ]);
 
 // Same shape as the other display-contract plugins: display-proof-cases.mjs
