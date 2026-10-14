@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-  /* Layout: one dark Fundhub card sheet. Totals first, then the parts, then how far it reaches. Single dark look by choice (brand card style). */
+  /* Layout: one dark Fundhub sheet. Totals, then the system as a rail of steps with the cost on each, then reach. Single dark look by choice (brand card style). */
   :root {
     --ground: #0A0A0A;
     --card: #111113;
@@ -19,6 +19,7 @@
     --powder: #A9C6E8;
     --coral: #F2A69B;
     --spectrum: linear-gradient(90deg, #F2A69B 0%, #F5CE8F 20%, #F2E39B 40%, #A8D8B0 60%, #A9C6E8 80%, #C4B3E5 100%);
+    --rail: linear-gradient(180deg, #C4B3E5 0%, #C4B3E5 48%, #A8D8B0 56%, #A8D8B0 100%);
     --sans: "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     color-scheme: dark;
@@ -38,7 +39,7 @@
   }
   .topbar { height: 5px; background: var(--spectrum); }
   .sheet {
-    max-width: 920px;
+    max-width: 860px;
     margin: 0 auto;
     padding-block: 48px 40px;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -54,66 +55,102 @@
   .eyebrow::before { content: ""; width: 20px; height: 3px; border-radius: 2px; background: var(--spectrum); }
   h1 {
     margin: 14px 0 0;
-    font-size: clamp(2rem, 6vw, 3.4rem);
+    font-size: clamp(2rem, 6vw, 3.2rem);
     line-height: 1.08; font-weight: 700; letter-spacing: -0.02em;
-    color: var(--ink); text-wrap: balance; max-width: 15ch;
+    color: var(--ink); text-wrap: balance; max-width: 16ch;
   }
-  .sub { margin: 14px 0 0; color: var(--muted); font-size: clamp(1rem, 2.2vw, 1.2rem); max-width: 60ch; }
+  .sub { margin: 14px 0 0; color: var(--muted); font-size: clamp(1rem, 2.2vw, 1.15rem); max-width: 60ch; }
 
-  .totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-  .total {
-    background: var(--card); border: 1px solid var(--cardline); border-radius: 18px;
-    padding: 26px 28px; display: grid; gap: 6px; min-width: 0;
-  }
   .label { font-family: var(--mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
   .label.once { color: var(--lavender); }
   .label.monthly { color: var(--sage); }
-  .big {
-    font-size: clamp(2.4rem, 6.4vw, 3.9rem); font-weight: 700; line-height: 1.1;
-    color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-  }
-  .note { color: var(--muted); font-size: 1rem; }
 
-  .section { display: grid; gap: 18px; }
-  .section-head { display: flex; align-items: center; gap: 16px; }
-  .section-head::after { content: ""; flex: 1; height: 1px; background: var(--cardline); }
-  .rows { display: grid; gap: 16px; }
-  .row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) auto;
-    align-items: center; gap: 20px;
-  }
-  .row .name { color: var(--text); font-size: 1.12rem; }
-  .row .price { color: var(--ink); font-weight: 600; font-size: 1.12rem; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 6.5em; }
-  .bar { position: relative; height: 12px; border-radius: 999px; background: var(--track); overflow: hidden; }
-  .bar span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
-  .once .bar .hi { background: var(--lavender); opacity: .35; }
-  .once .bar .lo { background: var(--lavender); }
-  .monthly .bar .hi { background: var(--sage); opacity: .35; }
-  .monthly .bar .lo { background: var(--sage); }
-  .dot { position: absolute; left: 0; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--lavender); }
-
-  .reach { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-  .tile {
+  .totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .total {
     background: var(--card); border: 1px solid var(--cardline); border-radius: 18px;
     padding: 22px 24px; display: grid; gap: 4px; min-width: 0;
   }
-  .tile b { font-size: clamp(2rem, 4.6vw, 2.75rem); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .big {
+    font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 700; line-height: 1.1;
+    color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .note { color: var(--muted); font-size: .98rem; }
+
+  .flow { position: relative; }
+  .rail { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: 14px; }
+  .rail::before {
+    content: ""; position: absolute; left: 15px; top: 10px; bottom: 28px; width: 2px;
+    background: var(--rail); opacity: .55; border-radius: 2px;
+  }
+  .runner {
+    position: absolute; left: 11px; top: 10px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink); box-shadow: 0 0 0 4px rgba(252,252,252,.12);
+    opacity: 0; pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .runner { animation: travel 7s linear infinite; }
+    @keyframes travel {
+      0% { top: 10px; opacity: 0; }
+      5% { opacity: 1; }
+      92% { opacity: 1; }
+      100% { top: calc(100% - 40px); opacity: 0; }
+    }
+  }
+
+  .phase { position: relative; padding: 18px 0 2px 44px; display: flex; align-items: center; gap: 12px; }
+  .phase::before {
+    content: ""; position: absolute; left: 9px; top: 50%; width: 14px; height: 14px;
+    transform: translateY(-20%) rotate(45deg); border-radius: 3px; background: var(--ground);
+    border: 2px solid currentColor;
+  }
+  .phase.once { color: var(--lavender); }
+  .phase.monthly { color: var(--sage); }
+  .phase .hint { font-family: var(--sans); font-size: .9rem; letter-spacing: 0; text-transform: none; color: var(--faint); }
+
+  .step { position: relative; padding-left: 44px; }
+  .step::before {
+    content: ""; position: absolute; left: 9px; top: 22px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--ground); border: 2px solid var(--lavender);
+  }
+  .step.monthly::before { border-color: var(--sage); }
+  .card {
+    background: var(--card); border: 1px solid var(--cardline); border-radius: 16px;
+    padding: 16px 20px; display: grid; gap: 6px; min-width: 0;
+  }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .head h3 { margin: 0; font-size: 1.12rem; font-weight: 600; color: var(--ink); display: flex; gap: 10px; align-items: baseline; }
+  .num { font-family: var(--mono); font-size: .8rem; color: var(--faint); font-weight: 500; }
+  .card p { margin: 0; color: var(--muted); font-size: .98rem; max-width: 62ch; }
+  .chip {
+    font-weight: 600; font-size: .95rem; white-space: nowrap; font-variant-numeric: tabular-nums;
+    padding: 3px 12px; border-radius: 999px; border: 1px solid var(--cardline);
+  }
+  .chip.free { color: var(--muted); }
+  .chip.once { color: var(--lavender); border-color: rgba(196,179,229,.4); background: rgba(196,179,229,.08); }
+  .chip.monthly { color: var(--sage); border-color: rgba(168,216,176,.4); background: rgba(168,216,176,.08); }
+  .chip.result { color: var(--peach); border-color: rgba(245,206,143,.4); background: rgba(245,206,143,.08); }
+  .loop { margin-top: 4px; color: var(--sage); font-size: .92rem; display: flex; gap: 8px; align-items: center; }
+
+  .reach-wrap { display: grid; gap: 14px; }
+  .reach { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .tile {
+    background: var(--card); border: 1px solid var(--cardline); border-radius: 18px;
+    padding: 20px 22px; display: grid; gap: 4px; min-width: 0;
+  }
+  .tile b { font-size: clamp(1.9rem, 4.4vw, 2.6rem); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .tile:nth-child(1) b { color: var(--peach); }
   .tile:nth-child(2) b { color: var(--powder); }
   .tile:nth-child(3) b { color: var(--coral); }
-  .tile span { color: var(--muted); font-size: .98rem; }
+  .tile span { color: var(--muted); font-size: .96rem; }
 
-  footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-top: 8px; }
+  footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-top: 4px; }
   .mark { font-size: 1.9rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
   .fine { color: var(--faint); font-size: .9rem; text-align: right; display: grid; gap: 2px; }
 
   @media (max-width: 640px) {
     .sheet { padding-block: 32px 32px; gap: 32px; }
     .totals, .reach { grid-template-columns: minmax(0, 1fr); }
-    .row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; column-gap: 12px; }
-    .row .bar { grid-column: 1 / -1; grid-row: 2; }
-    .row .name, .row .price { font-size: 1.02rem; }
+    .card { padding: 14px 16px; }
     .fine { text-align: left; }
   }
 </style>
@@ -122,76 +159,103 @@
 <main class="sheet">
   <header>
     <div class="eyebrow">B-01 / Bank outreach</div>
-    <h1>What it costs to reach every bank in the U.S.</h1>
-    <p class="sub">Every bank and credit union, every state. These are estimates until the Arizona test.</p>
+    <h1>How it works and what it costs</h1>
+    <p class="sub">Every bank and credit union in the U.S. Costs are estimates until the Arizona test.</p>
   </header>
 
   <section class="totals" aria-label="Totals">
     <div class="total">
       <div class="label once">One-time build</div>
       <div class="big">$250–$450</div>
-      <div class="note">The full list of bankers, once</div>
+      <div class="note">Steps 1 to 5, done once</div>
     </div>
     <div class="total">
       <div class="label monthly">Every month</div>
       <div class="big">$100–$200</div>
-      <div class="note">Plus the team working the list</div>
+      <div class="note">Steps 6 to 9, plus the team</div>
     </div>
   </section>
 
-  <section class="section once" aria-label="One-time build parts">
-    <div class="section-head"><span class="label once">One-time build</span></div>
-    <div class="rows">
-      <div class="row">
-        <div class="name">Government bank lists</div>
-        <div class="bar"><span class="dot"></span></div>
-        <div class="price">Free</div>
-      </div>
-      <div class="row">
-        <div class="name">Brave LinkedIn searches</div>
-        <div class="bar"><span class="hi" style="width:100%"></span><span class="lo" style="width:66.67%"></span></div>
-        <div class="price">$200–$300</div>
-      </div>
-      <div class="row">
-        <div class="name">AI cleanup of results</div>
-        <div class="bar"><span class="hi" style="width:50%"></span><span class="lo" style="width:16.67%"></span></div>
-        <div class="price">$50–$150</div>
-      </div>
-    </div>
+  <section class="flow" aria-label="How the system runs">
+    <ol class="rail">
+      <li class="phase once" aria-hidden="true"><span class="label once">Built once</span></li>
+
+      <li class="step once">
+        <div class="card">
+          <div class="head"><h3><span class="num">01</span>Pull every bank</h3><span class="chip free">Free</span></div>
+          <p>The FDIC bank list and the NCUA credit union list, with every branch.</p>
+        </div>
+      </li>
+      <li class="step once">
+        <div class="card">
+          <div class="head"><h3><span class="num">02</span>Split by state</h3><span class="chip free">Free</span></div>
+          <p>One row for each bank in each state, so Chase Arizona and Chase Texas are separate rows.</p>
+        </div>
+      </li>
+      <li class="step once">
+        <div class="card">
+          <div class="head"><h3><span class="num">03</span>Search LinkedIn</h3><span class="chip once">$200–$300</span></div>
+          <p>Brave runs state + bank + position for every row and brings back the bankers' LinkedIn profiles.</p>
+        </div>
+      </li>
+      <li class="step once">
+        <div class="card">
+          <div class="head"><h3><span class="num">04</span>Clean the results</h3><span class="chip once">$50–$150</span></div>
+          <p>AI keeps the name, title, bank, state and LinkedIn link, and drops anything that doesn't match.</p>
+        </div>
+      </li>
+      <li class="step once">
+        <div class="card">
+          <div class="head"><h3><span class="num">05</span>Load the CRM</h3><span class="chip free">Included</span></div>
+          <p>Every banker lands under their bank and state, ready for the team to work.</p>
+        </div>
+      </li>
+
+      <li class="phase monthly" aria-hidden="true"><span class="label monthly">Runs every month</span></li>
+
+      <li class="step monthly">
+        <div class="card">
+          <div class="head"><h3><span class="num">06</span>Reach out</h3><span class="chip monthly">about $70</span></div>
+          <p>The team sends LinkedIn requests and emails from 10 mailboxes on a separate domain.</p>
+        </div>
+      </li>
+      <li class="step monthly">
+        <div class="card">
+          <div class="head"><h3><span class="num">07</span>Answer replies</h3><span class="chip monthly">under $50</span></div>
+          <p>The AI reply agent drafts each answer. The team checks it and books the call.</p>
+        </div>
+      </li>
+      <li class="step monthly">
+        <div class="card">
+          <div class="head"><h3><span class="num">08</span>Save the bank's data</h3><span class="chip result">The result</span></div>
+          <p>Products, minimum score, bureau pulled, stated income, states served and the application link go into the bank's record.</p>
+        </div>
+      </li>
+      <li class="step monthly">
+        <div class="card">
+          <div class="head"><h3><span class="num">09</span>Refresh the list</h3><span class="chip monthly">$25–$75</span></div>
+          <p>The search runs again to catch new hires and people who left.</p>
+          <div class="loop"><span aria-hidden="true">↻</span>Feeds new bankers back into step 3</div>
+        </div>
+      </li>
+    </ol>
+    <span class="runner" aria-hidden="true"></span>
   </section>
 
-  <section class="section monthly" aria-label="Monthly parts">
-    <div class="section-head"><span class="label monthly">Every month</span></div>
-    <div class="rows">
-      <div class="row">
-        <div class="name">Refresh for new hires</div>
-        <div class="bar"><span class="hi" style="width:25%"></span><span class="lo" style="width:8.33%"></span></div>
-        <div class="price">$25–$75</div>
-      </div>
-      <div class="row">
-        <div class="name">10 email mailboxes</div>
-        <div class="bar"><span class="lo" style="width:23.33%"></span></div>
-        <div class="price">about $70</div>
-      </div>
-      <div class="row">
-        <div class="name">AI reply agent</div>
-        <div class="bar"><span class="hi" style="width:16.67%"></span></div>
-        <div class="price">under $50</div>
-      </div>
+  <section class="reach-wrap" aria-label="How far it reaches">
+    <span class="label" style="color: var(--muted)">How far it reaches</span>
+    <div class="reach">
+      <div class="tile"><b>~9,000</b><span>banks and credit unions</span></div>
+      <div class="tile"><b>~8,000</b><span>cold emails a month</span></div>
+      <div class="tile"><b>~800</b><span>bankers a month on LinkedIn</span></div>
     </div>
-  </section>
-
-  <section class="reach" aria-label="How far it reaches">
-    <div class="tile"><b>~9,000</b><span>banks and credit unions</span></div>
-    <div class="tile"><b>~8,000</b><span>cold emails a month</span></div>
-    <div class="tile"><b>~800</b><span>bankers a month on LinkedIn</span></div>
   </section>
 
   <footer>
     <div class="mark">fundhub.</div>
     <div class="fine">
       <span>Brave Search: $5 per 1,000 searches · FDIC and NCUA lists are free</span>
-      <span>Bars run from $0 to $300 · Employee pay is separate</span>
+      <span>Employee pay is separate</span>
     </div>
   </footer>
 </main>
