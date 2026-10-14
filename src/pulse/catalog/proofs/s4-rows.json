@@ -299,5 +299,19 @@
     "Staff only: files to sort - 'File and accept' / 'Reject' with the paper picker"
    ]
   }
+ ],
+ "s4-finance-os-panels.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "finance-os.html",
+   "controls": [
+    "Bank accounts panels: Personal, Business, Investment, Not classified; and the hand-typed-balances note",
+    "Credit picture panel (seven server-computed rows: limit, balance, available, utilization, APR, cheapest money)",
+    "Hero: 'available credit' figure and its sentence",
+    "Money in panel ('Paid so far' counts only paid rows) and Invoiced panel (billed, paid, still owed)",
+    "Optimize your accounts panel (suggestions, 'checked, not a factor', not-entitled state)",
+    "Repeating charges panel"
+   ]
+  }
  ]
 }
