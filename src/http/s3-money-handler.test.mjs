@@ -86,14 +86,9 @@ function fakeDbWithClient(mem, clientIds) {
 
 describe("POST /api/money/alerts", () => {
   const card = [/FROM bank_accounts WHERE id = \$1 AND org_id = \$2 AND client_id = \$3/, [{ id: CARD, account_type: "credit", closed_at: null, name: "Chase Ink", mask: "4242" }]];
-  const clientDb = (rules = []) => fakeDb([...rules]);
-  const post = (body, database) => call(alertsHandler, { method: "POST", body }, clientPrincipal(CLIENT, ORG), database, {
-    // the handler's own client check reads `clients`; everything else is the real store
-  });
-  const withClientCheck = (rules) => {
-    const inner = fakeDb([[/FROM clients/, [{ "?column?": 1 }]], ...rules]);
-    return inner;
-  };
+  const post = (body, database) => call(alertsHandler, { method: "POST", body }, clientPrincipal(CLIENT, ORG), database);
+  // The handler's own client check reads `clients`; everything else is the real store.
+  const withClientCheck = (rules) => fakeDb([[/FROM clients/, [{ "?column?": 1 }]], ...rules]);
 
   test("set_alert switches one alert kind for this client and answers with that kind and state", async () => {
     const database = withClientCheck([[/FROM file_protection_settings/, []]]);

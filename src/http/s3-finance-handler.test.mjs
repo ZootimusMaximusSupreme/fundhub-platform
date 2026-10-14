@@ -10,7 +10,6 @@ import { makeRes, fakeDb, req, staffSession, ORG_ID, STAFF_ID } from "../testing
 import { callShared } from "../testing/s3-handler-call.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
-const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
 const BUSINESS = "e1000000-0000-4000-8000-0000000000e1";
 
 describe("POST /api/finance/containers action=rename", () => {

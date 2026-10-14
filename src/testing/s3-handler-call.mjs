@@ -9,11 +9,3 @@ export async function callShared(handler, request, rules = []) {
   await runWithSharedDb(fake, () => handler(request, res));
   return { res, fake };
 }
-
-/** Run `handler(request, res, deps)` where deps.db is the stand-in (no shared db). */
-export async function callWithDeps(handler, request, rules = [], deps = {}) {
-  const fake = fakeDb(rules);
-  const res = makeRes();
-  await runWithSharedDb(fake, () => handler(request, res, { db: fake, ...deps }));
-  return { res, fake };
-}
