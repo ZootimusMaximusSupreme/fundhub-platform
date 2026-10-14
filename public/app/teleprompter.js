@@ -551,21 +551,23 @@
 
   /**
    * One real camera ask.
-   * Either lens can request 4K at 3840×2160. The frame rate is 60 with no ceiling, so the
-   * camera gives the highest rate it has at that size. It is not locked to 30.
+   * Either lens can request 4K at 3840×2160. The frame rate is a hard 30 (owner call 2026-10-13), so the
+   * camera opens on the first ask on both lenses. 60 fps waits for the iPhone app.
    * Settings 1080p is 1920×1080. lockRate asks for that exact frame rate.
    * Tall is the 1080p picture held upright (1080×1920).
    * facing is "user" (front) or "environment" (back).
    * mode "4k" keeps 4K when lenses change. mode "1080p" stays at 1920×1080.
    */
+  /* Owner call 2026-10-13: a hard 30 fps on both lenses, 1080p and 4K, until the
+     iPhone app. Asking for 60 on an iPhone got 30 back, and each re-ask took the
+     lens away, so flipping cameras went black. One 30 fps ask opens the first time. */
+  var HARD_FPS = 30;
   function cameraAsk(facing, fps, shape, lockRate, mode) {
     var front = facing !== "environment";
-    var rate = fps === 30 ? 30 : 60;
+    var rate = HARD_FPS;
     var tall = shape === "tall";
     var four = mode === "4k";
-    var frame = four
-      ? (lockRate ? { min: rate, ideal: rate } : { ideal: rate })
-      : (lockRate ? { min: rate, ideal: rate, max: rate } : { ideal: rate });
+    var frame = { ideal: rate, max: rate };
     if (four) {
       var ask = {
         facingMode: { ideal: front ? "user" : "environment" },
@@ -735,7 +737,7 @@
     var short = "";
     if (want === "4k" && !four) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 4K.";
     else if (want === "1080p" && !hd) short = "This camera tops out at " + (w && h ? (w + "×" + h) : "a smaller size") + ". It is not 1080p.";
-    else if (fps && fps < 60) short = line + " · below 60 fps target";
+    else if (fps && fps < HARD_FPS - 1) short = line + " · below " + HARD_FPS + " fps target";
     return { line: line, short: short, width: w, height: h, fps: fps };
   }
 
@@ -996,13 +998,18 @@
   }
 
 
-  /* Browser-reported input only. A hidden/unknown label must never be called RØDE. */
+  /* A Rode by the name iOS gives it: RØDE, RODE, or a Rode model name. */
+  function isRodeMic(label) {
+    return /r[oø]de|wireless\s+(go|pro|me|micro)|videomic|smartlav|interview\s+pro/i.test(String(label || ""));
+  }
+
+  /* Browser-reported input only. A hidden/unknown label must never be called Rode. */
   function micLabel(label) {
     var name = String(label || "").trim();
-    if (!name || /^(default|communications|microphone(?:\s+\d+)?)$/i.test(name)) return "Mic · source unknown";
-    if (/iPhone|built.?in|internal microphone/i.test(name)) return "iPhone mic";
-    if (/r[oø]de/i.test(name)) return "RØDE mic";
-    return name.length > 25 ? name.slice(0, 24) + "…" : name;
+    if (!name || /^(default|communications|microphone(?:\s+\d+)?)$/i.test(name)) return "Mic on";
+    if (isRodeMic(name)) return "Rode on";
+    if (/iPhone|built.?in|internal microphone/i.test(name)) return "iPhone mic on";
+    return (name.length > 22 ? name.slice(0, 21) + "…" : name) + " on";
   }
 
   root.FundhubTeleprompter = {
@@ -1014,7 +1021,7 @@
     topEdgeStart: topEdgeStart, topEdgeStep: topEdgeStep, SWAP_PX: SWAP_PX, ARM_MS: ARM_MS,
     requestId: requestId, clock: clock, DEFAULT_KEYS: DEFAULT_KEYS, MIN_WPM: MIN_WPM, MAX_WPM: MAX_WPM,
     TAP_SLOP: TAP_SLOP, DBL_MS: DBL_MS, DBL_SLOP: DBL_SLOP, LONG_MS: LONG_MS, FLING_MIN: FLING_MIN,
-    cameraAsk: cameraAsk, cameraRateBelow: cameraRateBelow, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
+    HARD_FPS: HARD_FPS, cameraAsk: cameraAsk, cameraRateBelow: cameraRateBelow, cameraTries: cameraTries, pickVideoDevice: pickVideoDevice, cameraFacing: cameraFacing, stays4K: stays4K, cameraReport: cameraReport, micLabel: micLabel, isRodeMic: isRodeMic, recordFrameBox: recordFrameBox, recordingIsPortrait: recordingIsPortrait,
     paceThroughBlanks: paceThroughBlanks, steadyPace: steadyPace, scrollTime: scrollTime,
     readingLinePx: readingLinePx, readingLineTop: readingLineTop, START_LINES_DOWN: START_LINES_DOWN, pausePlace: pausePlace,
     cameraWordSide: cameraWordSide, volumeKeyDir: volumeKeyDir, volumeLevelDir: volumeLevelDir, volumeLadder: volumeLadder,
@@ -1320,22 +1327,6 @@
     } catch (e) { return false; }
   }
 
-  function phoneEditBackups(rootId) {
-    var prefix = "fhtp.editBackup." + rootId + ".";
-    var rows = [];
-    try {
-      for (var i = 0; i < root.localStorage.length; i++) {
-        var key = root.localStorage.key(i);
-        if (!key || key.indexOf(prefix) !== 0) continue;
-        try {
-          var row = JSON.parse(root.localStorage.getItem(key));
-          if (row && row.root === rootId && typeof row.body === "string") rows.push(row);
-        } catch (badRow) { /* keep looking for the other backups */ }
-      }
-    } catch (e) { /* a saved backup stays on this phone if storage cannot be read now */ }
-    return rows.sort(function (a, b) { return String(b.saved_at).localeCompare(String(a.saved_at)); });
-  }
-
   var edits = E.createSaveQueue({
     store: { get: function () { return LS.get("edits", null); }, set: function (v) { LS.set("edits", v); } },
     archive: archivePhoneEdit,
@@ -1345,8 +1336,17 @@
     debounceMs: 300,
     onChange: onEditChange
   });
+  root.setTimeout(keepPhoneWords, 0);
 
+  /* Owner call 2026-10-13: no Choose words. The script on this phone is the one he
+     reads and films, so a conflict keeps it and saves it on the newest version.
+     The server keeps every older version. */
+  function keepPhoneWords() {
+    var list = edits.list();
+    for (var i = 0; i < list.length; i++) if (list[i].conflict) edits.resolve(list[i].root, "mine");
+  }
   function onEditChange(ev) {
+    if (ev.type === "conflict" || ev.type === "conflict-refreshed") { root.setTimeout(keepPhoneWords, 0); }
     if (ev.type === "saved") savedOne(ev.root, ev.script, ev.warnings);
     if (ev.type === "failed") say("That edit did not save: " + ev.message);
     if (ev.type === "backup-failed") say("The phone could not back up those words. Your edit is still here.");
@@ -1414,7 +1414,13 @@
   function pulse() {
     var st = edits.status();
     var el = $("p-save");
-    el.textContent = E.statusText(st, repoHeld);
+    var said = E.statusText(st, repoHeld);
+    // Owner call 2026-10-13: a clean screen. The line shows only when a pasted
+    // script has not reached the server yet, so a lost save is never silent.
+    // A conflict is not shown: the phone's words are kept by themselves.
+    var problem = !!(st && (st.failed || (st.waiting && st.net !== "ok")));
+    el.textContent = problem ? said : "";
+    el.hidden = !problem;
     el.classList.toggle("warn", !!(st.failed || (st.waiting && st.net !== "ok")));
     el.classList.toggle("busy", !!(st.saving || (st.waiting && st.net === "ok")));
     if (editing) $("e-status").textContent = el.textContent;
@@ -2033,6 +2039,7 @@
     } catch (e2) { /* no selection api */ }
   }
   function act(a, e) {
+    if (a.do !== "caret" && doc.body.classList.contains("copying")) closeCopy();
     if (a.do === "pause") {
       if (textEdit) return;
       disarmEdit();
@@ -2047,11 +2054,12 @@
       var atTake = Math.abs(t - (times[takeWord] || 0)) < 0.01;
       start(atTake || seeked || t >= total);
     } else if (a.do === "caret") {
+      // Owner call 2026-10-13: a double-tap shows Copy script at the top. That is all.
+      // No keyboard, no edit box, no Save. He edits the copy with Claude.
       cancelSettle();
-      if (playing || countTimer) stop();          // double tap while rolling: pause, then edit
+      if (playing || countTimer) stop();
       if (scrollMode) setScroll(false);
-      placeCaret(a.x, a.y);
-      if (!textEdit) disarmEdit();
+      openCopy();
       if (e && e.preventDefault) e.preventDefault();
     } else if (a.do === "scroll-on") {
       stop(); unsnap(tapSnap); hideEnd(); setScroll(true);
@@ -2065,9 +2073,7 @@
     } else if (a.do === "fling") {
       fling(a.v);
     } else if (a.do === "edit") {
-      if (textEdit) return;
-      var el = doc.elementFromPoint(a.x, a.y), p = el && el.closest ? el.closest("#content p") : null;
-      beginEdit(p ? Number(p.dataset.p) : paraAtLine(), false);
+      // Holding a line does nothing now. Editing lives in the copy, not on the phone.
     } else if (a.do === "edit-focus") {
       if (editing && editing.box) { editing.box.focus(); }
     }
@@ -2100,8 +2106,7 @@
     if (gest.down && gest.down.dbl) {
       cancelSettle();
       clearTimeout(longTimer);
-      primeEdit();   // only the second tap makes the words editable
-      return;
+      return;   // copy only (owner call 2026-10-13): the words never become editable
     }
     if (e.cancelable) e.preventDefault();
     try { stage.setPointerCapture(e.pointerId); } catch (x) { /* old browser */ }
@@ -2309,82 +2314,6 @@
     return box;
   }
 
-  /* Every version of this script, newest first: who, when, what changed, and
-     whether the repo has it. Edits still on this phone are at the top. */
-  function openHistory() {
-    var s = scripts[cur];
-    if (!s) return;
-    // Let a save that is on its way land first, so History never says "waiting to save" about
-    // words the server already has.
-    var saved = editing ? edits.commit() : null;
-    closeSheets(true);
-    $("hist").hidden = false;
-    var list = $("hist-list");
-    list.innerHTML = "";
-    $("hist-title").textContent = "History: Ad " + (s.ad_id || "?") + " · " + (s.angle_name || s.title || "Untitled");
-    list.appendChild(el("p", "note", "Loading every version…"));
-    var it = null;
-    // commit() answers at once when a save is already in the air, so also wait for that one
-    // (up to 3 seconds; after that History shows what it has).
-    function settled(tries) {
-      return new Promise(function (res) {
-        (function look(n) {
-          var st = edits.status();
-          if (!st.saving || n <= 0) return res();
-          setTimeout(function () { look(n - 1); }, 100);
-        })(tries);
-      });
-    }
-    Promise.resolve(saved).then(null, function () { return null; }).then(function () { return settled(30); }).then(function () {
-      s = scripts[cur] || s;
-      it = edits.item(s.root_script_id);
-      return api("GET", "marketing/script?id=" + encodeURIComponent(it ? it.base_id : s.id));
-    }).then(function (r) {
-      list.innerHTML = "";
-      var versions = r.status === 200 && r.data && Array.isArray(r.data.versions) ? r.data.versions : null;
-      var liveV = versions ? E.liveOf(versions) : null;
-      if (it) {
-        var row = el("div", "ver here");
-        row.appendChild(el("div", "vh", "On this phone · " + (it.conflict ? "choose which words to use" : it.failed ? "not saved" : "waiting to save")));
-        row.appendChild(diffBox(liveV ? liveV.body : (s.body || ""), it.body));
-        if (it.conflict) {
-          var choose = el("button", "big", "Choose words");
-          choose.type = "button";
-          choose.onclick = function () { openPick(it.root); };
-          row.appendChild(choose);
-        }
-        list.appendChild(row);
-      }
-      phoneEditBackups(s.root_script_id).forEach(function (backup) {
-        var row = el("div", "ver here");
-        row.appendChild(el("div", "vh", "Phone backup · " + when(backup.saved_at) + " · not saved to the server"));
-        row.appendChild(el("p", "diff", backup.body));
-        list.appendChild(row);
-      });
-      if (!versions) {
-        list.appendChild(el("p", "note", r.status === 0
-          ? "History needs a connection. Your edits are safe on this phone and send when you are back online."
-          : "The history did not load. Try again in a minute."));
-        return;
-      }
-      versions.forEach(function (v, k) {
-        var older = versions[k + 1];
-        var row = el("div", "ver");
-        row.appendChild(el("div", "vh", "Version " + v.version + " · " + E.whoWrote(v.source) + " · " + when(v.created_at) + (v.status === "superseded" ? "" : " · on the shoot")));
-        if (older) {
-          var d = E.wordDiff(older.body, v.body);
-          row.appendChild(el("div", "vm", E.diffWords(d)));
-          row.appendChild(diffBox(older.body, v.body));
-        } else {
-          row.appendChild(el("div", "vm", "The first words."));
-          row.appendChild(el("p", "diff", v.body));
-        }
-        row.appendChild(el("div", "vm", v.repo_commit ? "In the repo." : "Not in the repo yet."));
-        list.appendChild(row);
-      });
-    });
-  }
-
   /* A stale or failed save: show the words and let Chris choose. */
   function openPick(rootId) {
     var it = edits.item(rootId);
@@ -2398,7 +2327,7 @@
     if (it.conflict) {
       var th = it.conflict.theirs;
       $("pick-title").textContent = "Choose words for this script";
-      box.appendChild(el("p", "note", "Your phone edit has not saved to the server. The saved words came from the server. If you use them, your phone edit stays in History on this phone."));
+      box.appendChild(el("p", "note", "Your phone edit has not saved to the server. The saved words came from the server. If you use them, your phone edit is kept as a backup on this phone."));
       box.appendChild(el("h3", null, "Your words (on this phone)"));
       box.appendChild(el("p", "words", it.body));
       box.appendChild(el("h3", null, "Saved words · " + E.whoWrote(th.source) + (th.created_at ? " · " + when(th.created_at) : "")));
@@ -2451,10 +2380,10 @@
     $("pick").hidden = false;
   }
 
+  /* No History (owner call 2026-10-13). A tap only opens a save that needs Chris. */
   function pulseTap() {
     var list = edits.list();
-    for (var i = 0; i < list.length; i++) if (list[i].failed) { openPick(list[i].root); return; }
-    openHistory();
+    for (var i = 0; i < list.length; i++) if (list[i].failed || list[i].conflict) { openPick(list[i].root); return; }
   }
 
   /* ── camera: front lens, 4K or 1080p, lineup box, a real video file ── */
@@ -2503,6 +2432,7 @@
     micMonitor.track = track;
     el.dataset.level = "0";
     track.addEventListener("ended", syncMicMeter);
+    track.addEventListener("ended", followMic);
     track.addEventListener("mute", syncMicMeter);
     track.addEventListener("unmute", syncMicMeter);
     var AudioCtx = root.AudioContext || root.webkitAudioContext;
@@ -2543,6 +2473,43 @@
   }
   doc.addEventListener("pointerdown", resumeMicMeter, { passive: true });
   doc.addEventListener("touchstart", resumeMicMeter, { passive: true });
+
+  /* Plug a Rode in and the app moves to it; pull it out and the iPhone mic
+     comes back. A take that is recording keeps its mic; the switch happens
+     when it stops, because a recording cannot change its sound track. */
+  var micAfterTake = false;
+  function micRecording() { return !!(cam.rec && cam.rec.state === "recording"); }
+  function followMic() {
+    var md = root.navigator.mediaDevices;
+    if (!md || !md.enumerateDevices || !md.getUserMedia) { syncMicMeter(); return; }
+    md.enumerateDevices().then(function (devs) {
+      var rode = null;
+      (devs || []).forEach(function (d) { if (!rode && d && d.kind === "audioinput" && isRodeMic(d.label)) rode = d; });
+      var track = cam.audioTrack && cam.audioTrack.readyState === "live" ? cam.audioTrack : null;
+      var onRode = track && isRodeMic(track.label);
+      if (track && (rode ? onRode : !onRode)) { syncMicMeter(); return; }
+      if (!track && !cam.stream) { syncMicMeter(); return; }
+      if (micRecording()) { micAfterTake = true; syncMicMeter(); return; }
+      var ask = rode && rode.deviceId ? { deviceId: { exact: rode.deviceId } } : true;
+      md.getUserMedia({ audio: ask, video: false }).then(function (s) {
+        var fresh = s.getAudioTracks()[0];
+        if (!fresh) return;
+        if (micRecording()) { try { fresh.stop(); } catch (e) {} micAfterTake = true; return; }
+        var old = cam.audioTrack;
+        cam.audioTrack = fresh;
+        fresh.addEventListener("ended", followMic);
+        if (cam.stream) {
+          if (old && cam.stream.removeTrack) { try { cam.stream.removeTrack(old); } catch (e) {} }
+          if (cam.stream.addTrack) { try { cam.stream.addTrack(fresh); } catch (e) {} }
+        }
+        if (old && old !== fresh) { try { old.stop(); } catch (e) {} }
+        syncMicMeter();
+      }, function () { syncMicMeter(); });
+    }, function () { syncMicMeter(); });
+  }
+  if (root.navigator.mediaDevices && root.navigator.mediaDevices.addEventListener) {
+    root.navigator.mediaDevices.addEventListener("devicechange", followMic);
+  }
 
   var takeDialog = $("take-save");
   var watchDialog = $("take-watch");
@@ -3185,6 +3152,7 @@
     cam.recordStream = null;
     cam.rec = null;
     cam.stopping = false;
+    if (micAfterTake) { micAfterTake = false; followMic(); }
     var dot = $("rec");
     if (dot) dot.hidden = true;
     clearTimeout(cam.tick);
@@ -3313,6 +3281,13 @@
         return;
       }
       stopOld();
+      if (cam.lastAsk && cam.lastAsk.stream === stream) rememberCameraRecipe(facing, mode, cam.lastAsk.ask);
+      cam.lastAsk = null;
+      if (track && !track.__fhtpWatched) {
+        track.__fhtpWatched = true;
+        track.addEventListener("ended", function () { if (cam.stream === stream) checkCameraAlive(300); });
+        track.addEventListener("mute", function () { if (cam.stream === stream) checkCameraAlive(1500); });
+      }
       cam.stream = stream;
       cam.applied = mode;
       cam.facing = facing;
@@ -3378,6 +3353,46 @@
     }
     ready();
   }
+  /* Owner call 2026-10-13: the camera never goes black while the app is open.
+     Each camera ask on an iPhone takes the lens from the last one, so hunting
+     through asks flashed black again and again. The ask that worked is saved per
+     lens, size and phone turn, and is tried first next time: one open, not ten. */
+  function recipeKey(facing, mode) {
+    return (facing === "environment" ? "environment" : "user") + ":" + (mode === "4k" ? "4k" : "1080p") + ":" + (recordingIsPortrait() ? "tall" : "wide");
+  }
+  function cameraRecipe(facing, mode) {
+    var all = LS.get("camRecipes1", {});
+    var ask = all && all[recipeKey(facing, mode)];
+    return ask && typeof ask === "object" ? JSON.parse(JSON.stringify(ask)) : null;
+  }
+  function rememberCameraRecipe(facing, mode, ask) {
+    if (!ask || typeof ask !== "object") return;
+    var copy = JSON.parse(JSON.stringify(ask));
+    delete copy.deviceId;   // ids can change between launches; the lens name stays
+    copy.facingMode = { exact: facing === "environment" ? "environment" : "user" };
+    var all = LS.get("camRecipes1", {}) || {};
+    all[recipeKey(facing, mode)] = copy;
+    LS.set("camRecipes1", all);
+  }
+  /* Back to the app, or the lens dropped: open the camera again by itself.
+     The last picture stays on screen while it does. Never during a take. */
+  var camCheckTimer = 0;
+  function checkCameraAlive(waitMs) {
+    root.clearTimeout(camCheckTimer);
+    camCheckTimer = root.setTimeout(function () {
+      if (doc.visibilityState === "hidden") return;
+      if (cam.rec && cam.rec.state === "recording") return;
+      if (cam.opening || cam.stopping) return;
+      var track = cam.stream && cam.stream.getVideoTracks()[0];
+      if (track && track.readyState === "live" && !track.muted) return;
+      if (!scripts[cur]) return;
+      holdPreview();
+      cam.stream = null; cam.applied = ""; cam.previewReady = false;
+      ensureCamera();
+    }, waitMs == null ? 400 : waitMs);
+  }
+  doc.addEventListener("visibilitychange", function () { if (doc.visibilityState === "visible") checkCameraAlive(600); });
+  root.addEventListener("pageshow", function () { checkCameraAlive(600); });
   function ensureCamera() {
     if (cam.rec && cam.rec.state === "recording") return;
     if (cam.stopping) return;
@@ -3397,15 +3412,21 @@
       var gen = ++cam.gen;
       var mode = activeMode();
       var wanted = cam.wantedFacing === "environment" ? "environment" : "user";
+      if (cam.previewReady) holdPreview();
       cam.opening = mode + ":" + wanted;
       camLine("Asking the " + (wanted === "environment" ? "back" : "front") + " camera.", false);
       if (!cam.previewReady) cameraMessage("Starting " + (wanted === "environment" ? "back" : "front") + " camera…", false);
       paintPicks();
       var steps = [];
+      var remembered = cameraRecipe(wanted, mode);
+      if (remembered) {
+        if (!cam.audioTrack || cam.audioTrack.readyState === "ended") steps.push({ video: remembered, audio: true, facing: wanted });
+        steps.push({ video: cameraRecipe(wanted, mode), audio: false, facing: wanted });
+      }
       var exactId = cam.deviceIds[wanted];
       if (exactId) {
         var exactVideo = cameraAsk(wanted, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", false, mode);
-        exactVideo.frameRate = mode === "4k" ? { min: 60, ideal: 60 } : { min: 60, ideal: 60, max: 60 };
+        exactVideo.frameRate = { ideal: HARD_FPS, max: HARD_FPS };
         exactVideo.deviceId = { exact: exactId };
         delete exactVideo.facingMode;
         steps.push({ video: exactVideo, audio: false, facing: wanted });
@@ -3430,8 +3451,9 @@
         "Camera unavailable. Allow camera access in Safari, then tap Retry camera.", true);
       camLine(wideRejected ? "No full upright camera view was available." : "Camera failed to open. Retry camera.", true);
       }
-      function finish(stream, noMic, requestedFacing) {
+      function finish(stream, noMic, requestedFacing, ask) {
         if (gen !== cam.gen) { stopTracks(stream); return; }
+        cam.lastAsk = ask ? { stream: stream, ask: ask } : null;
         var track = stream.getVideoTracks()[0];
         if (!track) { cam.opening = ""; camLine("No camera on this phone. The words still roll.", true); return; }
         var facing = cameraFacing(track.getSettings ? track.getSettings() : {}, requestedFacing);
@@ -3448,7 +3470,7 @@
         var requested = requestedFacing === "environment" ? "environment" : "user";
         if (!md.enumerateDevices) {
           if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-          finish(stream, noMic, facing);
+          finish(stream, noMic, facing, ask);
           return;
         }
         md.enumerateDevices().then(function (devs) {
@@ -3457,7 +3479,7 @@
           rememberVideoDevices(devs);
           if (!id || settings.deviceId === id) {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-            finish(stream, noMic, facing);
+            finish(stream, noMic, facing, ask);
             return;
           }
           var video = cameraAsk(requested, 60, mode === "1080p" && recordingIsPortrait() ? "tall" : "wide", true, mode);
@@ -3468,14 +3490,14 @@
             var exactSettings = exactTrack && exactTrack.getSettings ? exactTrack.getSettings() : {};
             if (cameraRateBelow(exactSettings, video)) { stopTracks(s2); stopTracks(stream); run(); return; }
             stopTracks(stream);
-            finish(s2, noMic, requested);
+            finish(s2, noMic, requested, video);
           }, function () {
             if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-            finish(stream, noMic, facing);
+            finish(stream, noMic, facing, ask);
           });
         }, function () {
           if (settings.facingMode && facing !== requested) { stopTracks(stream); run(); return; }
-          finish(stream, noMic, facing);
+          finish(stream, noMic, facing, ask);
         });
       }
       function run() {
@@ -3519,9 +3541,9 @@
       var asks = [];
       var faceShape = mode === "1080p" && recordingIsPortrait() ? "tall" : "wide";
       var shapes = faceShape === "wide" ? ["wide"] : ["tall", "wide"];
-      // A lens flip must not downgrade a genuine 60 fps take to 30 fps.
-      // Safari still has a 30 fps fallback if all 60 fps requests fail.
-      for (var askFps of [60, 30]) {
+      // Hard 30 fps (owner call 2026-10-13): one ask per shape, no 60 fps re-asks
+      // that take the lens away and black out the screen during a flip.
+      for (var askFps of [HARD_FPS]) {
         for (var shape of shapes) {
           var direct = cameraAsk(wanted, askFps, shape, askFps === 60, mode);
           direct.facingMode = { exact: wanted };
@@ -3539,7 +3561,7 @@
         }
       }
       if (wanted === "user" && mode === "1080p") {
-        for (var fallbackFps of [60, 30]) {
+        for (var fallbackFps of [HARD_FPS]) {
           var portraitSource = cameraAsk(wanted, fallbackFps, "wide", fallbackFps === 60, "4k");
           portraitSource.facingMode = { exact: wanted };
           asks.push(portraitSource);
@@ -3548,6 +3570,8 @@
       asks.sort(function (a, b) {
         return ((b.frameRate && b.frameRate.ideal) || 0) - ((a.frameRate && a.frameRate.ideal) || 0);
       });
+      var rememberedAsk = cameraRecipe(wanted, mode);
+      if (rememberedAsk) asks.unshift(rememberedAsk);
       var at = 0;
       function next() {
         if (gen !== cam.gen) return;
@@ -3577,6 +3601,7 @@
             next();
             return;
           }
+          cam.lastAsk = { stream: stream, ask: currentAsk };
           attachStream(stream, mode, !cam.audioTrack || cam.audioTrack.readyState === "ended", wanted, next);
         }, next);
       }
@@ -3915,6 +3940,52 @@
     if (editing && editing.box && editing.i >= 0 && editing.i < paras.length) paras[editing.i] = editing.box.value;
     return paras.map(function (p) { return String(p || "").trim(); }).filter(Boolean).join("\n\n");
   }
+  /* Copy mode: Copy script and X at the top. Copy takes every word of the script. */
+  function openCopy() {
+    if (atEnd || editing || textEdit || !scripts[cur]) return;
+    hideEnd();
+    doc.body.classList.add("copying");
+  }
+  function closeCopy() {
+    doc.body.classList.remove("copying");
+  }
+  /* Paste script: the clipboard replaces the whole script and saves it, the
+     same save path a phone edit always used. Empty or unchanged text does nothing. */
+  function pasteWholeScript(text) {
+    var s = scripts[cur];
+    if (!s) return "none";
+    var body = String(text || "").replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (!flatWords(body)) return "empty";
+    if (flatWords(body) === flatWords(currentScriptText())) return "same";
+    // Same paragraphs: change each one through applyEdit so the hook, body and
+    // call-to-action parts stay. A different paragraph count saves the words as one body.
+    var paras = body.split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
+    var old = paragraphsFor(s);
+    var next = paras.length === old.length ? s : null;
+    for (var i = 0; next && i < paras.length; i++) {
+      if (flatWords(paras[i]) === flatWords(old[i].text)) continue;
+      var r = E.applyEdit(next, paragraphsFor(next), i, paras[i], isBullets(s));
+      next = r ? withWords(next, r.body, r.parts) : null;
+    }
+    if (!next) next = withWords(s, paras.join("\n\n"), null);
+    scripts[cur] = next;
+    edits.edit(s.root_script_id, { id: s.id, version: s.version, body: s.body, parts: s.parts }, next.body, next.parts);
+    edits.commit();
+    redraw(0);
+    pulse();
+    return "saved";
+  }
+  function pasteScript() {
+    var clip = root.navigator && root.navigator.clipboard;
+    if (!clip || typeof clip.readText !== "function") { say("This phone did not allow paste. Tap Paste script again."); return; }
+    clip.readText().then(function (text) {
+      var r = pasteWholeScript(text);
+      if (r === "empty") say("The clipboard is empty. Copy the new script first.");
+      else if (r === "same") say("That is the same script. Nothing changed.");
+      else if (r === "saved") say("New script pasted and saved.");
+      closeCopy();
+    }, function () { say("Paste was blocked. Tap Paste script again and allow it."); });
+  }
   function copyCurrentScript() {
     var text = currentScriptText();
     if (!text) { say("There is no script to copy."); return; }
@@ -4062,12 +4133,19 @@
   $("play").onclick = toggle;
   $("b-rec").onclick = recordToggle;
   var scriptCopy = $("b-script-copy");
-  if (scriptCopy) scriptCopy.onclick = function (e) { e.preventDefault(); e.stopPropagation(); copyCurrentScript(); };
+  if (scriptCopy) scriptCopy.onclick = function (e) {
+    e.preventDefault(); e.stopPropagation();
+    copyCurrentScript();
+    root.setTimeout(closeCopy, 900);
+  };
+  var scriptPaste = $("b-script-paste");
+  if (scriptPaste) scriptPaste.onclick = function (e) { e.preventDefault(); e.stopPropagation(); pasteScript(); };
   var scriptSave = $("b-script-save");
   if (scriptSave) scriptSave.onclick = saveScript;
   $("b-cancel").addEventListener("pointerdown", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    if (doc.body.classList.contains("copying")) { closeCopy(); return; }
     cancelCaret();
   });
   setRecLabel();
@@ -4141,7 +4219,6 @@
   $("q-complete").onclick = completeFromTop;
   $("e-done").onclick = endEdit;
   $("e-back").onclick = putBack;
-  $("e-hist").onclick = function () { openHistory(); };
   var savePulse = $("p-save");
   savePulse.setAttribute("role", "button");
   savePulse.tabIndex = 0;
@@ -4212,7 +4289,7 @@
     } catch (e) { say(s.take_file_name); }
   };
   Array.prototype.forEach.call(doc.querySelectorAll("[data-close]"), function (b) { b.onclick = function () { closeSheets(); }; });
-  var SHEETS = ["lib", "set", "hist", "pick", "qmenu"];
+  var SHEETS = ["lib", "set", "pick", "qmenu"];
   function openSheet(id) { closeSheets(); if (id === "lib") drawList(); if (id === "set") drawKeys(); $(id).hidden = false; }
   function closeSheets(keepEdit) {
     learning = null;

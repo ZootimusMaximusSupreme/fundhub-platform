@@ -160,7 +160,7 @@ function errLine(label, err) {
    stored for that Arizona day. Nothing here re-runs or re-maps a check. */
 export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine = LINES.systemsMissing } = {}) {
   if (!scorecard || !Array.isArray(scorecard.checks)) {
-    return { status: "missing", total: 0, green: 0, red: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
+    return { status: "missing", total: 0, green: 0, red: 0, broken: 0, not_proved: 0, na: 0, not_checked: 0, reds: [], line: missingLine };
   }
   const checks = scorecard.checks;
   const green = checks.filter((c) => c.status === "green").length;
@@ -168,23 +168,29 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
   // "na" is its own count now (zero-unchecked build, 2026-10-09). It is nothing to judge
   // today, with a reason the computer re-checks, and it is not "not checked".
   const na = checks.filter((c) => c.status === "na").length;
-  const notChecked = checks.filter((c) => c.status !== "green" && c.status !== "red" && c.status !== "na").length;
+  const notProved = checks.filter((c) => c.status === "not_checked" && c.not_proved === true).length;
+  const notChecked = checks.filter((c) => (
+    c.status !== "green" && c.status !== "red" && c.status !== "na" && c.not_proved !== true
+  )).length;
   let line = `${prefix} ${green} of ${checks.length} checks green.`;
   if (reds.length) {
-    line += ` ${reds.length} red: ` + reds.slice(0, 3).map((c) => {
+    line += ` ${reds.length} broken: ` + reds.slice(0, 3).map((c) => {
       const day = c.day_count > 1 ? ` (day ${c.day_count})` : "";
       return `${c.id}${day}`;
     }).join(", ") + (reds.length > 3 ? `, and ${reds.length - 3} more in the report.` : ".");
   }
+  if (notProved) line += ` ${notProved} not proved yet.`;
   if (notChecked) line += ` ${notChecked} not checked.`;
   if (na) line += ` ${na} had nothing to judge today.`;
-  // Never "nothing needs you" while anything is red or not checked.
-  if (!reds.length && !notChecked) line += " Nothing needs you.";
+  // Never "nothing needs you" while anything is broken, not proved, or not checked.
+  if (!reds.length && !notProved && !notChecked) line += " Nothing needs you.";
   return {
     status: "ok",
     total: checks.length,
     green,
     red: reds.length,
+    broken: reds.length,
+    not_proved: notProved,
     na,
     not_checked: notChecked,
     reds,

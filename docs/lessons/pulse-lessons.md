@@ -87,3 +87,13 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Fix prepared for review: compile the exact result and tracking cases into the existing `src/pulse/catalog/generated.json`; the live lane imports only that saved data. Check the retired page and active menu with read-only live GETs.
 - Guard added: a display-lane test imports a copy containing only shipped pulse data, with no work folders or Netlify config. Redirect tests keep wrong targets, a dead menu, and unread pages red or unchecked. The saved-result tests also require all 18 missing exact receipts to stay red.
 - Release: not deployed. No incident records changed; this task authorized read-only production access.
+
+## 2026-10-13 — catalog proof shards — code_bug
+- Cause: proof shards asserted each selected row was `red` in `generated.json` "when selected". Once the compiler marks a row proved it carries no `proofVerdict`, so 20+ shard tests failed on `undefined !== 'red'`, plus hard-coded counts (338 route rows, 254 targets, 7 final jobs) that moved when rows were proved.
+- Fix: shards assert the compiled state (`wired`, no `proofVerdict`, the proof file linked in `proof.tests`). Counts follow the catalog (316 red route rows, 242 targets, 6 red final-job monitors). The job lane drops `hiring-outreach-cadence`, which `door-contracts-routes-23` proves. `run-slices` accepts `na` only when it carries its na-conditions code.
+- Guard added: the shard tests themselves; a bare `na` or a row still marked red after its proof compiled still fails.
+
+## 2026-10-13 — production deploy — deploy_or_bundle
+- Cause: a hand-run `netlify deploy` (title "Publish private leads referrer sorting", 19:15 UTC) published an API function bundle with no `pg` package. Every `/api/*` door answered 502 for about 7 minutes, and the ship's live proof failed on the 502s.
+- Fix: restored the last good ship deploy (`ship 4cf77a78`) through the Netlify restore call, then re-ran the ship.
+- Guard added: none yet. Publish through `npm run ship` or GitHub. A manual deploy must build the function bundle where `node_modules/pg` resolves, and check `/api/health` before and after.

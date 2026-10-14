@@ -157,6 +157,20 @@ test("what drives it: six checks, each a word and a mark — never colour alone"
   assert.match(t, /Each check counts the same\. The score is how many pass\./);
 });
 
+test("a check the file cannot judge says Not on file in words and a question mark, never Pass or Not yet", () => {
+  const d = fixture();
+  const factor = d.now.factors.find((f) => f.key === "file_depth");
+  Object.assign(factor, { passed: null, value: null });
+  d.now.unknown = 1;
+  const rows = F.render(d).match(/<li class="fd-factor [^"]+">[\s\S]*?<\/li>/g);
+  const row = rows.find((r) => /3 or more accounts in good standing/.test(r));
+  assert.match(text(row), /Not on file\s*$/);
+  assert.match(row, /is-unknown/);
+  assert.doesNotMatch(text(row), /Pass|Not yet/);
+  assert.equal(rows.filter((r) => /is-pass/.test(r)).length, 4, "the passing checks are still passing");
+  assert.equal(rows.filter((r) => /is-miss/.test(r)).length, 1, "the one miss is still a miss");
+});
+
 test("UnderwriteIQ's sentence is printed verbatim, tagged with the check it moves, and escaped", () => {
   const t = text(F.render(fixture()));
   assert.match(t, /Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases\. Moves: No hard inquiries/);

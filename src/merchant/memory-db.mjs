@@ -7,6 +7,7 @@
 // the one (production) database until the orchestrator ships, and the handlers
 // still have to be proved end to end before then.
 import crypto from "node:crypto";
+import { bindProblem } from "../testing/s3-scoped-rows.mjs";
 
 export function memoryDb({ clients = [], entities = [] } = {}) {
   const state = {
@@ -24,6 +25,9 @@ export function memoryDb({ clients = [], entities = [] } = {}) {
   async function query(sql, params = []) {
     const s = sql.replace(/\s+/g, " ").trim();
     state.log.push({ sql: s, params });
+    // What Postgres refuses at bind time (a value the statement does not use, or one only tested for NULL).
+    const problem = bindProblem(sql, params);
+    if (problem) { const err = new Error(`bind: ${problem}`); err.code = "08P01"; throw err; }
 
     if (/FROM clients/i.test(s)) {
       const hit = state.clients.find((c) => c.id === params[0] && (params[1] === undefined || c.org_id === params[1]));
@@ -119,7 +123,16 @@ export function memoryDb({ clients = [], entities = [] } = {}) {
       const [connection_id, provider_event_id, kind, amount_cents, currency, occurred_at, description, raw] = params;
       if (kind === "sale" && amount_cents < 0) { const err = new Error("sale sign"); err.code = "23514"; throw err; }
       if ((kind === "refund" || kind === "fee") && amount_cents > 0) { const err = new Error("refund sign"); err.code = "23514"; throw err; }
-      if (state.events.some((e) => e.connection_id === connection_id && e.provider_event_id === provider_event_id)) return { rows: [] };
+      if (state.events.some((e) => e.connection_id === connection_id && e.provider_event_id === provider_event_id)) {
+        // Postgres holds unique (connection_id, provider_event_id). A repeat is answered with no row only
+        // when the statement asks for it; without that clause the database refuses it, as here.
+        if (!/ON CONFLICT \(connection_id, provider_event_id\) DO NOTHING/.test(s)) {
+          const err = new Error("duplicate key value violates unique constraint merchant_events_once");
+          err.code = "23505";
+          throw err;
+        }
+        return { rows: [] };
+      }
       const row = { id: crypto.randomUUID(), connection_id, provider_event_id, kind, amount_cents, currency, occurred_at, description, raw };
       state.events.push(row);
       return { rows: [{ id: row.id }] };

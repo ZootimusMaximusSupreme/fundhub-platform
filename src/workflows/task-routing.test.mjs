@@ -215,6 +215,8 @@ describe("task role routing", () => {
         // The helper itself is the one legitimate writer; the pgFake and the
         // tests only pattern-match on the SQL.
         if (rel.endsWith("src/lib/create-task.mjs")) continue;
+        // A stand-in database used only by tests: it pattern-matches the SQL string to answer it. It writes to memory.
+        if (rel.endsWith("src/testing/s3-mem-tasks-db.mjs")) continue;
         if (e.name.includes(".test.") || e.name === "test-support.mjs") continue;
         if (/INSERT INTO tasks/.test(fs.readFileSync(full, "utf8"))) offenders.push(rel);
       }

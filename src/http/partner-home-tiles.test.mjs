@@ -18,8 +18,12 @@ import assert from "node:assert";
 import {
   fetchRows, utcDayWindow, costPerFundedClientCents
 } from "../../api/read/partner-home-tiles.mjs";
+import handler from "../../api/read/partner-home-tiles.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 import { FUNDING_DEPOSIT_PRODUCT_CODE } from "../partners/floors.mjs";
+import {
+  accountSession, fakeDb, makeRes, req, runWithSharedDb
+} from "../testing/handler-harness.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const PARTNER = "22222222-2222-4222-8222-222222222222";
@@ -41,9 +45,49 @@ function stubTx(script) {
 
 const partnerRow = { rows: [{ id: PARTNER, org_id: ORG }] };
 
+async function callHandler(rules) {
+  const database = fakeDb(rules);
+  const res = makeRes();
+  await runWithSharedDb(database, () => handler(req("GET"), res));
+  return { database, res };
+}
+
 describe("the route exists", () => {
   test("a handler file is not a route — this one is in the ROUTES map", () => {
     assert.equal(typeof ROUTES["read/partner-home-tiles"], "function");
+  });
+});
+
+describe("the real GET handler", () => {
+  test("returns the exact three sourced money results for the signed-in partner", async () => {
+    const { res } = await callHandler([
+      ...accountSession({ kind: "partner", partnerId: PARTNER, orgId: ORG }),
+      [/FROM partners WHERE id = \$1/, partnerRow],
+      [/FROM partner_revenue/, { rows: [{ cash_today: "5250.00", cash_yesterday: "1000.00" }] }],
+      [/FROM v_partner_spend_vs_ceiling/, { rows: [{ spend_today_cents: "4321" }] }],
+      [/WITH surviving/, { rows: [{ funding_clients: 2 }] }],
+    ]);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.partner_id, PARTNER);
+    assert.equal(res.body.cash_collected_today_cents, 525000);
+    assert.equal(res.body.cash_collected_yesterday_cents, 100000);
+    assert.equal(res.body.funded_today, 2);
+    assert.equal(res.body.funded_yesterday, 2);
+    assert.equal(res.body.ad_spend_today_cents, 4321);
+    assert.equal(res.body.cost_per_funded_client_cents, 2161);
+  });
+
+  test("returns not found instead of money tiles when the partner is outside the signed-in company", async () => {
+    const { database, res } = await callHandler([
+      ...accountSession({ kind: "partner", partnerId: PARTNER, orgId: ORG }),
+      [/FROM partners WHERE id = \$1/, { rows: [] }],
+    ]);
+
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.body, { ok: false, error: "not_found" });
+    assert.equal(database.find(/FROM partner_revenue/).length, 0);
   });
 });
 

@@ -3,6 +3,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 
 import handler from "../../api/finance/containers.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
+import { assertContainerReads } from "../testing/s3-container-pins.mjs";
 
 function makeRes() {
   return {
@@ -25,6 +27,7 @@ function fakeDb({ clientRows = [{ "?column?": 1 }], extra = [] } = {}) {
   return {
     calls,
     query: async (sql, params) => {
+      assertBind(sql, params);
       calls.push({ sql, params });
       for (const [re, rows] of extra) {
         if (re.test(sql)) return { rows: typeof rows === "function" ? rows(sql, params) : rows };
@@ -144,5 +147,26 @@ describe("POST /api/finance/containers", () => {
     res = makeRes();
     await handler({ method: "PUT" }, res, { db: fakeDb(), requireAuth: authAs(OWNER) });
     assert.equal(res.statusCode, 405);
+  });
+});
+
+describe("the statements behind the containers page", () => {
+  const sqlOf = (db, re) => db.calls.find((c) => re.test(c.sql)).sql;
+
+  test("GET reads this company's and this client's containers, accounts, cards and bills, and bills only the open ones that hold something", async () => {
+    const db = fakeDb({});
+    await handler({ method: "GET", query: { client_id: CLIENT_ID } }, makeRes(), { db, requireAuth: authAs(OWNER), env: {} });
+    assertContainerReads((re) => sqlOf(db, re));
+  });
+
+  test("unassign puts the account back to unknown, in this company, and says nothing else changed", async () => {
+    const db = fakeDb({ extra: [[/UPDATE bank_accounts/, [{ id: ACCT, client_id: CLIENT_ID }]]] });
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "unassign", account_id: ACCT, client_id: CLIENT_ID } }, res, { db, requireAuth: authAs(OWNER), env: {} });
+    assert.equal(res.statusCode, 200);
+    assertSqlHas(sqlOf(db, /UPDATE bank_accounts/), {
+      "out of its container, back to unknown, provenance cleared": "SET entity_id = NULL, entity_kind = 'unknown', entity_kind_source = NULL, entity_kind_set_at = NULL, updated_at = now()",
+      "only that account in this company": "WHERE id = $1 AND org_id = $2 AND ($3::uuid IS NULL OR client_id = $3::uuid)"
+    });
   });
 });

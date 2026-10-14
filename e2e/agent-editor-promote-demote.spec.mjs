@@ -24,7 +24,13 @@ async function open(page, { status = "draft", saveFails = false, shadowRuns = 25
   await openScreen(page, "/app/agent-editor.html", OWNER, {
     // The escalation picker is filled from the staff list; the saved path must be on it.
     "/api/read/staff": { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [{ id: "s-sw", name: "Sarah Whitfield", role: "sales_manager", status: "active" }] },
-    "/api/read/agents": { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [row] },
+    // The page blanks the saved "escalate to" person if the agents arrive before the
+    // staff list has painted its options (about 1 run in 20 under load). Serve the
+    // agents only after the people lists are painted, so the start is the same every run.
+    "/api/read/agents": async (route) => {
+      await page.waitForFunction(() => document.querySelectorAll("#a_esc option").length > 1);
+      return json(route, { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [row] });
+    },
     // A real shadow log: the gate then needs 25 practice runs before Promote.
     "/api/read/agent-shadow-log": { ok: true, log: [], rows: Array.from({ length: shadowRuns }, (_, i) => ({ id: `r${i}` })) },
     "/api/agents": async (route) => {

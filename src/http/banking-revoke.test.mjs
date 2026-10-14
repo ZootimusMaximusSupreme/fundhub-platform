@@ -15,6 +15,7 @@
 
 import { test, describe, mock } from "node:test";
 import assert from "node:assert";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 /* The handler imports src/db.mjs at module load. Nothing connects at import time
    — src/db.mjs builds its pool lazily inside pool() — so importing is safe with
@@ -83,6 +84,7 @@ function stubQueries(rows, { role = "owner", orgId = ORG } = {}) {
 function withFakePool(rows, { role = "owner", orgId = ORG } = {}) {
   const issued = [];
   const answer = async (sql, params) => {
+    assertBind(sql, params);
     issued.push({ sql: String(sql).replace(/\s+/g, " ").trim(), params });
     if (SESSION_SQL.test(sql)) return sessionRow(role, orgId);
     if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(String(sql).trim())) return { rows: [] };
@@ -229,6 +231,9 @@ describe("/api/banking/revoke — the org comes from the session, not the body",
       assert.equal(res.statusCode, 200);
       const lookup = q.issued.find((c) => /FOR UPDATE/i.test(c.sql));
       assert.equal(lookup.params[1], ORG, "the session's org must win over anything in the body");
+      assertSqlHas(lookup.sql, {
+        "the login in this company, locked, token presence only": "(encrypted_access_token IS NOT NULL) AS has_access_token FROM plaid_items WHERE id = $1 AND org_id = $2 FOR UPDATE"
+      });
     } finally { q.restore(); }
   });
 
@@ -337,6 +342,11 @@ describe("/api/banking/revoke — input handling", () => {
       await handler(signedReq({ method: "GET", query: { client_id: CLIENT } }), res);
       assert.equal(res.statusCode, 200);
       assert.equal(res.body.logins.length, 1);
+      const list = q.mock.calls.map((c) => c.arguments[0]).find((sql) => /FROM plaid_items i/.test(sql));
+      assertSqlHas(list, {
+        "presence of the credential, never its value": "(i.encrypted_access_token IS NOT NULL) AS has_access_token",
+        "this company and client, newest first": "WHERE i.org_id = $1 AND i.client_id = $2 ORDER BY i.created_at DESC"
+      });
     } finally { q.mock.restore(); }
 
     q = stubQueries([], { role: "admin" });

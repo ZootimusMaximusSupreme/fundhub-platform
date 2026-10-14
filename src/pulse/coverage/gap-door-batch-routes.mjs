@@ -11,10 +11,10 @@ import { makeRecipe } from "../catalog/door-recipes.mjs";
 import { routeKeyForDoor } from "../catalog/proofs/door-batch-route-result.mjs";
 
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
-  "routes-0.json": 98,
-  "routes-1.json": 113,
-  "routes-2.json": 64,
-  "routes-3.json": 41,
+  "routes-0.json": 54,
+  "routes-1.json": 36,
+  "routes-2.json": 25,
+  "routes-3.json": 20,
 });
 
 const MAPS = Object.freeze([
@@ -69,8 +69,8 @@ export function judgeRouteGap(row, routes = ROUTES) {
     : `the ${row.route} handler is not registered`;
   return {
     id: row.id,
-    status: "FAIL",
-    detail: `${row.surface} — ${row.control}: ${context}. No fake-data check calls ${intendedMethod(row)} and judges this named business result, so this route stays red.`,
+    status: "NOT_PROVED",
+    detail: `${row.surface} — ${row.control}: ${context}. No fake-data check calls ${intendedMethod(row)} and judges this named business result, so this route stays not proved.`,
     suggestedFix: `Add a fake-data ${intendedMethod(row)} test for ${row.surface} that calls the real handler and judges this exact result.`,
   };
 }

@@ -65,6 +65,10 @@ const PULSE_GAP_READS =
   "pulse. Never POSTs. Never sends SMS or email. No client, no vendor record.";
 
 const ALLOWED_RAW_FETCH = {
+  "src/pulse/catalog/proofs/s2-route-kit.mjs":
+    "A TEST HELPER THAT BLOCKS THE NETWORK, it does not use it. It replaces globalThis.fetch with a stub " +
+    "that records the asked URL and throws, then restores the real one, so a handler under proof can never " +
+    "reach a vendor. Nothing is sent. Added 2026-10-14 with the not-proved proof round (slice 2).",
   "netlify/functions/ad-video-sweeper.mjs":
     "The clock for the ad-video pipeline. Its ONE call is a POST to our own deploy " +
     "(process.env.URL) at /.netlify/functions/ad-video-worker-background, behind a shared " +
@@ -273,6 +277,7 @@ const ALLOWED_RAW_FETCH = {
     "GET page 1 of Commas checkout transactions. Proves the live keys are accepted. Never sends, never " +
     "creates or changes a vendor record, never reaches a client. Read 2026-10-09 before it was listed.",
   "src/pulse/coverage/gap-built-funnels.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/gap-catalog-display.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-calls.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-closer-setup.mjs": PULSE_GAP_READS,

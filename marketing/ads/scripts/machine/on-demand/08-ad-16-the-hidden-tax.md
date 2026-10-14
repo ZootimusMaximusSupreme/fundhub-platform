@@ -1,6 +1,6 @@
 ---
 ad: 97
-version: 5
+version: 7
 status: locked
 offer: funding_dfy
 funnel: null
@@ -9,23 +9,29 @@ style: null
 angle: null
 batch: null
 updated_by: null
-updated_at: 2026-10-12T21:36:48.960Z
+updated_at: 2026-10-13T23:07:45.876Z
 ---
-Running your business without credit costs you money. There are four hidden taxes shrinking your bank account and restricting your access to massive amounts of funding.
+Your call is booked, and the next two minutes are going to show you exactly what happens on the call and what you walk away with, so watch this whole video before you get on it.
 
-You pay them without noticing, and the biggest one sits on most files with great scores and even great income.
+On the call, your funding advisor pulls your credit file with you on a live Google Meet. It's a tri-bureau soft pull that costs $32, which covers what the bureaus charge for the reports, and it has zero impact on your score. Then we analyze your file with UnderwriteIQ, the AI machine learning software we built to underwrite files the same way lenders do.
 
-Number one is paying with a debit card or cash. Every dollar that skips a credit card skips your credit file too, and you give up the two or three percent cash back on every dollar you spend, money you never make back. Your limits never grow and you never build a relationship with the banks, which limits how much more capital you can get from that bank and every other bank too. Put that same spending on a card and pay it off, and your file gets stronger every month.
+Then we go through it together. You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back if anything, and the fastest way to get your file to the maximum amount of funding.
 
-Number two is having a credit card and not using it. Let an old card sit in a drawer long enough and the bank closes it for you, so you lose the card, the cash back, and the history it was building. That limit disappears and your available credit drops with it. Keep using that card and paying it off, and the bank keeps it open and raises your limit, which means more capital the more you use it.
+Most of the people we work with are aiming for somewhere between $250,000 and $400,000. Some files are ready for that today, and a lot of them aren't there yet, which is completely normal. Wherever your file is right now, we have a path for that phase.
 
-Number three is paying for growth out of your own savings.
+If your file is ready, we go get the capital in funding rounds and keep your credit clean between each round. If something is holding it back, we optimize your credit first and then fund you. And if you'd rather do the work on your file yourself, we'll walk you through every step with a detailed accountability system.
 
-Ad spend, inventory, equipment, and new hires all come straight out of your bank account, when the banks will lend you that same money at low interest to zero percent interest.
+On the call, your advisor walks you through the options and pricing for your path, and everything is in writing.
 
-Then when your merchant processor freezes your funds or you take a loss, you have no fallback, because the cash you would have leaned on already went into the business. Eighty-two percent of businesses that fail go under because of cash flow problems. Use the banks' money instead, and your cash stays in your account as your safety net while the business grows.
+I've been doing this for about a decade. We've worked hundreds of files and have thousands of data points on what lenders approve, and all of that data is built into UnderwriteIQ, which is how we tell you what's most likely for your file. You can see some of the approvals our clients have gotten right here on this page.
 
-Those three add up to hundreds of thousands to millions of dollars in lost opportunity, and the fourth one costs you the most. Click the link below and hop on a call, and we'll check whether it's on your file and show you how to get rid of it.
+Right after this video, go to your email, open the confirmation, and accept the calendar invite so your call is confirmed and locked in on your calendar. Your advisor is holding that time just for you.
+
+Take the call from a computer somewhere quiet so your advisor can share their screen with you. If you're going after business funding, have your business basics handy: your entity name, how long you've been in business, and your average monthly revenue.
+
+And if something comes up, use the reschedule link on this page and pick a new time instead of missing the call.
+
+I'll see you on the call.
 
 <!-- fundhub script data: parts, animation_plan and meta_copy. Change them in the app; the database wins. -->
 ```json

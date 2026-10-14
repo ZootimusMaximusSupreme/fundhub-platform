@@ -455,6 +455,17 @@ test("a month cap under what is already spent warns before it saves", async ({ p
   expect(posts.settings[0].patch).toEqual({ max_month_cost_usd: 10 });
 });
 
+test("the batch cap box saves its own number, and a batch cap does not trip the month warning", async ({ page }) => {
+  const { posts } = await open(page);
+  await expect(page.locator("#set-cap-batch")).toHaveValue("40");
+  await page.locator("#set-cap-batch").fill("25");
+  await expect(page.locator('[data-live="cap-warn"]')).toBeHidden();
+  await save(page).click();
+  await expect(page.locator("#setSay")).toHaveText("Saved 8:04 AM.");
+  expect(posts.settings).toHaveLength(1);
+  expect(posts.settings[0].patch).toEqual({ max_batch_cost_usd: 25 });
+});
+
 test("a bad box is named in plain words and nothing is sent", async ({ page }) => {
   const { posts } = await open(page);
   await page.locator("#set-per-day").fill("0");
@@ -563,6 +574,18 @@ test("a part that does not load says so in words; the rest of the tab stays", as
     { selector: "#setProblem p", caption: "What failed, in plain words" },
     { selector: '[data-act="reload"]', caption: "Try again" }
   ], { anchor: "#setProblem" });
+});
+
+test("the settings fail, the funnels stay; Try again reads the settings again and paints the dials", async ({ page }) => {
+  const notLive = [{ error: "not_ready", message: "Marketing settings is built, but its database table is not live yet." }, 503];
+  const { errors } = await open(page, { settings: [notLive, [{ settings: SETTINGS() }, 200]] });
+  await expect(page.locator("#setProblem")).toContainText("The settings did not load.");
+  await expect(page.locator("#set-days")).toHaveCount(0);
+  await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
+  await page.locator('#setProblem [data-act="reload"]').click();
+  await expect(page.locator("#setProblem")).toHaveCount(0);
+  await expect(page.locator("#set-days")).toBeVisible();
+  await assertPageAlive(page, errors);
 });
 
 test("the funnels fail, the settings stay; Try again reads them again", async ({ page }) => {

@@ -10,6 +10,7 @@ import merchantEvents from "../../api/merchant/events.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 import { handleWebhook } from "./router.mjs";
 import { memoryDb } from "../merchant/memory-db.mjs";
+import { assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
 const MINE = "f1cb9c27-f858-4db1-b6bb-4eddc898bb8e";
@@ -111,6 +112,20 @@ describe("create → events → summary, end to end through the handlers", () =>
     const mixed = await post({ events: [{ id: "s3", kind: "sale", amount_cents: 100, occurred_at: "2026-10-05T00:00:00Z" }, { id: "bad" }] });
     assert.equal(mixed.statusCode, 200);
     assert.deepEqual([mixed.body.inserted, mixed.body.rejected], [1, 1]);
+    assert.deepEqual(mixed.body.errors.map((e) => [e.index, e.id]), [[1, "bad"]], "a bad event is listed by its place in the call");
+    const connectionId = made.body.connection.id;
+    assert.deepEqual(
+      db.state.events.map((e) => [e.connection_id, e.provider_event_id, e.kind, e.amount_cents]),
+      [[connectionId, "s1", "sale", 120000], [connectionId, "s2", "sale", 49700], [connectionId, "r1", "refund", -9700], [connectionId, "p1", "payout", -100000], [connectionId, "s3", "sale", 100]],
+      "each good event is stored once, on the connection the key names, and the repeats and the bad one are not"
+    );
+    const stored = db.state.connections.find((c) => c.id === connectionId);
+    assert.equal(stored.api_key_hash, crypto.createHash("sha256").update(key, "utf8").digest("hex"));
+    assert.notEqual(stored.api_key_hash, key);
+    assert.ok(!JSON.stringify(db.state.connections).includes(key), "the key itself is stored nowhere");
+    // A euro sale is kept, but it is not added into the dollar months: it is counted apart.
+    const eur = await post({ events: [{ id: "e1", kind: "sale", amount_cents: 7777, currency: "eur", occurred_at: "2026-10-04T00:00:00Z" }] });
+    assert.deepEqual([eur.body.inserted, eur.body.rejected], [1, 0]);
 
     assert.equal((await post({ events })).statusCode, 200);
     assert.equal((await post({ events }, "")).statusCode, 401);
@@ -124,6 +139,24 @@ describe("create → events → summary, end to end through the handlers", () =>
     const oct = sum.containers[0].months.at(-1);
     assert.deepEqual([oct.sales_cents, oct.refunds_cents, oct.payouts_cents, oct.net_cents, oct.sale_count], [49800, 9700, 100000, 40100, 2]);
     assert.equal(sum.containers[0].months.at(-2).sales_cents, 120000);
+    assert.equal(sum.other_currency_events, 1, "the euro sale is counted apart, not inside the dollar months");
+    // The stand-in groups the events itself, so the statements it is answering are pinned in their own words.
+    const sent = (re) => db.state.log.find((l) => re.test(l.sql)).sql;
+    assertSqlHas(sent(/FROM merchant_connections c JOIN entities e/), {
+      "the container each connection feeds, named": "e.name AS entity_name, e.kind AS entity_kind",
+      "this company and client, live ones first": "WHERE c.org_id = $1 AND c.client_id = $2 ORDER BY (c.status = 'disabled'), c.created_at"
+    });
+    assertSqlHas(sent(/^SELECT id, kind, name FROM entities WHERE id = \$1/), {
+      "the container named on create is this client's, in this company, and not archived": "WHERE id = $1 AND org_id = $2 AND client_id = $3 AND archived_at IS NULL"
+    });
+    assertSqlHas(sent(/FROM entities WHERE org_id = \$1 AND client_id = \$2 AND archived_at IS NULL/), {
+      "this client's live containers, businesses first": "WHERE org_id = $1 AND client_id = $2 AND archived_at IS NULL ORDER BY (kind = 'business') DESC, name"
+    });
+    assertSqlHas(sent(/sum\(me\.amount_cents\)/), {
+      "month, kind, cents and count per container": "to_char(date_trunc('month', me.occurred_at AT TIME ZONE 'UTC'), 'YYYY-MM') AS month, me.kind, sum(me.amount_cents)::bigint AS cents, count(*)::int AS n",
+      "this company and client, dollars only, from the first month": "WHERE c.org_id = $1 AND c.client_id = $2 AND me.currency = 'usd' AND me.occurred_at >= $3::date GROUP BY 1, 2, 3"
+    });
+    assertSqlHas(sent(/me\.currency <> 'usd'/), { "other currencies counted apart": "SELECT count(*)::int AS n FROM merchant_events me JOIN merchant_connections c ON c.id = me.connection_id WHERE c.org_id = $1 AND c.client_id = $2 AND me.currency <> 'usd' AND me.occurred_at >= $3::date" });
 
     const off = await call(db, clientP(), { method: "POST", body: { action: "disable", connection_id: made.body.connection.id } });
     assert.equal(off.body.connection.status, "disabled");

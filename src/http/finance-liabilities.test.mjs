@@ -36,6 +36,7 @@ import assert from "node:assert";
 import { db } from "../db.mjs";
 import handler from "../../api/finance/liabilities.mjs";
 import { ROLE_SETS } from "./read-api.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 /* Two orgs, deliberately. The caller belongs to ORG_A; ORG_B's ids are what a
    malicious or mistaken caller pastes in. On a single-org database these are the
@@ -101,6 +102,7 @@ async function call({
 } = {}) {
   const reads = [];
   db.query = async (sql, params) => {
+    assertBind(sql, params);
     const s = String(sql);
     const record = (kind) => { reads.push({ kind, sql: s, params }); };
 
@@ -564,5 +566,29 @@ describe("POST upsert — the refusals that happen before any write", () => {
     const r = await post({ action: "upsert", client_id: CLIENT, as_of: "2026-07-31" });
     assert.equal(r.status, 400);
     assert.match(r.body.error, /tradeline_id/);
+  });
+});
+
+describe("the statements behind the reads", () => {
+  const sqlOf = (reads, kind) => reads.find((r) => r.kind === kind).sql;
+
+  test("the card stack: the client's company first, then their cards, the positions and the observation counts", async () => {
+    const { reads } = await call({ query: { client_id: CLIENT } });
+    assertSqlHas(sqlOf(reads, "ownsClient"), { "the client, in the caller's company": "WHERE id = $1 AND org_id = $2" });
+    assertSqlHas(sqlOf(reads, "listTradelines"), {
+      "this company, this client, open cards unless asked for closed": "WHERE org_id = $1 AND client_id = $2 AND ($3::boolean OR closed_at IS NULL)",
+      "lowest rate first": "ORDER BY apr ASC NULLS LAST, lender ASC"
+    });
+    assertSqlHas(sqlOf(reads, "positions"), { "this client's positions, soonest due first": "WHERE client_id = $1 ORDER BY payment_due_date ASC NULLS LAST, as_of DESC" });
+    assertSqlHas(sqlOf(reads, "observationCounts"), {
+      "how many observations each card has": "SELECT tradeline_id, count(*)::int AS n FROM card_liability_history",
+      "per card, this company and client": "WHERE org_id = $1 AND client_id = $2 GROUP BY tradeline_id"
+    });
+  });
+
+  test("one card's history: the card is found through its client's company, newest observation first", async () => {
+    const { reads } = await call({ query: { client_id: CLIENT, tradeline_id: CARD } });
+    assertSqlHas(sqlOf(reads, "loadTradeline"), { "the card, only if its client is in this company": "JOIN clients c ON c.id = t.client_id WHERE t.id = $1 AND c.org_id = $2" });
+    assertSqlHas(sqlOf(reads, "history"), { "this card, newest first": "WHERE tradeline_id = $1 ORDER BY as_of DESC, created_at DESC LIMIT $2" });
   });
 });

@@ -83,16 +83,20 @@ test.describe("closer dashboard: deal calculators", () => {
   test("deposit, fee, debts and minimum go to the deal-math door with the drawn amount, and its answer is shown", async ({ page }) => {
     const { math } = await open(page);
     await expect(page.locator("#oCredit")).toHaveText("$15,000");
+    // Every box gets a number the page does not already hold (the boxes open
+    // on deposit 0, fee 10, debts 0, minimum 3), and all four differ, so a box
+    // the page ignores or crosses with another one cannot hide.
     await page.locator("#iDeposit").fill("3000");
-    await page.locator("#iFee").fill("10");
+    await page.locator("#iFee").fill("12");
     await page.locator("#iDebts").fill("1000");
-    await page.locator("#iMin").fill("3");
+    await page.locator("#iMin").fill("4");
     await expect.poll(() => {
       const p = math[math.length - 1];
       return p && `${p.deposit}|${p.fee}|${p.debts}|${p.min}|${p.drawn}`;
-    }).toBe("3000|10|1000|3|10000");
-    await expect(page.locator("#oNet")).toHaveText("$5,000");
-    await expect(page.locator("#oMonthly")).toHaveText("$300 / mo");
+    }).toBe("3000|12|1000|4|10000");
+    // net = drawn - (deposit + drawn x fee%) - debts; monthly = drawn x min%
+    await expect(page.locator("#oNet")).toHaveText("$4,800");
+    await expect(page.locator("#oMonthly")).toHaveText("$400 / mo");
   });
 
   test("with no client the calculators are not shown at all", async ({ page }) => {

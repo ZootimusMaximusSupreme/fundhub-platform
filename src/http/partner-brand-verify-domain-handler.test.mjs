@@ -14,8 +14,9 @@ import handler from "../../api/partner-brand/verify-domain.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
 import { siteVerifyToken } from "../brand/domain-verify.mjs";
 import {
-  fakeDb, makeRes, req, runWithSharedDb, staffSession, ORG_ID
+  makeRes, req, runWithSharedDb, staffSession, ORG_ID
 } from "../testing/handler-harness.mjs";
+import { strictFakeDb as fakeDb } from "../testing/s3-handler-call.mjs";
 
 const PARTNER = "9a000000-0000-4000-8000-000000000001";
 

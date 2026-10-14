@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/blueprint/staff-actions.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
+import { assertBind } from "../testing/s3-scoped-rows.mjs";
 
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
 const MINE = "029964c5-4d8e-47ed-88c9-53ac13863fd4";
@@ -37,6 +38,7 @@ function makeDb({ buyer = true } = {}) {
   return {
     writes,
     query: async (sql, params) => {
+      assertBind(sql, params);
       const s = sql.replace(/\s+/g, " ");
       if (/^\s*(UPDATE|INSERT|DELETE)/i.test(s)) { writes.push({ sql: s, params }); return { rows: [], rowCount: 1 }; }
       if (/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/.test(s)) {

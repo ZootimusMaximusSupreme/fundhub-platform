@@ -75,6 +75,7 @@ describe("POST /api/commissions", () => {
     const [upd] = fake.find(/UPDATE commission_ledger/);
     assert.match(upd.sql, /SET status = 'approved'/);
     assert.match(upd.sql, /AND status = 'earned'/);
+    assert.match(upd.sql, /WHERE org_id = \$1::uuid\s+AND id = ANY\(\$2::uuid\[\]\)/, "this company's rows only, and only the named ids");
     assert.match(upd.sql, /COALESCE\(is_demo, false\) = false/);
     assert.deepEqual(upd.params, [ORG_ID, [L1, L2], "Sam Manager"]);
     const events = fake.find(/INSERT INTO events/);

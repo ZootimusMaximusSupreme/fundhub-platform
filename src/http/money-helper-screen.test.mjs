@@ -92,6 +92,18 @@ describe("full — the thread", () => {
     assert.match(text(H.render(off, { now: NOW })), /AI off right now: the rules helper answers/);
   });
 
+  test("status tags say which brain answers: rules only, the server's AI, or the bridge on or off", () => {
+    const statusFor = (helper) => {
+      const d = fixture();
+      Object.assign(d.helper, helper);
+      return text(H.render(d, { now: NOW }).match(/<div class="status"[^>]*>[\s\S]*?<\/div>/)[0]).trim();
+    };
+    assert.equal(statusFor({ brain: "rules", bridge_on: true }), "Texts off: answers show here only Rules helper only");
+    assert.equal(statusFor({ brain: "server", bridge_on: false }), "Texts off: answers show here only AI on");
+    assert.equal(statusFor({ brain: "bridge", bridge_on: true }), "Texts off: answers show here only AI on");
+    assert.equal(statusFor({ brain: "bridge", bridge_on: false }), "Texts off: answers show here only AI off right now: the rules helper answers");
+  });
+
   test("one primary button on the screen: Send", () => {
     assert.equal((html.match(/class="btn-primary"/g) || []).length, 1);
     assert.match(html, /<button type="submit" class="btn-primary">Send<\/button>/);

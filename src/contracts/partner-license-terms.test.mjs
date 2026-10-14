@@ -395,7 +395,7 @@ const STAMP_SITES = Object.freeze({
     "is a real control and is not the same control as a signature.",
   "src/demo/platform-seed.mjs":
     "Demo fixture only. Every row it writes carries is_demo = true (148_demo_mode.sql).",
-  /* THESE TWO READ THE COLUMN, THEY DO NOT WRITE IT. The sweep above cannot tell
+  /* THESE FILES READ OR NAME THE COLUMN; THEY DO NOT WRITE IT. The sweep above cannot tell
      a SELECT from an UPDATE — it matches the column name anywhere outside a
      comment — so a read-only user has to be listed or the guard goes red on it.
      Both are named here with what they actually do, rather than being made to
@@ -408,12 +408,18 @@ const STAMP_SITES = Object.freeze({
   "api/read/partner-training.mjs":
     "READS ONLY. Selects the same column to report it on the training screen. GET only; " +
     "the handler answers 405 to anything else.",
-  "src/pulse/coverage/gap-money-funding.mjs":
-    "READS ONLY. The morning payout check (partners:payout-held) selects the column to say why a " +
-    "payout is held. Every statement in the file is a SELECT; it has no INSERT, UPDATE or DELETE.",
-  "src/pulse/coverage/gap-trip-partner.mjs":
-    "READS ONLY. The partner start-to-end check (trip:partner) selects the column to say whether a " +
-    "partner was waiting on the signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/beats/lib/money-funding-checks.mjs":
+    "NAMES ONLY. Formats the read-only payout result so the red explains which signature time is empty. " +
+    "It contains no SQL and cannot write the partner row.",
+  "src/pulse/beats/lib/money-funding-sql.mjs":
+    "READS ONLY. The morning and hourly payout checks select the column to say why a payout is held. " +
+    "Every statement in the file is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/beats/lib/trip-partner-sql.mjs":
+    "READS ONLY. The partner trip check selects the column to say whether a partner was waiting on the " +
+    "signed licence. Every statement is a SELECT; it has no INSERT, UPDATE or DELETE.",
+  "src/pulse/catalog/proofs/s1-door-contracts.mjs":
+    "NAMES ONLY. A proof contract: it carries the row's own words ('... agreement_signed_at ...') so the " +
+    "proof can be matched to its route row. It has no SQL and cannot write the partner row.",
   "src/pulse/coverage/trip-test-kit.mjs":
     "READS ONLY. A test helper for the trip lane SQL tests. It names the column in a made-up table " +
     "shape so a typo fails; it runs one SELECT inside BEGIN READ ONLY and always rolls back. No write."

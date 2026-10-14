@@ -203,6 +203,28 @@ for (const vp of VIEWPORTS) {
       await noSidewaysScroll(page);
     });
 
+    test("Ads: the angle select and the first and last day each send their own question", async ({ page }) => {
+      const { calls } = await open(page, "#numbers/ads");
+      const asked = () => calls.filter((c) => c.key === "GET marketing/ads").at(-1).url.searchParams;
+      const angle = page.getByLabel("Angle");
+      const keys = await angle.locator("option").evaluateAll((options) => options.map((o) => o.value).filter(Boolean));
+      expect(keys.length, "the angle select lists the angles on the ads").toBeGreaterThan(0);
+      await angle.selectOption(keys[0]);
+      await expect.poll(() => asked().get("angle")).toBe(keys[0]);
+
+      await page.getByLabel("Days").selectOption("pick");
+      await page.getByLabel("First day").fill("2026-09-20");
+      await expect.poll(() => asked().get("from")).toBe("2026-09-20");
+      await page.getByLabel("Last day").fill("2026-10-01");
+      await expect.poll(() => asked().get("to")).toBe("2026-10-01");
+      expect(asked().get("from"), "the first day stays after the last day is picked").toBe("2026-09-20");
+      expect(asked().get("angle"), "the angle choice stays").toBe(keys[0]);
+
+      await page.getByRole("button", { name: "Clear filters" }).click();
+      await expect.poll(() => asked().get("angle")).toBeNull();
+      expect(asked().get("from")).toBe("2026-09-07");
+    });
+
     test("Ads: null prints unknown, never $0 or 0%", async ({ page }) => {
       const ads = exampleResponse("GET marketing/ads");
       ads.rows = [{
@@ -382,6 +404,31 @@ test.describe("Numbers tab states at 390px", () => {
     await err.getByRole("button", { name: "Try again" }).click();
     await expect(page.locator(".ccn-table tbody tr")).toHaveCount(2);
   });
+
+  /* The Ads view is judged above. Angles and Funnels each have their own Try
+     again, and a button that does nothing on either is as broken. */
+  for (const part of [
+    { title: "The angles fail in plain words; Try again brings them back", hash: "#numbers/angles", route: "GET marketing/angles",
+      good: () => angles(), said: "The angle numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=angle]", count: 2 },
+    { title: "The funnels fail in plain words; Try again brings them back", hash: "#numbers/funnels", route: "GET marketing/funnels/stats",
+      good: () => exampleResponse("GET marketing/funnels/stats"), said: "The funnel numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=funnel]", count: 2 },
+    { title: "One ad's drawer fails in plain words; Try again brings it back", hash: "#numbers/ads/91", route: "GET marketing/ad",
+      good: () => exampleResponse("GET marketing/ad"), said: "This ad's numbers did not load. The rest of this page is current. Try again.", painted: "[data-test=diagnosis]", count: 1 }
+  ]) {
+    test(part.title, async ({ page }) => {
+      const { calls } = await open(page, part.hash, {
+        [part.route]: (req, url, n) => (n === 1 ? reply(500, { error: "internal_error" }) : part.good())
+      });
+      const err = page.locator(".ccn-say.err");
+      await expect(err).toContainText(part.said);
+      await expect(err).not.toContainText("500");
+      await expect(page.locator(part.painted)).toHaveCount(0);
+      await err.getByRole("button", { name: "Try again" }).click();
+      await expect(page.locator(part.painted)).toHaveCount(part.count);
+      await expect(page.locator(".ccn-say.err")).toHaveCount(0);
+      expect(calls.filter((c) => c.key === part.route), "Try again reads that part once more").toHaveLength(2);
+    });
+  }
 
   test("Empty: no ads in the window says so, with nothing made up", async ({ page }) => {
     await open(page, "#numbers/ads", { "GET marketing/ads": { rows: [], unmapped: [], as_of: null } });

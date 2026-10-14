@@ -156,7 +156,7 @@ export async function storeOriginalStream(dir, name, body) {
         /** @type {any} */ (err).code = "too_big";
         throw err;
       }
-      if (!ws.write(buf)) await new Promise((resolve) => ws.once("drain", resolve));
+      if (!ws.write(buf)) await new Promise((resolve) => ws.once("drain", () => resolve(undefined)));
     }
     await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve(undefined))));
     return commitOriginal(dir, name, tmp);

@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/money/accounts.mjs";
 import { ROUTES } from "../../netlify/functions/api.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
+import { assertContainerReads } from "../testing/s3-container-pins.mjs";
 
 function makeRes() {
   return {
@@ -51,6 +53,7 @@ function twoClientDb() {
   const db = {
     writes, reads,
     query: async (sql, p = []) => {
+      assertBind(sql, p);
       if (/^\s*(INSERT|UPDATE|DELETE)/i.test(sql)) writes.push({ sql, p });
       else reads.push({ sql, p });
       if (/FROM clients/.test(sql)) return { rows: [MINE, OTHER].includes(p[0]) ? [{ "?column?": 1 }] : [] };
@@ -221,5 +224,27 @@ describe("/api/money/accounts — the door", () => {
     ({ res } = await call(clientPrincipal(), { method: "DELETE" }));
     assert.equal(res.statusCode, 405);
     assert.equal(ROUTES["money/accounts"], handler);
+  });
+});
+
+describe("/api/money/accounts — the statements behind the page", () => {
+  test("GET reads the client's containers, accounts, cards and bills inside the company, and bills only containers that hold something", async () => {
+    const { db } = await call(clientPrincipal(), { method: "GET" });
+    assertContainerReads((re) => db.reads.find((r) => re.test(r.sql)).sql);
+    const un = await call(clientPrincipal(), { method: "POST", body: { action: "unassign", account_id: MY_ACCT } });
+    assert.equal(un.res.statusCode, 200);
+    assertSqlHas(un.db.writes.find((w) => /UPDATE bank_accounts\s+SET entity_id = NULL/.test(w.sql)).sql, {
+      "out of its container, back to unknown, provenance cleared": "SET entity_id = NULL, entity_kind = 'unknown', entity_kind_source = NULL, entity_kind_set_at = NULL, updated_at = now()",
+      "only that account in this company, pinned to the client": "WHERE id = $1 AND org_id = $2 AND ($3::uuid IS NULL OR client_id = $3::uuid)"
+    });
+    assertSqlHas(db.reads.find((r) => /FROM account_statement_cycles c/.test(r.sql)).sql, {
+      "each card with its account's name, mask, limit and balance": "SELECT c.*, a.name AS account_name, a.mask AS account_mask, a.credit_limit_cents, a.current_balance_cents FROM account_statement_cycles c JOIN bank_accounts a ON a.id = c.bank_account_id",
+      "this company and client, soonest due day first": "WHERE c.org_id = $1 AND c.client_id = $2 ORDER BY c.payment_due_day NULLS LAST, a.name NULLS LAST"
+    });
+    const info = db.reads.find((r) => /FROM businesses\s+WHERE org_id = \$1 AND client_id = \$2/.test(r.sql));
+    assertSqlHas(info.sql, {
+      "this company and client, the business info this page wrote, tied to a container":
+        "WHERE org_id = $1 AND client_id = $2 AND entity_data->>'source' = $3 AND entity_data ? 'entity_id' ORDER BY updated_at DESC, id"
+    });
   });
 });

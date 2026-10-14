@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import handler from "../../api/repair/send.mjs";
+import { assertBind, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 
 function resCapture() {
   return {
@@ -17,7 +18,8 @@ function resCapture() {
 test("DFY/repair send path calls mail helper when mail=true", async () => {
   const mailCalls = [];
   const db = {
-    async query(sql) {
+    async query(sql, params) {
+      assertBind(sql, params);
       const s = String(sql);
       if (s.includes("FROM clients")) return { rows: [{ id: "1" }] };
       if (s.includes("pipeline") || s.includes("cards") || s.includes("dispute_letters")) {
@@ -110,7 +112,8 @@ const IDENT = {
 /** A db that lets the send loop claim the letter and records every statement. */
 function claimingDb(statements) {
   return {
-    async query(sql) {
+    async query(sql, params) {
+      assertBind(sql, params);
       const s = String(sql).replace(/\s+/g, " ");
       statements.push(s);
       if (s.includes("FROM clients")) return { rows: [{ id: "1" }] };
@@ -198,4 +201,26 @@ test("a 200 with no provider id is recorded as a mailing through the live route"
     statements.some((s) => /mailed_at = COALESCE\(mailed_at, now\(\)\)/.test(s)),
     "the mailing is written down even though there is no id to write with it"
   );
+});
+
+test("a letter is claimed only while nobody is sending it, nobody has mailed it and it is not already sent; a refusal releases only a claim still held", async () => {
+  const statements = [];
+  await post({ mailBureauLetter: async () => ({ ok: false, preTransmission: true, error: "refused before it left" }) }, statements);
+  const one = (re) => statements.find((s) => re.test(s));
+  assertSqlHas(one(/UPDATE dispute_letters d SET status = 'sending'/), {
+    "this letter, this company, this client": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid",
+    "not claimed already": "AND d.send_claimed_at IS NULL",
+    "not mailed already": "AND d.mailed_at IS NULL",
+    "not in a sent state": "AND d.status NOT IN ('sending', 'sent', 'delivered')"
+  });
+  assertSqlHas(one(/SET status = COALESCE\(\$4, 'ready'\), send_claimed_at = NULL/), {
+    "only this letter, still held": "WHERE id = $1::uuid AND org_id = $2::uuid AND client_id = $3::uuid AND status = 'sending' AND mailed_at IS NULL"
+  });
+});
+
+test("a mailed letter is marked sent once: the first mailing time is kept", async () => {
+  const statements = [];
+  await post({ mailBureauLetter: async () => ({ ok: true, providerId: "pg_1" }) }, statements);
+  const mark = statements.find((s) => /mailed_at = COALESCE\(mailed_at, now\(\)\)/.test(s));
+  assertSqlHas(mark, { "marked sent": "SET status = 'sent'", "keeps the first mailing time": "mailed_at = COALESCE(mailed_at, now())" });
 });

@@ -453,6 +453,30 @@ test("Write ad copy: generate, then run with max_jobs 1, then the words and the 
   ], { height: 1200, anchor: "#cardCopy" });
 });
 
+/* The "What are we selling" select, each choice: the one picked is the one sent. */
+const COPY_OFFERS = [
+  { title: "Write ad copy sends the chosen offer: Funding", offer: "funding" },
+  { title: "Write ad copy sends the chosen offer: Credit cards", offer: "credit_cards" },
+  { title: "Write ad copy sends the chosen offer: Credit repair", offer: "credit_repair" }
+];
+for (const { title, offer } of COPY_OFFERS) {
+  test(title, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const generated = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/api/creative/generate")) generated.push(r.postDataJSON());
+    });
+    await open(page, handlers());
+    await expect(page.locator("#copyBtn")).toBeEnabled();
+    await page.locator("#copyAngle").fill("Business owners the bank turned down");
+    await page.locator("#copyOffer").selectOption(offer);
+    await page.locator("#copyBtn").click();
+    await expect(page.locator("#copySay")).toContainText("Done.");
+    expect(generated).toHaveLength(1);
+    expect(generated[0].spec).toMatchObject({ assetKind: "copy", offerType: offer });
+  });
+}
+
 test("Write ad copy: a refusal is a sentence and nothing runs", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const runs = [];
@@ -837,6 +861,32 @@ test("owner and admin only: a closer is sent to their own home", async ({ page }
   await open(page, handlers(), CLOSER);
   await expect(page).not.toHaveURL(/marketing-command-center/, { timeout: 8000 });
 });
+
+/* The gate, tried with every sign-in role: the two it admits stay on the page and
+   see their numbers, and each other role is sent away. A gate only ever tried
+   with the role it refuses (or only with the roles it admits) proves one half. */
+const SESSION_AS = (role) => ({ ok: true, staff: { ...CLOSER.staff, id: `staff-${role}`, role } });
+const GATE_CASES = [
+  { title: "owner and admin only: an owner stays on the page", role: "owner", stays: true },
+  { title: "owner and admin only: an admin stays on the page", role: "admin", stays: true },
+  { title: "owner and admin only: a sales manager is sent to their own home", role: "sales_manager", stays: false },
+  { title: "owner and admin only: a funding advisor is sent to their own home", role: "funding_advisor", stays: false },
+  { title: "owner and admin only: an inquiry specialist is sent to their own home", role: "inquiry_specialist", stays: false },
+  { title: "owner and admin only: a CSM is sent to their own home", role: "csm", stays: false },
+  { title: "owner and admin only: a setter is sent to their own home", role: "setter", stays: false }
+];
+for (const gate of GATE_CASES) {
+  test(gate.title, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await open(page, handlers(), SESSION_AS(gate.role));
+    if (gate.stays) {
+      await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,234.56");
+      await expect(page).toHaveURL(/marketing-command-center/);
+    } else {
+      await expect(page).not.toHaveURL(/marketing-command-center/, { timeout: 8000 });
+    }
+  });
+}
 
 test("the Command Center row is first in the Marketing group of the sidebar", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });

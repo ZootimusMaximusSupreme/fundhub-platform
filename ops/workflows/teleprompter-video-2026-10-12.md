@@ -1,5 +1,48 @@
 # Teleprompter video investigation — 2026-10-12
 
+## Black screens on open and on lens flips — Claude, October 13, 1:15 p.m. Phoenix
+
+Chris's 13:03 screen recording: the camera stays black for many seconds after opening, after a script switch (Ad ↔ VSL), and on every front/back flip.
+
+Cause, from the code: every open asked for 60 fps first. Safari granted 30, the app rejected it, stopped the lens and asked again, up to about ten times. On an iPhone each new ask takes the lens from the last one, so each try was a black flash. Nothing restarted a camera that dropped while the app was in the background.
+
+Owner calls 2026-10-13: "make it a hard 30fps for now", "the camera should never go black ever when on the app", "remove choose words".
+
+Change (branch `claude/teleprompter-no-choose-words`):
+- Every ask is `frameRate: { ideal: 30, max: 30 }` on both lenses, 1080p and 4K (`HARD_FPS`). The first ask opens.
+- The ask that reached the screen is saved per lens, size and phone turn (`fhtp.camRecipes1`) and tried first.
+- The last picture is held on screen while the camera reopens; a dropped lens, a muted lens for 1.5 s, or a return to the app reopens it by itself (never during a take).
+- A save conflict keeps the phone's words and saves them on the newest version. The save line never says Choose words.
+
+Proof: unit 91/91; browser teleprompter take flow 60/60 + camera steady 2/2 (both new tests failed on the old code), touch, page and mic specs green; lint clean. Real-phone proof is Chris's next filming session.
+
+## Why the front camera records at 30 fps — Claude, October 13, 10:30 a.m. Phoenix
+
+Status: **cause found. No web-page fix exists.** Owner moved this work from Codex to Claude.
+
+Proof from Chris's own takes. Each Drive file in Direct Book (folder `1lu1Jzn302TMBdfPS6r2XuOvNdMaWA9Ry`) carries the "FundHub recording diagnostics v1" report in its description:
+
+| Drive file id | Take | Lens | Granted fps | Camera frames / seconds |
+|---|---|---|---|---|
+| `1TO513g3pEqhhm-8ULwCWzd13pJ9bou6I` | Ad 5, 1080p | front | 30 | 597 / 19.95 s = 29.9 |
+| `1rPZ5rVDV3O28ox0RP9LANfr-faQGCT_z` | Ad 5, 1080p | front | 30 | 629 / 21.0 s = 30.0 |
+| `1nC7JO0DgQ1nxO0ziNX3689krIZyYj_qN` | Ad 5, 1080p | front | 30 | 378 / 16.5 s (one 2.8 s stall) |
+| `1wpOnu5u_TD-wqIPO1V21Yd2deYruXPli` | Ad 5, 1080p, one flip | front → back | 30 → **60** | 351 / 12.0 s |
+| `1vJA8Uzhyz2-Sbvvunmf2MWoVf61vYzF7` | VSL 1, 4K | front | 30 | 288 / 16.4 s = 17.5; 179 copied |
+| `104qBp8jwVBvn3xXPhvmszMIL1MUCFB4N` | Thank You, 4K | front | 30 | 235 / 12.8 s = 18.4; 143 copied |
+
+Every front-camera take was granted 30 fps while `getCapabilities().frameRate.max` said 60. The back camera, same phone and page, was granted 1080p at 60.
+
+Safari source, WebKit main (read 2026-10-13):
+- `Source/WebCore/platform/mediastream/cocoa/AVVideoCaptureSource.mm` `generatePresets()` keeps one camera mode per picture size: the first format for each width × height. Later formats of the same size, which can be the 60 fps ones, are skipped.
+- `Source/WebCore/platform/mediastream/RealtimeVideoCaptureSource.cpp` `bestSupportedSizeFrameRateAndZoom()` skips any mode that cannot do the asked frame rate. If none is left it asks again **without** the frame rate and grants the mode's own rate. That is the silent 30.
+- `AVVideoCaptureSource.h` `canResizeVideoFrames()` is `true`, so any mode at or above the asked size with 60 fps would have been picked and scaled down. The page already asks 1080p60 and 4K60 in both orientations. Safari still answered 30. So Safari's list for this front camera has no 60 fps mode at 1080p or larger.
+- Chrome on iPhone uses the same WebKit (App Store Review Guideline 2.5.6; other engines only in the EU and Japan). Chrome gives the same 30.
+
+What fixes it: the native iPhone app in `tools/teleprompter-ios/` asks AVFoundation for the 60 fps format directly. Blocked on the $99 Apple developer account (owner decision). The back camera already gives 1080p60 in the web page.
+
+4K is a second limit. Even at a 30 fps grant only 17–18 frames a second reach the page, and 11 are copied into the file.
+
 ## Physical lens-switch failure — October 13, current work
 
 The owner completed a real phone pass and reports the camera goes black/freezes during a recording flip. Luna decoded both newly uploaded originals and root inspected the private frame contact sheet. The second Ad's last changing selfie frame is at **2.688 s**; frame 80 at **3.093 s** is pure black, and frames 80–214 remain black through **8.172 s**. Its 215 decoded video frames contain **81 unique images and 134 extra duplicates**. Audio and video decode without errors, and download size matches Drive. End settings report rear **1920×1080@60**, but no rear scene appears in the file. This is failed filming, despite the earlier passing synthetic live checks.

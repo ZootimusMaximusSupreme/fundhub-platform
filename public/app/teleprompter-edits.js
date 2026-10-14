@@ -476,7 +476,7 @@
     if (st.waiting && st.net === "offline") return "Offline — " + edits(st.waiting) + " waiting";
     if (st.waiting && st.net === "signedout") return edits(st.waiting) + " on phone · reconnecting";
     if (st.saving || st.waiting) return "Saving…";
-    if (st.conflicts) return "History";
+    if (st.conflicts) return "Choose words";
     if (st.savedAt) return "Saved " + time(st.savedAt) + (repoHeld ? ". Waiting to copy to the repo." : "");
     return "No changes yet";
   }

@@ -46,7 +46,7 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
     makeRecipe("jobs.json", row).proof?.evidence.includes("door-batch-job-final.test.mjs") &&
     makeRecipe("jobs.json", row).proof?.verdict === "red"
   );
-  assert.equal(rows.length, 7);
+  assert.equal(rows.length, 6);
   assert.deepEqual(
     new Set(rows.map((row) => row.surface)),
     new Set(FINAL_JOB_GAP_ROWS.map((row) => row.surface))
@@ -390,7 +390,11 @@ test("the job lane accepts the live scope function and a direct database", async
     assert.equal(db.calls.length, 1, kind);
     assert.equal(checks[0].id, "door-batch:ad-video-worker-result", kind);
     assert.equal(checks[0].status, "PASS", kind);
-    assert.deepEqual(checks.slice(1).map((check) => check.status), Array(7).fill("FAIL"), kind);
+    assert.deepEqual(
+      checks.slice(1).map((check) => check.status),
+      Array(FINAL_JOB_GAP_ROWS.length).fill("FAIL"),
+      kind,
+    );
     assert.deepEqual(
       new Set(checks.slice(1).map((check) => check.id)),
       new Set(FINAL_JOB_GAP_ROWS.map((row) => row.id)),

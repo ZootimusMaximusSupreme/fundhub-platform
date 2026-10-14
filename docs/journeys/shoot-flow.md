@@ -62,10 +62,9 @@ stateDiagram-v2
     scroll --> paused: double tap
     paused --> paused: drag moves the words by hand
     rolling --> paused: a drag grabs the words
-    paused --> editing: hold a line (or Edit)
-    rolling --> editing: hold a line: it stops first
-    editing --> rolling: Done, if it was rolling<br/>from the same word, or the start of the changed line
-    editing --> paused: Done, if it was paused
+    paused --> copy: double tap on the words
+    rolling --> copy: double tap: it stops first
+    copy --> paused: Copy script (whole script to the clipboard)<br/>Paste script (whole script replaced and saved, rolls from the top)<br/>or X
 ```
 
 Bluetooth remote and keyboard keys are unchanged (v1's keys, Learn remote). "Tap a word to start there" (spec §8.1, v1) is replaced by the owner's tap rule: drag the word to the reading line and tap.
@@ -74,11 +73,11 @@ Bluetooth remote and keyboard keys are unchanged (v1's keys, Learn remote). "Tap
 
 ```mermaid
 flowchart TD
-    A["Hold a line → an edit box in its place<br/>(the glass flip is off while it is open)"] --> B["applyEdit: the whole new body,<br/>and the parts that held the old words"]
+    A["Double tap → Paste script: the clipboard replaces the whole script<br/>(owner call 2026-10-13: no word or line editing on the phone)"] --> B["applyEdit per changed paragraph, keeping the parts<br/>(a different paragraph count saves one new body)"]
     B --> Q["The waiting list on this phone<br/>(localStorage fhtp.edits, one item per script)"]
     Q -->|"1.5 s after typing stops,<br/>or at once on blur / Done / pause"| P["POST marketing/scripts/edit<br/>{request_id, id, version, body, parts?}"]
     P -->|200| V["New version in ad_scripts (old one superseded),<br/>voice pairs, repo file queued in repo_outbox"]
-    V --> S["Pulse: 'Saved 12:04 PM'<br/>+ '. Waiting to copy to the repo.' while GET marketing/health<br/>says the outbox is held (no GITHUB_REPO_TOKEN)"]
+    V --> S["The save line stays hidden: a good save shows nothing on the glass"]
     V --> T["Shoot / Scripts tab open in this browser reads again at once<br/>(BroadcastChannel fundhub-scripts, storage key fh.scripts.changed)"]
     P -->|"no connection / 5xx"| O["Kept, with the SAME request_id<br/>'Offline — N edits waiting'; sent on online, the 5 s poll, or 15 s"]
     P -->|401| U["Kept: 'Signed out — N edits waiting'"]
@@ -86,7 +85,7 @@ flowchart TD
     U --> P
     P -->|409 stale| L["GET marketing/script?id= → the live version"]
     L -->|"live words = these words<br/>(the first answer was lost)"| V
-    L -->|different words| C["History stays available without a filming popup<br/>tap History, then Choose words to see both texts"]
+    L -->|different words| C["No Choose words (owner call 2026-10-13):<br/>the phone's script is kept by itself"]
     C -->|Keep my words| P2["POST again on the live id + version"] --> V
     C -->|Use the saved words| W["Read the live version again; show new words for another choice if it changed<br/>then verify a phone backup and show the saved words"]
     P -->|"400 / 403 / 404"| F["'Not saved. Tap to see why.'<br/>words kept: Try again, or Throw away (asks first)"]
@@ -94,7 +93,7 @@ flowchart TD
 
 - The database version is the memory. The repo file follows through the outbox, which is held until `GITHUB_REPO_TOKEN` exists; the pulse says so.
 - The save path does not filter by title or kind. Ads, VSLs, thank-you videos, and their variants all create the same next `ad_scripts` version and keep their stack fields.
-- History (the History button, or tap the pulse): `GET marketing/script?id=` — every server version newest first, who (from `source`: Chris, The machine, An agent, Imported), when, the words out (red) and in (green), and "In the repo." / "Not in the repo yet." Edits still waiting on this phone and backups made when choosing saved words appear above the server versions. Choosing saved words reads the live version again; if it changed, the picker shows the new words and asks for another tap. If phone storage cannot verify the backup, the choice does not clear the phone edit.
+- History is gone from the teleprompter (owner call 2026-10-13). The save line shows only when a save has not reached the server: offline, signed out, or not saved. A conflict is never shown: the phone's script is saved on the newest version, and the server keeps every older one. Choosing saved words still reads the live version again and keeps a backup of the phone words in this phone's storage.
 - The 5-second shoot poll never redraws under the edit box, and an edit still waiting on this phone wins over what the server sends. Words changed elsewhere redraw only while nothing rolls, keeping the place.
 
 ### 4c. The rig
@@ -138,7 +137,7 @@ An upright Ad rejects a wide camera result before showing it. It tries the 1080p
 
 Each completed take also keeps its own recording measurements: elapsed time, granted start/end camera settings and preview size, lens changes, presented/copied frames, missed callbacks, frame-request support/count/failures, canvas size and target rate. These optional measurements travel with the accepted file in IndexedDB and the upload POST. The server allowlists bounded numeric, boolean and facing values into the Drive file's description; old takes and invalid reports still upload. The video chunks remain the original bytes. A new take must not overwrite an older queued take's measurements. This allows the agent to compare the phone's actual recording stages with the decoded Drive MP4.
 
-If camera access fails, the retry notice stays in a small top-left box and never takes taps or drags away from the script. During a double-tap word edit, **Copy script** copies every current paragraph as one clipboard value, including words typed but not saved yet, so the full script can be pasted into Claude. It uses the browser clipboard first and an iPhone selection fallback when that API is unavailable.
+If camera access fails, the retry notice stays in a small top-left box and never takes taps or drags away from the script. A double-tap shows **Copy script**, **Paste script** and X at the top, nothing else. **Copy script** copies every paragraph as one clipboard value, so the full script can be pasted into Claude; **Paste script** puts the fixed script back. It uses the browser clipboard first and an iPhone selection fallback when that API is unavailable.
 
 The existing `counted` flag from merged PR #27 still limits 3-2-1 to the first play of an opened script. Pause, seek and resume do not reset it. `steadyPace`, cached reading-line measurements, and fractional `translate3d` scrolling are unchanged; checks now cover 200, 205, 210 and 215 WPM. The camera shade is `rgba(0, 0, 0, 0.558)`, 10% lighter than 0.62. These changes remain **UNVERIFIED on production** until deployed.
 

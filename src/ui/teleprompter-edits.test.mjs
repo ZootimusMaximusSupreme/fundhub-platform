@@ -300,7 +300,7 @@ describe("the waiting list (autosave queue)", () => {
     await flushAsync();
     const st = r.q.status();
     assert.equal(st.conflicts, 1);
-    assert.equal(r.E.statusText(st), "History");
+    assert.equal(r.E.statusText(st), "Choose words");
     assert.equal(r.q.item("root-1").conflict.theirs.body, "Their words.");
     await r.q.resolve("root-1", "mine");
     await flushAsync();

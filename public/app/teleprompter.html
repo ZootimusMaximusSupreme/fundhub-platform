@@ -32,7 +32,8 @@
    iPad itself are not flipped, and they hide while a script rolls.
    v2 (owner, 2026-10-06; docs/specs/teleprompter-requirements-2026-10-06.md):
    dark glass (dimmed mirrored camera, white words), a change pulse row that never hides,
-   an edit box in place of a line, a history sheet, a two-versions picker, a
+   an edit box in place of a line, a two-versions picker (History removed
+   2026-10-13, owner call), a
    line-width setting, and on a tablet the sheets open as a side drawer.
    ═════════════════════════════════════════════════════════════════════════ */
 :root{
@@ -172,7 +173,7 @@ body.editing #top,body.editing #bar,body.editing #line,body.editing #progress{vi
 .edit-box{display:block;width:100%;max-width:var(--measure);margin:0 auto .9em;padding:8px 12px;border:2px solid var(--cue);border-radius:12px;background:#111;color:var(--ink);font-family:var(--read-face);line-height:1.32;resize:none;overflow:hidden;-webkit-user-select:text;user-select:text}
 body.wording #flip{transform:none !important}
 .word-box{display:inline-block;min-width:2ch;max-width:100%;margin:0;padding:0 2px;border:2px solid var(--cue);border-radius:6px;background:#111;color:#fff;font:inherit;line-height:inherit;vertical-align:baseline}
-#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 96px 8px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center}
+#editbar{position:fixed;left:0;right:0;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--cue);padding:calc(8px + env(safe-area-inset-top,0px)) 96px 8px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
 #e-status{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 #e-done{background:#000;border-color:var(--ok);color:#fff;font-weight:700}
 
@@ -211,7 +212,7 @@ body.wording #flip{transform:none !important}
 #b-script-save{position:fixed;z-index:10;top:calc(8px + env(safe-area-inset-top,0px));right:8px;font-weight:700;background:#000;border-color:var(--ok);color:#fff}
 @media (prefers-reduced-motion:reduce){#content .w,#bar,#top{transition:none}}
 </style>
-<link rel="stylesheet" href="teleprompter.css?v=20261013-gpu-phone-save">
+<link rel="stylesheet" href="teleprompter.css?v=20261013-steady-camera">
 <script>
 /* Full screen so the words can reach the edges. Safari will not drop its
    address bar until a tap, so try on open and again on the first tap.
@@ -252,6 +253,7 @@ body.wording #flip{transform:none !important}
 </head>
 <body>
 <button type="button" class="mini" id="b-script-copy" hidden>Copy script</button>
+<button type="button" class="mini" id="b-script-paste" hidden>Paste script</button>
 <button type="button" class="mini" id="b-script-save" hidden>Save</button>
 <button type="button" id="b-cancel" aria-label="Cancel">X</button>
 <div id="app">
@@ -349,7 +351,6 @@ body.wording #flip{transform:none !important}
 <div id="editbar" hidden>
   <span id="e-status" role="status" aria-live="polite"></span>
   <button type="button" class="mini" id="e-back">Put back</button>
-  <button type="button" class="mini" id="e-hist">History</button>
   <button type="button" class="mini" id="e-done">Done</button>
 </div>
 
@@ -428,7 +429,7 @@ body.wording #flip{transform:none !important}
   <p class="note" id="cam-now">The front camera is starting.</p>
   <button type="button" class="pill" id="q-4k">4K (3840×2160) — VSLs, thank-you, testimonials</button>
   <button type="button" class="pill" id="q-1080">1080p (1920×1080) — ads</button>
-  <p class="note">Ads use 1080p and ask for 60 fps. VSLs, thank-you videos and testimonials use 4K and ask for 30–60 fps. The phone may grant a lower rate; the saved video is never called faster than it is.</p>
+  <p class="note">Ads use 1080p. VSLs, thank-you videos and testimonials use 4K. Every take is 30 fps for now; 60 fps comes with the iPhone app. The saved video is never called faster than it is.</p>
   <h3>Learn remote</h3>
   <p class="note">Tap a slot, then press the button on your remote or foot pedal. It is saved on this device.</p>
   <div class="list" id="learn"></div>
@@ -436,12 +437,6 @@ body.wording #flip{transform:none !important}
   <h3>Touch</h3>
   <p class="note">Play moves the words. Tap Play again and the words pause. The camera keeps going. When the words are paused, double-tap a word to change that word. Hold a line to change the whole line.</p>
   <p class="note keys">Keyboard: Space, Enter or Page Down plays and pauses. The arrows change the speed. Page Up restarts the take. At the end of a script, Space is Got it and Page Up is Another take.</p>
-</section>
-
-<section class="sheet" id="hist" hidden aria-label="History of this script">
-  <div class="row"><h2 id="hist-title">History</h2><button type="button" class="x" data-close>Close</button></div>
-  <p class="note">Every saved version, newest first. Red words came out. Green words went in. Nothing is ever thrown away.</p>
-  <div class="list" id="hist-list"></div>
 </section>
 
 <section class="sheet" id="pick" hidden aria-label="Pick the words to keep">
@@ -479,8 +474,8 @@ body.wording #flip{transform:none !important}
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="teleprompter-edits.js?v=20261013-phone-draft-backup"></script>
+<script src="teleprompter-edits.js?v=20261013-steady-camera"></script>
 <script src="teleprompter-take-store.js?v=20261012-1"></script>
-  <script src="teleprompter.js?v=20261013-unmuted-lens-frame"></script>
+  <script src="teleprompter.js?v=20261013-steady-camera"></script>
 </body>
 </html>

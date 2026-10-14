@@ -144,7 +144,7 @@ function daysAgo(days) {
   return new Date(Date.now() - days * DAY).toISOString();
 }
 
-test("Display AB exports only exact red catalog rows and complete proof metadata", () => {
+test("Display AB exports only exact freshly compiled rows and complete proof metadata", () => {
   assert.equal(DISPLAY_CONTRACT_PROOF_AB.strictProvedCount, 30);
   assert.equal(new Set(DISPLAY_CONTRACT_KEYS_AB).size, DISPLAY_CONTRACT_KEYS_AB.length);
   assert.deepEqual(DISPLAY_CONTRACT_PROOF_AB.sourceFiles, ["desks-a.json", "desks-b.json"]);
@@ -157,7 +157,10 @@ test("Display AB exports only exact red catalog rows and complete proof metadata
     assert.equal(row.surface, proof.surface);
     assert.equal(row.family, proof.family);
     assert.equal(row.expected, proof.expected);
-    assert.equal(row.proofVerdict, "red", `${proof.rowKey} was not a red row when selected`);
+    assert.equal(row.proofVerdict, undefined, `${proof.rowKey} stayed red after its executable proof compiled`);
+    assert.equal(row.proofDepth, proof.proof.depth);
+    assert.equal(row.state, "wired");
+    assert.ok(row.proof.tests.length > 0, `${proof.rowKey} lost its executable proof target`);
     assert.equal(proof.proof.runner, "rendered-chromium-local-fake-routes");
     assert.equal(proof.proof.file, "src/pulse/catalog/proofs/display-contracts-ab.test.mjs");
     assert.ok(proof.proof.assertion.length > 20);

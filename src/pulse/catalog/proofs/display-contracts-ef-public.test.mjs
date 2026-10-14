@@ -138,6 +138,7 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
   assert.equal(DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_METADATA.provedCount, 44);
   assert.equal(DISPLAY_CONTRACTS_EF_PUBLIC_ROW_KEYS.length, 44);
   assert.equal(new Set(DISPLAY_CONTRACTS_EF_PUBLIC_ROW_KEYS).size, 44);
+  const depthRank = { e2e: 1, deep: 2 };
 
   for (const proofCase of DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES) {
     const matches = CATALOG.items.filter((item) => item.id === proofCase.id);
@@ -145,7 +146,16 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
     assert.equal(matches[0].sourceFile, proofCase.sourceFile);
     assert.equal(matches[0].surface, proofCase.surface);
     assert.equal(matches[0].proofAsserts, proofCase.control);
-    assert.equal(matches[0].proofVerdict, "red");
+    assert.equal(matches[0].proofVerdict, undefined, `${proofCase.id} stayed red after its executable proof compiled`);
+    assert.ok(depthRank[matches[0].proofDepth] >= depthRank[proofCase.depth]);
+    assert.ok(["wired", "red"].includes(matches[0].state));
+    if (matches[0].state === "red") {
+      assert.ok(["money", "customerData"].includes(matches[0].impact));
+      assert.match(matches[0].reason, /below required level/);
+    } else {
+      assert.match(matches[0].reason, /Mapped to .* executable proof target/);
+    }
+    assert.ok(matches[0].proof.tests.includes(proofCase.evidence), `${proofCase.id} lost its executable proof file`);
   }
 
   const exercised = new Set();
@@ -251,14 +261,14 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
     mark(openCase);
 
     const button = page.locator("section", { has: page.locator("h2", { hasText: "Systems" }) }).locator("button.more");
-    assert.equal(normalize(await button.textContent()), "Show all 6 red checks");
+    assert.equal(normalize(await button.textContent()), "Show all 6 broken checks");
     assert.equal(await page.locator("li.red-item:visible").count(), 5);
     await button.click();
     assert.equal(await page.locator("li.red-item:visible").count(), 6);
     assert.equal(normalize(await button.textContent()), "Show only the first 5");
     await button.click();
     assert.equal(await page.locator("li.red-item:visible").count(), 5);
-    assert.equal(normalize(await button.textContent()), "Show all 6 red checks");
+    assert.equal(normalize(await button.textContent()), "Show all 6 broken checks");
     mark(toggleCase);
     await page.close();
   });
