@@ -103,6 +103,42 @@ const DEFINITIONS = [
   ["5725e57ed8afcb3c7504", ["src/http/s3-inquiry-cases-handler.test.mjs", "src/http/inquiry-cases-actions-handler.test.mjs"]],
   // routes-2 inquiry-cases (send): POST /api/inquiry-cases action send — sends the inquiry-removal letter
   ["af74d4321e47c5c9eddc", ["src/http/inquiry-cases-actions-handler.test.mjs"]],
+  // routes-1 banking/accounts: GET ?client_id= (bank accounts, statement cycles, holdings with server
+  ["b822a8a448d596abdbb1", ["src/http/s3-banking-handler.test.mjs"]],
+  // routes-1 banking/accounts: POST action=create_account|set_cycle|replace_holdings (hand-enter a pe
+  ["84cbea3bc7e928861f71", ["src/http/s3-banking-handler.test.mjs"]],
+  // routes-0 banking/sync-liabilities: Pull card bills (due date, minimum, last statement) from Plaid for eve
+  ["231389bc27f344fd8a82", ["src/http/s3-banking-handler.test.mjs"]],
+  // routes-1 closer-deck: POST action=log_disposition {client_id, offer_key, route, temperature,
+  ["cd635e5a76c1f973668e", ["src/http/s3-closer-deck-handler.test.mjs"]],
+  // routes-1 documents-download: GET ?id= (mint a fresh signed link for a saved document; client reache
+  ["dc798f3e0da8c9474cda", ["src/http/s3-documents-handler.test.mjs"]],
+  // routes-1 read/money-map: GET ?client_id=&days=&amount= (one client's cards due, recurring bills
+  ["d8d35b20c6cf7376f929", ["src/http/money-map.test.mjs"]],
+  // routes-1 read/transactions: GET ?client_id=&entity_id=&days=&limit= (a client's bank transactions 
+  ["68ced8462a35c6b99d91", ["src/http/transactions.test.mjs"]],
+  // routes-3 read/underwrite: GET ?client_id= the UnderwriteIQ funding read: the engine's assessment
+  ["f9a7e355ccc42b4f5515", ["src/http/underwrite-read.test.mjs"]],
+  // routes-1 read/finance-os-suggestions: GET ?client_id= (what the latest pull says is costing the client money
+  ["0c52029f11762fd9944a", ["src/http/finance-os-suggestions.test.mjs"]],
+  // routes-1 read/repair-cases: GET (repair queue for the specialist desk; ?client_id= adds letter bod
+  ["573d06e0f1f0640af50f", ["src/http/repair-cases-read.test.mjs"]],
+  // routes-2 privacy/erasure: GET/POST /api/privacy/erasure — GET what erasures were done (all, or f
+  ["136864d22c0b1dc91cbf", ["src/http/privacy-erasure.test.mjs"]],
+  // routes-2 public/climate-match: GET/POST /api/public/climate-match — public lending-climate lead magne
+  ["0afa1181d191c2bd75c2", ["src/http/climate-match.test.mjs"]],
+  // routes-1 merchant/events: POST {events:[...]} open API: a merchant processor posts sales, refund
+  ["b059a64abd651eb2cc93", ["src/http/money-connections.test.mjs"]],
+  // routes-2 merchant/events: POST /api/merchant/events — open API: a client's own merchant processo
+  ["ec5c29924a3b4d09c4e0", ["src/http/money-connections.test.mjs"]],
+  // routes-2 money/connections: GET/POST /api/money/connections — a client's own merchant processors (
+  ["b357ef70eda470eb0e6b", ["src/http/money-connections.test.mjs"]],
+  // routes-2 money/accounts: GET/POST /api/money/accounts — the client's Accounts page: GET contain
+  ["e60a03ab92cb57f7543f", ["src/http/money-accounts.test.mjs"]],
+  // routes-1 repair/send: POST {mail:true, client_id, letters[]} human-triggered mailing of repa
+  ["18a47181b67209de88a2", ["src/http/repair-send.test.mjs"]],
+  // routes-2 public/partner-apply: POST /api/public/partner-apply — the affiliate and white-label applica
+  ["22c3733f1a94e65d9c96", ["src/http/partner-apply.test.mjs"]],
 ];
 
 export function s3DoorRowId(sourceFile, row) {

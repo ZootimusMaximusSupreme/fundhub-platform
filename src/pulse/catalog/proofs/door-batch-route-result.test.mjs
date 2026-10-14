@@ -60,7 +60,7 @@ test("Batch 4 refusal context never claims the remaining route business results 
       .map((row) => ({ file, row, key: routeKeyForDoor(row) }));
   });
 
-  assert.equal(rows.length, 263);
+  assert.equal(rows.length, 245);
   for (const { row, file } of rows) {
     const proof = makeRecipe(file, row).proof;
     assert.equal(proof.depth, "e2e");
@@ -70,7 +70,7 @@ test("Batch 4 refusal context never claims the remaining route business results 
     assert.doesNotMatch(proof.asserts, /(?:the API|the route) works|business result is proved/i);
   }
   const targets = [...new Map(rows.map((item) => [item.key, item])).values()];
-  assert.equal(targets.length, 210);
+  assert.equal(targets.length, 197);
 
   const originalFetch = globalThis.fetch;
   const originalQuery = db.query;
