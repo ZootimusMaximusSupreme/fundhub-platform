@@ -7,6 +7,7 @@
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
 //   npm run pulse:prove -- --beats      the HOURLY pulse: build netlify/functions/pulse-hourly.mjs the way Netlify does,
 //                                       unzip it, run the beats from inside it (see proveBeats() at the bottom)
+//   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every beat database read
 //   npm run pulse:prove -- --beats --fixture       also run one built-in fixture beat (green) through the runner
 //   npm run pulse:prove -- --beats --fixture=red   the same fixture, forced red: proves the text path with a fake sink
 //
@@ -16,8 +17,8 @@
 //   3. Checks that read repo files at run time passed on a laptop and went red on the server.
 // This script catches all three, because it runs the bundle the server runs.
 //
-// SAFE. Two Postgres connections as DATABASE_URL's role (the app role the pulse uses), each inside
-// BEGIN READ ONLY with every query in its own SAVEPOINT; both ROLLBACK. Any write is refused and
+// SAFE. One proof connection plus the runner's three beat connections use DATABASE_URL's role (the app role the
+// pulse uses), each inside BEGIN READ ONLY with every query in its own SAVEPOINT; all ROLLBACK. Any write is refused and
 // counted. Any BEGIN/COMMIT/SET sent to ctx.db is refused and counted (ctx.db is a shared pool in
 // production). fetch allows GET and HEAD only, so no model call can be billed. Any module that opens its own pool gets a dead
 // address. No text, no email, no AI call, no Plaid, no credit pull.
@@ -339,6 +340,10 @@ function guardedFetch() {
 async function proveBeats() {
   const BEAT_RUN_LIMIT_MS = 22000;
   const COLD_LIMIT_MS = 8000;
+  const readDelayArg = args.find((a) => a.startsWith("--read-delay="));
+  const READ_DELAY_MS = readDelayArg ? Number(readDelayArg.split("=")[1]) : 0;
+  if (!Number.isInteger(READ_DELAY_MS) || READ_DELAY_MS < 0 || READ_DELAY_MS > 1000) fail("--read-delay must be a whole number from 0 to 1000 ms");
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const fixtureArg = args.find((a) => a === "--fixture" || a.startsWith("--fixture="));
   /* green (default) | red | and three NEGATIVE CONTROLS that must make the proof exit 1, so it is known to have teeth:
        hang    a step that never returns            -> "hit its own deadline"
@@ -385,7 +390,7 @@ async function proveBeats() {
       proofEntryFile = path.join(REPO, "scripts/pulse", `.prove-entry-${process.pid}.mjs`);
       const rel = (r) => JSON.stringify(`../../${r}`);
       fs.writeFileSync(proofEntryFile, [
-        `export { runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS } from ${rel("src/pulse/runner.mjs")};`,
+        `export { runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS, READ_BOX_COUNT } from ${rel("src/pulse/runner.mjs")};`,
         `export { recordingSinks } from ${rel("src/pulse/alerts.mjs")};`,
         `export { BEAT_FILES, loadBeats } from ${rel("src/pulse/beats/index.mjs")};`,
         ""
@@ -400,19 +405,19 @@ async function proveBeats() {
     }
   }
   const t0 = Date.now();
-  let BEAT_FILES, loadBeats, runPulse, recordingSinks, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, entryModule;
+  let BEAT_FILES, loadBeats, runPulse, recordingSinks, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, READ_BOX_COUNT = 3, entryModule;
   const fnRel = "netlify/functions/pulse-hourly.mjs";
   try {
     if (!fs.existsSync(path.join(rootFn, fnRel))) problems.push("the function bundle does not hold netlify/functions/pulse-hourly.mjs");
     else entryModule = await import(href(rootFn, fnRel));
     if (FROM_REPO) {
       ({ BEAT_FILES, loadBeats } = await import(href(REPO, "src/pulse/beats/index.mjs")));
-      ({ runPulse, RUN_BUDGET_MS } = await import(href(REPO, "src/pulse/runner.mjs")));
+      ({ runPulse, RUN_BUDGET_MS, READ_BOX_COUNT } = await import(href(REPO, "src/pulse/runner.mjs")));
       ({ recordingSinks } = await import(href(REPO, "src/pulse/alerts.mjs")));
     } else {
       const entryOut = fs.readdirSync(rootProof, { recursive: true }).map(String).find((f) => /(^|\/)\.prove-entry-\d+\.m?js$/.test(f));
       if (!entryOut) throw new Error(`the proof bundle holds no proof entry (it holds: ${fs.readdirSync(rootProof).slice(0, 8).join(", ")})`);
-      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, recordingSinks } = await import(href(rootProof, entryOut)));
+      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, READ_BOX_COUNT, recordingSinks } = await import(href(rootProof, entryOut)));
     }
   } catch (err) {
     console.log(`  the bundle could not be loaded: ${clip(err && err.stack ? err.stack.split("\n").slice(0, 3).join(" | ") : err, 400)}`);
@@ -456,6 +461,7 @@ async function proveBeats() {
   console.log(`  ${FROM_REPO ? "from this checkout" : `function bundle: ${rootFn}\n  proof bundle: ${rootProof}`}`);
   if (unlisted.length) console.log(`  ${unlisted.length} beat file(s) are on disk but not on the list, so they are not run here: ${unlisted.join(", ")}`);
   if (FIXTURE) console.log(`  fixture: ${FIXTURE}${["hang", "refuse", "send"].includes(FIXTURE) ? " (a negative control: this run MUST fail)" : ""}`);
+  if (READ_DELAY_MS) console.log(`  artificial delay: ${READ_DELAY_MS} ms before every beat database read`);
   console.log(`  cold load: ${coldMs} ms; listed beats: ${listed.length}${listed.length ? ` (${listed.join(", ")})` : " (the list is EMPTY)"}; loaded from the bundle: ${loadedBeats.length}`);
 
   // 2. Guards: GET and HEAD only.
@@ -539,7 +545,17 @@ async function proveBeats() {
     statement_timeout: 15000
   });
   boxPool.on("error", () => {});
-  const connect = () => boxPool.connect();
+  const connect = async () => {
+    const client = await boxPool.connect();
+    return {
+      query: async (...queryArgs) => {
+        const input = queryArgs[0];
+        if (READ_DELAY_MS && typeof input === "object" && input?.queryMode === "extended") await wait(READ_DELAY_MS);
+        return client.query(...queryArgs);
+      },
+      release: (destroy) => client.release(destroy)
+    };
+  };
 
   // 4. The beats: the bundle's own list, plus a built-in fixture when asked.
   const fixtureBeat = FIXTURE && {
@@ -588,21 +604,30 @@ async function proveBeats() {
     }
     if (out.alerts?.body) console.log(`  the text the pulse WOULD send (fake sink, nothing sent): ${out.alerts.body}`);
     if (out.box) console.log(`  box pool after the run: ${poolBefore.total} open, ${poolBefore.idle} idle, ${poolBefore.waiting} waiting`);
-    if (out.box) console.log(`  read box: ${out.box.reads} reads, ${out.box.errors} errors, ${out.box.refused.length} refused, commitsSent ${out.box.commitsSent}, readOnlyAtClose ${out.box.readOnlyAtClose}, rolledBack ${out.box.rolledBack}, destroyed ${out.box.destroyed}`);
+    if (out.box) console.log(`  read boxes: ${out.box.count}, ${out.box.reads} reads, ${out.box.errors} errors, ${out.box.refused.length} refused, commitsSent ${out.box.commitsSent}, readOnlyAtClose ${out.box.readOnlyAtClose}, rolledBack ${out.box.rolledBack}, destroyed ${out.box.destroyed}`);
     if (out.error && !/^records:/.test(out.error)) problems.push(`the run reported: ${clip(out.error, 200)}`);
     if (!out.dbUp && out.ran) problems.push("the runner could not read the database before the beats ran");
     if (runMs > RUN_BUDGET_MS) problems.push(`the run took ${(runMs / 1000).toFixed(1)} s (budget ${RUN_BUDGET_MS / 1000} s)`);
     if (out.timedOut) problems.push(`${out.timedOut} beat(s) were cut at the beats-phase budget`);
+    const deadlines = new Map((fixtureBeat ? [fixtureBeat] : loadedBeats).map((beat) => [beat.id, beat.deadlineMs]));
     for (const r of out.results) {
       if (/^deadline \d+ ms passed/.test(String(r.detail))) problems.push(`beat ${r.beatId} hit its own deadline: ${clip(r.detail, 120)}`);
       if (r.step === "no-refusals" || /^refused sql/.test(String(r.detail))) problems.push(`beat ${r.beatId} was refused: ${clip(r.detail, 140)}`);
+      const deadlineMs = deadlines.get(r.beatId);
+      if (r.ms !== null && deadlineMs && r.ms >= deadlineMs / 2) problems.push(`beat ${r.beatId} took ${r.ms} ms, not under half its ${deadlineMs} ms deadline`);
     }
-    for (const x of out.box?.refused || []) if (x.kind === "sql") problems.push(`a read was refused as SQL: ${clip(x.what, 120)}`);
-    if (out.box && out.box.commitsSent !== 0) problems.push(`the read box saw ${out.box.commitsSent} COMMIT(s)`);
-    if (out.box && out.box.leaked) problems.push("the read box leaked out of READ ONLY");
-    if (out.box && out.box.began && !out.box.rolledBack) problems.push("the read box did not ROLLBACK");
+    if (!out.box) problems.push("the runner returned no read-box report");
+    else if (out.box.count !== READ_BOX_COUNT || out.box.reports?.length !== READ_BOX_COUNT) problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${READ_BOX_COUNT}`);
+    for (const [lane, report] of (out.box?.reports || []).entries()) {
+      for (const x of report.refused || []) if (x.kind === "sql") problems.push(`read box ${lane + 1} refused SQL: ${clip(x.what, 120)}`);
+      if (!report.began || !report.readOnlyVerified) problems.push(`read box ${lane + 1} did not prove BEGIN READ ONLY`);
+      if (report.commitsSent !== 0) problems.push(`read box ${lane + 1} saw ${report.commitsSent} COMMIT(s)`);
+      if (report.leaked) problems.push(`read box ${lane + 1} leaked out of READ ONLY`);
+      if (report.began && !report.rolledBack) problems.push(`read box ${lane + 1} did not ROLLBACK`);
+      if (!report.destroyed) problems.push(`read box ${lane + 1} was not destroyed`);
+    }
     if (out.records?.written) problems.push("a non-live run wrote records");
-    if (poolBefore.total > 1) problems.push(`the run left ${poolBefore.total} connections open in the box pool (the box must destroy its one connection)`);
+    if (poolBefore.total > 0) problems.push(`the run left ${poolBefore.total} connection(s) open in the box pool (all three boxes must destroy theirs)`);
   }
   for (const s of sendLog) problems.push(`something tried to send outside the declared sinks: ${s}`);
   for (const c of crashes) problems.push(c);

@@ -1,7 +1,7 @@
 // The hourly pulse runner: fire every beat, decide, text Chris, then keep the record.
 //
 // Pulse v1 (ops/workflows/pulse-layer-2026-10-09-v1.md) cutting contract section 3.
-// READ ONLY TONIGHT. A beat reaches data through ONE read box for the whole run (BEGIN READ ONLY, then
+// READ ONLY TONIGHT. Beats reach data through three read boxes for the whole run (BEGIN READ ONLY, then
 // ROLLBACK; src/pulse/beats/readbox.mjs) and the web through GET and HEAD only (pulse-probe). Nothing a beat
 // can do saves a row, sends a message, calls a vendor with a write, or emits an event.
 //
@@ -11,8 +11,8 @@
 //
 // THE CLOCK (one deadline, counted from entry; critic issue 3):
 //
-//   0 s ---- prefetch (2 s cap) ---- box opens ---- beats (13 s cap) ---- close box ---- TEXT (6 s reserved) ---- records (2.5 s cap)
-//            org, open incidents,                    all beats at once                    cannot start later      best effort
+//   0 s ---- prefetch (2 s cap) ---- boxes open ---- beats (13 s cap) ---- close boxes --- TEXT (6 s reserved) ---- records (2.5 s cap)
+//            org, open incidents,                    three sequential lanes               cannot start later      best effort
 //            last results, bank links                                                     than 16 s from entry
 //
 // The beats phase ends at the earlier of entry + 13 s and entry + 22 s - 6 s, so the text always has its 6 s.
@@ -57,6 +57,7 @@ export const RECORDS_MS = 2_500;
 export const PREFETCH_MS = 2_000;
 export const BOX_OPEN_MS = 2_500;
 export const BOX_CLOSE_MS = 2_500;
+export const READ_BOX_COUNT = 3;
 /** The text never gets less than this, even when the earlier phases ran late. */
 export const MIN_TEXT_MS = 2_500;
 
@@ -221,23 +222,29 @@ export async function runPulse({
       if (links && links.ok && links.value?.ok) bankLinks = links.value.rows;
     }
 
-    // 4. ONE read box for the whole run. If it will not open, beats that read go red at their first read with "db:".
-    let box = null;
-    let boxProblem = null;
+    // 4. Three read boxes for the whole run. Each lane owns one box, so statements in one lane cannot hold up
+    // another. If a box will not open, beats in that lane go red at their first read with "db:".
+    const boxes = Array(READ_BOX_COUNT).fill(null);
+    const boxProblems = Array(READ_BOX_COUNT).fill(null);
     if (!dbUp) {
-      boxProblem = "the database is not answering";
+      boxProblems.fill("the database is not answering");
     } else {
-      const opening = openReadBox({ connect });
-      const o = await settle(opening, B.boxOpen);
-      if (o.ok) box = o.value;
-      else {
-        boxProblem = o.timedOut ? "the read box did not open in time" : say(o.error);
-        // If it opens late, close it at once so the connection is never left holding a slot.
-        opening.then((late) => late.close({ timedOut: true }), () => {});
+      const openings = Array.from({ length: READ_BOX_COUNT }, () => openReadBox({ connect }));
+      const opened = await Promise.all(openings.map((opening) => settle(opening, B.boxOpen)));
+      for (let lane = 0; lane < READ_BOX_COUNT; lane++) {
+        const o = opened[lane];
+        if (o.ok) boxes[lane] = o.value;
+        else {
+          boxProblems[lane] = o.timedOut ? "the read box did not open in time" : say(o.error);
+          // If it opens late, close it at once so the connection is never left holding a slot.
+          openings[lane].then((late) => late.close({ timedOut: true }), () => {});
+        }
       }
     }
-    const dbError = boxProblem ? `db: ${boxProblem}` : null;
-    const read = box ? (text, params) => box.read(text, params) : async () => { throw new Error(dbError || "db: no database"); };
+    const boxProblem = boxProblems.find(Boolean) || null;
+    const readForLane = (lane) => boxes[lane]
+      ? (text, params) => boxes[lane].read(text, params)
+      : async () => { throw new Error(`db: ${boxProblems[lane] || "no database"}`); };
 
     const plain = (sql) => {
       if (sql !== DB_SETTINGS_SQL) throw new Error("only the fixed settings query may run outside the read box");
@@ -247,29 +254,38 @@ export async function runPulse({
     const site = siteUrlOf(env);
     const ctxEnv = { ...env, URL: site };
 
-    // 5. The beats phase. All at once, whole phase capped. Each beat has its own ctx and its own deadline.
+    // 5. The beats phase. Three sequential lanes run at once, one per read box. A beat is not created or passed
+    // to runBeat until its lane reaches it, so its own deadline starts when the beat starts, never while queued.
     // The phase is capped at 13 s from its own start, and never runs into the text's 6 s (entry + 22 s - 6 s).
     const phaseMs = Math.max(1, Math.min(B.beats, t0 + B.run - B.alerts - Date.now()));
-    const entries = list.map((beat) => {
-      const e = { beat, ctx: null, result: null, promise: null };
+    const entries = list.map((beat) => ({ beat, ctx: null, result: null, promise: null }));
+    let phaseClosed = false;
+    const startEntry = async (e, lane) => {
+      if (phaseClosed) return e.result;
       try {
         e.ctx = makeBeatCtx({
-          beat, runId, env: ctxEnv, now, siteUrl: site,
-          state: Array.isArray(beat.needs) && beat.needs.includes("bankLinks") ? { bankLinks } : null,
-          read, probe: theProbe, dbSettings: () => readDbSettings(plain)
+          beat: e.beat, runId, env: ctxEnv, now, siteUrl: site,
+          state: Array.isArray(e.beat.needs) && e.beat.needs.includes("bankLinks") ? { bankLinks } : null,
+          read: readForLane(lane), probe: theProbe, dbSettings: () => readDbSettings(plain)
         });
-        e.promise = runBeat(beat, e.ctx, { deadlineMs: beat.deadlineMs }).then(
+        return await runBeat(e.beat, e.ctx, { deadlineMs: e.beat.deadlineMs }).then(
           (r) => { e.result = r; return r; },
-          (err) => { e.result = failedResult(beat.id, "start", `harness error: ${say(err)}`); return e.result; }
+          (err) => { e.result = failedResult(e.beat.id, "start", `harness error: ${say(err)}`); return e.result; }
         );
       } catch (err) {
-        e.result = failedResult(beat.id, "start", `could not start: ${say(err)}`);
-        e.promise = Promise.resolve(e.result);
+        e.result = failedResult(e.beat.id, "start", `could not start: ${say(err)}`);
+        return e.result;
       }
-      return e;
-    });
+    };
+    const laneTails = Array.from({ length: READ_BOX_COUNT }, () => Promise.resolve());
+    for (const [index, e] of entries.entries()) {
+      const lane = index % READ_BOX_COUNT;
+      e.promise = laneTails[lane].then(() => startEntry(e, lane));
+      laneTails[lane] = e.promise.then(() => {}, () => {});
+    }
     const phaseTimer = cancellableWait(phaseMs);
     await Promise.race([Promise.all(entries.map((e) => e.promise)), phaseTimer.promise]);
+    phaseClosed = true;
     phaseTimer.cancel();
 
     let cut = 0;
@@ -288,11 +304,14 @@ export async function runPulse({
     }
     const results = entries.map((e) => e.result);
 
-    // 6. Close the box (ROLLBACK, then destroy). Capped, so a stuck statement cannot eat the text's time.
+    // 6. Close every box (ROLLBACK, then destroy). Capped in parallel, so a stuck statement cannot eat the text's time.
     let boxReport = null;
-    if (box) {
-      const closed = await settle(box.close({ timedOut: cut > 0 }), B.boxClose);
-      boxReport = closed.ok ? closed.value : { ...box.report(), closeTimedOut: true };
+    if (boxes.some(Boolean)) {
+      const reports = await Promise.all(boxes.filter(Boolean).map(async (box) => {
+        const closed = await settle(box.close({ timedOut: cut > 0 }), B.boxClose);
+        return closed.ok ? closed.value : { ...box.report(), closeTimedOut: true };
+      }));
+      boxReport = summarizeBoxReports(reports);
     }
 
     // 7. Decide, and SEND THE TEXT (before any record is written).
@@ -372,6 +391,36 @@ export async function runPulse({
 /** What a beat that was still running at the cut is recorded as. */
 export function cutDetail(budgetMs) {
   return `cut at the ${budgetMs >= 1000 ? `${Math.round(budgetMs / 1000)} s` : `${budgetMs} ms`} beat budget`;
+}
+
+/** One backward-compatible report for the three independently closed read boxes. */
+function summarizeBoxReports(reports) {
+  const every = (key) => reports.length > 0 && reports.every((r) => Boolean(r?.[key]));
+  const sum = (key) => reports.reduce((n, r) => n + (Number(r?.[key]) || 0), 0);
+  const refused = reports.flatMap((r, lane) => (r?.refused || []).map((x) => ({ ...x, lane })));
+  const readOnlyAtClose = reports.every((r) => r?.readOnlyAtClose === true)
+    ? true
+    : reports.some((r) => r?.readOnlyAtClose === false) ? false : null;
+  return {
+    count: reports.length,
+    reports,
+    began: every("began"),
+    readOnlyVerified: every("readOnlyVerified"),
+    closed: every("closed"),
+    rolledBack: every("rolledBack"),
+    destroyed: every("destroyed"),
+    readOnlyAtClose,
+    leaked: reports.some((r) => Boolean(r?.leaked)),
+    hung: reports.some((r) => Boolean(r?.hung)),
+    broken: reports.some((r) => Boolean(r?.broken)),
+    timedOut: reports.some((r) => Boolean(r?.timedOut)),
+    closeTimedOut: reports.some((r) => Boolean(r?.closeTimedOut)),
+    commitsSent: sum("commitsSent"),
+    statements: sum("statements"),
+    reads: sum("reads"),
+    errors: sum("errors"),
+    refused
+  };
 }
 
 function failedResult(beatId, step, detail) {

@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import {
   runPulse, publicSummary, missingEnv, siteUrlOf, cutDetail, BLIND_TEXT,
-  RUN_BUDGET_MS, BEATS_PHASE_MS, ALERTS_PHASE_MS, RECORDS_MS
+  RUN_BUDGET_MS, BEATS_PHASE_MS, ALERTS_PHASE_MS, RECORDS_MS, READ_BOX_COUNT
 } from "./runner.mjs";
 import { recordingSinks } from "./alerts.mjs";
 import {
@@ -124,7 +124,7 @@ const flipBeat = (id, flag, over) => beat(id, async (ctx) => { await reads(ctx);
 const okProbe = { get: async () => ({ ok: true, status: 200, ms: 3, finalHost: "fundhub.ai", bodySnippet: "", body: "", headers: {}, error: null, class: "ok" }) };
 okProbe.head = okProbe.get;
 
-function harness(beats, { rdbOpts = {}, sinkOpts = {}, now, ...runOpts } = {}) {
+function harness(beats, { rdbOpts = {}, sinkOpts = {}, connectOpts = {}, now, ...runOpts } = {}) {
   const events = [];
   const rdb = fakeRdb({ events, ...rdbOpts });
   const sinks = recordingSinks(sinkOpts);
@@ -134,7 +134,7 @@ function harness(beats, { rdbOpts = {}, sinkOpts = {}, now, ...runOpts } = {}) {
   sinks.ntfy = async (n, o) => { events.push("ntfy"); return origNtfy(n, o); };
   const pgs = [];
   const connect = async () => {
-    const pg = createFakePg({ answer: () => [{ n: 1 }] });
+    const pg = createFakePg({ answer: () => [{ n: 1 }], ...connectOpts });
     pgs.push(pg);
     return pg;
   };
@@ -150,6 +150,7 @@ describe("constants", () => {
     assert.equal(BEATS_PHASE_MS, 13000);
     assert.equal(ALERTS_PHASE_MS, 6000);
     assert.equal(RECORDS_MS, 2500);
+    assert.equal(READ_BOX_COUNT, 3);
     assert.ok(BEATS_PHASE_MS + ALERTS_PHASE_MS <= RUN_BUDGET_MS - 3000, "the beats and the text fit inside the run with room for the prefetch");
     assert.equal(cutDetail(13000), "cut at the 13 s beat budget");
   });
@@ -228,16 +229,57 @@ describe("green", () => {
     assert.deepEqual(out.records, { written: true, error: null });
     assert.equal(h.rdb.state.beats.length, 2);
     assert.ok(h.rdb.state.beats.every((r) => r.ok === true));
-    // ONE box for the whole run, never committed.
-    assert.equal(h.pgs.length, 1);
-    const pg = h.pgs[0];
-    assert.equal(pg.commits, 0);
-    assert.ok(pg.rollbacks >= 1);
-    assert.deepEqual(pg.released, [true], "destroyed, never handed back to the pool");
-    assert.equal(pg.texts()[0].startsWith("BEGIN READ ONLY"), true);
+    // Exactly three boxes for the whole run, all read only and never committed.
+    assert.equal(h.pgs.length, 3);
+    for (const pg of h.pgs) {
+      assert.equal(pg.commits, 0);
+      assert.ok(pg.rollbacks >= 1);
+      assert.deepEqual(pg.released, [true], "destroyed, never handed back to the pool");
+      assert.equal(pg.texts()[0].startsWith("BEGIN READ ONLY"), true);
+    }
+    assert.equal(out.box.count, 3);
+    assert.equal(out.box.reports.length, 3);
+    assert.equal(out.box.readOnlyVerified, true);
     assert.equal(out.box.commitsSent, 0);
     assert.equal(out.box.rolledBack, true);
     assert.ok(out.ms < 2000);
+  });
+
+  test("15 delayed beats get their full own deadline when their lane starts", async () => {
+    const started = new Map();
+    const delayed = Array.from({ length: 15 }, (_, index) => beat(`delay-${index}`, async (ctx) => {
+      started.set(index, Date.now());
+      await reads(ctx);
+      ctx.skipStep("two", "x");
+      ctx.skipStep("three", "x");
+      return ctx.done("fine");
+    }, { deadlineMs: 500 }));
+    const h = harness(delayed, {
+      connectOpts: { answer: async () => { await sleep(120); return [{ n: 1 }]; } }
+    });
+    const out = await h.go({ mode: "prove" });
+    assert.equal(out.ran, 15);
+    assert.equal(out.failed, 0);
+    assert.equal(out.timedOut, 0);
+    assert.equal(h.pgs.length, 3);
+    assert.ok(started.get(3) - started.get(0) >= 100, "the second beat in lane 0 starts after the first finishes");
+    assert.ok(started.get(12) - started.get(0) >= 450, "the fifth beat in lane 0 waits without spending its own deadline");
+    for (const result of out.results) {
+      assert.equal(result.ok, true, `${result.beatId}: ${result.detail}`);
+      assert.ok(result.ms < 250, `${result.beatId} used ${result.ms} ms, not under half its 500 ms deadline`);
+    }
+    assert.equal(out.box.reads, 15);
+    assert.deepEqual(out.box.reports.map((r) => r.reads), [5, 5, 5]);
+  });
+
+  test("a measured break stays red inside a three-lane run", async () => {
+    const h = harness([greenBeat("a"), redBeat("broken"), greenBeat("c")]);
+    const out = await h.go({ mode: "prove" });
+    const broken = out.results.find((r) => r.beatId === "broken");
+    assert.equal(broken.ok, false);
+    assert.equal(broken.step, "two");
+    assert.match(broken.detail, /site said 500/);
+    assert.equal(out.box.count, 3);
   });
 
   test("an empty beat list is BLIND, never green: live, it texts once, writes nothing, opens no box, and is not ok", async () => {
@@ -392,6 +434,39 @@ describe("the beats phase is capped", () => {
       await sleep(700);
       assert.deepEqual(stray.map((e) => String(e && e.message)), [], "nothing was left unhandled");
       assert.equal(h.sinks.calls.text.length, 1, "the text still went");
+    } finally {
+      process.off("unhandledRejection", onStray);
+    }
+  });
+
+  test("a beat still queued in its lane never starts after the phase cut", async () => {
+    const stray = [];
+    const onStray = (error) => stray.push(error);
+    process.on("unhandledRejection", onStray);
+    try {
+      let queuedStarted = false;
+      const slow = beat("slow-lane", async (ctx) => {
+        await ctx.step("two", async () => sleep(220));
+        ctx.skipStep("one", "x");
+        ctx.skipStep("three", "x");
+        return ctx.done("late");
+      }, { deadlineMs: 12000 });
+      const queued = beat("queued-lane", async (ctx) => {
+        queuedStarted = true;
+        await reads(ctx);
+        ctx.skipStep("two", "x");
+        ctx.skipStep("three", "x");
+        return ctx.done("must not run");
+      });
+      const h = harness([slow, greenBeat("lane-one"), greenBeat("lane-two"), queued], { budgets: { beats: 100 } });
+      const out = await h.go({ mode: "prove" });
+      const readsAtReturn = h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0);
+      assert.equal(out.timedOut, 2);
+      assert.equal(queuedStarted, false);
+      await sleep(250);
+      assert.equal(queuedStarted, false, "the lane tail stayed closed after the active beat settled");
+      assert.equal(h.pgs.reduce((count, pg) => count + pg.statements.filter((s) => s.mode === "extended").length, 0), readsAtReturn, "no late read reached a closed box");
+      assert.deepEqual(stray, []);
     } finally {
       process.off("unhandledRejection", onStray);
     }

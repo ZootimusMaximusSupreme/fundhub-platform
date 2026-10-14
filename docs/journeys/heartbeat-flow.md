@@ -83,13 +83,13 @@ The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute 
 
 ## The hourly pulse (added 2026-10-09)
 
-Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (15 beats): each beat reads data through a box where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (15 beats): each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
 
 ```mermaid
 flowchart TD
     CLOCK["Every hour at minute 7<br/>pulse-hourly (Netlify scheduled function)"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
-    PRE --> BOX["Open ONE read box<br/>BEGIN READ ONLY, staff scope, always rolled back"]
-    BOX --> BEATS["Run all 15 beats at once (22 s budget)"]
+    PRE --> BOX["Open 3 read boxes<br/>BEGIN READ ONLY, staff scope, always rolled back"]
+    BOX --> BEATS["Spread 15 beats across 3 lanes<br/>each beat gets its own deadline when it starts<br/>13 s phase inside the 22 s run"]
     BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
     BEATS --> B2["pay-webhook<br/>door, sweeper, stuck inbox"]
     BEATS --> B3["vendor-keys<br/>Twilio, Resend, Commas accept the keys"]
@@ -115,6 +115,7 @@ flowchart TD
 ```
 
 - **`checkout-doors` (added 2026-10-10, coverage batch W2).** Every hour it asks three questions a buyer would feel, read only: does the funnel till (`GET /api/public/funnel-checkout`) say checkout is ready with a price and a live buy button for autopsy, board and trial; does the repair checkout door answer a GET with its own 405 (so the route is mounted); and do the newest waiting paid-service checkout links answer a HEAD. It never presses Pay and never charges a card. Its `damp` is 2. The morning twin is `src/pulse/coverage/gap-checkout.mjs`, and both judge with `src/pulse/beats/lib/checkout-doors.mjs`.
+- The 15 beats are assigned round-robin to three read-only lanes. A lane starts its next beat only after the prior beat finishes, and that next beat's deadline starts at that moment, never while it waits in the lane.
 - A beat with `damp 2` (vendor keys, doors, bank links) must be red twice in a row before it texts, so one vendor blip does not wake Chris.
 - A break texts at once, texts again every hour ("still broken, hour N") and texts once when fixed.
 - **Texting hours (owner law 2026-10-09):** every text and buzz to Chris goes out only from 6:00 a.m. to 10:00 p.m. Arizona time (`inTextWindow` in `src/pulse/quiet-hours.mjs`). At night the hourly pulse still checks, opens the incident and damps, but sends nothing and claims nothing; the 6:07 a.m. run sends one text ("BROKEN since 2:07 a.m."). A break that opens and heals at night gets no "fixed" text. A break he WAS told about that heals at night stays open, and the 6:07 a.m. run sends its one FIXED text and closes it. The 5-minute watch skips the text and writes no alert row, so a door still down at 6:00 a.m. is texted on that run. The briefs, the finished-ad text, `/api/ops/notify-owner` (202 held) and the teleprompter text hold the same way. `src/pulse/quiet-hours.test.mjs` fails the build if a file that texts Chris's number skips the check.
