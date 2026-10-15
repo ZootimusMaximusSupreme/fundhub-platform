@@ -16,6 +16,7 @@ What changed (Chris, 2026-10-15):
   funding. It ends with "we go get the funding with you" so the upsell stays.
 - No upfront fee line. The funding path uses the guarantee instead.
 - Numbers written as numerals.
+- Call line in Chris's words (10:17): "runs a 3-bureau report. You pay $32, and there's no impact on your score." He found "tri-bureau soft pull" hard to read on camera.
 
 Shoot: 4K, vertical (it is a VSL, not an ad). Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 Blocks are about one teleprompter screen each.
@@ -76,7 +77,7 @@ We've worked hundreds of files and collected thousands of data points on what le
 
 Click the button below, fill out the 10-second application, and pick a time for your call.
 
-Your advisor meets you on Google Meet and runs a tri-bureau soft pull with you. It's $32 to cover what the bureaus charge, and it has ZERO impact on your score.
+Your advisor meets with you on a Google Meet and runs a 3-bureau report. You pay $32, and there's no impact on your score.
 
 You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back, and the fastest way to the maximum amount of funding.
 
