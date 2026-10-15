@@ -3,6 +3,40 @@
 Branch `fin/b10`, built from `fin/base` (`2f4f574a0`). Work folder `.claude/worktrees/fin-b10`. Nothing was pushed or merged.
 No product file was changed. Everything added is a test, a proof table, or a read-only check.
 
+## Generation 2 (2026-10-14): the two open rows were challenged, and both reasons are exactly true
+
+Start of generation 2, measured with `node scripts/pulse/count-not-proved.mjs` in this worktree: 815 open in all, 2 of the 40 batch rows open
+(`openBefore` 2 for this generation; it was 40 at the start of generation 1). End: 815 open in all, the same 2 rows open (`openAfter` 2).
+Both stay `not-attachable`. Nothing is faked.
+
+What was re-checked, and how:
+
+| Check | Result |
+|---|---|
+| Is present.html on the shell's `ALL` list? | No. |
+| Can another list hand it to a role? (`CLOSER_DESK_ONLY`, `ADVISOR_ONLY`, `STAFF_MONEY`, `CONSENT_DESK_ONLY`, `SALES_FLOOR_ONLY`, `FINANCE_ONLY`, the `staffTabs()` filter) | No. The string `present.html` appears in `public/app/shell.js` only inside comments (zero mentions in code). |
+| Is the hidden link only true of this checkout? | No. A read-only GET of the deployed `https://fundhub.ai/app/shell.js` (140,256 bytes) is byte for byte the repo `public/app/shell.js`, with zero mentions of `present.html`. |
+| Does the page un-hide the links after the gate runs? | No. `client-control-panel.html` only sets their `href`s (`href("ccp-link-present", ...)`); `wireFinanceOsLink()` un-hides only the FinanceOS row. The existing practice test measures all 8 staff roles in a real Chromium page: address right, `isVisible()` false. |
+| Could a test be attached that is honest? | No. A test that asserts the address only would turn two rows green over links no person can press. A test that asserts "hidden" would be green over a broken control and red the day it is fixed. Both are the "half attached" the row text rules out (the Quick launch row names four links; one is dead). |
+
+What was added (guards only, no product file, no new row proof):
+
+- `fin-b10-rows.test.mjs`: one new test, "shell.js names present.html nowhere in code". The old guard read only the `ALL` list, so a role list could
+  hand the link to closers and the guard would have stayed green (break check below). The new one reads the whole shell and fails with the line
+  to attach.
+- `fin-b10-not-attachable.mjs`: both written reasons now carry the deployed-file measurement and the wider role-list check.
+
+Break checks (each put back; the worktree was clean after each):
+
+| Break | Old `ALL` guard | New whole-file guard | Browser practice test |
+|---|---|---|---|
+| Add `"present.html"` to `CLOSER_DESK_ONLY` in `public/app/shell.js` | green (this is why it was strengthened) | red | red for the Quick launch and Credit Snapshot checks (`closer: Open Closer Deck is hidden` expected false, actual true) |
+
+Generation 2 numbers: `fin-b10-*.test.mjs` 98 tests, 98 pass (97 before, plus the one new guard). `npm run lint`: 3,574 files parse clean.
+`npm run pulse:catalog` then `compile-catalog.mjs --check`: fresh, `generated.json` unchanged. The product fix that would let both rows attach is one
+line: add `"present.html"` to the right role list in `public/app/shell.js` (the page's own comment at `client-control-panel.html` line 1354 says the same).
+The moment it lands, the new guard and the browser test go red and say "attach now".
+
 ## The numbers
 
 | | Rows |

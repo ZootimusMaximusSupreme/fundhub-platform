@@ -76,3 +76,23 @@ test("the two left-out rows are real map rows, each with a reason that is still 
   assert.match(panel, /id="ccp-link-present2" href="present\.html"/);
   assert.match(panel, /id="ccp-link-present" href="present\.html"/);
 });
+
+test("shell.js names present.html nowhere in code: no role list, no rule, no map can let the two links through", () => {
+  // The test above only reads the ALL list. A role can also be handed a screen by one of the small lists
+  // that allowedFor() adds on top (CLOSER_DESK_ONLY, ADVISOR_ONLY, STAFF_MONEY, CONSENT_DESK_ONLY, ...), so
+  // this reads the whole file: every mention of present.html must sit in a comment.
+  const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
+  const inCode = [];
+  for (let at = shell.indexOf("present.html"); at !== -1; at = shell.indexOf("present.html", at + 1)) {
+    const inBlockComment = shell.lastIndexOf("/*", at) > shell.lastIndexOf("*/", at);
+    const lineStart = shell.lastIndexOf("\n", at) + 1;
+    const inLineComment = shell.slice(lineStart, at).includes("//");
+    if (!inBlockComment && !inLineComment) inCode.push(shell.slice(lineStart, shell.indexOf("\n", at)).trim().slice(0, 120));
+  }
+  assert.deepEqual(inCode, [],
+    "present.html is named in shell.js code now, so some role may be shown the link: run fin-b10-client-control-panel.test.mjs; "
+    + "if the Credit Snapshot or Closer Deck link is visible, attach those two rows with that practice test");
+  // And the shell is still the file the control panel loads, so the gate above is the one that applies.
+  const panel = fs.readFileSync(path.join(ROOT, "public/app/client-control-panel.html"), "utf8");
+  assert.match(panel, /<script[^>]+src="shell\.js[^"]*"/);
+});
