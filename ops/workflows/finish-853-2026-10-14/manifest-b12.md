@@ -271,3 +271,11 @@ it is not attached to any row.
 4. Galaxy: an agent's size is 3 or 1 by `sort_order` in `buildAgentNode`, not its output, while the legend says size is output today.
 5. Galaxy: "output today" counts from `date_trunc('day', now())` in the database session and the page clock is Arizona time. No time zone is set in the repo. Not verified on the live database.
 6. Seen in an earlier round, not changed: `display-contracts-ab.test.mjs` draws the QUEUED badge from a document with `generated_at: null`, a state the table cannot hold.
+
+### Group run after generation 2 (this Mac, other builders running)
+
+`CI=1 node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs`
+gave 1741 tests, 1739 pass, 2 `not ok`, 0 skipped, 861 s. Neither failure names a batch 12 test, and both are the flakes already
+listed above: `display-proof-cases.test.mjs` "the focused proof test runs every executable test named by every case" and
+`flow-result-proofs.test.mjs` "every test named by a flow proof passes with fake data or local reads".
+`npm run lint`: 3575 files parse clean.
