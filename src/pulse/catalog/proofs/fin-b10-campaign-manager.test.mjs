@@ -73,7 +73,7 @@ const FUNNEL_BEFORE = { ok: true, pages: [{ funnel_name: "Roadmap", page_name: "
 const FUNNEL_AFTER = { ok: true, pages: [{ funnel_name: "Roadmap", page_name: "Sales page", stat_date: "2026-10-14", views: 4321, conversions: 77 }],
   connection: { state: "active", last_synced_at: "2026-10-14T10:00:00Z", last_error: null } };
 
-async function openManager({ session = OWNER, role = null, overrides = {}, query = `?partner_id=${PID}` } = {}) {
+async function openManager({ session = OWNER, overrides = {}, query = `?partner_id=${PID}` } = {}) {
   const seen = { reads: {}, library: [], link: [], sync: [], urls: [], fatigue: [] };
   const bump = (key) => { seen.reads[key] = (seen.reads[key] || 0) + 1; };
   let funnelAnswer = overrides.funnelPages || FUNNEL_BEFORE;
@@ -110,7 +110,6 @@ async function openManager({ session = OWNER, role = null, overrides = {}, query
   const { page, errors } = await screens.open(`/app/campaign-manager.html${query}`, {
     session,
     handlers,
-    init: role ? `localStorage.setItem("fh_role", ${JSON.stringify(role)});` : null,
   });
   await page.waitForFunction(() => /\d of \d panels loaded/.test(document.querySelector("#footNote").textContent));
   await page.waitForFunction(() => !/Reading…/.test(document.querySelector("#fatFoot").textContent));

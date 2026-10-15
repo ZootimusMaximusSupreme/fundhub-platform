@@ -280,16 +280,12 @@ test("Declines Use this email: copies that email's subject and preview into the 
 
 test("Client picker select: lists the clients it was given, selects this one, and opens the one picked", async () => {
   await proof.check(/^Client picker select/, async () => {
-    let asked = null;
     const clients = { ok: true, clients: [
       { id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@example.com" },
       { id: OTHER, first_name: "Sam", last_name: "Okafor", email: "sam@example.com" },
       { id: "dddddddd-4444-4444-8444-444444444444", first_name: "", last_name: "", email: "no.name@example.com" },
     ] };
-    const { page, errors } = await (async () => {
-      const opened = await openPanel({ overrides: { clients } });
-      return opened;
-    })();
+    const { page, errors } = await openPanel({ overrides: { clients } });
     await page.waitForFunction(() => document.querySelectorAll("#ccp-pick option").length === 4);
     const options = await page.$$eval("#ccp-pick option", (els) => els.map((e) => [e.value, e.textContent, e.selected]));
     assert.deepEqual(options, [
@@ -299,14 +295,9 @@ test("Client picker select: lists the clients it was given, selects this one, an
       ["dddddddd-4444-4444-8444-444444444444", "no.name@example.com", false],
     ]);
 
-    // The picker asks for up to 200 clients.
-    const requested = [];
-    page.on("request", (req) => { if (req.url().includes("/api/dashboard/clients")) requested.push(req.url()); });
     // Pick another client: the page opens that client's file, by its id.
     await page.locator("#ccp-pick").selectOption(OTHER);
     await page.waitForURL(new RegExp(`/app/client-control-panel\\.html\\?id=${OTHER}$`));
-    asked = page.url();
-    assert.match(asked, new RegExp(`\\?id=${OTHER}$`));
     assert.deepEqual(errors, []);
     await page.close();
   });
