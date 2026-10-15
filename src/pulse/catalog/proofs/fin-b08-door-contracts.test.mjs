@@ -1,6 +1,6 @@
 // Checks the batch 08 route proofs: every entry names exactly one customer-data row of the coverage
 // map, its handler tests exist and really call a handler, a row whose words changed is not proved by
-// an old entry, and the three rows this batch left red cannot be attached by mistake.
+// an old entry, and the four rows this batch left red cannot be attached by mistake.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -26,7 +26,7 @@ function mapRows() {
 test("every entry is one exact customer-data route row of the coverage map", () => {
   const rows = mapRows();
   const ids = FIN_B08_DOOR_CONTRACTS.map((entry) => entry.id);
-  assert.equal(ids.length, 34);
+  assert.equal(ids.length, 33);
   assert.equal(new Set(ids).size, ids.length, "an id is listed twice");
   for (const entry of FIN_B08_DOOR_CONTRACTS) {
     const hits = rows.filter(({ sourceFile, row }) => finB08DoorRowId(sourceFile, row) === entry.id);
@@ -73,11 +73,11 @@ test("the same route with different words, or another file, stays unproved", () 
   assert.equal(finB08DoorProof(sourceFile, { surface: row.surface, control: "" }), null);
 });
 
-test("the three rows this batch could not attach stay red, each with its exact reason", () => {
+test("the four rows this batch could not attach stay red, each with its exact reason", () => {
   const rows = mapRows();
   const attached = new Set(FIN_B08_DOOR_CONTRACTS.map((entry) => entry.id));
   const ids = Object.keys(FIN_B08_NOT_ATTACHED);
-  assert.equal(ids.length, 3);
+  assert.equal(ids.length, 4);
   for (const id of ids) {
     assert.equal(attached.has(id), false, `${id} must not be attached`);
     const hits = rows.filter(({ sourceFile, row }) => finB08DoorRowId(sourceFile, row) === id);

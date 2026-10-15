@@ -4,32 +4,32 @@
 // the real api/ handler over stand-in tables and judge the exact saved result; every one of them was
 // broken on purpose once (product line changed, test seen red, line put back).
 // src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs checks every entry against the coverage map
-// and the test files. Three batch rows are deliberately NOT here (see NOT_ATTACHED below).
+// and the test files. Four batch rows are deliberately NOT here (see FIN_B08_NOT_ATTACHED below).
 import { createHash } from "node:crypto";
 
 export const FIN_B08_DOOR_EVIDENCE = "src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs";
 
 const DEFINITIONS = [
   // routes-1 banking/accounts: POST action=import (pull accounts from the configured banking provider, mock or Plaid, into this cli
-  ["b79f329892647515d81c", ["src/http/fin-b08-banking-import.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["b79f329892647515d81c", ["src/http/fin-b08-banking-import.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-banking-import-fields.test.mjs"]],
   // routes-2 blueprint/declines: GET/POST /api/blueprint/declines — Capital Blueprint decline defense: GET the client's plain-words v
-  ["5e98e27afad6007338d8", ["src/http/fin-b08-blueprint-declines.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["5e98e27afad6007338d8", ["src/http/fin-b08-blueprint-declines.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-blueprint-declines-writes.test.mjs"]],
   // routes-2 brand/review: POST /api/brand/review — moves a white-label partner's brand through review: submit (owning partner 
   ["0d3cabd7400b49032e61", ["src/http/fin-b08-brand-review.test.mjs"]],
   // routes-1 campaigns/meta-agency: POST {partner_id, meta_business_id, ad_account_id} save a partner's Meta Business id and send Meta a
   ["7967fd8c395338275350", ["src/http/fin-b08-meta-agency.test.mjs"]],
   // routes-0 contracts: Drafts: create_client (inserts a client), create_draft, save_draft, preview against a client's value
-  ["2eec1e9028668a06da53", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["2eec1e9028668a06da53", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-contracts-write-fields.test.mjs"]],
   // routes-0 contracts: send: freezes the words, registers the document, returns the signed link for staff to pass on (no em
-  ["60d61297c44a677c89d8", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["60d61297c44a677c89d8", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-contracts-write-fields.test.mjs"]],
   // routes-0 contracts: Template authoring: create / save / archive / upload contract templates and fields (the words client
-  ["893bd991caca419b8327", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["893bd991caca419b8327", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-contracts-write-fields.test.mjs"]],
   // routes-0 contracts: void: voids a contract (owner/admin) so it can no longer be signed.
-  ["9b968eb673131fd9ff1a", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  ["9b968eb673131fd9ff1a", ["src/http/fin-b08-contracts-write.test.mjs", "src/http/fin-b08-door-guards.test.mjs", "src/http/fin-b08-contracts-write-fields.test.mjs"]],
   // routes-1 contracts/sign: GET ?id&exp&sig (view contract for signing; records viewed_at and view_count; ?file=1 returns the PD
-  ["a54e680e1e239303c391", ["src/http/fin-b08-contracts-sign.test.mjs"]],
+  ["a54e680e1e239303c391", ["src/http/fin-b08-contracts-sign.test.mjs", "src/http/fin-b08-contracts-sign-fields.test.mjs"]],
   // routes-1 contracts/sign: POST {signer_name, agreed:true, field_values} (a client signs: typed name, tick, time, IP; refused i
-  ["e1368821d8a71d5a7af1", ["src/http/fin-b08-contracts-sign.test.mjs"]],
+  ["e1368821d8a71d5a7af1", ["src/http/fin-b08-contracts-sign.test.mjs", "src/http/fin-b08-contracts-sign-fields.test.mjs"]],
   // routes-3 dashboard/pipeline: GET ?key=<board> the board as the database holds it: the stages in order, each with the client cards
   ["268e3f16eb706dff82f4", ["src/http/fin-b08-dashboard-pipeline.test.mjs"]],
   // routes-0 demo/simulate: DELETE: tears down simulated clients (one or all demo clients in the org). Deletes rows.
@@ -62,8 +62,6 @@ const DEFINITIONS = [
   ["28ba561e6f81ff342e45", ["src/http/fin-b08-partner-copy.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
   // routes-2 partner-pages: GET/POST/PATCH /api/partner-pages — Brand Studio funnel page drafts for white-label partners: GET li
   ["cac0a02894e149936207", ["src/http/fin-b08-partner-surface.test.mjs"]],
-  // routes-2 pii: GET/POST /api/pii — a client's identity data: GET masked identity (last four) or the access history;
-  ["c0a7cb1361e695f5cd58", ["src/http/fin-b08-pii.test.mjs"]],
   // routes-2 public/climate-match: GET/POST /api/public/climate-match — public lending-climate lead magnet: GET how many active lenders
   ["0afa1181d191c2bd75c2", ["src/http/fin-b08-climate-match.test.mjs"]],
   // routes-0 public/education-enroll: The /education/enroll/ form: saves an enrollment, resolves or creates the client, drops a Sales / ne
@@ -86,6 +84,7 @@ export const FIN_B08_NOT_ATTACHED = Object.freeze({
   "31bb947e14369a9a0e0c": "routes-1 route:contracts/sign POST action=decline: the handler records the decline on the signer (status declined, reason, time) and answers that the person who sent it has been told, but nothing tells the sender. No message, event, task or notify call follows declineSigner (api/contracts/sign.mjs, src/contracts/signers.mjs); the contract's own status has no declined value and does not change; the Documents screen reads the contract list, which carries no signer state, so a declined contract still reads sent / Awaiting there; and no screen reads GET /api/read/contracts?id=, the one place the decline can be seen. The signing page (public/contract.html) defines decline() but no button calls it (owner answer 2026-08-17: contract sign has no decline button), so only a direct call to the endpoint declines. The recorded half is judged in fin-b08-contracts-sign.test.mjs; the 'sender is told' half has no code to judge.",
   "72fad5cb5f5f84a3aa0f": "routes-2 route:inquiry-cases (clear_inquiry): the control says the org comes from the session. The handler uses the session company for the sign-in gate and for the inquiry.removed event only. clearInquiry (src/inquiry-removal/cases.mjs) reads and updates inquiry_log by id alone (no company in either statement) and no row policy exists on inquiry_log. Measured on the real handler: staff of company A cleared an inquiry that sits in company B, completed B's case, and the event went out stamped with company A and B's client. A company-boundary check is red on today's product.",
   "25e2262893fcbdc90db9": "routes-1 route:soft-pull-approve POST action=stamp_incorporated: api/soft-pull-approve.mjs:279 calls stampIncorporatedAsStaff, which is defined and imported nowhere in the repo. Measured on the real handler: the call throws ReferenceError (stampIncorporatedAsStaff is not defined), so the action answers 500 and there is no working result to judge. The Present screen and the client control panel both call it. Merge 8d9a693ae (2026-08-27) brought in the call but not the function and stampBusinessIncorporated that commit ddcd92d18 (2026-08-25) added.",
+  "c0a7cb1361e695f5cd58": "routes-2 route:pii (GET/POST /api/pii): the row says a client's identity data is read, revealed and stored by client, and no company check stands behind it. readIdentity, revealSsn and accessHistory (src/pii/index.mjs) read pii_identity and pii_access_log by client_id alone, api/pii.mjs hands them no company, store takes the company from the request body when the session has none, and no row policy on pii_identity or pii_access_log exists in db/. Measured on the real handler over stand-in tables: a staff owner signed in under a SECOND company POSTed reveal for the first company's client and got 200 with the full SSN, and read and history answered 200 for the same client. A company-boundary check is red on today's product, so this row cannot be made honestly green. Same class as inquiry-cases clear_inquiry. The role gate, the required reason, the access log and the encrypted store are judged in fin-b08-pii.test.mjs.",
 });
 
 export function finB08DoorRowId(sourceFile, row) {

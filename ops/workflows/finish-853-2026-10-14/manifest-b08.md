@@ -7,10 +7,10 @@ Branch `fin/b08` (worktree `.claude/worktrees/fin-b08`), cut from `fin/base`. No
 | | Count |
 |---|---|
 | Rows in this batch (all open at the start) | 37 |
-| Still open after this branch | 3 (each one justified below) |
-| Whole catalog, before / after (`node scripts/pulse/count-not-proved.mjs`) | 853 / 819 |
-| Route lane `gap-door-batch-routes`, before / after | 135 / 101 |
-| Route lane per file (routes-0 / 1 / 2 / 3) | 54/36/25/20 to 44/26/16/15 |
+| Still open after this branch | 4 (each one justified below; repair cycle 1 moved pii here) |
+| Whole catalog, before / after (`node scripts/pulse/count-not-proved.mjs`) | 853 / 820 |
+| Route lane `gap-door-batch-routes`, before / after | 135 / 102 |
+| Route lane per file (routes-0 / 1 / 2 / 3) | 54/36/25/20 to 44/26/17/15 |
 
 Generation 2 (a fresh agent) re-read the three open rows from the real handlers and screens, re-measured
 two of them on the real handlers, and found none of the three attachable (see "Generation 2 challenge").
@@ -59,7 +59,7 @@ catalog's own field name, not a claim made here.)
 | 26 | routes-1 route:partner-brand : PUT | practice-test | `src/http/fin-b08-partner-surface.test.mjs` |
 | 27 | routes-2 route:partner-marketing/generate-copy : POST | practice-test | `src/http/fin-b08-partner-copy.test.mjs` |
 | 28 | routes-2 route:partner-pages : GET/POST/PATCH | practice-test | `src/http/fin-b08-partner-surface.test.mjs` |
-| 29 | routes-2 route:pii : GET/POST | practice-test | `src/http/fin-b08-pii.test.mjs` |
+| 29 | routes-2 route:pii : GET/POST | not-attachable (repair cycle 1) | see "Repair cycle 1" |
 | 30 | routes-2 route:public/climate-match : GET/POST | practice-test | `src/http/fin-b08-climate-match.test.mjs` |
 | 31 | routes-0 route:public/education-enroll : POST | practice-test | `src/http/fin-b08-education-enroll.test.mjs` |
 | 32 | routes-3 route:read/client-progress : GET | practice-test | `src/http/fin-b08-client-progress.test.mjs` |
@@ -69,7 +69,7 @@ catalog's own field name, not a claim made here.)
 | 36 | routes-0 route:repair/inbound-mail : POST | practice-test | `src/http/fin-b08-repair-inbound-mail.test.mjs` |
 | 37 | routes-1 route:soft-pull-approve : POST action=stamp_incorporated | not-attachable | see "Left red" |
 
-34 practice tests, 0 live checks, 0 verified N/A, 3 not-attachable. The full row ids are the ones in
+33 practice tests, 0 live checks, 0 verified N/A, 4 not-attachable. The full row ids are the ones in
 `ops/workflows/finish-853-2026-10-14/batch-08.json`; the attached ones are named in
 `src/pulse/catalog/proofs/fin-b08-door-contracts.mjs` by the same 20-hex id the catalog compiler gives them.
 
@@ -374,3 +374,108 @@ No shared list, count or chain line was touched: no row was attached or detached
 
 Still stated plainly: every attached row is a **practice test**, not a live check. The three red rows are product
 findings 1, 3 and 4 above, not gaps in the test work.
+
+## Repair cycle 1 (2026-10-15, a fresh Sonnet repair agent)
+
+An independent checker broke the product on purpose behind 27 of the attached rows and found breaks that
+left the practice test green. Each listed break was reproduced, then either made red or the row was taken
+off the monitor. No practice test is called a live check, "deep" or "proof" here.
+
+### What changed per row
+
+| Row | Outcome | What judged it before, and what judges it now |
+|---|---|---|
+| banking/accounts import | practice-test | `fin-b08-banking-import-fields.test.mjs` (new): every saved row read back column by column; a doctored provider answer goes under the real provider seam (Node load hook rewrites one line of the provider source) |
+| blueprint/declines | practice-test | `fin-b08-blueprint-declines-writes.test.mjs` (new): every write read back; status, words, steps, outcome and dates |
+| brand/review, campaigns/meta-agency | practice-test | tests read the statement's own SET list and upsert list (`runUpdate` in `fin-b08-tables.mjs`) |
+| contracts Drafts, send, Template authoring, void | practice-test | `fin-b08-contracts-write-fields.test.mjs` (new) |
+| contracts/sign GET, POST | practice-test | `fin-b08-contracts-sign-fields.test.mjs` (new): what the signer is shown and each tamper layer |
+| read/contracts | practice-test | the list answers by the statement's own conditions (`readConditions` in `fin-b08-contracts-db.mjs`) |
+| dashboard/pipeline | practice-test | the board's OWN statements now run in a real SQL engine (SQLite inside Node) over in-memory tables: `src/testing/fin-b08-sqlite-board.mjs`, second half of `fin-b08-dashboard-pipeline.test.mjs`. 39 SQL and handler breaks, all red on the engine tests alone |
+| demo/simulate DELETE, POST | practice-test | credit file contents, indirect children, ordering |
+| documents-upload | practice-test | kind, sniffed type, size cap, event fields, company |
+| inquiries, inquiry launch, inquiry-cases send (two rows) | practice-test | set lists, dialled bureau, address, follow-up clock |
+| money/banks, fundability, strategy, tasks | practice-test | seasoning, deposits, projected points, payoff walk, what a proposal keeps |
+| partner-brand PUT, partner-pages, generate-copy | practice-test | JSON, limits, legal blocks, monthly window |
+| public/climate-match, education-enroll | practice-test | lead contact, consent, answers, tags, lanes; no-email rule; card placement |
+| read/client-progress, lender-matches | practice-test | open states, order, counts, middle score; client scope, windows, cases |
+| repair/generate | practice-test | items (org, rule, creditor, last four, round), fingerprint, document metadata, furnisher validation letter (address precedence, no-address gap), repair path (tier, active program, signed agreement), next round (highest non-cancelled round), no email when letters are staged |
+| repair/inbound-mail | practice-test | open states read (open, sent, unaddressed, escalated, verified), each phrase per outcome, answer precedence, stored confidence, card stage (round complete, response received), case log entries, results / next-round / retake emails |
+| pii | not-attachable | see below |
+
+### Row left red: pii (`c0a7cb1361e695f5cd58`)
+
+`routes-2 route:pii`: a client's identity data is read, revealed and stored by client, and no company check
+stands behind it. `readIdentity`, `revealSsn` and `accessHistory` (`src/pii/index.mjs`) read `pii_identity` and
+`pii_access_log` by `client_id` alone; `api/pii.mjs` hands them no company; store takes the company from the
+request body when the session has none; no row policy on either table exists in `db/`. Measured on the real
+handler over stand-in tables this cycle: a staff owner signed in under a SECOND company POSTed reveal for the
+first company's client and got 200 with the full SSN; read and history answered 200 for the same client. A
+company-boundary check is red on today's product, so the row cannot be made honestly green. Same class as
+`clear_inquiry`. The role gate, the required reason, the access log and the encrypted store stay judged in
+`fin-b08-pii.test.mjs`, which is kept but no longer listed as evidence for any row.
+
+### Breaks that stay green on purpose (equivalent or unreachable, stated)
+
+- `contracts` `mergeSignerValues` allowed-field filter: a second layer (the field list at freeze time)
+  removes the same keys, so no input shows the difference.
+- fundability, business aging fallback: pinned by a `projectFile` unit assertion instead of a route call.
+- inbound-mail `AUTO_THRESHOLD` lowered, or `needsConfirm` forced false: each is guarded by the other.
+- inbound-mail `parse.held_low_confidence` decision-log line in `confirmParse`
+  (`src/metro2/inbound/confirm.mjs`): not reachable from this route. `runParseAdvanceLoop` holds every low
+  read before it calls `confirmParse`, and it always hands `confirmParse` the confirmed outcomes. Mutated:
+  stays green, as it must.
+- inbound-mail regex words `has been deleted` and `has been verified`: each contains a shorter word that is
+  already in the same alternation, so removing the long form changes nothing.
+
+### Product findings (written down, not fixed)
+
+9. One bureau reply sends the client more than one "results" email. Measured on the real handler: a pasted
+   reply queues two `EMAIL-REPAIR-RESPONSE-RESULTS` messages (one from `confirmParse` with the account
+   lines, one from the loop's own `repair.response.parsed` event that has no outcomes and reads
+   "(no per-account lines yet)"); an uploaded reply queues three (plus the one from
+   `processBureauResponse`). The provider references differ, so the duplicate guard does not collapse them.
+   (`src/metro2/inbound/confirm.mjs`, `src/repair/parse-loop.mjs`, `src/repair/response-agent.mjs`.) The test
+   pins that the informative email exists and does not pin the count.
+10. A confident read held at the escalation rounds (R3 verified, wants R4) emits no event: the card stays on
+    its earlier stage while the answer says `event: repair.parse.low_confidence`. Only the low-confidence
+    branch emits (`src/repair/parse-loop.mjs`). The test does not pin the stage.
+11. A retake request moves the card to `response_received`: `processBureauResponse` emits
+    `repair.response.received` for a retake, not `repair.response.retake`, and `onRepairEvent` has a branch
+    whose comment says a retake must not move the card. The test pins the email, not the stage.
+12. The checker's note about `excerptAround` (finding 5) was re-measured: an account the letter never names
+    reads the letter's first 400 characters, so in a short letter it inherits another account's "deleted".
+
+### Files added this cycle
+
+Tests (`src/http/`): `fin-b08-banking-import-fields`, `fin-b08-blueprint-declines-writes`,
+`fin-b08-contracts-write-fields`, `fin-b08-contracts-sign-fields` (all `.test.mjs`). Stand-in helper
+(`src/testing/`): `fin-b08-sqlite-board.mjs`. Extended: the existing test files of the other rows;
+`fin-b08-tables.mjs` (`runUpdate`, ticking `now()`, ARRAY literals), `fin-b08-contracts-db.mjs`,
+`fin-b08-partner-tables.mjs`.
+
+### Shared lines touched this cycle
+
+| File | Edit |
+|---|---|
+| `src/pulse/coverage/gap-door-batch-routes.mjs` | `EXPECTED_ROUTE_GAP_COUNTS` routes-2 16 to 17 (pii is back on the monitor) |
+| `src/pulse/coverage/gap-door-batch-routes.test.mjs` | the row total 101 to 102 (title, three lengths, results length) |
+| `src/pulse/catalog/proofs/door-batch-route-result.test.mjs` | rows 101 to 102, unique routes 91 to 92 |
+| `src/pulse/catalog/generated.json` | regenerated with `npm run pulse:catalog` |
+
+### Numbers and commands (this cycle)
+
+- `node scripts/pulse/count-not-proved.mjs`: 820 total (819 before this cycle), route lane 102, this batch 4.
+- `node --test src/http/fin-b08-*.test.mjs src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs
+  src/pulse/coverage/gap-door-batch-routes.test.mjs src/pulse/catalog/proofs/door-batch-route-result.test.mjs`:
+  471 tests, 471 pass, 0 skipped.
+- `node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs
+  src/pulse/coverage/gap-door-batch-routes.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/tripwires.test.mjs`:
+  1699 tests; the one failure under that run (`display-proof-cases` "focused proof test runs every executable test")
+  passed when run alone (3 of 3), so it was load, not this change.
+- `node scripts/lint.mjs`: 3599 files and inline scripts parse clean.
+- `npm run pulse:catalog`: 3975 mapped, 3919 wired, 23 red.
+- Mutation runs (not kept): repair/generate 15 of 15 red; repair/inbound-mail 30 of 31 red (the one green is the
+  unreachable low-confidence log line above); dashboard/pipeline 39 of 39 red on the engine tests.
+
+Still stated plainly: every attached row is a **practice test**, not a live check.
