@@ -195,3 +195,16 @@ Not run here: the third test in `display-proof-cases.test.mjs` ("runs every exec
 runs every slice's browser tests together (about 15 minutes and it is the one that flaked under load for slices 1 to 5),
 and the browser half of `display-batch-staff-ui.test.mjs` (every staff spec in one run; it now includes
 `e2e/fin-b01-agent-authority.spec.mjs`). The integrator runs those after merging.
+
+## Re-check after the Mac restart (2026-10-14, same branch, no product or test file changed)
+
+A fresh agent picked this batch up after the shutdown and re-read it instead of redoing it.
+
+| Check | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` on `fin/b01` | 819 open; the same 6 of the 40 batch rows open (the two Unlock rows, the two e-book rows, optimize.html, the climate gate) |
+| `node scripts/pulse/compile-catalog.mjs --check` | exit 0, fresh |
+| `gap-catalog-display.test.mjs` + `fin-b01-sql-mini`, `fin-b01-display-contracts`, `fin-b01-paid-taps` tests | 28 of 28 pass |
+| Break the live check on purpose (drop the true-or-false test on the switch; let the discount reach 999) | each turned 3 tests red; both put back, files identical to the commit |
+| `e2e/fin-b01-agent-authority.spec.mjs` + `e2e/fin-b01-content-price.spec.mjs` in Chromium | 13 of 13 pass |
+| The six not-attachable reasons re-read in the files | all six still true: `PRODUCTS` in `public/app/client-portal.html` has no `checkoutUrl` and nothing assigns one; `public/optimize.html` has only the GET at its config call and no POST or Pay for Audit control; `present.html`, `present.js`, `contract-send.js` hold no e-book text; `public/climate` holds no `api/public/optimize`, no "unlock the full" and no `$32` |
