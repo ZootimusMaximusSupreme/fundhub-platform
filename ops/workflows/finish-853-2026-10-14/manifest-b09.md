@@ -1,6 +1,6 @@
 # Batch 09 manifest (finish the 853, 2026-10-14)
 
-Branch `fin/b09`, worktree `.claude/worktrees/fin-b09`, built from `fin/base` (2f4f574a0). Generation 1. Not pushed, not merged.
+Branch `fin/b09`, worktree `.claude/worktrees/fin-b09`, built from `fin/base` (2f4f574a0). Generation 1 attached 37 rows; generation 2 challenged the 3 left over (section at the end). Not pushed, not merged.
 Tier 4, lane `gap-catalog-display`, 40 rows. All 40 are staff-only or no-impact screen controls on three staff pages and
 three public pages.
 
@@ -107,6 +107,7 @@ and a last test fails the file if a listed row never ran. Nothing reads live dat
 - `src/pulse/catalog/proofs/fin-b09-brand-studio.test.mjs` (15 tests)
 - `src/pulse/catalog/proofs/fin-b09-campaign-manager.test.mjs` (15 tests)
 - `src/pulse/catalog/proofs/fin-b09-contract-download.test.mjs` (4 tests)
+- `src/pulse/catalog/proofs/fin-b09-g2-findings.test.mjs` (generation 2: 2 tests that run the real pages and pin the two findings that have a page to run)
 - `ops/workflows/finish-853-2026-10-14/manifest-b09.md` (this file)
 
 ## Shared lines I touched (the integrator must merge these)
@@ -163,3 +164,38 @@ Measured on a Mac with a load average of 30 to 70 (other batches running at the 
 - `npm run lint`: 3,570 files parse clean.
 - Break checks: 115 breaks in 4 page files, all red (above). Every page file was put back with `git checkout`; `git status` shows
   no product file changed.
+
+## Generation 2 (the three rows that were left)
+
+Challenge: read each real page or handler and attach a live check or practice test unless the reason is exactly true.
+All three reasons are exactly true. None was attached. The count stays 40 before, 3 after.
+
+| Row | Challenge | Result |
+|---|---|---|
+| agent-editor.html: Agent list row (click to open an agent, confirm discard of unsaved edits) | Read `renderList()`, `select()`, `collect()` and the Revert handler in `public/app/agent-editor.html`, then ran it in Chromium: type a new name, click another agent, answer Yes, click the first agent again. | `not-attachable`. The question is asked and the click works, but `select()` reads `cur` and `collect()` already wrote the typed words into it, so Yes only clears the unsaved mark. The words are still there. The row words promise a discard. A test that asserts the discard is red; a test that leaves it out would turn the row green over a page that does not do what the row says. Revert (a different row) does restore. |
+| climate/index.html: Click a state: shows its score and a plain sentence | Read the shipped chunks (`_next/static/chunks/375-*.js`, `app/page-*.js`), the redirect in `netlify.toml`, and the git history of `public/climate` (`f39cec357` reverts the visitor page, `8547bb72a` ships the dashboard). Then ran the page in Chromium with a fake `/api/climate` and clicked a state. | `not-attachable`. The panel shows "Today's Score", the number, the band word (raw `color_band`, for example `favorable`), Fresh/Stale and the as-of time, Trend, Business Conditions, Bank Liquidity, Issuance Velocity, and a bank list. There is no sentence and no paragraph. The lead-magnet page that has the sentence is only in the journey doc. |
+| leads/<32-hex>/index.html: Button 'Reset my edits' | Searched `src/`, `scripts/`, `db/`, `docs/`, `public/`, `api/`, `netlify/`, `e2e/` for the button words and for "Follow up date"; `git log --all -- public/leads` (no commit has ever tracked it); read `.github/workflows/ship.yml` and `src/pulse/registry.mjs`. | `not-attachable`. The page is one inline file with the real leads inside it. It is git-excluded and written at ship time from the `PRIVATE_LEADS_PAGE_B64` secret. Nothing in git builds it. Reading it from the main folder is outside this batch's rules and would put real names and numbers in front of an agent. A test that opens it only when it exists is a skipped test on every fresh checkout and on every GitHub run without the secret. |
+
+New guard (not an attachment): `fin-b09-g2-findings.test.mjs` runs the agent editor and the climate dashboard for real and passes only
+while findings 1 and 2 are still true. It is a stronger version of the source regexes in `fin-b09-rows.test.mjs`, which stay.
+The reasons in `fin-b09-not-attachable.mjs` now say what generation 2 checked.
+
+Break checks for generation 2 (the product fixed on purpose, the test run red, the file put back with `git checkout`):
+- agent-editor.html: restore the saved copy of the agent the click leaves, when Yes is answered. The finding test went red with
+  "the discard works, attach the 'Agent list row' row".
+- climate chunk `375-*.js`: add a paragraph "This is the wider picture ..." to the state panel. The finding test went red with
+  "the state panel now carries a sentence ... attach 'Click a state'".
+
+Numbers, generation 2 (count script, offline): batch rows open 40 on `fin/base`, 3 on `fin/b09` (before and after this
+generation). All lanes 853 on `fin/base`, 816 on `fin/b09`; display lane 680 and 643.
+
+Product finding added in generation 2 (one line, not fixed):
+4. Climate dashboard: the state map in the bundle draws only five state shapes (AZ, CA, NY, TX, FL), so a visitor can click five
+   states on the map; the other 46 are reachable only through the table's "View State" buttons. The journey says 51 drawn.
+
+Commands run, generation 2:
+- `node --test src/pulse/catalog/proofs/fin-b09-g2-findings.test.mjs`: 2 of 2 pass; both red under the break checks above.
+- `node --test` over `door-proof.test.mjs`, `data-control-proof.test.mjs`, `fin-b09-rows.test.mjs` and the new file: 996 tests, 996 pass.
+- `npm run pulse:catalog`: no change to `generated.json` (the new file is not in any shared list).
+- `node scripts/pulse/count-not-proved.mjs`: 816 total, 3 of them this batch.
+
