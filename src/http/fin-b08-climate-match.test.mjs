@@ -194,4 +194,79 @@ describe("/api/public/climate-match", () => {
     assert.deepEqual(asked, []);
     for (const c of fake.calls) assert.doesNotMatch(c.sql, /INSERT INTO messages|crs_results|INSERT INTO outbound/i);
   });
+
+  const payloadOf = (event) => (typeof event.payload === "string" ? JSON.parse(event.payload) : event.payload);
+
+  test("the lead's contact, consent, business and answers ride the two events exactly as given, and consent is no unless it was said", async () => {
+    const fake = climateDb({ lenders: BOOK() });
+    await call("POST", {
+      home_state: "AZ", has_business: "yes", score_band: "650-699", name: "Dana Whitfield", email: "dana@example.test",
+      phone: "(602) 555-0100", business_name: "Whitfield Supply LLC", sms_consent: true,
+    }, fake);
+    const [entry, survey] = fake.state.events;
+    assert.deepEqual(entry.name, "entry.captured");
+    const e = payloadOf(entry);
+    assert.equal(e.email, "dana@example.test");
+    assert.equal(e.name, "Dana Whitfield");
+    assert.equal(e.phone, "+16025550100", "a phone number is saved in one shape");
+    assert.equal(e.business, "Whitfield Supply LLC");
+    assert.equal(e.source, "website:climate");
+    assert.equal(e.sms_consent, true);
+    const sv = payloadOf(survey);
+    assert.deepEqual(sv.answers, { cf_svy_self_reported_fico: "650-699", cf_svy_has_business: "Yes" });
+    assert.equal(sv.business, "Whitfield Supply LLC");
+    assert.equal(sv.phone, "+16025550100");
+    assert.equal(sv.source, "website:climate");
+
+    // No consent said, no business answer, an unknown score band: the lead carries none of them.
+    const quiet = climateDb({ lenders: BOOK() });
+    await call("POST", { home_state: "AZ", score_band: "9000+", name: "Pat Counter", email: "pat@example.test", sms_consent: false }, quiet);
+    const q = quiet.state.events.map(payloadOf);
+    assert.equal(q[0].sms_consent, false, "consent is not assumed");
+    assert.deepEqual(q[1].answers, {}, "an unknown band and an unanswered question are left out, not guessed");
+    const no = climateDb({ lenders: BOOK() });
+    await call("POST", { home_state: "AZ", has_business: "no", name: "Sam Lee", email: "sam@example.test" }, no);
+    assert.deepEqual(payloadOf(no.state.events[1]).answers, { cf_svy_has_business: "No" });
+  });
+
+  test("every ad tag the visitor arrived with is kept on the client, and nothing the visitor typed outside the five is", async () => {
+    const fake = climateDb({ lenders: BOOK() });
+    await call("POST", {
+      home_state: "AZ", name: "Dana Whitfield", email: "dana@example.test",
+      utm_source: "meta", utm_medium: "paid_social", utm_campaign: "climate-oct", utm_content: "43-notes", utm_term: "lenders",
+      fbclid: "abc", is_demo: true, custom_fields: { role: "admin" },
+    }, fake);
+    const cf = fake.state.clients[0].custom_fields;
+    for (const [k, v] of Object.entries({ utm_source: "meta", utm_medium: "paid_social", utm_campaign: "climate-oct", utm_content: "43-notes", utm_term: "lenders", home_state: "AZ" })) {
+      assert.equal(cf[k], v, k);
+    }
+    assert.equal(cf.fbclid, undefined);
+    assert.equal(cf.is_demo, undefined);
+    assert.equal(cf.role, undefined);
+    assert.equal(cf.business_state, undefined, "no business state given, none saved");
+  });
+
+  test("a business in another state is its own lane, and a business in the home state is not counted twice", async () => {
+    const book = [
+      lender("l1", "National Bank"),
+      lender("l2", "Arizona Credit Union", { eligible_states: "AZ", priority_tier: 2 }),
+      lender("l3", "Nevada Business Bank", { eligible_states: "NV", lender_table: "InBranchBizCC", priority_tier: 2 }),
+      lender("l4", "Nevada Credit Union", { eligible_states: "NV", priority_tier: 3 }),
+    ];
+    const biz = await call("POST", { home_state: "AZ", business_state: "NV", has_business: "yes" }, climateDb({ lenders: book }));
+    assert.equal(biz.statusCode, 200);
+    assert.deepEqual(biz.body.lanes.home, { state: "AZ", count: 1 }, "home is the home state, not the business state");
+    assert.equal(biz.body.lanes.business.state, "NV");
+    assert.equal(biz.body.lanes.business.count, 2);
+    assert.equal(biz.body.lanes.national, 1);
+    assert.equal(biz.body.count, 4);
+    assert.equal(biz.body.basis, "state and business");
+    const same = await call("POST", { home_state: "AZ", business_state: "AZ", has_business: "yes" }, climateDb({ lenders: book }));
+    assert.equal(same.body.lanes.business.state, null, "the same state is not a second lane");
+    assert.equal(same.body.count, 2);
+    const homeOnly = await call("POST", { home_state: "NV", has_business: "yes" }, climateDb({ lenders: book }));
+    assert.deepEqual(homeOnly.body.lanes.home, { state: "NV", count: 2 });
+    const unknown = await call("POST", { home_state: "AZ" }, climateDb({ lenders: book }));
+    assert.equal(unknown.body.basis, "state", "no business answer, no business basis");
+  });
 });
