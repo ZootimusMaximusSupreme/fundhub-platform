@@ -25,6 +25,20 @@ export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases
     if (!contract) return null;
     return { id: `catalog-display:${entry.sourceFile}:${entry.surface}:${entry.control}`, sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, contract };
   }).filter(Boolean);
+  // A tracked row that owns a registered contract marked anyImpact (the staff-only and no-impact rows
+  // of the finish-853 batches) is judged even though no money or customer proof names it.
+  const judged = new Set(resultCases.map(keyFor));
+  for (const sourceFile of DISPLAY_SOURCES) {
+    for (const row of maps.get(sourceFile) || []) {
+      if (row.repeats_row_in || !isTracked(row)) continue;
+      const entry = { sourceFile, surface: row.surface, control: row.control };
+      if (judged.has(keyFor(entry))) continue;
+      const contract = contractFor(row);
+      if (!contract || contract.anyImpact !== true) continue;
+      judged.add(keyFor(entry));
+      resultCases.push({ id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`, ...entry, contract });
+    }
+  }
   const resultsByKey = new Map(resultCases.map((entry) => [keyFor(entry), entry]));
   const directKeys = new Set(proofCases.map(keyFor));
   const laneKeys = new Set(proofCases.filter((entry) => String(entry.evidence || "").includes("gap-catalog-display.mjs")).map(keyFor));
