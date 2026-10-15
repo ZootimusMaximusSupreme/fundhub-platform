@@ -303,32 +303,60 @@ test("Waiting on you lists the Mac queue, the videos awaiting approval and the s
 
 test("long ad copy folds behind Show more; the Campaigns and Creative Factory links go where they say", { timeout: 90_000 }, async () => {
   await proof.check(/^Today: 'Show more' \/ 'Read it' text folds/, async () => {
-    const { page, errors } = await openToday();
-    // The long piece is cut to its first lines with the full words kept hidden behind Show more.
-    const long = page.locator("#latestList .piece", { hasText: "Line 1:" });
-    const short = long.locator(".words").first();
-    const toggle = long.locator("button[data-toggle]");
-    assert.equal((await toggle.innerText()).trim(), "Show more");
-    assert.match(await short.innerText(), /…$/);
-    assert.doesNotMatch(await short.innerText(), /Line 12:/);
-    const full = page.locator(`#${await toggle.getAttribute("data-toggle")}`);
-    assert.equal(await full.isHidden(), true);
-    await toggle.click();
-    assert.equal((await toggle.innerText()).trim(), "Show less");
-    assert.equal(await toggle.getAttribute("aria-expanded"), "true");
-    assert.equal(await full.isVisible(), true);
-    assert.match(await full.innerText(), /Line 12:/);
-    assert.equal(await short.isHidden(), true, "the short version steps aside while the full words are open");
-    await toggle.click();
-    assert.equal((await toggle.innerText()).trim(), "Show more");
-    assert.equal(await short.isVisible(), true);
-    // A short piece has no fold at all.
-    assert.equal(await page.locator("#latestList .piece", { hasText: "Guaranteed approval in 24 hours!" }).locator("button[data-toggle]").count(), 0);
+    // Three ways to be long: many short lines, one long line, and many long lines. A short piece never folds.
+    const manyLines = Array.from({ length: 8 }, (_, i) => `Short line ${i + 1}.`).join("\n");
+    const oneLong = "Your bank said no. ".repeat(24).trim();
+    const fiveLines = Array.from({ length: 5 }, (_, i) => `Five line ${i + 1}.`).join("\n");
+    const piece = (id, text, day) => ({ id, copy_text: text, compliance_state: "passed", blocked_reasons: [], created_at: `2026-10-0${day}T18:00:00Z` });
+    const t = today();
+    t.copy.pieces = [piece("p1", LONG_COPY, 4), piece("p2", manyLines, 3), piece("p3", oneLong, 2), piece("p4", fiveLines, 1)];
+    const { page, errors } = await openToday({ t });
+
+    async function foldCheck(startsWith, hiddenTail, tailWords) {
+      const one = page.locator("#latestList .piece", { hasText: startsWith });
+      const short = one.locator(".words").first();
+      const toggle = one.locator("button[data-toggle]");
+      assert.equal((await toggle.innerText()).trim(), "Show more", startsWith);
+      assert.match(await short.innerText(), /…$/);
+      assert.doesNotMatch(await short.innerText(), tailWords, "the folded version leaves the tail out");
+      const full = page.locator(`#${await toggle.getAttribute("data-toggle")}`);
+      assert.equal(await full.isHidden(), true);
+      await toggle.click();
+      assert.equal((await toggle.innerText()).trim(), "Show less");
+      assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+      assert.equal(await full.isVisible(), true);
+      assert.match(await full.innerText(), hiddenTail);
+      assert.equal(await short.isHidden(), true, "the short version steps aside while the full words are open");
+      await toggle.click();
+      assert.equal((await toggle.innerText()).trim(), "Show more");
+      assert.equal(await short.isVisible(), true);
+      assert.equal(await full.isHidden(), true);
+    }
+    await foldCheck("Line 1:", /Line 12:/, /Line 12:/);
+    await foldCheck("Short line 1.", /Short line 8\./, /Short line 8\./);
+    await foldCheck("Your bank said no.", /(Your bank said no\. ){23}Your bank said no\./, /(Your bank said no\. ){20}/);
+    // A short piece has no fold at all, and neither does five short lines.
+    assert.equal(await page.locator("#latestList .piece", { hasText: "Five line 1." }).locator("button[data-toggle]").count(), 0);
+    assert.match(await page.locator("#latestList .piece", { hasText: "Five line 1." }).innerText(), /Five line 5\./);
 
     // The two links.
     assert.equal(await page.locator('#tileSpend7 a:has-text("See every ad in Campaigns")').getAttribute("href"), "campaign-manager.html");
     assert.equal(await page.locator('#cardLatest a:has-text("Open Creative Factory")').getAttribute("href"), "creative-factory.html");
     assert.deepEqual(errors, []);
+    await page.close();
+  });
+});
+
+test("a step with no review card has a Read it that does nothing, and says why", { timeout: 60_000 }, async () => {
+  await proof.check(/^Today flywheel step 2 \(ad-research/, async () => {
+    const stages = STAGES.map((s) => (s.key === "ad-research" ? { ...s, review_card: null } : s));
+    const t = today({ flywheel: { campaigns: [{ campaign: "partner", stages, advice: "" }] } });
+    const { page } = await openToday({ t });
+    const row = stageRow(page, "ad-research");
+    assert.equal((await chipOf(page, "ad-research")).toLowerCase(), "done", "the state is still said");
+    assert.equal(await row.locator("button[data-toggle]").count(), 0);
+    assert.equal(await row.locator("button", { hasText: "Read it" }).isDisabled(), true);
+    assert.match(await row.innerText(), /Nothing to read yet: this step has no review card\./);
     await page.close();
   });
 });
