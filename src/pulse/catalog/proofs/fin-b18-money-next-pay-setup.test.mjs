@@ -14,6 +14,9 @@ const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
 const FRAME = "/app/financeos.html";
 const compact = (text) => String(text).replace(/\s+/g, " ").trim();
+// A Try again button sits under a sentence that also says "Try again in a few minutes", so a match on the
+// panel's words cannot tell a missing button from a present one. Read the button's own words.
+const textOf = async (locator) => compact(await locator.innerText());
 
 // ───────────────────────── money-next.html ─────────────────────────
 
@@ -72,6 +75,7 @@ test("Next steps: each Try again reads again, the steps one reads both parts and
     };
     const { page, errors } = await screens.open("/app/money-next.html", { session: CLIENT, handlers });
     await page.waitForSelector('[data-act="retry"]');
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the steps' button says Try again");
     assert.match(await page.locator("#next-root").innerText(), /We could not load your next steps/);
     assert.equal(await page.locator(".ready").count(), 1, "the side card still shows when only the steps failed");
     assert.deepEqual([tasksRead.length, readyRead.length], [1, 1]);
@@ -98,6 +102,7 @@ test("Next steps: each Try again reads again, the steps one reads both parts and
       },
     });
     await second.page.waitForSelector('[data-act="ready-retry"]');
+    assert.equal(await textOf(second.page.locator('[data-act="ready-retry"]')), "Try again", "the ready card's button says Try again");
     assert.match(await second.page.locator(".ready").innerText(), /We could not check your funding request just now\./);
     assert.equal(await second.page.locator(".task-list").count(), 1, "the steps are still painted");
     assert.deepEqual([tasks2.length, ready2.length], [1, 1]);
@@ -134,6 +139,8 @@ test("Payments: no plans says nothing is owed, a plan hides that sentence, and a
     const read = flaky(PAYMENTS);
     const { page, errors } = await screens.open(`/app/money-payments.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers: { "/api/money/payments": read.handler } });
     await page.waitForSelector('[data-act="retry"]');
+    assert.equal(await textOf(page.locator("#payments-root section.error h2")), "We could not load your payments", "the error says what failed");
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the button says Try again");
     assert.match(await page.locator("#payments-root").innerText(), /Something went wrong on our side while loading your payments/);
     assert.equal(await page.locator("article.plan").count(), 0);
     read.state.ok = true;
@@ -174,6 +181,8 @@ test("Setup: while the read is out the page says it is loading, a failed read of
     assert.equal(await page.locator("#setup-root li.step").count(), 0, "no steps are drawn yet");
     release();
     await page.waitForSelector('[data-act="retry"]');
+    assert.equal(await textOf(page.locator("#setup-root section.error h2")), "We could not load your setup", "the error says what failed");
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the button says Try again");
     assert.match(await page.locator("#setup-root").innerText(), /We could not load your setup/);
     assert.match(await page.locator("#setup-root").innerText(), /Something went wrong on our side while loading your setup/);
     assert.equal(await page.locator("#setup-root [aria-busy]").count(), 0, "the loading skeleton is gone");

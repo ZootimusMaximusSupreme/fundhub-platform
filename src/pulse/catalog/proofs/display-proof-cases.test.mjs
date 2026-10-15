@@ -75,7 +75,7 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     }
   }
 
-  assert.equal(redCount, 635, "Display red count changed; inspect every new exact proof");
+  assert.equal(redCount, 637, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {

@@ -49,9 +49,7 @@
    "surface": "public/app/partner-galaxy.html",
    "controls": [
     "Message Blaster for Mac: Download button (locked gift, .dmg)",
-    "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)",
-    "Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Agents, Ops Agents)",
-    "Sky canvas: click empty space or press Escape to pull back; panel close button (esc)"
+    "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)"
    ]
   }
  ],

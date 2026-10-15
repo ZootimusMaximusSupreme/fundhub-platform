@@ -71,8 +71,9 @@ SELECT count(*)::int AS sample_count,
 // The same page lists each application as "<bank> · <product>" with the bank's word beside it. The bank is
 // lender_name, then bank; the word comes from the application's status (Apply, Applied, Approved, Denied,
 // Missing Docs, Action Required), and a decline on the application replaces it with the decline's own words.
-// Reconsideration moves the application too: approved on reconsideration makes it Approved, still declined
-// makes it Denied (recordOutcome). Only a client's own applications of the last 90 days are judged.
+// Reconsideration moves the application too (recordOutcome in src/blueprint/decline-defense.mjs): approved on
+// reconsideration makes it Approved, and both of the other two answers, still declined and apply again later,
+// make it Denied. Only a client's own applications of the last 90 days are judged.
 
 export const APPLICATIONS_BAD = Object.freeze([
   ["an application has no bank name, so the list says only 'A bank'",
@@ -88,6 +89,9 @@ export const APPLICATIONS_BAD = Object.freeze([
   ["a decline stayed declined after reconsideration but the application is not Denied",
     `EXISTS (SELECT 1 FROM blueprint_declines d
                   WHERE d.application_id = a.id AND d.outcome = 'still_declined' AND a.status IS DISTINCT FROM 'Denied')`],
+  ["a decline was put off to apply again later but the application is not Denied",
+    `EXISTS (SELECT 1 FROM blueprint_declines d
+                  WHERE d.application_id = a.id AND d.outcome = 'reapply_later' AND a.status IS DISTINCT FROM 'Denied')`],
 ]);
 
 export function applicationsSql({ without = [] } = {}) {
@@ -108,7 +112,9 @@ SELECT count(*)::int AS sample_count,
 // reason is stop. A stop is written by the same pass that writes the stopped turn, and a stop the client
 // asked for also writes a text opt-out through the one sanctioned writer (src/lib/opt-out.mjs). After a stop
 // the helper takes no more messages (routeTurn answers helper_stopped), so no message made after the stop
-// may have been answered. "Not switched on" reads the agent's own status today, so it leaves nothing saved.
+// may have been answered, and no message that was still waiting at the stop may be answered after it either
+// (processTurn does not look at the stop, so a turn queued for the Mac runner can slip through).
+// "Not switched on" reads the agent's own status today (helperIsOn), so it leaves nothing saved per client.
 
 export const HELPER_BAD = Object.freeze([
   ["a stopped helper has no stopped turn behind it",
@@ -117,10 +123,14 @@ export const HELPER_BAD = Object.freeze([
   ["a stop the client asked for left no text opt-out, so the banner's promise is false",
     `h.halt_reason = 'stop' AND NOT EXISTS (SELECT 1 FROM opt_outs o
                   WHERE o.client_id = h.client_id AND o.channel = 'sms')`],
-  ["the helper kept answering messages after it stopped",
+  ["the helper answered a message that was made after it stopped",
     `EXISTS (SELECT 1 FROM money_helper_turns u
                   WHERE u.org_id = h.org_id AND u.client_id = h.client_id AND u.kind = 'message'
                     AND u.status = 'answered' AND u.created_at > h.halted_at)`],
+  ["the helper answered a message after it stopped, one that was made before the stop and still waiting",
+    `EXISTS (SELECT 1 FROM money_helper_turns u
+                  WHERE u.org_id = h.org_id AND u.client_id = h.client_id AND u.kind = 'message'
+                    AND u.status = 'answered' AND u.created_at <= h.halted_at AND u.answered_at > h.halted_at)`],
   ["a stopped thread belongs to a client of another company",
     `NOT EXISTS (SELECT 1 FROM clients c WHERE c.id = h.client_id AND c.org_id = h.org_id)`],
 ]);
@@ -179,7 +189,9 @@ SELECT count(*)::int AS sample_count,
 // POST /api/ops/hire-closer (src/ops/hire-closer.mjs, src/ops/csuite-tasks.mjs) writes company tasks with
 // source_workflow 'ops-coo' and no client: a hire task (body hire-closer:packed:<month>) for the sales
 // manager, a team-gaps task (diagnose:gaps:<month>) and an ad-spend review (ads-review:<month>) for the
-// owner, one per month per kind (the body is the dedupe key). When LinkedIn is connected it also posts the
+// owner, one per month per kind (the body is the dedupe key, and tasks_idempotency_idx in
+// db/schema/006_tasks_idempotency.sql makes a second row with the same body impossible, so there is no
+// "written twice" condition: on Postgres it could never fire). When LinkedIn is connected it also posts the
 // closer job (a hiring_job_postings row whose words carry the marker hire-closer:packed:<month>), which
 // ends 'posted' with an outside id, or 'failed' with the reason. Last 120 days.
 
@@ -193,9 +205,6 @@ export const CSUITE_TASK_BAD = Object.freeze([
     `(t.body LIKE 'diagnose:gaps:%' OR t.body LIKE 'ads-review:%') AND t.assignee_role IS DISTINCT FROM 'owner'`],
   ["a company task is hung on a client file",
     `t.client_id IS NOT NULL`],
-  ["the same company task was written twice",
-    `EXISTS (SELECT 1 FROM tasks o
-                  WHERE o.org_id = t.org_id AND o.source_workflow = t.source_workflow AND o.body = t.body AND o.id <> t.id)`],
   ["a task from the brain is not one of the kinds it writes",
     `NOT COALESCE(${KNOWN_BODY}, false)`],
 ]);
@@ -232,7 +241,7 @@ SELECT count(*)::int AS sample_count,
 const DECLINES = "public/app/money-declines.html";
 const OPS = "public/app/ops-admin.html";
 
-const CSUITE_REQUIREMENT = "Every company task the brain wrote must be a kind it writes, sit on the right desk (hire on the sales manager, review on the owner), hang on no client, and exist once; and the closer job post must not have failed or been marked posted with no outside id.";
+const CSUITE_REQUIREMENT = "Every company task the brain wrote must be a kind it writes, sit on the right desk (hire on the sales manager, review on the owner), hang on no client; and the closer job post must not have failed or been marked posted with no outside id.";
 
 const CHECKS = [
   {
@@ -247,7 +256,7 @@ const CHECKS = [
     sourceFile: "desks-d.json",
     surface: DECLINES,
     control: "Your bank applications list",
-    requirement: "Every application a client sees must name its bank and carry a status, any decline on it must belong to the same client, and a reconsideration answer must match the application's own status.",
+    requirement: "Every application a client sees must name its bank and carry a status, any decline on it must belong to the same client, and a reconsideration answer (approved, still declined, or apply again later) must match the application's own status.",
     sql: applicationsSql,
     names: APPLICATIONS_BAD.map(([name]) => name),
   },
@@ -255,7 +264,7 @@ const CHECKS = [
     sourceFile: "desks-d.json",
     surface: "public/app/money-helper.html",
     control: "Banner: helper stopped / not switched on",
-    requirement: "Every stopped helper thread must have a stopped turn behind it, a text opt-out when the client asked it to stop, no answered message after the stop, and a client in the same company.",
+    requirement: "Every stopped helper thread must have a stopped turn behind it, a text opt-out when the client asked it to stop, no message answered after the stop (made before it or after it), and a client in the same company.",
     sql: helperSql,
     names: HELPER_BAD.map(([name]) => name),
   },

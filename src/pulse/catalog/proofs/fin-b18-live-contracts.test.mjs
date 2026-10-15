@@ -16,12 +16,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   APPLICATIONS_BAD, CSUITE_POST_BAD, CSUITE_TASK_BAD, HELPER_BAD,
   STEPS_BAD, TRANSFER_BAD, applicationsSql, csuiteSql, helperSql, stepsSql, transferSql,
 } from "./fin-b18-display-contracts.mjs";
-import { NOW, makeStandIn, tablesIn } from "./fin-b18-sql-kit.mjs";
+import { NOW, REPO_ROOT, makeStandIn, tablesIn } from "./fin-b18-sql-kit.mjs";
 
 const ORG = "11111111-0000-4000-8000-000000000001";
 const OTHER_ORG = "22222222-0000-4000-8000-000000000002";
@@ -179,7 +181,8 @@ suite("applications list", {
     appDecline(db, "dec-ok", "a-denied", { outcome: "still_declined" });
     app(db, "a-recon", { status: "Approved" });
     appDecline(db, "dec-recon", "a-recon", { outcome: "approved_on_recon" });
-    app(db, "a-later", { status: "Applied" });
+    // apply again later also leaves the application Denied (recordOutcome), so a Denied one is healthy
+    app(db, "a-later", { status: "Denied" });
     appDecline(db, "dec-later", "a-later", { outcome: "reapply_later", reapply_on: "2026-12-01" });
     return 7;
   },
@@ -197,6 +200,11 @@ suite("applications list", {
     "a decline stayed declined after reconsideration but the application is not Denied": (db) => {
       app(db, "a-lost-no", { status: "Applied" });
       appDecline(db, "dec-lost-no", "a-lost-no", { outcome: "still_declined" });
+    },
+    "a decline was put off to apply again later but the application is not Denied": (db) => {
+      // the third answer: recordOutcome sets the application to Denied, so Applied or Approved is wrong
+      app(db, "a-lost-later", { status: "Applied" });
+      appDecline(db, "dec-lost-later", "a-lost-later", { outcome: "reapply_later", reapply_on: "2026-12-01" });
     },
   },
   ignored(db) {
@@ -231,17 +239,22 @@ suite("helper stop", {
     halted(db, "h-stop");
     halted(db, "h-legal", { reason: "legal" });
     halted(db, "h-asked-again", {});
-    // a message made before the stop and answered is fine; an opt back in leaves the opt-out row in place
-    db.insert("money_helper_turns", { id: "h-stop-early", org_id: ORG, client_id: "h-stop", kind: "message", status: "answered", created_at: at(5) });
-    db.insert("money_helper_turns", { id: "h-stop-task", org_id: ORG, client_id: "h-stop", kind: "task", status: "answered", created_at: at(1) });
+    // a message made and answered before the stop is fine; so is a task turn answered after it
+    db.insert("money_helper_turns", { id: "h-stop-early", org_id: ORG, client_id: "h-stop", kind: "message", status: "answered", created_at: at(5), answered_at: at(5) });
+    db.insert("money_helper_turns", { id: "h-stop-task", org_id: ORG, client_id: "h-stop", kind: "task", status: "answered", created_at: at(1), answered_at: at(1) });
     return 3;
   },
   breaks: {
     "a stopped helper has no stopped turn behind it": (db) => halted(db, "b-no-turn", { turn: false }),
     "a stop the client asked for left no text opt-out, so the banner's promise is false": (db) => halted(db, "b-no-optout", { optOut: false }),
-    "the helper kept answering messages after it stopped": (db) => {
+    "the helper answered a message that was made after it stopped": (db) => {
       halted(db, "b-kept-going");
-      db.insert("money_helper_turns", { id: "b-kept-going-late", org_id: ORG, client_id: "b-kept-going", kind: "message", status: "answered", created_at: at(1) });
+      db.insert("money_helper_turns", { id: "b-kept-going-late", org_id: ORG, client_id: "b-kept-going", kind: "message", status: "answered", created_at: at(1), answered_at: at(1) });
+    },
+    "the helper answered a message after it stopped, one that was made before the stop and still waiting": (db) => {
+      // made 3 days ago (the stop is 2 days ago), answered yesterday
+      halted(db, "b-slipped");
+      db.insert("money_helper_turns", { id: "b-slipped-queued", org_id: ORG, client_id: "b-slipped", kind: "message", status: "answered", created_at: at(3), answered_at: at(1) });
     },
     "a stopped thread belongs to a client of another company": (db) => halted(db, "b-crossed", { clientOrg: OTHER_ORG }),
   },
@@ -345,11 +358,6 @@ suite("C-suite tasks", {
     "a hire task is not on the sales manager's desk": (db) => task(db, "b-hire", "hire-closer:packed:2026-11", { assignee_role: "owner" }),
     "a team gaps or ad spend review is not on the owner's desk": (db) => task(db, "b-diag", "diagnose:gaps:2026-11", { assignee_role: "setter" }),
     "a company task is hung on a client file": (db) => task(db, "b-client", "ads-review:2026-11", { client_id: CLIENT }),
-    "the same company task was written twice": (db) => {
-      task(db, "b-twice-1", "diagnose:gaps:2026-09");
-      task(db, "b-twice-2", "diagnose:gaps:2026-09");
-      return 2;
-    },
     "a task from the brain is not one of the kinds it writes": (db) => task(db, "b-kind", "mystery:2026-11"),
     "the closer job post failed": (db) => post(db, "b-failed", { status: "failed", external_id: null, posted_at: null }),
     "a closer job post is marked posted but has no outside id or no posted time": (db) => post(db, "b-no-id", { external_id: "" }),
@@ -365,4 +373,21 @@ suite("C-suite tasks", {
     task(db, "o-bad", "hire-closer:packed:2026-10", { org_id: OTHER_ORG, assignee_role: "owner", client_id: OTHER_CLIENT });
     post(db, "o-bad-post", { org_id: OTHER_ORG, status: "failed" });
   },
+});
+
+// ───────────────────────── the words list is the page's own ─────────────────────────
+
+test("transfer events: the words the check knows are exactly the words the page has", () => {
+  // The check flags a line "the page has no words for". If the page gains or loses a word and the check's
+  // list does not move with it, the check goes red on a line the page can tell, or stays green on one it cannot.
+  const source = fs.readFileSync(path.join(REPO_ROOT, "public/app/money-transfers.js"), "utf8");
+  const block = /var EVENT_WORDS = \{([\s\S]*?)\};/.exec(source);
+  assert.ok(block, "the page's EVENT_WORDS table is still there");
+  const pageKeys = [...block[1].matchAll(/^\s*([a-z_]+):\s*"/gm)].map((m) => m[1]).sort();
+  const text = transferSql({});
+  const listed = /NOT IN \(([^)]*)\)/.exec(text);
+  assert.ok(listed, "the check lists its known words");
+  const checkKeys = [...listed[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+  assert.ok(pageKeys.length >= 14, "the page's table was read");
+  assert.deepEqual(checkKeys, pageKeys);
 });

@@ -7,6 +7,10 @@
 //   money-vault.html      the Back link, the eight-link nav, Try again, and the staff Cancel button that
 //                         closes an open accept, reject or sort form without sending anything
 
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -17,6 +21,30 @@ import { sampleVault } from "../../../http/fixtures/money-vault.sample.mjs";
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
 const FRAME = "/app/financeos.html";
+const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app");
+const FRAME_HTML = fs.readFileSync(path.join(APP_DIR, "financeos.html"), "utf8");
+
+/**
+ * Where a nav link really lands. The money pages link to the one-page frame by its #tab; the frame's own
+ * script (financeos.js, run here as the page runs it) says which tab an address opens, and an address with a
+ * tab that no longer exists opens Overview. A link is only right when the tab it names is the tab it opens,
+ * and the frame's page still has that tab and its panel.
+ */
+function landing(href) {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(APP_DIR, "financeos.js"), "utf8"), context, { filename: "financeos.js" });
+  const frame = context.FHFinanceOS;
+  const tab = frame.tabForHref(href);
+  const exists = frame.TABS.some(([key]) => key === tab)
+    && new RegExp(`id="tab-${tab}"`).test(FRAME_HTML) && new RegExp(`id="fos-${tab}"`).test(FRAME_HTML);
+  return exists ? tab : null;
+}
+const assertLandings = (nav, expected, who) => nav.forEach((link, i) => {
+  if (expected[i] === null) return; // the page's own link (Funding papers)
+  assert.equal(landing(link.href), expected[i], `${who}: "${link.label}" opens the ${expected[i]} tab of the one-page frame`);
+});
+const textOf = async (locator) => (await locator.innerText()).trim();
 
 // ───────────────────────── money.html ─────────────────────────
 
@@ -47,12 +75,14 @@ test("Money: the six-link nav keeps its order, marks Money as the current page, 
     assert.deepEqual(clientNav.map((l) => l.label), six);
     assert.deepEqual(clientNav.map((l) => l.href), hash.map((h) => `${FRAME}#${h}`), "each word goes to its own tab, with no client named");
     assert.deepEqual(clientNav.filter((l) => l.current).map((l) => l.label), ["Money"], "Money is the one current page");
+    assertLandings(clientNav, hash, "client");
     await asClient.page.close();
     const asStaff = await screens.open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers: { "/api/money/overview": OVERVIEW } });
     await asStaff.page.waitForSelector("#money-root .big");
     const staffNav = await navOf(asStaff.page);
     assert.deepEqual(staffNav.map((l) => l.label), six);
     assert.deepEqual(staffNav.map((l) => l.href), hash.map((h) => `${FRAME}?client_id=${CLIENT_ID}#${h}`), "every link carries the client, before the #tab");
+    assertLandings(staffNav, hash, "staff");
     await asStaff.page.close();
   }, "public/app/money.html");
 });
@@ -64,6 +94,7 @@ test("Money: a failed read shows Try again, and pressing it reads again and pain
       session: STAFF, handlers: { "/api/money/overview": read.handler },
     });
     await page.waitForSelector('[data-act="retry"]');
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the button itself says Try again (the sentence above it also says it)");
     assert.match(await page.locator("#money-root").innerText(), /We could not load your money page/);
     assert.match(await page.locator("#money-root").innerText(), /Something went wrong on our side while loading your accounts/);
     assert.equal(await page.locator("#money-root .big").count(), 0, "no numbers are painted over the error");
@@ -108,12 +139,14 @@ test("Transfers: the seven-link nav keeps its order, marks Transfers as current,
     assert.deepEqual(clientNav.map((l) => l.label), seven);
     assert.deepEqual(clientNav.map((l) => l.href), hash.map((h) => `${FRAME}#${h}`));
     assert.deepEqual(clientNav.filter((l) => l.current).map((l) => l.label), ["Transfers"]);
+    assertLandings(clientNav, hash, "client");
     await asClient.page.close();
     const asStaff = await screens.open(`/app/money-transfers.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers: { "/api/money/transfers": TRANSFERS } });
     await asStaff.page.waitForSelector(`${TRANSFERS_ROOT} .fh-transfers h2`);
     const staffNav = await navOf(asStaff.page);
     assert.deepEqual(staffNav.map((l) => l.label), seven);
     assert.deepEqual(staffNav.map((l) => l.href), hash.map((h) => `${FRAME}?client_id=${CLIENT_ID}#${h}`));
+    assertLandings(staffNav, hash, "staff");
     await asStaff.page.close();
   }, "public/app/money-transfers.html");
 });
@@ -125,6 +158,7 @@ test("Transfers: a failed read shows Try again, and pressing it reads again and 
       session: STAFF, handlers: { "/api/money/transfers": read.handler },
     });
     await page.waitForSelector('[data-act="retry"]');
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the button itself says Try again (the sentence above it also says it)");
     assert.match(await page.locator(TRANSFERS_ROOT).innerText(), /We could not load your money moves/);
     assert.match(await page.locator(TRANSFERS_ROOT).innerText(), /Something went wrong on our side while loading your money moves/);
     assert.equal(await page.locator("article.wt, table").count(), 0, "no moves are painted over the error");
@@ -142,15 +176,15 @@ test("Transfers: a failed read shows Try again, and pressing it reads again and 
 // One move whose story holds every kind of line the page can say, plus one the page has no words for.
 const EVENT = (type, leg = null) => ({ type, at: "2026-10-07T04:08:01.000Z", leg, actor: "provider", from_status: null, to_status: "approved" });
 const STORY = [
-  [EVENT("approved"), /Said yes \(practice run, sandbox\)$/],
-  [EVENT("started"), /Started today's move$/],
-  [EVENT("authorized", "debit"), /Bank check passed$/],
-  [EVENT("submitted", "debit"), /Asked the bank to take the money out$/],
-  [EVENT("plaid_posted", "debit"), /Out of Personal Checking ••1101: sent$/],
-  [EVENT("plaid_settled", "credit"), /Into Business Checking ••2202: done$/],
-  [EVENT("provider_wait"), /The bank did not answer — trying again$/],
-  [EVENT("date_passed"), /The date passed — nothing moved$/],
-  [EVENT("brand_new_kind"), /brand new kind$/],
+  [EVENT("approved"), "Said yes (practice run, sandbox)"],
+  [EVENT("started"), "Started today's move"],
+  [EVENT("authorized", "debit"), "Bank check passed"],
+  [EVENT("submitted", "debit"), "Asked the bank to take the money out"],
+  [EVENT("plaid_posted", "debit"), "Out of Personal Checking ••1101: sent"],
+  [EVENT("plaid_settled", "credit"), "Into Business Checking ••2202: done"],
+  [EVENT("provider_wait"), "The bank did not answer — trying again"],
+  [EVENT("date_passed"), "The date passed — nothing moved"],
+  [EVENT("brand_new_kind"), "brand new kind"],
 ];
 
 function transfersWithStory() {
@@ -182,18 +216,26 @@ test("Transfers: the What happened fold opens on click and tells each ledger eve
 
     await fold(first.id).locator("summary").click();
     assert.equal(await fold(first.id).evaluate((el) => el.open), true, "pressing What happened opens it");
-    const lines = await fold(first.id).locator("li").allInnerTexts();
-    assert.equal(lines.length, STORY.length, "one line for each ledger event, none dropped");
+    // each line is a time and then its words; read them apart so both are judged
+    const parts = await fold(first.id).locator("li").evaluateAll((items) => items.map((li) => {
+      const time = li.querySelector("time");
+      const stamp = time ? time.textContent.trim() : "";
+      return { stamp, at: time ? time.getAttribute("datetime") : null, words: li.textContent.replace(stamp, "").replace(/\s+/g, " ").trim() };
+    }));
+    assert.equal(parts.length, STORY.length, "one line for each ledger event, none dropped");
     STORY.forEach(([event, words], i) => {
-      assert.match(lines[i].replace(/\s+/g, " ").trim(), words, `line ${i + 1} (${event.type}) says its words`);
+      assert.equal(parts[i].words, words, `line ${i + 1} (${event.type}) says exactly its words`);
+      assert.equal(parts[i].at, event.at, `line ${i + 1} (${event.type}) carries the time of its event`);
+      assert.notEqual(parts[i].stamp, "", `line ${i + 1} (${event.type}) shows a time`);
     });
 
     // a move the client said yes to says "Said yes", not the practice-run words
     await fold(byClient.id).locator("summary").click();
-    const mine = await fold(byClient.id).locator("li").allInnerTexts();
-    assert.match(mine[0], /Said yes$/, "a client's own yes is just 'Said yes'");
-    assert.doesNotMatch(mine[0], /practice run/);
-    assert.match(mine[1], /Stopped$/);
+    const mine = (await fold(byClient.id).locator("li").evaluateAll((items) => items.map((li) => {
+      const stamp = li.querySelector("time").textContent.trim();
+      return li.textContent.replace(stamp, "").replace(/\s+/g, " ").trim();
+    })));
+    assert.deepEqual(mine, ["Said yes", "Stopped"], "a client's own yes is just 'Said yes', and a cancelled move says Stopped");
     // the first fold stays open: each move has its own
     assert.equal(await fold(first.id).evaluate((el) => el.open), true);
     await fold(first.id).locator("summary").click();
@@ -256,12 +298,14 @@ test("Funding papers: the eight-link nav keeps its order, marks Funding papers a
     assert.deepEqual(clientNav.map((l) => l.label), eight);
     assert.deepEqual(clientNav.map((l) => l.href), target());
     assert.deepEqual(clientNav.filter((l) => l.current).map((l) => l.label), ["Funding papers"]);
+    assertLandings(clientNav, ["overview", "accounts", "credit", "declines", null, "connections", "payments", "setup"], "client");
     await asClient.page.close();
     const asStaff = await openVault({ session: STAFF, clientId: CLIENT_ID, audience: "staff" });
     await asStaff.page.waitForSelector(".fh-vault .vt-item");
     const staffNav = await navOf(asStaff.page);
     assert.deepEqual(staffNav.map((l) => l.label), eight);
     assert.deepEqual(staffNav.map((l) => l.href), target(`?client_id=${CLIENT_ID}`));
+    assertLandings(staffNav, ["overview", "accounts", "credit", "declines", null, "connections", "payments", "setup"], "staff");
     await asStaff.page.close();
   }, "public/app/money-vault.html");
 });
@@ -272,7 +316,8 @@ test("Funding papers: a failed read shows Try again, and pressing it reads again
     const { page, errors } = await screens.open("/app/money-vault.html", { session: CLIENT, handlers: { "/api/money/vault": read.handler } });
     await page.waitForSelector('[data-act="retry"]');
     assert.equal(await page.locator(".fh-vault .vt-item").count(), 0, "no papers are painted over the error");
-    assert.match(await page.locator("#vault-root").innerText(), /Try again/);
+    // the error sentence ("Try again in a few minutes") also holds these words, so read the button on its own
+    assert.equal(await textOf(page.locator('[data-act="retry"]')), "Try again", "the button itself says Try again");
     read.state.ok = true;
     await page.locator('[data-act="retry"]').click();
     await waitFor(() => read.state.reads.length === 2, "the second vault read");
@@ -292,13 +337,21 @@ test("Funding papers: Cancel closes an open accept, reject or sort form, clears 
     assert.ok(waiting.length >= 2, "the sample has files waiting for review");
     const row = (doc) => page.locator(`li.vt-doc[data-doc="${doc.id}"]`);
     const visible = (locator) => locator.evaluate((el) => !el.hidden);
+    // the button is found by its action and its own words are read before it is pressed, so a blank or
+    // renamed Cancel is a person looking at a button with the wrong words, and the test goes red
+    const cancelOf = async (form, which) => {
+      const button = form.locator('[data-act="cancel"]');
+      assert.equal(await button.count(), 1, `${which} has one Cancel button`);
+      assert.equal(await textOf(button), "Cancel", `${which}'s button says Cancel`);
+      return button;
+    };
 
     // accept form (a bank statement asks for months and a date, so it has a form)
     const accept = row(statement).locator('.vt-form[data-form="accept"]');
     assert.equal(await visible(accept), false, "the accept form starts shut");
     await row(statement).locator('[data-act="accept"]').click();
     assert.equal(await visible(accept), true, "Accept opens its form");
-    await accept.locator('[data-act="cancel"]').click();
+    await (await cancelOf(accept, "the accept form")).click();
     assert.equal(await visible(accept), false, "Cancel shuts the accept form");
 
     // reject form: send it empty so it shows its message, then Cancel clears that message
@@ -307,12 +360,12 @@ test("Funding papers: Cancel closes an open accept, reject or sort form, clears 
     assert.equal(await visible(reject), true, "Reject opens its form");
     await reject.locator('[data-act="reject-send"]').click();
     await page.waitForFunction((id) => /Write what the client should fix\./.test(document.querySelector(`li.vt-doc[data-doc="${id}"] .vt-form[data-form="reject"] .vt-form-msg`).innerText), statement.id);
-    await reject.locator('[data-act="cancel"]').click();
+    await (await cancelOf(reject, "the reject form")).click();
     assert.equal(await visible(reject), false, "Cancel shuts the reject form");
     assert.equal((await reject.locator(".vt-form-msg").innerText()).trim(), "", "Cancel also clears the message so it is not there on the next open");
     await row(statement).locator('[data-act="reject"]').click();
     assert.equal((await reject.locator(".vt-form-msg").innerText()).trim(), "", "the form opens clean");
-    await reject.locator('[data-act="cancel"]').click();
+    await (await cancelOf(reject, "the reject form")).click();
 
     // the two sort forms on a file nobody filed yet
     const scan = answer.unfiled[0];
@@ -321,11 +374,11 @@ test("Funding papers: Cancel closes an open accept, reject or sort form, clears 
     const sortReject = sortRow.locator('.vt-form[data-form="reject"]');
     await sortRow.locator('[data-act="sort-accept"]').click();
     assert.equal(await visible(sortAccept), true, "File and accept opens the sort form");
-    await sortAccept.locator('[data-act="cancel"]').click();
+    await (await cancelOf(sortAccept, "the sort accept form")).click();
     assert.equal(await visible(sortAccept), false, "Cancel shuts the sort accept form");
     await sortRow.locator('[data-act="sort-reject"]').click();
     assert.equal(await visible(sortReject), true, "Reject opens the sort reject form");
-    await sortReject.locator('[data-act="cancel"]').click();
+    await (await cancelOf(sortReject, "the sort reject form")).click();
     assert.equal(await visible(sortReject), false, "Cancel shuts the sort reject form");
 
     assert.deepEqual(posts, [], "no Cancel sent a request");
