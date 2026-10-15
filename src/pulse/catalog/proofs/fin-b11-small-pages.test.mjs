@@ -57,6 +57,18 @@ test("consent capture: the Back link goes to the right screen and carries the cl
     assert.match(portal, new RegExp(`/app/client-portal\\.html\\?id=${CLIENT}`));
     await dispute.page.close();
 
+    // Only dispute authorization lives on the portal. The two kinds that share the page's else branch
+    // (a recorded call, and use in an advert) and a kind the page does not know all go to the control panel.
+    for (const kind of ["call_recording", "marketing_use", "something_unknown"]) {
+      const other = await openConsent({ kind });
+      assert.equal(await other.page.locator("#ccBack").innerText(), "← Back to Client Control Panel", kind);
+      assert.match(await other.page.locator("#ccBack").getAttribute("href"), new RegExp(`^client-control-panel\\.html\\?client_id=${CLIENT}`), kind);
+      const landed = await leaves(other.page);
+      assert.match(landed, new RegExp(`/app/client-control-panel\\.html\\?client_id=${CLIENT}`), kind);
+      assert.doesNotMatch(landed, /client-portal/, kind);
+      await other.page.close();
+    }
+
     // With no client named, the link still works and carries nothing.
     const bare = await openConsent({ client: "" });
     assert.equal(await bare.page.locator("#ccBack").getAttribute("href"), "client-control-panel.html");
@@ -107,10 +119,17 @@ test("contracts: Cancel closes the editor and sends nothing; the Documents link 
     const link = page.locator("#explainCard a", { hasText: "Documents" });
     assert.equal(await link.count(), 1);
     assert.equal(await link.getAttribute("href"), "documents.html");
-    const seen = [];
-    page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) seen.push(frame.url()); });
-    await link.click();
-    await waitFor(() => seen.some((u) => /\/app\/documents\.html$/.test(u)), "Documents to open");
+    // The click has to land on a screen that exists: the server answers 200 with the Documents page,
+    // not a "not found" body that merely sits at the right address.
+    const [answer] = await Promise.all([
+      page.waitForResponse((r) => r.request().isNavigationRequest() && /\/app\/documents\.html$/.test(new URL(r.url()).pathname)),
+      link.click()
+    ]);
+    assert.equal(answer.status(), 200, "the Documents screen exists");
+    await page.waitForLoadState("domcontentloaded");
+    assert.match(page.url(), /\/app\/documents\.html$/);
+    assert.equal(await page.title(), "Fundhub — Documents");
+    assert.equal(await page.locator("h1").first().innerText(), "Documents");
     assert.deepEqual(writes, []);
   });
   await page.close();

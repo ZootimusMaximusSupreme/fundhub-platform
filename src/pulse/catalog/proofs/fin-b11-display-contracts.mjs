@@ -29,6 +29,7 @@ export const FIN_B11_LIVE_TEST = `${DIR}/fin-b11-live-contracts.test.mjs`;
 export const FIN_B11_BRAIN_TEST = `${DIR}/fin-b11-company-brain.test.mjs`;
 export const FIN_B11_CREATIVE_TEST = `${DIR}/fin-b11-creative-factory.test.mjs`;
 export const FIN_B11_SMALL_TEST = `${DIR}/fin-b11-small-pages.test.mjs`;
+export const FIN_B11_BRAIN_LISTS_TEST = `${DIR}/fin-b11-brain-lists.test.mjs`;
 
 const DAYS = (n) => `now() - interval '${n} days'`;
 
@@ -181,16 +182,21 @@ check({
   ]
 });
 
+// A review the system closed by itself (a newer proposal replaced it, or the file was classified
+// automatically) is also status 'rejected' with nobody named, and it leaves the file's classification
+// as pending or auto. A person's turn down is the one that leaves the file marked rejected, so a
+// rejected review with no person is read when its file says a person turned it down.
 check({
   key: "brain-review-rejected",
   control: "Owner: Turn down a waiting file",
-  requirement: "Every review an owner turned down that is still the file's newest must be stamped with the time and an owner of this company, and its file must be marked rejected, closed to everyone but the owner (file and every chunk), with no affiliate allowlist row.",
+  requirement: "Every review turned down by a person that is still the file's newest must be stamped with the time and an owner of this company, and its file must be marked rejected, closed to everyone but the owner (file and every chunk), with no affiliate allowlist row. A file marked rejected whose review names nobody is wrong.",
   from: "brain_classification_reviews r LEFT JOIN brain_files f ON f.id = r.file_id AND f.org_id = r.org_id",
-  where: `r.org_id = $1::uuid AND r.status = 'rejected' AND r.decided_by IS NOT NULL AND r.updated_at >= ${DAYS(90)}
+  where: `r.org_id = $1::uuid AND r.status = 'rejected' AND r.updated_at >= ${DAYS(90)}
+    AND (r.decided_by IS NOT NULL OR f.classification_status = 'rejected')
     AND ${NEWEST_REVIEW} AND ${FILE_NOT_TOUCHED_SINCE}`,
   bad: [
-    ["the decision has no time",
-      `r.decided_at IS NULL`],
+    ["the decision has no time or no person",
+      `r.decided_by IS NULL OR r.decided_at IS NULL`],
     ["the decider is not an owner of this company",
       DECIDED_BY_AN_OWNER],
     ["the file is gone",
@@ -269,7 +275,7 @@ check({
 check({
   key: "job-form",
   control: "Generate form: Kind (static / copy / video), What is being sold, What to make, Name this batch",
-  requirement: "Every generation job saved since 2026-09-08 must carry a kind the factory knows (static, video, copy or resize), an offer the compliance screen accepts (funding, credit_cards or credit_repair) and, when a script was picked, a script id the right length.",
+  requirement: "Every generation job saved since 2026-09-08 must carry a kind the factory knows (static, video, copy or resize), an offer the compliance screen accepts (funding, credit_cards or credit_repair), a batch name that is not blank or padded with spaces, and, when a script was picked, a script id the right length. A job the form made carries all three of what to make, the shapes and the number of versions together, so one of them missing while another is present is wrong.",
   from: "generation_jobs j",
   where: `j.org_id = $1::uuid AND j.created_at >= '2026-09-08' AND j.created_at >= ${DAYS(60)}`,
   bad: [
@@ -278,7 +284,12 @@ check({
     ["the offer is missing or not one the screen accepts",
       `COALESCE(j.spec->>'offerType', '') NOT IN ('funding', 'credit_cards', 'credit_repair')`],
     ["a picked script id is the wrong length",
-      `j.spec->>'scriptId' IS NOT NULL AND LENGTH(j.spec->>'scriptId') <> 36`]
+      `j.spec->>'scriptId' IS NOT NULL AND LENGTH(j.spec->>'scriptId') <> 36`],
+    ["the words of what to make, the shapes or the versions are missing from a job the form made",
+      `(j.spec->>'prompt' IS NOT NULL OR j.spec->>'formats' IS NOT NULL OR j.spec->>'variants' IS NOT NULL)
+       AND (j.spec->>'prompt' IS NULL OR j.spec->>'formats' IS NULL OR j.spec->>'variants' IS NULL)`],
+    ["the batch name is blank or was saved with spaces around it",
+      `NULLIF(BTRIM(COALESCE(j.idempotency_key, '')), '') IS NULL OR j.idempotency_key <> BTRIM(j.idempotency_key)`]
   ]
 });
 
@@ -322,57 +333,57 @@ check({
   ]
 });
 
+const HUMAN_REJECT = `a.blocked_reasons::text LIKE '%human_reject%'`;
+
 check({
   key: "asset-rejected",
   control: "Reject button (asks to confirm; marks the creative blocked)",
-  requirement: "Every blocked creative must list at least one reason, every reason must carry a code and a message a person can read, and the creative must belong to a partner of this company.",
+  requirement: "Every creative a person rejected must be blocked, must list at least one reason, every reason must carry a code and a message a person can read, and the creative must belong to a partner of this company. A creative still carrying a person's reject reason without being blocked is wrong, and so are two or more creatives of one partner rejected at the very same instant, because one click rejects exactly one.",
   from: "creative_assets a LEFT JOIN partners p ON p.id = a.partner_id",
-  where: `a.org_id = $1::uuid AND a.compliance_state = 'blocked'`,
+  where: `a.org_id = $1::uuid AND (a.compliance_state = 'blocked' OR ${HUMAN_REJECT})`,
   bad: [
+    ["a rejection left the creative not blocked",
+      `a.compliance_state <> 'blocked'`],
     ["no reason is listed",
       `CASE WHEN jsonb_typeof(a.blocked_reasons) = 'array' THEN jsonb_array_length(a.blocked_reasons) ELSE 0 END = 0`],
     ["a reason has no code or no message",
-      `EXISTS (SELECT 1 FROM jsonb_array_elements(a.blocked_reasons) AS e(value)
+      `CASE WHEN jsonb_typeof(a.blocked_reasons) = 'array' THEN EXISTS (SELECT 1 FROM jsonb_array_elements(a.blocked_reasons) AS e(value)
          WHERE NULLIF(BTRIM(COALESCE(e.value->>'code', '')), '') IS NULL
-            OR NULLIF(BTRIM(COALESCE(e.value->>'message', '')), '') IS NULL)`],
+            OR NULLIF(BTRIM(COALESCE(e.value->>'message', '')), '') IS NULL) ELSE false END`],
+    ["several creatives of one partner were rejected at the same instant",
+      `a.compliance_state = 'blocked' AND ${HUMAN_REJECT}
+       AND EXISTS (SELECT 1 FROM creative_assets o
+                    WHERE o.partner_id = a.partner_id AND o.id <> a.id AND o.updated_at = a.updated_at
+                      AND o.compliance_state = 'blocked' AND o.blocked_reasons::text LIKE '%human_reject%')`],
     ["the partner is missing or belongs to another company",
       `p.id IS NULL OR p.org_id <> a.org_id`]
   ]
 });
 
-check({
-  key: "asset-archived",
-  control: "Archive button (asks to confirm; hides the creative)",
-  requirement: "Every archived creative must carry an archive time that is not before it was made and not after its last change, and belong to a partner of this company.",
-  from: "creative_assets a LEFT JOIN partners p ON p.id = a.partner_id",
-  where: `a.org_id = $1::uuid AND a.archived_at IS NOT NULL`,
-  bad: [
-    ["archived before it was made",
-      `a.archived_at < a.created_at`],
-    ["the last change is older than the archive time",
-      `a.updated_at < a.archived_at`],
-    ["the partner is missing or belongs to another company",
-      `p.id IS NULL OR p.org_id <> a.org_id`]
-  ]
-});
+// Archive has no live check. Archiving writes one thing, archived_at (and the last-changed time with
+// it), on the one creative named; it leaves no record of which creative was meant, so a wrong creative
+// archived, or an archive that did not happen, leaves a row no different from a healthy one. The
+// click is judged by its practice test (fin-b11-creative-factory.test.mjs) and says so on the row.
 
 check({
   key: "brand-approved",
   control: "Review queue (brand row): reason box and 'Approve this brand' button (owner/admin only)",
-  requirement: "Every approved brand must carry its approval time, name an approver who is a staff member of the same company, have been sent for review before it was approved, hold no leftover reason note, and belong to a partner of this company.",
+  requirement: "Every approved brand must carry its approval time, name an approver who is a staff member of the same company, have been sent for review before it was approved, hold no leftover reason note, and belong to a partner of this company. A brand approved by a person must have been sent for review first, and in the last 90 days its approver must be an owner or admin of this company.",
   from: `partner_brand b
-  LEFT JOIN partners p ON p.id = b.partner_id
-  LEFT JOIN staff s ON s.id = b.approved_by`,
+  LEFT JOIN partners p ON p.id = b.partner_id`,
   where: `b.org_id = $1::uuid AND b.approval_status = 'approved'`,
   bad: [
     ["no approval time",
       `b.approved_at IS NULL`],
-    ["the approver is a staff member of another company",
-      `b.approved_by IS NOT NULL AND s.org_id <> b.org_id`],
+    ["the approver is not an owner or admin of this company",
+      `b.approved_by IS NOT NULL AND b.approved_at >= ${DAYS(90)}
+       AND NOT EXISTS (SELECT 1 FROM staff a WHERE a.id = b.approved_by AND a.org_id = b.org_id AND a.role IN ('owner', 'admin'))`],
     ["a brand that went through review has no approver",
       `b.submitted_at IS NOT NULL AND b.approved_by IS NULL`],
     ["approved before it was sent for review",
       `b.submitted_at IS NOT NULL AND b.approved_at < b.submitted_at`],
+    ["a person approved a brand that was never sent for review",
+      `b.approved_by IS NOT NULL AND b.submitted_at IS NULL`],
     ["a reason note was left on an approved brand",
       `NULLIF(BTRIM(COALESCE(b.review_note, '')), '') IS NOT NULL`],
     ["the partner is missing or belongs to another company",
@@ -383,14 +394,18 @@ check({
 check({
   key: "brand-sent-back",
   control: "Review queue (brand row): 'Send it back' button with required reason",
-  requirement: "Every brand that was sent back or is waiting must have no approval left on it, a sent-back brand must hold a real written reason of at most 2000 characters, and a brand waiting for review must hold no reason from an earlier round.",
+  requirement: "Every brand that was sent back or is waiting must have no approval left on it, a sent-back brand (a draft that was sent for review) must hold a real written reason of at most 2000 characters, and a brand waiting for review must hold no reason from an earlier round.",
   from: "partner_brand b LEFT JOIN partners p ON p.id = b.partner_id",
-  where: `b.org_id = $1::uuid AND (b.review_note IS NOT NULL OR (b.approval_status <> 'approved' AND b.approved_by IS NOT NULL))`,
+  where: `b.org_id = $1::uuid AND (b.review_note IS NOT NULL
+    OR (b.approval_status <> 'approved' AND b.approved_by IS NOT NULL)
+    OR (b.approval_status = 'draft' AND b.submitted_at IS NOT NULL))`,
   bad: [
     ["the reason is blank",
       `b.review_note IS NOT NULL AND NULLIF(BTRIM(b.review_note), '') IS NULL`],
     ["the reason is longer than 2000 characters",
       `b.review_note IS NOT NULL AND LENGTH(b.review_note) > 2000`],
+    ["a brand was sent back with no reason saved",
+      `b.approval_status = 'draft' AND b.submitted_at IS NOT NULL AND b.review_note IS NULL`],
     ["a reason sits on a brand that is approved",
       `b.review_note IS NOT NULL AND b.approval_status = 'approved'`],
     ["a brand waiting for review still holds an old reason",
@@ -448,10 +463,10 @@ export const FIN_B11_ROWS = Object.freeze([
   // Company Brain: the chat, the side panels, the owner review
   ["Send question (Send button, Enter key; Shift+Enter makes a line)", BRAIN, "brain-turns", FIN_B11_BRAIN_TEST],
   ["Past chats list: click a chat to reopen it", BRAIN, "brain-past-chats", FIN_B11_BRAIN_TEST],
-  ["Files you added: list and Refresh button", BRAIN, "brain-uploads", FIN_B11_BRAIN_TEST],
-  ["Owner: 'Waiting for your approval' panel and its Refresh button", BRAIN, "brain-review-queue", FIN_B11_BRAIN_TEST],
-  ["Owner: Approve a waiting file (button on the file row and in the review list)", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST],
-  ["Owner: Turn down a waiting file", BRAIN, "brain-review-rejected", FIN_B11_BRAIN_TEST],
+  ["Files you added: list and Refresh button", BRAIN, "brain-uploads", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
+  ["Owner: 'Waiting for your approval' panel and its Refresh button", BRAIN, "brain-review-queue", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
+  ["Owner: Approve a waiting file (button on the file row and in the review list)", BRAIN, "brain-review-approved", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
+  ["Owner: Turn down a waiting file", BRAIN, "brain-review-rejected", FIN_B11_BRAIN_TEST, [FIN_B11_BRAIN_LISTS_TEST]],
   ["Class quiz: answer boxes and 'Check answers' (scored in the browser, nothing saved)", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["Documents button (opens right-hand panel) and its Close button", BRAIN, null, FIN_B11_BRAIN_TEST],
   ["New chat button", BRAIN, null, FIN_B11_BRAIN_TEST],
@@ -469,7 +484,7 @@ export const FIN_B11_ROWS = Object.freeze([
   ["Run queued jobs now button", CF, "job-run", FIN_B11_CREATIVE_TEST],
   ["Approve button (asks to confirm; marks the creative approved and CLEARS its blocked reasons)", CF, "asset-approved", FIN_B11_CREATIVE_TEST],
   ["Reject button (asks to confirm; marks the creative blocked)", CF, "asset-rejected", FIN_B11_CREATIVE_TEST],
-  ["Archive button (asks to confirm; hides the creative)", CF, "asset-archived", FIN_B11_CREATIVE_TEST],
+  ["Archive button (asks to confirm; hides the creative)", CF, null, FIN_B11_CREATIVE_TEST],
   ["Review queue (brand row): reason box and 'Approve this brand' button (owner/admin only)", CF, "brand-approved", FIN_B11_CREATIVE_TEST],
   ["Review queue (brand row): 'Send it back' button with required reason", CF, "brand-sent-back", FIN_B11_CREATIVE_TEST],
   ["Monthly writing allowance panel (on/off, used, left, limit) and its enable note", CF, "allowance", FIN_B11_CREATIVE_TEST],
@@ -488,8 +503,8 @@ export const FIN_B11_ROWS = Object.freeze([
   ["Review queue: 'Open the full creative' button on a row", CF, null, FIN_B11_CREATIVE_TEST],
   ["Review queue: state chips (all, blocked, pending, awaiting_approval), 'show' size select, prev / next, row expand", CF, null, FIN_B11_CREATIVE_TEST],
   ["Script picker list on the Generate form (rebuilt from saved scripts)", CF, null, FIN_B11_CREATIVE_TEST]
-].map(([control, surface, liveKey, browserTest]) => Object.freeze({
-  sourceFile: "desks-b.json", surface, control, liveKey, browserTest
+].map(([control, surface, liveKey, browserTest, extraTests = []]) => Object.freeze({
+  sourceFile: "desks-b.json", surface, control, liveKey, browserTest, extraTests: Object.freeze(extraTests)
 })));
 
 /**
@@ -498,13 +513,15 @@ export const FIN_B11_ROWS = Object.freeze([
  * an "e2e" case.
  */
 export const FIN_B11_DISPLAY_PROOF_CASES = Object.freeze(FIN_B11_ROWS.map((row) => {
-  const tests = row.liveKey ? [FIN_B11_LIVE_TEST, row.browserTest] : [row.browserTest];
+  // The live-check file (when the row has one), the page practice test, and any handler test that runs
+  // the row's list or decision for real.
+  const tests = [...(row.liveKey ? [FIN_B11_LIVE_TEST] : []), row.browserTest, ...row.extraTests];
   return Object.freeze({
     sourceFile: row.sourceFile,
     surface: row.surface,
     control: row.control,
     depth: row.liveKey ? "deep" : "e2e",
-    evidence: row.liveKey ? `${tests.join("; ")}; ${FIN_B11_LANE}` : tests[0],
+    evidence: row.liveKey ? `${tests.join("; ")}; ${FIN_B11_LANE}` : tests.join("; "),
     tests: Object.freeze(tests)
   });
 }));

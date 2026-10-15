@@ -270,12 +270,20 @@ function decisionFixture(kind) {
       ...ignored,
       ["an auto-closed review has no person and is not an owner's decision", (t) => {
         t.brain_classification_reviews.push({ id: u(24), org_id: ORG, file_id: u(3), drive_file_id: "x", status: "rejected", kind: "classification", proposed_tier: "owner", decided_by: null, decided_at: ago(DAY), created_at: ago(DAY), updated_at: ago(DAY) });
-        t.brain_files.push(file(u(3), { approval_status: "approved", access_tier: "public" }));
+        t.brain_files.push(file(u(3), { approval_status: "approved", classification_status: "auto", access_tier: "public" }));
+      }],
+      ["a review replaced by a newer proposal is closed with no person, and its file waits on the new one", (t) => {
+        t.brain_classification_reviews.push({ id: u(25), org_id: ORG, file_id: u(4), drive_file_id: "x", status: "rejected", kind: "upload", proposed_tier: "staff", decided_by: null, decided_at: ago(DAY), created_at: ago(DAY), updated_at: ago(DAY) });
+        t.brain_files.push(file(u(4), { approval_status: "pending", classification_status: "pending", access_tier: "owner" }));
       }]
     ],
     breaks: {
       ...common,
-      "the decision has no time": [["no time", (t) => { find(t.brain_classification_reviews, u(21)).decided_at = null; }]],
+      "the decision has no time or no person": [
+        ["no time", (t) => { find(t.brain_classification_reviews, u(21)).decided_at = null; }],
+        // The reject path stopped saving who decided: the file says a person turned it down and the review names nobody.
+        ["no person", (t) => { find(t.brain_classification_reviews, u(21)).decided_by = null; }]
+      ],
       "the file is not marked rejected and closed": [
         ["file not rejected", (t) => { find(t.brain_files, u(1)).approval_status = "approved"; }],
         ["classification not rejected", (t) => { find(t.brain_files, u(1)).classification_status = "pending"; }],
@@ -403,10 +411,13 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     tables: {
       generation_jobs: [
         job(u(1), { assetKind: "static", offerType: "funding", prompt: "Working capital", formats: ["1x1"], variants: 1 }),
-        job(u(2), { assetKind: "copy", offerType: "credit_cards", prompt: "", scriptId: u(600), formats: ["1x1"], variants: 1 })
+        job(u(2), { assetKind: "copy", offerType: "credit_cards", prompt: "", scriptId: u(600), formats: ["1x1"], variants: 1 }),
+        // The rest of the allowed set: the rewrite-a-shape kind and the credit repair offer.
+        job(u(3), { assetKind: "resize", offerType: "credit_repair", prompt: "Make it wide", formats: ["16x9"], variants: 2 }),
+        job(u(4), { assetKind: "video", offerType: "funding", prompt: "A 20 second spot", formats: ["9x16"], variants: 1 })
       ]
     },
-    sample: 2,
+    sample: 4,
     breaks: {
       "the kind is missing or unknown": [
         ["kind missing", (t) => { delete find(t.generation_jobs, u(1)).spec.assetKind; }],
@@ -416,13 +427,28 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
         ["offer missing", (t) => { delete find(t.generation_jobs, u(1)).spec.offerType; }],
         ["offer unknown", (t) => { find(t.generation_jobs, u(1)).spec.offerType = "crypto"; }]
       ],
-      "a picked script id is the wrong length": [["script id cut short", (t) => { find(t.generation_jobs, u(2)).spec.scriptId = "abc123"; }]]
+      "a picked script id is the wrong length": [["script id cut short", (t) => { find(t.generation_jobs, u(2)).spec.scriptId = "abc123"; }]],
+      "the words of what to make, the shapes or the versions are missing from a job the form made": [
+        ["the words of what to make were not sent", (t) => { delete find(t.generation_jobs, u(1)).spec.prompt; }],
+        ["the shapes were not sent", (t) => { delete find(t.generation_jobs, u(1)).spec.formats; }],
+        ["the number of versions was not sent", (t) => { delete find(t.generation_jobs, u(1)).spec.variants; }],
+        ["the words are empty text, which the form allows, but the shapes are gone", (t) => { delete find(t.generation_jobs, u(2)).spec.formats; }]
+      ],
+      "the batch name is blank or was saved with spaces around it": [
+        ["blank batch name", (t) => { find(t.generation_jobs, u(1)).idempotency_key = "   "; }],
+        ["batch name saved with spaces around it", (t) => { find(t.generation_jobs, u(1)).idempotency_key = "  oct-batch  "; }]
+      ]
     },
     ignored: [
       ["a job from before the offer rule (2026-09-08) may lack an offer", (t) => {
         find(t.generation_jobs, u(1)).created_at = "2026-09-01T00:00:00.000Z";
         delete find(t.generation_jobs, u(1)).spec.offerType;
-      }]
+      }],
+      ["a job made straight through the endpoint with none of the form's boxes needs none of them", (t) => {
+        const j = find(t.generation_jobs, u(4));
+        j.spec = { assetKind: "video", offerType: "funding" };
+      }],
+      ["an empty prompt is allowed: the form lets that through on purpose", (t) => { find(t.generation_jobs, u(1)).spec.prompt = ""; }]
     ]
   });
 }
@@ -497,14 +523,18 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     tables: {
       partners: partners(),
       creative_assets: [
-        asset(u(1), { compliance_state: "blocked", blocked_reasons: [{ code: "human_reject", rule_set: "approval", message: "Rejected by reviewer" }] }),
-        asset(u(2), { compliance_state: "blocked", blocked_reasons: [
+        asset(u(1), { compliance_state: "blocked", updated_at: ago(2 * DAY), blocked_reasons: [{ code: "human_reject", rule_set: "approval", message: "Rejected by reviewer" }] }),
+        asset(u(2), { compliance_state: "blocked", updated_at: ago(3 * DAY), blocked_reasons: [
           { code: "guaranteed-approval", rule_set: "claims", message: "Guaranteed approval cannot be advertised." },
           { code: "advance-fee", rule_set: "croa", message: "Charging a fee first is prohibited." }] })
       ]
     },
     sample: 2,
     breaks: {
+      "a rejection left the creative not blocked": [
+        ["still holds the reject reason but is pending", (t) => { find(t.creative_assets, u(1)).compliance_state = "pending"; }],
+        ["still holds the reject reason but is approved", (t) => { find(t.creative_assets, u(1)).compliance_state = "approved"; }]
+      ],
       "no reason is listed": [
         ["empty list", (t) => { find(t.creative_assets, u(1)).blocked_reasons = []; }],
         ["not a list", (t) => { find(t.creative_assets, u(1)).blocked_reasons = {}; }]
@@ -514,28 +544,25 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
         ["no code", (t) => { find(t.creative_assets, u(1)).blocked_reasons = [{ rule_set: "approval", message: "m" }]; }],
         ["second reason blank", (t) => { find(t.creative_assets, u(2)).blocked_reasons[1].message = " "; }]
       ],
+      "several creatives of one partner were rejected at the same instant": [
+        // A Reject that lost its "which creative" condition blocks every creative of the partner in one
+        // statement, so they all carry one last-changed time. Two of them are two wrong results.
+        ["a second creative rejected at the same instant", (t) => {
+          t.creative_assets.push(asset(u(3), { compliance_state: "blocked", updated_at: ago(2 * DAY), blocked_reasons: [{ code: "human_reject", rule_set: "approval", message: "Rejected by reviewer" }] }));
+        }, 2, 3]
+      ],
       "the partner is missing or belongs to another company": [["partner in another company", (t) => { find(t.partners, u(500)).org_id = OTHER; }, 2]]
     },
     ignored: [
-      ["an approved creative is not a rejection", (t) => { find(t.creative_assets, u(1)).compliance_state = "approved"; find(t.creative_assets, u(1)).blocked_reasons = []; }]
-    ]
-  });
-  FIXTURES.set("asset-archived", {
-    tables: {
-      partners: partners(),
-      creative_assets: [
-        asset(u(1), { compliance_state: "passed", archived_at: ago(DAY), updated_at: ago(DAY) }),
-        asset(u(2), { compliance_state: "blocked", blocked_reasons: [{ code: "x", message: "m" }], archived_at: ago(2 * DAY), updated_at: ago(DAY) })
-      ]
-    },
-    sample: 2,
-    breaks: {
-      "archived before it was made": [["archive time before creation", (t) => { find(t.creative_assets, u(1)).archived_at = ago(11 * DAY); }]],
-      "the last change is older than the archive time": [["updated before archived", (t) => { find(t.creative_assets, u(1)).updated_at = ago(2 * DAY); }]],
-      "the partner is missing or belongs to another company": [["partner in another company", (t) => { find(t.partners, u(500)).org_id = OTHER; }, 2]]
-    },
-    ignored: [
-      ["a creative that is not archived", (t) => { find(t.creative_assets, u(1)).archived_at = null; find(t.creative_assets, u(1)).updated_at = ago(20 * DAY); }]
+      ["an approved creative is not a rejection", (t) => { find(t.creative_assets, u(1)).compliance_state = "approved"; find(t.creative_assets, u(1)).blocked_reasons = []; }],
+      ["two creatives rejected by two separate clicks (different times) are two right results", (t) => {
+        const b = find(t.creative_assets, u(2));
+        b.blocked_reasons = [{ code: "human_reject", rule_set: "approval", message: "Rejected by reviewer" }];
+        b.updated_at = ago(DAY);
+      }],
+      ["two creatives blocked by the screening engine at the same instant are not people's rejections", (t) => {
+        find(t.creative_assets, u(2)).updated_at = ago(2 * DAY);
+      }]
     ]
   });
 }
@@ -547,29 +574,44 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     submitted_by: null, review_note: null, updated_at: ago(DAY), ...over
   });
   const base = () => ({
-    partners: [{ id: u(500), org_id: ORG, slug: "a", name: "A" }, { id: u(501), org_id: ORG, slug: "b", name: "B" }],
-    staff: [{ id: u(900), org_id: ORG, role: "owner" }]
+    partners: [{ id: u(500), org_id: ORG, slug: "a", name: "A" }, { id: u(501), org_id: ORG, slug: "b", name: "B" }, { id: u(502), org_id: ORG, slug: "c", name: "C" }],
+    staff: [{ id: u(900), org_id: ORG, role: "owner" }, { id: u(901), org_id: ORG, role: "admin" }]
   });
   FIXTURES.set("brand-approved", {
     tables: {
       ...base(),
       partner_brand: [
         brand(u(1), u(500)),
-        brand(u(2), u(501), { approved_by: null, submitted_at: null })
+        brand(u(2), u(501), { approved_by: null, submitted_at: null }),
+        // An admin approves too: the approve button is for owner and admin.
+        brand(u(3), u(502), { approved_by: u(901) })
       ]
     },
-    sample: 2,
+    sample: 3,
     breaks: {
       "no approval time": [["approved with no time", (t) => { find(t.partner_brand, u(1)).approved_at = null; }]],
-      "the approver is a staff member of another company": [["approver in another company", (t) => { find(t.staff, u(900)).org_id = OTHER; }]],
+      "the approver is not an owner or admin of this company": [
+        ["approver is now a closer", (t) => { find(t.staff, u(900)).role = "closer"; }],
+        ["approver is a staff member of another company", (t) => { find(t.staff, u(900)).org_id = OTHER; }],
+        ["approver is not a staff member at all", (t) => { drop(t.staff, u(900)); }]
+      ],
       "a brand that went through review has no approver": [["no approver after review", (t) => { find(t.partner_brand, u(1)).approved_by = null; }]],
       "approved before it was sent for review": [["approved a day before it was sent", (t) => { find(t.partner_brand, u(1)).approved_at = ago(3 * DAY); }]],
+      "a person approved a brand that was never sent for review": [
+        ["approved by an owner but never sent", (t) => { const b = find(t.partner_brand, u(2)); b.approved_by = u(900); }]
+      ],
       "a reason note was left on an approved brand": [["old reason still there", (t) => { find(t.partner_brand, u(1)).review_note = "Fix the logo"; }]],
       "the partner is missing or belongs to another company": [["partner in another company", (t) => { find(t.partners, u(500)).org_id = OTHER; }]]
     },
     ignored: [
       ["a draft is not an approval", (t) => { const b = find(t.partner_brand, u(1)); b.approval_status = "draft"; b.approved_at = null; b.review_note = "fix"; }],
-      ["a brand approved before the review trail has no sender or approver", (t) => { const b = find(t.partner_brand, u(2)); b.approved_by = null; b.submitted_at = null; }]
+      ["a brand approved before the review trail has no sender or approver", (t) => { const b = find(t.partner_brand, u(2)); b.approved_by = null; b.submitted_at = null; }],
+      ["an approver who was demoted long after a decision older than 90 days is not a wrong result", (t) => {
+        const b = find(t.partner_brand, u(1));
+        b.approved_at = ago(100 * DAY);
+        b.submitted_at = ago(101 * DAY);
+        find(t.staff, u(900)).role = "closer";
+      }]
     ]
   });
   FIXTURES.set("brand-sent-back", {
@@ -583,15 +625,23 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     },
     sample: 2,
     breaks: {
-      "the reason is blank": [["blank reason", (t) => { find(t.partner_brand, u(1)).review_note = "   "; }]],
+      "the reason is blank": [
+        ["blank reason", (t) => { find(t.partner_brand, u(1)).review_note = "   "; }],
+        ["blank reason on a draft that was never sent", (t) => { const b = find(t.partner_brand, u(1)); b.submitted_at = null; b.review_note = "  "; }]
+      ],
       "the reason is longer than 2000 characters": [["a 2001 character reason", (t) => { find(t.partner_brand, u(1)).review_note = "x".repeat(2001); }]],
+      "a brand was sent back with no reason saved": [
+        // The Send it back button's whole point is the required reason. A brand that went back to draft
+        // with the time it was sent and no reason at all is that reason lost.
+        ["sent back to draft, reason not saved", (t) => { find(t.partner_brand, u(1)).review_note = null; }]
+      ],
       "a reason sits on a brand that is approved": [["approved with a reason", (t) => { const b = find(t.partner_brand, u(1)); b.approval_status = "approved"; b.approved_at = ago(DAY); }]],
       "a brand waiting for review still holds an old reason": [["review with a reason", (t) => { find(t.partner_brand, u(3)).review_note = "old complaint"; }, 1, 3]],
       "a brand that is not approved still names an approver": [["draft with an approver", (t) => { find(t.partner_brand, u(1)).approved_by = u(900); }]],
       "the partner is missing or belongs to another company": [["partner in another company", (t) => { find(t.partners, u(500)).org_id = OTHER; }]]
     },
     ignored: [
-      ["a brand with no note and no approver is not a sent-back brand", (t) => { const b = find(t.partner_brand, u(1)); b.review_note = null; }]
+      ["a draft that was never sent, with no reason and no approver, is not a sent-back brand", (t) => { const b = find(t.partner_brand, u(1)); b.review_note = null; b.submitted_at = null; }]
     ]
   });
 }

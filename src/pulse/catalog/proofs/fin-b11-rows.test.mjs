@@ -30,7 +30,7 @@ test("every listed row is one exact map row, and each is a tracked, non-repeat r
 
 test("each named test file exists, is a plain runnable test, and never opens a live site", () => {
   const files = new Set(FIN_B11_DISPLAY_PROOF_CASES.flatMap((c) => c.tests));
-  assert.equal(files.size, 4, [...files].join(", "));
+  assert.equal(files.size, 5, [...files].join(", "));
   for (const file of files) {
     assert.ok(file.endsWith(".test.mjs") && !file.includes(".pg."), `${file} is not a plain runnable test`);
     const full = path.join(ROOT, file);
@@ -54,6 +54,7 @@ test("every row has one proof case: a live check is a deep case naming the lane,
   for (const c of FIN_B11_DISPLAY_PROOF_CASES.filter((x) => x.depth === "e2e")) {
     assert.ok(!c.evidence.includes(FIN_B11_LANE), c.control);
     assert.equal(c.tests.length, 1);
+    assert.ok(c.tests[0].endsWith(".test.mjs") && !c.tests[0].endsWith("fin-b11-live-contracts.test.mjs"), c.control);
   }
 });
 
