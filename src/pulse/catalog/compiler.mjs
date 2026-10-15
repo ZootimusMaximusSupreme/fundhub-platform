@@ -37,7 +37,7 @@ export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases
         id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`,
         sourceFile, surface: row.surface, control: row.control, expected: row.control,
         contract: resultsByKey.get(key)?.contract || null,
-        retired: String(row.page || "") === "public/partner/autopsy/index.html"
+        retired: String(row.page || row.file || "") === "public/partner/autopsy/index.html"
       }];
     })).filter(Boolean)).values()];
   return { displayResultCases: resultCases, displayTrackingCases: trackingCases };
