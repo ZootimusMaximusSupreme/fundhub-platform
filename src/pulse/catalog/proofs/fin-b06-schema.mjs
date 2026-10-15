@@ -52,8 +52,13 @@ function tableName(raw) {
   return String(raw).replace(/^public\./i, "").replace(/"/g, "").toLowerCase();
 }
 
+// Tables that exist but are not made by a .sql file. db/migrate.mjs creates schema_migrations itself, and the
+// app role can read it (src/http/health.mjs does).
+const EXTRA_TABLES = Object.freeze({ schema_migrations: Object.freeze(["key", "applied_at"]) });
+
 export function loadSchema(root = ROOT) {
   const tables = new Map();
+  for (const [name, columns] of Object.entries(EXTRA_TABLES)) tables.set(name, new Set(columns));
   const dirs = [path.join(root, "db/schema"), path.join(root, "db/migrations")];
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;

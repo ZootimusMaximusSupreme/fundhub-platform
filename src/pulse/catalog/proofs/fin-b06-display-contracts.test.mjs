@@ -13,10 +13,13 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B06_CHECKS, FIN_B06_GAPS, FIN_B06_DISPLAY_CONTRACTS } from "./fin-b06-display-contracts.mjs";
-import { judgeCheck } from "./fin-b06-sql-kit.mjs";
+import { c as column, judgeCheck, realDay } from "./fin-b06-sql-kit.mjs";
 import { loadSchema, schemaProblems } from "./fin-b06-schema.mjs";
+import { runPrintedSql } from "./fin-b06-sqlite.mjs";
 import { displaySavedResultContract } from "./display-saved-result.mjs";
-import { FIN_B06_DISPLAY_PROOF_CASES } from "./fin-b06-display-practice.mjs";
+import {
+  FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS, FIN_B06_DISPLAY_PRACTICE_CONTROLS, FIN_B06_DISPLAY_PROOF_CASES
+} from "./fin-b06-display-practice.mjs";
 import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
 import { disclosureFor } from "../../../consent/disclosures.mjs";
 import { DISPLAY_RESULT_CASES, DISPLAY_TRACKING_CASES, gapChecks, judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
@@ -47,7 +50,7 @@ function run(key, db) {
 // ── stand-in worlds. Each returns fresh rows; a break edits them in place. ────────────────────────────
 
 const client = (over = {}) => ({ id: uid(), org_id: ORG, first_name: "Pat", last_name: "Lee", email: "pat@example.test", tags: [], custom_fields: {}, is_demo: false, ...over });
-const buyerTx = (clientId, code = BLUEPRINT) => ({ org_id: ORG, client_id: clientId, _product_code: code });
+const buyerTx = (clientId, code = BLUEPRINT, status = "succeeded") => ({ org_id: ORG, client_id: clientId, _product_code: code, status });
 
 const WORLDS = {
   "blueprint-credit-partner": {
@@ -72,7 +75,9 @@ const WORLDS = {
       "the partner has no last name": (db) => { db.clients.find((c) => c.first_name === "Part").last_name = "  "; },
       "the partner email has no at sign": (db) => { db.clients.find((c) => c.first_name === "Part").email = "pat.example.test"; },
       "the partner lost the Blueprint tag": (db) => { db.clients.find((c) => c.first_name === "Part").tags = []; },
-      "the primary client never bought the Blueprint": (db) => { db.transactions = [buyerTx(db.clients[0].id, "repair-trial")]; }
+      "the primary client never bought the Blueprint": (db) => { db.transactions = [buyerTx(db.clients[0].id, "repair-trial")]; },
+      "the primary client's only Blueprint order failed": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "failed")]; },
+      "the primary client's only Blueprint order is pending": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "pending")]; }
     }
   },
 
@@ -91,7 +96,21 @@ const WORLDS = {
     breaks: {
       "the saved day is not a day": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-13-40"; },
       "the saved day is words": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "next week"; },
-      "the client never bought the Blueprint": (db) => { db.transactions = []; }
+      "the saved day is 31 February (a JavaScript date rolls it to March, Postgres refuses it)": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-02-31"; },
+      "the saved day is 31 April": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-04-31"; },
+      "the saved day is 31 June": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-06-31"; },
+      "the saved day is 30 February": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2028-02-30"; },
+      "the saved day is 29 February of a year that is not a leap year": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2027-02-29"; },
+      "the saved day is 29 February of a century that is not a leap year": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2100-02-29"; },
+      "the saved day has padding": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = " 2026-11-02"; },
+      "the client never bought the Blueprint": (db) => { db.transactions = []; },
+      "the client's only Blueprint order failed": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "failed")]; }
+    },
+    stillGreen: {
+      "29 February of a leap year": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2028-02-29"; },
+      "29 February of a leap century": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2000-02-29"; },
+      "31 December": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-12-31"; },
+      "30 April": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-04-30"; }
     }
   },
 
@@ -101,7 +120,11 @@ const WORLDS = {
       return { clients: [buyer], transactions: [buyerTx(buyer.id)] };
     },
     sample: 1,
-    breaks: { "the flagged client never bought the Blueprint": (db) => { db.transactions = []; } }
+    breaks: {
+      "the flagged client never bought the Blueprint": (db) => { db.transactions = []; },
+      "the flagged client's only Blueprint order failed": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "failed")]; },
+      "the flagged client's only Blueprint order is pending": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "pending")]; }
+    }
   },
 
   "blueprint-tracker-taken-back": {
@@ -111,24 +134,46 @@ const WORLDS = {
       return { clients: [buyer, other], transactions: [buyerTx(buyer.id), buyerTx(other.id)] };
     },
     sample: 1,
-    breaks: { "the client never bought the Blueprint": (db) => { db.transactions = db.transactions.slice(1); } }
+    breaks: {
+      "the client never bought the Blueprint": (db) => { db.transactions = db.transactions.slice(1); },
+      "the client's only Blueprint order failed": (db) => { db.transactions[0].status = "failed"; },
+      "the client's only Blueprint order is pending": (db) => { db.transactions[0].status = "pending"; }
+    }
   },
 
   "blueprint-bank-todo": {
     world() {
-      const person = client();
+      const offered = client({ custom_fields: { blueprint_bank_tracker_offered: "true" } });
+      const takenBack = client({ custom_fields: { blueprint_bank_tracker_offered: "false" } });
+      const planned = client({ custom_fields: {} });
       return {
-        clients: [person],
-        blueprint_bank_relationship_todos: [{ id: uid(), org_id: ORG, client_id: person.id, bank_key: "us bank", account_kind: "personal", state: "open" }]
+        clients: [offered, takenBack, planned],
+        transactions: [buyerTx(offered.id), buyerTx(takenBack.id)],
+        blueprint_bank_relationship_todos: [
+          // the Add-bank button: no bank_name, on an offered buyer
+          { id: uid(), org_id: ORG, client_id: offered.id, bank_key: "us bank", account_kind: "personal", state: "open", bank_name: null, notes: "Call Monday." },
+          // the offer was taken back after the row was added: the row stays and is not wrong
+          { id: uid(), org_id: ORG, client_id: takenBack.id, bank_key: "chase", account_kind: "business", state: "done", bank_name: null, notes: null },
+          // FinanceOS wrote this one (it has a bank name and no offer gate): another control, not judged for the offer
+          { id: uid(), org_id: ORG, client_id: planned.id, bank_key: "wells fargo", account_kind: "personal", state: "open", bank_name: "Wells Fargo", notes: "  padded by another writer  " }
+        ]
       };
     },
-    sample: 1,
+    sample: 3,
     breaks: {
       "the client is in another company": (db) => { db.clients[0].org_id = OTHER_ORG; },
       "the bank key was saved in capitals": (db) => { db.blueprint_bank_relationship_todos[0].bank_key = "US Bank"; },
       "the bank key has padding": (db) => { db.blueprint_bank_relationship_todos[0].bank_key = " us bank "; },
-      "the bank key is blank": (db) => { db.blueprint_bank_relationship_todos[0].bank_key = " "; },
-      "the account kind is not personal or business": (db) => { db.blueprint_bank_relationship_todos[0].account_kind = "joint"; }
+      "the tracker was never offered to this client (the save is refused with 409)": (db) => { delete db.clients[0].custom_fields.blueprint_bank_tracker_offered; },
+      "the tracker flag is empty": (db) => { db.clients[0].custom_fields.blueprint_bank_tracker_offered = null; },
+      "the client never bought the Blueprint": (db) => { db.transactions = db.transactions.filter((tx) => tx.client_id !== db.clients[0].id); },
+      "the client's only Blueprint order failed": (db) => { db.transactions[0].status = "failed"; },
+      "the note is only spaces": (db) => { db.blueprint_bank_relationship_todos[0].notes = "   "; },
+      "the note was saved with padding": (db) => { db.blueprint_bank_relationship_todos[0].notes = " Call Monday. "; }
+    },
+    stillGreen: {
+      "the offer was taken back and a row from before stays": (db) => { db.clients[1].custom_fields.blueprint_bank_tracker_offered = "false"; },
+      "no note at all": (db) => { db.blueprint_bank_relationship_todos[0].notes = null; }
     }
   },
 
@@ -206,19 +251,29 @@ const WORLDS = {
   }
 };
 
-// Upload doors share one world builder.
-function documentWorld(kind, uploader) {
+// Upload doors share one world builder. The file the door wrote carries generated_by "<sender>:<id>" and a label.
+function documentWorld(kind, uploader, { selected }) {
   return () => {
     const person = client();
     const version = { id: uid(), org_id: ORG, storage_key: "k/abc", checksum: "sha256:aa", byte_size: 1200 };
     const document = {
       id: uid(), org_id: ORG, client_id: person.id, kind, subtype: "bank_statement", is_demo: false,
+      created_at: "2026-10-10T10:00:00Z",
+      generated_by: `${uploader}:x`,
       current_version_id: version.id, storage_key: "k/abc", checksum: "sha256:aa",
-      metadata: { uploaded_by: { kind: uploader, id: "x" }, label: { filed_as: "bank_statement", source: "given" } }
+      metadata: {
+        uploaded_by: { kind: uploader, id: "x" },
+        label: selected ? { given: "bank_statement", filed_as: "bank_statement", source: "given" } : { given: null, filed_as: "other", source: "none_given" }
+      }
     };
+    if (!selected) document.subtype = "other";
     version.document_id = document.id;
-    const elsewhere = { ...document, id: uid(), metadata: { uploaded_by: { kind: uploader === "staff" ? "client" : "staff", id: "y" } }, current_version_id: null };
-    return { clients: [person], documents: [document, elsewhere], document_versions: [version] };
+    const other = uploader === "staff" ? "client" : "staff";
+    // Another door's file of the same kind: not this door's.
+    const elsewhere = { ...document, id: uid(), generated_by: `${other}:y`, metadata: { uploaded_by: { kind: other, id: "y" }, label: { given: "x", filed_as: "other", source: "unrecognised" } }, current_version_id: null };
+    // A phone-text intake file: kind client_upload, no label, no uploader prefix. Another control.
+    const textIntake = { ...document, id: uid(), generated_by: "inbound-mms", metadata: { uploaded_by: { kind: "client", id: "z" }, classified_by: null }, current_version_id: null };
+    return { clients: [person], documents: [document, elsewhere, textIntake], document_versions: [version] };
   };
 }
 const DOCUMENT_BREAKS = {
@@ -229,52 +284,88 @@ const DOCUMENT_BREAKS = {
   "the document checksum differs from the version": (db) => { db.documents[0].checksum = "sha256:bb"; },
   "the file is zero bytes": (db) => { db.document_versions[0].byte_size = 0; },
   "the client is in another company": (db) => { db.clients[0].org_id = OTHER_ORG; },
-  "it was filed under another type than the one labeled": (db) => { db.documents[0].subtype = "other"; }
+  "it was filed under another type than the one labeled": (db) => { db.documents[0].subtype = "tax_return"; },
+  "the sender was not recorded in the file's metadata": (db) => { delete db.documents[0].metadata.uploaded_by; },
+  "the file names another kind of sender": (db) => { db.documents[0].metadata.uploaded_by.kind = db.documents[0].metadata.uploaded_by.kind === "staff" ? "client" : "staff"; },
+  "the label was never written (a file after the label shipped)": (db) => { delete db.documents[0].metadata.label; },
+  "the server did not know the type and filed it as other": (db) => {
+    Object.assign(db.documents[0].metadata.label, { given: "bureau_letter", filed_as: "other", source: "unrecognised" });
+    db.documents[0].subtype = "other";
+  },
+  "the type the person picked is not the type it was filed under": (db) => {
+    db.documents[0].metadata.label.given = "tax_return";
+  }
 };
-for (const [key, kind, uploader] of [
-  ["documents-staff-dropzone", "client_upload", "staff"],
-  ["documents-door-identity", "client_upload", "client"],
-  ["documents-door-inquiry", "inquiry_doc", "client"],
-  ["documents-door-bureau", "bureau_response", "client"]
+const DOOR_STILL_GREEN = {
+  "a client sent the file and picked no type (the select is optional): filed as other, nothing was chosen": (db) => {
+    Object.assign(db.documents[0].metadata.label, { given: null, filed_as: "other", source: "none_given" });
+    db.documents[0].subtype = "other";
+  },
+  "a file from before the label shipped, with no label": (db) => {
+    delete db.documents[0].metadata.label;
+    db.documents[0].created_at = "2026-08-20T10:00:00Z";
+  },
+  "the person picked other and it was filed as other": (db) => {
+    Object.assign(db.documents[0].metadata.label, { given: "other", filed_as: "other", source: "given" });
+    db.documents[0].subtype = "other";
+  }
+};
+for (const [key, kind, uploader, selected] of [
+  ["documents-staff-dropzone", "client_upload", "staff", false],
+  ["documents-door-identity", "client_upload", "client", true],
+  ["documents-door-inquiry", "inquiry_doc", "client", true],
+  ["documents-door-bureau", "bureau_response", "client", true]
 ]) {
-  WORLDS[key] = { world: documentWorld(kind, uploader), sample: 1, breaks: DOCUMENT_BREAKS };
+  WORLDS[key] = {
+    world: documentWorld(kind, uploader, { selected }),
+    sample: 1,
+    breaks: { ...DOCUMENT_BREAKS },
+    stillGreen: DOOR_STILL_GREEN
+  };
 }
+
+// Every deliverable subtype the portal can hand over (src/documents/kinds.mjs SUBTYPES.deliverable).
+const DELIVERABLE_SUBTYPES = [
+  "credit_analysis_report", "metro2_dispute_letter_pack", "credit_optimization_roadmap", "funding_snapshot",
+  "bank_lender_match_list", "business_duplication_map", "funding_inquiry_removal", "funding_personal_info",
+  "cfpb_complaint", "state_ag_complaint", "furnisher_validation"
+];
 
 Object.assign(WORLDS, {
   "documents-download-link": {
     world() {
-      const version = { id: uid(), org_id: ORG, storage_key: "k/roadmap" };
-      const document = { id: uid(), org_id: ORG, kind: "deliverable", subtype: "funding_snapshot", is_demo: false, current_version_id: version.id, storage_key: "k/roadmap" };
-      version.document_id = document.id;
+      const versions = [];
+      const documents = DELIVERABLE_SUBTYPES.map((subtype) => {
+        const version = { id: uid(), org_id: ORG, storage_key: `k/${subtype}` };
+        const document = { id: uid(), org_id: ORG, kind: "deliverable", subtype, is_demo: false, expires_at: null, current_version_id: version.id, storage_key: `k/${subtype}` };
+        version.document_id = document.id;
+        versions.push(version);
+        return document;
+      });
       const unrelated = { id: uid(), org_id: ORG, kind: "invoice_document", subtype: "deposit_invoice", is_demo: false, current_version_id: null, storage_key: "" };
-      return { documents: [document, unrelated], document_versions: [version] };
+      return { documents: [...documents, unrelated], document_versions: versions };
     },
-    sample: 1,
+    sample: DELIVERABLE_SUBTYPES.length,
     breaks: {
       "no current version": (db) => { db.documents[0].current_version_id = null; },
       "the document has no stored object": (db) => { db.documents[0].storage_key = ""; },
-      "the version has no stored object": (db) => { db.document_versions[0].storage_key = null; }
-    }
-  },
-
-  "identity-on-file-after-approval": {
-    world() {
-      const person = client();
-      return {
-        clients: [person],
-        pii_identity: [{ id: uid(), org_id: ORG, client_id: person.id, ssn_enc: "ciphertext" }],
-        client_consents: [
-          { id: uid(), org_id: ORG, client_id: person.id, kind: "soft_pull_consent", granted_by_kind: "client", capture_method: "typed", revoked_at: null, granted_at: "2026-09-30T00:00:00Z" },
-          // old, or recorded by staff on a call: not this control
-          { id: uid(), org_id: ORG, client_id: uid(), kind: "soft_pull_consent", granted_by_kind: "client", capture_method: "typed", revoked_at: null, granted_at: "2024-01-01T00:00:00Z" },
-          { id: uid(), org_id: ORG, client_id: uid(), kind: "soft_pull_consent", granted_by_kind: "staff", capture_method: "typed", revoked_at: null, granted_at: "2026-09-30T00:00:00Z" }
-        ]
-      };
+      "the version has no stored object": (db) => { db.document_versions[0].storage_key = null; },
+      // Each subtype on its own. The check once judged only the first five; the later subtypes are letters and complaints.
+      ...Object.fromEntries(DELIVERABLE_SUBTYPES.map((subtype, index) => [
+        `a ${subtype} deliverable has no stored object`,
+        (db) => { db.document_versions[index].storage_key = " "; }
+      ])),
+      "a deliverable that expires later has no stored object": (db) => {
+        db.documents[7].expires_at = "2030-01-01T00:00:00Z";
+        db.document_versions[7].storage_key = null;
+      }
     },
-    sample: 1,
-    breaks: {
-      "no identity row": (db) => { db.pii_identity = []; },
-      "the identity row has no encrypted number": (db) => { db.pii_identity[0].ssn_enc = null; }
+    stillGreen: {
+      "an expired deliverable has no stored object (the portal gives an expired file no link on purpose)": (db) => {
+        db.documents[7].expires_at = "2026-01-01T00:00:00Z";
+        db.document_versions[7].storage_key = null;
+        db.documents[7].current_version_id = null;
+      }
     }
   }
 });
@@ -417,28 +508,6 @@ Object.assign(WORLDS, {
       "a staff note is over the limit": (db) => { db.clients[0].custom_fields.staff_notes = "x".repeat(20001); },
       "a note is over the limit": (db) => { db.clients[1].custom_fields.notes = "y".repeat(20001); }
     }
-  },
-
-  "business-incorporated-stamp": {
-    world() {
-      const person = client();
-      return {
-        clients: [person],
-        businesses: [
-          { id: uid(), org_id: ORG, client_id: person.id, entity_data: { incorporated_date: "2021-03" }, age_months: 66 },
-          { id: uid(), org_id: ORG, client_id: person.id, entity_data: {}, age_months: null } // no date saved: not this control
-        ]
-      };
-    },
-    sample: 1,
-    breaks: {
-      "the client is in another company": (db) => { db.clients[0].org_id = OTHER_ORG; },
-      "the month is not a month": (db) => { db.businesses[0].entity_data.incorporated_date = "2021-13"; },
-      "the date was saved as words": (db) => { db.businesses[0].entity_data.incorporated_date = "March 2021"; },
-      "the age was never saved": (db) => { db.businesses[0].age_months = null; },
-      "the age is negative": (db) => { db.businesses[0].age_months = -1; },
-      "the age is older than the date allows": (db) => { db.businesses[0].age_months = 400; }
-    }
   }
 });
 
@@ -469,19 +538,44 @@ Object.assign(WORLDS, {
     world() {
       const staff = { id: uid(), org_id: ORG };
       const words = "Frozen contract words.";
+      const made = "2026-09-01T10:00:00Z";
+      const edited = "2026-10-01T10:00:00Z";
+      const migrated = "2026-09-20T09:00:01Z";
       return {
         staff: [staff],
-        contract_templates: [{ id: uid(), org_id: ORG, updated_by: staff.id, name: "Funding agreement", body: "New words.", signature_statement: "I agree.", is_demo: false }],
+        // a deploy ran a migration at 09:00 on 20 September
+        schema_migrations: [{ key: "db/migrations/288_real_contract_text.sql", applied_at: "2026-09-20T09:00:00Z" }],
+        contract_templates: [
+          // a text wording a person edited
+          { id: uid(), org_id: ORG, source_kind: "text", created_by: staff.id, updated_by: staff.id, created_at: made, updated_at: edited, is_demo: false },
+          // an uploaded PDF wording whose boxes were edited
+          { id: uid(), org_id: ORG, source_kind: "pdf", created_by: staff.id, updated_by: staff.id, created_at: made, updated_at: edited, is_demo: false },
+          // a seeded wording a migration rewrote: updated_at moved at deploy time and no editor is recorded
+          { id: uid(), org_id: ORG, source_kind: "text", created_by: staff.id, updated_by: null, created_at: made, updated_at: migrated, is_demo: false },
+          // a wording nobody has edited
+          { id: uid(), org_id: ORG, source_kind: "text", created_by: staff.id, updated_by: null, created_at: made, updated_at: made, is_demo: false }
+        ],
         contracts: [{ id: uid(), org_id: ORG, status: "sent", rendered_body: words, body_sha: sha(words), is_demo: false }]
       };
     },
-    sample: 2,
+    sample: 3,
     breaks: {
-      "the edited wording lost its name": (db) => { db.contract_templates[0].name = ""; },
-      "the edited wording lost its words": (db) => { db.contract_templates[0].body = ""; },
       "the editor is not staff in this company": (db) => { db.staff = []; },
+      "the editor is staff in another company": (db) => { db.staff[0].org_id = OTHER_ORG; },
+      "an edit stopped recording who made it (a text wording changed with no editor)": (db) => { db.contract_templates[0].updated_by = null; },
+      "an uploaded PDF wording was saved with no editor": (db) => { db.contract_templates[1].updated_by = null; },
+      "a wording was changed with no editor and no migration ran near that moment": (db) => {
+        db.contract_templates[3].updated_at = "2026-10-05T12:00:00Z";
+      },
       "a sent contract's words changed after it was sent": (db) => { db.contracts[0].rendered_body = "Edited after sending."; },
       "a sent contract has no fingerprint": (db) => { db.contracts[0].body_sha = null; }
+    },
+    stillGreen: {
+      "a seeded wording a migration rewrote has no editor": (db) => { db.contract_templates[2].updated_by = null; },
+      "a wording a person made and never edited has no editor": (db) => { db.contract_templates[3].updated_by = null; },
+      "a migration ran a few minutes after a staff edit of an unrecorded wording": (db) => {
+        db.contract_templates[3].updated_at = "2026-09-20T09:03:00Z";
+      }
     }
   },
 
@@ -610,10 +704,11 @@ Object.assign(WORLDS, {
   "inquiry-bureau-call": {
     world() {
       const person = client();
+      const call = (over = {}) => ({ id: uid(), org_id: ORG, client_id: person.id, kind: "inquiry_bureau", call_id: `call-${uid()}`, created_at: "2026-10-14T10:00:00Z", ...over });
       return {
         outbound_calls: [
-          { id: uid(), org_id: ORG, client_id: person.id, kind: "inquiry_bureau", call_id: "call-1" },
-          { id: uid(), org_id: ORG, client_id: uid(), kind: "other_call", call_id: "call-2" }
+          call(),
+          { id: uid(), org_id: ORG, client_id: uid(), kind: "other_call", call_id: "call-2", created_at: "2026-10-14T10:00:00Z" }
         ],
         pii_access_log: [{ id: uid(), org_id: ORG, client_id: person.id, field: "ssn (bureau_dispute_call)" }],
         inquiry_removal_cases: [{ id: uid(), org_id: ORG, client_id: person.id, call_fired_at: "2026-10-14T10:00:00Z" }],
@@ -625,28 +720,76 @@ Object.assign(WORLDS, {
       "the number-reveal was never logged": (db) => { db.pii_access_log = []; },
       "the log entry is for another reason": (db) => { db.pii_access_log[0].field = "ssn"; },
       "the case was never marked fired, so the scheduler would call again": (db) => { db.inquiry_removal_cases[0].call_fired_at = null; },
-      "the case is in another company": (db) => { db.inquiry_removal_cases[0].org_id = OTHER_ORG; }
+      "the case is in another company": (db) => { db.inquiry_removal_cases[0].org_id = OTHER_ORG; },
+      "a second launch on the same case placed a second call": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-again", created_at: "2026-10-14T11:00:00Z" });
+      },
+      "a call was placed for a second case whose fired stamp never landed": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-case-b", created_at: "2026-10-14T11:00:00Z" });
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: null });
+      },
+      "three calls and two fired cases": (db) => {
+        for (const id of ["call-b", "call-c"]) {
+          db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: id, created_at: "2026-10-14T11:00:00Z" });
+        }
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:00Z" });
+      }
+    },
+    stillGreen: {
+      "two cases, each fired and each called once": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-case-b", created_at: "2026-10-14T11:00:00Z" });
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:00Z" });
+      },
+      "a case the scheduler stamped fired with no call placed yet": (db) => {
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T09:00:00Z" });
+      },
+      "an old repeat from before the 30 day window": (db) => {
+        db.outbound_calls[0].created_at = "2026-08-01T10:00:00Z";
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-old", created_at: "2026-08-01T11:00:00Z" });
+        db.inquiry_removal_cases[0].call_fired_at = "2026-08-01T10:00:00Z";
+      }
     }
   },
 
   "repair-parse-confirmed": {
     world() {
       const staff = { id: uid(), org_id: ORG };
+      const person = client();
+      const row = (over = {}) => ({
+        id: uid(), org_id: ORG, client_id: person.id, confirmed: true, confidence: 0.99, parse_json: {},
+        confirmed_at: "2026-10-01T00:00:00Z", confirmed_by: null, created_at: "2026-10-01T00:00:00Z", ...over
+      });
       return {
-        staff: [staff],
+        staff: [staff], clients: [person],
         dispute_responses: [
-          { id: uid(), org_id: ORG, confirmed: true, confidence: 0.6, parse_json: {}, confirmed_at: "2026-10-01T00:00:00Z", confirmed_by: staff.id },
-          { id: uid(), org_id: ORG, confirmed: true, confidence: 0.99, parse_json: { heldForEscalation: true }, confirmed_at: "2026-10-01T00:00:00Z", confirmed_by: staff.id },
-          { id: uid(), org_id: ORG, confirmed: true, confidence: 0.99, parse_json: {}, confirmed_at: null, confirmed_by: null } // machine-confirmed, sure
+          row({ confidence: 0.6, confirmed_by: staff.id }),
+          row({ parse_json: { heldForEscalation: true }, confirmed_by: staff.id }),
+          row(), // machine-confirmed, sure: not one that needed a person
+          row({ confirmed: false, confirmed_at: null, confidence: 0.5, created_at: "2026-10-14T08:00:00Z" }) // waiting 4 hours: inside the clock
         ]
       };
     },
-    sample: 2,
+    sample: 3,
     breaks: {
       "no confirm time": (db) => { db.dispute_responses[0].confirmed_at = null; },
       "no confirming person": (db) => { db.dispute_responses[0].confirmed_by = null; },
       "the confirmer is not staff in this company": (db) => { db.staff = []; },
-      "a held-for-escalation answer was confirmed by nobody": (db) => { db.dispute_responses[1].confirmed_by = null; }
+      "a held-for-escalation answer was confirmed by nobody": (db) => { db.dispute_responses[1].confirmed_by = null; },
+      "an answer with no confidence at all was confirmed by nobody": (db) => { db.dispute_responses[2].confidence = null; },
+      "a low-confidence answer sits unchecked past the 24 hour clock": (db) => { db.dispute_responses[3].created_at = "2026-10-13T08:00:00Z"; },
+      "a held answer the list would hide (confident, not stamped held) sits unchecked for days": (db) => {
+        Object.assign(db.dispute_responses[3], { confidence: 0.97, parse_json: {}, created_at: "2026-10-10T08:00:00Z" });
+      },
+      "an unchecked answer whose confirmed flag is empty sits past the clock": (db) => {
+        Object.assign(db.dispute_responses[3], { confirmed: null, created_at: "2026-10-01T08:00:00Z" });
+      }
+    },
+    stillGreen: {
+      "an old unchecked answer on a demo client": (db) => {
+        db.clients[0].is_demo = true;
+        Object.assign(db.dispute_responses[3], { created_at: "2026-09-01T08:00:00Z" });
+      },
+      "an unchecked answer 23 hours old": (db) => { db.dispute_responses[3].created_at = "2026-10-13T13:00:00Z"; }
     }
   },
 
@@ -674,22 +817,48 @@ Object.assign(WORLDS, {
 // Consent worlds (the words come from the server's own wording table, read here so the test follows it).
 const DISPUTE_TEXT = String(disclosureFor("dispute_authorization", "dispute-auth-v1").text).trim();
 const CALL_TEXT = String(disclosureFor("call_recording", "call-recording-v1").text).trim();
+const MARKETING_TEXT = String(disclosureFor("marketing_use", "marketing-use-v1").text).trim();
+const SOFT_PULL_V1 = String(disclosureFor("soft_pull_consent", "soft-pull-v1").text).trim();
+const SOFT_PULL_V2 = String(disclosureFor("soft_pull_consent", "soft-pull-v2").text).trim();
+const SOFT_PULL_V3 = String(disclosureFor("soft_pull_consent", "soft-pull-v3").text).trim();
 
 Object.assign(WORLDS, {
   "consent-wording-matches-server": {
     world() {
-      return { client_consents: [
-        consentRow({ consent_text: ` ${DISPUTE_TEXT} ` }),
-        consentRow({ kind: "call_recording", consent_version: "call-recording-v1", consent_text: CALL_TEXT, capture_method: "typed" }),
-        consentRow({ kind: "soft_pull_consent", consent_version: "soft-pull-v9", consent_text: "anything" }) // not a kind this check judges
-      ] };
+      const people = [client(), client(), client(), client()];
+      const demo = client({ is_demo: true });
+      return {
+        clients: [...people, demo],
+        client_consents: [
+          consentRow({ client_id: people[0].id, consent_text: ` ${DISPUTE_TEXT} ` }),
+          consentRow({ client_id: people[1].id, kind: "call_recording", consent_version: "call-recording-v1", consent_text: CALL_TEXT, capture_method: "typed" }),
+          consentRow({ client_id: people[2].id, kind: "marketing_use", consent_version: "marketing-use-v1", consent_text: MARKETING_TEXT, capture_method: "typed" }),
+          consentRow({ client_id: people[3].id, kind: "soft_pull_consent", consent_version: "soft-pull-v2", consent_text: SOFT_PULL_V2, capture_method: "typed", granted_at: "2026-10-05T00:00:00Z" }),
+          // too old to judge: the wording table went in with the consent record, and older rows can predate it
+          consentRow({ client_id: people[0].id, kind: "soft_pull_consent", consent_version: null, consent_text: "legacy words", granted_at: "2026-07-20T00:00:00Z" }),
+          // a demo client's consent is not a real client's
+          consentRow({ client_id: demo.id, kind: "soft_pull_consent", consent_version: "soft-pull-v9", consent_text: "demo words", granted_at: "2026-10-05T00:00:00Z" })
+        ]
+      };
     },
-    sample: 2,
+    sample: 4,
     breaks: {
       "the stored words differ from the server's words": (db) => { db.client_consents[0].consent_text = `${DISPUTE_TEXT} Also anything else.`; },
       "the stored words are the body's own paragraph": (db) => { db.client_consents[1].consent_text = "A paragraph typed into the request body."; },
       "the version is not one the server holds": (db) => { db.client_consents[0].consent_version = "dispute-auth-v99"; },
-      "no version was stored": (db) => { db.client_consents[1].consent_version = null; }
+      "no version was stored": (db) => { db.client_consents[1].consent_version = null; },
+      "a marketing use consent carries the caller's words": (db) => { db.client_consents[2].consent_text = "Anything you like, typed by the caller."; },
+      "a marketing use consent names a version the server does not hold": (db) => { db.client_consents[2].consent_version = "marketing-use-v7"; },
+      "a soft pull consent carries the caller's words": (db) => { db.client_consents[3].consent_text = "I agree to whatever I was shown."; },
+      "a soft pull consent holds one version's words under another version's name": (db) => { db.client_consents[3].consent_text = SOFT_PULL_V1; },
+      "a soft pull consent names a version the server does not hold": (db) => { db.client_consents[3].consent_version = "soft-pull-v9"; },
+      "a recent soft pull consent stored no version": (db) => { db.client_consents[3].consent_version = null; },
+      "a soft pull consent was saved with words and a version that disagree by one character": (db) => { db.client_consents[3].consent_text = SOFT_PULL_V2.replace("Fundhub", "Fundhub,"); }
+    },
+    stillGreen: {
+      "a soft pull consent under version 1 carries version 1's words": (db) => { Object.assign(db.client_consents[3], { consent_version: "soft-pull-v1", consent_text: SOFT_PULL_V1 }); },
+      "a soft pull consent under version 3 carries version 3's words": (db) => { Object.assign(db.client_consents[3], { consent_version: "soft-pull-v3", consent_text: SOFT_PULL_V3 }); },
+      "an old soft pull consent with other words": (db) => { Object.assign(db.client_consents[3], { granted_at: "2026-07-15T00:00:00Z", consent_text: "older words", consent_version: null }); }
     }
   },
 
@@ -757,6 +926,62 @@ test("each check goes red on every deliberate break, and only that break", () =>
   assert.ok(breaks >= 150, `expected a broad set of breaks, ran ${breaks}`);
 });
 
+test("the printed SQL, run for real over the same stand-in rows, counts exactly what the judge counts", () => {
+  // Same worlds, same breaks, same "still green" cases. The judge and the SQL are two renderings of one definition,
+  // so this is what catches a typo or a wrong NULL rule that only shows in the SQL.
+  let runs = 0;
+  for (const [key, spec] of Object.entries(WORLDS)) {
+    const entry = checkByKey(key);
+    const cases = [["good world", (db) => db]];
+    for (const [label, mutate] of Object.entries(spec.breaks)) cases.push([`break: ${label}`, (db) => { mutate(db); return db; }]);
+    for (const [label, mutate] of Object.entries(spec.stillGreen || {})) cases.push([`still green: ${label}`, (db) => { mutate(db); return db; }]);
+    for (const [label, apply] of cases) {
+      const db = { now: NOW, ...apply(clone(spec.world())) };
+      const judged = judgeCheck(entry.parts, db, ORG);
+      const ran = runPrintedSql(entry.contract.sql, db, { orgId: ORG, nowIso: NOW });
+      assert.deepEqual(ran, judged, `${key} / ${label}: the SQL counts ${JSON.stringify(ran)}, the judge counts ${JSON.stringify(judged)}`);
+      runs += 1;
+    }
+  }
+  assert.ok(runs >= 250, `ran ${runs} cases`);
+});
+
+test("a real calendar day is the same answer in JavaScript, in the SQL, and against the calendar itself", () => {
+  const judge = realDay(column("c", "v"));
+  const days = [];
+  for (const year of [1900, 1999, 2000, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2099, 2100, 2101]) {
+    for (let month = 1; month <= 12; month += 1) {
+      for (let day = 1; day <= 31; day += 1) {
+        const text = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const at = new Date(`${text}T00:00:00Z`);
+        const real = !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 10) === text;
+        days.push([text, real]);
+      }
+    }
+  }
+  for (const text of ["0000-01-01", "2026-00-10", "2026-13-01", "2026-01-00", "2026-1-5", "26-01-05", " 2026-01-05", "2026-01-05 ", "2026/01/05", "next week", ""]) {
+    days.push([text, false]);
+  }
+  const entry = checkByKey("blueprint-ready-date");
+  const rows = days.filter(([text]) => text !== "").map(([text]) => ({ id: uid(), org_id: ORG, is_demo: false, custom_fields: { blueprint_next_sequence_ready_date: text } }));
+  const buyers = rows.map((row) => ({ org_id: ORG, client_id: row.id, _product_code: BLUEPRINT, status: "succeeded" }));
+  const db = { now: NOW, clients: rows, transactions: buyers };
+  const byId = new Map(rows.map((row) => [row.id, row.custom_fields.blueprint_next_sequence_ready_date]));
+  // Judge every day on its own, so one wrong day is named.
+  let wrongInJs = 0;
+  for (const [text, real] of days) {
+    if (text === "") continue;
+    assert.equal(judge.ev({ c: { v: text } }, db), real, `JavaScript says ${JSON.stringify(text)} is ${!real}`);
+    wrongInJs += real ? 0 : 1;
+  }
+  assert.ok(wrongInJs > 60, "the sweep includes many impossible days");
+  // The SQL over all of them at once: bad rows are exactly the days that are not on the calendar.
+  const expectedBad = days.filter(([text, real]) => text !== "" && !real).length;
+  const ran = runPrintedSql(entry.contract.sql, db, { orgId: ORG, nowIso: NOW });
+  assert.equal(ran.sample_count, byId.size);
+  assert.equal(ran.bad_count, expectedBad);
+});
+
 test("another company's rows are never counted", () => {
   for (const [key, spec] of Object.entries(WORLDS)) {
     const db = clone(spec.world());
@@ -816,7 +1041,7 @@ test("a wrong column in a check would be caught before it ships", () => {
 });
 
 test("the not-attachable controls say exactly what is missing and stay not proved without the live page", () => {
-  assert.equal(FIN_B06_GAPS.length, 1);
+  assert.equal(FIN_B06_GAPS.length, 2);
   for (const entry of FIN_B06_GAPS) {
     assert.equal(entry.mode, "always-red");
     assert.equal(entry.sql, null);
@@ -824,9 +1049,16 @@ test("the not-attachable controls say exactly what is missing and stay not prove
     // The pure judge never touches the network, so it never says "na". Only the lane's live read can.
     const out = judgeDisplayResult({ id: "x", surface: "s", control: entry.control, contract: entry }, { sample_count: 9, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED");
-    assert.equal(entry.notShipped.path, "/climate/");
-    assert.ok(entry.notShipped.markers.includes("climate-match"));
   }
+  const climate = FIN_B06_GAPS.find((entry) => entry.notShipped);
+  assert.equal(climate.notShipped.path, "/climate/");
+  assert.deepEqual([...climate.notShipped.paths], ["/climate/lender-climate/"]);
+  for (const marker of ["climate-match", "climate_match", "website:climate"]) assert.ok(climate.notShipped.markers.includes(marker), marker);
+  // The dead Save month/year button: not attachable, and it names the function that is missing.
+  const stamp = FIN_B06_GAPS.find((entry) => !entry.notShipped);
+  assert.equal(stamp.control, "Businesses cards: Save month/year button (stamp incorporation)");
+  assert.match(stamp.requirement, /stampIncorporatedAsStaff/);
+  assert.match(stamp.requirement, /ReferenceError/);
 });
 
 // ── wiring ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -843,7 +1075,7 @@ function mapRows() {
 
 test("each control text matches exactly one screen row, and the registry hands back its contract", () => {
   const rows = mapRows();
-  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 36);
+  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 35);
   for (const entry of FIN_B06_DISPLAY_CONTRACTS) {
     const hits = rows.filter((row) => row.control === entry.control);
     assert.equal(hits.length, 1, `${entry.control.slice(0, 60)}: matched ${hits.length} rows`);
@@ -895,16 +1127,29 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
   }
 });
 
-test("the four practice-tested controls are direct proofs: not in the live lane, and no contract claims them twice", () => {
-  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 4);
+test("the practice-tested controls are direct proofs; the consent screen and the three upload doors also keep a live check", () => {
+  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 9);
   const rows = mapRows();
   for (const entry of FIN_B06_DISPLAY_PROOF_CASES) {
     const hits = rows.filter((row) => row.sourceFile === entry.sourceFile && row.surface === entry.surface && row.control === entry.control);
     assert.equal(hits.length, 1, entry.control);
-    assert.equal(displaySavedResultContract(hits[0]), null, `${entry.control}: also has a saved-result contract`);
-    assert.equal(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), false, `${entry.control}: still judged by the live lane`);
     const kept = DISPLAY_PROOF_CASES.find((item) => item.control === entry.control && item.surface === entry.surface);
     assert.equal(kept.evidence, "src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs");
     assert.equal(kept.depth, "deep");
+    if (FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS.includes(entry.control)) {
+      // The words and version are judged on saved rows, and the lane still judges them.
+      assert.ok(displaySavedResultContract(hits[0]), `${entry.control}: the live check is kept`);
+      assert.ok(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), `${entry.control}: still judged by the live lane`);
+    } else {
+      assert.equal(displaySavedResultContract(hits[0]), null, `${entry.control}: also has a saved-result contract`);
+      assert.equal(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), false, `${entry.control}: still judged by the live lane`);
+    }
   }
+  assert.deepEqual([...FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS].sort(), [
+    "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
+    "Upload door: ID and personal documents (type select, Upload button, file picker)",
+    "Upload door: Inquiry documents (type select, Upload button, file picker)",
+    "Upload door: bureau response (type select, Upload button, file picker)"
+  ].sort());
+  assert.equal(FIN_B06_DISPLAY_PRACTICE_CONTROLS.length, 5);
 });

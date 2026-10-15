@@ -15,7 +15,7 @@ import {
 
 const PUBLIC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../public");
 const PHRASE = "See how many banks in our book fit your state";
-const CLAIM = Object.freeze({ path: "/climate/", markers: Object.freeze([PHRASE, "climate-match"]) });
+const CLAIM = Object.freeze({ path: "/climate/", paths: Object.freeze(["/climate/"]), markers: Object.freeze([PHRASE, "climate-match", "climate_match", "website:climate"]) });
 
 /** A stand-in site: { "/path": body | { status, body } }. Records every request and insists on GET + manual redirect. */
 function site(files, { origin = "https://fundhub.ai" } = {}) {
@@ -103,13 +103,13 @@ test("absence is never claimed from a read that did not finish", async () => {
   }
 });
 
-test("a page with more scripts than the cap is not judged from a partial read", async () => {
-  const many = Array.from({ length: 13 }, (_, i) => `<script src="/climate/_next/static/chunks/c${i}.js"></script>`).join("");
+test("a page that really loads more files than the cap is not judged from a partial read", async () => {
+  const many = Array.from({ length: 45 }, (_, i) => `<script src="/climate/_next/static/chunks/c${i}.js"></script>`).join("");
   const files = { "/climate/": `<html><body>${many}</body></html>` };
-  for (let i = 0; i < 13; i += 1) files[`/climate/_next/static/chunks/c${i}.js`] = "x";
+  for (let i = 0; i < 45; i += 1) files[`/climate/_next/static/chunks/c${i}.js`] = "x";
   const out = await readShipState(CLAIM, { fetchImpl: site(files).fetchImpl });
   assert.equal(out.state, "unread");
-  assert.match(out.reason, /13 scripts/);
+  assert.match(out.reason, /more than 40 files/);
 });
 
 test("other sites' scripts are never fetched, and a repeated script is fetched once", async () => {
@@ -132,11 +132,14 @@ test("no GET client, a bad base address, and a bad claim are all unread, never a
 
 test("a claim must name a path on the site and at least one word or door", () => {
   const entry = (notShipped) => ({ contract: { notShipped } });
-  assert.deepEqual(shipClaim(entry({ path: "/climate/", markers: ["a"] })), { path: "/climate/", markers: ["a"] });
+  assert.deepEqual(shipClaim(entry({ path: "/climate/", markers: ["a"] })), { path: "/climate/", paths: ["/climate/"], markers: ["a"] });
+  assert.deepEqual(shipClaim(entry({ path: "/climate/", paths: ["/climate/x/", "/climate/"], markers: ["a"] })),
+    { path: "/climate/", paths: ["/climate/", "/climate/x/"], markers: ["a"] });
   for (const bad of [
     undefined, null, {}, { path: "climate/", markers: ["a"] }, { path: "//evil.example/", markers: ["a"] },
     { path: "/climate/", markers: [] }, { path: "/climate/", markers: [""] }, { path: "/climate/", markers: [7] },
     { path: "/climate/" }, { path: "", markers: ["a"] },
+    { path: "/climate/", paths: ["//evil.example/"], markers: ["a"] }, { path: "/climate/", paths: "/x/", markers: ["a"] },
   ]) assert.equal(shipClaim(entry(bad)), null, JSON.stringify(bad));
   assert.equal(shipClaim(null), null);
   assert.equal(shipClaim({ contract: null }), null);
@@ -149,6 +152,227 @@ test("two controls on one page cost one page read", async () => {
   const rows = await judgeNotShipped(entries, { fetchImpl });
   assert.equal(rows.size, 2);
   assert.equal(requests.filter((href) => href.endsWith("/climate/")).length, 1);
+});
+
+// ───────────────────────── the ways to hide a button that the read must see through ─────────────────────────
+// A checker broke the first version of this read four ways: a chunk loaded by import(), a page inside an iframe,
+// words split by a tag, and words joined at run time. Each is a way a shipped button stayed "nothing to judge".
+
+const SPLIT = "See how many banks in our book fit your state";
+
+test("a chunk loaded by import() from a listed script is followed", async () => {
+  const { fetchImpl } = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `import("/climate/_next/static/chunks/lead.js").then(function(m){m.go()});`,
+    "/climate/_next/static/chunks/lead.js": `h("button",{children:"${PHRASE}"})`
+  });
+  const out = await readShipState(CLAIM, { fetchImpl });
+  assert.equal(out.state, "present");
+  assert.deepEqual(out.found, [PHRASE]);
+});
+
+test("a chunk that is only named in a relative import, a static import and a worker is followed", async () => {
+  for (const [label, code] of [
+    ["relative import()", `import("./lead.js")`],
+    ["static import from", `import { go } from "./lead.js"; go();`],
+    ["bare static import", `import "./lead.js";`],
+    ["worker", `new Worker("./lead.js")`],
+    ["importScripts", `importScripts("./lead.js")`]
+  ]) {
+    const { fetchImpl } = site({
+      ...GOOD,
+      "/climate/_next/static/chunks/main.js": code,
+      "/climate/_next/static/chunks/lead.js": `document.title = "${PHRASE}"`
+    });
+    assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present", label);
+  }
+});
+
+test("a module with no file extension that a script imports is followed, so a missing .js cannot hide it", async () => {
+  for (const [label, code] of [
+    ["import()", `import("/climate/lead")`],
+    ["static import from", `import { go } from "/climate/lead"; go();`],
+    ["bare static import", `import "/climate/lead";`],
+    ["worker", `new SharedWorker("/climate/lead")`]
+  ]) {
+    const { fetchImpl } = site({
+      ...GOOD,
+      "/climate/_next/static/chunks/main.js": code,
+      "/climate/lead": `document.title = "${PHRASE}"`
+    });
+    assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present", label);
+  }
+});
+
+test("a page inside an iframe is read", async () => {
+  const { fetchImpl } = site({
+    ...GOOD,
+    "/climate/": PAGE('<iframe src="/climate/lead/"></iframe>'),
+    "/climate/lead/": `<!doctype html><html><body><button>${PHRASE}</button></body></html>`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present");
+});
+
+test("a preloaded module that no script tag names is followed", async () => {
+  const { fetchImpl } = site({
+    ...GOOD,
+    "/climate/": PAGE('<link rel="modulepreload" href="/climate/_next/static/chunks/lead.js">'),
+    "/climate/_next/static/chunks/lead.js": `export default "${PHRASE}"`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present");
+});
+
+test("words split by tags, entities and line breaks are still found", async () => {
+  const pages = {
+    "a bold tag in the middle": "See how many banks <b>in our book</b> fit your state",
+    "a tag with no space on either side": "See how many banks<span></span> in our book fit<br>your state",
+    "non-breaking spaces": "See&nbsp;how&nbsp;many banks in our book fit your state",
+    "numeric entities": "See how many banks in our book fit your st&#97;te",
+    "every word in its own span": SPLIT.split(" ").map((w) => `<span>${w}</span>`).join(" "),
+    "words with no space between spans": SPLIT.split(" ").map((w) => `<span>${w}</span>`).join("")
+  };
+  for (const [label, html] of Object.entries(pages)) {
+    const { fetchImpl } = site({ ...GOOD, "/climate/": PAGE(`<h2>${html}</h2>`) });
+    assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present", label);
+  }
+});
+
+test("words put together at run time from literals are found", async () => {
+  const codes = {
+    "plus": `h("button",{children:"See how many "+"banks in our book "+"fit your state"})`,
+    "plus with single quotes and spaces": `var t = 'See how many banks ' + 'in our book fit ' + 'your state';`,
+    "concat": `var t = "See how many banks ".concat("in our book fit your state");`,
+    "array join": `var t = ["See how many","banks in our book","fit your state"].join(" ");`,
+    "array join with an empty glue": `var t = ["See how many ","banks in our book ","fit your state"].join("");`,
+    "base64": `var t = atob("${Buffer.from(PHRASE).toString("base64")}");`,
+    "char codes": `var t = String.fromCharCode(${[...PHRASE].map((ch) => ch.charCodeAt(0)).join(",")});`,
+    "escaped inside a JSON payload": `self.__next_f.push([1,"{\\"text\\":\\"${PHRASE}\\"}"])`,
+    "unicode escapes": `var t = "See how many banks in our book fit your \\u0073tate";`
+  };
+  for (const [label, code] of Object.entries(codes)) {
+    const { fetchImpl } = site({ ...GOOD, "/climate/_next/static/chunks/app/page.js": code });
+    assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present", label);
+  }
+});
+
+test("the lead door built from pieces, or its channel label, is found too", async () => {
+  for (const [label, code] of [
+    ["door joined with plus", `fetch("/api/public/"+"climate-match",{method:"POST"})`],
+    ["door with an underscore", `fetch("/api/public/climate_match")`],
+    ["channel label", `payload.source = "website:climate";`]
+  ]) {
+    const { fetchImpl } = site({ ...GOOD, "/climate/_next/static/chunks/main.js": code });
+    assert.equal((await readShipState(CLAIM, { fetchImpl })).state, "present", label);
+  }
+});
+
+test("a lazy chunk named by a build payload or a chunk map is followed", async () => {
+  // Next puts "static/chunks/<name>.js" strings in the page payload; the file is under /climate/_next/.
+  const named = site({
+    ...GOOD,
+    "/climate/": PAGE(`<script>self.__next_f.push([1,"6:I[3654,[\\"375\\",\\"static/chunks/lazy-0a1b2c3d.js\\"],\\"default\\"]"])</script>`),
+    "/climate/_next/static/chunks/lazy-0a1b2c3d.js": `export default "${PHRASE}"`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl: named.fetchImpl })).state, "present");
+
+  // A webpack chunk map: ids and hashes make the file names.
+  const mapped = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/webpack.js": `n.u=function(e){return"static/chunks/"+e+"-"+{117:"92e5c7d1924bf491",931:"b71b32356ee1b98a"}[e]+".js"}`,
+    "/climate/_next/static/chunks/931-b71b32356ee1b98a.js": `export default "${PHRASE}"`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl: mapped.fetchImpl })).state, "present");
+});
+
+test("a chain of files four hops from the page is followed", async () => {
+  const files = {
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `import("./one.js")`,
+    "/climate/_next/static/chunks/one.js": `import("./two.js")`,
+    "/climate/_next/static/chunks/two.js": `import("./three.js")`,
+    "/climate/_next/static/chunks/three.js": `export default "${PHRASE}"`
+  };
+  assert.equal((await readShipState(CLAIM, { fetchImpl: site(files).fetchImpl })).state, "present");
+  const clean = { ...files, "/climate/_next/static/chunks/three.js": "export default 1" };
+  const out = await readShipState(CLAIM, { fetchImpl: site(clean).fetchImpl });
+  assert.equal(out.state, "absent");
+  assert.equal(out.scripts, 6, "three scripts on the page, plus one, two and three");
+});
+
+test("a file the page really loads that fails is not read as absent, but a path that was only guessed may be missing", async () => {
+  const required = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `import("/climate/_next/static/chunks/gone.js")`,
+    "/climate/_next/static/chunks/gone.js": { status: 404, body: "" }
+  });
+  const out = await readShipState(CLAIM, { fetchImpl: required.fetchImpl });
+  assert.equal(out.state, "unread");
+  assert.match(out.reason, /answered 404/);
+
+  // A string that merely looks like a script path, and is not there, is not a failed load.
+  const guessed = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `var a = "vendor/optional-thing.js"; var b = "/x/missing.html";`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl: guessed.fetchImpl })).state, "absent");
+
+  // ...but a guessed path that is there and carries the button is found.
+  const there = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `var a = "/climate/extra.js";`,
+    "/climate/extra.js": `x = "${PHRASE}"`
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl: there.fetchImpl })).state, "present");
+
+  // A guessed path that fails some other way (a server error) cannot be read as absent.
+  const flaky = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `var a = "/climate/extra.js";`,
+    "/climate/extra.js": { status: 503, body: "" }
+  });
+  assert.equal((await readShipState(CLAIM, { fetchImpl: flaky.fetchImpl })).state, "unread");
+});
+
+test("guessed paths past the cap are dropped, and never make the answer a partial one", async () => {
+  const guesses = Array.from({ length: 80 }, (_, i) => `"/climate/g${i}.js"`).join(",");
+  const { fetchImpl, requests } = site({ ...GOOD, "/climate/_next/static/chunks/main.js": `var a=[${guesses}];` });
+  const out = await readShipState(CLAIM, { fetchImpl });
+  assert.equal(out.state, "absent");
+  assert.ok(requests.length <= 40, `read ${requests.length} files, the cap is 40`);
+});
+
+test("the sibling route under /climate/ is read when the claim lists it", async () => {
+  const claim = { path: "/climate/", paths: ["/climate/", "/climate/lender-climate/"], markers: [PHRASE] };
+  const clean = site({ ...GOOD, "/climate/lender-climate/": PAGE() });
+  assert.equal((await readShipState(claim, { fetchImpl: clean.fetchImpl })).state, "absent");
+  const shipped = site({ ...GOOD, "/climate/lender-climate/": PAGE(`<button>${PHRASE}</button>`) });
+  assert.equal((await readShipState(claim, { fetchImpl: shipped.fetchImpl })).state, "present");
+  const gone = site({ ...GOOD, "/climate/lender-climate/": { status: 404, body: "<html></html>" } });
+  assert.equal((await readShipState(claim, { fetchImpl: gone.fetchImpl })).state, "unread");
+});
+
+test("a slow site cannot hold the lane: the whole read has one time budget and ends as not read", async (t) => {
+  const { fetchImpl } = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `import("./one.js")`,
+    "/climate/_next/static/chunks/one.js": `export default 1`
+  });
+  let clock = 1_000_000;
+  t.mock.method(Date, "now", () => { const at = clock; clock += 3_000; return at; });
+  const out = await readShipState(CLAIM, { fetchImpl });
+  assert.equal(out.state, "unread");
+  assert.match(out.reason, /ran out of time/);
+});
+
+test("a read never leaves the site, whatever the page names", async () => {
+  const { fetchImpl, requests } = site({
+    ...GOOD,
+    "/climate/_next/static/chunks/main.js": `import("https://evil.example/x.js"); var a = "//evil.example/y.js"; new Worker("https://cdn.example.net/w.js");`,
+    "/climate/": PAGE('<iframe src="https://other.example.org/frame.html"></iframe>')
+  });
+  const out = await readShipState(CLAIM, { fetchImpl });
+  assert.equal(out.state, "absent");
+  assert.ok(requests.every((href) => href.startsWith("https://fundhub.ai/")));
 });
 
 // ───────────────────────── the real shipped page ─────────────────────────

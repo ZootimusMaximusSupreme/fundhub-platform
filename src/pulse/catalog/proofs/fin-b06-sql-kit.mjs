@@ -216,6 +216,19 @@ export function afterNow(expr) {
   };
 }
 
+/** expr >= a fixed moment (an ISO text, UTC). For "only rows written after the code that writes this field shipped". */
+export function onOrAfter(expr, iso) {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) throw new Error("onOrAfter needs an ISO moment");
+  return {
+    sql: `COALESCE(${expr.sql} >= ${quote(at.toISOString())}::timestamptz, false)`,
+    ev: (ctx, db) => {
+      const v = expr.ev(ctx, db);
+      return v !== null && v !== undefined && new Date(v).getTime() >= at.getTime();
+    }
+  };
+}
+
 /** lower(btrim(expr)) */
 export function lowerTrim(expr) {
   return { sql: `lower(btrim(${expr.sql}))`, ev: (ctx, db) => { const v = text(expr.ev(ctx, db)); return v === null ? null : v.trim().toLowerCase(); } };
@@ -259,6 +272,40 @@ export function matches(expr, pattern) {
 export function notMatches(expr, pattern) {
   const inner = matches(expr, pattern);
   return { sql: `NOT ${inner.sql}`, ev: (ctx, db) => !inner.ev(ctx, db) };
+}
+
+/** expr starts with a fixed prefix. The prefix may not hold LIKE wildcards. */
+export function startsWith(expr, prefix) {
+  if (/[%_\\]/.test(prefix)) throw new Error("a prefix may not hold %, _ or a backslash");
+  return {
+    sql: `COALESCE(${expr.sql}::text LIKE ${quote(`${prefix}%`)}, false)`,
+    ev: (ctx, db) => { const v = text(expr.ev(ctx, db)); return v !== null && v.startsWith(prefix); }
+  };
+}
+
+/**
+ * expr is a REAL calendar day written YYYY-MM-DD: a month has the days it has, and 29 February needs a leap
+ * year. This is the question Postgres asks when it casts the text to a date (a day that is not on the calendar
+ * raises there), and it never raises itself: the year is only cast after the text has matched ^YYYY-02-29$.
+ */
+export function realDay(expr) {
+  const year = "(000[1-9]|00[1-9][0-9]|0[1-9][0-9][0-9]|[1-9][0-9][0-9][0-9])";
+  const plain = `^${year}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))$`;
+  const leapDay = "^[0-9][0-9][0-9][0-9]-02-29$";
+  const plainRe = new RegExp(plain);
+  const leapRe = new RegExp(leapDay);
+  const y = `substr((${expr.sql})::text, 1, 4)::int`;
+  return {
+    sql: `(COALESCE((${expr.sql})::text ~ ${quote(plain)}, false)\n         OR CASE WHEN (${expr.sql})::text ~ ${quote(leapDay)}\n                 THEN (${y} > 0 AND ${y} % 4 = 0 AND (${y} % 100 <> 0 OR ${y} % 400 = 0)) ELSE false END)`,
+    ev: (ctx, db) => {
+      const v = text(expr.ev(ctx, db));
+      if (v === null) return false;
+      if (plainRe.test(v)) return true;
+      if (!leapRe.test(v)) return false;
+      const year = Number(v.slice(0, 4));
+      return year > 0 && year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    }
+  };
 }
 
 export function and(...parts) {
@@ -310,16 +357,24 @@ export function elem(alias) {
   return { sql: alias, ev: (ctx) => (ctx[alias] ? ctx[alias].__json : null) };
 }
 
-/** True when the client has a paid-or-not Blueprint transaction. resolve_product_id is stood in by tx._product_code. */
-export function hasBlueprintTransaction(clientExpr, orgAlias, productCode) {
+/**
+ * True when the client has a PAID Capital Blueprint transaction: the same gate the handlers run
+ * (isCapitalBlueprintBuyer in src/blueprint/coach-exception.mjs): the product is the Blueprint and the
+ * status, lower-cased and trimmed, is the paid one. A failed or pending order does not count.
+ * Nothing in the repo UPDATEs transactions.status after it is written, so a later refund leaves it paid and
+ * cannot turn an old flag red. resolve_product_id is stood in by tx._product_code in the stand-in rows.
+ */
+export function hasBlueprintTransaction(clientExpr, orgAlias, productCode, paidStatus = "succeeded") {
   const code = quote(String(productCode).toLowerCase());
+  const paid = String(paidStatus).trim().toLowerCase();
   return {
-    sql: `EXISTS (SELECT 1 FROM transactions tx JOIN products pr ON pr.id = resolve_product_id(tx.org_id, tx.product_name)\n                  WHERE tx.org_id = ${orgAlias}.org_id AND tx.client_id = ${clientExpr.sql}\n                    AND lower(pr.code) = ${code})`,
+    sql: `EXISTS (SELECT 1 FROM transactions tx JOIN products pr ON pr.id = resolve_product_id(tx.org_id, tx.product_name)\n                  WHERE tx.org_id = ${orgAlias}.org_id AND tx.client_id = ${clientExpr.sql}\n                    AND lower(pr.code) = ${code}\n                    AND lower(btrim(COALESCE(tx.status, ''))) = ${quote(paid)})`,
     ev: (ctx, db) => {
       const clientId = clientExpr.ev(ctx, db);
       const orgId = ctx[orgAlias] ? ctx[orgAlias].org_id : null;
       return (db.transactions || []).some((tx) => tx.org_id === orgId && tx.client_id === clientId
-        && String(tx._product_code || "").toLowerCase() === String(productCode).toLowerCase());
+        && String(tx._product_code || "").toLowerCase() === String(productCode).toLowerCase()
+        && String(tx.status ?? "").trim().toLowerCase() === paid);
     }
   };
 }

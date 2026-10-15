@@ -75,7 +75,8 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     }
   }
 
-  assert.equal(redCount, 662, "Display red count changed; inspect every new exact proof");
+  // 662 became 661 in batch 06 repair cycle 1: the identity-on-file row has a practice test now (fin-b06-display-browser).
+  assert.equal(redCount, 661, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {

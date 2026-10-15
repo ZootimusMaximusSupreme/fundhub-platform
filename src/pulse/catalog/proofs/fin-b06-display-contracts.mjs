@@ -12,15 +12,21 @@ import { createHash } from "node:crypto";
 
 import { OFFERS } from "../../../config/offers.mjs";
 import { disclosureFor, versionsFor } from "../../../consent/disclosures.mjs";
+import { PAID_TRANSACTION_STATUS } from "../../../entitlements/entitlements.mjs";
+import { STAGE_SLA } from "../../../repair/sla.mjs";
 import {
   afterNow, and, blank, bodyHash, c, charLength, contract, custom, distinct, elem, eq, equal, exists, existsElement,
   gt, hasBlueprintTransaction, isNull, jsonGet, jtext, jtype, lit, lowerTrim, lt, matches, missing, newerThanDays,
-  not, notDemo, notMatches, notNull, notOneOf, numberFrom, olderThanMinutes, oneOf, or, part, trimmed, earlier,
-  valuesTable
+  not, notDemo, notMatches, notNull, notOneOf, numberFrom, olderThanMinutes, oneOf, or, part, realDay, startsWith,
+  trimmed, earlier, valuesTable, onOrAfter
 } from "./fin-b06-sql-kit.mjs";
 
 const sha256Hex = (value) => createHash("sha256").update(value, "utf8").digest("hex");
 const BLUEPRINT = OFFERS.UWIQ_DELIVERABLES.productCode;
+
+/** The handlers' own gate (isCapitalBlueprintBuyer): a Blueprint order whose status is the paid one. */
+const boughtBlueprint = (clientExpr, orgAlias) =>
+  hasBlueprintTransaction(clientExpr, orgAlias, BLUEPRINT, PAID_TRANSACTION_STATUS);
 
 export const FIN_B06_CHECKS = [];
 
@@ -54,7 +60,7 @@ const hasPartnerTag = custom(
 check(
   "blueprint-credit-partner",
   "Capital Blueprint: Add credit partner button and First/Last/Email/Phone inputs",
-  "Every live credit-partner link must point at a real partner client in the same company with a first name, last name, an email and the Blueprint partner tag, on a primary client who bought the Capital Blueprint.",
+  "Every live credit-partner link must point at a real partner client in the same company with a first name, last name, an email and the Blueprint partner tag, on a primary client who bought the Capital Blueprint (a paid order; a failed or pending one does not count).",
   part({
     table: "credit_partner_links", alias: "l",
     joins: [
@@ -67,7 +73,7 @@ check(
       blank(c("p", "first_name")), blank(c("p", "last_name")),
       notMatches(c("p", "email"), "@"),
       not(hasPartnerTag),
-      not(hasBlueprintTransaction(c("l", "primary_client_id"), "l", BLUEPRINT))
+      not(boughtBlueprint(c("l", "primary_client_id"), "l"))
     )
   })
 );
@@ -76,13 +82,13 @@ const READY_DATE = jtext(c("c", "custom_fields"), "blueprint_next_sequence_ready
 check(
   "blueprint-ready-date",
   "Capital Blueprint: Save ready date button",
-  "Every client with a saved next-funding-sequence ready date must hold a real YYYY-MM-DD day and must be a Capital Blueprint buyer, because the daily closer alert reads that day.",
+  "Every client with a saved next-funding-sequence ready date must hold a REAL calendar day written YYYY-MM-DD (a 31 February is not one, and 29 February needs a leap year) and must be a paying Capital Blueprint buyer. The daily closer alert casts every saved day to a date in the database, and one day that is not on the calendar makes that read fail for the whole company.",
   part({
     table: "clients", alias: "c",
     where: and(notDemo("c"), not(blank(READY_DATE))),
     bad: or(
-      notMatches(READY_DATE, "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"),
-      not(hasBlueprintTransaction(c("c", "id"), "c", BLUEPRINT))
+      not(realDay(READY_DATE)),
+      not(boughtBlueprint(c("c", "id"), "c"))
     )
   })
 );
@@ -91,37 +97,45 @@ const TRACKER_FLAG = jtext(c("c", "custom_fields"), "blueprint_bank_tracker_offe
 check(
   "blueprint-tracker-offered",
   "Capital Blueprint: Offer bank tracker button",
-  "Every client flagged as offered the bank tracker must be a Capital Blueprint buyer, because the offer is refused for anyone else.",
+  "Every client flagged as offered the bank tracker must be a Capital Blueprint buyer with a paid order, because the offer is refused for anyone else. A failed or pending order does not count.",
   part({
     table: "clients", alias: "c",
     where: and(notDemo("c"), eq(TRACKER_FLAG, lit("true"))),
-    bad: not(hasBlueprintTransaction(c("c", "id"), "c", BLUEPRINT))
+    bad: not(boughtBlueprint(c("c", "id"), "c"))
   })
 );
 
 check(
   "blueprint-tracker-taken-back",
   "Capital Blueprint: Take the offer back button",
-  "Every client whose bank tracker offer was taken back must be a Capital Blueprint buyer, because the switch is refused for anyone else.",
+  "Every client whose bank tracker offer was taken back must be a Capital Blueprint buyer with a paid order, because the switch is refused for anyone else. A failed or pending order does not count.",
   part({
     table: "clients", alias: "c",
     where: and(notDemo("c"), eq(TRACKER_FLAG, lit("false"))),
-    bad: not(hasBlueprintTransaction(c("c", "id"), "c", BLUEPRINT))
+    bad: not(boughtBlueprint(c("c", "id"), "c"))
   })
 );
 
+// The Add-bank control (api/blueprint/staff-actions.mjs add_bank_todo) writes a row with NO bank_name. FinanceOS
+// (src/finance/bank-strategy.mjs planBank / openAccount) writes the same table WITH a bank_name and no offer gate.
+// So a row with no bank_name was written by this control, and the offer gate applies to it. The offer can be taken
+// back later (flag "false"), which leaves the rows in place, so only a client who was never offered is wrong.
+const TODO_CLIENT_FLAG = jtext(c("k", "custom_fields"), "blueprint_bank_tracker_offered");
 check(
   "blueprint-bank-todo",
   "Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs)",
-  "Every saved bank-list row must sit on a client in the same company, with the bank key trimmed to lower case and an account kind of personal or business.",
+  "Every bank-list row saved by this button (a row with no FinanceOS bank name) must sit on a client in the same company who was offered the bank tracker and is a paying Capital Blueprint buyer, because the save is refused otherwise; its bank key must be trimmed lower case, and its note either empty or real words with no padding. (A blank bank key and an account kind other than personal or business are refused by database rules, so they are not judged here.)",
   part({
     table: "blueprint_bank_relationship_todos", alias: "t",
     joins: [sameClient("k", "t", "client_id")],
     bad: or(
       isNull(c("k", "id")),
-      blank(c("t", "bank_key")),
       distinct(c("t", "bank_key"), lowerTrim(c("t", "bank_key"))),
-      notOneOf(c("t", "account_kind"), ["personal", "business"])
+      and(isNull(c("t", "bank_name")), or(
+        isNull(TODO_CLIENT_FLAG),
+        not(boughtBlueprint(c("t", "client_id"), "t")),
+        and(notNull(c("t", "notes")), or(blank(c("t", "notes")), distinct(c("t", "notes"), trimmed(c("t", "notes")))))
+      ))
     )
   })
 );
@@ -204,6 +218,19 @@ check(
 
 // ───────────────────────── Documents: drop zone, upload doors, download link ─────────────────────────
 
+// api/documents-upload.mjs stamps `metadata.label` { given, filed_as, source } on every file since 2026-09-06
+// (commit 7d9a80f58). Older files have no label, so the label rules only judge files written after that day.
+const LABEL_WRITTEN_SINCE = "2026-09-07T00:00:00Z";
+const LABEL = (key) => jtext(c("d", "metadata"), "label", key);
+
+/**
+ * One upload door. The door's own files are the ones api/documents-upload.mjs wrote for this kind, and that
+ * handler is the only writer that sets generated_by to "<staff|client>:<id>" (the phone-text intake sets
+ * "inbound-mms" and is another door). The type select is optional ("What is this? (helps us file it)"), so a
+ * file sent with no type is filed as other and is not wrong; what a saved row CAN show is a chosen type the
+ * server did not know. Whether the page sends the door's kind and the chosen type is a practice test of the page
+ * (fin-b06-display-browser.test.mjs), because a dropped choice looks the same as no choice in a saved row.
+ */
 function uploadDoor(key, control, requirement, { kind, uploader }) {
   check(key, control, requirement, part({
     table: "documents", alias: "d",
@@ -211,7 +238,7 @@ function uploadDoor(key, control, requirement, { kind, uploader }) {
       { table: "document_versions", alias: "v", on: and(eq(c("v", "id"), c("d", "current_version_id")), eq(c("v", "document_id"), c("d", "id"))) },
       sameClient("k", "d", "client_id")
     ],
-    where: and(notDemo("d"), eq(c("d", "kind"), lit(kind)), eq(jtext(c("d", "metadata"), "uploaded_by", "kind"), lit(uploader))),
+    where: and(notDemo("d"), eq(c("d", "kind"), lit(kind)), startsWith(c("d", "generated_by"), `${uploader}:`)),
     bad: or(
       isNull(c("v", "id")),
       blank(c("v", "storage_key")),
@@ -220,7 +247,15 @@ function uploadDoor(key, control, requirement, { kind, uploader }) {
       distinct(c("d", "checksum"), c("v", "checksum")),
       and(notNull(c("v", "byte_size")), not(gt(c("v", "byte_size"), lit(0)))),
       isNull(c("k", "id")),
-      and(notNull(jtext(c("d", "metadata"), "label", "filed_as")), distinct(jtext(c("d", "metadata"), "label", "filed_as"), c("d", "subtype")))
+      // Who sent it: the handler writes the sender into the file's metadata as well as generated_by.
+      distinct(jtext(c("d", "metadata"), "uploaded_by", "kind"), lit(uploader)),
+      // What it was filed as, against what the person picked. A type the server does not know is filed as
+      // "other" (and stamped source "unrecognised"), so what was picked and what was filed differ: a real answer lost.
+      and(notNull(LABEL("filed_as")), distinct(c("d", "subtype"), LABEL("filed_as"))),
+      and(onOrAfter(c("d", "created_at"), LABEL_WRITTEN_SINCE), or(
+        isNull(LABEL("filed_as")),
+        and(notNull(LABEL("given")), distinct(LABEL("given"), LABEL("filed_as")))
+      ))
     )
   }));
 }
@@ -228,40 +263,42 @@ function uploadDoor(key, control, requirement, { kind, uploader }) {
 uploadDoor(
   "documents-staff-dropzone",
   "Documents toggle, drop zone, file input, drag and drop upload",
-  "Every file staff dropped on a client file must have a current version with a stored object and checksum that match the document row, sit on a client in the same company, and be filed under the type it was labeled with.",
+  "Every file staff dropped on a client file must have a current version with a stored object and checksum that match the document row, sit on a client in the same company, name staff as the sender, and be filed under the type it was labeled with (the drop zone sends no type, so it files as other; a file that names a type the server does not know is wrong).",
   { kind: "client_upload", uploader: "staff" }
 );
 uploadDoor(
   "documents-door-identity",
   "Upload door: ID and personal documents (type select, Upload button, file picker)",
-  "Every file a client sent through the ID and personal documents door must have a current version with a stored object and checksum that match the document row, sit on that client, and be filed under the type chosen in the select.",
+  "Every file a client sent through the ID and personal documents door must have a current version with a stored object and checksum that match the document row, sit on that client, name the client as the sender, and be filed under EXACTLY the type chosen in the select. A chosen type the server does not know (it would be filed as other) is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "client_upload", uploader: "client" }
 );
 uploadDoor(
   "documents-door-inquiry",
   "Upload door: Inquiry documents (type select, Upload button, file picker)",
-  "Every file a client sent through the inquiry documents door must be an inquiry document with a current version, stored object and checksum that match the document row, on that client, filed under the chosen type.",
+  "Every file a client sent through the inquiry documents door must be an inquiry document with a current version, stored object and checksum that match the document row, on that client, named as sent by the client, and filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "inquiry_doc", uploader: "client" }
 );
 uploadDoor(
   "documents-door-bureau",
   "Upload door: bureau response (type select, Upload button, file picker)",
-  "Every file a client sent through the bureau response door must be a bureau response with a current version, stored object and checksum that match the document row, on that client, filed under the chosen type.",
+  "Every file a client sent through the bureau response door must be a bureau response with a current version, stored object and checksum that match the document row, on that client, named as sent by the client, and filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "bureau_response", uploader: "client" }
 );
 
+// The portal paints a Download link for EVERY document of kind "deliverable" (client-portal.html ownRows: kind
+// is the whole filter), whatever its subtype. An expired one is given no link on purpose
+// (api/read/portal-summary.mjs: "an expired document gets no link"), so only a deliverable that is still
+// valid must have an object to hand over.
 check(
   "documents-download-link",
   "What You Own: Download link per file",
-  "Every deliverable document a client can own must point at a current version and a stored object, because the signed download link reads exactly that object.",
+  "Every deliverable document a client can own, of any type (the five reports and packs, the dispute letters, complaints and validation letters, the duplication map), that has not expired must point at a current version and a stored object, because the signed download link reads exactly that object.",
   part({
     table: "documents", alias: "d",
     joins: [{ table: "document_versions", alias: "v", on: and(eq(c("v", "id"), c("d", "current_version_id")), eq(c("v", "document_id"), c("d", "id"))) }],
     where: and(
       notDemo("d"), eq(c("d", "kind"), lit("deliverable")),
-      oneOf(c("d", "subtype"), [
-        "credit_analysis_report", "credit_optimization_roadmap", "funding_snapshot", "bank_lender_match_list", "metro2_dispute_letter_pack"
-      ])
+      or(isNull(c("d", "expires_at")), afterNow(c("d", "expires_at")))
     ),
     bad: or(isNull(c("v", "id")), blank(c("d", "storage_key")), blank(c("v", "storage_key")))
   })
@@ -269,25 +306,21 @@ check(
 
 // ───────────────────────── Identity, consent and signing ─────────────────────────
 
-check(
-  "identity-on-file-after-approval",
-  "Identity-on-file state line and client approval link box + Copy link",
-  "Every soft-pull approval a client typed through the approval link in the last year must have left an identity on file with the encrypted number, because the state line reads that row.",
-  part({
-    table: "client_consents", alias: "k",
-    joins: [{ table: "pii_identity", alias: "i", on: and(eq(c("i", "client_id"), c("k", "client_id")), eq(c("i", "org_id"), c("k", "org_id"))) }],
-    where: and(
-      eq(c("k", "kind"), lit("soft_pull_consent")), eq(c("k", "granted_by_kind"), lit("client")),
-      eq(c("k", "capture_method"), lit("typed")), isNull(c("k", "revoked_at")), newerThanDays(c("k", "granted_at"), 365)
-    ),
-    bad: or(isNull(c("i", "id")), isNull(c("i", "ssn_enc")))
-  })
-);
+// The Identity-on-file state line and the approval link box + Copy link (client-control-panel.html) are display
+// only: GET /api/consent/capture builds the line from readIdentity() and mints the link, and neither is written
+// anywhere, so there is no saved result of THIS control to read. It is a practice test of the page instead
+// (fin-b06-display-browser.test.mjs). The data question "did every typed approval leave an identity on file" belongs
+// to the client's approval page, not to this control.
 
+// Words the server holds. Consents that name a version the server holds, and carry exactly its words (the server
+// stores its own text, never the caller's), are right. Soft pull consents are judged for the last 60 days only:
+// the wording table went in with the consent record on 2026-07-31 and older rows can predate it.
 const WORDS_KINDS = ["dispute_authorization", "call_recording", "marketing_use"];
-function wordsTable() {
+const SOFT_PULL_KIND = "soft_pull_consent";
+const SOFT_PULL_WINDOW_DAYS = 60;
+function wordsTable(kinds = [...WORDS_KINDS, SOFT_PULL_KIND]) {
   const rows = [];
-  for (const kind of WORDS_KINDS) {
+  for (const kind of kinds) {
     for (const version of versionsFor(kind)) {
       const found = disclosureFor(kind, version);
       if (found && found.text) rows.push([kind, version, String(found.text).trim()]);
@@ -300,11 +333,17 @@ function wordsTable() {
 check(
   "consent-wording-matches-server",
   "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
-  "Every stored dispute authorization, call recording and marketing use consent must name a wording version the server holds and carry exactly that version's words, because the screen shows the server's words and never the caller's.",
+  "Every stored soft pull (last 60 days), dispute authorization, call recording and marketing use consent on a real client must name a wording version the server holds and carry exactly that version's words, because the screen shows the server's words and never the caller's. The status banner is worked out from these same rows each time the screen opens and leaves no saved result of its own, so it is not judged separately.",
   part({
     table: "client_consents", alias: "k",
-    joins: [wordsTable()],
-    where: oneOf(c("k", "kind"), WORDS_KINDS),
+    joins: [wordsTable(), sameClient("cl", "k", "client_id")],
+    where: and(
+      notDemo("cl"),
+      or(
+        oneOf(c("k", "kind"), WORDS_KINDS),
+        and(eq(c("k", "kind"), lit(SOFT_PULL_KIND)), newerThanDays(c("k", "granted_at"), SOFT_PULL_WINDOW_DAYS))
+      )
+    ),
     bad: or(isNull(c("w", "words")), distinct(trimmed(c("k", "consent_text")), c("w", "words")))
   })
 );
@@ -317,7 +356,7 @@ check(
     table: "client_consents", alias: "k",
     joins: [
       { table: "accounts", alias: "a", on: and(eq(c("a", "id"), c("k", "granted_by_account_id")), eq(c("a", "org_id"), c("k", "org_id"))) },
-      wordsTable()
+      wordsTable(["dispute_authorization"])
     ],
     where: and(eq(c("k", "kind"), lit("dispute_authorization")), eq(c("k", "granted_by_kind"), lit("client")), eq(c("k", "capture_method"), lit("signature"))),
     bad: or(
@@ -436,32 +475,14 @@ check(
   })
 );
 
-const INCORPORATED = jtext(c("b", "entity_data"), "incorporated_date");
-const MONTHS_OLD = custom(
-  `CASE WHEN ${INCORPORATED.sql} ~ '^[0-9]{4}-(0[1-9]|1[0-2])' THEN (extract(year from now())::int - substr(${INCORPORATED.sql}, 1, 4)::int) * 12 + (extract(month from now())::int - substr(${INCORPORATED.sql}, 6, 2)::int) END`,
-  (ctx, db) => {
-    const v = INCORPORATED.ev(ctx, db);
-    if (v === null || !/^[0-9]{4}-(0[1-9]|1[0-2])/.test(v)) return null;
-    const now = new Date(db.now);
-    return (now.getUTCFullYear() - Number(v.slice(0, 4))) * 12 + (now.getUTCMonth() + 1 - Number(v.slice(5, 7)));
-  }
-);
-check(
-  "business-incorporated-stamp",
+// The "Save month/year" button posts { action: "stamp_incorporated" } to /api/soft-pull-approve, and that handler
+// calls stampIncorporatedAsStaff, which is defined nowhere in the repo (a later change removed it). A click throws a
+// ReferenceError and writes nothing. The businesses rows that DO carry an incorporation month are written by the
+// approval form and the SLO form, which are other controls, so a read of them says nothing about this button and
+// stays green while it is dead. It is not attachable until the handler is fixed (product finding 1).
+gap(
   "Businesses cards: Save month/year button (stamp incorporation)",
-  "Every business with a saved incorporation month must hold it as YYYY-MM or YYYY-MM-DD, belong to a client in the same company, and carry an age in months that is not negative and not older than the date allows.",
-  part({
-    table: "businesses", alias: "b",
-    joins: [sameClient("k", "b", "client_id")],
-    where: not(blank(INCORPORATED)),
-    bad: or(
-      isNull(c("k", "id")),
-      notMatches(INCORPORATED, "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"),
-      isNull(c("b", "age_months")),
-      lt(c("b", "age_months"), lit(0)),
-      gt(c("b", "age_months"), MONTHS_OLD)
-    )
-  })
+  "The button is broken today: POST /api/soft-pull-approve with action stamp_incorporated calls stampIncorporatedAsStaff (api/soft-pull-approve.mjs), which no file defines, so every click throws a ReferenceError and saves nothing. There is no result of this button to read: the businesses rows that carry an incorporation month are written by the approval form and the SLO form. Fix the handler first, then attach a practice test that calls it and a live check on the month it stamps."
 );
 
 // ───────────────────────── Contracts and wordings ─────────────────────────
@@ -489,16 +510,31 @@ check(
 );
 
 const FROZEN_HASH = bodyHash(c("k", "rendered_body"), sha256Hex);
+// A wording the screen edited is one that names an editor, or one whose updated_at moved past created_at with
+// no migration having run near that moment. A migration that rewrote a seeded wording (273, 287 and 288 do)
+// moves updated_at and records no editor, because a migration is not a person; schema_migrations.applied_at
+// says when each one ran, so those rows are left out. Everything else that moved and names nobody is an edit
+// that stopped recording who made it. The editor must be staff in this company. A blank name, blank words or a
+// blank signature sentence are refused by database rules (124, 125), so they are not judged here.
+const MIGRATION_SLACK_MINUTES = 5;
+const notRewrittenByMigration = custom(
+  `NOT EXISTS (SELECT 1 FROM schema_migrations m WHERE m.applied_at >= t.updated_at - interval '${MIGRATION_SLACK_MINUTES} minutes' AND m.applied_at <= t.updated_at + interval '${MIGRATION_SLACK_MINUTES} minutes')`,
+  (ctx, db) => !(db.schema_migrations || []).some((row) =>
+    Math.abs(new Date(row.applied_at).getTime() - new Date(ctx.t.updated_at).getTime()) <= MIGRATION_SLACK_MINUTES * 60_000)
+);
 check(
   "contract-wording-edited",
   "Save (edit an existing wording)",
-  "Every wording that was edited must still have a name, words and a signature sentence and name a staff editor in the same company, and every contract already sent must still hold words that match its stored fingerprint.",
+  "Every wording that was edited must name a staff editor in the same company (an edit that stopped recording who made it is wrong, whether the wording is text or an uploaded PDF), and every contract already sent must still hold words that match its stored fingerprint. Wordings that only a migration rewrote are left out, and a blank name or blank words are refused by database rules, so they are not judged here.",
   [
     part({
       table: "contract_templates", alias: "t",
       joins: [STAFF_JOIN("s", "t", "updated_by")],
-      where: and(notDemo("t"), notNull(c("t", "updated_by"))),
-      bad: or(blank(c("t", "name")), blank(c("t", "body")), blank(c("t", "signature_statement")), isNull(c("s", "id")))
+      where: and(notDemo("t"), or(
+        notNull(c("t", "updated_by")),
+        and(earlier(c("t", "created_at"), c("t", "updated_at")), notRewrittenByMigration)
+      )),
+      bad: isNull(c("s", "id"))
     }),
     part({
       table: "contracts", alias: "k",
@@ -611,10 +647,29 @@ check(
 
 // ───────────────────────── Inquiry remover and repair desk ─────────────────────────
 
+// outbound_calls stores no case id (call_id, client_id, org_id, kind only), and the launch writes the call row and
+// stamps the case in two separate steps. So a repeat is read at the client: in the last 30 days a client may have
+// no more bureau calls logged than cases marked fired. A second launch on one case, or a call whose case stamp
+// never landed, leaves more calls than fired cases and is wrong. What this cannot see (needs the product to store
+// a case id on the call): a repeat on a case when the client has other cases the scheduler already stamped
+// fired, and a call that was placed but whose log write failed (the launch swallows that error).
+const BUREAU_CALL_WINDOW_DAYS = 30;
+const callsInWindow = custom(
+  `SELECT count(*) FROM outbound_calls o2 WHERE o2.org_id = o.org_id AND o2.client_id = o.client_id AND o2.kind = 'inquiry_bureau' AND o2.created_at > now() - interval '${BUREAU_CALL_WINDOW_DAYS} days'`,
+  (ctx, db) => (db.outbound_calls || []).filter((row) => row.org_id === ctx.o.org_id && row.client_id === ctx.o.client_id
+    && row.kind === "inquiry_bureau"
+    && new Date(row.created_at).getTime() > new Date(db.now).getTime() - BUREAU_CALL_WINDOW_DAYS * 86_400_000).length
+);
+const firedCasesInWindow = custom(
+  `SELECT count(*) FROM inquiry_removal_cases r2 WHERE r2.org_id = o.org_id AND r2.client_id = o.client_id AND r2.call_fired_at IS NOT NULL AND r2.call_fired_at > now() - interval '${BUREAU_CALL_WINDOW_DAYS} days'`,
+  (ctx, db) => (db.inquiry_removal_cases || []).filter((row) => row.org_id === ctx.o.org_id && row.client_id === ctx.o.client_id
+    && row.call_fired_at !== null && row.call_fired_at !== undefined
+    && new Date(row.call_fired_at).getTime() > new Date(db.now).getTime() - BUREAU_CALL_WINDOW_DAYS * 86_400_000).length
+);
 check(
   "inquiry-bureau-call",
   "Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)",
-  "Every bureau call that was placed must have left its number-reveal log entry for that client and a case marked as fired, so the call is neither unlogged nor repeated.",
+  "Every bureau call that was placed must have left its number-reveal log entry for that client and a case marked as fired; and in the last 30 days a client may not have more bureau calls logged than cases marked fired, because a second launch on one case (the button is disabled by the page only, the server does not refuse it) or a call whose case was never stamped places a second call to the bureau.",
   part({
     table: "outbound_calls", alias: "o",
     where: eq(c("o", "kind"), lit("inquiry_bureau")),
@@ -625,24 +680,38 @@ check(
       )),
       missing("inquiry_removal_cases", "r", and(
         eq(c("r", "client_id"), c("o", "client_id")), eq(c("r", "org_id"), c("o", "org_id")), notNull(c("r", "call_fired_at"))
-      ))
+      )),
+      gt(callsInWindow, firedCasesInWindow)
     )
   })
 );
 
+// The repair program's own clock for an answer that needs a person: STAGE_SLA.response_received, 24 hours
+// ("owner_reviews_parse", src/repair/sla.mjs). api/repair/exceptions.mjs lists answers that are unconfirmed AND
+// (confidence under 0.85 or held for escalation). An answer the list hides, or one nobody reads, sits unconfirmed
+// past that clock.
+const READ_WITHIN_MINUTES = STAGE_SLA.response_received.hours * 60;
 check(
   "repair-parse-confirmed",
   "'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
-  "Every bureau answer that needed a person (low confidence or held for escalation) and is marked checked must carry the confirm time and a staff member in the same company who confirmed it.",
-  part({
-    table: "dispute_responses", alias: "r",
-    joins: [STAFF_JOIN("s", "r", "confirmed_by")],
-    where: and(
-      eq(c("r", "confirmed"), lit(true)),
-      or(lt(c("r", "confidence"), lit(0.85)), eq(jtext(c("r", "parse_json"), "heldForEscalation"), lit("true")))
-    ),
-    bad: or(isNull(c("r", "confirmed_at")), isNull(c("r", "confirmed_by")), isNull(c("s", "id")))
-  })
+  "Every bureau answer that needed a person (no confidence at all, low confidence, or held for escalation) and is marked checked must carry the confirm time and a staff member in the same company who confirmed it; and no bureau answer on a real client may sit unchecked past the repair program's own 24 hour clock, which is how a list that hides an answer shows up.",
+  [
+    part({
+      table: "dispute_responses", alias: "r",
+      joins: [STAFF_JOIN("s", "r", "confirmed_by")],
+      where: and(
+        eq(c("r", "confirmed"), lit(true)),
+        or(isNull(c("r", "confidence")), lt(c("r", "confidence"), lit(0.85)), eq(jtext(c("r", "parse_json"), "heldForEscalation"), lit("true")))
+      ),
+      bad: or(isNull(c("r", "confirmed_at")), isNull(c("r", "confirmed_by")), isNull(c("s", "id")))
+    }),
+    part({
+      table: "dispute_responses", alias: "r",
+      joins: [sameClient("k", "r", "client_id")],
+      where: and(distinct(c("r", "confirmed"), lit(true)), notDemo("k")),
+      bad: olderThanMinutes(c("r", "created_at"), READ_WITHIN_MINUTES)
+    })
+  ]
 );
 
 // ───────────────────────── Public climate page ─────────────────────────
@@ -654,7 +723,11 @@ gap(
     notShipped: Object.freeze({
       path: "/climate/",
       // The words the journey gives the button, and the lead door the form behind it would call.
-      markers: Object.freeze(["See how many banks in our book fit your state", "climate-match"])
+      markers: Object.freeze([
+        "See how many banks in our book fit your state", "climate-match", "climate_match", "website:climate"
+      ]),
+      // The other route under /climate/ is read too: the button could ship there.
+      paths: Object.freeze(["/climate/lender-climate/"])
     })
   }
 );
