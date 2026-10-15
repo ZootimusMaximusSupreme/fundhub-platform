@@ -100,7 +100,7 @@ function caseFile({ packet = true, bureau = "EX", status = "Queued", signed = pa
   return fake;
 }
 
-async function call(body, fake, who = [staffSession({ role: "inquiry_specialist" })]) {
+async function call(body, fake, who = [staffSession({ role: "inquiry_specialist" })], method = "POST") {
   const session = fakeDb(who);
   const res = makeRes();
   const combined = {
@@ -108,11 +108,24 @@ async function call(body, fake, who = [staffSession({ role: "inquiry_specialist"
     query: (sql, params) => (/FROM live JOIN staff|UPDATE account_sessions|FROM accounts WHERE id/.test(typeof sql === "string" ? sql : sql.text) ? session.query(sql, params) : fake.query(sql, params)),
     connect: () => fake.connect(),
   };
-  await runWithSharedDb(combined, () => handler(req("POST", { body }), res, { db: combined, store: { get: async () => null, put: async () => ({ key: "k" }) } }));
+  await runWithSharedDb(combined, () => handler(req(method, { body }), res, { db: combined, store: { get: async () => null, put: async () => ({ key: "k" }) } }));
   return res;
 }
 
 describe("POST /api/inquiry-cases action=send", () => {
+  test("only a POST that names a real action is served: a GET or an unknown action sends and saves nothing", async () => {
+    const fake = caseFile();
+    const get = await call({ action: "send", id: CASE, mail: true }, fake, undefined, "GET");
+    assert.equal(get.statusCode, 405);
+    assert.equal(get.headers.allow, "POST");
+    const shred = await call({ action: "shred", id: CASE, mail: true }, fake);
+    assert.equal(shred.statusCode, 400);
+    assert.equal(shred.body.error, "unknown_action");
+    assert.ok(shred.body.allowed === undefined || Array.isArray(shred.body.allowed) || typeof shred.body.message === "string");
+    assert.equal(letters.length, 0, "no letter was sent");
+    assert.equal(fake.calls.filter((c) => /inquiry_removal_cases|dispute_letters|documents/.test(c.sql)).length, 0, "no case table was touched");
+  });
+
   test("mail:true mails the bureau letter once, from the client's own address, with the chosen service level, and records the letter on the case", async () => {
     const fake = caseFile();
     const res = await call({ action: "send", id: CASE, mail: true, mail_service_level: "priority" }, fake);

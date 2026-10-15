@@ -203,5 +203,21 @@ describe("/api/pii", () => {
     const { res } = await call(req("GET", { query: { client_id: "nope" } }), tables);
     assert.equal(res.statusCode, 400);
     assert.equal(tables.find(/pii_identity|pii_access_log/).length, 0);
+    // The same for a POST: nothing is stored or revealed for a client id that is not an id.
+    for (const body of [{ client_id: "nope", action: "store", ssn: SSN }, { client_id: "nope", action: "reveal", reason: "Call" }, { action: "store", ssn: SSN }]) {
+      const post = await call(req("POST", { body }), tables);
+      assert.equal(post.res.statusCode, 400, JSON.stringify(body));
+      assert.equal(post.res.body.error, "client_id must be a uuid");
+    }
+    assert.equal(tables.find(/pii_identity|pii_access_log/).length, 0);
+  });
+
+  test("a store with no company on the sign-in and none in the body is 400 and nothing is saved", async () => {
+    const tables = piiTables();
+    const { res } = await call(req("POST", { body: { client_id: CLIENT, action: "store", ssn: SSN } }), tables, [staffSession({ role: "owner", org_id: null })]);
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.error, "org_id is required");
+    assert.equal(tables.state.identities.length, 0);
+    assert.equal(tables.find(/INSERT INTO pii_identity/).length, 0);
   });
 });

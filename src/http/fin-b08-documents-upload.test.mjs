@@ -197,6 +197,13 @@ describe("POST /api/documents-upload", () => {
       assert.equal(r.res.body.error, "no such business");
       assert.equal(g.tables.documents.length, 0);
     }
+    // A business id that is not an id at all is a bad request, and is not looked up.
+    const bad = uploadFile();
+    const notAnId = await call({ fields: { client_id: CLIENT, subtype: "bank_statement", entity_id: "not-an-id" }, files: [file(pdf(), "s.pdf", "application/pdf")] }, bad, asClient());
+    assert.equal(notAnId.res.statusCode, 400);
+    assert.equal(notAnId.res.body.error, "entity_id must be a uuid");
+    assert.equal(bad.tables.documents.length, 0);
+    assert.equal(bad.fake.calls.filter((c) => /FROM entities/.test(c.sql)).length, 0);
   });
 
   test("the 'we still need your documents' flag comes off only when the whole packet is there", async () => {

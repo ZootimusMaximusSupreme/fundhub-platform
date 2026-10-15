@@ -105,12 +105,38 @@ describe("GET /api/read/contracts", () => {
     const { fake } = await library();
     const foreignContract = await read({ id: "f9000000-0000-4000-8000-000000000009" }, fake);
     assert.equal(foreignContract.statusCode, 404);
+    assert.equal(foreignContract.body.error, "not_found");
     const foreignFile = await read({ file: "contract", id: "f9000000-0000-4000-8000-000000000009" }, fake);
     assert.equal(foreignFile.statusCode, 404);
+    assert.equal(foreignFile.body.error, "not_found", "another company's contract is 'not found', not 'no file'");
+    assert.equal(foreignFile.body.pdf_base64, undefined);
     const foreignTemplate = await read({ file: "template", template_id: IDS.foreignTemplate }, fake);
     assert.equal(foreignTemplate.statusCode, 404);
+    assert.equal(foreignTemplate.body.error, "not_found", "another company's template is 'not found', not 'no file'");
+    assert.equal(foreignTemplate.body.pdf_base64, undefined);
     assert.equal((await read({ id: "nope" }, fake)).statusCode, 400);
     assert.equal((await read({ file: "template", template_id: "nope" }, fake)).statusCode, 400);
+    const badFile = await read({ file: "contract", id: "nope" }, fake);
+    assert.deepEqual([badFile.statusCode, badFile.body.error], [400, "invalid_id"]);
+  });
+
+  test("the queue's filters must be real: a client, staff or document id that is not an id, or more than 200 documents, is 400 and no list is read", async () => {
+    const { fake } = await library();
+    const listReads = () => fake.calls.filter((c) => /FROM contracts c\s+JOIN clients cl/.test(c.sql)).length;
+    const before = listReads();
+    const cases = [
+      [{ client_id: "nope" }, "invalid_client_id"],
+      [{ staff_id: "nope" }, "invalid_staff_id"],
+      [{ document_id: "nope" }, "invalid_document_id"],
+      [{ document_id: `${IDS.client},nope` }, "invalid_document_id"],
+      [{ document_id: Array.from({ length: 201 }, (_, i) => `d${String(i).padStart(7, "0")}-0000-4000-8000-000000000000`).join(",") }, "invalid_document_id"],
+    ];
+    for (const [query, error] of cases) {
+      const res = await read(query, fake);
+      assert.equal(res.statusCode, 400, JSON.stringify(query).slice(0, 60));
+      assert.equal(res.body.error, error);
+    }
+    assert.equal(listReads(), before, "no list was read for a bad filter");
   });
 
   test("?file=contract returns the sent document as PDF bytes; ?file=template returns an uploaded template's PDF", async () => {

@@ -24,6 +24,7 @@ import progressHandler from "../../api/read/client-progress.mjs";
 import lenderMatchesHandler from "../../api/read/lender-matches.mjs";
 import repairGenerateHandler from "../../api/repair/generate.mjs";
 import inboundMailHandler from "../../api/repair/inbound-mail.mjs";
+import generateCopyHandler from "../../api/partner-marketing/generate-copy.mjs";
 import { req, staffSession, accountSession, ORG_ID } from "../testing/handler-harness.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
 
@@ -105,6 +106,9 @@ const WRONG_METHOD = [
   ["money/fundability", fundabilityHandler, req("POST", { body: { client_id: CLIENT } }), "GET"],
   ["read/client-progress", progressHandler, req("POST", { body: { client_id: CLIENT } }), "GET"],
   ["read/lender-matches", lenderMatchesHandler, req("POST", { body: { client_id: CLIENT } }), "GET"],
+  ["repair/generate", repairGenerateHandler, req("GET", { query: { client_id: CLIENT } }), "POST"],
+  ["repair/inbound-mail", inboundMailHandler, req("GET", { query: { client_id: CLIENT } }), "POST"],
+  ["partner-marketing/generate-copy", generateCopyHandler, req("GET", { query: { page_id: CLIENT } }), "POST"],
 ];
 
 const NOT_JSON = [

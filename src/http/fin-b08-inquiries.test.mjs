@@ -133,6 +133,24 @@ describe("/api/inquiries", () => {
     });
   });
 
+  test("no login is 401 and nothing is read, and a GET that names no real inquiry id is 400", async () => {
+    const fake = inquiryFile();
+    const none = await call(req("GET", { query: { inquiry_id: INQ } }), fake, []);
+    assert.equal(none.res.statusCode, 401);
+    assert.equal(none.error, null, "the handler stops at the sign-in gate and does not throw");
+    assert.equal(fake.calls.filter((c) => /inquiry_log|inquiry_attempts/.test(c.sql)).length, 0);
+    for (const inquiry_id of ["nope", undefined]) {
+      const bad = await call(req("GET", { query: { inquiry_id } }), fake);
+      assert.equal(bad.res.statusCode, 400, String(inquiry_id));
+      assert.equal(bad.res.body.error, "inquiry_id must be a uuid");
+    }
+    assert.equal(fake.calls.filter((c) => /FROM inquiry_attempts/.test(c.sql)).length, 0, "no history was read for a bad id");
+    const write = await call(post({ inquiry_id: "nope", action: "attempt", kind: "call" }), fake);
+    assert.equal(write.res.statusCode, 400);
+    assert.equal(write.res.body.error, "inquiry_id must be a uuid");
+    assert.equal(fake.state.inquiry_attempts.length, 0, "nothing was written for a bad id");
+  });
+
   test("the POST needs an open shift: with none it is 403 and nothing is written; an owner does not clock in", async () => {
     const closed = inquiryFile({ openShift: false });
     const { res } = await call(post({ inquiry_id: INQ, action: "attempt", kind: "call" }), closed);

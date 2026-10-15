@@ -142,6 +142,19 @@ describe("GET and PUT /api/partner-brand", () => {
     }
   });
 
+  test("PUT needs a partner id that is an id, before anything is read or saved", async () => {
+    const t = baseTables();
+    const before = JSON.stringify(t.brands);
+    const none = await call(brandHandler, req("PUT", { body: { voice: "x" } }), t, owner());
+    assert.equal(none.res.statusCode, 400);
+    assert.equal(none.res.body.error, "partner_id_required");
+    const bad = await call(brandHandler, req("PUT", { body: { partner_id: "nope", voice: "x" } }), t, owner());
+    assert.equal(bad.res.statusCode, 400);
+    assert.equal(bad.res.body.error, "invalid_partner_id");
+    assert.equal(JSON.stringify(t.brands), before);
+    assert.equal(none.fake.state.writes.length + bad.fake.state.writes.length, 0);
+  });
+
   test("PUT for a partner that does not exist is 404 and a first save creates the brand under the partner's own company", async () => {
     const t = baseTables({ brands: [] });
     const missing = await call(brandHandler, req("PUT", { body: { partner_id: "d9000000-0000-4000-8000-000000000009", voice: "x" } }), t, owner());
@@ -219,6 +232,21 @@ describe("GET, POST and PATCH /api/partner-pages", () => {
     assert.equal(foreign.res.statusCode, 404);
     assert.equal(foreign.res.body.error, "partner_not_found");
     assert.equal(t.pages.length, 0);
+  });
+
+  test("a page request has to name a real partner and, to change a page, a real page with something to change", async () => {
+    const t = pagesTables();
+    const before = JSON.stringify(t.pages);
+    const getNone = await call(pagesHandler, req("GET", { query: {} }), t, owner());
+    assert.deepEqual([getNone.res.statusCode, getNone.res.body.error], [400, "partner_id_required"]);
+    assert.equal(getNone.fake.sqlOf(/partner_pages|partner_brand/).length, 0, "no page was read for a missing partner id");
+    const postBad = await call(pagesHandler, req("POST", { body: { partner_id: "nope", funnel_key: "apply" } }), t, owner());
+    assert.deepEqual([postBad.res.statusCode, postBad.res.body.error], [400, "partner_id_required"]);
+    const patchNone = await call(pagesHandler, req("PATCH", { body: { title: "No id" } }), t, owner());
+    assert.deepEqual([patchNone.res.statusCode, patchNone.res.body.error], [400, "id_required"]);
+    const patchEmpty = await call(pagesHandler, req("PATCH", { body: { id: "a2000000-0000-4000-8000-000000000002" } }), t, owner());
+    assert.deepEqual([patchEmpty.res.statusCode, patchEmpty.res.body.error], [400, "nothing_to_update"]);
+    assert.equal(JSON.stringify(t.pages), before, "no page changed");
   });
 
   test("a partner cannot start a page for another partner of the same company: 403 and no page is made", async () => {
