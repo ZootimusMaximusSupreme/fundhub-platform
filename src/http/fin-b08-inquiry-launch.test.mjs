@@ -11,6 +11,7 @@ import handler from "../../api/inquiry.mjs";
 import { encryptSsn } from "../pii/index.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { rowsWhere, bindProblem } from "../testing/s3-scoped-rows.mjs";
+import { runUpdate, orderAndLimit } from "../testing/fin-b08-tables.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const CASE = "ca000000-0000-4000-8000-000000000001";
@@ -23,7 +24,7 @@ const bland = (body = { status: "queued", call_id: "call-abc" }, status = 200) =
   ok: status >= 200 && status < 300, status, text: async () => JSON.stringify(body), headers: { forEach() {} },
 });
 
-function launchFile({ caseStatus = "Queued", bureaus = "EX", withSsn = true, env = {} } = {}) {
+function launchFile({ caseStatus = "Queued", bureaus = "EX", withSsn = true, env = {}, inquiries = null } = {}) {
   const fullEnv = { MESSAGING_DRY_RUN: "0", BLAND_API_KEY: KEY, FUNDHUB_REP_NUMBER: REP, PII_ENC_KEY: crypto.randomBytes(32).toString("base64"), ...env };
   const state = { cases: [
     { id: CASE, org_id: ORG_ID, client_id: CLIENT, selected_bureaus_raw: bureaus, case_status: caseStatus, call_fired_at: null, ai_call_status: null },
@@ -32,18 +33,27 @@ function launchFile({ caseStatus = "Queued", bureaus = "EX", withSsn = true, env
   const clients = [{ id: CLIENT, org_id: ORG_ID, first_name: "Dana", last_name: "Whitfield", phone: "+16025550100" }];
   const identity = [{ client_id: CLIENT, org_id: ORG_ID, dob: "1985-02-03", addresses: [{ line1: "1 Main St", city: "Phoenix", state: "AZ", zip: "85001" }],
     ssn_enc: withSsn ? encryptSsn(SSN, { clientId: CLIENT, env: fullEnv }) : null }];
-  const log = [{ id: "i1", org_id: ORG_ID, client_id: CLIENT, bureau: "EX", inquiry: "CHASE BANK", created_at: "2026-01-05T00:00:00Z", inquiry_removal_case_id: CASE }];
+  const log = inquiries || [{ id: "i1", org_id: ORG_ID, client_id: CLIENT, bureau: "EX", inquiry: "CHASE BANK", created_at: "2026-01-05T00:00:00Z", inquiry_removal_case_id: CASE }];
   const fake = fakeDb([
     [/^\s*SELECT id, client_id, selected_bureaus_raw, case_status, call_fired_at\s+FROM inquiry_removal_cases/i, (s, p) => rowsWhere(state.cases, s, p)],
     [/^\s*SELECT id, first_name, last_name, phone\s+FROM clients/i, (s, p) => rowsWhere(clients, s, p)],
     [/^\s*SELECT dob, addresses\s+FROM pii_identity/i, (s, p) => rowsWhere(identity, s, p)],
     [/^\s*SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = \$1/i, (_s, p) => identity.filter((r) => r.client_id === p[0])],
     [/^\s*INSERT INTO pii_access_log/i, (_s, p) => { state.accessLog.push({ org_id: p[0], client_id: p[1], accessed_by: p[2], field: p[3] }); return { rows: [], rowCount: 1 }; }],
-    [/^\s*SELECT inquiry, created_at\s+FROM inquiry_log/i, (_s, p) => log.filter((r) => r.org_id === p[0] && r.client_id === p[1])],
+    [/^\s*SELECT inquiry, created_at\s+FROM inquiry_log/i, (s, p) => {
+      // This company's, this client's, and the group the statement itself names: the case, or the bureau.
+      const text = s.replace(/\s+/g, " ");
+      if (!/WHERE org_id = \$1::uuid AND client_id = \$2::uuid AND \( inquiry_removal_case_id = \$3::uuid OR upper\(coalesce\(bureau,''\)\) = \$4 \)/.test(text)) {
+        throw new Error(`the launch stand-in cannot read the inquiry list conditions: ${text.slice(0, 200)}`);
+      }
+      const mine = rowsWhere(log, "WHERE org_id = $1::uuid AND client_id = $2::uuid", p)
+        .filter((r) => r.inquiry_removal_case_id === p[2] || String(r.bureau || "").toUpperCase() === p[3]);
+      // ORDER BY and LIMIT are the statement's own.
+      return orderAndLimit(mine, s, p).map((r) => ({ inquiry: r.inquiry, created_at: r.created_at }));
+    }],
     [/^\s*INSERT INTO outbound_calls/i, (_s, p) => { state.outbound.push({ call_id: p[0], client_id: p[1], org_id: p[2], kind: p[3] }); return { rows: [], rowCount: 1 }; }],
     [/^\s*UPDATE inquiry_removal_cases\s+SET call_fired_at/i, (s, p) => {
-      const hit = rowsWhere(state.cases, s.slice(s.indexOf("WHERE")), p);
-      for (const r of hit) Object.assign(r, { call_fired_at: r.call_fired_at || "now", ai_call_status: "calling" });
+      const { hit } = runUpdate(state.cases, s, p);
       return { rows: [], rowCount: hit.length };
     }],
     [/^\s*(BEGIN|COMMIT|ROLLBACK)\b/i, []],
@@ -197,5 +207,83 @@ describe("POST /api/inquiry action=launch", () => {
     await runWithSharedDb(combined, () => handler(req("GET", { query: { action: "launch" } }), r, { db: combined, env: get.env, fetchImpl: async () => { get.state.fetches.push("x"); return bland(); } }));
     assert.equal(r.statusCode, 405);
     assert.equal(get.state.fetches.length, 0);
+  });
+
+  test("each bureau's case dials that bureau's own dispute line and gives the agent that bureau's script", async () => {
+    // The numbers are written out here, not read from the product: they are the three public dispute lines.
+    const lines = {
+      EX: { number: "+18554146048", name: "Experian", others: ["Equifax", "TransUnion"] },
+      EQ: { number: "+18665495097", name: "Equifax", others: ["Experian", "TransUnion"] },
+      TU: { number: "+18009168800", name: "TransUnion", others: ["Experian", "Equifax"] },
+    };
+    for (const k of ["EXPERIAN_DISPUTE_NUMBER", "EQUIFAX_DISPUTE_NUMBER", "TRANSUNION_DISPUTE_NUMBER"]) delete process.env[k];
+    for (const [code, want] of Object.entries(lines)) {
+      const fake = launchFile({ bureaus: code });
+      const { res } = await call({ id: CASE }, fake);
+      assert.equal(res.statusCode, 200, code);
+      assert.equal(res.body.bureau, code);
+      const sent = JSON.parse(fake.state.fetches[0].init.body);
+      assert.equal(sent.phone_number, want.number, `${code} case dials ${want.name}`);
+      assert.match(sent.task, new RegExp(want.name), `${code}: the script is ${want.name}'s`);
+      for (const other of want.others) assert.doesNotMatch(sent.task, new RegExp(`calling ${other}`, "i"), `${code}: not ${other}'s script`);
+      assert.equal(sent.metadata.bureau, code);
+    }
+  });
+
+  test("a case that lists several bureaus dials the first one", async () => {
+    delete process.env.EQUIFAX_DISPUTE_NUMBER;
+    delete process.env.TRANSUNION_DISPUTE_NUMBER;
+    const fake = launchFile({ bureaus: "eq, tu" });
+    const { res } = await call({ id: CASE }, fake);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.bureau, "EQ");
+    assert.equal(JSON.parse(fake.state.fetches[0].init.body).phone_number, "+18665495097");
+    const unsupported = launchFile({ bureaus: "XX" });
+    const bad = await call({ id: CASE }, unsupported);
+    assert.equal(bad.res.statusCode, 400);
+    assert.equal(bad.res.body.error, "bad_bureau");
+    assert.equal(unsupported.state.fetches.length, 0);
+    assert.equal(unsupported.state.accessLog.length, 0, "the SSN is not touched for a bureau we cannot call");
+  });
+
+  test("the agent is given the inquiries to remove, oldest first: this case's and this bureau's of this client, never another client's", async () => {
+    delete process.env.EXPERIAN_DISPUTE_NUMBER;
+    const row = (id, over) => ({ id, org_id: ORG_ID, client_id: CLIENT, bureau: "EX", inquiry: id, created_at: "2026-02-01T00:00:00Z", inquiry_removal_case_id: null, ...over });
+    const inquiries = [
+      row("ZETA CARD", { created_at: "2026-03-01T00:00:00Z", inquiry_removal_case_id: CASE }),
+      row("ALPHA BANK", { created_at: "2026-01-05T00:00:00Z", inquiry_removal_case_id: CASE }),
+      row("MID LENDER", { created_at: "2026-02-10T00:00:00Z", bureau: "EX" }),                 // same bureau, another case: still this bureau's
+      row("OTHER BUREAU", { created_at: "2026-02-11T00:00:00Z", bureau: "EQ" }),               // not this bureau, not this case
+      row("OTHER CLIENT", { created_at: "2026-02-12T00:00:00Z", client_id: "c8000000-0000-4000-8000-000000000008", inquiry_removal_case_id: CASE }),
+      row("OTHER COMPANY", { created_at: "2026-02-13T00:00:00Z", org_id: OTHER_ORG_ID, inquiry_removal_case_id: CASE }),
+    ];
+    const fake = launchFile({ inquiries });
+    const { res } = await call({ id: CASE }, fake);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const sent = JSON.parse(fake.state.fetches[0].init.body);
+    assert.equal(sent.request_data.inquiry_list, "- ALPHA BANK (2026-01-05)\n- MID LENDER (2026-02-10)\n- ZETA CARD (2026-03-01)");
+    const sql = fake.calls.find((c) => /FROM inquiry_log/.test(c.sql)).sql.replace(/\s+/g, " ");
+    assert.match(sql, /ORDER BY created_at ASC LIMIT 40/);
+  });
+
+  test("a client with no inquiries on file is still called: the agent is told to dispute every unauthorized one on that bureau's report", async () => {
+    const fake = launchFile({ inquiries: [] });
+    const { res } = await call({ id: CASE }, fake);
+    assert.equal(res.statusCode, 200);
+    const sent = JSON.parse(fake.state.fetches[0].init.body);
+    assert.match(sent.request_data.inquiry_list, /dispute all unauthorized inquiries on my Experian report/);
+  });
+
+  test("once placed, the case is marked calling with the time of the call, and the recorded time is kept if it is called again", async () => {
+    const fake = launchFile();
+    await call({ id: CASE }, fake);
+    const row = fake.state.cases[0];
+    assert.equal(row.ai_call_status, "calling");
+    assert.ok(row.call_fired_at, "the time the call went out is saved");
+    assert.ok(row.updated_at);
+    const first = row.call_fired_at;
+    await call({ id: CASE }, fake);
+    assert.equal(row.call_fired_at, first, "the first time stays the first time");
+    assert.equal(fake.state.fetches.length, 2);
   });
 });
