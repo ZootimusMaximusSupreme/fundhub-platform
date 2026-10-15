@@ -137,7 +137,8 @@ test("every unproved door stays manual-red and omits proof", () => {
 
 test("an exact route gap monitor wires a row red when its old name-only evidence cannot prove the result", () => {
   const row = rowsFor("routes-0.json").find((item) => item.surface === "route:ad-videos");
-  const sameNameWithoutEvidence = { ...row, coverage: "none", evidence: "route:ad-videos" };
+  // The control is changed so no attached test is bound to this row: only the name is left.
+  const sameNameWithoutEvidence = { ...row, control: `${row.control} (name only)`, coverage: "none", evidence: "route:ad-videos" };
   const recipe = makeRecipe("routes-0.json", sameNameWithoutEvidence);
   assert.equal(recipe.mode, "read-only");
   assert.match(recipe.proof.evidence, /gap-door-batch-routes\.mjs/);
@@ -147,7 +148,7 @@ test("an exact route gap monitor wires a row red when its old name-only evidence
 test("known partial rows use exact executable checkers without claiming the business result is green", () => {
   const samples = [
     ["routes-1.json", "route:closer-deck", /action=generate_letters/],
-    ["routes-3.json", "route:lender-observations", /^POST /],
+    ["routes-3.json", "route:read/message-templates", /^GET the message copy library/],
     ["jobs.json", "function:ad-video-worker-background", /background function/],
     ["webhooks.json", "webhook:POST /api/webhooks/lendflow", /Lendflow/],
     ["webhooks.json", "webhook:POST netlify\/functions\/ad-video-worker-background", /whole ad-video pass/],

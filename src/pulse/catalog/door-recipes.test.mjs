@@ -90,7 +90,7 @@ test("every mapped door gets a complete recipe", async () => {
 test("route recipes use route methods and keep writes out of read-only mode", async () => {
   const rows = await loadRows("routes-0.json");
   const read = rows.find((row) => row.surface === "route:auth/login" && row.methods?.includes("GET"));
-  const failedFocusedProof = rows.find((row) => row.surface === "route:ad-videos");
+  const failedFocusedProof = rows.find((row) => row.surface === "route:read/messages");
   const write = rows.find((row) => row.surface === "route:auth/login" && row.methods?.includes("POST"));
 
   const readRecipe = makeRecipe("routes-0.json", read);
