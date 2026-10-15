@@ -21,7 +21,7 @@ export const FIN_B14_PRACTICE_CASES = Object.freeze(
   Object.entries(ROWS).flatMap(([file, groups]) => groups.flatMap((group) => group.controls
     .filter((control) => !LIVE.has(keyOf(group.sourceFile, group.surface, control)))
     .map((control) => {
-      const tests = [`${DIR}/${file}`, ...(group.also || []).map((name) => `${DIR}/${name}`)];
+      const tests = [`${DIR}/${file}`, ...(group.also || [])];
       return Object.freeze({
         sourceFile: group.sourceFile,
         surface: group.surface,
