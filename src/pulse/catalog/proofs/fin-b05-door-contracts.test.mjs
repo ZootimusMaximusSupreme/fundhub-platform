@@ -15,6 +15,7 @@ import {
   FIN_B05_GUARD_TEST,
   finB05DoorProof,
 } from "./fin-b05-door-contracts.mjs";
+import { inspectNamedTests } from "./fin-b05-test-binding.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url);
 const MAP = new URL("ops/workflows/coverage-every-surface-2026-10-10/", ROOT);
@@ -40,7 +41,7 @@ test("every bound row is one exact row of the coverage map, and its handler is r
   }
 });
 
-test("every named test is a plain runnable file and contains each named test title", () => {
+test("every named test is a plain runnable file and every named test title is a LIVE test in it", () => {
   for (const entry of FIN_B05_DOOR_CONTRACTS) {
     assert.ok(entry.tests.length > 0, entry.key);
     for (const file of entry.tests) {
@@ -49,10 +50,35 @@ test("every named test is a plain runnable file and contains each named test tit
       assert.notEqual(file, FIN_B05_GUARD_TEST);
       assert.ok(fs.existsSync(new URL(file, ROOT)), `${file} does not exist`);
     }
-    const text = entry.tests.map((file) => fs.readFileSync(new URL(file, ROOT), "utf8")).join("\n");
     assert.ok(entry.titles.length > 0, `${entry.key} names no test title`);
+    // The source is READ, not searched: a title left in a comment or a string, a
+    // test.skip / test.todo / { skip: true }, a test nested under a condition and a
+    // test that asserts nothing all fail here. Node exits 0 on every one of them.
+    const reports = entry.tests.map((file) => ({
+      file,
+      report: inspectNamedTests(fs.readFileSync(new URL(file, ROOT), "utf8"), entry.titles),
+    }));
+    for (const { file, report } of reports) {
+      assert.deepEqual(report.markers, [], `${file} switches a test off or ends the run early: ${report.markers.join(", ")}`);
+    }
     for (const title of entry.titles) {
-      assert.ok(text.includes(title), `no test titled "${title}" in ${entry.tests.join(", ")}`);
+      const found = reports.filter(({ report }) => !report.missing.includes(title));
+      assert.ok(found.length > 0, `no live test titled "${title}" in ${entry.tests.join(", ")}`);
+      for (const { file, report } of found) {
+        assert.equal(report.hollow.includes(title), false, `the test "${title}" in ${file} asserts nothing`);
+      }
+    }
+  }
+});
+
+test("the named titles are every test the handler file runs, and each is named once", () => {
+  for (const entry of FIN_B05_DOOR_CONTRACTS) {
+    assert.equal(new Set(entry.titles).size, entry.titles.length, `${entry.key} names a title twice`);
+    for (const file of entry.tests) {
+      const source = fs.readFileSync(new URL(file, ROOT), "utf8");
+      const ran = [...source.matchAll(/^test\((["'`])(.+)\1,/gm)].map((m) => m[2]);
+      const unbound = ran.filter((title) => !entry.titles.includes(title));
+      assert.deepEqual(unbound, [], `${file} runs tests the proof row does not name`);
     }
   }
 });

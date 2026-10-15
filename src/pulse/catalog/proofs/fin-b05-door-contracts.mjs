@@ -26,6 +26,10 @@ const ENTRIES = [
       "closer-deck generate_letters takes the company from the sign-in, not from anything the request names",
       "closer-deck generate_letters is for closer, sales manager, owner and admin only; every other staff role is refused before anything is built",
       "closer-deck generate_letters pressed twice emails the client once",
+      "closer-deck generate_letters emails every client in the company: the second client is not skipped because the first was already emailed",
+      "closer-deck generate_letters files the sworn CFPB and state AG complaints only after a confirmed Round 4 answer, never at Round 1 to 3",
+      "closer-deck generate_letters does not email a client who opted out of email, still saves the letters, and is not held up by a text-only opt-out",
+      "closer-deck generate_letters answers only POST: any other method is refused before sign-in, a pack, a file or an email",
     ],
   },
 ];
