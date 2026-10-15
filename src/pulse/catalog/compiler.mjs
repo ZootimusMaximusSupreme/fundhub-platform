@@ -44,6 +44,21 @@ export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases
       resultCases.push({ id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`, ...entry, contract });
     }
   }
+  // fin-b19: a tracked display row whose impact is not money or customer data (staff only, or none) that
+  // owns a registered saved-result contract is judged even when no browser spec names it. Without this its
+  // SQL would never be read and its contract would never run.
+  const judgedKeys = new Set(resultCases.map(keyFor));
+  for (const sourceFile of DISPLAY_SOURCES) {
+    for (const row of maps.get(sourceFile) || []) {
+      if (row.repeats_row_in || !isTracked(row) || ["money", "customerData", "customerMessage"].includes(row.impact)) continue;
+      const entry = { sourceFile, surface: row.surface, control: row.control };
+      if (judgedKeys.has(keyFor(entry))) continue;
+      const contract = contractFor(row);
+      if (!contract) continue;
+      judgedKeys.add(keyFor(entry));
+      resultCases.push({ id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`, ...entry, contract });
+    }
+  }
   const resultsByKey = new Map(resultCases.map((entry) => [keyFor(entry), entry]));
   const directKeys = new Set(proofCases.map(keyFor));
   const laneKeys = new Set(proofCases.filter((entry) => String(entry.evidence || "").includes("gap-catalog-display.mjs")).map(keyFor));

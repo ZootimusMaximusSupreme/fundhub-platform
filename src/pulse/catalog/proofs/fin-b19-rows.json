@@ -1,0 +1,78 @@
+{
+ "fin-b19-pipeline-controls.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/pipeline.html",
+   "controls": [
+    "Filter: Owner (hidden until a card has an owner)",
+    "Filter: Waiting on (Anyone / Us / Us - an approval amount / A bank / The client / Nothing recorded)",
+    "Fulfillment lens: click a chip to show only that action; Show all clears it",
+    "Headline counters: on a bank / on the client / nothing recorded (3 buttons, same filter as the select)",
+    "Headline: Longest wait link (scrolls to that card and rings it; stops being a link when a filter hides the card)",
+    "Headline: Waiting on us (big number, button that filters the board to cards someone here must move)",
+    "Lens switch: Board / Fulfillment",
+    "Rail note on Sales: a payment does not move a card, somebody must move it to Closed Won",
+    "Rail tab R-01 Sales",
+    "Rail tab R-02 Funding: Card Stacking",
+    "Rail tab R-04 Optimization (Repair) Rounds",
+    "Rail tab R-05 Inquiry Removal",
+    "Rail tab R-06 AR / Collections",
+    "Rail tab R-08 Affiliates + White Label",
+    "Rail tab R-09 Hiring"
+   ],
+   "notAttached": [
+    "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)",
+    "Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first",
+    "The x on each active filter chip (clears that one filter)"
+   ]
+  }
+ ],
+ "fin-b19-shell-chrome.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+   "controls": [
+    "Account chip: add or change your photo (hidden file input, PNG or JPEG)",
+    "Account chip: backend badge (LIVE / NO DB / NO API / DEMO)",
+    "Account chip: Sign out",
+    "Account chip: x hide the bar and the small 'account' button that brings it back",
+    "Beta banner with Dismiss (only for owner on pages listed in BETA_PAGES; the list is empty)",
+    "Brand paint: company colors and logo applied to the chrome",
+    "Role gate: cached role bounces a role that may not open this page; session answer is authoritative; no session sends to the sign-in page",
+    "Search button and overlay (Cmd or Ctrl K): type to search clients, contracts, documents, conversations, pipeline cards; hits are links",
+    "Sidebar logo link (to pipeline.html) and collapse button (to icon strip; closes the drawer on a phone)"
+   ]
+  }
+ ],
+ "fin-b19-shell-sidebar.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+   "controls": [
+    "Sidebar group 'Admin' header (fold/unfold) and its links: staff-teams.html, hiring.html, products-commissions.html, contracts.html, brand-studio.html",
+    "Sidebar group 'Client ops' header (fold/unfold) and its links: csm-queue.html, consent-capture.html, messaging.html, documents.html, inquiry-remover.html, company-brain.html",
+    "Sidebar group 'Funding' header (fold/unfold) and its links: lenders.html, client-control-panel.html, finance-os.html",
+    "Sidebar group 'Marketing' header (fold/unfold) and its links: marketing-command-center.html, campaign-manager.html, social-studio.html, creative-factory.html, content-admin.html",
+    "Sidebar group 'Portals' header (fold/unfold) and its links: client-portal.html, affiliate.html"
+   ],
+   "notAttached": [
+    "Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html",
+    "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html",
+    "Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html"
+   ]
+  }
+ ],
+ "fin-b19-sales-floor.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "sales-floor.html (+ sales-floor.js)",
+   "controls": [
+    "'Flag <belief>' button: stores a belief x source row for marketing",
+    "'One closer at a time': previous and next arrows and one name button per closer",
+    "'Sync recordings from Drive': scans Drive, indexes Meet files, reloads the floor",
+    "'Today's recordings' jump button",
+    "Closer is bounced and sees 'Forbidden' (403 from the read)"
+   ]
+  }
+ ]
+}

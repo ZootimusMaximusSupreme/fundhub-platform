@@ -7,6 +7,7 @@ import { NOT_SHIPPED_CODE, judgeNotShipped, verifyNotShipped } from "./fin-b06-n
 import { LIVE_PAGE_JUDGES } from "./fin-b07-leads-page.mjs";
 import { leadsResetResults } from "./fin-b09-leads-reset.mjs";
 import { judgeLinkGate, linkGateState } from "./fin-b10-link-gate.mjs";
+import { HIDDEN_HEAD_CODE, judgeHiddenHeads, verifyHiddenHead } from "./fin-b19-hidden-head.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -205,11 +206,14 @@ export async function gapChecks(ctx = {}) {
   const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
   // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
   const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
+  // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
+  const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);
   const gate = gateRead ? await gateRead : null;
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (notShipped.has(entry.id)) return notShipped.get(entry.id);
     if (leadsReset.has(entry.id)) return leadsReset.get(entry.id);
+    if (hiddenHeads.has(entry.id)) return hiddenHeads.get(entry.id);
     if (entry.contract?.mode === "link-gate") return judgeLinkGate(entry, gate);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
@@ -263,4 +267,5 @@ export const naVerify = Object.freeze({
     return (await retiredPageState(ctx)).status === "na";
   },
   [NOT_SHIPPED_CODE]: (args, ctx = {}) => verifyNotShipped(DISPLAY_TRACKING_CASES, args, ctx),
+  [HIDDEN_HEAD_CODE]: (args, ctx = {}) => verifyHiddenHead(DISPLAY_TRACKING_CASES, args, ctx),
 });
