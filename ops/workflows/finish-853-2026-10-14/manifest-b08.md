@@ -156,6 +156,13 @@ batches. Each batch's count change is its own number of attached rows (34 here);
 - `node scripts/pulse/count-not-proved.mjs` before and after: 853 / 819 total, route lane 135 / 101, this
   batch 37 / 3.
 - `node --test src/http/fin-b08-*.test.mjs`: 26 files, 248 tests, 248 pass, 0 skipped.
-- `node --test src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs src/pulse/coverage/gap-door-batch-routes.test.mjs src/pulse/catalog/proofs/door-batch-route-result.test.mjs src/pulse/catalog/proofs/door-proof.test.mjs`: all pass.
+- The catalog and door tests that read the route map, the proof chain or `generated.json`
+  (`src/pulse/catalog/*.test.mjs`, `src/pulse/catalog/proofs/door-*.test.mjs`, `s1/s2/s3-door-contracts`,
+  `fin-b08-door-contracts`, `flow-read-contracts`, `src/pulse/coverage/gap-catalog*.test.mjs`,
+  `gap-door-batch-routes.test.mjs`): 1070 + 84 tests, all pass, 0 skipped.
+- `node scripts/lint.mjs`: 3593 files and inline scripts parse clean.
+- The whole `src/pulse` suite was started once and stopped: it launches Playwright browsers and nested test
+  runs and did not finish in 12 minutes on a busy machine. The tests named above are the ones that touch
+  what this branch changed.
 - `npm run pulse:catalog`: regenerated `generated.json` (3975 mapped, 3919 wired, 23 red).
 - Plug-in mutations seen red: a changed id, a removed chain line, a skipped test file.
