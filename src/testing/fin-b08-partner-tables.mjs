@@ -7,6 +7,9 @@ import { fakeDb } from "./handler-harness.mjs";
 
 const norm = (sql) => String(sql).replace(/\s+/g, " ").trim();
 
+/** partner_brand's jsonb columns: they must arrive as JSON text. */
+const JSON_COLUMNS = new Set(["ramp", "selected_funnels"]);
+
 /** `col = $n` pairs of a SET list, in order. */
 function setPairs(list) {
   return [...list.matchAll(/([a-z_]+)\s*=\s*\$(\d+)/gi)].map((m) => [m[1], Number(m[2])]);
@@ -30,6 +33,13 @@ export function partnerTables({
       const m = /INSERT INTO partner_brand \(([^)]+)\)[\s\S]*?DO UPDATE SET ([\s\S]+?)RETURNING/i.exec(s);
       const cols = m[1].split(",").map((c) => c.trim());
       const insert = Object.fromEntries(cols.map((c, i) => [c, p[i]]));
+      // A jsonb column takes JSON text. The driver sends a JS array as a Postgres array literal, which Postgres
+      // refuses for jsonb: so a value that is not text is an error here too, the way it is in production.
+      for (const col of cols) {
+        if (JSON_COLUMNS.has(col) && insert[col] !== null && insert[col] !== undefined && typeof insert[col] !== "string") {
+          throw Object.assign(new Error(`invalid input syntax for type json: column ${col} was sent as a JS value, not as JSON text`), { code: "22P02" });
+        }
+      }
       const existing = brands.find((b) => b.partner_id === insert.partner_id);
       const parse = (v) => (typeof v === "string" && /^[[{]/.test(v) ? JSON.parse(v) : v);
       if (!existing) {

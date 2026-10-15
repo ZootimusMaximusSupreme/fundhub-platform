@@ -10,6 +10,7 @@ import pagesHandler from "../../api/partner-pages.mjs";
 import { makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID } from "./../testing/handler-harness.mjs";
 import { partnerTables } from "../testing/fin-b08-partner-tables.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
+import { hasFulfilmentDisclosure } from "../brand/templates.mjs";
 
 const PARTNER = "d1000000-0000-4000-8000-000000000001";
 const OTHER_PARTNER = "d2000000-0000-4000-8000-000000000002";
@@ -139,6 +140,52 @@ describe("GET and PUT /api/partner-brand", () => {
       assert.equal(res.statusCode, 400, JSON.stringify(fields));
       assert.match(res.body.problems.join(" "), pattern);
       assert.equal(fake.state.writes.length, 0);
+    }
+  });
+
+  test("PUT keeps each free-text field to its length and its type: the longest allowed is saved, one more is refused", async () => {
+    const limits = { wordmark_url: 2048, voice: 2000, entity_name: 200, entity_address: 500, domain: 253 };
+    for (const [field, max] of Object.entries(limits)) {
+      const ok = baseTables();
+      const good = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, [field]: "a".repeat(max) } }), ok, owner());
+      assert.equal(good.res.statusCode, 200, `${field} at ${max}`);
+      assert.equal(good.res.body.brand[field].length, max);
+      const t = baseTables();
+      const before = JSON.stringify(t.brands);
+      const over = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, [field]: "a".repeat(max + 1) } }), t, owner());
+      assert.equal(over.res.statusCode, 400, `${field} at ${max + 1}`);
+      assert.match(over.res.body.problems.join(" "), new RegExp(`${field} must be ${max} characters or fewer`));
+      assert.equal(JSON.stringify(t.brands), before);
+    }
+    const email = baseTables();
+    const longEmail = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, support_email: `${"a".repeat(310)}@example.test` } }), email, owner());
+    assert.equal(longEmail.res.statusCode, 400);
+    assert.match(longEmail.res.body.problems.join(" "), /support_email must be 320 characters or fewer/);
+    // A value that is not text at all is refused with its own words.
+    for (const [field, value] of [["entity_name", { name: "Acme" }], ["domain", 12345], ["voice", ["a"]], ["entity_address", true]]) {
+      const t = baseTables();
+      const { res, fake } = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, [field]: value } }), t, owner());
+      assert.equal(res.statusCode, 400, field);
+      assert.match(res.body.problems.join(" "), new RegExp(`${field} must be a string`));
+      assert.equal(fake.state.writes.length, 0);
+    }
+  });
+
+  test("PUT takes the funnel list and the ramp as lists, and saves them as JSON so the database can read them", async () => {
+    const t = baseTables();
+    const bad = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, selected_funnels: "apply" } }), t, owner());
+    assert.equal(bad.res.statusCode, 400);
+    assert.match(bad.res.body.problems.join(" "), /selected_funnels must be an array/);
+    const badRamp = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, ramp: "#000000" } }), baseTables(), owner());
+    assert.equal(badRamp.res.statusCode, 400);
+    assert.match(badRamp.res.body.problems.join(" "), /ramp must be an array/);
+    const ok = await call(brandHandler, req("PUT", { body: { partner_id: PARTNER, selected_funnels: ["apply", "book"], ramp: [] } }), t, owner());
+    assert.equal(ok.res.statusCode, 200, JSON.stringify(ok.res.body));
+    assert.deepEqual(t.brands[0].selected_funnels, ["apply", "book"]);
+    const insert = ok.fake.calls.find((c) => /INSERT INTO partner_brand/.test(c.sql));
+    const cols = /INSERT INTO partner_brand \(([^)]+)\)/.exec(insert.sql)[1].split(",").map((c) => c.trim());
+    for (const col of ["selected_funnels", "ramp"]) {
+      assert.equal(typeof insert.params[cols.indexOf(col)], "string", `${col} is sent as JSON text`);
     }
   });
 
@@ -328,6 +375,71 @@ describe("GET, POST and PATCH /api/partner-pages", () => {
     const foreign = await call(pagesHandler, req("PATCH", { body: { id: foreignId, title: "Hijacked" } }), t, owner());
     assert.equal(foreign.res.statusCode, 404);
     assert.equal(t.pages[3].title, "Apply");
+  });
+
+  test("every new page starts with all four legal blocks, locked, in the partner's own trading name, for every funnel", async () => {
+    for (const funnel of ["apply", "diag", "edu", "aff", "book"]) {
+      const t = pagesTables({ pages: [] });
+      const { res } = await call(pagesHandler, req("POST", { body: { partner_id: PARTNER, funnel_key: funnel } }), t, owner());
+      assert.equal(res.statusCode, 200, funnel);
+      const body = res.body.page.body_json;
+      assert.equal(body.template, funnel);
+      const legal = body.sections.filter((s) => s.type === "legal");
+      assert.deepEqual(legal.map((s) => s.id), ["legal-lender", "legal-outcomes", "legal-sms", "legal-fulfilment"], funnel);
+      assert.ok(legal.every((s) => s.locked === true), `${funnel}: every legal block is locked`);
+      assert.match(legal[0].text, /^Acme Capital is not a direct lender/);
+      assert.match(legal[1].text, /^Acme Capital does not guarantee approval/);
+      assert.match(legal[3].text, /provided and performed by FundHub\. Acme Capital is an independent marketing partner/);
+      assert.equal(hasFulfilmentDisclosure(body), true, `${funnel}: the fulfilment disclosure is there and locked`);
+      assert.ok(body.sections.some((s) => s.type !== "legal" && s.locked === false), `${funnel}: and the partner's own sections are editable`);
+      // The page is saved with exactly that body.
+      assert.deepEqual(t.pages[0].body_json, body);
+    }
+  });
+
+  test("a new page's title and address come from the caller or the funnel, and the address is made safe", async () => {
+    const own = pagesTables({ pages: [] });
+    const a = await call(pagesHandler, req("POST", { body: { partner_id: PARTNER, funnel_key: "apply", title: "  Our funding review  ", slug: "Hello World & Co!" } }), own, owner());
+    assert.equal(a.res.statusCode, 200);
+    assert.equal(a.res.body.page.title, "Our funding review", "trimmed");
+    assert.equal(a.res.body.page.slug, "hello-world---co-", "lower case, letters digits and hyphens only");
+    const long = pagesTables({ pages: [] });
+    const b = await call(pagesHandler, req("POST", { body: { partner_id: PARTNER, funnel_key: "apply", slug: "x".repeat(100) } }), long, owner());
+    assert.equal(b.res.body.page.slug.length, 63);
+    const plain = pagesTables({ pages: [] });
+    const c = await call(pagesHandler, req("POST", { body: { partner_id: PARTNER, funnel_key: "edu" } }), plain, owner());
+    assert.deepEqual([c.res.body.page.title, c.res.body.page.slug], ["Education funnel", "education"]);
+  });
+
+  test("an edit changes the title and the address of the partner's own page, safely, and leaves the rest", async () => {
+    const t = pagesTables();
+    const id = "a2000000-0000-4000-8000-000000000002";
+    const a = await call(pagesHandler, req("PATCH", { body: { id, title: "  Book a call  ", slug: "Book A Call!" } }), t, owner());
+    assert.equal(a.res.statusCode, 200, JSON.stringify(a.res.body));
+    assert.equal(t.pages[1].title, "Book a call");
+    assert.equal(t.pages[1].slug, "book-a-call-");
+    assert.equal(t.pages[1].status, "draft");
+    assert.equal(t.pages[1].funnel_key, "book");
+    const mine = await call(pagesHandler, req("PATCH", { body: { id, title: "Partner's own title" } }), t, partner());
+    assert.equal(mine.res.statusCode, 200);
+    assert.equal(t.pages[1].title, "Partner's own title");
+    assert.equal(t.pages[1].slug, "book-a-call-", "a field not sent is left alone");
+  });
+
+  test("a published page has an address on the partner's own domain only once that domain is verified", async () => {
+    const unverified = pagesTables({ brands: [{
+      partner_id: PARTNER, org_id: ORG_ID, entity_name: "Acme Capital", domain: "acme.example.test", domain_verified: false, selected_funnels: ["apply"],
+    }] });
+    const { res } = await call(pagesHandler, req("GET", { query: { partner_id: PARTNER } }), unverified, owner());
+    const live = res.body.items.find((i) => i.slug === "apply");
+    assert.equal(live.live_url, `/sites/${PARTNER}/apply`, "an unverified domain is not used");
+    assert.equal(live.live_path, `/sites/${PARTNER}/apply`);
+    assert.equal(res.body.domain, "acme.example.test");
+    assert.equal(res.body.domain_verified, false);
+    const noDomain = pagesTables({ brands: [{ partner_id: PARTNER, org_id: ORG_ID, entity_name: "Acme Capital", domain: null, domain_verified: true, selected_funnels: [] }] });
+    const none = await call(pagesHandler, req("GET", { query: { partner_id: PARTNER } }), noDomain, owner());
+    assert.equal(none.res.body.items.find((i) => i.slug === "apply").live_url, `/sites/${PARTNER}/apply`);
+    assert.equal(none.res.body.domain, null);
   });
 
   test("every staff role is tried: only owner and admin reach the page editor", async () => {
