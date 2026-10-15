@@ -29,6 +29,7 @@ import { FIN_B12_DISPLAY_PROOF_CASES } from "./fin-b12-display-proofs.mjs";
 import { FIN_B13_DISPLAY_PROOF_CASES } from "./fin-b13-display-practice.mjs";
 import { FIN_B14_DISPLAY_PROOF_CASES } from "./fin-b14-display-proofs.mjs";
 import { FIN_B15_DISPLAY_PROOF_CASES } from "./fin-b15-display-specs.mjs";
+import { FIN_B16_DISPLAY_PROOF_CASES } from "./fin-b16-display-proofs.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -422,6 +423,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...FIN_B13_DISPLAY_PROOF_CASES,
   ...FIN_B14_DISPLAY_PROOF_CASES,
   ...FIN_B15_DISPLAY_PROOF_CASES,
+  ...FIN_B16_DISPLAY_PROOF_CASES,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));
