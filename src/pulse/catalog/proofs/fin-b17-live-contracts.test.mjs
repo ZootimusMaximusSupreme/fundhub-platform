@@ -224,24 +224,39 @@ test("sample client: a company with no such client has no sample, so the check i
 
 const K1 = "c1000000-0000-4000-8000-0000000000c1";
 const K2 = "c2000000-0000-4000-8000-0000000000c2";
+const K3 = "c3000000-0000-4000-8000-0000000000c3";
+const K9 = "c9000000-0000-4000-8000-0000000000c9"; // a client of another company
 const RESULT_K1 = "d1000000-0000-4000-8000-0000000000d1";
 const RESULT_K2 = "d2000000-0000-4000-8000-0000000000d2";
 const RESULT_OTHER_ORG = "d6000000-0000-4000-8000-0000000000d6";
-const PULL_TABLES = ["soft_pull_requests", "crs_results", "payment_links"];
-const request = (over = {}) => ["soft_pull_requests", { id: uid("a3"), org_id: ORG, client_id: K1, status: "complete", crs_result_id: RESULT_K1, ...over }];
-const link = (over = {}) => ["payment_links", { id: uid("a4"), org_id: ORG, client_id: K1, purpose: "diagnostic", amount_cents: 3200, status: "paid", paid_at: NOW_ISO, is_demo: false, ...over }];
+const EARLIER = "2026-10-01T09:00:00.000Z";
+const LATER = "2026-10-02T09:00:00.000Z";
+const PULL_TABLES = ["soft_pull_requests", "crs_results", "payment_links", "client_consents", "clients"];
+const clientRow = (id, over = {}) => ["clients", { id, org_id: ORG, first_name: "Sam", last_name: "Sample", is_demo: false, custom_fields: {}, ...over }];
+const consent = (over = {}) => ["client_consents", { id: uid("a7"), org_id: ORG, client_id: K1, kind: "soft_pull_consent", granted_at: EARLIER, ...over }];
+const request = (over = {}) => ["soft_pull_requests", { id: uid("a3"), org_id: ORG, client_id: K1, status: "fulfilled", crs_result_id: RESULT_K1, requested_at: LATER, ...over }];
+const link = (over = {}) => ["payment_links", {
+  id: uid("a4"), org_id: ORG, client_id: K1, purpose: "diagnostic", amount_cents: 3200, status: "paid", paid_at: NOW_ISO,
+  paid_amount_cents: 3200, is_demo: false, ...over,
+}];
 const pullClean = () => [
+  clientRow(K1), clientRow(K2),
   ["crs_results", { id: RESULT_K1, org_id: ORG, client_id: K1 }],
   ["crs_results", { id: RESULT_K2, org_id: ORG, client_id: K2 }],
+  consent(), consent({ client_id: K2 }),
   request(),
-  request({ client_id: K2, status: "pending", crs_result_id: null }),
+  request({ client_id: K2, status: "queued", crs_result_id: null }),
   link(),
-  link({ status: "sent", paid_at: null, client_id: K2 }),
-  // never counted
-  link({ purpose: "repair", amount_cents: null, status: "paid", paid_at: null }),
-  link({ is_demo: true, amount_cents: 0 }),
-  ["soft_pull_requests", { id: uid("a5"), org_id: OTHER_ORG, client_id: K1, status: "complete", crs_result_id: null }],
-  ["payment_links", { id: uid("a6"), org_id: OTHER_ORG, client_id: K1, purpose: "diagnostic", amount_cents: null, status: "paid", paid_at: null, is_demo: false }],
+  link({ status: "sent", paid_at: null, paid_amount_cents: null, client_id: K2 }),
+  // a paid link whose amount was settled by another path, exactly equal, is clean; so is a paid time with the same amount
+  link({ client_id: K2, status: "sent", paid_amount_cents: 3200 }),
+  // never counted, though each is wrong in some way: another company's client with a request and no consent
+  clientRow(K9, { org_id: OTHER_ORG }),
+  ["soft_pull_requests", { id: uid("a8"), org_id: OTHER_ORG, client_id: K9, status: "queued", crs_result_id: null, requested_at: LATER }],
+  link({ purpose: "repair", paid_amount_cents: null }),
+  link({ is_demo: true, paid_amount_cents: null }),
+  ["soft_pull_requests", { id: uid("a5"), org_id: OTHER_ORG, client_id: K1, status: "fulfilled", crs_result_id: RESULT_K2, requested_at: EARLIER }],
+  ["payment_links", { id: uid("a6"), org_id: OTHER_ORG, client_id: K1, purpose: "diagnostic", amount_cents: 3200, status: "paid", paid_at: NOW_ISO, paid_amount_cents: null, is_demo: false }],
 ];
 
 conditionTest({
@@ -251,32 +266,66 @@ conditionTest({
   names: [...PULL_REQUEST_BAD, ...PULL_LINK_BAD].map(([name]) => name),
   clean: pullClean,
   bads: {
-    "a pull request says it is finished and no credit result is stored for the client": [
-      [request({ client_id: uid("c3"), status: "complete", crs_result_id: null })],
-      [request({ client_id: uid("c3"), status: "Completed", crs_result_id: null })],
-      // the only result stored for the client is saved under another company
-      [["crs_results", { id: uid("d7"), org_id: OTHER_ORG, client_id: "c7000000-0000-4000-8000-0000000000c7" }], request({ client_id: "c7000000-0000-4000-8000-0000000000c7", status: "complete", crs_result_id: null })],
-    ],
     "a pull request points at a credit result that is not this client's": [
-      [request({ client_id: K1, status: "pending", crs_result_id: RESULT_K2 })],
-      [request({ client_id: K1, status: "pending", crs_result_id: uid("d4") })],
+      [request({ client_id: K1, status: "fulfilled", crs_result_id: RESULT_K2 })],
+      [request({ client_id: K1, status: "fulfilled", crs_result_id: uid("d4") })],
       // the same id and client, but the result is saved under another company
-      [["crs_results", { id: RESULT_OTHER_ORG, org_id: OTHER_ORG, client_id: K1 }], request({ client_id: K1, status: "pending", crs_result_id: RESULT_OTHER_ORG })],
+      [["crs_results", { id: RESULT_OTHER_ORG, org_id: OTHER_ORG, client_id: K1 }], request({ client_id: K1, status: "fulfilled", crs_result_id: RESULT_OTHER_ORG })],
     ],
-    "the pull's payment link has no amount, so the panel would print $0.00": [
-      [link({ amount_cents: null, client_id: uid("c4") })], [link({ amount_cents: 0, client_id: uid("c4") })],
+    "a pull request was recorded before any soft pull consent was granted for the client": [
+      // a client with a request and no consent at all
+      [clientRow(K3), request({ client_id: K3, status: "queued", crs_result_id: null })],
+      // consent granted after the request was made
+      [clientRow(K3), consent({ client_id: K3, granted_at: LATER }), request({ client_id: K3, status: "queued", crs_result_id: null, requested_at: EARLIER })],
+      // a consent of another kind, or another client's, or another company's, is not this one
+      [clientRow(K3), consent({ client_id: K3, kind: "marketing_use" }), request({ client_id: K3, status: "queued", crs_result_id: null })],
+      [clientRow(K3), consent({ client_id: K2 }), request({ client_id: K3, status: "queued", crs_result_id: null })],
+      [clientRow(K3), consent({ client_id: K3, org_id: OTHER_ORG }), request({ client_id: K3, status: "queued", crs_result_id: null })],
     ],
-    "the pull's payment link is marked paid with no paid time": [[link({ status: "paid", paid_at: null, client_id: uid("c4") })]],
-    "the pull's payment link has a paid time and is not marked paid": [[link({ status: "sent", paid_at: NOW_ISO, client_id: uid("c4") })]],
+    "the pull's payment link is paid and no paid amount was saved, so the panel prints an amount nothing backs": [
+      [link({ client_id: uid("c4"), paid_amount_cents: null })],
+      [link({ client_id: uid("c4"), status: "sent", paid_at: NOW_ISO, paid_amount_cents: null })],
+      [link({ client_id: uid("c4"), status: "paid", paid_at: null, paid_amount_cents: null })],
+    ],
+    "the pull's payment link is paid for an amount that is not the amount the panel prints": [
+      [link({ client_id: uid("c4"), paid_amount_cents: 100 })],
+      [link({ client_id: uid("c4"), paid_amount_cents: 4200 })],
+      [link({ client_id: uid("c4"), status: "sent", paid_at: NOW_ISO, paid_amount_cents: 2000 })],
+    ],
   },
 });
 
-test("soft pull panel rows: a finished request whose client has a result stored by another path is fine", () => {
+test("soft pull panel rows: demo and synthetic clients are left out, and a consent granted at the instant of the request counts as before it", () => {
   const before = counts(PULL_TABLES, pullClean(), softPullPanelSql());
-  const rows = [...pullClean(), ["crs_results", { id: uid("d5"), org_id: ORG, client_id: K2 }], request({ client_id: K2, status: "complete", crs_result_id: null })];
+  const synthetic = uid("c8");
+  const left = [
+    clientRow(K3, { is_demo: true }), request({ client_id: K3, status: "queued", crs_result_id: null }),
+    clientRow(synthetic, { custom_fields: { synthetic: "true" } }), request({ client_id: synthetic, status: "queued", crs_result_id: null }),
+  ];
+  assert.deepEqual(counts(PULL_TABLES, [...pullClean(), ...left], softPullPanelSql()), before, "a demo client's and a synthetic client's requests are neither samples nor bad");
+
+  const k = uid("c9");
+  const tie = counts(PULL_TABLES, [...pullClean(), clientRow(k), consent({ client_id: k, granted_at: LATER }), request({ client_id: k, status: "queued", crs_result_id: null, requested_at: LATER })], softPullPanelSql());
+  assert.equal(tie.bad_count, before.bad_count, "consent granted at the moment of the request counts as before it");
+  assert.equal(tie.sample_count, before.sample_count + 1);
+});
+
+test("soft pull panel rows: a request in this company for a client this company does not hold is judged, and the foreign client's demo flag cannot hide it", () => {
+  const before = counts(PULL_TABLES, pullClean(), softPullPanelSql());
+  // the request is in ORG; the client row it names is in OTHER_ORG (and flagged demo there)
+  const foreign = [clientRow(K3, { org_id: OTHER_ORG, is_demo: true }), request({ client_id: K3, status: "queued", crs_result_id: null })];
+  const after = counts(PULL_TABLES, [...pullClean(), ...foreign], softPullPanelSql());
+  assert.equal(after.sample_count, before.sample_count + 1, "it is a sample");
+  assert.equal(after.bad_count, before.bad_count + 1, "and it has no consent in this company, so it is bad");
+});
+
+test("soft pull panel rows: a finished request whose client has a result stored by another path is fine, and an unpaid link is not judged", () => {
+  const before = counts(PULL_TABLES, pullClean(), softPullPanelSql());
+  const rows = [...pullClean(), ["crs_results", { id: uid("d5"), org_id: ORG, client_id: K2 }]];
   const after = counts(PULL_TABLES, rows, softPullPanelSql());
-  assert.equal(after.bad_count, before.bad_count, "the server answers 'complete' from the stored result, so the panel agrees with the file");
-  assert.equal(after.sample_count, before.sample_count + 1);
+  assert.deepEqual(after, before, "a stored result nobody asked for is not a wrong pull request");
+  const unpaid = counts(PULL_TABLES, [...pullClean(), link({ client_id: uid("c4"), status: "sent", paid_at: null, paid_amount_cents: null })], softPullPanelSql());
+  assert.deepEqual(unpaid, before, "a link nobody paid has no paid amount to judge");
 });
 
 // ───────────────────────── the money connection status lines ─────────────────────────
@@ -291,8 +340,11 @@ const connClean = () => {
   const a = conn();
   const b = conn({ status: "waiting", mode: "push", last_event_at: null, last_synced_at: null, synced_through: null });
   const c = conn({ sync_cursor: "page-4", last_sync_error: "The processor did not accept this API key." });
+  // a connection whose newest event is older than another connection's: its own time is right, and is not "stale" against theirs
+  const d = conn({ last_event_at: "2026-10-14T10:00:00.000Z" });
   return [
     ...withEvent(a), ["merchant_connections", b], ...withEvent(c),
+    ["merchant_connections", d], ["merchant_events", { id: uid("e6"), connection_id: d.id, provider_event_id: uid("p"), kind: "sale", received_at: "2026-10-14T10:00:00.000Z" }],
     // never counted: another company's broken connection
     ...withEvent(conn({ org_id: OTHER_ORG, last_event_at: null })),
   ];
@@ -307,13 +359,18 @@ conditionTest({
   bads: {
     "events are saved for the connection and its last sale or payout time is empty": [withEvent(conn({ last_event_at: null }))],
     "a last sale or payout time is set and no event is saved for the connection": [[["merchant_connections", conn({ last_event_at: NOW_ISO })]]],
+    "the last sale or payout time is older than the newest event saved for the connection": [
+      withEvent(conn({ last_event_at: "2026-10-14T11:00:00.000Z" })),
+      // two events: the connection's time keeps up with the first and not the second
+      (() => { const c = conn({ last_event_at: "2026-10-14T10:00:00.000Z" }); return [...withEvent(c), ["merchant_events", { id: uid("e6"), connection_id: c.id, provider_event_id: uid("p"), kind: "payout", received_at: NOW_ISO }]]; })(),
+    ],
     "a pull connection finished a sync and has no last synced time": [[["merchant_connections", conn({ last_event_at: null, last_synced_at: null, synced_through: NOW_ISO })]]],
     "a turned-off connection still says it is reading, so a next sync is promised that will never run": [
       [["merchant_connections", conn({ last_event_at: null, status: "disabled", sync_cursor: "page-2" })]],
     ],
-    "a sync error has no words or is longer than the 300 characters the page saves": [
+    "a sync error is only spaces, so the page would say the last sync did not finish and give no words": [
       [["merchant_connections", conn({ last_event_at: null, last_sync_error: "   " })]],
-      [["merchant_connections", conn({ last_event_at: null, last_sync_error: "x".repeat(301) })]],
+      [["merchant_connections", conn({ last_event_at: null, last_sync_error: "" })]],
     ],
   },
 });

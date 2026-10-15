@@ -1,9 +1,13 @@
 // Batch 17 practice test: the status lines under each processor on /app/money-connections.html
 // (last sale or payout, event count, last synced, last sync error, the still-reading note).
 //
-// Two halves run together over fake rows: the server's own shaping of a saved connection row
-// (publicConnection in src/merchant/store.mjs) and the page's own render (public/app/money-connections.js,
-// run whole in a vm). No browser, no database, no network.
+// Three halves run together over fake rows: the server's own shaping of a saved connection row
+// (publicConnection in src/merchant/store.mjs), the page's own render (public/app/money-connections.js,
+// run whole in a vm), and (repair cycle 1) the server's own SELECT: listConnections runs the real
+// SELECT_CONNECTION text, with its event count subquery, over stand-in rows (SQLite, real column names
+// from db/migrations, fin-b17-sql-kit.mjs), so the count and the last sale time the page paints are judged
+// as the database would hand them back, with another connection's, another client's and another
+// company's events beside them. No browser, no database, no network.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -12,8 +16,9 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
-import { publicConnection } from "../../../merchant/store.mjs";
+import { listConnections, publicConnection } from "../../../merchant/store.mjs";
 import { proofRows } from "./fin-b17-kit.mjs";
+import { makeStandIn, portableSql } from "./fin-b17-sql-kit.mjs";
 
 const proof = proofRows(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -117,6 +122,90 @@ test("the server shapes the lines: event count is a number, partway is a flag, a
     assert.equal(push.last_sync_error, null);
     assert.equal(push.last_synced_at, null);
     assert.equal(publicConnection(row({ event_count: null })).event_count, 0, "no count saved is zero, not a blank");
+  });
+});
+
+// ───────────────────────────── the real SELECT, over stand-in rows ─────────────────────────────
+
+const ORG = "11111111-1111-4111-8111-111111111111";
+const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
+const CLIENT = "33333333-3333-4333-8333-333333333333";
+const OTHER_CLIENT = "44444444-4444-4444-8444-444444444444";
+
+/** Rows in, what listConnections hands back for (ORG, CLIENT), run through the server's public shape. */
+async function listed(rows) {
+  const standIn = makeStandIn(["merchant_connections", "merchant_events", "entities"]);
+  try {
+    for (const [table, r] of rows) standIn.insert(table, r);
+    const db = { async query(sql, params) { return { rows: standIn.db.prepare(portableSql(sql)).all(...params) }; } };
+    const got = await listConnections(db, { orgId: ORG, clientId: CLIENT });
+    return got.map((r) => publicConnection(r, { baseUrl: "https://app.example.test" }));
+  } finally {
+    standIn.close();
+  }
+}
+const entity = (id, over = {}) => ["entities", { id, org_id: ORG, client_id: CLIENT, kind: "business", name: "Fundhub LLC", ...over }];
+const connRow = (id, entityId, over = {}) => ["merchant_connections", {
+  id, org_id: ORG, client_id: CLIENT, entity_id: entityId, provider: "whop", mode: "push", status: "active",
+  encrypted_webhook_secret: "enc", last_event_at: null, created_at: "2026-09-01T00:00:00.000Z", ...over,
+}];
+let eventNo = 0;
+const eventRow = (connectionId, at = "2026-10-05T10:00:00.000Z") => ["merchant_events", {
+  id: `ev-${(eventNo += 1)}`, connection_id: connectionId, provider_event_id: `p-${eventNo}`, kind: "sale", amount_cents: 1000, occurred_at: at, received_at: at,
+}];
+
+test("the real SELECT counts each connection's own events and hands back each one's saved last sale time", async () => {
+  await proof.check(/^Connection status lines/, async () => {
+    const A = "a0000000-0000-4000-8000-00000000000a";
+    const B = "b0000000-0000-4000-8000-00000000000b";
+    const C = "c0000000-0000-4000-8000-00000000000c";
+    const D = "d0000000-0000-4000-8000-00000000000d"; // another client's connection in this company
+    const E = "e0000000-0000-4000-8000-00000000000e"; // another company's
+    const got = await listed([
+      entity("ent-1"), entity("ent-2", { kind: "personal", name: "Sam (personal)" }),
+      entity("ent-d", { client_id: OTHER_CLIENT }), entity("ent-e", { org_id: OTHER_ORG, client_id: OTHER_CLIENT }),
+      connRow(A, "ent-1", { last_event_at: "2026-10-05T10:00:00.000Z", created_at: "2026-09-01T00:00:00.000Z" }),
+      connRow(B, "ent-2", { provider: "commas", last_event_at: "2026-10-04T08:30:00.000Z", created_at: "2026-09-02T00:00:00.000Z" }),
+      connRow(C, "ent-1", { provider: "api", status: "waiting", encrypted_webhook_secret: null, created_at: "2026-09-03T00:00:00.000Z" }),
+      connRow(D, "ent-d", { client_id: OTHER_CLIENT, last_event_at: "2026-10-09T00:00:00.000Z" }),
+      connRow(E, "ent-e", { org_id: OTHER_ORG, client_id: OTHER_CLIENT, last_event_at: "2026-10-10T00:00:00.000Z" }),
+      // three events on A, one on B, none on C, and many on connections that are not this client's
+      eventRow(A, "2026-10-03T10:00:00.000Z"), eventRow(A, "2026-10-04T10:00:00.000Z"), eventRow(A, "2026-10-05T10:00:00.000Z"),
+      eventRow(B, "2026-10-04T08:30:00.000Z"),
+      eventRow(D), eventRow(D), eventRow(D), eventRow(D), eventRow(D), eventRow(E), eventRow(E),
+    ]);
+    // only this client's connections in this company, open ones first and then by when they were made
+    assert.deepEqual(got.map((c) => c.id), [A, B, C]);
+    assert.deepEqual(got.map((c) => c.event_count), [3, 1, 0], "each connection counts its own events and nobody else's");
+    assert.deepEqual(got.map((c) => c.last_event_at), ["2026-10-05T10:00:00.000Z", "2026-10-04T08:30:00.000Z", null], "the saved last sale time, as saved");
+
+    // and the page paints those same numbers under the right processor
+    const d = page(got.map((c) => row({
+      id: c.id, provider: c.provider, entity_name: c.entity_name, entity_kind: c.entity_kind, status: c.status,
+      event_count: c.event_count, last_event_at: c.last_event_at, encrypted_webhook_secret: c.has_secret ? "enc" : null,
+      api_key_hint: c.api_key_hint,
+    })));
+    assert.match(block(d, A), /Last sale or payout: .* · 3 events/);
+    assert.match(block(d, B), /Last sale or payout: .* · 1 event(?!s)/);
+    assert.match(block(d, C), /Last sale or payout: never · 0 events/);
+  });
+});
+
+test("a turned-off connection sorts after a live one and each keeps its own count and time through the SELECT", async () => {
+  await proof.check(/^Connection status lines/, async () => {
+    const A = "a1000000-0000-4000-8000-0000000000a1";
+    const B = "b1000000-0000-4000-8000-0000000000b1";
+    const got = await listed([
+      entity("ent-1"),
+      connRow(A, "ent-1", { status: "disabled", disabled_at: "2026-10-06T00:00:00.000Z", last_event_at: "2026-10-05T10:00:00.000Z", created_at: "2026-09-01T00:00:00.000Z" }),
+      connRow(B, "ent-1", { last_event_at: "2026-10-07T12:00:00.000Z", created_at: "2026-09-05T00:00:00.000Z" }),
+      eventRow(A, "2026-10-05T10:00:00.000Z"), eventRow(B, "2026-10-07T12:00:00.000Z"), eventRow(B, "2026-10-07T11:00:00.000Z"),
+    ]);
+    // a turned-off connection sorts after the live one
+    assert.deepEqual(got.map((c) => [c.id, c.status, c.event_count, c.last_event_at]), [
+      [B, "active", 2, "2026-10-07T12:00:00.000Z"],
+      [A, "disabled", 1, "2026-10-05T10:00:00.000Z"],
+    ]);
   });
 });
 

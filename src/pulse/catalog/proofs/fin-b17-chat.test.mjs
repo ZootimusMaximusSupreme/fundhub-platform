@@ -1,6 +1,7 @@
 // Batch 17 practice tests: the staff chat widget (public/app/chat-widget.js), four controls. The real script
 // is loaded into a blank page in a real Chromium, mounted the way shell.js mounts it for staff, with fake
-// /api answers. No live data, nothing leaves the browser.
+// /api answers. A second group loads real desk pages with the real shell.js and judges who gets the button
+// and in which form. No live data, nothing leaves the browser.
 //
 //   Chat button and the close x     opens and closes the panel
 //   Mode tabs                       Ask system / Knowledge / Message
@@ -11,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { proofRows, waitFor } from "./fin-b17-kit.mjs";
-import { bodyOf, json, OWNER, sharedScreens } from "./fin-b17-browser-kit.mjs";
+import { asRole, bodyOf, json, OWNER, sharedScreens } from "./fin-b17-browser-kit.mjs";
 
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
@@ -19,6 +20,8 @@ const BLANK = "/__fin_b17_blank.html";
 const ME = OWNER.staff.id;
 const PEER = "staff-2";
 const PEER_NAME = "Casey Reed";
+const PEER_2 = "staff-3";
+const PEER_2_NAME = "Sam Rowe";
 
 const blankPage = (page) => page.route(`**${BLANK}`, (route) => route.fulfill({
   status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>blank</title></head><body></body></html>",
@@ -101,6 +104,65 @@ test("the Chat button opens and closes the panel and the close x closes it, with
     assert.deepEqual(w.calls, [], "no request was made by opening or closing");
     assert.deepEqual(w.errors, []);
     await w.page.close();
+  });
+});
+
+// ───────────────────────────── who gets the button: the real shell on real desk pages ─────────────────────────────
+
+/** A real desk page with the real shell.js, signed in as `role`. Every /api answer is the test's own (the harness's defaults). */
+async function openDesk(pathName, role) {
+  const { page, errors } = await screens.open(pathName, { session: asRole(role), handlers: {} });
+  return { page, errors };
+}
+
+test("shell.js puts the Chat button on every staff desk in its staff form, gives a client the portal form, and gives a partner or an affiliate none", { timeout: 180_000 }, async () => {
+  await proof.check(/^Chat button \(opens and closes the panel\) and close x/, async () => {
+    // staff: the button is drawn, closed on first paint, and the panel is the staff one (Ask system / Knowledge / Message)
+    for (const [role, desk] of [
+      ["owner", "/app/products-commissions.html"],
+      ["admin", "/app/products-commissions.html"],
+      ["sales_manager", "/app/products-commissions.html"],
+      ["closer", "/app/closer-dashboard.html"],
+    ]) {
+      const { page, errors } = await openDesk(desk, role);
+      await page.locator("#fh-chat-fab").waitFor({ state: "visible", timeout: 15_000 });
+      assert.equal(await page.locator("#fh-chat-fab").innerText(), "Chat", `${role} has the Chat button on ${desk}`);
+      assert.equal(await page.locator("#fh-chat-panel").isVisible(), false, `${role}: closed on first paint`);
+      await page.locator("#fh-chat-fab").click();
+      assert.equal(await page.locator("#fh-chat-panel").isVisible(), true, `${role}: the button opens it`);
+      assert.deepEqual(
+        await page.evaluate(() => [...document.querySelectorAll("#fh-chat-modes .mode")].map((b) => b.textContent)),
+        ["Ask system", "Knowledge", "Message"],
+        `${role}: the staff panel, not the client portal one`,
+      );
+      await page.locator("#fh-chat-close").click();
+      assert.equal(await page.locator("#fh-chat-panel").isVisible(), false);
+      assert.equal(await page.locator("#fh-chat-fab").count(), 1, `${role}: one button, not two`);
+      assert.deepEqual(errors.filter((e) => /fh-chat|FHChat/.test(e)), []);
+      await page.close();
+    }
+
+    // a client in the portal gets the portal form: one tab, Message staff
+    const client = await openDesk("/app/client-portal.html", "client");
+    await client.page.locator("#fh-chat-fab").waitFor({ state: "visible", timeout: 15_000 });
+    await client.page.locator("#fh-chat-fab").click();
+    assert.deepEqual(
+      await client.page.evaluate(() => [...document.querySelectorAll("#fh-chat-modes .mode")].map((b) => b.textContent)),
+      ["Message staff"],
+      "a client sees only the portal message tab",
+    );
+    await client.page.close();
+
+    // a partner and an affiliate get no widget at all: nothing is drawn, and the script is never even loaded
+    for (const [role, desk] of [["partner", "/app/partner-galaxy.html"], ["affiliate", "/app/affiliate.html"]]) {
+      const { page } = await openDesk(desk, role);
+      await page.waitForFunction(() => document.documentElement.classList.contains("fh-page-access-confirmed"), null, { timeout: 15_000 });
+      await page.waitForTimeout(1500);
+      assert.equal(await page.locator("#fh-chat-fab").count(), 0, `${role} gets no Chat button`);
+      assert.equal(await page.locator("#fh-chat-panel").count(), 0);
+      assert.equal(await page.evaluate(() => typeof window.FHChat), "undefined", `${role}: the chat script was not loaded`);
+      await page.close();
+    }
   });
 });
 
@@ -258,6 +320,43 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 1, "the send");
     assert.deepEqual(w.posts()[0], { kind: "internal", body: "Yes.", conversation_id: "conv-9" });
+    await w.page.close();
+  });
+
+  await proof.check(/^Message > Staff \(internal\): pick a teammate and send/, async () => {
+    // Pick one teammate and send, then pick another: the next message goes to the second person. It must not
+    // ride into the first person's thread because the widget still held its id.
+    const w = await openWidget({
+      peers: [{ id: PEER, name: PEER_NAME }, { id: PEER_2, name: PEER_2_NAME }],
+      post: (body) => ({ ok: true, kind: "internal", conversation_id: body.peer_staff_id === PEER ? "conv-casey" : "conv-sam", message: { id: "m-x" }, deduped: false }),
+    });
+    await w.open();
+    await mode(w, "Message");
+    await waitFor(async () => (await w.page.locator("#fh-chat-peer option").count()) === 3, "the teammate list");
+
+    await w.page.locator("#fh-chat-peer").selectOption(PEER);
+    await w.type("Casey: are you on the 3pm?");
+    await w.page.locator("#fh-chat-send").click();
+    await waitFor(() => w.posts().length === 1, "the first message");
+    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Casey: are you on the 3pm?", peer_staff_id: PEER });
+    await waitFor(() => w.calls.includes("GET /api/chat/messages?conversation_id=conv-casey"), "Casey's thread was opened");
+
+    // a different teammate: the message names that person and carries no thread id from the first
+    await w.page.locator("#fh-chat-peer").selectOption(PEER_2);
+    await waitFor(() => w.calls.filter((c) => c === "GET /api/chat/messages?kind=internal").length === 2, "the thread lookup for the second teammate");
+    await w.type("Sam: can you cover Friday?");
+    await w.page.locator("#fh-chat-send").click();
+    await waitFor(() => w.posts().length === 2, "the second message");
+    assert.deepEqual(w.posts()[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "the second message goes to the second teammate, not into the first thread");
+
+    // and back to the first: Sam's thread id is not carried either
+    await w.page.locator("#fh-chat-peer").selectOption(PEER);
+    await waitFor(() => w.calls.filter((c) => c === "GET /api/chat/messages?kind=internal").length === 3, "the thread lookup back to the first teammate");
+    await w.type("Casey: thanks.");
+    await w.page.locator("#fh-chat-send").click();
+    await waitFor(() => w.posts().length === 3, "the third message");
+    assert.deepEqual(w.posts()[2], { kind: "internal", body: "Casey: thanks.", peer_staff_id: PEER });
+    assert.deepEqual(w.errors, []);
     await w.page.close();
   });
 

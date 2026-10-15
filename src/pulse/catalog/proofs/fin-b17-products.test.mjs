@@ -1,10 +1,13 @@
-// Batch 17 practice tests: eleven small controls of Products & Commissions (public/app/products-commissions.html),
+// Batch 17 practice tests: ten small controls of Products & Commissions (public/app/products-commissions.html),
 // in a real Chromium with fake /api answers. No live data, nothing leaves the browser.
 //
 //   + Add product, the editor's Cancel / close X / click outside, a product row click
-//   View payout ledger and Back to rules, a rule's See these payouts, the ledger's two filters
+//   View payout ledger and Back to rules, the ledger's two filters
 //   a rule's header click and its Rate history, the Rails column, the three tabs
 //   Page open: who am I (the SLO connections tab for owner and admin only), SLO connections Cancel
+//
+// A rule's "See these payouts" is judged below for the page's own logic but is NOT attached to its row: on
+// live data no payout names its rule (see the note on that test).
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -162,9 +165,13 @@ test("the editor closes from Cancel, from the close X and from a click outside i
       await open();
       assert.deepEqual(await editorOpen(page), { editor: true, scrim: true }, `${way}: open first`);
       await page.locator("#p_name").fill(`Typed then dropped by ${way}`);
-      await page.locator("#p_price").fill("1");
+      // an in-band price (the product's band is 2000 to 5000): a Save would go out, not be stopped by the page's own band alert
+      await page.locator("#p_price").fill("4000");
       await close();
       assert.deepEqual(await editorOpen(page), { editor: false, scrim: false }, way);
+      // a Save that ran in place of the close would be a request on its way: let it land before judging
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(150);
       assert.deepEqual(log.products, [], `${way} sends nothing`);
       // the ladder still names the product as it was
       assert.match(await page.locator('#prodBody tr[data-p="funding_bundle"]').innerText(), /Funding Bundle/);
@@ -230,6 +237,36 @@ test("the Rails column is a dash on every row, even when an answer carries a rai
     assert.deepEqual(errors, []);
     await page.close();
   });
+
+  await proof.check(/^Products table 'Rails' column/, async () => {
+    // the row the page rebuilds after a Save (an edit, and a new product) is a dash too: nothing records rails
+    const { page, errors, log } = await openPage();
+    const rails = () => page.evaluate(() => [...document.querySelectorAll("#prodBody tr[data-p]")].map((tr) => ({
+      name: tr.children[0].textContent.trim(), cols: tr.children.length, rails: tr.children[4].textContent.trim(), title: tr.children[4].querySelector("span")?.getAttribute("title"),
+    })));
+
+    await page.locator('#prodBody tr[data-p="funding_bundle"]').click();
+    await page.locator("#p_price").fill("4000");
+    await page.locator("#edSave").click();
+    await waitFor(() => log.products.length === 1, "the save");
+    await page.waitForFunction(() => !document.getElementById("editor").classList.contains("open"));
+    let rows = await rails();
+    assert.equal(rows.length, 2);
+    for (const row of rows) assert.deepEqual({ cols: row.cols, rails: row.rails, title: row.title }, { cols: 5, rails: "—", title: "No rails source" }, `after Save: ${row.name}`);
+    assert.ok(!/slo-book|vsl-main/.test(await page.locator("#prodBody").innerText()));
+
+    await page.locator("#addProdBtn").click();
+    await page.locator("#p_name").fill("Capital Blueprint");
+    await page.locator("#p_price").fill("3000");
+    await page.locator("#edSave").click();
+    await waitFor(() => log.products.length === 2, "the create");
+    await page.waitForFunction(() => document.querySelectorAll("#prodBody tr[data-p]").length === 3);
+    rows = await rails();
+    assert.equal(rows.length, 3);
+    for (const row of rows) assert.deepEqual({ cols: row.cols, rails: row.rails, title: row.title }, { cols: 5, rails: "—", title: "No rails source" }, `after Add: ${row.name}`);
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
 
 // ───────────────────────────── the ledger link, and what opens it ─────────────────────────────
@@ -259,8 +296,15 @@ test("View payout ledger opens the ledger pane and Back to rules returns to the 
   });
 });
 
-test("a rule's See these payouts opens the ledger on the people that rule pays, or on everyone when no payout names it", { timeout: 90_000 }, async () => {
-  await proof.check(/^Commission rule 'See these payouts ->'/, async () => {
+// NOT ATTACHED TO A ROW (repair cycle 1). The row says the button "opens the ledger filtered to the people
+// the rule pays". On live data it cannot: api/read/commissions.mjs does not select commission_ledger.rule_id
+// (src/commissions/sql.mjs saves it) and the page's ledgerFromApiLive and ledgerFromApi both hard-code
+// rule: "—", so impactOf() never finds a person and the button always opens the ledger on Everyone.
+// This test keeps the page's own narrowing logic judged (it is the code that will matter once a payout
+// names its rule), by putting the rule id on the page's own ledger rows. It is not proof that the control
+// does what its row says, so it claims no row.
+test("a rule's See these payouts opens the ledger on the people that rule pays, or on everyone when no payout names it (page logic only)", { timeout: 90_000 }, async () => {
+  {
     const { page, errors } = await openPage();
     // press the first rule's See these payouts, opening the rule first when it is folded
     const seePayouts = async () => {
@@ -303,7 +347,7 @@ test("a rule's See these payouts opens the ledger on the people that rule pays, 
     assert.equal((await ledgerRows(page)).length, 5);
     assert.deepEqual(errors, []);
     await page.close();
-  });
+  }
 });
 
 test("the person and status filters narrow the payout rows and the total, together and apart", { timeout: 90_000 }, async () => {
@@ -488,6 +532,6 @@ test("SLO connections Cancel closes the form and sends nothing, for a new connec
 });
 
 test("every listed row was exercised", () => {
-  assert.equal(proof.rows.length, 11);
+  assert.equal(proof.rows.length, 10);
   proof.assertAllClaimed();
 });

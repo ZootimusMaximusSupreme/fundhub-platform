@@ -104,32 +104,43 @@ SELECT count(*)::int AS sample_count,
 
 // ───────────────────── Present: the rows behind the soft pull panel's three lines ─────────────────────
 //
-// The panel (cockpit, phases 03) says consent, paid and pull status from src/sales/closer-deck.mjs
-// softPullStatus(): the latest soft_pull_requests row, the latest 'diagnostic' payment link, and the stored
-// credit result. Two kinds of saved row can make those lines lie:
-//   a request           that says it is finished with no credit result behind it ("pull: complete" next
-//                       to "Your numbers are not on this file yet"), or points at another client's result
-//   a diagnostic link   with no amount (the line prints "$0.00"), marked paid with no paid time, or with a
-//                       paid time and not marked paid ("paid: yes" beside a status that says otherwise)
+// The panel (cockpit, phase 03) says consent, paid and pull status from src/sales/closer-deck.mjs
+// softPullStatus(): the newest soft_pull_consent, the newest 'diagnostic' payment link, the newest
+// soft_pull_requests row and the newest stored credit result. Only conditions a real write can leave behind
+// are named here. The database already refuses, by CHECK constraint, a fulfilled request with no stored
+// result (soft_pull_requests_result_ck, 077) and a payment link with no amount (payment_links.amount_cents
+// is NOT NULL and > 0, 119), so neither is named: a condition that can never be true can never go red.
+//
+//   a request   that points at a credit result which is another client's or another company's (the foreign
+//               key checks the id and nothing else; src/finance/soft-pulls.mjs guards it in code), or that
+//               was recorded before any soft pull consent had been granted for the client (the consent
+//               line would say "waiting" beside a pull that already happened; requestSoftPull refuses
+//               without a valid consent, so this is a write that went round the gate)
+//   a link      the panel calls paid (status 'paid' or a paid time) with no paid amount saved, or with a
+//               paid amount that is not the amount the panel prints. markPaid writes paid_amount_cents
+//               from the event's amount and writes NULL when the event had none.
+// Demo and synthetic clients are left out, as src/pulse/coverage/gap-soft-pull.mjs leaves them out. The
+// client is joined with LEFT JOIN on its company: a request whose client is not found in this company is
+// judged, never silently dropped, and a foreign client's demo flag cannot hide it.
 
 export const PULL_REQUEST_BAD = Object.freeze([
-  ["a pull request says it is finished and no credit result is stored for the client",
-    `LOWER(COALESCE(r.status, '')) IN ('complete', 'completed', 'done', 'resolved', 'fulfilled')
-             AND r.crs_result_id IS NULL
-             AND NOT EXISTS (SELECT 1 FROM crs_results x WHERE x.org_id = r.org_id AND x.client_id = r.client_id)`],
   ["a pull request points at a credit result that is not this client's",
     `r.crs_result_id IS NOT NULL AND NOT EXISTS (
               SELECT 1 FROM crs_results x
                WHERE x.id = r.crs_result_id AND x.org_id = r.org_id AND x.client_id = r.client_id)`],
+  ["a pull request was recorded before any soft pull consent was granted for the client",
+    `NOT EXISTS (
+              SELECT 1 FROM client_consents k
+               WHERE k.org_id = r.org_id AND k.client_id = r.client_id
+                 AND k.kind = 'soft_pull_consent' AND k.granted_at <= r.requested_at)`],
 ]);
 
 export const PULL_LINK_BAD = Object.freeze([
-  ["the pull's payment link has no amount, so the panel would print $0.00",
-    `l.amount_cents IS NULL OR l.amount_cents <= 0`],
-  ["the pull's payment link is marked paid with no paid time",
-    `l.status = 'paid' AND l.paid_at IS NULL`],
-  ["the pull's payment link has a paid time and is not marked paid",
-    `l.paid_at IS NOT NULL AND l.status IS DISTINCT FROM 'paid'`],
+  ["the pull's payment link is paid and no paid amount was saved, so the panel prints an amount nothing backs",
+    `(l.status = 'paid' OR l.paid_at IS NOT NULL) AND l.paid_amount_cents IS NULL`],
+  ["the pull's payment link is paid for an amount that is not the amount the panel prints",
+    `(l.status = 'paid' OR l.paid_at IS NOT NULL) AND l.paid_amount_cents IS NOT NULL
+             AND l.paid_amount_cents <> l.amount_cents`],
 ]);
 
 export function softPullPanelSql({ without = [] } = {}) {
@@ -140,7 +151,10 @@ SELECT COALESCE(sum(x.n), 0)::int AS sample_count,
     SELECT count(*) AS n,
            count(*) FILTER (WHERE ${orJoin(PULL_REQUEST_BAD, without, "                 ")}) AS bad
       FROM soft_pull_requests r
+      LEFT JOIN clients c ON c.id = r.client_id AND c.org_id = r.org_id
      WHERE r.org_id = $1::uuid
+       AND COALESCE(c.is_demo, false) = false
+       AND COALESCE(c.custom_fields ->> 'synthetic', '') <> 'true'
     UNION ALL
     SELECT count(*) AS n,
            count(*) FILTER (WHERE ${orJoin(PULL_LINK_BAD, without, "                 ")}) AS bad
@@ -148,6 +162,7 @@ SELECT COALESCE(sum(x.n), 0)::int AS sample_count,
      WHERE l.org_id = $1::uuid
        AND l.purpose = 'diagnostic'
        AND COALESCE(l.is_demo, false) = false
+       AND (l.status = 'paid' OR l.paid_at IS NOT NULL)
   ) x`;
 }
 
@@ -155,19 +170,25 @@ SELECT COALESCE(sum(x.n), 0)::int AS sample_count,
 //
 // /app/money-connections.html paints, under each processor: "Last sale or payout: <time> · N events",
 // "Last synced: <time>", the last sync error, and "Still reading your history". They come from one
-// merchant_connections row and its merchant_events (src/merchant/store.mjs publicConnection).
+// merchant_connections row and its merchant_events (src/merchant/store.mjs publicConnection). The event
+// count is not a saved column: SELECT_CONNECTION counts the connection's events when it reads, so that
+// count and the time the page paints from the row are judged by running the real SELECT over stand-in rows
+// (fin-b17-money-connections.test.mjs). The sync error is held to 300 characters by a CHECK
+// (merchant_connections_sync_error_len, 457), so length is not a condition: it could never be true.
 
 export const CONNECTION_BAD = Object.freeze([
   ["events are saved for the connection and its last sale or payout time is empty",
     `c.last_event_at IS NULL AND EXISTS (SELECT 1 FROM merchant_events e WHERE e.connection_id = c.id)`],
   ["a last sale or payout time is set and no event is saved for the connection",
     `c.last_event_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM merchant_events e WHERE e.connection_id = c.id)`],
+  ["the last sale or payout time is older than the newest event saved for the connection",
+    `c.last_event_at IS NOT NULL AND c.last_event_at < (SELECT max(e.received_at) FROM merchant_events e WHERE e.connection_id = c.id)`],
   ["a pull connection finished a sync and has no last synced time",
     `c.mode = 'pull' AND c.synced_through IS NOT NULL AND c.last_synced_at IS NULL`],
   ["a turned-off connection still says it is reading, so a next sync is promised that will never run",
     `c.mode = 'pull' AND c.status = 'disabled' AND c.sync_cursor IS NOT NULL`],
-  ["a sync error has no words or is longer than the 300 characters the page saves",
-    `c.last_sync_error IS NOT NULL AND (BTRIM(c.last_sync_error) = '' OR LENGTH(c.last_sync_error) > 300)`],
+  ["a sync error is only spaces, so the page would say the last sync did not finish and give no words",
+    `c.last_sync_error IS NOT NULL AND BTRIM(c.last_sync_error) = ''`],
 ]);
 
 export function connectionLinesSql({ without = [] } = {}) {
@@ -208,7 +229,7 @@ const CHECKS = [
     sourceFile: "desks-f.json",
     surface: "present.html (+ present.js, contract-send.js)",
     control: "Soft pull panel: consent / paid / pull-status lines (display)",
-    requirement: "Every soft pull request that says it is finished must have a stored credit result behind it, and every diagnostic payment link must carry an amount and agree with itself on whether it was paid.",
+    requirement: "Every soft pull request must point only at a credit result that is its own client's and must have a soft pull consent granted before it, and every diagnostic payment link the panel calls paid must carry a paid amount equal to the amount the panel prints.",
     sql: softPullPanelSql,
     names: [...PULL_REQUEST_BAD, ...PULL_LINK_BAD].map(([name]) => name),
     quiet: true,
@@ -220,7 +241,7 @@ const CHECKS = [
     sourceFile: "desks-d.json",
     surface: "public/app/money-connections.html",
     control: "Connection status lines (last sale or payout, event count, last synced, last sync error, still-reading note)",
-    requirement: "Every merchant connection must agree with its saved events about its last sale or payout time, show a last synced time once a sync has finished, keep a still-reading promise only while it can run, and hold a sync error in words of at most 300 characters.",
+    requirement: "Every merchant connection must agree with its saved events about its last sale or payout time (set when events exist, empty when none do, and never older than the newest event), show a last synced time once a sync has finished, keep a still-reading promise only while it can run, and hold a sync error in words.",
     sql: connectionLinesSql,
     names: CONNECTION_BAD.map(([name]) => name),
     quiet: true,

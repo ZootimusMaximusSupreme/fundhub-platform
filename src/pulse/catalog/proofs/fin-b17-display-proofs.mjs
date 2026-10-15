@@ -26,15 +26,27 @@ const CLOSER_LANE_ROWS = [
 ];
 const CLOSER_LANE_TESTS = ["src/pulse/coverage/gap-closer.test.mjs"];
 
-const rowsOf = () => Object.entries(ROWS).flatMap(([file, groups]) => groups.flatMap((group) => group.controls.map((control) => ({
-  file: `${DIR}/${file}`, sourceFile: group.sourceFile, surface: group.surface, control,
-}))));
+// One map row, and every practice test file that presses it. A row that a vm test and a real-page test
+// both judge is listed under both files in fin-b17-rows.json and is ONE proof case here, naming both.
+const rowsOf = () => {
+  const byKey = new Map();
+  for (const [file, groups] of Object.entries(ROWS)) {
+    for (const group of groups) {
+      for (const control of group.controls) {
+        const key = keyOf(group.sourceFile, group.surface, control);
+        if (!byKey.has(key)) byKey.set(key, { sourceFile: group.sourceFile, surface: group.surface, control, files: [] });
+        byKey.get(key).files.push(`${DIR}/${file}`);
+      }
+    }
+  }
+  return [...byKey.values()];
+};
 
 export const FIN_B17_PRACTICE_CASES = Object.freeze(
   rowsOf()
     .filter((row) => !LIVE.has(keyOf(row.sourceFile, row.surface, row.control)))
     .map((row) => {
-      const tests = [row.file, ...(CLOSER_LANE_ROWS.some((re) => re.test(row.control)) ? CLOSER_LANE_TESTS : [])];
+      const tests = [...row.files, ...(CLOSER_LANE_ROWS.some((re) => re.test(row.control)) ? CLOSER_LANE_TESTS : [])];
       return Object.freeze({
         sourceFile: row.sourceFile,
         surface: row.surface,

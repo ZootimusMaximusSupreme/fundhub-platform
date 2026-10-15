@@ -31,6 +31,26 @@
    ]
   }
  ],
+ "fin-b17-present-page.test.mjs": [
+  {
+   "sourceFile": "desks-f.json",
+   "surface": "present.html (+ present.js, contract-send.js)",
+   "controls": [
+    "Back and Next screen buttons, ArrowLeft and ArrowRight keys (Next steps over the 06 Blueprint section, skips S-11..S-16 on the education route)",
+    "Client screen only / Show cockpit toggle",
+    "Discovery: 7 belief checkboxes (Pain, Desire, Doubt, Cost, Support, Money, Trust)",
+    "Objections: 6 buttons (Think about it, $3K is a lot, What if it fails, Spouse, Burned before, DIY), Back, and the jump button",
+    "Phase strip button 01: 01 Intro (S-01..S-02)",
+    "Phase strip button 02: 02 Discovery (S-03..S-04)",
+    "Phase strip button 03: 03 Soft pull (S-05..S-07)",
+    "Phase strip button 04: 04 Pitch (S-08..S-16)",
+    "Phase strip button 05: 05 Commit (S-17..S-22)",
+    "Phase strip button 06: 06 Blueprint (B-01..B-06, the offer stack)",
+    "Phase strip button 07: 07 Close (S-23..S-24)",
+    "Two walls: no client on the link ('Pick a client first') and refused account ('This account cannot open the client deck')"
+   ]
+  }
+ ],
  "fin-b17-products.test.mjs": [
   {
    "sourceFile": "desks-f.json",
@@ -38,7 +58,6 @@
    "controls": [
     "'+ Add product' (opens the empty editor)",
     "'View payout ledger ->' and '<- Back to rules'",
-    "Commission rule 'See these payouts ->' (opens the ledger filtered to the people the rule pays)",
     "Commission rule header click (expand a rule) and 'Rate history' disclosure",
     "Ledger filters: person select and status select (Accrued, Approved, Paid)",
     "Page open: who am I (shows the SLO connections tab for owner and admin only)",

@@ -18,6 +18,7 @@ import { offersForClient } from "../../../config/offers.mjs";
 import { ROLE_SETS } from "../../../http/read-api.mjs";
 import { PAGES, closerDeskPageReport } from "../../coverage/gap-closer.mjs";
 import { proofRows } from "./fin-b17-kit.mjs";
+import { BELIEFS, DECK_LENGTH, OBJECTION_SLIDES, OBJECTION_TABLE, PHASE_BUTTONS, positionOf } from "./fin-b17-present-data.mjs";
 
 const proof = proofRows(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -60,7 +61,7 @@ const decode = (s) => String(s).replace(/&quot;/g, '"').replace(/&lt;/g, "<").re
  * write is recorded. The page's elements are rebuilt on every paint, as the real DOM is.
  */
 async function openDeck(tier = "FULL_FUNDING", {
-  search = `?contact=${CONTACT}`, role = "owner", deck = null, readAnswer = null, writeAnswer = null, data = null,
+  search = `?contact=${CONTACT}`, role = "owner", deck = null, readAnswer = null, writeAnswer = null, data = null, httpStatus = null,
 } = {}) {
   let html = "";
   let version = 0;
@@ -97,7 +98,10 @@ async function openDeck(tier = "FULL_FUNDING", {
       addEventListener: (type, fn) => { if (type === "click") onClick = fn; },
     },
     localStorage: { getItem: (k) => (k === "fh_role" ? role : null) },
-    FHData: {
+    // httpStatus: the REAL data.js runs, over a fetch that answers with this status. Nothing stands in for
+    // the step that turns a 401 or 403 into the one word the page branches on.
+    ...(httpStatus ? { fetch: async (path) => { reads.push({ what: String(path), query: null }); return { status: httpStatus, json: async () => ({ ok: false, error: "forbidden" }) }; } } : {}),
+    FHData: httpStatus ? undefined : {
       read: async (what, query) => {
         reads.push({ what, query });
         if (readAnswer) return readAnswer(what, query);
@@ -113,6 +117,7 @@ async function openDeck(tier = "FULL_FUNDING", {
   sandbox.window = sandbox;
   sandbox.addEventListener = (type, fn) => { if (type === "keydown") onKey = fn; };
   vm.createContext(sandbox);
+  if (httpStatus) vm.runInContext(DATA_JS, sandbox, { filename: "data.js" });
   vm.runInContext(SEND_JS, sandbox, { filename: "contract-send.js" });
   vm.runInContext(PRESENT_JS, sandbox, { filename: "present.js" });
   await flush();
@@ -127,6 +132,14 @@ async function openDeck(tier = "FULL_FUNDING", {
     slide() {
       const m = /<div class="slide-hd"><span class="mono">([A-Z]-\d\d) \/ /.exec(html);
       return m ? m[1] : null;
+    },
+    /** the three (or more) lines the cockpit says out loud, as words */
+    says: () => [...out.cockpit().matchAll(/<div class="say">([\s\S]*?)<\/div>/g)].map((m) => decode(m[1])),
+    /** what the cockpit header and the phase strip say about where the deck is */
+    facts() {
+      const h = /<div class="ck-hd">[\s\S]*?<span class="mono"[^>]*>([^<]*)<\/span><span class="mono">([^<]*)<\/span>/.exec(html);
+      const lit = [...html.matchAll(/<button[^>]*data-act="phase:(\d\d)"[^>]*background:var\(--ink\)/g)].map((m) => m[1]);
+      return { code: out.slide(), phase: h ? decode(h[1]) : null, position: h ? h[2] : null, lit };
     },
     has: (act) => html.includes(`data-act="${act}"`),
     /** the whole <button ...>label</button> for an action, or null */
@@ -169,6 +182,18 @@ async function deckAt(phase, tier = "FULL_FUNDING", opts = {}) {
   const deck = await openDeck(tier, opts);
   deck.press(`phase:${phase}`);
   return deck;
+}
+
+/** Every slide of the deck, by real Next presses: the main run, then the Blueprint stack. What each one says about where it is. */
+async function walkAllSlides(tier = "FULL_FUNDING") {
+  const deck = await openDeck(tier);
+  const seen = [deck.facts()];
+  for (let i = 1; i < MAIN_RUN.length; i += 1) { deck.press("next"); seen.push({ ...deck.facts(), objections: deck.has("obj:0") }); }
+  deck.press("phase:06");
+  seen.push({ ...deck.facts(), objections: deck.has("obj:0") });
+  for (let i = 1; i < STACK_RUN.length; i += 1) { deck.press("next"); seen.push({ ...deck.facts(), objections: deck.has("obj:0") }); }
+  seen[0].objections = false;
+  return seen;
 }
 
 // ───────────────────────────── Back and Next, arrows ─────────────────────────────
@@ -285,6 +310,20 @@ test("Client screen only hides the cockpit, Show cockpit brings it back, and the
     assert.ok(deck.html().includes('<div class="client">'));
     assert.equal(deck.slide(), "S-03");
     assert.deepEqual(deck.writes, [], "hiding the cockpit sends nothing");
+  });
+
+  await proof.check(/^Client screen only \/ Show cockpit toggle/, async () => {
+    // what was typed and ticked before the toggle is still there after it, and goes out with the disposition
+    const deck = await openDeck("REPAIR_ONLY");
+    deck.press("phase:02");
+    deck.type("fh-cost", "$4,500 a month").press("check:Pain").press("check:Trust");
+    deck.press("client-only").press("client-only");
+    assert.equal(deck.el("fh-cost").value, "$4,500 a month");
+    assert.ok(/background:var\(--ink\)"><\/span>/.test(deck.html().slice(deck.html().indexOf('data-act="check:Pain"')).split("</button>")[0]), "Pain is still ticked");
+    deck.press("phase:07").press("disp");
+    await deck.settle();
+    assert.equal(deck.writes.at(-1).body.cost_of_inaction, "$4,500 a month");
+    assert.equal(deck.writes.at(-1).body.beliefs_count, 2);
   });
 });
 
@@ -439,6 +478,28 @@ test("the seven belief boxes tick and untick, are counted, and the count rides t
     assert.equal(on("Trust"), true, "the ticks are kept across the deck");
     assert.equal(on("Money"), true);
   });
+
+  await proof.check(/^Discovery: 7 belief checkboxes/, async () => {
+    // the question under each box, word for word, and the ticks are kept by Next and Back themselves
+    const deck = await openDeck("REPAIR_ONLY");
+    deck.press("phase:02");
+    const questions = [...deck.html().matchAll(/data-act="check:([A-Za-z]+)"[^>]*>[\s\S]*?<span style="display:block[^>]*>([^<]*)<\/span>/g)].map((m) => [m[1], decode(m[2])]);
+    assert.deepEqual(questions, BELIEFS.map(([word, question]) => [word, question]));
+    const on = (key) => /background:var\(--ink\)"><\/span>/.test(deck.html().slice(deck.html().indexOf(`data-act="check:${key}"`)).split("</button>")[0]);
+    deck.press("check:Doubt").press("check:Support");
+    assert.equal(deck.slide(), "S-03");
+    deck.press("next");
+    assert.equal(deck.slide(), "S-04");
+    assert.equal(on("Doubt"), true, "Next keeps the ticks");
+    assert.equal(on("Support"), true);
+    deck.press("back");
+    assert.equal(deck.slide(), "S-03");
+    assert.equal(on("Doubt"), true, "Back keeps the ticks");
+    assert.equal(on("Support"), true);
+    assert.equal(on("Pain"), false);
+    deck.press("next").press("next");
+    assert.ok(deck.cockpitText().includes("beliefs 2/7"), "and they are still counted two slides on");
+  });
 });
 
 // ───────────────────────────── the two walls and the error wall links ─────────────────────────────
@@ -491,18 +552,29 @@ test("the two walls say what is wrong in words, read nothing without a client, a
     assert.equal(refused.slide(), null);
     assert.deepEqual(refused.writes, []);
   });
+
+  await proof.check(/^Two walls: no client on the link/, async () => {
+    // the refused-account wall from the HTTP status up: the real data.js turns 401 and 403 into the one word
+    // the page branches on, and any other failure is not the wall
+    for (const status of [401, 403]) {
+      const refused = await openDeck("FULL_FUNDING", { httpStatus: status });
+      assert.ok(refused.text().includes("This account cannot open the client deck. Ask an owner for access, or sign in with a closer account."), `status ${status}`);
+      assert.equal(linkOf(refused, "Sign in as someone else"), LOGIN_NEXT);
+      assert.equal(refused.has("next"), false);
+      assert.equal(refused.slide(), null);
+    }
+    const broken = await openDeck("FULL_FUNDING", { httpStatus: 500 });
+    assert.ok(!broken.text().includes("This account cannot open the client deck"));
+    assert.equal(linkOf(broken, "Sign in as someone else"), null);
+    assert.ok(broken.text().includes("Something went wrong. Try again in a moment."));
+    const ok = await openDeck("FULL_FUNDING", { httpStatus: 200 });
+    assert.equal(ok.slide(), null, "a 200 with no deck in it is not a deck either");
+  });
 });
 
 // ───────────────────────────── objections and reframes ─────────────────────────────
 
-const OBJECTIONS = [
-  ["Think about it", "Show the process", "S-08", "Isolate it. 'Think about it' is never the real objection."],
-  ["$3K is a lot", "Show the math", "S-20", "Should vs how"],
-  ["What if it fails", "Show guarantees", "S-21", "No funding, no money for us."],
-  ["Spouse", "Show guarantees", "S-21", "Respect vs permission"],
-  ["Burned before", "Show the system", "S-10", "I'm sorry that happened."],
-  ["DIY", "Show the rounds", "S-12", "You absolutely can."],
-];
+const OBJECTIONS = OBJECTION_TABLE.map((o) => [o.title, o.jumpLabel, o.target, o.lines[1]]);
 
 test("the six objection buttons open their words, Back closes them, and the jump button goes to the slide that answers it", async () => {
   await proof.check(/^Objections: 6 buttons/, async () => {
@@ -520,6 +592,7 @@ test("the six objection buttons open their words, Back closes them, and the jump
       assert.ok(deck.cockpitText().includes(`Objection Back ${title}`), `${title} header: ${deck.cockpitText().slice(0, 120)}`);
       assert.equal((deck.cockpit().match(/<div class="say">/g) || []).length, 3, `${title} gives three lines to say`);
       assert.ok(deck.cockpitText().includes(line), `${title}: ${line}`);
+      assert.deepEqual(deck.says(), OBJECTION_TABLE[i].lines, `${title}: all three lines, word for word`);
       assert.equal(deck.label(`obj-jump:${target}`), jumpLabel, `${title} jump button`);
       assert.equal(deck.has("obj-back"), true);
       assert.equal(deck.has("obj:0"), false, "the objection panel replaces the list");
@@ -539,6 +612,31 @@ test("the six objection buttons open their words, Back closes them, and the jump
     deck.press("obj:1").press("next");
     assert.equal(deck.has("obj-back"), false);
     assert.deepEqual(deck.writes, []);
+  });
+
+  await proof.check(/^Objections: 6 buttons/, async () => {
+    // the list is on every slide of 05 Commit AND of 07 Close (where the ask is made), and on no other slide
+    const seen = await walkAllSlides("FULL_FUNDING");
+    assert.equal(seen.length, 30);
+    for (const slide of seen) {
+      assert.equal(slide.objections, OBJECTION_SLIDES.includes(slide.code), `${slide.code}: objection buttons ${OBJECTION_SLIDES.includes(slide.code) ? "belong" : "do not belong"} here`);
+    }
+    // and it works on the close: open one, say its lines, jump, and Back
+    const deck = await openDeck("FULL_FUNDING");
+    deck.press("phase:07");
+    assert.equal(deck.slide(), "S-23");
+    for (const [i, o] of OBJECTION_TABLE.entries()) {
+      deck.press(`obj:${i}`);
+      assert.deepEqual(deck.says(), o.lines, `S-23 / ${o.title}`);
+      assert.equal(deck.label(`obj-jump:${o.target}`), o.jumpLabel);
+      deck.press("obj-back");
+      assert.equal(deck.has("obj:0"), true);
+    }
+    deck.press("obj:1").press("obj-jump:S-20");
+    assert.equal(deck.slide(), "S-20");
+    deck.press("next").press("next").press("next");
+    assert.equal(deck.slide(), "S-23");
+    assert.equal(deck.has("obj:5"), true);
   });
 });
 
@@ -646,6 +744,22 @@ for (const [p, phaseName, first, matcher] of PHASES) {
         deck.press(`phase:${p}`);
         assert.equal(deck.slide(), first);
         assert.deepEqual(deck.writes, []);
+      }
+      // every slide of the phase says so, in its own header and on the strip: not just the first one
+      const [, , slides] = PHASE_BUTTONS.find(([n]) => n === p);
+      for (const tier of ["FULL_FUNDING", "REPAIR_ONLY"]) {
+        const seen = await walkAllSlides(tier);
+        for (const code of slides) {
+          const slide = seen.find((x) => x.code === code);
+          assert.ok(slide, `${tier}: ${code} was reached`);
+          assert.equal(slide.phase, phaseName, `${tier}: ${code} names its phase`);
+          assert.deepEqual(slide.lit, [p], `${tier}: ${code} lights only ${p}`);
+          assert.equal(slide.position, `${positionOf(code)} / ${DECK_LENGTH}`, `${tier}: ${code} is in its place in the deck`);
+        }
+        for (const slide of seen.filter((x) => !slides.includes(x.code))) {
+          assert.notEqual(slide.phase, phaseName, `${tier}: ${slide.code} is not part of ${phaseName}`);
+          assert.ok(!slide.lit.includes(p), `${tier}: ${slide.code} does not light ${p}`);
+        }
       }
       // the strip button is a jump, not a step: it works from the far end of the deck too
       const late = await openDeck("FULL_FUNDING");
