@@ -5,12 +5,13 @@
 // it supports (cases, items, letters, saved letter files) and moves the repair card; mails
 // nothing; honest refusals answer 200 ok:false. Practice test, fake data, no network, no database.
 import { test, describe, before, after } from "node:test";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 
 import handler from "../../api/repair/generate.mjs";
 import { makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 import { fakeDb } from "../testing/handler-harness.mjs";
-import { tablesDb } from "../testing/fin-b08-tables.mjs";
+import { tablesDb, orderAndLimit } from "../testing/fin-b08-tables.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
@@ -38,7 +39,7 @@ const asked = [];
 before(() => { globalThis.fetch = async (url) => { asked.push(String(url)); throw new Error("network refused in this test"); }; });
 after(() => { globalThis.fetch = realFetch; });
 
-function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY", olderPull = null, roundsCap = null } = {}) {
+function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY", olderPull = null, roundsCap = null, furnishers = [], program = null, template = false } = {}) {
   const tables = {
     clients: [
       { id: CLIENT, org_id: ORG_ID, first_name: "Sim", last_name: "Repair", outcome_tier: tier },
@@ -60,20 +61,42 @@ function repairFile({ agreement = true, consent = false, verified = true, pull =
     dispute_items: [], dispute_letters: [], documents: [], document_versions: [], cards: [],
   };
   const stored = [];
-  const store = { put: async (arg) => { stored.push({ filename: arg && arg.filename, kind: arg && arg.kind, orgId: arg && arg.orgId, clientId: arg && arg.clientId, html: String((arg && arg.body) || "") }); return { key: `store/${arg && arg.filename}` }; }, get: async () => null };
+  const store = {
+    put: async (arg) => {
+      const html = String((arg && arg.body) || "");
+      stored.push({ filename: arg && arg.filename, kind: arg && arg.kind, orgId: arg && arg.orgId, clientId: arg && arg.clientId, html });
+      return {
+        key: `store/${arg && arg.filename}`, storageKey: `memory://letters/${arg && arg.filename}`, mimeType: arg && arg.mimeType,
+        byteSize: Buffer.byteLength(html), checksum: `sha256:${createHash("sha256").update(html).digest("hex")}`,
+      };
+    },
+    get: async () => null,
+  };
   const fake = tablesDb({
     tables,
     autoInsert: true,
     rules: [
       [/^\s*SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/i, (_s, p) => tables.clients.filter((c) => c.id === p[0] && c.org_id === p[1]).map(() => ({ "?column?": 1 }))],
       [/^\s*SELECT first_name, last_name FROM clients/i, (_s, p) => tables.clients.filter((c) => c.id === p[0] && c.org_id === p[1])],
-      [/^\s*SELECT outcome_tier FROM clients/i, (_s, p) => tables.clients.filter((c) => c.id === p[0] && c.org_id === p[1]).map((c) => ({ outcome_tier: c.outcome_tier }))],
+      // The tier is read by client id alone, as the product's own statement does; a company is checked only when it is given.
+      [/^\s*SELECT outcome_tier FROM clients/i, (_s, p) => tables.clients.filter((c) => c.id === p[0] && (p.length < 2 || c.org_id === p[1])).map((c) => ({ outcome_tier: c.outcome_tier }))],
       [/^\s*SELECT ps\.id AS stage_id, ps\.pipeline_id\s+FROM pipeline_stages ps/i, (_s, p) => STAGES.filter((s) => s.pipeline_key === p[0] && s.key === p[1] && s.org_id === p[2])
         .map((s) => ({ stage_id: s.id, pipeline_id: s.pipeline_id }))],
       [/^\s*SELECT id FROM cards WHERE client_id = \$1 AND pipeline_id = \$2/i, (_s, p) => tables.cards.filter((c) => c.client_id === p[0] && c.pipeline_id === p[1]).map((c) => ({ id: c.id }))],
       [/^\s*UPDATE cards SET stage_id = \$2 WHERE id = \$1/i, (_s, p) => { const c = tables.cards.find((x) => x.id === p[0]); if (c) c.stage_id = p[1]; return { rows: [], rowCount: 1 }; }],
       [/^\s*INSERT INTO cards \(org_id, client_id, pipeline_id, stage_id\)/i, (_s, p) => { tables.cards.push({ id: `k${tables.cards.length + 1}`, org_id: p[0], client_id: p[1], pipeline_id: p[2], stage_id: p[3] }); return { rows: [], rowCount: 1 }; }],
-      [/FROM repair_programs/i, () => (roundsCap == null ? [] : [{ program: "repair", rounds_cap: roundsCap, status: "active" }])],
+      [/FROM repair_programs/i, () => (program ? [program] : roundsCap == null ? [] : [{ program: "repair", rounds_cap: roundsCap, status: "active" }])],
+      // The rounds this client has been through: the statement's own status condition decides which cases count.
+      [/^\s*SELECT round FROM dispute_cases/i, (sql, p) => {
+        const dropsCancelled = /status\s*<>\s*'cancelled'/i.test(sql);
+        return tables.dispute_cases
+          .filter((c) => c.client_id === p[0] && c.org_id === p[1] && (!dropsCancelled || c.status !== "cancelled"))
+          .map((c) => ({ round: c.round }));
+      }],
+      // The furnisher's own mailing address, by the statement's own conditions: active, this name, global or this company's, company's first.
+      [/FROM furnisher_mail_addresses/i, (sql, p) => orderAndLimit(furnishers.filter((f) => f.active && f.name_norm === p[0] && (f.org_id === null || f.org_id === p[1])), sql, p)],
+      // An approved template for ANY key: a letter run that tried to email the client would show up as a message row.
+      [/^\s*SELECT body, subject, compliance_passed\s+FROM message_templates/i, () => (template ? [{ body: "Your letters are ready {{contact.first_name}}", subject: "Letters", compliance_passed: true }] : [])],
       [/^\s*SELECT dc\.id, dc\.org_id, dc\.client_id, dc\.bureau, dc\.round,/i, []],
       [/^\s*SELECT MAX\(dl\.created_at\) AS newest/i, (_s, p) => {
         const rows = tables.dispute_letters.filter((l) => l.org_id === p[0] && l.client_id === p[1] && p[2].includes(l.round) && (l.target || "bureau") === "bureau");
@@ -242,5 +265,125 @@ describe("POST /api/repair/generate", () => {
     const missing = await call({}, repairFile());
     assert.equal(missing.res.statusCode, 400);
     assert.equal(missing.res.body.error, "client_id_required");
+  });
+
+  test("each item the analysis finds is saved on its own case with its rule, its severity, its creditor, the account's last four and the round", async () => {
+    const file = repairFile();
+    const { res } = await call({ client_id: CLIENT }, file);
+    assert.equal(res.statusCode, 200);
+    const items = file.tables.dispute_items;
+    assert.equal(items.length, 3);
+    const byRule = Object.fromEntries(items.map((i) => [i.rule_id, i]));
+    assert.deepEqual(Object.keys(byRule).sort(), ["DEROG-COLLECTION", "PI-ADDRESS-CONFIRM", "PI-NAME-CONFIRM"]);
+    const collection = byRule["DEROG-COLLECTION"];
+    assert.equal(collection.severity, "strong");
+    assert.equal(collection.creditor, "MIDLAND CREDIT MANAGEMENT");
+    assert.equal(collection.account_last4, "6642");
+    for (const item of items) {
+      assert.equal(item.org_id, ORG_ID);
+      assert.equal(item.client_id, CLIENT);
+      assert.equal(item.round, "R1");
+      assert.equal(item.case_id, file.tables.dispute_cases[0].id);
+      assert.ok(item.severity, `${item.rule_id} keeps a severity`);
+      const violation = typeof item.violation === "string" ? JSON.parse(item.violation) : item.violation;
+      assert.equal(violation.ruleId, item.rule_id, "the whole finding is kept beside the columns");
+    }
+  });
+
+  test("the saved letter keeps its fingerprint digest, the rules it argues and its round, and the client's copy is filed as a dispute letter pack under the bureau's name", async () => {
+    const file = repairFile();
+    await call({ client_id: CLIENT }, file);
+    const letter = file.tables.dispute_letters.find((l) => l.target === "bureau");
+    assert.equal(letter.round, "R1");
+    assert.equal(letter.org_id, ORG_ID);
+    assert.equal(letter.client_id, CLIENT);
+    assert.equal(letter.case_id, file.tables.dispute_cases[0].id);
+    assert.equal(letter.fingerprint.length, 1);
+    assert.match(letter.fingerprint[0], /^sha256:[0-9a-f]{64}$/, "a stable digest, not the raw shingles");
+    assert.deepEqual(letter.rule_ids, ["DEROG-COLLECTION", "PI-NAME-CONFIRM", "PI-ADDRESS-CONFIRM"]);
+    assert.equal(file.tables.documents.length, 1);
+    const doc = file.tables.documents[0];
+    assert.deepEqual([doc.org_id, doc.client_id, doc.kind, doc.subtype], [ORG_ID, CLIENT, "deliverable", "metro2_dispute_letter_pack"]);
+    assert.match(doc.title, /Experian R1/);
+    const meta = typeof doc.metadata === "string" ? JSON.parse(doc.metadata) : doc.metadata;
+    assert.deepEqual([meta.bureau, meta.round, meta.target, meta.letterId], ["EX", "R1", "bureau", letter.id]);
+  });
+
+  test("a collector on the file also gets a validation letter to that collector, from the furnisher address on file; with none on file it is named as a gap", async () => {
+    const midland = (over) => ({ id: "f0000000-0000-4000-8000-000000000001", name: "Midland Credit Management", name_norm: "midland credit management", active: true, org_id: null,
+      address_line1: "PO Box 301030", address_line2: null, city: "Los Angeles", state: "CA", zip: "90030", ...over });
+    const file = repairFile({ furnishers: [
+      midland({}),
+      midland({ id: "f0000000-0000-4000-8000-000000000002", name: "Midland Credit Management (company desk)", org_id: ORG_ID, address_line1: "PO Box 999" }),
+      midland({ id: "f0000000-0000-4000-8000-000000000003", org_id: OTHER_ORG_ID, address_line1: "PO Box 111" }),
+      midland({ id: "f0000000-0000-4000-8000-000000000004", active: false, address_line1: "PO Box 222" }),
+    ] });
+    const { res } = await call({ client_id: CLIENT }, file);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const furnisher = file.tables.dispute_letters.find((l) => l.target === "furnisher");
+    assert.ok(furnisher, "a validation letter to the collector was saved");
+    assert.deepEqual([furnisher.round, furnisher.status, furnisher.bureau, furnisher.org_id, furnisher.client_id], ["FURNISHER", "generated", "EX", ORG_ID, CLIENT]);
+    assert.equal(furnisher.furnisher_address_id, "f0000000-0000-4000-8000-000000000002", "this company's own address for that furnisher is used first");
+    assert.match(furnisher.body_text, /PO Box 999/);
+    assert.doesNotMatch(furnisher.body_text, /PO Box (301030|111|222)/);
+    const furnisherCase = file.tables.dispute_cases.find((c) => c.round === "FURNISHER");
+    assert.ok(furnisherCase && furnisher.case_id === furnisherCase.id);
+    assert.ok(file.tables.dispute_items.some((i) => i.case_id === furnisherCase.id && i.rule_id === "DEROG-COLLECTION"));
+    assert.deepEqual(res.body.letters.map((l) => l.target).sort(), ["bureau", "furnisher"]);
+    assert.equal(file.stored.some((x) => x.filename === "EX_R1_furnisher.html"), true);
+    assert.deepEqual(res.body.warnings, []);
+
+    const none = repairFile({ furnishers: [] });
+    const gap = await call({ client_id: CLIENT }, none);
+    assert.equal(gap.res.statusCode, 200);
+    assert.equal(none.tables.dispute_letters.filter((l) => l.target === "furnisher").length, 0);
+    assert.deepEqual(gap.res.body.warnings, [{ key: "no_furnisher_address", creditor: "MIDLAND CREDIT MANAGEMENT" }]);
+    assert.ok(gap.res.body.skipped.some((x) => x.target === "furnisher" && x.reason === "no_furnisher_address"));
+    assert.equal(none.tables.dispute_letters.filter((l) => l.target === "bureau").length, 1, "the bureau letter is not lost for it");
+  });
+
+  test("a client is on the repair path by a signed agreement, an active program or a repair tier; a dispute consent alone on a funding file is not", async () => {
+    // Authorised by a staff dispute consent only. What decides the letters is the path, not the signature.
+    const viaTier = repairFile({ agreement: false, consent: true, tier: "REPAIR_ONLY" });
+    const a = await call({ client_id: CLIENT }, viaTier);
+    assert.equal(a.res.body.ok, true, JSON.stringify(a.res.body));
+    assert.ok(viaTier.tables.dispute_letters.length >= 1, "repair tier");
+    const viaProgram = repairFile({ agreement: false, consent: true, tier: "FULL_FUNDING", program: { program: "repair", rounds_cap: 6, status: "active" } });
+    const b = await call({ client_id: CLIENT }, viaProgram);
+    assert.equal(b.res.body.ok, true, JSON.stringify(b.res.body));
+    assert.ok(viaProgram.tables.dispute_letters.length >= 1, "active program");
+    const ended = repairFile({ agreement: false, consent: true, tier: "FULL_FUNDING", program: { program: "repair", rounds_cap: 6, status: "cancelled" } });
+    const c = await call({ client_id: CLIENT }, ended);
+    assert.equal(c.res.body.ok, false);
+    assert.equal(c.res.body.reason, "no_violations", "a cancelled program does not put a client on the path");
+    assert.equal(ended.tables.dispute_letters.length, 0);
+    const signed = repairFile({ agreement: true, tier: "FULL_FUNDING" });
+    const d = await call({ client_id: CLIENT }, signed);
+    assert.equal(d.res.body.ok, true, "a signed repair agreement counts first, whatever the tier says");
+  });
+
+  test("with no round named, the next round is the one after the highest the client has been through; a cancelled case does not count", async () => {
+    const several = repairFile({ cases: [{ round: "R1" }, { round: "R3" }, { round: "R2" }] });
+    const a = await call({ client_id: CLIENT }, several);
+    assert.equal(a.res.statusCode, 200, JSON.stringify(a.res.body));
+    assert.equal(a.res.body.round, "R4");
+    const withCancelled = repairFile({ cases: [{ round: "R1" }, { round: "R5", status: "cancelled" }] });
+    const b = await call({ client_id: CLIENT }, withCancelled);
+    assert.equal(b.res.body.round, "R2", "the cancelled round-5 case is not a round the client went through");
+    const none = repairFile({ cases: [] });
+    const c = await call({ client_id: CLIENT }, none);
+    assert.equal(c.res.body.round, "R1");
+    const named = await call({ client_id: CLIENT, round: "R1" }, repairFile({ cases: [{ round: "R3" }] }));
+    assert.equal(named.res.body.round, "R1", "a round named in the request wins");
+  });
+
+  test("with an approved email template on file, staging letters still queues no message to the client", async () => {
+    const file = repairFile({ template: true });
+    asked.length = 0;
+    const { res } = await call({ client_id: CLIENT }, file);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.deepEqual(asked, []);
+    for (const c of file.fake.calls) assert.doesNotMatch(c.sql, /INSERT INTO messages|INSERT INTO outbound|FROM message_templates/i, c.sql.slice(0, 60));
   });
 });
