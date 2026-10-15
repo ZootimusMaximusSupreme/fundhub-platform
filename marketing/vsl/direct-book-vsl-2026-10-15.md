@@ -1,0 +1,83 @@
+# Direct Book VSL 1 — Watch page, shortened (draft 2026-10-15)
+
+Status: draft for Chris to review. Written with Chris in a Claude chat on 2026-10-15.
+
+Source: the locked v3 in `marketing/ads/scripts/machine/on-demand/08-watch-vsl-book-a-call.md`
+(ad 103, 910 words). That file mirrors the app, and the app's copy wins, so this new version must be
+loaded into the app once Chris approves it.
+
+What changed (Chris, 2026-10-15):
+- Shorter, with every point kept. Repeats cut: the dollar list, the small details said twice,
+  "reviews your file the way a lender does" twice, the inquiry step set up three times.
+- No "I'll show you in a couple of minutes". The loop is held without announcing the payoff.
+- One line on other products: lines of credit, SBA, MCA, personal funding.
+- The do-it-yourself path is now the Capital Blueprint by name, built from
+  `marketing/offers/capital-blueprint-owner-definition-2026-10-14.md`. No bank order and nothing after
+  funding. It ends with "we go get the funding with you" so the upsell stays.
+- No upfront fee line. The funding path uses the guarantee instead.
+- Numbers written as numerals.
+
+Shoot: 4K, vertical (it is a VSL, not an ad). Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
+Blocks are about one teleprompter screen each.
+
+---
+
+The condition of your credit decides whether you walk away with $20,000 in funding or $400,000, even a million across multiple businesses, plus personal funding if you want it.
+
+Your score is only part of that. Small details in your file, like your personal data and your business codes, hold back even 800 scores from the MAXIMUM amount of funding.
+
+And there's one step most people miss that makes the biggest difference of all. ↑
+
+I'm Chris, I run Fundhub. I learned the funding game ten years ago, and I've funded a little over $1 million for myself since then.
+
+Maybe your bank denied you and never told you why.
+
+Maybe someone sent your file to every lender on their list, and you walked away with two approvals and a report full of hard inquiries.
+
+Or maybe you've never applied, because you didn't want a hard pull just to find out what you qualify for.
+
+All three happen for the same reason. Nobody checked your file against what each bank approves before the applications went out.
+
+Our underwriting software, UnderwriteIQ, catches those small details before anything goes out, so we fix them first.
+
+Then it matches your file against thousands of lenders to find the 30 to 50 that fit you, and we apply in funding rounds, in the order that protects your score.
+
+Credit cards are where most people start, and we also get you lines of credit, SBA loans, merchant cash advances and personal funding, stacked together at the lowest rates.
+
+Here's the step most people miss. ↑ Every application leaves a hard inquiry, and when the next round goes out with those still on your report, the next lender approves less.
+
+So we remove the inquiries between EVERY round. Your file goes into each round clean, and that's how a funding sequence runs 3 to 6 rounds and builds real capital.
+
+We're the only company in this industry that runs your file this way.
+
+Most of the people we work with are aiming for $250,000 to $400,000. Some files are ready for that today, and a lot aren't yet, which is completely normal.
+
+Wherever your file is right now, Fundhub has a solution for that phase.
+
+If your file is ready, we go get the capital. A funding advisor starts on your file within 24 business hours, and your first applications go out within 72.
+
+If you qualify and we can't fund you, you don't pay.
+
+If something on your report is holding you back, we show you exactly what it is, optimize your credit for you, and fund you once your file is ready.
+
+And if you'd rather do the work yourself, that's the Capital Blueprint. It puts your file through the 13 optimization points in the order that actually gets you funded.
+
+It tells you which balances to bring down and by how much, which negative items to get removed, and what to add to your file to make it stronger.
+
+It shows you which banks to build relationships with, where to keep your deposits, and how to set up your business data so banks see a company they trust.
+
+Every step comes with a timeline, and as you finish each one, you see your fundability climb toward the maximum.
+
+You learn funding by doing it on your own file, with an advisor checking in and answering your questions the whole way.
+
+We GUARANTEE it's the last tool you'll need to learn the funding game, and when your file is ready, we go get the funding with you.
+
+We've worked hundreds of files and collected thousands of data points on what lenders approve, so we can tell you what's most likely for your file.
+
+Click the button below, fill out the 10-second application, and pick a time for your call.
+
+Your advisor meets you on Google Meet and runs a tri-bureau soft pull with you. It's $32 to cover what the bureaus charge, and it has ZERO impact on your score.
+
+You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back, and the fastest way to the maximum amount of funding.
+
+If you've been told no before, or you just want to know what's possible, this call is where you find out. Click the button below and book your call.
