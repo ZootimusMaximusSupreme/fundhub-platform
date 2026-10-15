@@ -7,7 +7,9 @@
 //      stand-in table can only hold columns the product really has, and a column typo in a contract
 //      is "no such column" instead of a quiet green.
 //   2. portableSql() spells the few Postgres-only things (::casts, $1, BTRIM, now() - interval,
-//      EXTRACT(EPOCH ...), jsonb_array_length) for SQLite.
+//      EXTRACT(EPOCH ...), jsonb_array_length, the ~ and ~* regex operators) for SQLite. The regex
+//      operators run through one JavaScript function; the patterns the checks use are written in the
+//      subset the two engines share (anchors, classes, \s, \S, +, *).
 //   3. makeStandIn() builds an in-memory database whose tables hold the real column names.
 //
 // Nothing here writes to a real database. SQLite is node:sqlite, in memory.
@@ -118,6 +120,8 @@ export function portableSql(sql) {
       `strftime(${ISO}, 'now', '-$1 $2s')`)
     .replace(/::(?:uuid|int|integer|bigint|text|numeric|jsonb|json|boolean|date|timestamptz)\b/gi, "")
     .replace(/\bjsonb_array_length\s*\(/gi, "json_array_length(")
+    .replace(/([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)\s*(!?)~(\*?)\s*('(?:[^']|'')*')/gi,
+      (_m, col, bang, star, literal) => `${bang ? "NOT " : ""}pg_regex(${literal}, ${col}, ${star ? 1 : 0})`)
     .replace(/\$(\d+)/g, "?$1")
     .replace(/\bBTRIM\s*\(/gi, "TRIM(")
     .replace(/\bnow\(\)/gi, `strftime(${ISO}, 'now')`);
@@ -130,6 +134,9 @@ export function portableSql(sql) {
 export function makeStandIn(tableNames) {
   const schema = schemaColumns();
   const db = new DatabaseSync(":memory:");
+  db.function("pg_regex", (pattern, value, caseless) => (value == null
+    ? null
+    : (new RegExp(String(pattern), caseless ? "i" : "").test(String(value)) ? 1 : 0)));
   const known = new Map();
   for (const name of tableNames) {
     const cols = schema.get(name);

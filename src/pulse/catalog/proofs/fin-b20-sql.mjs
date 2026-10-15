@@ -20,13 +20,19 @@ SELECT count(*)::int AS sample_count,
 
 // Sign out stamps revoked_at (api/auth/logout.mjs, src/auth/session.mjs revokeSession) and verifySession
 // only slides a session whose revoked_at is null and whose expires_at is ahead. So a session that was
-// seen later than the moment it was revoked or expired is a session the gate still let in: either the
-// sign-out did not take or the session check let a dead token through. Five minutes of slack.
+// seen later than the moment it was revoked is a session the gate still let in: the sign-out did not
+// take, or the session check let a dead token through. Five minutes of slack.
+//
+// What this cannot see, said here so nobody reads it as more: verifySession and its account twin slide
+// expires_at forward in the same statement that stamps last_seen_at, so a wrongly accepted EXPIRED token
+// leaves no trace in these columns (last_seen_at is never later than the slid expires_at). That arm was
+// here once and could never fire, so it is gone. The expiry rule is held by src/auth/session.test.mjs
+// (the one statement carries both liveness predicates) and the sign-out call by
+// src/http/auth-logout-handler.test.mjs (the handler revokes in both stores), not by saved rows.
 export const SESSION_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE r.revoked_at < r.created_at
-         OR EXTRACT(EPOCH FROM (r.last_seen_at - r.revoked_at)) > 300
-         OR EXTRACT(EPOCH FROM (r.last_seen_at - r.expires_at)) > 300)::int AS bad_count
+         OR EXTRACT(EPOCH FROM (r.last_seen_at - r.revoked_at)) > 300)::int AS bad_count
   FROM (SELECT org_id, created_at, expires_at, revoked_at, last_seen_at FROM sessions
         UNION ALL
         SELECT org_id, created_at, expires_at, revoked_at, last_seen_at FROM account_sessions) r
@@ -34,17 +40,15 @@ SELECT count(*)::int AS sample_count,
 
 // shell.js paintBrand() re-validates every token and silently drops the bad ones, so a brand row with a
 // value the shell rejects paints nothing and nobody is told. The table CHECKs the colours and faces;
-// what it does not check is the wordmark (the API accepts https or a data:image, shell.js accepts the
-// same and refuses a space, quote, angle bracket or parenthesis), ink equal to paper (a page whose text
-// is the colour of its ground), or a ramp that is not empty or six stops.
+// what it does not check is the wordmark, ink equal to paper (a page whose text is the colour of its
+// ground), or a ramp that is not empty or six stops. The wordmark test is shell.js safeWordmark() word
+// for word: trim, then https followed by one or more characters that are not whitespace, quote, angle
+// bracket or parenthesis (any case), or an image data address with a base64 body of its own alphabet.
 export const BRAND_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE (b.wordmark_url IS NOT NULL AND BTRIM(b.wordmark_url) <> ''
-           AND NOT ((lower(b.wordmark_url) LIKE 'https://%' AND b.wordmark_url NOT LIKE '% %'
-                     AND b.wordmark_url NOT LIKE '%"%' AND b.wordmark_url NOT LIKE '%''%'
-                     AND b.wordmark_url NOT LIKE '%<%' AND b.wordmark_url NOT LIKE '%>%'
-                     AND b.wordmark_url NOT LIKE '%(%' AND b.wordmark_url NOT LIKE '%)%')
-                    OR lower(b.wordmark_url) LIKE 'data:image/%;base64,%'))
+       count(*) FILTER (WHERE (b.wordmark_url IS NOT NULL AND b.wordmark_url ~ '\\S'
+           AND NOT (b.wordmark_url ~* '^\\s*https://[^\\s"''<>()]+\\s*$'
+                    OR b.wordmark_url ~ '^\\s*data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+\\s*$'))
          OR (b.ink IS NOT NULL AND b.paper IS NOT NULL AND lower(b.ink) = lower(b.paper))
          OR jsonb_array_length(b.ramp) NOT IN (0, 6))::int AS bad_count
   FROM org_brand b
@@ -97,30 +101,52 @@ SELECT count(*)::int AS sample_count,
 
 // The same join feeds the "Where it is coming from" panel (held, close and desire by lead source),
 // and it counts every call outcome, not only the ones that name a belief. A call whose client is not
-// in the company leaves that panel's close rate short, and the closer's number with it.
+// in the company leaves that panel's close rate short, and the closer's number with it. The outcome
+// word is not judged here: the table CHECKs the five words, so that arm could never fire. Last 60 days,
+// demo rows left out, same window as the belief check.
 export const SOURCE_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE c.id IS NULL
-         OR o.outcome NOT IN ('deposit', 'downsell', 'callback', 'no_show', 'not_a_fit'))::int AS bad_count
+       count(*) FILTER (WHERE c.id IS NULL)::int AS bad_count
   FROM call_outcomes o
   LEFT JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
  WHERE o.org_id = $1::uuid AND COALESCE(o.is_demo, false) = false
    AND o.logged_at > now() - interval '60 days'`;
 
-// "Calls not logged" (src/sales/call-outcomes.mjs listUnloggedCalls) counts every past-due closer
-// booking task that has no disposition joined by task_id. logCallOutcome treats a booking_ref match as
-// the same call, so a disposition that was logged by booking reference alone leaves its task counted
-// as "not logged" forever. Each such task is a call the panel says nobody logged, which somebody did.
+// The floor discipline panel's two counted lines, judged from the rows they are counted from.
+//
+// 1. "Calls not logged" (src/sales/call-outcomes.mjs listUnloggedCalls) counts every past-due closer
+//    booking task that has no disposition joined by task_id. logCallOutcome treats a booking_ref match
+//    as the same call, so a disposition that was logged by booking reference alone leaves its task
+//    counted as "not logged" forever. Each such task is a call the panel says nobody logged, which
+//    somebody did. A task with a blank body has no booking reference to match and is never wrong here.
+// 2. "Calls not recorded" (src/sales/unrecorded.mjs listUnrecordedCalls) is the panel's own words "no
+//    recording and no transcript". The read selects no transcript column, so a call that has words and
+//    no recording address is still counted. The rows judged are exactly the calls the chip counts: held,
+//    not demo, last 14 days, no recording address, older than the 20 minute grace window or logged
+//    before the last Drive sync. One that carries a transcript is a call the chip says has no words.
+//    When the read starts selecting o.transcript this half is retired in the same change, and
+//    fin-b20-sales-floor-reads.test.mjs fails at that moment to say so.
 export const DISCIPLINE_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE d.id IS NOT NULL)::int AS bad_count
-  FROM tasks t
-  LEFT JOIN call_outcomes o ON o.task_id = t.id AND o.org_id = t.org_id
-  LEFT JOIN call_outcomes d ON o.id IS NULL AND d.org_id = t.org_id
-       AND NULLIF(BTRIM(t.body), '') IS NOT NULL AND d.booking_ref = t.body
- WHERE t.org_id = $1::uuid AND t.assignee_role = 'closer' AND t.title LIKE 'Strategy session%'
-   AND t.due_at IS NOT NULL AND t.due_at < now() AND o.id IS NULL
-   AND COALESCE(t.is_demo, false) = false`;
+       count(*) FILTER (WHERE r.bad = 1)::int AS bad_count
+  FROM (
+    SELECT CASE WHEN EXISTS (SELECT 1 FROM call_outcomes d
+                              WHERE d.org_id = t.org_id AND NULLIF(BTRIM(t.body), '') IS NOT NULL
+                                AND d.booking_ref = t.body)
+                THEN 1 ELSE 0 END AS bad
+      FROM tasks t
+     WHERE t.org_id = $1::uuid AND t.assignee_role = 'closer' AND t.title LIKE 'Strategy session%'
+       AND t.due_at IS NOT NULL AND t.due_at < now() AND COALESCE(t.is_demo, false) = false
+       AND NOT EXISTS (SELECT 1 FROM call_outcomes o WHERE o.task_id = t.id AND o.org_id = t.org_id)
+    UNION ALL
+    SELECT CASE WHEN NULLIF(BTRIM(u.transcript), '') IS NOT NULL THEN 1 ELSE 0 END AS bad
+      FROM call_outcomes u
+     WHERE u.org_id = $1::uuid AND COALESCE(u.is_demo, false) = false AND u.outcome <> 'no_show'
+       AND u.logged_at > now() - interval '14 days'
+       AND (u.recording_url IS NULL OR BTRIM(u.recording_url) = '')
+       AND (u.logged_at < now() - interval '20 minutes'
+            OR u.logged_at < (SELECT s.last_sync_at FROM brain_drive_sync s WHERE s.org_id = u.org_id))
+  ) r`;
 
 // The "Recording rows" the page paints out of src/sales/recordings.mjs listRecentRecordings. A row
 // links only when the address is https on drive.google.com or docs.google.com (safeDriveUrl in

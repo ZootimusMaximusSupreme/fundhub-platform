@@ -54,6 +54,7 @@ test("every table and column the SQL texts name is a real one in db/schema and d
     ["tasks", ["id", "org_id", "assignee_role", "title", "body", "due_at", "is_demo"]],
     ["brain_files", ["id", "org_id", "web_view_link", "client_id", "needs_transcription", "mime_type", "indexed_at", "created_at"]],
     ["brain_chunks", ["file_id"]],
+    ["brain_drive_sync", ["org_id", "last_sync_at"]],
   ];
   for (const [table, cols] of checks) {
     assert.ok(schema.has(table), `${table} exists`);
@@ -110,21 +111,31 @@ test("session: a live, a signed-out and an expired session that were last seen i
   assert.deepEqual(run(SESSION_SQL, ["sessions", "account_sessions"], () => {}), { sample_count: 0, bad_count: 0 });
 });
 
-test("session: seen after sign-out, seen after expiry and revoked before created are each counted", () => {
+test("session: seen after sign-out and revoked before created are each counted", () => {
   const seed = (s) => {
     s.insert("sessions", live({ revoked_at: ago(2), last_seen_at: ago(1) }));              // used a day after sign-out
-    s.insert("sessions", live({ expires_at: ago(2), last_seen_at: ago(1) }));              // used a day after expiry
     s.insert("account_sessions", { ...live({ revoked_at: ago(2), last_seen_at: ago(1) }), account_id: id("a") });
     s.insert("sessions", live({ created_at: ago(1), revoked_at: ago(2), last_seen_at: ago(3) })); // revoked before it began
     s.insert("sessions", live({ revoked_at: ago(1), last_seen_at: ago(1) }));              // good: same moment
+    s.insert("sessions", live());                                                          // good: never signed out
     s.insert("sessions", { ...live({ revoked_at: ago(2), last_seen_at: ago(1) }), org_id: OTHER });
     s.insert("sessions", live({ created_at: ago(45), revoked_at: ago(44), last_seen_at: ago(40) })); // older than the window
   };
   const tables = ["sessions", "account_sessions"];
-  assert.deepEqual(run(SESSION_SQL, tables, seed), { sample_count: 5, bad_count: 4 });
-  assert.equal(run(without(SESSION_SQL, "EXTRACT(EPOCH FROM (r.last_seen_at - r.revoked_at)) > 300"), tables, seed).bad_count, 2);
-  assert.equal(run(without(SESSION_SQL, "EXTRACT(EPOCH FROM (r.last_seen_at - r.expires_at)) > 300"), tables, seed).bad_count, 3);
-  assert.equal(run(without(SESSION_SQL, "r.revoked_at < r.created_at"), tables, seed).bad_count, 3);
+  assert.deepEqual(run(SESSION_SQL, tables, seed), { sample_count: 5, bad_count: 3 });
+  assert.equal(run(without(SESSION_SQL, "EXTRACT(EPOCH FROM (r.last_seen_at - r.revoked_at)) > 300"), tables, seed).bad_count, 1);
+  assert.equal(run(without(SESSION_SQL, "r.revoked_at < r.created_at"), tables, seed).bad_count, 2);
+  assert.equal(run(loosen(SESSION_SQL, "r.created_at > now() - interval '30 days'"), tables, seed).sample_count, 6, "the window leaves the old row out");
+  const anyCompany = SESSION_SQL.replace("r.org_id = $1::uuid", () => "(r.org_id = $1::uuid OR 1 = 1)");
+  assert.equal(run(anyCompany, tables, seed).sample_count, 6, "the company filter leaves the other company out");
+});
+
+test("session: an expired session that was seen again is not a wrong row here, because the slide hides it", () => {
+  // verifySession slides expires_at forward in the statement that stamps last_seen_at, so this shape is
+  // what a RIGHT session looks like. The expiry rule is held by src/auth/session.test.mjs instead.
+  const seed = (s) => s.insert("sessions", live({ expires_at: ago(-7), last_seen_at: ago(0, 1) }));
+  assert.deepEqual(run(SESSION_SQL, ["sessions", "account_sessions"], seed), { sample_count: 1, bad_count: 0 });
+  assert.ok(!SESSION_SQL.includes("expires_at - ") && !/last_seen_at - r\.expires_at/.test(SESSION_SQL), "no arm that can never fire");
 });
 
 test("session: two minutes of slack after the moment of sign-out is not wrong, ten minutes is", () => {
@@ -138,50 +149,89 @@ test("session: two minutes of slack after the moment of sign-out is not wrong, t
 // Company brand
 const ramp6 = ["#F2A69B", "#F5CE8F", "#F2E39B", "#A8D8B0", "#A9C6E8", "#C4B3E5"];
 
+const brandRun = (fields, org = ORG) => run(BRAND_SQL, ["org_brand"], (s) => s.insert("org_brand", { id: id("b"), org_id: org, ramp: ramp6, ...fields }));
+const PNG64 = "data:image/png;base64,iVBORw0KGgo=";
+
 test("brand: an https wordmark, an image data address, no wordmark, ink unlike paper, no ramp or six are right", () => {
   const seed = (s) => {
     s.insert("org_brand", { id: id("b"), org_id: ORG, wordmark_url: "https://cdn.example.test/logo.svg", ink: "#0A0A0A", paper: "#FCFCFC", ramp: ramp6 });
   };
   assert.deepEqual(run(BRAND_SQL, ["org_brand"], seed), { sample_count: 1, bad_count: 0 });
-  const data = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, wordmark_url: "data:image/png;base64,iVBORw0KGgo=", ink: null, paper: null, ramp: [] });
+  const data = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, wordmark_url: PNG64, ink: null, paper: null, ramp: [] });
   assert.deepEqual(run(BRAND_SQL, ["org_brand"], data), { sample_count: 1, bad_count: 0 });
   const bare = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, wordmark_url: null, ramp: [] });
   assert.deepEqual(run(BRAND_SQL, ["org_brand"], bare), { sample_count: 1, bad_count: 0 });
   assert.deepEqual(run(BRAND_SQL, ["org_brand"], () => {}), { sample_count: 0, bad_count: 0 });
+  // what the shell accepts, spelled the way the shell accepts it: any case of https, a trimmed address,
+  // another image type, an empty or whitespace-only wordmark (means no wordmark)
+  for (const url of ["HTTPS://CDN.EXAMPLE.TEST/LOGO.PNG", "  https://cdn.example.test/a.svg  ", "https://cdn.example.test/a?b=1&c=2#d",
+    "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=", "data:image/jpeg;base64,/9j/4AAQSkZJRg==", "", "   ", "\t\n"]) {
+    assert.deepEqual(brandRun({ wordmark_url: url }), { sample_count: 1, bad_count: 0 }, JSON.stringify(url));
+  }
 });
 
-test("brand: the wordmarks the shell refuses, ink equal to paper and a five-stop ramp are each counted", () => {
-  const cases = [
-    { wordmark_url: "http://cdn.example.test/logo.svg", why: "not https" },
-    { wordmark_url: "https://cdn.example.test/my logo.svg", why: "a space" },
-    { wordmark_url: "https://cdn.example.test/a\"b.svg", why: "a quote" },
-    { wordmark_url: "https://cdn.example.test/a(1).svg", why: "a bracket" },
-    { wordmark_url: "javascript:alert(1)", why: "script" },
-    { wordmark_url: "https://cdn.example.test/ok.svg", ink: "#111111", paper: "#111111", why: "ink equals paper" },
-    { wordmark_url: null, ramp: ramp6.slice(0, 5), why: "a five-stop ramp" },
+test("brand: every wordmark the shell refuses is counted, as are ink equal to paper and a five-stop ramp", () => {
+  const refused = [
+    ["http://cdn.example.test/logo.svg", "not https"],
+    ["https://cdn.example.test/my logo.svg", "a space"],
+    ["https://cdn.example.test/a\tb.svg", "a tab"],
+    ["https://cdn.example.test/a\nb.svg", "a newline"],
+    ["https://cdn.example.test/a\"b.svg", "a double quote"],
+    ["https://cdn.example.test/a'b.svg", "an apostrophe"],
+    ["https://cdn.example.test/a(1.svg", "an opening bracket alone"],
+    ["https://cdn.example.test/a1).svg", "a closing bracket alone"],
+    ["https://cdn.example.test/a<b.svg", "an opening angle bracket alone"],
+    ["https://cdn.example.test/a>b.svg", "a closing angle bracket alone"],
+    ["https://cdn.example.test/a\rb.svg", "a carriage return"],
+    ["https://", "nothing after the scheme"],
+    ["javascript:alert(1)", "script"],
+    ["data:text/html;base64,PGgxPjwvaDE+", "not an image"],
+    ["data:image/png;base64,iVBOR w0KGgo=", "a space inside the base64 body"],
+    ["data:image/png;base64,iVBOR\"w0KGgo=", "a quote inside the base64 body"],
+    ["data:image/png;base64,iVBOR<w0KGgo=", "a bracket inside the base64 body"],
+    ["data:image/png;base64,", "an empty base64 body"],
+    ["data:image/png,iVBORw0KGgo=", "not base64"],
+    ["//cdn.example.test/logo.svg", "no scheme"],
   ];
-  for (const c of cases) {
-    const { why, ...fields } = c;
-    const seed = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, ramp: ramp6, ...fields });
-    assert.deepEqual(run(BRAND_SQL, ["org_brand"], seed), { sample_count: 1, bad_count: 1 }, why);
-    const other = (s) => s.insert("org_brand", { id: id("b"), org_id: OTHER, ramp: ramp6, ...fields });
-    assert.deepEqual(run(BRAND_SQL, ["org_brand"], other), { sample_count: 0, bad_count: 0 }, `another company: ${why}`);
+  for (const [url, why] of refused) {
+    assert.deepEqual(brandRun({ wordmark_url: url }), { sample_count: 1, bad_count: 1 }, why);
+    assert.deepEqual(brandRun({ wordmark_url: url }, OTHER), { sample_count: 0, bad_count: 0 }, `another company: ${why}`);
   }
-  // each clause is live: remove the wordmark clause and the refused wordmark reads clean
-  const refused = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, wordmark_url: "http://x.example.test/a.svg", ramp: ramp6 });
-  const head = BRAND_SQL.indexOf("(b.wordmark_url IS NOT NULL");
-  const tail = BRAND_SQL.indexOf("OR (b.ink IS NOT NULL");
-  const noWordmark = `${BRAND_SQL.slice(0, head)}1 = 0\n         ${BRAND_SQL.slice(tail)}`;
-  assert.equal(run(noWordmark, ["org_brand"], refused).bad_count, 0);
-  const same = (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, ink: "#ABCDEF", paper: "#abcdef", ramp: ramp6 });
-  assert.equal(run(BRAND_SQL, ["org_brand"], same).bad_count, 1, "ink and paper are compared without case");
-  assert.equal(run(without(BRAND_SQL, "(b.ink IS NOT NULL AND b.paper IS NOT NULL AND lower(b.ink) = lower(b.paper))"), ["org_brand"], same).bad_count, 0);
+  assert.equal(brandRun({ wordmark_url: null, ink: "#111111", paper: "#111111" }).bad_count, 1, "ink equals paper");
+  assert.equal(brandRun({ wordmark_url: null, ink: "#ABCDEF", paper: "#abcdef" }).bad_count, 1, "ink and paper are compared without case");
+  assert.equal(brandRun({ wordmark_url: null, ramp: ramp6.slice(0, 5) }).bad_count, 1, "a five-stop ramp");
+  assert.equal(brandRun({ wordmark_url: null, ramp: [] }).bad_count, 0);
+});
+
+test("brand: every clause is live (widen the https rule, the data rule, or drop ink and paper, and its wrong row reads clean)", () => {
+  const loose = (from, to) => {
+    const swapped = BRAND_SQL.replace(from, () => to);
+    assert.notEqual(swapped, BRAND_SQL, "the clause under test was found");
+    return swapped;
+  };
+  const row = (fields) => (s) => s.insert("org_brand", { id: id("b"), org_id: ORG, ramp: ramp6, ...fields });
+  const httpsLoose = loose(/~\* '[^']*(?:''[^']*)*'/, "~* '^\\s*https://.+$'");
+  assert.equal(BRAND_SQL.includes(httpsLoose.match(/~\* '[^']*(?:''[^']*)*'/)[0]), false);
+  for (const url of ["https://cdn.example.test/my logo.svg", "https://cdn.example.test/a\tb.svg", "https://cdn.example.test/a(1).svg", "https://cdn.example.test/a'b.svg"]) {
+    assert.equal(run(BRAND_SQL, ["org_brand"], row({ wordmark_url: url })).bad_count, 1, url);
+    assert.equal(run(httpsLoose, ["org_brand"], row({ wordmark_url: url })).bad_count, 0, `widened https rule reads clean: ${url}`);
+  }
+  const dataLoose = loose(/ ~ '\^\\s\*data:[^']*'/, " ~ '^\\s*data:image/.+$'");
+  for (const url of ["data:image/png;base64,iVBOR w0KGgo=", "data:image/png;base64,iVBOR<w0KGgo="]) {
+    assert.equal(run(BRAND_SQL, ["org_brand"], row({ wordmark_url: url })).bad_count, 1, url);
+    assert.equal(run(dataLoose, ["org_brand"], row({ wordmark_url: url })).bad_count, 0, `widened data rule reads clean: ${url}`);
+  }
+  const noInk = loose("(b.ink IS NOT NULL AND b.paper IS NOT NULL AND lower(b.ink) = lower(b.paper))", "1 = 0");
+  assert.equal(run(noInk, ["org_brand"], row({ ink: "#ABCDEF", paper: "#abcdef" })).bad_count, 0);
+  const noRamp = loose("jsonb_array_length(b.ramp) NOT IN (0, 6)", "1 = 0");
+  assert.equal(run(noRamp, ["org_brand"], row({ ramp: ramp6.slice(0, 5) })).bad_count, 0);
 });
 
 // ---------------------------------------------------------------------------------------------
 // Person-to-person chat threads
-const thread = (s, { org = ORG, a = S1, b = S2, key = `${a}:${b}`, client = null, kind = "internal", parts = [a, b], cid = id("t") } = {}) => {
-  s.insert("conversations", { id: cid, org_id: org, client_id: client, kind, channel: "internal", internal_pair_key: key, last_pulse_at: ago(1), created_at: ago(3) });
+const thread = (s, { org = ORG, a = S1, b = S2, key = `${a}:${b}`, client = null, kind = "internal", parts = [a, b], cid = id("t"),
+  demo = false, pulse = ago(1), created = ago(3) } = {}) => {
+  s.insert("conversations", { id: cid, org_id: org, client_id: client, kind, channel: "internal", internal_pair_key: key, last_pulse_at: pulse, created_at: created, is_demo: demo });
   for (const p of parts) s.insert("conversation_participants", { conversation_id: cid, staff_id: p });
   return cid;
 };
@@ -234,3 +284,19 @@ test("chat peers: a client on the thread, three people, a stranger, a wrong key 
   assert.equal(run(without(CHAT_PEER_SQL, "c.internal_pair_key IS NULL"), CHAT_TABLES, seed).bad_count, 6, "a null key slips through NOT IN, so the IS NULL arm is what catches it");
 });
 
+test("chat peers: demo threads and threads quiet for sixty days are left out, and a note not sent by staff is counted", () => {
+  const seed = (s) => {
+    staff2(s);
+    thread(s, { client: C1 });                                                    // 1 a client on a person thread: wrong
+    thread(s, { client: C1, demo: true });                                        // a demo thread is never judged
+    thread(s, { client: C1, pulse: ago(90), created: ago(100) });                 // quiet for ninety days: outside the window
+    const typed = thread(s, { a: S1, b: S3 });                                    // 2 a note of another sender kind, from a participant
+    note(s, typed, S1, { sender_kind: "client" });
+    const good = thread(s, { a: S2, b: S3 }); note(s, good, S2);
+  };
+  assert.deepEqual(run(CHAT_PEER_SQL, CHAT_TABLES, seed), { sample_count: 3, bad_count: 2 });
+  assert.deepEqual(run(loosen(CHAT_PEER_SQL, "COALESCE(c.is_demo, false) = false"), CHAT_TABLES, seed), { sample_count: 4, bad_count: 3 }, "the demo filter is what leaves it out");
+  assert.deepEqual(run(loosen(CHAT_PEER_SQL, "COALESCE(c.last_pulse_at, c.created_at) > now() - interval '60 days'"), CHAT_TABLES, seed), { sample_count: 4, bad_count: 3 }, "the window is what leaves it out");
+  assert.equal(run(without(CHAT_PEER_SQL, "m.sender_kind <> 'staff'"), CHAT_TABLES, seed).bad_count, 1, "the sender kind arm catches the note");
+  assert.equal(run(without(CHAT_PEER_SQL, "m.channel <> 'internal'"), CHAT_TABLES, seed).bad_count, 2, "a client-kind note on the internal channel is not a channel problem");
+});

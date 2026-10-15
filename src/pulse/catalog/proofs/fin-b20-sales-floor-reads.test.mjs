@@ -8,9 +8,10 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
 import { schemaColumns, portableSql } from "./fin-b20-sql-kit.mjs";
+import { DISCIPLINE_SQL } from "./fin-b20-sql.mjs";
 import { beliefAnalytics, salesFloor } from "../../../sales/metrics.mjs";
 import { listUnloggedCalls, countUnlogged } from "../../../sales/call-outcomes.mjs";
-import { listUnrecordedCalls, isUnrecorded, GRACE_MS } from "../../../sales/unrecorded.mjs";
+import { listUnrecordedCalls, isUnrecorded, hasTape, countUnrecorded, GRACE_MS, LOOKBACK_DAYS } from "../../../sales/unrecorded.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
@@ -106,6 +107,25 @@ test("lead-source panel: desire counts sort a source to the top and another comp
   assert.equal(organic.close_rate, 3 / 4);
 });
 
+test("lead-source panel: a call is cut by campaign first, then source, then channel, then unknown (every step of the order is its own row)", async () => {
+  const db = standIn(["call_outcomes", "clients", "client_custom_fields"]);
+  const client = (cid, channel, fields) => {
+    db.insert("clients", { id: cid, org_id: ORG, channel_source: channel });
+    if (fields) db.insert("client_custom_fields", { client_id: cid, org_id: ORG, ...fields });
+  };
+  client("k-all", "channel-all", { utm_campaign: "campaign-all", utm_source: "source-all" });  // all three: the campaign wins
+  client("k-source", "channel-source", { utm_source: "source-only" });                          // source and channel: the source wins
+  client("k-channel", "channel-only", null);                                                    // channel alone
+  client("k-campaign", "channel-camp", { utm_campaign: "campaign-only" });                      // campaign and channel: the campaign wins
+  client("k-none", null, null);                                                                 // nothing at all
+  const log = (cid) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: cid, staff_id: "s1", outcome: "callback", logged_at: day(2) });
+  for (const cid of ["k-all", "k-source", "k-channel", "k-campaign", "k-none"]) log(cid);
+  const out = await beliefAnalytics(db, { orgId: ORG, start: new Date("2026-10-01T00:00:00.000Z"), end: new Date("2026-11-01T00:00:00.000Z") });
+  assert.deepEqual(out.sources.map((s) => s.lead_source).sort(),
+    ["campaign-all", "campaign-only", "channel-only", "source-only", "unknown"].sort());
+  assert.ok(out.sources.every((s) => s.held === 1));
+});
+
 // ---------------------------------------------------------------------------------------------
 test("floor discipline: calls not logged are past-due closer booking tasks with no disposition", async () => {
   const db = standIn(["tasks", "call_outcomes", "clients"]);
@@ -135,7 +155,7 @@ test("floor discipline: calls not recorded are held calls with no recording and 
   c({ id: "u-blank", recording_url: "   " });                                 // blank link is no link
   const rows = await listUnrecordedCalls(db, { orgId: ORG, now: NOW, limit: 20 });
   assert.deepEqual(rows.map((r) => r.id).sort(), ["u-blank", "u-old"]);
-  // not asserted: a call with a transcript and no recording address (see the manifest, product finding)
+  // a call with a transcript and no recording address: see "the chip's number" test below (product finding 1)
   assert.equal(rows.every((r) => r.flag === "unrecorded"), true);
   assert.equal(GRACE_MS, 20 * 60 * 1000);
   assert.equal(isUnrecorded({ outcome: "deposit", logged_at: day(0, 19) }, { now: NOW }), false, "nineteen minutes is inside the grace window");
@@ -168,3 +188,68 @@ test("compliance panel: the reason says words are on file, recordings wait for w
   assert.equal(none.compliance.items.length, 0, "no flags exist, only a sentence");
 });
 
+// ---------------------------------------------------------------------------------------------
+// "Has a tape" is the rule behind the panel's words "no recording and no transcript".
+test("floor discipline: a recording address or a transcript, under either spelling of the address, is a tape; blank is not", () => {
+  const held = { outcome: "deposit", logged_at: day(0, 60) };
+  const unrecorded = (extra) => isUnrecorded({ ...held, ...extra }, { now: NOW });
+  assert.equal(unrecorded({}), true, "nothing at all is unrecorded");
+  assert.equal(unrecorded({ recording_url: "https://drive.google.com/file/d/x/view" }), false, "an address is a tape");
+  assert.equal(unrecorded({ recordingUrl: "https://drive.google.com/file/d/x/view" }), false, "the camel-case spelling is a tape too");
+  assert.equal(unrecorded({ transcript: "We agreed on the deposit." }), false, "words are a tape");
+  assert.equal(unrecorded({ recording_url: "  ", transcript: "  " }), true, "blank is nothing");
+  assert.equal(hasTape({ transcript: "words" }), true);
+  assert.equal(hasTape({ recording_url: "" , transcript: "" }), false);
+  assert.equal(unrecorded({ outcome: "No_Show" }), false, "a no-show is never unrecorded, in any case");
+  assert.equal(LOOKBACK_DAYS, 14);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The live check reads the rows the chip is counted from. Run the REAL read and the REAL check text over
+// the same stand-in rows: the check's sample is the chip's number, row for row.
+test("floor discipline: the chip's number and the live check's rows are the same rows; a call with words but no address is listed (product finding 1)", async () => {
+  const now = new Date();
+  const ago = (minutes) => new Date(now.getTime() - minutes * 60_000).toISOString();
+  const build = (withSync) => {
+    const db = standIn(["call_outcomes", "clients", "brain_drive_sync", "tasks"]);
+    const c = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "deposit", logged_at: ago(120), is_demo: false, ...over });
+    c({ id: "u-plain" });
+    c({ id: "u-words", transcript: "We talked about the deposit and agreed on the plan." });
+    c({ id: "u-blank-words", transcript: "   " });
+    c({ id: "u-tape", recording_url: "https://drive.google.com/file/d/x/view", transcript: "words" });
+    c({ id: "u-blank-url", recording_url: "  " });
+    c({ id: "u-fresh", logged_at: ago(5) });
+    c({ id: "u-noshow", outcome: "no_show", transcript: "words" });
+    c({ id: "u-demo", is_demo: true });
+    c({ id: "u-old", logged_at: ago(20 * 24 * 60) });
+    c({ id: "u-other", org_id: OTHER });
+    const t = (over) => db.insert("tasks", { id: id("t"), org_id: ORG, assignee_role: "closer", title: "Strategy session booked", body: id("BK"), due_at: ago(60), done: false, ...over });
+    t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
+    t({ id: "t-logged" });
+    db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit", recording_url: "https://drive.google.com/file/d/q/view", logged_at: ago(30) });
+    t({ id: "t-future", due_at: ago(-600) });
+    t({ id: "t-setter", assignee_role: "setter" });
+    if (withSync) db.insert("brain_drive_sync", { org_id: ORG, last_sync_at: ago(2) });
+    return db;
+  };
+  for (const withSync of [false, true]) {
+    const db = build(withSync);
+    const chip = await listUnrecordedCalls(db, { orgId: ORG, now, limit: 200 });
+    const notLogged = await listUnloggedCalls(db, { orgId: ORG, limit: 200 });
+    const check = (await db.query(DISCIPLINE_SQL, [ORG])).rows[0];
+    assert.equal(Number(check.sample_count), chip.length + notLogged.length, `${withSync ? "with" : "without"} a Drive sync: the check judges the chip's rows and the unlogged tasks, no more and no fewer`);
+    assert.equal(await countUnrecorded(db, { orgId: ORG, now }), chip.length);
+    const ids = chip.map((r) => r.id).sort();
+    if (withSync) {
+      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-fresh", "u-plain", "u-words"], "a Drive sync after a call counts it inside the grace window");
+    } else {
+      assert.deepEqual(ids, ["u-blank-url", "u-blank-words", "u-plain", "u-words"]);
+    }
+    // PRODUCT FINDING 1, pinned in both directions on purpose. listUnrecordedCalls selects no transcript
+    // column, so hasTape() never sees a transcript and the chip counts a call that has words. The live
+    // check reads that as one wrong row. The day the read starts selecting o.transcript this assertion
+    // fails: retire the transcript half of DISCIPLINE_SQL (fin-b20-sql.mjs) and this test in that change.
+    assert.equal(ids.includes("u-words"), true, "finding 1: the chip counts a call that has a transcript and no address");
+    assert.equal(Number(check.bad_count), 1, "the live check counts that one call as wrong (blank words are not words)");
+  }
+});
