@@ -120,7 +120,7 @@ change together (this batch: -40 rows, -37 unique routes).
 
 ## Mutation checks (broken on purpose, seen red, put back)
 
-369 product-line breaks were made in the `api/` handlers and the libraries under them, each run against the
+372 product-line breaks were made in the `api/` handlers and the libraries under them, each run against the
 file's tests, each restored right after (`git status` clean after every run). Kinds: role gate widened,
 narrowed or removed; company condition turned into `$N::text IS NOT NULL`; a status, window, ordering or
 limit word changed; a guard (stale, closed, live, taken, locked, capped, unverified) switched off; a bound
@@ -131,13 +131,13 @@ value swapped; a default changed; a write not queued or a wake dropped; an unkno
 | marketing-funnels | 42 | 39 | 2 | 1: rename "own funnels' addresses not counted" (the same address is held in three places) |
 | marketing-scripts | 42 | 40 | 2 (the stand-in did the product's job on INSERT-SELECT; it now reads the statement) | 0 |
 | marketing-rules-settings | 24 | 21 | 2 | 1: settings "updated_at not required at the door" (saveSettings checks it again) |
-| marketing-shoot | 28 | 24 | 2 | 1: "bad film key falls through" (a second check answers the same 404) |
+| marketing-shoot | 28 | 24 | 2 (and 1 break whose text I had mistyped, redone and red) | 1: "bad film key falls through" (a second check answers the same 404) |
 | marketing-queue | 30 | 29 | 1 | 0 |
 | marketing-research | 37 | 37 | 0 | 0 |
 | marketing-ideas-offer | 28 | 27 | 1 | 0 |
-| read-doors | 60 | 59 | 1 | 0 |
+| read-doors | 62 | 59 | 1 (plus 2 more breaks added for the other two money clauses, both red) | 0 |
 | ops-partner | 32 | 31 | 1 | 0 |
-| public-doors | 46 | 45 | 1 (default approver, mutated at the door) | 1: default approver in token.mjs (the handler sets it first) |
+| public-doors | 47 | 45 | 0 (1 more break added at the door for the default approver, red) | 1: default approver in token.mjs (the handler sets it first) |
 
 Every "fixed the test" row means the first run of that break stayed green, I made the test stronger (a
 second company's row, a value that differs between two fields, an exact clause pin, a window edge) and the
