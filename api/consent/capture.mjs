@@ -442,6 +442,25 @@ async function handlePost(req, res, principal, orgId) {
     }
   }
 
+  /* A CLIENT'S OWN SIGNATURE MUST NAME THE WORDING THEY WERE SHOWN (CP-07).
+     disclosureFor() treats a missing version as "the current one", which is
+     right for a staff member recording a call with the wording in front of
+     them and wrong for a client at a screen. A portal card whose wording never
+     loaded posted consent_version null, was filled in with the current version
+     here, and the client was recorded as agreeing to words they never saw.
+     A client who names no version was shown none, so nothing is stored.
+     Staff are not narrowed: the same default still applies to them. */
+  const versionShown = body.consent_version === null || body.consent_version === undefined
+    ? ""
+    : String(body.consent_version).trim();
+  if (principal.kind === "client" && versionShown === "") {
+    return res.status(400).json({
+      ok: false,
+      error: "The legal wording was not shown on your screen, so your signature was not recorded. Reload the page and try again.",
+      code: "consent_version_required"
+    });
+  }
+
   /* THE WORDS COME FROM THE SERVER. body.consent_text is not read, and an
      unknown version is refused rather than silently upgraded to the current
      one — see src/consent/disclosures.mjs. */

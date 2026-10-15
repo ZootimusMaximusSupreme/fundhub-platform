@@ -242,6 +242,8 @@ body.no-own .own-foot.own-empty{display:flex}
 .sign-auth-msg.err{color:var(--red);background:var(--red-bg)}
 #cpSignSubmit{width:100%;max-width:none;background:var(--ink);color:#fff;border:none}
 #cpSignSubmit:hover{background:var(--ink2);border-color:transparent}
+.sign-auth-card.is-locked #cpSignPad{opacity:.5;cursor:not-allowed}
+.sign-auth-card.is-locked #cpSignSubmit{opacity:.5;cursor:not-allowed}
 .sign-auth-link{display:inline-block;margin-top:12px;font-size:var(--fs-body);font-weight:700;color:var(--blue);
   text-decoration:underline;text-underline-offset:2px}
 .sign-auth-link[hidden],.btn-unlock[hidden]{display:none !important}
@@ -3193,6 +3195,23 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function $(id) { return document.getElementById(id); }
 
+  /* THE PAD AND THE BUTTON ARE DEAD UNTIL THE WORDING IS ON SCREEN (CP-07).
+     A signature is a yes to specific words. When the wording never loaded, the
+     card used to say "You can still draw your signature", the POST went out
+     with consent_version null, and the server filled in the CURRENT version —
+     so the client was recorded as agreeing to words this page never showed
+     them. Now the pad takes no ink and the button does nothing until the server
+     has handed over BOTH the text and its version. Starts locked; load()
+     unlocks it only on a full answer. api/consent/capture.mjs refuses a client
+     signature with no version too, so a stale copy of this page cannot get
+     around it. */
+  function lockSigning(locked) {
+    $("cpSignSubmit").disabled = locked;
+    canvas.style.pointerEvents = locked ? "none" : "";
+    card.classList.toggle("is-locked", locked);
+  }
+  lockSigning(true);
+
   function resolveClientId() {
     var id = null;
     try {
@@ -3350,15 +3369,17 @@ document.addEventListener("DOMContentLoaded", async function () {
         "&kind=" + encodeURIComponent(KIND)).then(function (res) {
       if (res.status !== 200 || !res.body || !res.body.ok) {
         $("cpDisclosure").textContent =
-          "The legal wording is not on this page. It will show here once the server has it. You can still draw your signature.";
+          "The legal wording did not load, so you cannot sign yet. Reload this page to try again.";
         ensurePadSized();
         return;
       }
       var d = res.body.disclosure;
-      if (d && d.text) {
-        disclosureVersion = d.version;
+      if (d && d.text && d.version) {
+        disclosureVersion = String(d.version);
         $("cpDisclosure").textContent = d.text;
+        lockSigning(false);
       } else {
+        disclosureVersion = null;
         $("cpDisclosure").textContent = "The consent wording is unavailable — do not record a consent.";
       }
       if (res.body.status && res.body.status.valid) markSigned();
@@ -3370,6 +3391,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (busy) return;
     if (!clientId) {
       say("err", "Sign in to record your signature.");
+      return;
+    }
+    if (!disclosureVersion) {
+      say("err", "The legal wording is not on this page, so your signature cannot be recorded. Reload this page and try again.");
       return;
     }
     var name = $("cpSignName").value.trim();
@@ -3393,7 +3418,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
     api("/api/consent/capture", { method: "POST", body: body }).then(function (res) {
       busy = false;
-      $("cpSignSubmit").disabled = false;
+      $("cpSignSubmit").disabled = !disclosureVersion;
       if (res.status !== 200 || !res.body || !res.body.ok) {
         var msg = (res.body && (res.body.message || res.body.error)) ||
           (res.status === 401 ? "You are signed out. Sign in and try again." :
@@ -3410,6 +3435,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   canvas.addEventListener("pointerdown", function (e) {
+    if (!disclosureVersion) return;
     e.preventDefault();
     ensurePadSized();
     canvas.setPointerCapture(e.pointerId);
