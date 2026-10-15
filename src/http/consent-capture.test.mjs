@@ -1045,12 +1045,16 @@ describe("the dispute-authorization gate on the POST", () => {
     };
   };
 
-  const post = async () => {
+  /* `extra` is for the fields the real portal always sends. A client's
+     signature names the wording it was shown (CP-07), so the cases that expect
+     a client's row to be written pass consent_version, exactly as the portal
+     card does. The refusals above it never reach that check. */
+  const post = async (extra = {}) => {
     const res = mkRes();
     await handler(mkReq({
       method: "POST",
       body: { client_id: CLIENT, kind: "dispute_authorization", action: "grant",
-              capture_method: "typed", granted_name: "Dana Client" }
+              capture_method: "typed", granted_name: "Dana Client", ...extra }
     }), res);
     return res;
   };
@@ -1098,7 +1102,7 @@ describe("the dispute-authorization gate on the POST", () => {
          would still pass and the two real customers would silently lose the
          ability to authorize their own letters. */
       clientHolding([code]);
-      const res = await post();
+      const res = await post({ consent_version: "dispute-auth-v1" });
       assert.equal(res.statusCode, 200, `the ${label} buyer was refused: ${JSON.stringify(res.body)}`);
       assert.ok(calls.some((c) => INSERT.test(c.text)), "no consent row was written");
     });
@@ -1216,7 +1220,7 @@ describe("a signed dispute authorization starts the Repair letters", () => {
       if (SELECT.test(text)) return { rows: [disputeRow] };
       return { rows: [] };
     };
-    const res = await postDispute();
+    const res = await postDispute({ ...disputeBody(), consent_version: "dispute-auth-v1" });
     assert.equal(res.statusCode, 200, JSON.stringify(res.body));
     assert.ok(idx(EXISTING_LETTERS) > idx(INSERT), "the portal signature did not start the writer");
   });
@@ -1283,5 +1287,133 @@ describe("a signed dispute authorization starts the Repair letters", () => {
     staffSigns({ stage: "analysis" });
     const res = await postDispute();
     assert.deepEqual(Object.keys(res.body).sort(), ["consent", "ok"]);
+  });
+});
+
+// ── CP-07 · A CLIENT'S SIGNATURE NAMES THE WORDING THEY WERE SHOWN ─────────
+
+describe("a client signature with no wording version is refused (CP-07)", () => {
+  /* THE BUG. The portal card posted consent_version null when its wording never
+     loaded, and disclosureFor(kind, null) answers with the CURRENT version —
+     so the client was recorded as agreeing to words this page never showed
+     them, and the letters started on that signature. The refusal below is the
+     server half; the screen half is src/http/portal-dispute-sign-gate.test.mjs.
+
+     STAFF ARE NOT NARROWED. A person recording a call has the wording in front
+     of them, and the existing default still applies to them. */
+
+  const STAGE = /SELECT ps\.key AS stage_key/i;
+  const ENT = /v_client_entitlements/i;
+
+  const clientSigns = (letterPack = true) => {
+    calls = [];
+    db.query = async (text, params) => {
+      calls.push({ text, params });
+      if (/UPDATE account_sessions/i.test(text)) {
+        return { rows: [{ id: "as-1", account_id: "acct-1", org_id: ORG, expires_at: new Date(Date.now() + 3_600_000) }] };
+      }
+      if (/FROM accounts WHERE id/i.test(text)) {
+        return { rows: [{
+          id: "acct-1", org_id: ORG, kind: "client", email: "c@example.com",
+          name: "Dana Client", status: "active",
+          client_id: CLIENT, affiliate_id: null, partner_id: null
+        }] };
+      }
+      if (/SELECT outcome_tier FROM clients/i.test(text)) return { rows: [{ outcome_tier: null }] };
+      if (OWNS.test(text)) return { rows: [{ "?column?": 1 }] };
+      if (ENT.test(text)) {
+        return { rows: letterPack && params[2] === "metro2-letter-pack" ? [{ "?column?": 1 }] : [] };
+      }
+      if (INSERT.test(text)) {
+        return { rows: [consentRow({ kind: "dispute_authorization", granted_by_kind: "client" })] };
+      }
+      return { rows: [] };
+    };
+  };
+
+  const clientPost = async (extra = {}, kind = "dispute_authorization") => {
+    const res = mkRes();
+    await handler(mkReq({
+      method: "POST",
+      body: { client_id: CLIENT, kind, action: "grant", capture_method: "signature",
+              granted_name: "Dana Client", ...extra }
+    }), res);
+    return res;
+  };
+
+  for (const [label, extra] of [
+    ["no consent_version at all", {}],
+    ["consent_version null", { consent_version: null }],
+    ["an empty consent_version", { consent_version: "" }],
+    ["a blank consent_version", { consent_version: "   " }]
+  ]) {
+    test(`FAIL: a client signing with ${label} is a 400, nothing is stored, no letters start`, async () => {
+      clientSigns();
+      const res = await clientPost(extra);
+      assert.equal(res.statusCode, 400, `the signature was accepted: ${JSON.stringify(res.body)}`);
+      assert.equal(res.body.ok, false);
+      assert.equal(res.body.code, "consent_version_required");
+      assert.ok(!calls.some((c) => INSERT.test(c.text)),
+        "a consent row was written for a client who was shown no wording");
+      assert.ok(!calls.some((c) => STAGE.test(c.text)),
+        "the letter writer was started on a signature that was never recorded");
+    });
+  }
+
+  test("FAIL: the same refusal holds for a client's soft-pull consent", async () => {
+    clientSigns();
+    const res = await clientPost({}, "soft_pull_consent");
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.code, "consent_version_required");
+    assert.ok(!calls.some((c) => INSERT.test(c.text)));
+  });
+
+  test("the refusal is a sentence a client can read", async () => {
+    clientSigns();
+    const res = await clientPost();
+    const msg = res.body.error;
+    assert.ok(typeof msg === "string" && msg.length > 30 && /\s/.test(msg), String(msg));
+    assert.ok(!/consent_version|disclosure|null/i.test(msg),
+      `the refusal talks about the code instead of the customer: ${msg}`);
+  });
+
+  test("PASS: a client who names the version they were shown is recorded with the server's words", async () => {
+    clientSigns();
+    const res = await clientPost({ consent_version: "dispute-auth-v1" });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const ins = calls.find((c) => INSERT.test(c.text));
+    assert.ok(ins, "no consent row was written");
+    assert.equal(ins.params[4], "dispute-auth-v1");
+    assert.match(ins.params[3], /prepare credit dispute letters/);
+    /* Not vacuous: the FAIL cases assert the writer never ran, so show here
+       that a recorded signature DOES reach it. */
+    assert.ok(calls.some((c) => STAGE.test(c.text)),
+      "a recorded client signature never reached the letter writer");
+  });
+
+  test("an unknown version from a client is still refused as unknown, not as missing", async () => {
+    clientSigns();
+    const res = await clientPost({ consent_version: "dispute-auth-v99" });
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.code, "consent_version_unknown");
+    assert.ok(!calls.some((c) => INSERT.test(c.text)));
+  });
+
+  test("a client who did not buy dispute work still gets the not-on-path refusal first", async () => {
+    clientSigns(false);
+    const res = await clientPost();
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.code, "not_on_dispute_path");
+  });
+
+  test("STAFF with no version are not narrowed — the default still applies to them", async () => {
+    stubDb({
+      session: { role: "closer" },
+      answers: [[INSERT, { rows: [consentRow({ kind: "dispute_authorization" })] }], [SELECT, { rows: [] }]]
+    });
+    const res = await clientPost({ capture_method: "typed" });
+    assert.equal(res.statusCode, 200, `staff were refused: ${JSON.stringify(res.body)}`);
+    const ins = calls.find((c) => INSERT.test(c.text));
+    assert.equal(ins.params[4], "dispute-auth-v1");
   });
 });
