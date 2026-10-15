@@ -71,5 +71,18 @@
     "Step 3: Add businesses and accounts / Add more link"
    ]
   }
+ ],
+ "fin-b18-ops-admin.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/ops-admin.html",
+   "controls": [
+    "Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline data yet)",
+    "Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)",
+    "Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes)",
+    "Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero)",
+    "Zone tabs: Money / People"
+   ]
+  }
  ]
 }
