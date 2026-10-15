@@ -105,10 +105,19 @@ const STAFF_SEND_BREAKS = [
   ["the text_sent event has no shift", (t) => { t.staff_events[0].shift_id = null; }],
   ["the shift is another person's", (t) => { t.shifts[0].staff_id = id(777); }],
   ["the text went out before the shift began", (t) => { t.shifts[0].started_at = "2026-10-13T21:00:00.000Z"; }],
-  ["the text went out after the shift ended", (t) => { t.shifts[0].ended_at = "2026-10-13T19:00:00.000Z"; }]
+  ["the text went out after the shift ended", (t) => { t.shifts[0].ended_at = "2026-10-13T19:00:00.000Z"; }],
+  ["an inbox text with its own idempotency key still needs the shift", (t) => {
+    t.messages[0].provider_ref = "staff:inbox-key-9"; t.staff_events = [];
+  }]
 ];
 
 const STAFF_SEND_OK = [
+  ["a pay link text from the closer deck is sent with no shift", (t) => {
+    t.messages[0].provider_ref = "staff:pay-link-sms:link-1"; t.staff_events[0].shift_id = null;
+  }],
+  ["a soft-pull text from the closer deck is sent with no shift", (t) => {
+    t.messages[0].provider_ref = "staff:soft-pull-sms:link-2"; t.staff_events = [];
+  }],
   ["an owner is not asked for a shift", (t) => { t.staff[0].role = "owner"; t.staff_events = []; }],
   ["a text held overnight is sent later by the sweeper, with no event", (t) => {
     t.staff_events = []; t.messages[0].scheduled_at = "2026-10-13T15:00:00.000Z"; t.messages[0].created_at = "2026-10-13T05:00:00.000Z";
@@ -160,14 +169,17 @@ const CONTRACT_IGNORED = [
 
 // ── funding rounds ──────────────────────────────────────────────────────────
 
-function roundTables({ event, stage, texts = [], emails = [] }) {
+function roundTables({ event, stage, texts = [], emails = [], amount = null }) {
   const eventId = id(300);
   const rn = 2;
   return {
     events: [{
       id: eventId, org_id: ORG, name: event, client_id: CLIENT, created_at: RECENT, is_demo: false,
       idempotency_key: `card_stacking:${CLIENT}:${rn}:${stage}:${event}`,
-      payload: { stage, source: "card_stacking", rail: "card_stacking", product: "card_stacking", roundNumber: rn }
+      payload: {
+        stage, source: "card_stacking", rail: "card_stacking", product: "card_stacking", roundNumber: rn,
+        ...(amount === null ? {} : { approvedAmount: amount })
+      }
     }],
     clients: [client()],
     funding_rounds: [{ id: id(310), org_id: ORG, client_id: CLIENT, round_number: rn }],
@@ -265,6 +277,7 @@ add("push-device", PUSH_DEVICE_SQL,
     ["the saved auth secret is blank", (t) => { t.client_push_subscriptions[0].encrypted_auth = ""; }],
     ["the sign-in account is gone", (t) => { t.accounts = []; }],
     ["the sign-in account belongs to another client", (t) => { t.accounts[0].client_id = id(999); }],
+    ["the sign-in account is a partner's, not a client's", (t) => { t.accounts[0].kind = "partner"; t.accounts[0].client_id = null; }],
     ["turned off before it was created", (t) => { t.client_push_subscriptions[0].revoked_at = "2026-10-01T00:00:00.000Z"; }],
     ["expired before it was created", (t) => { t.client_push_subscriptions[0].expired_at = "2026-10-01T00:00:00.000Z"; }],
     ["the same phone is live for a second client", (t) => {
@@ -273,6 +286,7 @@ add("push-device", PUSH_DEVICE_SQL,
     }, { sample: 2, bad: 2 }]
   ],
   { ok: [
+    ["an authorized rep's account carries no client id", (t) => { t.accounts[0].kind = "authorized_rep"; t.accounts[0].client_id = null; }],
     ["expired after it was created", (t) => { t.client_push_subscriptions[0].expired_at = "2026-10-14T00:00:00.000Z"; }],
     ["an expired device and a live one on the same phone", (t) => {
       t.client_push_subscriptions[0].expired_at = "2026-10-14T00:00:00.000Z";
@@ -568,7 +582,7 @@ add("deck-deliverables", DECK_DELIVERABLES_SQL, deliverablesTables,
 const ROUND_SPECS = [
   ["round-started", ROUND_STARTED_SQL, { event: "round.started", stage: "apply_now", texts: ["SMS-ROUND-STARTED-NOTIFY"], emails: [] }],
   ["round-submitted", ROUND_SUBMITTED_NOTIFY_SQL, { event: "round.submitted", stage: "round_submitted", texts: ["SMS-F03-ROUND-SUBMITTED"], emails: ["EMAIL-F03-ROUND-SUBMITTED"] }],
-  ["round-approved", ROUND_APPROVED_SQL, { event: "round.approved", stage: "approved", texts: ["SMS-F04-ROUND-APPROVALS"], emails: ["EMAIL-F04-ROUND-APPROVALS"] }],
+  ["round-approved", ROUND_APPROVED_SQL, { event: "round.approved", stage: "approved", amount: 15000, texts: ["SMS-F04-ROUND-APPROVALS"], emails: ["EMAIL-F04-ROUND-APPROVALS"] }],
   ["round-closeout", ROUND_CLOSEOUT_NOTIFY_SQL, { event: "round.closeout", stage: "closed", texts: ["SMS-N04-POST-FUNDING"], emails: ["EMAIL-N04-POST-FUNDING"] }]
 ];
 for (const [key, sql, spec] of ROUND_SPECS) {
@@ -583,6 +597,10 @@ for (const [key, sql, spec] of ROUND_SPECS) {
       ["less than an hour old: the follow-up may still be running", (t) => {
         t.events[0].created_at = JUST_NOW; t.messages = []; t.funding_rounds = [];
       }],
+      ...(spec.amount ? [
+        ["no approved amount: the approvals workflow sends nothing", (t) => { delete t.events[0].payload.approvedAmount; t.messages = []; }],
+        ["an approved amount of zero: the approvals workflow sends nothing", (t) => { t.events[0].payload.approvedAmount = 0; t.messages = []; }]
+      ] : []),
       ...(spec.texts.length ? [["opted out of texts: no text is right", (t) => {
         t.messages = t.messages.filter((m) => !m.provider_ref.includes(":SMS-"));
         t.opt_outs = [{ client_id: CLIENT, channel: "sms", opted_in_at: null }];
@@ -602,8 +620,8 @@ const newClientTables = () => {
     clients: [client({ custom_fields: { product: "diagnostic" } })],
     cards: [{ id: id(910), org_id: ORG, client_id: CLIENT }],
     messages: [
-      { id: id(920), org_id: ORG, provider_ref: `workflow:EMAIL-S00-WELCOME:${eventId}` },
-      { id: id(921), org_id: ORG, provider_ref: `workflow:SMS-S00-WELCOME:${eventId}` }
+      { id: id(920), org_id: ORG, client_id: CLIENT, template_key: "EMAIL-S00-WELCOME", provider_ref: `workflow:EMAIL-S00-WELCOME:${eventId}` },
+      { id: id(921), org_id: ORG, client_id: CLIENT, template_key: "SMS-S00-WELCOME", provider_ref: `workflow:SMS-S00-WELCOME:${eventId}` }
     ],
     opt_outs: []
   };
@@ -624,13 +642,17 @@ add("pipeline-new-client", PIPELINE_NEW_CLIENT_SQL, newClientTables,
     ["the client file holds a different product", (t) => { t.clients[0].custom_fields.product = "repair-bundle"; }],
     ["the saved key does not match company and email", (t) => { t.events[0].idempotency_key = "pipeline-client:wrong"; }],
     ["no card on the board an hour later", (t) => { t.cards = []; }],
-    ["no welcome email an hour later", (t) => { t.messages = t.messages.filter((m) => !m.provider_ref.includes("EMAIL-S00")); }],
-    ["no welcome text an hour later", (t) => { t.messages = t.messages.filter((m) => !m.provider_ref.includes("SMS-S00")); }]
+    ["no welcome email an hour later", (t) => { t.messages = t.messages.filter((m) => m.template_key !== "EMAIL-S00-WELCOME"); }],
+    ["no welcome text an hour later", (t) => { t.messages = t.messages.filter((m) => m.template_key !== "SMS-S00-WELCOME"); }],
+    ["the welcome went to a different client", (t) => { for (const m of t.messages) m.client_id = id(999); }]
   ],
   { ok: [
     ["an archived client has no cards", (t) => { t.cards = []; t.clients[0].custom_fields.crm_archived_at = "2026-10-13T00:00:00.000Z"; }],
+    ["welcomed earlier through another door: this event was locked out", (t) => {
+      for (const m of t.messages) m.provider_ref = `workflow:${m.template_key}:${id(1)}`;
+    }],
     ["opted out of texts: no welcome text is right", (t) => {
-      t.messages = t.messages.filter((m) => !m.provider_ref.includes("SMS-S00"));
+      t.messages = t.messages.filter((m) => m.template_key !== "SMS-S00-WELCOME");
       t.opt_outs = [{ client_id: CLIENT, channel: "sms", opted_in_at: null }];
     }],
     ["less than an hour old: the welcome may still be coming", (t) => { t.events[0].created_at = JUST_NOW; t.messages = []; t.cards = []; }]

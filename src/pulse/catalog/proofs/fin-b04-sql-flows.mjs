@@ -149,7 +149,9 @@ ${CORE_PACK_SUBTYPES.map((s) => `         NOT EXISTS (SELECT 1 FROM documents k 
 // must exist (money-chain ensureFundingRound) and the client must have been
 // texted or emailed by the workflow named for that event. Opted-out clients get
 // no text, so a missing text is only judged when they are not opted out.
-function roundSql({ event, stage, textKey, emailKey, needsRound = true }) {
+// The approvals workflow (f-04) says nothing unless approvedAmount is above zero,
+// so that follow-up is judged only for an event that carries an amount.
+function roundSql({ event, stage, textKey, emailKey, needsRound = true, needsAmount = false }) {
   const roundRow = needsRound
     ? `
   LEFT JOIN funding_rounds fr ON fr.org_id = e.org_id AND fr.client_id = e.client_id
@@ -157,15 +159,24 @@ function roundSql({ event, stage, textKey, emailKey, needsRound = true }) {
     : "";
   const missing = [];
   if (needsRound) missing.push("fr.id IS NULL");
+  const follow = [];
   if (textKey) {
-    missing.push(`(NOT EXISTS (SELECT 1 FROM messages mt WHERE mt.org_id = e.org_id
+    follow.push(`(NOT EXISTS (SELECT 1 FROM messages mt WHERE mt.org_id = e.org_id
                        AND mt.provider_ref = 'workflow:${textKey}:' || e.id::text)
                 AND NOT EXISTS (SELECT 1 FROM opt_outs o WHERE o.client_id = e.client_id
                        AND o.channel = 'sms' AND o.opted_in_at IS NULL))`);
   }
   if (emailKey) {
-    missing.push(`NOT EXISTS (SELECT 1 FROM messages me WHERE me.org_id = e.org_id
+    follow.push(`NOT EXISTS (SELECT 1 FROM messages me WHERE me.org_id = e.org_id
                        AND me.provider_ref = 'workflow:${emailKey}:' || e.id::text)`);
+  }
+  if (follow.length) {
+    const unsent = `(${follow.join("\n              OR ")})`;
+    missing.push(needsAmount
+      ? `(CASE WHEN COALESCE(e.payload->>'approvedAmount', '') ~ '^[0-9]+([.][0-9]+)?$'
+                  THEN (e.payload->>'approvedAmount')::numeric ELSE 0 END > 0
+              AND ${unsent})`
+      : unsent);
   }
   return `
 SELECT count(*)::int AS sample_count,
@@ -192,7 +203,7 @@ export const ROUND_SUBMITTED_NOTIFY_SQL = roundSql({
   textKey: "SMS-F03-ROUND-SUBMITTED", emailKey: "EMAIL-F03-ROUND-SUBMITTED"
 });
 export const ROUND_APPROVED_SQL = roundSql({
-  event: "round.approved", stage: "approved",
+  event: "round.approved", stage: "approved", needsAmount: true,
   textKey: "SMS-F04-ROUND-APPROVALS", emailKey: "EMAIL-F04-ROUND-APPROVALS"
 });
 export const ROUND_CLOSEOUT_NOTIFY_SQL = roundSql({
@@ -203,8 +214,10 @@ export const ROUND_CLOSEOUT_NOTIFY_SQL = roundSql({
 // Written by api/pipeline-clients.mjs: resolveClient, custom_fields.product, then
 // emit entry.captured (key 'pipeline-client:<org>:<email>') which s-00-welcome
 // answers with an email and a text and s-01-new-lead-intake places on the board.
-// A client archived since then has no cards (crm_archived_at), so that half is
-// skipped for them.
+// s-00 welcomes a client once (a lock on the client file), so a person who was
+// welcomed through an earlier door is judged by "was this client ever welcomed",
+// not by this one event. A client archived since then has no cards
+// (crm_archived_at), so that half is skipped for them.
 export const PIPELINE_NEW_CLIENT_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE NULLIF(BTRIM(COALESCE(e.payload->>'name', '')), '') IS NULL
@@ -217,10 +230,10 @@ SELECT count(*)::int AS sample_count,
          OR (e.created_at < now() - interval '1 hour' AND (
               (cl.custom_fields->>'crm_archived_at' IS NULL
                AND NOT EXISTS (SELECT 1 FROM cards k WHERE k.org_id = e.org_id AND k.client_id = e.client_id))
-              OR NOT EXISTS (SELECT 1 FROM messages me WHERE me.org_id = e.org_id
-                              AND me.provider_ref = 'workflow:EMAIL-S00-WELCOME:' || e.id::text)
-              OR (NOT EXISTS (SELECT 1 FROM messages mt WHERE mt.org_id = e.org_id
-                              AND mt.provider_ref = 'workflow:SMS-S00-WELCOME:' || e.id::text)
+              OR NOT EXISTS (SELECT 1 FROM messages me WHERE me.org_id = e.org_id AND me.client_id = e.client_id
+                              AND me.template_key = 'EMAIL-S00-WELCOME')
+              OR (NOT EXISTS (SELECT 1 FROM messages mt WHERE mt.org_id = e.org_id AND mt.client_id = e.client_id
+                              AND mt.template_key = 'SMS-S00-WELCOME')
                   AND NOT EXISTS (SELECT 1 FROM opt_outs o WHERE o.client_id = e.client_id
                               AND o.channel = 'sms' AND o.opted_in_at IS NULL)))))::int AS bad_count
   FROM events e

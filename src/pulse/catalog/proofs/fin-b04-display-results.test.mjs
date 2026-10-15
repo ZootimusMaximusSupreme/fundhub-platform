@@ -13,7 +13,8 @@ import { fileURLToPath } from "node:url";
 import { dropOneCondition, parseContract, readColumnCatalog, runContractSql, runParsed } from "./fin-b04-sql-lite.mjs";
 import { CASES, NOW, ORG, otherCompany, together } from "./fin-b04-display-fixtures.mjs";
 import {
-  FIN_B04_RESULT_CONTRACTS, FIN_B04_ROWS, FIN_B04_DISPLAY_PROOF_CASES, FIN_B04_TEST
+  FIN_B04_RESULT_CONTRACTS, FIN_B04_ROWS, FIN_B04_DISPLAY_PROOF_CASES, FIN_B04_TEST,
+  FIN_B04_PRACTICE_ROWS, FIN_B04_COCKPIT_TEST
 } from "./fin-b04-display-results.mjs";
 import { judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
@@ -168,11 +169,23 @@ test("every contract names its control exactly as the coverage map does", () => 
     const inStaffUi = staffKeys.has(`${row.sourceFile}\0${row.surface}\0${row.control}`);
     assert.equal(!!row.viaStaffUi, inStaffUi, `${row.control}: viaStaffUi must match display-batch-staff-ui.mjs`);
   }
-  assert.equal(FIN_B04_DISPLAY_PROOF_CASES.length, FIN_B04_ROWS.filter((r) => !r.viaStaffUi).length);
+  const practice = FIN_B04_PRACTICE_ROWS.length;
+  assert.equal(FIN_B04_DISPLAY_PROOF_CASES.length, FIN_B04_ROWS.filter((r) => !r.viaStaffUi).length + practice);
   for (const entry of FIN_B04_DISPLAY_PROOF_CASES) {
-    assert.deepEqual(entry.tests, [FIN_B04_TEST]);
-    assert.ok(entry.evidence.includes(FIN_B04_TEST));
-    assert.ok(entry.evidence.includes("src/pulse/coverage/gap-catalog-display.mjs"));
+    const cockpit = FIN_B04_PRACTICE_ROWS.some((r) => r.control === entry.control);
+    if (cockpit) {
+      assert.deepEqual(entry.tests, [FIN_B04_COCKPIT_TEST]);
+      assert.equal(entry.evidence.includes("gap-catalog-display.mjs"), false, "a practice test row must not claim the live lane");
+    } else {
+      assert.deepEqual(entry.tests, [FIN_B04_TEST]);
+      assert.ok(entry.evidence.includes(FIN_B04_TEST));
+      assert.ok(entry.evidence.includes("src/pulse/coverage/gap-catalog-display.mjs"));
+    }
+  }
+  for (const row of FIN_B04_PRACTICE_ROWS) {
+    const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, row.sourceFile), "utf8"));
+    assert.equal(map.filter((r) => r.surface === row.surface && r.control === row.control).length, 1);
+    assert.equal(FIN_B04_RESULT_CONTRACTS.some((c) => c.control === row.control), false, "a practice row has no query");
   }
 });
 
@@ -278,6 +291,12 @@ test("the round, contract, letter, pipeline and social writers match what the qu
   assert.match(closerDeck, /sourceEventId: `closer-deck-deliverables:\$\{clientId\}:\$\{offerKey\}`/);
   assert.match(closerDeck, /eventId: `closer-deck-letters:\$\{clientId\}:\$\{offerKey\}`/);
   assert.match(closerDeck, /generatedBy: "closer-deck"/);
+  // the deck's pay-link and soft-pull texts are sent through composeAndSend with no
+  // shift, under these two idempotency prefixes (the shift rule leaves them out)
+  assert.match(closerDeck, /idempotencyKey: `pay-link-sms:\$\{link\.id\}`/);
+  assert.match(closerDeck, /idempotencyKey: `soft-pull-sms:\$\{link\.id\}`/);
+  assert.doesNotMatch(closerDeck, /shiftId/);
+  assert.match(read("src/messaging/compose.mjs"), /const providerRef = idempotencyKey \? `staff:\$\{idempotencyKey\}` : null;/);
   const flows = await import("./fin-b04-sql-flows.mjs");
   const ds02 = await import("../../../workflows/ds-02-diy-letters.mjs");
   const u02 = await import("../../../workflows/u-02-analyzer-complete-delivery.mjs");

@@ -37,14 +37,18 @@ SELECT count(*)::int AS sample_count,
    AND m.rendered_body LIKE 'I would like a call about:%'
    AND m.created_at > now() - interval '30 days'`;
 
-// Written by src/push/store.mjs saveSubscription / revokeSubscription.
+// Written by src/push/store.mjs saveSubscription / revokeSubscription. The
+// sign-in account is the client's own, or an authorized rep's (a rep account
+// carries no client id of its own by design: accounts_subject_ck).
 export const PUSH_DEVICE_SQL = `
 SELECT count(DISTINCT s.id)::int AS sample_count,
        count(DISTINCT s.id) FILTER (WHERE cl.id IS NULL
          OR NULLIF(BTRIM(COALESCE(s.encrypted_endpoint, '')), '') IS NULL
          OR NULLIF(BTRIM(COALESCE(s.encrypted_p256dh, '')), '') IS NULL
          OR NULLIF(BTRIM(COALESCE(s.encrypted_auth, '')), '') IS NULL
-         OR (s.account_id IS NOT NULL AND a.client_id IS DISTINCT FROM s.client_id)
+         OR (s.account_id IS NOT NULL
+             AND (a.kind IS NULL OR a.kind NOT IN ('client', 'authorized_rep')
+                  OR (a.kind = 'client' AND a.client_id IS DISTINCT FROM s.client_id)))
          OR s.revoked_at < s.created_at
          OR s.expired_at < s.created_at
          OR (s.revoked_at IS NULL AND s.expired_at IS NULL AND twin.id IS NOT NULL))::int AS bad_count
@@ -61,7 +65,10 @@ SELECT count(DISTINCT s.id)::int AS sample_count,
 // The shift rule: only the owner is exempt from clocking in (SUPER_ROLES). A text
 // sent on the first try with no schedule is logged as text_sent on the open shift.
 // A text held overnight, or retried later by the sweeper, is sent outside the
-// request, so it leaves no event on purpose and is not judged for one.
+// request, so it leaves no event on purpose and is not judged for one. The
+// closer deck's pay-link and soft-pull texts (provider_ref 'staff:pay-link-...'
+// and 'staff:soft-pull-...') call composeAndSend with no shift at all, so they
+// are not judged for one (product finding: api/closer-deck.mjs has no shift gate).
 const STAFF_SEND_BAD = `s.id IS NULL OR cl.id IS NULL
          OR c.kind IS DISTINCT FROM 'client'
          OR c.client_id IS DISTINCT FROM m.client_id
@@ -74,6 +81,8 @@ const STAFF_SEND_BAD = `s.id IS NULL OR cl.id IS NULL
          OR (m.channel = 'sms' AND m.status IN ('sent', 'delivered')
              AND m.scheduled_at IS NULL AND m.attempts = 1
              AND s.role IS DISTINCT FROM 'owner'
+             AND COALESCE(m.provider_ref, '') NOT LIKE 'staff:pay-link-%'
+             AND COALESCE(m.provider_ref, '') NOT LIKE 'staff:soft-pull-%'
              AND (sh.staff_id IS DISTINCT FROM m.sender_staff_id
                   OR m.created_at < sh.started_at
                   OR m.created_at > sh.ended_at))`;

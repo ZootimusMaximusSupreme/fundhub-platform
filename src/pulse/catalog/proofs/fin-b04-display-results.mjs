@@ -1,7 +1,7 @@
 // Batch 04 of "finish the 853": live checks for 27 customer-message screen
 // controls (client chat, texts, contracts, letters, funding rounds, new clients,
-// social posts). One more control in the same batch, the cockpit script, leaves no
-// saved result and is not attached (see the manifest).
+// social posts). The 28th control in the batch, the closer's cockpit script,
+// leaves no saved result, so a browser practice test holds it instead (below).
 //
 // Each entry ties ONE control, by its exact words in the coverage map, to a
 // read-only query (fin-b04-sql-messages.mjs, fin-b04-sql-flows.mjs). The display
@@ -285,11 +285,33 @@ export const FIN_B04_RESULT_CONTRACTS = Object.freeze(FIN_B04_ROWS.map(result));
 // Four rows already sit in display-batch-staff-ui.mjs (a browser spec presses
 // them, and that makes them deep rows). They get this query through the control
 // name alone, so they are left out here to keep their browser evidence.
-export const FIN_B04_DISPLAY_PROOF_CASES = Object.freeze(FIN_B04_ROWS.filter((row) => !row.viaStaffUi).map((row) => Object.freeze({
+const CONTRACT_CASES = FIN_B04_ROWS.filter((row) => !row.viaStaffUi).map((row) => Object.freeze({
   sourceFile: row.sourceFile,
   surface: row.surface,
   control: row.control,
   depth: "deep",
   evidence: `${FIN_B04_TEST}; ${LANE}`,
   tests: Object.freeze([FIN_B04_TEST])
-})));
+}));
+
+// One control leaves nothing saved: the closer's cockpit script is drawn on the
+// screen and written nowhere. It is held by a browser practice test instead of a
+// live check, so it carries no query and does not list the lane as evidence.
+export const FIN_B04_COCKPIT_TEST = "src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs";
+export const FIN_B04_PRACTICE_ROWS = Object.freeze([
+  Object.freeze({
+    sourceFile: "desks-f.json",
+    surface: "present.html (+ present.js, contract-send.js)",
+    control: "Cockpit script ('Say this', 'Watch for'): lines filtered by funding / repair / education route, [First Name] filled in, close wrap keyed to the offer actually chosen"
+  })
+]);
+const PRACTICE_CASES = FIN_B04_PRACTICE_ROWS.map((row) => Object.freeze({
+  ...row,
+  depth: "deep",
+  evidence: FIN_B04_COCKPIT_TEST,
+  tests: Object.freeze([FIN_B04_COCKPIT_TEST])
+}));
+
+// The same rows as proof cases: compile-catalog reads the contract ones as deep
+// display rows, and display-proof-cases lists them all.
+export const FIN_B04_DISPLAY_PROOF_CASES = Object.freeze([...CONTRACT_CASES, ...PRACTICE_CASES]);
