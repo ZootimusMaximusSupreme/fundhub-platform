@@ -17,3 +17,4 @@ YYYY-MM-DD | stage N | the correction, in one line
 ```
 
 ## Notes
+2026-10-14 | stage 1 | Capital Blueprint = the shortest path to the maximum amount of funding: 13 optimization points done in the right order, walked through step by step; say "advisor", never "CSM". Full definition: marketing/offers/capital-blueprint-owner-definition-2026-10-14.md
