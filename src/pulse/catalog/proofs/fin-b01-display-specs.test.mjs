@@ -10,7 +10,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { FIN_B01_DISPLAY_SPEC_PROOFS } from "./fin-b01-display-specs.mjs";
+import { FIN_B01_DISPLAY_SPEC_PROOFS, FIN_B01_PRACTICE_SPECS } from "./fin-b01-display-specs.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -22,6 +22,12 @@ for (const proof of FIN_B01_DISPLAY_SPEC_PROOFS) {
     if (!bySpec.has(part.spec)) bySpec.set(part.spec, new Set());
     for (const title of part.titles) bySpec.get(part.spec).add(title);
   }
+}
+
+// A row that stays in the lane (the optimize intake) has its practice test run here too.
+for (const practice of FIN_B01_PRACTICE_SPECS) {
+  if (!bySpec.has(practice.spec)) bySpec.set(practice.spec, new Set());
+  for (const title of practice.titles) bySpec.get(practice.spec).add(title);
 }
 
 function escapeRegExp(text) {
@@ -63,6 +69,18 @@ test("every bound row is one exact map row, every named spec and server test fil
       assert.ok(fs.existsSync(path.join(ROOT, server)), `${server} does not exist`);
       assert.doesNotMatch(server, /\.pg\.test\.mjs$/, `${server} is a database test`);
     }
+  }
+});
+
+test("every practice test for a row that stays in the lane is one exact map row and a real spec", () => {
+  assert.equal(FIN_B01_PRACTICE_SPECS.length, 1);
+  for (const practice of FIN_B01_PRACTICE_SPECS) {
+    const rows = JSON.parse(fs.readFileSync(path.join(MAP_DIR, practice.sourceFile), "utf8"))
+      .filter((r) => r.surface === practice.surface);
+    assert.equal(rows.length, 1, practice.surface);
+    assert.equal(rows[0].impact, "money");
+    const spec = fs.readFileSync(path.join(ROOT, practice.spec), "utf8");
+    for (const title of practice.titles) assert.ok(spec.includes(`test("${title}"`), `${practice.spec} has no test "${title}"`);
   }
 });
 

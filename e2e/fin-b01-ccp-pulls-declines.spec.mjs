@@ -130,7 +130,7 @@ const DECLINE = {
   letter_text: null, letter_document_id: null, needs_person: false, unknown_parts: [],
 };
 
-async function openDeclines(page, { answer, loadAfter } = {}) {
+async function openDeclines(page, { answer, loadAfter, declines = [DECLINE] } = {}) {
   const posts = [];
   let reads = 0;
   await openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
@@ -141,13 +141,13 @@ async function openDeclines(page, { answer, loadAfter } = {}) {
         return answer ? answer(route, posts.length) : json(route, { ok: true, outcome: "approved_on_recon", outcome_words: "Approved on reconsideration", application_status: "Approved" });
       }
       reads += 1;
-      const decline = reads > 1 && loadAfter ? loadAfter : DECLINE;
-      return json(route, { ok: true, staff: { eligible: true, declines: [decline], applications: [], bank_emails: [], next_sequence_notes: [] } });
+      const list = reads > 1 && loadAfter ? [loadAfter, ...declines.slice(1)] : declines;
+      return json(route, { ok: true, staff: { eligible: true, declines: list, applications: [], bank_emails: [], next_sequence_notes: [] } });
     },
   });
   await page.locator("#bp-group .group-title.tog").click();
-  await expect(page.locator(".dec-item")).toHaveCount(1);
-  await expect(page.locator(".dec-item")).toHaveAttribute("open", "");
+  await expect(page.locator(".dec-item")).toHaveCount(declines.length);
+  await expect(page.locator(".dec-item").first()).toHaveAttribute("open", "");
   return { posts, reads: () => reads };
 }
 
@@ -224,5 +224,194 @@ test.describe("client control panel: Declines, Save outcome", () => {
     await item(page).locator('[data-field="amount"]').fill("abc");
     await save(page).click();
     await expect(item(page).locator('[data-slot="status"]')).toHaveText("That amount is not a number.");
+  });
+});
+
+/* ── Repair cycle 1: the holes an independent checker found ───────────────── */
+
+const DECLINE_2 = { ...DECLINE, id: "dec0002", bank: "Capital One", product: "Spark Business", declined_on: "2026-09-25", outcome: "open" };
+const itemOf = (page, id) => page.locator(`.dec-item[data-decline="${id}"]`);
+
+test.describe("client control panel: Declines, Save outcome on a file with two declines", () => {
+  async function openTwo(page, opts = {}) {
+    const ctx = await openDeclines(page, { ...opts, declines: [DECLINE, DECLINE_2] });
+    // The first decline is open; open the second one too.
+    await itemOf(page, "dec0002").locator("summary").click();
+    await expect(itemOf(page, "dec0002")).toHaveAttribute("open", "");
+    return ctx;
+  }
+
+  test("Save outcome on the second decline sends the second decline's id and the values typed in the second", async ({ page }) => {
+    const { posts } = await openTwo(page);
+    await itemOf(page, "dec0001").locator('[data-field="outcome"]').selectOption("still_declined");
+    await itemOf(page, "dec0001").locator('[data-field="amount"]').fill("111");
+    await itemOf(page, "dec0001").locator('[data-field="notes"]').fill("first bank note");
+    await itemOf(page, "dec0002").locator('[data-field="outcome"]').selectOption("approved_on_recon");
+    await itemOf(page, "dec0002").locator('[data-field="amount"]').fill("25,000");
+    await itemOf(page, "dec0002").locator('[data-field="notes"]').fill("second bank note");
+    await itemOf(page, "dec0002").locator('[data-act="outcome"]').click();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0]).toEqual({
+      action: "outcome", client_id: CLIENT_ID, decline_id: "dec0002",
+      outcome: "approved_on_recon", approved_amount: "25,000", reapply_on: null, notes: "second bank note",
+    });
+  });
+
+  test("Save outcome on the first decline sends the first decline's id and its own values, whatever is typed in the second", async ({ page }) => {
+    const { posts } = await openTwo(page);
+    await itemOf(page, "dec0002").locator('[data-field="outcome"]').selectOption("approved_on_recon");
+    await itemOf(page, "dec0002").locator('[data-field="amount"]').fill("99,000");
+    await itemOf(page, "dec0001").locator('[data-field="outcome"]').selectOption("still_declined");
+    await itemOf(page, "dec0001").locator('[data-field="notes"]').fill("first bank note");
+    await itemOf(page, "dec0001").locator('[data-act="outcome"]').click();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0].decline_id).toBe("dec0001");
+    expect(posts[0].outcome).toBe("still_declined");
+    expect(posts[0].approved_amount).toBe(null);
+    expect(posts[0].notes).toBe("first bank note");
+  });
+});
+
+test.describe("client control panel: Declines, Save outcome is one write and trusts only an ok answer", () => {
+  test("a second press while it is saving sends nothing: one write, the button off and saying Saving", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const { posts } = await openDeclines(page, {
+      answer: async (route) => { await held; return json(route, { ok: true, outcome: "still_declined", outcome_words: "Still declined", application_status: null }); },
+    });
+    await item(page).locator('[data-field="outcome"]').selectOption("still_declined");
+    await save(page).click();
+    await expect.poll(() => posts.length).toBe(1);
+    await expect(save(page)).toBeDisabled();
+    await expect(save(page)).toContainText("Saving…");
+    await save(page).click({ force: true });
+    await page.waitForTimeout(250);
+    expect(posts).toHaveLength(1);
+    release();
+    await expect(page.locator("#bp-declines-root")).toContainText("Outcome saved: Still declined.");
+    expect(posts).toHaveLength(1);
+  });
+
+  test("the amount and the notes are trimmed before they are sent", async ({ page }) => {
+    const { posts } = await openDeclines(page);
+    await item(page).locator('[data-field="outcome"]').selectOption("approved_on_recon");
+    await item(page).locator('[data-field="amount"]').fill("   25,000   ");
+    await item(page).locator('[data-field="notes"]').fill("   said yes   ");
+    await save(page).click();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0].approved_amount).toBe("25,000");
+    expect(posts[0].notes).toBe("said yes");
+  });
+
+  test("an amount of spaces only is sent as null, never as an empty string", async ({ page }) => {
+    const { posts } = await openDeclines(page);
+    await item(page).locator('[data-field="outcome"]').selectOption("still_declined");
+    await item(page).locator('[data-field="amount"]').fill("     ");
+    await save(page).click();
+    await expect.poll(() => posts.length).toBe(1);
+    expect(posts[0].approved_amount).toBe(null);
+  });
+
+  test("an answer with a good status but no ok is a refusal: it is said, and never shown as Outcome saved", async ({ page }) => {
+    await openDeclines(page, { answer: (route) => json(route, { ok: false, error: "not_saved", message: "The outcome was not written." }, 200) });
+    await item(page).locator('[data-field="outcome"]').selectOption("approved_on_recon");
+    await save(page).click();
+    await expect(item(page).locator('[data-slot="status"]')).toHaveText("The outcome was not written.");
+    await expect(page.locator("#bp-declines-root")).not.toContainText("Outcome saved");
+    await expect(save(page)).toBeEnabled();
+  });
+
+  test("an answer with a good status and an empty body is a refusal too, in plain words", async ({ page }) => {
+    await openDeclines(page, { answer: (route) => json(route, {}, 200) });
+    await item(page).locator('[data-field="outcome"]').selectOption("approved_on_recon");
+    await save(page).click();
+    await expect(item(page).locator('[data-slot="status"]')).toHaveText("That did not work. Try again in a moment.");
+    await expect(page.locator("#bp-declines-root")).not.toContainText("Outcome saved");
+  });
+});
+
+/* ── the three bureau buttons, each pressed for its own bureau ────────────── */
+
+const CONSENT_SENTENCES = {
+  none_on_file: "No consent on file. This client has to agree before a bureau can be asked.",
+  expired: "The consent on file has run out. Record a new one before pulling.",
+  not_yet_effective: "The consent on file starts at a later date, so a pull is not allowed yet.",
+};
+
+test.describe("client control panel: bureau pull buttons, failures, double press, every consent state", () => {
+  for (const [name, selector, code, label] of BUTTONS) {
+    test(`${name}: a failure that carries no code is said as could not pull, never as finished`, async ({ page }) => {
+      const { pulls } = await openPulls(page, { pull: (route) => json(route, { ok: false, error: "upstream_error" }, 502) });
+      await page.locator(selector).click();
+      await expect.poll(() => pulls.length).toBe(1);
+      expect(pulls[0]).toEqual({ client_id: CLIENT_ID, bureau: code });
+      await expect(page.locator("#ccp-pull-status")).toHaveText(`Could not pull ${label}.`);
+      await expect(page.locator("#ccp-pull-status")).not.toContainText("pull finished");
+      await expect(page.locator(selector)).toBeEnabled();
+    });
+
+    test(`${name}: a second press while it is pulling sends nothing, so a paid pull is never ordered twice`, async ({ page }) => {
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      const { pulls } = await openPulls(page, {
+        pull: async (route) => { await held; return json(route, { ok: true, stored: true }); },
+      });
+      await page.locator(selector).click();
+      await expect.poll(() => pulls.length).toBe(1);
+      await expect(page.locator(selector)).toBeDisabled();
+      await expect(page.locator("#ccp-pull-status")).toHaveText(`Pulling ${label}…`);
+      await page.locator(selector).click({ force: true });
+      await page.waitForTimeout(250);
+      expect(pulls).toHaveLength(1);
+      release();
+      await expect(page.locator("#ccp-pull-status")).toHaveText(`${label} pull finished. Refresh the file to see the stored report.`);
+      await expect(page.locator(selector)).toBeEnabled();
+      expect(pulls).toHaveLength(1);
+    });
+
+    test(`${name}: when the pull service cannot be reached it says so and the button comes back`, async ({ page }) => {
+      await openPulls(page, { pull: (route) => route.abort("connectionreset") });
+      await page.locator(selector).click();
+      await expect(page.locator("#ccp-pull-status")).toHaveText("Could not reach the pull service.");
+      await expect(page.locator(selector)).toBeEnabled();
+    });
+
+    test(`${name}: a refusal for a missing identity is said with its code, and the pull is not finished`, async ({ page }) => {
+      const { pulls } = await openPulls(page, {
+        pull: (route) => json(route, { ok: false, code: "identity_required", error: "identity_required" }, 422),
+      });
+      await page.locator(selector).click();
+      await expect.poll(() => pulls.length).toBe(1);
+      expect(pulls[0].bureau).toBe(code);
+      await expect(page.locator("#ccp-pull-status")).toContainText("No identity on file for this client");
+      await expect(page.locator("#ccp-pull-status")).toContainText("[identity_required]");
+      await expect(page.locator("#ccp-pull-status")).not.toContainText("pull finished");
+      await expect(page.locator(selector)).toBeEnabled();
+    });
+  }
+
+  for (const [reason, sentence] of Object.entries(CONSENT_SENTENCES)) {
+    test(`with consent state ${reason} the three buttons are off with that sentence on them, and a press sends nothing`, async ({ page }) => {
+      const { pulls } = await openPulls(page, {
+        consent: { ok: true, status: { valid: false, reason }, identity: { on_file: true }, approval_link: null },
+      });
+      await expect(page.locator("#ccp-consent-state")).toHaveText(sentence);
+      await expect(page.locator("#ccp-consent-state")).not.toContainText("Consent is on file");
+      for (const [, selector] of BUTTONS) {
+        await expect(page.locator(selector)).toBeDisabled();
+        await expect(page.locator(selector)).toHaveAttribute("title", sentence);
+      }
+      for (const [, selector] of BUTTONS) await page.locator(selector).click({ force: true });
+      expect(pulls).toEqual([]);
+    });
+  }
+
+  test("a reason the page does not know still turns the three buttons off, with a plain sentence", async ({ page }) => {
+    const { pulls } = await openPulls(page, {
+      consent: { ok: true, status: { valid: false, reason: "something_new" }, identity: { on_file: true }, approval_link: null },
+    });
+    await expect(page.locator("#ccp-consent-state")).toHaveText("There is no usable consent on file for this client.");
+    for (const [, selector] of BUTTONS) await expect(page.locator(selector)).toBeDisabled();
+    expect(pulls).toEqual([]);
   });
 });

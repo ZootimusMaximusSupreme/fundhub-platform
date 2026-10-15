@@ -1,10 +1,141 @@
 # Batch 01 manifest: finish the 853 (tier 1, lane gap-catalog-display, 40 rows)
 
 Branch `fin/b01`, built from `fin/base` at `2f4f574a0`. Worktree `.claude/worktrees/fin-b01`. Nothing was pushed or merged.
+The top section is repair cycle 1 (an independent checker broke the product and found 26 rows that stayed green); it wins
+where it differs from generation 2 and generation 1 below it.
 Generation 1 built the 34 rows below that are bound to browser specs and live checks and left six rows open as
 "not attachable". Generation 2 (this file's top section) challenged all six and closed every one: two with a practice
 test, four as verified nothing-to-judge (the controls were removed from the product on purpose). The generation 1
 text further down is kept; where it says "not attachable" for these six, the generation 2 section wins.
+
+## Repair cycle 1: 26 rows an independent checker proved were still green when the product broke
+
+A checker broke the shipped product on purpose for each row below and found the bound tests stayed green. Every
+break it named was made again after the repair and every one now goes RED on the exact titles bound to its row (the
+mutation tool runs a row the way the runner runs it: each bound spec title, plus each server test). Nothing was
+removed or left attached while green: all 26 rows stay attached, and the one claim that was wrong (optimize.html) was
+split instead of faked.
+
+Numbers (`node scripts/pulse/count-not-proved.mjs`, offline): 813 open before and after (display 640). The 26 rows were
+already out of the NOT_PROVED count; this cycle changed what is behind them, not the count. 0 of the batch rows are open.
+
+### Row outcomes (only the ids the checker named)
+
+| Row (surface: control) | Outcome | What now goes red |
+|---|---|---|
+| agent-editor: Authority switch, May take a payment | practice-test | each of the four switches turned on alone turns on only itself; stored pull with pay off paints and saves that way; both leak directions (pay or pull) red |
+| agent-editor: Authority switch, May run a soft pull | practice-test | same set |
+| brand-studio: Write page copy | practice-test + server | second page chosen sends the second page's id; block list rebuilt per page; real answer shape `{ok, body, results}`; whole-page write through the real writing code and the real handler keeps every locked block word for word, never asks the model about one, makes no history row for one |
+| public-pages: climate Gate button | na-verified, now read in every script | the gate in any script the page names (src attribute or chunk path in the page data), not only the app chunk; limit raised from 4 to 40 and reading more than that is red, not a partial read |
+| campaign-manager: tile, Campaigns with an error | practice-test | four reads with four different counts (1, 3, 2, 4); the tile's own read failing blanks only that tile; pressing it from a narrowed list brings every campaign back |
+| campaign-manager: tile, Changes that did not go through | practice-test | same counts; own failed read; press from another filter shows exactly the three failed |
+| campaign-manager: tile, Connections that cannot go live | practice-test | same counts; own failed read; press from a narrowed list shows every connection |
+| campaign-manager: Drawer, Start spending again | practice-test | answering No sends nothing; words and action belong together; refusal is said and never reported as done |
+| campaign-manager: Drawer, New daily budget / Change daily budget | practice-test | No sends nothing; 100 cents accepted, 99 refused; button words belong to the action |
+| campaign-manager: Drawer, Stop spending | practice-test | words and action belong together; refusal is said |
+| campaign-manager: Link box, Save this link | practice-test | the number and the creative printed are what the server read back, not what was typed or picked; each label sentence; number trimmed; a second press while saving sends nothing |
+| campaign-manager: Request Meta agency access | practice-test | the server's sentence is painted, not the fallback; panels read again after a good request and not after a refused one; ad account trimmed; no partner guard |
+| client-control-panel: Declines, Save outcome | practice-test | with two declines Save sends that decline's id and its own typed values; one write while saving; trimmed; 200 without ok is a refusal |
+| client-control-panel: Pull Equifax / Experian / TransUnion (3 rows) | practice-test | each bureau: a failure with no code is "Could not pull X", never finished; one paid pull on a double press; unreachable service; missing identity; every consent state (none_on_file, expired, not_yet_effective, an unknown reason); the three previously unbound tests are now bound |
+| client-portal: FinanceOS card link | practice-test | the unbound staff test is bound (the plain Open link carries the client's id) |
+| client-portal: Payments tab, Pay now | practice-test | staff view: bill and paid list in either order, a missing or non-http address is never a link |
+| closer-dashboard: Deal calculator Draw amount | practice-test | the whole draw is sent (7350, never 7500); a slow older answer never replaces the newest draw |
+| closer-dashboard: Pay link panel offer and motion selects | practice-test | the option text (name and price) is judged: the test that reads it is now bound |
+| closer-dashboard: Pay link panel Send pay link | practice-test | a second press while sending sends nothing |
+| public-pages: optimize.html Audit intake and Pay for Audit | split: PASS (live code read) + practice-test | see "The optimize split" below |
+| marketing-command-center: Frame sheet | practice-test + guard | backdrop tap is a No; the known cost line and month line are exact; Yes is off until the cost has come back; Escape, Cancel and leaving the tab are No; a new unsheeted write in any tab file turns the new guard red |
+| present: Log disposition and close | practice-test + server | route, temperature, belief count and cost of inaction are judged; the server half (outcome deposit or downsell) is bound: `s3-closer-deck-handler.test.mjs` |
+| present: Invoice this client | practice-test + server | the read asks for five and the fake honours the limit; an open invoice fourth in the list is found; the server half is bound: `s2-message-routes-outbound.test.mjs` |
+| inquiry-remover: PULL modal | practice-test | a second press while the run is going sends nothing; three pulls in all |
+
+### The optimize split
+
+The row text names two things. Pay for Audit (and a POST, and a Commas checkout) is retired on purpose. The four
+boxes and the SMS consent box are NOT retired: `public/optimize.html` still ships them and writes them, with
+`sms_consent: sms.checked === true`, to `sessionStorage.fh_opt` for the SmartCredit and roadmap hand-offs. "Nothing to
+judge" was therefore false for the row. Now:
+
+- `fin-b01-retired-controls.mjs` answers `PASS` (not `na`) for this row only when the served `/optimize` page holds none
+  of the retired control AND still holds each piece of the intake and the consent line, by name. Any piece missing is
+  `FAIL` with its name. The retired side is also tighter: any POST (method set to post, an XHR open, a beacon, a
+  library post), "Pay now", "checkout", "Pay for Audit" or the assessment title turns it red. The word-only check the
+  checker beat (a Pay now button plus an XHR POST) is now red.
+- `e2e/fin-b01-optimize-intake.spec.mjs` (8 tests) types the boxes, ticks and unticks SMS, and reads `fh_opt` through
+  both hand-offs. The runner next to the display specs runs it (`FIN_B01_PRACTICE_SPECS`). It is not bound through
+  `FIN_B01_DISPLAY_SPEC_PROOFS` on purpose: a bound row leaves the lane and the live read of the served page would be lost.
+
+Honest limit: the lane check reads the SERVED CODE of the consent line, it does not run a browser. The browser behaviour
+is the practice test, which runs on the repo and not against the live site.
+
+### What was broken on purpose (each went red on the bound titles, then was put back)
+
+| Break | Rows red |
+|---|---|
+| agent-editor `guardrailsPayload`: pay also follows pull; pull also follows pay | both switch rows |
+| brand-studio: `page_id` sent as the first page's id | Write page copy |
+| `copy-generate.mjs`: whole page uses every section; same plus the guard removed; a handler that passes the string "undefined" as the block; whole page cut to one block | Write page copy (server tests) |
+| campaign-manager (24 breaks): each tile counting another list, blank on another read, press doing nothing; resume, budget, pause ignoring No; floor `n <= 100`; Stop and Start words swapped; budget button words; link message from typed number, from picked asset, claiming labels when unreadable, number not trimmed, save not disabled; agency success always canned, no re-read, ad account not trimmed, no partner guard | the row each one belongs to |
+| client-control-panel (7 breaks): `if (!d.ok && d.code)`; no press-time disable; consent gate honouring only revoked; network failure leaving the button off; no client leaves buttons on; consent not re-read after refusal; unknown consent disabling the buttons | all three Pull rows |
+| ccp-declines (5 breaks): save sends the first decline; not disabled while saving; ok trusts any 2xx; amount and notes not trimmed | Save outcome |
+| client-portal: staff Open link loses the id; staff bill dropped | FinanceOS link; Pay now |
+| closer-dashboard: draw rounded to 500; draw read from the slider; no stale-answer guard; option text is the key; pay link not disabled while sending | Draw; offer select; Send pay link |
+| present: outcome always deposit; deck write drops route and numbers; email_invoice answers ok without emailing; invoice read limit 1 | Log disposition (twice); Invoice (twice) |
+| inquiry-remover: Pull not disabled while running | PULL modal |
+| marketing-command-center frame (6 breaks): backdrop tap as yes, cost line wrong, Yes enabled early, month line wrong, Escape as yes, leaving the tab as yes | Frame |
+| three new unsheeted writes (ideas tab, scripts tab, launch tab on a new route) | Frame (the new guard, which the older guard did not see) |
+| climate: the gate text appended to each of the 7 chunk and runtime scripts and to `rb2b.js` | climate Gate (all 8 red) |
+| optimize: consent written as true; email dropped from `remember()`; Pay for Audit button back; Pay now plus XHR POST | optimize (the last one was green and is now red) |
+
+Every product file was restored from memory after each break and `git diff` against HEAD for `public/`, `api/`, `src/sales/`
+and `src/brand/copy-generate.mjs` is empty.
+
+### Files added in this cycle
+
+- `e2e/fin-b01-frame-sheet.spec.mjs` (9 browser tests on the real frame with a probe tab)
+- `e2e/fin-b01-optimize-intake.spec.mjs` (8 browser tests)
+- `src/brand/fin-b01-copy-generate-whole-page.test.mjs` (3 node tests, the real writing code)
+- `src/http/fin-b01-partner-marketing-generate-copy-whole-page.test.mjs` (4 node tests, the real handler)
+- `src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs` (19 node tests: every write in every Command Center tab file is sorted)
+
+### Files touched in this cycle
+
+`e2e/fin-b01-agent-authority.spec.mjs` (+9 tests), `fin-b01-brand-studio-generation.spec.mjs` (+5), `fin-b01-campaign-manager.spec.mjs`
+(+27), `fin-b01-ccp-pulls-declines.spec.mjs` (+23), `fin-b01-client-portal.spec.mjs` (+4), `fin-b01-closer-dashboard.spec.mjs` (+3),
+`fin-b01-present-deck.spec.mjs` (+4), `fin-b01-inquiry-remover-repair.spec.mjs` (+2); `src/pulse/coverage/fin-b01-retired-controls.mjs`
+and its test; `src/pulse/catalog/proofs/fin-b01-display-specs.mjs` and its test (bindings, `servers`, `FIN_B01_PRACTICE_SPECS`).
+
+### Shared lines touched in this cycle
+
+| File | Change |
+|---|---|
+| `src/pulse/coverage/gap-catalog-display.mjs` | `retiredControlResults`: a `pass` answer from the retired-control module becomes a `PASS` row (6 lines) |
+| `src/pulse/catalog/generated.json` | recompiled (new `servers` on four rows); the integrator recompiles after merging |
+
+No `na-conditions.mjs`, `door-proof.mjs`, `display-saved-result.mjs`, `display-proof-cases.mjs` or tripwire line was touched.
+
+### Product findings from this cycle (not fixed, one line each)
+
+1. Command Center Today: "Write ad copy" and "Write offer" are paid model runs with a cost line under the button and no Cancel/yes sheet; the avatar row draws its own dialog. The row's words ("sheet before every paid tap") are literally true only for the Ideas, Scripts, Launch and Shoot tabs. The new guard pins Today's two as `cost-line`, so a third one turns it red.
+2. brand-studio "Write page copy" says "Copy written. Locked legal blocks were left alone." for any ok answer, including a whole-page answer where the compliance screen blocked every block and nothing was saved (the page never reads `results`).
+3. closer-dashboard `wirePayLink`: the only guard against a second Send is the disabled attribute; a script-dispatched click on the disabled button still runs the handler (a person cannot press it).
+4. `/climate/` chunk `app/layout-*.js` is not named by the served page and nothing loads it, so a gate in it cannot be read or shown; the check reads every script the page does name, including `/funnel/rb2b.js`.
+5. `docs/journeys/optimize-intended.md` and `climate-lead-magnet-intended.md` still describe controls the product removed (carried from generation 2).
+
+### Commands run and results (this cycle; Mac load average 6 to 60 from sibling batches)
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` | 813 open (display 640); 0 of the 40 batch rows open; same as the end of generation 2 |
+| `node scripts/pulse/compile-catalog.mjs` then `--check` | fresh |
+| mutation tool, every break in the table above, bound titles and servers | every one RED; the one green at the start (optimize Pay now plus XHR POST) fixed and red |
+| `src/pulse/catalog/proofs/fin-b01-display-specs.test.mjs` (every bound title of 16 spec files, plus the optimize practice spec) | 20 of 20 pass |
+| the retired-control, lane, na-conditions, self-audit, modules, compiler, sql-mini, display-contracts, paid-taps, paid-writes, whole-page (writing code and handler) node tests | 235 of 235 pass |
+| `display-proof-cases.test.mjs` "every display proof case..." and "unmapped display rows..." | pass |
+| `npm run lint` | 3,576 files parse clean |
+| the four retired-control rows against the live public site (GET only, 13 requests, each page read once) | e-book x2 `na`, optimize `pass`, climate gate `na` |
+
+Not run here: the third test of `display-proof-cases.test.mjs` (every slice's browser tests together, about 30 minutes).
+The integrator runs it on a quiet Mac after merging.
 
 ## Generation 2: the six rows that were left open
 

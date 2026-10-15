@@ -41,8 +41,13 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
       return deck ? deck(route, calls.deck.length) : json(route, { ok: true, action: body.action });
     },
     "/api/read/invoices": async (route, { url }) => {
-      calls.invoices.push(Object.fromEntries(new URL(url).searchParams));
-      return json(route, invoices || { ok: true, items: [{ id: "inv-1", status: "open", amount_display: "$1,500.00" }] });
+      const asked = Object.fromEntries(new URL(url).searchParams);
+      calls.invoices.push(asked);
+      const answer = invoices || { ok: true, items: [{ id: "inv-1", status: "open", amount_display: "$1,500.00" }] };
+      // The server hands back no more than `limit` rows, newest first, like the real read does.
+      const limit = Number(asked.limit);
+      const items = Array.isArray(answer.items) && Number.isFinite(limit) && limit > 0 ? answer.items.slice(0, limit) : answer.items;
+      return json(route, { ...answer, items });
     },
     "/api/messages-outbound": async (route) => {
       const body = JSON.parse(route.request().postData() || "{}");
@@ -161,6 +166,35 @@ test.describe("closer deck: Invoice this client", () => {
     await expect(toast(page)).toHaveText("Invoice emailed.");
   });
 
+  test("it asks for the newest five, and finds the open invoice when it is the fourth in the list", async ({ page }) => {
+    const calls = await openMore(page, {
+      invoices: { ok: true, items: [
+        { id: "inv-a", status: "void" },
+        { id: "inv-b", status: "written_off" },
+        { id: "inv-c", status: "void" },
+        { id: "inv-open", status: "open" },
+        { id: "inv-far", status: "open" },
+      ] },
+    });
+    await page.locator('[data-act="invoice"]').click();
+    await expect.poll(() => calls.outbound.length).toBe(1);
+    expect(calls.invoices[0].limit).toBe("5");
+    expect(calls.invoices[0].client_id).toBe(CLIENT_ID);
+    expect(calls.outbound[0]).toEqual({ action: "email_invoice", invoice_id: "inv-open" });
+  });
+
+  test("an invoice that is sixth in the list is not reached: the read is bounded, so it says none", async ({ page }) => {
+    const calls = await openMore(page, {
+      invoices: { ok: true, items: [
+        { id: "a", status: "void" }, { id: "b", status: "void" }, { id: "c", status: "void" },
+        { id: "d", status: "void" }, { id: "e", status: "written_off" }, { id: "f-open", status: "open" },
+      ] },
+    });
+    await page.locator('[data-act="invoice"]').click();
+    await expect(toast(page)).toHaveText("No invoice on this file yet.");
+    expect(calls.outbound).toEqual([]);
+  });
+
   test("with only void and written-off invoices it says none and emails nothing", async ({ page }) => {
     const calls = await openMore(page, {
       invoices: { ok: true, items: [{ id: "a", status: "void" }, { id: "b", status: "written_off" }] },
@@ -199,6 +233,49 @@ test.describe("closer deck: Log disposition and close", () => {
     expect(body.offer_key).toBe("FUNDING_DFY");
     expect(body.repair_referral).toBe(false);
     await expect(toast(page)).toHaveText("Disposition written to contact record.");
+  });
+
+  test("it writes the call's route, the temperature, the belief count and the cost of inaction as the closer set them", async ({ page }) => {
+    const calls = await open(page, { tier: "FULL_FUNDING" });
+    // Discovery: two beliefs the client said, and what the problem costs them each month.
+    await page.locator('[data-act="phase:02"]').click();
+    await page.waitForSelector('[data-act="check:Pain"]');
+    await page.locator('[data-act="check:Pain"]').click();
+    await page.locator('[data-act="check:Trust"]').click();
+    await page.locator("#fh-cost").fill("$4,000 a month");
+    // Commit: their number out of ten (S-18 is the second slide of that phase).
+    await page.locator('[data-act="phase:05"]').click();
+    await page.keyboard.press("ArrowRight");
+    await page.waitForSelector('[data-act="temp:9"]');
+    await page.locator('[data-act="temp:9"]').click();
+    await page.locator('[data-act="phase:07"]').click();
+    await page.waitForSelector('[data-act="disp"]');
+    await page.locator('[data-act="disp"]').click();
+    await expect.poll(() => calls.deck.length).toBe(1);
+    expect(calls.deck[0]).toEqual({
+      action: "log_disposition",
+      client_id: CLIENT_ID,
+      offer_key: "FUNDING_DFY",
+      sale_motion: null,
+      edu: false,
+      force_repair: false,
+      tier: "FULL_FUNDING",
+      route: "FULL_FUNDING",
+      temperature: 9,
+      beliefs_count: 2,
+      cost_of_inaction: "$4,000 a month",
+      repair_referral: false,
+    });
+  });
+
+  test("with nothing set the write carries temperature 0, no beliefs and no cost, not made-up numbers", async ({ page }) => {
+    const calls = await open(page, { tier: "FULL_FUNDING" });
+    await page.locator('[data-act="disp"]').click();
+    await expect.poll(() => calls.deck.length).toBe(1);
+    expect(calls.deck[0].temperature).toBe(0);
+    expect(calls.deck[0].beliefs_count).toBe(0);
+    expect(calls.deck[0].cost_of_inaction).toBe(null);
+    expect(calls.deck[0].route).toBe("FULL_FUNDING");
   });
 
   test("a downsell to the trial rung writes that offer, not the first one", async ({ page }) => {

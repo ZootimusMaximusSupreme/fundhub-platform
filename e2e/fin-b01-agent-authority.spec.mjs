@@ -27,20 +27,24 @@ const ROW = {
 };
 const STAFF = [{ id: "s-sw", name: "Sarah Whitfield", role: "sales_manager", status: "active" }];
 
-async function open(page) {
+async function open(page, { authority } = {}) {
   const writes = [];
+  // `authority` replaces the saved authority block, so a test can start from a stored state.
+  const row = authority
+    ? { ...ROW, guardrails: { ...ROW.guardrails, authority: { ...ROW.guardrails.authority, ...authority } } }
+    : ROW;
   await openScreen(page, "/app/agent-editor.html", OWNER, {
     "/api/read/staff": { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: STAFF },
     // The page blanks the saved "escalate to" person if the agents arrive before the
     // staff list has painted its options, so serve the agents after the people lists.
     "/api/read/agents": async (route) => {
       await page.waitForFunction(() => document.querySelectorAll("#a_esc option").length > 1);
-      return json(route, { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [ROW] });
+      return json(route, { ok: true, count: 1, limit: 200, offset: 0, hasMore: false, items: [row] });
     },
     "/api/agents": async (route) => {
       const body = route.request().postDataJSON();
       writes.push(body);
-      return json(route, { ok: true, action: "save", agent: { ...ROW, ...body, status: "draft" } });
+      return json(route, { ok: true, action: "save", agent: { ...row, ...body, status: "draft" } });
     },
   });
   await expect(page.locator("#a_name")).toHaveValue("Lead Follow-up", { timeout: 10_000 });
@@ -111,4 +115,58 @@ test.describe("agent editor: the money limits reach their own saved field", () =
     expect(off.pay).toBe(false);
     expect(Object.keys(off).sort()).toEqual(["book", "contract", "disc", "msgcap", "pay", "pull"]);
   });
+
+  // The two money switches are separate: turning one on must never turn the other on. A write that lets
+  // one leak into the other gives an agent the right to charge a card, or to pull a bureau, that nobody gave it.
+  test("payment ON alone leaves soft pull off, on the screen and in the write", async ({ page }) => {
+    const { writes } = await open(page);
+    await page.locator("#l_pay").click();
+    await expect(page.locator("#l_pay")).toHaveClass(/\bon\b/);
+    await expect(page.locator("#l_pull")).not.toHaveClass(/\bon\b/);
+    const body = await saveAndRead(page, writes);
+    expect(body.guardrails.authority).toEqual({ disc: 10, msgcap: 3, pay: true, contract: false, book: false, pull: false });
+  });
+
+  test("soft pull ON alone leaves payment off, on the screen and in the write", async ({ page }) => {
+    const { writes } = await open(page);
+    await page.locator("#l_pull").click();
+    await expect(page.locator("#l_pull")).toHaveClass(/\bon\b/);
+    await expect(page.locator("#l_pay")).not.toHaveClass(/\bon\b/);
+    const body = await saveAndRead(page, writes);
+    expect(body.guardrails.authority).toEqual({ disc: 10, msgcap: 3, pay: false, contract: false, book: false, pull: true });
+  });
+
+  test("a stored soft pull with payment off is painted that way, and saved again unchanged", async ({ page }) => {
+    const { writes } = await open(page, { authority: { pull: true, pay: false } });
+    await expect(page.locator("#l_pull")).toHaveClass(/\bon\b/);
+    await expect(page.locator("#l_pay")).not.toHaveClass(/\bon\b/);
+    const body = await saveAndRead(page, writes);
+    expect(body.guardrails.authority).toEqual({ disc: 10, msgcap: 3, pay: false, contract: false, book: false, pull: true });
+  });
+
+  test("a stored payment with soft pull off is painted that way, and saved again unchanged", async ({ page }) => {
+    const { writes } = await open(page, { authority: { pay: true, pull: false } });
+    await expect(page.locator("#l_pay")).toHaveClass(/\bon\b/);
+    await expect(page.locator("#l_pull")).not.toHaveClass(/\bon\b/);
+    const body = await saveAndRead(page, writes);
+    expect(body.guardrails.authority).toEqual({ disc: 10, msgcap: 3, pay: true, contract: false, book: false, pull: false });
+  });
+
+  test("turning the soft pull off while payment stays on saves pull false and pay true", async ({ page }) => {
+    const { writes } = await open(page, { authority: { pay: true, pull: true } });
+    await page.locator("#l_pull").click();
+    const body = await saveAndRead(page, writes);
+    expect(body.guardrails.authority.pull).toBe(false);
+    expect(body.guardrails.authority.pay).toBe(true);
+  });
+
+  for (const [id, field] of [["l_pay", "pay"], ["l_contract", "contract"], ["l_book", "book"], ["l_pull", "pull"]]) {
+    test(`the ${field} switch turned on alone turns on only ${field}`, async ({ page }) => {
+      const { writes } = await open(page);
+      await page.locator(`#${id}`).click();
+      const body = await saveAndRead(page, writes);
+      const want = { disc: 10, msgcap: 3, pay: false, contract: false, book: false, pull: false, [field]: true };
+      expect(body.guardrails.authority).toEqual(want);
+    });
+  }
 });

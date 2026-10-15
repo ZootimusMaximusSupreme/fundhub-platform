@@ -396,3 +396,329 @@ test.describe("campaign manager: the link box (Save this link)", () => {
     await expect(page.locator("#linkSaveBtn")).toBeEnabled();
   });
 });
+
+/* ═══ Repair cycle 1: the holes an independent checker found ═════════════════════════════════════
+   Each block below was written for a break that stayed green: a tile counting the wrong list, a
+   tile that hides a read that failed, a money button that goes out after "No", a button whose words
+   sit on the wrong action, a link box that prints what was typed instead of what was saved, and an
+   agency request whose server sentence is thrown away. */
+
+const CAMP_4 = "c4c4c4c4-0000-4000-8000-000000000004";
+const CAMP_5 = "c5c5c5c5-0000-4000-8000-000000000005";
+const row = (id, name, over = {}) => ({
+  id, name, platform: "meta", offer_type: "funding", approval_state: "live", budget_cents: 10000, spend_yesterday_cents: 100,
+  roas_7d: 1.1, ad_set_count: 1, ad_count: 1, last_error: null, has_disclosure_asset: false, status: "ACTIVE",
+  synced_at: null, created_at: "2026-09-05T10:00:00Z", approved_at: null, strategy_key: null, special_ad_category: null, targeting: {},
+  ...over,
+});
+// Four campaigns carry an error, one is clean.
+const CAMPS_X = [
+  row(CAMP_1, "Alpha", { last_error: "Ad account is disabled" }),
+  row(CAMP_2, "Bravo", { last_error: "Token expired", approval_state: "paused", status: "PAUSED" }),
+  row(CAMP_3, "Charlie", { last_error: "Payment method declined" }),
+  row(CAMP_4, "Delta", { last_error: "Creative rejected", approval_state: "paused", status: "PAUSED" }),
+  row(CAMP_5, "Echo"),
+];
+// Three changes did not go through: one never ran, two ran and were refused. One is clean.
+const LOG_X = [
+  { id: "x1", created_at: "2026-10-13T09:00:00Z", actor: "agent", agent_name: "Optimizer", rule_key: "kill_switch_ceiling", target_type: "campaign", target_id: CAMP_1, reason: "Never ran", before: {}, after: {}, executed_at: null, execute_error: null, revertible: false },
+  { id: "x2", created_at: "2026-10-13T09:10:00Z", actor: "human", user_name: "Jordan", rule_key: null, target_type: "campaign", target_id: CAMP_2, reason: "Refused one", before: {}, after: {}, executed_at: "2026-10-13T09:10:01Z", execute_error: "Meta refused", revertible: false },
+  { id: "x3", created_at: "2026-10-13T09:20:00Z", actor: "human", user_name: "Jordan", rule_key: null, target_type: "campaign", target_id: CAMP_3, reason: "Went through", before: {}, after: {}, executed_at: "2026-10-13T09:20:01Z", execute_error: null, revertible: false },
+  { id: "x4", created_at: "2026-10-13T09:30:00Z", actor: "agent", agent_name: "Optimizer", rule_key: null, target_type: "campaign", target_id: CAMP_4, reason: "Refused two", before: {}, after: {}, executed_at: "2026-10-13T09:30:01Z", execute_error: "Budget too low", revertible: false },
+];
+
+/* The four tiles read four different lists. With the shipped fixtures three of them held the same
+   number, so a tile could count the wrong list and still say the right thing. Here no two match:
+   limits 1 · changes not through 3 · connections stuck 2 · campaigns in error 4. */
+async function openTiles(page, extra = {}) {
+  const b = base({ extra: { "/api/campaigns/list": items(CAMPS_X), "/api/campaigns/action-log": items(LOG_X), ...extra } });
+  await openScreen(page, `/app/campaign-manager.html?partner_id=${PARTNER_A}`, OWNER, b.handlers);
+  await expect(page.locator("#attnRow button")).toHaveCount(4);
+  return b;
+}
+const TILES = {
+  limits: "Daily limits already hit",
+  changes: "Changes that did not go through",
+  conns: "Connections that cannot go live",
+  errors: "Campaigns with an error on them",
+};
+
+test.describe("campaign manager: needs-attention tiles, four different counts", () => {
+  test("each tile counts its own list: limits 1, changes not through 3, connections stuck 2, campaigns in error 4", async ({ page }) => {
+    await openTiles(page);
+    await expect(tile(page, TILES.limits).locator(".an")).toHaveText("1");
+    await expect(tile(page, TILES.changes).locator(".an")).toHaveText("3");
+    await expect(tile(page, TILES.conns).locator(".an")).toHaveText("2");
+    await expect(tile(page, TILES.errors).locator(".an")).toHaveText("4");
+  });
+
+  // One read fails at a time. Its tile shows no number and no all-clear; the other three keep their counts.
+  const READS = [
+    ["Daily limits already hit", "/api/campaigns/spend", { limits: null, changes: "3", conns: "2", errors: "4" }],
+    ["Changes that did not go through", "/api/campaigns/action-log", { limits: "1", changes: null, conns: "2", errors: "4" }],
+    ["Connections that cannot go live", "/api/campaigns/connections", { limits: "1", changes: "3", conns: null, errors: "4" }],
+    ["Campaigns with an error on them", "/api/campaigns/list", { limits: "1", changes: "3", conns: "2", errors: null }],
+  ];
+  for (const [title, endpoint, want] of READS) {
+    test(`when the read behind "${title}" fails, only that tile loses its number, and it is not shown as 0`, async ({ page }) => {
+      await openTiles(page, { [endpoint]: (route) => json(route, { ok: false, error: "query_failed" }, 500) });
+      const blank = tile(page, title);
+      await expect(blank.locator(".ad")).toContainText("could not reach the data");
+      // An em dash, never 0 and never a count: a failed read must not look like an all-clear.
+      await expect(blank.locator(".an")).toHaveText("—");
+      for (const [key, expected] of Object.entries(want)) {
+        if (expected === null) continue;
+        await expect(tile(page, TILES[key]).locator(".an")).toHaveText(expected);
+      }
+    });
+  }
+
+  test("Campaigns with an error on them: from a narrowed list, pressing it brings every campaign back", async ({ page }) => {
+    await openTiles(page);
+    await page.locator('#campRail button[data-v="paused"]').click();
+    await expect(page.locator("#campRows tr.rowbtn")).toHaveCount(2);
+    await tile(page, TILES.errors).click();
+    await expect(page.locator("#campRows tr.rowbtn")).toHaveCount(5);
+    await expect(page.locator('#campRail button[data-v="all"]')).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("Connections that cannot go live: from a narrowed list, pressing it shows every connection, with the blockers", async ({ page }) => {
+    await openTiles(page);
+    await page.locator('#connRail button[data-v="pending"]').click();
+    await expect(page.locator("#connRows tr")).toHaveCount(1);
+    await tile(page, TILES.conns).click();
+    await expect(page.locator("#connRows tr")).toHaveCount(3);
+    await expect(page.locator('#connRail button[data-v="all"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#connRows")).toContainText("Verify the business");
+  });
+
+  test("Changes that did not go through: from another filter, pressing it shows exactly the three that failed or never ran", async ({ page }) => {
+    await openTiles(page);
+    await page.locator('#logRail button[data-v="agent"]').click();
+    await expect(page.locator("#logRows tr")).toHaveCount(2);
+    await tile(page, TILES.changes).click();
+    await expect(page.locator("#logRows tr")).toHaveCount(3);
+    await expect(page.locator("#logRows")).toContainText("Never ran");
+    await expect(page.locator("#logRows")).toContainText("Refused one");
+    await expect(page.locator("#logRows")).toContainText("Refused two");
+    await expect(page.locator("#logRows")).not.toContainText("Went through");
+  });
+});
+
+test.describe("campaign manager: drawer money buttons, the No answer, the words, the floor", () => {
+  test("Start spending again answered No sends nothing and says so", async ({ page }) => {
+    const b = await openDrawer(page);
+    let asked = "";
+    page.once("dialog", (d) => { asked = d.message(); d.dismiss(); });
+    await page.locator('[data-cw="resume"]').click();
+    await expect(page.locator("#cwMsg")).toHaveText("Nothing was sent — you cancelled.");
+    expect(asked).toContain("Start spending on “Funding spring push” again on Meta?");
+    expect(b.calls.write).toEqual([]);
+  });
+
+  test("Change daily budget answered No sends nothing and says so", async ({ page }) => {
+    const b = await openDrawer(page);
+    await page.locator("#cwBudget").fill("25000");
+    let asked = "";
+    page.once("dialog", (d) => { asked = d.message(); d.dismiss(); });
+    await page.locator('[data-cw="update_budget"]').click();
+    await expect(page.locator("#cwMsg")).toHaveText("Nothing was sent — you cancelled.");
+    expect(asked).toContain("to 250.00?");
+    expect(b.calls.write).toEqual([]);
+  });
+
+  test("a daily budget of exactly 100 cents is accepted and asked about, and 99 is refused", async ({ page }) => {
+    const b = await openDrawer(page);
+    await page.locator("#cwBudget").fill("99");
+    let dialogs = 0;
+    page.on("dialog", (d) => { dialogs += 1; d.accept(); });
+    await page.locator('[data-cw="update_budget"]').click();
+    await expect(page.locator("#cwMsg")).toHaveText("Enter a daily budget of at least 100 cents.");
+    expect(dialogs).toBe(0);
+    expect(b.calls.write).toEqual([]);
+    await page.locator("#cwBudget").fill("100");
+    await page.locator('[data-cw="update_budget"]').click();
+    await expect.poll(() => b.calls.write.length).toBe(1);
+    expect(b.calls.write[0].budget_cents).toBe(100);
+    expect(dialogs).toBe(1);
+  });
+
+  test("each drawer button says what it does: the words on a button and the action it sends belong together", async ({ page }) => {
+    const b = await openDrawer(page);
+    page.on("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Stop spending", exact: true }).click();
+    await expect.poll(() => b.calls.write.length).toBe(1);
+    expect(b.calls.write[0].action).toBe("pause");
+    await page.getByRole("button", { name: "Start spending again", exact: true }).click();
+    await expect.poll(() => b.calls.write.length).toBe(2);
+    expect(b.calls.write[1].action).toBe("resume");
+    await page.locator("#cwBudget").fill("30000");
+    await page.getByRole("button", { name: "Change daily budget", exact: true }).click();
+    await expect.poll(() => b.calls.write.length).toBe(3);
+    expect(b.calls.write[2].action).toBe("update_budget");
+    expect(b.calls.write[2].budget_cents).toBe(30000);
+    await expect(page.getByLabel("New daily budget, in cents")).toBeVisible();
+  });
+
+  for (const [action, name] of [["pause", "Stop spending"], ["resume", "Start spending again"]]) {
+    test(`${name} refused by the server says Nothing changed on Meta, with the reason, and never says it worked`, async ({ page }) => {
+      const b = await openDrawer(page, { write: (route) => json(route, { ok: false, error: "meta_down", message: "Meta did not answer." }, 502) });
+      page.once("dialog", (d) => d.accept());
+      await page.locator(`[data-cw="${action}"]`).click();
+      await expect(page.locator("#cwMsg")).toHaveText("Nothing changed on Meta. Meta did not answer.");
+      expect(b.calls.write).toHaveLength(1);
+      expect(b.calls.write[0].action).toBe(action);
+      const seen = await page.evaluate(() => window.__cwSeen);
+      expect(seen).not.toContain("Meta has stopped spending on this campaign.");
+      expect(seen).not.toContain("Meta is spending on this campaign again.");
+    });
+  }
+});
+
+test.describe("campaign manager: link box, what was saved is what is printed", () => {
+  async function openLinkBox(page, over) {
+    const b = await open(page, { over });
+    await page.locator(`[data-link-ad="${AD_1}"]`).click();
+    await expect(page.locator("#linkBox")).toBeVisible();
+    await expect(page.locator("#linkAsset option")).toHaveCount(2);
+    return b;
+  }
+
+  test("the number printed is the one the server saved and read back, not the one that was typed", async ({ page }) => {
+    await openLinkBox(page, {
+      link: (route) => json(route, { ok: true, ad: { fundhub_ad_number: "0044", asset_id: null }, spine: { script_type: "vsl", lane: "funding", angle_key: null, hook_key: null, offer_key: null } }),
+    });
+    await page.locator("#linkNumber").fill("43");
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkMsg")).toContainText("Our number for this ad is 0044.");
+    await expect(page.locator("#linkMsg")).not.toContainText("43");
+  });
+
+  test("a creative picked but not saved by the server is not claimed as linked", async ({ page }) => {
+    await openLinkBox(page, {
+      link: (route) => json(route, { ok: true, ad: { fundhub_ad_number: "43", asset_id: null }, spine: { script_type: null, lane: null, angle_key: null, hook_key: null, offer_key: null } }),
+    });
+    await page.locator("#linkAsset").selectOption(ASSET_1);
+    await page.locator("#linkNumber").fill("43");
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkMsg")).toContainText("Saved. Our number for this ad is 43.");
+    await expect(page.locator("#linkMsg")).not.toContainText("A creative is linked to it.");
+    await expect(page.locator("#linkMsg")).toContainText("It still carries no labels: no creative is linked to it yet.");
+  });
+
+  test("a creative that has no script on it says it still carries no labels, and why", async ({ page }) => {
+    await openLinkBox(page, {
+      link: (route) => json(route, { ok: true, ad: { fundhub_ad_number: null, asset_id: ASSET_1 }, spine: { script_type: null, lane: null, angle_key: null, hook_key: null, offer_key: null } }),
+    });
+    await page.locator("#linkAsset").selectOption(ASSET_1);
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkMsg")).toContainText("A creative is linked to it.");
+    await expect(page.locator("#linkMsg")).toContainText("It still carries no labels: the creative it points at has no script on it.");
+    await expect(page.locator("#linkMsg")).not.toContainText("Our number for this ad");
+  });
+
+  test("when the labels could not be read back it says so, and claims no label", async ({ page }) => {
+    await openLinkBox(page, {
+      link: (route) => json(route, { ok: true, ad: { fundhub_ad_number: "43", asset_id: ASSET_1 }, spine: null }),
+    });
+    await page.locator("#linkAsset").selectOption(ASSET_1);
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkMsg")).toContainText("The labels could not be read back just now.");
+    await expect(page.locator("#linkMsg")).not.toContainText("It now carries these labels");
+  });
+
+  test("the number is trimmed before it is sent", async ({ page }) => {
+    const b = await openLinkBox(page);
+    await page.locator("#linkNumber").fill("   43   ");
+    await page.locator("#linkSaveBtn").click();
+    await expect.poll(() => b.calls.link.length).toBe(1);
+    expect(b.calls.link[0].fundhub_ad_number).toBe("43");
+  });
+
+  test("a number of spaces only is nothing typed: nothing is sent", async ({ page }) => {
+    const b = await openLinkBox(page);
+    await page.locator("#linkNumber").fill("    ");
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkMsg")).toHaveText("Nothing was sent. Pick a creative, type our ad number, or both.");
+    expect(b.calls.link).toEqual([]);
+  });
+
+  test("a second press while it is saving sends nothing: one write, the button off and saying Saving", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const b = await openLinkBox(page, {
+      link: async (route, body) => {
+        await held;
+        return json(route, { ok: true, ad: { fundhub_ad_number: body.fundhub_ad_number, asset_id: null }, spine: null });
+      },
+    });
+    await page.locator("#linkNumber").fill("43");
+    await page.locator("#linkSaveBtn").click();
+    await expect(page.locator("#linkSaveBtn")).toBeDisabled();
+    await expect(page.locator("#linkSaveBtn")).toHaveText("Saving…");
+    await page.locator("#linkSaveBtn").click({ force: true });
+    await page.waitForTimeout(250);
+    expect(b.calls.link).toHaveLength(1);
+    release();
+    await expect(page.locator("#linkSaveBtn")).toBeEnabled();
+    await expect(page.locator("#linkSaveBtn")).toHaveText("Save this link");
+    expect(b.calls.link).toHaveLength(1);
+  });
+});
+
+test.describe("campaign manager: Request Meta agency access, the server's sentence and the re-read", () => {
+  const SERVER_SAYS = "Saved in CRM as pending. Meta Graph could not complete the request, so a person has to approve it.";
+
+  test("the sentence the server answered with is the one painted, not the page's own fallback", async ({ page }) => {
+    await open(page, { over: { agency: (route) => json(route, { ok: true, message: SERVER_SAYS }) } });
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaAgencyBtn").click();
+    await expect(page.locator("#metaAgencyMsg")).toHaveText(SERVER_SAYS);
+  });
+
+  test("a good request reads the panels again; a refused one does not", async ({ page }) => {
+    const ok = await open(page);
+    const before = ok.calls.list.length;
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaAgencyBtn").click();
+    await expect.poll(() => ok.calls.agency.length).toBe(1);
+    await expect.poll(() => ok.calls.list.length).toBeGreaterThan(before);
+  });
+
+  test("a refused request does not read the panels again", async ({ page }) => {
+    const b = await open(page, { over: { agency: (route) => json(route, { ok: false, message: "That Business ID is not valid." }, 400) } });
+    const before = b.calls.list.length;
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaAgencyBtn").click();
+    await expect(page.locator("#metaAgencyMsg")).toHaveText("Nothing was saved. That Business ID is not valid.");
+    await page.waitForTimeout(300);
+    expect(b.calls.list.length).toBe(before);
+  });
+
+  test("the ad account is trimmed before it is sent", async ({ page }) => {
+    const b = await open(page);
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaActId").fill("   act_555   ");
+    await page.locator("#metaAgencyBtn").click();
+    await expect.poll(() => b.calls.agency.length).toBe(1);
+    expect(b.calls.agency[0].ad_account_id).toBe("act_555");
+  });
+
+  test("an ad account of spaces only is left out of the request", async ({ page }) => {
+    const b = await open(page);
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaActId").fill("     ");
+    await page.locator("#metaAgencyBtn").click();
+    await expect.poll(() => b.calls.agency.length).toBe(1);
+    expect("ad_account_id" in b.calls.agency[0]).toBe(false);
+  });
+
+  test("with no partner chosen the request button sends nothing and says to pick one", async ({ page }) => {
+    const b = base();
+    await openScreen(page, "/app/campaign-manager.html", OWNER, b.handlers);
+    await page.locator("#metaBizId").fill("1234567890");
+    await page.locator("#metaAgencyBtn").click();
+    await expect(page.locator("#metaAgencyMsg")).toHaveText("Nothing was sent. Pick a partner first.");
+    expect(b.calls.agency).toEqual([]);
+  });
+});

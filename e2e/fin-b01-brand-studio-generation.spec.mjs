@@ -13,6 +13,7 @@ import { openScreen, json, OWNER, PARTNER_ID } from "./harness.mjs";
 test.describe.configure({ timeout: 60_000 });
 
 const PAGE_ID = "99999999-0000-4000-8000-000000000001";
+const PAGE_ID_2 = "99999999-0000-4000-8000-000000000002";
 const ADMIN = { ok: true, staff: { id: "staff-3", name: "Ada Admin", email: "ada@fundhub.ai", role: "admin", org_id: "org-1", status: "active" } };
 
 const PAGES = [{
@@ -22,7 +23,28 @@ const PAGES = [{
     { id: "legal", headline: "Legal disclosure", type: "legal", locked: true },
     { id: "faq", headline: "Questions", type: "faq", locked: false },
   ] },
+}, {
+  // A second page with its own blocks, so a press can be told apart from "the first page".
+  id: PAGE_ID_2, title: "Roadmap funnel", funnel_key: "roadmap", slug: "roadmap", status: "draft",
+  body_json: { sections: [
+    { id: "steps", headline: "Steps", type: "steps", locked: false },
+    { id: "legal-2", headline: "Roadmap disclosure", type: "legal", locked: true },
+    { id: "price", headline: "Price", type: "price", locked: false },
+  ] },
 }];
+
+/* The answer the real handler gives (api/partner-marketing/generate-copy.mjs): { ok, body, results }.
+   `results` holds one row per block it wrote and never one for a locked block. */
+function realAnswer(page, sectionId) {
+  const sections = page.body_json.sections;
+  const targets = sectionId ? sections.filter((s) => s.id === sectionId) : sections.filter((s) => !s.locked);
+  const written = sections.map((s) => (targets.includes(s) ? { ...s, headline: `New ${s.headline}` } : s));
+  return {
+    ok: true,
+    body: { template: page.funnel_key, sections: written },
+    results: targets.map((s) => ({ section_id: s.id, state: "needs_approval", section: { ...s, headline: `New ${s.headline}` } })),
+  };
+}
 
 function setup({ enabled = false, enableAnswer, copyAnswer, pages = PAGES } = {}) {
   const state = { enabled, enableCalls: [], copyCalls: [], usageCalls: 0, pageReads: 0 };
@@ -42,7 +64,8 @@ function setup({ enabled = false, enableAnswer, copyAnswer, pages = PAGES } = {}
       const body = JSON.parse(route.request().postData() || "{}");
       state.copyCalls.push(body);
       if (copyAnswer) return copyAnswer(route, body);
-      return json(route, { ok: true, written: 2, skipped_locked: 1 });
+      const page = pages.find((p) => p.id === body.page_id) || pages[0];
+      return json(route, realAnswer(page, body.section_id));
     },
     "/api/partner-marketing/copy-history": { ok: true, items: [] },
     "/api/partner-pages": (route) => { state.pageReads += 1; return json(route, { ok: true, items: pages }); },
@@ -116,7 +139,7 @@ test.describe("brand studio: Write page copy", () => {
   test("with the suite on, the tool row is shown and Write page copy sends the chosen page for all unlocked blocks", async ({ page }) => {
     const state = await open(page, { enabled: true });
     await expect(page.locator("#suiteOnTools")).toBeVisible();
-    await expect(page.locator("#histPage option")).toHaveText(["Application funnel"]);
+    await expect(page.locator("#histPage option")).toHaveText(["Application funnel", "Roadmap funnel"]);
     await page.locator("#genCopyBtn").click();
     await expect.poll(() => state.copyCalls.length).toBe(1);
     // "All unlocked blocks" is an empty section, sent as null, never as the empty string.
@@ -131,6 +154,58 @@ test.describe("brand studio: Write page copy", () => {
     await page.locator("#genCopyBtn").click();
     await expect.poll(() => state.copyCalls.length).toBe(1);
     expect(state.copyCalls[0]).toEqual({ page_id: PAGE_ID, section_id: "faq" });
+  });
+
+  test("choosing the second page sends the second page's id, not the first page's", async ({ page }) => {
+    const state = await open(page, { enabled: true });
+    await page.locator("#histPage").selectOption(PAGE_ID_2);
+    // The block list is rebuilt for the page that was chosen: its own blocks, its legal block left out.
+    await expect(page.locator("#histSection option")).toHaveText(["All unlocked blocks", "Steps", "Price"]);
+    await page.locator("#genCopyBtn").click();
+    await expect.poll(() => state.copyCalls.length).toBe(1);
+    expect(state.copyCalls[0]).toEqual({ page_id: PAGE_ID_2, section_id: null });
+    await expect(page.locator("#genMsg")).toHaveText("Copy written. Locked legal blocks were left alone.");
+  });
+
+  test("a block chosen on the first page is not carried over to the second page", async ({ page }) => {
+    const state = await open(page, { enabled: true });
+    await page.locator("#histSection").selectOption("faq");
+    await page.locator("#histPage").selectOption(PAGE_ID_2);
+    await expect(page.locator("#histSection")).toHaveValue("");
+    await page.locator("#genCopyBtn").click();
+    await expect.poll(() => state.copyCalls.length).toBe(1);
+    expect(state.copyCalls[0]).toEqual({ page_id: PAGE_ID_2, section_id: null });
+  });
+
+  test("a block chosen on the second page is sent with the second page's id", async ({ page }) => {
+    const state = await open(page, { enabled: true });
+    await page.locator("#histPage").selectOption(PAGE_ID_2);
+    await page.locator("#histSection").selectOption("price");
+    await page.locator("#genCopyBtn").click();
+    await expect.poll(() => state.copyCalls.length).toBe(1);
+    expect(state.copyCalls[0]).toEqual({ page_id: PAGE_ID_2, section_id: "price" });
+  });
+
+  test("a real-shaped answer (body and results) says copy was written; an answer that is not ok never does", async ({ page }) => {
+    // The real handler answers { ok, body, results }. The page tells a person Copy written only for ok.
+    const state = await open(page, {
+      enabled: true,
+      copyAnswer: (route, body) => json(route, realAnswer(PAGES.find((p) => p.id === body.page_id), body.section_id)),
+    });
+    await page.locator("#genCopyBtn").click();
+    await expect.poll(() => state.copyCalls.length).toBe(1);
+    await expect(page.locator("#genMsg")).toHaveText("Copy written. Locked legal blocks were left alone.");
+  });
+
+  test("an answer that says ok false with results in it is not shown as copy written", async ({ page }) => {
+    const state = await open(page, {
+      enabled: true,
+      copyAnswer: (route) => json(route, { ok: false, error: "no_model", message: "The writing robot is not set on this site.", results: [] }, 503),
+    });
+    await page.locator("#genCopyBtn").click();
+    await expect.poll(() => state.copyCalls.length).toBe(1);
+    await expect(page.locator("#genMsg")).toHaveText("The writing robot is not set on this site.");
+    await expect(page.locator("#genMsg")).not.toContainText("Copy written");
   });
 
   test("a refusal says nothing was written and the page is unchanged", async ({ page }) => {

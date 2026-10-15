@@ -21,7 +21,7 @@ const SUMMARY = {
   documents: [], payments: [],
 };
 
-async function openPortal(page, session, { summary = {}, readyToFund, affiliate, init } = {}) {
+async function openPortal(page, session, { summary = {}, readyToFund, affiliate, init, dashboard, dashboardHold, summaryHold } = {}) {
   const calls = { readyToFund: [] };
   await page.addInitScript((s) => {
     localStorage.setItem("fh_token", "e2e-token");
@@ -37,7 +37,15 @@ async function openPortal(page, session, { summary = {}, readyToFund, affiliate,
       if (readyToFund === undefined) return json(route, { ok: false }, 403);
       return json(route, readyToFund.body, readyToFund.status || 200);
     }
-    if (url.includes("/api/read/portal-summary")) return json(route, { ...SUMMARY, ...summary });
+    // The staff read of one client's file (FHData.client): the paid list, with no bill in it.
+    if (/\/api\/dashboard\/client\?/.test(url) && dashboard) {
+      if (dashboardHold) await dashboardHold;
+      return json(route, { ok: true, ...dashboard });
+    }
+    if (url.includes("/api/read/portal-summary")) {
+      if (summaryHold) await summaryHold;
+      return json(route, { ...SUMMARY, ...summary });
+    }
     if (url.includes("/api/read/affiliate-portal")) {
       return json(route, affiliate || { ok: true, enrolled: false, affiliate: null, rates: { direct: null, downline: null }, referrals: [], payouts: [], gates: null });
     }
@@ -150,6 +158,68 @@ test.describe("client portal: Payments tab, Pay now per open invoice", () => {
   test("with an empty bill and no payments the tab says No payments yet and has no link", async ({ page }) => {
     await openPortal(page, CLIENT, { summary: { invoice_due: { count: 0, items: [] }, payments: [] } });
     await expect(page.locator("#tp-pay")).toContainText("No payments yet");
+    await expect(link(page)).toHaveCount(0);
+  });
+});
+
+/* STAFF open a client's portal. They get the paid list from /api/dashboard/client and the bill from
+   portal-summary's invoice_due (paintStaffPays, added for the live miss of 2026-09-18). Every test
+   above opens as the client, so a staff view that dropped the bill stayed green. */
+const STAFF_FILE = {
+  client: { id: CLIENT_ID, first_name: "Dana", last_name: "Whitfield", email: "dana@example.com" },
+  transactions: [{ product_name: "Roadmap", amount_paid: "$297.00", status: "paid", created_at: "2026-10-01T10:00:00Z" }],
+  messages: [], latest_booking: null,
+};
+const BILL = { invoice_due: { count: 2, items: [
+  { kind: "Success fee", reference: "INV-2001", amount_display: "$4,500.00", pay_url: "https://pay.example.test/inv-2001" },
+  { kind: "Setup", reference: "INV-2002", amount_display: "$497.00", pay_url: "https://pay.example.test/inv-2002" },
+] } };
+
+test.describe("client portal: Payments tab as staff, Pay now per open invoice", () => {
+  test("staff see each open invoice's own Pay now link, beside what was already paid", async ({ page }) => {
+    await openPortal(page, OWNER, { dashboard: STAFF_FILE, summary: BILL });
+    await expect(link(page)).toHaveCount(2);
+    await expect(link(page).nth(0)).toHaveAttribute("href", "https://pay.example.test/inv-2001");
+    await expect(link(page).nth(1)).toHaveAttribute("href", "https://pay.example.test/inv-2002");
+    await expect(link(page).nth(0)).toHaveText("Pay now");
+    await expect(page.locator("#tp-pay .pay-row").nth(0)).toContainText("Success fee · INV-2001");
+    await expect(page.locator("#tp-pay .pay-row").nth(0)).toContainText("$4,500.00");
+    // The paid list from the staff read is still there.
+    await expect(page.locator("#tp-pay")).toContainText("Roadmap");
+    await expect(page.locator("#tp-pay")).toContainText("$297.00");
+  });
+
+  test("staff: the bill still shows when the bill read lands first and the paid list lands second", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    await openPortal(page, OWNER, { dashboard: STAFF_FILE, summary: BILL, dashboardHold: held });
+    await expect(link(page)).toHaveCount(2);
+    release();
+    await expect(page.locator("#tp-pay")).toContainText("Roadmap");
+    await expect(link(page)).toHaveCount(2);
+    await expect(link(page).nth(1)).toHaveAttribute("href", "https://pay.example.test/inv-2002");
+  });
+
+  test("staff: the bill still shows when the paid list lands first and the bill read lands second", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    await openPortal(page, OWNER, { dashboard: STAFF_FILE, summary: BILL, summaryHold: held });
+    await expect(page.locator("#tp-pay")).toContainText("Roadmap");
+    release();
+    await expect(link(page)).toHaveCount(2);
+    await expect(link(page).nth(0)).toHaveAttribute("href", "https://pay.example.test/inv-2001");
+  });
+
+  test("staff: an invoice with no pay address shows its amount and no link, and a bad address is never a link", async ({ page }) => {
+    await openPortal(page, OWNER, {
+      dashboard: STAFF_FILE,
+      summary: { invoice_due: { count: 2, items: [
+        { kind: "Setup", reference: "INV-1", amount_display: "$497.00", pay_url: null },
+        { kind: "Fee", reference: "INV-2", amount_display: "$100.00", pay_url: "javascript:alert(1)" },
+      ] } },
+    });
+    await expect(page.locator("#tp-pay")).toContainText("$497.00");
+    await expect(page.locator("#tp-pay")).toContainText("$100.00");
     await expect(link(page)).toHaveCount(0);
   });
 });

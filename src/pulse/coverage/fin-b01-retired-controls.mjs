@@ -8,7 +8,11 @@
 //     src/http/closer-deck-present.test.mjs and closer-deck-endpoints.test.mjs).
 //   - the /optimize "Pay for Audit" intake. docs/journeys/optimize-actual.md: "The Audit
 //     section and the Pay-for-Audit checkout stay removed by owner decision" (2026-08-28).
-//     The page only reads its sign-up config; it never posts.
+//     The page only reads its sign-up config; it never posts. ONLY THE PAY FOR AUDIT HALF IS
+//     RETIRED. The four boxes and the SMS consent box are still shipped and still write
+//     sessionStorage fh_opt, so that row is not "nothing to judge": it is judged live (the
+//     intake and the consent code must be on the served page) AND by a browser practice test
+//     (e2e/fin-b01-optimize-intake.spec.mjs). It answers PASS, never na.
 //   - the /climate "Gate button". The lead-magnet page that held it was reverted
 //     (f39cec357) and replaced by the Darwin dashboard, which has no gate.
 //
@@ -21,10 +25,30 @@
 // READ ONLY. GET only. No repo file is read at run time.
 
 const EBOOK = /(?:^|[^a-z])e-?book/i;
+// What must NOT come back to /optimize: the words of the retired control, and any way a page can post
+// (the page's only call to its own door is a GET for its sign-up config; it never posts, never takes
+// a payment, and has no checkout). The shipped page holds none of these, so each is a plain test.
 const OPTIMIZE_CHECKOUT = [
   { name: "a Pay for Audit control", test: /pay for audit/i },
+  { name: "a Pay now control", test: /pay\s*now/i },
+  { name: "a checkout", test: /check-?out/i },
   { name: "the Consulting Services Assessment title", test: /Consulting Services Assessment/i },
-  { name: "a POST", test: /method\s*:\s*["']POST["']/i },
+  { name: "a POST (a method set to post)", test: /\bmethod\s*[:=]\s*["']?\s*post\b/i },
+  { name: "an XHR POST", test: /\.open\(\s*["']post["']/i },
+  { name: "a beacon send", test: /\bsendBeacon\s*\(/ },
+  { name: "a library POST", test: /\.post\s*\(/ },
+];
+// What must STILL be on the live /optimize page: the intake that was not retired. Each is a plain
+// reading of the served page, so a change to the consent line turns the row red by name.
+const OPTIMIZE_INTAKE = [
+  { name: "the first name box", test: /id="first"/ },
+  { name: "the last name box", test: /id="last"/ },
+  { name: "the email box", test: /id="email"/ },
+  { name: "the mobile box", test: /id="phone"/ },
+  { name: "the SMS consent box", test: /id="sms"[^>]*name="sms_consent"|name="sms_consent"[^>]*id="sms"/ },
+  { name: "the opt-out wording", test: /Reply STOP to opt out/ },
+  { name: "the line that saves the typed values for the hand-off", test: /sessionStorage\.setItem\(\s*["']fh_opt["']/ },
+  { name: "sms_consent saved exactly as ticked (sms.checked === true)", test: /sms_consent\s*:\s*sms\.checked\s*===\s*true/ },
 ];
 const CLIMATE_GATE = [
   { name: "a call to /api/public/optimize", test: /\/api\/public\/optimize/ },
@@ -60,8 +84,11 @@ export const RETIRED_CONTROLS = Object.freeze([
     surface: "form:optimize.html#opt",
     control: "Audit intake and Pay for Audit: first name, last name, email, phone, SMS consent. Posts to /api/public/optimize, which mints a Commas checkout on the Consulting Services Assessment title.",
     retired: "the Pay for Audit checkout was removed from /optimize by owner decision, and the page only reads its sign-up config",
+    // The intake half is not retired: this row is judged "pass", not "nothing to judge".
+    passes: "Pay for Audit is gone and the intake with its SMS consent is still on the page, saved exactly as ticked",
+    practice: { spec: "e2e/fin-b01-optimize-intake.spec.mjs" },
     pages: [
-      { path: "/optimize", mustHave: /id="opt"/, mustLack: OPTIMIZE_CHECKOUT },
+      { path: "/optimize", mustHave: /id="opt"/, mustLack: OPTIMIZE_CHECKOUT, mustAlso: OPTIMIZE_INTAKE },
     ],
   },
   {
@@ -74,8 +101,10 @@ export const RETIRED_CONTROLS = Object.freeze([
         path: "/climate/",
         mustHave: /_next\/static/,
         mustLack: CLIMATE_GATE,
-        // The page is drawn by bundled scripts: read the page's own chunks too.
-        follow: { prefix: "/climate/_next/static/chunks/app/", max: 4, mustLack: CLIMATE_GATE },
+        // The page is drawn by bundled scripts: read EVERY script the page names (each same-origin
+        // <script src>, and each static/chunks/*.js path named in the page), not only the one app
+        // chunk. The gate used to be able to come back in any other chunk and stay unseen.
+        follow: { max: 40, mustLack: CLIMATE_GATE },
       },
     ],
   },
@@ -127,21 +156,57 @@ async function judgePage(page, base, get) {
   }
   const back = lacks(html.text, page.mustLack);
   if (back) return { status: "FAIL", detail: `${page.path} holds ${back.name} again. The control is back and has no proof attached.` };
+  if (page.mustAlso) {
+    const gone = page.mustAlso.find((item) => !item.test.test(html.text));
+    if (gone) {
+      return { status: "FAIL", detail: `${page.path} no longer holds ${gone.name}. This part of the control is still live and has to stay as written, so the check cannot pass.` };
+    }
+  }
   if (!page.follow) return { status: "na" };
 
-  const srcs = [...html.text.matchAll(/src="([^"]+)"/g)].map((m) => m[1])
-    .filter((src) => src.startsWith(page.follow.prefix))
-    .slice(0, page.follow.max);
+  const srcs = scriptsNamedBy(html.text, url, base);
   if (srcs.length === 0) {
-    return { status: "FAIL", detail: `${page.path} names none of the page scripts under ${page.follow.prefix}, so the page's own code cannot be read.` };
+    return { status: "FAIL", detail: `${page.path} names no page scripts, so the page's own code cannot be read.` };
   }
-  for (const src of srcs) {
-    const script = await get(new URL(src, base).href);
-    if (!script.ok) return { status: "skip", detail: script.why };
+  if (srcs.length > page.follow.max) {
+    return { status: "FAIL", detail: `${page.path} names ${srcs.length} scripts, more than the ${page.follow.max} this check reads, so the page's own code cannot be read in full.` };
+  }
+  // Read them side by side (each is a GET with its own 5 second limit), so a slow script cannot hold the
+  // lane past its step budget; then judge them in the page's own order.
+  const scripts = await Promise.all(srcs.map((src) => get(new URL(src, base).href)));
+  // A gate found in one script is red even when another script could not be read.
+  for (const [i, script] of scripts.entries()) {
+    if (!script.ok) continue;
     const hit = lacks(script.text, page.follow.mustLack);
-    if (hit) return { status: "FAIL", detail: `${src} holds ${hit.name} again. The control is back and has no proof attached.` };
+    if (hit) return { status: "FAIL", detail: `${srcs[i]} holds ${hit.name} again. The control is back and has no proof attached.` };
   }
+  const unread = scripts.find((script) => !script.ok);
+  if (unread) return { status: "skip", detail: unread.why };
   return { status: "na" };
+}
+
+/* Every script one page names, same site only: each <script src>, and each static/chunks/*.js path
+   written anywhere in the page (the framework lists the chunks it loads in its page data, written
+   relative to its own _next folder, so those are put under the folder the page's own scripts use).
+   The order is the page's own and each address is listed once. */
+function scriptsNamedBy(text, pageUrl, base) {
+  const found = [];
+  const add = (raw) => {
+    let abs;
+    try { abs = new URL(raw, pageUrl); } catch { return; }
+    if (abs.origin !== base) return;
+    if (!/\.m?js$/i.test(abs.pathname)) return;
+    const key = abs.pathname;
+    if (!found.includes(key)) found.push(key);
+  };
+  for (const m of text.matchAll(/\bsrc\s*=\s*"([^"]+)"/g)) add(m[1]);
+  for (const m of text.matchAll(/\bsrc\s*=\s*'([^']+)'/g)) add(m[1]);
+  const hasNext = found.find((p) => p.includes("/_next/static/"));
+  const nextRoot = hasNext ? `${hasNext.split("/_next/")[0]}/_next/` : "/_next/";
+  for (const m of text.matchAll(/["'(\s,]((?:\/[\w.-]+)*\/?static\/chunks\/[\w./%-]+\.js)/g)) {
+    add(m[1].startsWith("/") ? m[1] : `${nextRoot}${m[1]}`);
+  }
+  return found;
 }
 
 /**
@@ -149,7 +214,8 @@ async function judgePage(page, base, get) {
  *   ctx.fetchImpl  a GET function (defaults to the global fetch); null means "no GET client"
  *   ctx.baseUrl    the site (defaults to https://fundhub.ai)
  *   ctx.retiredCache  optional Map shared by the controls of one run, so a page is read once
- * Returns { status: "na" | "FAIL" | "skip", detail }.
+ * Returns { status: "na" | "pass" | "FAIL" | "skip", detail }. "pass" is for a control that is only half
+ * retired (the other half is still live and is read here too); "na" is for a control that is gone.
  */
 export async function retiredControlState(retired, ctx = {}) {
   const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
@@ -166,6 +232,12 @@ export async function retiredControlState(retired, ctx = {}) {
   const seen = await Promise.all(retired.pages.map((page) => judgePage(page, base, get)));
   const worst = seen.find((item) => item.status === "FAIL") || seen.find((item) => item.status === "skip");
   if (worst) return { status: worst.status, detail: `${retired.control}: ${worst.detail}` };
+  if (retired.passes) {
+    return {
+      status: "pass",
+      detail: `${retired.control}: ${retired.passes}. Read live from ${retired.pages.map((p) => p.path).join(", ")} (GET only); a browser practice test types the boxes and reads what is saved.`,
+    };
+  }
   return {
     status: "na",
     detail: `${retired.control}: ${retired.retired}. The live ${retired.pages.map((p) => p.path).join(", ")} still hold none of it, so there is nothing to judge.`,

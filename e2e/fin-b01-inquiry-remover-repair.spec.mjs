@@ -184,4 +184,44 @@ test.describe("specialist desk: the PULL modal", () => {
     await page.waitForTimeout(500);
     expect(calls.pull.map((p) => p.bureau)).toEqual(["EX", "EQ"]);
   });
+
+  // Each bureau pull is billable. While the run is going, pressing Pull again must not start a second run.
+  test("a second press while the run is going sends nothing: the button says Pulling and stays off, three pulls in all", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const calls = await open(page, {
+      pull: async (route, n) => {
+        if (n === 1) await held;
+        return json(route, { ok: true });
+      },
+    });
+    await page.locator('[data-act="repair-pull"]').click();
+    await page.locator("#repairPullInput").fill("PULL");
+    await page.locator("#repairPullGo").click();
+    await expect.poll(() => calls.pull.length).toBe(1);
+    await expect(page.locator("#repairPullGo")).toHaveText("Pulling…");
+    await expect(page.locator("#repairPullGo")).toBeDisabled();
+    // The press lands on a button that is off; the typed word is still PULL, so nothing else stops it.
+    await page.locator("#repairPullGo").click({ force: true });
+    await page.waitForTimeout(250);
+    expect(calls.pull).toHaveLength(1);
+    release();
+    await expect.poll(() => calls.pull.length).toBe(3);
+    await page.waitForTimeout(400);
+    expect(calls.pull.map((p) => p.bureau)).toEqual(["EX", "EQ", "TU"]);
+    await expect(page.locator("#repairPullModal")).not.toHaveClass(/\bopen\b/);
+  });
+
+  test("after a finished run the button is Pull again, not stuck on Pulling", async ({ page }) => {
+    const calls = await open(page);
+    await page.locator('[data-act="repair-pull"]').click();
+    await page.locator("#repairPullInput").fill("PULL");
+    await page.locator("#repairPullGo").click();
+    await expect.poll(() => calls.pull.length).toBe(3);
+    await page.locator('[data-act="repair-pull"]').click();
+    await expect(page.locator("#repairPullGo")).toHaveText("Pull");
+    await expect(page.locator("#repairPullGo")).toBeDisabled();
+    await page.locator("#repairPullInput").fill("PULL");
+    await expect(page.locator("#repairPullGo")).toBeEnabled();
+  });
 });

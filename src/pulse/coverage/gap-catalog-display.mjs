@@ -117,6 +117,11 @@ async function retiredControlResults(ctx) {
     const control = retiredControlFor(entry);
     if (!control) return;
     const state = await retiredControlState(control, { ...ctx, retiredCache });
+    // "pass" is a control that is only half retired: the live half is read here too (see the record).
+    if (state.status === "pass") {
+      out.set(entry.id, result(entry.id, "PASS", state.detail));
+      return;
+    }
     out.set(entry.id, state.status === "na"
       ? result(entry.id, "na", state.detail, null, {
         code: "catalog-display-retired-control",

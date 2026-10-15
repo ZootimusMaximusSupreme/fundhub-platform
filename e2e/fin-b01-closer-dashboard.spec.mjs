@@ -82,13 +82,16 @@ function tradelines(drawn) {
 
 /* ── the Draw amount input ─────────────────────────────────────────────── */
 
-async function openCalculator(page) {
+async function openCalculator(page, { hold } = {}) {
   const trade = [];
   const math = [];
   await openScreen(page, URL_WITH_CLIENT, CLOSER, readHandlers({
-    "/api/read/tradelines": (route, { url }) => {
+    "/api/read/tradelines": async (route, { url }) => {
       const u = new URL(url);
       trade.push(Object.fromEntries(u.searchParams));
+      // `hold` maps a requested amount to a promise: that answer waits until the test lets it go.
+      const wait = hold && hold[u.searchParams.get("requested_amount")];
+      if (wait) await wait;
       return json(route, tradelines(Number(u.searchParams.get("requested_amount") || 10000) || 10000));
     },
     "/api/read/deal-math": (route, { url }) => {
@@ -131,6 +134,33 @@ test.describe("closer dashboard: the Draw amount input", () => {
     await expect.poll(() => trade[trade.length - 1].requested_amount).toBe("7350");
     // The threshold is its own question and is not touched by a draw.
     expect(trade[trade.length - 1].utilization_threshold).toBe(trade[0].utilization_threshold);
+  });
+});
+
+test.describe("closer dashboard: the Draw amount input, repair cycle 1", () => {
+  test("a slow older answer never replaces the newest draw: 12,500 answers last and 4,000 is still what is painted", async ({ page }) => {
+    let release;
+    const slow = new Promise((resolve) => { release = resolve; });
+    const { trade, math } = await openCalculator(page, { hold: { "12500": slow } });
+    await page.locator("#iDraw").fill("12500");
+    await expect.poll(() => trade.some((t) => t.requested_amount === "12500")).toBe(true);
+    await page.locator("#iDraw").fill("4000");
+    await expect(page.locator("#oDrawn")).toHaveText("4,000");
+    await expect(page.locator("#oFunded")).toHaveText("$4,000");
+    // Now the older answer lands, long after the newer one.
+    release();
+    await page.waitForTimeout(500);
+    await expect(page.locator("#oDrawn")).toHaveText("4,000");
+    await expect(page.locator("#oFunded")).toHaveText("$4,000");
+    expect(math[math.length - 1].drawn).toBe("4000");
+  });
+
+  test("a draw that is not a multiple of the slider step is sent whole: 7350 stays 7350, never 7500", async ({ page }) => {
+    const { trade } = await openCalculator(page);
+    await page.locator("#iDraw").fill("7350");
+    await expect.poll(() => trade.some((t) => t.requested_amount === "7350")).toBe(true);
+    expect(trade.some((t) => t.requested_amount === "7500")).toBe(false);
+    await expect(page.locator("#oDrawn")).toHaveText("7,350");
   });
 });
 
@@ -243,5 +273,29 @@ test.describe("closer dashboard: the pay link panel", () => {
     await expect(page.locator("#fh-pay-offer option")).toHaveText(["No offers in the catalog"]);
     await expect(page.locator("#fh-pay-go")).toBeDisabled();
     expect(posted).toEqual([]);
+  });
+
+  test("a second press while it is sending sends nothing: one write, the button off, then one Sent", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const { posted } = await openCall(page, {
+      deck: async (route) => {
+        await held;
+        return json(route, { ok: true, action: "send_pay_link", link: { checkout_url: "https://pay.example/1" } });
+      },
+    });
+    await page.locator("#fh-pay-link").click();
+    await page.locator("#fh-pay-go").click();
+    await expect.poll(() => posted.length).toBe(1);
+    await expect(page.locator("#fh-pay-go")).toBeDisabled();
+    await expect(page.locator("#fh-pay-msg")).toHaveText("Sending…");
+    // A second real press on the button while it is off: the browser does not deliver it.
+    await page.locator("#fh-pay-go").click({ force: true });
+    await page.waitForTimeout(250);
+    expect(posted).toHaveLength(1);
+    release();
+    await expect(page.locator("#fh-pay-msg")).toHaveText("Sent. Stay on the call until it posts.");
+    await expect(page.locator("#fh-pay-go")).toBeEnabled();
+    expect(posted).toHaveLength(1);
   });
 });
