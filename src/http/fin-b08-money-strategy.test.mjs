@@ -273,4 +273,122 @@ describe("POST /api/money/strategy save_plan", () => {
     assert.equal(res.statusCode, 400);
     assert.equal(res.body.error, "unknown_action");
   });
+
+  // ── the numbers a saved plan keeps, against a month-by-month walk written out here ────────────────
+
+  /* The documented rule, written again from the page's own header: each month the interest on what is owed
+     is added (balance x APR in hundredths of a percent / 120000, rounded), then each debt's minimum is paid
+     (never more than it owes), then everything left goes down the priority list. A paid-off debt's minimum
+     is freed for the next. Returns the months, the interest and the month each debt was cleared. */
+  function walk(debts, budget, method) {
+    const bps = (d) => Math.round(d.apr * 100);
+    const order = [...debts].sort((a, b) => (method === "snowball"
+      ? a.balance - b.balance || bps(b) - bps(a) || a.name.localeCompare(b.name)
+      : bps(b) - bps(a) || a.balance - b.balance || a.name.localeCompare(b.name)));
+    const bal = new Map(debts.map((d) => [d.id, d.balance]));
+    const cleared = {};
+    let interest = 0;
+    for (let k = 1; k <= 600; k += 1) {
+      for (const d of debts) {
+        const b = bal.get(d.id);
+        if (b <= 0) continue;
+        const x = Math.round((b * bps(d)) / 120000);
+        bal.set(d.id, b + x);
+        interest += x;
+      }
+      let left = budget;
+      for (const d of debts) {
+        const b = bal.get(d.id);
+        if (b <= 0) continue;
+        const p = Math.min(d.min, b);
+        bal.set(d.id, b - p);
+        left -= p;
+      }
+      for (const d of order) {
+        if (left <= 0) break;
+        const b = bal.get(d.id);
+        if (b <= 0) continue;
+        const p = Math.min(b, left);
+        bal.set(d.id, b - p);
+        left -= p;
+      }
+      for (const d of debts) if (cleared[d.id] === undefined && bal.get(d.id) === 0) cleared[d.id] = k;
+      if ([...bal.values()].every((b) => b === 0)) return { months: k, interest, cleared };
+    }
+    throw new Error("never paid off");
+  }
+  const DEBTS = [
+    { id: "visa", name: "Visa", balance: 300000, apr: 24.99, min: 9000 },
+    { id: "mc", name: "Mastercard", balance: 100000, apr: 15.99, min: 2500 },
+  ];
+  const addMonthsTo = (iso, k) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    const total = y * 12 + (m - 1) + k;
+    const yy = Math.floor(total / 12);
+    const mm = (total % 12) + 1;
+    const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+    return `${yy}-${String(mm).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+  };
+
+  test("a saved plan keeps the interest the whole payoff costs, the day the last debt is cleared and the month each card is cleared", async () => {
+    for (const [method, budget] of [["avalanche", 20000], ["snowball", 30000], ["avalanche", 11500]]) {
+      const file = strategyFile();
+      const { res } = await save({ method, monthly_cents: budget }, { principal: staff(), file });
+      assert.equal(res.statusCode, 200, `${method} ${budget}`);
+      const expected = walk(DEBTS, budget, method);
+      const row = file.writes[0];
+      assert.equal(row.summary.interest_cents, expected.interest, `${method} ${budget}: interest`);
+      assert.equal(res.body.plan.interest_cents, expected.interest);
+      assert.equal(row.debt_free_on, addMonthsTo("2026-10-14", expected.months), `${method} ${budget}: debt-free day`);
+      assert.equal(row.summary.debt_free_on, row.debt_free_on);
+      assert.equal(res.body.saved.debt_free_on, row.debt_free_on);
+      const month = (key) => row.milestones.find((m) => m.key === key).month;
+      assert.equal(month("visa:payoff"), expected.cleared.visa, `${method} ${budget}: Visa cleared`);
+      assert.equal(month("mc:payoff"), expected.cleared.mc, `${method} ${budget}: Mastercard cleared`);
+      assert.equal(month("debt_free"), expected.months);
+    }
+  });
+
+  test("the plan says how much interest and how many months it saves against paying only the minimums", async () => {
+    const file = strategyFile();
+    const { res } = await save({ monthly_cents: 20000 }, { principal: staff(), file });
+    const fast = walk(DEBTS, 20000, "avalanche");
+    // Minimums only: each debt pays its own minimum and nothing is moved when one is cleared.
+    const only = (d) => {
+      let b = d.balance; let k = 0; let interest = 0;
+      while (b > 0) { k += 1; const x = Math.round((b * Math.round(d.apr * 100)) / 120000); b += x; interest += x; b -= Math.min(d.min, b); }
+      return { k, interest };
+    };
+    const base = DEBTS.map(only);
+    const baseInterest = base.reduce((s, x) => s + x.interest, 0);
+    const baseMonths = Math.max(...base.map((x) => x.k));
+    assert.equal(res.body.plan.baseline.interest_cents, baseInterest);
+    assert.equal(res.body.plan.interest_saved_cents, baseInterest - fast.interest);
+    assert.equal(res.body.plan.months_saved, baseMonths - fast.months);
+    assert.equal(file.writes[0].summary.interest_saved_cents, baseInterest - fast.interest);
+    assert.equal(file.writes[0].summary.months_saved, baseMonths - fast.months);
+  });
+
+  test("a goal is kept with its kind and date; no goal keeps none", async () => {
+    const withGoal = strategyFile();
+    const a = await save({ goal: { kind: "util10", by: "2027-06-01" } }, { principal: staff(), file: withGoal });
+    assert.equal(a.res.statusCode, 200, JSON.stringify(a.res.body));
+    assert.equal(withGoal.writes[0].goal_kind, "util10");
+    assert.equal(withGoal.writes[0].goal_by, "2027-06-01");
+    assert.deepEqual(a.res.body.saved.goal, { kind: "util10", by: "2027-06-01" });
+    const without = strategyFile();
+    const b = await save({}, { principal: staff(), file: without });
+    assert.equal(without.writes[0].goal_kind, null);
+    assert.equal(without.writes[0].goal_by, null);
+    assert.equal(b.res.body.saved.goal, null);
+  });
+
+  test("the plan page opens on the numbers the server computes for the default settings", async () => {
+    const { res } = await call({ principal: staff() });
+    const expected = walk(DEBTS, 11500, "avalanche");
+    assert.equal(res.body.plan.interest_cents, expected.interest);
+    assert.equal(res.body.plan.debt_free.month, expected.months);
+    assert.equal(res.body.plan.debt_free.on, addMonthsTo("2026-10-14", expected.months));
+    assert.equal(res.body.plan.payoff_all_cents, 407581, "the money that clears both debts in month 1, interest included: $4,000 plus a month of interest");
+  });
 });
