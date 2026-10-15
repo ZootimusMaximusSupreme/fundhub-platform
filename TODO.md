@@ -43,6 +43,7 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 
 ### 6. After the priority work
 
+- [ ] Next creative direction (owner 2026-10-15): the ad does the selling because awareness is so high, so move to a short VSL and more display and split-screen style videos. The 10/15 VSL (`marketing/vsl/direct-book-vsl-2026-10-15.md`) is fine for now.
 - [ ] Talk through the line of credit stacking system with Claude (owner side note 2026-10-15, while writing Direct Book Ad 14).
 - [ ] Decide on the data-points offer ideas (a $1,000 bank-order step inside the Blueprint, a $2,000 to $3,000 a month data subscription). Ideas only, not decided. Saved in `marketing/offers/data-points-ideas-2026-10-14.md`. (owner 2026-10-14)
 - [ ] Add more specifics about the Capital Blueprint to the VSL: which letters to send, which banks to apply to and in what order, which banks to open accounts with, and how to start and optimize your businesses. Keep it specific but short. (owner ask 2026-10-13; scripts in `marketing/ads/scripts/2026-10-13.md`)
