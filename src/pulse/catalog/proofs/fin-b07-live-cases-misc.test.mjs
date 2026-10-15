@@ -119,9 +119,9 @@ runCases({
       { name: "a business with no street", rows: [biz(4, 1, { address_line1: "" })], breaks: "OR NULLIF(BTRIM(COALESCE(b.entity_data->>'address_line1', '')), '') IS NULL" },
       { name: "a business with no ZIP", rows: [biz(5, 1, { postal_code: null })], breaks: "OR NULLIF(BTRIM(COALESCE(b.entity_data->>'postal_code', '')), '') IS NULL" },
       { name: "a business with an EIN of the wrong shape", rows: [biz(6, 1, { ein: "123456789" })], breaks: "OR COALESCE(b.entity_data->>'ein', '') NOT LIKE '__-_______'" },
-      { name: "a business with no incorporated month", rows: [biz(7, 1, { incorporated_date: null })], breaks: ["OR COALESCE(b.entity_data->>'incorporated_date', '') NOT LIKE '____-__%'", { piece: "OR b.age_months > (date_part('year', now())", with: "OR 1 = 0 AND b.age_months > (date_part('year', now())" }] },
+      { name: "a business with no incorporated month", rows: [biz(7, 1, { incorporated_date: null })], breaks: "OR COALESCE(b.entity_data->>'incorporated_date', '') NOT LIKE '____-__%'" },
       { name: "a business with no age in months", rows: [biz(8, 1, {}, { age_months: null })], breaks: "OR b.age_months IS NULL OR b.age_months < 0" },
-      { name: "a business older on paper than its incorporated month allows", rows: [biz(9, 1, { incorporated_date: "2025-06" }, { age_months: 400 })], breaks: "OR b.age_months > (date_part('year', now())" },
+      { name: "a business older on paper than its incorporated month allows", rows: [biz(9, 1, { incorporated_date: "2025-06" }, { age_months: 400 })], breaks: "OR CASE WHEN b.entity_data->>'incorporated_date' LIKE '____-__%'" },
     ],
   },
 

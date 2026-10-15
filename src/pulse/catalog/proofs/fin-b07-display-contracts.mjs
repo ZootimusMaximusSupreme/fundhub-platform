@@ -543,8 +543,10 @@ SELECT count(*)::int AS sample_count,
          OR COALESCE(b.entity_data->>'ein', '') NOT LIKE '__-_______'
          OR COALESCE(b.entity_data->>'incorporated_date', '') NOT LIKE '____-__%'
          OR b.age_months IS NULL OR b.age_months < 0
-         OR b.age_months > (date_part('year', now()) - CAST(substr(b.entity_data->>'incorporated_date', 1, 4) AS INTEGER)) * 12
-                          + (date_part('month', now()) - CAST(substr(b.entity_data->>'incorporated_date', 6, 2) AS INTEGER)))::int AS bad_count
+         OR CASE WHEN b.entity_data->>'incorporated_date' LIKE '____-__%'
+                 THEN b.age_months > (date_part('year', now()) - CAST(substr(b.entity_data->>'incorporated_date', 1, 4) AS INTEGER)) * 12
+                                   + (date_part('month', now()) - CAST(substr(b.entity_data->>'incorporated_date', 6, 2) AS INTEGER))
+                 ELSE false END)::int AS bad_count
   FROM businesses b
   LEFT JOIN clients cl ON cl.org_id = b.org_id AND cl.id = b.client_id
  WHERE b.org_id = $1::uuid AND b.entity_data->>'source' = 'soft_pull_approve'
