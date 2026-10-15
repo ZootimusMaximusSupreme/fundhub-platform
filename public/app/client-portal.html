@@ -2216,6 +2216,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (isNaN(d.getTime())) return String(iso);
     return d.toLocaleString();
   }
+  /* PAYMENTS TAB (launch pass R20 / CP-02). The paid list used to print the raw
+     database text, so a person read "147.00succeeded". fmtPayAmount puts the
+     dollar sign and the cents on it; fmtPayWhen is fmtWhen without the seconds.
+     Both stay on the Payments tab — the other fmtWhen callers are unchanged.
+     A value that already carries a "$" (the demo portal's sample) is left alone,
+     and a value that is not a number prints as it arrived, never as a guess. */
+  function fmtPayAmount(v) {
+    if (v == null || v === "") return "—";
+    var raw = String(v).trim();
+    if (raw.charAt(0) === "$") return raw;
+    var n = Number(raw.replace(/,/g, ""));
+    if (!isFinite(n)) return raw;
+    var body = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? "-$" : "$") + body;
+  }
+  function fmtPayWhen(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString(undefined, {
+      year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit"
+    });
+  }
   function scoreText(n) {
     return n == null || n === "" ? "—" : String(n);
   }
@@ -2585,12 +2608,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     } else if (Array.isArray(rows)) {
       html += rows.map(function (t) {
         var name = esc(t.product_name || "Payment");
-        var when = t.created_at ? fmtWhen(t.created_at) : "—";
-        var amt = t.amount_paid == null ? "—" : String(t.amount_paid);
+        var when = t.created_at ? fmtPayWhen(t.created_at) : "—";
+        var amt = fmtPayAmount(t.amount_paid);
         var st = t.status ? String(t.status) : "—";
         return '<div class="pay-row"><div><div class="pn">' + name +
           '</div><div class="pd">' + esc(when) + "</div></div>" +
-          '<div class="pv">' + esc(amt) + '<span class="paid-pill">' + esc(st) + '</span></div></div>';
+          '<div class="pv">' + esc(amt) + ' <span class="paid-pill">' + esc(st) + '</span></div></div>';
       }).join("");
       if (rows.length) anything = true;
     }
