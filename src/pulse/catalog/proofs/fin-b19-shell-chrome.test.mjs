@@ -239,7 +239,7 @@ test("brand paint sets the company colors, fonts and logo, and refuses any value
 
     // Values that are not plain are never written to the page's styles.
     const bad = await open({
-      ink: "red; background:url(x)", paper: "#12345", ramp: ["#111111", "#222222", "#333333", "#444444", "#555555"],
+      ink: "red", paper: "url(https://assets.example.test/x)", ramp: ["#111111", "#222222", "#333333", "#444444", "#555555"],
       display_face: "Evil;}", mono_face: "x".repeat(80), wordmark_url: "javascript:alert(1)",
     });
     await bad.waitForTimeout(400);

@@ -37,7 +37,7 @@ const SALES = {
     { key: "round_submitted", name: "Round Submitted", sort_order: 1, count: 3, amount: 12000, cards: [
       card("gus", "Gus Green", { entered_at: ago(1 * DAY), amount: 3000 }),
       card("bob", "Bob Baker", { owner: "Casey Reed", entered_at: ago(2 * DAY), amount: 9000 }),
-      card("eve", "Eve East", { entered_at: ago(7 * DAY), amount: null, approval_amount_missing: true }),
+      card("eve", "Eve East", { entered_at: ago(36 * HOUR), amount: null, approval_amount_missing: true }),
     ] },
     { key: "action_required", name: "Action Required", sort_order: 2, count: 1, amount: 2000, cards: [
       card("cara", "Cara Cole", { entered_at: ago(10 * DAY), amount: 2000 }),
@@ -297,16 +297,16 @@ test("the headline counts agree with the filter and its buttons are the same fil
   await proof.check(/^Headline: Longest wait link/, async () => {
     const link = page.locator("#hlNextLink");
     assert.equal(await link.isVisible(), true);
-    assert.equal((await link.innerText()).trim(), "Longest wait: Eve East — 7d in stage, Round Submitted",
-      "of the cards someone here must move, the one that waited longest (Eve, 7 days; Alice is 5)");
-    assert.equal(await link.getAttribute("href"), "#fh-card-card-eve");
+    assert.equal((await link.innerText()).trim(), "Longest wait: Alice Adams — 5d in stage, New Lead",
+      "of the cards someone here must move, the one that waited longest (Alice, 5 days; Eve is 36 hours, Finn 30 minutes)");
+    assert.equal(await link.getAttribute("href"), "#fh-card-card-alice");
     await link.click();
-    await waitFor(() => page.locator("#fh-card-card-eve").evaluate((el) => el.classList.contains("fh-spot")), "the card to be ringed");
+    await waitFor(() => page.locator("#fh-card-card-alice").evaluate((el) => el.classList.contains("fh-spot")), "the card to be ringed");
     // A filter that hides the card stops the jump being a control and says why.
     await openFilters(page);
     await pick(page, "#fWait", "client");
     assert.equal(await link.isHidden(), true, "the link is not drawn while its card is filtered out");
-    assert.match(await page.locator("#hlNextNote").innerText(), /This filter hides the longest wait: Eve East/);
+    assert.match(await page.locator("#hlNextNote").innerText(), /This filter hides the longest wait: Alice Adams/);
     await pick(page, "#fWait", "");
     assert.equal(await link.isVisible(), true, "and it comes back with the card");
   });

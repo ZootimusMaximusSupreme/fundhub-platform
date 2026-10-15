@@ -73,6 +73,12 @@ test("the five left-out rows are real map rows listed as not attached, each with
   for (const href of ["partner-galaxy.html", "galaxy.html", "ops-admin.html", "agent-editor.html", "automations.html", "journeys.html"]) {
     assert.ok(hidden.includes(`"${href}"`), `${href} is no longer on NAV_HIDDEN: its section head can show, attach the row`);
   }
+  // The same six are hidden a second time by the sidebar stylesheet, which has to move with NAV_HIDDEN.
+  const css = fs.readFileSync(path.join(ROOT, "public/app/crm-sidebar.css"), "utf8");
+  const cssHidden = css.match(/\.navitem:is\(([\s\S]*?)\) \{\s*display: none !important;/)[1];
+  for (const href of ["partner-galaxy.html", "galaxy.html", "ops-admin.html", "agent-editor.html", "automations.html", "journeys.html"]) {
+    assert.ok(cssHidden.includes(`[href="${href}"]`), `${href} is no longer hidden by crm-sidebar.css: its section head can show, attach the row`);
+  }
   // And the sidebar still lists each head with exactly those links.
   const html = fs.readFileSync(path.join(ROOT, "public/app/sidebar.fragment.html"), "utf8");
   for (const [section, links] of [["home", ["partner-galaxy.html"]], ["watch", ["galaxy.html", "ops-admin.html"]],
