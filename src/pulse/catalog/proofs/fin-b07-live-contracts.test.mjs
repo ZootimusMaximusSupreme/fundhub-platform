@@ -16,6 +16,7 @@ import {
   FIN_B07_LIVE_CASES,
   FIN_B07_LIVE_ROWS,
   FIN_B07_NOT_ATTACHABLE,
+  FIN_B07_PAGE_CONTRACTS,
   FIN_B07_PRACTICE_CASES,
   FIN_B07_RESULT_CONTRACTS,
 } from "./fin-b07-display-contracts.mjs";
@@ -28,13 +29,34 @@ const SCENARIO_TEXT = ["desk", "repair", "misc"]
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
 const keyOf = (c) => /display-result:([^\s*]+)/.exec(c.sql)[1];
 
-test("46 rows: 40 live checks, 4 practice tests, 2 that cannot be attached", () => {
+test("46 rows: 40 saved-result checks, 1 live page read, 4 practice tests, 1 that cannot be attached", () => {
   assert.equal(FIN_B07_RESULT_CONTRACTS.length, 40);
   assert.equal(FIN_B07_LIVE_ROWS.length, 40);
+  assert.equal(FIN_B07_PAGE_CONTRACTS.length, 1);
   assert.equal(FIN_B07_PRACTICE_CASES.length, 4);
-  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 2);
-  const keys = new Set([...FIN_B07_LIVE_ROWS, ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control])].map((r) => r.join("\0")));
-  assert.equal(keys.size, 44, "no row may be named twice");
+  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 1);
+  const pageRows = FIN_B07_LIVE_CASES.filter((c) => FIN_B07_PAGE_CONTRACTS.some((p) => p.control === c.control));
+  assert.equal(pageRows.length, 1);
+  const keys = new Set([
+    ...FIN_B07_LIVE_ROWS,
+    ...pageRows.map((c) => [c.sourceFile, c.surface, c.control]),
+    ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control]),
+  ].map((r) => r.join("\0")));
+  assert.equal(keys.size, 45, "no row may be named twice");
+});
+
+test("the live page read carries no SQL, names its reader, and its test file exists and names the lane", () => {
+  const [page] = FIN_B07_PAGE_CONTRACTS;
+  assert.equal(page.mode, "live-page");
+  assert.equal(page.page, "leads-list");
+  assert.equal(page.sql, null);
+  assert.ok(page.requirement.length > 40);
+  assert.match(page.control, /^Private leads list page/);
+  const held = FIN_B07_LIVE_CASES.find((c) => c.control === page.control);
+  assert.ok(held, "the page read must be one deep live case");
+  assert.deepEqual([...held.tests], ["src/pulse/coverage/fin-b07-leads-page.test.mjs"]);
+  assert.ok(fs.existsSync(path.join(ROOT, held.tests[0])));
+  assert.match(held.evidence, /gap-catalog-display\.mjs/);
 });
 
 test("every contract is one read-only statement that takes the company and answers sample_count and bad_count", () => {
@@ -76,13 +98,15 @@ test("every control is exactly one display row of the coverage map", () => {
   };
   const all = [
     ...FIN_B07_LIVE_ROWS,
+    ...FIN_B07_LIVE_CASES.filter((c) => FIN_B07_PAGE_CONTRACTS.some((p) => p.control === c.control))
+      .map((c) => [c.sourceFile, c.surface, c.control]),
     ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control]),
   ];
   for (const [file, surface, control] of all) {
     const found = rowsOf(file).filter((r) => r.surface === surface && r.control === control);
     assert.equal(found.length, 1, `${file} / ${surface} / ${control}`);
   }
-  const controls = FIN_B07_RESULT_CONTRACTS.map((c) => c.control);
+  const controls = [...FIN_B07_RESULT_CONTRACTS, ...FIN_B07_PAGE_CONTRACTS].map((c) => c.control);
   assert.equal(new Set(controls).size, controls.length, "a control may own one contract only");
 });
 
@@ -118,7 +142,7 @@ test("every contract has a scenario that runs it", () => {
     for (const t of c.tests) assert.ok(fs.existsSync(path.join(ROOT, t)), `${t} does not exist`);
     assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
   }
-  assert.equal(FIN_B07_DISPLAY_CASES.length, 44 - FIN_B07_ALREADY_DEEP.length);
+  assert.equal(FIN_B07_DISPLAY_CASES.length, 45 - FIN_B07_ALREADY_DEEP.length);
 });
 
 test("the rows left out of the live cases are exactly the ones the staff file already holds as deep cases", () => {

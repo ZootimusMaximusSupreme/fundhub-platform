@@ -122,6 +122,7 @@ export const FIN_B07_MISC_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cas
 export const FIN_B07_GATES_TEST = "src/pulse/catalog/proofs/fin-b07-page-gates.test.mjs";
 export const FIN_B07_LINK_TOKEN_TEST = "src/pulse/catalog/proofs/fin-b07-link-token.test.mjs";
 export const FIN_B07_SEARCH_TEST = "src/pulse/catalog/proofs/fin-b07-search.test.mjs";
+export const FIN_B07_LEADS_TEST = "src/pulse/coverage/fin-b07-leads-page.test.mjs";
 
 function contract(rowKey, requirement, key, body) {
   return Object.freeze({
@@ -186,6 +187,21 @@ export const FIN_B07_RESULT_CONTRACTS = Object.freeze(
   CONTRACTS.map(({ rowKey, ...rest }) => Object.freeze(rest)),
 );
 
+/**
+ * Generation 2: the private leads list page. No SQL: the page holds names and numbers and is git-excluded,
+ * so the lane GETs the live page (the address comes from the registry row that pings it, at run time) and
+ * judges five promises of the row. src/pulse/coverage/fin-b07-leads-page.mjs holds the read and the judge.
+ */
+export const FIN_B07_PAGE_CONTRACTS = Object.freeze([
+  Object.freeze({
+    control: ROWS.leads[2],
+    mode: "live-page",
+    page: "leads-list",
+    requirement: "The live page must open, tell search engines to keep it out, show the columns Name, Number, Follow up date, Response and Status in that order, hold nothing that can send data out, and keep edits in the browser.",
+    sql: null,
+  }),
+]);
+
 /** The exact map rows [sourceFile, surface, control] each live check is attached to. */
 export const FIN_B07_LIVE_ROWS = Object.freeze(CONTRACTS.map((c) => ROWS[c.rowKey]));
 
@@ -221,11 +237,13 @@ function scenariosFor(rowKey) {
 export const FIN_B07_ALREADY_DEEP = Object.freeze(["workQueue", "workRow", "markConfirmed", "repairRow", "bizFields"]);
 
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
-export const FIN_B07_LIVE_CASES = Object.freeze(
-  CONTRACTS
+export const FIN_B07_LIVE_CASES = Object.freeze([
+  ...CONTRACTS
     .filter((c) => !FIN_B07_ALREADY_DEEP.includes(c.rowKey))
     .map((c) => liveCase(ROWS[c.rowKey], [scenariosFor(c.rowKey), FIN_B07_LIVE_TEST])),
-);
+  // The leads page: a live GET, judged by its own test file.
+  liveCase(ROWS.leads, [FIN_B07_LEADS_TEST]),
+]);
 
 function practiceCase(rowKey, test) {
   const [sourceFile, surface, control] = ROWS[rowKey];
@@ -247,9 +265,5 @@ export const FIN_B07_NOT_ATTACHABLE = Object.freeze([
   Object.freeze({
     rowKey: "banksGate",
     reason: "public/app/money-banks.js draws the staff plan forms when a client_id is in the address (var staff = !!clientId), not when the person's role is staff. A signed-in client who types ?client_id= sees them, so the row's claim 'only staff see plan controls' is not true of the page. Only a product change (gate by role) makes it provable.",
-  }),
-  Object.freeze({
-    rowKey: "leads",
-    reason: "The page file public/leads/<32-hex>/index.html is excluded from git (.git/info/exclude). It exists only in the owner's main folder, so no fresh checkout, CI run or deployed bundle can read it, and a test of it would be green on one machine only. It leaves no saved result (edits live in the browser).",
   }),
 ]);

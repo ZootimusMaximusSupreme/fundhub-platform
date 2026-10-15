@@ -2,6 +2,7 @@
 // prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
+import { LIVE_PAGE_JUDGES } from "./fin-b07-leads-page.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -11,6 +12,8 @@ export const DISPLAY_TRACKING_CASES = Object.freeze(catalog.displayTrackingCases
 export const CHECK_IDS = Object.freeze(DISPLAY_TRACKING_CASES.map((entry) => entry.id));
 export const PASS_CAPABLE_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").length;
 export const UNMEASURED_CONTRACT_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "always-red").length;
+// A "live-page" contract has no SQL. The lane GETs the live page once and judges its shape.
+export const LIVE_PAGE_CONTRACT_COUNT = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "live-page").length;
 export const SQL_BATCHES = Object.freeze([
   ...new Set(DISPLAY_RESULT_CASES
     .filter((entry) => entry.contract.mode === "query")
@@ -43,6 +46,11 @@ export function judgeDisplayResult(entry, stats = null) {
       `${entry.surface} — ${entry.control}: ${entry.contract.requirement}`,
       `Add the missing exact input-to-result receipt for this control, then let the read-only pulse judge it.`,
     );
+  }
+
+  if (entry.contract.mode === "live-page") {
+    // gapChecks judges these from the live page. A bare call here has no page to read.
+    return result(entry.id, "skip", `${entry.control} was not read: it is judged from the live page.`);
   }
 
   const samples = Number(stats?.sample_count || 0);
@@ -107,6 +115,31 @@ async function retiredPageState(ctx = {}) {
   }
 }
 
+// A live-page contract: GET the page once (no body, redirects not followed, 5 second limit) and hand what
+// came back to its judge. A read that cannot be made is skip with the reason, never PASS.
+async function livePageRow(entry, ctx = {}) {
+  const judge = LIVE_PAGE_JUDGES[entry.contract.page];
+  if (!judge) return skipped(entry, "no judge is named for this live page");
+  const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
+  if (typeof fetchImpl !== "function") return skipped(entry, "this run has no GET client");
+  const path = judge.path(ctx.registry);
+  if (!path) return skipped(entry, "the registry does not name exactly one page for it");
+  let origin;
+  try {
+    origin = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
+  } catch {
+    return skipped(entry, "the base address is not a web address");
+  }
+  try {
+    const response = await fetchImpl(`${origin}${path}`, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
+    const status = Number(response?.status);
+    const html = status === 200 ? await response.text() : "";
+    return judge.judge(entry, { status, html, robotsHeader: response.headers?.get?.("x-robots-tag") || "" });
+  } catch (error) {
+    return skipped(entry, error);
+  }
+}
+
 export async function gapChecks(ctx = {}) {
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
@@ -115,11 +148,17 @@ export async function gapChecks(ctx = {}) {
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
   };
+  // One GET per live-page contract, with or without a database (the page is read over the web).
+  const pages = new Map();
+  for (const entry of DISPLAY_TRACKING_CASES) {
+    if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx));
+  }
   const run = reader(ctx);
   if (!run) {
-    return DISPLAY_TRACKING_CASES.map((entry) => (
-      entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judge(entry)
-    ));
+    return DISPLAY_TRACKING_CASES.map((entry) => {
+      if (pages.has(entry.id)) return pages.get(entry.id);
+      return entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judge(entry);
+    });
   }
 
   const bySql = new Map();
@@ -133,6 +172,7 @@ export async function gapChecks(ctx = {}) {
   }
 
   return DISPLAY_TRACKING_CASES.map((entry) => {
+    if (pages.has(entry.id)) return pages.get(entry.id);
     if (entry.contract?.mode !== "query") return judge(entry);
     const stats = bySql.get(entry.contract.sql);
     if (stats?.error) return skipped(entry, stats.error);

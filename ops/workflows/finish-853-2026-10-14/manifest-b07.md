@@ -1,20 +1,37 @@
 # Batch 07 manifest: Specialist desk, lenders Apply, vault, Plaid, soft pull, agreements, social
 
 Branch `fin/b07`, built from `fin/base` (2f4f574a0). Nothing was pushed or merged. Tests and catalog data only. No product file was changed.
-Generation 1 of at most 3. Lane `gap-catalog-display`, 46 rows.
+Generation 2 of at most 3 (generation 1 left 2 rows open; generation 2 challenged both). Lane `gap-catalog-display`, 46 rows.
+
+## Generation 2: what changed
+
+Both leftover rows were challenged by reading the real page, the real handler and the real registry.
+
+- **Leads list page: no longer "not attachable". Now a live check.** Generation 1 said no checkout can read the
+  file because git excludes it. That is true of the file, but the page is live and the registry already names its
+  address (`SHIPPED_OUTSIDE_GIT` and the `public_static` row in `src/pulse/registry.mjs`; the morning pulse pings
+  it). So the lane GETs the live page once and judges five promises of the row: it opens, it says noindex, its
+  columns are Name, Number, Follow up date, Response, Status, nothing in it can send data out, and edits are kept
+  in the browser (localStorage). It goes red when any of these breaks, and red when the page is gone. It never
+  returns anything the page holds. Measured live on 2026-10-14: the real page PASSES all five (one GET, about 1
+  second). Details in "The leads page read" below.
+- **Banks page gate: the reason stands, and is now measured, not just read.** See "Not attachable".
+
+Open for this batch: 2 before generation 2, 1 after. Whole count 809 to 808.
 
 ## The number
 
 | | Rows |
 |---|---|
 | Rows in this batch | 46 |
-| Open (NOT_PROVED) before | 46 |
-| Open after | 2 |
-| Live checks | 40 |
+| Open (NOT_PROVED) before generation 1 | 46 |
+| Open at the start of generation 2 | 2 |
+| Open after | 1 |
+| Live checks (saved-result SQL, 40; live page read, 1) | 41 |
 | Practice tests | 4 |
-| Not attachable (exact reason below) | 2 |
+| Not attachable (exact reason below) | 1 |
 
-Measured with `node scripts/pulse/count-not-proved.mjs` and the batch file: the four lanes, offline, stub fetch. The whole count went 853 to 809 on this branch (44 fewer, all in `gap-catalog-display`).
+Measured with `node scripts/pulse/count-not-proved.mjs` and the batch file: the four lanes, offline, stub fetch. The whole count went 853 to 808 on this branch (45 fewer, all in `gap-catalog-display`).
 
 ## What each row ended as
 
@@ -65,7 +82,38 @@ Measured with `node scripts/pulse/count-not-proved.mjs` and the batch file: the 
 | soft-pull-approve.html — Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner | live-check | fin-b07-business-fields: every soft_pull_approve business has name, street, city, state, ZIP, an EIN NN-NNNNNNN, an incorporated month and an age not over its age today. Replaces the always-red gap contract. |
 | staff-teams.html — Editor 'Employment agreements' list and 'Open signed / Open' (downloads the PDF) | live-check | fin-b07-agreements: every staff agreement has a real staff member, a file once sent, and for signed ones a signed time, signer and an existing signed copy. |
 | shell.js chrome (loaded by s — Search button and Cmd/Ctrl+K: global CRM search (clients, contracts, documents, conversati | practice-test | fin-b07-search.test.mjs: the real handler: every group statement carries the session company in its WHERE and as $1, partner/affiliate/client refused before any read, empty term reads nothing, wildcards escaped, a failed group is not a 200. |
-| page:leads/<32-hex>/index.ht — Private leads list page (noindex, secret folder name): a local table with Name, Number, Fo | not-attachable | public/leads/<32-hex>/index.html is excluded from git (.git/info/exclude) and exists only in the owner's main folder; no checkout, CI run or deployed bundle can read it, and the page keeps edits in the browser only, so there is no saved result either. |
+| page:leads/<32-hex>/index.ht — Private leads list page (noindex, secret folder name): a local table with Name, Number, Fo | live-check | fin-b07-leads-page.mjs, run by the display lane: one GET of the live page (address from the registry). PASS only if it opens, says noindex, has the five columns in order, holds no way to send data out, and keeps edits in localStorage. Red when any breaks or the page is gone; skip when the read fails. Judge tested in fin-b07-leads-page.test.mjs. |
+
+## The leads page read (generation 2)
+
+Why it is a live check and not a practice test: the file is git-excluded (it holds real names and numbers), so a
+test of the file can never run on a checkout. The page that matters is the one the server hands out, and that
+can be read every morning.
+
+- **Address.** `leadsPagePath()` takes it from the one `public_static` registry row whose file starts with
+  `leads/`. If the registry has no row or two rows, the check is `skip` with that reason. The folder name is not
+  copied into any new tracked file (it is already in `src/pulse/registry.mjs`).
+- **Read.** One GET, no body, redirects not followed, 5 second limit, `ctx.fetchImpl` and `ctx.baseUrl` the same
+  way the retired-page read uses them. The GET sits in `gap-catalog-display.mjs`, which is already on the reviewed
+  read-only list in `src/lib/no-unfenced-transmit.test.mjs`, so that list was not edited. The new file has no
+  network call of its own.
+- **Judge.** `judgeLeadsHtml()` is pure. Five promises, each named in plain words in the detail line.
+  "Nothing can send data out" means none of these is present: fetch, XMLHttpRequest, sendBeacon, WebSocket,
+  EventSource, run-time import, `new Image`, a script-set `src`, a script-created script/img/iframe/link/form tag,
+  a form, a frame/embed/object, a script file, a file loaded from another address, a meta refresh. A same-address
+  file, a data image, a plain link and a `tel:` link are not a send. HTML comments are ignored.
+- **Statuses.** 200 and all five hold: PASS. 200 and one breaks: FAIL, naming which. 404 or 410: FAIL (gone). 3xx:
+  FAIL (the page moved). 401, 403, 429, 5xx, no answer, no GET client, bad base address, no single registry row:
+  skip with the reason. A read that failed is never green.
+- **Privacy.** The page text is judged and thrown away. No detail line or fix line repeats anything it holds
+  (a test plants a marker word in the stand-in page and asserts it never comes back).
+- **Measured live, 2026-10-14**, read only, only the shape printed: the real page answers 200, has
+  `noindex,nofollow,noarchive` in its robots tag, one table with the five headings in order, one inline script,
+  no outside address, none of the send patterns, and `localStorage` twice. The judge says PASS.
+
+The contract is a new mode, `live-page`, next to `query` and `always-red`, in the same registry
+(`FIN_B07_PAGE_CONTRACTS`). It has no SQL. The lane judges it before any database work, so it also runs when a
+run has no database.
 
 ## How a live check works here (so a reviewer can challenge it)
 
@@ -76,6 +124,27 @@ Each live check is one read-only SQL text (in `fin-b07-sql-desk.mjs`, `fin-b07-s
 - The test kit reads the real table and column names from `db/schema` + `db/migrations` (`fin-b07-sql-kit.mjs`). A stand-in table can only hold real columns, and `fin-b07-live-contracts.test.mjs` checks every `alias.column` in every contract against that schema.
 - Every scenario (`fin-b07-case-runner.mjs`) does four things: a right result is counted and none is wrong; no rows reads 0 of 0; one wrong row is counted as exactly the expected number wrong; and the same SQL with the named clause switched off reads that wrong row clean. That last step is the "break it on purpose, see it red, put it back" step, done inside the test for every wrong-result case (145 cases across the 40 checks). Another company's wrong row is never counted.
 - File-level breaks, by hand, restored with `git checkout`: closed-stamp clause dropped from the Canceled check (red), in_transit ten-day clock removed (red), Plaid "saved no account" clause removed (red).
+
+### The leads page judge, broken on purpose (generation 2)
+
+Each break was made alone in the judge or the lane, the two test files run, then the file put back from a copy.
+Every break turned the tests red.
+
+| Break | Result |
+|---|---|
+| noindex check always true | red (4) |
+| column check always true | red (3) |
+| send check always true | red (2) |
+| localStorage check always true | red (3) |
+| 404 or 410 not red | red (2) |
+| redirect not red | red (2) |
+| a non-200 answer judged as a page | red (2) |
+| lane stops routing live-page rows (no database, and with a database) | red (13, and 1) |
+| lane sends POST instead of GET | red (2) |
+| lane follows redirects | red (2) |
+| lane drops the 5 second limit | red (1) |
+| lane ignores the X-Robots-Tag header | red (1) |
+| fetch pattern, meta refresh pattern, comment stripping, robots tag matched anywhere, outside-address pattern removed (first round, judge only) | red (1 to 2 each) |
 
 ### Practice tests broken on purpose
 
@@ -101,6 +170,8 @@ Every break was restored with `git checkout -- <file>`; `git status` showed only
 - `src/pulse/catalog/proofs/fin-b07-live-contracts.test.mjs` (shape guard: 8 tests)
 - `src/pulse/catalog/proofs/fin-b07-live-cases-desk.test.mjs` (111 tests), `fin-b07-live-cases-repair.test.mjs` (90), `fin-b07-live-cases-misc.test.mjs` (64)
 - `src/pulse/catalog/proofs/fin-b07-page-gates.test.mjs` (5), `fin-b07-link-token.test.mjs` (10), `fin-b07-search.test.mjs` (6)
+- generation 2: `src/pulse/coverage/fin-b07-leads-page.mjs` (address lookup, judge, no network call) and
+  `src/pulse/coverage/fin-b07-leads-page.test.mjs` (16 practice tests of the judge and of the lane wiring)
 - this manifest
 
 ## Shared lines I touched (the integrator must merge these)
@@ -112,11 +183,19 @@ Every break was restored with `git checkout -- <file>`; `git status` showed only
 | `scripts/pulse/compile-catalog.mjs` | one import line; `staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B07_LIVE_CASES]` |
 | `src/pulse/catalog/generated.json` | recompiled. Recompile after merging; do not hand-merge |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | 40 to 79 contracts (+40 mine, -1 removed gap), pass-capable 27 to 67, unmeasured 13 to 12, SQL batches 27 to 67, shipped-bundle cases 40 to 79. Sum the other batches' changes and take the number the test prints |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 632 (-40 here) |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 631 (-41 here: 40 in generation 1, 1 in generation 2) |
+| `src/pulse/catalog/proofs/display-saved-result.mjs` (generation 2) | import now `{ FIN_B07_PAGE_CONTRACTS, FIN_B07_RESULT_CONTRACTS }` and one added line `...FIN_B07_PAGE_CONTRACTS,` after `...FIN_B07_RESULT_CONTRACTS,` |
+| `src/pulse/coverage/gap-catalog-display.mjs` (generation 2) | one import (`LIVE_PAGE_JUDGES`), one export (`LIVE_PAGE_CONTRACT_COUNT`), a 4 line `live-page` branch in `judgeDisplayResult` (returns skip when called bare), a new `livePageRow()` helper above `gapChecks`, a pre-pass in `gapChecks` and two `pages.has(entry.id)` lines in its two returns |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` (generation 2) | 79 to 80 contracts, 3 modes (query 67, always-red 12, live-page 1), PASS count 67 to 68 in the lane test, bundle test 79 to 80; the stand-in GET client answers the leads address with a page that keeps its promises (`LEADS_PAGE`). When summing with other batches: take +1 contract and +1 PASS |
+| `src/pulse/catalog/proofs/fin-b07-live-contracts.test.mjs` (mine) | counts for 40 + 1 + 4 + 1 |
 
 Five of my rows (work queue table, work row, Mark confirmed, repair row, business fields) are already deep cases in `display-batch-staff-ui.mjs`. They are not repeated in `FIN_B07_LIVE_CASES`: the contract alone turns them live. `fin-b07-live-contracts.test.mjs` keeps `FIN_B07_ALREADY_DEEP` equal to the staff file.
 
 ## Product findings (nothing fixed)
+
+Generation 2 added none. The leads page passes every promise the row makes. One note: it is shipped from outside
+git (the Mac's `public/leads/` folder, or the `PRIVATE_LEADS_PAGE_B64` secret in `ship.yml`), so a ship from a
+runner that lacks the secret would drop it; the new check would go red with "the live page is gone" in that case.
 
 1. `src/handlers/inquiry-gate.mjs` (`upsertBureauCase`) writes `case_status = Queued` or `Blocked` over an existing ACTIVE case, including an `In Progress` case that was already mailed. `createCase` documents this exact hazard ("would tell the desk to send a letter that is already in the mail") and guards it; this UPDATE does not. The Send live check goes red on a mailed case reading Queued.
 2. `setStatus` (Set status button) with a removed/confirmed/deleted/cleared word sets `confirmed_at` but leaves `is_open = true` and `cleared_at` null. Migration 143 says `is_open` is "False once Cleared/Removed". The row is still counted in "Still open" and its case never completes. The Mark confirmed live check goes red on such a row.
@@ -132,16 +211,48 @@ Five of my rows (work queue table, work row, Mark confirmed, repair row, busines
 ## Not attachable
 
 - `money-banks.html` Page gate: finding 5. A test that asserted the row's claim would be false. The server half ("a client can never change the plan") already has a test in `src/http/money-banks.test.mjs` and is not this row.
-- Leads list page: the file is excluded from git. The owner would have to commit it (or move it under a tracked path) before any test can read it. It also leaves no saved result (edits live in the browser).
+  Generation 2 re-read the page and the server and then measured it: with the real `money-banks.js` loaded in a
+  stand-in window whose stored role is `client` and whose address holds `?client_id=<uuid>`, the page asks
+  `/api/money/banks?client_id=<uuid>` and paints 5 staff forms ("Staff only" blocks) on the sample file; with no
+  `client_id` it paints none. The real server (`api/money/banks.mjs`, `scope()`) answers a client session with
+  its own file and never reads the address, so the page gets a 200 and shows the controls. A save would be
+  refused 403 ("Only Fundhub staff can change the bank plan."), so no data is at risk, but the row's words "only
+  staff see plan controls" are false of the page. The page's own header comment says "a client never does". A
+  live check could only read the page script and would be red forever; that is the always-red gap this row
+  already is. The fix is one product change: draw the staff forms by role, not by address.
+- Leads list page: no longer in this list. See "The leads page read".
 
 ## Risks for the integrator
+
+- **Generation 2, the leads page read.** It adds one GET (5 second limit) to the display lane, before the SQL
+  statements. It reads a page that holds private names and numbers: the body is judged in memory and never
+  returned or logged, and the pulse already pings the same address every morning. The first live run is a real
+  PASS (measured today). It goes red if the page is gone (a ship from a runner without `PRIVATE_LEADS_PAGE_B64`),
+  loses noindex or a column, gains a way to send data out, or stops using localStorage. It reads `skip`, never
+  green, when the read fails. Its source is a tiny new mode (`live-page`) on the existing contract registry:
+  anyone summing guard numbers across batches takes +1 contract and +1 PASS in `gap-catalog-display.test.mjs`.
 
 - **First-run reds are expected, and real.** Findings 1, 2 and 3 will show as reds the first time the lane reads live data, if such rows exist in the last 60 days. That is the point of the check; nobody should read them as a regression of this batch.
 - **Not run against live data.** No database access was used (brief). The 40 SQL texts were run only on stand-in rows in SQLite. They were written with Postgres types in mind (casts under `CASE`, `::text` on uuids, `bytea` only through `length()`), and every table and column was checked against the migrations. A Postgres-only mistake would show as a `skip` ("was not read") on the morning report, not as a false PASS.
 - **Lane time.** 40 more statements run one after another in the display lane. Each is a count over a windowed table; none was timed against production.
 - `display-proof-cases.test.mjs` "the focused proof test runs every executable test named by every case" now also runs 7 more files (three scenario files, the shape guard, and three practice files, one of them in Chromium through the S4 harness and its queue).
 
-## Commands run
+## Commands run (generation 2 first, then generation 1)
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` and the batch-07 intersection, before compile | 809 open in all, 2 of the 46 batch rows open |
+| `npm run pulse:catalog`, then the same count | 808 open in all, 1 of the 46 open (the Banks page gate) |
+| `node scripts/pulse/compile-catalog.mjs --check` | catalog current |
+| one real GET of the live leads page through `gapChecks({})` (read only; only status and the five promises printed) | PASS, 1.1 seconds |
+| `node --test src/pulse/coverage/fin-b07-leads-page.test.mjs` | 16 of 16 pass |
+| the judge and lane broken on purpose, 25 breaks, one at a time (tables above) | every one red; files restored; `git status` shows only intended changes |
+| `node --test src/pulse/coverage/gap-catalog-display.test.mjs src/lib/no-unfenced-transmit.test.mjs` | pass (the fence test first failed on the new file because it had its own GET; the GET moved into the lane, which is already on the reviewed list) |
+| `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/na-conditions.test.mjs src/lib/no-unfenced-transmit.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/coverage/fin-b07-leads-page.test.mjs src/pulse/catalog/proofs/fin-b07-*.test.mjs` (all but the long focused proof test) | 437 tests, 437 pass, 0 fail, 0 skipped |
+| `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 2 of 2 pass (red count 631) |
+| `npm run lint` | 3577 files and inline scripts parse clean |
+
+Generation 1 commands:
 
 Measured on this Mac while other builders ran browser suites at the same time (load average 16 to 40).
 

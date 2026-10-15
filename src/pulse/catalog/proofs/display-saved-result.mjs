@@ -2,7 +2,7 @@
 // the named control to a durable receipt or to the exact saved rows it changes.
 // If that link does not exist, the contract stays deliberately red.
 
-import { FIN_B07_RESULT_CONTRACTS } from "./fin-b07-display-contracts.mjs";
+import { FIN_B07_PAGE_CONTRACTS, FIN_B07_RESULT_CONTRACTS } from "./fin-b07-display-contracts.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -291,6 +291,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   gap("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "The screen hardcodes Client and Rule version as dashes, so no saved-row read can prove this named table displays correct values."),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
   ...FIN_B07_RESULT_CONTRACTS,
+  ...FIN_B07_PAGE_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));
