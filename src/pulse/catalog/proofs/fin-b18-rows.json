@@ -1,0 +1,33 @@
+{
+ "fin-b18-money-pages.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money (current), Accounts, Credit, Connections, Payments, Setup (6 links)",
+    "Try again (button on the error panel)"
+   ]
+  },
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money-transfers.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money, Next steps, Plan, Accounts, Payments, Transfers, Setup (7 links to /app/financeos.html#tab)",
+    "Try again (button on the error panel)",
+    "What happened (details toggle: ledger events in words)"
+   ]
+  },
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money-vault.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money, Accounts, Credit, Applications, Funding papers (current), Connections, Payments, Setup (8 links)",
+    "Staff: Cancel (closes an open accept/reject/sort form)",
+    "Try again (button on the error panel)"
+   ]
+  }
+ ]
+}
