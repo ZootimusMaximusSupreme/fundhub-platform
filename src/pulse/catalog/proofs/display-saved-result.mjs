@@ -2,6 +2,8 @@
 // the named control to a durable receipt or to the exact saved rows it changes.
 // If that link does not exist, the contract stays deliberately red.
 
+import { FIN_B04_RESULT_CONTRACTS } from "./fin-b04-display-results.mjs";
+
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
 const TRACKED_CONTROL_KINDS = new Set([
@@ -279,7 +281,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
   gap("Contract cell: Void button (asks for a reason in a prompt; owner/admin only)", "The pulse needs a void receipt containing the contract id, submitted reason, actor, and saved void state."),
   query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
-  gap("Held-for-quiet-hours result: text deferred to the next window and the words stay in the box", "The saved message has a future schedule but no durable field saying quiet hours caused it, so the exact deferred outcome cannot be proved."),
   query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
@@ -289,6 +290,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   gap("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "The screen hardcodes Client and Rule version as dashes, so no saved-row read can prove this named table displays correct values."),
   gap("Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner", "The pulse needs the soft-pull request id and exact submitted business array to compare each field with the saved business rows."),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
+  ...FIN_B04_RESULT_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));
