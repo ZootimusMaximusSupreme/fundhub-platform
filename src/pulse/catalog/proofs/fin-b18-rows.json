@@ -96,5 +96,19 @@
     "Sky canvas: click empty space or press Escape to pull back; panel close button (esc)"
    ]
   }
+ ],
+ "fin-b18-pipeline.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/pipeline.html",
+   "controls": [
+    "Card: hover tooltip (last activity from the card footer)",
+    "Clear all (button in the filter panel)",
+    "Clock (Arizona time) and LIVE pill in the header",
+    "Drawer: Open full file link (client-control-panel.html?id=)",
+    "Filter button (opens the panel; count of active filters)",
+    "Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage)"
+   ]
+  }
  ]
 }
