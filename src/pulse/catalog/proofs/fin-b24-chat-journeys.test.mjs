@@ -191,7 +191,11 @@ test("chat/messages POST internal refuses yourself, a person outside the company
   assert.equal(put.status, 405);
   const client = await hit(chatMessages, { account: { kind: "client", clientId: "c1000000-0000-4000-8000-000000000001" }, method: "POST", body: { kind: "internal", peer_staff_id: PEER_ID, body: "hi" }, rules: world.rules });
   assert.equal(client.status, 403, "a client login never reaches the staff widget");
+  assert.equal(client.body.message, "this endpoint serves staff", "turned away at the sign-in gate itself, not by a later check");
   assert.equal(world.inserts.length, 0);
+  const partner = await hit(chatMessages, { account: { kind: "partner", partnerId: "9a000000-0000-4000-8000-000000000001" }, rules: world.rules });
+  assert.equal(partner.status, 403, "a partner login never reaches the staff widget");
+  assert.equal(partner.body.message, "this endpoint serves staff");
 });
 
 /* ── chat/ask: platform help or company knowledge, staff only ────────────── */

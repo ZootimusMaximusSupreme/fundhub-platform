@@ -1,7 +1,11 @@
 # Batch 24 manifest — staff doors (route lane, 40 rows)
 
 Branch `fin/b24`, built from `fin/base` at `2f4f574a0`. Nothing was pushed or merged.
-Lane: `gap-door-batch-routes`. Generation 1 of at most 3. Product code changed: none.
+Lane: `gap-door-batch-routes`. Product code changed: none.
+
+Two passes are on this branch. The first pass (commit `e84d7b749`) wrote the 99 handler tests. The second pass
+(this commit) re-measured the numbers, then broke every refusal inside the 36 handlers one at a time and listed the
+ones no test noticed. It added 19 tests for the ones inside a row's claim (see "Second pass" below).
 
 ## Numbers
 
@@ -18,6 +22,10 @@ All 39 attached rows are **practice tests**: the real `api/` handler, fake data,
 answers by the conditions the SQL text names. They are not live checks. A live check for a route would be a new
 read-only gap lane over the saved results; none was built here. Every test was broken on purpose and went red
 (see "Break it on purpose").
+
+The "Test file" column names the main file. Every row also runs `fin-b24-front-guards.test.mjs` or
+`fin-b24-more-guards.test.mjs` when the second pass added a refusal test for that door (the bound list in
+`fin-b24-door-contracts.mjs` is the exact record).
 
 | Row (surface) | Outcome | Test file | What the test judges |
 |---|---|---|---|
@@ -88,7 +96,19 @@ or make the door return a county. The guard test pins that this row stays red.
 - `src/pulse/catalog/proofs/fin-b24-marketing-writes.test.mjs` (13): write-now, flywheel approve, campaign, run, spend-read, tweak
 - `ops/workflows/finish-853-2026-10-14/manifest-b24.md` (this file)
 
-99 tests in the 11 test files. No new file is over 700 lines.
+- `src/pulse/catalog/proofs/fin-b24-front-guards.test.mjs` (16, second pass): the refusal that stands in front of each door.
+  A login that names no company is turned away before any row is read or any vendor is asked (13 doors:
+  agent-call, adintel/board, clickfunnels-connect, clickfunnels-sync, youtube-connect, youtube-sync, content/tiles,
+  documents-download, content/welcome-video, inquiry, lender-observations, journeys/run, chat/messages), and three
+  doors that do work answer a read with 405 (clickfunnels-sync, youtube-connect, journeys/run).
+- `src/pulse/catalog/proofs/fin-b24-more-guards.test.mjs` (2, second pass): welcome-video says the signing key is
+  not set up (503) on the player's request, and dashboard/kpis maps a refused value to 400 and a real fault to 500.
+
+118 tests in the 13 test files (99 first pass, 19 second pass). No new file is over 700 lines.
+
+Edited in the second pass: `fin-b24-staff-reads.test.mjs` (+1 test: ad-videos with no company, now 10 tests),
+`fin-b24-chat-journeys.test.mjs` (the client login case now also checks the refusal came from the sign-in gate, and
+a partner login is added), `fin-b24-door-contracts.mjs` (binds the new files and titles to 16 entries).
 
 ## Shared lines touched (integrator: please merge these)
 
@@ -104,6 +124,30 @@ or make the door return a county. The guard test pins that this row stays red.
 
 Samples I picked (`route:read/message-templates`, `route:read/messages`) belong to other route batches (b26) and
 may leave the red lane when those merge. If they do, the integrator re-picks a row that is still red.
+
+## Second pass: what the first pass left open
+
+Method. For every handler of this batch: (a) mutate each class of refusal in all 36 handlers at once (no company,
+role gate, principal kinds, wrong verb) and read which test titles went red; (b) then mutate one guarded refusal per
+handler per round (115 sites, 15 rounds) with `if (cond)` turned into `if (false && (cond))`, and ask whether a test
+named for that door went red. Results of (b): 100 of 115 went red, 15 did not. Each of the 15:
+
+| Guard that no test noticed | Verdict |
+|---|---|
+| `welcome-video`: player asks for bytes and the signing key is not set up (503, not the 404 of a forged link) | gap, closed: `fin-b24-more-guards.test.mjs`, red when the branch is removed |
+| `dashboard/kpis`: refused value is a 400, anything else a 500 | gap, closed: `fin-b24-more-guards.test.mjs`, red when the branch is removed |
+| `marketing/flywheel/run`: `if (!runner)` (409 not built) | **unreachable today**: steps 1 and 2 (the only steps with no runner) are handed to `STAGE_HANDLERS` first. A test would have to remove a handler from a frozen module constant. Left |
+| `adintel/board`: `err.code === "BAD_REQUEST"` to 400 | **unreachable today**: nothing under `src/` throws that code on this path. Left |
+| `chat/ask`: `!canQueryBrain(staff.role)` | **redundant today**: every role that passes the staff role gate has at least one brain tier, so this line never fires; the retrieval step refuses the same way. Left |
+| `content/tiles`: six POST save refusals (unknown action, nothing to save, no code, no name, bad price, row not found, x2) | **not this row**: the row is the Content screen READ. The save is its own catalog row (`route:content/tiles`, "Content screen save"), batch 08 |
+| `inquiry`: `!isUuid(caseId)` and the BureauCallError mapping | **not this row**: both belong to `POST action=launch`, its own catalog row (still open, not in this batch) |
+| `agent-call`: placed call with no call id | **not this row**: the row is `action=check` and never dials |
+
+The first class sweep found a pattern: for 12 of the 15 doors with an explicit "no company" refusal, no test noticed
+when it was removed (only chat/ask, dashboard/kpis and, after the first fix here, ad-videos). It is defensive today
+because a real staff session always carries a company, but the shared dashboard key and a future sign-in kind do not.
+Each is now one test. Three doors that do work (clickfunnels-sync, youtube-connect, journeys/run) had no test for the
+wrong verb; each now has one.
 
 ## Break it on purpose
 
@@ -137,7 +181,7 @@ Four breaks stayed green on purpose, and each is an equal outcome (the layer nex
 ## Commands run
 
 - `node scripts/pulse/count-not-proved.mjs`: before 853 (40 of this batch open), after 814 (1 of this batch open).
-- `node --test src/pulse/catalog/proofs/fin-b24-*.test.mjs`: 99 of 99 pass, three runs in a row.
+- `node --test src/pulse/catalog/proofs/fin-b24-*.test.mjs`: 118 of 118 pass (99 of 99 before the second pass).
 - `npm run pulse:catalog`: ran; `generated.json` rebuilt.
 - `node --test` over `src/pulse/catalog/*.test.mjs`, `src/pulse/catalog/proofs/*.test.mjs`,
   `src/pulse/coverage/gap-catalog*.test.mjs` and `src/pulse/coverage/gap-door-batch*.test.mjs`: 1,782 tests,
@@ -145,7 +189,7 @@ Four breaks stayed green on purpose, and each is an equal outcome (the layer nex
   - "route recipes use route methods" named `route:ad-videos` as its sample. Fixed (see shared lines); re-run passes.
   - "every test named by a flow proof passes" lost `src/sales/closer-deck.test.mjs` to the 30 s inner timeout on
     a loaded Mac. Same failure the earlier manifests recorded. Run alone: 27 of 27 pass.
-- `npm run lint`: 3,574 files parse clean.
+- `npm run lint`: 3,576 files parse clean.
 - Not run: `npm run pulse:prove` (it reads the live database; this batch is told to stay off it) and any
   `.pg.test.mjs` (there is no local Postgres on this Mac).
 

@@ -226,6 +226,13 @@ test("ad-videos lets in owner and admin only; the sales floor never sees unrelea
   await assertRoleGate(adVideosHandler, ["owner", "admin"], {});
 });
 
+test("ad-videos refuses a login that names no company and reads nothing for it", async () => {
+  const noCompany = await hit(adVideosHandler, { staff: { org_id: null }, rules: takeRules() });
+  assert.equal(noCompany.status, 403);
+  assert.equal(noCompany.body.error, "forbidden");
+  assert.equal(sqlCalls(noCompany, /FROM ad_videos/).length, 0, "no take is read when there is no company to read for");
+});
+
 /* ── dashboard/kpis: company money and funnel numbers ─────────────────────── */
 
 const KPI_RULES = [
