@@ -145,22 +145,34 @@ test("the morning audit's question is true on the real pages, for every step", a
 
 // ── a page that carries the step ─────────────────────────────────────────────
 
-const CLIMATE_BREAKS = Object.freeze({
-  "#1-headline": ["See how many banks in our book fit your state", "Get your number"],
-  "#3-state-click": ["not a decision about you", "wider picture", "Pick a state"],
-  "#4-form": ["climate-match", "climate_match", "Show my number", "website:climate"],
-  "#6-gate": ["Business Financial Assessment", "Get the full list", "more names are in the full list", "/api/public/optimize"],
+// Each step's words and doors, written out here on purpose: this list is the test's own, so a marker dropped
+// from the module's list is a red test, not a shorter loop.
+const EXPECTED = Object.freeze([
+  { needle: "#1-headline", page: CLIMATE, markers: ["See how many banks in our book fit your state", "Get your number"] },
+  { needle: "#3-state-click", page: CLIMATE, markers: ["not a decision about you", "wider picture", "Pick a state"] },
+  { needle: "#4-form", page: CLIMATE, markers: ["climate-match", "climate_match", "Show my number", "website:climate"] },
+  { needle: "#6-gate", page: CLIMATE, markers: ["Business Financial Assessment", "Get the full list", "more names are in the full list", "/api/public/optimize"] },
+  { needle: "#2-education-only", page: CONSULTING, markers: ["education for business operations", "education only", "not a lender"] },
+  { needle: "#3-three-prices", page: CONSULTING, markers: ["$5,000", "$10,000", "Operations Foundations", "Operations Systems", "Operations Intensive"] },
+  { needle: "ops-admin outbound mail panel", page: OPS, markers: ["alert_email", "alertEmail", "alert-email", "alert address", "alert email"] },
+]);
+
+test("each step's list of words and doors is exactly the one written down here", () => {
+  assert.equal(EXPECTED.length, 7);
+  for (const { needle, markers } of EXPECTED) {
+    assert.deepEqual([...claimFor(needle).markers].sort(), [...markers].sort(), needle);
+  }
 });
 
-test("every marker of every climate step turns only its own row back to not proved, and names the marker", async () => {
-  for (const [needle, markers] of Object.entries(CLIMATE_BREAKS)) {
+test("every word and door of every step turns only its own row back to not proved, and names it", async () => {
+  for (const { needle, page, markers } of EXPECTED) {
     for (const marker of markers) {
-      const map = await rows(appended(CLIMATE, `<p>${marker}</p>`));
+      const map = await rows(appended(page, `<p>${marker}</p>`));
       assert.equal(statusOf(map, needle), "NOT_PROVED", `${needle}: ${marker}`);
-      assert.ok(map.get(idFor(needle)).detail.includes(JSON.stringify(marker)), marker);
-      const others = Object.keys(CLIMATE_BREAKS).filter((k) => k !== needle);
-      for (const other of others) assert.equal(statusOf(map, other), "na", `${other} is untouched by ${needle}`);
-      assert.equal(statusOf(map, "#2-education"), "na");
+      assert.ok(map.get(idFor(needle)).detail.includes(JSON.stringify(marker)), `${needle}: ${marker}`);
+      for (const other of EXPECTED.filter((entry) => entry.needle !== needle)) {
+        assert.equal(statusOf(map, other.needle), "na", `${other.needle} is untouched by ${needle}: ${marker}`);
+      }
     }
   }
 });
@@ -221,20 +233,20 @@ for (const [name, make] of Object.entries(HIDINGS)) {
   });
 }
 
-test("a step carried only by a script the page loads later is found", async () => {
-  // The page names a script by a dynamic import; the script holds the form's door.
+test("a step carried only by a script the page loads later is found (an import with no file extension)", async () => {
+  // The page names the script only by a dynamic import, and the address has no .js: only the import is a clue.
   const map = await rows({
-    ...withScript(CLIMATE, 'import("/climate/_next/static/chunks/lead-form.js");'),
-    "/climate/_next/static/chunks/lead-form.js": 'fetch("/api/public/climate-match", { method: "POST" });',
+    ...withScript(CLIMATE, 'import("/climate/lazy/lead-form");'),
+    "/climate/lazy/lead-form": 'fetch("/api/public/climate-match", { method: "POST" });',
   });
   assert.equal(statusOf(map, "#4-form"), "NOT_PROVED");
   assert.equal(statusOf(map, "#1-headline"), "na");
 });
 
-test("a step carried by an iframe page is found", async () => {
+test("a step carried by an iframe page is found (a frame address with no file extension)", async () => {
   const map = await rows({
-    ...appended(CLIMATE, '<iframe src="/climate/lead.html"></iframe>'),
-    "/climate/lead.html": "<!doctype html><html><body><h1>Business Financial Assessment</h1></body></html>",
+    ...appended(CLIMATE, '<iframe src="/climate/frame/lead"></iframe>'),
+    "/climate/frame/lead": "<!doctype html><html><body><h1>Business Financial Assessment</h1></body></html>",
   });
   assert.equal(statusOf(map, "#6-gate"), "NOT_PROVED");
 });
