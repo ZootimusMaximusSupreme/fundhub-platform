@@ -10,7 +10,8 @@
 //
 // What counts as a live named test:
 //   * a top-level call at column 0:  test("<title>", async () => { ... });
-//     (not in a comment, not in a string, not nested in an `if`, no options object)
+//     (not in a comment, not in a string, not inside any bracket pair such as an
+//     `if` block or a `describe`, no options object)
 //   * with at least one assertion in its body
 // And the file as a whole must hold no skip / todo / only marker and no process.exit.
 //
@@ -172,16 +173,26 @@ const ASSERTS = /\bassert\w*\s*[.(]/;
  */
 export function inspectNamedTests(source, titles) {
   const code = blankComments(source);
-  // Markers are looked for in code only: a title that says "skip:" is not a skipped test.
-  const markers = [...blankComments(source, { strings: true }).matchAll(MARKERS)].map((m) => m[0].replace(/\s+/g, " "));
+  // Markers and nesting are read from code only: a title that says "skip:" is not
+  // a skipped test, and a bracket inside a string does not open a block.
+  const shape = blankComments(source, { strings: true });
+  const markers = [...shape.matchAll(MARKERS)].map((m) => m[0].replace(/\s+/g, " "));
+  // Bracket depth at every offset: a test is only live when its call sits at depth 0.
+  const depthAt = new Int32Array(shape.length + 1);
+  for (let i = 0, d = 0; i < shape.length; i += 1) {
+    depthAt[i] = d;
+    const c = shape[i];
+    if (c === "(" || c === "{" || c === "[") d += 1;
+    else if (c === ")" || c === "}" || c === "]") d -= 1;
+  }
   const missing = [];
   const hollow = [];
   for (const title of titles) {
     const call = new RegExp(
       `^(?:test|it)\\(\\s*(["'\`])${escapeRegExp(title)}\\1\\s*,\\s*(?:async\\s*)?(?:\\(|function\\b|[A-Za-z_$][\\w$]*\\s*=>)`,
-      "m"
+      "gm"
     );
-    const hit = call.exec(code);
+    const hit = [...code.matchAll(call)].find((m) => depthAt[m.index] === 0);
     if (!hit) {
       missing.push(title);
       continue;

@@ -1,7 +1,7 @@
 # Batch 05 manifest — finish the 853 (tier 2, lane gap-door-batch-routes, 1 row)
 
 Branch `fin/b05`, built from `fin/base` (`2f4f574a0`). Nothing was pushed or merged.
-Generation 1 of 3. Builder: Sonnet.
+Generation 1 of 3. Builder: Sonnet. Repair cycle 1 (this file's last section) is done.
 
 ## Numbers
 
@@ -18,7 +18,7 @@ Lane totals after: routes 134, display 680, flow 23, reads 15.
 
 | Row id | Outcome | What judges it |
 |---|---|---|
-| `catalog-route:routes-1.json:route:closer-deck:POST action=generate_letters {client_id, offer_key, edu?, force_repair?} (build the repair letter pack or funding deliverables pack, save the PDFs, email the client)` | **practice-test** | `src/pulse/catalog/proofs/fin-b05-door-closer-deck-letters.test.mjs` (10 tests), bound by `src/pulse/catalog/proofs/fin-b05-door-contracts.test.mjs` |
+| `catalog-route:routes-1.json:route:closer-deck:POST action=generate_letters {client_id, offer_key, edu?, force_repair?} (build the repair letter pack or funding deliverables pack, save the PDFs, email the client)` | **practice-test** | `src/pulse/catalog/proofs/fin-b05-door-closer-deck-letters.test.mjs` (14 tests after repair cycle 1), bound by `src/pulse/catalog/proofs/fin-b05-door-contracts.test.mjs`, which now reads the test source (`fin-b05-test-binding.mjs`) instead of searching for the title text |
 
 This is a practice test: fake data, a stand-in database, the in-memory provider, any
 outbound request fails the test. It is not a live check. The slice 2 manifest said this
@@ -90,6 +90,8 @@ test red; renaming a bound test title turns the guard red.
 - `src/pulse/catalog/proofs/fin-b05-door-closer-deck-letters.test.mjs` (the handler test)
 - `src/pulse/catalog/proofs/fin-b05-door-contracts.mjs` (the row binding, one entry)
 - `src/pulse/catalog/proofs/fin-b05-door-contracts.test.mjs` (the guard)
+- `src/pulse/catalog/proofs/fin-b05-test-binding.mjs` (repair cycle 1: reads a test file and says which named tests are live)
+- `src/pulse/catalog/proofs/fin-b05-test-binding.test.mjs` (repair cycle 1: 11 tests of that reader)
 - `ops/workflows/finish-853-2026-10-14/manifest-b05.md` (this file)
 
 ## Shared lines touched (the integrator must merge these)
@@ -144,3 +146,73 @@ batch's decrease is 1.
 - `npm run pulse:catalog`: `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red`.
 - `node scripts/pulse/count-not-proved.mjs` after: `{"total":852,"byLane":{"gap-door-batch-routes":134,"gap-catalog-display":680,"gap-catalog-flow":23,"gap-catalog-reads":15}}`, batch row closed.
 - `npm run lint`: 3,565 files parse clean.
+
+## Repair cycle 1 (independent checker found 5 breaks that stayed green)
+
+The checker made 12 breaks once each. 10 stayed green. This cycle closes the 5 named
+weaknesses and the 4 lower-weight ones. Outcome for the row is unchanged: **practice-test**
+(fake data, stand-in database, in-memory provider), now with every break below red.
+Still not a live check. Nothing in product code was changed.
+
+### What changed in the test
+
+| Weakness the checker named | What the test does now | Break that went red |
+|---|---|---|
+| 1. Email key never tested across two clients (second client silently not emailed, response still `delivered:true`) | New test: two clients of one company, same offer, pressed one after the other. Two messages, two different keys, each to its own address, "Hi Fixture" and "Hi Second", the provider got both, each client's PDFs, tag and stamp are on that client | `eventId` without the client id: red |
+| 2. PDF content never read (letters to the wrong person stay green) | Every saved PDF is read back with `extractPdfText` (pdfjs). Each must carry the client's name and home street, and none may carry another client's name or street. Same check on the education pack's letters and HTML pages. Second client's letters carry her own name and street | Name forced to "Wrong Person": red in the repair test and the two-client test |
+| 3. Sworn complaints only tested on the Round 4 side | New test: no recorded bureau answer and a confirmed Round 3 answer both save the bureau letters and **no** CFPB or state AG complaint; Round 4 saves both | Escalation check turned off: red |
+| 4. `closer_deck_letters_at` never asserted (the closer desk tripwire `deck_no_outcome` reads it) | Asserted on all four paths (repair, education, empty pack, store down): a string, an ISO date-time (the shape `gap-closer.mjs` matches), parses, and is from this press | Line deleted: red in 5 tests. Written as a number: red |
+| 5. Guard searched for the title text (`test.skip` or a title in a comment stays green) | The guard reads the test source: comments and strings are blanked first; a named test must be a call at bracket depth 0 and column 0, with no options object, and hold an assertion; the file must hold no `skip`, `todo`, `only` or `process.exit`; every top-level test must be one the row names | `test.skip`, title left in a comment, `{ skip: true }`, gutted body, `process.exit`, test under an `if`: all six red |
+
+Lower-weight items, now pinned:
+
+| Item | Pinned how | Break that went red |
+|---|---|---|
+| 405 method guard | New test: GET, PUT, PATCH, DELETE answer 405, `Allow: POST`, the database is asked nothing, nothing saved or sent | Guard disabled: red |
+| Not-delivered reason wording | No stored pull: `reason` is exactly `no_crs_result`, `engineSkip` the same, both buttons. Store down: `reason` equals the store's own message `unknown DOCUMENT_STORE_PROVIDER "no-such-store"` | `reason` forced to `empty_pack`: red in both |
+| Document titles | Repair pack: exact complaint titles, dispute letters match `Metro 2 Dispute Letter Pack — <file>.pdf`, all unique. Funding pack: the five analysis titles and `Inquiry removal — EX/TU/EQ`, `Personal info — EX/TU/EQ` | Titles reduced to the file name or the bureau: red |
+| Email opt-out branch | New test with an opt-out shelf that answers only for this client, this channel and "not opted back in". Email opt-out: PDFs saved, nothing reaches the provider, message `blocked`, reason names `opted_out`. A text-only opt-out, a reversed email opt-out and another client's opt-out all still send | Opt-out branch in `gate.mjs` disabled: red |
+| `generated_by` | Every saved document says `closer-deck` (it was only pinned by source text elsewhere) | Renamed: red |
+
+Extra break run for the repair button: pack asked for the funding path: red.
+
+Two things looked at and left alone, by reason:
+- `sourceEventId` made unique per press: still equivalent. The document registry keys a
+  document on (company, kind, subtype, client, file), so a second press versions the same rows
+  and no duplicate row appears either way. Pinning the exact string would pin an internal
+  replay key, not a result a client feels.
+- `eventId` without `offerKey`: not reachable as a break. The message key also carries the
+  template key (`workflow:<template>:<event>`), so repair and education never collide.
+
+### Numbers (cycle 1)
+
+| | |
+|---|---|
+| Handler tests | 14 of 14 pass (was 10) |
+| Guard | 7 of 7 pass (was 6; new: the named titles are every test the file runs) |
+| Reader tests | 11 of 11 pass; 5 breaks of the reader itself each turn at least one red |
+| Open rows (`count-not-proved.mjs`) | 852 total, batch row still closed (unchanged) |
+| `npm run pulse:catalog` | `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red`, `generated.json` unchanged |
+| `npm run lint` | 3,567 files parse clean |
+| Related group (gap-door-batch, door-*, s*-door-contracts, fin-b05-*, catalog, closer-deck) | 1,146 of 1,146 pass |
+
+Breaks run (each made once, run, seen red, put back): 12 in product code, 6 in the handler
+test file against the guard, 5 in the reader against its tests. Every file was restored
+from its own text; `git status` is clean for product code.
+
+### Shared lines touched in cycle 1
+
+None. `door-proof.mjs`, `door-proof.test.mjs`, the lane files and `generated.json` are as
+cycle 0 left them.
+
+### Product findings added in cycle 1 (not fixed)
+
+5. A client who opted out of email still gets the PDFs saved, is tagged `client:diy-letters`
+   and stamped `diy_status: Delivered`, and the response is `delivered: true` with
+   `email.outcome: "blocked"`. Same family as finding 1: `delivered` means "saved", and the
+   presenter's toast prints only `documentsStored`. The test pins what happens, not that it
+   is right.
+6. Other bound-title guards in this folder search the test text for the title the same way
+   the old guard here did (`s1-door-contracts.test.mjs` does: `text.includes(title)`). A
+   skipped test there keeps its guard green. Not touched here: they are other batches' files.
+   `fin-b05-test-binding.mjs` is written to be reused by them.

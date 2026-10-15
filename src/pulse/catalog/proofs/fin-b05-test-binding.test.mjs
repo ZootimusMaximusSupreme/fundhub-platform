@@ -42,9 +42,19 @@ test("a title that only survives in a comment is not a test", () => {
   assert.deepEqual(inspect(renamed).missing, [TITLE]);
 });
 
-test("a title that only appears inside a string, or in a test nested under a condition, is not a test", () => {
+test("a title that only appears inside a string, or in a test nested under a condition or a group, is not a test", () => {
   assert.deepEqual(inspect(`const names = ["${TITLE}"];\n`).missing, [TITLE]);
+  // Indented under an if.
   assert.deepEqual(inspect(`if (process.env.RUN_IT) {\n  test("${TITLE}", async () => {\n    assert.ok(true);\n  });\n}\n`).missing, [TITLE]);
+  // Still at column 0 but inside the block: depth, not indentation, decides.
+  assert.deepEqual(inspect(`if (process.env.RUN_IT) {\ntest("${TITLE}", async () => {\n  assert.ok(true);\n});\n}\n`).missing, [TITLE]);
+  assert.deepEqual(inspect(`describe("group", () => {\ntest("${TITLE}", async () => {\n  assert.ok(true);\n});\n});\n`).missing, [TITLE]);
+  // A real top-level test after a block that closed is live again.
+  const after = `if (a) {\n  doIt();\n}\ntest("${TITLE}", async () => {\n  assert.ok(true);\n});\n`;
+  assert.deepEqual(inspect(after), { missing: [], hollow: [], markers: [] });
+  // A bracket in a string or a regex does not shift the depth.
+  const quirky = `const a = "}}}";\nconst b = /[}\\]]/;\nconst c = \`\${"{"}\`;\ntest("${TITLE}", async () => {\n  assert.ok(true);\n});\n`;
+  assert.deepEqual(inspect(quirky), { missing: [], hollow: [], markers: [] });
 });
 
 test("a test that asserts nothing is hollow, and one that asserts through a helper is not", () => {
