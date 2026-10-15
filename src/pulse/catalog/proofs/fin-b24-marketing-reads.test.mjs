@@ -210,6 +210,12 @@ test("marketing/costs gives each job kind's last measured cost and minutes (unkn
   assert.equal(done.body.kinds.quick_copy, null, "a kind with no job in this build is unknown");
   assert.deepEqual(done.body.month, { used_usd: 12.5, cap_usd: 50, unpriced_calls: 0 });
   assert.equal(done.body.run_caps.avatar, 6);
+  // HELD ROW: the catalog row says "the month and batch caps". The batch cap lives on GET
+  // marketing/settings. If this door ever returns it, bind route:marketing/costs
+  // (FIN_B24_HELD_ROWS in fin-b24-door-contracts.mjs) and judge it here.
+  assert.deepEqual(Object.keys(done.body.month).sort(), ["cap_usd", "unpriced_calls", "used_usd"]);
+  assert.deepEqual(Object.keys(done.body.run_caps), ["avatar"], "per-run caps only; no batch cap rides in this door");
+  assert.equal(JSON.stringify(done.body).includes("batch"), false, "this door says nothing about a batch cap");
   assert.match(done.body.avatar_line, /About \$1\.23 and 8 minutes \(last run, Oct 13\)\. Stops at \$6/);
   assert.match(done.body.avatar_line, /\$12\.50 of \$50 used this month\./);
   const [last] = sqlCalls(done, /FROM marketing_jobs j/).filter((c) => c.params[1] === "avatar");
@@ -270,7 +276,7 @@ test("marketing/flywheel lists every campaign and the six steps of one in plain 
   assert.match(done.body.stages[3].can_run.reason, /Approve step 3 first \(the offer\)\./, "the copy waits for the offer, and says so");
   assert.equal(done.body.stages[3].can_run.ok, false);
   assert.equal(done.body.stages[1].state, "MISSING");
-  assert.equal(typeof done.body.advice, "string");
+  assert.match(done.body.advice, /^Next to run: step 2, /, "the footer names the next step: the avatar is done, so step 2");
   assert.equal(done.db.calls.filter((c) => /^\s*(INSERT|UPDATE|DELETE)/i.test(c.sql)).length, 0, "free: it writes nothing");
   assert.deepEqual(h.reads.map((r) => [r.orgId, r.campaign]), [[ORG_ID, null], [ORG_ID, "partner"]], "the company comes from the sign-in");
 
@@ -325,11 +331,24 @@ test("marketing/flywheel/job polls one avatar run of this company step by step w
   assert.equal(done.body.job.status, "running");
   assert.equal(done.body.job.campaign, "partner");
   assert.ok(Array.isArray(done.body.job.steps));
-  assert.equal(typeof done.body.job.sentence, "string");
+  assert.match(done.body.job.sentence, /^Running: step 1 of 10, .+\. \$1\.90 spent so far, 23 searches\.$/, "the row's words: the step, the dollars and the searches from the ledger");
   assert.deepEqual(sqlCalls(done, /FROM marketing_jobs WHERE id = \$1/)[0].params, [job.id, ORG_ID], "the lookup names the company");
   assert.deepEqual(sqlCalls(done, /FROM marketing_model_usage/)[0].params, [job.id]);
   assert.equal(done.body.job.cost_so_far_usd, 1.9);
   assert.equal(done.body.job.searches_so_far, 23);
+
+  // The other states say what happened in words, and only a stopped run can be resumed.
+  const failed = await hit(flywheelJob, { query: { id: job.id }, rules: rules(AVATAR_JOB({ status: "failed", error: "the model refused the request", finished_at: "2026-10-14T19:05:00.000Z" })) });
+  assert.equal(failed.body.job.status, "failed");
+  assert.equal(failed.body.job.sentence, "Could not finish: the model refused the request");
+  assert.equal(failed.body.job.resumable, true);
+  assert.equal(failed.body.job.result, null, "a failed run has no result to show");
+  const finished = await hit(flywheelJob, { query: { id: job.id }, rules: rules(AVATAR_JOB({ status: "done", result: { sentence: "The avatar is ready to read.", path: "marketing/flywheel/partner/01-avatar.md" }, finished_at: "2026-10-14T19:10:00.000Z" })) });
+  assert.equal(finished.body.job.status, "done");
+  assert.equal(finished.body.job.sentence, "The avatar is ready to read.");
+  assert.equal(finished.body.job.resumable, false);
+  assert.equal(finished.body.job.finished_at, "2026-10-14T19:10:00.000Z");
+  assert.equal(done.body.job.resumable, false, "a run still going is not offered a resume");
 
   const foreign = await hit(flywheelJob, { query: { id: job.id }, rules: rules({ ...job, org_id: OTHER_ORG_ID }) });
   assert.equal(foreign.status, 404);

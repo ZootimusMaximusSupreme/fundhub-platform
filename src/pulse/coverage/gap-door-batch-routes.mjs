@@ -14,7 +14,7 @@ export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
   "routes-0.json": 41,
   "routes-1.json": 26,
   "routes-2.json": 16,
-  "routes-3.json": 13,
+  "routes-3.json": 14,
 });
 
 const MAPS = Object.freeze([

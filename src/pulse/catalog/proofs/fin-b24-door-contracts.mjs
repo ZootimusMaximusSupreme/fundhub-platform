@@ -9,9 +9,16 @@
 // doors handed in through the handlers' own seams). They are not live checks and
 // never read a real customer's saved result.
 //
-// Not here on purpose: route:climate/geocode. The row says "state / county" and
-// the door returns a state code, a point and a formatted address. It never
-// returns a county. See ops/workflows/finish-853-2026-10-14/manifest-b24.md.
+// Not here on purpose (HELD, see FIN_B24_HELD_ROWS at the bottom): a row whose own
+// words name a result the door never returns. Attaching it would write those words
+// into the catalog as the asserted result, and the door cannot deliver them.
+//   route:climate/geocode  says "state / county". The door returns a state code, a
+//                          point and a formatted address. Never a county.
+//   route:marketing/costs  says "the month and batch caps". The door returns the
+//                          month cap and the per-run caps. The batch cap
+//                          (max_batch_cost_usd) is on GET marketing/settings.
+// Both have tests that go red when the door breaks; they stay unbound until the row's
+// words or the door change. See ops/workflows/finish-853-2026-10-14/manifest-b24.md.
 
 export const FIN_B24_GUARD_TEST = "src/pulse/catalog/proofs/fin-b24-door-contracts.test.mjs";
 
@@ -191,6 +198,7 @@ const ENTRIES = [
       "creative/generate answers a repeat of the same key with the first job and no second row, so a double click is never a second bill",
       "creative/generate saves nothing when the key, the offer, the script or the partner is wrong, or the suite is off for this partner",
       "creative/generate tells the screen plainly when no ad-making service is switched on, when the one on file is unknown, and when it could not check; the job is saved either way",
+      "creative/generate keeps the kind of piece asked for: a picture when none is named, a video, or copy; each is saved with that kind, the service is asked for that kind, and a kind nobody can make is saved and says so",
     ],
   },
   {
@@ -214,6 +222,7 @@ const ENTRIES = [
       "dashboard/kpis states cash in cents, funded count and amount, close and show rate, cost per funded, new clients and pipeline movement for this company's window",
       "dashboard/kpis says unknown, never zero, when ad spend or bookings are missing, and refuses the shared dashboard key because it names no company",
       "dashboard/kpis blames the request, not the server, when a statement is refused for a bad value, and answers a real fault with a plain 500",
+      "dashboard/kpis reads the quarter-to-date window as the days since the quarter's first day, counting today, on the first day, mid-quarter and on the last day",
     ],
   },
   {
@@ -373,15 +382,6 @@ const ENTRIES = [
     ],
   },
   {
-    sourceFile: "routes-3.json",
-    surface: "route:marketing/costs",
-    control: "GET what each paid job kind cost last time and the month and batch caps. Every cost line on the Command Center reads this.",
-    tests: ["src/pulse/catalog/proofs/fin-b24-marketing-reads.test.mjs"],
-    titles: [
-      "marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), this month's spend against the cap, and the run caps, for this company",
-    ],
-  },
-  {
     sourceFile: "routes-0.json",
     surface: "route:marketing/flywheel",
     control: "Ideas tab flywheel card: every campaign and its six steps in plain words; reads repo files and saved rows. Free.",
@@ -428,6 +428,7 @@ const ENTRIES = [
       "marketing/flywheel/run starts the copy and the strategy as one saved job each, only after the steps they depend on are approved, once per step, under the month cap and with a model key",
       "marketing/flywheel/run refuses with no model key, past the month cap, an unknown campaign or step, and a step 5 that waits for step 4; nothing is queued",
       "marketing/flywheel/run hands step 3 to the offer writer with this campaign's files and notes, and starts the avatar (step 1) and the market research (step 2) as their own saved runs",
+      "marketing/flywheel/run starts the ad strategy only once the offer and the copy are both approved, and reads the spend free of any model when step 6 is asked for",
     ],
   },
   {
@@ -438,6 +439,7 @@ const ENTRIES = [
     titles: [
       "marketing/flywheel/spend-read reads this company's saved ad numbers for the last 30 Arizona days ending yesterday, words a conclusion, and queues 06-spend.md for the repo in the same transaction",
       "marketing/flywheel/spend-read refuses an unknown or malformed campaign and a missing press id, is free of any model or vendor call, and is for owner and admin only",
+      "marketing/flywheel/spend-read words the conclusion the saved numbers call for, and the file it queues carries the same words and the same figures",
     ],
   },
   {
@@ -472,3 +474,36 @@ const BY_KEY = new Map(FIN_B24_DOOR_CONTRACTS.map((entry) => [entry.key, entry.p
 export function finB24DoorProof(sourceFile, row) {
   return BY_KEY.get(finB24DoorKey(sourceFile, row)) || null;
 }
+
+/* ROWS HELD BACK ON PURPOSE. Each row's own words name a result its door never
+   returns, so no test can honestly be bound to the words. The tests below DO exist
+   and DO run in the suite (they go red when the door breaks); the catalog just does
+   not point at them. When the words are changed to `proposedControl` (a decision for
+   Chris: the words, or the door) move the entry into ENTRIES with the same tests and
+   titles. The guard test keeps every held row red, keeps the named tests real, and
+   goes red the moment a door starts returning the missing result, so a held row
+   cannot be forgotten. */
+export const FIN_B24_HELD_ROWS = Object.freeze([
+  Object.freeze({
+    sourceFile: "routes-0.json",
+    surface: "route:climate/geocode",
+    control: "Turn a typed address into a state / county for the lending-climate map (no lenders read, no record).",
+    missing: "county",
+    proposedControl: "Turn a typed address into a state and a map point for the lending-climate map (no lenders read, no record).",
+    tests: ["src/pulse/catalog/proofs/fin-b24-chat-journeys.test.mjs"],
+    titles: [
+      "climate/geocode turns a typed address into a state code and a point, answers a state name from its centre without a lookup, and says not found when nobody knows it",
+    ],
+  }),
+  Object.freeze({
+    sourceFile: "routes-3.json",
+    surface: "route:marketing/costs",
+    control: "GET what each paid job kind cost last time and the month and batch caps. Every cost line on the Command Center reads this.",
+    missing: "batch cap",
+    proposedControl: "GET what each paid job kind cost last time, the month cap and the per-run caps. Every cost line on the Command Center reads this.",
+    tests: ["src/pulse/catalog/proofs/fin-b24-marketing-reads.test.mjs"],
+    titles: [
+      "marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), this month's spend against the cap, and the run caps, for this company",
+    ],
+  }),
+]);

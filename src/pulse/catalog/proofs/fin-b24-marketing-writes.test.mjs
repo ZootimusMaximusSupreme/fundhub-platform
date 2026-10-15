@@ -491,6 +491,34 @@ test("marketing/flywheel/spend-read reads this company's saved ad numbers for th
   assert.equal(w.outbox.length, 1, "a repeated press saves nothing more");
 });
 
+test("marketing/flywheel/spend-read words the conclusion the saved numbers call for, and the file it queues carries the same words and the same figures", async () => {
+  // Same company, same window; only the saved totals change from case to case.
+  const numbers = [{ ad_number: "43", ads: 2, spend_cents: "30000", impressions: "9000", link_clicks: "210", plays: "5000", p25: "4000", thruplay: "900", two_sec: "3000", ad_days: 6, link_click_days: 6, play_days: 6, two_sec_days: 6, leads: 12, booked: 5, showed: 4, sales: 0, roadmaps: 0, cash_cents: "0", cash_unknown: 0, reported_cash_cents: "0", maturing_leads: 0 }];
+  const cases = [
+    ["selling", { sales: 2 }, /^It is selling: 2 paid in our checkout\. /, null, ["- Ad spend: $300.00", "- Our checkout: 2 paid"]],
+    ["opening", { leads: 0, booked: 0, p25: "1000" }, /^Most plays never reach the quarter mark, and nobody became a lead\./, 4, ["- Still there at 25%: 20%", "- Leads: 0"]],
+    ["offer_no_leads", { leads: 0, booked: 0 }, /^People tap through to the page, but nobody became a lead\./, 3, ["- Taps to the page: 210", "- Leads: 0"]],
+    ["offer_no_calls", { leads: 12, booked: 0 }, /^Leads came in, but nobody booked a call or bought\./, 3, ["- Leads: 12", "- Calls booked: 0"]],
+    ["ask", { leads: 0, booked: 0, link_clicks: "0" }, /^People see the ads, but nobody taps\./, 4, ["- Taps to the page: 0"]],
+    ["too_early", {}, /^Not enough has happened yet to tell what to fix\./, null, ["- Leads: 12", "- Calls booked: 5"]],
+    ["no_spend", { spend_cents: null, impressions: null, link_clicks: null, plays: null, p25: null, leads: 0, booked: 0 }, /^No ad spend is saved for these 30 days, so there is nothing to read yet\.$/, null, ["- Ad spend: unknown"]],
+  ];
+  let n = 0;
+  for (const [rule, totals, words, points, figures] of cases) {
+    const w = flywheel({ "00-OWNER-NOTES.md": NOTES_FILE });
+    w.rules.unshift(...READ_RULES(rule === "no_spend" ? [] : numbers, { sales: 0, roadmaps: 0, p25: "4000", ...totals }));
+    const done = await post(flywheelSpendRead, w, { request_id: `press-rule-${++n}-${rule}`, campaign: "partner" }, { role: "admin", deps: { ...w.deps, now: () => NOW } });
+    assert.equal(done.status, 200, `${rule}: ${JSON.stringify(done.body)}`);
+    assert.match(done.body.conclusion.text, words, rule);
+    assert.equal(done.body.conclusion.points_to_stage, points, `${rule}: the step the page jumps to`);
+    assert.equal(w.outbox.length, 1, rule);
+    const file = w.outbox[0].content;
+    assert.ok(file.includes(done.body.conclusion.text), `${rule}: the file says the same words the screen shows`);
+    assert.equal(file.split(done.body.conclusion.text).length - 1, 2, `${rule}: once as the answer and once on the review card`);
+    for (const figure of figures) assert.ok(file.includes(figure), `${rule}: the file shows "${figure}"`);
+  }
+});
+
 test("marketing/flywheel/spend-read refuses an unknown or malformed campaign and a missing press id, is free of any model or vendor call, and is for owner and admin only", async () => {
   const realFetch = globalThis.fetch;
   const wire = [];

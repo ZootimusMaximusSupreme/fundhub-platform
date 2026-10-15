@@ -6,7 +6,7 @@
 // This is a PRACTICE TEST with fake data. It is not a live check.
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import adVideosHandler from "../../../../api/ad-videos.mjs";
 import dashboardKpis from "../../../../api/dashboard/kpis.mjs";
@@ -331,4 +331,28 @@ test("dashboard/kpis says unknown, never zero, when ad spend or bookings are mis
   }
   const post = await hit(dashboardKpis, { method: "POST", rules: KPI_RULES });
   assert.equal(post.status, 405);
+});
+
+test("dashboard/kpis reads the quarter-to-date window as the days since the quarter's first day, counting today, on the first day, mid-quarter and on the last day", async () => {
+  // The clock is not handed to the door, so time itself is held still for each case.
+  // Quarters begin on 1 January, 1 April, 1 July and 1 October (UTC).
+  const cases = [
+    ["2026-01-01T00:00:00.000Z", 1, "the first day of a quarter is one day"],
+    ["2026-03-31T23:00:00.000Z", 90, "31 + 28 + 31 days of the first quarter"],
+    ["2026-07-01T12:00:00.000Z", 1, "the third quarter begins on 1 July"],
+    ["2026-10-14T19:00:00.000Z", 14, "1 to 14 October"],
+    ["2026-12-31T12:00:00.000Z", 92, "the whole fourth quarter, 31 + 30 + 31 days"],
+  ];
+  for (const [now, days, why] of cases) {
+    mock.timers.enable({ apis: ["Date"], now: new Date(now) });
+    try {
+      const out = await hit(dashboardKpis, { query: { period: "qtd" }, rules: KPI_RULES });
+      assert.equal(out.status, 200, now);
+      assert.equal(out.body.kpis.days, days, `${now}: ${why}`);
+      assert.deepEqual(sqlCalls(out, /FROM transactions/)[0].params, [ORG_ID, days], `${now}: every read is bound to the same window`);
+      assert.deepEqual(sqlCalls(out, /FROM funding_rounds/)[0].params, [ORG_ID, days], now);
+    } finally {
+      mock.timers.reset();
+    }
+  }
 });

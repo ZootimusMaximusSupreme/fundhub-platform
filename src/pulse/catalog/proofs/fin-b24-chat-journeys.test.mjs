@@ -450,6 +450,9 @@ test("climate/geocode turns a typed address into a state code and a point, answe
     assert.equal(address.body.lat, 33.45);
     assert.equal(address.body.lng, -112.07);
     assert.equal(address.body.provider, "census");
+    // HELD ROW: the catalog row says "state / county". If a county ever comes back, bind
+    // route:climate/geocode (FIN_B24_HELD_ROWS in fin-b24-door-contracts.mjs) and judge it here.
+    assert.deepEqual(Object.keys(address.body).sort(), ["formatted", "lat", "lng", "ok", "provider", "stateCode"], "the door returns a state and a point, never a county");
     assert.equal(address.headers["access-control-allow-origin"], "*");
     assert.equal(address.headers["cache-control"], "no-store");
     assert.equal(seen.length, 1);

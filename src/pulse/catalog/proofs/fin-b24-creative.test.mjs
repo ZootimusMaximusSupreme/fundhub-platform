@@ -165,6 +165,29 @@ test("creative/generate tells the screen plainly when no ad-making service is sw
   assert.equal(broken.inserts.length, 1);
 });
 
+test("creative/generate keeps the kind of piece asked for: a picture when none is named, a video, or copy; each is saved with that kind, the service is asked for that kind, and a kind nobody can make is saved and says so", async () => {
+  const cases = [
+    // [what the caller sent, what is saved, is a service on file for it]
+    [{ asset_kind: undefined }, "static", false],
+    [{ asset_kind: "static" }, "static", false],
+    [{ asset_kind: "video" }, "video", false],
+    [{ assetKind: "video" }, "video", false],
+    [{ asset_kind: "copy" }, "copy", true],
+  ];
+  let n = 0;
+  for (const [sent, kind, served] of cases) {
+    const world = generateWorld({ provider: served ? { provider_key: "copy", config: {} } : null });
+    const body = { ...GOOD, asset_kind: undefined, idempotency_key: `press-kind-${++n}`, ...sent };
+    const out = await hit(creativeGenerate, { ...asPartner, method: "POST", body, rules: world.rules });
+    assert.equal(out.status, 200, JSON.stringify(sent));
+    assert.equal(world.inserts.length, 1, "one job is saved whatever the kind");
+    assert.equal(world.inserts[0].spec.assetKind, kind, `${JSON.stringify(sent)} is saved as ${kind}`);
+    assert.deepEqual(sqlCalls(out, /FROM creative_providers/)[0].params, [ORG_ID, kind], "the service is asked about the same kind");
+    assert.equal(out.body.provider_ready, served, kind);
+    if (!served) assert.match(out.body.note, /no ad-making service is switched on/);
+  }
+});
+
 /* ── creative/run: claim and run queued jobs ─────────────────────────────── */
 
 function runHarness({ jobs = [], runnerLocal = false, waiting = 0 } = {}) {
@@ -235,6 +258,18 @@ test("creative/run caps one press at ten jobs, falls back to three when the numb
   assert.ok(Array.isArray(shownCopy.check.failures));
   assert.equal(shownCopy.check.ok, false, "a guarantee in an ad fails the checker");
   assert.equal("check" in shownPicture, false, "a picture has no words and no verdict");
+
+  // The verdict goes both ways: a plain, honest line passes, and the words say so.
+  const clean = { kind: "copy", copy_text: "Your credit file decides which lenders say yes." };
+  const h2 = runHarness({ jobs: [job(2, ok([clean, copy]))] });
+  const two = await hit(creativeRun, { ...asPartner, method: "POST", body: { max_jobs: 1 }, deps: h2.deps, rules: [] });
+  const [passes, fails] = two.body.jobs[0].assets;
+  assert.equal(passes.check.ok, true, "a line with nothing wrong in it passes");
+  assert.deepEqual(passes.check.failures, []);
+  assert.match(passes.check.words, /it passes\.$/);
+  assert.equal(fails.check.ok, false);
+  assert.ok(fails.check.failures.length > 0, "a failing verdict names what is wrong");
+  assert.match(fails.check.words, /1 problem/);
 });
 
 test("creative/run lets staff run every partner's due work with all=1 and nobody else; staff must otherwise name a partner; a client login is refused", async () => {

@@ -13,6 +13,7 @@ import { routeKeyForDoor } from "./door-batch-route-result.mjs";
 import {
   FIN_B24_DOOR_CONTRACTS,
   FIN_B24_GUARD_TEST,
+  FIN_B24_HELD_ROWS,
   finB24DoorProof,
 } from "./fin-b24-door-contracts.mjs";
 
@@ -25,9 +26,10 @@ function rowsOf(sourceFile) {
   return maps.get(sourceFile);
 }
 
-test("batch 24 binds 39 exact staff route rows, each once", () => {
-  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 39);
-  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 39);
+test("batch 24 binds 38 exact staff route rows, each once, and holds 2 back on purpose", () => {
+  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 38);
+  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 38);
+  assert.equal(FIN_B24_HELD_ROWS.length, 2);
 });
 
 test("every bound row is one exact row of the coverage map, a staff or no-impact route, and its handler is routed", () => {
@@ -77,11 +79,21 @@ test("a same-route row with a different result stays unproved", () => {
   assert.equal(finB24DoorProof("routes-3.json", { surface: entry.surface, control: entry.control }), null);
 });
 
-test("climate/geocode stays not proved: its row names a county and the door never returns one", () => {
-  const row = ROUTE_GAP_ROWS.find((candidate) => candidate.surface === "route:climate/geocode");
-  assert.ok(row, "the geocode row left the red lane without a result that proves it");
-  assert.match(row.control, /state \/ county/);
-  assert.equal(finB24DoorProof(row.sourceFile, row), null);
+test("a row whose own words name a result its door never returns is held back: it stays red, its tests are real, and nothing is bound to the words", () => {
+  for (const held of FIN_B24_HELD_ROWS) {
+    const row = ROUTE_GAP_ROWS.find((candidate) => candidate.surface === held.surface && candidate.control === held.control);
+    assert.ok(row, `${held.surface} left the red lane without a result that proves its words`);
+    assert.equal(row.sourceFile, held.sourceFile);
+    assert.equal(finB24DoorProof(row.sourceFile, row), null, `${held.surface} must not be bound while its words name a ${held.missing}`);
+    assert.notEqual(held.proposedControl, held.control);
+    // The same tests exist and carry the same titles, so the move into the catalog is one entry.
+    const text = held.tests.map((file) => fs.readFileSync(new URL(file, ROOT), "utf8")).join("\n");
+    for (const title of held.titles) assert.ok(text.includes(title), `no test titled "${title}"`);
+  }
+  const geocode = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:climate/geocode");
+  assert.match(geocode.control, /state \/ county/);
+  const costs = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:marketing/costs");
+  assert.match(costs.control, /month and batch caps/);
 });
 
 test("the hiring/apply rows are three different rows with the right test for each verb", () => {

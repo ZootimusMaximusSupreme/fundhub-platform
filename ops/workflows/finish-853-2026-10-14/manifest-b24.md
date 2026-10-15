@@ -3,22 +3,24 @@
 Branch `fin/b24`, built from `fin/base` at `2f4f574a0`. Nothing was pushed or merged.
 Lane: `gap-door-batch-routes`. Product code changed: none.
 
-Two passes are on this branch. The first pass (commit `e84d7b749`) wrote the 99 handler tests. The second pass
-(this commit) re-measured the numbers, then broke every refusal inside the 36 handlers one at a time and listed the
-ones no test noticed. It added 19 tests for the ones inside a row's claim (see "Second pass" below).
+Three passes are on this branch. The first (commit `e84d7b749`) wrote the 99 handler tests. The second
+(`1329b66a2`) broke every refusal inside the 36 handlers one at a time and added 19 tests for the ones no test noticed.
+The third (generation 2, this commit) read every row's own words against what its door really returns, and held
+back the two rows whose words name a result the door never returns (see "Third pass").
 
 ## Numbers
 
 | | Before | After |
 |---|---|---|
-| Rows of this batch that say NOT_PROVED (`node scripts/pulse/count-not-proved.mjs`, offline, intersected with `batch-24.json`) | 40 | 1 |
-| All four lanes, same script | 853 | 814 (route lane 135 to 96) |
+| Rows of this batch that say NOT_PROVED (`node scripts/pulse/count-not-proved.mjs`, offline, intersected with `batch-24.json`) | 40 | 2 |
+| All four lanes, same script | 853 | 815 (route lane 135 to 97) |
 
-The one row left open is `route:climate/geocode`. Reason below.
+Measured on a detached checkout of `fin/base` (40 of 40 open) and on this branch (2 of 40 open: `route:climate/geocode`
+and `route:marketing/costs`). Second pass had left only geocode open; the third pass moved costs back on purpose.
 
 ## What each row ended as
 
-All 39 attached rows are **practice tests**: the real `api/` handler, fake data, and a stand-in database that
+All 38 attached rows are **practice tests**: the real `api/` handler, fake data, and a stand-in database that
 answers by the conditions the SQL text names. They are not live checks. A live check for a route would be a new
 read-only gap lane over the saved results; none was built here. Every test was broken on purpose and went red
 (see "Break it on purpose").
@@ -41,12 +43,12 @@ The "Test file" column names the main file. Every row also runs `fin-b24-front-g
 | route:campaigns/sync | practice-test | `fin-b24-campaigns.test.mjs` | rows written for this partner, pending becomes active the moment Meta answers, Meta's verification word written, refusal counts nothing and stays pending, unusable states named, dying-ad buzz once per ad per day, held buzz not recorded |
 | route:chat/ask | practice-test | `fin-b24-chat-journeys.test.mjs` | system and knowledge modes, retrieval scoped to the session's company and role, refused search statuses, question limits, staff only. Answerers are handed in; no model is called |
 | route:chat/messages | practice-test | `fin-b24-chat-journeys.test.mjs` | own internal threads only, thread messages oldest first for a participant, staff send saved delivered from this person, pair thread made once, idempotency, no compliance gate, refusals |
-| route:climate/geocode | **not-attachable** | `fin-b24-chat-journeys.test.mjs` (state and point only) | see below |
+| route:climate/geocode | **not-attachable** (held) | `fin-b24-chat-journeys.test.mjs` (state and point only) | see "The two held rows" below |
 | route:content/tiles (GET) | practice-test | `fin-b24-content-docs.test.mjs` | tiles with prices and on-off, videos, tier map, products, this company only, unknown price null, only two missing-shape errors forgiven, owner and admin only |
 | route:content/welcome-video | practice-test | `fin-b24-content-docs.test.mjs` | mapped or not, bytes in the store or missing or unverified, signed link without storage key, client pinned, signed streaming with no session, HEAD, redirect, forged and expired links are one 404, no key 503 |
-| route:creative/generate | practice-test | `fin-b24-creative.test.mjs` | one queued job for the login's partner with who asked, idempotent on key (and on a lost race), suite switch, offer and script checks, provider readiness note |
+| route:creative/generate | practice-test | `fin-b24-creative.test.mjs` | one queued job for the login's partner with who asked, idempotent on key (and on a lost race), suite switch, offer and script checks, provider readiness note, the kind of piece (picture by default, video, copy) saved and asked for |
 | route:creative/run | practice-test | `fin-b24-creative.test.mjs` | claim and run up to max jobs (cap 10, default 3), sums and plain notes, ad-checker verdict on copy, `all=1` staff only, local runner leaves copy for the Mac. Claim and run are handed in; no provider is called |
-| route:dashboard/kpis | practice-test | `fin-b24-staff-reads.test.mjs` | cash in cents, funded count and amount, show and close rate, cost per funded, new clients, pipeline movement, this company and window, unknown not zero, shared dashboard key refused 403 |
+| route:dashboard/kpis | practice-test | `fin-b24-staff-reads.test.mjs` | cash in cents, funded count and amount, show and close rate, cost per funded, new clients, pipeline movement, this company and window (today, 7d, 30d and the quarter-to-date day count on five dates), unknown not zero, shared dashboard key refused 403 |
 | route:documents-download | practice-test | `fin-b24-content-docs.test.mjs` | fresh signed link, no storage key, client own file only, one 404 for every refusal, every staff role, partner login refused |
 | route:hiring/apply (GET) | practice-test | `fin-b24-hiring.test.mjs` | this company's active roles by name, key name brief only, blank brief null, cache header on success only |
 | route:hiring/apply (POST) | practice-test | `fin-b24-hiring.test.mjs` | candidate and application in `applied`, task for a person, nothing decided, same reply for new, returning and bot, burst and per-email limits, protected fields refused |
@@ -61,39 +63,50 @@ The "Test file" column names the main file. Every row also runs `fin-b24-front-g
 | route:marketing/ad | practice-test | `fin-b24-marketing-reads.test.mjs` | the drawer row, Meta ads, curve, alerts, diagnoses; this company and number; quiet number is unknown spend; 404, 400 |
 | route:marketing/angles | practice-test | `fin-b24-marketing-reads.test.mjs` | spend and leads by angle for 30 Arizona days, script angle beats creative angle, no-angle spend in no row, nothing of another company |
 | route:marketing/batches/write-now | practice-test | `fin-b24-marketing-writes.test.mjs` | one batch and one `start_batch` job, ideas taken once, cap refuses and queues nothing, repeat press answered once, validation |
-| route:marketing/costs | practice-test | `fin-b24-marketing-reads.test.mjs` | last measured cost and minutes per kind (unknown stays null), month against cap, run caps, avatar line |
+| route:marketing/costs | **not-attachable** (held) | `fin-b24-marketing-reads.test.mjs` (month cap and per-run caps only) | see "The two held rows" below |
 | route:marketing/flywheel (GET) | practice-test | `fin-b24-marketing-reads.test.mjs` | campaigns, six steps in plain words, approved vs done, copy waits for offer, partner by default, honest empty card, writes nothing |
 | route:marketing/flywheel/approve | practice-test | `fin-b24-marketing-writes.test.mjs` | one front-matter edit `status: approved`, once per press, already-approved flag, refusals say which |
 | route:marketing/flywheel/campaign | practice-test | `fin-b24-marketing-writes.test.mjs` | owner-notes file with the `Offer key:` line, 201 vs 200, no wake when nothing queued, key upper-cased |
-| route:marketing/flywheel/job | practice-test | `fin-b24-marketing-reads.test.mjs` | one avatar run of this company with cost so far, another company's run is 404 |
+| route:marketing/flywheel/job | practice-test | `fin-b24-marketing-reads.test.mjs` | one avatar run of this company with status, the sentence in words (running with dollars and searches, failed, done), cost so far, resumable only when failed, another company's run is 404 |
 | route:marketing/flywheel/run | practice-test | `fin-b24-marketing-writes.test.mjs` | steps 1 to 6: avatar and market research as their own runs, offer handed on with the avatar's words, copy and strategy as one job each after their approvals, once per step, no key 503, cap 409, step 6 free |
-| route:marketing/flywheel/spend-read | practice-test | `fin-b24-marketing-writes.test.mjs` | 30 Arizona days ending yesterday, rows, conclusion, `06-spend.md` queued in the same transaction, repeat press saves nothing more |
+| route:marketing/flywheel/spend-read | practice-test | `fin-b24-marketing-writes.test.mjs` | 30 Arizona days ending yesterday, rows, each of the seven conclusions for the numbers that call for it and the step the page jumps to, the same words and figures in `06-spend.md`, queued in the same transaction, repeat press saves nothing more |
 | route:marketing/flywheel/tweak | practice-test | `fin-b24-marketing-writes.test.mjs` | one dated line appended under Notes, step re-run with the note on the job, blocked and no-key reasons, note saved either way |
 
-### The one `not-attachable` row
+### The two held rows
 
-`route:climate/geocode` (`routes-0.json`): "Turn a typed address into a state / county for the lending-climate map".
-The door (`api/climate/geocode.mjs` over `geocode()` in `src/climate/connectors.mjs`) returns `stateCode`, `lat`,
-`lng`, `provider` and `formatted`. It never returns a county, and the page (`/climate`) reads only `stateCode`,
-`lat` and `lng`. The state-and-point half is judged by a test that goes red when it breaks (in
-`fin-b24-chat-journeys.test.mjs`), but the row's own words name a county, so attaching it would claim a result the
-door does not produce. Two ways forward, both outside this batch: change the row's words to "a state and a point",
-or make the door return a county. The guard test pins that this row stays red.
+Both rows have a test that goes red when the door breaks. They are held back from the catalog because the catalog
+writes the row's own words in as the asserted result (`proof.asserts` is the row text, and `door-recipes.test.mjs`
+requires it), and the door cannot deliver those words. A green row would say a result is proved that does not exist.
+They stay `NOT_PROVED` until Chris picks: change the row's words, or change the door. The tests and titles are ready
+(`FIN_B24_HELD_ROWS` in `fin-b24-door-contracts.mjs`), so either way the move into the catalog is one entry.
+
+| Row | Words say | The door returns | What is missing | One-line fix for the words |
+|---|---|---|---|---|
+| `route:climate/geocode` (`routes-0.json`) | "a state / county" | `ok`, `provider`, `stateCode`, `lat`, `lng`, `formatted` (`api/climate/geocode.mjs` over `geocode()` in `src/climate/connectors.mjs`) | A county. No code path reads Google's county component or the Census geographies lookup, and `/climate` (`public/climate/_next/static/chunks/375-*.js`) reads only `stateCode`, `lat`, `lng`. No spec or journey names a county | "Turn a typed address into a state and a map point for the lending-climate map (no lenders read, no record)." |
+| `route:marketing/costs` (`routes-3.json`) | "the month and batch caps" | `month {used_usd, cap_usd, unpriced_calls}`, `run_caps {avatar, ...}`, `kinds.*.run_cap_usd`, `limits` (`api/marketing/costs.mjs` over `readCosts()` in `src/marketing/costs.mjs`) | The batch cap (`marketing_settings.max_batch_cost_usd`, default $40). It is returned by `GET /api/marketing/settings`, never by this door. The design (§3.1) gives this door `month` and `run_caps` only | "GET what each paid job kind cost last time, the month cap and the per-run caps. Every cost line on the Command Center reads this." |
+
+The guard test (`fin-b24-door-contracts.test.mjs`) keeps both rows red and checks their tests exist. Two pins in
+the handler tests go red the day a held door starts returning the missing result: the geocode answer's key list
+(`fin-b24-chat-journeys.test.mjs`) and the costs answer's `month`, `run_caps` and "batch" word
+(`fin-b24-marketing-reads.test.mjs`). Each failure message points at the held row.
+
+I did not edit the coverage map (`ops/workflows/coverage-every-surface-2026-10-10/routes-*.json`): changing a row's
+words changes its id, and the batch lists and the orchestrator's counts are keyed by id.
 
 ## Files added
 
-- `src/pulse/catalog/proofs/fin-b24-door-contracts.mjs` (the 39 bound rows, exact map text, tests and titles)
-- `src/pulse/catalog/proofs/fin-b24-door-contracts.test.mjs` (7 tests: binding, titles exist, rows left the red lane, geocode stays red)
-- `src/pulse/catalog/proofs/fin-b24-staff-reads.test.mjs` (9): lender-observations, inquiry, ad-videos, dashboard/kpis
+- `src/pulse/catalog/proofs/fin-b24-door-contracts.mjs` (the 38 bound rows, exact map text, tests and titles; `FIN_B24_HELD_ROWS` lists the 2 held rows with the words that would make them honest)
+- `src/pulse/catalog/proofs/fin-b24-door-contracts.test.mjs` (7 tests: binding, titles exist, rows left the red lane, the 2 held rows stay red with real tests)
+- `src/pulse/catalog/proofs/fin-b24-staff-reads.test.mjs` (11): lender-observations, inquiry, ad-videos, dashboard/kpis
 - `src/pulse/catalog/proofs/fin-b24-content-docs.test.mjs` (10): content/tiles, content/welcome-video, documents-download
 - `src/pulse/catalog/proofs/fin-b24-agent-board.test.mjs` (7): agent-call check, adintel/board
 - `src/pulse/catalog/proofs/fin-b24-hiring.test.mjs` (9): hiring/apply, hiring/decide
 - `src/pulse/catalog/proofs/fin-b24-chat-journeys.test.mjs` (10): chat/messages, chat/ask, journeys/ask, journeys/run, climate/geocode
-- `src/pulse/catalog/proofs/fin-b24-creative.test.mjs` (8): creative/generate, creative/run
+- `src/pulse/catalog/proofs/fin-b24-creative.test.mjs` (9): creative/generate, creative/run
 - `src/pulse/catalog/proofs/fin-b24-analytics.test.mjs` (9): clickfunnels and youtube connect and sync
 - `src/pulse/catalog/proofs/fin-b24-campaigns.test.mjs` (9): campaigns/detail, link-asset, sync
 - `src/pulse/catalog/proofs/fin-b24-marketing-reads.test.mjs` (8): marketing/ad, angles, costs, flywheel, flywheel/job
-- `src/pulse/catalog/proofs/fin-b24-marketing-writes.test.mjs` (13): write-now, flywheel approve, campaign, run, spend-read, tweak
+- `src/pulse/catalog/proofs/fin-b24-marketing-writes.test.mjs` (14): write-now, flywheel approve, campaign, run, spend-read, tweak
 - `ops/workflows/finish-853-2026-10-14/manifest-b24.md` (this file)
 
 - `src/pulse/catalog/proofs/fin-b24-front-guards.test.mjs` (16, second pass): the refusal that stands in front of each door.
@@ -104,7 +117,7 @@ or make the door return a county. The guard test pins that this row stays red.
 - `src/pulse/catalog/proofs/fin-b24-more-guards.test.mjs` (2, second pass): welcome-video says the signing key is
   not set up (503) on the player's request, and dashboard/kpis maps a refused value to 400 and a real fault to 500.
 
-118 tests in the 13 test files (99 first pass, 19 second pass). No new file is over 700 lines.
+121 tests in the 13 test files (99 first pass, 19 second pass, 3 third pass). No new file is over 700 lines.
 
 Edited in the second pass: `fin-b24-staff-reads.test.mjs` (+1 test: ad-videos with no company, now 10 tests),
 `fin-b24-chat-journeys.test.mjs` (the client login case now also checks the refusal came from the sign-in gate, and
@@ -115,12 +128,12 @@ a partner login is added), `fin-b24-door-contracts.mjs` (binds the new files and
 | File | Change |
 |---|---|
 | `src/pulse/catalog/proofs/door-proof.mjs` | one import line (`finB24DoorProof`) after the `s5DoorProof` import, and one `\|\| finB24DoorProof(sourceFile, row)` line at the end of the `plugIn` chain (the `;` moved to it) |
-| `src/pulse/coverage/gap-door-batch-routes.mjs` | `EXPECTED_ROUTE_GAP_COUNTS` is now 41 / 26 / 16 / 13 (was 54 / 36 / 25 / 20; total 96, was 135). Subtract this batch's own counts per file if other route batches also merge: routes-0 minus 13, routes-1 minus 10, routes-2 minus 9, routes-3 minus 7 |
-| `src/pulse/coverage/gap-door-batch-routes.test.mjs` | the total, 135 to 96, in five places |
-| `src/pulse/catalog/proofs/door-batch-route-result.test.mjs` | `rows.length` 135 to 96, and `targets.length` 115 to 81 (unique route keys still in the lane after this batch) |
+| `src/pulse/coverage/gap-door-batch-routes.mjs` | `EXPECTED_ROUTE_GAP_COUNTS` is now 41 / 26 / 16 / 14 (was 54 / 36 / 25 / 20; total 97, was 135). Subtract this batch's own counts per file if other route batches also merge: routes-0 minus 13 (12 attached, geocode held), routes-1 minus 10, routes-2 minus 9, routes-3 minus 6 (costs is held, so it still counts) |
+| `src/pulse/coverage/gap-door-batch-routes.test.mjs` | the total, 135 to 97, in five places |
+| `src/pulse/catalog/proofs/door-batch-route-result.test.mjs` | `rows.length` 135 to 97, and `targets.length` 115 to 82 (unique route keys still in the lane after this batch) |
 | `src/pulse/catalog/proofs/door-proof.test.mjs` | the "known partial rows" sample `route:lender-observations` became `route:read/message-templates` (`/^GET the message copy library/`), because the old sample left the red lane. The "exact route gap monitor" case now changes the control text of its `route:ad-videos` row so no attached test is bound to it (the row is attached now) |
 | `src/pulse/catalog/door-recipes.test.mjs` | the sample surface `route:ad-videos` became `route:read/messages` in "route recipes use route methods", for the same reason |
-| `src/pulse/catalog/generated.json` | rebuilt with `npm run pulse:catalog` (78 changed lines). Expect a conflict; rebuild after merging |
+| `src/pulse/catalog/generated.json` | rebuilt with `npm run pulse:catalog`. Expect a conflict; rebuild after merging |
 
 Samples I picked (`route:read/message-templates`, `route:read/messages`) belong to other route batches (b26) and
 may leave the red lane when those merge. If they do, the integrator re-picks a row that is still red.
@@ -148,6 +161,42 @@ when it was removed (only chat/ask, dashboard/kpis and, after the first fix here
 because a real staff session always carries a company, but the shared dashboard key and a future sign-in kind do not.
 Each is now one test. Three doors that do work (clickfunnels-sync, youtube-connect, journeys/run) had no test for the
 wrong verb; each now has one.
+
+## Third pass (generation 2): the row's own words against what the door returns
+
+Method. The catalog writes a row's words in as the asserted result, so a row is only honest if every result the words
+name is (a) returned by the door and (b) judged by a test that goes red when it is wrong. I read each of the 39 attached
+rows' words against the real handler and its test. Two kinds of finding:
+
+**A named result the door returns but no test judged. Closed with a test, each broken on purpose and seen red:**
+
+| Row | The words | What was not judged | Now judged by |
+|---|---|---|---|
+| `route:dashboard/kpis` | `period=today\|7d\|30d\|qtd` | `qtd` was only on the "allowed" list; its day count was never checked, so `qtd` could have returned 30 and stayed green | new test in `fin-b24-staff-reads.test.mjs`: time held still on five dates (1 Jan = 1 day, 31 Mar = 90, 1 Jul = 1, 14 Oct = 14, 31 Dec = 92), and the same day count is bound to the cash and funded reads. Broken: `qtd` returned 30, and off by one: both red |
+| `route:creative/generate` | "(image, video or copy)" | only `copy` was ever sent; the default kind (`static`, the picture) and `video` were not | new test in `fin-b24-creative.test.mjs`: no kind, `static`, `video`, `assetKind` and `copy`, each saved with that kind and the service asked for that same kind, and a kind nothing can make is saved and says so. Broken: default `static` to `copy`; camelCase key dropped; wrong kind asked: all red |
+| `route:creative/run` | "ad-checker verdict on copy" | only the failing line was judged, so a checker that always said "fails" stayed green | `fin-b24-creative.test.mjs`: a plain line passes with no failures and "it passes", the guarantee line fails and says "1 problem". Broken: `ok` always false; the pass words changed: both red |
+| `route:marketing/flywheel/job` | "(status, cost so far, sentence)" | the sentence was only `typeof string` | `fin-b24-marketing-reads.test.mjs`: the running sentence with step, dollars and searches; failed says "Could not finish: ..." and is the only state that can resume; done says the result's own sentence. Broken: four edits in `avatarJobView`: all red |
+| `route:marketing/flywheel` | "every campaign and its six steps in plain words" | the footer advice was only `typeof string` | same file: names step 2 as next when the avatar is done. Broken: advice words changed: red |
+| `route:marketing/flywheel/spend-read` | "writes the conclusion into 06-spend.md" | only the "selling" conclusion existed, and the file was only checked for its stamp | `fin-b24-marketing-writes.test.mjs`: all seven conclusions (selling, opening, offer with no leads, offer with no calls, ask, too early, no spend), the step the page jumps to, and that the file carries the same words twice (answer and review card) and the figures. Broken: five edits in `concludeSpend`: all red |
+| `route:marketing/flywheel/run` | "6 spend read: free" | the step-6 test was in the file but not bound to the row | its title is now bound in `fin-b24-door-contracts.mjs` |
+
+**A named result the door never returns. Two rows held back** (see "The two held rows"): `route:climate/geocode`
+(county) and `route:marketing/costs` (batch caps). The first was held by the earlier pass for the same reason; the
+second was attached by the first pass and is moved back to red here, because the words cannot be asserted.
+
+**Loose words that are not a result (left attached, written down):**
+
+- `route:inquiry` says "open inquiry-removal cases". The SQL has no open-only condition. It lists the company's cases
+  of every status, newest 100, and narrows only when `status=` is sent. The test pins exactly that (an "open" and a
+  "waiting" case both come back). The real status values are `Queued, Scheduled, In Progress, Completed, Escalated,
+  Blocked, Canceled`, so the stand-in's "open" and "waiting" are not real values; the door passes the word through.
+
+Independent break check on the earlier work (a fresh sample, 12 breaks across 8 doors: journeys/run commit instead of
+rollback, hiring decide reason guard, lender-observations role set, flywheel approve value, documents-download
+refusal code, chat/messages participant and company conditions, youtube-sync no-video skip and connection state,
+write-now cap status): every one went red. One stayed green by design: removing `reject()`'s own reason check inside
+`src/hiring/pipeline.mjs` while the door's own check is intact (equal outcome, the door refuses first; removing both
+goes red).
 
 ## Break it on purpose
 
@@ -180,15 +229,18 @@ Four breaks stayed green on purpose, and each is an equal outcome (the layer nex
 
 ## Commands run
 
-- `node scripts/pulse/count-not-proved.mjs`: before 853 (40 of this batch open), after 814 (1 of this batch open).
-- `node --test src/pulse/catalog/proofs/fin-b24-*.test.mjs`: 118 of 118 pass (99 of 99 before the second pass).
-- `npm run pulse:catalog`: ran; `generated.json` rebuilt.
+- `node scripts/pulse/count-not-proved.mjs` on a detached checkout of `fin-b24`'s base: 853 total, 40 of this batch open.
+  On this branch: 815 total (route lane 97), 2 of this batch open.
+- `node --test src/pulse/catalog/proofs/fin-b24-*.test.mjs`: 121 of 121 pass (118 before the third pass).
+- Break checks: 17 one-line breaks in the third pass (each new test seen red, then the file restored from its backup copy,
+  no diff left in any product file) plus the 12-break sample above.
+- `npm run pulse:catalog`: ran; `generated.json` rebuilt (one row changed: `route:marketing/costs` is red again).
 - `node --test` over `src/pulse/catalog/*.test.mjs`, `src/pulse/catalog/proofs/*.test.mjs`,
-  `src/pulse/coverage/gap-catalog*.test.mjs` and `src/pulse/coverage/gap-door-batch*.test.mjs`: 1,782 tests,
-  1,780 pass, 2 fail. Both were looked at:
-  - "route recipes use route methods" named `route:ad-videos` as its sample. Fixed (see shared lines); re-run passes.
-  - "every test named by a flow proof passes" lost `src/sales/closer-deck.test.mjs` to the 30 s inner timeout on
-    a loaded Mac. Same failure the earlier manifests recorded. Run alone: 27 of 27 pass.
+  `src/pulse/coverage/gap-catalog*.test.mjs` and `src/pulse/coverage/gap-door-batch*.test.mjs`: 1,804 tests, 1,802 pass,
+  2 fail. Both fail only under load (the Mac was running dozens of sibling test runs, load average 15 to 47):
+  "the focused proof test runs every executable test named by every case" (`display-proof-cases.test.mjs`) and
+  "every test named by a flow proof passes with fake data or local reads" (`flow-result-proofs.test.mjs`). Each run alone:
+  3 of 3 and 9 of 9 pass.
 - `npm run lint`: 3,576 files parse clean.
 - Not run: `npm run pulse:prove` (it reads the live database; this batch is told to stay off it) and any
   `.pg.test.mjs` (there is no local Postgres on this Mac).
@@ -199,7 +251,8 @@ Four breaks stayed green on purpose, and each is an equal outcome (the layer nex
    `reject()` in `src/hiring/pipeline.mjs` look the application up by its id only (`WHERE a.id = $1 FOR UPDATE OF a`);
    the company is used only to find the stage. An owner or admin of one company who knows an application id from
    another company could move or reject it. Safe while there is one company; the test does not judge it.
-2. **`route:climate/geocode` row says "state / county"; the door returns no county** (above).
+2. **Two catalog rows name a result their door never returns** (above): `route:climate/geocode` (county) and
+   `route:marketing/costs` (batch caps). A decision for Chris on each: the words, or the door.
 3. **The flywheel card never turns on Run for steps 1 and 2.** `GET /api/marketing/flywheel` answers
    `can_run.ok = false` with "Not on this page yet: it ships in slice 5a" for the avatar, and the same for the
    research, because `STAGE_RUNNERS[1]` and `[2]` are still `null` in `src/marketing/flywheel/stages.mjs`, while
@@ -219,3 +272,10 @@ Four breaks stayed green on purpose, and each is an equal outcome (the layer nex
 - `creative/run` takes claim and run through the handler's seam; the claim SQL and the providers are other tests'.
 - `chat/ask` takes the answerers through the handler's seam; the model and retrieval are other tests'.
 - The vendors (ClickFunnels, Google, Meta, ntfy, Anthropic) are stand-ins. Nothing was called and no real key was used.
+6. **`GET /api/inquiry?action=cases` is described as "open" cases but returns every status** (above). If the Specialist
+   desk is meant to see only live work, the list needs a status condition; today Completed and Canceled cases are in it
+   (newest 100).
+7. **The `/climate` page reads `n.reason` on a failed lookup; the door sends `error`.** In the built page code
+   (`public/climate/_next/static/chunks/375-*.js`) a failed answer throws `n.reason || "Failed to geocode"`, while
+   `api/climate/geocode.mjs` answers `{ok:false, error:"not_found"}`. The visitor sees "Failed to geocode" for every
+   failure, not the door's word. Harmless; written down.
