@@ -4,10 +4,16 @@
 // the assignment stays NULL and tasks still route by assigneeRole csm.
 
 import { productCreatesChecklist } from "../waypoints/purchase.mjs";
+import { andNotDemo } from "../demo/exclude-demo.mjs";
 
 /**
  * Pick the next CSM for this org. Fewest assigned Blueprint clients first,
  * then oldest staff row (stable tie-break).
+ *
+ * Demo staff are never picked. csm@demo.fundhub.local (db/migrations/
+ * 290_csm_role.sql, is_demo = true) is an active role='csm' row that cannot log
+ * in, so a paying client assigned to it would sit with a CSM nobody can reach.
+ * With only a demo CSM the answer is null and the caller records no_active_csm.
  */
 export async function pickCsmStaffId(db, { orgId }) {
   if (!orgId) return null;
@@ -17,6 +23,7 @@ export async function pickCsmStaffId(db, { orgId }) {
       WHERE s.org_id = $1::uuid
         AND lower(btrim(COALESCE(s.role, ''))) = 'csm'
         AND lower(btrim(COALESCE(s.status, 'active'))) = 'active'
+        ${andNotDemo("s")}
       ORDER BY (
         SELECT COUNT(*)::int
           FROM clients c
