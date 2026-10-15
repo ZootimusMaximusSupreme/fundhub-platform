@@ -13,15 +13,17 @@ import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const FOREIGN_CLIENT = "c9000000-0000-4000-8000-000000000009";
+const SECOND_CLIENT = "c2000000-0000-4000-8000-000000000002";
 const lender = (id, name, over = {}) => ({
   id, org_id: ORG_ID, lender_table: "PersonalCC", name, product_name: null, eligible_states: "All States", bureaus_pulled: "EX",
   priority_tier: 1, active: true, is_demo: false, stated_requirements: null, ...over,
 });
 
 /** The tables the matcher reads. A row is kept only while the statement's own condition names it. */
-function bookTables({ lenders = [], inquiries = [], businesses = [], custom_fields = { home_state: "AZ" }, demoMode = false, cases = [] } = {}) {
+function bookTables({ lenders = [], inquiries = [], businesses = [], custom_fields = { home_state: "AZ" }, demoMode = false, cases = [], addresses = null } = {}) {
   const clients = [
     { id: CLIENT, org_id: ORG_ID, custom_fields },
+    { id: SECOND_CLIENT, org_id: ORG_ID, custom_fields: { home_state: "AZ" } },
     { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, custom_fields: {} },
   ];
   const biz = businesses.map((b) => ({ org_id: ORG_ID, client_id: CLIENT, ...b }));
@@ -29,7 +31,7 @@ function bookTables({ lenders = [], inquiries = [], businesses = [], custom_fiel
   const fake = fakeDb([
     [/^\s*SELECT id, custom_fields\s+FROM clients/i, (s, p) => rowsWhere(clients, s, p)],
     [/^\s*SELECT entity_data\s+FROM businesses/i, (s, p) => rowsWhere(biz, s, p)],
-    [/^\s*SELECT addresses\s+FROM pii_identity/i, []],
+    [/^\s*SELECT addresses\s+FROM pii_identity/i, (s, p) => (addresses ? rowsWhere([{ org_id: ORG_ID, client_id: CLIENT, addresses }, { org_id: OTHER_ORG_ID, client_id: CLIENT, addresses: [{ address_state: "NV" }] }], s, p) : [])],
     [/^\s*SELECT result, outcome_tier, created_at\s+FROM crs_results/i, []],
     [/^\s*SELECT bureau, status, created_at\s+FROM inquiry_log/i, (s, p) => rowsWhere(inq, s, p)],
     [/^\s*SELECT demo_mode_enabled FROM orgs WHERE id = \$1/i, [{ demo_mode_enabled: demoMode }]],
@@ -189,5 +191,104 @@ describe("GET /api/read/lender-matches", () => {
     const client = await call({ client_id: CLIENT }, tables, accountSession({ kind: "client", clientId: CLIENT }));
     assert.equal(client.res.statusCode, 401);
     assert.equal(tables.calls.filter((c) => /FROM lenders|FROM clients/.test(c.sql)).length, 0);
+  });
+
+  const DAY = 86400000;
+  const daysAgo = (n) => new Date(Date.now() - n * DAY).toISOString();
+
+  test("another client's inquiries in the same company do not protect this client's bureaus", async () => {
+    const tables = bookTables({
+      lenders: [lender("i1", "Transunion Lender", { bureaus_pulled: "TU" })],
+      inquiries: [{ bureau: "TU", status: "open", client_id: SECOND_CLIENT }],
+    });
+    const { res } = await call({ client_id: CLIENT }, tables);
+    assert.deepEqual(names(res), ["Transunion Lender"], "the other client's inquiry is not this client's");
+    const mine = await call({ client_id: SECOND_CLIENT }, bookTables({
+      lenders: [lender("i1", "Transunion Lender", { bureaus_pulled: "TU" })],
+      inquiries: [{ bureau: "TU", status: "open", client_id: SECOND_CLIENT }],
+    }));
+    assert.deepEqual(names(mine.res), [], "and it does protect the client it belongs to");
+  });
+
+  test("an inquiry is hot while it is open, disputed or new, and for 30 days after it was made whatever its status; older closed ones are not", async () => {
+    const lenders = [
+      lender("j1", "Experian Lender", { bureaus_pulled: "EX" }),
+      lender("j2", "Equifax Lender", { bureaus_pulled: "EQ" }),
+      lender("j3", "Transunion Lender", { bureaus_pulled: "TU" }),
+    ];
+    const cases = [
+      // Closed 5 days ago: still recent, so Experian is protected. Closed 60 days ago: no longer hot.
+      { name: "recent closed", inquiries: [{ bureau: "EX", status: "closed", created_at: daysAgo(5) }], held: ["Experian Lender"] },
+      { name: "old closed", inquiries: [{ bureau: "EQ", status: "closed", created_at: daysAgo(60) }], held: [] },
+      { name: "old but still disputed", inquiries: [{ bureau: "TU", status: "disputed", created_at: daysAgo(90) }], held: ["Transunion Lender"] },
+      { name: "new", inquiries: [{ bureau: "EX", status: "new", created_at: daysAgo(90) }], held: ["Experian Lender"] },
+    ];
+    for (const c of cases) {
+      const { res } = await call({ client_id: CLIENT }, bookTables({ lenders, inquiries: c.inquiries }));
+      const held = Object.entries(skipped(res)).filter(([, reason]) => reason === "inquiry_sensitive").map(([n]) => n).sort();
+      assert.deepEqual(held, c.held.slice().sort(), c.name);
+    }
+  });
+
+  test("a case being worked marks its bureau hot until the owner overrides the gate; a finished case does not", async () => {
+    const lenders = [lender("k1", "Experian Lender", { bureaus_pulled: "EX" }), lender("k2", "Transunion Lender", { bureaus_pulled: "TU" })];
+    const mk = (over) => ({ id: "ca1", org_id: ORG_ID, client_id: CLIENT, selected_bureaus_raw: "TU", case_status: "In Progress", gate_override_by: null, gate_override_at: null, ...over });
+    const open = await call({ client_id: CLIENT }, bookTables({ lenders, cases: [mk({})] }));
+    assert.deepEqual(names(open.res), ["Experian Lender"]);
+    assert.equal(skipped(open.res)["Transunion Lender"], "inquiry_sensitive");
+    assert.deepEqual(open.res.body.summary.sensitive_bureaus, ["TU"]);
+    const overridden = await call({ client_id: CLIENT }, bookTables({ lenders, cases: [mk({ gate_override_by: "5a000000-0000-4000-8000-000000000001", gate_override_at: "2026-10-12T00:00:00Z" })] }));
+    assert.deepEqual(names(overridden.res).sort(), ["Experian Lender", "Transunion Lender"]);
+    const done = await call({ client_id: CLIENT }, bookTables({ lenders, cases: [mk({ case_status: "Completed" })] }));
+    assert.deepEqual(names(done.res).sort(), ["Experian Lender", "Transunion Lender"]);
+    const other = await call({ client_id: CLIENT }, bookTables({ lenders, cases: [mk({ client_id: SECOND_CLIENT }), mk({ id: "ca2", org_id: OTHER_ORG_ID })] }));
+    assert.deepEqual(names(other.res).sort(), ["Experian Lender", "Transunion Lender"], "another client's case and another company's case protect nobody here");
+  });
+
+  test("a client with a home state and a business state is matched on both: either state's locals fit, a third state's do not", async () => {
+    const lenders = [
+      lender("m1", "National Bank"),
+      lender("m2", "Arizona Local", { eligible_states: "AZ" }),
+      lender("m3", "Florida Local", { eligible_states: "FL" }),
+      lender("m4", "Texas Local", { eligible_states: "TX" }),
+      lender("m5", "Both States Bank", { eligible_states: "AZ, FL" }),
+    ];
+    const { res } = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: { home_state: "AZ", business_state: "FL" } }));
+    assert.deepEqual(names(res).sort(), ["Arizona Local", "Both States Bank", "Florida Local", "National Bank"]);
+    assert.equal(skipped(res)["Texas Local"], "state_ineligible");
+    const lane = (n) => res.body.matches.find((m) => m.name === n).lane;
+    assert.equal(lane("Arizona Local"), "home");
+    assert.equal(lane("Florida Local"), "business");
+    assert.equal(lane("Both States Bank"), "home", "a bank that covers both is a home-lane bank and is listed once");
+    assert.equal(lane("National Bank"), "national");
+    assert.equal(res.body.summary.home_state, "AZ");
+    assert.equal(res.body.summary.business_state, "FL");
+  });
+
+  test("a business state on the client's record alone counts as a business on file, and the client's own address gives the home state", async () => {
+    const lenders = [lender("n1", "Business Card Bank", { lender_table: "OnlineBizCC" }), lender("n2", "Personal Card Bank")];
+    const onRecord = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: { home_state: "AZ", business_state: "FL" } }));
+    assert.deepEqual(names(onRecord.res).sort(), ["Business Card Bank", "Personal Card Bank"], "no business row, but a business state: a business is on file");
+    assert.equal(skipped(onRecord.res)["Business Card Bank"], undefined);
+    const none = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: { home_state: "AZ" } }));
+    assert.deepEqual(names(none.res), ["Personal Card Bank"]);
+  });
+
+  test("a state we do not hold, or a lender that states no coverage, blocks nobody: unknown is not a refusal", async () => {
+    const lenders = [lender("o1", "Florida Local", { eligible_states: "FL" }), lender("o2", "Silent Coverage Bank", { eligible_states: "" }), lender("o3", "Blank Coverage Bank", { eligible_states: null })];
+    const unknownClient = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: {} }));
+    assert.deepEqual(names(unknownClient.res).sort(), ["Blank Coverage Bank", "Florida Local", "Silent Coverage Bank"], "no known state for the client: nothing is held back");
+    assert.equal(unknownClient.res.body.summary.home_state, null);
+    const knownClient = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: { home_state: "AZ" } }));
+    assert.deepEqual(names(knownClient.res).sort(), ["Blank Coverage Bank", "Silent Coverage Bank"], "a bank with no stated coverage is kept; the Florida one is not");
+    assert.equal(skipped(knownClient.res)["Florida Local"], "state_ineligible");
+  });
+
+  test("with no home state on the record, the state on the client's own address is the home state", async () => {
+    const lenders = [lender("p1", "Arizona Local", { eligible_states: "AZ" }), lender("p2", "Florida Local", { eligible_states: "FL" })];
+    const { res } = await call({ client_id: CLIENT }, bookTables({ lenders, custom_fields: {}, addresses: [{ address_line1: "1 Main St", address_state: "AZ" }] }));
+    assert.equal(res.body.summary.home_state, "AZ");
+    assert.deepEqual(names(res), ["Arizona Local"]);
+    assert.equal(skipped(res)["Florida Local"], "state_ineligible");
   });
 });
