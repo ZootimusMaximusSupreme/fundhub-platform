@@ -21,10 +21,10 @@ import {
 } from "./fin-b03-route-retired.mjs";
 
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
-  "routes-0.json": 13,
-  "routes-1.json": 6,
-  "routes-2.json": 5,
-  "routes-3.json": 2,
+  "routes-0.json": 2,
+  "routes-1.json": 5,
+  "routes-2.json": 2,
+  "routes-3.json": 1,
 });
 
 const MAPS = Object.freeze([
