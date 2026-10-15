@@ -129,6 +129,22 @@ Four breaks stayed green on the first run and were repaired, none taken back: on
 | `node --test --test-name-pattern=... src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the other two tests in the file) | 2 of 2 (red count 633) |
 | each browser file run 3 times in a row, under the same load | `fin-b14-lenders.test.mjs` 7 of 7, 7 of 7, 7 of 7; `fin-b14-journeys.test.mjs` 17 of 17, 17 of 17, 17 of 17 |
 | `node --test src/lib/no-unfenced-transmit.test.mjs src/lib/outbound-*.test.mjs` | 35 of 35 (my test files fake `fetch`, none sends) |
+| resume run, load average 50 to 78: the five browser and handler files together (`fin-b14-lenders-handlers`, `fin-b14-journeys-handlers`, `fin-b14-lenders`, `fin-b14-journeys`, `src/http/journeys-run-handler.test.mjs`) | 48 of 50: the History test failed once (see "Flake found on resume") |
+| resume run, after the repair: `fin-b14-journeys.test.mjs` twice in a row | 17 of 17, 17 of 17 |
+| resume run: `fin-b14-rows`, `fin-b14-live-contracts`, `gap-catalog-display` together | 71 of 71 |
+| resume run: `npm run pulse:catalog`, then `git status` | 3,975 mapped, 3,919 wired, 23 red; `generated.json` unchanged |
+| resume run: `node scripts/pulse/count-not-proved.mjs` | total 814, 1 of them this batch |
+
+## Flake found on resume, repaired in the test (not the product)
+
+The History test ("Roll back puts a saved version back, Put it back undoes one change") failed once when the
+machine was at load 70. Cause: `journeys.html` writes a typed change into the history 900 ms after the last key
+(`setCfg`, `setTimeout(..., 900)`). The test renamed a step and went on at once, so on a fast machine that
+"Edited Renamed first step" entry landed after the Roll back and after the next delete, and sat on top of the
+entry the test then read. The test now waits for the typed change to show in the history before it rolls back, so
+the order does not depend on speed. Then I broke Roll back on purpose (restore the journey as it was before the
+press, instead of the saved copy): the test goes red; restored. Nothing else in the file types into a step box and
+then reads the history or the undo count, so no other test has this race.
 
 ## Product findings (not fixed)
 
@@ -136,6 +152,11 @@ Four breaks stayed green on the first run and were repaired, none taken back: on
 2. `lenders.html` Save turns an empty Name box into `name: null` (`patch[k] = v === "" ? null : v`). The handler's blank-name guard tests `String(patch.name).trim() === ""`, and `String(null)` is `"null"`, so the guard does not fire: measured with the real handler on a stand-in database, it sends `UPDATE lenders SET name = $3 ...` with `null`. The column is NOT NULL, so the database refuses it and the handler re-throws: a raw 500 instead of "Name is required."
 3. `PUT /api/journeys` accepts `nodes: []`. On the next page load `journeys.html` throws that saved journey away and draws its own example (`r.nodes.length` is false). This is the wrong result the Page load live check goes red on.
 4. `journeys.html` History: after "Put it back" the page marks the new "Reverted: ..." entry as reverted too (`log[0].reverted = true`), so the entry that records the put-back also shows a disabled Reverted button. Cosmetic.
+5. `journeys.html` (900 ms timer in `setCfg`): a typed change is written to the history and the undo stack 900 ms
+   after the last key. A Roll back, Discard or Put it back pressed inside that 900 ms still gets the late
+   "Edited ..." entry on top afterwards, and its undo copy is the page as it was before the typing. Read from the
+   code, not run as a user path. Apply sends the page as it is, so no data loss is claimed; it is recorded because
+   the order of the history depends on timing.
 
 ## Left not proved
 

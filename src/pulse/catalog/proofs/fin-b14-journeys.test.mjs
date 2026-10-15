@@ -638,6 +638,10 @@ test("History: Roll back puts a saved version back, Put it back undoes one chang
     await waitFor(async () => (await titles(page))[0] === "Renamed first step", "the rename");
     assert.equal((await titles(page)).at(-1), "Wait a day", "the last step is gone");
     await page.locator('.ptab[data-tab="hist"]').click();
+    // The page writes a typed change into the history 900 ms after the last key, on its own. Wait for that entry
+    // before the Roll back: if it landed later it would sit on top of the entries below and the order would
+    // depend on how fast the machine is.
+    await waitFor(async () => (await page.locator("#pbody .sect").nth(1).locator(".li .wt").allTextContents())[0] === "Edited Renamed first step", "the typed change in the history");
 
     // Roll back: the whole journey is the way it was at the saved version, the rename included.
     await page.locator("#pbody .rv[data-ver]").click();
