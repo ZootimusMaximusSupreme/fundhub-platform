@@ -220,6 +220,18 @@ runner that lacks the secret would drop it; the new check would go red with "the
   staff see plan controls" are false of the page. The page's own header comment says "a client never does". A
   live check could only read the page script and would be red forever; that is the always-red gap this row
   already is. The fix is one product change: draw the staff forms by role, not by address.
+  **Challenged a second time (generation 2 re-run after the Mac restart), same answer.** Read `public/app/money-banks.js`
+  (`mount()` line 444 `var staff = !!clientId`; `initPage()` takes `clientId` from `param("client_id")`),
+  `public/app/money-banks.html` (no `shell.js`, no role script: the page says "The gate is the endpoint") and
+  `api/money/banks.mjs` (`scope()` pins a client to its own file and never reads the query). Then measured it in
+  Chromium with the real page and script through the S4 harness (stand-in server, banks sample file, `can_set_date`
+  true): client with no address paints 0 staff blocks and 0 forms; client with `?client_id=<uuid>` typed paints
+  6 staff blocks and 6 forms; staff with the address paints 6 and 6. The existing S4 test
+  `s4-money-banks.test.mjs` "the page gate" is green and proves the first and third lines (a client who opens
+  the page the normal way sees none; staff see them; staff with no client are told so), but it never types the
+  address as a client, and the row says "only staff". Attaching it would paint the row green over the second line.
+  S4 left the row open on purpose for the same reason (S4 manifest, finding 7). Nothing here changed in the
+  product or in the registry.
 - Leads list page: no longer in this list. See "The leads page read".
 
 ## Risks for the integrator
@@ -252,6 +264,11 @@ runner that lacks the secret would drop it; the new check would go red with "the
 | `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 2 of 2 pass (red count 631) |
 | `npm run lint` | 3577 files and inline scripts parse clean |
 | `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the full file: runs every executable test named by every case, including the new leads page test and the Chromium files) | 3 of 3 pass, 9 minutes 4 seconds, load average about 40 |
+| Re-run after the restart: `node scripts/pulse/count-not-proved.mjs` and the batch-07 intersection | 808 open in all, 1 of the 46 open (the Banks page gate) before and after; nothing to compile |
+| Re-run: `node scripts/pulse/compile-catalog.mjs --check` | 3975 mapped, catalog current, `git status` clean |
+| Re-run: the 437 test command above | 437 tests, 437 pass, 0 fail, 0 skipped |
+| Re-run: `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 3 of 3 pass, 7 minutes 47 seconds |
+| Re-run: one scratch Chromium measure of the Banks page (real `money-banks.html` + `money-banks.js`, S4 harness; the script is not kept) | client no address 0 / 0, client typed address 6 / 6, staff with address 6 / 6 (staff blocks / forms) |
 
 Generation 1 commands:
 
