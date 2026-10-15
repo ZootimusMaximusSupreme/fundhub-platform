@@ -354,7 +354,7 @@ for (const [control, from, to, build] of BREAKS) {
 // ---- through the lane ------------------------------------------------------------------------------------
 
 test("through the lane: each of the 11 checks answers PASS on a clean database and FAIL once one wrong row is added", async () => {
-  const ids = new Map(DISPLAY_RESULT_CASES.filter((c) => FIN_B19_DISPLAY_CONTRACTS.some((f) => f.control === c.control)).map((c) => [c.control, c.id]));
+  const ids = new Map(DISPLAY_RESULT_CASES.filter((c) => FIN_B19_DISPLAY_CONTRACTS.some((f) => f.mode === "query" && f.control === c.control)).map((c) => [c.control, c.id]));
   assert.equal(ids.size, 11);
 
   const clean = stand();

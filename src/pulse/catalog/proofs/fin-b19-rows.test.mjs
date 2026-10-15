@@ -1,5 +1,5 @@
 // Guards for the batch 19 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the three rows
+// plain runnable test that opens no live site, every attached row has a proof case, and the five rows
 // left out stay out only while the reason in fin-b19-not-attachable.mjs is still true.
 
 import assert from "node:assert/strict";
@@ -9,7 +9,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B19_DISPLAY_PROOF_CASES } from "./fin-b19-display-proofs.mjs";
-import { FIN_B19_NOT_ATTACHABLE } from "./fin-b19-not-attachable.mjs";
+import { FIN_B19_HIDDEN_HEADS, FIN_B19_NOT_ATTACHABLE } from "./fin-b19-not-attachable.mjs";
 import ROWS from "./fin-b19-rows.json" with { type: "json" };
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -45,20 +45,25 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 35);
   assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 35);
   const left = new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => c.control));
-  for (const row of FIN_B19_NOT_ATTACHABLE) assert.equal(left.has(row.control), false, row.control);
+  for (const row of [...FIN_B19_NOT_ATTACHABLE, ...FIN_B19_HIDDEN_HEADS]) assert.equal(left.has(row.control), false, row.control);
   for (const c of FIN_B19_DISPLAY_PROOF_CASES) {
     for (const t of c.tests) assert.ok(fs.existsSync(path.join(ROOT, t)), `${t} exists`);
   }
 });
 
-test("the five left-out rows are real map rows listed as not attached, each with a reason that is still true", () => {
-  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 5);
+test("the five left-out rows are real map rows: two named not attachable, three sidebar heads judged by the live shared chrome", () => {
+  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 2);
+  assert.equal(FIN_B19_HIDDEN_HEADS.length, 3);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || []));
-  assert.deepEqual([...listedNotAttached].sort(), FIN_B19_NOT_ATTACHABLE.map((r) => r.control).sort());
+  assert.deepEqual(
+    [...listedNotAttached].sort(),
+    [...FIN_B19_NOT_ATTACHABLE, ...FIN_B19_HIDDEN_HEADS].map((r) => r.control).sort(),
+  );
   for (const row of FIN_B19_NOT_ATTACHABLE) {
     assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
     assert.ok(row.why.length > 120, "the reason is written out");
   }
+  for (const row of FIN_B19_HIDDEN_HEADS) assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
 
   // The Sort and chip reason, held to the page: an empty choice still reorders nothing.
   const pipeline = fs.readFileSync(path.join(ROOT, "public/app/pipeline.html"), "utf8");
@@ -67,23 +72,21 @@ test("the five left-out rows are real map rows listed as not attached, each with
   assert.match(pipeline, /c\.el\.value=''; applyFilters\(\); if\(c\.el===fSort\) applySort\(\); syncChips\(\);/,
     "the chip x changed: re-check the chip row");
 
-  // The reason, held to the repo: every link under these three heads is still on NAV_HIDDEN in shell.js.
+  // The three heads: every link under each is still on NAV_HIDDEN in shell.js, which is what hides the section.
+  // (fin-b19-hidden-head.test.mjs holds the live reader to the same file, and breaks it on purpose.)
   const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
   const hidden = shell.match(/var NAV_HIDDEN = \[([\s\S]*?)\];/)[1];
-  for (const href of ["partner-galaxy.html", "galaxy.html", "ops-admin.html", "agent-editor.html", "automations.html", "journeys.html"]) {
-    assert.ok(hidden.includes(`"${href}"`), `${href} is no longer on NAV_HIDDEN: its section head can show, attach the row`);
-  }
-  // The same six are hidden a second time by the sidebar stylesheet, which has to move with NAV_HIDDEN.
   const css = fs.readFileSync(path.join(ROOT, "public/app/crm-sidebar.css"), "utf8");
   const cssHidden = css.match(/\.navitem:is\(([\s\S]*?)\) \{\s*display: none !important;/)[1];
-  for (const href of ["partner-galaxy.html", "galaxy.html", "ops-admin.html", "agent-editor.html", "automations.html", "journeys.html"]) {
-    assert.ok(cssHidden.includes(`[href="${href}"]`), `${href} is no longer hidden by crm-sidebar.css: its section head can show, attach the row`);
-  }
-  // And the sidebar still lists each head with exactly those links.
   const html = fs.readFileSync(path.join(ROOT, "public/app/sidebar.fragment.html"), "utf8");
-  for (const [section, links] of [["home", ["partner-galaxy.html"]], ["watch", ["galaxy.html", "ops-admin.html"]],
-    ["automation", ["agent-editor.html", "automations.html", "journeys.html"]]]) {
-    const block = html.split(`data-fh-section="${section}"`)[1].split("</div></div>")[0];
-    assert.deepEqual([...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]), links, section);
+  for (const head of FIN_B19_HIDDEN_HEADS) {
+    for (const href of head.links) {
+      assert.ok(hidden.includes(`"${href}"`), `${href} is no longer on NAV_HIDDEN: the ${head.label} head can show, attach the row`);
+      // The same rows are hidden a second time by the sidebar stylesheet, which has to move with NAV_HIDDEN.
+      assert.ok(cssHidden.includes(`[href="${href}"]`), `${href} is no longer hidden by crm-sidebar.css: the ${head.label} head can show, attach the row`);
+    }
+    // And the sidebar still lists each head with exactly those links.
+    const block = html.split(`data-fh-section="${head.section}"`)[1].split("</div></div>")[0];
+    assert.deepEqual([...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]), head.links, head.section);
   }
 });

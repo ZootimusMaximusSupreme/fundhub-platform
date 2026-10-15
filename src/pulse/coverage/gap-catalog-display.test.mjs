@@ -47,13 +47,13 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 51 deep display controls own one exact contract", () => {
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 51);
-  assert.equal(DISPLAY_RESULT_CASES.length, 51);
+test("all 56 deep display controls own one exact contract", () => {
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 56);
+  assert.equal(DISPLAY_RESULT_CASES.length, 56);
   assert.equal(PASS_CAPABLE_COUNT, 38);
-  assert.equal(UNMEASURED_CONTRACT_COUNT, 13);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 51);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 51);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 18);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 56);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 56);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -116,7 +116,7 @@ test("missing contracts are not proved while measured breaks stay broken", () =>
 
 test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
-  assert.equal(entries.length, 13);
+  assert.equal(entries.length, 18);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED", entry.control);
@@ -139,7 +139,11 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.equal(db.calls.length, 38);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   assert.equal(focused.filter((row) => row.status === "PASS").length, 38);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  // The three sidebar heads that no role is shown are read from the live shared chrome (fin-b19-hidden-head.mjs).
+  // This stub answers every address but the retired page with the menu page, which is not the shared chrome,
+  // so those three are "skip" here, never "na" and never a guess.
+  assert.equal(focused.filter((row) => row.status === "skip").length, 3);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 15);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(unproved.length, unprovedIds.size);
   assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
@@ -151,7 +155,7 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 15);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 
@@ -195,7 +199,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 51);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 56);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

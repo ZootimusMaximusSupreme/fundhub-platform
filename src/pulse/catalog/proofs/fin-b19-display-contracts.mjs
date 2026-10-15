@@ -6,6 +6,11 @@
 // The SQL is written in the part of the language that Postgres and SQLite read the same way (LIKE, ||,
 // CASE, FILTER, joins, IS NOT NULL, ::casts that the test strips), so fin-b19-display-contracts.test.mjs
 // can run the very same text on stand-in tables and see it go red.
+//
+// Five more contracts at the end are not queries: three carry the claim that a sidebar head is shown to no
+// role (HEAD_CONTRACTS), and two name a pipeline control the page has to fix first (PAGE_GAP_CONTRACTS).
+
+import { FIN_B19_HIDDEN_HEADS, FIN_B19_NOT_ATTACHABLE } from "./fin-b19-not-attachable.mjs";
 
 const query = (control, requirement, key, body) => Object.freeze({
   control,
@@ -82,8 +87,33 @@ SELECT count(*)::int AS sample_count,
   FROM org_brand b
  WHERE b.org_id = $1::uuid`;
 
+// A sidebar head that every role has hidden: the shared chrome hides each row under it by name (NAV_HIDDEN),
+// then hides the whole section. No saved result can show a head nobody sees, so the contract is an honest
+// gap that carries one claim: the live shell.js is read again on every run (src/pulse/coverage/
+// fin-b19-hidden-head.mjs). While every row under the head is hidden the row says "nothing to judge", and the
+// day one row is shown it goes back to not proved.
+const HEAD_CONTRACTS = FIN_B19_HIDDEN_HEADS.map((head) => Object.freeze({
+  control: head.control,
+  mode: "always-red",
+  requirement: `The ${head.label} head of the sidebar folds and unfolds the rows under it. Every row under it (${head.links.join(", ")}) is on the shared chrome's hidden list, so no role is shown the head and there is nothing to fold. If a row is shown, the head must be proved.`,
+  sql: null,
+  hiddenHead: Object.freeze({ path: "/app/shell.js", section: head.section, label: head.label }),
+}));
+
+// The two pipeline rows whose control does not do what its words say (Manual, and the x on the Sort chip).
+// There is no saved result and the page has to change first, so the contract is an honest gap that names
+// exactly what is wrong, and the row stays NOT_PROVED with that sentence on the board.
+const PAGE_GAP_CONTRACTS = FIN_B19_NOT_ATTACHABLE.map((row) => Object.freeze({
+  control: row.control,
+  mode: "always-red",
+  requirement: row.requirement,
+  sql: null,
+}));
+
 export const FIN_B19_DISPLAY_CONTRACTS = Object.freeze([
   ...RAIL_CONTRACTS,
+  ...HEAD_CONTRACTS,
+  ...PAGE_GAP_CONTRACTS,
   query(
     "'Flag <belief>' button: stores a belief x source row for marketing",
     "Every belief flag filed from the sales floor must name a staff member of the same company, and the count saved on the row must be the same count written in its note.",
