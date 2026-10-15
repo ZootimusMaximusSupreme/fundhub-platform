@@ -1,0 +1,43 @@
+{
+  "_note": "Maps each ad file name (without Take N and .mp4) to the script it was read from. heading is the start of the ## line in that file; null means the whole file. Ad 12 (Industry slam) has no script in the repo.",
+  "Capital Blueprint Ad 1 — Industry call-out": {
+    "script": "marketing/ads/scripts/2026-10-13.md",
+    "heading": "## 1. Capital Blueprint"
+  },
+  "Capital Blueprint Ad 2 — Learn it yourself": {
+    "script": "marketing/ads/scripts/2026-10-13.md",
+    "heading": "## 2. Capital Blueprint"
+  },
+  "Direct Book Ad 4 — High earners": {
+    "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+    "heading": "## 4. Ad 15"
+  },
+  "Direct Book Ad 5 — Paying for speed": {
+    "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+    "heading": "## 5. Ad 17"
+  },
+  "Direct Book Ad 9 — The bank": {
+    "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+    "heading": "## 9. Ad 9"
+  },
+  "Direct Book Ad 10 — Scale without your own cash": {
+    "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+    "heading": "## 10. Scale without your own cash"
+  },
+  "Direct Book Ad 11 — The penthouse": {
+    "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+    "heading": "## 11. The penthouse"
+  },
+  "Direct Book Ad 12 — Industry slam": {
+    "script": null,
+    "heading": null
+  },
+  "Direct Book Thank You": {
+    "script": "marketing/ads/scripts/2026-10-13.md",
+    "heading": "## 5. Call funnel thank-you video"
+  },
+  "Direct Book VSL 1 — Watch page": {
+    "script": "marketing/ads/scripts/machine/on-demand/08-watch-vsl-book-a-call.md",
+    "heading": null
+  }
+}

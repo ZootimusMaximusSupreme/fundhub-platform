@@ -1,0 +1,567 @@
+{
+ "file": "Capital Blueprint Ad 2 — Learn it yourself Take 1.mp4",
+ "ad": "Capital Blueprint Ad 2 — Learn it yourself",
+ "lufs": -17.3,
+ "lra": 3.4,
+ "true_peak_db": -0.3,
+ "timing_ok": true,
+ "duration_s": 115.6,
+ "lead_silence_s": 0.32,
+ "trail_silence_s": 1.09,
+ "words": 420,
+ "wpm_overall": 221,
+ "wpm_speaking": 255,
+ "pauses": 33,
+ "pauses_per_min": 17.3,
+ "pause_total_s": 15.3,
+ "pause_pct_of_span": 13.4,
+ "pause_median_s": 0.44,
+ "pause_max_s": 0.96,
+ "pauses_over_1s": 0,
+ "pauses_over_1_5s": 0,
+ "phrase_len_mean_s": 2.91,
+ "phrase_len_sd_s": 1.88,
+ "gaps": [
+  0.46,
+  0.34,
+  0.46,
+  0.62,
+  0.54,
+  0.42,
+  0.34,
+  0.4,
+  0.52,
+  0.52,
+  0.54,
+  0.3,
+  0.56,
+  0.44,
+  0.34,
+  0.52,
+  0.3,
+  0.38,
+  0.92,
+  0.36,
+  0.96,
+  0.5,
+  0.66,
+  0.38,
+  0.48,
+  0.34,
+  0.3,
+  0.48,
+  0.36,
+  0.34,
+  0.5,
+  0.32,
+  0.36
+ ],
+ "pitch_ok": true,
+ "f0_median_hz": 109.9,
+ "pitch_sd_st": 2.66,
+ "pitch_p10_p90_st": 6.3,
+ "voiced_pct_of_speech": 37.8,
+ "phrases": 34,
+ "phrase_level_sd_st": 1.23,
+ "phrase_range_mean_st": 5.36,
+ "loud_sd_db": 7.32,
+ "loud_p10_p90_db": 20.04,
+ "phrase_loud_sd_db": 2.35,
+ "accents_total": 81,
+ "fillers_heard": 0,
+ "restarts": 0,
+ "silence_threshold_db": -28.7,
+ "word_time_lag_s": 0.16,
+ "script": {
+  "script_words": 398,
+  "said_words": 420,
+  "script_covered_pct": 90.5,
+  "said_off_script_pct": 14.3,
+  "line_ends": [
+   {
+    "line": 0,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 6.24,
+    "end_slope_st": -1.8111111111111096,
+    "pause_after_s": 0.46,
+    "is_last": false
+   },
+   {
+    "line": 1,
+    "found": true,
+    "pitch_up": true,
+    "t_end": 13.64,
+    "end_slope_st": -3.341208791208791,
+    "pause_after_s": 0.62,
+    "is_last": false
+   },
+   {
+    "line": 2,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 21.18,
+    "end_slope_st": null,
+    "pause_after_s": 0.42,
+    "is_last": false
+   },
+   {
+    "line": 3,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 28.58,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 4,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 33.5,
+    "end_slope_st": -1.4399999999999977,
+    "pause_after_s": 0.52,
+    "is_last": false
+   },
+   {
+    "line": 5,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 38.52,
+    "end_slope_st": -1.3500000000000005,
+    "pause_after_s": 0.3,
+    "is_last": false
+   },
+   {
+    "line": 6,
+    "found": true,
+    "pitch_up": true,
+    "t_end": 42.56,
+    "end_slope_st": -4.463333333333333,
+    "pause_after_s": 0.56,
+    "is_last": false
+   },
+   {
+    "line": 7,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 48.06,
+    "end_slope_st": null,
+    "pause_after_s": 0.34,
+    "is_last": false
+   },
+   {
+    "line": 8,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 53.98,
+    "end_slope_st": null,
+    "pause_after_s": 0.3,
+    "is_last": false
+   },
+   {
+    "line": 9,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 59.6,
+    "end_slope_st": -1.0499999999999994,
+    "pause_after_s": 0.92,
+    "is_last": false
+   },
+   {
+    "line": 10,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 65.98,
+    "end_slope_st": -2.0636363636363626,
+    "pause_after_s": 0.96,
+    "is_last": false
+   },
+   {
+    "line": 11,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 70.94,
+    "end_slope_st": null,
+    "pause_after_s": 0.66,
+    "is_last": false
+   },
+   {
+    "line": 12,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 77.44,
+    "end_slope_st": -4.107692307692307,
+    "pause_after_s": 0.38,
+    "is_last": false
+   },
+   {
+    "line": 13,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 86.46,
+    "end_slope_st": null,
+    "pause_after_s": 0.34,
+    "is_last": false
+   },
+   {
+    "line": 14,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 94.6,
+    "end_slope_st": -0.3999999999999999,
+    "pause_after_s": 0.48,
+    "is_last": false
+   },
+   {
+    "line": 15,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 102.34,
+    "end_slope_st": null,
+    "pause_after_s": 0.34,
+    "is_last": false
+   },
+   {
+    "line": 16,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 109.12,
+    "end_slope_st": null,
+    "pause_after_s": 0.36,
+    "is_last": false
+   },
+   {
+    "line": 17,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 114.5,
+    "end_slope_st": -2.944444444444445,
+    "pause_after_s": 0.0,
+    "is_last": true
+   }
+  ],
+  "up_lines_checked": 2,
+  "up_lines_rising": 0,
+  "up_slope_mean_st": -3.9,
+  "other_slope_mean_st": -1.75,
+  "other_lines_rising_pct": 0.0,
+  "breaks_checked": 17,
+  "breaks_paused": 16,
+  "break_pause_mean_s": 0.47,
+  "caps_matched": 5,
+  "caps_lift_st": 0.11,
+  "caps_lift_db": -2.2,
+  "other_lift_st": 1.34,
+  "other_lift_db": -2.01
+ },
+ "transcript": "Higher interest rates, harder application sequences and extra verification on credit cards make funding harder to get every single year. One part of getting funded has stayed exactly the same for the 10 years I've been doing this and it decides who still gets approved for the most. The part that the part works, that part works the same whether your credit is great or somewhere in the middle or whether you already have a business or not. If you take the time to learn it and work a system, you go You go from where you are right now to hundreds of thousands of dollars in funding, potentially even millions. And you keep doing it over and over for as long as the banking system exists. So I built the capital blueprint, a dashboard that walks you through, it won Waypoint at a time. It also gets you past the exact point where most people quit learning funding. Each Waypoint tells you exactly what move to make next and shows you visually how to get there. It tells you which letters to send. To optimize your credit in which banks to apply to you in the exact order, it shows you which banks to open up accounts with when you need them and how to start to optimize your business. The system holds you accountable and nudges you, so every move you make is the right one while you focus on making money. Only about one in eight people ever finish an online course they sign up for. With the blueprint you skip the hours of videos and note-taking and go straight to making the next move on your own file. Or you can buy a $5,000 course or pay someone $4,000 a month for data points. And a lot of people selling funding right now don't actually know what they're doing. Every data point I've collected over the last decade is built into Underwrite IQ, the software that builds your blueprint. So you get the data from day one. The part that stays the same. That part, the part that stayed the same for the 10 years is how your file is optimized and set up before you ever apply. Get that right and you give yourself the best possible chance at the maximum amount of funding no matter what the banks change. Click the link below and hop on a call and we'll look at where your file is right now and map out your next moves.",
+ "phrase_meta": [
+  {
+   "k": 0,
+   "t0": 0.32,
+   "t1": 6.24,
+   "loud_db": -26.536041259765625,
+   "level_st": 0.7000000000000017,
+   "range_st": 5.0799999999999965,
+   "accents": 4
+  },
+  {
+   "k": 1,
+   "t0": 6.7,
+   "t1": 8.82,
+   "loud_db": -24.268173217773438,
+   "level_st": 1.2499999999999993,
+   "range_st": 5.48,
+   "accents": 2
+  },
+  {
+   "k": 2,
+   "t0": 9.16,
+   "t1": 12.26,
+   "loud_db": -26.05222511291504,
+   "level_st": -1.7499999999999991,
+   "range_st": 7.179999999999999,
+   "accents": 3
+  },
+  {
+   "k": 3,
+   "t0": 12.72,
+   "t1": 13.64,
+   "loud_db": -26.282268524169922,
+   "level_st": -2.4499999999999984,
+   "range_st": 7.249999999999999,
+   "accents": 1
+  },
+  {
+   "k": 4,
+   "t0": 14.26,
+   "t1": 14.72,
+   "loud_db": -22.100299835205078,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 5,
+   "t0": 15.26,
+   "t1": 21.18,
+   "loud_db": -24.499042510986328,
+   "level_st": -0.4000000000000008,
+   "range_st": 4.6999999999999975,
+   "accents": 5
+  },
+  {
+   "k": 6,
+   "t0": 21.6,
+   "t1": 23.96,
+   "loud_db": -24.319992065429688,
+   "level_st": 1.7500000000000013,
+   "range_st": 7.34,
+   "accents": 2
+  },
+  {
+   "k": 7,
+   "t0": 24.3,
+   "t1": 24.78,
+   "loud_db": -17.441482543945312,
+   "level_st": 2.4999999999999987,
+   "range_st": 5.360000000000003,
+   "accents": 0
+  },
+  {
+   "k": 8,
+   "t0": 25.18,
+   "t1": 29.52,
+   "loud_db": -23.739870071411133,
+   "level_st": 0.1500000000000004,
+   "range_st": 7.220000000000002,
+   "accents": 4
+  },
+  {
+   "k": 9,
+   "t0": 30.04,
+   "t1": 33.5,
+   "loud_db": -24.804750442504883,
+   "level_st": 0.050000000000000086,
+   "range_st": 8.849999999999998,
+   "accents": 3
+  },
+  {
+   "k": 10,
+   "t0": 34.02,
+   "t1": 36.8,
+   "loud_db": -23.73362159729004,
+   "level_st": -0.24999999999999892,
+   "range_st": 7.56,
+   "accents": 3
+  },
+  {
+   "k": 11,
+   "t0": 37.34,
+   "t1": 38.52,
+   "loud_db": -22.363994598388672,
+   "level_st": 0.20000000000000068,
+   "range_st": 3.700000000000001,
+   "accents": 0
+  },
+  {
+   "k": 12,
+   "t0": 38.82,
+   "t1": 42.56,
+   "loud_db": -25.84734535217285,
+   "level_st": -1.4000000000000004,
+   "range_st": 3.6400000000000023,
+   "accents": 4
+  },
+  {
+   "k": 13,
+   "t0": 43.12,
+   "t1": 45.92,
+   "loud_db": -24.113351821899414,
+   "level_st": 0.7000000000000017,
+   "range_st": 4.36,
+   "accents": 5
+  },
+  {
+   "k": 14,
+   "t0": 46.36,
+   "t1": 48.06,
+   "loud_db": -22.751819610595703,
+   "level_st": -0.5999999999999971,
+   "range_st": 5.98,
+   "accents": 2
+  },
+  {
+   "k": 15,
+   "t0": 48.4,
+   "t1": 49.98,
+   "loud_db": -22.657344818115234,
+   "level_st": 1.6999999999999988,
+   "range_st": 3.2600000000000002,
+   "accents": 0
+  },
+  {
+   "k": 16,
+   "t0": 50.5,
+   "t1": 53.98,
+   "loud_db": -24.51503562927246,
+   "level_st": -0.5999999999999971,
+   "range_st": 7.100000000000001,
+   "accents": 4
+  },
+  {
+   "k": 17,
+   "t0": 54.28,
+   "t1": 56.36,
+   "loud_db": -25.45966911315918,
+   "level_st": 1.0000000000000009,
+   "range_st": 6.040000000000002,
+   "accents": 2
+  },
+  {
+   "k": 18,
+   "t0": 56.74,
+   "t1": 59.6,
+   "loud_db": -25.490903854370117,
+   "level_st": 0.3000000000000021,
+   "range_st": 8.540000000000001,
+   "accents": 3
+  },
+  {
+   "k": 19,
+   "t0": 60.52,
+   "t1": 63.58,
+   "loud_db": -22.85529327392578,
+   "level_st": 1.1000000000000019,
+   "range_st": 7.340000000000001,
+   "accents": 1
+  },
+  {
+   "k": 20,
+   "t0": 63.94,
+   "t1": 65.98,
+   "loud_db": -23.608314514160156,
+   "level_st": -1.3000000000000005,
+   "range_st": 3.1599999999999997,
+   "accents": 1
+  },
+  {
+   "k": 21,
+   "t0": 66.94,
+   "t1": 67.3,
+   "loud_db": -16.181480407714844,
+   "level_st": 3.600000000000003,
+   "range_st": 3.1699999999999986,
+   "accents": 0
+  },
+  {
+   "k": 22,
+   "t0": 67.8,
+   "t1": 70.94,
+   "loud_db": -23.14045524597168,
+   "level_st": 1.4500000000000004,
+   "range_st": 7.599999999999996,
+   "accents": 2
+  },
+  {
+   "k": 23,
+   "t0": 71.6,
+   "t1": 77.44,
+   "loud_db": -25.084840774536133,
+   "level_st": -0.5000000000000001,
+   "range_st": 5.599999999999998,
+   "accents": 4
+  },
+  {
+   "k": 24,
+   "t0": 77.82,
+   "t1": 78.5,
+   "loud_db": -18.229461669921875,
+   "level_st": 1.2499999999999993,
+   "range_st": 3.7300000000000004,
+   "accents": 0
+  },
+  {
+   "k": 25,
+   "t0": 78.98,
+   "t1": 86.46,
+   "loud_db": -22.87309455871582,
+   "level_st": 0.050000000000000086,
+   "range_st": 2.8700000000000006,
+   "accents": 5
+  },
+  {
+   "k": 26,
+   "t0": 86.8,
+   "t1": 92.78,
+   "loud_db": -26.123804092407227,
+   "level_st": 0.8000000000000019,
+   "range_st": 5.59,
+   "accents": 7
+  },
+  {
+   "k": 27,
+   "t0": 93.08,
+   "t1": 94.6,
+   "loud_db": -25.348913192749023,
+   "level_st": -1.199999999999998,
+   "range_st": 3.86,
+   "accents": 0
+  },
+  {
+   "k": 28,
+   "t0": 95.08,
+   "t1": 96.2,
+   "loud_db": -22.90933609008789,
+   "level_st": 0.9000000000000021,
+   "range_st": 1.2000000000000026,
+   "accents": 1
+  },
+  {
+   "k": 29,
+   "t0": 96.56,
+   "t1": 102.34,
+   "loud_db": -25.84661865234375,
+   "level_st": 0.9000000000000021,
+   "range_st": 4.059999999999999,
+   "accents": 4
+  },
+  {
+   "k": 30,
+   "t0": 102.68,
+   "t1": 104.22,
+   "loud_db": -23.682228088378906,
+   "level_st": 0.9000000000000021,
+   "range_st": 4.799999999999999,
+   "accents": 2
+  },
+  {
+   "k": 31,
+   "t0": 104.72,
+   "t1": 107.92,
+   "loud_db": -25.145374298095703,
+   "level_st": -0.14999999999999925,
+   "range_st": 3.0999999999999988,
+   "accents": 3
+  },
+  {
+   "k": 32,
+   "t0": 108.24,
+   "t1": 109.12,
+   "loud_db": -24.704320907592773,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 33,
+   "t0": 109.48,
+   "t1": 114.5,
+   "loud_db": -24.065696716308594,
+   "level_st": -0.10000000000000067,
+   "range_st": 6.739999999999997,
+   "accents": 4
+  }
+ ]
+}

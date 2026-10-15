@@ -1,0 +1,418 @@
+{
+ "file": "Direct Book Ad 9 — The bank Take 1.mp4",
+ "ad": "Direct Book Ad 9 — The bank",
+ "lufs": -26.2,
+ "lra": 3.9,
+ "true_peak_db": -8.7,
+ "timing_ok": true,
+ "duration_s": 90.7,
+ "lead_silence_s": 0.44,
+ "trail_silence_s": 0.62,
+ "words": 279,
+ "wpm_overall": 187,
+ "wpm_speaking": 242,
+ "pauses": 28,
+ "pauses_per_min": 18.7,
+ "pause_total_s": 20.4,
+ "pause_pct_of_span": 22.7,
+ "pause_median_s": 0.4,
+ "pause_max_s": 6.08,
+ "pauses_over_1s": 3,
+ "pauses_over_1_5s": 2,
+ "phrase_len_mean_s": 2.39,
+ "phrase_len_sd_s": 2.15,
+ "gaps": [
+  0.48,
+  0.96,
+  0.36,
+  0.3,
+  0.52,
+  0.4,
+  0.42,
+  0.4,
+  2.4,
+  0.32,
+  0.48,
+  0.48,
+  0.38,
+  0.36,
+  0.34,
+  0.46,
+  1.12,
+  0.44,
+  6.08,
+  0.78,
+  0.36,
+  0.3,
+  0.38,
+  0.38,
+  0.3,
+  0.4,
+  0.3,
+  0.48
+ ],
+ "pitch_ok": true,
+ "f0_median_hz": 135.4,
+ "pitch_sd_st": 3.0,
+ "pitch_p10_p90_st": 7.4,
+ "voiced_pct_of_speech": 52.9,
+ "phrases": 29,
+ "phrase_level_sd_st": 3.12,
+ "phrase_range_mean_st": 5.5,
+ "loud_sd_db": 8.53,
+ "loud_p10_p90_db": 22.54,
+ "phrase_loud_sd_db": 2.36,
+ "accents_total": 63,
+ "fillers_heard": 0,
+ "restarts": 2,
+ "silence_threshold_db": -39.0,
+ "word_time_lag_s": 0.12,
+ "script": {
+  "script_words": 260,
+  "said_words": 279,
+  "script_covered_pct": 91.2,
+  "said_off_script_pct": 15.1,
+  "line_ends": [
+   {
+    "line": 0,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 5.42,
+    "end_slope_st": -2.9250000000000007,
+    "pause_after_s": 0.48,
+    "is_last": false
+   },
+   {
+    "line": 1,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 12.96,
+    "end_slope_st": null,
+    "pause_after_s": 0.3,
+    "is_last": false
+   },
+   {
+    "line": 2,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 32.94,
+    "end_slope_st": 1.6600000000000006,
+    "pause_after_s": 0.38,
+    "is_last": false
+   },
+   {
+    "line": 3,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 42.98,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 4,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 57.44,
+    "end_slope_st": null,
+    "pause_after_s": 6.08,
+    "is_last": false
+   },
+   {
+    "line": 5,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 76.54,
+    "end_slope_st": -1.8428571428571434,
+    "pause_after_s": 0.38,
+    "is_last": false
+   },
+   {
+    "line": 6,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 89.1,
+    "end_slope_st": -2.942857142857144,
+    "pause_after_s": 0.48,
+    "is_last": true
+   }
+  ],
+  "up_lines_checked": 0,
+  "up_lines_rising": 0,
+  "up_slope_mean_st": null,
+  "other_slope_mean_st": -1.04,
+  "other_lines_rising_pct": 33.3,
+  "breaks_checked": 6,
+  "breaks_paused": 5,
+  "break_pause_mean_s": 1.27,
+  "caps_matched": 0,
+  "caps_lift_st": null,
+  "caps_lift_db": null,
+  "other_lift_st": 1.58,
+  "other_lift_db": -3.45
+ },
+ "transcript": "The bank behind me already decided how much money they give you and how much money you make barely factors into it. One thing on your credit report determines, one thing on your credit report decides it and it outweighs your income and your score. A guy making $300,000 a year with perfect payment history gets approved for $8,000 while his buddy making half of that walks out the same bank with $80,000. Same bank, same week, and the only real difference between them is one thing on their credit reports and it's been on your report for years and it sets every approval every time you apply and fixing it is a simple tweak and once you do every approval after that becomes bigger and bigger. It's your highest limit card. Banks look at that biggest limit, another bank has already given you and they'll approve you for two They'll prove you for one to two times that amount depending on the bank. The guy with $80,000 had a big limit on his report and the guy with eight didn't. Here at FundHub we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again. And you're never the guy walking out of a bank with $8,000 again. Click the link below, check your limit, click the link below. Your highest limit is one of 13 things on your file that could decide how much funding you get. And your advisor will walk you through the other 12 so you can maximize your fundability. See you on the call.",
+ "phrase_meta": [
+  {
+   "k": 0,
+   "t0": 0.44,
+   "t1": 5.42,
+   "loud_db": -35.129249572753906,
+   "level_st": -1.1000000000000039,
+   "range_st": 7.140000000000002,
+   "accents": 3
+  },
+  {
+   "k": 1,
+   "t0": 5.9,
+   "t1": 7.66,
+   "loud_db": -34.62851333618164,
+   "level_st": 1.0999999999999945,
+   "range_st": 4.140000000000003,
+   "accents": 1
+  },
+  {
+   "k": 2,
+   "t0": 8.62,
+   "t1": 8.82,
+   "loud_db": -29.290771484375,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 3,
+   "t0": 9.18,
+   "t1": 12.96,
+   "loud_db": -33.93697738647461,
+   "level_st": 0.04999999999999818,
+   "range_st": 8.070000000000004,
+   "accents": 4
+  },
+  {
+   "k": 4,
+   "t0": 13.26,
+   "t1": 15.98,
+   "loud_db": -33.280704498291016,
+   "level_st": 0.9999999999999934,
+   "range_st": 5.600000000000001,
+   "accents": 5
+  },
+  {
+   "k": 5,
+   "t0": 16.5,
+   "t1": 18.44,
+   "loud_db": -33.036766052246094,
+   "level_st": -1.7000000000000055,
+   "range_st": 10.160000000000002,
+   "accents": 2
+  },
+  {
+   "k": 6,
+   "t0": 18.84,
+   "t1": 21.9,
+   "loud_db": -33.964481353759766,
+   "level_st": -1.4000000000000026,
+   "range_st": 5.34,
+   "accents": 5
+  },
+  {
+   "k": 7,
+   "t0": 22.32,
+   "t1": 22.54,
+   "loud_db": -38.51915740966797,
+   "level_st": -12.700000000000003,
+   "range_st": 0.20000000000000284,
+   "accents": 0
+  },
+  {
+   "k": 8,
+   "t0": 22.94,
+   "t1": 24.28,
+   "loud_db": -36.63716125488281,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 9,
+   "t0": 26.68,
+   "t1": 27.28,
+   "loud_db": -28.551822662353516,
+   "level_st": 1.749999999999995,
+   "range_st": 3.070000000000002,
+   "accents": 0
+  },
+  {
+   "k": 10,
+   "t0": 27.6,
+   "t1": 29.32,
+   "loud_db": -32.31936264038086,
+   "level_st": 3.5499999999999976,
+   "range_st": 4.620000000000002,
+   "accents": 1
+  },
+  {
+   "k": 11,
+   "t0": 29.8,
+   "t1": 31.38,
+   "loud_db": -32.20970916748047,
+   "level_st": 0.699999999999998,
+   "range_st": 9.380000000000003,
+   "accents": 2
+  },
+  {
+   "k": 12,
+   "t0": 31.86,
+   "t1": 32.94,
+   "loud_db": -31.89834213256836,
+   "level_st": 2.849999999999997,
+   "range_st": 3.860000000000003,
+   "accents": 0
+  },
+  {
+   "k": 13,
+   "t0": 33.32,
+   "t1": 34.06,
+   "loud_db": -29.299909591674805,
+   "level_st": 0.7499999999999972,
+   "range_st": 5.5200000000000005,
+   "accents": 0
+  },
+  {
+   "k": 14,
+   "t0": 34.42,
+   "t1": 34.8,
+   "loud_db": -30.03631019592285,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 15,
+   "t0": 35.14,
+   "t1": 37.6,
+   "loud_db": -34.32322311401367,
+   "level_st": 1.8499999999999939,
+   "range_st": 5.619999999999997,
+   "accents": 1
+  },
+  {
+   "k": 16,
+   "t0": 38.06,
+   "t1": 49.1,
+   "loud_db": -34.761783599853516,
+   "level_st": 0.5999999999999939,
+   "range_st": 6.880000000000003,
+   "accents": 13
+  },
+  {
+   "k": 17,
+   "t0": 50.22,
+   "t1": 53.12,
+   "loud_db": -32.84675979614258,
+   "level_st": 0.2999999999999983,
+   "range_st": 6.260000000000001,
+   "accents": 2
+  },
+  {
+   "k": 18,
+   "t0": 53.56,
+   "t1": 57.44,
+   "loud_db": -33.47814178466797,
+   "level_st": 1.0999999999999945,
+   "range_st": 2.93,
+   "accents": 5
+  },
+  {
+   "k": 19,
+   "t0": 63.52,
+   "t1": 65.62,
+   "loud_db": -31.201108932495117,
+   "level_st": -0.5000000000000021,
+   "range_st": 4.480000000000004,
+   "accents": 2
+  },
+  {
+   "k": 20,
+   "t0": 66.4,
+   "t1": 70.72,
+   "loud_db": -32.15391540527344,
+   "level_st": -2.400000000000005,
+   "range_st": 3.1000000000000028,
+   "accents": 5
+  },
+  {
+   "k": 21,
+   "t0": 71.08,
+   "t1": 72.98,
+   "loud_db": -32.43501663208008,
+   "level_st": -1.5500000000000023,
+   "range_st": 5.879999999999998,
+   "accents": 1
+  },
+  {
+   "k": 22,
+   "t0": 73.28,
+   "t1": 76.54,
+   "loud_db": -33.90260696411133,
+   "level_st": -2.100000000000004,
+   "range_st": 6.880000000000003,
+   "accents": 3
+  },
+  {
+   "k": 23,
+   "t0": 76.92,
+   "t1": 77.82,
+   "loud_db": -29.015335083007812,
+   "level_st": 2.799999999999997,
+   "range_st": 5.36,
+   "accents": 0
+  },
+  {
+   "k": 24,
+   "t0": 78.2,
+   "t1": 78.78,
+   "loud_db": -30.869230270385742,
+   "level_st": 2.4999999999999956,
+   "range_st": 3.8199999999999994,
+   "accents": 0
+  },
+  {
+   "k": 25,
+   "t0": 79.08,
+   "t1": 79.88,
+   "loud_db": -29.945907592773438,
+   "level_st": 3.3999999999999946,
+   "range_st": 5.880000000000001,
+   "accents": 0
+  },
+  {
+   "k": 26,
+   "t0": 80.28,
+   "t1": 84.38,
+   "loud_db": -35.8221435546875,
+   "level_st": -1.4000000000000026,
+   "range_st": 6.9,
+   "accents": 4
+  },
+  {
+   "k": 27,
+   "t0": 84.68,
+   "t1": 89.1,
+   "loud_db": -34.624576568603516,
+   "level_st": -1.9500000000000037,
+   "range_st": 6.400000000000002,
+   "accents": 4
+  },
+  {
+   "k": 28,
+   "t0": 89.58,
+   "t1": 90.08,
+   "loud_db": -33.974525451660156,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  }
+ ]
+}
