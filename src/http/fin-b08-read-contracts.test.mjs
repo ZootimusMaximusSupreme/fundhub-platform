@@ -9,6 +9,7 @@ import { PDFDocument } from "pdf-lib";
 
 import contractsHandler from "../../api/contracts.mjs";
 import readHandler from "../../api/read/contracts.mjs";
+import signHandler from "../../api/contracts/sign.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { contractsDb, baseBook, IDS } from "../testing/fin-b08-contracts-db.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
@@ -173,5 +174,123 @@ describe("GET /api/read/contracts", () => {
     const post = makeRes();
     await runWithSharedDb(wrap(fake, staffOwner), () => readHandler(req("POST", { body: {} }), post));
     assert.equal(post.statusCode, 405);
+  });
+
+  // ── the queue, read by the statement's own text ───────────────────────────────────────────────
+
+  async function signedLibrary() {
+    const fake = contractsDb(baseBook({ orgId: ORG_ID, otherOrgId: OTHER_ORG_ID, staffId: STAFF_ID }));
+    const mint = async (client, values, extra = {}) => {
+      const r = await staffPost({ action: "create_draft", client_id: client, template_id: IDS.template, values, ...extra }, fake);
+      assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+      return r.body.contract;
+    };
+    const oldest = await mint(IDS.client, { service: "Oldest" });
+    const middle = await mint(IDS.otherClient, { service: "Middle" }, { staff_id: STAFF_ID });
+    const newest = await mint(IDS.client, { service: "Newest" });
+    const send = async (c) => {
+      const r = await staffPost({ action: "send", id: c.id }, fake);
+      assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+      return r.body;
+    };
+    const sentOldest = await send(oldest);
+    const sentMiddle = await send(middle);
+    // Sign the middle one through its own link: it becomes a signed contract with a signed copy.
+    const q = Object.fromEntries(new URL(sentMiddle.links[0].url).searchParams.entries());
+    const signRes = makeRes();
+    await runWithSharedDb(fake, () => signHandler({ method: "POST", query: q, headers: {}, body: { signer_name: "Pat Counter", agreed: true } }, signRes));
+    assert.equal(signRes.statusCode, 200, JSON.stringify(signRes.body));
+    return { fake, oldest, middle, newest, sentOldest, sentMiddle };
+  }
+  const ids = (res) => res.body.items.map((i) => i.id);
+
+  test("the queue is newest first, a draft with no sender is still listed, and the limit keeps the newest", async () => {
+    const { fake, oldest, middle, newest } = await signedLibrary();
+    const all = await read({ view: "contracts" }, fake);
+    assert.equal(all.statusCode, 200);
+    assert.deepEqual(ids(all), [newest.id, middle.id, oldest.id], "newest first");
+    const draftRow = all.body.items.find((i) => i.id === newest.id);
+    assert.equal(draftRow.status, "draft");
+    assert.equal(draftRow.sent_by_name, null, "a draft has no sender and is still on the queue");
+    assert.equal(all.body.items.find((i) => i.id === oldest.id).sent_by_name, "Olive Owner");
+    const two = await read({ view: "contracts", limit: "2" }, fake);
+    assert.deepEqual(ids(two), [newest.id, middle.id]);
+    assert.equal(two.body.count, 2);
+  });
+
+  test("the status filter reaches signed, and the staff and document filters narrow to the contracts they name", async () => {
+    const { fake, oldest, middle, newest, sentOldest } = await signedLibrary();
+    const signed = await read({ view: "contracts", status: "signed" }, fake);
+    assert.deepEqual(ids(signed), [middle.id], "only the signed contract");
+    assert.equal(signed.body.items[0].status, "signed");
+    const sent = await read({ view: "contracts", status: "sent" }, fake);
+    assert.deepEqual(ids(sent), [oldest.id]);
+    const unknownStatus = await read({ view: "contracts", status: "nonsense" }, fake);
+    assert.equal(unknownStatus.body.count, 3, "an unknown status is no filter");
+
+    const byStaff = await read({ view: "contracts", staff_id: STAFF_ID }, fake);
+    assert.deepEqual(ids(byStaff), [middle.id], "the contract about that staff member");
+
+    const signedRow = fake.tables.contracts.find((c) => c.id === middle.id);
+    assert.ok(signedRow.signed_document_id && signedRow.document_id);
+    const oldestDoc = sentOldest.contract.document_id;
+    const byDoc = await read({ view: "contracts", document_id: oldestDoc }, fake);
+    assert.deepEqual(ids(byDoc), [oldest.id], "by the copy that was sent");
+    const bySignedCopy = await read({ view: "contracts", document_id: signedRow.signed_document_id }, fake);
+    assert.deepEqual(ids(bySignedCopy), [middle.id], "by the signed copy, the other end of the pointer");
+    const both = await read({ view: "contracts", document_id: `${oldestDoc}, ${signedRow.signed_document_id}` }, fake);
+    assert.deepEqual(ids(both).sort(), [oldest.id, middle.id].sort());
+    assert.equal(ids(both).includes(newest.id), false);
+  });
+
+  test("the template library lists active copy first, then by kind and short name", async () => {
+    const { fake } = await library();
+    const made = await staffPost({ action: "create_template", template_key: "authorize-pull", name: "Pull Authorization", kind: "authorization", body: "I allow it." }, fake);
+    assert.equal(made.statusCode, 200, JSON.stringify(made.body));
+    const res = await read({ view: "templates" }, fake);
+    assert.deepEqual(res.body.items.map((t) => t.template_key), ["AUTHORIZE-PULL", "SETUP", "OLD-ONE"]);
+    assert.equal(res.body.count, 3);
+    const two = await read({ view: "templates", limit: "2" }, fake);
+    assert.deepEqual(two.body.items.map((t) => t.template_key), ["AUTHORIZE-PULL", "SETUP"]);
+  });
+
+  test("?file=contract serves the signed copy once it is signed, and signed=0 still gives the copy that was sent", async () => {
+    const { fake, middle, oldest } = await signedLibrary();
+    const signedCopy = await read({ file: "contract", id: middle.id }, fake);
+    assert.equal(signedCopy.statusCode, 200);
+    assert.equal(signedCopy.body.signed, true);
+    assert.match(signedCopy.body.filename, /-signed\.pdf$/);
+    const asked = await read({ file: "contract", id: middle.id, signed: "1" }, fake);
+    assert.equal(asked.body.signed, true);
+    const sentCopy = await read({ file: "contract", id: middle.id, signed: "0" }, fake);
+    assert.equal(sentCopy.statusCode, 200);
+    assert.equal(sentCopy.body.signed, false);
+    assert.notEqual(sentCopy.body.pdf_base64, signedCopy.body.pdf_base64, "the signed copy is a different file");
+    const unsigned = await read({ file: "contract", id: oldest.id }, fake);
+    assert.equal(unsigned.body.signed, false);
+  });
+
+  test("a PDF template file is never cached, and a contract with one person already signed names the one still waited on", async () => {
+    const { fake } = await library();
+    const doc = await PDFDocument.create();
+    doc.addPage([612, 792]);
+    const up = await staffPost({ action: "upload_template", template_key: "paper-two", name: "Paper Two", filename: "paper.pdf", file: Buffer.from(await doc.save()).toString("base64") }, fake);
+    const file = await read({ file: "template", template_id: up.body.template.id }, fake);
+    assert.equal(file.statusCode, 200);
+    assert.equal(file.headers["cache-control"], "private, no-store");
+
+    const two = [
+      { role_label: "Client", name: "Dana Whitfield", email: "dana@example.test", client_id: IDS.client },
+      { role_label: "Counterparty", name: "Pat Counter", email: "pat@example.test", client_id: null },
+    ];
+    const made = await staffPost({ action: "create_draft", client_id: IDS.client, template_id: IDS.template, values: { service: "Two sign" }, signers: two }, fake);
+    const sent = await staffPost({ action: "send", id: made.body.contract.id }, fake);
+    const q = Object.fromEntries(new URL(sent.body.links[0].url).searchParams.entries());
+    const signRes = makeRes();
+    await runWithSharedDb(fake, () => signHandler({ method: "POST", query: q, headers: {}, body: { signer_name: "Dana Whitfield", agreed: true } }, signRes));
+    assert.equal(signRes.statusCode, 200);
+    const one = await read({ id: made.body.contract.id }, fake);
+    assert.deepEqual(one.body.waiting_on, { name: "Pat Counter", role: "Counterparty", remaining: 1 });
+    assert.deepEqual(one.body.signers.map((x) => x.status), ["signed", "sent"]);
   });
 });
