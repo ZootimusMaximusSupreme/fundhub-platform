@@ -3,226 +3,171 @@
 Branch `fin/b10`, built from `fin/base` (`2f4f574a0`). Work folder `.claude/worktrees/fin-b10`. Nothing was pushed or merged.
 No product file was changed (not `public/app/shell.js`, not any page). Everything added is a test, a proof table, or a read-only check.
 
-## Final state (generation 2, the challenge run)
+## Final state (repair cycle 1)
 
-All 40 rows are attached. 7 are live checks, 33 are practice tests, 0 are left as not-attachable.
+An independent checker broke 17 of the batch's rows and each one stayed green. This cycle made each one go red on that exact break,
+or held it open with its exact reason. 39 of the batch's 40 rows are attached. One row is held open (NOT_PROVED) because no honest
+check exists today.
 
 | | Rows |
 |---|---|
 | Batch 10 rows | 40 (all `catalog-display`: campaign-manager 10, client-control-panel 13, client-portal 7, closer-call 1, closer-dashboard 5, company-brain 4) |
-| `openBefore` on `fin/base` (generation 1 start) | 40 |
-| `openBefore` at the start of this run (this branch) | 2 |
-| `openAfter` | 0 |
-| Live checks | 7 (5 saved-result SQL checks, 2 link-gate checks) |
-| Practice tests | 33 |
-| Not attachable | 0 |
+| Live checks | 7 (5 saved-result SQL checks, 2 link-gate checks that RUN the deployed gate) |
+| Practice tests | 32 |
+| Held open (not attachable) | 1 (Credit partner links, a real product race, see below) |
 
-Whole display lane, measured offline with `node scripts/pulse/count-not-proved.mjs`: 853 NOT_PROVED on `fin/base`, 815 at the start of
-this run, 813 after (the two rows below left the count).
+Whole display lane, measured offline with `node scripts/pulse/count-not-proved.mjs`: 853 NOT_PROVED on `fin/base`, 813 at the end of
+generation 2, 814 now (the one held-open row is back on the list, on purpose).
 
-## The challenge: why the two "not-attachable" reasons were not exactly true
+## The 17 rows the checker broke, and what each one is now
 
-The two rows, `More menu: Open Credit Snapshot link` and `Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover`,
-were left unattached because `shell.js` hides the Closer Deck link (`present.html`) from every role. The earlier reasons said no honest
-test can attach: a test that asserts "hidden" is green over a broken control, and a test that asserts "visible" is red today.
-
-That mixes up two different things. A test in the suite must stay green, so it cannot assert "visible" today. A live check in the pulse is
-SUPPOSED to be red when the result a person gets is wrong. The control leaves a readable result: the deployed link gate. So it is a live
-check, and it is red today because the control really is broken. That is the heartbeat doing its job, not a fake pass.
-
-| Fact re-measured this run | Result |
-|---|---|
-| Deployed `https://fundhub.ai/app/shell.js` (GET, 140,256 bytes) against `public/app/shell.js` | byte for byte the same, zero mentions of `present.html` |
-| Is `present.html` on `ALL`, `STAFF_MONEY`, or any role list the roles are built from? | No. `rolesThatCanOpen(lists, "present.html")` is empty for all 8 staff roles |
-| The other three Quick launch screens (`pipeline.html`, `messaging.html`, `inquiry-remover.html`) | open for all 8 staff roles |
-| Live verdict of the new check against the real site (`gapChecks({})`, one GET) | both rows FAIL: `present.html is hidden from every staff role (owner, closer cannot press it)` |
-
-### What was built for the two rows
-
-- `src/pulse/coverage/fin-b10-link-gate.mjs` (new, pure, imports nothing, reads no repo file at run time). One GET of `/app/shell.js`
-  (method GET, redirects not followed, 5 s cap). It lifts the twelve screen lists out of the file with a small scanner that skips
-  comments, works out which of the 8 staff roles may open each screen the same way `shell.js` `allowedFor()` and `staffTabs()` do, and
-  judges the contract: PASS when every named screen opens for every named role, FAIL naming each screen that does not and who it is
-  hidden from. A GET that fails, a non-200, or a shell that no longer declares its lists as plain arrays is `skip` with the reason. It is
-  never PASS and never a made-up FAIL.
-- Two `link-gate` contracts in `fin-b10-display-contracts.mjs`. Each names its screens and the roles that must be able to open them
-  (owner and closer). It goes green by itself the day the screen is added to `shell.js`, with no test to edit.
-- The browser practice test `fin-b10-client-control-panel.test.mjs` was changed from "the links are hidden for every role" (which would
-  have gone red on the product fix) to "each link is shown exactly when the gate lets that role open the screen", for all 8 roles and all
-  four links, and a shown link is pressed and must land on the screen. This ties the live check to what a person sees, in both states.
-
-### Break checks for the new check (each put back, tree clean after each)
-
-| Break | Result |
-|---|---|
-| Add `present.html` to `ALL` in `public/app/shell.js` (the fix) | live check PASS on both rows; browser test green with the link shown and pressed (twice) |
-| Take `messaging.html` off `ALL` | Quick launch row FAIL naming `messaging.html` as well as `present.html`; Credit Snapshot row unchanged |
-| Hide `pipeline.html` from the closer only inside `gateLinks()` (a gate change the role model does not know) | browser test RED: `closer: ccp-link-pipeline (pipeline.html) is shown only when the link gate lets this role open it`, expected true, actual false |
-| Module: closer loses the closer desk list | 2 tests RED |
-| Module: GET becomes POST | 2 tests RED |
-| Module: a failed read is called PASS | 2 tests RED |
-| Module: line comments not skipped | 8 tests RED |
-| Module: roles ignored (any role will do) | 1 test RED |
-| Module: redirects followed | 1 test RED |
-
-## Every row
-
-| Row (page / control) | Outcome | Proved by |
+| Row | Outcome | What was wrong, and what holds it now |
 |---|---|---|
-| campaign-manager.html / Drawer: metric buttons (spend, impressions, clicks, conversions, and more) | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Fatigue row: Label button (opens link box) | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Fatigue state rail (all, refresh, queue, ok, unconfigured) | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Fatigue Window select (7, 14, 30 days) | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Funnel pages: Sync now button | live-check | fin-b10-display-contracts.mjs (SQL) + practice test |
-| campaign-manager.html / Link box: Close button | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Link box: Creative select | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Link box: Our ad number input | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Reload button | practice-test | fin-b10-campaign-manager.test.mjs |
-| campaign-manager.html / Spend rail filter (all, breached, ok) | practice-test | fin-b10-campaign-manager.test.mjs |
-| client-control-panel.html / Agent context toggle and pre block (what the AI sees) | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Blueprint group toggle | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Client picker select (200 clients, navigates to ?id=) | live-check | fin-b10-display-contracts.mjs (SQL) + practice test |
-| client-control-panel.html / Credit & Hold Status toggle (credit status, income estimates, hold reason) | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Credit partner links: Open the partner's file, Record the partner's own consent | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Declines: Use this email button | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Details toggle (email, phone, tier, path) | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / More menu: Open Bank Inbox button | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / More menu: Open Credit Snapshot link | live-check | fin-b10-link-gate.mjs (live GET of the deployed shell) + fin-b10-link-gate.test.mjs + browser test. RED today: present.html is hidden from every role |
-| client-control-panel.html / More menu: Open Funding Matrix link | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Open FinanceOS link (owner, admin, sales_manager only) | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-control-panel.html / Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover | live-check | fin-b10-link-gate.mjs (live GET of the deployed shell) + fin-b10-link-gate.test.mjs + browser test. RED today: Closer Deck (present.html) is hidden from every role; the other three pass |
-| client-control-panel.html / System Facts toggle (last pull, scores, round, funded) | practice-test | fin-b10-client-control-panel.test.mjs |
-| client-portal.html / Account drawer tabs: Payments, Agreements, Documents, Activity, Messages | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / Course tiles: Open course and expand modules (Funding Mastery, Deliverables) | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / Facebook wins group card (external link) | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / See exactly where your file stands link (to /progress.html) | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / Sign to authorize dispute letters: Clear button | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / Staff view: Open this client in Documents link | practice-test | fin-b10-client-portal.test.mjs |
-| client-portal.html / What You Own: Open course button | practice-test | fin-b10-client-portal.test.mjs |
-| closer-call.html / Redirect page: open Closer Dashboard link and auto-redirect script | practice-test | fin-b10-closer.test.mjs |
-| closer-dashboard.html / Belief failed buttons (pain, doubt, cost, desire, money, support, trust, none) | practice-test | fin-b10-closer.test.mjs |
-| closer-dashboard.html / Contract panel: Copy link button | practice-test | fin-b10-closer.test.mjs |
-| closer-dashboard.html / Deal breakdown details toggle | practice-test | fin-b10-closer.test.mjs |
-| closer-dashboard.html / Join call button (opens the booked call link) | live-check | fin-b10-display-contracts.mjs (SQL) + practice test |
-| closer-dashboard.html / Present button (opens present.html?contact= in a new tab) | practice-test | fin-b10-closer.test.mjs |
-| company-brain.html / 'N waiting' pending badges (two) | live-check | fin-b10-display-contracts.mjs (SQL) + practice test |
-| company-brain.html / Add a document: '+' button then file picker (PDF, Word, Excel, PowerPoint, text; 25 MB cap) | live-check | fin-b10-display-contracts.mjs (SQL) + practice test |
-| company-brain.html / Answer source list: 'Open in Drive' link and 'Client record' link | practice-test | fin-b10-company-brain.test.mjs |
-| company-brain.html / Class quiz: 'Which quiz' picker | practice-test | fin-b10-company-brain.test.mjs |
+| campaign-manager / Funnel pages: Sync now button | live-check + practice test | The page's request method and sign-in header were not judged. The test now asserts POST, the `Authorization` header and the JSON content type. The redundant `c.id IS NULL` clause is gone from the SQL (the LEFT JOIN already gives a NULL company and platform). The browser test is now in the row's catalog test list. |
+| campaign-manager / Link box: Creative select | practice-test | Creative and number were never saved together, and method and header were not judged. New test saves both in one press and asserts POST and the sign-in header on the save and on the creative read (GET with header). |
+| campaign-manager / Link box: Our ad number input | practice-test | Same hole from the other side, same new test. |
+| campaign-manager / Spend rail filter | practice-test | New fixture where one limit is over its limit but not breached and one is breached but back under, listed out of scope order. Counts, filters, order, `aria-pressed`. A failed read: no counts, footer and body say why, no headline chip. |
+| campaign-manager / Fatigue state rail | practice-test | Failed-read state added for three failure kinds: no numbers beside any state, the footer says what failed, never "0 of 0". |
+| campaign-manager / Fatigue row: Label button | practice-test | Label pressed on rows of a later paint (after a rail pick, after a window change). A saved sentence does not stay under another ad. |
+| campaign-manager / Reload button | practice-test | Failed then recovered, good then failed (old rows cleared), a held read (the earlier failure line is put away while the new read is out), and exactly one more read per press. |
+| client-control-panel / Client picker select | live-check + practice test + door test | New `fin-b10-clients-handler.test.mjs` holds the door (`GET /api/dashboard/clients`: newest first, `LIMIT $2` bound to 200, cap 500, demo hidden unless demo mode, company from the session, staff only, GET only). Page test adds names shown as text (no markup) and the empty choice goes nowhere. Both are in the row's catalog test list. |
+| client-control-panel / Credit & Hold Status toggle | practice-test | Each value is read under its own label by position. Both fallbacks (analyzer status, newest round's hold) and their precedence. The `· sample` flag on a sample report, a dash stays a dash, a different report time is not the sample. The "do not quote" note. "Awaiting CRS" cleared once scores are on file. |
+| client-control-panel / Blueprint group toggle | practice-test | A failed combined read paints a dash and a sentence (403 not a buyer, 401, 503, 500), never a figure, never `$0`, and no add form. No partner, partner number not worked out, nothing worked out. |
+| client-control-panel / Credit partner links | **not-attachable** | See "Held open" below. |
+| client-control-panel / More menu: Open Credit Snapshot link | live-check (now RUNS the deployed gate) | The check no longer models the shell. It GETs the deployed shell and the deployed page and runs the real shell for each staff role. Gate CODE that hides a link, a list the check was never told about, one role losing a link, a page that dropped the link or changed its address, and a click guard that refuses a shown link all go red. Still red today: the Closer Deck link is hidden from every role. |
+| client-control-panel / Quick launch links | live-check (same runner) + practice test | Pipeline, Messaging and Inquiry Remover are judged for all 8 staff roles, the Closer Deck for owner, admin and closer. The static address of each link (the one a person with no client open presses) is now asserted. Red today for the Closer Deck link only. |
+| closer-dashboard / Join call button | live-check + practice test | The SQL judged a different source than the button reads. It now judges what `/api/read/closer-call` returns as `join_url`: the LATEST task of the booked client with a non-blank link, and that link must be a web address. A link on the booking alone no longer turns it green. The task's company and client are pinned. |
+| company-brain / 'N waiting' pending badges | live-check + practice test | Two-file cases: one waiting upload with a review does not excuse a second with none; another company's pending review does not count; a waiting Drive file is not counted. |
+| company-brain / Add a document | live-check + practice test | All 8 surviving SQL breaks now go red (review status, review decided, review file, review company in each of the three branches). The busy guard is pressed while a file is in flight: disabled, a forced press opens no picker, a second file is not sent. |
+| company-brain / Class quiz: 'Which quiz' picker | practice-test | Every quiz in the picker is painted with its own question words (not only the count). Day 5 with 1, 2 and 4 wrong is a Fail with the right "You got N of 5". |
 
-A "live check" row also has a practice test that presses the control in a real page (extra cover). The seven live checks are judged
-by the display lane from the live system; the catalog treats a row as one or the other, never both.
+## Held open: Credit partner links (not-attachable, exact reason)
 
-## What was built
+`paintCombined()` in `client-control-panel.html` sets `el.partnerOpen.href` and `el.partnerConsent.href` (the two partner links) but never the
+shell's own copy of the address, `data-fh-href`. `shell.js` `gateLinks()` runs twice (once from the cached role, once when the session answers)
+and every pass rewrites each link from `data-fh-href`. So when the session answer arrives AFTER the Blueprint read, the second pass puts the
+PRIMARY client back on both links: "Open the partner's file" opens the primary's file and "Record the partner's own consent" opens consent
+capture for the primary.
 
-All new logic is in new `fin-b10-*` files. Generation 1 (practice tests and the five SQL checks) and this run's link-gate check:
+Measured in Chromium with the real page and the harness (session answer held 0 ms, then 1.5 s):
 
-| File | What it is |
-|---|---|
-| `src/pulse/coverage/fin-b10-link-gate.mjs` | NEW this run. The live link-gate check: one GET of the deployed shell, list scanner, role model, judge. |
-| `src/pulse/coverage/fin-b10-link-gate.test.mjs` | NEW this run. 11 practice tests: scanner, role model on a stand-in shell, red and green cases, GET shape, unreadable shell is skip, lane integration, real shell is readable. |
-| `src/pulse/catalog/proofs/fin-b10-kit.mjs` | Row tracker (a row is claimed only inside the callback that asserts it, an empty callback is refused), the shared Chromium helper, `waitFor`, `dialogs`. |
-| `src/pulse/catalog/proofs/fin-b10-rows.json` | Which control rows each test file proves. The two rows left out before are now ordinary rows (no `notAttached`). |
-| `src/pulse/catalog/proofs/fin-b10-campaign-manager.test.mjs` | 10 controls (browser). |
-| `src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs` | 13 controls (browser). Changed this run: the two link rows now follow the gate for all 8 roles in both states. |
-| `src/pulse/catalog/proofs/fin-b10-client-portal.test.mjs` | 7 controls (browser). |
-| `src/pulse/catalog/proofs/fin-b10-closer.test.mjs` | 6 controls (browser). |
-| `src/pulse/catalog/proofs/fin-b10-company-brain.test.mjs` | 4 controls (browser). |
-| `src/pulse/catalog/proofs/fin-b10-display-contracts.mjs` | The seven contracts: five query contracts (one read-only SQL each, `emptyAs: "quiet"`) and two `link-gate` contracts, their map rows, the deep cases handed to the catalog compiler. |
-| `src/pulse/catalog/proofs/fin-b10-sql-kit.mjs` | Test kit for the five SQL contracts (real column names, in-memory SQLite). |
-| `src/pulse/catalog/proofs/fin-b10-live-contracts.test.mjs` | 50 tests for the five SQL contracts. |
-| `src/pulse/catalog/proofs/fin-b10-display-proofs.mjs` | Turns the rows table and the live rows into proof cases for the catalog. |
-| `src/pulse/catalog/proofs/fin-b10-rows.test.mjs` | Guards: every row is one exact map row, 7 live and 33 practice, none left out, the two link-gate rows are served by the lane and the page still carries every link they judge. |
-
-Removed this run: `fin-b10-not-attachable.mjs` and the two guards that read `shell.js` to hold the reasons true. They would have gone red
-the day the product fix landed. The live check replaces them and flips by itself.
-
-### The five SQL live checks (unchanged)
-
-| Control | Read-only SQL judges, per saved result | Goes red when |
+| Session answer | Partner file link | Consent link |
 |---|---|---|
-| Funnel pages: Sync now | `funnel_page_stats` rows of the last 60 days against `analytics_connections` | no connection, another company's connection, a non-ClickFunnels connection, negative views or conversions (NULL is fine), a stat dated after the day it was saved |
-| Add a document: + button | `brain_files` uploads (`source = 'upload'`) of the last 60 days with `brain_classification_reviews` | not an `upload:` id, no name, no size, nobody named, approved with no decided approval, turned down but not owner-only or with no review, waiting with no review |
-| N waiting badges | `brain_files` uploads still `pending` | a waiting upload has no pending review, so the badge counts a file nobody can approve |
-| Join call button | `bookings` (booked or rescheduled, from 2 hours ago to 45 days ahead, not test) with `tasks` | no web link on the booking or on its task |
-| Client picker select | non-demo `clients` ranked newest first | the 201st and older (the picker lists 200), or a client with no name and no email |
+| at once | `client-control-panel.html?id=<partner>` | `consent-capture.html?client_id=<partner>` |
+| after 1.5 s | `client-control-panel.html?id=<primary>` | `consent-capture.html?client_id=<primary>` |
 
-All five are `emptyAs: "quiet"`. The Join call check will be red on day one if bookings still carry no link: that is the same fact
-`calls:booked-no-join-link` already tracks (migration 225 says the ClickFunnels webhook carries no join link).
+Why it cannot be attached honestly: a test that waits for the session answer is red until one line is fixed (set `data-fh-href` beside each
+`href` in `paintCombined`), and the repo's rules forbid a red test and forbid this batch fixing product code. A test that does not wait is green
+over the break, which is what the checker found. The pulse cannot see it either: it is the timing of one browser session, not a saved result and
+not a deployed list. The row is held in the lane as NOT_PROVED with these words (`OPEN_GAP` in `fin-b10-display-contracts.mjs`).
+`fin-b10-rows.test.mjs` reads `paintCombined()` and goes red the day it sets `data-fh-href`, saying the row can now be attached.
+The browser test still presses both links (instant session) and stays green.
+
+Product finding for consent capture: until that line is fixed, a closer can be sent to the primary client's consent screen from the partner's
+button.
+
+## What was built this cycle
+
+| File | Change |
+|---|---|
+| `src/pulse/coverage/fin-b10-link-gate.mjs` | REWRITTEN. Two plain GETs (`/app/shell.js`, `/app/client-control-panel.html`), page links lifted out, then the deployed shell is RUN for each of the 8 staff roles in a vm context inside a worker thread (null-prototype sandbox, nothing but strings crossing, script time limits, memory cap, hard stop that waits for the thread to be gone). Reads back, per link: shown, and whether the shell's click guard lets a press through. Judges each contract link: on the page once, points at its screen, shown and pressable for every named role. Anything unreadable or unrunnable is `skip`. |
+| `src/pulse/coverage/fin-b10-link-gate.test.mjs` | REWRITTEN, 18 tests. Real shell and real page of the checkout plus copies with one thing broken. |
+| `src/pulse/catalog/proofs/fin-b10-display-contracts.mjs` | Join call SQL rewritten to the button's own source. Funnel clause removed. Redundant `IS NOT NULL` removed from Join call. Link-gate contracts name link ids, files, labels and roles. New `OPEN_GAP` always-red contract, `FIN_B10_OPEN_ROWS`, `FIN_B10_COMPILE_CASES`. |
+| `src/pulse/catalog/proofs/fin-b10-display-proofs.mjs` | A live row's test list now also names its browser test (and the picker's door test). |
+| `src/pulse/catalog/proofs/fin-b10-rows.json` | The partner links row moved to `notAttached`. |
+| `src/pulse/catalog/proofs/fin-b10-rows.test.mjs` | Guards: 7 live, 32 practice, 1 held open; each live row lists its browser test; the held-open reason is still true of the page. |
+| `src/pulse/catalog/proofs/fin-b10-live-contracts.test.mjs` | 70 tests (was 50): review status/decision/file/company per branch, two-file waiting cases, the Join call rewrite with client and company pins. |
+| `src/pulse/catalog/proofs/fin-b10-campaign-manager.test.mjs` | 14 tests (was 12). Method and header judged on every request. |
+| `src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs` | 12 tests. The oracle is the gate runner (this checkout's shell and page, per role), compared with Chromium for all 8 roles. |
+| `src/pulse/catalog/proofs/fin-b10-company-brain.test.mjs` | 5 tests. |
+| `src/pulse/catalog/proofs/fin-b10-clients-handler.test.mjs` | NEW, 6 tests: the picker's door. |
 
 ## Shared lines I touched (for the integrator)
 
 | File | Change |
 |---|---|
-| `src/pulse/coverage/gap-catalog-display.mjs` | NEW this run: one import line (`fin-b10-link-gate.mjs`); one line in `judgeDisplayResult` (`link-gate` mode goes to the link-gate judge); in `gapChecks` three lines before the retired-page read (start the one GET of the shell) and one line after it (await it), plus one line inside the `judge` closure. No existing line was changed. |
-| `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts 40 to 47 (45 from generation 1, +2 link-gate), `PASS_CAPABLE` stays 32, `always-red` stays 13, `link-gate` 2, mode list gains `"link-gate"`, one new assertion that the two link-gate rows say `skip` under the stand-in GET, shipped-data check 40 to 47. When other batches add contracts, add the increases together. |
-| `src/pulse/catalog/proofs/display-saved-result.mjs` | one import line at the top, and `...FIN_B10_RESULT_CONTRACTS,` as the last entry of `DISPLAY_RESULT_CONTRACTS` (unchanged this run; the two new contracts ride inside `FIN_B10_RESULT_CONTRACTS`) |
-| `src/pulse/catalog/proofs/display-proof-cases.mjs` | one import line and `...FIN_B10_DISPLAY_PROOF_CASES,` in the plug-in list (unchanged this run) |
-| `scripts/pulse/compile-catalog.mjs` | one import line, and `staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B10_LIVE_CASES]` (unchanged this run) |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 632 (-40: 7 live + 33 practice). Re-derive after merging all batches: it is 672 minus every attached row. |
+| `scripts/pulse/compile-catalog.mjs` | the import and the `staffProofCases` spread now name `FIN_B10_COMPILE_CASES` (the 7 live rows and the 1 held-open row) instead of `FIN_B10_LIVE_CASES`. |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | 10 numbers: contracts 47 to 48, always-red 13 to 14 (the held-open row). `PASS_CAPABLE` stays 32, link-gate stays 2. When other batches add contracts, add the increases together. |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 632 to 633 (+1 for the held-open row). Re-derive after merging all batches. |
 | `src/pulse/catalog/generated.json` | regenerated with `npm run pulse:catalog`. Expect a conflict; recompile after merging, do not hand-merge. |
+| `src/pulse/coverage/gap-catalog-display.mjs` | one COMMENT edited (it said one GET of the shell; it is two GETs and a run). No code changed. |
+
+`src/pulse/catalog/proofs/display-saved-result.mjs` was not touched this cycle.
+
+## Break checks (each put back, tree restored and checked after each)
+
+| Where | Breaks | Red |
+|---|---|---|
+| SQL (five live contracts) | 54: every predicate of each contract dropped, loosened or reversed (including the checker's U8 U10 U11 U12 U13 U17 U18 U19 W1 W4 W6 J9 J10) | 54 of 54 (one `IS NOT NULL` was an equivalent mutant: removed from the SQL) |
+| `campaign-manager.html` | 40: PUT instead of POST, no `Authorization`, creative dropped with a number, number dropped with a creative, three wrong breached rules, counts on a failed read, scope sort, `aria-pressed`, Label dead after a rail pick or a window change, stale saved sentence, failure sentence kept, old rows kept under a failed read, source marks not reset, Reload wired twice, and more | 40 of 40 |
+| `client-control-panel.html` | 40: labels, both fallbacks and their precedence, sample flag, note deleted, `$0` on a failed read, add form on a failed read, partner row, unknown numbers as `$0`, names not escaped, empty choice navigates, asks for 50, five static addresses, links removed, client dropped from links | 40 of 40 |
+| `company-brain.html`, `ramp-quizzes.js` | 24: both busy guards, disabled flags, busy never set or cleared, wrong quiz on load, picker not repainting, Day 5 rule (one right, all but one), count doubled, badge words and hiding | 24 of 24 |
+| `fin-b10-link-gate.mjs` | 21: shown always true, mark ignored, display ignored, hidden flag ignored, page-hidden ignored, click guard ignored, only first role, link missing ignored, address ignored, GET to POST, failure called PASS, unfinished gating accepted, session branch not required, only owner run, host sandbox object, no time limit, wrong page accepted, sign-out not noticed, replace not noticed, gate style left, thread not stopped | 21 of 21 |
+| deployed gate, shell breaks the old check was blind to | list reassigned in code after its literal, `gateLinks` forcing a screen off, the closer branch returning nothing, a new list in `staffTabs`, csm alone, admin alone, role sent away, click guard refusing | all red (in `fin-b10-link-gate.test.mjs`) |
+| Browser test cross-check | module `shown` always true: red in Chromium comparison (3 tests) | red |
+
+Escape probes (in the link-gate test, 14 of them, run inside the worker): `process`, `require`, `this.constructor.constructor("return process")()` and
+nine more constructor chains. One of them DID leak while the sandbox was a plain `{}` (the first version of the runner, in the test process: the process
+exited with code 7); the null-prototype sandbox closed it and the test goes red if the plain object is put back. A `for (;;) {}` shell, a never-ending microtask chain and a shell with an uncaught
+rejection are each cut off or contained.
 
 ## Product findings (nothing fixed)
 
-1. **Control panel: Open Closer Deck and Open Credit Snapshot are hidden from every role.** `shell.js` gates each link by its `ALL` list of
-   screens and `present.html` is not on it, so `gateLinks()` sets `display:none` for owner, admin, sales manager, closer, funding advisor,
-   CSM, setter and inquiry specialist (measured in Chromium, and the deployed `/app/shell.js` is the same file). The page's own comment
-   names the one-line fix: add `present.html` to the right role list in `public/app/shell.js`. Both rows are now RED in the live pulse until it lands, and go
-   green by themselves after. The "Present" button on the closer dashboard is a different control and works.
-2. **Control panel: the Open FinanceOS row says "owner, admin, sales_manager only", but a closer sees it too** (commit `ddcabb294`). The row
-   text is stale. The practice test pins the real list (owner, admin, sales manager, closer) and every other role hidden.
-3. **Company Brain: only owner and admin can open the page.** The shell sends closer, funding advisor, inquiry specialist, CSM, setter and
-   sales manager to their own home. So the per-role class quizzes cannot be reached by the people they are for. The picker works for
-   owner and admin (all 20).
-4. **Control panel: Declines "Use this email" buttons sit inside the Record a decline fold.** When the client already has a decline that fold
-   is shut, so the person must open it before the button can be pressed.
-5. **Closer dashboard: Deal breakdown sits inside the shut Payment Calculator fold**, so reaching it takes two presses. (Not wrong, only
-   worth knowing.)
-6. **Join call: `bookings.meeting_url` is NULL on every ClickFunnels booking** (migration 225), so the button is off for real customers. The
-   live check says so the moment a booked call is ahead.
-7. **Campaign Manager: a partner login is sent away from the page**, so its partner-login branches (Sync now off for a partner) cannot be
-   seen in a browser.
+1. **Control panel: Open Closer Deck and Open Credit Snapshot are hidden from every role.** Unchanged. `present.html` is on no list in `shell.js`.
+   Both rows are RED in the live pulse until it lands, and go green by themselves after. Re-measured live this cycle (`gapChecks`, two GETs):
+   all 8 staff roles see Pipeline, Messaging and Inquiry Remover; none sees either deck link.
+2. **Control panel: the partner links go to the primary client when the session answer is slow.** See "Held open".
+3. **Join call: the button opens the client's latest task link, not the link of the booking in front of the closer.** `join_url` is the newest
+   task of the client with a non-blank link, ordered by due time. A client with an old finished call whose link is saved and a new booking whose
+   task has no link gets the old call's link behind the button. (Read from `src/sales/cockpit.mjs`, not reproduced.)
+4. **Join call: `bookings.meeting_url` is not read by the button at all**, so a booking that carries a link (the ClickFunnels webhook does not
+   send one, migration 225) does not turn the button on. The live check now says so.
+5. **Control panel: the Open FinanceOS row says "owner, admin, sales_manager only", but a closer sees it too.** Unchanged.
+6. **Company Brain: only owner and admin can open the page.** Unchanged.
+7. **Control panel: Declines "Use this email" buttons sit inside the Record a decline fold.** Unchanged.
+8. **Closer dashboard: Deal breakdown sits inside the shut Payment Calculator fold.** Unchanged.
+9. **Campaign Manager: a partner login is sent away from the page**, so its partner-login branches cannot be seen in a browser. Unchanged.
 
-## What was proved and how
-
-Generation 1 (kept, still true):
-
-- Every new check was broken on purpose and went red, then the file was put back. Page breaks: 21 on the campaign manager, 42 on the
-  control panel, 17 on the portal, 22 on the closer pages, 18 on company brain (120 in all). SQL breaks: 36 on the five contracts (35 red,
-  1 equivalent).
-- Breaks that first stayed green were fixed by adding the missing case (partner add flow, Copy link with no link, a failed read clearing the
-  badge, Day 5 pass words, picker order), see the history below.
-
-This run:
-
-- Break checks for the link-gate check: see the table above (9 of 9 red or flipped as expected, product file restored each time).
-- Test results are in the commands section below: 238 of 238 in the catalog group, 3 of 3 in display-proof-cases, lint clean, catalog fresh.
-
-## Commands and results (this run)
+## Commands and results
 
 ```
-node scripts/pulse/count-not-proved.mjs <out.json>      # 815 open before this run, 813 after; batch rows 2 to 0
-node --test src/pulse/coverage/fin-b10-link-gate.test.mjs                    # 11 of 11
-node --test src/pulse/coverage/gap-catalog-display.test.mjs                  # 10 of 10
-node --test src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs   # 12 of 12 today, and 12 of 12 with present.html added to ALL
+node scripts/pulse/count-not-proved.mjs <out.json>      # 814 open (813 at the end of generation 2, +1 held-open row)
+node --test src/pulse/coverage/fin-b10-link-gate.test.mjs                    # 18 of 18
+node --test src/pulse/catalog/proofs/fin-b10-live-contracts.test.mjs         # 70 of 70
+node --test src/pulse/catalog/proofs/fin-b10-clients-handler.test.mjs        # 6 of 6
+node --test src/pulse/catalog/proofs/fin-b10-rows.test.mjs                   # 4 of 4
+node --test src/pulse/coverage/gap-catalog-display.test.mjs                  # 11 of 11
+node --test src/pulse/catalog/proofs/fin-b10-campaign-manager.test.mjs       # 14 of 14
+node --test src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs   # 12 of 12
+node --test src/pulse/catalog/proofs/fin-b10-company-brain.test.mjs          # 5 of 5
 node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/fin-b10-*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs \
   src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/coverage/fin-b10-link-gate.test.mjs \
-  src/http/app-nav-reachability.test.mjs                                    # 238 tests, 238 pass, 0 fail, 0 skipped
-node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs            # 3 of 3 (second run, see below)
+  src/http/app-nav-reachability.test.mjs                                    # 274 tests, 274 pass, 0 fail, 0 skipped
 npm run pulse:catalog && node scripts/pulse/compile-catalog.mjs --check      # fresh, exit 0
-npm run lint                                                                 # 3,575 files parse clean
+node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs            # 3 of 3 (7.5 minutes: runs every executable test of every display case, all batches)
+npm run lint                                                                 # 3,576 files parse clean
 ```
 
-`display-proof-cases.test.mjs`: 3 of 3 pass on the second full run. Its third test runs every executable test named by every display
-case (all batches, 740 tests, about 35 browser files). On the first full run, under a load average of 80 to 230 (other builders on the
-same Mac), one Playwright spec, `e2e/cc-tab-ideas.spec.mjs` (slice 1, not a batch 10 file), hit its 30 second timeout; alone at a low
-load it passes, and the whole test passed on the re-run. The red count is 632 (was 634 with the two rows unattached): re-derive after
-merging all batches.
+Live read-only verification (two GETs of the public site, `linkGateState`): both link-gate rows FAIL with the words "Open Closer Deck
+(present.html) is hidden from owner, admin and closer (it shows for no staff role)"; the other three Quick launch links show for all 8 roles.
+The gate run takes about 45 ms for all 8 roles.
+
+## Risk and not run
+
+- **New capability in the live lane.** The two link-gate rows now execute the company's own deployed `shell.js` inside a worker thread and a
+  vm context (see the header of `fin-b10-link-gate.mjs`). A shell that cannot be run, or that does not finish gating, is `skip` with the
+  reason, never PASS. If the deployed shell is ever rewritten so the stand-in cannot run it, both rows go to `skip` and stay there (a lasting
+  skip is a break in the heartbeat by the repo's own law): the fix is then to teach the stand-in the new API, not to loosen the judge.
+- **`npm run pulse:prove` was not run.** It builds the Netlify bundle and needs the production environment, neither of which this worktree has.
+  The lane was loaded from a copied `pulse` folder with no repo files (`gap-catalog-display.test.mjs`, passing), and the real deployed site was
+  read once (two GETs), as above.
+- **The Client picker row's live half is still a re-derivation.** The pulse cannot call the staff-only door, so the SQL reads the clients table
+  and holds the same rule as the door. The door and the page are held by their own tests, which are in the row's catalog test list.
 
 ## History
 
 - Generation 1: 38 of 40 attached (5 live SQL checks, 33 practice tests), 2 left as not-attachable.
-- Generation 2, first pass and the resume check after the Mac restart: re-read both rows and agreed with the reasons (present.html on no list,
-  deployed file identical). The reasons were true as facts. The conclusion was not: a live check can attach to the deployed gate.
-- Environment note: the session scratch folder is shared by every builder running at once. Another builder once overwrote a helper file of
-  mine named `mutate.mjs`. Keep break-check helpers in a folder named for the batch.
+- Generation 2: the two open rows became live link-gate checks that read the deployed shell's lists, all 40 attached.
+- Repair cycle 1 (this file): the checker's 17 green-on-break rows. The link-gate checks now run the deployed gate instead of modelling it.
+  One row (Credit partner links) is held open with its exact reason.
+- Environment note: the session scratch folder is shared by every builder running at once. Keep break-check helpers in a folder named for the batch.

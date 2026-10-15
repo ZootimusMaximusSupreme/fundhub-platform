@@ -47,15 +47,15 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 47 deep display controls own one exact contract", () => {
+test("all 48 deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 47);
-  assert.equal(DISPLAY_RESULT_CASES.length, 47);
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 48);
+  assert.equal(DISPLAY_RESULT_CASES.length, 48);
   assert.equal(PASS_CAPABLE_COUNT, 32);
-  assert.equal(UNMEASURED_CONTRACT_COUNT, 13);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 14);
   assert.equal(linkGates, 2);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + linkGates, 47);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 47);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + linkGates, 48);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 48);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -118,7 +118,7 @@ test("missing contracts are not proved while measured breaks stay broken", () =>
 
 test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
-  assert.equal(entries.length, 13);
+  assert.equal(entries.length, 14);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED", entry.control);
@@ -141,7 +141,7 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.equal(db.calls.length, 32);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   assert.equal(focused.filter((row) => row.status === "PASS").length, 32);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 14);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   // The two link-gate rows read the deployed shell by GET. This stand-in GET answers a different page, so
   // they say "skip" (could not read), never PASS and never NOT_PROVED. fin-b10-link-gate.test.mjs holds them.
@@ -156,7 +156,7 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 14);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 
@@ -200,7 +200,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 47);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 48);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

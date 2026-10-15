@@ -110,9 +110,9 @@ async function retiredPageState(ctx = {}) {
 }
 
 export async function gapChecks(ctx = {}) {
-  // One GET of the deployed shell serves every link-gate contract (the link a screen shows is hidden or not
-  // by shell.js, so the live file is what is judged). Started first so it overlaps the retired-page reads
-  // below; linkGateState never throws.
+  // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
+  // shell is RUN against the page's own links, once per staff role, because the live file is what decides
+  // what a person sees. Started first so it overlaps the retired-page reads below; linkGateState never throws.
   const gateRead = DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;

@@ -5,11 +5,16 @@
 // The expected words are worked out in this file from the fake data, not copied from the page.
 // It reads no live data. Each row is claimed only inside the callback that asserts it.
 //
-// The Quick launch links and the Credit Snapshot link are also judged live, from the deployed link gate
-// (src/pulse/coverage/fin-b10-link-gate.mjs). Here every role is opened in a real page and the link must be
-// shown exactly when that same role model says the role may open the screen. That ties the live check to
-// what a person sees, in both states: today the gate hides the Closer Deck and Credit Snapshot links from
-// every role, and the day the screen is added to the gate's lists the link must show and open.
+// The Quick launch links and the Credit Snapshot link are also judged live, by RUNNING the deployed link gate
+// (src/pulse/coverage/fin-b10-link-gate.mjs). Here the same runner reads this checkout's shell.js and page,
+// and every role is opened in a real Chromium page: a link must be shown exactly when the runner says the
+// role may press it. That ties the live check to what a person sees, in both states: today the gate hides
+// the Closer Deck and Credit Snapshot links from every role, and the day the screen is added the link must
+// show and open.
+//
+// The credit partner links row is exercised here and deliberately NOT attached (rows.json "notAttached"): it
+// goes wrong only when the session answer lands after the Blueprint read, which this test's instant session
+// never does. See OPEN_GAP in fin-b10-display-contracts.mjs for the exact reason.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -18,7 +23,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { json, OWNER, proofRows, sharedScreens, waitFor } from "./fin-b10-kit.mjs";
-import { parseShellLists, screensFor } from "../../coverage/fin-b10-link-gate.mjs";
+import { parsePageAnchors, runDeployedGates, STAFF_ROLES } from "../../coverage/fin-b10-link-gate.mjs";
 
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
@@ -27,12 +32,24 @@ const CLIENT = "aaaaaaaa-1111-4111-8111-111111111111";
 const OTHER = "bbbbbbbb-2222-4222-8222-222222222222";
 const PARTNER = "cccccccc-3333-4333-8333-333333333333";
 
-const ROLES = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist"];
+const ROLES = [...STAFF_ROLES];
 
-// The gate this page loads: the repo's shell.js, read the way the live check reads the deployed one.
-const SHELL_LISTS = parseShellLists(fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app/shell.js"), "utf8"));
-const mayOpen = (role, screen) => screensFor(SHELL_LISTS, role).includes(screen);
+// The gate this page loads, run the way the live check runs the deployed one: this checkout's shell.js
+// against this checkout's page, once per staff role. The runner's answer for a link is whether it is SHOWN
+// and whether a press on it is let through; Chromium's own answer for the same role must agree with the first,
+// and a shown link must be let through.
+const APP = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app");
+const GATE = await runDeployedGates({
+  shell: fs.readFileSync(path.join(APP, "shell.js"), "utf8"),
+  anchors: parsePageAnchors(fs.readFileSync(path.join(APP, "client-control-panel.html"), "utf8")),
+});
+const mayPress = (role, id) => {
+  const link = GATE[role].links.find((l) => l.id === id);
+  assert.ok(link, `${role}: ${id} is on the page the gate was run against`);
+  // A link the gate shows is one it lets through: a shown link that a press cannot use is a broken link.
+  if (link.shown) assert.equal(link.blocked, false, `${role}: ${id} is shown but the click guard refuses a press`);
+  return link.shown;
+};
 const asRole = (role) => ({ ok: true, staff: { id: `staff-${role}`, name: "Casey Reed", email: "casey@fundhub.ai", role, org_id: "org-1", status: "active" } });
 
 const FILE = {
@@ -160,6 +177,77 @@ test("Credit & Hold Status toggle: starts shut and holds the credit status, both
     }
     await bare.page.close();
   });
+  await proof.check(/^Credit & Hold Status toggle/, async () => {
+    // Each value sits under its OWN label. The four pairs, in the grid's order, read by position.
+    const { page } = await openPanel();
+    await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+    const pairs = await page.$$eval("#hold-body .kv", (els) => els.map((el) => [el.querySelector(".kv-label").textContent.trim(), el.querySelector(".kv-value").textContent.trim()]));
+    assert.deepEqual(pairs, [
+      ["Credit Status", "Report pulled"],
+      ["Income estimate (Experian model)", "$84,000/yr"],
+      ["On Hold Because", "Waiting on the bank letter"],
+      ["Income estimate (Equifax model)", "$91,500/yr"],
+    ]);
+    // The sentence under the grid says whose guess the income is, and tells the reader not to quote it.
+    const note = (await page.locator("#hold-body .fact-note").textContent()).replace(/\s+/g, " ").trim();
+    assert.match(note, /Neither income figure was reported by this client and neither is on the credit report\./);
+    assert.match(note, /Each one is a guess produced by a bureau scoring model from how the person uses credit\./);
+    assert.match(note, /Do not quote either as their income\.$/);
+    await page.close();
+  });
+  await proof.check(/^Credit & Hold Status toggle/, async () => {
+    // Where each value comes from when the first place is empty. The credit status is the report pull status,
+    // else the analyzer's; the hold is the client's own round hold, else the newest round's.
+    const fileWith = (custom, rounds = FILE.funding_rounds, extra = {}) => ({ ...FILE, ...extra,
+      client: { ...FILE.client, custom_fields: custom }, funding_rounds: rounds });
+    const read = async (file) => {
+      const { page } = await openPanel({ overrides: { file } });
+      await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+      const out = {
+        status: await page.locator("#ccp-credit-status").textContent(),
+        hold: await page.locator("#ccp-hold-reason").textContent(),
+      };
+      await page.close();
+      return out;
+    };
+    // The analyzer's status stands in when there is no report pull status.
+    assert.equal((await read(fileWith({ analyzer_status: "Analyzer ran" }))).status, "Analyzer ran");
+    // The report pull status wins when both are there.
+    assert.equal((await read(fileWith({ crs_status: "Report pulled", analyzer_status: "Analyzer ran" }))).status, "Report pulled");
+    // The newest round's hold stands in when the client has none of its own...
+    const rounds = [{ round_number: 3, status: "on hold", hold_reason: "Bank asked for ID" }, { round_number: 2, status: "funded", hold_reason: "Old reason" }];
+    assert.equal((await read(fileWith({}, rounds))).hold, "Bank asked for ID");
+    // ...and the client's own hold wins when both are there.
+    assert.equal((await read(fileWith({ round_hold_reason: "Waiting on the bank letter" }, rounds))).hold, "Waiting on the bank letter");
+    // "Awaiting CRS" is shown as a dash once scores are on file (the hold has already cleared), and as itself
+    // before. The worked-out step (next_action) is what carries the scores-on-file fact, so it is present here.
+    const worked = { next_action: null, active_blockers: [] };
+    assert.equal((await read(fileWith({ round_hold_reason: "Awaiting CRS" }, [], worked))).hold, "—");
+    assert.equal((await read(fileWith({ round_hold_reason: "Awaiting CRS" }, [], { ...worked, tri_merge: {} }))).hold, "Awaiting CRS");
+  });
+  await proof.check(/^Credit & Hold Status toggle/, async () => {
+    // Income off a SAMPLE report says so, a real pull does not, and a dash stays a dash even for a sample.
+    const AS_OF = "2026-10-01T17:00:00Z";
+    const sampleFile = (result, income) => ({ ...FILE,
+      crs_results: [{ created_at: AS_OF, result }],
+      income_estimates: { asOf: AS_OF, ...income } });
+    const read = async (file) => {
+      const { page } = await openPanel({ overrides: { file } });
+      await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+      const out = [await page.locator("#ccp-income-ex").textContent(), await page.locator("#ccp-income-eq").textContent()];
+      await page.close();
+      return out;
+    };
+    const both = { experian: { annual: 84000 }, equifax: { annual: 91500 } };
+    assert.deepEqual(await read(sampleFile({ simulated: true }, both)), ["$84,000/yr · sample", "$91,500/yr · sample"]);
+    assert.deepEqual(await read(sampleFile({ environment: "simulated" }, both)), ["$84,000/yr · sample", "$91,500/yr · sample"]);
+    assert.deepEqual(await read(sampleFile({ simulated: false, environment: "production" }, both)), ["$84,000/yr", "$91,500/yr"]);
+    // A report of a different time is not the one the income came off.
+    const other = { ...sampleFile({ simulated: true }, both), crs_results: [{ created_at: "2026-09-01T17:00:00Z", result: { simulated: true } }] };
+    assert.deepEqual(await read(other), ["$84,000/yr", "$91,500/yr"]);
+    // Only the figure that exists is flagged: no Equifax figure stays a dash, not "— · sample".
+    assert.deepEqual(await read(sampleFile({ simulated: true }, { experian: { annual: 84000 } })), ["$84,000/yr · sample", "—"]);
+  });
 });
 
 test("Details toggle: starts shut and holds the email, phone, tier and path of this client", async () => {
@@ -213,6 +301,63 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
     await shut();
     assert.deepEqual(errors, []);
     await page.close();
+  });
+  await proof.check(/^Blueprint group toggle/, async () => {
+    // A read that FAILS paints a dash and says why. It never paints a dollar figure, and never a zero, and it
+    // does not offer the add-a-partner form (the page cannot tell whether a partner exists).
+    const failures = [
+      [403, { ok: false, error: "not_blueprint_buyer" }, "This client has not paid for the Capital Blueprint, so this is not available for them."],
+      [401, { ok: false, error: "unauthorized" }, "You are signed out. Sign in and open this page again."],
+      [503, { ok: false, error: "db_down" }, "The database is not reachable right now. Try again in a moment."],
+      [500, { ok: false, error: "boom" }, "That did not work. Try again in a moment."],
+    ];
+    for (const [status, body, words] of failures) {
+      const { page } = await openPanel({ overrides: { extra: {
+        "/api/read/blueprint-combined-approval": async (route) => json(route, body, status),
+      } } });
+      await page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+      await waitFor(async () => /did not load/.test(await page.locator("#bp-combined-note").textContent()), `the failure words for ${status}`);
+      assert.equal(await page.locator("#bp-combined-note").textContent(), `The combined number did not load. ${words}`, String(status));
+      assert.equal(await page.locator("#bp-combined").textContent(), "—", `${status}: a dash, never a figure`);
+      assert.equal(await page.locator("#bp-partner-now").textContent(), "Could not check for a credit partner.");
+      assert.equal(await page.locator("#bp-partner-form").isHidden(), true, `${status}: no add form when the partner is unknown`);
+      assert.equal(await page.locator("#bp-partner-row").isHidden(), true);
+      assert.doesNotMatch(await page.locator("#bp-body").innerText(), /\$0\b/, `${status}: no zero dollars`);
+      await page.close();
+    }
+  });
+  await proof.check(/^Blueprint group toggle/, async () => {
+    // No partner on the file: the partner row is put away, the note says the primary file stands alone, and the
+    // partner line says one is included. A number that is not worked out says so in words, never as $0.
+    const none = await openPanel({ overrides: { combined: NO_PARTNER } });
+    await none.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await waitFor(async () => (await none.page.locator("#bp-combined").textContent()) === "$70,000", "the primary alone");
+    assert.equal(await none.page.locator("#bp-partner-row").isHidden(), true, "no partner row without a partner");
+    assert.equal(await none.page.locator("#bp-combined-note").textContent(), "No credit partner on this file, so this is the primary file alone.");
+    assert.equal(await none.page.locator("#bp-partner-now").textContent(), "No credit partner yet. One partner is included with the Blueprint.");
+    assert.equal(await none.page.locator("#bp-primary").textContent(), "$70,000");
+    await none.page.close();
+
+    // A partner whose own number is not worked out: counted as the primary alone, said in words, never $0.
+    const partial = await openPanel({ overrides: { combined: { ...COMBINED, partnerPrequal: null, partnerPrequalDisplay: null,
+      combinedPrequal: 70000, combinedPrequalDisplay: "$70,000" } } });
+    await partial.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await waitFor(async () => (await partial.page.locator("#bp-combined").textContent()) === "$70,000", "the primary count");
+    assert.equal(await partial.page.locator("#bp-partner-row").isVisible(), true);
+    assert.equal(await partial.page.locator("#bp-partner").textContent(), "Not worked out yet");
+    assert.equal(await partial.page.locator("#bp-combined-note").textContent(), "The partner's number is not worked out yet, so this counts the primary file only.");
+    await partial.page.close();
+
+    // Nothing worked out at all: a dash and a sentence, and the primary says so too.
+    const nothing = await openPanel({ overrides: { combined: { ok: true, combinedPrequal: null, combinedPrequalDisplay: null,
+      primary: { name: "Dana Whitfield" }, primaryPrequal: null, primaryPrequalDisplay: null,
+      partnerClientId: null, partner: null, partnerPrequal: null, partnerPrequalDisplay: null } } });
+    await nothing.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await waitFor(async () => (await nothing.page.locator("#bp-primary-label").textContent()) === "Dana Whitfield (primary)", "the named primary");
+    assert.equal(await nothing.page.locator("#bp-combined").textContent(), "—");
+    assert.equal(await nothing.page.locator("#bp-primary").textContent(), "Not worked out yet");
+    assert.equal(await nothing.page.locator("#bp-combined-note").textContent(), "No prequal number is worked out for this file yet.");
+    await nothing.page.close();
   });
 });
 
@@ -317,6 +462,30 @@ test("Client picker select: lists the clients it was given, selects this one, an
     await page.close();
   });
   await proof.check(/^Client picker select/, async () => {
+    // A name is text, not markup: angle brackets, an ampersand and a quote are shown as typed, they do not
+    // become elements, and the option still carries its own id.
+    const NAMED = "eeeeeeee-5555-4555-8555-555555555555";
+    const clients = { ok: true, clients: [
+      { id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@example.com" },
+      { id: NAMED, first_name: "<b>Bold</b> & Co", last_name: '"Quoted" <img src=x>', email: "x@example.com" },
+      { id: "ffffffff-6666-4666-8666-666666666666", first_name: "", last_name: "", email: "a&b<c>@example.com" },
+    ] };
+    const { page, errors } = await openPanel({ overrides: { clients } });
+    await page.waitForFunction(() => document.querySelectorAll("#ccp-pick option").length === 4);
+    const options = await page.$$eval("#ccp-pick option", (els) => els.map((e) => [e.value, e.textContent]));
+    assert.deepEqual(options[2], [NAMED, '<b>Bold</b> & Co "Quoted" <img src=x>']);
+    assert.deepEqual(options[3], ["ffffffff-6666-4666-8666-666666666666", "a&b<c>@example.com"]);
+    assert.equal(await page.locator("#ccp-pick option b, #ccp-pick option img").count(), 0, "no element was made from a name");
+    assert.deepEqual(errors, []);
+
+    // The empty choice ("Choose a client") goes nowhere: no navigation, still on this client's file.
+    const here = page.url();
+    await page.locator("#ccp-pick").selectOption("");
+    await page.waitForTimeout(400);
+    assert.equal(page.url(), here, "choosing the empty option does not leave the page");
+    await page.close();
+  });
+  await proof.check(/^Client picker select/, async () => {
     // The request itself carries the 200 cap, and an unreadable list says so instead of an empty picker.
     const limits = [];
     const { page } = await screens.open(`/app/client-control-panel.html?id=${CLIENT}`, {
@@ -384,10 +553,9 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
       await page.close();
     }
 
-    // Every role, every link: shown exactly when the link gate lets that role open the screen. The Closer Deck
-    // link carries this client in its address whether it is shown or not, and a shown one is pressed and
-    // lands on the deck screen for this client.
-    assert.ok(SHELL_LISTS, "the shell's screen lists are readable");
+    // Every role, every link: shown exactly when the gate (run the way the live check runs it) lets that role
+    // press it. The Closer Deck link carries this client in its address whether it is shown or not, and a
+    // shown one is pressed and lands on the deck screen for this client.
     const links = [
       ["ccp-link-pipeline", "pipeline.html"],
       ["ccp-link-present", "present.html"],
@@ -397,8 +565,8 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
     for (const role of ROLES) {
       const { page } = await openPanel({ session: asRole(role) });
       for (const [id, screen] of links) {
-        assert.equal(await page.locator(`#${id}`).isVisible(), mayOpen(role, screen),
-          `${role}: ${id} (${screen}) is shown only when the link gate lets this role open it`);
+        assert.equal(await page.locator(`#${id}`).isVisible(), mayPress(role, id),
+          `${role}: ${id} (${screen}) is shown only when the link gate lets this role press it`);
       }
       const deck = page.locator("#ccp-link-present");
       assert.match(await deck.getAttribute("href"), new RegExp(`^present\\.html\\?contact=${CLIENT}`), `${role}: Closer Deck address`);
@@ -408,6 +576,19 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
       }
       await page.close();
     }
+  });
+  await proof.check(/^Quick launch links/, async () => {
+    // With no client open, wireLinks() puts nothing on the links, so what a person presses is the address the
+    // page was written with. Each must be its own screen, and a visible one must open it.
+    const bare = await openPanel({ query: "" });
+    for (const [id, file] of [["ccp-link-pipeline", "pipeline.html"], ["ccp-link-present", "present.html"],
+      ["ccp-link-messaging", "messaging.html"], ["ccp-link-ir", "inquiry-remover.html"]]) {
+      assert.equal(await bare.page.locator(`#${id}`).getAttribute("href"), file, `${id}: the address the page was written with`);
+      assert.equal(await bare.page.locator(`#${id}`).isVisible(), mayPress("owner", id), `${id}: shown for the owner by the gate`);
+    }
+    await bare.page.locator("#ccp-link-ir").click();
+    await bare.page.waitForURL(/\/app\/inquiry-remover\.html$/);
+    await bare.page.close();
   });
 });
 
@@ -425,16 +606,15 @@ test("More menu: Funding Matrix and Credit Snapshot are links for this client, a
     await page.close();
   });
   await proof.check(/^More menu: Open Credit Snapshot link/, async () => {
-    // The address is right for this client and the same for everybody. The row is shown exactly when the link
-    // gate lets that role open present.html, and a shown link is pressed and lands on the screen.
-    assert.ok(SHELL_LISTS, "the shell's screen lists are readable");
+    // The address is right for this client and the same for everybody. The row is shown exactly when the gate
+    // lets that role press it, and a shown link is pressed and lands on the screen.
     for (const role of ROLES) {
       const { page, errors } = await openPanel({ session: asRole(role) });
       await page.locator("#more-menu > summary").click();
       const link = page.locator("#ccp-link-present2");
       assert.match(await link.getAttribute("href"), new RegExp(`^present\\.html\\?contact=${CLIENT}`), `${role}: address`);
       const visible = await link.isVisible();
-      assert.equal(visible, mayOpen(role, "present.html"), `${role}: Open Credit Snapshot visible only when the gate lets this role open it`);
+      assert.equal(visible, mayPress(role, "ccp-link-present2"), `${role}: Open Credit Snapshot visible only when the gate lets this role press it`);
       if (visible) {
         await link.click();
         await page.waitForURL(new RegExp(`/app/present\\.html\\?contact=${CLIENT}`));
@@ -443,6 +623,11 @@ test("More menu: Funding Matrix and Credit Snapshot are links for this client, a
       }
       await page.close();
     }
+    // With no client open the link is the address the page was written with.
+    const bare = await openPanel({ query: "" });
+    await bare.page.locator("#more-menu > summary").click();
+    assert.equal(await bare.page.locator("#ccp-link-present2").getAttribute("href"), "present.html");
+    await bare.page.close();
   });
   await proof.check(/^More menu: Open Bank Inbox button/, async () => {
     const { page, seen, errors } = await openPanel();

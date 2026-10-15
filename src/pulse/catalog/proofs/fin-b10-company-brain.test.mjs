@@ -42,6 +42,8 @@ async function openBrain({ session = OWNER, uploads = UPLOADS(2), extra = {} } =
         const request = route.request();
         const body = request.postData() || "";
         seen.posts.push({ type: request.headers()["content-type"] || "", body });
+        // extra.uploadGate holds the answer, so a test can act while the upload is still in flight.
+        if (extra.uploadGate) await extra.uploadGate;
         const answer = typeof extra.uploadAnswer === "function" ? extra.uploadAnswer(body) : (extra.uploadAnswer || { ok: true, file: { name: "plan.pdf", approvalStatus: "pending" } });
         return route.fulfill({ status: answer.status || 200, contentType: "application/json", body: JSON.stringify(answer.body || answer) });
       }
@@ -166,6 +168,47 @@ test("Add a document + button: opens the file picker for the six kinds, sends th
       await page.close();
     }
   });
+  await proof.check(/^Add a document: '\+' button/, async () => {
+    // While a file is going up the + button is held three ways: it is disabled, a press that still gets
+    // through (the disabled flag lifted by hand) opens no picker, and a second file that arrives through the
+    // input is not sent. One file goes up, once, and the button comes back.
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const { page, seen, errors } = await openBrain({ extra: { uploadGate: gate } });
+    let choosers = 0;
+    page.on("filechooser", () => { choosers += 1; });
+
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.locator("#attachBtn").click()]);
+    await chooser.setFiles({ name: "first.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 first") });
+    await waitFor(() => seen.posts.length === 1, "the first upload request");
+    choosers = 0;
+
+    // In flight: the button is off and the Send button says it is busy.
+    assert.equal(await page.locator("#attachBtn").isDisabled(), true, "the + button is off while a file is going up");
+    assert.equal(await page.locator("#askBtn").isDisabled(), true);
+    assert.equal(await page.locator("#askBtn").textContent(), "Sending…");
+    assert.match(await page.locator("#msgs").textContent(), /Sending first\.pdf…/);
+
+    // A press that gets through anyway (the flag lifted by hand) is still refused by the click handler.
+    await page.evaluate(() => { document.getElementById("attachBtn").disabled = false; });
+    await page.locator("#attachBtn").click();
+    await page.waitForTimeout(300);
+    assert.equal(choosers, 0, "no file picker opens while a file is going up");
+
+    // A second file handed to the input is refused by the upload itself: no second request.
+    await page.locator("#fileInput").setInputFiles({ name: "second.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 second") });
+    await page.waitForTimeout(300);
+    assert.equal(seen.posts.length, 1, "the second file was not sent");
+    assert.doesNotMatch(await page.locator("#msgs").textContent(), /Sending second\.pdf/);
+
+    release();
+    await waitFor(async () => /Uploaded plan\.pdf\./.test(await page.locator("#msgs").textContent()), "the answer words");
+    assert.equal(seen.posts.length, 1, "exactly one file went up");
+    assert.equal(await page.locator("#attachBtn").isDisabled(), false, "the button is back");
+    assert.equal(await page.locator("#askBtn").textContent(), "Send");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
 
 test("Answer source list: Open in Drive and Client record are real links, and a source without them shows only its name", async () => {
@@ -220,7 +263,8 @@ function quizzes() {
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(ROOT, "public/app/ramp-quizzes.js"), "utf8"), sandbox);
   // Copied out of the other realm so the arrays compare as plain arrays.
-  return JSON.parse(JSON.stringify(sandbox.FH_RAMP_QUIZZES.map((q) => ({ id: q.id, seat: q.seat, title: q.title, day: q.day, questions: q.questions.length, mustMissZero: q.mustMissZero }))));
+  return JSON.parse(JSON.stringify(sandbox.FH_RAMP_QUIZZES.map((q) => ({ id: q.id, seat: q.seat, title: q.title, day: q.day,
+    questions: q.questions.length, texts: q.questions.map((item) => item.q), mustMissZero: q.mustMissZero }))));
 }
 
 test("Which quiz picker: each role gets its own quizzes, and picking one paints that quiz with its own questions and score", async () => {
@@ -253,6 +297,16 @@ test("Which quiz picker: each role gets its own quizzes, and picking one paints 
     assert.equal(await page.locator("#quizPick").isVisible(), true);
     assert.equal(await page.locator("#quizPick").inputValue(), "closer-d1", "the first quiz is on at first");
     assert.equal(await page.locator("#quizBox .qitem").count(), first.questions);
+    // The box holds THAT quiz's own questions (Day 1 and Day 2 have the same count, so words are compared).
+    const labels = (quiz) => quiz.texts.map((q, i) => `${i + 1}. ${q}`);
+    const painted = () => page.$$eval("#quizBox .qitem label", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(await painted(), labels(first), "the first quiz is painted on load, not another one");
+    // Every quiz in the picker paints its own questions and carries its own pick.
+    for (const quiz of all) {
+      await page.locator("#quizPick").selectOption(quiz.id);
+      assert.equal(await page.locator("#quizPick").inputValue(), quiz.id);
+      assert.deepEqual(await painted(), labels(quiz), `${quiz.id}: its own questions`);
+    }
     await page.locator("#quizPick").selectOption("closer-d5");
     const day5 = all.find((q) => q.id === "closer-d5");
     assert.equal(await page.locator("#quizBox .qitem").count(), day5.questions, "the Day 5 quiz is drawn");
@@ -274,6 +328,16 @@ test("Which quiz picker: each role gets its own quizzes, and picking one paints 
     await page.locator("#quizForm button[type=submit]").click();
     assert.deepEqual(await page.$$eval("#quizBox .qmark", (els) => els.map((e) => e.textContent)), Array(day5.questions).fill("Right"));
     assert.equal(await page.locator("#quizResult").textContent(), `Pass. You got every question right (${day5.questions} of ${day5.questions}).`);
+
+    // Day 5 must miss zero: ONE question short is a fail, however many are right.
+    for (const wrong of [1, 2, 4]) {
+      for (const [i, answer] of good.entries()) await page.locator(`#qa-${i}`).fill(i < good.length - wrong ? answer : "something else entirely");
+      await page.locator("#quizForm button[type=submit]").click();
+      const right = good.length - wrong;
+      assert.deepEqual(await page.$$eval("#quizBox .qmark", (els) => els.map((e) => e.textContent)),
+        good.map((_, i) => (i < right ? "Right" : "Wrong")), `${wrong} wrong: marks`);
+      assert.equal(await page.locator("#quizResult").textContent(), `Fail. Day 5 must miss zero. You got ${right} of ${day5.questions} right.`, `${wrong} wrong`);
+    }
 
     // Back on Day 1, typed answers are marked right and wrong one by one.
     await page.locator("#quizPick").selectOption("closer-d1");

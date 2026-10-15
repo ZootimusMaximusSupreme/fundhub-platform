@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { makeStandIn, REPO_ROOT } from "./fin-b10-sql-kit.mjs";
-import { FIN_B10_LIVE_ROWS, FIN_B10_RESULT_CONTRACTS } from "./fin-b10-display-contracts.mjs";
+import { FIN_B10_LIVE_ROWS, FIN_B10_OPEN_ROWS, FIN_B10_RESULT_CONTRACTS } from "./fin-b10-display-contracts.mjs";
 import { displaySavedResultContract } from "./display-saved-result.mjs";
 import { judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 
@@ -140,8 +140,10 @@ function seedUpload(s, org, c = {}) {
     created_at: ago(c.old ? 90 : 1),
   });
   if (!c.noReview) {
+    // The review can belong to a different file of the same company (reviewFile) or to a different company
+    // that happens to name this file (reviewOrg). Either way it is NOT this file's review.
     s.insert("brain_classification_reviews", {
-      id: id(org, "review"), org_id: org, file_id: fileId, status: c.reviewStatus || status,
+      id: id(org, "review"), org_id: c.reviewOrg || org, file_id: c.reviewFile || fileId, status: c.reviewStatus || status,
       decided_by: status === "pending" || c.undecided ? null : "owner-1", kind: "upload",
     });
   }
@@ -158,6 +160,18 @@ suite("add a document", UPLOAD_CONTROL, ["brain_files", "brain_classification_re
   ["an upload with no name", { name: "" }],
   ["an upload with a Drive id instead of an upload id", { driveId: "1AbCdEfGhIjKlMn" }],
   ["an upload nobody is named as adding", { uploader: null }],
+  // The review must be the right review: its status, its decision, its file and its company are each held.
+  ["an approved upload whose decided review says it was turned down", { reviewStatus: "rejected" }],
+  ["an approved upload whose decided review still says waiting", { reviewStatus: "pending" }],
+  ["a turned down upload whose review nobody decided", { status: "rejected", undecided: true }],
+  ["a turned down upload whose decided review says approved", { status: "rejected", reviewStatus: "approved" }],
+  ["a waiting upload whose only review was already approved", { status: "pending", reviewStatus: "approved" }],
+  ["an approved upload whose only review belongs to another file", { reviewFile: "some-other-file" }],
+  ["a turned down upload whose only review belongs to another file", { status: "rejected", reviewFile: "some-other-file" }],
+  ["a waiting upload whose only review belongs to another file", { status: "pending", reviewFile: "some-other-file" }],
+  ["an approved upload whose only review belongs to another company", { reviewOrg: "other-company" }],
+  ["a turned down upload whose only review belongs to another company", { status: "rejected", reviewOrg: "other-company" }],
+  ["a waiting upload whose only review belongs to another company", { status: "pending", reviewOrg: "other-company" }],
 ]);
 test("add a document: a waiting upload with its review, and a turned down owner-only one, are not wrong", () => {
   const contract = contractFor(UPLOAD_CONTROL);
@@ -202,35 +216,110 @@ test("N waiting badge: an approved upload is not counted, only the waiting ones"
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 0, bad_count: 0 });
   } finally { s.close(); }
 });
+// Every test above seeds one file, so each of these puts TWO files side by side. A review that belongs to the
+// good file must not excuse the bad one, whether it sits in the same company or in another.
+test("N waiting badge: one waiting upload with its review does not excuse a second one with none", () => {
+  const contract = contractFor(WAITING_CONTROL);
+  const s = makeStandIn(["brain_files", "brain_classification_reviews"]);
+  try {
+    const wait = (n) => s.insert("brain_files", {
+      id: `file-${n}`, org_id: ORG, drive_file_id: `upload:file-${n}`, name: `Plan ${n}.pdf`, source: "upload",
+      approval_status: "pending", access_tier: "owner", size_bytes: 100, uploaded_by: "staff-1", created_at: ago(1),
+    });
+    wait(1);
+    wait(2);
+    s.insert("brain_classification_reviews", { id: "review-1", org_id: ORG, file_id: "file-1", status: "pending", kind: "upload" });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 2, bad_count: 1 });
+    // Give the second file its own review: both are fine.
+    s.insert("brain_classification_reviews", { id: "review-2", org_id: ORG, file_id: "file-2", status: "pending", kind: "upload" });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 2, bad_count: 0 });
+  } finally { s.close(); }
+});
+test("N waiting badge: a pending review of another company that names this file does not count as its review", () => {
+  const contract = contractFor(WAITING_CONTROL);
+  const s = makeStandIn(["brain_files", "brain_classification_reviews"]);
+  try {
+    s.insert("brain_files", {
+      id: "file-1", org_id: ORG, drive_file_id: "upload:file-1", name: "Plan.pdf", source: "upload",
+      approval_status: "pending", access_tier: "owner", size_bytes: 100, uploaded_by: "staff-1", created_at: ago(1),
+    });
+    s.insert("brain_classification_reviews", { id: "review-x", org_id: OTHER, file_id: "file-1", status: "pending", kind: "upload" });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 1 });
+  } finally { s.close(); }
+});
+test("N waiting badge: a waiting Drive file is not counted, because the badge counts uploads only", () => {
+  const contract = contractFor(WAITING_CONTROL);
+  const s = makeStandIn(["brain_files", "brain_classification_reviews"]);
+  try {
+    // A Drive file waiting with no review would be wrong if it were counted. It is not an upload.
+    s.insert("brain_files", {
+      id: "drive-1", org_id: ORG, drive_file_id: "1AbCd", name: "Synced.pdf", source: "drive",
+      approval_status: "pending", access_tier: "owner", created_at: ago(1),
+    });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 0, bad_count: 0 });
+  } finally { s.close(); }
+});
 
 /* ── 4. Join call button ─────────────────────────────────────────────────── */
+// The button opens the latest task link of the booked CLIENT (src/sales/cockpit.mjs join_url). A link on the
+// booking alone does not turn it on. A task belongs to a client and a company, and both are held below.
 const JOIN_CONTROL = FIN_B10_RESULT_CONTRACTS[3].control;
+const GOOD_TASK = "https://meet.example.com/task-room";
 function seedJoin(s, org, c = {}) {
-  const uid = id(org, "uid");
+  const client = `client-${org.slice(0, 4)}`;
   s.insert("bookings", {
-    id: id(org, "booking"), org_id: org, source: c.source || "clickfunnels", provider_uid: uid,
-    starts_at: ahead(c.hours ?? 48), status: c.status || "booked",
-    meeting_url: "url" in c ? c.url : "https://meet.example.com/room-1",
+    id: id(org, "booking"), org_id: org, client_id: "client" in c ? c.client : client, source: c.source || "clickfunnels",
+    provider_uid: id(org, "uid"), starts_at: ahead(c.hours ?? 48), status: c.status || "booked",
+    // The booking's own link is deliberately a good one unless a test says otherwise: it must not matter.
+    meeting_url: "url" in c ? c.url : "https://meet.example.com/booking-room",
     attendee_email: c.email || "buyer@acme.test",
   });
-  if (c.taskUrl !== undefined) {
-    s.insert("tasks", { id: id(org, "task"), org_id: org, body: uid, meeting_url: c.taskUrl });
-  }
+  // The closer's task for this client: a good web link by default. noTask leaves the client with none.
+  const tasks = c.noTask ? [] : (c.tasks || [{ url: "taskUrl" in c ? c.taskUrl : GOOD_TASK }]);
+  tasks.forEach((t, n) => {
+    s.insert("tasks", {
+      id: `${id(org, "task")}-${n}`, org_id: t.org || org, client_id: "client" in t ? t.client : client,
+      meeting_url: t.url, due_at: t.due || ahead(c.hours ?? 48),
+    });
+  });
 }
 suite("Join call button", JOIN_CONTROL, ["bookings", "tasks"], seedJoin, [
-  ["a booked call ahead with no link anywhere", { url: null }],
-  ["a booked call ahead with a blank link", { url: "   " }],
-  ["a booked call ahead whose link is not a web address", { url: "TBD" }],
-  ["a booked call ahead with a blank link on its task too", { url: null, taskUrl: "" }],
-  ["a call that began an hour ago with no link", { url: null, hours: -1 }],
-  ["a rescheduled call with no link", { url: null, status: "rescheduled" }],
+  ["a booked call ahead whose client has no task at all", { noTask: true }],
+  ["a booked call ahead whose booking has a link but whose task has none", { url: "https://meet.example.com/booking-room", taskUrl: null }],
+  ["a booked call ahead with a blank link on its task", { taskUrl: "" }],
+  ["a booked call ahead with a spaces-only link on its task", { taskUrl: "   " }],
+  ["a booked call ahead whose task link is not a web address", { taskUrl: "TBD" }],
+  ["a call that began an hour ago with no task link", { hours: -1, taskUrl: null }],
+  ["a rescheduled call with no task link", { status: "rescheduled", taskUrl: null }],
+  ["a booked call with no client on it at all", { client: null, taskUrl: GOOD_TASK }],
+  ["a booked call whose only linked task belongs to another client of the company", { tasks: [{ url: GOOD_TASK, client: "client-someone-else" }] }],
+  ["a booked call whose only linked task is another company's task for the same client id", { tasks: [{ url: GOOD_TASK, org: "other-company" }] }],
+  ["a booked call whose latest task link is not a web address, though an older one is", { tasks: [
+    { url: GOOD_TASK, due: ago(5) },
+    { url: "TBD", due: ahead(48) },
+  ] }],
 ], { windowed: false });
-test("Join call button: a link on the task alone is enough, and calls that are not real or not ahead are not judged", () => {
+test("Join call button: the latest non-blank task link is the one the button opens, and a booking link alone is not enough", () => {
   const contract = contractFor(JOIN_CONTROL);
   const withStandIn = (fn) => { const s = makeStandIn(["bookings", "tasks"]); try { return fn(s); } finally { s.close(); } };
-  // The link is on the closer's task, not the booking.
+  // The link is on the closer's task for the client, and the booking has none: green.
   withStandIn((s) => {
-    seedJoin(s, ORG, { url: null, taskUrl: "https://meet.example.com/task-room" });
+    seedJoin(s, ORG, { url: null, taskUrl: GOOD_TASK });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
+  });
+  // The latest task has a BLANK link and an older one has a web link: the read skips blanks, so the button is on.
+  withStandIn((s) => {
+    seedJoin(s, ORG, { url: null, tasks: [{ url: GOOD_TASK, due: ago(5) }, { url: "", due: ahead(48) }] });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
+  });
+  // The latest task has a web link and an older one is junk: the button opens the latest, so green.
+  withStandIn((s) => {
+    seedJoin(s, ORG, { url: null, tasks: [{ url: "TBD", due: ago(5) }, { url: GOOD_TASK, due: ahead(48) }] });
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
+  });
+  // A web address in capitals or with spaces round it still counts.
+  withStandIn((s) => {
+    seedJoin(s, ORG, { url: null, taskUrl: "  HTTPS://Meet.Example.com/Room  " });
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 1, bad_count: 0 });
   });
   // Each of these has no link and is left out: cancelled, long over, far ahead, a test booking, a +tag, an example address, our own address.
@@ -240,10 +329,25 @@ test("Join call button: a link on the task alone is enough, and calls that are n
   ];
   for (const change of left) {
     withStandIn((s) => {
-      seedJoin(s, ORG, { url: null, ...change });
+      seedJoin(s, ORG, { url: null, taskUrl: null, ...change });
       assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 0, bad_count: 0 }, JSON.stringify(change));
     });
   }
+});
+test("Join call button: one call with a link and one without are counted apart, so one good call does not excuse the other", () => {
+  const contract = contractFor(JOIN_CONTROL);
+  const s = makeStandIn(["bookings", "tasks"]);
+  try {
+    // Two clients of the same company. Client A has a linked task, client B has none.
+    for (const [n, taskUrl] of [["a", GOOD_TASK], ["b", null]]) {
+      s.insert("bookings", {
+        id: `booking-${n}`, org_id: ORG, client_id: `client-${n}`, source: "clickfunnels", provider_uid: `uid-${n}`,
+        starts_at: ahead(24), status: "booked", meeting_url: null, attendee_email: `${n}@acme.test`,
+      });
+      s.insert("tasks", { id: `task-${n}`, org_id: ORG, client_id: `client-${n}`, meeting_url: taskUrl, due_at: ahead(24) });
+    }
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 2, bad_count: 1 });
+  } finally { s.close(); }
 });
 
 /* ── 5. Client picker ────────────────────────────────────────────────────── */
@@ -322,8 +426,9 @@ test("client picker: demo clients and another company's clients are not counted"
 test("every contract is one exact map row, and the five SQL texts differ", () => {
   const MAP_DIR = path.join(REPO_ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
   const maps = new Map();
-  assert.equal(FIN_B10_LIVE_ROWS.length, FIN_B10_RESULT_CONTRACTS.length);
-  for (const [file, surface, control] of FIN_B10_LIVE_ROWS) {
+  // Seven live rows (five saved results, two link gates) and the one row held open with its reason.
+  assert.equal(FIN_B10_LIVE_ROWS.length + FIN_B10_OPEN_ROWS.length, FIN_B10_RESULT_CONTRACTS.length);
+  for (const [file, surface, control] of [...FIN_B10_LIVE_ROWS, ...FIN_B10_OPEN_ROWS]) {
     if (!maps.has(file)) maps.set(file, JSON.parse(fs.readFileSync(path.join(MAP_DIR, file), "utf8")));
     const hits = maps.get(file).filter((r) => r.surface === surface && r.control === control);
     assert.equal(hits.length, 1, `${file} / ${surface} / ${control}`);

@@ -1,5 +1,6 @@
 // Finish-853 batch 10: live checks for seven display controls. Five leave a durable saved result (a SQL
 // contract each); two are links the app's own link gate decides (a link-gate contract each, see linkGate()).
+// One more row is held open on purpose (see OPEN_GAP below): it cannot be attached honestly today.
 // Each SQL contract is one read-only SQL text. It takes the company as $1::uuid and returns sample_count
 // (how many saved results exist) and bad_count (how many are wrong).
 //
@@ -28,10 +29,15 @@ function contract(control, requirement, key, body) {
   });
 }
 
-// A link control. The result is not a saved row: it is whether the app's own link gate (public/app/shell.js)
-// lets the people the link is for see it. The lane reads the DEPLOYED shell with one GET and judges, per
-// named screen, the staff roles that must be able to open it (src/pulse/coverage/fin-b10-link-gate.mjs).
-// It is red the day a screen is missing from the gate's lists and green by itself once it is added.
+// A link control. The result is not a saved row: it is whether the people the link is for can see it and
+// press it. The lane GETs the DEPLOYED shell and the DEPLOYED page, runs the real shell against the page's own
+// links once per staff role, and judges, per named link, that it is on the page, points at its screen, and is
+// shown and pressable for every role named (src/pulse/coverage/fin-b10-link-gate.mjs). It is red the day a
+// link is hidden from a role that must see it, and green by itself once the gate lets it through.
+const ALL_STAFF = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist"];
+// The Closer Deck is the closer's tool and the owner's; an admin is an employee who gets every screen the
+// owner does except the portals. Which other roles get it is a product call, so it is not judged here.
+const DECK_ROLES = ["owner", "admin", "closer"];
 function linkGate(control, requirement, key, links) {
   return Object.freeze({
     control,
@@ -39,17 +45,24 @@ function linkGate(control, requirement, key, links) {
     requirement,
     key,
     sql: null,
-    links: Object.freeze(links.map(([file, roles]) => Object.freeze({ file, roles: Object.freeze([...roles]) }))),
+    links: Object.freeze(links.map(([id, file, label, roles]) => Object.freeze({ id, file, label, roles: Object.freeze([...roles]) }))),
   });
+}
+
+// A row that is held open because no honest check can be attached today. The lane reports it as NOT_PROVED
+// with these exact words (an "always-red" contract), so the reason travels with the row.
+function openGap(control, requirement) {
+  return Object.freeze({ control, mode: "always-red", requirement, sql: null });
 }
 
 // Funnel pages: Sync now. Every saved page-stat row must belong to a ClickFunnels connection of its own
 // company, be dated no later than the day it was captured (the sync stamps today), and hold views and
 // conversions that are either unknown (NULL, never a made-up zero) or whole numbers that are not negative.
+// A row with no connection at all has no company and no platform either (the LEFT JOIN gives NULL), so the
+// two comparisons below catch it; there is no separate "no connection" clause to keep.
 const FUNNEL_SYNC_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE c.id IS NULL
-         OR c.org_id IS DISTINCT FROM s.org_id
+       count(*) FILTER (WHERE c.org_id IS DISTINCT FROM s.org_id
          OR c.platform IS DISTINCT FROM 'clickfunnels'
          OR s.views < 0
          OR s.conversions < 0
@@ -97,27 +110,35 @@ SELECT count(*)::int AS sample_count,
    AND f.source = 'upload'
    AND f.approval_status = 'pending'`;
 
-// Join call button. The button is off when a booked call carries no link. So every real booked call that
-// is still ahead (or began in the last 2 hours) must carry a web link, on the booking or on the closer's task
-// for that booking. Tester bookings (sim, gauntlet, +tag, example and company addresses) are left out.
+// Join call button. The button is on only when the closer screen's own read (src/sales/cockpit.mjs, the
+// `join_url` of /api/read/closer-call) finds a link. That read takes the LATEST task of the booked client
+// (by due time) that carries a non-blank meeting_url, and the page opens exactly that text in a new tab.
+// It never reads bookings.meeting_url. So this judges the same thing, for every real booked call that is
+// still ahead (or began in the last 2 hours): the client must have a task, in this company, whose latest
+// link is a web address. A booking with no client cannot open the closer screen at all, so it is wrong too.
+// Tester bookings (sim, gauntlet, +tag, example and company addresses) are left out.
 const JOIN_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NOT (LOWER(BTRIM(COALESCE(b.meeting_url, ''))) LIKE 'http://%'
-                                OR LOWER(BTRIM(COALESCE(b.meeting_url, ''))) LIKE 'https://%')
-         AND NOT EXISTS (
-           SELECT 1 FROM tasks t
-            WHERE t.org_id = b.org_id AND t.body = b.provider_uid
-              AND (LOWER(BTRIM(COALESCE(t.meeting_url, ''))) LIKE 'http://%'
-                OR LOWER(BTRIM(COALESCE(t.meeting_url, ''))) LIKE 'https://%')))::int AS bad_count
-  FROM bookings b
- WHERE b.org_id = $1::uuid
-   AND b.status IN ('booked', 'rescheduled')
-   AND b.starts_at >= now() - interval '2 hours'
-   AND b.starts_at <= now() + interval '45 days'
-   AND b.source NOT IN ('sim', 'gauntlet')
-   AND COALESCE(b.attendee_email, '') NOT LIKE '%+%'
-   AND COALESCE(b.attendee_email, '') NOT LIKE '%@example.%'
-   AND COALESCE(b.attendee_email, '') NOT LIKE '%@fundhub.ai'`;
+       count(*) FILTER (WHERE NOT (LOWER(BTRIM(COALESCE(j.link, ''))) LIKE 'http://%'
+                                OR LOWER(BTRIM(COALESCE(j.link, ''))) LIKE 'https://%'))::int AS bad_count
+  FROM (
+    SELECT b.id,
+           (SELECT t.meeting_url
+              FROM tasks t
+             WHERE t.org_id = b.org_id AND t.client_id = b.client_id
+               AND BTRIM(t.meeting_url) <> ''
+             ORDER BY t.due_at DESC NULLS LAST
+             LIMIT 1) AS link
+      FROM bookings b
+     WHERE b.org_id = $1::uuid
+       AND b.status IN ('booked', 'rescheduled')
+       AND b.starts_at >= now() - interval '2 hours'
+       AND b.starts_at <= now() + interval '45 days'
+       AND b.source NOT IN ('sim', 'gauntlet')
+       AND COALESCE(b.attendee_email, '') NOT LIKE '%+%'
+       AND COALESCE(b.attendee_email, '') NOT LIKE '%@example.%'
+       AND COALESCE(b.attendee_email, '') NOT LIKE '%@fundhub.ai'
+  ) j`;
 
 // Client picker. The picker lists the newest 200 clients by name or email. So every client must be inside
 // the newest 200 (older ones cannot be picked at all) and carry a name or an email (or the picker shows a
@@ -133,6 +154,21 @@ SELECT count(*)::int AS sample_count,
       FROM clients c
      WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false
   ) ranked`;
+
+// Credit partner links. The two links are painted by paintCombined() with `el.partnerOpen.href = ...` and
+// `el.partnerConsent.href = ...`, which set the address but never the shell's own copy (data-fh-href). The
+// shell's link gate runs twice, once from the cached role and once when the session answers, and every pass
+// rewrites each link from that copy. So when the session answer lands AFTER the Blueprint read, the second
+// pass puts the PRIMARY client back on both links: "Open the partner's file" opens the primary's file and
+// "Record the partner's own consent" opens consent capture for the primary, who has already consented.
+// Measured in Chromium with the session answer held back 1.5 seconds. Any honest test of "points at the
+// partner's own file" is red until paintCombined() also sets data-fh-href, and a green one only holds
+// because the stand-in session answers at once. The pulse cannot see it: it is a timing outcome of one
+// browser session, not a saved result or a deployed list.
+const OPEN_GAP = openGap(
+  "Credit partner links: Open the partner's file, Record the partner's own consent",
+  "Not attachable today. paintCombined() in client-control-panel.html sets the two partner links' addresses but not the shell's copy (data-fh-href), so when the session answer arrives after the Blueprint read, shell.js gateLinks() rewrites both to the primary client's file and consent screen. A test that waits for the session answer is red until that one line is fixed; a test that does not wait is green over the break. No saved result and no deployed list shows it.",
+);
 
 export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
   contract(
@@ -155,7 +191,7 @@ export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
   ),
   contract(
     "Join call button (opens the booked call link)",
-    "Every real booked call still ahead must carry a web link on its booking or on its task, or the Join call button is off for that customer.",
+    "Every real booked call still ahead must belong to a client whose latest call task carries a web link, because that task's link is the one the Join call button opens. A link on the booking alone does not turn the button on.",
     "booked-call-join-link",
     JOIN_SQL,
   ),
@@ -167,16 +203,22 @@ export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
   ),
   linkGate(
     "More menu: Open Credit Snapshot link",
-    "The Credit Snapshot link on the Client Control Panel must be shown to the owner and to a closer, so the deck screen it opens can be reached from the file.",
+    "The Credit Snapshot link in the More menu of the Client Control Panel must be on the deployed page, point at the deck screen (present.html), and be shown and pressable for the owner, an admin and a closer.",
     "credit-snapshot-link-gate",
-    [["present.html", ["owner", "closer"]]],
+    [["ccp-link-present2", "present.html", "Open Credit Snapshot", DECK_ROLES]],
   ),
   linkGate(
     "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
-    "All four Quick launch links on the Client Control Panel must be shown to the owner and to a closer: Pipeline, the Closer Deck, Messaging and Inquiry Remover.",
+    "All four Quick launch links on the deployed Client Control Panel must point at their screens and be shown and pressable: Pipeline, Messaging and Inquiry Remover for every staff role, and the Closer Deck for the owner, an admin and a closer.",
     "quick-launch-link-gate",
-    [["pipeline.html", ["owner", "closer"]], ["present.html", ["owner", "closer"]], ["messaging.html", ["owner", "closer"]], ["inquiry-remover.html", ["owner", "closer"]]],
+    [
+      ["ccp-link-pipeline", "pipeline.html", "Open Pipeline", ALL_STAFF],
+      ["ccp-link-present", "present.html", "Open Closer Deck", DECK_ROLES],
+      ["ccp-link-messaging", "messaging.html", "Open Messaging", ALL_STAFF],
+      ["ccp-link-ir", "inquiry-remover.html", "Open Inquiry Remover", ALL_STAFF],
+    ],
   ),
+  OPEN_GAP,
 ]);
 
 /** The exact map rows (desks file, surface, control) each live check is attached to. */
@@ -188,6 +230,11 @@ export const FIN_B10_LIVE_ROWS = Object.freeze([
   ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[4].control],
   ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[5].control],
   ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[6].control],
+]);
+
+/** The one row held open (NOT_PROVED with the exact reason above). */
+export const FIN_B10_OPEN_ROWS = Object.freeze([
+  ["desks-a.json", "client-control-panel.html", OPEN_GAP.control],
 ]);
 
 // The five saved-result checks are held by the SQL test; the two link-gate checks by the gate test.
@@ -204,3 +251,19 @@ export const FIN_B10_LIVE_CASES = Object.freeze(FIN_B10_LIVE_ROWS.map(([sourceFi
   evidence: `${testFor(control)}; ${FIN_B10_LANE}`,
   tests: Object.freeze([testFor(control)]),
 })));
+
+/**
+ * Everything the catalog compiler turns into a lane case (resultCases): the seven live rows and the one
+ * held-open row. The open row has no test, so it is NOT handed to the proof-case plug-in list.
+ */
+export const FIN_B10_COMPILE_CASES = Object.freeze([
+  ...FIN_B10_LIVE_CASES,
+  ...FIN_B10_OPEN_ROWS.map(([sourceFile, surface, control]) => Object.freeze({
+    sourceFile,
+    surface,
+    control,
+    depth: "deep",
+    evidence: FIN_B10_LANE,
+    tests: Object.freeze([]),
+  })),
+]);
