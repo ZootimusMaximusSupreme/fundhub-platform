@@ -62,60 +62,103 @@ test("Accounts: Add account and Add a business open their own forms and put the 
 
 const alertsRead = () => alertsFixture();
 
-test("Alerts: Show all lists every text and Show fewer puts it back; the jump link lands on the card", { timeout: 90_000 }, async (t) => {
+test("Alerts: Show all lists the newest texts of ITS card only, the jump links land on their own card, and Try again keeps the client", { timeout: 120_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^'Show all' on the texts-sent list, jump links, Try again/, async () => {
-    const many = () => {
+    // Five texts of one kind (newest first, as the server sends them) and texts of two other kinds, so a
+    // card that lists the wrong kind, or the oldest three, or the wrong order, cannot read the same.
+    const fixture = () => {
       const d = alertsRead();
-      const one = d.alerts[1];
-      d.alerts = [0, 1, 2, 3, 4].map((i) => ({ ...one, id: `a${i}`, kind: one.kind, sent_at: `2026-09-1${i}T07:30:00.000Z` }));
+      const pay = d.alerts.find((a) => a.kind === "payment_timing");
+      const cash = d.alerts.find((a) => a.kind === "cash_reserve");
+      const promo = d.alerts.find((a) => a.kind === "promo_end");
+      const fives = [0, 1, 2, 3, 4].map((i) => ({ ...pay, id: `pay-${i}`, body: `Pay text number ${i}`, sent_at: `2026-10-1${4 - i}T07:30:00.000Z` }));
+      d.alerts = [fives[0], { ...cash, id: "cash-0", body: "Cash text number 0" }, fives[1], { ...promo, id: "promo-0", body: "Promo text number 0" }, fives[2], fives[3], fives[4]];
+      // Both cash boxes are below the line, with different amounts, and a card still needs its statement day.
+      d.reserve = {
+        ...d.reserve,
+        personal: { ...d.reserve.personal, state: "below", short_cents: 8557 },
+        business: { ...d.reserve.business, state: "below", short_cents: 120000, reason: "below_need" },
+      };
       return d;
     };
-    const kind = many().alerts[0].kind;
-    const resource = moneyResource("alerts", { read: many });
+    const resource = moneyResource("alerts", { read: fixture });
     const { page, errors } = await open(entryUrl("frame", { ...FRAME("alerts"), clientId: CLIENT_ID }), { session: STAFF, handlers: resource.handlers });
-    const card = page.locator(`#fa-k-${kind}`);
+    const card = page.locator("#fa-k-payment_timing");
     await card.waitFor();
     const more = card.locator('[data-act="more"]');
-    const sent = () => card.locator(".sent-item").count();
-    assert.equal(await sent(), 3, "three texts show first");
+    const bodies = (kind) => page.locator(`#fa-k-${kind} .sent-item .sent-body`).evaluateAll((els) => els.map((e) => e.textContent.trim()));
+    assert.deepEqual(await bodies("payment_timing"), ["Pay text number 0", "Pay text number 1", "Pay text number 2"], "the three newest of this kind show first, in order");
     assert.match(await more.innerText(), /^Show all 5 texts$/);
     assert.equal(await more.getAttribute("aria-expanded"), "false");
     await more.click();
-    await page.waitForFunction((k) => document.querySelectorAll(`#fa-k-${k} .sent-item`).length === 5, kind);
+    await page.waitForFunction(() => document.querySelectorAll("#fa-k-payment_timing .sent-item").length === 5);
+    assert.deepEqual(await bodies("payment_timing"), [0, 1, 2, 3, 4].map((i) => `Pay text number ${i}`), "Show all lists all five, newest first, and no text of another kind");
     assert.match(await more.innerText(), /^Show fewer$/);
     assert.equal(await more.getAttribute("aria-expanded"), "true");
+    // The other cards keep their own texts and were not opened.
+    assert.deepEqual(await bodies("cash_reserve"), ["Cash text number 0"]);
+    assert.deepEqual(await bodies("promo_end"), ["Promo text number 0"]);
     await more.click();
-    await page.waitForFunction((k) => document.querySelectorAll(`#fa-k-${k} .sent-item`).length === 3, kind);
+    await page.waitForFunction(() => document.querySelectorAll("#fa-k-payment_timing .sent-item").length === 3);
+    assert.deepEqual(await bodies("payment_timing"), ["Pay text number 0", "Pay text number 1", "Pay text number 2"], "Show fewer puts the same three back");
     assert.match(await more.innerText(), /^Show all 5 texts$/);
 
-    // The jump link: "Add the day" scrolls to that card's day box and puts the cursor there.
-    const jump = page.locator('[data-act="jump"]:has-text("Add the day")').first();
-    await jump.waitFor();
-    const to = await jump.getAttribute("data-to");
-    assert.match(to, /^fa-cd-/);
-    await jump.click();
-    await page.waitForFunction((id) => document.activeElement?.id === id, to);
-    // The "See it" link goes to the cash tile the same way.
-    const see = page.locator('[data-act="jump"]:has-text("See it")').first();
-    await see.waitFor();
-    const seeTo = await see.getAttribute("data-to");
-    assert.match(seeTo, /^fa-cash-(personal|business)$/);
-    await see.click();
-    await page.waitForFunction((id) => document.activeElement?.id === id, seeTo);
+    // The jump links. The page lists what needs you; each "See it" must land on the cash box its own
+    // sentence names, and "Add the day" on the day box of the card it names.
+    const needs = page.locator(".need-list li");
+    const items = await needs.evaluateAll((lis) => lis.map((li) => ({
+      text: li.querySelector("span").innerText.trim(),
+      label: li.querySelector("button")?.innerText.trim() || null,
+      to: li.querySelector("button")?.getAttribute("data-to") || null,
+    })));
+    const byText = (re) => items.find((i) => re.test(i.text));
+    const day = byText(/^Add the statement day for /);
+    const personal = byText(/^Personal cash is \$85\.57 short/);
+    const business = byText(/^Business cash is \$1,200\.00 short/);
+    assert.ok(day && personal && business, `the three needs are listed: ${JSON.stringify(items.map((i) => i.text))}`);
+    assert.equal(day.label, "Add the day");
+    assert.equal(personal.label, "See it");
+    assert.equal(business.label, "See it");
+    assert.equal(personal.to, "fa-cash-personal", "the personal sentence jumps to the personal cash box");
+    assert.equal(business.to, "fa-cash-business", "the business sentence jumps to the business cash box");
+    assert.match(day.to, /^fa-cd-/);
+    const press = async (li) => {
+      await needs.filter({ hasText: li.text }).locator("button").click();
+    };
+    await press(personal);
+    await page.waitForFunction(() => document.activeElement?.id === "fa-cash-personal");
+    assert.match(await page.locator("#fa-cash-personal").innerText(), /Personal cash/i);
+    await press(business);
+    await page.waitForFunction(() => document.activeElement?.id === "fa-cash-business");
+    assert.match(await page.locator("#fa-cash-business").innerText(), /Business cash/i);
+    await press(day);
+    await page.waitForFunction((id) => document.activeElement?.id === id, day.to);
+    // The day box it lands on belongs to the card the sentence names.
+    const who = day.text.replace(/^Add the statement day for /, "").replace(/\.$/, "");
+    assert.ok((await page.locator(`#${day.to}`).evaluate((el) => el.closest("section, li, div.card, article")?.innerText || "")).includes(who.split(" ending ")[0]),
+      "the day box is the named card's");
     assert.deepEqual(errors, []);
     await page.close();
 
-    // Try again: the read fails once, the page says so, and the button reads the same alerts again.
-    let reads = 0;
-    const handlers = { "/api/money/alerts": async (route) => { reads += 1; return reads === 1 ? json(route, { ok: false, error: "server_error" }, 500) : json(route, alertsRead()); } };
+    // Try again: the read fails once, the page says so, and the button reads the same alerts again,
+    // for the same client, and the real cards come back.
+    const log = { reads: 0, queries: [] };
+    const handlers = {
+      "/api/money/alerts": async (route, { url }) => {
+        log.reads += 1;
+        log.queries.push(new URL(url).search);
+        return log.reads === 1 ? json(route, { ok: false, error: "server_error" }, 500) : json(route, alertsRead());
+      },
+    };
     const retry = await open(entryUrl("frame", { ...FRAME("alerts"), clientId: CLIENT_ID }), { session: STAFF, handlers });
     await retry.page.waitForSelector('[data-act="retry"]');
-    assert.equal(reads, 1);
+    assert.equal(log.reads, 1);
     await retry.page.locator('[data-act="retry"]').click();
-    await waitFor(() => reads === 2);
+    await waitFor(() => log.reads === 2);
     await retry.page.waitForFunction(() => document.querySelectorAll('[data-act="retry"]').length === 0 && !!document.querySelector('[id^="fa-k-"]'));
-    assert.equal(reads, 2);
+    assert.equal(log.reads, 2);
+    assert.deepEqual(log.queries, [`?client_id=${CLIENT_ID}`, `?client_id=${CLIENT_ID}`], "Try again asks for the same client's file");
     await retry.page.close();
   });
 });

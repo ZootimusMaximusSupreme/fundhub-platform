@@ -16,8 +16,11 @@ test("Consult form: it opens an email with the typed words, takes no card, and s
   await proof.check(/^Consult request form: name, email, agency, help, note/, async () => {
     const { page, errors } = await open("/consulting/", { session: null, handlers: {} });
     await page.waitForSelector("#consult-form");
-    const api = [];
-    page.on("request", (request) => { if (new URL(request.url()).pathname.startsWith("/api/")) api.push(request.method() + " " + request.url()); });
+    // EVERY request the page makes from here on, to any address and by any method (a form post, a
+    // fetch, a beacon, an image ping). Opening an email makes none, so the list must stay empty.
+    const requests = [];
+    page.on("request", (request) => requests.push(`${request.method()} ${request.resourceType()} ${request.url()}`));
+    page.on("websocket", (socket) => requests.push(`WS ${socket.url()}`));
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Page.enable");
     const navigations = [];
@@ -59,7 +62,10 @@ test("Consult form: it opens an email with the typed words, takes no card, and s
     const parsed = new URLSearchParams(query);
     assert.equal(parsed.get("subject"), "FH Consulting consult — Whitfield Media");
     assert.equal(parsed.get("body"), "Name: Dana Whitfield\nEmail: dana@example.com\nAgency: Whitfield Media\nHelp: Offer tools\n\nWe sell through webinars.\nTeam of six.");
-    assert.deepEqual(api, [], "nothing was sent to the server");
+    await page.waitForTimeout(250);
+    // The one thing it may do is hand the email address to the mail program (the mailto link). Nothing else.
+    assert.deepEqual(requests.filter((r) => !/^GET document mailto:/.test(r)), [], "the page made no request of any kind, to anywhere, when the form was sent");
+    assert.ok(requests.filter((r) => /^GET document mailto:/.test(r)).length <= 1, "at most the one mailto hand-off");
     assert.deepEqual(errors, []);
     await page.close();
   });

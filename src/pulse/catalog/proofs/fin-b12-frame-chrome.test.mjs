@@ -98,20 +98,51 @@ test("the tab bar has 16 tabs, arrow keys and Home and End move along it, and #h
     // An unknown hash falls back to Overview.
     await page.evaluate(() => { location.hash = "nonsense"; });
     await page.waitForFunction(() => document.querySelector("#tab-overview")?.getAttribute("aria-selected") === "true");
-    // Right, Left, End and Home walk the bar and move focus with it.
+    // The tab ids run in the same order as the words, so the bar and the keys below agree.
+    const ids = await page.evaluate(() => [...document.querySelectorAll(".fos-tabs [role=tab]")].map((a) => a.id.replace(/^tab-/, "")));
+    assert.deepEqual(ids, KEYS, "the sixteen tab ids run in the order of the words");
+    const hrefs = await page.evaluate(() => [...document.querySelectorAll(".fos-tabs [role=tab]")].map((a) => a.getAttribute("href")));
+    assert.deepEqual(hrefs, KEYS.map((k) => `#${k}`), "each tab link points at its own hash");
+
+    // Press every tab link with the mouse: it opens its own tab and only its own panel.
+    for (const key of KEYS) {
+      await page.locator(`#tab-${key}`).click();
+      await page.waitForFunction((k) => location.hash === `#${k}` && document.querySelector(`#tab-${k}`)?.getAttribute("aria-selected") === "true", key);
+      assert.deepEqual(await selected(), [key], `clicking ${key} selects only ${key}`);
+      assert.deepEqual(await panels(), [`fos-${key}`], `clicking ${key} shows only its panel`);
+    }
+
+    // The arrow keys walk the WHOLE bar, one tab at a time, in the order of the words, and wrap at both ends.
+    const focused = () => page.evaluate(() => document.activeElement.id);
+    const opened = (k) => page.waitForFunction((key) => location.hash === `#${key}`
+      && document.querySelector(`#tab-${key}`)?.getAttribute("aria-selected") === "true", k);
+    await page.locator("#tab-overview").click();
     await page.locator("#tab-overview").focus();
-    await page.keyboard.press("ArrowRight");
-    await page.waitForFunction(() => location.hash === "#next");
-    assert.equal(await page.evaluate(() => document.activeElement.id), "tab-next");
-    await page.keyboard.press("ArrowLeft");
-    await page.waitForFunction(() => location.hash === "#overview");
+    for (let i = 0; i < KEYS.length; i += 1) {
+      const next = KEYS[(i + 1) % KEYS.length];
+      await page.keyboard.press("ArrowRight");
+      await opened(next);
+      assert.equal(await focused(), `tab-${next}`, `ArrowRight from ${KEYS[i]} lands on ${next}`);
+      assert.deepEqual(await selected(), [next]);
+    }
+    // Back at Overview after a full lap. Now the other way: Left from the first tab wraps to the last.
+    assert.deepEqual(await selected(), ["overview"]);
+    for (let i = 0; i < KEYS.length; i += 1) {
+      const from = KEYS[(KEYS.length - i) % KEYS.length];
+      const prev = KEYS[(KEYS.length - i - 1) % KEYS.length];
+      await page.keyboard.press("ArrowLeft");
+      await opened(prev);
+      assert.equal(await focused(), `tab-${prev}`, `ArrowLeft from ${from} lands on ${prev}`);
+      assert.deepEqual(await selected(), [prev]);
+    }
+    assert.deepEqual(await selected(), ["overview"]);
+    // End goes to the last tab and Home goes back to the first.
     await page.keyboard.press("End");
-    await page.waitForFunction(() => location.hash === "#setup");
-    assert.equal(await page.evaluate(() => document.activeElement.id), "tab-setup");
-    await page.keyboard.press("ArrowRight");
-    await page.waitForFunction(() => location.hash === "#overview", null, { timeout: 5000 });
+    await opened("setup");
+    assert.equal(await focused(), "tab-setup");
     await page.keyboard.press("Home");
-    await page.waitForFunction(() => location.hash === "#overview");
+    await opened("overview");
+    assert.equal(await focused(), "tab-overview");
     // Every one of the 16 hashes lands on its own tab.
     for (const key of KEYS) {
       await page.evaluate((k) => { location.hash = k; }, key);
@@ -176,31 +207,80 @@ test("Credit: Try again repaints the scores, and the soft-pull link opens the Se
   });
 });
 
-test("Fundability: Try again repaints, and a chart column shows its month on hover or focus", { timeout: 90_000 }, async (t) => {
+/**
+ * A fundability answer whose columns all differ, so a detail panel that shows the wrong column,
+ * the wrong date or another column's score, tier or estimate cannot read the same by luck.
+ */
+function fundabilityColumns() {
+  const answer = sampleAnswer("money-fundability.sample.json");
+  const plan = [
+    { months: 3, date: "2027-01-07", score: 4, tier: "not_fundable", funding_estimate_cents: 9000000, assumptions: ["3 months go by. You pay down two cards."] },
+    { months: 6, date: "2027-04-07", score: 5, tier: "fundable", funding_estimate_cents: 15500000, assumptions: ["6 months go by. You pay down two cards.", "One dispute is removed."] },
+    { months: 9, date: "2027-07-07", score: 5, tier: "fundable", funding_estimate_cents: 18250000, assumptions: ["9 months go by. Your open accounts stay open."] },
+    { months: 12, date: "2027-10-07", score: 6, tier: "fundable", funding_estimate_cents: 30100000, assumptions: ["12 months go by. Every item is cleared."] },
+  ].map((p) => ({ ...p, scenario: "plan", score_max: 6, unknown: 0, checks: {}, sentences: [] }));
+  const removed = [
+    { months: 6, date: "2027-04-07", score: 6, tier: "fundable", funding_estimate_cents: 26000000, assumptions: ["If the inquiries are removed."] },
+    { months: 12, date: "2027-10-07", score: 6, tier: "fundable", funding_estimate_cents: 41000000, assumptions: ["If every inquiry is removed."] },
+  ].map((p) => ({ ...p, scenario: "if_removed", score_max: 6, unknown: 0, checks: {}, sentences: [] }));
+  answer.projections = [...plan, ...removed];
+  answer.plan = { ...(answer.plan || {}), if_removed: true };
+  return { answer, plan, removed };
+}
+
+const usd = (cents) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+const MONTH_WORDS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dayWords = (iso) => `${MONTH_WORDS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}, ${iso.slice(0, 4)}`;
+const TIER_TEXT = { fundable: "Fundable", not_fundable: "Not fundable yet" };
+
+test("Fundability: Try again repaints, and every chart column shows its own month, score, tier, estimate and assumptions", { timeout: 120_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Chart columns \(hover or focus shows a month\) and Try again/, async () => {
-    const { page } = await retryCase(open, {
+    const { answer, plan, removed } = fundabilityColumns();
+    const first = await retryCase(open, {
       tab: "fundability", path: "/api/money/fundability", retry: '[data-act="retry"]',
-      answer: () => sampleAnswer("money-fundability.sample.json"),
+      answer: () => answer,
       painted: () => document.querySelectorAll(".fd-col").length > 1,
     });
+    const { page, fake } = first;
+    // Try again asks for the same client's file: the second read carries the client, like the first.
+    assert.match(fake.log.queries[1], new RegExp(`client_id=${CLIENT_ID}`), "Try again keeps the client");
+
     const cols = page.locator(".fd-col");
-    const n = await cols.count();
-    assert.ok(n >= 3, "the chart has a column for today and for later months");
+    assert.equal(await cols.count(), 1 + plan.length, "one column for today and one for each later month");
+    const selectedColumns = () => page.evaluate(() => [...document.querySelectorAll(".fd-col")]
+      .map((c, i) => (c.getAttribute("aria-pressed") === "true" ? i : null)).filter((i) => i !== null));
     const detail = () => page.locator(".fd-detail").innerText();
-    // Hover the first column: Today. Hover the last: a month in the future. Focus a middle one.
+    const stripSpaces = (text) => text.replace(/\s+/g, " ").trim();
+
+    // Today: no date, the file as it is, no "If removed" line.
     await cols.nth(0).hover();
     await page.waitForFunction(() => document.querySelectorAll(".fd-col")[0].getAttribute("aria-pressed") === "true");
-    assert.match(await detail(), /^Today/);
-    await cols.nth(n - 1).hover();
-    await page.waitForFunction((last) => document.querySelectorAll(".fd-col")[last].getAttribute("aria-pressed") === "true", n - 1);
-    const later = await detail();
-    assert.match(later, /in \d+ months/);
-    assert.equal(await cols.nth(0).getAttribute("aria-pressed"), "false", "only one column is selected at a time");
-    await cols.nth(1).focus();
-    await page.waitForFunction(() => document.querySelectorAll(".fd-col")[1].getAttribute("aria-pressed") === "true");
-    assert.match(await detail(), /in \d+ months/);
-    assert.notEqual(await detail(), later, "a different column shows a different month");
+    const today = stripSpaces(await detail());
+    assert.equal(today, `Today Your plan 5 of 6 · Fundable · Estimate ${usd(answer.now.funding_estimate_cents)} Your file as it is today. No guesses.`);
+    assert.deepEqual(await selectedColumns(), [0]);
+
+    // Every later column, by hover: its own date and months, its own score, tier, estimate and assumptions.
+    for (let i = 0; i < plan.length; i += 1) {
+      const p = plan[i];
+      await cols.nth(i + 1).hover();
+      await page.waitForFunction((n) => document.querySelectorAll(".fd-col")[n].getAttribute("aria-pressed") === "true", i + 1);
+      assert.deepEqual(await selectedColumns(), [i + 1], "only the pointed-at column is selected");
+      const r = removed.find((q) => q.months === p.months);
+      const expected = `${dayWords(p.date)} · in ${p.months} months `
+        + `Your plan ${p.score} of 6 · ${TIER_TEXT[p.tier]} · Estimate ${usd(p.funding_estimate_cents)} ${p.assumptions.join(" ")}`
+        + (r ? ` If removed ${r.score} of 6 · ${TIER_TEXT[r.tier]} · Estimate ${usd(r.funding_estimate_cents)} ${r.assumptions.join(" ")}` : "");
+      assert.equal(stripSpaces(await detail()), expected, `column ${i + 1} (${p.months} months) shows its own numbers`);
+    }
+
+    // Focus does the same as hover, on a middle column.
+    await cols.nth(2).focus();
+    await page.waitForFunction(() => document.querySelectorAll(".fd-col")[2].getAttribute("aria-pressed") === "true");
+    assert.deepEqual(await selectedColumns(), [2]);
+    assert.ok(stripSpaces(await detail()).startsWith(`${dayWords(plan[1].date)} · in 6 months Your plan 5 of 6 · Fundable · Estimate ${usd(plan[1].funding_estimate_cents)}`));
+    // The accessible name of a column says the same month and score, and the if-removed score where there is one.
+    assert.equal(await cols.nth(3).getAttribute("aria-label"), `${dayWords(plan[2].date)}, in 9 months — your plan 5 of 6, Fundable`);
+    assert.equal(await cols.nth(2).getAttribute("aria-label"), `${dayWords(plan[1].date)}, in 6 months — your plan 5 of 6, Fundable — if removed 6 of 6`);
     await page.close();
   });
 });
@@ -215,26 +295,74 @@ test("Money helper: Try again repaints the thread, and Check again asks once mor
     });
     await first.page.close();
 
-    // A turn that never finishes: the page polls every 3 seconds (on the held clock), gives up after
-    // 100 polls, and offers Check again. Pressing it reads once more and picks up the finished answer.
+    // A turn that never finishes. The page asks again every 3 seconds (on the held clock), and gives
+    // up after exactly 100 asks: it says "Still thinking" and offers Check again. Pressing it starts the
+    // count over, so a turn that is still not finished goes back to thinking and the asking resumes.
     const waiting = { ...answered, turns: [{ ...answered.turns[0], id: "turn-wait", status: "queued", reply: null, answered_at: null, actions: [], brain: null }], pending: 1 };
-    let reads = 0;
-    let finished = false;
-    const handlers = { "/api/money/helper": async (route) => { reads += 1; return json(route, finished ? answered : waiting); } };
+    const state = { reads: 0, finished: false, queries: [] };
+    const handlers = {
+      "/api/money/helper": async (route, { url }) => {
+        state.reads += 1;
+        state.queries.push(new URL(url).search);
+        return json(route, state.finished ? answered : waiting);
+      },
+    };
     const { page } = await open(entryUrl("frame", { ...FRAME("helper"), clientId: CLIENT_ID }), { session: STAFF, handlers, clock: true });
     await page.waitForFunction(() => /Thinking…/.test(document.body.innerText));
-    assert.equal(await page.locator('[data-act="refresh"]').count(), 0, "no Check again while the helper is only just thinking");
-    for (let i = 0; i < 110 && (await page.locator('[data-act="refresh"]').count()) === 0; i += 1) {
-      const before = reads;
-      await page.clock.fastForward(3_100);
-      await waitFor(() => reads > before || false, 10_000).catch(() => {});
+    await waitFor(() => state.reads === 1);
+    const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
+    const checkAgain = () => page.locator('[data-act="refresh"]').count();
+    // Not before 3 seconds: 2.9 seconds on the clock asks for nothing.
+    await pause(100);
+    await page.clock.fastForward(2_900);
+    await pause(150);
+    assert.equal(state.reads, 1, "no second ask before the 3 seconds are up");
+    assert.equal(await checkAgain(), 0, "no Check again while the helper is only just thinking");
+    // Then one ask per 3 seconds, and the button waits for the 100th ask and no earlier.
+    await page.clock.fastForward(200);
+    await waitFor(() => state.reads === 2);
+    for (let poll = 1; poll <= 100; poll += 1) {
+      if (poll > 1) {
+        const before = state.reads;
+        for (let attempt = 0; attempt < 40 && state.reads === before; attempt += 1) {
+          await page.clock.fastForward(3_000);
+          await pause();
+        }
+        assert.equal(state.reads, before + 1, `ask ${poll} was made`);
+      }
+      assert.equal(state.reads, poll + 1, `after ${poll} asks the page has read ${poll + 1} times`);
+      if (poll < 100) {
+        await pause(15);
+        assert.equal(await checkAgain(), 0, `no Check again after only ${poll} asks`);
+      }
     }
     await page.waitForSelector('[data-act="refresh"]');
+    assert.equal(state.reads, 101, "the first read and 100 asks, then it stops asking");
     assert.match(await page.locator(".stuck").innerText(), /Still thinking\. Check again/);
-    const at = reads;
-    finished = true;
+    // It really has stopped: more time on the clock asks for nothing.
+    await page.clock.fastForward(30_000);
+    await pause(150);
+    assert.equal(state.reads, 101, "stuck means it asks no more by itself");
+
+    // Check again while the turn is STILL not finished: one more read, the page goes back to thinking,
+    // the button is gone, and the asking starts again from nothing.
     await page.locator('[data-act="refresh"]').click();
-    await waitFor(() => reads > at);
+    await waitFor(() => state.reads === 102);
+    await page.waitForFunction(() => document.querySelectorAll('[data-act="refresh"]').length === 0 && /Thinking…/.test(document.body.innerText));
+    for (let attempt = 0; attempt < 40 && state.reads === 102; attempt += 1) {
+      await page.clock.fastForward(3_000);
+      await pause();
+    }
+    assert.equal(state.reads, 103, "after Check again the page asks again by itself");
+    assert.equal(await checkAgain(), 0, "and it is not stuck again after one ask");
+    assert.ok(state.queries.every((q) => q === `?client_id=${CLIENT_ID}`), "every ask is for the same client");
+
+    // The turn finishes: the next ask brings the answer and the thinking words and the button are gone.
+    state.finished = true;
+    for (let attempt = 0; attempt < 40 && state.reads === 103; attempt += 1) {
+      await page.clock.fastForward(3_000);
+      await pause();
+    }
     await page.waitForFunction(() => !/Thinking…/.test(document.body.innerText) && document.querySelectorAll('[data-act="refresh"]').length === 0);
     assert.ok((await page.locator("body").innerText()).includes(answered.turns[0].reply.slice(0, 40)), "the finished answer is on screen");
     await page.close();
@@ -280,21 +408,31 @@ test("Next steps: the three links go where they say", { timeout: 90_000 }, async
   });
 });
 
-test("Next steps: each Try again asks only for its own part", { timeout: 90_000 }, async (t) => {
+test("Next steps: each Try again asks for the same client's file, and the ready-to-fund one leaves the steps alone", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Try again buttons \(tasks, ready-to-fund\)/, async () => {
     const sample = sampleAnswer("money-next.sample.json");
+    const WANT = `?client_id=${CLIENT_ID}`;
     const start = async (mode) => {
-      const counts = { tasks: 0, ready: 0 };
+      const counts = { tasks: 0, ready: 0, taskQueries: [], readyQueries: [] };
       const handlers = {
-        "/api/money/tasks": async (route) => { counts.tasks += 1; return mode.tasks === "fail" ? json(route, { ok: false, error: "server_error" }, 500) : json(route, sample.tasks); },
-        "/api/money/ready-to-fund": async (route) => { counts.ready += 1; return mode.ready === "fail" ? json(route, { ok: false, error: "server_error" }, 500) : json(route, sample.ready); },
+        "/api/money/tasks": async (route, { url }) => {
+          counts.tasks += 1;
+          counts.taskQueries.push(new URL(url).search);
+          return mode.tasks === "fail" ? json(route, { ok: false, error: "server_error" }, 500) : json(route, sample.tasks);
+        },
+        "/api/money/ready-to-fund": async (route, { url }) => {
+          counts.ready += 1;
+          counts.readyQueries.push(new URL(url).search);
+          return mode.ready === "fail" ? json(route, { ok: false, error: "server_error" }, 500) : json(route, sample.ready);
+        },
       };
       const { page } = await open(entryUrl("frame", { ...FRAME("next"), clientId: CLIENT_ID }), { session: STAFF, handlers });
       return { page, counts };
     };
 
-    // The steps could not load: their Try again reads the steps again and brings the real list.
+    // The steps could not load: their Try again reads the page's two parts again (the steps and the
+    // ready-to-fund card, as the page does on every load) for the same client, and brings the real list.
     const mode = { tasks: "fail", ready: "ok" };
     const a = await start(mode);
     await a.page.waitForSelector('[data-act="retry"]');
@@ -304,21 +442,26 @@ test("Next steps: each Try again asks only for its own part", { timeout: 90_000 
     await a.page.locator('[data-act="retry"]').click();
     await waitFor(() => a.counts.tasks === 2);
     await a.page.waitForFunction(() => /Pay \$/.test(document.body.innerText) && document.querySelectorAll('[data-act="retry"]').length === 0);
+    assert.deepEqual(a.counts.taskQueries, [WANT, WANT], "the steps are asked for the same client both times");
+    assert.ok(a.counts.readyQueries.length >= 2 && a.counts.readyQueries.every((q) => q === WANT), "the ready part is asked for the same client too");
     await a.page.close();
 
-    // The ready-to-fund part could not load: its own Try again reads that part again, not the steps.
+    // The ready-to-fund part could not load: its own Try again reads that part again, for the same
+    // client, and NOT the steps, and the steps stay on the page.
     const modeB = { tasks: "ok", ready: "fail" };
     const b = await start(modeB);
     await b.page.waitForSelector('[data-act="ready-retry"]');
     await waitFor(() => b.counts.tasks === 1 && b.counts.ready === 1);
     assert.equal(await b.page.locator('[data-act="retry"]').count(), 0, "the steps loaded, so they have no button");
+    assert.match(await b.page.locator("body").innerText(), /Pay \$/, "the steps are on the page");
     modeB.ready = "ok";
-    const stepsBefore = b.counts.tasks;
     await b.page.locator('[data-act="ready-retry"]').click();
     await waitFor(() => b.counts.ready === 2);
     await b.page.waitForFunction(() => document.querySelectorAll('[data-act="ready-retry"]').length === 0
       && !!document.querySelector('[data-act="ready"]'));
-    assert.equal(b.counts.tasks, stepsBefore, "pressing the ready-to-fund button did not re-ask for the steps");
+    assert.equal(b.counts.tasks, 1, "pressing the ready-to-fund button did not re-ask for the steps");
+    assert.deepEqual(b.counts.readyQueries, [WANT, WANT], "the ready part is asked for the same client both times");
+    assert.match(await b.page.locator("body").innerText(), /Pay \$/, "the steps are still on the page");
     await b.page.close();
   });
 });

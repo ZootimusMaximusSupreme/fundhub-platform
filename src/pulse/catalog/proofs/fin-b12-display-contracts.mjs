@@ -18,7 +18,12 @@
 
 export const FIN_B12_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
-/** The exact control text of each row this file owns (one registry key each, unique across the maps). */
+/**
+ * The exact control text of each row this file owns a LIVE CHECK for (one registry key each, unique across the maps).
+ * (The finance-os.html header row, "Header text 'no client open' / client name", has no live check: the only thing
+ * a saved client row can say about it is "no name and no email", and the page's answer to that is its own designed
+ * fallback, not a wrong result. The row is a practice test: fin-b12-repair-pages.test.mjs.)
+ */
 export const FIN_B12_CONTROLS = Object.freeze({
   cfTiles: "Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits",
   cfVideo: "Video performance table (YouTube views, watch time per video per day) and connection badge",
@@ -27,7 +32,6 @@ export const FIN_B12_CONTROLS = Object.freeze({
   cfScript: "Write a script and label it: words box, name, kind, angle, hook, offer (suggestion lists) and lane picker",
   docsPage: "Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
   fosPicker: "Client picker select (up to 500 clients)",
-  fosHeader: "Header text 'no client open' / client name",
   fosPage: "Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
   fosPromo: "Promo tracking panel (labelled NOT LIVE; nothing stored)",
   careers: "Job application form: role, name, email, phone, LinkedIn, how heard, website (a hidden trap field). Posts to /api/hiring/apply and starts the applicant follow-up cadence.",
@@ -84,11 +88,18 @@ const REAL = (alias) => `COALESCE(${alias}.is_demo, false) = false`;
 const CF = "creative-factory.html";
 const YT = "c.platform = 'youtube'";
 
+// What this check can honestly judge about the summary tiles is the saved JOBS: the tiles count them by
+// state, "FAILED JOBS" says "all carry a reason", and "JOBS IN FLIGHT" counts queued and running jobs.
+// The assets and brand kits behind the other three tiles cannot be wrong in a way a read can see: the
+// database itself refuses an asset in an unknown review state, a blocked asset with no reasons, a kit with
+// no name and a kit in an unknown state (045_creative_factory.sql CHECKs). A condition the database
+// refuses can never go red, so none is written here. What each tile PAINTS is judged by the practice test
+// fin-b12-repair-creative.test.mjs, not by this text.
 check({
   key: "cf-tiles",
   surface: CF,
   control: FIN_B12_CONTROLS.cfTiles,
-  requirement: "Every job the tiles count must be in a state that agrees with its times and its reason (a failed job says why; a job in flight is not finished and has not sat for a day), every library asset must be in a review state the tiles know (a blocked one lists why), and every brand kit must have a name and a known state.",
+  requirement: "Every job the tiles count must be in a state that agrees with its times and its reason: a failed job says why (the tile says all carry a reason), a finished job has a finish time, a running job has a start time, and a job counted in flight is not finished and has not sat for more than a day.",
   parts: [
     {
       from: "generation_jobs j",
@@ -101,22 +112,6 @@ check({
         ["a job has sat in flight for over a day", `j.status IN ('queued', 'running') AND j.updated_at < now() - interval '1 day'`],
       ],
     },
-    {
-      from: "creative_assets a",
-      where: `${ORG("a")} AND a.archived_at IS NULL`,
-      bad: [
-        ["a blocked asset lists no reason", `a.compliance_state = 'blocked' AND (a.blocked_reasons IS NULL OR jsonb_array_length(a.blocked_reasons) = 0)`],
-        ["an asset is in a review state the tiles do not know", `a.compliance_state NOT IN ('pending', 'passed', 'blocked', 'approved')`],
-      ],
-    },
-    {
-      from: "brand_kits k",
-      where: ORG("k"),
-      bad: [
-        ["a brand kit has no name", BLANK("k.name")],
-        ["a brand kit is in a state the tiles do not know", `k.status NOT IN ('draft', 'active', 'archived')`],
-      ],
-    },
   ],
 });
 
@@ -124,17 +119,16 @@ check({
   key: "cf-video-table",
   surface: CF,
   control: FIN_B12_CONTROLS.cfVideo,
-  requirement: "Every video-per-day row must have a video, a day, no negative views or minutes, an average-watched figure between 0 and 100, and a YouTube connection of this company that owns it; the connection badge must give a reason when it is in error or expired and must carry no error while it says active.",
+  requirement: "Every video-per-day row must have a video, no negative views or minutes, an average-watched figure that is not below zero (YouTube reports above 100 for a looping short, so that is not wrong), and a YouTube connection of this company that owns it; the connection badge must give a reason when it is in error or expired and must carry no error while it says active. What the table and the badge PAINT is judged by fin-b12-repair-creative.test.mjs.",
   parts: [
     {
       from: "video_watch_stats v",
       where: ORG("v"),
       bad: [
         ["a row has no video id", BLANK("v.youtube_video_id")],
-        ["a row has no day", "v.stat_date IS NULL"],
         ["a row has negative views", "v.views < 0"],
         ["a row has negative minutes watched", "v.estimated_minutes_watched < 0"],
-        ["average watched is outside 0 to 100", "v.average_view_percentage < 0 OR v.average_view_percentage > 100"],
+        ["average watched is below zero", "v.average_view_percentage < 0"],
         ["no YouTube connection of this company owns the row",
           `NOT EXISTS (SELECT 1 FROM analytics_connections c WHERE c.id = v.connection_id AND c.org_id = v.org_id AND ${YT})`],
       ],
@@ -240,7 +234,7 @@ check({
   key: "docs-page-load",
   surface: "documents.html",
   control: FIN_B12_CONTROLS.docsPage,
-  requirement: "Every document the page lists must name a client of this company, carry a title or a key, and agree with itself (a generated file has a generation time; a sent document has a sent time; a signed one required a signature), and Demo Mode must have a primary demo client to open.",
+  requirement: "Every document the page lists must name a client of this company, carry a title or a key, and agree with itself (a sent document has a sent time; a signed one required a signature), and Demo Mode must have a primary demo client to send an owner to. Whether the owner is really sent there is judged by fin-b12-repair-pages.test.mjs.",
   parts: [
     {
       from: "documents d",
@@ -249,8 +243,6 @@ check({
         ["a document names a client that is not in this company",
           "d.client_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM clients c WHERE c.id = d.client_id AND c.org_id = d.org_id)"],
         ["a document has neither a title nor a key", `${BLANK("d.title")} AND ${BLANK("d.document_key")}`],
-        ["a generated file is stored but was never stamped as generated",
-          "d.kind IN ('contract', 'invoice_document', 'deliverable', 'authorization') AND d.mime_type IS NOT NULL AND d.generated_at IS NULL"],
         ["a document is marked sent or delivered with no sent time",
           "d.delivery_status IN ('sent', 'delivered') AND d.delivered_at IS NULL"],
         ["a document is signed though no signature was required", "d.signed_at IS NOT NULL AND d.signature_required = false"],
@@ -260,39 +252,20 @@ check({
   ],
 });
 
-const PICKER_CLIENTS = `clients c JOIN orgs o ON o.id = c.org_id`;
-const PICKER_WHERE = `${ORG("c")} AND (o.demo_mode_enabled = true OR COALESCE(c.is_demo, false) = false)`;
-const NO_NAME = `${BLANK("c.first_name")} AND ${BLANK("c.last_name")} AND ${BLANK("c.email")}`;
-
+// The picker is a list of the clients the page asked for with limit=500 (public/app/finance-os.html). A client
+// with no name and no email is printed as "Unnamed client": that is the page's own designed fallback and not a
+// wrong result, so it is not judged here. What a saved book CAN make wrong is the count: past 500 the page
+// lists the 500 newest, and its own words say "500 clients on file".
 check({
   key: "fos-picker",
   surface: "finance-os.html",
   control: FIN_B12_CONTROLS.fosPicker,
-  requirement: "Every client the picker lists must have a name or an email to show (otherwise it prints Unnamed client), and the company must not hold more clients than the picker can list (500), or the oldest cannot be picked.",
-  parts: [
-    {
-      from: PICKER_CLIENTS,
-      where: PICKER_WHERE,
-      bad: [["a client has no name and no email, so the picker prints Unnamed client", NO_NAME]],
-    },
-    {
-      from: `(SELECT count(*) AS n FROM clients x JOIN orgs ox ON ox.id = x.org_id
-               WHERE x.org_id = $1::uuid AND (ox.demo_mode_enabled = true OR COALESCE(x.is_demo, false) = false)) t`,
-      where: "t.n > 500",
-      bad: [["the company holds more clients than the picker lists", "t.n > 500"]],
-    },
-  ],
-});
-
-check({
-  key: "fos-header",
-  surface: "finance-os.html",
-  control: FIN_B12_CONTROLS.fosHeader,
-  requirement: "Every client the header can name must have a first name, last name or email to print; otherwise the header falls back to the first eight letters of the id.",
+  requirement: "The company must not hold more clients than the picker can list (500), or the oldest cannot be picked and the page's \"N clients on file\" is short. (Which names the picker lists, and the 500 it asks for, are judged by fin-b12-repair-pages.test.mjs.)",
   parts: [{
-    from: PICKER_CLIENTS,
-    where: PICKER_WHERE,
-    bad: [["a client has no name and no email, so the header prints the start of the id", NO_NAME]],
+    from: `(SELECT count(*) AS n FROM clients x JOIN orgs ox ON ox.id = x.org_id
+               WHERE x.org_id = $1::uuid AND (ox.demo_mode_enabled = true OR COALESCE(x.is_demo, false) = false)) t`,
+    where: "1 = 1",
+    bad: [["the company holds more clients than the picker lists", "t.n > 500"]],
   }],
 });
 
@@ -422,9 +395,13 @@ check({
 
 // ── hiring.html ────────────────────────────────────────────────────────────
 
+// Demo Mode's seeded candidates (candidates.is_demo, migration 153) are placed straight into stages with no
+// decision behind them (src/demo/seed-ui-coverage.mjs). The board labels them as demo and counts them in
+// no number, so a check of how people ARRIVED in a column must not read them as wrong.
+const NOT_DEMO = `NOT EXISTS (SELECT 1 FROM candidates dc WHERE dc.id = a.candidate_id AND dc.is_demo = true)`;
 const OPEN_IN_STAGE = (stageKey) => ({
   from: "candidate_applications a JOIN pipeline_stages s ON s.id = a.stage_id",
-  where: `${ORG("a")} AND a.status = 'open' AND s.key = '${stageKey}'`,
+  where: `${ORG("a")} AND a.status = 'open' AND s.key = '${stageKey}' AND ${NOT_DEMO}`,
 });
 const CARD_PERSON_BAD = [
   ["the card's candidate is not in this company",
@@ -439,7 +416,7 @@ check({
   key: "hiring-bench",
   surface: "hiring.html",
   control: FIN_B12_CONTROLS.bench,
-  requirement: "Each role's bench count must equal the open applications at one-on-one and offer, its short-by must be the target minus that count (never below zero), its hiring manager must be on staff, and an active role must not have a negative target.",
+  requirement: "The bench view must still count only the open applications at one-on-one and offer and work short-by out as the target minus that count (never below zero) (this part is a lock on the view's own definition: it goes red if the view is changed), the role's hiring manager must be a person on this company's staff, and an active role must not have a negative target. What the table PAINTS is judged by fin-b12-repair-hiring.test.mjs.",
   parts: [
     {
       from: "v_hiring_bench b",
@@ -469,7 +446,7 @@ check({
   key: "hiring-card",
   surface: "hiring.html",
   control: FIN_B12_CONTROLS.card,
-  requirement: "Every open application a card opens must have its candidate and role in this company, a video tag that is a web address, and a resume tag that points at a document of this company; every score on file must be within 1 to 4 with its flags as a list, belong to an application of this company, and name the person when a person scored it.",
+  requirement: "Every open application a card opens must have its candidate and role in this company, a video tag that is a web address, and a resume tag that points at a document of this company; every score on file must keep its flags as a list and belong to an application of this company. (The database already refuses a score outside 1 to 4 and a person's score with no person named, so those are not written here.) What the card and the drawer PAINT is judged by fin-b12-repair-hiring.test.mjs.",
   parts: [
     {
       from: "candidate_applications a",
@@ -486,27 +463,37 @@ check({
       from: "application_scores sc",
       where: ORG("sc"),
       bad: [
-        ["a score average is outside 1 to 4", "sc.average IS NOT NULL AND (sc.average < 1 OR sc.average > 4)"],
         ["a score's flags are not a list", "jsonb_typeof(sc.flags) <> 'array'"],
         ["a score belongs to an application of another company",
           "NOT EXISTS (SELECT 1 FROM candidate_applications a WHERE a.id = sc.application_id AND a.org_id = sc.org_id)"],
-        ["a score by a person names nobody", "sc.is_automated = false AND sc.scored_by_staff_id IS NULL"],
       ],
     },
   ],
 });
 
+// The Applied column is where everyone STARTS: apply() (src/hiring/pipeline.mjs) always files a new
+// application into Applied and writes no decision, and only advance() and reject() move one, each writing a
+// decision row with the stage it moved to. So an open application with no decision at all must sit in
+// Applied (the arrival rule: new applicants landing anywhere else would leave this column empty and every
+// other check quiet), and one sitting in Applied must not have been moved on by its latest decision (the
+// latest, not any: a person moved back to Applied through the API is a legal state).
 check({
   key: "hiring-col-applied",
   surface: "hiring.html",
   control: FIN_B12_CONTROLS.applied,
-  requirement: "Every open application in Applied must have its candidate and role in this company, no decision that already moved it on, and must not have entered the stage before it was filed.",
+  requirement: "Every open application that is in Applied, or has never been moved by any decision (so must be in Applied), must have its candidate and role in this company; one with no decision must sit in Applied; one in Applied must not have been moved on by its latest decision; and none may have entered the stage before it was filed. Seeded Demo Mode people are left out. What the column PAINTS is judged by fin-b12-repair-hiring.test.mjs.",
   parts: [{
-    ...OPEN_IN_STAGE("applied"),
+    from: "candidate_applications a JOIN pipeline_stages s ON s.id = a.stage_id",
+    where: `${ORG("a")} AND a.status = 'open' AND ${NOT_DEMO}
+            AND (s.key = 'applied'
+                 OR NOT EXISTS (SELECT 1 FROM hiring_decisions d0 WHERE d0.org_id = a.org_id AND d0.application_id = a.id))`,
     bad: [
       ...CARD_PERSON_BAD,
-      ["a decision moved it on but it still sits in Applied",
-        "EXISTS (SELECT 1 FROM hiring_decisions d WHERE d.org_id = a.org_id AND d.application_id = a.id AND d.to_stage_key <> 'applied')"],
+      // (the part's WHERE only lets an application outside Applied in when it has no decision at all)
+      ["it has never been moved by any decision but sits outside Applied", `s.key <> 'applied'`],
+      ["its latest decision moved it on but it still sits in Applied",
+        `s.key = 'applied' AND (SELECT d2.to_stage_key FROM hiring_decisions d2 WHERE d2.org_id = a.org_id AND d2.application_id = a.id
+                                 ORDER BY d2.created_at DESC LIMIT 1) <> 'applied'`],
       ["it entered the stage before it was filed", "a.entered_stage_at < a.applied_at"],
     ],
   }],

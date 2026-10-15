@@ -90,29 +90,44 @@ const T = (...rows) => rows;
 
 const FIX = {};
 
-{ // cf-tiles
-  const oldJob = job({ status: "running", started_at: LONG_AGO, finished_at: null, created_at: LONG_AGO, updated_at: LONG_AGO });
+{ // cf-tiles: the saved jobs behind JOBS IN FLIGHT and FAILED JOBS (the database refuses every other bad state)
+  const stale = (status, o = {}) => job({ status, started_at: status === "running" ? LONG_AGO : null, finished_at: null,
+    created_at: LONG_AGO, updated_at: LONG_AGO, ...o });
   FIX["cf-tiles"] = {
     good: T(
       R("generation_jobs", job()),
       R("generation_jobs", job({ status: "failed", error: "provider returned zero assets" })),
       R("generation_jobs", job({ status: "running", finished_at: null })),
       R("generation_jobs", job({ status: "queued", started_at: null, finished_at: null, error: "retrying" })),
-      R("creative_assets", asset()),
-      R("creative_assets", asset({ compliance_state: "blocked", blocked_reasons: ["no income claims"] })),
-      R("creative_assets", asset({ compliance_state: "blocked", blocked_reasons: [], archived_at: OLD })), // archived: not counted
-      R("brand_kits", kit())),
-    sample: 7,
+      // 23 hours in flight is inside the day, and so is exactly 24 (over a day means MORE than a day); an old
+      // finished job is not "in flight" at all
+      R("generation_jobs", job({ status: "queued", started_at: null, finished_at: null, updated_at: "2026-10-13T13:00:00.000Z" })),
+      R("generation_jobs", job({ status: "queued", started_at: null, finished_at: null, updated_at: "2026-10-13T12:00:00.000Z" })),
+      R("generation_jobs", job({ status: "succeeded", created_at: LONG_AGO, updated_at: LONG_AGO })),
+      R("generation_jobs", job({ status: "failed", error: "provider returned zero assets", created_at: LONG_AGO, updated_at: LONG_AGO }))),
+    sample: 8,
     violations: {
       "a failed job carries no reason": T(R("generation_jobs", job({ status: "failed", error: "   " }))),
       "a finished job has no finish time": T(R("generation_jobs", job({ status: "succeeded", finished_at: null }))),
       "a running job has no start time": T(R("generation_jobs", job({ status: "running", started_at: null, finished_at: null }))),
       "a job counted in flight has a finish time": T(R("generation_jobs", job({ status: "queued", started_at: null, finished_at: T0 }))),
-      "a job has sat in flight for over a day": T(R("generation_jobs", oldJob)),
-      "a blocked asset lists no reason": T(R("creative_assets", asset({ compliance_state: "blocked", blocked_reasons: [] }))),
-      "an asset is in a review state the tiles do not know": T(R("creative_assets", asset({ compliance_state: "waiting" }))),
-      "a brand kit has no name": T(R("brand_kits", kit({ name: " " }))),
-      "a brand kit is in a state the tiles do not know": T(R("brand_kits", kit({ status: "retired" }))),
+      "a job has sat in flight for over a day": T(R("generation_jobs", stale("running"))),
+    },
+    // The same condition, from the other leg of the same word: each leg of an "or" must be load-bearing.
+    extra: {
+      "a failed job carries no reason": [
+        T(R("generation_jobs", job({ status: "failed", error: null }))),
+      ],
+      "a finished job has no finish time": [
+        T(R("generation_jobs", job({ status: "failed", error: "provider returned zero assets", finished_at: null }))),
+      ],
+      "a job counted in flight has a finish time": [
+        T(R("generation_jobs", job({ status: "running", finished_at: T0 }))),
+      ],
+      "a job has sat in flight for over a day": [
+        T(R("generation_jobs", stale("queued"))),
+        T(R("generation_jobs", job({ status: "queued", started_at: null, finished_at: null, updated_at: "2026-10-13T11:00:00.000Z" }))), // 25 hours
+      ],
     },
   };
 }
@@ -121,19 +136,34 @@ const FIX = {};
   const c = connection();
   FIX["cf-video-table"] = {
     good: T(R("analytics_connections", c), R("video_watch_stats", watch(c)), R("video_watch_stats", watch(c, { views: 0, estimated_minutes_watched: 0 })),
+      // a looping short can be watched for more than 100% of its length on average; that is not wrong
+      R("video_watch_stats", watch(c, { average_view_percentage: 130 })),
+      R("video_watch_stats", watch(c, { average_view_percentage: 0 })), // a video nobody watched: zero is not below zero
       R("analytics_connections", connection({ platform: "clickfunnels", connection_state: "error", last_error: null }))),
-    sample: 3,
+    sample: 5,
     violations: (() => {
       const live = connection();
       return {
         "a row has no video id": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { youtube_video_id: "" }))),
-        "a row has no day": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { stat_date: null }))),
         "a row has negative views": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { views: -1 }))),
         "a row has negative minutes watched": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { estimated_minutes_watched: -5 }))),
-        "average watched is outside 0 to 100": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { average_view_percentage: 140 }))),
+        "average watched is below zero": T(R("analytics_connections", live), R("video_watch_stats", watch(live, { average_view_percentage: -5 }))),
         "no YouTube connection of this company owns the row": T(R("video_watch_stats", watch({ id: "gone", org_id: ORG }))),
         "the badge says error or expired and gives no reason": T(R("analytics_connections", connection({ connection_state: "expired", last_error: "" }))),
         "the badge says active but an error is still saved": T(R("analytics_connections", connection({ connection_state: "active", last_error: "invalid_grant" }))),
+      };
+    })(),
+    extra: (() => {
+      const other = connection({ platform: "clickfunnels" });          // this company's, but not YouTube
+      const far = connection({ org_id: OTHER });                       // YouTube, but another company's
+      return {
+        "no YouTube connection of this company owns the row": [
+          T(R("analytics_connections", other), R("video_watch_stats", watch(other))),
+          T(R("analytics_connections", far), R("video_watch_stats", watch(far, { org_id: ORG }))),
+        ],
+        "the badge says error or expired and gives no reason": [
+          T(R("analytics_connections", connection({ connection_state: "error", last_error: null }))),
+        ],
       };
     })(),
   };
@@ -203,41 +233,41 @@ FIX["cf-script"] = {
   const demoOn = org({ demo_mode_enabled: true });
   FIX["docs-page-load"] = {
     good: T(R("clients", c), R("documents", doc({ client_id: c.id })), R("documents", doc({ client_id: c.id, kind: "client_upload", mime_type: "image/png", generated_at: null, delivery_status: "not_delivered", delivered_at: null, signature_required: false })),
+      R("documents", doc({ client_id: c.id, title: null, document_key: "key-only" })),          // a key is enough
+      R("documents", doc({ client_id: c.id, title: "Title only", document_key: null })),         // so is a title
       R("documents", doc({ client_id: c.id, subtype: "template_source", title: null, document_key: null })), // a blank template: not on this list
       R("orgs", org({ demo_mode_enabled: true })), R("clients", client({ is_demo: true, email: "demo.client.01@fundhub.test" }))),
-    sample: 3, // two listed documents, plus the org row in demo mode
+    sample: 5, // four listed documents, plus the org row in demo mode
     violations: {
-      "a document names a client that is not in this company": T(R("documents", doc({ client_id: "ghost-client" }))),
+      // The client exists, but on another company; this company has a client of its own, so a check that only
+      // asks "is there any client" or "is it this id or this company" does not read it as wrong.
+      "a document names a client that is not in this company": T(R("clients", client({ id: "far-client", org_id: OTHER })), R("clients", client()),
+        R("documents", doc({ client_id: "far-client" }))),
       "a document has neither a title nor a key": T(R("documents", doc({ title: " ", document_key: "" }))),
-      "a generated file is stored but was never stamped as generated": T(R("documents", doc({ generated_at: null }))),
       "a document is marked sent or delivered with no sent time": T(R("documents", doc({ delivery_status: "delivered", delivered_at: null }))),
       "a document is signed though no signature was required": T(R("documents", doc({ signature_required: false, signed_at: T0 }))),
       "demo mode is on but there is no primary demo client to send the owner to": T(R("orgs", demoOn)),
     },
-  };
-}
-
-{ // finance os: picker, header, page load, promo
-  const named = client();
-  const onlyEmail = client({ first_name: null, last_name: null, email: "pat@example.com" });
-  FIX["fos-picker"] = {
-    good: T(R("orgs", org()), R("clients", named), R("clients", onlyEmail), R("clients", client({ is_demo: true, first_name: null, last_name: null, email: null }))),
-    sample: 2, // two listed clients; the whole-book count only yields a row when it is over 500
-    violations: {
-      "a client has no name and no email, so the picker prints Unnamed client": T(R("orgs", org()), R("clients", client({ first_name: "", last_name: " ", email: null }))),
-    },
     extra: {
-      "the company holds more clients than the picker lists": [
-        T(R("orgs", org()), ...Array.from({ length: 501 }, () => R("clients", client()))),
+      // The primary demo client has to be THIS company's, and has to be a demo row.
+      "demo mode is on but there is no primary demo client to send the owner to": [
+        T(R("orgs", demoOn), R("clients", client({ org_id: OTHER, is_demo: true, email: "demo.client.01@fundhub.test" }))),
+        T(R("orgs", demoOn), R("clients", client({ is_demo: false, email: "demo.client.01@fundhub.test" }))),
       ],
     },
   };
-  FIX["fos-header"] = {
-    good: FIX["fos-picker"].good,
-    sample: 2,
+}
+
+{ // finance os: picker, page load, promo (the header has no live check: see FIN_B12_CONTROLS)
+  const named = client();
+  const onlyEmail = client({ first_name: null, last_name: null, email: "pat@example.com" });
+  FIX["fos-picker"] = {
+    // A client with no name and no email is the page's own designed fallback ("Unnamed client"): not wrong, not read.
+    good: T(R("orgs", org()), R("clients", named), R("clients", onlyEmail), R("clients", client({ first_name: null, last_name: null, email: null })),
+      R("clients", client({ is_demo: true }))),
+    sample: 1, // the one whole-book count
     violations: {
-      "a client has no name and no email, so the header prints the start of the id":
-        T(R("orgs", org()), R("clients", client({ first_name: null, last_name: null, email: "" }))),
+      "the company holds more clients than the picker lists": T(R("orgs", org()), ...Array.from({ length: 501 }, () => R("clients", client()))),
     },
   };
   FIX["fos-page-load"] = {
@@ -247,6 +277,12 @@ FIX["cf-script"] = {
       "demo mode is on but there is no primary demo client to send the owner to": T(R("orgs", org({ demo_mode_enabled: true })), R("clients", named)),
     },
     goodWhenDemoOn: T(R("orgs", org({ demo_mode_enabled: true })), R("clients", client({ is_demo: true, email: "demo.client.01@fundhub.test" }))),
+    extra: {
+      "demo mode is on but there is no primary demo client to send the owner to": [
+        T(R("orgs", org({ demo_mode_enabled: true })), R("clients", client({ org_id: OTHER, is_demo: true, email: "demo.client.01@fundhub.test" }))),
+        T(R("orgs", org({ demo_mode_enabled: true })), R("clients", client({ is_demo: false, email: "demo.client.01@fundhub.test" }))),
+      ],
+    },
   };
   FIX["fos-promo"] = {
     good: T(R("account_statement_cycles", { id: nid("cyc"), org_id: ORG, client_id: named.id, promo_ends_on: null })),
@@ -324,11 +360,21 @@ FIX["cf-script"] = {
   const inOne = application(c1, r, "one_on_one");
   const inOffer = application(c2, r, "offer");
   const goodBench = (o = {}) => benchRow(r, { open_applications: 2, bench_count: 2, bench_shortfall: 2, ...o });
+  // People who must NOT count: one still in Applied, one at the 1:1 whose application is closed, and another
+  // role's person who IS at the 1:1. An active role with a target of zero is allowed.
+  const r2 = roleRow();
+  const noise = [
+    R("hiring_roles", r2), R("candidate_applications", application(candidate(), r, "applied")),
+    R("candidate_applications", application(candidate(), r, "one_on_one", { status: "rejected" })),
+    R("candidate_applications", application(candidate(), r2, "one_on_one")),
+    R("hiring_roles", roleRow({ bench_target: 0 })),
+  ];
   FIX["hiring-bench"] = {
     good: T(...STAGES, R("staff", manager), R("hiring_roles", r), R("candidates", c1), R("candidates", c2),
       R("candidate_applications", inOne), R("candidate_applications", inOffer), R("v_hiring_bench", goodBench()),
+      ...noise,
       R("hiring_roles", roleRow({ active: false, bench_target: -3 }))),
-    sample: 2, // the bench row, and the one active role
+    sample: 4, // the bench row, and the three active roles (r, the other role, and the zero-target role)
     violations: {
       "the bench count is not the open applications at one-on-one and offer":
         T(...STAGES, R("hiring_roles", r), R("staff", manager), R("v_hiring_bench", goodBench({ bench_count: 3, bench_shortfall: 1 }))),
@@ -338,6 +384,13 @@ FIX["cf-script"] = {
         T(...STAGES, R("hiring_roles", roleRow({ id: r.id, key: r.key, hiring_manager_staff_id: null })), R("v_hiring_bench", goodBench({ bench_count: 0, bench_shortfall: 4, hiring_manager_staff_id: "ghost-staff" }))),
       "an active role has a negative bench target": T(R("hiring_roles", roleRow({ bench_target: -1 }))),
       "an active role has no name": T(R("hiring_roles", roleRow({ name: " " }))),
+    },
+    extra: {
+      // The manager exists, but on another company's staff: a person this company cannot see.
+      "the hiring manager is not on staff": [
+        T(...STAGES, R("hiring_roles", r), R("staff", staff({ id: "far-manager", org_id: OTHER, role: "admin" })),
+          R("v_hiring_bench", goodBench({ bench_count: 0, bench_shortfall: 4, hiring_manager_staff_id: "far-manager" }))),
+      ],
     },
   };
 
@@ -349,45 +402,123 @@ FIX["cf-script"] = {
       R("application_scores", score(full.a, { is_automated: false, scored_by_staff_id: "staff-1" }))),
     sample: 2 + 3,
     violations: (() => {
+      // Every "not in this company" row is built the way the database CAN hold it: the row exists, on
+      // ANOTHER company. (A row that does not exist at all is refused by the foreign keys.)
       const p = boardPerson("applied");
+      const farCandidate = candidate({ org_id: OTHER });
+      const farRole = roleRow({ org_id: OTHER });
+      const farDoc = { id: "far-doc", org_id: OTHER, kind: "client_upload" };
+      const farApp = application(candidate({ org_id: OTHER }), roleRow({ org_id: OTHER }), "applied", { org_id: OTHER });
       return {
-        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidate_applications", { ...p.a, candidate_id: "ghost-candidate" })),
-        "the card's role is not in this company": T(R("candidates", p.c), R("candidate_applications", { ...p.a, role_id: "ghost-role" })),
+        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidates", farCandidate), R("candidate_applications", { ...p.a, candidate_id: farCandidate.id })),
+        "the card's role is not in this company": T(R("candidates", p.c), R("hiring_roles", farRole), R("candidate_applications", { ...p.a, role_id: farRole.id })),
         "the video tag is not a web address": T(...p.rows.slice(0, 2), R("candidate_applications", { ...p.a, video_url: "javascript:void(0)" })),
-        "the resume tag points at a document that is not in this company": T(...p.rows.slice(0, 2), R("candidate_applications", { ...p.a, resume_document_id: "ghost-doc" })),
-        "a score average is outside 1 to 4": T(...p.rows, R("application_scores", score(p.a, { average: 7 }))),
+        "the resume tag points at a document that is not in this company": T(...p.rows.slice(0, 2), R("documents", farDoc), R("candidate_applications", { ...p.a, resume_document_id: "far-doc" })),
         "a score's flags are not a list": T(...p.rows, R("application_scores", score(p.a, { flags: { raised: true } }))),
-        "a score belongs to an application of another company": T(R("application_scores", score({ id: "far-app" }, { org_id: ORG }))),
-        "a score by a person names nobody": T(...p.rows, R("application_scores", score(p.a, { is_automated: false, scored_by_staff_id: null }))),
+        // an application of another company that has a score row filed under THIS company
+        "a score belongs to an application of another company": T(R("candidate_applications", farApp), R("application_scores", score(farApp, { org_id: ORG }))),
       };
     })(),
   };
 
   const ok = (key) => boardPerson(key);
+  // Demo Mode's seeded people sit in stages with no decision behind them and are labelled demo on the board.
+  const demoPerson = (stageKey) => {
+    const d = boardPerson(stageKey);
+    d.rows = d.rows.map(([table, row]) => (table === "candidates" ? [table, { ...row, is_demo: true }] : [table, row]));
+    return d;
+  };
+  const farPeople = () => {
+    const c = candidate({ org_id: OTHER });
+    const rl = roleRow({ org_id: OTHER });
+    return { c, rl };
+  };
+
+  // The decision of ANOTHER application in the same company, and a decision filed under ANOTHER company:
+  // neither is this application's own history, so neither may be read as it.
+  const othersMove = (stageKey) => {
+    const o = boardPerson(stageKey);
+    return o.rows;
+  };
   FIX["hiring-col-applied"] = {
-    good: T(...STAGES, ...ok("applied").rows, ...ok("group_interview").rows),
-    sample: 1,
+    // Good: a fresh applicant (no decision, in Applied); a person moved on, then BACK to Applied by the API;
+    // a person well on their way (decision behind them, in Group); two demo people in stages with no decision;
+    // and an applicant in Applied whose only "decision" is filed under another company.
+    good: (() => {
+      const back = boardPerson("applied");
+      const gone = [R("hiring_decisions", decision(back.a, "screening", { created_at: "2026-10-12T10:00:00.000Z", from_stage_key: "applied" })),
+        R("hiring_decisions", decision(back.a, "applied", { created_at: "2026-10-13T10:00:00.000Z", from_stage_key: "screening" }))];
+      const alien = boardPerson("applied");
+      // Somebody ELSE in this company moved on AFTER this person's own last decision: the latest decision of the
+      // company must not be read as this person's.
+      const later = boardPerson("group_interview");
+      return T(...STAGES, ...ok("applied").rows, ...back.rows, ...gone, ...ok("group_interview").rows, ...demoPerson("group_interview").rows,
+        ...demoPerson("one_on_one").rows, ...alien.rows,
+        R("hiring_decisions", decision(alien.a, "screening", { org_id: OTHER })),
+        ...later.rows.filter(([t]) => t !== "hiring_decisions"),
+        R("hiring_decisions", decision(later.a, "group_interview", { created_at: "2026-10-14T10:00:00.000Z" })));
+    })(),
+    sample: 3, // the fresh one, the one moved back, and the one with only an alien decision; the Group people have a decision; demo people are left out
     violations: (() => {
       const p = boardPerson("applied");
       const q = boardPerson("applied");
+      const far = farPeople();
       return {
-        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidate_applications", { ...p.a, candidate_id: "ghost-candidate" })),
-        "the card's role is not in this company": T(R("candidates", p.c), R("candidate_applications", { ...p.a, role_id: "ghost-role" })),
-        "a decision moved it on but it still sits in Applied": T(...q.rows, R("hiring_decisions", decision(q.a, "group_interview"))),
+        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidates", far.c), R("candidate_applications", { ...p.a, candidate_id: far.c.id })),
+        "the card's role is not in this company": T(R("candidates", p.c), R("hiring_roles", far.rl), R("candidate_applications", { ...p.a, role_id: far.rl.id })),
+        "its latest decision moved it on but it still sits in Applied": T(...q.rows, R("hiring_decisions", decision(q.a, "group_interview"))),
         "it entered the stage before it was filed": (() => { const z = boardPerson("applied"); z.a.entered_stage_at = LONG_AGO; return T(...z.rows); })(),
+        // A new applicant that landed in Group with no decision at all: the regression this column most needs to
+        // see. Another person in the same company HAS a decision, which must not hide it.
+        "it has never been moved by any decision but sits outside Applied": (() => {
+          const z = boardPerson("applied");
+          z.a.stage_id = "stage-group_interview";
+          // two other people with decisions, so that reading "another application's decision" as this one's
+          // changes how many are red, not just which one
+          return T(...z.rows, ...othersMove("group_interview"), ...othersMove("group_interview"));
+        })(),
       };
     })(),
+    extra: {
+      "it has never been moved by any decision but sits outside Applied": [
+        (() => { const z = boardPerson("applied"); z.a.stage_id = "stage-one_on_one"; return T(...z.rows); })(),
+        (() => { const z = boardPerson("applied"); z.a.stage_id = "stage-offer"; return T(...z.rows); })(),
+        // Its only decision is filed under ANOTHER company: nobody in this company moved it.
+        (() => {
+          const z = boardPerson("applied");
+          z.a.stage_id = "stage-group_interview";
+          return T(...z.rows, R("hiring_decisions", decision(z.a, "group_interview", { org_id: OTHER })));
+        })(),
+      ],
+      // The latest decision decides: moved on, moved back, moved on again is red.
+      "its latest decision moved it on but it still sits in Applied": [
+        (() => {
+          const z = boardPerson("applied");
+          return T(...z.rows,
+            R("hiring_decisions", decision(z.a, "screening", { created_at: "2026-10-11T10:00:00.000Z" })),
+            R("hiring_decisions", decision(z.a, "applied", { created_at: "2026-10-12T10:00:00.000Z", from_stage_key: "screening" })),
+            R("hiring_decisions", decision(z.a, "group_interview", { created_at: "2026-10-13T10:00:00.000Z", from_stage_key: "applied" })));
+        })(),
+      ],
+    },
   };
 
   FIX["hiring-col-group"] = {
-    good: T(...STAGES, ...ok("group_interview").rows, ...ok("applied").rows),
+    // Good also holds a person who passed the group interview with a "yes" and was moved on to the 1:1: that
+    // "yes" is somebody else's and must not be read as the Group person's.
+    good: (() => {
+      const passed = boardPerson("one_on_one");
+      return T(...STAGES, ...ok("group_interview").rows, ...ok("applied").rows, ...demoPerson("group_interview").rows,
+        ...passed.rows, R("hiring_interview_attendees", { id: nid("att"), org_id: ORG, interview_id: "int-0", application_id: passed.a.id, outcome: "yes" }));
+    })(),
     sample: 1,
     violations: (() => {
       const p = boardPerson("group_interview");
+      const far = farPeople();
       return {
-        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidate_applications", { ...p.a, candidate_id: "ghost-candidate" }), R("hiring_decisions", decision(p.a, "group_interview"))),
-        "the card's role is not in this company": T(R("candidates", p.c), R("candidate_applications", { ...p.a, role_id: "ghost-role" }), R("hiring_decisions", decision(p.a, "group_interview"))),
-        "no decision moved it into Group Interview": T(...p.rows.filter(([t]) => t !== "hiring_decisions")),
+        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidates", far.c), R("candidate_applications", { ...p.a, candidate_id: far.c.id }), R("hiring_decisions", decision(p.a, "group_interview"))),
+        "the card's role is not in this company": T(R("candidates", p.c), R("hiring_roles", far.rl), R("candidate_applications", { ...p.a, role_id: far.rl.id }), R("hiring_decisions", decision(p.a, "group_interview"))),
+        "no decision moved it into Group Interview": T(...p.rows.filter(([t]) => t !== "hiring_decisions"), ...othersMove("group_interview")),
         "a group interview said yes or maybe but it never moved on": (() => {
           const z = boardPerson("group_interview");
           return T(...z.rows, R("hiring_interview_attendees", { id: nid("att"), org_id: ORG, interview_id: "int-1", application_id: z.a.id, outcome: "maybe" }));
@@ -397,14 +528,15 @@ FIX["cf-script"] = {
   };
 
   FIX["hiring-col-one-on-one"] = {
-    good: T(...STAGES, ...ok("one_on_one").rows, ...ok("group_interview").rows),
+    good: T(...STAGES, ...ok("one_on_one").rows, ...ok("group_interview").rows, ...demoPerson("one_on_one").rows),
     sample: 1,
     violations: (() => {
       const p = boardPerson("one_on_one");
+      const far = farPeople();
       return {
-        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidate_applications", { ...p.a, candidate_id: "ghost-candidate" }), R("hiring_decisions", decision(p.a, "one_on_one"))),
-        "the card's role is not in this company": T(R("candidates", p.c), R("candidate_applications", { ...p.a, role_id: "ghost-role" }), R("hiring_decisions", decision(p.a, "one_on_one"))),
-        "no decision moved it into 1:1 Interview": T(...p.rows.filter(([t]) => t !== "hiring_decisions")),
+        "the card's candidate is not in this company": T(R("hiring_roles", p.r), R("candidates", far.c), R("candidate_applications", { ...p.a, candidate_id: far.c.id }), R("hiring_decisions", decision(p.a, "one_on_one"))),
+        "the card's role is not in this company": T(R("candidates", p.c), R("hiring_roles", far.rl), R("candidate_applications", { ...p.a, role_id: far.rl.id }), R("hiring_decisions", decision(p.a, "one_on_one"))),
+        "no decision moved it into 1:1 Interview": T(...p.rows.filter(([t]) => t !== "hiring_decisions"), ...othersMove("one_on_one")),
       };
     })(),
   };
@@ -413,6 +545,7 @@ FIX["cf-script"] = {
 // The board columns join the stage names, so every column fixture carries them.
 for (const key of ["hiring-col-applied", "hiring-col-group", "hiring-col-one-on-one"]) {
   for (const [name, rows] of Object.entries(FIX[key].violations)) FIX[key].violations[name] = [...STAGES, ...rows];
+  for (const [name, variants] of Object.entries(FIX[key].extra || {})) FIX[key].extra[name] = variants.map((rows) => [...STAGES, ...rows]);
 }
 
 /* ── the harness ───────────────────────────────────────────────────────────── */
@@ -459,11 +592,11 @@ const SPEC = new Map(FIN_B12_CHECKS.map((spec) => [spec.key, spec]));
 
 test("every batch 12 control owns exactly one live check, and the registry holds the same text", () => {
   const controls = Object.values(FIN_B12_CONTROLS);
-  assert.equal(controls.length, 18);
-  assert.equal(FIN_B12_CHECKS.length, 18);
+  assert.equal(controls.length, 17);
+  assert.equal(FIN_B12_CHECKS.length, 17);
   assert.deepEqual(new Set(FIN_B12_CHECKS.map((c) => c.control)), new Set(controls));
-  assert.equal(new Set(FIN_B12_CHECKS.map((c) => c.key)).size, 18);
-  assert.equal(FIN_B12_DISPLAY_CONTRACTS.length, 18);
+  assert.equal(new Set(FIN_B12_CHECKS.map((c) => c.key)).size, 17);
+  assert.equal(FIN_B12_DISPLAY_CONTRACTS.length, 17);
   for (const spec of FIN_B12_CHECKS) {
     const contract = FIN_B12_DISPLAY_CONTRACTS.find((entry) => entry.control === spec.control);
     assert.ok(contract, spec.key);
@@ -548,8 +681,49 @@ test("fos-page-load goes green once Demo Mode has its primary demo client", () =
   assert.deepEqual(off, { sample_count: 0, bad_count: 0 }, "demo off: nothing to judge, so it is quiet");
 });
 
+test("fos-picker: the whole-book count reads only THIS company's clients that the picker can list", () => {
+  const spec = SPEC.get("fos-picker");
+  const many = (n, o = {}) => Array.from({ length: n }, () => R("clients", client(o)));
+  const green = { sample_count: 1, bad_count: 0 };
+  // Another company's 600 clients are not this company's book.
+  assert.deepEqual(runOn(spec, [R("orgs", org()), R("orgs", org({ id: OTHER, slug: "other" })), ...many(3), ...many(600, { org_id: OTHER })]), green,
+    "600 clients of another company do not make this book too big");
+  // Demo clients are not in the picker while Demo Mode is off, so they are not counted against the 500.
+  assert.deepEqual(runOn(spec, [R("orgs", org()), ...many(100), ...many(450, { is_demo: true })]), green,
+    "450 demo clients are not listed, so they do not fill the picker");
+  // With Demo Mode on they ARE listed, and 550 will not fit in 500.
+  assert.deepEqual(runOn(spec, [R("orgs", org({ demo_mode_enabled: true })), ...many(100), ...many(450, { is_demo: true })]), { sample_count: 1, bad_count: 1 },
+    "with Demo Mode on, 550 listed clients are more than the picker can hold");
+  // Exactly 500 fits; 501 does not.
+  assert.deepEqual(runOn(spec, [R("orgs", org()), ...many(500)]), green);
+  assert.deepEqual(runOn(spec, [R("orgs", org()), ...many(501)]), { sample_count: 1, bad_count: 1 });
+});
+
+test("galaxy-page-load: somebody to show is an active real person of this company or a live or shadow agent that is not retired", () => {
+  const spec = SPEC.get("galaxy-page-load");
+  const bad = (rows) => runOn(spec, [R("orgs", org()), ...rows]).bad_count;
+  const demoBad = (rows) => runOn(spec, [R("orgs", org({ demo_mode_enabled: true })), ...rows]).bad_count;
+  // An agent alone is enough, and so is a person alone.
+  assert.equal(bad([R("agents", agent({ status: "live" }))]), 0, "a live agent alone");
+  assert.equal(bad([R("agents", agent({ status: "shadow", went_live_at: null }))]), 0, "a shadow agent alone");
+  assert.equal(bad([R("staff", staff())]), 0, "an active person alone");
+  // An agent that is not live or shadow, or that is retired, is nobody to show.
+  assert.equal(bad([R("agents", agent({ status: "draft", went_live_at: null }))]), 1, "a draft agent alone");
+  assert.equal(bad([R("agents", agent({ status: "live", retired_at: OLD }))]), 1, "a retired agent alone");
+  // A person that is not active, not staff-of-the-sky, not real, not on this company, or has no role is nobody.
+  assert.equal(bad([R("staff", staff({ status: "suspended" }))]), 1, "a suspended person alone");
+  assert.equal(bad([R("staff", staff({ role: "client" }))]), 1, "a client login is not on the team");
+  assert.equal(bad([R("staff", staff({ role: null }))]), 1, "a person with no role");
+  assert.equal(bad([R("staff", staff({ org_id: OTHER }))]), 1, "a person of another company");
+  assert.equal(bad([R("staff", staff({ is_demo: true }))]), 1, "a seeded demo person is not real while Demo Mode is off");
+  assert.equal(demoBad([R("staff", staff({ is_demo: true }))]), 0, "a seeded demo person counts while Demo Mode is on");
+  assert.equal(demoBad([]), 1, "Demo Mode on with nobody at all is still nobody");
+});
+
 test("a check with no saved results at all reads 0 and 0, which the lane shows as quiet green", () => {
   for (const spec of FIN_B12_CHECKS) {
-    assert.deepEqual(runOn(spec, []), { sample_count: 0, bad_count: 0 }, spec.key);
+    // The picker's one read is a count of the whole book, so an empty book is one result that is not wrong.
+    const want = spec.key === "fos-picker" ? { sample_count: 1, bad_count: 0 } : { sample_count: 0, bad_count: 0 };
+    assert.deepEqual(runOn(spec, []), want, spec.key);
   }
 });

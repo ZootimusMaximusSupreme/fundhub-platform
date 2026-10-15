@@ -117,5 +117,62 @@
         "Consult request form: name, email, agency, help, note. It takes no card and saves nothing here: it opens an email to the support mailbox."
       ]
     }
+  ],
+  "fin-b12-repair-pages.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "documents.html",
+      "controls": [
+        "Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "finance-os.html",
+      "controls": [
+        "Client picker select (up to 500 clients)",
+        "Header text 'no client open' / client name",
+        "Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode"
+      ]
+    }
+  ],
+  "fin-b12-repair-creative.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "creative-factory.html",
+      "controls": [
+        "Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits",
+        "Video performance table (YouTube views, watch time per video per day) and connection badge"
+      ]
+    }
+  ],
+  "fin-b12-repair-galaxy.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "galaxy.html",
+      "controls": [
+        "Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill)"
+      ]
+    }
+  ],
+  "fin-b12-repair-hiring.test.mjs": [
+    {
+      "sourceFile": "desks-c.json",
+      "surface": "hiring.html",
+      "controls": [
+        "Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags",
+        "Board card: click opens the application drawer (name, scores, flags, source, video/resume tags)",
+        "Board column: Applied (applied)"
+      ]
+    }
+  ],
+  "fin-b12-repair-hiring-bench-sql.test.mjs": [
+    {
+      "sourceFile": "desks-c.json",
+      "surface": "hiring.html",
+      "controls": [
+        "Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags"
+      ]
+    }
   ]
 }

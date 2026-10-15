@@ -1,8 +1,8 @@
 // Accounts for every batch 12 display row, and holds the three "cannot be attached" reasons to the repo.
 //
-// Every one of the 40 rows is exactly one of: a live check (fin-b12-display-contracts.mjs), a practice
-// test (fin-b12-rows.json and the test file named beside it), or not attachable (fin-b12-not-attachable.mjs).
-// The lane then reports it as not proved only when it is not attachable.
+// Every one of the 40 rows is a live check (fin-b12-display-contracts.mjs), a practice test (fin-b12-rows.json
+// and the test file named beside it), both (nine rows, see BOTH below), or not attachable
+// (fin-b12-not-attachable.mjs). The lane then reports it as not proved only when it is not attachable.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -24,13 +24,27 @@ const live = new Set(Object.values(FIN_B12_CONTROLS));
 const practice = new Set(Object.values(ROWS).flatMap((groups) => groups.flatMap((group) => group.controls)));
 const blocked = new Set(FIN_B12_NOT_ATTACHABLE.map((row) => row.control));
 
-test("the 40 batch 12 rows split into 18 live checks, 19 practice tests and 3 that cannot be attached, with no overlap", () => {
-  assert.equal(live.size, 18);
-  assert.equal(practice.size, 19);
+// Repair cycle 1: a live check reads SAVED rows and cannot see what a page paints. For nine rows a practice
+// test of the real page was added beside the live check, so each of those nine is BOTH, on purpose. They
+// are listed here by name so the overlap cannot grow by accident. (The finance-os.html header row lost its
+// live check: a client with no name is the page's own designed fallback, not a wrong result. It is a practice
+// test only.)
+const HEADER_ROW = "Header text 'no client open' / client name";
+const BOTH = new Set([
+  FIN_B12_CONTROLS.cfTiles, FIN_B12_CONTROLS.cfVideo, FIN_B12_CONTROLS.docsPage,
+  FIN_B12_CONTROLS.fosPicker, FIN_B12_CONTROLS.fosPage,
+  FIN_B12_CONTROLS.galaxyPage, FIN_B12_CONTROLS.bench, FIN_B12_CONTROLS.card, FIN_B12_CONTROLS.applied,
+]);
+
+test("the 40 batch 12 rows are 17 live checks, 29 practice tests (9 of them also live checks) and 3 that cannot be attached", () => {
+  assert.equal(live.size, 17);
+  assert.ok(practice.has(HEADER_ROW) && !live.has(HEADER_ROW), "the header row is a practice test only");
+  assert.equal(practice.size, 29);
   assert.equal(blocked.size, 3);
-  for (const control of practice) assert.ok(!live.has(control) && !blocked.has(control), control);
-  for (const control of live) assert.ok(!blocked.has(control), control);
-  assert.equal(live.size + practice.size + blocked.size, 40);
+  for (const control of blocked) assert.ok(!live.has(control) && !practice.has(control), control);
+  const both = new Set([...live].filter((control) => practice.has(control)));
+  assert.deepEqual([...both].sort(), [...BOTH].sort(), "the rows that are both are exactly the nine named above");
+  assert.equal(new Set([...live, ...practice, ...blocked]).size, 40);
 });
 
 test("every practice-test file named in fin-b12-rows.json exists and claims its rows", () => {
