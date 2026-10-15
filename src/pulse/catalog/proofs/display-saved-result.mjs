@@ -5,6 +5,7 @@
 import { FIN_B01_DISPLAY_RESULT_CONTRACTS } from "./fin-b01-display-contracts.mjs";
 import { FIN_B02_RESULT_CONTRACTS } from "./fin-b02-display-contracts.mjs";
 import { FIN_B04_RESULT_CONTRACTS } from "./fin-b04-display-results.mjs";
+import { FIN_B06_DISPLAY_CONTRACTS } from "./fin-b06-display-contracts.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -264,22 +265,14 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
   query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
   query("'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)", "The ready-to-fund log must link the exact Blueprint prep task, client, round, process, and FinanceOS source.", "ready-to-fund", READY_TO_FUND_SQL),
-  gap("Save changes button (saves tiles and the tier-to-video map)", "No request receipt keeps the submitted tile names, outcomes, prices, visibility, and tier map together for exact comparison."),
-  gap("Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)", "The saved catalog row has no receipt naming the tile and submitted visibility state."),
-  gap("Locked tile editor: client-facing name box", "The saved catalog row has no receipt carrying the exact submitted client-facing name."),
-  gap("Locked tile editor: outcome copy box (one line shown to the client)", "The saved catalog row has no receipt carrying the exact submitted outcome copy."),
   query("Tier assignment: one welcome-video select per product tier and one for Default", "Every saved tier selection must link to a real video in the same company with a title and storage object.", "content-tier-map", CONTENT_VIDEO_MAP_SQL),
   query("Upload welcome video: Upload button (then saves the tier map)", "The saved tier map must link the uploaded video row to its title and storage object in the same company.", "content-video-upload", CONTENT_VIDEO_MAP_SQL),
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
   query("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
-  gap("Save (create a new wording)", "The pulse needs the submitted template key, name, kind, body, and actor to compare with the newly created wording row."),
-  gap("Save (edit an existing wording)", "The pulse needs the template id and exact submitted wording fields to compare with the updated row."),
   query("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
-  gap("Consent wording, version badge and current status banner (read from the server, never typed in the page)", "The pulse has no client id and requested consent kind, so it cannot compare the banner with that client's exact current status."),
   query("Record consent: call_recording", "The saved consent must be the call_recording kind with frozen words, version, capture method, and one exact granter.", "consent-call-recording", consentSql("call_recording")),
   query("Record consent: marketing_use (permission to use what the client said in ads)", "The saved consent must be the marketing_use kind with frozen words, version, capture method, and one exact granter.", "consent-marketing-use", consentSql("marketing_use")),
   query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
-  gap("Contract cell: Void button (asks for a reason in a prompt; owner/admin only)", "The pulse needs a void receipt containing the contract id, submitted reason, actor, and saved void state."),
   query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
   query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
@@ -293,6 +286,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   ...FIN_B01_DISPLAY_RESULT_CONTRACTS,
   ...FIN_B02_RESULT_CONTRACTS,
   ...FIN_B04_RESULT_CONTRACTS,
+  ...FIN_B06_DISPLAY_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));

@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these sixteen", () => {
+test("the list of codes is closed: exactly these seventeen", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
+    "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -41,7 +41,7 @@ test("the five core codes verify here; the ten lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -62,7 +62,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "no-sender": { count: 158, days: 7 },
     "catalog-display-retired-autopsy": { sourceFile: "public-pages.json", surface: "partner/autopsy/index.html", control: "redirect" },
     "catalog-display-retired-control": { sourceFile: "desks-f.json", surface: "present.html", control: "e-book price box" },
-    "catalog-route-retired-action": { sourceFile: "routes-1.json", surface: "route:closer-deck", action: "send_ebook", control: "POST action=send_ebook" }
+    "catalog-route-retired-action": { sourceFile: "routes-1.json", surface: "route:closer-deck", action: "send_ebook", control: "POST action=send_ebook" },
+    "catalog-display-control-not-shipped": { sourceFile: "public-pages.json", surface: "button:climate/index.html#See how many banks in our bo", control: "See how many banks in our book fit your state" }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);

@@ -15,6 +15,8 @@ export function compileHourlyUncoveredSurfaces(tripwires, beats) {
 
 // Build-time input only. Live checks consume these saved arrays without loading
 // the proof builders, which read the repository's map files on a laptop.
+const DEEP_IMPACT = new Set(["money", "customerData", "customerMessage"]);
+
 export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases, contractFor, isTracked }) {
   const maps = new Map(sources.map((source) => [source.sourceFile, source.rows]));
   const keyFor = (entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`;
@@ -25,6 +27,20 @@ export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases
     if (!contract) return null;
     return { id: `catalog-display:${entry.sourceFile}:${entry.surface}:${entry.control}`, sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, contract };
   }).filter(Boolean);
+  // A tracked money or customer row that owns a registered saved-result contract is judged even when no
+  // browser spec names it. Without this its SQL would never be read and its contract would never run.
+  const judged = new Set(resultCases.map(keyFor));
+  for (const sourceFile of DISPLAY_SOURCES) {
+    for (const row of maps.get(sourceFile) || []) {
+      if (row.repeats_row_in || !DEEP_IMPACT.has(row.impact) || !isTracked(row)) continue;
+      const entry = { sourceFile, surface: row.surface, control: row.control };
+      if (judged.has(keyFor(entry))) continue;
+      const contract = contractFor(row);
+      if (!contract) continue;
+      judged.add(keyFor(entry));
+      resultCases.push({ id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`, ...entry, contract });
+    }
+  }
   const resultsByKey = new Map(resultCases.map((entry) => [keyFor(entry), entry]));
   const directKeys = new Set(proofCases.map(keyFor));
   const laneKeys = new Set(proofCases.filter((entry) => String(entry.evidence || "").includes("gap-catalog-display.mjs")).map(keyFor));
