@@ -7,6 +7,8 @@
 // $1,000 DIY product per Spec §4.2 — never by dollar amount) and the funding-route
 // block below are BOTH covered by tests proving each direction
 // (ds-02-diy-letters.test.mjs) — that test is the actual point of this file.
+// Since 2026-10-14 (R03) the product CODE on the payment decides first; the
+// name is read only when no code is carried (see isDiyProduct below).
 //
 // The invoice stub is now wired to src/invoices/ (017_invoices migration).
 // Commas outbound checkout is still a manual task — the invoice record here is
@@ -31,8 +33,20 @@ const SOURCE_WORKFLOW = "ds-02-diy-letters";
 /** @deprecated external UIQ removed — in-repo letter-pack only */
 export const DELIVER_LETTERS_URL = null;
 
-function isDiyProduct(productName) {
-  const n = String(productName || "").toLowerCase();
+/* The $1,000 DIY letter pack's own product code (db/migrations/384). */
+const DIY_PRODUCT_CODE = "diy-letter-pack";
+
+/* Is this payment the DIY downsell? A product code carried on the payment is
+   the durable identity and decides it: only the DIY pack's own code is DIY.
+   The name test is for a payment that carries no code at all (a Commas
+   dashboard purchase with no link of ours). It cannot be trusted when a code is
+   present: the Capital Blueprint's Commas title IS "Consulting Services
+   Package" and its bucket is filed under 'diy', so the name alone read a $5,000
+   Blueprint payment as this product and raised a false invoice and email. */
+function isDiyProduct(payload) {
+  const code = String(payload?.productCode || "").trim().toLowerCase();
+  if (code) return code === DIY_PRODUCT_CODE;
+  const n = String(payload?.productName ?? payload?.product ?? "").toLowerCase();
   return n.includes("consulting services package") || n.includes("diy");
 }
 
@@ -131,7 +145,7 @@ async function deliverLettersOnce(db, fetchImpl, {
 // handle — pure business logic. `fetchImpl` is injected (defaults to global fetch)
 // so tests can supply a fake instead of making a real network call.
 export async function handle({ event, db, step, fetchImpl = globalThis.fetch, deliverLettersFn = null, store = null }) {
-  if (!isDiyProduct(event.payload?.productName ?? event.payload?.product)) {
+  if (!isDiyProduct(event.payload)) {
     return { done: false, reason: "not_diy_product" };
   }
 
