@@ -13,6 +13,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B15_DISPLAY_ENTRIES, FIN_B15_SPEC_TITLES } from "./fin-b15-display-specs.mjs";
+import { FIN_B15_DISPLAY_CONTRACTS } from "./fin-b15-display-contracts.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -37,7 +38,7 @@ function ranTests(report) {
 }
 
 test("every bound row is one exact map row, and every named spec and test exists and is not a live-site test", () => {
-  assert.equal(FIN_B15_DISPLAY_ENTRIES.length, 14);
+  assert.equal(FIN_B15_DISPLAY_ENTRIES.length, 20);
   const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, "desks-c.json"), "utf8"));
   const keys = new Set();
   for (const entry of FIN_B15_DISPLAY_ENTRIES) {
@@ -45,8 +46,11 @@ test("every bound row is one exact map row, and every named spec and test exists
     assert.equal(keys.has(key), false, `duplicate row ${key}`);
     keys.add(key);
     assert.equal(map.filter((r) => r.surface === entry.surface && r.control === entry.control).length, 1, key);
-    assert.ok(entry.test || (entry.specs && entry.specs.length), `${entry.control} names no test`);
-    if (entry.test) assert.ok(fs.existsSync(path.join(ROOT, entry.test)), entry.test);
+    assert.ok(entry.test || (entry.tests && entry.tests.length) || (entry.specs && entry.specs.length), `${entry.control} names no test`);
+    for (const file of [entry.test, ...(entry.tests || [])].filter(Boolean)) {
+      assert.ok(file.endsWith(".test.mjs"), `${file} is a node test`);
+      assert.ok(fs.existsSync(path.join(ROOT, file)), file);
+    }
     for (const { spec, titles } of entry.specs || []) {
       assert.ok(fs.existsSync(path.join(ROOT, spec)), `${spec} does not exist`);
       assert.ok(!path.basename(spec).startsWith("live-"), `${spec} must not touch the live site`);
@@ -59,6 +63,13 @@ test("every bound row is one exact map row, and every named spec and test exists
         assert.ok(text.includes(title) || text.includes(probe) || text.includes(tail.trim()), `"${title}" is not in ${spec}`);
       }
     }
+  }
+});
+
+test("a row that says alsoLive owns a live check too, and a row that does not says nothing reads its saved data", () => {
+  const live = new Set(FIN_B15_DISPLAY_CONTRACTS.map((c) => c.control));
+  for (const entry of FIN_B15_DISPLAY_ENTRIES) {
+    assert.equal(live.has(entry.control), entry.alsoLive === true, `${entry.control}: alsoLive says ${entry.alsoLive === true}, the contracts say ${live.has(entry.control)}`);
   }
 });
 

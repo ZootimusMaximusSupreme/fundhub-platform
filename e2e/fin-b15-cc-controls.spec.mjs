@@ -3,15 +3,19 @@
 // A practice test is a real page in Chromium with fake /api answers. It presses the control and
 // judges the exact request the page sends and the words the page paints. It reads no live data.
 //
-//   Scripts tab   the five filter chips and their counts; the Previous and Next buttons never save;
-//                 the 409 banner's "Use theirs" and "Read the new version"; Try again on the Rules
-//                 fold and the Every version fold (with the page's restart of a failed read muted,
-//                 see the long note above those tests and finding 1 in the manifest)
+//   Scripts tab   the five filter chips and their counts; the Previous and Next buttons over three
+//                 drafts, never saving; the 409 banner: "Use mine" sends MY words, "Use theirs" and
+//                 "Read the new version", on a stale Edit, Approve, Fix and Reject; Try again on the
+//                 Rules fold and the Every version fold (with the page's restart of a failed read
+//                 muted, see the long note above those tests and finding 1 in the manifest)
 //   Ideas tab     the "Go to step N" button after a spend read; "Hide the pages" and the three page
 //                 preview buttons
-//   Launch tab    "Open Settings" on an ad with no ad set; the 20 second load-state poll
+//   Launch tab    "Open Settings" on an ad with no ad set; the 20 second load-state poll, pinned to the
+//                 millisecond on a paused clock, for a waiting ad and a loading ad, with the four
+//                 step words painted
 //   Numbers tab   the ad drawer's Day select (two days, two curves); Open Settings on an empty
-//                 funnel list
+//                 funnel list; every step of a funnel (page to lead, lead to call, call to sale,
+//                 leads, showed) printing unknown when it is unknown; an angle's idea box Cancel
 //
 // Each test was broken on purpose in the page and went red (see ops/workflows/finish-853-2026-10-14/
 // manifest-b15.md).
@@ -141,16 +145,49 @@ test("Scripts: the five filter chips carry their counts, and each one shows only
   expect(posts(calls), "a chip is a view, it never writes").toEqual([]);
 });
 
-test("Scripts: Previous and Next move between the drafts and never save", async ({ page }) => {
-  const calls = await openScripts(page);
-  await expect(card(page)).toContainText("Draft 1 of 2");
-  const first = await card(page).innerText();
+/** Three drafts, each with its own title, so Next and Previous can be told from a jump to either end. */
+function threeDraftsApi() {
+  const a = scriptsApi();
+  const [first, second] = drafts();
+  const third = {
+    ...first, id: "00000000-0000-4000-8000-000000000301", root_script_id: "00000000-0000-4000-8000-000000000301",
+    title: "Third draft about the bank letter", ad_id: null
+  };
+  a.db.scripts = [first, second, third, ...a.db.scripts.filter((x) => x.status !== "draft")];
+  return a;
+}
+
+test("Scripts: Previous and Next move one draft at a time over three drafts, stop at the ends, and never save", async ({ page }) => {
+  const calls = await openScripts(page, threeDraftsApi());
+  const nav = page.locator(".ccs-nav .caption");
+  const title = () => card(page).locator(".ccs-title").innerText();
+  const seen = [];
+
+  await expect(nav).toHaveText("1 of 3 · 2 left after this one");
+  seen.push(await title());
+  await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled();
+
   await page.getByRole("button", { name: "Next" }).click();
-  await expect(card(page)).toContainText("Draft 2 of 2");
-  expect(await card(page).innerText()).not.toBe(first);
+  await expect(nav).toHaveText("2 of 3 · 1 left after this one");
+  seen.push(await title());
+
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(nav).toHaveText("3 of 3 · 0 left after this one");
+  seen.push(await title());
+  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+  expect(new Set(seen).size, "three different drafts were shown").toBe(3);
+
+  // Back one: the middle draft, not the first.
   await page.getByRole("button", { name: "Previous" }).click();
-  await expect(card(page)).toContainText("Draft 1 of 2");
-  expect(await card(page).innerText()).toBe(first);
+  await expect(nav).toHaveText("2 of 3 · 1 left after this one");
+  expect(await title()).toBe(seen[1]);
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(nav).toHaveText("1 of 3 · 2 left after this one");
+  expect(await title()).toBe(seen[0]);
+  // And forward one from the first is the second, never the last.
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(nav).toHaveText("2 of 3 · 1 left after this one");
+  expect(await title()).toBe(seen[1]);
   expect(posts(calls), "moving between cards never saves").toEqual([]);
 });
 
@@ -211,6 +248,93 @@ test("Scripts: after a stale Approve, Read the new version closes the banner, re
   // The card now holds the version that was saved, not the one that was on screen.
   await expect(card(page)).toHaveAttribute("aria-label", /version 3/);
   expect(calls.filter((c) => c.key === "POST marketing/scripts/approve")).toHaveLength(1);
+});
+
+/** The scripts API where the FIRST edit is refused as stale (someone else saved version 2) and the second is saved. */
+const LIVE_ID = "00000000-0000-4000-8000-000000000105";
+function staleOnceApi() {
+  const a = scriptsApi();
+  let refused = false;
+  a.routes["POST marketing/scripts/edit"] = ({ body }) => {
+    const s = a.db.scripts.find((x) => x.id === body.id) || a.db.scripts[0];
+    if (!refused) {
+      refused = true;
+      const live = { ...s, id: LIVE_ID, version: 2, body: "Someone else's words." };
+      a.db.scripts = a.db.scripts.map((x) => (x.root_script_id === s.root_script_id ? live : x));
+      return [409, { error: "stale", message: "This script changed.", current: { version: 2, body: live.body, parts: live.parts } }];
+    }
+    const out = { ...s, id: "00000000-0000-4000-8000-000000000106", version: s.version + 1, body: body.body, parts: body.parts ?? s.parts };
+    a.db.scripts = a.db.scripts.map((x) => (x.id === s.id ? out : x));
+    return [200, { script: out, warnings: [] }];
+  };
+  return a;
+}
+
+test("Scripts: after a stale Edit, Use mine saves MY words on the live version, and never the saved ones", async ({ page }) => {
+  const calls = await openScripts(page, staleOnceApi());
+  const mine = "Tap below and see your number today.";
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Hook (first line)").fill(mine);
+  await page.getByRole("button", { name: "Save new version" }).click();
+
+  const conflict = page.locator(".ccs-conflict");
+  await expect(conflict).toContainText("This script changed since you opened it.");
+  await expect(conflict).toContainText(mine);
+  await expect(conflict).toContainText("Someone else's words.");
+  await conflict.getByRole("button", { name: "Use mine" }).click();
+  await expect(page.locator(".ccs-say.show")).toContainText("Saved as version 3.");
+
+  const edits = calls.filter((c) => c.key === "POST marketing/scripts/edit");
+  expect(edits).toHaveLength(2);
+  expect(edits[1].body.id, "saved on the live version, not the one that was on screen").toBe(LIVE_ID);
+  expect(edits[1].body.version).toBe(2);
+  expect(edits[1].body.body, "it sends the words typed, and they are the same words the first try sent").toBe(edits[0].body.body);
+  expect(edits[1].body.body).toContain(mine);
+  expect(edits[1].body.body).not.toContain("Someone else's words.");
+  expect(edits[1].body.parts.find((p) => p.kind === "hook").text).toBe(mine);
+  expect(edits[1].body.request_id).not.toBe(edits[0].body.request_id);
+});
+
+/** The 409 any write can answer: the saved copy moved on while the card was open. */
+function staleOn(a, route) {
+  a.routes[route] = ({ body }) => {
+    const s = a.db.scripts.find((x) => x.id === body.id) || a.db.scripts[0];
+    const live = { ...s, version: s.version + 1, body: "A newer version." };
+    a.db.scripts = a.db.scripts.map((x) => (x.root_script_id === s.root_script_id ? live : x));
+    return [409, { error: "stale", message: "This script changed.", current: { version: live.version, body: live.body, parts: live.parts } }];
+  };
+  return a;
+}
+
+async function readTheNewVersion(page, calls, route) {
+  const conflict = page.locator(".ccs-conflict");
+  await expect(conflict).toContainText("This script changed since you opened it.");
+  await expect(conflict).toContainText("A newer version.");
+  await expect(conflict.getByRole("button", { name: "Use mine" }), "only an Edit can be saved over the newer version").toHaveCount(0);
+  const readsBefore = calls.filter((c) => c.key === "GET marketing/scripts").length;
+  await conflict.getByRole("button", { name: "Read the new version" }).click();
+  await expect(page.locator(".ccs-conflict")).toHaveCount(0);
+  await expect.poll(() => calls.filter((c) => c.key === "GET marketing/scripts").length).toBeGreaterThan(readsBefore);
+  await expect(card(page)).toHaveAttribute("aria-label", /version 2/);
+  expect(calls.filter((c) => c.key === route), "the write is never sent again by the banner").toHaveLength(1);
+}
+
+test("Scripts: a stale Fix puts up the banner with the saved version, and Read the new version sends nothing more", async ({ page }) => {
+  const a = staleOn(scriptsApi(), "POST marketing/scripts/fix");
+  const calls = await openScripts(page, a);
+  await page.getByRole("button", { name: "Fix" }).click();
+  await page.getByLabel("What should change?").fill("Make the hook about the business file, not the personal one.");
+  await page.getByRole("button", { name: "Rewrite it" }).click();
+  await readTheNewVersion(page, calls, "POST marketing/scripts/fix");
+});
+
+test("Scripts: a stale Reject puts up the banner with the saved version, and Read the new version sends nothing more", async ({ page }) => {
+  const a = staleOn(scriptsApi(), "POST marketing/scripts/reject");
+  const calls = await openScripts(page, a);
+  await page.getByRole("button", { name: "Reject", exact: true }).click();
+  await page.getByLabel("Why? (optional)").fill("Too close to Ad 84.");
+  await page.getByRole("button", { name: "Reject it" }).click();
+  await readTheNewVersion(page, calls, "POST marketing/scripts/reject");
 });
 
 /* ── Scripts tab: Try again on the Rules fold and the Every version fold ──────────────────────
@@ -459,6 +583,88 @@ test("Numbers: a funnel whose spend, cash and ROAS are not saved prints unknown,
   await expect(other).not.toContainText("unknown ·");
 });
 
+test("Numbers: every step of a funnel that has no saved number prints unknown, a real zero prints 0, and Showed is the showed count", async ({ page }) => {
+  const stats = exampleResponse("GET marketing/funnels/stats");
+  // 0: nothing saved at all. 1: real numbers, every one different. 2: calls were booked and nobody showed.
+  Object.assign(stats.rows[0], { page_views: null, click_to_page: null, page_to_lead: null, leads: null, booked: null, showed: null, sales: null });
+  Object.assign(stats.rows[1], { page_views: 700, click_to_page: 0.5, page_to_lead: 0.0286, leads: 20, booked: 8, showed: 5, sales: 2 });
+  stats.rows.push({
+    funnel_key: "zero_one", name: "Zero one", spend_cents: 5000, page_views: 100, click_to_page: 0.4, page_to_lead: 0.06,
+    leads: 6, booked: 0, showed: 0, sales: 0, cash_cents: 0, roas: 0
+  });
+  await page.clock.setFixedTime(new Date("2026-10-06T15:00:00Z"));
+  await routeStub(page);
+  await page.route("**/api/**", async (route) => {
+    const key = `${route.request().method()} ${new URL(route.request().url()).pathname.replace(/^\/api\//, "")}`;
+    const map = { "GET marketing/funnels/stats": stats, "GET marketing/funnels": exampleResponse("GET marketing/funnels") };
+    if (!map[key]) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(map[key]) });
+  });
+  await page.goto(NUMBERS_STUB_PATH + "#numbers/funnels");
+  const card = (key) => page.locator(`[data-test=funnel][data-funnel=${key}]`);
+  const step = (key, name) => card(key).locator(`[data-step=${name}]`);
+
+  // Nothing saved: every number and every rate says unknown. None of them says 0 or 0%.
+  const empty = stats.rows[0].funnel_key;
+  for (const name of ["page_views", "leads", "booked", "showed", "sales"]) {
+    await expect(step(empty, name).locator(".ccn-stepn"), `${name} number`).toHaveText("unknown");
+  }
+  await expect(step(empty, "page_views")).toContainText("Click to page: unknown");
+  await expect(step(empty, "leads")).toContainText("Page to lead: unknown");
+  await expect(step(empty, "booked")).toContainText("Lead to call: unknown");
+  await expect(step(empty, "sales")).toContainText("Call to sale: unknown");
+  await expect(card(empty)).not.toContainText(/\b0%/);
+
+  // Real numbers: each step shows its own count, and the rates are worked from the right pairs.
+  const real = stats.rows[1].funnel_key;
+  await expect(step(real, "page_views").locator(".ccn-stepn")).toHaveText("700");
+  await expect(step(real, "leads").locator(".ccn-stepn")).toHaveText("20");
+  await expect(step(real, "booked").locator(".ccn-stepn")).toHaveText("8");
+  await expect(step(real, "showed").locator(".ccn-stepn")).toHaveText("5");
+  await expect(step(real, "sales").locator(".ccn-stepn")).toHaveText("2");
+  await expect(step(real, "page_views")).toContainText("Click to page: 50%");
+  await expect(step(real, "leads")).toContainText("Page to lead: 2.9%");
+  await expect(step(real, "booked")).toContainText("Lead to call: 40%");
+  await expect(step(real, "sales")).toContainText("Call to sale: 40%");
+
+  // A real zero is a zero; a rate over nobody is unknown, not 0%.
+  await expect(step("zero_one", "booked").locator(".ccn-stepn")).toHaveText("0");
+  await expect(step("zero_one", "showed").locator(".ccn-stepn")).toHaveText("0");
+  await expect(step("zero_one", "booked")).toContainText("Lead to call: 0%");
+  await expect(step("zero_one", "sales")).toContainText("Call to sale: unknown");
+});
+
+test("Numbers: an angle's idea box opens with its words, Cancel closes it and saves nothing, and the next open starts fresh", async ({ page }) => {
+  const angles = exampleResponse("GET marketing/angles");
+  angles.rows[0].angle_key = "the_conveyor_belt";
+  angles.rows[0].name = "The Conveyor Belt";
+  const calls = [];
+  await page.clock.setFixedTime(new Date("2026-10-06T15:00:00Z"));
+  await routeStub(page);
+  await page.route("**/api/**", async (route) => {
+    const req = route.request();
+    const key = `${req.method()} ${new URL(req.url()).pathname.replace(/^\/api\//, "")}`;
+    calls.push(key);
+    const map = { "GET marketing/angles": angles, "POST marketing/ideas": exampleResponse("POST marketing/ideas") };
+    if (!map[key]) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(map[key]) });
+  });
+  await page.goto(NUMBERS_STUB_PATH + "#numbers/angles");
+  const card = page.locator("[data-test=angle]").first();
+  await card.getByRole("button", { name: "Make more of this" }).click();
+  const box = card.locator("textarea");
+  const start = "Make more ads on the angle \"The Conveyor Belt\". Same idea, new hooks.";
+  await expect(box).toHaveValue(start);
+  await box.fill("Words I changed my mind about.");
+  await card.getByRole("button", { name: "Cancel" }).click();
+  await expect(card.locator("textarea")).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Make more of this" })).toBeVisible();
+  expect(calls.filter((c) => c.startsWith("POST")), "Cancel saves nothing").toEqual([]);
+
+  await card.getByRole("button", { name: "Make more of this" }).click();
+  await expect(card.locator("textarea")).toHaveValue(start);
+});
+
 /* ── Launch tab: Open Settings and the 20 second poll ─────────────────────────────────────── */
 
 const VIDEO_A = "00000000-0000-4000-8000-000000000701";
@@ -471,9 +677,12 @@ const APPROVED = {
   ]
 };
 
-async function openLaunch(page, loads, { approved = APPROVED } = {}) {
+async function openLaunch(page, loads, { approved = APPROVED, paused = false } = {}) {
   const sent = [];
   await page.clock.install({ time: new Date(NOW) });
+  // A paused clock moves only when the test moves it, so "20 seconds" is 20 seconds to the millisecond
+  // and not "20 seconds plus however long the first read took".
+  if (paused) await page.clock.pauseAt(new Date(Date.parse(NOW) + 1000));
   await page.route(`**${STUB_PATH}`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: stubHtml("launch") }));
   await page.route("**/api/**", async (route) => {
     const req = route.request();
@@ -505,24 +714,64 @@ test("Launch: Open Settings on an ad with no ad set goes to Settings and sends n
   expect(sent.filter((s) => s.method !== "GET")).toEqual([]);
 });
 
-test("Launch: while an ad is loading the state is read again every 20 seconds, with the approved list", async ({ page }) => {
+/** Move the paused clock by `ms`, then give a read that fired a moment of real time to reach the route. */
+async function advance(page, ms) {
+  await page.clock.runFor(ms);
+  await page.waitForTimeout(250);
+}
+
+/** One ad in flight, a paused clock, and the 20 second read pinned to the millisecond. */
+async function pollsAtTwentySeconds(page, state) {
   const { sent } = await openLaunch(page, [
-    { ad_number: "90", ad_video_id: VIDEO_A, state: "loading", reasons: [], step: "uploading", ad_set: null, campaign: null }
-  ]);
+    { ad_number: "90", ad_video_id: VIDEO_A, state, reasons: [], step: state === "loading" ? "uploading video" : null, ad_set: null, campaign: null }
+  ], { paused: true });
   const tab = page.locator("[data-tab=launch]");
   await expect(tab).toContainText("Ad 90");
+  await expect(tab).toContainText(state === "loading" ? "Loading" : "Waiting to load");
   expect(reads(sent, "marketing/meta/load-status")).toBe(1);
   expect(reads(sent, "ad-videos")).toBe(1);
 
-  await page.clock.runFor(19_000);
-  expect(reads(sent, "marketing/meta/load-status"), "not before 20 seconds").toBe(1);
+  await advance(page, 19_999);
+  expect(reads(sent, "marketing/meta/load-status"), "not one millisecond before 20 seconds").toBe(1);
 
-  await page.clock.runFor(1_000);
-  await expect.poll(() => reads(sent, "marketing/meta/load-status")).toBe(2);
+  await advance(page, 1);
+  await expect.poll(() => reads(sent, "marketing/meta/load-status"), { message: "read at 20 seconds" }).toBe(2);
   expect(reads(sent, "ad-videos"), "the approved list is read with it").toBe(2);
 
-  await page.clock.runFor(20_000);
+  // And again 20 seconds after that one: it keeps going while the ad is in flight.
+  await advance(page, 19_999);
+  expect(reads(sent, "marketing/meta/load-status")).toBe(2);
+  await advance(page, 1);
   await expect.poll(() => reads(sent, "marketing/meta/load-status")).toBe(3);
+  expect(sent.filter((s) => s.method !== "GET")).toEqual([]);
+}
+
+test("Launch: with an ad being loaded the state is read again at 20 seconds to the millisecond, with the approved list", async ({ page }) => {
+  await pollsAtTwentySeconds(page, "loading");
+});
+
+test("Launch: with an ad waiting in line to load the state is read again at 20 seconds to the millisecond, with the approved list", async ({ page }) => {
+  await pollsAtTwentySeconds(page, "waiting");
+});
+
+test("Launch: each of the four load steps is painted in its own words, and an unknown step still says it is loading", async ({ page }) => {
+  const ids = ["701", "702", "703", "704", "705"].map((n) => `00000000-0000-4000-8000-000000000${n}`);
+  const { sent } = await openLaunch(page, [
+    { ad_number: "90", ad_video_id: ids[0], state: "loading", reasons: [], step: "uploading video" },
+    { ad_number: "91", ad_video_id: ids[1], state: "loading", reasons: [], step: "waiting for Meta" },
+    { ad_number: "92", ad_video_id: ids[2], state: "loading", reasons: [], step: "creating the ad" },
+    { ad_number: "93", ad_video_id: ids[3], state: "loading", reasons: [], step: "saving" },
+    { ad_number: "94", ad_video_id: ids[4], state: "loading", reasons: [], step: null },
+    { ad_number: "95", ad_video_id: "00000000-0000-4000-8000-000000000706", state: "waiting", reasons: [], step: null }
+  ], { approved: { ...APPROVED, count: 0, items: [] } });
+  const row = (n) => page.locator(`[data-tab=launch] [data-row]`, { hasText: `Ad ${n}` });
+  await expect(row(90)).toContainText("Step 1 of 4: uploading the video to Meta.");
+  await expect(row(91)).toContainText("Step 2 of 4: waiting for Meta to take the video.");
+  await expect(row(92)).toContainText("Step 3 of 4: making the ad.");
+  await expect(row(93)).toContainText("Step 4 of 4: saving the ad.");
+  await expect(row(94)).toContainText("Loading into Meta.");
+  await expect(row(94)).not.toContainText("Step ");
+  await expect(row(95)).toContainText("In line to load. It starts by itself in a few minutes.");
   expect(sent.filter((s) => s.method !== "GET")).toEqual([]);
 });
 

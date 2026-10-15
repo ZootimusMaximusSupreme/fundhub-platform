@@ -130,17 +130,34 @@ export function portableSql(sql, { now = NOW } = {}) {
     .replace(/\bnow\(\)\s*-\s*interval\s*'(\d+)\s*(minute|hour|day)s?'/gi,
       (_, n, unit) => iso(now.getTime() - Number(n) * UNIT_MS[unit.toLowerCase()]))
     .replace(/\bnow\(\)/gi, iso(now.getTime()))
-    .replace(/::(?:uuid|int|integer|bigint|text|numeric|jsonb|json|boolean|date|timestamptz)\b/gi, "")
+    // column + interval 'N unit' -> the same ISO shape every stand-in timestamp is written in
+    .replace(/\b(\w+\.\w+)\s*\+\s*interval\s*'(\d+)\s*(minute|hour|day)s?'/gi,
+      (_, col, n, unit) => `strftime('%Y-%m-%dT%H:%M:%fZ', ${col}, '+${n} ${unit.toLowerCase()}s')`)
+    .replace(/::[a-z_][a-z0-9_]*(?:\[\])?/gi, "")
     .replace(/\$(\d+)/g, "?$1")
     .replace(/\bBTRIM\s*\(/gi, "TRIM(")
     .replace(/\bstrpos\s*\(/gi, "instr(")
     .replace(/\bcardinality\s*\(/gi, "json_array_length(")
+    // FROM unnest(arr) AS x WHERE x = ANY(other)  ->  rows of json_each, matched on .value
+    .replace(/\bunnest\s*\(([^()]*)\)\s+AS\s+(\w+)\s+WHERE\s+\2\s*=\s*ANY\s*\(([^()]*)\)/gi,
+      "json_each($1) AS $2 WHERE $2.value IN (SELECT value FROM json_each($3))")
     // col = ANY(array_column)  ->  col IN (SELECT value FROM json_each(array_column))
     .replace(/(\w+)\s*=\s*ANY\s*\(([^()]*)\)/gi, "$1 IN (SELECT value FROM json_each($2))")
     .replace(/\bjsonb_typeof\s*\(\s*(\w+)\.value\s*\)/gi, "$1.type")
     .replace(/\bjsonb_typeof\s*\(/gi, "json_type(")
     .replace(/\bjsonb_array_length\s*\(/gi, "json_array_length(")
     .replace(/\bjsonb_each\s*\(/gi, "json_each(");
+}
+
+/* A whole number binds as an INTEGER (a JS number would bind as a REAL, and CAST(2.0 AS text) is
+   "2.0" where Postgres says "2"). Booleans are 0 and 1, objects are JSON text. */
+function bindable(v) {
+  if (v === true) return 1;
+  if (v === false) return 0;
+  if (v === undefined) return null;
+  if (typeof v === "number" && Number.isInteger(v)) return BigInt(v);
+  if (v !== null && typeof v === "object") return JSON.stringify(v);
+  return v;
 }
 
 /**
@@ -165,19 +182,35 @@ export function makeStandIn(tableNames, { now = NOW } = {}) {
       if (!cols) throw new Error(`stand-in has no table ${table}`);
       const keys = Object.keys(row);
       for (const k of keys) if (!cols.has(k)) throw new Error(`${table} has no column ${k} in db/schema or db/migrations`);
-      const values = keys.map((k) => {
-        const v = row[k];
-        if (v === true) return 1;
-        if (v === false) return 0;
-        if (v !== null && typeof v === "object") return JSON.stringify(v);
-        return v === undefined ? null : v;
-      });
+      const values = keys.map((k) => bindable(row[k]));
       db.prepare(`INSERT INTO ${table} (${keys.map((k) => `"${k}"`).join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`).run(...values);
     },
     /** Run a contract's exact SQL text for one company. Returns { sample_count, bad_count }. */
     run(sql, orgId) {
-      const row = db.prepare(portableSql(sql, { now })).get(orgId);
+      const text = portableSql(sql, { now });
+      const stmt = db.prepare(text);
+      // A text with no company parameter (a test that drops the filter on purpose) is run with none.
+      const row = /\?1\b/.test(text) ? stmt.get(orgId) : stmt.get();
       return { sample_count: Number(row.sample_count), bad_count: Number(row.bad_count) };
+    },
+    /**
+     * A pg-shaped handle ({ rows, rowCount }) over the same stand-in, so a REAL handler or store
+     * function can run its own SQL text against stand-in rows. $1.. become ?1.., casts are dropped.
+     */
+    async query(sql, params = []) {
+      const text = portableSql(sql, { now });
+      const stmt = db.prepare(text);
+      const values = params.map(bindable);
+      if (/^\s*(select|with)\b/i.test(text) || /\breturning\b/i.test(text)) {
+        const rows = stmt.all(...values).map((r) => ({ ...r }));
+        return { rows, rowCount: rows.length };
+      }
+      const out = stmt.run(...values);
+      return { rows: [], rowCount: Number(out.changes) };
+    },
+    /** Every row of one table, as plain objects (for a test to read back what a handler wrote). */
+    rows(table) {
+      return db.prepare(`SELECT * FROM ${table}`).all().map((r) => ({ ...r }));
     },
     close() { db.close(); }
   };
@@ -188,7 +221,7 @@ export function tablesIn(sql) {
   const names = new Set();
   for (const m of stripComments(sql).matchAll(/(?<!distinct\s)\b(?:from|join)\s+([a-z_][a-z0-9_]*)\b/gi)) {
     const word = m[1].toLowerCase();
-    if (!["select", "jsonb_array_elements", "json_each", "jsonb_each"].includes(word)) names.add(word);
+    if (!["select", "jsonb_array_elements", "json_each", "jsonb_each", "unnest"].includes(word)) names.add(word);
   }
   return [...names];
 }
