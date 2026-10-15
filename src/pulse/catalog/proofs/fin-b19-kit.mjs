@@ -56,6 +56,69 @@ export function proofRows(testFile) {
   };
 }
 
+export const STAFF = Object.freeze({
+  id: "staff-proof", name: "Casey Proof", email: "casey.proof@example.test", org_id: "org-proof", status: "active",
+});
+
+/**
+ * A page with its own fake session and fake /api, for tests that need to control the session answer
+ * itself (a 401, a stale cached role, a demo login), which newStaffPage cannot.
+ *   role      the cached role hint (fh_role); null leaves it unset
+ *   token     fh_token; null leaves the browser with no token
+ *   storage   more localStorage keys, set once on the first load only (a sign-out redirect keeps its wipe)
+ *   session   an object (the answer), a function (request) => object | { status, body }, or null for a 401
+ *   api       (request, url) => body | { status, body } | undefined, for every other /api call
+ *   patch     { "/app/shell.js": (text) => text } rewrites a served file, to try a page with other constants
+ * Every /api call is kept on page.apiCalls with its method, path, query, bearer and body.
+ */
+export async function openPage(lab, {
+  role = "owner", token = "fake-token", storage = {}, session = undefined, api = null,
+  width = 1440, height = 900, patch = {}, staff = {},
+} = {}) {
+  const page = await lab.browser.newPage({ viewport: { width, height } });
+  page.apiCalls = [];
+  await page.addInitScript(({ token: t, role: r, storage: extra }) => {
+    try {
+      if (sessionStorage.getItem("__fin_b19_seeded")) return;
+      sessionStorage.setItem("__fin_b19_seeded", "1");
+      if (t) localStorage.setItem("fh_token", t);
+      if (r) localStorage.setItem("fh_role", r);
+      for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, v);
+    } catch { /* storage may be blocked */ }
+  }, { token, role, storage });
+  await page.route("https://**", (route) => route.abort());
+  for (const [pathname, rewrite] of Object.entries(patch)) {
+    await page.route(`**${pathname}`, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: rewrite(await response.text()) });
+    });
+  }
+  const answer = (route, out, fallbackStatus = 200) => {
+    if (out && typeof out === "object" && "status" in out && "body" in out) return fulfillJson(route, out.body, out.status);
+    return fulfillJson(route, out, fallbackStatus);
+  };
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    page.apiCalls.push({
+      method: request.method(), path: url.pathname, query: Object.fromEntries(url.searchParams),
+      bearer: request.headers().authorization || null, contentType: request.headers()["content-type"] || null,
+      body: request.postDataBuffer() ? request.postDataBuffer().toString("utf8") : null,
+      raw: request.postDataBuffer() ? request.postDataBuffer().toString("latin1") : null,
+    });
+    if (request.method() === "GET" && url.pathname === "/api/auth/session") {
+      if (session === null) return fulfillJson(route, { ok: false, error: "unauthorized" }, 401);
+      const out = typeof session === "function" ? session(request) : session;
+      if (out !== undefined) return answer(route, out);
+      return fulfillJson(route, { ok: true, staff: { ...STAFF, role: role || "owner", ...staff } });
+    }
+    const custom = api ? await api(request, url) : undefined;
+    if (custom !== undefined) return answer(route, custom);
+    return fulfillJson(route, { ok: true, data: {}, items: [], tasks: [], count: 0 });
+  });
+  return page;
+}
+
 /** One server and one Chromium for a whole test file (opened in before(), closed in after()). */
 export function sharedLab() {
   const state = { lab: null };
@@ -65,6 +128,8 @@ export function sharedLab() {
     get origin() { return state.lab.origin; },
     // A signed-in page. api(request, url) answers /api calls; see newStaffPage.
     page: (options) => newStaffPage(state.lab, options),
+    // A page with full control of the session answer; see openPage.
+    open: (options) => openPage(state.lab, options),
   };
 }
 

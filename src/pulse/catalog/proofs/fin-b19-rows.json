@@ -48,12 +48,14 @@
    "surface": "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
    "controls": [
     "Sidebar group 'Admin' header (fold/unfold) and its links: staff-teams.html, hiring.html, products-commissions.html, contracts.html, brand-studio.html",
-    "Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html",
     "Sidebar group 'Client ops' header (fold/unfold) and its links: csm-queue.html, consent-capture.html, messaging.html, documents.html, inquiry-remover.html, company-brain.html",
     "Sidebar group 'Funding' header (fold/unfold) and its links: lenders.html, client-control-panel.html, finance-os.html",
-    "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html",
     "Sidebar group 'Marketing' header (fold/unfold) and its links: marketing-command-center.html, campaign-manager.html, social-studio.html, creative-factory.html, content-admin.html",
-    "Sidebar group 'Portals' header (fold/unfold) and its links: client-portal.html, affiliate.html",
+    "Sidebar group 'Portals' header (fold/unfold) and its links: client-portal.html, affiliate.html"
+   ],
+   "notAttached": [
+    "Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html",
+    "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html",
     "Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html"
    ]
   }
