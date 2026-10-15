@@ -9,6 +9,9 @@ import {
 } from "./money-setup.mjs";
 import { productOf } from "../adapters/commas.mjs";
 import { commasCopyViolation } from "../payments/commas-safe-copy.mjs";
+import { scorePoints } from "./credit-overview.mjs";
+import { buildSampleCreditFile } from "./sample-credit-file.mjs";
+import { planMixedSandboxUser } from "../banking/plaid-sandbox-user.mjs";
 
 const ORG = "org-1";
 const CID = "11111111-2222-3333-4444-555555555555";
@@ -166,6 +169,129 @@ describe("R07: a Capital Blueprint buyer who already has Finance OS", () => {
     const s = await readSetupStatus(stubDb({ entitled: false }), { orgId: ORG, clientId: CID, env, asOf: NOW });
     assert.equal(s.steps.find((x) => x.key === "pay").done, false);
     assert.equal(s.current_step, "pay");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R19 (FOS-02): step 2 must agree with the Credit tab.
+//
+// A rehearsal pull (src/finance/crs-pull.mjs, simulate:true) stores a result
+// stamped environment "sandbox" with no scores, and closes its soft_pull_requests
+// row as 'fulfilled'. The Credit tab skips a sandbox result, so it reads "No
+// credit pull yet". Step 2 used to count that same result (and that same
+// fulfilled request) as done, so the two screens disagreed.
+//
+// The stamps below are the real ones: the rehearsal payload is the shape
+// crs-pull.mjs documents (lines 51-67), the sample payload is built by the real
+// sample-credit-file.mjs. Test 1 pins both to the Credit tab's own reader, so if
+// that reader's rule moves, these tests say so instead of passing on a belief.
+// ---------------------------------------------------------------------------
+describe("setup step 2 agrees with the Credit tab (R19 / FOS-02)", () => {
+  const PULLED_AT = "2026-10-03T15:00:00.000Z";
+  const REHEARSAL_PAYLOAD = {
+    simulated: true,
+    simulatedNotice: "SIMULATED — no credit bureau was contacted",
+    environment: "sandbox",
+    hostEnvironment: "production",
+    bureaus: {}
+  };
+  const { facts } = planMixedSandboxUser({ today: new Date(PULLED_AT) });
+  const v = facts.accounts.find((a) => a.name === "Personal Visa");
+  const SAMPLE_PAYLOAD = buildSampleCreditFile({
+    pulledAt: PULLED_AT,
+    person: { first: "Test", last: "Test" },
+    visa: {
+      mask: v.mask, balanceCents: v.currentCents, limitCents: v.limitCents, aprPct: v.purchaseApr,
+      minimumPaymentCents: v.minimumPaymentCents, highBalanceCents: v.maxEodCents, lastActivityOn: v.lastPostedOn
+    }
+  }).payload;
+  const PAID = [{ id: "pl-1", status: "paid", amount_cents: 49700, paid_at: "2026-10-01T10:00:00Z" }];
+
+  test("the Credit tab's own reader: a rehearsal is no pull, a sample file is a pull", () => {
+    assert.equal(scorePoints([{ result: REHEARSAL_PAYLOAD, created_at: PULLED_AT }]).length, 0);
+    assert.ok(scorePoints([{ result: SAMPLE_PAYLOAD, created_at: PULLED_AT }]).length > 0);
+    assert.equal(REHEARSAL_PAYLOAD.environment, "sandbox");
+    assert.notEqual(String(SAMPLE_PAYLOAD.environment).toLowerCase(), "sandbox");
+  });
+
+  test("a client with only a rehearsal pull: step 2 is NOT done, not requested, no pulled-on date", async () => {
+    const db = stubDb({
+      links: PAID,
+      crs: [{ created_at: PULLED_AT, environment: REHEARSAL_PAYLOAD.environment }],
+      pulls: [{ status: "fulfilled", requested_at: "2026-10-03T14:59:00Z", resolved_at: PULLED_AT, environment: REHEARSAL_PAYLOAD.environment }]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.completed, false);
+    assert.equal(s.soft_pull.requested, false);
+    assert.equal(s.soft_pull.last_pulled_at, null);
+    assert.equal(s.steps.find((x) => x.key === "soft_pull").done, false);
+    assert.equal(s.current_step, "soft_pull");
+  });
+
+  test("the stamp is read case-insensitively", async () => {
+    const db = stubDb({
+      links: PAID,
+      crs: [{ created_at: PULLED_AT, environment: "SANDBOX" }],
+      pulls: [{ status: "fulfilled", requested_at: PULLED_AT, resolved_at: PULLED_AT, environment: " Sandbox " }]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.completed, false);
+    assert.equal(s.soft_pull.requested, false);
+  });
+
+  test("a rehearsal run AFTER a real pull does not hide the real pull or its date", async () => {
+    const db = stubDb({
+      links: PAID,
+      // newest first, as the query orders them
+      crs: [
+        { created_at: "2026-10-05T09:00:00Z", environment: "sandbox" },
+        { created_at: "2026-10-03T15:00:00Z", environment: "production" }
+      ],
+      pulls: [
+        { status: "fulfilled", requested_at: "2026-10-05T08:59:00Z", resolved_at: "2026-10-05T09:00:00Z", environment: "sandbox" },
+        { status: "fulfilled", requested_at: "2026-10-03T14:59:00Z", resolved_at: "2026-10-03T15:00:30Z", environment: "production" }
+      ]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.completed, true);
+    assert.equal(s.soft_pull.last_pulled_at, "2026-10-03T15:00:00.000Z");
+    assert.equal(s.steps.find((x) => x.key === "soft_pull").done, true);
+  });
+
+  test("a fulfilled request that has no stored result at all (older rows) still counts", async () => {
+    const db = stubDb({
+      links: PAID,
+      pulls: [{ status: "fulfilled", requested_at: "2026-10-03T14:59:00Z", resolved_at: "2026-10-03T15:00:30Z", environment: null }]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.completed, true);
+    assert.equal(s.soft_pull.last_pulled_at, "2026-10-03T15:00:30.000Z");
+  });
+
+  test("a sample file (environment 'simulated') still counts: the Credit tab paints its scores, so step 2 is done", async () => {
+    const db = stubDb({
+      links: PAID,
+      crs: [{ created_at: PULLED_AT, environment: String(SAMPLE_PAYLOAD.environment).toLowerCase() }],
+      pulls: [{ status: "fulfilled", requested_at: PULLED_AT, resolved_at: PULLED_AT, environment: String(SAMPLE_PAYLOAD.environment).toLowerCase() }]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.completed, true);
+    assert.equal(s.soft_pull.requested, true);
+    assert.equal(s.soft_pull.last_pulled_at, "2026-10-03T15:00:00.000Z");
+  });
+
+  test("a pull still in flight counts as requested, even beside a finished rehearsal", async () => {
+    const db = stubDb({
+      links: PAID,
+      pulls: [
+        { status: "queued", requested_at: "2026-10-06T10:00:00Z", resolved_at: null, environment: null },
+        { status: "fulfilled", requested_at: "2026-10-03T14:59:00Z", resolved_at: PULLED_AT, environment: "sandbox" }
+      ]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env: {}, asOf: NOW });
+    assert.equal(s.soft_pull.requested, true);
+    assert.equal(s.soft_pull.completed, false);
+    assert.equal(s.current_step, "soft_pull");
   });
 });
 

@@ -77,29 +77,54 @@ export async function readSetupLinks(db, { orgId, clientId }) {
   return { paid, open };
 }
 
+/* A stored pull stamped environment "sandbox" is not this person's credit
+   file, and the Credit tab already says so: triMerge() in
+   src/http/client-detail.mjs skips it ("Sandbox fixtures are not this person's
+   credit file. Never paint them."), so that tab reads "No credit pull yet".
+
+   A rehearsal pull (src/finance/crs-pull.mjs, simulate:true) is stamped "sandbox"
+   ON PURPOSE for exactly that reason, and it closes its soft_pull_requests row
+   as 'fulfilled'. Step 2 used to count both, so it said "Done" beside a Credit
+   tab that said "No credit pull yet" (R19 / FOS-02). It reads the same stamp now.
+
+   ONLY the sandbox stamp. A sample file (environment "simulated": the FinanceOS
+   test client, the walkthrough clients) carries scores and the Credit tab paints
+   it, so it still counts. Keying on result.simulated or on the provider
+   "crs_softview_simulated" would turn those clients' step 2 off while their
+   scores show. The rule lives here in JS over a narrow column, not in the
+   WHERE clause, so the stub-db tests exercise it. */
+function isSandboxStamp(environment) {
+  return String(environment ?? "").trim().toLowerCase() === "sandbox";
+}
+
 /** Soft pull, from the two places a pull leaves a mark (same pair portal-summary reads). */
 export async function readSoftPull(db, { orgId, clientId }) {
   const [reqs, results] = await Promise.all([
+    /* The result a fulfilled request points at is joined in only for its
+       stamp. A request with no result yet (queued, processing, or an older
+       row) has a NULL stamp and counts as it always did. */
     db.query(
-      `SELECT status, requested_at, resolved_at
-         FROM soft_pull_requests
-        WHERE org_id = $1 AND client_id = $2
-          AND status IN ('queued', 'processing', 'fulfilled')
-        ORDER BY requested_at DESC`,
+      `SELECT r.status, r.requested_at, r.resolved_at,
+              lower(c.result->>'environment') AS environment
+         FROM soft_pull_requests r
+         LEFT JOIN crs_results c
+                ON c.id = r.crs_result_id AND c.org_id = r.org_id
+        WHERE r.org_id = $1 AND r.client_id = $2
+          AND r.status IN ('queued', 'processing', 'fulfilled')
+        ORDER BY r.requested_at DESC`,
       [orgId, clientId]
     ),
     db.query(
-      `SELECT created_at
+      `SELECT created_at, lower(result->>'environment') AS environment
          FROM crs_results
         WHERE org_id = $1 AND client_id = $2
           AND is_demo IS NOT TRUE
-        ORDER BY created_at DESC
-        LIMIT 1`,
+        ORDER BY created_at DESC`,
       [orgId, clientId]
     )
   ]);
-  const reqRows = reqs.rows || [];
-  const last = (results.rows || [])[0] || null;
+  const reqRows = (reqs.rows || []).filter((x) => !isSandboxStamp(x.environment));
+  const last = (results.rows || []).find((x) => !isSandboxStamp(x.environment)) || null;
   const fulfilled = reqRows.find((x) => x.status === "fulfilled") || null;
   const completed = !!last || !!fulfilled;
   return {
