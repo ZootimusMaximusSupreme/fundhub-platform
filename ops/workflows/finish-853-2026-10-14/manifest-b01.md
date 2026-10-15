@@ -127,6 +127,34 @@ touched in generation 2.
 4. The surviving half of the optimize intake (first name, last name, email, phone, SMS box) has only text tests
    (`src/http/optimize-html.test.mjs` pins `sms_consent: sms.checked === true`); no browser test types into it.
 
+### Generation 2 commands run and results
+
+Measured on this Mac while sibling batches were running (load average 8 to 240).
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` (start of generation 2) | 819 open; 6 of the 40 batch rows open |
+| `node scripts/pulse/count-not-proved.mjs` (end) | 813 open (display 646 to 640); 0 of the 40 batch rows open |
+| `node scripts/pulse/compile-catalog.mjs` then `--check` | fresh |
+| `e2e/fin-b01-portal-unlock.spec.mjs` in Chromium | 13 of 13; 3 repeats at 4 workers 39 of 39 |
+| 15 breaks of `public/app/client-portal.html`, one at a time (table above) | every one red, file restored clean |
+| `fin-b01-retired-controls.test.mjs`, `gap-catalog-display.test.mjs`, `na-conditions.test.mjs`, `self-audit.test.mjs`, `modules.test.mjs`, `compiler.test.mjs` | 186 of 186 pass |
+| 4 breaks of the real product files for the retired controls (table above) | every one red, files restored clean |
+| `fin-b01-display-specs.test.mjs` (static check and the portal spec through the runner) | 2 of 2 pass |
+| `display-proof-cases.test.mjs` "every display proof case..." and "unmapped display rows..." | pass (red count 637) |
+| the four retired-control checks against the live public site, GET only, once | 4 of 4 `na`; 6 GETs, each page read once |
+| `npm run lint` | 3,573 files parse clean |
+| all non-browser-named pulse tests (265 files, 5,122 tests; node, concurrency 4, no database) | 4,894 pass, 226 skipped (database tests), 2 top-level fail: see below |
+
+The two top-level failures were not in batch 01 files and were load timeouts: `display-proof-cases.test.mjs` "runs every
+executable test named by every case" (the 33-minute test that runs every slice's browser specs together; inside it four
+specs failed under load average above 100: a slice 1 spec with a 30 second test timeout, two slice browser runners, and
+one batch 01 generation 1 test, "with no clipboard on the browser, Copy selects the link and says Press copy", which
+then passed 8 of 8 alone) and `flow-result-proofs.test.mjs` "every test named by a flow proof passes..." (a 240 second
+timeout). `fin-b01-portal-unlock.spec.mjs` passed inside that group run.
+
+The integrator should run the long `display-proof-cases` test on a quiet Mac after merging.
+
 ## Generation 1 text (kept)
 ## The numbers
 
