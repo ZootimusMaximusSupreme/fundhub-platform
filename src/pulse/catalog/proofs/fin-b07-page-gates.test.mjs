@@ -94,7 +94,9 @@ test("the partner home: the owner and a partner stay, every other staff role is 
   };
   for (const [role, session] of Object.entries(stays)) {
     const { page } = await open("/app/partner-galaxy.html", { session });
-    await page.waitForTimeout(800);
+    // Let every read the page makes finish, then give a late redirect time to fire before judging.
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1200);
     assert.equal(new URL(page.url()).pathname, "/app/partner-galaxy.html", `${role} must stay on the partner home`);
     await page.close();
   }
