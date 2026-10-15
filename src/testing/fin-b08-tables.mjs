@@ -24,26 +24,88 @@ function splitValues(list) {
   return out;
 }
 
+const UPDATE = /^\s*UPDATE\s+([a-z_][a-z0-9_]*)\s+SET\s+([\s\S]*?)\s+WHERE\s+([\s\S]*?)(?:\s+RETURNING\s+([\s\S]*))?$/i;
+
+/** Split on top-level commas (parentheses and quotes respected). */
+function splitTop(list) {
+  const out = [];
+  let depth = 0;
+  let quote = false;
+  let cur = "";
+  for (const ch of list) {
+    if (ch === "'") quote = !quote;
+    if (!quote) {
+      if (ch === "(") depth += 1;
+      if (ch === ")") depth -= 1;
+      if (ch === "," && depth === 0) { out.push(cur.trim()); cur = ""; continue; }
+    }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+/** One SET expression, evaluated against the row and the call's params. */
+function evalExpr(expr, row, params) {
+  const e = expr.trim();
+  let m;
+  if ((m = /^\$(\d+)(?:::[a-z0-9_\[\]]+)?$/i.exec(e))) {
+    const v = params[Number(m[1]) - 1];
+    return typeof v === "string" && /^\s*[[{]/.test(v) ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v;
+  }
+  if (/^NULL$/i.test(e)) return null;
+  if (/^now\(\)$/i.test(e)) return "now";
+  if ((m = /^'(.*)'(?:::[a-z0-9_]+)?$/.exec(e))) return m[1];
+  if (/^-?\d+(\.\d+)?$/.test(e)) return Number(e);
+  if (/^(true|false)$/i.test(e)) return e.toLowerCase() === "true";
+  if ((m = /^COALESCE\(\s*(\$\d+(?:::\w+)?)\s*,\s*([a-z_]+)\s*\)$/i.exec(e))) {
+    const v = evalExpr(m[1], row, params);
+    return v === null || v === undefined ? row[m[2]] : v;
+  }
+  if ((m = /^COALESCE\(\s*([a-z_]+)\s*,\s*(\$\d+(?:::\w+)?)\s*\)$/i.exec(e))) {
+    return row[m[1]] === null || row[m[1]] === undefined ? evalExpr(m[2], row, params) : row[m[1]];
+  }
+  if ((m = /^COALESCE\(\s*NULLIF\(\s*btrim\(\s*(\$\d+)(?:::\w+)?\s*\)\s*,\s*''\s*\)\s*,\s*([a-z_]+)\s*\)$/i.exec(e))) {
+    const v = String(evalExpr(m[1], row, params) ?? "").trim();
+    return v === "" ? row[m[2]] : v;
+  }
+  if ((m = /^([a-z_]+)\s*\+\s*(\d+)$/i.exec(e))) return Number(row[m[1]] || 0) + Number(m[2]);
+  if ((m = /^CASE WHEN ([a-z_]+) IN \(([^)]*)\) THEN '([^']*)' ELSE ([a-z_]+) END$/i.exec(e))) {
+    const set = m[2].split(",").map((x) => x.trim().replace(/^'|'$/g, ""));
+    return set.includes(String(row[m[1]])) ? m[3] : row[m[4]];
+  }
+  if ((m = /^CASE WHEN ([a-z_]+) = '([^']*)' THEN '([^']*)' ELSE ([a-z_]+) END$/i.exec(e))) {
+    return String(row[m[1]]) === m[2] ? m[3] : row[m[4]];
+  }
+  return undefined; // not understood: the column is left alone
+}
+
 /**
- * tablesDb({ tables: { clients: [...], ... }, rules: [[match, answer], ...], strict, autoInsert })
+ * tablesDb({ tables: { clients: [...], ... }, rules: [[match, answer], ...], strict, autoInsert, autoUpdate })
+ * autoUpdate: an `UPDATE t SET col = $n, col2 = 'x', ... WHERE <conditions> RETURNING ...` on a table in
+ * `tables` changes the rows the WHERE keeps (the statement's own conditions, judged by rowsWhere),
+ * for the SET expressions it understands, and answers them for RETURNING.
  * Returns a fakeDb with `.calls`, `.tables` and `.find(re)`.
  * autoInsert: an `INSERT INTO t (cols) VALUES ($1, $2, 'x', now())` statement for a table in
  * `tables` adds a row built from the statement itself (a $n takes its param, a literal its
  * value, anything else null), gives it a fresh id, and answers it for RETURNING.
  */
-export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert = false } = {}) {
+export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert = false, autoUpdate = false, defaults = {} } = {}) {
   let idSeq = 0;
   const insertRule = autoInsert ? [[(sql) => INSERT.test(sql) && (() => { const t = INSERT.exec(sql)[1].toLowerCase(); return t in tables; })(), (sql, params) => {
     const m = INSERT.exec(sql);
     const name = m[1].toLowerCase();
     const cols = m[2].split(",").map((c) => c.trim());
     const exprs = splitValues(m[3]);
-    const row = { id: `a${String(++idSeq).padStart(7, "0")}-0000-4000-8000-000000000000` };
+    const row = { id: `a${String(++idSeq).padStart(7, "0")}-0000-4000-8000-000000000000`, ...(defaults[name] || {}) };
     cols.forEach((col, i) => {
       const e = exprs[i] || "";
-      const p = /^\$(\d+)/.exec(e);
-      if (p) row[col] = params[Number(p[1]) - 1];
-      else if (/^'.*'$/.test(e)) row[col] = e.slice(1, -1);
+      const p = /^\$(\d+)(::jsonb)?/.exec(e);
+      if (p) {
+        const v = params[Number(p[1]) - 1];
+        row[col] = p[2] && typeof v === "string" ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v;
+      } else if (/^'.*'::jsonb$/.test(e)) row[col] = JSON.parse(e.slice(1, e.lastIndexOf("'")));
+      else if (/^'.*'(::\w+)?$/.test(e)) row[col] = e.slice(1, e.lastIndexOf("'"));
       else if (/^(true|false)$/i.test(e)) row[col] = e.toLowerCase() === "true";
       else if (/^-?\d+(\.\d+)?$/.test(e)) row[col] = Number(e);
       else row[col] = null;
@@ -51,9 +113,25 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
     tables[name].push(row);
     return [{ ...row }];
   }]] : [];
+  const updateRule = autoUpdate ? [[(sql) => { const m = UPDATE.exec(sql); return !!m && m[1].toLowerCase() in tables; }, (sql, params) => {
+    const m = UPDATE.exec(sql);
+    const name = m[1].toLowerCase();
+    const hit = rowsWhere(tables[name], `WHERE ${m[3]}`, params);
+    const sets = splitTop(m[2]).map((a) => { const i = a.indexOf("="); return [a.slice(0, i).trim(), a.slice(i + 1).trim()]; });
+    for (const row of hit) {
+      const next = {};
+      for (const [col, expr] of sets) {
+        const v = evalExpr(expr, row, params);
+        if (v !== undefined) next[col] = v;
+      }
+      Object.assign(row, next);
+    }
+    return { rows: hit.map((r) => ({ ...r })), rowCount: hit.length };
+  }]] : [];
   const fake = fakeDb([
     ...rules,
     ...insertRule,
+    ...updateRule,
     [(sql) => TABLE.test(sql), (sql, params) => {
       const name = TABLE.exec(sql)[1].toLowerCase();
       if (!(name in tables)) {
