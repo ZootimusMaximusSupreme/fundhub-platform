@@ -251,6 +251,7 @@ runner that lacks the secret would drop it; the new check would go red with "the
 | `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/na-conditions.test.mjs src/lib/no-unfenced-transmit.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/coverage/fin-b07-leads-page.test.mjs src/pulse/catalog/proofs/fin-b07-*.test.mjs` (all but the long focused proof test) | 437 tests, 437 pass, 0 fail, 0 skipped |
 | `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 2 of 2 pass (red count 631) |
 | `npm run lint` | 3577 files and inline scripts parse clean |
+| `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the full file: runs every executable test named by every case, including the new leads page test and the Chromium files) | 3 of 3 pass, 9 minutes 4 seconds, load average about 40 |
 
 Generation 1 commands:
 
