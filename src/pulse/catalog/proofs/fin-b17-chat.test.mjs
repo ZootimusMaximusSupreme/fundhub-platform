@@ -237,8 +237,9 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
   await proof.check(/^Message > Staff \(internal\): pick a teammate and send/, async () => {
     // A thread that already exists with the picked teammate is opened with its messages: mine on the right, theirs as internal.
     const w = await openWidget({
-      threads: [{ id: "conv-9", kind: "internal", participants: [{ id: ME, name: "Jordan Blake" }, { id: PEER, name: PEER_NAME }] },
-        { id: "conv-8", kind: "internal", participants: [{ id: ME, name: "Jordan Blake" }, { id: "staff-3", name: "Someone Else" }] }],
+      // the thread with someone else is listed first: the widget must pick the one that has the picked teammate
+      threads: [{ id: "conv-8", kind: "internal", participants: [{ id: ME, name: "Jordan Blake" }, { id: "staff-3", name: "Someone Else" }] },
+        { id: "conv-9", kind: "internal", participants: [{ id: ME, name: "Jordan Blake" }, { id: PEER, name: PEER_NAME }] }],
       thread: [
         { id: "m-1", direction: "outbound", channel: "internal", rendered_body: "Morning.", sender_staff_id: ME },
         { id: "m-2", direction: "outbound", channel: "internal", rendered_body: "Morning! Call at 3.", sender_staff_id: PEER },
