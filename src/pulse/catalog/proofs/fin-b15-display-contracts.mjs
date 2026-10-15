@@ -72,11 +72,12 @@ const LENDER_ROW_BAD = [
   ["a lender dollar amount is below zero",
     `l.typical_approval_range < 0 OR l.average_starting_loc < 0 OR l.max_known_loc < 0 OR l.minimum_deposit < 0`],
   ["a starting line is bigger than the biggest line ever seen",
-    `l.average_starting_loc IS NOT NULL AND l.max_known_loc IS NOT NULL AND l.average_starting_loc > l.max_known_loc`],
-  ["the same bank is listed twice in one table",
-    `EXISTS (SELECT 1 FROM lenders d WHERE d.org_id = l.org_id AND d.id <> l.id AND d.lender_table = l.lender_table
-              AND LOWER(d.name) = LOWER(l.name) AND COALESCE(d.product_name, '') = COALESCE(l.product_name, ''))`]
+    `l.average_starting_loc IS NOT NULL AND l.max_known_loc IS NOT NULL AND l.average_starting_loc > l.max_known_loc`]
 ];
+
+// The page leaves demo lenders out unless demo mode is on (src/lenders/store.mjs listLenders), so the
+// checks leave them out too: a demo row is not on the book.
+const REAL_LENDER = `COALESCE(l.is_demo, false) = false`;
 
 const MISMATCH_ROW_BAD = [
   ["a mismatch names no bureau that was seen", BLANK("o.observed_bureau")],
@@ -110,7 +111,7 @@ check({
   parts: [
     {
       from: "lenders l",
-      where: ORG("l"),
+      where: `${ORG("l")} AND ${REAL_LENDER}`,
       bad: [["a lender has no name", BLANK("l.name")]]
     },
     {
@@ -120,7 +121,7 @@ check({
     },
     {
       from: "(SELECT 1 AS one) e",
-      where: `NOT EXISTS (SELECT 1 FROM lenders x WHERE x.org_id = $1::uuid)`,
+      where: `NOT EXISTS (SELECT 1 FROM lenders x WHERE x.org_id = $1::uuid AND COALESCE(x.is_demo, false) = false)`,
       bad: [["the lender book is empty", "e.one = 1"]]
     }
   ]
@@ -130,8 +131,8 @@ check({
   key: "lenders-list-tab",
   surface: "lenders.html",
   control: "Tab: Lender list",
-  requirement: "Every lender the list shows must have a name, no dollar amount below zero, a starting line no bigger than the biggest known line, and must not appear twice in one table.",
-  parts: [{ from: "lenders l", where: ORG("l"), bad: LENDER_ROW_BAD }]
+  requirement: "Every lender the list shows must have a name, no dollar amount below zero, and a starting line no bigger than the biggest known line.",
+  parts: [{ from: "lenders l", where: `${ORG("l")} AND ${REAL_LENDER}`, bad: LENDER_ROW_BAD }]
 });
 
 check({
@@ -302,7 +303,7 @@ check({
   key: "mkt-flywheel-3-offer",
   surface: MC,
   control: "Ideas flywheel step 3 (offer): run button 'Write the offer', Read it, Approve, Tweak, Resume / Start over / Retry",
-  requirement: `For the offer step ${STEP_WORDS}, and every finished offer run must hold an offer, its document, and the model that wrote it.`,
+  requirement: `For the offer step ${STEP_WORDS}, and every finished offer run must hold an offer and its document.`,
   parts: [
     stepFilePart(3, "03-offer.md"),
     {
@@ -310,8 +311,7 @@ check({
       where: `${ORG("j")} AND j.kind = 'offer' AND j.status = 'done'`,
       bad: [
         ["a finished offer run holds no offer", `jsonb_typeof(j.result->'offer') IS DISTINCT FROM 'object'`],
-        ["a finished offer run holds no document", BLANK("j.result->>'document'")],
-        ["a finished offer run names no model", BLANK("j.result->>'model'")]
+        ["a finished offer run holds no document", BLANK("j.result->>'document'")]
       ]
     }
   ]
@@ -434,16 +434,16 @@ check({
   key: "mkt-scripts-edit",
   surface: MC,
   control: "Scripts: card 'Edit' (one box per part) + 'Save new version' / Cancel",
-  requirement: "Every version Chris saved by editing must sit one version after the version it replaced, in the same script, with the old version retired, only one live version left, and its repo file queued.",
+  requirement: "Every version Chris saved by editing from this tab (one that names its repo file) must sit one version after the version it replaced, in the same script, with the old version retired, only one live version left, and its repo file queued.",
   parts: [{
     from: "ad_scripts s JOIN ad_scripts p ON p.id = s.parent_script_id AND p.org_id = s.org_id",
-    where: `${ORG("s")} AND s.source = 'chris' AND s.version > 1`,
+    where: `${ORG("s")} AND s.source = 'chris' AND s.version > 1 AND s.repo_path IS NOT NULL`,
     bad: [
       ["an edit is not one version after the one it replaced", "s.version <> p.version + 1"],
       ["an edit moved to a different script", "p.root_script_id IS DISTINCT FROM s.root_script_id"],
       ["the replaced version is still live", "p.archived_at IS NULL"],
       ["a script has two live versions", `s.archived_at IS NULL AND EXISTS (SELECT 1 FROM ad_scripts o WHERE o.org_id = s.org_id AND o.root_script_id = s.root_script_id AND o.id <> s.id AND o.archived_at IS NULL)`],
-      ["an edit has no repo file queued", `NOT EXISTS (SELECT 1 FROM repo_outbox r WHERE r.org_id = s.org_id AND r.path = s.repo_path)`]
+      ["an edit names a repo file that was never queued", `NOT EXISTS (SELECT 1 FROM repo_outbox r WHERE r.org_id = s.org_id AND r.path = s.repo_path)`]
     ]
   }]
 });

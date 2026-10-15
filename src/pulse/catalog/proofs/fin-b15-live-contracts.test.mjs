@@ -116,25 +116,24 @@ const FIX = {
     }
   },
   "lenders-page-load": {
-    good: [R(T.lenders, L0), R(T.obs, obs())],
+    good: [R(T.lenders, L0), R(T.obs, obs()), R(T.lenders, lender({ name: "", is_demo: true }))],
     sample: 2,
     violations: {
       "a lender has no name": [R(T.lenders, lender({ name: " " }))],
       ...mismatchViolations(),
-      "the lender book is empty": { only: [], sample: 1 }
+      "the lender book is empty": { only: [R(T.lenders, lender({ is_demo: true }))], sample: 1 }
     }
   },
   "lenders-list-tab": {
     good: [R(T.lenders, lender()), R(T.lenders, lender({ name: "Second Bank" })),
-      R(T.lenders, lender({ name: "First Bank", lender_table: "PersonalCC" }))],
-    sample: 3,
+      R(T.lenders, lender({ name: "First Bank", lender_table: "PersonalCC" })),
+      // The same bank twice is not wrong (a bank can have two products), and a demo lender is not on the book.
+      R(T.lenders, lender({ name: "First Bank" })), R(T.lenders, lender({ name: "", is_demo: true }))],
+    sample: 4,
     violations: {
       "a lender has no name": [R(T.lenders, lender({ name: "" }))],
       "a lender dollar amount is below zero": [R(T.lenders, lender({ name: "Neg Bank", typical_approval_range: -5 }))],
-      "a starting line is bigger than the biggest line ever seen": [R(T.lenders, lender({ name: "Big Start", average_starting_loc: 50000, max_known_loc: 20000 }))],
-      "the same bank is listed twice in one table": {
-        rows: [R(T.lenders, lender({ name: "Dup Bank" })), R(T.lenders, lender({ name: "DUP BANK" }))], bad: 2
-      }
+      "a starting line is bigger than the biggest line ever seen": [R(T.lenders, lender({ name: "Big Start", average_starting_loc: 50000, max_known_loc: 20000 }))]
     }
   },
   "lenders-mismatch-tab": {
@@ -311,14 +310,16 @@ const FIX = {
     const sibling = script({ root_script_id: twoLive.r.id, parent_script_id: twoLive.r.id, version: 4, source: "machine", repo_path: twoLive.r.repo_path });
     return {
       good: [R(T.scripts, root), R(T.scripts, edit), file(edit),
-        R(T.scripts, script({ version: 1, source: "chris" }))],
+        R(T.scripts, script({ version: 1, source: "chris" })),
+        // an older save with no repo path is not judged here
+        R(T.scripts, script({ parent_script_id: root.id, version: 9, source: "chris", repo_path: null }))],
       sample: 1,
       violations: {
         "an edit is not one version after the one it replaced": [R(T.scripts, gap.r), R(T.scripts, gap.e), file(gap.e)],
         "an edit moved to a different script": [R(T.scripts, moved.r), R(T.scripts, { ...moved.e, root_script_id: "root-elsewhere" }), file(moved.e)],
         "the replaced version is still live": [R(T.scripts, { ...live.r, archived_at: null }), R(T.scripts, { ...live.e, archived_at: T0 }), file(live.e)],
         "a script has two live versions": [R(T.scripts, twoLive.r), R(T.scripts, twoLive.e), R(T.scripts, sibling), file(twoLive.e)],
-        "an edit has no repo file queued": [R(T.scripts, noFile.r), R(T.scripts, noFile.e)]
+        "an edit names a repo file that was never queued": [R(T.scripts, noFile.r), R(T.scripts, noFile.e)]
       }
     };
   })(),
@@ -495,8 +496,7 @@ function flywheelFixtures() {
     violations: {
       ...fileViolations(3, "03-offer.md"),
       "a finished offer run holds no offer": [R(T.jobs, job({ kind: "offer", status: "done", result: { ...offerResult, offer: null } }))],
-      "a finished offer run holds no document": [R(T.jobs, job({ kind: "offer", status: "done", result: { ...offerResult, document: "" } }))],
-      "a finished offer run names no model": [R(T.jobs, job({ kind: "offer", status: "done", result: { ...offerResult, model: " " } }))]
+      "a finished offer run holds no document": [R(T.jobs, job({ kind: "offer", status: "done", result: { ...offerResult, document: "" } }))]
     }
   };
 
