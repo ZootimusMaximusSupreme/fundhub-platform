@@ -524,6 +524,26 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A route action the owner switched off (finish-853 batch 03, 2026-10-14). True when the route lane that made
+     the row reads the saved result of that action again and finds none made after the first live ship without it
+     (src/pulse/coverage/fin-b03-route-retired.mjs, gap-door-batch-routes.mjs naVerify). The first send saved after
+     that is a named FAIL from the lane, and this claim stops holding. */
+  "catalog-route-retired-action": Object.freeze({
+    say(args = {}) {
+      return `${isText(args.action) ? args.action : "This route action"} was switched off by the owner. None was saved since.`;
+    },
+    claim(args = {}) {
+      return `No ${isText(args.action) ? args.action : "retired action"} send was saved since it went off.`;
+    },
+    problem(args) {
+      if (!/^routes-[0-3]\.json$/.test(String(args?.sourceFile || ""))) return "sourceFile is not a route map";
+      if (!String(args?.surface || "").startsWith("route:")) return "surface is not a route";
+      if (!isText(args?.action)) return "action is missing";
+      return isText(args?.control) ? null : "control is missing";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

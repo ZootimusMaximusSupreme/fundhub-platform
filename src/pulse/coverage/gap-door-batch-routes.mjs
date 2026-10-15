@@ -1,6 +1,10 @@
 // Exact read-only red checks for route rows that still lack business-result proof.
 // Handler presence and the separate refusal test are context only. Neither makes
 // the named route result green.
+//
+// One row names an action the owner switched off (closer-deck send_ebook). It has no
+// result left to prove, so it is judged by what it left behind: a saved send after the
+// action went off is a FAIL, none is "nothing to judge" (fin-b03-route-retired.mjs).
 
 import routes0 from "../../../ops/workflows/coverage-every-surface-2026-10-10/routes-0.json" with { type: "json" };
 import routes1 from "../../../ops/workflows/coverage-every-surface-2026-10-10/routes-1.json" with { type: "json" };
@@ -9,6 +13,12 @@ import routes3 from "../../../ops/workflows/coverage-every-surface-2026-10-10/ro
 import { ROUTES } from "../../../netlify/functions/api.mjs";
 import { makeRecipe } from "../catalog/door-recipes.mjs";
 import { routeKeyForDoor } from "../catalog/proofs/door-batch-route-result.mjs";
+import {
+  RETIRED_ROUTE_CODE,
+  judgeRetiredRoute,
+  retiredRouteEntry,
+  verifyRetiredRoute,
+} from "./fin-b03-route-retired.mjs";
 
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
   "routes-0.json": 54,
@@ -75,6 +85,15 @@ export function judgeRouteGap(row, routes = ROUTES) {
   };
 }
 
-export async function gapChecks() {
-  return ROUTE_GAP_ROWS.map((row) => judgeRouteGap(row));
+export async function gapChecks(ctx = {}) {
+  const out = [];
+  for (const row of ROUTE_GAP_ROWS) {
+    const retired = retiredRouteEntry(row);
+    out.push(retired ? await judgeRetiredRoute(row, retired, ctx) : judgeRouteGap(row));
+  }
+  return out;
 }
+
+export const naVerify = Object.freeze({
+  [RETIRED_ROUTE_CODE]: (args, ctx = {}) => verifyRetiredRoute(args, ctx),
+});
