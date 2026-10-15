@@ -5,7 +5,8 @@
 //
 //   Scripts tab   the five filter chips and their counts; the Previous and Next buttons never save;
 //                 the 409 banner's "Use theirs" and "Read the new version"
-//   Ideas tab     the "Go to step N" button after a spend read
+//   Ideas tab     the "Go to step N" button after a spend read; "Hide the pages" and the three page
+//                 preview buttons
 //   Launch tab    "Open Settings" on an ad with no ad set; the 20 second load-state poll
 //
 // Each test was broken on purpose in the page and went red (see ops/workflows/finish-853-2026-10-14/
@@ -14,7 +15,7 @@
 import { test, expect } from "@playwright/test";
 import { exampleResponse } from "../src/marketing/api-contract.mjs";
 import { openTabHarness } from "./helpers/cc-tab-harness.mjs";
-import { mountIdeas } from "./helpers/cc-tab-ideas-host.mjs";
+import { mountIdeas, funnelDetail } from "./helpers/cc-tab-ideas-host.mjs";
 import { STUB_PATH, stubHtml } from "./helpers/cc-launch-stub.mjs";
 
 test.use({ timezoneId: "America/Phoenix", locale: "en-US", viewport: { width: 390, height: 844 } });
@@ -226,6 +227,34 @@ test("Ideas: after a spend read, Go to step N jumps to that step's own run butto
   await jump.click();
   await expect.poll(() => page.evaluate(() => document.activeElement && document.activeElement.id)).toBe("cci-run-3");
   expect(sent.length, "Go to step is a jump, never a write").toBe(before);
+});
+
+test("Ideas: See the pages opens a sandboxed preview, the three page buttons switch it, Hide the pages closes it, and nothing is sent", async ({ page }) => {
+  const FUNNEL = "00000000-0000-4000-8000-000000000603";
+  const { posts: sent } = await mountIdeas(page, { "GET marketing/funnel": () => funnelDetail({ path: "/blueprint" }) });
+  const row = page.locator(`[data-funnel="${FUNNEL}"]`);
+  const frameBody = page.frameLocator(`[data-funnel="${FUNNEL}"] iframe.cci-frame`);
+  await expect(row.locator("iframe.cci-frame")).toHaveCount(0);
+
+  await row.getByRole("button", { name: "See the pages" }).click();
+  await expect(row.locator("iframe.cci-frame")).toHaveCount(1);
+  await expect(row.locator("iframe.cci-frame")).toHaveAttribute("sandbox", "");
+  await expect(row.getByRole("button", { name: "Hide the pages" })).toHaveCount(1);
+  await expect(row.getByRole("button", { name: "See the pages" })).toHaveCount(0);
+  await expect(frameBody.getByRole("heading")).toHaveText("Know exactly what stands between you and funding");
+
+  await row.getByRole("tab", { name: "Booking page" }).click();
+  await expect(frameBody.getByRole("heading")).toHaveText("Pick the time that works for you");
+  await expect(row.getByRole("tab", { name: "Booking page" })).toHaveAttribute("aria-selected", "true");
+  await row.getByRole("tab", { name: "Thank-you page" }).click();
+  await expect(frameBody.getByRole("heading")).toHaveText("Your call is on the calendar");
+  await row.getByRole("tab", { name: "Landing page" }).click();
+  await expect(frameBody.getByRole("heading")).toHaveText("Know exactly what stands between you and funding");
+
+  await row.getByRole("button", { name: "Hide the pages" }).click();
+  await expect(row.locator("iframe.cci-frame")).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "See the pages" })).toHaveCount(1);
+  expect(sent, "a preview never writes").toEqual([]);
 });
 
 /* ── Launch tab: Open Settings and the 20 second poll ─────────────────────────────────────── */
