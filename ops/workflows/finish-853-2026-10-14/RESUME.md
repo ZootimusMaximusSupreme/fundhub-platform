@@ -23,3 +23,12 @@
 - Local `main` is 3 commits ahead of `origin/main` (board notes + the Monday rule) and behind the PR #51 merge:
   `git pull --rebase origin main` then push after the ship passes.
 - Email alerts to Chris are live (`PULSE_EMAIL_TO`); texts are dead until Twilio is reactivated.
+
+## STOPPED 2026-10-15 ~08:30 Arizona to protect weekly usage
+
+Chris's weekly usage bar read 96% (resets Tuesday 8:00 AM). The run was stopped on purpose (TaskStop) before its
+final check, oversight and integrator steps. All builders had finished and written manifests; the finished agent
+results are cached in the journal. Nothing was lost. To finish later: relaunch with the same script, run id and
+batches (absolute paths), ideally only batches 01 to 08 (money and customer) first. The Opus integrator is the
+last step and was never run. Launch (Capital Blueprint) is Thursday night 2026-10-15; do not spend usage on this
+run before launch.
