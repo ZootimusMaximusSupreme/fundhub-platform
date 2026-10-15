@@ -405,6 +405,7 @@ Object.assign(WORLDS, {
         clients: [
           client({ custom_fields: { staff_notes: "Call back Tuesday." } }),
           client({ custom_fields: { notes: "Old imported note." } }),
+          client({ custom_fields: { notes: null, staff_notes: null } }), // empty imported fields are not notes
           client({ custom_fields: {} })
         ]
       };

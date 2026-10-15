@@ -414,16 +414,20 @@ check(
 
 const NOTES = jsonGet(c("k", "custom_fields"), "notes");
 const STAFF_NOTES = jsonGet(c("k", "custom_fields"), "staff_notes");
+const NOTES_KIND = jtype(NOTES);
+const STAFF_NOTES_KIND = jtype(STAFF_NOTES);
+// A key that is present and not JSON null. An empty imported field is JSON null and is not a saved note.
+const has = (kind) => and(notNull(kind), distinct(kind, lit("null")));
 check(
   "client-notes-saved",
   "Notes textarea and Save notes button",
   "Every saved staff note on a client file must be plain text no longer than the 20,000 character limit the save enforces.",
   part({
     table: "clients", alias: "k",
-    where: and(notDemo("k"), or(notNull(NOTES), notNull(STAFF_NOTES))),
+    where: and(notDemo("k"), or(has(NOTES_KIND), has(STAFF_NOTES_KIND))),
     bad: or(
-      and(notNull(NOTES), distinct(jtype(NOTES), lit("string"))),
-      and(notNull(STAFF_NOTES), distinct(jtype(STAFF_NOTES), lit("string"))),
+      and(has(NOTES_KIND), distinct(NOTES_KIND, lit("string"))),
+      and(has(STAFF_NOTES_KIND), distinct(STAFF_NOTES_KIND, lit("string"))),
       gt(charLength(jtext(c("k", "custom_fields"), "notes")), lit(20000)),
       gt(charLength(jtext(c("k", "custom_fields"), "staff_notes")), lit(20000))
     )
