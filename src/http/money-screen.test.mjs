@@ -210,3 +210,33 @@ test("no loans: the loan card says so in words; cash still never adds up (wave 4
 test("money.html carries the CSS the loan card needs (wave 4, H2)", () => {
   assert.match(HTML, /\.debt-side\{display:flex;flex-direction:column;gap:16px;min-width:0\}/);
 });
+
+/* R24 (FOS-04): the Cards used tile must floor an overpaid card at 0, the same
+   way the server does (money-overview.mjs `owed`, money-trends.mjs cardsUsed).
+   A card paid past zero is a credit, not room to hide other cards' debt. */
+test("Cards used floors an overpaid card at 0 owed, like the server (R24, FOS-04)", () => {
+  const d = fixture();
+  const base = d.debt.cards[0];
+  d.debt.cards = [
+    { ...base, account_id: "c-high", name: "High Card", mask: "1111", balance_cents: 90000, limit_cents: 100000 },
+    { ...base, account_id: "c-over", name: "Overpaid Card", mask: "2222", balance_cents: -50000, limit_cents: 100000 }
+  ];
+  const tile = M.render(d).match(/<section class="card tile" aria-labelledby="t-used">[\s\S]*?<\/section>/);
+  assert.ok(tile, "the Cards used tile did not render");
+  const t = text(tile[0]);
+  // 90000 owed over 200000 of limits = 45%. The overpaid card owes 0, not -50000.
+  assert.match(t, /Cards used 45%/, "an overpaid card pulled the percent down");
+  assert.match(t, /\$900\.00 of \$2,000\.00 in limits/);
+  assert.doesNotMatch(t, /20%/, "negative balance was added into the used total");
+  assert.doesNotMatch(t, /\$400\.00 of/);
+});
+
+test("Cards used is never negative when every card is overpaid (R24, FOS-04)", () => {
+  const d = fixture();
+  const base = d.debt.cards[0];
+  d.debt.cards = [{ ...base, balance_cents: -25000, limit_cents: 100000 }];
+  const tile = M.render(d).match(/<section class="card tile" aria-labelledby="t-used">[\s\S]*?<\/section>/);
+  const t = text(tile[0]);
+  assert.match(t, /Cards used 0%/);
+  assert.doesNotMatch(t, /[-\u2212]/, "a negative percent or dollar amount was painted");
+});
