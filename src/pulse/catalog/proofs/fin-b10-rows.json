@@ -1,0 +1,90 @@
+{
+ "fin-b10-campaign-manager.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "campaign-manager.html",
+   "controls": [
+    "Drawer: metric buttons (spend, impressions, clicks, conversions, and more)",
+    "Fatigue Window select (7, 14, 30 days)",
+    "Fatigue row: Label button (opens link box)",
+    "Fatigue state rail (all, refresh, queue, ok, unconfigured)",
+    "Funnel pages: Sync now button",
+    "Link box: Close button",
+    "Link box: Creative select",
+    "Link box: Our ad number input",
+    "Reload button",
+    "Spend rail filter (all, breached, ok)"
+   ]
+  }
+ ],
+ "fin-b10-client-control-panel.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "client-control-panel.html",
+   "controls": [
+    "Agent context toggle and pre block (what the AI sees)",
+    "Blueprint group toggle",
+    "Client picker select (200 clients, navigates to ?id=)",
+    "Credit & Hold Status toggle (credit status, income estimates, hold reason)",
+    "Credit partner links: Open the partner's file, Record the partner's own consent",
+    "Declines: Use this email button",
+    "Details toggle (email, phone, tier, path)",
+    "More menu: Open Bank Inbox button",
+    "More menu: Open Funding Matrix link",
+    "Open FinanceOS link (owner, admin, sales_manager only)",
+    "System Facts toggle (last pull, scores, round, funded)"
+   ],
+   "notAttached": [
+    "More menu: Open Credit Snapshot link",
+    "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover"
+   ]
+  }
+ ],
+ "fin-b10-client-portal.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "client-portal.html",
+   "controls": [
+    "Account drawer tabs: Payments, Agreements, Documents, Activity, Messages",
+    "Course tiles: Open course and expand modules (Funding Mastery, Deliverables)",
+    "Facebook wins group card (external link)",
+    "See exactly where your file stands link (to /progress.html)",
+    "Sign to authorize dispute letters: Clear button",
+    "Staff view: Open this client in Documents link",
+    "What You Own: Open course button"
+   ]
+  }
+ ],
+ "fin-b10-closer.test.mjs": [
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "closer-call.html",
+   "controls": [
+    "Redirect page: open Closer Dashboard link and auto-redirect script"
+   ]
+  },
+  {
+   "sourceFile": "desks-a.json",
+   "surface": "closer-dashboard.html",
+   "controls": [
+    "Belief failed buttons (pain, doubt, cost, desire, money, support, trust, none)",
+    "Contract panel: Copy link button",
+    "Deal breakdown details toggle",
+    "Join call button (opens the booked call link)",
+    "Present button (opens present.html?contact= in a new tab)"
+   ]
+  }
+ ],
+ "fin-b10-company-brain.test.mjs": [
+  {
+   "sourceFile": "desks-b.json",
+   "surface": "company-brain.html",
+   "controls": [
+    "'N waiting' pending badges (two)",
+    "Add a document: '+' button then file picker (PDF, Word, Excel, PowerPoint, text; 25 MB cap)",
+    "Answer source list: 'Open in Drive' link and 'Client record' link",
+    "Class quiz: 'Which quiz' picker"
+   ]
+  }
+ ]
+}
