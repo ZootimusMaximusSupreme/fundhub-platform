@@ -411,7 +411,7 @@ const FIX = {
     const errored = loadedVideo({ load_error: "Meta said no earlier" });
     const approvedVideo = video();
     const strangerVideo = video({ org_id: OTHER });
-    const rawVideo = video({ video_kind: "raw_take" });
+    const rawVideo = video({ video_kind: "not_ad" });
     const unapprovedQueued = video({ approved_at: null, approved_by: null });
     return {
       good: [R(T.videos, v), R(T.ads, adFor(v)), R(T.videos, waiting), R(T.videos, approvedVideo), R(T.jobs, loadJob(approvedVideo))],
@@ -431,7 +431,7 @@ const FIX = {
     const approvedVideo = video();
     const loaded = loadedVideo();
     const strangerVideo = video({ org_id: OTHER });
-    const rawVideo = video({ video_kind: "raw_take" });
+    const rawVideo = video({ video_kind: "not_ad" });
     const unapproved = video({ approved_at: null, approved_by: null });
     const noAdRow = loadedVideo({ ad_row_id: null });
     return {
