@@ -1,18 +1,19 @@
 # Batch 19 manifest (finish the 853, tier 4, lane gap-catalog-display, 40 rows)
 
-Branch `fin/b19`, built from `fin/base` (`2f4f574a0`). Work folder `.claude/worktrees/fin-b19`. Generation 1. Nothing was pushed or merged.
+Branch `fin/b19`, built from `fin/base` (`2f4f574a0`). Work folder `.claude/worktrees/fin-b19`. Generation 1 (resumed once after the Mac was shut down; the first pass is the earlier commits, the resume pass added the hidden-head check below). Nothing was pushed or merged.
 
 ## The number
 
 - Rows in the batch: 40. All 40 were NOT_PROVED at the start (`node scripts/pulse/count-not-proved.mjs`, ids intersected with `batch-19.json`): **openBefore 40**.
-- After `npm run pulse:catalog` and the same script: **openAfter 5**. The whole repo went 853 to 818 (35 rows left the lane).
-- The 5 left are exact `not-attachable` findings (below). Nothing is faked.
+- After `npm run pulse:catalog` and the same script: **openAfter 2**. The whole repo went 853 to 815 (38 rows left the lane).
+- The 2 left are exact `not-attachable` findings (below), both the same page bug. Nothing is faked.
 
 | Outcome | Rows |
 |---|---|
 | live-check: a read-only query on saved data that goes red on a wrong saved result | 11 |
 | practice-test: a real page in Chromium or the real handler, fake data, mutation-checked | 24 |
-| not-attachable: exercised, but the product does not do what the row says, or no person can reach it | 5 |
+| na-verified: nothing to judge, and the computer re-reads the live page every run to check it is still true | 3 |
+| not-attachable: exercised, but the product does not do what the row says | 2 |
 
 A live-check row also keeps its practice test (the page half). The two answer different questions: the practice test says the control sends and paints the right thing; the live check says the result it left behind is not wrong. The live checks read nothing today (no database in this build), so on the offline count they show "skip"; the pulse judges them against the real tables.
 
@@ -36,8 +37,8 @@ A live-check row also keeps its practice test (the page half). The two answer di
 | 14 | desks-e.json:public/app/pipeline.html:Rail tab R-08 Affiliates + White Label | live-check | `fin-b19-display-contracts.mjs` | Every card saved on this rail sits in a column of the same rail and names a client or partner in the company, or the tab's board drops it (green with no cards yet). Practice test (fin-b19-pipeline-controls.test.mjs): the tab asks for its own pipeline once and paints that rail's columns. |
 | 15 | desks-e.json:public/app/pipeline.html:Rail tab R-09 Hiring | live-check | `fin-b19-display-contracts.mjs` | Every card saved on this rail sits in a column of the same rail and names a client or partner in the company, or the tab's board drops it (green with no cards yet). Practice test (fin-b19-pipeline-controls.test.mjs): the tab asks for its own pipeline once and paints that rail's columns. |
 | 16 | desks-e.json:public/app/pipeline.html:Search box (placeholder says name, phone, or email; the filter compares the card's name text only) | practice-test | `fin-b19-pipeline-controls.test.mjs` | Keeps cards whose name has the typed words; an email or phone typed here matches nothing (pinned, as the row says). |
-| 17 | desks-e.json:public/app/pipeline.html:Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first | not-attachable | - | The four sorts order a column correctly (practice test green) but picking Manual after another sort leaves the sorted order, because applySort() returns on an empty choice. The row's first choice does not do what it says. Needs a product change in public/app/pipeline.html. |
-| 18 | desks-e.json:public/app/pipeline.html:The x on each active filter chip (clears that one filter) | not-attachable | - | The x on the Waiting on, Owner and Age chips clears only that filter (practice test green), but the x on the Sort chip clears the select and leaves the order sorted (same applySort() early return). Needs a product change in public/app/pipeline.html. |
+| 17 | desks-e.json:public/app/pipeline.html:Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first | not-attachable | page-gap contract in `fin-b19-display-contracts.mjs` (names it on the board); exercised in `fin-b19-pipeline-controls.test.mjs` | The four sorts order a column correctly (practice test green) but picking Manual after another sort leaves the sorted order, because applySort() returns on an empty choice. The row's first choice does not do what it says. Needs a product change in public/app/pipeline.html. |
+| 18 | desks-e.json:public/app/pipeline.html:The x on each active filter chip (clears that one filter) | not-attachable | page-gap contract in `fin-b19-display-contracts.mjs` (names it on the board); exercised in `fin-b19-pipeline-controls.test.mjs` | The x on the Waiting on, Owner and Age chips clears only that filter (practice test green), but the x on the Sort chip clears the select and leaves the order sorted (same applySort() early return). Needs a product change in public/app/pipeline.html. |
 | 19 | desks-e.json:shell.js (shared chrome):Account chip: add or change your photo (hidden file input, PNG or JPEG) | live-check | `fin-b19-display-contracts.mjs` | Every saved staff photo key sits under that person's own company and staff folder and ends .png or .jpg (green with no photos). Practice test (fin-b19-shell-chrome.test.mjs): picks a file, posts it as the photo field with the bearer, re-reads the session, shows the refusal words. |
 | 20 | desks-e.json:shell.js (shared chrome):Account chip: backend badge (LIVE / NO DB / NO API / DEMO) | practice-test | `fin-b19-shell-chrome.test.mjs` | LIVE (with the migration count), NO DB, NO API from the health answer, and DEMO for a demo login even when the backend is up. |
 | 21 | desks-e.json:shell.js (shared chrome):Account chip: Sign out | practice-test | `fin-b19-shell-chrome.test.mjs` | Posts one logout with the bearer, wipes the token, role, demo and client keys, lands on /login.html (the portal page for a client); signs out anyway when the server hangs. The handler half is src/http/auth-logout-handler.test.mjs (both session stores revoked by hash), held by name. |
@@ -47,13 +48,13 @@ A live-check row also keeps its practice test (the page half). The two answer di
 | 25 | desks-e.json:shell.js (shared chrome):Role gate: cached role bounces a role that may not open this page; session answer is authoritative; no session sends to the sign-in page | practice-test | `fin-b19-shell-chrome.test.mjs` | A cached role that may not open the page is bounced before paint, the session answer wins and rewrites the cache, no session goes to /login.html with the next page. |
 | 26 | desks-e.json:shell.js (shared chrome):Search button and overlay (Cmd or Ctrl K): type to search clients, contracts, documents, conversations, pipeline cards; hits are links | practice-test | `fin-b19-shell-chrome.test.mjs` | Button and Control+K open it, typing asks /api/read/search once with the words, hits are links, Escape closes, 403 and no-match words, and partner/client get no button. |
 | 27 | desks-e.json:shell.js (shared chrome):Sidebar group 'Admin' header (fold/unfold) and its links: staff-teams.html, hiring.html, products-commissions.html, contracts.html, brand-studio.html | practice-test | `fin-b19-shell-sidebar.test.mjs` | Same: owner and admin three links, sales manager two (hiring and brand-studio never show); folds and unfolds. |
-| 28 | desks-e.json:shell.js (shared chrome):Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html | not-attachable | - | agent-editor.html, automations.html and journeys.html are all on NAV_HIDDEN and hidden by crm-sidebar.css, so no role is ever shown the head; nothing to fold. |
+| 28 | desks-e.json:shell.js (shared chrome):Sidebar group 'Automation' header (fold/unfold) and its links: agent-editor.html, automations.html, journeys.html | na-verified | `fin-b19-hidden-head.mjs`, code `catalog-display-hidden-section-head` | agent-editor.html, automations.html and journeys.html are all on NAV_HIDDEN, so shell.js hides the whole section and no role is ever shown the head; nothing to fold. Each run reads the live /app/shell.js and says nothing to judge only while every row under the head is on that list. Practice test (fin-b19-shell-sidebar.test.mjs): the head is absent for nine roles in Chromium. |
 | 29 | desks-e.json:shell.js (shared chrome):Sidebar group 'Client ops' header (fold/unfold) and its links: csm-queue.html, consent-capture.html, messaging.html, documents.html, inquiry-remover.html, company-brain.html | practice-test | `fin-b19-shell-sidebar.test.mjs` | Same for the eight staff roles: each role's exact list (consent-capture never shows), head folds and unfolds. |
 | 30 | desks-e.json:shell.js (shared chrome):Sidebar group 'Funding' header (fold/unfold) and its links: lenders.html, client-control-panel.html, finance-os.html | practice-test | `fin-b19-shell-sidebar.test.mjs` | Drawn for the eight staff roles with exactly their links under it (finance-os never shows); the head folds and unfolds them. |
-| 31 | desks-e.json:shell.js (shared chrome):Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html | not-attachable | - | partner-galaxy.html is on NAV_HIDDEN (shell.js) and hidden by crm-sidebar.css, so no role is ever shown the head; nothing to fold. Needs a product change if the head is meant to be seen. |
+| 31 | desks-e.json:shell.js (shared chrome):Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html | na-verified | `fin-b19-hidden-head.mjs`, code `catalog-display-hidden-section-head` | partner-galaxy.html is on NAV_HIDDEN, so shell.js hides the whole section and no role is ever shown the head; nothing to fold. Re-read from the live /app/shell.js every run; goes back to not proved the day the row is shown. |
 | 32 | desks-e.json:shell.js (shared chrome):Sidebar group 'Marketing' header (fold/unfold) and its links: marketing-command-center.html, campaign-manager.html, social-studio.html, creative-factory.html, content-admin.html | practice-test | `fin-b19-shell-sidebar.test.mjs` | Same: owner and admin five links, partner two, nobody else gets the head; folds and unfolds. |
 | 33 | desks-e.json:shell.js (shared chrome):Sidebar group 'Portals' header (fold/unfold) and its links: client-portal.html, affiliate.html | practice-test | `fin-b19-shell-sidebar.test.mjs` | Same: only the owner gets the head, with Client Portal alone (affiliate never shows); folds and unfolds. |
-| 34 | desks-e.json:shell.js (shared chrome):Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html | not-attachable | - | galaxy.html and ops-admin.html are both on NAV_HIDDEN and hidden by crm-sidebar.css, so no role is ever shown the head; nothing to fold. |
+| 34 | desks-e.json:shell.js (shared chrome):Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html | na-verified | `fin-b19-hidden-head.mjs`, code `catalog-display-hidden-section-head` | galaxy.html and ops-admin.html are both on NAV_HIDDEN, so shell.js hides the whole section and no role is ever shown the head; nothing to fold. Re-read from the live /app/shell.js every run. |
 | 35 | desks-e.json:shell.js (shared chrome):Sidebar logo link (to pipeline.html) and collapse button (to icon strip; closes the drawer on a phone) | practice-test | `fin-b19-shell-chrome.test.mjs` | Logo goes to pipeline.html; the collapse button folds the rail to icons and back, and on a phone the menu button opens the drawer and the same button closes it. |
 | 36 | desks-f.json:sales-floor.html (+ sales-floor.js):'Flag <belief>' button: stores a belief x source row for marketing | live-check | `fin-b19-display-contracts.mjs` | Every flag filed from the floor names a staff member of the company and carries the same count in the row and in its note (green with none filed). Practice test: the exact POST body, the stored and refused words. |
 | 37 | desks-f.json:sales-floor.html (+ sales-floor.js):'One closer at a time': previous and next arrows and one name button per closer | practice-test | `fin-b19-sales-floor.test.mjs` | Previous and Next step and wrap, each name button picks that closer, and no second request is made. |
@@ -75,6 +76,19 @@ Colors, fonts and ramp are held by the table's own CHECK constraints, so a query
 
 The SQL is written in the part of the language Postgres and SQLite read the same way. `fin-b19-display-contracts.test.mjs` runs the very SQL text on SQLite (`node:sqlite`, Node 22, casts stripped) over stand-in tables: quiet with no rows, green on good rows, red on each kind of wrong row, blind to another company, demo and archived rows; then it removes one condition at a time and shows the wrong row goes unseen (8 break cases); then it runs all 11 through the real lane (`gapChecks`) green and red.
 
+## The hidden-head check (resume pass)
+
+The three heads are drawn for no role, so there is no control to prove and no saved result to read. "Nothing to judge" is only allowed when the computer can check it again, so this is the same shape as the retired Decline Autopsy row and batch 06's not-shipped row:
+
+- `src/pulse/coverage/fin-b19-hidden-head.mjs` (no imports, GET only): reads the live `/app/shell.js` once (redirects not followed), takes the built-in sidebar (`SIDEBAR_HTML`) and the `NAV_HIDDEN` list out of it, finds the head by its key and its words, and looks at every row under it.
+  - every row under the head is on NAV_HIDDEN: row says `na` with code `catalog-display-hidden-section-head`;
+  - one row is not on the list, or the head lists no rows: `NOT_PROVED` (the head can be drawn now);
+  - the head's key or words are gone: `NOT_PROVED` (a renamed head is still a head, absence is never read as hidden);
+  - anything unreadable (no GET client, non-200, not the shared chrome, a list or sidebar the reader does not understand): `skip` with the reason, never `na`.
+- The claim rides on the row's contract (`contract.hiddenHead = { path, section, label }`, mode `always-red`), the way batch 06's `notShipped` does. The morning audit calls the lane's `naVerify["catalog-display-hidden-section-head"]`, which runs the same read again.
+- One GET answers all three heads in a run (the audit asks one head at a time, so it makes one GET per head).
+- Verified live on this Mac once: the live shell.js reads hidden for all three, same as the repo file.
+
 ## Files added
 
 All under `src/pulse/catalog/proofs/` unless noted.
@@ -82,13 +96,14 @@ All under `src/pulse/catalog/proofs/` unless noted.
 - `fin-b19-kit.mjs`: row tracker (a row is claimed only by the callback that asserts it), shared Chromium, a page with a fake session and fake /api (`openPage`).
 - `fin-b19-rows.json`: the table of controls per test file; `notAttached` lists the 5 exercised-but-not-handed-over rows.
 - `fin-b19-display-proofs.mjs`: turns that table into proof cases (35 attached); holds `auth-logout-handler.test.mjs` to the Sign out row by name.
-- `fin-b19-not-attachable.mjs`: the 5 exact reasons.
-- `fin-b19-rows.test.mjs`: guards (every listed row is one exact map row, no live API, 35 attached, each reason still true in the page source and the stylesheet).
+- `fin-b19-not-attachable.mjs`: the 2 exact page-bug reasons (each with the sentence the board shows), and the 3 hidden heads (key, words, links) that the contract and the guards read.
+- `fin-b19-rows.test.mjs`: guards (every listed row is one exact map row, no live API, 35 attached, each reason still true in the page source, and every link under the three heads still on NAV_HIDDEN, in the stylesheet, and in the sidebar fragment).
 - `fin-b19-pipeline-controls.test.mjs`: 18 pipeline rows (11 practice, 7 rail tabs also live, 2 not attached).
 - `fin-b19-shell-chrome.test.mjs`: 9 shared-chrome rows.
-- `fin-b19-shell-sidebar.test.mjs`: 8 sidebar section heads (5 proved, 3 not reachable).
+- `fin-b19-shell-sidebar.test.mjs`: 8 sidebar section heads (5 proved, 3 not reachable and judged by the hidden-head check).
 - `fin-b19-sales-floor.test.mjs`: 5 sales floor rows, plus the real `api/read/sales-floor.mjs` handler on a stand-in database.
-- `fin-b19-display-contracts.mjs` and `fin-b19-display-contracts.test.mjs`: the 11 live checks and their SQL tests.
+- `fin-b19-display-contracts.mjs` and `fin-b19-display-contracts.test.mjs`: the 11 live checks and their SQL tests, plus (resume pass) 3 hidden-head contracts and 2 page-gap contracts, all `always-red` with no SQL.
+- `src/pulse/coverage/fin-b19-hidden-head.mjs` and `src/pulse/coverage/fin-b19-hidden-head.test.mjs` (resume pass): the hidden-head reader and its 10 practice tests (real shell.js in, broken on purpose, answer changes).
 - `ops/workflows/finish-853-2026-10-14/manifest-b19.md`: this file.
 
 ## Shared lines I touched (for the integrator)
@@ -99,15 +114,18 @@ All under `src/pulse/catalog/proofs/` unless noted.
 | `src/pulse/catalog/proofs/display-saved-result.mjs` | one import line and `...FIN_B19_DISPLAY_CONTRACTS,` at the end of `DISPLAY_RESULT_CONTRACTS` |
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | one import line and `...FIN_B19_DISPLAY_PROOF_CASES,` at the end of the plug-in list |
 | `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 637 (35 rows left it) |
-| `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts 40 to 51, PASS-capable 27 to 38, SQL batches 27 to 38, db calls 27 to 38, shipped-bundle count 40 to 51 (the "not proved" count 13 is unchanged) |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts 40 to 56, PASS-capable 27 to 38, SQL batches 27 to 38, db calls 27 to 38, always-red (unmeasured) 13 to 18, shipped-bundle count 40 to 56; in the whole-lane tests "not proved" 13 to 15 (the two pipeline gap contracts) and a new line says the three heads are "skip" under that test's stub (it answers the menu page, not shell.js) |
+| `src/pulse/coverage/gap-catalog-display.mjs` | resume pass, 3 lines: one import of `fin-b19-hidden-head.mjs`; `const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);` and `if (hiddenHeads.has(entry.id)) return hiddenHeads.get(entry.id);` as the first line of `judge`; one entry `[HIDDEN_HEAD_CODE]: ...verifyHiddenHead(...)` in `naVerify`. Batch 06 adds the same three lines for `fin-b06-not-shipped.mjs`: keep both (two imports, two `const` lines, two `if` lines, two `naVerify` entries). |
+| `src/pulse/na-conditions.mjs` | resume pass: one new code `catalog-display-hidden-section-head` in `NA_CONDITIONS`, just before `no-sender`, `verify: "lane"`, about 18 lines. Batches 03 and 06 add codes in the same list: keep all. |
+| `src/pulse/na-conditions.test.mjs` | resume pass, four edits that keep the closed list honest: the sorted code list gains the code and the title says "fifteen"; the lane-code loop gains it and the title says "ten lane codes"; one sentence sample. If another batch also adds a code, merge the arrays by hand and fix the two titles. |
 | `src/pulse/catalog/generated.json` | rebuilt with `npm run pulse:catalog`; recompile after merging, do not hand-merge |
 
-Guard numbers are sums of every batch: re-derive them after the merge (`51` = 40 + my 11; `637` = 672 - my 35).
+Guard numbers are sums of every batch: re-derive them after the merge (`56` = 40 + my 11 + 3 hidden heads + 2 page gaps; `18` unmeasured = 13 + 3 + 2; `637` = 672 - my 35). The hidden-head and page-gap rows are tracked rows that are not on the red-count list (they own a contract but no proof case), so the 637 number does not move for them.
 
 ## Product findings (not fixed)
 
 1. **Sort "Manual" and the x on the Sort chip do not give the first order back.** `applySort()` in `public/app/pipeline.html` starts with `if(!mode) return;`. Choose Name, then Manual (or press the x on the Sort chip): the select and the chip clear and every column stays sorted until reload. Measured in Chromium. The two rows stay NOT_PROVED; the practice test pins the behaviour and goes red the day it is fixed.
-2. **Home, Watch and Automation section heads are drawn for no role.** Every link under them is on shell.js `NAV_HIDDEN` and in `crm-sidebar.css`, so `gateLinks()` hides the whole section. Measured for owner, admin, sales manager, closer, funding advisor, CSM, setter, inquiry specialist and partner. Same as the S5 finding. Also, Admin never shows Hiring or Brand Studio, Funding never shows Finance OS, Client ops never shows Consent, Portals never shows Affiliate.
+2. **Home, Watch and Automation section heads are drawn for no role.** Every link under them is on shell.js `NAV_HIDDEN` and in `crm-sidebar.css`, so `gateLinks()` hides the whole section. Measured for owner, admin, sales manager, closer, funding advisor, CSM, setter, inquiry specialist and partner. Same as the S5 finding. The three rows now say "nothing to judge" and are re-checked from the live shell.js every run; if the owner means the heads to be seen, taking a row off `NAV_HIDDEN` (and out of `crm-sidebar.css`) puts the rows back to not proved on the next run. Also, Admin never shows Hiring or Brand Studio, Funding never shows Finance OS, Client ops never shows Consent, Portals never shows Affiliate.
 3. **The two hidden-row lists must move together** (shell.js `NAV_HIDDEN` and the `.navitem:is(...)` block in `crm-sidebar.css`). Removing a row from only one list changes nothing on screen. The guard now reads both.
 4. **The search box placeholder says name, phone or email; the filter reads the name only.** A phone or an email typed there matches nothing. The row already says so; pinned by the practice test.
 5. **The beta banner and BETA badge can never show**: `BETA_PAGES` is empty. Proved with a patched copy of the file.
@@ -124,17 +142,33 @@ Guard numbers are sums of every batch: re-derive them after the merge (`51` = 40
 | `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/tripwires.test.mjs` | 88 of 88 pass, 0 skipped |
 | the 8 older `display-contracts-*`, `door-proof`, `data-proof-cases`, `read-proof-cases` tests | 1078 of 1078 pass, 0 skipped |
 | `display-proof-cases.test.mjs` "focused proof test" (runs every test named by every case) | every fin-b19 test and `auth-logout-handler.test.mjs` passed inside it. The run failed in one place that is not mine: `s5-display-specs.test.mjs` running `e2e/cc-tab-shoot.spec.mjs:131` at 390px ("every tap is at least 44px tall", every height 0) at load average 17 to 30. That spec alone on the same code: 12 of 12 pass. |
-| `npm run lint` | 3572 files parse clean |
-| `npx tsc --noEmit` | exit 0 (checkJs is off by repo design) |
+| resume pass: `node --test src/pulse/coverage/fin-b19-hidden-head.test.mjs` | 10 of 10 pass (and each of the six breaks above turns it red) |
+| resume pass: `npm run pulse:catalog`, `compile-catalog.mjs --check`, then the count script | total 815; batch rows open 2 (Sort Manual, the x on the Sort chip); check exits 0 |
+| resume pass: `node --test src/pulse/coverage/gap-catalog-display.test.mjs src/pulse/na-conditions.test.mjs src/pulse/self-audit.test.mjs src/pulse/scorecard.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/tripwires.test.mjs src/pulse/catalog/proofs/fin-b19-rows.test.mjs src/pulse/catalog/proofs/fin-b19-display-contracts.test.mjs` | all pass, 0 skipped (`self-audit.test.mjs` "a real database timeout stops later serial checks" failed once at load average 300 and passed alone and in the repeat) |
+| resume pass: the 8 older `display-contracts-*`, `door-proof`, `data-proof-cases`, `read-proof-cases` tests again | 1091 of 1091 pass, 0 skipped |
+| resume pass: the fast tests in the first line of this pass again (catalog, gap-catalog, modules, tripwires, na-conditions, self-audit, scorecard, hidden-head, rows, display-contracts) | 296 of 296 pass, 0 skipped |
+| resume pass: `display-proof-cases.test.mjs`, the two guard tests only (every case names one exact row; red count 637) | 2 of 2 pass. The "focused proof test" in the same file was not re-run: nothing it runs changed in this pass (no proof case was added or moved), and the Mac was at load average 300 or more |
+| resume pass: the 4 browser test files again (pipeline, chrome, sidebar, floor) | 34 of 34 pass, 0 skipped (11, 10, 7, 6) |
+| `npm run lint` | first pass 3572 files parse clean; resume pass 3574 files and inline scripts parse clean (exit 0) |
+| `npx tsc --noEmit` | exit 0 on both passes (checkJs is off by repo design) |
 
 ### Break checks (each product break made alone in a second worktree, test run, file restored)
 
-Each of the 50 product breaks below turned the named test red. Four other edits stayed green on purpose and are named after the list.
+Each of the 50 product breaks below turned the named test red. Four other edits stayed green on purpose and are named after the list. The resume pass added six more, for the hidden-head check, listed after the first block.
 
 - Pipeline (public/app/pipeline.html), 19: Action Required counted as bank; Owner select always drawn; Owner filter does nothing; search reads the whole card; amount sort reversed; age sort reversed; name sort does nothing; needs sort ignores the amount; us_amount same as us; chip x clears every filter; filter counter wrong; headline picks the newest wait; headline button cannot clear; hidden longest wait says nothing; fulfillment read drops the flag; fulfillment chip cannot clear; lens leaves the headline up; R-05 asks for hiring; rail note on every rail.
 - Shell (public/app/shell.js, data.js), 22: demo label; live label; logout wrong URL; token kept; hangs when the server hangs; hide not remembered; photo field name; photo not re-read from the session; beta shown to everyone; beta Dismiss dead; ink not checked; unsafe logo accepted; session never bounces; no session stays; cached bounce removed; search sends the wrong words (data.js); Control+K dead; collapse dead; Watch heads visible; section head click dead; lenders and admin rows offered to every staff role.
 - Sales floor and handlers, 9: previous dead; flag count wrong; flag source dropped; jump does not scroll; sync wrong URL; sync does not reload; floor gate widened to every staff role; Forbidden words changed; logout skips the account session store.
 - SQL: 8 conditions removed one at a time, the wrong row goes unseen each time.
+
+Hidden-head check (resume pass), each edit made alone, `fin-b19-hidden-head.test.mjs` run, file restored:
+
+- reader always says "hidden": 5 tests red (real file, take-a-row-off, whole lane, audit, verifyNa);
+- an unreadable page read as "hidden": 2 tests red (unread is not hidden, audit);
+- a head that is gone read as "hidden": 1 test red (renamed or re-keyed head);
+- the lane stops calling the reader: 2 tests red (whole lane, verifyNa);
+- the lane's audit door removed: 2 tests red (audit, verifyNa);
+- the page itself: `journeys.html` taken off `NAV_HIDDEN` in the real `public/app/shell.js`: 5 tests red across `fin-b19-hidden-head.test.mjs` and `fin-b19-rows.test.mjs` (the Automation head can be drawn now). File restored.
 
 Stayed green on purpose (not product breaks): the two redundant wrap guards in `paintCloserFocus` (modulo already wraps); `NAV_HIDDEN` edited alone for Finance OS (the stylesheet also hides it); `CLOSER_DESK_ONLY` emptied (it moves My numbers in the Sales head, which is not one of these rows); removing the empty-choice return in `applySort` (the pinned finding is unchanged by it).
 
@@ -144,6 +178,7 @@ I wrote two helper files into the shared scratchpad folder under the names `muta
 
 ## Left undone and why
 
-- The 5 not-attachable rows above need a product change (or, for Home, Watch and Automation, the owner deciding the heads are meant to be seen).
+- The 2 not-attachable rows (Sort Manual, and the x on the Sort chip) need a product change in `public/app/pipeline.html`: `applySort()` has to give the first order back on an empty choice. Until then they stay NOT_PROVED, and the board now shows the exact sentence (a page-gap contract) instead of "no contract attached".
+- The three hidden-head rows are only as good as the live read: if fundhub.ai cannot be reached from the pulse they show `skip`, never `na`.
 - The hiring rail check will say "no results yet" for as long as no card is placed there (hiring applications are not `cards`); it can still go red on the first wrong card.
 - `fin-b19-display-contracts.test.mjs` needs `node:sqlite` (Node 22.13 or newer; the repo's engines and CI are 22.x).
