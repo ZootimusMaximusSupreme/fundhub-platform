@@ -31,7 +31,7 @@ const gateAs = (p) => async (_req, res, kinds) => {
 };
 
 /* Answers clients for ids in `inOrg`; payment_links from `links`; everything else empty. */
-function stubDb({ inOrg = [MINE], links = [] } = {}) {
+function stubDb({ inOrg = [MINE], links = [], entitled = false } = {}) {
   const seen = [];
   return {
     seen,
@@ -42,6 +42,7 @@ function stubDb({ inOrg = [MINE], links = [] } = {}) {
       }
       if (/FROM payment_links/.test(sql)) return { rows: links };
       if (/FROM entities/.test(sql)) return { rows: [{ n: 0 }] };
+      if (/FROM subscriptions/.test(sql)) return { rows: entitled ? [{ id: "sub-blueprint" }] : [] };
       if (/INSERT|UPDATE|DELETE/i.test(sql)) throw new Error("this endpoint must not write: " + sql);
       return { rows: [] };
     }
@@ -81,6 +82,19 @@ describe("GET /api/money/setup", () => {
     assert.equal(res.body.paid, false);
     assert.equal(res.body.current_step, "pay");
     assert.ok(db.seen.every((x) => !x.params.includes(OTHER)), "another client's id reached a query");
+  });
+
+  test("R07: a client who already has Finance OS reads pay as done and no open checkout", async () => {
+    const res = makeRes();
+    await handler({ method: "GET", query: {} }, res, {
+      db: stubDb({ entitled: true, links: [{ status: "sent", amount_cents: 49700, checkout_url: "https://pay.example/old" }] }),
+      requirePrincipal: gateAs(clientPrincipal()), now: NOW, env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.entitled, true);
+    assert.equal(res.body.steps.find((x) => x.key === "pay").done, true);
+    assert.equal(res.body.open_checkout, null);
+    assert.equal(res.body.current_step, "soft_pull");
   });
 
   test("a login with no client file is refused", async () => {
@@ -183,6 +197,68 @@ describe("POST start_checkout", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.already_paid, true);
     assert.equal(mint.calls.length, 0);
+  });
+
+  test("R07: a client who already has Finance OS (Capital Blueprint) → 409 already_entitled, nothing minted, nothing written", async () => {
+    const mint = spyMint();
+    const db = stubDb({ entitled: true });
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "start_checkout" } }, res,
+      { db, requirePrincipal: gateAs(clientPrincipal()), now: NOW, env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, createPaymentLink: mint });
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.ok, false);
+    assert.equal(res.body.error, "already_entitled");
+    assert.equal(res.body.checkout_url, undefined);
+    assert.equal(mint.calls.length, 0);
+    assert.equal(db.seen.some((x) => /INSERT|UPDATE|DELETE/i.test(x.sql)), false);
+  });
+
+  test("R07: staff opening an entitled client's setup get the same 409", async () => {
+    const mint = spyMint();
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "start_checkout", client_id: MINE } }, res, {
+      db: stubDb({ entitled: true }), requirePrincipal: gateAs(staffPrincipal("owner")), now: NOW,
+      env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, createPaymentLink: mint
+    });
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "already_entitled");
+    assert.equal(mint.calls.length, 0);
+  });
+
+  test("R07: an old unpaid setup link is not reused for an entitled client", async () => {
+    const mint = spyMint();
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "start_checkout" } }, res, {
+      db: stubDb({ entitled: true, links: [{ status: "sent", amount_cents: "49700", checkout_url: "https://pay.example/old" }] }),
+      requirePrincipal: gateAs(clientPrincipal()), now: NOW, env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, createPaymentLink: mint
+    });
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "already_entitled");
+    assert.equal(res.body.checkout_url, undefined);
+    assert.equal(mint.calls.length, 0);
+  });
+
+  test("R07: paid setup AND on the plan (the normal paid case) still answers already_paid", async () => {
+    const mint = spyMint();
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "start_checkout" } }, res, {
+      db: stubDb({ entitled: true, links: [{ status: "paid", amount_cents: 49700 }] }),
+      requirePrincipal: gateAs(clientPrincipal()), now: NOW, env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, createPaymentLink: mint
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.already_paid, true);
+    assert.equal(mint.calls.length, 0);
+  });
+
+  test("R07: not on the plan and not paid → a checkout is still minted", async () => {
+    const mint = spyMint();
+    const res = makeRes();
+    await handler({ method: "POST", body: { action: "start_checkout" } }, res, {
+      db: stubDb({ entitled: false }), requirePrincipal: gateAs(clientPrincipal()), now: NOW,
+      env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, createPaymentLink: mint
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(mint.calls.length, 1);
   });
 
   test("checkout not configured → 503 in words", async () => {

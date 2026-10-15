@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
+import { readSetupStatus } from "../finance/money-setup.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "../../public/app");
@@ -109,6 +110,66 @@ test("a pull in flight shows waiting, and no button to start another", () => {
   const html = S.render(d);
   assert.match(text(html), /Waiting on results/);
   assert.doesNotMatch(html, /data-act="soft-pull"/);
+});
+
+/* R07 — a Capital Blueprint buyer already has Finance OS. They owe no setup fee. */
+test("R07: the real read for a client who already has Finance OS paints pay Done and no Pay button", async () => {
+  const CID = "11111111-2222-3333-4444-555555555555";
+  const db = {
+    query: async (sql) => {
+      if (/FROM clients/.test(sql)) return { rows: [{ id: CID, first_name: "Ada", last_name: "Lane" }] };
+      if (/FROM payment_links/.test(sql)) {
+        return { rows: [{ id: "pl-old", status: "sent", amount_cents: 49700, checkout_url: "https://pay.example/old" }] };
+      }
+      if (/FROM subscriptions/.test(sql)) return { rows: [{ id: "sub-blueprint" }] };
+      if (/FROM entities/.test(sql)) return { rows: [{ n: 0 }] };
+      return { rows: [] };
+    }
+  };
+  const read = await readSetupStatus(db, {
+    orgId: "org-1", clientId: CID, env: { FINANCE_OS_SETUP_FEE_CENTS: "49700" }, asOf: new Date("2026-10-14T12:00:00Z")
+  });
+  const html = S.render(JSON.parse(JSON.stringify(read)));
+  assert.doesNotMatch(html, /data-act="checkout"/, "no Pay button for someone who already has Finance OS");
+  assert.doesNotMatch(text(html), /Finish paying/);
+  assert.match(html, /<li class="step done" data-step="pay">/);
+  assert.match(text(html), /Pay setup fee \(\$497\.00\)/, "the existing step label stays");
+  assert.match(html, /class="btn-primary" type="button" data-act="soft-pull"/, "the soft pull is the one filled button");
+  assert.equal((html.match(/class="btn-primary"/g) || []).length, 1);
+});
+
+test("R07: an entitled payload whose pay step is still open never paints a Pay button", () => {
+  const d = fresh();
+  d.entitled = true;
+  d.setup_fee_cents = 49700;
+  d.open_checkout = { url: "https://pay.example/old", amount_cents: 49700 };
+  d.steps[3].done = true; // live
+  const html = S.render(d);
+  assert.doesNotMatch(html, /data-act="checkout"/);
+  assert.doesNotMatch(html, /Finish paying/);
+  assert.match(html, /<li class="step done" data-step="pay">/);
+  assert.match(text(html), /2 of 4 steps done/);
+  assert.equal(S.primaryKey(d), "soft_pull");
+});
+
+test("R07: a stale page whose Pay button is pressed after the plan went on reloads, and says nothing wrong", async () => {
+  const listeners = {};
+  const el = { innerHTML: "", addEventListener: (t, f) => { listeners[t] = f; }, contains: () => true };
+  const msg = { textContent: "" };
+  const btn = {
+    textContent: "Pay $497.00 setup", disabled: false,
+    getAttribute: () => "checkout", parentNode: { querySelector: () => msg }, closest() { return btn; }
+  };
+  let reads = 0;
+  const apiGet = async () => { reads += 1; return { status: 200, body: { ...fresh(), setup_fee_cents: 49700 } }; };
+  const apiPost = async () => ({ status: 409, body: { ok: false, error: "already_entitled" } });
+  S.mount(el, { clientId: "c1", apiGet, apiPost });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(reads, 1);
+  listeners.click({ target: btn });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(reads, 2, "the page re-reads so the step repaints");
+  assert.equal(msg.textContent, "", "no 'checkout page could not be opened' message");
 });
 
 test("loading and error states", () => {

@@ -122,6 +122,51 @@ describe("setupSteps", () => {
     const r = setupSteps({ paid: true, softPull: { completed: false }, containers: 3, entitled: false });
     assert.equal(r.current, "soft_pull");
   });
+
+  test("R07: a client who already has Finance OS owes no setup fee — pay is done without a paid link", () => {
+    const r = setupSteps({ paid: false, softPull: { completed: false }, containers: 0, entitled: true });
+    const pay = r.steps.find((x) => x.key === "pay");
+    assert.equal(pay.done, true);
+    assert.equal(pay.label, "Pay setup fee", "the step keeps its existing label");
+    assert.equal(r.current, "soft_pull");
+  });
+
+  test("R07: not paid and not entitled → pay is still the current step", () => {
+    const r = setupSteps({ paid: false, softPull: { completed: false }, containers: 0, entitled: false });
+    assert.equal(r.steps.find((x) => x.key === "pay").done, false);
+    assert.equal(r.current, "pay");
+  });
+});
+
+describe("R07: a Capital Blueprint buyer who already has Finance OS", () => {
+  const env = { FINANCE_OS_SETUP_FEE_CENTS: "49700" };
+
+  test("pay is done, the next step is the soft pull, and no setup checkout is offered", async () => {
+    const db = stubDb({
+      entitled: true,
+      links: [{ id: "pl-stale", status: "sent", amount_cents: 49700, checkout_url: "https://pay.example/stale" }]
+    });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env, asOf: NOW });
+    assert.equal(s.entitled, true);
+    assert.equal(s.setup_fee_cents, 49700);
+    assert.equal(s.steps.find((x) => x.key === "pay").done, true);
+    assert.equal(s.steps.find((x) => x.key === "live").done, true);
+    assert.equal(s.current_step, "soft_pull");
+    assert.equal(s.open_checkout, null, "an old unpaid setup link must not be handed back");
+  });
+
+  test("no setup link was paid, and the read does not pretend one was", async () => {
+    const db = stubDb({ entitled: true });
+    const s = await readSetupStatus(db, { orgId: ORG, clientId: CID, env, asOf: NOW });
+    assert.equal(s.paid, false);
+    assert.equal(s.paid_at, null);
+  });
+
+  test("when the plan is not active, an unpaid client is still asked to pay", async () => {
+    const s = await readSetupStatus(stubDb({ entitled: false }), { orgId: ORG, clientId: CID, env, asOf: NOW });
+    assert.equal(s.steps.find((x) => x.key === "pay").done, false);
+    assert.equal(s.current_step, "pay");
+  });
 });
 
 describe("the Commas title for the setup checkout", () => {

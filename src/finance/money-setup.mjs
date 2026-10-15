@@ -113,10 +113,16 @@ export async function readSoftPull(db, { orgId, clientId }) {
 /**
  * setupSteps — the four steps, in order. `current` is the first one not done.
  * Each step is done only on a fact read above; nothing is assumed.
+ *
+ * PAY IS DONE WHEN THE SETUP LINK WAS PAID *OR* THE CLIENT ALREADY HAS FINANCE
+ * OS. A Capital Blueprint purchase opens 12 months of it (finance-os-entitlement.mjs
+ * ensureFinanceOsForBlueprintPurchase); that client owes no setup fee, and the
+ * page must not ask them for one. `paid` stays the plain fact "a setup link was
+ * paid" in the payload; only the step reads entitlement too.
  */
 export function setupSteps({ paid, softPull, containers, entitled }) {
   const steps = [
-    { key: "pay", label: "Pay setup fee", done: !!paid },
+    { key: "pay", label: "Pay setup fee", done: !!paid || !!entitled },
     { key: "soft_pull", label: "Run your soft pull", done: !!(softPull && softPull.completed) },
     { key: "accounts", label: "Add your businesses and accounts", done: Number(containers) > 0 },
     { key: "live", label: "You're live", done: !!entitled }
@@ -163,8 +169,9 @@ export async function readSetupStatus(db, { orgId, clientId, env = {}, asOf = ne
     containers,
     monthly_cents: billing.monthly_cents ?? null,
     /* An unpaid setup checkout already on file, so the page can say "finish
-       paying" instead of minting a second one. The client's own link only. */
-    open_checkout: links.open && !paid
+       paying" instead of minting a second one. The client's own link only.
+       Never for a client who already has Finance OS: they owe nothing. */
+    open_checkout: links.open && !paid && !ent.entitled
       ? { url: links.open.checkout_url, amount_cents: Number(links.open.amount_cents) }
       : null,
     soft_pull: softPull,
