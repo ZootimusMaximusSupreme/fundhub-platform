@@ -68,7 +68,7 @@ const RUN_ANSWER = {
   ok: true, runId: "run-test", journeySource: "database", journeysSkipped: [], startEventFindings: [], screensUnreadable: false,
   headline: "6 paths walked. One step is not wired.",
   summary: {
-    walked: { paths: 6, clients: 6 },
+    walked: { paths: 6, clients: 5 },
     messages: { wouldHaveGoneOut: 9, pathsRefusedByFence: 0, blockedByGate: 0 },
     workflows: { fired: ["wf-a", "wf-b", "wf-c"], registered: 5, neverFired: [{ id: "wf-unused" }, { id: "wf-old" }] },
     findings: { broken: [{ journey: "client", nodeTitle: "Text the survey link", summary: "The text was never written." }], couldNotCheck: [] },
@@ -565,30 +565,38 @@ test("History: Roll back puts a saved version back, Put it back undoes one chang
     await page.locator("#savever").click();
     await page.locator("#pbody .rv[data-ver]").waitFor();
 
-    // Two changes: delete the last step, rename the first.
+    // Two changes after the saved version: the last step is deleted and the first is renamed.
     await clickStep(page, "n6");
     await page.locator("#pbody .del").click();
     await clickStep(page, "n1");
     await page.locator('#pbody [data-k="title"]').fill("Renamed first step");
-    await page.locator('.ptab[data-tab="hist"]').click();
-    const entries = await page.locator("#pbody .sect").nth(1).locator(".li .wt").allTextContents();
-    assert.equal(entries[0], "Deleted a step: Save a note");
+    await waitFor(async () => (await titles(page))[0] === "Renamed first step", "the rename");
     assert.equal((await titles(page)).at(-1), "Wait a day", "the last step is gone");
+    await page.locator('.ptab[data-tab="hist"]').click();
 
-    // Put it back on the delete: that one step returns, the rename stays.
-    await page.locator('#pbody .sect').nth(1).locator('.rv[data-rev]').first().click();
-    await waitFor(async () => (await titles(page)).at(-1) === "Save a note", "the deleted step back");
-    assert.match(await toastText(page), /Reverted\. Deleted a step: Save a note — put back the way it was\./);
-    assert.equal((await rowIds(page))[0], "n1");
-    // The undone entry can only be pressed once.
-    const disabled = await page.locator("#pbody .sect").nth(1).locator(".rv[disabled]").count();
-    assert.ok(disabled >= 1, "the entry that was put back shows Reverted and is off");
-    assert.equal(await page.locator("#pbody .sect").nth(1).locator(".rv[disabled]").first().textContent(), "Reverted");
-
-    // Roll back to the saved version: the whole journey is the way it was, rename included.
+    // Roll back: the whole journey is the way it was at the saved version, the rename included.
     await page.locator("#pbody .rv[data-ver]").click();
     await waitFor(async () => JSON.stringify(await titles(page)) === JSON.stringify(original), "the saved version back");
     assert.match(await toastText(page), /Rolled back\. This journey is the way it was at “Original”\./);
+    const log = await page.locator("#pbody .sect").nth(1).locator(".li .wt").allTextContents();
+    assert.equal(log[0], "Rolled back to “Original”");
+
+    // Put it back: one deleted step comes back through its own history entry, and the entry shows Reverted.
+    await clickStep(page, "n5");
+    await page.locator("#pbody .del").click();
+    assert.equal((await titles(page)).includes("Wait a day"), false);
+    await page.locator('.ptab[data-tab="hist"]').click();
+    const entry = page.locator("#pbody .sect").nth(1).locator(".li").first();
+    assert.equal(await entry.locator(".wt").first().textContent(), "Deleted a step: Wait a day");
+    await entry.locator(".rv[data-rev]").click();
+    await waitFor(async () => JSON.stringify(await titles(page)) === JSON.stringify(original), "the deleted step back");
+    assert.match(await toastText(page), /Reverted\. Deleted a step: Wait a day — put back the way it was\./);
+    const entries = page.locator("#pbody .sect").nth(1).locator(".li");
+    assert.equal(await entries.first().locator(".wt").textContent(), "Reverted: Deleted a step: Wait a day", "the put-back is itself in the history");
+    const undone = entries.nth(1);
+    assert.equal(await undone.locator(".wt").textContent(), "Deleted a step: Wait a day");
+    assert.equal(await undone.locator(".rv").textContent(), "Reverted", "the entry that was put back is marked");
+    assert.equal(await undone.locator(".rv").isDisabled(), true, "and it cannot be pressed again");
     assert.equal(seen.puts.length, 0, "history lives in the page: nothing is saved");
   });
   assert.deepEqual(errors, []);
@@ -727,7 +735,7 @@ test("Test against the code: one request, the button shows it is working, the re
     const card = page.locator("#runout .jr-rcard");
     assert.equal(await card.locator(".jr-rlead").textContent(), RUN_ANSWER.headline);
     const stats = await card.locator(".jr-rstats span").evaluateAll((list) => list.map((el) => [el.querySelector("i").textContent, el.lastChild.textContent]));
-    assert.deepEqual(stats, [["6", "paths walked"], ["6", "test clients"], ["9", "messages that would send"], ["3/5", "automations reached"]]);
+    assert.deepEqual(stats, [["6", "paths walked"], ["5", "test clients"], ["9", "messages that would send"], ["3/5", "automations reached"]]);
     assert.match(await card.textContent(), /Journeys read from: database\. Nothing was saved/);
     assert.match(await card.textContent(), /The code does not do this the way the journey says \(1\)[\s\S]*client · Text the survey link[\s\S]*The text was never written\./);
     assert.match(await card.textContent(), /Automations no journey reaches \(2\)[\s\S]*wf-unused, wf-old/);
