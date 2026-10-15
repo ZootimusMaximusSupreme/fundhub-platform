@@ -4,7 +4,9 @@
 // judges the exact request the page sends and the words the page paints. It reads no live data.
 //
 //   Scripts tab   the five filter chips and their counts; the Previous and Next buttons never save;
-//                 the 409 banner's "Use theirs" and "Read the new version"
+//                 the 409 banner's "Use theirs" and "Read the new version"; Try again on the Rules
+//                 fold and the Every version fold (with the page's restart of a failed read muted,
+//                 see the long note above those tests and finding 1 in the manifest)
 //   Ideas tab     the "Go to step N" button after a spend read; "Hide the pages" and the three page
 //                 preview buttons
 //   Launch tab    "Open Settings" on an ad with no ad set; the 20 second load-state poll
@@ -209,6 +211,113 @@ test("Scripts: after a stale Approve, Read the new version closes the banner, re
   // The card now holds the version that was saved, not the one that was on screen.
   await expect(card(page)).toHaveAttribute("aria-label", /version 3/);
   expect(calls.filter((c) => c.key === "POST marketing/scripts/approve")).toHaveLength(1);
+});
+
+/* ── Scripts tab: Try again on the Rules fold and the Every version fold ──────────────────────
+   The scripts list, the ideas list and the batch history are covered in marketing-cc-scripts.spec.mjs.
+
+   The shipped page has a fault in these two folds (finding 1 in manifest-b15.md): when their read
+   fails, onToggle starts the same read again on every repaint, so the failed read repeats without
+   end and the Try again button is repainted faster than a person can press it. That restart and the
+   button both call the same load function, so on the shipped page a test cannot tell the button
+   from the restart.
+
+   So the two button tests below mute exactly that restart and nothing else: a toggle that fires on
+   a fold which is already showing its failed-read box is dropped before the page sees it (the
+   toggle from opening the fold, and every toggle on a fold that is not failing, go through
+   untouched). With that one trigger muted the press is the only thing that can read again. Each
+   test also checks that nothing reads again by itself while the box is on screen, so a restart
+   from some other place would turn it red. The third test measures the fault itself, on the
+   shipped page with nothing muted, and is marked expected-to-fail: it goes red the day the page is
+   fixed, and the marker, with the two mutes, can come off then. */
+
+/** Drop the toggle that a repaint of an already failed fold fires (the page's restart trigger). */
+async function muteRepaintRestarts(page) {
+  await page.addInitScript(() => {
+    window.addEventListener("toggle", (ev) => {
+      const d = ev.target;
+      if (d && d.tagName === "DETAILS" && d.querySelector(".ccs-err")) ev.stopImmediatePropagation();
+    }, true);
+  });
+}
+
+/** The scripts API with nothing writing, so the 5 second poll has nothing to read: only a press can read a part again. */
+function quietScriptsApi() {
+  const a = scriptsApi();
+  a.db.batches = { ...a.db.batches, batches: a.db.batches.batches.map((b) => ({ ...b, status: "released" })) };
+  return a;
+}
+
+/** A route that fails until `heal()` is called, counting every read of it. */
+function failingRoute(a, key) {
+  const real = a.routes[key];
+  const state = { reads: 0, failing: true, heal() { state.failing = false; } };
+  a.routes[key] = (request) => {
+    state.reads += 1;
+    return state.failing ? [500, { error: "internal_error" }] : real(request);
+  };
+  return state;
+}
+
+test("Scripts: Try again on a failed Rules fold reads the rules once more and paints them (the page's restart on repaint muted)", async ({ page }) => {
+  await muteRepaintRestarts(page);
+  const a = quietScriptsApi();
+  const rules = failingRoute(a, "GET marketing/rules");
+  await openScripts(page, a);
+  expect(rules.reads, "the rules are not read until the fold is opened").toBe(0);
+
+  await page.getByText("Rules", { exact: true }).click();
+  const box = page.locator("[data-fold=rules] .ccs-err");
+  await expect(box).toContainText("The rules did not load. Something broke on our side. Nothing changed. Try again.");
+  await expect(page.locator("[data-fold=rules] .ccs-banned")).toHaveCount(0);
+  const afterFirst = rules.reads;
+  expect(afterFirst, "opening the fold reads the rules once").toBe(1);
+  await page.waitForTimeout(700);
+  expect(rules.reads, "nothing reads the rules again by itself while the failure is on screen").toBe(afterFirst);
+
+  rules.heal();
+  await box.getByRole("button", { name: "Try again" }).click();
+  await expect(page.locator("[data-fold=rules] .ccs-banned")).toContainText("game changer");
+  await expect(page.locator("[data-fold=rules] .ccs-err")).toHaveCount(0);
+  expect(rules.reads, "Try again reads the rules once more").toBe(afterFirst + 1);
+});
+
+test("Scripts: Try again on a failed Every version fold reads the versions once more and paints them (the page's restart on repaint muted)", async ({ page }) => {
+  await muteRepaintRestarts(page);
+  const a = quietScriptsApi();
+  const versions = failingRoute(a, "GET marketing/script");
+  await openScripts(page, a);
+  expect(versions.reads, "the versions are not read until the fold is opened").toBe(0);
+
+  await page.getByText("Every version and its checks").click();
+  const box = page.locator("[data-load=versions] .ccs-err");
+  await expect(box).toContainText("Something broke on our side. Nothing changed. Try again.");
+  await expect(page.locator(".ccs-version")).toHaveCount(0);
+  const afterFirst = versions.reads;
+  expect(afterFirst, "opening the fold reads the versions once").toBe(1);
+  await page.waitForTimeout(700);
+  expect(versions.reads, "nothing reads the versions again by itself while the failure is on screen").toBe(afterFirst);
+
+  versions.heal();
+  await box.getByRole("button", { name: "Try again" }).click();
+  await expect(page.locator(".ccs-version")).toHaveCount(2);
+  await expect(page.locator(".ccs-version").first()).toContainText("Version 2 · draft · written by the machine");
+  await expect(page.locator("[data-load=versions] .ccs-err")).toHaveCount(0);
+  expect(versions.reads, "Try again reads the versions once more").toBe(afterFirst + 1);
+});
+
+test("FINDING: a failed Rules read waits for Try again and is not started again on every repaint", async ({ page }) => {
+  // Expected to fail on the shipped page: with the Rules read answering 500, the fold asks again
+  // after every repaint (dozens of reads a second). The moment the page leaves a failed read alone
+  // this test passes, Playwright reports "expected to fail, but passed", and the marker comes off.
+  test.fail();
+  const a = quietScriptsApi();
+  const rules = failingRoute(a, "GET marketing/rules");
+  await openScripts(page, a);
+  await page.getByText("Rules", { exact: true }).click();
+  await expect(page.locator("[data-fold=rules] .ccs-err, [data-fold=rules] .ccs-skels").first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(rules.reads, "a failed read is read once, then left alone until Try again").toBeLessThanOrEqual(1);
 });
 
 /* ── Ideas tab: Go to step N ──────────────────────────────────────────────────────────────── */

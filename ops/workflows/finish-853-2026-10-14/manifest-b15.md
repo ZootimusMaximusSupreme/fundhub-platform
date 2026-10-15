@@ -1,21 +1,21 @@
 # Batch 15 manifest: Lenders desk and Marketing Command Center (finish the 853)
 
 Branch `fin/b15`, built from `fin/base` (`2f4f574a0`). Work folder `.claude/worktrees/fin-b15`. Nothing was pushed or merged.
-Lane: `gap-catalog-display`. Tier 4. Generation 1 of 3.
+Lane: `gap-catalog-display`. Tier 4. Generation 1 of 3 (resumed 2026-10-14 night: the muted Try again tests found in the working folder were finished, mutation-checked and committed; row 31 moved from left-out to practice test).
 
 ## The number
 
 | | Rows |
 |---|---|
 | Rows in this batch | 40 |
-| Open (NOT_PROVED) before | **40** |
-| Open after | **1** |
+| Open (NOT_PROVED) before | **40** (measured again on `fin/base` in a clean checkout) |
+| Open after | **0** |
 | Live checks | 26 |
-| Practice tests | 13 |
-| Not attachable (with the exact reason) | 1 |
+| Practice tests | 14 |
+| Not attachable (with the exact reason) | 0 |
 
 Measured with `node scripts/pulse/count-not-proved.mjs` in this worktree, intersected with `batch-15.json`.
-Whole lane: 853 open before, 814 after (39 fewer, all from this batch).
+Whole lane: 853 open before, 813 after (40 fewer, all from this batch).
 
 How to read "live check" honestly: the count script runs the lane with no database, so a live check
 reads as `skip` there and leaves the NOT_PROVED list. With a database (the morning pulse) each of the 26
@@ -60,7 +60,7 @@ stand-in rows in SQLite (see below).
 | 28 | marketing-command-center.html: Numbers: Ads table: 'Ad N' row button opens the drawer (watch curve, day select, 'What to film next', Close) | practice-test | `e2e/cc-tab-numbers.spec.mjs + e2e/fin-b15-cc-controls.spec.mjs` | row button opens the drawer, curve, Day select (new test), What to film next, Close; 4 breaks red |
 | 29 | marketing-command-center.html: Numbers: Angles cards: 'Make more of this' -> idea box (text + Save idea / Cancel) | live-check | `src/pulse/catalog/proofs/fin-b15-display-contracts.mjs` | check `mkt-numbers-make-more`: each angle idea keeps Chris's words and has its idea file queued |
 | 30 | marketing-command-center.html: Numbers: Funnels view: page views, click to page, page to lead, lead to call, call to sale, spend, ROAS per fu... | practice-test | `e2e/cc-tab-numbers.spec.mjs + e2e/fin-b15-cc-controls.spec.mjs` | step rates, spend, ROAS, unknown stays unknown (new test), Open Settings when none (new test); 5 breaks red |
-| 31 | marketing-command-center.html: Scripts: 'Try again' buttons on a failed part | not-attachable | `src/pulse/catalog/proofs/fin-b15-not-attachable.mjs` | the Rules fold and the Every version fold start their read again on every repaint while it is failing (1,059 reads in 1.5 s measured), so a Try again press cannot be told from the timer; a source test holds the reason |
+| 31 | marketing-command-center.html: Scripts: 'Try again' buttons on a failed part | practice-test | `e2e/marketing-cc-scripts.spec.mjs (3 tests) + e2e/fin-b15-cc-controls.spec.mjs (2 new tests)` | Try again on the scripts list, ideas list and batch history is pressed on the page as shipped (existing tests). Try again on the Rules fold and the Every version fold is pressed with ONE thing muted: the page's own restart of a failed read on every repaint (product finding 1). With that muted, only the button can read again; 2 breaks red (each button made dead). The fault itself is measured by an expected-to-fail test and held by `fin-b15-findings.test.mjs` |
 | 32 | marketing-command-center.html: Scripts: 'Write now' batch button (hidden while write_now_ready is false) | live-check | `src/pulse/catalog/proofs/fin-b15-display-contracts.mjs` | check `mkt-scripts-write-now`: every Write now batch has its start job, a release time, and ready or released means at least one script counted |
 | 33 | marketing-command-center.html: Scripts: card 'Edit' (one box per part) + 'Save new version' / Cancel | live-check | `src/pulse/catalog/proofs/fin-b15-display-contracts.mjs` | check `mkt-scripts-edit`: an edit sits one version after the one it replaced, same script, replaced one retired, one live version, its repo file queued |
 | 34 | marketing-command-center.html: Scripts: card 'Fix' (note + 'Make this a rule' + 'Rewrite it'; rewrite job returns a new version) | live-check | `src/pulse/catalog/proofs/fin-b15-display-contracts.mjs` | check `mkt-scripts-fix`: a rewrite sits one version after the old one, same script and ad number, old one retired; a fix request has its note and a script of this company |
@@ -77,9 +77,9 @@ stand-in rows in SQLite (see below).
 - `src/pulse/catalog/proofs/fin-b15-sql-kit.mjs` (test kit: real table and column names from db/schema and db/migrations, Postgres to SQLite spelling, stand-in tables)
 - `src/pulse/catalog/proofs/fin-b15-live-contracts.test.mjs` (163 tests: good rows, one wrong row per condition, the same row not caught when that one condition is left out, another company's wrong rows never read)
 - `src/pulse/catalog/proofs/fin-b15-lenders-gate.test.mjs` (page gate, 6 tests, real handlers, stand-in database)
-- `src/pulse/catalog/proofs/fin-b15-display-specs.mjs` and `fin-b15-display-specs.test.mjs` (the 13 practice rows, bound to spec test titles, and the runner that runs them in Chromium)
-- `src/pulse/catalog/proofs/fin-b15-not-attachable.mjs` and `fin-b15-not-attachable.test.mjs` (the one left-out row and a source test that goes red when its reason stops being true)
-- `e2e/fin-b15-cc-controls.spec.mjs` (12 new browser tests for controls no earlier spec pressed)
+- `src/pulse/catalog/proofs/fin-b15-display-specs.mjs` and `fin-b15-display-specs.test.mjs` (the 14 practice rows, bound to spec test titles, and the runner that runs them in Chromium)
+- `src/pulse/catalog/proofs/fin-b15-findings.mjs` and `fin-b15-findings.test.mjs` (the Try again finding: a source test that goes red when the page stops restarting a failed read, and says what to take back out of the specs; also proves the row is attached and the mute is narrow). These replaced `fin-b15-not-attachable.*`, which held row 31 as left out.
+- `e2e/fin-b15-cc-controls.spec.mjs` (15 browser tests for controls no earlier spec pressed: 14 pass, 1 expected-to-fail that measures the finding)
 - `ops/workflows/finish-853-2026-10-14/manifest-b15.md`
 
 ## Shared lines I touched (the integrator must merge these)
@@ -89,7 +89,7 @@ stand-in rows in SQLite (see below).
 | `src/pulse/catalog/proofs/display-saved-result.mjs` | 1 import line, and `...FIN_B15_DISPLAY_CONTRACTS,` as the last entry of `DISPLAY_RESULT_CONTRACTS` |
 | `src/pulse/catalog/compiler.mjs` | one loop (13 lines) in `compileDisplayRuntimeData`: a tracked row that owns a registered contract marked `anyImpact: true` is judged even though its impact is staffOnly or none (the base only judged money and customer rows). Another batch (b06) added a similar loop limited to money and customer impact; keep one, and let it also pass rows whose contract says `anyImpact` |
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | 1 import line, and `...FIN_B15_DISPLAY_PROOF_CASES,` in the plug-in list |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 659 (13 practice rows left it) |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 658 (14 practice rows left it) |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts and cases 40 to 66, PASS-capable 27 to 53, SQL batches 27 to 53, lane run calls 27 to 53, PASS rows 27 to 53 (26 live checks added, 13 always-red unchanged) |
 | `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog`; after merging run it again and take its output |
 | `e2e/marketing-command-center.spec.mjs` | one test added ("the reload on focus: ..."); nothing else in that file changed |
@@ -112,6 +112,7 @@ Practice tests, real page:
 - Scripts chips (2 red): a chip does nothing; the counts all show the All number.
 - Scripts conflict banner (4 red): the banner stays after Use theirs; Use theirs sends my words; the Read the new version button missing; a stale Approve not turned into a banner.
 - Page gate (6 red): each of 4 read and write handlers opened to every staff role; the bureau save opened to closers; the lender role set narrowed.
+- Try again on the Rules fold and the Every version fold (2 red, 1 more check): the Rules Try again case made a no-op (Rules test red, Versions test green); the Every version Try again made a no-op (Versions test red, Rules test green). With the restart on a failed fold fixed in the page (a one-line change, made on purpose and put back), the two button tests stay green and the expected-to-fail FINDING test reports "Expected to fail, but passed": the signal to take the mutes out. The earlier working-folder edit that renamed the button to "Retry" was a leftover break from a stopped run; it was put back with `git checkout` and is not in any commit.
 
 Live checks: the SQL text is broken one named condition at a time inside `fin-b15-live-contracts.test.mjs`
 (26 checks, 105 named conditions, each goes red on its own wrong row and the row is not caught once the
@@ -127,7 +128,7 @@ Breaks that stayed green, and why (equivalent, not weak):
 
 ## Product findings (not fixed, one line each)
 
-1. Scripts tab: when the Rules read or the Every version read fails, `onToggle` in `public/app/marketing-cc-scripts.js` starts it again on every repaint (1,059 reads in 1.5 seconds with a Rules read that answers 500). The Try again button cannot be pressed in time. This is why row 31 is not attachable.
+1. Scripts tab: when the Rules read or the Every version read fails, `onToggle` in `public/app/marketing-cc-scripts.js` starts it again on every repaint (1,059 reads in 1.5 seconds with a Rules read that answers 500). The Try again button on those two folds cannot be pressed in time, and the server is hit hundreds of times a second while it is down (the page heals by itself when the server answers). Row 31 is attached as a practice test with this one restart muted in the test (see the row and the breaks below); `fin-b15-findings.test.mjs` goes red when the page is fixed and says to take the mute out.
 2. `api/read/ai-bureau-config.mjs` gates the read with `ROLE_SETS.STAFF`, while the save is owner, admin and funding advisor only. Any staff role can read the bureau call numbers and menu paths.
 3. `reviewObservation` in `src/lenders/store.mjs` saves only `review_status` (and `created_by` only when empty): no reviewer and no time are recorded for Confirm, Corrected or Dismiss, and it does not check the observation was flagged as a mismatch. The Dismiss check can only judge what stays on the row.
 4. Two save paths for script versions: `api/scripts/write.mjs` saves a new version with the column default `source = 'chris'`, a parent, and no repo path or outbox file; the Scripts tab edit always queues a repo file. The live edit check judges only versions that name their repo file, so the older path is not read.
@@ -140,14 +141,14 @@ Measured on this Mac while other builders ran (load average high at times).
 | Command | Result |
 |---|---|
 | `node scripts/pulse/count-not-proved.mjs` (before) | 853 open, 40 of them this batch |
-| `node scripts/pulse/count-not-proved.mjs` (after, `npm run pulse:catalog` first) | 814 open, 1 of them this batch |
+| `node scripts/pulse/count-not-proved.mjs` (after, `npm run pulse:catalog` first) | 813 open, 0 of them this batch |
 | `node scripts/pulse/compile-catalog.mjs --check` | fresh |
 | `node --test src/pulse/catalog/proofs/fin-b15-live-contracts.test.mjs` | 163 pass |
 | `node --test src/pulse/catalog/proofs/fin-b15-lenders-gate.test.mjs` | 6 pass |
-| `node --test src/pulse/catalog/proofs/fin-b15-not-attachable.test.mjs` | 2 pass |
-| `node --test src/pulse/catalog/proofs/fin-b15-display-specs.test.mjs` (runs 5 spec files in Chromium) | 6 pass |
-| `npx playwright test e2e/fin-b15-cc-controls.spec.mjs` | 12 pass |
+| `node --test src/pulse/catalog/proofs/fin-b15-findings.test.mjs` | 4 pass |
+| `node --test src/pulse/catalog/proofs/fin-b15-display-specs.test.mjs` (runs 5 spec files in Chromium) | first run 5 of 6 passed while the Mac was at load average 40 to 400 (other builders): the one that failed was an older frame test, `a read that never answers is given up on after 20 seconds`, a fake-clock test that read 1 instead of 2; it passed twice alone right after. Later, the whole set of 139 test files the display proof cases name (this runner included) ran: 1,896 tests, 1,896 pass, 0 fail |
+| `npx playwright test e2e/fin-b15-cc-controls.spec.mjs` | 15 reported passed (14 pass, the FINDING test is expected to fail and does) |
 | `node --test src/pulse/coverage/gap-catalog-display.test.mjs` | 11 pass |
 | `node --test src/pulse/catalog/*.test.mjs` | 70 pass (with the lane test above) |
-| `node --test --test-name-pattern "unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | pass at 659 |
-| `npm run lint` | 3,570 files parse clean |
+| `node --test --test-name-pattern "unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | pass at 658 |
+| `npm run lint` | 3,570 files parse clean (re-run after the row 31 change) |

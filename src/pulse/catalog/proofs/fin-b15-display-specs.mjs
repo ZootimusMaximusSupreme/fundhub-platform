@@ -127,6 +127,25 @@ const ENTRIES = [
   },
   {
     surface: MC,
+    control: "Scripts: 'Try again' buttons on a failed part",
+    // Five parts have a Try again. Three (scripts list, ideas list, batch history) are pressed on the page
+    // as shipped. The Rules fold and the Every version fold are pressed with ONE thing muted: the page's own
+    // restart of a failed read on every repaint (product finding 1 in manifest-b15.md), which would otherwise
+    // read again by itself and hide whether the button works. fin-b15-findings.test.mjs holds that finding.
+    specs: [
+      { spec: SCRIPTS, titles: [
+        "Try again on the failed scripts list reads it again and paints it",
+        "Try again on the failed ideas list reads it again and paints it",
+        "Try again on the failed batch history reads it again and paints it"
+      ] },
+      { spec: MINE, titles: [
+        "Scripts: Try again on a failed Rules fold reads the rules once more and paints them (the page's restart on repaint muted)",
+        "Scripts: Try again on a failed Every version fold reads the versions once more and paints them (the page's restart on repaint muted)"
+      ] }
+    ]
+  },
+  {
+    surface: MC,
     control: "Scripts: filter chips: Drafts, Approved, Filmed, Rejected, All (with counts)",
     specs: [{ spec: MINE, titles: ["Scripts: the five filter chips carry their counts, and each one shows only its own scripts"] }]
   }

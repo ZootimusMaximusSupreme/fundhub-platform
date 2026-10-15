@@ -37,7 +37,7 @@ function ranTests(report) {
 }
 
 test("every bound row is one exact map row, and every named spec and test exists and is not a live-site test", () => {
-  assert.equal(FIN_B15_DISPLAY_ENTRIES.length, 13);
+  assert.equal(FIN_B15_DISPLAY_ENTRIES.length, 14);
   const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, "desks-c.json"), "utf8"));
   const keys = new Set();
   for (const entry of FIN_B15_DISPLAY_ENTRIES) {
