@@ -2,6 +2,7 @@
 // prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
+import { retiredControlFor, retiredControlState } from "./fin-b01-retired-controls.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -107,10 +108,33 @@ async function retiredPageState(ctx = {}) {
   }
 }
 
+// Controls the map lists that the product no longer has (fin-b01-retired-controls.mjs). Each is read
+// live, GET only. It is "nothing to judge" only while the live files still hold none of it.
+async function retiredControlResults(ctx) {
+  const retiredCache = new Map();
+  const out = new Map();
+  await Promise.all(DISPLAY_TRACKING_CASES.map(async (entry) => {
+    const control = retiredControlFor(entry);
+    if (!control) return;
+    const state = await retiredControlState(control, { ...ctx, retiredCache });
+    out.set(entry.id, state.status === "na"
+      ? result(entry.id, "na", state.detail, null, {
+        code: "catalog-display-retired-control",
+        args: { sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control },
+      })
+      : result(entry.id, state.status, state.detail, state.status === "FAIL"
+        ? "Open the named control and attach a real check to it, or take it out again. Do not auto-fix. Chris fixes reds."
+        : null));
+  }));
+  return out;
+}
+
 export async function gapChecks(ctx = {}) {
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  const retiredControls = await retiredControlResults(ctx);
   const judge = (entry, stats) => {
+    if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
@@ -141,6 +165,14 @@ export async function gapChecks(ctx = {}) {
 }
 
 export const naVerify = Object.freeze({
+  "catalog-display-retired-control": async (args, ctx = {}) => {
+    const control = retiredControlFor(args);
+    if (!control) return false;
+    const entry = DISPLAY_TRACKING_CASES.find((item) => item.sourceFile === args.sourceFile
+      && item.surface === args.surface && item.control === args.control);
+    if (!entry) return false;
+    return (await retiredControlState(control, ctx)).status === "na";
+  },
   "catalog-display-retired-autopsy": async (args, ctx = {}) => {
     const entry = DISPLAY_TRACKING_CASES.find((item) => item.retired
       && item.sourceFile === args?.sourceFile && item.surface === args?.surface && item.control === args?.control);
