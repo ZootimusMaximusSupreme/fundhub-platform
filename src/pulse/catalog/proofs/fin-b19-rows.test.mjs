@@ -36,14 +36,14 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "37 attached rows and 3 exercised-but-not-attached rows");
+  assert.equal(listed, 40, "35 attached rows and 5 exercised-but-not-attached rows");
 });
 
 test("attached rows have one proof case each; the exercised-but-not-attached rows have none", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls));
-  assert.equal(attached.length, 37);
-  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 37);
-  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 37);
+  assert.equal(attached.length, 35);
+  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 35);
+  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 35);
   const left = new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => c.control));
   for (const row of FIN_B19_NOT_ATTACHABLE) assert.equal(left.has(row.control), false, row.control);
   for (const c of FIN_B19_DISPLAY_PROOF_CASES) {
@@ -51,14 +51,21 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   }
 });
 
-test("the three left-out rows are real map rows listed as not attached, each with a reason that is still true", () => {
-  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 3);
+test("the five left-out rows are real map rows listed as not attached, each with a reason that is still true", () => {
+  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 5);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || []));
   assert.deepEqual([...listedNotAttached].sort(), FIN_B19_NOT_ATTACHABLE.map((r) => r.control).sort());
   for (const row of FIN_B19_NOT_ATTACHABLE) {
     assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
     assert.ok(row.why.length > 120, "the reason is written out");
   }
+
+  // The Sort and chip reason, held to the page: an empty choice still reorders nothing.
+  const pipeline = fs.readFileSync(path.join(ROOT, "public/app/pipeline.html"), "utf8");
+  assert.match(pipeline, /function applySort\(\)\{\s*var mode=fSort\.value; if\(!mode\) return;/,
+    "applySort() now handles an empty choice: Manual and the Sort chip x may work, attach the Sort and chip rows");
+  assert.match(pipeline, /c\.el\.value=''; applyFilters\(\); if\(c\.el===fSort\) applySort\(\); syncChips\(\);/,
+    "the chip x changed: re-check the chip row");
 
   // The reason, held to the repo: every link under these three heads is still on NAV_HIDDEN in shell.js.
   const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");

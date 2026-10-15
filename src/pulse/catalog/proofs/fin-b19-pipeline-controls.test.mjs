@@ -29,15 +29,15 @@ const SALES = {
   ok: true, pipeline: "sales", total: 4,
   stages: [
     { key: "new_lead", name: "New Lead", sort_order: 0, count: 4, amount: 15500, cards: [
-      card("alice", "Alice Adams", { owner: "Jordan Blake", entered_at: ago(5 * DAY), amount: 4000, sms_needs_reply: true }),
-      card("dan", "Dan Dyer", { owner: "Jordan Blake", entered_at: ago(2 * HOUR), amount: 1500 }),
-      card("finn", "Finn Fox", { entered_at: ago(30 * 60_000), amount: 9000, email_needs_reply: true }),
       card("zed", "Zed Zane", { owner: "Casey Reed", entered_at: ago(3 * DAY), amount: 1000 }),
+      card("alice", "Alice Adams", { owner: "Jordan Blake", entered_at: ago(5 * DAY), amount: 4000, sms_needs_reply: true }),
+      card("finn", "Finn Fox", { entered_at: ago(30 * 60_000), amount: 9000, email_needs_reply: true }),
+      card("dan", "Dan Dyer", { owner: "Jordan Blake", entered_at: ago(2 * HOUR), amount: 1500 }),
     ] },
     { key: "round_submitted", name: "Round Submitted", sort_order: 1, count: 3, amount: 12000, cards: [
+      card("gus", "Gus Green", { entered_at: ago(1 * DAY), amount: 3000 }),
       card("bob", "Bob Baker", { owner: "Casey Reed", entered_at: ago(2 * DAY), amount: 9000 }),
       card("eve", "Eve East", { entered_at: ago(7 * DAY), amount: null, approval_amount_missing: true }),
-      card("gus", "Gus Green", { entered_at: ago(1 * DAY), amount: 3000 }),
     ] },
     { key: "action_required", name: "Action Required", sort_order: 2, count: 1, amount: 2000, cards: [
       card("cara", "Cara Cole", { entered_at: ago(10 * DAY), amount: 2000 }),
@@ -174,7 +174,7 @@ test("the search box keeps the cards whose name has the typed words, and nothing
   });
 });
 
-test("each Sort choice puts the cards of a column in its own order", { timeout: 120_000 }, async () => {
+test("each Sort choice puts the cards of a column in its own order, and Manual does not give the first order back", { timeout: 120_000 }, async () => {
   await proof.check(/^Sort: Manual/, async () => {
     const { page, errors } = await openBoard();
     await openFilters(page);
@@ -182,9 +182,10 @@ test("each Sort choice puts the cards of a column in its own order", { timeout: 
     assert.deepEqual(options, [
       ["", "Manual"], ["name", "Name A–Z"], ["amt", "Amount, high first"], ["age", "Longest in stage"], ["needs", "Amount needed first"],
     ]);
-    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"], "Manual: the order the read gave");
+    const first = ["Zed Zane", "Alice Adams", "Finn Fox", "Dan Dyer"];
+    assert.deepEqual(await columnOrder(page, "new_lead"), first, "Manual: the order the read gave");
     await pick(page, "#fSort", "name");
-    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"]);
+    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"], "name A to Z");
     await pick(page, "#fSort", "amt");
     assert.deepEqual(await columnOrder(page, "new_lead"), ["Finn Fox", "Alice Adams", "Dan Dyer", "Zed Zane"], "amount, high first");
     await pick(page, "#fSort", "age");
@@ -193,6 +194,11 @@ test("each Sort choice puts the cards of a column in its own order", { timeout: 
     assert.deepEqual(await columnOrder(page, "round_submitted"), ["Eve East", "Bob Baker", "Gus Green"], "the approval with no amount first, then the longest wait");
     await pick(page, "#fSort", "name");
     assert.deepEqual(await columnOrder(page, "round_submitted"), ["Bob Baker", "Eve East", "Gus Green"]);
+    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: picking Manual
+    // after another choice leaves the cards in that other order. applySort() returns when the choice is empty.
+    await pick(page, "#fSort", "");
+    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"],
+      "Manual keeps the last sorted order (the first order is not given back). If this fails the product was fixed: attach the Sort row.");
     assert.deepEqual(errors, []);
     await page.close();
   });
@@ -222,6 +228,16 @@ test("an active filter shows as a chip, and its x clears only that filter", { ti
     assert.equal(await page.locator("#fWait").inputValue(), "");
     assert.deepEqual(await chips(), ["Age: Over 1d in stage"]);
     assert.deepEqual(await shown(page), ["Alice Adams", "Bob Baker", "Cara Cole", "Eve East", "Gus Green", "Zed Zane"]);
+
+    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: the x on the
+    // Sort chip clears the select and the chip, and leaves the cards in the sorted order.
+    await pick(page, "#fSort", "name");
+    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"]);
+    await page.locator("#filterChips .fchip", { hasText: "Sort:" }).locator(".x").click();
+    assert.equal(await page.locator("#fSort").inputValue(), "", "the Sort select is cleared");
+    assert.equal(await page.locator("#filterChips .fchip", { hasText: "Sort:" }).count(), 0, "and its chip is gone");
+    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"],
+      "the order stays sorted. If this fails the product was fixed: attach the chip row.");
     assert.deepEqual(errors, []);
     await page.close();
   });
