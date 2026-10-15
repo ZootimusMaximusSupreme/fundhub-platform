@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/inquiry-cases.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
-import { tablesDb } from "../testing/fin-b08-tables.mjs";
+import { tablesDb, runUpdate } from "../testing/fin-b08-tables.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
@@ -73,12 +73,15 @@ function caseFile({ packet = true, bureau = "EX", status = "Queued", signed = pa
       [/FROM client_consents/i, (_s, p) => (signed ? [{ client_id: CLIENT }] : [])],
       [/^\s*SELECT id, org_id FROM inquiry_log WHERE id = \$1 AND org_id = \$2 FOR UPDATE/i, (s, p) => rowsWhere(tables.inquiry_log, s, p).map((r) => ({ id: r.id, org_id: r.org_id }))],
       [/^\s*UPDATE inquiry_log\s+SET call_attempts = \(/i, (s, p) => {
-        const hit = rowsWhere(tables.inquiry_log, s.slice(s.indexOf("WHERE id = $1 AND org_id = $4")), p);
-        for (const r of hit) {
-          r.call_attempts = tables.inquiry_attempts.filter((a) => a.inquiry_id === r.id && ["call", "letter", "portal"].includes(a.kind)).length;
-          r.outcome = p[1] ?? r.outcome;
-          r.worked_by = p[2];
-        }
+        // The statement's own set list is applied; only its sub-select (the attempt count) is answered here.
+        const { hit } = runUpdate(tables.inquiry_log, s, p, { resolvers: {
+          call_attempts: (expr, _row, params) => {
+            const m = /^SELECT count\(\*\) FROM inquiry_attempts WHERE inquiry_id = \$1 AND kind IN \(([^)]*)\)$/i.exec(expr.replace(/\s+/g, " "));
+            if (!m) throw new Error(`the send stand-in cannot read the count: ${expr}`);
+            const kinds = m[1].split(",").map((k) => k.trim().replace(/^'|'$/g, ""));
+            return tables.inquiry_attempts.filter((a) => a.inquiry_id === params[0] && kinds.includes(a.kind)).length;
+          },
+        } });
         return hit.map((r) => ({ ...r }));
       }],
       [/^\s*INSERT INTO staff_events/i, (_s, p) => { const row = { id: `se${tables.staff_events.length + 1}`, staff_id: p[0], shift_id: p[2], kind: p[3], detail: JSON.parse(p[4]) }; tables.staff_events.push(row); return [row]; }],
@@ -250,5 +253,104 @@ describe("POST /api/inquiry-cases action=send", () => {
     const none = await call({ action: "send", id: CASE, mail: true }, caseFile(), []);
     assert.equal(none.statusCode, 401);
     assert.equal(letters.length, 0);
+  });
+
+  test("the letter is addressed to the bureau the case is about: each bureau's own mailing box, and a company's own configured box wins", async () => {
+    // Written out here, not read from the product: the three bureaus' dispute mailing boxes.
+    const boxes = {
+      EX: { addressLine1: "P.O. Box 4500", city: "Allen", provinceOrState: "TX", postalOrZip: "75013" },
+      EQ: { addressLine1: "P.O. Box 740256", city: "Atlanta", provinceOrState: "GA", postalOrZip: "30374-0256" },
+      TU: { addressLine1: "P.O. Box 2000", city: "Chester", provinceOrState: "PA", postalOrZip: "19016" },
+    };
+    for (const [code, box] of Object.entries(boxes)) {
+      letters.length = 0;
+      const fake = caseFile({ bureau: code });
+      const res = await call({ action: "send", id: CASE, mail: true }, fake);
+      assert.equal(res.statusCode, 200, `${code}: ${JSON.stringify(res.body)}`);
+      assert.equal(letters.length, 1, code);
+      const to = letters[0].body.to;
+      assert.deepEqual({ addressLine1: to.addressLine1, city: to.city, provinceOrState: to.provinceOrState, postalOrZip: to.postalOrZip }, box, `${code}: this bureau's box`);
+    }
+    letters.length = 0;
+    const configured = caseFile({ bureau: "TU" });
+    configured.tables.ai_bureau_config.push({
+      org_id: ORG_ID, bureau_code: "TU", bureau_name: "TransUnion", mail_company_name: "TransUnion Special Desk", mail_address_line1: "P.O. Box 1111",
+      mail_address_line2: null, mail_address_city: "Reno", mail_address_state: "NV", mail_address_zip: "89501", mail_address_country: "US",
+    });
+    await call({ action: "send", id: CASE, mail: true }, configured);
+    assert.equal(letters[0].body.to.addressLine1, "P.O. Box 1111", "the company's own box for that bureau");
+    assert.equal(letters[0].body.to.city, "Reno");
+    // A box configured for another company or another bureau is not used.
+    letters.length = 0;
+    const other = caseFile({ bureau: "EX" });
+    other.tables.ai_bureau_config.push(
+      { org_id: OTHER_ORG_ID, bureau_code: "EX", mail_address_line1: "P.O. Box 9999", mail_address_city: "Elsewhere", mail_address_state: "ZZ", mail_address_zip: "00000" },
+      { org_id: ORG_ID, bureau_code: "EQ", mail_address_line1: "P.O. Box 8888", mail_address_city: "Wrong", mail_address_state: "ZZ", mail_address_zip: "00000" },
+    );
+    await call({ action: "send", id: CASE, mail: true }, other);
+    assert.equal(letters[0].body.to.addressLine1, "P.O. Box 4500");
+  });
+
+  test("a case with several open inquiries gets a letter attempt on every one of them, tied to the case, and only that client's and that bureau's", async () => {
+    const fake = caseFile();
+    const more = (id, over) => ({ id, org_id: ORG_ID, client_id: CLIENT, bureau: "EX", inquiry: id, status: "open", is_open: true, inquiry_removal_case_id: null, call_attempts: 0, outcome: null, worked_by: null, ...over });
+    fake.tables.inquiry_log.push(
+      more("b2000000-0000-4000-8000-000000000002", {}),
+      more("b3000000-0000-4000-8000-000000000003", {}),
+      more("b4000000-0000-4000-8000-000000000004", { is_open: false }),                                  // already removed
+      more("b5000000-0000-4000-8000-000000000005", { bureau: "TU" }),                                    // another bureau
+      more("b6000000-0000-4000-8000-000000000006", { client_id: "c8000000-0000-4000-8000-000000000008" }), // another client
+      more("b7000000-0000-4000-8000-000000000007", { org_id: OTHER_ORG_ID }),                             // another company
+    );
+    const res = await call({ action: "send", id: CASE, mail: true }, fake);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const mine = ["b1000000-0000-4000-8000-000000000001", "b2000000-0000-4000-8000-000000000002", "b3000000-0000-4000-8000-000000000003"];
+    assert.deepEqual(fake.tables.inquiry_attempts.map((a) => a.inquiry_id).sort(), mine.slice().sort(), "one letter attempt per open inquiry of this bureau");
+    for (const id of mine) {
+      const row = fake.tables.inquiry_log.find((r) => r.id === id);
+      assert.equal(row.call_attempts, 1, id);
+      assert.equal(row.inquiry_removal_case_id, CASE, `${id} is tied to the case`);
+    }
+    for (const id of ["b4000000-0000-4000-8000-000000000004", "b5000000-0000-4000-8000-000000000005", "b6000000-0000-4000-8000-000000000006", "b7000000-0000-4000-8000-000000000007"]) {
+      const row = fake.tables.inquiry_log.find((r) => r.id === id);
+      assert.equal(row.call_attempts, 0, `${id} is not part of this letter`);
+      assert.equal(row.inquiry_removal_case_id ?? null, null);
+    }
+    assert.equal(res.body.attempts.length, 3);
+    assert.equal(letters.length, 1, "one letter, however many inquiries it names");
+    assert.equal(fake.tables.staff_events.filter((e) => e.kind === "letter_issued").length, 3);
+  });
+
+  test("a portal upload starts the follow-up clock from when the file went up, counted in business days", async () => {
+    // Friday 16 October 2026, 3 p.m. UTC: the default portal wait is one business day, so the call is due Monday.
+    const fake = caseFile();
+    const res = await call({ action: "send", id: CASE, portal: true, portal_confirmation: "EX-5", portal_uploaded_at: "2026-10-16T15:00:00Z" }, fake);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const c = fake.tables.inquiry_removal_cases[0];
+    assert.equal(new Date(c.first_delivery_at).toISOString(), "2026-10-16T15:00:00.000Z", "the upload time, not the clock and not 1970");
+    assert.equal(new Date(c.call_due_at).toISOString(), "2026-10-19T15:00:00.000Z", "one business day later, same hour");
+    assert.equal(c.first_delivery_channel, "portal");
+
+    // The company's own wait for that bureau is used: three business days from Monday 19 October is Thursday 22 October.
+    const configured = caseFile();
+    configured.tables.ai_bureau_config.push({ org_id: ORG_ID, bureau_code: "EX", portal_wait_business_days: 3, mail_wait_business_days: 5 });
+    await call({ action: "send", id: CASE, portal: true, portal_confirmation: "EX-6", portal_uploaded_at: "2026-10-19T15:00:00Z" }, configured);
+    assert.equal(new Date(configured.tables.inquiry_removal_cases[0].call_due_at).toISOString(), "2026-10-22T15:00:00.000Z");
+    // Columbus Day (Monday 12 October 2026) is a federal holiday: Friday 9 October + 1 business day skips the weekend and the holiday.
+    const holiday = caseFile();
+    await call({ action: "send", id: CASE, portal: true, portal_confirmation: "EX-7", portal_uploaded_at: "2026-10-09T15:00:00Z" }, holiday);
+    assert.equal(new Date(holiday.tables.inquiry_removal_cases[0].call_due_at).toISOString().slice(0, 10), "2026-10-13");
+  });
+
+  test("a portal upload is recorded on every open inquiry of the case, not just the first", async () => {
+    const fake = caseFile();
+    const more = (id) => ({ id, org_id: ORG_ID, client_id: CLIENT, bureau: "EX", inquiry: id, status: "open", is_open: true, inquiry_removal_case_id: null, call_attempts: 0, outcome: null, worked_by: null });
+    fake.tables.inquiry_log.push(more("b2000000-0000-4000-8000-000000000002"), more("b3000000-0000-4000-8000-000000000003"));
+    const res = await call({ action: "send", id: CASE, portal: true, portal_confirmation: "EX-12345" }, fake);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(fake.tables.inquiry_attempts.length, 3);
+    assert.ok(fake.tables.inquiry_attempts.every((a) => a.kind === "portal" && a.outcome === "uploaded" && a.note === "experian_ref:EX-12345"));
+    assert.deepEqual(fake.tables.inquiry_log.map((r) => r.call_attempts), [1, 1, 1]);
+    assert.equal(res.body.attempts.length, 3);
   });
 });
