@@ -53,7 +53,7 @@ The button and its colour key are in `messaging.html` (`#demoToggle` inside `#de
 
 ## Files added (all new, all `fin-b16-*`)
 
-`src/pulse/catalog/proofs/`: `fin-b16-display-contracts.mjs`, `fin-b16-live-contracts.test.mjs`, `fin-b16-sql-kit.mjs` (stand-in Postgres text on SQLite), `fin-b16-kit.mjs`, `fin-b16-rows.json`, `fin-b16-rows.test.mjs`, `fin-b16-display-proofs.mjs`, `fin-b16-not-attachable.mjs`, `fin-b16-money-pages.test.mjs`, `fin-b16-messaging.test.mjs`, `fin-b16-present.test.mjs`, `fin-b16-cc-today.test.mjs`, `fin-b16-cc-shoot.test.mjs`.
+`src/pulse/catalog/proofs/`: `fin-b16-display-contracts.mjs`, `fin-b16-live-contracts.test.mjs`, `fin-b16-live-contracts-2.test.mjs`, `fin-b16-live-harness.mjs`, `fin-b16-sql-kit.mjs` (stand-in Postgres text on SQLite), `fin-b16-kit.mjs`, `fin-b16-rows.json`, `fin-b16-rows.test.mjs`, `fin-b16-display-proofs.mjs`, `fin-b16-not-attachable.mjs`, `fin-b16-money-pages.test.mjs`, `fin-b16-messaging.test.mjs`, `fin-b16-present.test.mjs`, `fin-b16-cc-today.test.mjs`, `fin-b16-cc-shoot.test.mjs`.
 `src/pulse/coverage/fin-b16-retired-page-row.test.mjs`.
 `ops/workflows/finish-853-2026-10-14/manifest-b16.md`.
 
@@ -106,4 +106,16 @@ Each break was made in the product file (or the SQL text), the test run, then th
 | `node --test src/pulse/catalog/*.test.mjs` | 42 of 42 |
 | `node --test --test-name-pattern "unmapped display rows stay red" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 634 (672 before) |
 | `npm run lint` | `lint: 3575 file(s) and inline script(s) parse clean` |
-GROUP_ROW
+| `node --test` over every file in `src/pulse/catalog/**`, `src/pulse/coverage/gap-catalog*`, `gap-door-batch*` and `fin-b16-retired-page-row` (121 files, one run, load average 50 to 110) | 1,767 tests, 1,765 pass, 2 fail, 0 skipped. Neither failure is a batch 16 file: (1) inside "the focused proof test runs every executable test named by every case", the S1 spec `e2e/marketing-cc-settings.spec.mjs` ("the weekly switch: off ...") hit its 30 second limit; alone it passes 17 of 17. (2) "every test named by a flow proof passes" lost `src/sales/closer-deck.test.mjs` to a time-out, the same load failure the S1, S2 and S4 manifests list. Every batch 16 test passed inside that run. |
+
+## Left undone, and what is not claimed
+
+- Row 22 is not attached (finding 1).
+- Rows 1, 2 and 13 are proved by what they SAVE. Their screen halves (the time boxes and the "a bad box is named in plain words" sentence on Settings; the cost sheet, live step words and Retry on the avatar row) are not claimed here. Older specs press them (`e2e/marketing-cc-settings.spec.mjs`, `e2e/marketing-avatar-row.spec.mjs`) but this batch did not bind them to the rows.
+- The schedule check does not judge the saved "scripts a day" and "days in a batch" for a plan with a one-time override or with no active funnel, and it waits until a weekly batch's whole planning window came after the last save. A week that did not fit those cases is the week it judges.
+- The "Send this one to" check judges the SHAPE of a typed destination on the saved message. "Never written back to the record" has no saved trace to read; the page half (the page writes only the message) is pressed by the practice test, and the server half is `src/messaging/compose.test.mjs`.
+- The live checks were run against stand-in rows (SQLite, real column names). They were not run on the live database (the brief forbids it). The first live read happens when the morning pulse runs the lane.
+
+## Next
+
+Integrator: merge, run `npm run pulse:catalog`, re-derive the two guard numbers (`gap-catalog-display.test.mjs`, `display-proof-cases.test.mjs`).
