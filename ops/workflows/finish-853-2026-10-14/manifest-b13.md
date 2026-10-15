@@ -1,6 +1,6 @@
 # Batch 13 manifest (finish-853, tier 4, lane gap-catalog-display, 40 rows)
 
-Branch `fin/b13`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1.
+Branch `fin/b13`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1 built it; generation 2 challenged the one row left open (see "Generation 2 challenge" at the end).
 Rows: the Hiring desk (`hiring.html`, 26 rows), the app front door (`index.html`, 1 row) and the Specialist desk (`inquiry-remover.html`, 13 rows), all in `desks-c.json`.
 
 ## The numbers
@@ -116,3 +116,35 @@ No product file was changed. `public/app/*` and `shell.js` were broken on purpos
 - `npm run lint`: 3,568 files and inline scripts parse clean.
 - The third test inside `display-proof-cases.test.mjs` ("runs every executable test named by every case", 139 files) did NOT finish green in this run, and I cannot call it green. Three tries: one inside the test (436 s, child exited 1, its captured text is cut and names no failing test), and two direct runs of the same files on my branch. All stopped at the same place, test 609 (`public display contracts click every mapped control`), then waited on the long Playwright batches while the Mac sat at load average 50 to 160 from sibling builders. The same 137 files on a clean checkout of `fin/base` reached the same test 609 and the same wait, so this is the known load behavior in the earlier slice manifests, not these files. My own files do not appear in that cut-off output at all. What I ran instead: my three test files alone (144 of 144, three times), every test file that imports the catalog, the display lane or the proof registry (`na-conditions`, `gap-catalog`, `modules`, `no-unfenced-transmit`, `compiler`, `door-contracts-routes-01`, `door-contracts-routes-01-2`, `display-contracts-ab`, `-ab-2`, `-ab-3`: 141 of 141) and the lane test (11 of 11). The integrator should run the aggregator once on a quiet machine.
 
+
+## Generation 2 challenge (the one open row)
+
+Row: `inquiry-remover.html - Case row: click or Enter expands the case drawer (items, letter draft, identity packet, send options)`.
+
+Result: **still not-attachable. The generation 1 reason is exactly true.** No file in this batch changed in generation 2.
+
+What I checked, in a real Chromium on the real `public/app/inquiry-remover.html` with fake API answers (a throwaway test, deleted again):
+
+- The case row (`tr.case-main`, built in `renderCases()`) has no `tabindex` attribute.
+- `row.focus()` does not put focus on it (the active element is not the row).
+- Enter on it leaves `aria-expanded="false"`. Space does the same.
+- Forty Tab presses from the top of the page never land on a case row.
+- Nothing else catches the key: the only page-wide key handler is Escape (closes the letter drawer and the PULL box), and `shell.js` has no row key handler.
+- The Repair desk rows (`tr.repair-row`, `tabindex="0"`, keydown at the repair bind) and the work-queue rows do have keyboard open. Only the case-queue row lacks it.
+
+Why no attachment is honest:
+
+- A live check has nothing to read. The row's own catalog entry says it calls nothing and writes nothing (`calls: none (client only; data came with the list)`, `tables: none`). A drawer opening leaves no saved result.
+- A practice test of the click half passes (`fin-b13-specialist-desk.test.mjs`, "a case row expands its drawer on a click and folds it on the next", still green), but the row's claim is "click or Enter". Attaching it would mark a row proved while its Enter half is false. A test that presses Enter fails today, so it cannot be attached either. A test that asserts "Enter does nothing" would turn a missing feature green, so I did not write it.
+- Fixing it is a product change (`tabindex="0"` on the row, and a keydown handler for Enter and Space next to the click listener in `renderCases()`). The brief forbids product fixes in this run. It is product finding 1 above.
+
+Numbers, generation 2 (same script, `node scripts/pulse/count-not-proved.mjs`):
+
+| | Whole lane set | This batch (40 rows) |
+|---|---|---|
+| Open on `fin/base` | 853 | 40 |
+| Open on `fin/b13` | 814 | 1 |
+
+Commands, generation 2: `node scripts/pulse/count-not-proved.mjs` on `fin/base` (temporary worktree, removed) and on `fin/b13`; `node scripts/pulse/compile-catalog.mjs --check` (fresh); `node --test` on the three batch 13 files together: 144 of 144 pass.
+
+To close this row after a product change: add `tabindex="0"` and an Enter/Space handler to `tr.case-main`, add one test to `fin-b13-specialist-desk.test.mjs` that focuses the row and presses Enter and Space, then register it as that row's practice test in `fin-b13-display-practice.mjs`.
