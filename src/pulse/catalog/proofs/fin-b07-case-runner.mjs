@@ -95,7 +95,8 @@ export function runCases(cases) {
       test(`${key}: ${bad.name} is counted wrong, and reads clean once that clause is switched off`, () => {
         const goodOnly = judge(spec.tables, spec.good, sql);
         const out = judge(spec.tables, [...spec.good, ...bad.rows], sql);
-        assert.equal(out.bad_count, 1, `expected exactly one wrong result, got ${out.bad_count}`);
+        const expected = bad.expectBad ?? 1;
+        assert.equal(out.bad_count, expected, `expected ${expected} wrong result(s), got ${out.bad_count}`);
         assert.equal(out.sample_count, goodOnly.sample_count + (bad.extraSamples ?? 1));
 
         const pieces = Array.isArray(bad.breaks) ? bad.breaks : [bad.breaks];
