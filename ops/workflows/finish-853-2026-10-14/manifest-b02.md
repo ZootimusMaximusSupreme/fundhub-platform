@@ -88,7 +88,7 @@ All from the worktree `.claude/worktrees/fin-b02`, no database, no network.
 - `node --test src/pulse/catalog/proofs/display-contracts-*.test.mjs` and the door and flow contract tests that read `generated.json`: 215 pass.
 - `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the focused run that executes every test named by every case, browser ones included), twice:
   - on `ec6010f37` (before the funded-column and sales-floor tests were added to the cases): 3 of 3 pass, 12 minutes 41 seconds.
-  - on `054bb36e7` (final case list): tests 1 and 2 pass. Test 3 fails on ONE nested test and nothing else: `e2e/teleprompter-touch.spec.mjs:715` "volume buttons, no finger on the glass" (379 of 380 browser tests passed, 764 seconds). That spec is not in this batch and I touched no teleprompter file. The slice 4 manifest recorded the same test failing under load on clean `origin/main` ("373 of 374 passed"). All five new `fin-b02-*` test files passed inside that run.
+  - on `054bb36e7` (final case list): tests 1 and 2 pass. Test 3 fails on ONE nested test and nothing else: `e2e/teleprompter-touch.spec.mjs:715` "volume buttons, no finger on the glass" (379 of 380 browser tests passed, 764 seconds). That spec is not in this batch and I touched no teleprompter file. Run alone it passes (2 of 2 in this folder). The slice 4 manifest recorded the same test failing under load on clean `origin/main` ("373 of 374 passed"). All five new `fin-b02-*` test files passed inside that run.
 - `npm run lint`: 3,569 files parse clean.
 
 ## Break checks (each break made alone, test run, file put back, `git status` clean)
