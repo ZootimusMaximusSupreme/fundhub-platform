@@ -160,7 +160,7 @@ test("GET read/blueprint-combined-approval keeps unknown amounts null, shows one
 
 function cockpitWorld({ withCredit = true, closeout = null, clientOrg = ORG_ID, kpi = { cash_cents: "1500000", deposits: 3, held: 6, no_shows: 1 }, shiftStarted = null } = {}) {
   const client = {
-    id: CLIENT_ID, org_id: clientOrg, first_name: "Alex", last_name: "Rivera", email: "alex@example.test", phone: null, channel_source: "meta",
+    id: CLIENT_ID, org_id: clientOrg, first_name: "Alex", last_name: "Rivera", email: null, phone: null, channel_source: "meta",
     funded: false, funded_amount: null, outcome_tier: null, custom_fields: { slo_ref: "SLO-12", estimated_fico: 690 }, tags: ["vip"],
     business_name: "Rivera Plumbing", age_months: 30, utm_source: "fb", utm_campaign: "funding600", utm_medium: "paid", cf_setter_user_id: null,
   };

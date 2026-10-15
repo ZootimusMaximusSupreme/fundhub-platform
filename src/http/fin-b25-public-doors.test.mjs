@@ -300,7 +300,7 @@ test("GET public/partner-page answers a published page and only the public brand
   ];
   const brands = [{
     partner_id: PARTNER, ink: "#111111", paper: "#ffffff", display_face: "Fraunces", mono_face: "IBM Plex Mono", entity_name: "Acme Funding LLC",
-    domain: "Apply.Acme.Test", domain_verified: true, support_email: "private@acme.test", entity_address: "1 Private Way", wordmark_url: "https://x.test/w.svg",
+    domain: "Apply.Acme.Test", domain_verified: true, support_email: "private-contact-line", entity_address: "1 Private Way", wordmark_url: "https://x.test/w.svg",
   }];
   const world = sitesWorld({ pages, brands });
   const byId = await call(partnerPageHandler, { ...open, query: { partner_id: PARTNER, slug: "APPLY" }, rules: world.rules });
@@ -311,7 +311,7 @@ test("GET public/partner-page answers a published page and only the public brand
     brand: { ink: "#111111", paper: "#ffffff", display_face: "Fraunces", mono_face: "IBM Plex Mono", entity_name: "Acme Funding LLC", domain: "Apply.Acme.Test", domain_verified: true },
     live_path: `/sites/${PARTNER}/apply`,
   });
-  assert.doesNotMatch(JSON.stringify(byId.body), /private@acme|Private Way|wordmark/, "private brand fields never leave");
+  assert.doesNotMatch(JSON.stringify(byId.body), /private-contact-line|Private Way|wordmark/, "private brand fields never leave");
   assert.deepEqual(world.seen.page[0].params, [PARTNER, "apply"], "the slug is lower-cased");
   assertSqlHas(world.seen.page[0].sql, { published: "AND status = 'published'", partner: "WHERE partner_id = $1" });
   noWrites(byId);
