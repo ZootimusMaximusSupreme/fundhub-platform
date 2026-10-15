@@ -11,6 +11,7 @@ import {
   flowGapRows,
   isInactiveTemplateRow,
 } from "../catalog/proofs/flow-gap-cases.mjs";
+import { runFinB22Live } from "../catalog/proofs/fin-b22-flow-live.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 export const LOOKBACK_DAYS = 7;
@@ -204,9 +205,15 @@ async function readInactiveCountsForVerify(ctx, since) {
 export async function gapChecks(ctx = {}) {
   const now = new Date(ctx.now || Date.now());
   const since = new Date(now.getTime() - LOOKBACK_DAYS * DAY).toISOString();
-  const read = await readInactiveCounts(ctx, INACTIVE_KEYS, since);
+  const [read, live] = await Promise.all([
+    readInactiveCounts(ctx, INACTIVE_KEYS, since),
+    runFinB22Live({ ...ctx, now }),
+  ]);
 
   return FLOW_ROWS.map((row) => {
+    // A row with a saved-result query (fin-b22-flow-live.mjs) is judged by what the flow really left behind.
+    const liveRow = live.get(`flow:${row.family}:${row.surface}`);
+    if (liveRow) return liveRow;
     if (!isInactiveTemplateRow(row)) return staticResult(row);
     if (read.error) return result(row, "skip", `${row.surface} was not checked: ${read.error}.`);
     return inactiveTemplateResult(row, read.counts.get(templateKey(row)) || 0, since);
