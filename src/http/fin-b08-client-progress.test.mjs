@@ -23,7 +23,26 @@ const waypoint = (over = {}) => ({
   state: "not_started", due_at: null, completed_at: null, ...over,
 });
 
-function fileTables({ pulls = [pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648), pull("p2", "2026-09-30T00:00:00Z", 690, 700, 695)], items = [], waypoints = [waypoint()] } = {}) {
+/* The counts a statement asks for, read from its own text: `COUNT(*)[ FILTER ( WHERE a = 'x' OR b = 'x' )]::int AS name`
+   over the rows its WHERE keeps. A select item this reader does not know throws. */
+function countsOf(sql, rows) {
+  const text = String(sql).replace(/\s+/g, " ");
+  const select = /SELECT (.*?) FROM dispute_items/i.exec(text)[1];
+  const out = {};
+  for (const item of select.split(/,(?![^()]*\))/)) {
+    const m = /^\s*COUNT\(\*\)(?: FILTER \( WHERE (.*?) \))?::int AS (\w+)\s*$/i.exec(item);
+    if (!m) throw new Error(`the progress stand-in cannot read the select item: ${item}`);
+    const terms = m[1] ? m[1].split(/\s+OR\s+/i).map((t) => {
+      const e = /^(\w+)\s*=\s*'([^']*)'$/.exec(t.trim());
+      if (!e) throw new Error(`the progress stand-in cannot read the filter term: ${t}`);
+      return [e[1], e[2]];
+    }) : null;
+    out[m[2]] = rows.filter((r) => !terms || terms.some(([col, lit]) => r[col] === lit)).length;
+  }
+  return out;
+}
+
+function fileTables({ pulls = [pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648), pull("p2", "2026-09-30T00:00:00Z", 690, 700, 695)], items = [], waypoints = [waypoint()], stage = null } = {}) {
   const clients = [
     { id: CLIENT, org_id: ORG_ID, custom_fields: {} },
     { id: OTHER_CLIENT, org_id: ORG_ID, custom_fields: {} },
@@ -31,13 +50,19 @@ function fileTables({ pulls = [pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648)
   ];
   const fake = fakeDb([
     [/^\s*SELECT 1 FROM clients/i, (s, p) => rowsWhere(clients, s, p).map(() => ({ "?column?": 1 }))],
-    // Rows come back in the order the statement's own ORDER BY names (pulls are stored oldest first).
-    [/FROM crs_results/i, (s, p) => orderAndLimit(rowsWhere(pulls, s, p), s, p)],
-    [/FROM dispute_items/i, (s, p) => {
-      const rows = rowsWhere(items, s.slice(s.indexOf("FROM dispute_items")), p);
-      return [{ disputed: rows.length, removed: rows.filter((r) => r.status === "deleted" || r.outcome === "deleted").length }];
+    // The statement's own conditions, its demo filter and its ORDER BY decide what comes back.
+    [/FROM crs_results/i, (s, p) => {
+      let rows = rowsWhere(pulls, s, p);
+      if (/\bis_demo IS NOT TRUE\b/i.test(s)) rows = rows.filter((r) => r.is_demo !== true);
+      return orderAndLimit(rows, s, p);
     }],
-    [/FROM client_waypoints/i, (s, p) => rowsWhere(waypoints, s, p)],
+    [/FROM dispute_items/i, (s, p) => [countsOf(s, rowsWhere(items, s.slice(s.indexOf("FROM dispute_items")), p))]],
+    [/FROM client_waypoints/i, (s, p) => orderAndLimit(rowsWhere(waypoints, s, p), s, p)],
+    [/^\s*SELECT ps\.key AS stage_key\s+FROM cards c/i, (s, p) => {
+      const where = s.replace(/\s+/g, " ");
+      if (!/WHERE c\.org_id = \$1::uuid AND c\.client_id = \$2::uuid/.test(where)) throw new Error("the progress stand-in cannot read the stage conditions");
+      return stage && p[0] === stage.org_id && p[1] === stage.client_id ? [{ stage_key: stage.key }] : [];
+    }],
     [/SELECT custom_fields FROM clients/i, (s, p) => rowsWhere(clients, s, p)],
   ]);
   const inner = fake.query;
@@ -163,5 +188,100 @@ describe("GET /api/read/client-progress", () => {
       const ok = await call({ client_id: CLIENT }, fileTables(), [staffSession({ role })]);
       assert.equal(ok.res.statusCode, 200, role);
     }
+  });
+
+  const NOW_STAGE = (key) => ({ org_id: ORG_ID, client_id: CLIENT, key });
+  test("a step is open while it is not started, in progress or blocked; done and skipped steps are never the next step", async () => {
+    // Done and skipped steps come first on the list and are the client's: they must not be offered.
+    const closed = await call({ client_id: CLIENT }, fileTables({ waypoints: [
+      waypoint({ id: "w1", key: "a", position: 1, owner_kind: "client", state: "done", completed_at: "2026-09-01T00:00:00Z" }),
+      waypoint({ id: "w2", key: "b", position: 2, owner_kind: "client", state: "skipped" }),
+      waypoint({ id: "w3", key: "c", position: 3, owner_kind: "fundhub", state: "not_started" }),
+    ] }));
+    assert.deepEqual(closed.res.body.nextStep, { waypointId: "w3", owner: "fundhub" });
+    // A blocked step is still the client's open work.
+    const blocked = await call({ client_id: CLIENT }, fileTables({ waypoints: [
+      waypoint({ id: "w1", key: "a", position: 1, owner_kind: "client", state: "blocked" }),
+      waypoint({ id: "w2", key: "b", position: 2, owner_kind: "fundhub", state: "not_started" }),
+    ] }));
+    assert.deepEqual(blocked.res.body.nextStep, { waypointId: "w1", owner: "client" });
+    // So is one already under way, even when Fundhub's own step is earlier.
+    const underway = await call({ client_id: CLIENT }, fileTables({ waypoints: [
+      waypoint({ id: "w1", key: "a", position: 1, owner_kind: "fundhub", state: "not_started" }),
+      waypoint({ id: "w2", key: "b", position: 2, owner_kind: "client", state: "in_progress" }),
+    ] }));
+    assert.deepEqual(underway.res.body.nextStep, { waypointId: "w2", owner: "client" });
+    assert.equal(underway.res.body.stage.waitingOn, "client");
+  });
+
+  test("the checklist comes back in plan order: by position, then by key, whatever order the rows were stored in", async () => {
+    const files = fileTables({ waypoints: [
+      waypoint({ id: "w9", key: "z", position: 3 }),
+      waypoint({ id: "w2", key: "m", position: 1 }),
+      waypoint({ id: "w1", key: "a", position: 1 }),
+      waypoint({ id: "w5", key: "b", position: 2 }),
+    ] });
+    const { res } = await call({ client_id: CLIENT }, files);
+    assert.deepEqual(res.body.waypoints.map((w) => w.id), ["w1", "w2", "w5", "w9"]);
+    assert.deepEqual(res.body.waypoints.map((w) => w.order), [1, 1, 2, 3]);
+    const read = files.calls.find((c) => /FROM client_waypoints/.test(c.sql));
+    assertSqlHas(read.sql, { "this client and this company": "WHERE org_id = $1::uuid AND client_id = $2::uuid" });
+  });
+
+  test("items disputed counts every item on the file and items removed only the deleted ones, from the statement's own two counts", async () => {
+    const mine = (over) => ({ client_id: CLIENT, org_id: ORG_ID, status: "open", outcome: null, ...over });
+    const files = fileTables({ items: [
+      mine({ status: "deleted" }), mine({ status: "verified", outcome: "deleted" }), mine({ status: "verified" }), mine({ status: "sent" }), mine({ status: "updated", outcome: "updated" }),
+    ] });
+    const { res } = await call({ client_id: CLIENT }, files);
+    assert.equal(res.body.movement.itemsDisputed, 5, "every item, not only the open ones");
+    assert.equal(res.body.movement.itemsRemoved, 2);
+    const noItems = await call({ client_id: CLIENT }, fileTables({ items: [] }));
+    assert.equal(noItems.res.body.movement.itemsDisputed, 0);
+    assert.equal(noItems.res.body.movement.itemsRemoved, 0);
+  });
+
+  test("the middle score needs all three bureaus: two scores on file give no middle, and a demo pull is never counted", async () => {
+    const two = await call({ client_id: CLIENT }, fileTables({ pulls: [pull("p1", "2026-09-30T00:00:00Z", 690, 700, null)] }));
+    assert.equal(two.res.body.movement.middleScoreNow, null, "two numbers have a higher and a lower, not a middle");
+    assert.equal(two.res.body.movement.middleScoreBaseline, null);
+    assert.equal(two.res.body.movement.series.length, 1, "the pull still makes a point on the chart");
+    const demo = await call({ client_id: CLIENT }, fileTables({ pulls: [
+      pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648),
+      pull("pd", "2026-10-10T00:00:00Z", 850, 850, 850, { is_demo: true }),
+    ] }));
+    assert.equal(demo.res.body.movement.middleScoreNow, 648, "a demo pull is not this client's score");
+    assert.equal(demo.res.body.movement.series.length, 1);
+    assert.deepEqual(demo.res.body.scores.personal.map((s) => s.score), [640, 655, 648]);
+  });
+
+  test("a pull whose scores were erased leaves no point on the chart and cannot be the baseline", async () => {
+    const files = fileTables({ pulls: [
+      pull("p0", "2026-07-01T00:00:00Z", 0, 0, 0, { result: {} }),
+      pull("p0b", "2026-07-15T00:00:00Z", 0, 0, 0, { result: null }),
+      pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648),
+      pull("p2", "2026-09-30T00:00:00Z", 690, 700, 695),
+    ] });
+    const { res } = await call({ client_id: CLIENT }, files);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.movement.series.map((p) => p.at), ["2026-08-01T00:00:00.000Z", "2026-09-30T00:00:00.000Z"]);
+    assert.equal(res.body.movement.baselineAt, "2026-08-01T00:00:00.000Z");
+    assert.equal(res.body.movement.middleScoreBaseline, 648);
+  });
+
+  test("while the letters are out the file is waiting on the bureaus, whatever is on the client's checklist", async () => {
+    const open = [waypoint({ id: "wc", key: "c", position: 1, owner_kind: "client", state: "not_started" })];
+    for (const key of ["in_transit", "awaiting_response"]) {
+      const { res } = await call({ client_id: CLIENT }, fileTables({ waypoints: open, stage: NOW_STAGE(key) }));
+      assert.equal(res.body.stage.key, key);
+      assert.equal(res.body.stage.waitingOn, "bureaus", key);
+      assert.deepEqual(res.body.nextStep, { waypointId: "wc", owner: "client" }, "the step is still named");
+    }
+    const analysis = await call({ client_id: CLIENT }, fileTables({ waypoints: open, stage: NOW_STAGE("analysis") }));
+    assert.equal(analysis.res.body.stage.waitingOn, "client");
+    const fundhub = await call({ client_id: CLIENT }, fileTables({ waypoints: [waypoint({ id: "wf", owner_kind: "fundhub" })], stage: NOW_STAGE("analysis") }));
+    assert.equal(fundhub.res.body.stage.waitingOn, "fundhub");
+    const nobody = await call({ client_id: CLIENT }, fileTables({ waypoints: [], stage: null }));
+    assert.equal(nobody.res.body.stage.waitingOn, null, "no stage and no open step: nobody is guessed");
   });
 });
