@@ -43,8 +43,8 @@ function ranTests(report) {
 }
 
 test("every bound row is one exact map row, every named spec and server test file exists and is safe", () => {
-  assert.equal(FIN_B01_DISPLAY_SPEC_PROOFS.length, 33);
-  assert.equal(new Set(FIN_B01_DISPLAY_SPEC_PROOFS.map((p) => p.rowKey)).size, 33);
+  assert.equal(FIN_B01_DISPLAY_SPEC_PROOFS.length, 34);
+  assert.equal(new Set(FIN_B01_DISPLAY_SPEC_PROOFS.map((p) => p.rowKey)).size, 34);
   const maps = new Map();
   for (const proof of FIN_B01_DISPLAY_SPEC_PROOFS) {
     if (!maps.has(proof.sourceFile)) {

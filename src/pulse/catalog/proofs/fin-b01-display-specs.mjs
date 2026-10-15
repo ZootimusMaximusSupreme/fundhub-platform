@@ -17,7 +17,11 @@
 //  - optimize.html "Audit intake and Pay for Audit": the page never posts to
 //    /api/public/optimize (it only reads its config).
 //  - climate "Gate button": the shipped bundle has no gate button or optimize call.
-//  - marketing-command-center "cost sheet before every paid tap": see the manifest.
+//
+// The marketing-command-center frame row is bound to the frame's own sheet test, the two
+// new "every paid tap, Cancel then yes" specs, and a guard that counts every sheet call
+// site in the tab files (fin-b01-paid-taps.test.mjs), so a new paid tap without a test
+// turns the guard red.
 
 export const FIN_B01_RUNNER_TEST = "src/pulse/catalog/proofs/fin-b01-display-specs.test.mjs";
 
@@ -54,7 +58,8 @@ const ENTRIES = [
   {"sourceFile":"desks-c.json","surface":"inquiry-remover.html","control":"PULL modal: type PULL, Cancel, 'Pull' (three bureau pulls in a row; stops on the first refusal; Escape closes)","parts":[{"spec":"e2e/fin-b01-inquiry-remover-repair.spec.mjs","titles":["the modal opens empty with Pull off, and only the exact word PULL turns it on","Cancel closes the modal and sends nothing; opening it again starts empty","Escape closes the modal and sends nothing","Pull asks the three bureaus one at a time, Experian then Equifax then TransUnion, for this client","the first refusal stops the run: one bureau asked, the modal closes, and the refusal is said"]}],"servers":[]},
   {"sourceFile":"desks-f.json","surface":"present.html (+ present.js, contract-send.js)","control":"'Send agreement + pay link': mints the pay link for the chosen offer, emails and texts it","parts":[{"spec":"e2e/fin-b01-present-deck.spec.mjs","titles":["it sends this client with the offer the deck chose and no sale motion, once","a funding deck sends the funding offer","an alternate offer carries the downsell or upsell the closer picked","a second press while it is sending, or just after, sends nothing","a refusal shows the server's words, the button is pressable again, and nothing says it was sent"]}],"servers":["src/pulse/catalog/proofs/s1-door-closer-deck.test.mjs"]},
   {"sourceFile":"desks-f.json","surface":"present.html (+ present.js, contract-send.js)","control":"'Invoice this client': reads the open invoice, emails it","parts":[{"spec":"e2e/fin-b01-present-deck.spec.mjs","titles":["it reads this client's invoices and emails the first open one, by its id","with only void and written-off invoices it says none and emails nothing","an email the server refuses says so and is never reported as sent"]}],"servers":[]},
-  {"sourceFile":"desks-f.json","surface":"present.html (+ present.js, contract-send.js)","control":"'Log disposition and close': writes the call outcome (deposit or downsell) and the offer","parts":[{"spec":"e2e/fin-b01-present-deck.spec.mjs","titles":["it writes the disposition for this client with the offer the deck chose","a downsell to the trial rung writes that offer, not the first one","a refusal is said in the server's words and no write is claimed"]}],"servers":[]}
+  {"sourceFile":"desks-f.json","surface":"present.html (+ present.js, contract-send.js)","control":"'Log disposition and close': writes the call outcome (deposit or downsell) and the offer","parts":[{"spec":"e2e/fin-b01-present-deck.spec.mjs","titles":["it writes the disposition for this client with the offer the deck chose","a downsell to the trial rung writes that offer, not the first one","a refusal is said in the server's words and no write is claimed"]}],"servers":[]},
+  {"sourceFile":"desks-c.json","surface":"marketing-command-center.html","control":"Frame: cost sheet and two-tap confirm sheet drawn before every paid tap (Cancel / yes)","parts":[{"spec":"e2e/marketing-command-center.spec.mjs","titles":["the frame hosts main's FundhubCC tabs: a cc-tab file loaded before the frame shows, reads, and asks through the sheets (390)"]},{"spec":"e2e/fin-b01-paid-taps-ideas.spec.mjs","titles":["every paid tap, Cancel then yes"]},{"spec":"e2e/fin-b01-paid-taps-other-tabs.spec.mjs","titles":["Rewrite it (Fix a script from a note)","Write now (a whole batch)","Write it now (one script from a typed idea)","Turn on one ad","Load all approved ads into Meta","Close the shoot"]}],"servers":["src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs"]}
 ];
 
 export const FIN_B01_DISPLAY_SPEC_PROOFS = Object.freeze(ENTRIES.map((entry) => {
