@@ -112,6 +112,10 @@ test("the data door sending 50 states is red, and says which one is gone", async
 test("a data door that says not ok, or sends no list, is red", () => {
   const all = new Set(STATE_CODES);
   assert.equal(judgeClimateReading({ api: { ok: false, states: [] }, outlines: all }).status, "FAIL");
+  // every state present and every outline drawn, but the door itself says it did not work
+  const sick = judgeClimateReading({ api: { ok: false, states: STATE_CODES.map((state) => ({ state })) }, outlines: all });
+  assert.equal(sick.status, "FAIL");
+  assert.match(sick.detail, /did not send a good reading/);
   assert.equal(judgeClimateReading({ api: { ok: true }, outlines: all }).status, "FAIL");
   assert.equal(judgeClimateReading({ api: null, outlines: all }).status, "FAIL");
 });
@@ -175,6 +179,8 @@ test("the page's own scripts are the ones read: framework files and other sites 
     "/climate/_next/static/chunks/app/page-b71b32356ee1b98a.js",
   ]);
   assert.deepEqual(pageScripts('<script src="https://cdn.example.test/x.js"></script><script src="/funnel/rb2b.js"></script>', ORIGIN), []);
+  // another site's script under the same path is still another site's script
+  assert.deepEqual(pageScripts('<script src="https://cdn.example.test/climate/_next/static/chunks/app/page-zz.js"></script>', ORIGIN), []);
 });
 
 test("the live read makes one request for the data, one for the page and one for each of its own scripts", async () => {
@@ -183,6 +189,34 @@ test("the live read makes one request for the data, one for the page and one for
   const climate = fetchImpl.calls.filter((u) => !u.includes("/consulting/"));
   assert.equal(climate.length, 6);
   assert.ok(fetchImpl.calls.every((u) => u.startsWith(ORIGIN)), "same site only");
+});
+
+test("a stand-in site that never answers is a skip inside the run's own time, not a hang", async () => {
+  const hung = (url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+  });
+  // AbortSignal.timeout does not hold the process open, so the test holds it open itself.
+  const hold = setTimeout(() => {}, 20_000);
+  try {
+    const started = Date.now();
+    const rows = await runFinB22PageReads({ fetchImpl: hung });
+    assert.ok(Date.now() - started < 9000, "the reads gave up on their own");
+    for (const row of rows.values()) assert.equal(row.status, "skip");
+  } finally {
+    clearTimeout(hold);
+  }
+});
+
+test("a read whose body cannot be read, and a judge that throws, are skips and not a thrown lane", async () => {
+  const strange = async () => ({ status: 200, text: async () => { throw new TypeError("body stream locked"); } });
+  for (const row of (await runFinB22PageReads({ fetchImpl: strange })).values()) assert.equal(row.status, "skip");
+
+  const boom = () => { throw new RangeError("a page nobody planned for"); };
+  const rows = await runFinB22PageReads({ fetchImpl: liveSite() }, { climate: boom, consulting: boom });
+  for (const row of rows.values()) {
+    assert.equal(row.status, "skip");
+    assert.match(row.detail, /a page nobody planned for/);
+  }
 });
 
 test("a failed read of the climate data, the page, or a script is a skip, never a pass", async () => {

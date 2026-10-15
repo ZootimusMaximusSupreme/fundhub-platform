@@ -29,6 +29,8 @@ export const CONSULTING_REQUEST_SURFACE = "journey:fh-consulting-intended#5-requ
 
 export const DEFAULT_BASE_URL = "https://fundhub.ai";
 export const READ_TIMEOUT_MS = 6000;
+/** All of one run's reads together. Netlify cuts a pulse step at 26 seconds, and a lane stays under 20. */
+export const RUN_TIMEOUT_MS = 12000;
 /** The most page scripts one read will fetch. The live /climate/ page loads seven; most are the framework. */
 export const MAX_SCRIPTS = 8;
 
@@ -144,8 +146,13 @@ function pickFetch(ctx) {
   return null;
 }
 
-async function get(fetchImpl, url) {
-  const res = await fetchImpl(url, { method: "GET", headers: { accept: "*/*" }, signal: AbortSignal.timeout(READ_TIMEOUT_MS) });
+function within(total) {
+  const own = AbortSignal.timeout(READ_TIMEOUT_MS);
+  return typeof AbortSignal.any === "function" && total ? AbortSignal.any([own, total]) : own;
+}
+
+async function get(fetchImpl, url, total) {
+  const res = await fetchImpl(url, { method: "GET", headers: { accept: "*/*" }, signal: within(total) });
   if (!res || res.status !== 200) throw new Error(`${url} answered ${res ? res.status : "nothing"}`);
   return String(await res.text());
 }
@@ -169,51 +176,56 @@ function skipped(surface, error) {
   return verdict(surface, "skip", `${surface} was not checked: ${message}.`);
 }
 
-async function readClimate(fetchImpl, origin) {
+async function readClimate(fetchImpl, origin, total, judge) {
   let api;
+  let html;
   try {
-    const raw = await get(fetchImpl, `${origin}/api/climate`);
+    const [raw, page] = await Promise.all([
+      get(fetchImpl, `${origin}/api/climate`, total),
+      get(fetchImpl, `${origin}/climate/`, total),
+    ]);
+    html = page;
     try { api = JSON.parse(raw); } catch { throw new Error("the climate data door did not answer with JSON"); }
   } catch (error) {
     return skipped(CLIMATE_READING_SURFACE, error);
   }
   let scripts;
   try {
-    const html = await get(fetchImpl, `${origin}/climate/`);
     const urls = pageScripts(html, origin);
     if (!urls.length) {
       return verdict(CLIMATE_READING_SURFACE, "FAIL",
         `${CLIMATE_READING_SURFACE}: the live /climate/ page loads no script of its own, so nothing on it can draw a map.`,
         "Open /climate/ and find why its scripts are gone. Do not auto-fix. Chris fixes reds.");
     }
-    scripts = await Promise.all(urls.map((url) => get(fetchImpl, url)));
+    scripts = await Promise.all(urls.map((url) => get(fetchImpl, url, total)));
     // A page that fetches its outlines at run time names the file in its script; then the file counts.
     if (scripts.some((text) => /us-states-paths\.json/.test(text))) {
-      scripts.push(await get(fetchImpl, `${origin}/climate/maps/us-states-paths.json`));
+      scripts.push(await get(fetchImpl, `${origin}/climate/maps/us-states-paths.json`, total));
     }
   } catch (error) {
     return skipped(CLIMATE_READING_SURFACE, error);
   }
   const outlines = new Set();
   for (const text of scripts) for (const code of outlinesIn(text)) outlines.add(code);
-  return judgeClimateReading({ api, outlines });
+  return judge({ api, outlines });
 }
 
-async function readConsulting(fetchImpl, origin) {
+async function readConsulting(fetchImpl, origin, total, judge) {
   let html;
   try {
-    html = await get(fetchImpl, `${origin}/consulting/`);
+    html = await get(fetchImpl, `${origin}/consulting/`, total);
   } catch (error) {
     return skipped(CONSULTING_REQUEST_SURFACE, error);
   }
-  return judgeConsultingRequest(html);
+  return judge(html);
 }
 
 /**
  * Run both page reads. Returns Map(id -> { id, status, detail, suggestedFix }). Never throws.
  * ctx: { fetchImpl | fetch, baseUrl }. Without a GET client both rows are a skip with the reason.
+ * `judges` is for the tests only: a judge that throws must end as a skip, never as a thrown lane.
  */
-export async function runFinB22PageReads(ctx = {}) {
+export async function runFinB22PageReads(ctx = {}, judges = { climate: judgeClimateReading, consulting: judgeConsultingRequest }) {
   const out = new Map();
   const fetchImpl = pickFetch(ctx || {});
   if (!fetchImpl) {
@@ -225,7 +237,13 @@ export async function runFinB22PageReads(ctx = {}) {
   }
   let origin;
   try { origin = new URL(ctx.baseUrl || DEFAULT_BASE_URL).origin; } catch { origin = DEFAULT_BASE_URL; }
-  const [climate, consulting] = await Promise.all([readClimate(fetchImpl, origin), readConsulting(fetchImpl, origin)]);
+  const total = AbortSignal.timeout(RUN_TIMEOUT_MS);
+  // A judge that throws on a page nobody planned for is a skip with the reason, never a thrown lane.
+  const safe = (surface, pending) => pending.catch((error) => skipped(surface, error));
+  const [climate, consulting] = await Promise.all([
+    safe(CLIMATE_READING_SURFACE, readClimate(fetchImpl, origin, total, judges.climate)),
+    safe(CONSULTING_REQUEST_SURFACE, readConsulting(fetchImpl, origin, total, judges.consulting)),
+  ]);
   out.set(climate.id, climate);
   out.set(consulting.id, consulting);
   return out;
