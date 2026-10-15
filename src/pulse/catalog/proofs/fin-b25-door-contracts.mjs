@@ -4,6 +4,13 @@
 // real api/ handler over a stand-in database and judge the exact result. Every one of them was broken on
 // purpose, product line by product line, and went red (the mutation list is in the batch manifest).
 // These are practice tests (fake data, stand-in tables, no network, no database), not live checks.
+//
+// NOT ATTACHED ON PURPOSE (a check must not be green on a product that is wrong today):
+//   * routes-1 public/eeo-survey POST: a form that leaves any one of the four optional questions blank crashes
+//     the handler (pickField returns null and parseEeoBody reads .ok on it, outside any try). A test of the
+//     promised behavior is red until that is fixed, so the row stays unproved.
+//   * routes-1 read/company-activity: every person's activity label reads "event" (the query names the column
+//     "label" and the code reads row.kind). A test of the labels is red until that is fixed.
 // src/pulse/catalog/proofs/fin-b25-door-contracts.test.mjs checks every entry against the coverage map
 // and the test files.
 import { createHash } from "node:crypto";
@@ -69,8 +76,6 @@ const DEFINITIONS = [
   ["dd4ecaf3b77ea088d9cc", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-1 public/eeo-survey: GET ?token= load the voluntary EEO self-ID form (never writes)
   ["f45c2fe84d1f72ec511b", ["src/http/fin-b25-public-doors.test.mjs"]],
-  // routes-1 public/eeo-survey: POST submit the EEO self-ID answers (Postgres submit_eeo_response inserts and severs the link to the
-  ["616e6e32a8325832552c", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-0 public/partner-page: JSON for a published white-label partner page (partner_id plus slug or domain).
   ["f354dffc9480c8065b41", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-0 public/vsl-watch: VSL player beacon: stores watch sessions and position samples (rate limited by visitor and site-wide
@@ -85,8 +90,6 @@ const DEFINITIONS = [
   ["79c2ca0a249cdb1f167c", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-3 read/closer-now: GET which call this closer is on and what is next. Scoped to the signed-in staff member.
   ["dbabdb28f5a26a80ff13", ["src/http/fin-b25-read-doors.test.mjs"]],
-  // routes-1 read/company-activity: GET Galaxy presence feed (who is on shift, calls, agent activity)
-  ["09f76eea10e8038f86b0", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-0 read/csm-queue: The CSM's day: clients to talk to today, what they owe (open balance next to the name), and what the
   ["7a5ecea71540e8e50f35", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-2 read/finance-ask: POST /api/read/finance-ask {question, client_id} — answers three fixed question shapes (can I afford

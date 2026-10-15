@@ -12,7 +12,7 @@ import researchHandler from "../../api/marketing/research.mjs";
 import tweakHandler from "../../api/marketing/research/tweak.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSqlHas, call, dataCalls, requestLog, sqlCalls,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, requestLog, sentStatement, sqlCalls,
 } from "../testing/fin-b25-kit.mjs";
 
 const REQ = (n) => `req-${String(n).padStart(8, "0")}`;
@@ -125,7 +125,41 @@ test("GET marketing/research lists this company's runs newest first in plain wor
   assert.deepEqual(list.params, [ORG_ID]);
   assertSqlHas(list.sql, { company: "WHERE org_id = $1", kind: "kind = 'deep_research'" });
   assert.equal(world.costReads[0][0], ORG_ID);
+  // The stand-in answers the list, the last measured run and the month spend with canned rows, so the
+  // statements are pinned as sent: this company's research jobs only, newest first, twenty; the last
+  // finished run of each depth in this company; this month's spend for this company, priced and unpriced.
+  assertSent(result, "research.list", "research.measured", "health.cost", "settings.ensure", "settings.read");
+  assert.equal(world.costReads[0][1], null, "no batch: the spend asked for is the month's");
   await assertRoleGate(researchHandler, ["owner", "admin"], { rules: world.rules, deps: { env: MODEL_ENV } });
+});
+
+test("GET marketing/research says the words of every kind of run: waiting, retrying, stopped at the cap, write-up failed, no key claims, and whether a failed run can resume", async () => {
+  const withReport = (report, over = {}) => doneRow({ result: { ...doneRow().result, report: { ...doneRow().result.report, ...report } }, ...over });
+  const world = researchWorld({
+    jobs: [
+      doneRow({ id: "70000000-0000-4000-8000-000000000011", status: "queued", result: null, created_at: new Date("2026-10-14T01:00:00.000Z"), finished_at: null }),
+      doneRow({ id: "70000000-0000-4000-8000-000000000012", status: "queued", result: { step: "sweep", step_word: "sweeping round 2", error_last: "Model overloaded", progress: { findings: 3 } }, created_at: new Date("2026-10-14T02:00:00.000Z"), finished_at: null }),
+      withReport({ stopped_at_cap: 5, cost_usd: 5.01, rounds: 2 }, { id: "70000000-0000-4000-8000-000000000013", created_at: new Date("2026-10-14T03:00:00.000Z") }),
+      withReport({ fallback_report: true }, { id: "70000000-0000-4000-8000-000000000014", created_at: new Date("2026-10-14T04:00:00.000Z") }),
+      withReport({ key_verified: 0, key_killed: 0 }, { id: "70000000-0000-4000-8000-000000000015", created_at: new Date("2026-10-14T05:00:00.000Z") }),
+      doneRow({ id: "70000000-0000-4000-8000-000000000016", status: "failed", error: "ran out", result: { steps: { sweep: {} }, state: { round: 1 } }, created_at: new Date("2026-10-14T06:00:00.000Z") }),
+      doneRow({ id: "70000000-0000-4000-8000-000000000017", status: "failed", error: "ran out", result: { state: { round: 1 } }, created_at: new Date("2026-10-14T07:00:00.000Z") }),
+      doneRow({ id: "70000000-0000-4000-8000-000000000018", status: "done", result: null, approved_by: STAFF_ID, approved_at: new Date("2026-10-14T08:00:00.000Z"), created_at: new Date("2026-10-14T08:00:00.000Z") }),
+    ],
+  });
+  const result = await call(researchHandler, { rules: world.rules, deps: { env: MODEL_ENV } });
+  const by = Object.fromEntries(result.body.runs.map((r) => [r.id.slice(-2), r]));
+  assert.equal(by["11"].step_word, "Waiting to start. It runs in the background.");
+  assert.equal(by["12"].step_word, "Running: sweeping round 2 · 3 findings · trying again: Model overloaded");
+  assert.equal(by["13"].step_word, "Done, stopped at the cap: $5.01 after round 2");
+  assert.equal(by["14"].step_word, "Done, write-up failed, findings below");
+  assert.equal(by["15"].step_word, "Done, no key claims to check");
+  assert.equal(by["16"].resumable, true, "a failed run with saved steps and state can resume");
+  assert.equal(by["17"].resumable, false, "a failed run with no saved steps cannot");
+  assert.equal(by["18"].step_word, "Done.");
+  assert.equal(by["18"].approved, true);
+  assert.equal(by["13"].approved, false);
+  assert.deepEqual([by["13"].depth, by["13"].max_cost_usd, by["13"].focus, by["13"].parent_id], ["quick", 5, null, null]);
 });
 
 test("GET marketing/research?id= reads one run with its report and where the report file stands, 404s another company's run, and refuses a bad id", async () => {
@@ -142,6 +176,8 @@ test("GET marketing/research?id= reads one run with its report and where the rep
   assert.equal(result.body.report.cost_usd, 1.23);
   assert.deepEqual(result.body.report.repo_state, { state: "pending", words: "Saved. Reaching the repo…", committed_sha: null });
   assert.deepEqual(sqlCalls(result, /FROM marketing_jobs WHERE id = \$1/)[0].params, [RUN_DONE, ORG_ID]);
+  assertSent(result, "research.one", "research.repo_state");
+  assert.deepEqual(sentStatement(result, "research.repo_state").params, [ORG_ID, REPO_PATH]);
 
   world.outbox[0].committed_sha = "abc1234";
   const committed = await call(researchHandler, { query: { id: RUN_DONE }, rules: world.rules, deps: { env: MODEL_ENV } });
@@ -180,12 +216,33 @@ test("POST marketing/research queues one run for the session's company with the 
   assert.match(payload.today, /^\d{4}-\d{2}-\d{2}$/);
   assertSqlHas(world.inserts[0].sql, { oneInFlight: "ON CONFLICT (org_id) WHERE kind = 'deep_research' AND status IN ('queued', 'running') DO NOTHING" });
   assert.equal(seen.length, 1);
+  assertSent(result, "request.lock", "request.find", "settings.ensure", "settings.read", "health.cost", "research.start", "request.save");
 
   const again = await call(researchHandler, { method: "POST", body, rules: world.rules, deps: { env: MODEL_ENV, wake } });
   assert.equal(again.status, 202);
   assert.deepEqual(again.body, result.body);
   assert.equal(world.inserts.length, 1);
   assert.equal(world.log.saved.get(REQ(1)).route, "marketing/research");
+});
+
+test("POST marketing/research fills in what was left out: a quick look, the web and the vault but not own files, the stop amount from Settings", async () => {
+  const world = researchWorld({ settings: { org_id: ORG_ID, max_research_cost_usd: "3.25", research_shares_month_cap: true, max_month_cost_usd: 300, updated_at: NOW } });
+  const result = await call(researchHandler, {
+    method: "POST", body: { request_id: REQ(5), question: "What do lenders look at first?" }, rules: world.rules, deps: { env: MODEL_ENV, wake: async () => ({}) },
+  });
+  assert.equal(result.status, 202);
+  const payload = JSON.parse(world.inserts[0].params[1]);
+  assert.equal(payload.depth, "quick", "no depth sent: the short one, which costs less");
+  assert.deepEqual(payload.sources, { web: true, vault: true, own_files: false }, "web and vault on, own files off");
+  assert.equal(payload.belief, null);
+  assert.equal(payload.max_cost_usd, 3.25);
+
+  const own = researchWorld();
+  await call(researchHandler, {
+    method: "POST", body: { request_id: REQ(6), question: "What do lenders look at first?", max_cost_usd: 5, sources: { own_files: true, vault: false } },
+    rules: own.rules, deps: { env: MODEL_ENV, wake: async () => ({}) },
+  });
+  assert.deepEqual(JSON.parse(own.inserts[0].params[1]).sources, { web: true, vault: false, own_files: true }, "web stays on unless it is turned off");
 });
 
 test("POST marketing/research gives the running run back when one is already in flight, and refuses a missing key, a used-up month cap, an empty question, no place to look and a bad stop amount", async () => {
@@ -201,6 +258,8 @@ test("POST marketing/research gives the running run back when one is already in 
   assert.equal(already.body.job.id, RUN_RUNNING);
   assert.equal(seen.length, 0, "no second paid run, and no wake");
   assert.equal(running.inserts.length, 0);
+  assertSent(already, "research.in_flight");
+  assert.deepEqual(sentStatement(already, "research.in_flight").params, [ORG_ID], "the run handed back is this company's");
 
   const noKey = researchWorld();
   const noModel = await ask(noKey, {}, 11, {});
@@ -217,6 +276,17 @@ test("POST marketing/research gives the running run back when one is already in 
   assert.match(cap.body.message, /\$300 month cap/);
   assert.equal(capped.inserts.length, 0, "a refusal saves nothing, so the same request can be sent again");
   assert.equal(capped.log.saved.has(REQ(13)), false);
+
+  const justUnder = researchWorld({ monthPriced: "299.99" });
+  const under = await ask(justUnder, {}, 22);
+  assert.equal(under.status, 202, "one cent under the month cap still runs");
+  const custom = researchWorld({ monthPriced: "49", settings: { org_id: ORG_ID, max_research_cost_usd: null, research_shares_month_cap: true, max_month_cost_usd: 50, updated_at: NOW } });
+  const customUnder = await ask(custom, {}, 23);
+  assert.equal(customUnder.status, 202);
+  const customOver = researchWorld({ monthPriced: "50", settings: { org_id: ORG_ID, max_research_cost_usd: null, research_shares_month_cap: true, max_month_cost_usd: 50, updated_at: NOW } });
+  const stopped = await ask(customOver, {}, 24);
+  assert.equal(stopped.status, 400);
+  assert.match(stopped.body.message, /\$50 month cap/, "the cap in the words is the company's own cap");
 
   const notShared = researchWorld({ monthPriced: "300", settings: { org_id: ORG_ID, max_research_cost_usd: null, research_shares_month_cap: false, max_month_cost_usd: 300, updated_at: NOW } });
   const free = await ask(notShared, {}, 14);
@@ -268,6 +338,10 @@ test("POST marketing/research/approve stamps who approved and when, saves the re
   assert.equal(world.outbox[0].org_id, ORG_ID);
   assert.equal(world.outbox[0].path, REPO_PATH);
   assert.equal(world.outbox[0].mode, "replace");
+  assert.equal(world.outbox[0].op_id, `research-${RUN_DONE}-approved`, "one save per run: the next run's approval must not collide with this one");
+  assertSent(result, "request.lock", "request.find", "research.one_locked", "research.approve", "outbox.insert", "request.save");
+  assert.equal(world.log.saved.get(REQ(30)).route, "marketing/research/approve");
+  assert.equal(world.log.saved.get(REQ(30)).org_id, ORG_ID);
   assert.match(world.outbox[0].content, /^---\nkind: deep-research\njob: 70000000-0000-4000-8000-000000000001\nstatus: approved\n/);
   assert.match(world.outbox[0].content, /approved_at: 2026-10-14T18:00:00\.000Z/);
   assert.match(world.outbox[0].content, /# Why banks decline/);
@@ -277,6 +351,19 @@ test("POST marketing/research/approve stamps who approved and when, saves the re
   assert.equal(again.status, 200);
   assert.equal(world.approvals.length, 1, "approving twice changes nothing the second time");
   assert.equal(world.outbox.length, 1);
+
+  // The same press sent again (same request_id) answers what the first one saved and touches nothing.
+  const callsBefore = world.approvals.length;
+  const replay = await call(approveHandler, { method: "POST", body: { request_id: REQ(30), id: RUN_DONE }, rules: world.rules, deps: { wake, env: {} } });
+  assert.equal(replay.status, 200);
+  assert.deepEqual(replay.body, result.body);
+  assert.equal(sqlCalls(replay, /research|marketing_jobs/).length, 0, "a replay reads no run and writes nothing");
+  assert.equal(world.approvals.length, callsBefore);
+
+  // The next run's approval is its own file save.
+  const second = researchWorld({ jobs: [doneRow({ id: RUN_RUNNING, result: { ...doneRow().result, report: { ...doneRow().result.report, repo_path: "marketing/research/2026-10-14-other.md" } } })] });
+  await call(approveHandler, { method: "POST", body: { request_id: REQ(36), id: RUN_RUNNING }, rules: second.rules, deps: { wake, env: {} } });
+  assert.equal(second.outbox[0].op_id, `research-${RUN_RUNNING}-approved`);
 });
 
 test("POST marketing/research/approve refuses a run that is not finished, another company's run and a bad id, and only owner and admin may approve", async () => {
@@ -312,6 +399,7 @@ test("POST marketing/research/brain saves a finished report into the brain as an
     text: "# Why banks decline\n\nToo many inquiries.", accessTier: "owner", env: { MARK: "env" },
   });
   assert.deepEqual(sqlCalls(ok, /FROM marketing_jobs WHERE id = \$1/)[0].params, [RUN_DONE, ORG_ID]);
+  assertSent(ok, "research.brain_read");
 
   const same = await post(RUN_DONE, 41, saver({ ok: true, fileId: "bf-1", chunkCount: 0, skipped: true }));
   assert.equal(same.body.unchanged, true, "the same report saved twice is skipped, so a second tap never pays again");
@@ -356,9 +444,40 @@ test("POST marketing/research/tweak starts a short re-run of the same question w
   assert.equal(payload.max_cost_usd, 8, "the same stop amount");
   assert.equal(payload.focus, "go deeper on bank overlays");
   assert.equal(payload.parent_id, RUN_DONE);
+  assert.equal(payload.belief, "Inquiries matter most", "the belief the first run started from is kept");
+  assert.match(payload.today, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(world.jobs[0].status, "done", "the first report stays as it is");
   assert.equal(seen.length, 1);
   assert.deepEqual(sqlCalls(result, /FROM marketing_jobs WHERE id = \$1/)[0].params, [RUN_DONE, ORG_ID]);
+  assertSent(result, "request.lock", "request.find", "research.one", "settings.ensure", "settings.read", "health.cost", "research.start", "request.save");
+  assert.equal(world.log.saved.get(REQ(50)).route, "marketing/research/tweak");
+  assert.equal(world.log.saved.get(REQ(50)).org_id, ORG_ID);
+
+  // The same press sent again answers the first answer: no second paid run is made.
+  const again = await call(tweakHandler, {
+    method: "POST", body: { request_id: REQ(50), id: RUN_DONE, note: "  go deeper   on bank overlays  " }, rules: world.rules, deps: { env: MODEL_ENV, wake },
+  });
+  assert.equal(again.status, 202);
+  assert.deepEqual(again.body, result.body);
+  assert.equal(world.inserts.length, 1);
+  assert.equal(sqlCalls(again, /INSERT INTO marketing_jobs/).length, 0);
+
+  // The cost of the month is asked for this company and this month only.
+  assert.equal(world.costReads[0][0], ORG_ID);
+  assert.equal(world.costReads[0][1], null);
+});
+
+test("POST marketing/research/tweak asks for a tweak when the first run was failed, and defaults the places to look", async () => {
+  const failed = doneRow({ status: "failed", result: null, payload: { question: "Why?", depth: "deep", belief: null, max_cost_usd: 3 } });
+  const world = researchWorld({ jobs: [failed] });
+  const result = await call(tweakHandler, {
+    method: "POST", body: { request_id: REQ(59), id: RUN_DONE, note: "look at overlays" }, rules: world.rules, deps: { env: MODEL_ENV, wake: async () => ({}) },
+  });
+  assert.equal(result.status, 202);
+  const payload = JSON.parse(world.inserts[0].params[1]);
+  assert.deepEqual(payload.sources, { web: true, vault: true, own_files: false });
+  assert.equal(payload.belief, null);
+  assert.equal(payload.max_cost_usd, 3);
 });
 
 test("POST marketing/research/tweak refuses a run still going, another company's run, an empty note, a missing key and a used-up month cap, and hands back a run already in flight", async () => {

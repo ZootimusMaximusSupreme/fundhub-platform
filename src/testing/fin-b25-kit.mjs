@@ -19,8 +19,63 @@ import {
 } from "./handler-harness.mjs";
 import { strictFakeDb } from "./s3-handler-call.mjs";
 import { assertSqlHas, plainSql } from "./s3-scoped-rows.mjs";
+import { PINS } from "./fin-b25-sql-pins.mjs";
 
 export { ORG_ID, OTHER_ORG_ID, STAFF_ID, assertSqlHas, plainSql };
+
+/**
+ * Fails, naming the pin, unless the call sent the statement pinned under each name exactly (whitespace
+ * collapsed). A stand-in cannot run a statement's conditions, so this is how a dropped or flipped
+ * company clause, status word, window, join or ordering is seen. See fin-b25-sql-pins.mjs.
+ */
+export function assertSent(result, ...names) {
+  const sent = result.db.calls.map((entry) => pinText(entry.sql));
+  for (const name of names) {
+    const want = PINS[name];
+    assert.ok(want, `no statement is pinned under ${name}`);
+    if (sent.includes(want)) continue;
+    const head = want.slice(0, 40);
+    const near = sent.find((text) => text.slice(0, 40) === head);
+    assert.fail(near
+      ? `${name}: the statement the code sends changed.\n  pinned: ${want}\n  sent:   ${near}`
+      : `${name}: the statement was not sent by this call`);
+  }
+}
+
+/** A statement as it is pinned: `--` and block comments dropped, white space collapsed. */
+export function pinText(sql) {
+  return plainSql(String(sql).replace(/\/\*[\s\S]*?\*\//g, " "));
+}
+
+/**
+ * The call sent exactly these pinned statements and no other (the sign-in lookup, the transaction frame and
+ * set_config are not counted). A statement that changed, went missing or was added turns this red.
+ */
+export function assertOnlySent(result, ...names) {
+  const sent = new Set(dataCalls(result).map((entry) => pinText(entry.sql)));
+  const want = new Set(names.map((name) => {
+    assert.ok(PINS[name], `no statement is pinned under ${name}`);
+    return PINS[name];
+  }));
+  for (const text of sent) {
+    assert.ok(want.has(text), `a statement was sent that is not pinned: ${text.slice(0, 160)}`);
+  }
+  for (const name of names) {
+    assert.ok(sent.has(PINS[name]), `${name}: the pinned statement was not sent by this call`);
+  }
+}
+
+/** The pinned text of one statement. */
+export const pinned = (name) => {
+  assert.ok(PINS[name], `no statement is pinned under ${name}`);
+  return PINS[name];
+};
+
+/** The statement a call sent, by pin name (null when it was not sent as pinned). */
+export function sentStatement(result, name) {
+  const want = PINS[name];
+  return result.db.calls.find((entry) => pinText(entry.sql) === want) || null;
+}
 
 /** Every kind of sign-in a staff door has to tell apart. "partner" and "client" are refused by staff doors. */
 export const ALL_ROLES = [

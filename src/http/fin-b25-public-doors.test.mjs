@@ -7,11 +7,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import adVideoApproveHandler from "../../api/public/ad-video-approve.mjs";
+import { approveByToken, rejectByToken } from "../ad-videos/token.mjs";
 import eeoSurveyHandler from "../../api/public/eeo-survey.mjs";
 import partnerPageHandler from "../../api/public/partner-page.mjs";
 import vslWatchHandler from "../../api/public/vsl-watch.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
-import { ORG_ID, assertSqlHas, call, dataCalls, sqlCalls } from "../testing/fin-b25-kit.mjs";
+import {
+  ORG_ID, assertOnlySent, assertSent, assertSqlHas, call, dataCalls, sentStatement, sqlCalls, updatedFields,
+} from "../testing/fin-b25-kit.mjs";
 
 const open = { anonymous: true, withSession: false };
 const noWrites = (result) => assert.equal(dataCalls(result).every((c) => !/^\s*(INSERT|UPDATE|DELETE)\b/i.test(c.sql)), true, "a read writes nothing");
@@ -34,17 +37,18 @@ function approvalWorld(videos) {
     [/^\s*UPDATE ad_videos\s+SET status\s+= 'approved'/, (sql, params) => {
       seen.updates.push({ kind: "approve", sql, params });
       const hit = rowsWhere(videos, sql, params).filter((row) => live(sql, row));
-      for (const row of hit) Object.assign(row, { status: "approved", approved_by: params[1], approval_token: null, approval_expires_at: null });
+      // The row is what the statement says it sets, read from its text.
+      for (const row of hit) Object.assign(row, updatedFields(sql, params, new Date(NOW_MS)));
       return hit.map(({ id, ad_id, take_no, status }) => ({ id, ad_id, take_no, status }));
     }],
     [/^\s*UPDATE ad_videos\s+SET status\s+= 'rejected'/, (sql, params) => {
       seen.updates.push({ kind: "reject", sql, params });
       const hit = rowsWhere(videos, sql, params).filter((row) => live(sql, row));
-      for (const row of hit) Object.assign(row, { status: "rejected", rejected_reason: params[1], approval_token: null, approval_expires_at: null });
+      for (const row of hit) Object.assign(row, updatedFields(sql, params, new Date(NOW_MS)));
       return hit.map(({ id, ad_id, take_no, status }) => ({ id, ad_id, take_no, status }));
     }],
   ];
-  return { rules, seen };
+  return { rules, seen, videos };
 }
 
 const videoRow = (over = {}) => ({
@@ -74,6 +78,11 @@ test("GET public/ad-video-approve shows the one take a live token names, with on
   assert.equal(result.db.count("COMMIT"), 1);
   assert.equal(dataCalls(result).some((c) => /FROM live JOIN staff/.test(c.sql)), false, "no staff session is ever looked up");
   noWrites(result);
+  // The token is declared for ONE transaction only (is_local true: a pooled connection never carries it to the
+  // next request), and the one read names the token and its expiry in its own WHERE clause.
+  assert.equal(sqlCalls(result, /set_config\('fundhub\.ad_video_token'/)[0].sql.includes(", true)"), true);
+  assertOnlySent(result, "adv.find");
+  assertSent(result, "adv.scope");
 
   const html = await call(adVideoApproveHandler, { ...open, query: { token: TOKEN }, headers: { accept: "text/html,application/xhtml+xml" }, rules: world.rules });
   assert.equal(html.status, 200);
@@ -120,7 +129,11 @@ test("POST public/ad-video-approve approves or rejects one awaiting take, spends
   });
   assert.equal(videos[0].status, "approved");
   assert.equal(videos[0].approval_token, null, "the link stops working");
+  assert.equal(videos[0].approval_expires_at, null);
+  assert.equal(videos[0].approved_by, "Chris on the phone");
+  assert.ok(videos[0].approved_at instanceof Date, "the statement stamps the time of the approval");
   assert.equal(videos[1].status, "awaiting_approval", "only the take the token names");
+  assertSent(approved, "adv.scope", "adv.approve");
 
   const again = await call(adVideoApproveHandler, { ...open, method: "POST", body: { token: TOKEN, decision: "approve" }, rules: world.rules });
   assert.equal(again.status, 404, "a double tap matches no row");
@@ -134,6 +147,12 @@ test("POST public/ad-video-approve approves or rejects one awaiting take, spends
   const withReason = await call(adVideoApproveHandler, { ...open, method: "POST", body: { token: TOKEN, decision: "reject", reason: "stumbled at 0:12" }, rules: world2.rules });
   assert.deepEqual(withReason.body, { ok: true, decision: "reject", ad_id: "91", take_no: 3, status: "rejected" });
   assert.deepEqual(world2.seen.updates[0].params, [TOKEN, "stumbled at 0:12"]);
+  assertSent(withReason, "adv.scope", "adv.reject");
+  assert.deepEqual(
+    (({ status, rejected_reason, approval_token, approval_expires_at }) => ({ status, rejected_reason, approval_token, approval_expires_at }))(world2.videos[0]),
+    { status: "rejected", rejected_reason: "stumbled at 0:12", approval_token: null, approval_expires_at: null },
+    "a rejection keeps the words and spends the token",
+  );
   const noReason = await call(adVideoApproveHandler, { ...open, method: "POST", body: { token: OTHER_TOKEN, decision: "reject" }, rules: world2.rules });
   assert.equal(noReason.status, 200);
   assert.equal(world2.seen.updates.at(-1).params[1], "rejected from the phone notification, no reason typed");
@@ -165,6 +184,78 @@ test("POST public/ad-video-approve refuses a bad decision, an expired token and 
   } finally {
     console.error = realError;
   }
+});
+
+test("POST public/ad-video-approve will not reject or approve a take that is expired or already decided, and cuts a name and a reason to their lengths", async () => {
+  const live = videoRow();
+  const expired = videoRow({ id: "v0000000-0000-4000-8000-0000000000e1", ad_id: "92", approval_token: OTHER_TOKEN, approval_expires_at: new Date(NOW_MS - 1000).toISOString() });
+  const approvedAlready = videoRow({ id: "v0000000-0000-4000-8000-0000000000e2", ad_id: "93", approval_token: "ef".repeat(24), status: "approved" });
+  const rejectedAlready = videoRow({ id: "v0000000-0000-4000-8000-0000000000e3", ad_id: "94", approval_token: "12".repeat(24), status: "rejected" });
+  const world = approvalWorld([live, expired, approvedAlready, rejectedAlready]);
+  const post = (token, body) => call(adVideoApproveHandler, { ...open, method: "POST", body: { token, ...body }, rules: world.rules });
+
+  const lateReject = await post(OTHER_TOKEN, { decision: "reject", reason: "too late" });
+  assert.equal(lateReject.status, 404, "an expired token cannot reject");
+  assert.equal(expired.status, "awaiting_approval");
+  assert.equal(expired.rejected_reason, undefined);
+  const rejectApproved = await post("ef".repeat(24), { decision: "reject", reason: "changed my mind" });
+  assert.equal(rejectApproved.status, 404, "an approved take is not turned into a rejected one by a late tap");
+  assert.equal(approvedAlready.status, "approved");
+  const approveRejected = await post("12".repeat(24), { decision: "approve" });
+  assert.equal(approveRejected.status, 404);
+  assert.equal(rejectedAlready.status, "rejected");
+  assert.equal(world.seen.updates.every((u) => u.kind), true);
+
+  const longName = await post(TOKEN, { decision: "approve", approved_by: "n".repeat(300) });
+  assert.equal(longName.status, 200);
+  assert.equal(live.approved_by.length, 120, "the name is cut to 120 characters");
+
+  const live2 = videoRow({ approval_token: "34".repeat(24), id: "v0000000-0000-4000-8000-0000000000e4" });
+  const world2 = approvalWorld([live2]);
+  const longReason = await call(adVideoApproveHandler, { ...open, method: "POST", body: { token: "34".repeat(24), decision: "reject", reason: "r".repeat(900) }, rules: world2.rules });
+  assert.equal(longReason.status, 200);
+  assert.equal(live2.rejected_reason.length, 500, "the reason is cut to 500 characters");
+  const again = await call(adVideoApproveHandler, { ...open, method: "POST", body: { token: "34".repeat(24), decision: "reject", reason: "again" }, rules: world2.rules });
+  assert.equal(again.status, 404, "the token is spent by a rejection");
+  assert.equal(live2.rejected_reason.length, 500);
+});
+
+test("the approve and reject statements cut a name to 120 and a reason to 500 characters themselves, and fall back to a plain default, whoever calls them", async () => {
+  const sent = [];
+  const tx = { query: async (sql, params) => { sent.push({ sql, params }); return { rows: [{ id: "v", ad_id: "1", take_no: 1, status: "x" }] }; } };
+  await approveByToken(tx, TOKEN, { approvedBy: "n".repeat(300) });
+  await approveByToken(tx, TOKEN, { approvedBy: "" });
+  await approveByToken(tx, TOKEN);
+  await rejectByToken(tx, TOKEN, { reason: "r".repeat(900) });
+  await rejectByToken(tx, TOKEN, { reason: "   " });
+  await rejectByToken(tx, TOKEN);
+  assert.equal(sent[0].params[1].length, 120);
+  assert.equal(sent[1].params[1], "chris");
+  assert.equal(sent[2].params[1], "chris");
+  assert.equal(sent[3].params[1].length, 500);
+  assert.equal(sent[4].params[1], "rejected from the phone notification, no reason typed");
+  assert.equal(sent[5].params[1], "rejected from the phone notification, no reason typed");
+  assert.equal(await approveByToken(tx, "not a token"), null, "a malformed token never reaches the database");
+  assert.equal(await rejectByToken(tx, "nope"), null);
+  assert.equal(sent.length, 6);
+});
+
+test("GET public/ad-video-approve page says what kind of video it is, the picture size, and warns only when a non-ad is not 4K", async () => {
+  const html = (over) => call(adVideoApproveHandler, {
+    ...open, query: { token: TOKEN }, headers: { accept: "text/html" }, rules: approvalWorld([videoRow(over)]).rules,
+  });
+  const fourK = await html({ width: 2160, height: 3840, video_kind: "not_ad", resolution_ok: true });
+  assert.match(String(fourK.body), /Not an ad/);
+  assert.match(String(fourK.body), /3840 \(4K\)|2160 by 3840 \(4K\)/);
+  assert.doesNotMatch(String(fourK.body), /breaks the 4K rule/);
+  const notFourK = await html({ video_kind: "not_ad", resolution_ok: false, width: 1080, height: 1920 });
+  assert.match(String(notFourK.body), /This is not an ad and it is not 4K/);
+  assert.match(String(notFourK.body), /\(1080p\)/);
+  const ad = await html({ video_kind: "ad", resolution_ok: false });
+  assert.match(String(ad.body), /Paid ad/, "an ad is labeled a paid ad");
+  const unknown = await html({ resolution_ok: null, width: null, height: null, duration_seconds: null });
+  assert.doesNotMatch(String(unknown.body), /breaks the 4K rule/, "an unmeasured picture is not flagged");
+  assert.match(String(unknown.body), /not measured/);
 });
 
 /* ── public/eeo-survey ─────────────────────────────────────────────────────────────────────────────── */
@@ -205,6 +296,18 @@ test("GET public/eeo-survey says whether this token's form is still open, with t
   assertSqlHas(world.seen.reads[0].sql, { token: "WHERE i.survey_token = $1" });
   assert.doesNotMatch(world.seen.reads[0].sql, /application_id|candidate/, "the read never reaches the application");
   noWrites(fresh);
+  // The flags come back as ready-made booleans, so the statement that makes them is pinned as sent: used means
+  // the invite has a consumed time, answered means a response row joined to THIS invite.
+  assertOnlySent(fresh, "eeo.status");
+  assert.deepEqual(fresh.body.fields, {
+    race_ethnicity: {
+      label: "Race / ethnicity (EEO-1)", optional: true,
+      options: ["hispanic_or_latino", "white", "black_or_african_american", "native_hawaiian_or_pacific_islander", "asian", "american_indian_or_alaska_native", "two_or_more_races", "decline_to_state"],
+    },
+    gender: { label: "Gender", optional: true, options: ["male", "female", "non_binary", "decline_to_state"] },
+    veteran_status: { label: "Veteran status", optional: true, options: ["protected_veteran", "not_a_protected_veteran", "decline_to_state"] },
+    disability_status: { label: "Disability status", optional: true, options: ["yes", "no", "decline_to_state"] },
+  });
 
   const consumed = await call(eeoSurveyHandler, { ...open, query: { token: "u".repeat(43) }, rules: world.rules });
   assert.equal(consumed.body.already_submitted, true);
@@ -234,6 +337,7 @@ test("POST public/eeo-survey sends the answers to the one submit function and no
   assert.deepEqual(dataCalls(first).map((c) => c.sql.replace(/\s+/g, " ").trim()), [
     "SELECT submit_eeo_response($1, $2, $3, $4, $5) AS id",
   ], "the one and only statement: the application link is severed inside the database function");
+  assertOnlySent(first, "eeo.submit");
 
   const decline = await call(eeoSurveyHandler, {
     ...open, method: "POST",
@@ -386,6 +490,12 @@ test("POST public/vsl-watch stores one viewing under the visitor's own scope wit
   ]);
   assertSqlHas(row.sql, { oneRowPerViewing: "ON CONFLICT (visitor_id, session_key) DO UPDATE SET" });
   assert.deepEqual(world.seen.positions[0].params, ["sess-1", VISITOR, [0, 5, 10], 42], "whole seconds, each once, sorted");
+  // The counts and the merge are done by the statements, so they are pinned as sent: the visitor's own rate
+  // window, the site-wide count through the one function, an upsert that moves forward only, and a curve that
+  // is merged and never replaced.
+  assertOnlySent(result, "vsl.rate", "vsl.session", "vsl.positions");
+  assertSent(result, "vsl.scope");
+  assert.equal(sqlCalls(result, /set_config\('fundhub\.vsl_visitor'/)[0].sql.includes(", true)"), true, "the scope dies with the transaction");
   assert.equal(result.db.count("COMMIT"), 1);
   assert.equal(dataCalls(result).some((c) => /FROM live JOIN staff/.test(c.sql)), false);
 
@@ -422,6 +532,38 @@ test("POST public/vsl-watch answers 429 with a wait when a visitor or the whole 
   });
   assert.equal(limited.status, 429);
   assert.equal(limited.headers["retry-after"], String(15 * 60), "the wait comes from the guard that fired");
+});
+
+test("POST public/vsl-watch lets the 40th new viewing through and stops the 41st, keeps the curve sorted and whole, and writes no curve when none was sent", async () => {
+  const at39 = watchWorld({ recent: 39 });
+  const ok = await call(vslWatchHandler, { ...open, method: "POST", body: beacon(), rules: at39.rules, deps: watchDeps() });
+  assert.equal(ok.status, 200, "39 viewings in the window: one more is allowed");
+  const at40 = watchWorld({ recent: 40 });
+  const stopped = await call(vslWatchHandler, { ...open, method: "POST", body: beacon(), rules: at40.rules, deps: watchDeps() });
+  assert.equal(stopped.status, 429, "40 in the window: that is the ceiling");
+  const site1999 = watchWorld({ siteRecent: 1999 });
+  const siteOk = await call(vslWatchHandler, { ...open, method: "POST", body: beacon(), rules: site1999.rules, deps: watchDeps() });
+  assert.equal(siteOk.status, 200);
+  const site2000 = watchWorld({ siteRecent: 2000 });
+  const siteStop = await call(vslWatchHandler, { ...open, method: "POST", body: beacon(), rules: site2000.rules, deps: watchDeps() });
+  assert.equal(siteStop.status, 429);
+  assert.deepEqual(site2000.seen.rate[0].params, [VISITOR, SESSION, 60, 10], "the ceilings' own windows are asked for");
+
+  const unsorted = watchWorld();
+  await call(vslWatchHandler, { ...open, method: "POST", body: beacon({ samples: [10, 0, 5.4, 5.9, 0, 7], n: 6 }), rules: unsorted.rules, deps: watchDeps() });
+  assert.deepEqual(unsorted.seen.positions[0].params[2], [0, 5, 7, 10], "each whole second once, in order, whatever order they arrived in");
+
+  const noCurve = watchWorld();
+  const none = await call(vslWatchHandler, { ...open, method: "POST", body: beacon({ samples: undefined, n: undefined }), rules: noCurve.rules, deps: watchDeps() });
+  assert.equal(none.status, 200);
+  assert.equal(noCurve.seen.sessions.length, 1, "the viewing is still saved");
+  assert.equal(noCurve.seen.positions.length, 0, "no curve and no running total: no row that says 'we asked and got nothing'");
+  const emptyCurve = watchWorld();
+  await call(vslWatchHandler, { ...open, method: "POST", body: beacon({ samples: [], n: undefined }), rules: emptyCurve.rules, deps: watchDeps() });
+  assert.equal(emptyCurve.seen.positions.length, 0, "an empty curve writes no row either");
+  const totalOnly = watchWorld();
+  await call(vslWatchHandler, { ...open, method: "POST", body: beacon({ samples: undefined, n: 12 }), rules: totalOnly.rules, deps: watchDeps() });
+  assert.deepEqual(totalOnly.seen.positions[0].params, ["sess-1", VISITOR, null, 12], "a running total with no curve is saved as a total");
 });
 
 test("public/vsl-watch refuses junk with one word, answers the browser's permission question without writing, never opens CORS to another origin, and keeps failures to one word", async () => {

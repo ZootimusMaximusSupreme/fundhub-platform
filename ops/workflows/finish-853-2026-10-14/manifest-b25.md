@@ -1,16 +1,17 @@
 # Batch 25 manifest (finish the 853), Sonnet builder, lane gap-door-batch-routes
 
-Branch `fin/b25` (worktree `.claude/worktrees/fin-b25`), cut from `fin/base`. Generation 1. Not pushed. Not merged.
+Branch `fin/b25` (worktree `.claude/worktrees/fin-b25`), cut from `fin/base`. Generation 1, repair cycle 1
+(2026-10-15, see "Repair cycle 1" below, which supersedes any number above it). Not pushed. Not merged.
 
 ## Numbers
 
 | | Count |
 |---|---|
 | Rows in this batch (all open at the start) | 40 |
-| Still open after this branch (batch rows, measured) | 0 |
-| Whole catalog, before / after (`node scripts/pulse/count-not-proved.mjs`) | 853 / 813 |
-| Route lane `gap-door-batch-routes`, before / after | 135 / 95 |
-| Route lane per file (routes-0 / 1 / 2 / 3) | 54/36/25/20 to 35/25/22/13 |
+| Still open after this branch (batch rows, measured) | 2 (was 0 before repair cycle 1) |
+| Whole catalog, before / after (`node scripts/pulse/count-not-proved.mjs`) | 853 / 815 (813 before repair cycle 1) |
+| Route lane `gap-door-batch-routes`, before / after | 135 / 97 (95 before repair cycle 1) |
+| Route lane per file (routes-0 / 1 / 2 / 3) | 54/36/25/20 to 35/27/22/13 |
 
 Words used on purpose: every attached row is a **practice test**. The real `api/` handler and the real
 library under it run over in-memory stand-in tables that answer by the SQL text the code sends. Fake data,
@@ -51,7 +52,7 @@ staff-only or no-impact routes, so no money or customer-data row is attached her
 | 27 | routes-0 route:partner-marketing/copy-history | GET: version history of a partner page section. POST: restore an ea... | practice-test | `src/http/fin-b25-ops-partner.test.mjs` |
 | 28 | routes-0 route:public/ad-video-approve | GET shows the filmed take; POST is the decision: Chris taps Approve... | practice-test | `src/http/fin-b25-public-doors.test.mjs` |
 | 29 | routes-1 route:public/eeo-survey | GET ?token= load the voluntary EEO self-ID form (never writes) | practice-test | `src/http/fin-b25-public-doors.test.mjs` |
-| 30 | routes-1 route:public/eeo-survey | POST submit the EEO self-ID answers (Postgres submit_eeo_response i... | practice-test | `src/http/fin-b25-public-doors.test.mjs` |
+| 30 | routes-1 route:public/eeo-survey | POST submit the EEO self-ID answers (Postgres submit_eeo_response i... | not-attachable (repair cycle 1) | none: the handler crashes when an optional question is left blank |
 | 31 | routes-0 route:public/partner-page | JSON for a published white-label partner page (partner_id plus slug... | practice-test | `src/http/fin-b25-public-doors.test.mjs` |
 | 32 | routes-0 route:public/vsl-watch | VSL player beacon: stores watch sessions and position samples (rate... | practice-test | `src/http/fin-b25-public-doors.test.mjs` |
 | 33 | routes-2 route:read/ad-books | GET /api/read/ad-books?group_by=lane\|ad_id\|variant\|gate\|entry\|... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
@@ -59,11 +60,11 @@ staff-only or no-impact routes, so no money or customer-data row is attached her
 | 35 | routes-0 route:read/closer-call | Closer Dashboard live-call payload for one client: cockpit, offers,... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
 | 36 | routes-2 route:read/closer-call | GET /api/read/closer-call?client_id= — the Closer Dashboard live-ca... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
 | 37 | routes-3 route:read/closer-now | GET which call this closer is on and what is next. Scoped to the si... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
-| 38 | routes-1 route:read/company-activity | GET Galaxy presence feed (who is on shift, calls, agent activity) | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
+| 38 | routes-1 route:read/company-activity | GET Galaxy presence feed (who is on shift, calls, agent activity) | not-attachable (repair cycle 1) | none: every activity label reads "event" |
 | 39 | routes-0 route:read/csm-queue | The CSM's day: clients to talk to today, what they owe (open balanc... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
 | 40 | routes-2 route:read/finance-ask | POST /api/read/finance-ask {question, client_id} — answers three fi... | practice-test | `src/http/fin-b25-read-doors.test.mjs` |
 
-40 practice tests, 0 live checks, 0 verified N/A, 0 not-attachable. The 20-hex row ids are the ones the
+After repair cycle 1: 38 practice tests, 0 live checks, 0 verified N/A, 2 not-attachable (rows 30 and 38). The 20-hex row ids are the ones the
 catalog compiler gives (`sha256(file NUL surface NUL control)`); they are listed in
 `src/pulse/catalog/proofs/fin-b25-door-contracts.mjs`, and the full row ids are the ones in
 `ops/workflows/finish-853-2026-10-14/batch-25.json`.
@@ -186,3 +187,132 @@ same break then went red.
 - `npm run lint`: 3,576 files parse clean.
 - Journeys: no product code changed, so no `-actual.md` journey or changelog line moved. No new live
   page, route, job or send path, so no heartbeat row is owed.
+
+## Repair cycle 1 (2026-10-15)
+
+An independent checker broke 33 of the 40 attached rows in ways the first practice tests did not see (a canned
+stand-in answered the SQL, so a dropped clause, a flipped word or a moved window stayed green). This cycle
+made each of those breaks go red, or took the row back off the board.
+
+### Outcome of the 33 rows
+
+| Outcome | Rows |
+|---|---|
+| practice-test, strengthened, every listed break now red | 31 |
+| not-attachable (attachment removed, row back on NOT_PROVED) | 2: `route:public/eeo-survey` POST, `route:read/company-activity` GET |
+
+Why the two are not attachable (the exact reason, written so a fresh agent can challenge it):
+
+- `route:public/eeo-survey` POST. `pickField` in `src/hiring/eeo-selfid.mjs` returns `null` for a blank answer
+  and `parseEeoBody` then reads `picked.ok` on `null`, outside any try block in the handler. A form that skips
+  any one of the four optional questions gets a server error, while the page, the invite mail and the file's
+  own header say every question is optional. A test of the promised behavior is red today, and a test that
+  only sends all four answers is green on a product that is wrong. Needs a product fix, then the row can be
+  attached (the existing tests in `fin-b25-public-doors.test.mjs` stay and will judge it).
+- `route:read/company-activity`. `src/galaxy/company-activity.mjs` selects `e.kind AS label` and then reads
+  `row.kind`, so every person's activity line shows the word "event". A test that judges the labels is red
+  today. The rest of the feed (people, shifts, agents, cash, funded, deposits, client names, the demo rule)
+  is judged and stays in `fin-b25-read-doors.test.mjs`.
+
+### What changed in the tests (no product file was touched)
+
+1. A new pin file, `src/testing/fin-b25-sql-pins.mjs`: 170 statements, each the exact text the shipped code
+   sends (comments dropped, white space collapsed), captured from the code and read against its source. A
+   test calls `assertSent(result, "name")` or `assertOnlySent(result, ...)` (in `src/testing/fin-b25-kit.mjs`).
+   They judge the TEXT the code sends: a dropped company clause, a flipped status word, a moved date window, a
+   reversed order, a lost join key or a changed column list turns the test red. They do not prove the SQL is
+   valid Postgres (the `.pg.test.mjs` files do that on a scratch database; none was run).
+2. Stand-ins that used to do the product's SQL job in JS now read the statement: the film-link shoot check,
+   the campaign-already-on-another-funnel check, the reject and approve updates, the settings update.
+3. New cases for every break the checker named, by row:
+   - funnels: the same request id from another company or another route is refused; a sign-in with no
+     company is refused on every funnel door; a built funnel's address, lane, offer and book-a-call flag
+     cannot be edited; a funnel keeps its own campaign and another company's campaign is not "taken"; two
+     presses racing to make one key; the whole new-funnel row (name, offer, book-a-call, tag, utm campaign,
+     campaign folder, the three pages in order); a pushed page blocks a rename even while the funnel says
+     draft; the redrawn page's fingerprint; the stray-key refusal; the stats statements.
+   - health, retry, load-status: every count, window, order, join and cap statement; the drain error shown
+     only while rows wait; the retry that loses a race; every load-state branch.
+   - ideas, offer: the idea row's own status and kind, the file save op id per idea, the batch cap alone, the
+     stuck-run close (16 minutes) and the Arizona day on a run, newest-first reads.
+   - research: the defaults left out of a request (quick, web and vault on, own files off), the month cap at
+     the edge, the report words, resumable, the approve op id per run and a replay, the tweak's belief and a
+     replay.
+   - scripts: every carried column of a new version, the checker's words saved on the version, the film key
+     (closed shoot, other company's script, expired, no secret), the file name's place and id suffix, the
+     reject columns by name, a blank reason, the order write, one-line rule text, bad id and version.
+   - settings: all 25 settings, a good and bad value each; the stale compare to the millisecond; 405; no company.
+   - shoot: a film key and an unsigned POST cannot plan, reorder or close a shoot; the keep-what-was-saved
+     rule for the plan, day and status; the Arizona default day; past shoots; retake readiness.
+   - weekly brief: a changed brief re-files over the old file; every connection state other than active is
+     "not available"; the YouTube read; the day window's end.
+   - partner add-ons: a plan is current only while live (cancelled mid-term, not started, ended); next charge.
+   - copy history: the restore write is by page id, a section no longer on the page is put back, the limit
+     clamp (called directly: the route never asks for more than 20).
+   - public doors: reject and approve on an expired or decided take, name and reason lengths, the 4K warning
+     and kind label on the page, the EEO form's exact choices and flags, the VSL ceilings at their edges, a
+     curve that arrives unsorted, and no row for a viewing with no curve.
+   - read doors: ad-books folding (earliest and latest dates, sort ties, session company only, no company),
+     the combined figure's field order and unknown handling, the closer's current call and next call, the
+     one funding number's fallbacks, the lender-count gate, the month and day windows, hostile company or
+     staff ids in the query string, the CSM queue statement.
+
+### Breaks run in this cycle (each against the file's tests, restored after)
+
+About 240 named breaks (the ones the checker listed, plus the nearby ones for the same line) and an
+operator-by-operator sweep over every changed SQL region (each `=` flipped, each `AND` clause dropped, each
+`DESC` reversed, each window moved, each `IN` negated, each limit raised). Every one went red except these,
+which cannot change what these routes answer:
+
+- `src/marketing/funnel-store.mjs` `savePageBuild`, `markPagePushed`, `markPageAddress`, `funnelJobs` (worker
+  and other routes only).
+- `src/marketing/ideas-store.mjs` `listBatches`, `src/marketing/offer-store.mjs` claim and finish (not on these
+  doors); `src/marketing/clock.mjs` tick statements.
+- `src/marketing/model-usage.mjs` `month_capped` (the health card reads dollars, not that flag);
+  `src/marketing/metrics.mjs` `maturing` (not in the funnel stats answer).
+- `src/brand/copy-generate.mjs` `generateSectionCopy`'s page update (another route).
+- `src/marketing/scripts-store.mjs` approve statements (the approve row was not in this repair).
+- Comments.
+
+### Shared lines touched this cycle
+
+| File | Edit |
+|---|---|
+| `src/pulse/catalog/proofs/fin-b25-door-contracts.mjs` | two entries removed (the two not-attachable rows), a comment saying why |
+| `src/pulse/catalog/proofs/fin-b25-door-contracts.test.mjs` | `ids.length` 40 to 38 |
+| `src/pulse/coverage/gap-door-batch-routes.mjs` | `routes-1.json` 25 to 27 |
+| `src/pulse/coverage/gap-door-batch-routes.test.mjs` | the row total 95 to 97 |
+| `src/pulse/catalog/proofs/door-batch-route-result.test.mjs` | rows 95 to 97; unique routes 78 to 80 |
+| `src/pulse/catalog/generated.json` | regenerated with `npm run pulse:catalog` |
+
+### Numbers
+
+`node scripts/pulse/count-not-proved.mjs`: before this cycle `{total 813, routes 95}`; after
+`{total 815, routes 97}`. The two rows that came back are the two above. Batch rows still open: 2.
+
+### Product findings added this cycle (written down, not fixed)
+
+1. `GET /api/read/company-activity`: every person's timeline label reads "event" (query aliases `label`, code
+   reads `row.kind`). Same reason as the not-attachable row.
+2. `GET/POST /api/partner-marketing/copy-history`: there is no company check. The door lets any owner or admin
+   read or restore any partner page by id, because `canAccessPartnerMarketing` only checks the role and no
+   row-level policy exists on `partner_pages` or `partner_page_section_versions` (db/migrations 135, 136, 172).
+   The attached test judges what it can (role, partner, suite, lock, version scope, restore write by page id)
+   and does NOT judge company isolation, because the door does not have it.
+3. `GET /api/partner-addons`: a plan that has not started yet (effective_from in the future, not cancelled) is
+   shown with status "cancelled" in the catalog, because the status only tests "in the history but not live".
+4. `GET /api/read/closer-call`: "today's cash" starts at UTC midnight (`todayCash` in `src/sales/cockpit.mjs`),
+   so after 5 pm Arizona it restarts. The month window is also a UTC calendar month.
+5. `GET /api/read/closer-now`: the day boundary is `date_trunc('day', ...)` in the database session's time
+   zone, not Arizona's.
+6. `POST /api/marketing/research` and `/tweak`: a repeated request_id wakes the worker again, because the
+   saved answer still says `started: true`. Harmless (the wake is idempotent) but it is not "writes nothing".
+
+### Commands run and results
+
+- `node --test src/http/fin-b25-*.test.mjs`: 138 tests, 138 pass, 0 skipped.
+- `node --test src/pulse/catalog/proofs/fin-b25-door-contracts.test.mjs
+  src/pulse/coverage/gap-door-batch-routes.test.mjs src/pulse/catalog/proofs/door-batch-route-result.test.mjs`:
+  all pass.
+- `npm run lint`: 3,577 files parse clean.
+- `npm run pulse:catalog`: 3975 mapped, 33 repeats, 3942 unique; 3919 wired, 23 red.

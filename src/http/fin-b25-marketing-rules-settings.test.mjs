@@ -10,7 +10,7 @@ import settingsHandler from "../../api/marketing/settings.mjs";
 import { BANNED_PATH, RULES_PATH } from "../repo/edit-ops.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSqlHas, call, requestLog, sqlCalls, updatedFields,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, requestLog, sentStatement, sqlCalls, updatedFields,
 } from "../testing/fin-b25-kit.mjs";
 
 const REQ = (n) => `req-${String(n).padStart(8, "0")}`;
@@ -229,6 +229,10 @@ function settingsWorld(rows = []) {
         Object.assign(row, updatedFields(sql, params, NOW));
         const merged = /format_style = format_style \|\| \$(\d+)::jsonb/.exec(sql);
         if (merged) row.format_style = { ...row.format_style, ...JSON.parse(params[Number(merged[1]) - 1]) };
+        // jsonb columns arrive from node-postgres parsed
+        for (const column of ["winner_rule", "next_overrides"]) {
+          if (typeof row[column] === "string") row[column] = JSON.parse(row[column]);
+        }
         // numeric columns arrive from node-postgres as text
         if (row.max_research_cost_usd != null) row.max_research_cost_usd = String(row.max_research_cost_usd);
         row.updated_at = NOW;
@@ -262,6 +266,7 @@ test("GET marketing/settings makes this company's row with the defaults on first
   assertSqlHas(read.sql, { company: "WHERE org_id = $1" });
   const insert = sqlCalls(result, /INSERT INTO marketing_settings/)[0];
   assertSqlHas(insert.sql, { race: "ON CONFLICT (org_id) DO NOTHING" });
+  assertSent(result, "settings.ensure", "settings.read");
   await assertRoleGate(settingsHandler, ["owner", "admin"], { rules: settingsWorld([]).rules });
 });
 
@@ -296,6 +301,12 @@ test("POST marketing/settings saves a patch only against the updated_at the scre
   assert.deepEqual(JSON.parse(update.params.find((p) => typeof p === "string" && p.startsWith('{"metric"'))), { metric: "roas", min: 2 });
   const lock = sqlCalls(result, /FOR UPDATE/)[0];
   assert.deepEqual(lock.params, [ORG_ID]);
+  assertSent(result, "request.lock", "request.find", "settings.ensure", "settings.read_locked", "settings.update_full", "request.save");
+  // Every value lands in its own column, from the statement (not from the order the stand-in saw them).
+  assert.deepEqual(
+    (({ enabled, batch_time, max_batch_cost_usd, max_research_cost_usd, updated_by }) => ({ enabled, batch_time, max_batch_cost_usd, max_research_cost_usd, updated_by }))(updatedFields(update.sql, update.params)),
+    { enabled: true, batch_time: "08:30", max_batch_cost_usd: 40, max_research_cost_usd: 2.5, updated_by: STAFF_ID },
+  );
 
   const again = await call(settingsHandler, {
     method: "POST", body: { request_id: REQ(30), updated_at: "2026-10-01T09:00:00.000Z", patch }, rules: world.rules,
@@ -340,4 +351,99 @@ test("POST marketing/settings answers 409 with what is saved when updated_at is 
   assert.equal(badCost.status, 400);
   assert.equal(world.updates.length, 0);
   await assertRoleGate(settingsHandler, ["owner", "admin"], { method: "POST", body: { request_id: REQ(49), updated_at: "2026-10-05T09:00:00.000Z", patch: { enabled: true } }, rules: world.rules });
+});
+
+/* ── every setting is checked: a good value is saved, a bad one is refused before anything is read ─── */
+
+const STAMP = "2026-10-05T09:00:00.000Z";
+const INT_MAX = 2147483647;
+
+// [key, [good value, how the screen reads it back], [bad values...]]
+const SETTING_CASES = [
+  ["enabled", [true, true], ["yes", 1, null, "true"]],
+  ["batch_weekday", [0, 0], [7, -1, 1.5, "1", null]],
+  ["batch_time", ["08:30", "08:30"], ["7:00", "24:00", "07:60", "0730", 730, null]],
+  ["timezone", ["America/Chicago", "America/Chicago"], ["Mars/Olympus", "", "   ", 5]],
+  ["scripts_per_day", [5, 5], [0, -1, 1.5, "3", INT_MAX + 1, null]],
+  ["days_per_batch", [5, 5], [0, -1, 1.5, "7", INT_MAX + 1]],
+  ["size_rule", ["per_funnel", "per_funnel"], ["weekly", "", 5, null]],
+  ["format_style", [{ sorting: "words" }, { standard: "bullets", sorting: "words" }], ["bullets", ["bullets"], { poem: "bullets" }, { standard: "poetry" }, null]],
+  ["draft_expiry_days", [30, 30], [0, -2, 2.5, "14"]],
+  ["winner_rule", [{ metric: "roas" }, { metric: "roas" }], ["roas", [1], 5]],
+  ["ad_number_floor", [120, 120], [0, -3, 91.5, "91"]],
+  ["next_overrides", [{ lane: "premium" }, { lane: "premium" }], ["premium", [], 7]],
+  ["max_batch_cost_usd", [60, 60], [0, -5, 2.5, "25", INT_MAX + 1]],
+  ["max_month_cost_usd", [500, 500], [0, -5, 2.5, "300", INT_MAX + 1]],
+  ["submagic_template", ["Hormozi 3", "Hormozi 3"], ["", "   ", "x".repeat(101), 5, null]],
+  ["caption_position_y", [120, 120], [-1, 1.5, "5", INT_MAX + 1]],
+  ["magic_zooms", [false, false], ["no", 0, null]],
+  ["clean_audio", [false, false], ["no", 0, null]],
+  ["caption_dictionary", [["Fundhub"], ["Fundhub"]], ["Fundhub", [""], [5], Array.from({ length: 1001 }, () => "w"), [["a"]]]],
+  ["animation_mode", ["overlay", "overlay"], ["split", "", 5, null]],
+  ["flip_horizontal", [true, true], ["yes", 1, null]],
+  ["settle_minutes", [20, 20], [0, -1, 1.5, "10"]],
+  ["quiet_start", ["22:00", "22:00"], ["9pm", "25:00", "21:5", null]],
+  ["quiet_end", ["06:30", "06:30"], ["6am", "24:30", "6:30", null]],
+  ["max_research_cost_usd", [2.5, 2.5], [0, 0.001, 0.009, 1000.01, "5", 2.555, true]],
+  ["research_shares_month_cap", [false, false], ["no", 0, null]],
+];
+
+test("POST marketing/settings checks every setting: a good value of each is saved and read back, and each bad one is refused with its own field before the database is touched", async () => {
+  for (const [key, [good, readBack], bad] of SETTING_CASES) {
+    const world = settingsWorld([{ org_id: ORG_ID, ...DEFAULTS, updated_at: new Date(STAMP) }]);
+    const ok = await call(settingsHandler, { method: "POST", body: { request_id: REQ(100), updated_at: STAMP, patch: { [key]: good } }, rules: world.rules });
+    assert.equal(ok.status, 200, `${key}: a good value is saved (${JSON.stringify(good)}): ${JSON.stringify(ok.body)}`);
+    assert.deepEqual(ok.body.settings[key], readBack, `${key} is read back as saved`);
+
+    for (const value of bad) {
+      const refused = await call(settingsHandler, { method: "POST", body: { request_id: REQ(101), updated_at: STAMP, patch: { [key]: value } }, rules: [] });
+      assert.equal(refused.status, 400, `${key} refuses ${JSON.stringify(value)?.slice(0, 40)}`);
+      assert.match(refused.body.field, new RegExp(`^patch\\.${key}`), `${key}: the field names the setting`);
+      assert.equal(dataCalls(refused).length, 0, `${key}: nothing is read or written for a bad value`);
+    }
+  }
+  // null is allowed, and means "not set", for exactly these
+  for (const key of ["winner_rule", "next_overrides", "caption_position_y", "max_research_cost_usd"]) {
+    const world = settingsWorld([{ org_id: ORG_ID, ...DEFAULTS, updated_at: new Date(STAMP) }]);
+    const cleared = await call(settingsHandler, { method: "POST", body: { request_id: REQ(102), updated_at: STAMP, patch: { [key]: null } }, rules: world.rules });
+    assert.equal(cleared.status, 200, `${key} can be cleared`);
+    assert.equal(cleared.body.settings[key], null);
+  }
+  // the edges that are allowed
+  const edges = { batch_weekday: 6, max_research_cost_usd: 0.01, caption_position_y: 0 };
+  for (const [key, value] of Object.entries(edges)) {
+    const world = settingsWorld([{ org_id: ORG_ID, ...DEFAULTS, updated_at: new Date(STAMP) }]);
+    const at = await call(settingsHandler, { method: "POST", body: { request_id: REQ(103), updated_at: STAMP, patch: { [key]: value } }, rules: world.rules });
+    assert.equal(at.status, 200, `${key} = ${value} is the edge and is allowed`);
+  }
+  const top = settingsWorld([{ org_id: ORG_ID, ...DEFAULTS, updated_at: new Date(STAMP) }]);
+  const thousand = await call(settingsHandler, { method: "POST", body: { request_id: REQ(104), updated_at: STAMP, patch: { max_research_cost_usd: 1000 } }, rules: top.rules });
+  assert.equal(thousand.status, 200, "1000 dollars is the top of the research stop amount");
+});
+
+test("POST marketing/settings compares updated_at to the millisecond, answers 405 to other verbs and refuses a sign-in with no company", async () => {
+  const world = settingsWorld([{ org_id: ORG_ID, ...DEFAULTS, updated_at: new Date("2026-10-05T09:00:00.500Z") }]);
+  const sameSecond = await call(settingsHandler, {
+    method: "POST", body: { request_id: REQ(110), updated_at: "2026-10-05T09:00:00.000Z", patch: { enabled: true } }, rules: world.rules,
+  });
+  assert.equal(sameSecond.status, 409, "the same second but another millisecond is a different save");
+  assert.equal(world.updates.length, 0);
+  const exact = await call(settingsHandler, {
+    method: "POST", body: { request_id: REQ(111), updated_at: "2026-10-05T09:00:00.500Z", patch: { enabled: true } }, rules: world.rules,
+  });
+  assert.equal(exact.status, 200);
+  assert.equal(world.updates.length, 1);
+
+  const put = await call(settingsHandler, { method: "PUT", rules: world.rules });
+  assert.equal(put.status, 405);
+  assert.equal(put.headers.allow, "GET, POST");
+  assert.equal(dataCalls(put).length, 0);
+
+  for (const method of ["GET", "POST"]) {
+    const noCompany = await call(settingsHandler, {
+      method, staff: { org_id: null }, body: { request_id: REQ(112), updated_at: STAMP, patch: { enabled: true } }, rules: world.rules,
+    });
+    assert.equal(noCompany.status, 403, `${method} with no company is refused`);
+    assert.deepEqual(dataCalls(noCompany).map((c) => c.sql), []);
+  }
 });

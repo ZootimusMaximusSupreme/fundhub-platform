@@ -182,7 +182,9 @@ export function scriptWorld({ scripts = [], batches = [], shoots = [], videos = 
     // reject
     [/^\s*UPDATE ad_scripts\s+SET status = 'rejected'/, (sql, params) => {
       const hit = rowsWhere(scripts, sql, params);
-      for (const row of hit) Object.assign(row, { status: "rejected", rejected_at: NOW, rejected_by: params[1], rejected_reason: params[2] });
+      // The row is what the statement says it sets (status, rejected_at, rejected_by, rejected_reason), read
+      // from its text, so a value bound to the wrong column or a dropped column shows in the row.
+      for (const row of hit) Object.assign(row, updatedFields(sql, params, NOW));
       return { rows: hit, rowCount: hit.length };
     }],
     // film order

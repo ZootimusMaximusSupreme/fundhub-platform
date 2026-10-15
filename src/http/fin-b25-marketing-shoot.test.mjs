@@ -10,7 +10,7 @@ import markHandler from "../../api/marketing/shoot/mark.mjs";
 import { mintFilmKey, readFilmKey } from "../marketing/shoot-film-key.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, assertRoleGate, assertSqlHas, call, dataCalls, sqlCalls,
+  ORG_ID, OTHER_ORG_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, sentStatement, sqlCalls,
 } from "../testing/fin-b25-kit.mjs";
 import { WORLD_NOW, scriptRow, scriptWorld } from "../testing/fin-b25-script-world.mjs";
 
@@ -59,7 +59,7 @@ function shootWorld({ scripts = [], shoots = [], videos = [], funnels = [], defa
     [/^\s*SELECT count\(\*\)::int AS n FROM ad_videos\s+WHERE org_id = \$1 AND ad_id IS NULL/, (_sql, params) =>
       [{ n: videos.filter((v) => v.org_id === params[0] && v.ad_id == null && new Date(v.created_at) >= new Date(params[1])).length }]],
     [/^\s*SELECT sh\.id, sh\.shoot_date, sh\.root_script_ids, sh\.marks, sh\.finished_at/, (_sql, params) =>
-      shoots.filter((s) => s.org_id === params[0] && s.status === "done").map((s) => ({ ...s, finished: 1 }))],
+      shoots.filter((s) => s.org_id === params[0] && s.status === "done").map((s) => ({ ...s, finished: s.finished_count ?? 1 }))],
     [/^\s*INSERT INTO marketing_shoots/, (sql, params) => {
       const row = { id: SHOOT_ID, org_id: params[0], shoot_date: params[1] ?? "2026-10-14", root_script_ids: params[2], marks: {}, status: "planned", started_at: null, finished_at: null, created_at: WORLD_NOW, updated_at: WORLD_NOW };
       state.inserts.push({ sql, params, row });
@@ -143,6 +143,33 @@ test("GET marketing/shoot answers the open shoot in order with each script's fil
   const filed = sqlCalls(result, /FROM ad_videos\s+WHERE org_id = \$1 AND ad_id = ANY/)[0];
   assert.equal(filed.params[0], ORG_ID);
   assert.equal(dataCalls(result).every((c) => !/^\s*(INSERT|UPDATE|DELETE)/i.test(c.sql)), true, "reading a shoot writes nothing");
+  // The stand-in answers each read with its own JS, so the statements that decide the file names, the
+  // take numbers, the board and the lists are pinned as sent: this company only, live versions only,
+  // visible ones only, ready scripts only, clips before the shoot for the take number and since it for the
+  // board, and the past shoots newest first.
+  assertSent(result, "shoot.open", "shoot.live_scripts", "shoot.ready_scripts", "shoot.prior_videos", "shoot.prior_closed",
+    "shoot.board_videos", "shoot.unmatched", "shoot.past");
+  assert.equal(sentStatement(result, "shoot.prior_videos").params[2] instanceof Date || typeof sentStatement(result, "shoot.prior_videos").params[2] === "string", true, "the take number counts clips before the shoot was made");
+  assert.deepEqual(sentStatement(result, "shoot.board_videos").params.slice(0, 2), [ORG_ID, ["91", "92"]]);
+});
+
+test("GET marketing/shoot lists the last closed shoots of this company with how many scripts, how many were marked Got it and how many have a finished video", async () => {
+  const done = (over) => openShoot({ status: "done", marks: {}, finished_at: new Date("2026-10-10T20:00:00.000Z"), ...over });
+  const world = shootWorld({
+    scripts: [lockedScript(), secondScript()],
+    shoots: [
+      done({ id: "5b000000-0000-4000-8000-0000000000c1", shoot_date: "2026-10-09", root_script_ids: [ROOT_A, ROOT_B], marks: { [ROOT_A]: { takes: 2, got_it: true }, [ROOT_B]: { takes: 1, got_it: false } }, finished_count: 1 }),
+      done({ id: "5b000000-0000-4000-8000-0000000000c2", org_id: OTHER_ORG_ID, root_script_ids: [ROOT_A] }),
+      openShoot({ id: "5b000000-0000-4000-8000-0000000000c3" }),
+    ],
+  });
+  const result = await call(shootHandler, { rules: world.rules, deps: { now: () => WORLD_NOW, filmSecret: SECRET } });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.past_shoots, [{
+    id: "5b000000-0000-4000-8000-0000000000c1", shoot_date: "2026-10-09", scripts: 2, filmed: 1, finished: 1, finished_at: "2026-10-10T20:00:00.000Z",
+  }], "this company's closed shoots only, with the count of Got it marks as filmed");
+  assertSent(result, "shoot.past");
+  assert.deepEqual(sentStatement(result, "shoot.past").params, [ORG_ID]);
 });
 
 test("GET marketing/shoot: a wrong wpm is refused, an old bookmark with no sign-in reads the default company, a film key reads that one shoot, and a bad key reads nothing", async () => {
@@ -158,6 +185,7 @@ test("GET marketing/shoot: a wrong wpm is refused, an old bookmark with no sign-
   assert.equal(openRead.body.film, undefined, "no film link is handed to someone who did not sign in");
   assert.equal(world.orgReads, 1);
   assert.deepEqual(sqlCalls(openRead, /FROM marketing_shoots WHERE org_id = \$1/)[0].params, [ORG_ID], "the default company's shoot");
+  assertSent(openRead, "shoot.default_org");
 
   const noOrg = shootWorld({ scripts: [], shoots: [], defaultOrg: null });
   const empty = await call(shootHandler, { anonymous: true, withSession: false, headers: {}, rules: noOrg.rules, deps });
@@ -209,6 +237,8 @@ test("POST marketing/shoot plans a shoot from approved scripts, sets the film or
   const lock = sqlCalls(planned, /hashtextextended\('marketing_shoots:'/)[0];
   assert.deepEqual(lock.params, [ORG_ID]);
   assertSqlHas(sqlCalls(planned, /FROM marketing_shoots WHERE org_id = \$1 AND status <> 'done'/)[0].sql, { locked: "FOR UPDATE" });
+  // The new shoot's day defaults to today in Arizona (not UTC, not none), and is this company's.
+  assertSent(planned, "shoot.lock", "shoot.open_locked", "shoot.live_scripts", "shoot.insert", "scripts.order_found", "scripts.order_write");
 
   const second = await call(shootHandler, {
     method: "POST", body: { request_id: REQ(2), root_script_ids: [ROOT_A] }, rules: world.rules, deps,
@@ -227,6 +257,21 @@ test("POST marketing/shoot plans a shoot from approved scripts, sets the film or
   assert.match(unknown.body.message, /not found/);
   assert.equal(fresh.inserts.length, 0, "a refused plan saves nothing");
 
+  // A filmed script that does not need a retake, and a locked one with no ad number yet, are not ready.
+  const filmedDone = shootWorld({ scripts: [lockedScript({ status: "filmed", needs_retake: false })] });
+  const notReady = await call(shootHandler, { method: "POST", body: { request_id: REQ(9), root_script_ids: [ROOT_A] }, rules: filmedDone.rules, deps });
+  assert.equal(notReady.status, 400);
+  assert.match(notReady.body.message, /Only approved scripts/);
+  assert.equal(filmedDone.inserts.length, 0);
+  const noNumber = shootWorld({ scripts: [lockedScript({ ad_id: null })] });
+  const noNumberAnswer = await call(shootHandler, { method: "POST", body: { request_id: REQ(16), root_script_ids: [ROOT_A] }, rules: noNumber.rules, deps });
+  assert.equal(noNumberAnswer.status, 400);
+  assert.equal(noNumber.inserts.length, 0);
+  const retake = shootWorld({ scripts: [lockedScript({ status: "filmed", needs_retake: true })] });
+  const retakeAnswer = await call(shootHandler, { method: "POST", body: { request_id: REQ(17), root_script_ids: [ROOT_A] }, rules: retake.rules, deps });
+  assert.equal(retakeAnswer.status, 200, "a filmed script that needs a retake is ready to film again");
+  assert.equal(retake.inserts[0].params[1], null, "no day sent: the database fills today in Arizona");
+
   const noIds = await call(shootHandler, { method: "POST", body: { request_id: REQ(5) }, rules: [], deps });
   assert.equal(noIds.status, 400);
   assert.equal(noIds.body.field, "root_script_ids");
@@ -236,6 +281,36 @@ test("POST marketing/shoot plans a shoot from approved scripts, sets the film or
   const dupes = await call(shootHandler, { method: "POST", body: { request_id: REQ(7), root_script_ids: [ROOT_A, ROOT_A] }, rules: [], deps });
   assert.equal(dupes.status, 400);
   await assertRoleGate(shootHandler, ["owner", "admin"], { method: "POST", body: { request_id: REQ(8), root_script_ids: [ROOT_A] }, rules: [], deps });
+});
+
+test("POST marketing/shoot cannot be done with a film link: a film key plans, reorders and closes nothing, and an unsigned POST is refused", async () => {
+  const world = shootWorld({
+    scripts: [lockedScript(), secondScript()],
+    shoots: [openShoot({ status: "filming" })],
+  });
+  const deps = { now: () => WORLD_NOW, filmSecret: SECRET };
+  const key = mintFilmKey({ orgId: ORG_ID, shootId: SHOOT_ID, secret: SECRET, now: () => WORLD_NOW.getTime() }).token;
+  const bodies = [
+    { request_id: REQ(60), id: SHOOT_ID, status: "done" },
+    { request_id: REQ(61), id: SHOOT_ID, root_script_ids: [ROOT_B, ROOT_A] },
+    { request_id: REQ(62), root_script_ids: [ROOT_A] },
+  ];
+  for (const body of bodies) {
+    const withKey = await call(shootHandler, { method: "POST", anonymous: true, withSession: false, headers: { "x-shoot-film": key }, body, rules: world.rules, deps });
+    assert.equal(withKey.status, 401, `a film key alone cannot ${JSON.stringify(Object.keys(body).slice(1))}`);
+    const unsigned = await call(shootHandler, { method: "POST", anonymous: true, withSession: false, headers: {}, body, rules: world.rules, deps });
+    assert.equal(unsigned.status, 401, "no key and no sign-in is refused");
+    assert.equal(dataCalls(withKey).length, 0);
+    assert.equal(dataCalls(unsigned).length, 0);
+  }
+  assert.equal(world.updates.length, 0, "nothing was changed");
+  assert.equal(world.inserts.length, 0);
+  assert.equal(world.shoots[0].status, "filming");
+
+  // A film key sent along with a real sign-in is still just the sign-in: the company is the session's.
+  const noCompany = await call(shootHandler, { method: "POST", staff: { org_id: null }, body: bodies[0], rules: world.rules, deps });
+  assert.equal(noCompany.status, 403);
+  assert.equal(dataCalls(noCompany).length, 0);
 });
 
 test("POST marketing/shoot closes a shoot (status done) and reorders it, keeps a script already on the shoot, and refuses another company's shoot, a closed shoot and a bare move", async () => {
@@ -252,6 +327,10 @@ test("POST marketing/shoot closes a shoot (status done) and reorders it, keeps a
   assert.deepEqual(world.orderWrite.order, [ROOT_B, ROOT_A]);
   assert.deepEqual(world.updates[0].params.slice(0, 2), [SHOOT_ID, ORG_ID]);
   assertSqlHas(world.updates[0].sql, { company: "WHERE id = $1 AND org_id = $2" });
+  // The write: each of the plan, the day and the status keeps what was saved when none is sent (COALESCE),
+  // started and finished are stamped by status, and updated_at moves. Pinned as sent.
+  assertSent(reorder, "shoot.lock", "shoot.by_id_locked", "shoot.update", "shoot.live_scripts");
+  assert.deepEqual(sentStatement(reorder, "shoot.update").params, [SHOOT_ID, ORG_ID, [ROOT_B, ROOT_A], null, null], "only the plan was sent: the day and the status are null so they keep what is saved");
 
   const close = await call(shootHandler, { method: "POST", body: { request_id: REQ(11), id: SHOOT_ID, status: "done" }, rules: world.rules, deps });
   assert.equal(close.status, 200);
@@ -290,6 +369,7 @@ test("POST marketing/shoot/mark counts a take, Got it keeps it, the first mark m
   assert.deepEqual(another.body.marks, { [ROOT_A]: { takes: 1, got_it: false, at: WORLD_NOW.toISOString() } });
   assert.equal(world.shoots[0].status, "filming", "the first mark moves a planned shoot to filming");
   assertSqlHas(world.markUpdates[0].sql, { company: "WHERE id = $1 AND org_id = $2", moves: "WHEN status = 'planned' THEN 'filming'" });
+  assertSent(another, "shoot.by_id_locked", "shoot.mark");
   assert.deepEqual([world.markUpdates[0].params[0], world.markUpdates[0].params[1]], [SHOOT_ID, ORG_ID]);
 
   const gotIt = await call(markHandler, { method: "POST", body: { request_id: REQ(21), shoot_id: SHOOT_ID, root_script_id: ROOT_A, mark: "got_it" }, rules, deps });

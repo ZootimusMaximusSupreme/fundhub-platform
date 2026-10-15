@@ -12,8 +12,9 @@ import weeklyBriefHandler from "../../api/ops/weekly-brief.mjs";
 import partnerAddonsHandler from "../../api/partner-addons.mjs";
 import copyHistoryHandler from "../../api/partner-marketing/copy-history.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
+import { listSectionHistory } from "../brand/copy-generate.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, assertRoleGate, assertSqlHas, call, dataCalls, sqlCalls,
+  ORG_ID, OTHER_ORG_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, sentStatement, sqlCalls,
 } from "../testing/fin-b25-kit.mjs";
 
 const PARTNER_ID = "b0000000-0000-4000-8000-000000000001";
@@ -125,6 +126,66 @@ test("POST ops/weekly-brief builds the numbers for this company's last 7 days, n
   ], "filed under this company, as an owner-tier page, holding exactly the brief that was returned");
   assertSqlHas(world.inserts[0].sql, { generated: "'generated'" });
   assert.deepEqual(sqlCalls(result, /FROM analytics_connections/).map((c) => c.params), [[ORG_ID], [ORG_ID]]);
+  // The numbers come back as canned rows, so the statements are pinned as sent: this company's leads in the
+  // window (cancelled bookings not counted, demo payments out), the connection of each source, the latest
+  // row per page in the window (the window's end day not included), most views first, ten at most; and the
+  // document is looked up and filed under this company.
+  assertSent(result, "ads.rollup", "brief.cf_connection", "brief.yt_connection", "brief.pages", "brain.file_find", "brain.file_insert");
+  assert.match(b.brief, /\n- uwiq: 5 leads, 1 booked \(20\.0%\)/, "every lane is listed, in the order of the folded groups");
+});
+
+test("POST ops/weekly-brief files a CHANGED brief for the same week over the old document, as an owner-tier page, and does not make a second one", async () => {
+  const filed = { id: "bf-9", org_id: ORG_ID, drive_file_id: "generated:weekly-ops-brief:2026-w41", content_sha256: sha256("an older brief") };
+  const world = briefWorld({ brainFiles: [filed] });
+  const result = await withModelEnv({}, () => call(weeklyBriefHandler, { method: "POST", body: { to: TO }, rules: world.rules }));
+  assert.equal(result.status, 200);
+  assert.equal(world.inserts.length, 0, "the week already has its document, so none is made");
+  assert.equal(world.updates.length, 1, "the changed words are saved over it");
+  assert.deepEqual(world.updates[0].params, ["bf-9", "Weekly ops brief — 2026-w41", "owner", sha256(result.body.brief)],
+    "the same file, still owner-tier, holding exactly the brief that was returned");
+  assertSent(result, "brain.file_find", "brain.file_update");
+  assert.deepEqual(sentStatement(result, "brain.file_find").params, [ORG_ID, "generated:weekly-ops-brief:2026-w41"]);
+});
+
+test("POST ops/weekly-brief says a source is not available for every state but active, and never reads a page or video row from it", async () => {
+  for (const state of ["error", "paused", "pending", "disconnected", "needs_reauth"]) {
+    const world = briefWorld({
+      connections: [
+        { org_id: ORG_ID, platform: "clickfunnels", connection_state: state, last_synced_at: null },
+        { org_id: ORG_ID, platform: "youtube", connection_state: state, last_synced_at: null },
+      ],
+      pages: [{ org_id: ORG_ID, funnel_name: "Funding", page_name: "Watch", stat_date: "2026-10-09", views: 120, conversions: 9 }],
+      videos: [{ org_id: ORG_ID, video_title: "The VSL", stat_date: "2026-10-09", views: 77, minutes_watched: 12.4 }],
+    });
+    const result = await withModelEnv({}, () => call(weeklyBriefHandler, { method: "POST", body: { to: TO }, rules: world.rules }));
+    assert.equal(result.status, 200);
+    assert.match(result.body.brief, new RegExp(`## Funnel pages \\(ClickFunnels\\)\\nNot available: ClickFunnels connection state: ${state}\\.`), state);
+    assert.match(result.body.brief, new RegExp(`## VSL watch time \\(YouTube\\)\\nNot available: YouTube connection state: ${state}\\.`), state);
+    assert.doesNotMatch(result.body.brief, /Watch: 120 views|The VSL/, "a source that is not active is never read");
+    assert.equal(world.pageReads.length + world.videoReads.length, 0);
+  }
+  const none = briefWorld();
+  const unconnected = await withModelEnv({}, () => call(weeklyBriefHandler, { method: "POST", body: { to: TO }, rules: none.rules }));
+  assert.match(unconnected.body.brief, /Not available: ClickFunnels is not connected yet\./);
+  assert.match(unconnected.body.brief, /Not available: YouTube is not connected yet\./);
+});
+
+test("POST ops/weekly-brief reads YouTube watch time as the latest row per video in the window when it is connected, most views first, unknown minutes stay unknown", async () => {
+  const world = briefWorld({
+    connections: [{ org_id: ORG_ID, platform: "youtube", connection_state: "active", last_synced_at: "2026-10-10T09:00:00.000Z" }],
+    videos: [
+      { org_id: ORG_ID, video_title: "The VSL", stat_date: "2026-10-09", views: 77, minutes_watched: "412.6" },
+      { org_id: ORG_ID, video_title: "Short one", stat_date: "2026-10-08", views: null, minutes_watched: null },
+      { org_id: OTHER_ORG_ID, video_title: "Not ours", stat_date: "2026-10-09", views: 9999, minutes_watched: 9999 },
+    ],
+  });
+  const result = await withModelEnv({}, () => call(weeklyBriefHandler, { method: "POST", body: { to: TO }, rules: world.rules }));
+  assert.equal(result.status, 200);
+  assert.match(result.body.brief, /- The VSL: 77 views, 413 minutes watched \(pulled 2026-10-09\)/);
+  assert.match(result.body.brief, /- Short one: unknown views, unknown watched \(pulled 2026-10-08\)/);
+  assert.doesNotMatch(result.body.brief, /Not ours/);
+  assert.deepEqual(world.videoReads[0].params, [ORG_ID, "2026-10-04", "2026-10-11"]);
+  assertSent(result, "brief.yt_connection", "brief.videos");
 });
 
 test("POST ops/weekly-brief adds the model's short write-up under What to do when a model answers, from the numbers only, and a re-run of the same week files one document", async () => {
@@ -239,6 +300,52 @@ test("GET partner-addons answers the add-on catalog with each one's status for t
   assertSqlHas(world.seen.subs.sql, { company: "WHERE org_id = $1 AND partner_id = $2 AND client_id IS NULL" });
   assert.deepEqual(world.seen.links.params, [ORG_ID, PARTNER_ID]);
   noWrites(result);
+  assert.equal(byCode["creative-intelligence"].next_charge_at.toISOString(), "2026-11-01T00:00:00.000Z", "a live plan shows when it is next charged");
+  assert.equal(byCode["dfy-marketing"].next_charge_at, null, "a plan that is not live has no next charge");
+  assert.equal(byCode["lead-flow"].next_charge_at, null);
+  // The three reads: the partner must be this company's, the plan chain is this partner's own (not a
+  // client's), newest first; the orders are this partner's asks, newest first.
+  assertSent(result, "addons.owns", "addons.subs", "addons.links");
+});
+
+test("GET partner-addons shows a plan as the current one only while it is live: not once cancelled mid-term, not before it starts, not after it ends", async () => {
+  const day = (iso) => new Date(iso);
+  const sub = (id, tier, over) => ({
+    id, org_id: ORG_ID, partner_id: PARTNER_ID, client_id: null, tier, status: "active", price_cents: 100,
+    effective_from: day("2020-01-01T00:00:00.000Z"), effective_to: null, cancelled_at: null, next_charge_at: day("2099-01-01T00:00:00.000Z"),
+    created_at: day("2020-01-01T00:00:00.000Z"), ...over,
+  });
+  const run = async (subs) => {
+    const world = addonWorld({ partners: [{ id: PARTNER_ID, org_id: ORG_ID }], subs, links: [] });
+    return call(partnerAddonsHandler, { query: { partner_id: PARTNER_ID }, rules: world.rules });
+  };
+  const statusOf = (result, code) => result.body.catalog.find((a) => a.code === code);
+
+  const open = await run([sub("s1", "creative-intelligence", {})]);
+  assert.deepEqual(open.body.current.map((s) => s.id), ["s1"], "no end date and not cancelled: live");
+  assert.equal(statusOf(open, "creative-intelligence").status, "active");
+
+  const later = await run([sub("s2", "creative-intelligence", { effective_to: day("2099-06-01T00:00:00.000Z") })]);
+  assert.deepEqual(later.body.current.map((s) => s.id), ["s2"], "an end date still to come: live");
+
+  const cancelled = await run([sub("s3", "creative-intelligence", { cancelled_at: day("2026-01-01T00:00:00.000Z") })]);
+  assert.deepEqual(cancelled.body.current, [], "cancelled mid-term (no end date yet): not current");
+  assert.equal(statusOf(cancelled, "creative-intelligence").status, "cancelled");
+  assert.equal(statusOf(cancelled, "creative-intelligence").subscription_id, null);
+  assert.equal(statusOf(cancelled, "creative-intelligence").next_charge_at, null);
+
+  const notStarted = await run([sub("s4", "creative-intelligence", { effective_from: day("2099-01-01T00:00:00.000Z") })]);
+  assert.deepEqual(notStarted.body.current, [], "a plan that has not started is not the current plan");
+  assert.equal(statusOf(notStarted, "creative-intelligence").subscription_id, null);
+  assert.equal(statusOf(notStarted, "creative-intelligence").next_charge_at, null);
+
+  const ended = await run([sub("s5", "creative-intelligence", { effective_to: day("2021-01-01T00:00:00.000Z") })]);
+  assert.deepEqual(ended.body.current, [], "an end date in the past: not current");
+  assert.deepEqual(ended.body.history.map((s) => s.id), ["s5"], "but it stays in the history");
+  assert.equal(statusOf(ended, "creative-intelligence").status, "cancelled");
+
+  const tierCase = await run([sub("s6", "  Creative-Intelligence ", {})]);
+  assert.equal(statusOf(tierCase, "creative-intelligence").status, "active", "the tier is matched ignoring case and spaces");
 });
 
 test("GET partner-addons refuses a partner of another company, a bad id and a missing company, and only owner and admin may read it", async () => {
@@ -311,6 +418,9 @@ test("GET partner-marketing/copy-history lists a page section's versions newest 
   assert.deepEqual(theirs.body, { ok: false, error: "forbidden" });
   assert.equal(world.seen.history, calls, "another partner's history is never read");
 
+  assertSent(owner, "copy.page_ref", "copy.history");
+  assert.equal(sentStatement(owner, "copy.history").sql.includes("created_at DESC"), true);
+
   const closer = await call(copyHistoryHandler, { query: { page_id: PAGE_ID }, role: "closer", rules: world.rules });
   assert.equal(closer.status, 403, "staff who are not owner or admin cannot read a partner's copy history");
 
@@ -342,6 +452,10 @@ test("POST partner-marketing/copy-history restores an earlier version of a secti
   const lookup = sqlCalls(restored, /FROM partner_page_section_versions/)[0];
   assert.deepEqual(lookup.params, [VERSION_ID, PAGE_ID, PARTNER_ID]);
   assertSqlHas(lookup.sql, { partner: "AND partner_id = $3", page: "page_id = $2" });
+  // The restore writes ONE page. The stand-in answers the UPDATE whatever its WHERE says, so the statement
+  // is pinned as sent: by the page's id, never a bare write that would touch every partner page.
+  assertSent(restored, "copy.page_full", "copy.suite", "copy.version", "copy.version_insert", "copy.restore_page");
+  assert.equal(world.seen.pageUpdates[0].params.length, 2);
 
   const off = copyWorld({ pages: [pageRow()], versions: [versionRow()], suite: [{ partner_id: PARTNER_ID, marketing_suite_enabled: false, ai_token_cap_monthly: 1, org_id: ORG_ID }] });
   const suiteOff = await call(copyHistoryHandler, { method: "POST", body: { page_id: PAGE_ID, version_id: VERSION_ID }, rules: off.rules });
@@ -370,4 +484,27 @@ test("POST partner-marketing/copy-history restores an earlier version of a secti
   const badIds = await call(copyHistoryHandler, { method: "POST", body: { page_id: "x", version_id: "y" }, rules: world.rules });
   assert.equal(badIds.status, 400);
   assert.equal(badIds.body.error, "page_id_and_version_id_required");
+});
+
+test("POST partner-marketing/copy-history puts a section back when the page no longer has it, with no version kept for a section that was not there", async () => {
+  const noHero = pageRow({ body_json: { sections: [{ id: "faq", type: "faq" }] } });
+  const world = copyWorld({ pages: [noHero], versions: [versionRow()] });
+  const result = await call(copyHistoryHandler, { method: "POST", body: { page_id: PAGE_ID, version_id: VERSION_ID }, rules: world.rules });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.body.sections, [{ id: "faq", type: "faq" }, HERO_OLD], "the old section is added back");
+  assert.equal(world.seen.inserts.length, 0, "nothing was on the page to keep as a version");
+  assert.equal(world.seen.pageUpdates.length, 1);
+  assert.deepEqual(JSON.parse(world.seen.pageUpdates[0].params[1]).sections, [{ id: "faq", type: "faq" }, HERO_OLD]);
+});
+
+test("the section history list holds at most 50 versions and at least 1, whatever limit is asked for, and 20 when none is", async () => {
+  const asked = [];
+  const db = { query: async (_sql, params) => { asked.push(params[2]); return { rows: [] }; } };
+  await listSectionHistory(db, { pageId: PAGE_ID });
+  await listSectionHistory(db, { pageId: PAGE_ID, limit: 100 });
+  await listSectionHistory(db, { pageId: PAGE_ID, limit: 7 });
+  await listSectionHistory(db, { pageId: PAGE_ID, limit: -5 });
+  await listSectionHistory(db, { pageId: PAGE_ID, limit: "abc" });
+  await listSectionHistory(db, { pageId: PAGE_ID, limit: 0 });
+  assert.deepEqual(asked, [20, 50, 7, 1, 20, 20]);
 });

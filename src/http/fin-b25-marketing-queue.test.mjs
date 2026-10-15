@@ -11,7 +11,7 @@ import loadStatusHandler from "../../api/marketing/meta/load-status.mjs";
 import { worstCaseUsd } from "../marketing/model-usage.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSqlHas, call, dataCalls, requestLog, sqlCalls,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, requestLog, sqlCalls,
 } from "../testing/fin-b25-kit.mjs";
 
 const REQ = (n) => `req-${String(n).padStart(8, "0")}`;
@@ -104,6 +104,34 @@ test("GET marketing/health answers the clock, the worker queue, the outbox, the 
   const cost = sqlCalls(result, /WITH bounds AS/)[0];
   assert.equal(cost.params[0], ORG_ID);
   assert.equal(cost.params[1], BATCH_ID, "the cost is read for the newest batch");
+  assert.equal(cost.params[2] instanceof Date || typeof cost.params[2] === "string", true, "the month is the one containing now");
+  // The stand-in answers each of these with counted rows, so the statements that do the counting are
+  // pinned as sent: running is status 'running' and queued 'queued', the 24-hour failed window looks
+  // BACK from now, newest first; waiting rows only; the last commit is the newest, the last error is
+  // the newest non-null one; this month's spend and this batch's spend are this company's own.
+  assertSent(result, "settings.ensure", "settings.read", "health.beat", "health.beats_read", "health.counts", "health.failed", "health.outbox",
+    "health.last_batch", "health.cost", "sync.meta", "sync.metrics");
+});
+
+test("GET marketing/health shows the drain's own error only while rows are waiting", async () => {
+  const idle = healthWorld({
+    outbox: { waiting: 0, oldest_waiting_at: null, last_error: null, last_commit_sha: "abc1234", last_commit_at: new Date("2026-10-14T14:00:00.000Z") },
+    beats: [{ org_id: ORG_ID, name: "outbox_drain", last_at: NOW, detail: { error: "GitHub said 502" } }],
+  });
+  const result = await call(healthHandler, { rules: idle.rules, deps: { env: { GITHUB_REPO_TOKEN: "fake-not-a-real-token" } } });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.outbox.waiting, 0);
+  assert.equal(result.body.outbox.last_error, null, "an old drain error is not shown when nothing is waiting");
+});
+
+test("GET marketing/health keeps its own row error ahead of the drain's, and reads dry_run or skipped dry_run the same", async () => {
+  const own = healthWorld({
+    outbox: { waiting: 1, oldest_waiting_at: NOW, last_error: "row said no", last_commit_sha: null, last_commit_at: null },
+    beats: [{ org_id: ORG_ID, name: "outbox_drain", last_at: NOW, detail: { error: "drain said no", skipped: "dry_run" } }],
+  });
+  const result = await call(healthHandler, { rules: own.rules, deps: { env: { GITHUB_REPO_TOKEN: "fake-not-a-real-token" } } });
+  assert.equal(result.body.outbox.last_error, "row said no");
+  assert.equal(result.body.outbox.held_reason, "dry_run");
 });
 
 test("GET marketing/health keeps unknowns honest: no batch means no batch cost, no token says no_token, a masked token is not a token, unpriced calls count at the highest rate", async () => {
@@ -189,6 +217,9 @@ test("POST marketing/jobs/retry puts one failed step of this company back in the
   assert.ok(retry.params[2].includes("write_slot") && !retry.params[2].includes("offer"), "never the offer kind");
   assertSqlHas(retry.sql, { onlyFailed: "AND status = 'failed'", noOffer: "AND kind <> 'offer'", company: "WHERE id = $1 AND org_id = $2" });
   assert.deepEqual(woke, [{ MARK: "1" }]);
+  // The reset itself is the statement, so it is pinned as sent: back to queued, attempts 0, error cleared,
+  // the old claim and finish time cleared, due now, saved steps kept only when whole, failed steps only.
+  assertSent(result, "request.lock", "request.find", "retry.lock", "retry.update", "request.save");
 
   const again = await call(retryHandler, { method: "POST", body: { request_id: REQ(1), job_id: JOB_ID }, rules: world.rules, deps });
   assert.deepEqual(again.body, result.body);
@@ -223,6 +254,11 @@ test("POST marketing/jobs/retry refuses a step that has not failed, another comp
   const bad = await post("not-a-uuid", 15);
   assert.equal(bad.status, 400);
   assert.equal(bad.body.field, "job_id");
+  const raced = retryWorld([{ id: JOB_ID, org_id: ORG_ID, kind: "write_slot", status: "failed" }]);
+  raced.rules.unshift([/^\s*UPDATE marketing_jobs\s+SET status = 'queued'/, []]); // another press got there first
+  const lost = await call(retryHandler, { method: "POST", body: { request_id: REQ(17), job_id: JOB_ID }, rules: raced.rules, deps });
+  assert.equal(lost.status, 400);
+  assert.match(lost.body.message, /changed while you were looking/);
   const noRequest = await call(retryHandler, { method: "POST", body: { job_id: JOB_ID }, rules: world.rules, deps });
   assert.equal(noRequest.status, 400);
   assert.equal(noRequest.body.field, "request_id");
@@ -285,7 +321,45 @@ test("GET marketing/meta/load-status answers one row per ad video asked to load 
     adSetCompany: "WHERE x.org_id = v.org_id",
   });
   assert.equal(dataCalls(result).every((c) => !/^\s*(INSERT|UPDATE|DELETE)/.test(c.sql)), true, "a read writes nothing");
+  // The stand-in returns every row of the company, so which ad videos are listed (asked to load, or
+  // already holding a Meta id), their order, the job that counts (in flight first, then newest), the
+  // ad set (the ad's own, else the funnel's default), and the funnel and campaign joins are pinned as sent.
+  assertSent(result, "loadstatus.read", "sync.meta", "sync.metrics");
   await assertRoleGate(loadStatusHandler, ["owner", "admin"], { rules: [] });
   const post = await call(loadStatusHandler, { method: "POST", rules: [] });
   assert.equal(post.status, 405);
+});
+
+test("GET marketing/meta/load-status reads every branch of a load's state: busy is still loading, a finished job with a load error failed, ids with no job are loading, and a failed job says why in plain words", async () => {
+  const base = { org_id: ORG_ID, load_error: null, meta_video_id: null, meta_creative_id: null, meta_ad_external_id: null, loaded_at: null, take_no: 1,
+    angle: null, funnel_key: null, job_status: null, job_error: null, job_result: null, ad_row_id: null, ad_status: null,
+    funnel_ad_set: null, ad_set_external_id: null, ad_set_name: null, ad_set_status: null, campaign_external_id: null, campaign_status: null };
+  const row = (n, over) => ({ ...base, id: `d0000000-0000-4000-8000-0000000001${String(n).padStart(2, "0")}`, ad_id: String(100 + n), ...over });
+  const rows = [
+    row(1, { job_status: "done", job_result: { state: "busy" }, meta_video_id: "v-1" }),
+    row(2, { job_status: "done", load_error: "Meta refused the thumbnail" }),
+    row(3, { meta_creative_id: "c-3" }),
+    row(4, { job_status: "failed" }),
+    row(5, { job_status: "failed", load_error: "own load error", job_error: "job error" }),
+    row(6, { job_status: "done", job_result: { state: "refused", reasons: [] }, load_error: "Too short" }),
+    row(7, { job_status: "done", job_result: JSON.stringify({ state: "refused", reasons: ["Paused ad set"] }) }),
+    row(8, { load_error: "No job but an error" }),
+    row(9, { job_status: "done" }),
+    row(10, { job_status: "queued", meta_ad_external_id: "a-10" }),
+    row(11, { job_status: "queued" }),
+  ];
+  const result = await call(loadStatusHandler, { rules: [[/FROM ad_videos v\s+LEFT JOIN ad_scripts s/, () => rows]] });
+  assert.equal(result.status, 200);
+  const by = Object.fromEntries(result.body.loads.map((l) => [l.ad_number, l]));
+  assert.deepEqual([by["101"].state, by["101"].step], ["loading", "waiting for Meta"], "a busy answer is still loading");
+  assert.deepEqual([by["102"].state, by["102"].reasons], ["failed", ["Meta refused the thumbnail"]]);
+  assert.deepEqual([by["103"].state, by["103"].step], ["loading", "creating the ad"], "Meta ids with no job are loading, not waiting");
+  assert.deepEqual([by["104"].state, by["104"].reasons], ["failed", ["The load failed and did not say why."]]);
+  assert.deepEqual(by["105"].reasons, ["own load error"], "the load's own error is shown before the job's");
+  assert.deepEqual([by["106"].state, by["106"].reasons], ["refused", ["Too short"]], "refused with no listed reasons shows the load error");
+  assert.deepEqual([by["107"].state, by["107"].reasons], ["refused", ["Paused ad set"]], "a saved result that arrives as text is still read");
+  assert.deepEqual([by["108"].state, by["108"].reasons], ["failed", ["No job but an error"]]);
+  assert.deepEqual([by["109"].state, by["109"].step], ["waiting", null], "done with nothing saved and no error is waiting");
+  assert.deepEqual([by["110"].state, by["110"].step], ["loading", "saving"]);
+  assert.deepEqual([by["111"].state, by["111"].step], ["waiting", null]);
 });

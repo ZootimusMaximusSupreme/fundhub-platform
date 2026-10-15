@@ -3,8 +3,10 @@
 // REAL api/ handler (real sign-in and role gate, real store code) over a stand-in database that answers
 // by the SQL text the code sends. Fake data only. No Postgres, no ClickFunnels, no worker is started.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
+import { OFFERS } from "../config/offers.mjs";
 import funnelsHandler from "../../api/marketing/funnels.mjs";
 import buildHandler from "../../api/marketing/funnels/build.mjs";
 import createHandler from "../../api/marketing/funnels/create.mjs";
@@ -12,7 +14,8 @@ import renameHandler from "../../api/marketing/funnels/rename.mjs";
 import statsHandler from "../../api/marketing/funnels/stats.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSqlHas, call, dataCalls, insertedRow, requestLog, sqlCalls, updatedFields,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, insertedRow, pinned, plainSql, requestLog,
+  sentStatement, sqlCalls, updatedFields,
 } from "../testing/fin-b25-kit.mjs";
 
 const NOW = new Date("2026-10-14T18:00:00.000Z"); // Arizona day 2026-10-14
@@ -105,6 +108,11 @@ test("GET marketing/funnels lists this company's funnels, the synced Meta campai
   assert.deepEqual(sets.params, [ORG_ID]);
   assertSqlHas(sets.sql, { company: "WHERE s.org_id = $1" });
   assert.deepEqual(sqlCalls(result, /FROM ad_platform_connections/)[0].params, [ORG_ID]);
+  // The stand-in answers these three by canned rows, so the statements themselves are pinned: the company
+  // clause, the 7-day window (BETWEEN $2 AND $3, from first to last), which campaign belongs to which funnel
+  // (same company, active first, one funnel only), Meta only, the order, and the page list per funnel.
+  assertSent(result, "funnels.list", "funnels.campaigns", "funnels.adsets", "sync.meta", "sync.metrics");
+  assert.deepEqual(spend.params.slice(1), ["2026-10-08", "2026-10-14"], "from is the first of the seven days and to is today");
 });
 
 test("GET marketing/funnels says as_of is null when Meta never synced, and a closer or setter is refused", async () => {
@@ -113,6 +121,23 @@ test("GET marketing/funnels says as_of is null when Meta never synced, and a clo
   assert.deepEqual(none.body.funnels, []);
   assert.equal(none.body.as_of, null);
   await assertRoleGate(funnelsHandler, ["owner", "admin"], { rules: listRules({ funnels: [] }) });
+});
+
+test("GET marketing/funnels falls back to the last saved ad-day sync for as_of when the Meta connection never stamped one", async () => {
+  const synced = new Date("2026-10-13T09:00:00.000Z");
+  const result = await call(funnelsHandler, { deps: { now: () => NOW }, rules: listRules({ funnels: [], meta: null, metrics: synced }) });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.as_of, synced.toISOString());
+});
+
+test("GET marketing/funnels keeps a spend of zero cents as zero when ad-days exist, and null only when none is saved", async () => {
+  const campaigns = [
+    { org_id: ORG_ID, external_id: "120200000000000001", name: "Paused all week", status: "PAUSED", spend_cents: "0", ad_days: 3, funnel_key: null },
+    { org_id: ORG_ID, external_id: "120200000000000002", name: "Never ran", status: "PAUSED", spend_cents: "0", ad_days: 0, funnel_key: null },
+    { org_id: ORG_ID, external_id: "120200000000000003", name: "Odd sum", status: "ACTIVE", spend_cents: "not a number", ad_days: 2, funnel_key: null },
+  ];
+  const result = await call(funnelsHandler, { deps: { now: () => NOW }, rules: listRules({ funnels: [], campaigns }) });
+  assert.deepEqual(result.body.campaigns.map((c) => c.spend_7d_cents), [0, null, null]);
 });
 
 test("POST marketing/funnels makes a new funnel in the session's company, saves the answer once per request_id, and writes nothing on a repeat", async () => {
@@ -154,6 +179,23 @@ test("POST marketing/funnels makes a new funnel in the session's company, saves 
   assert.equal(first.db.count("COMMIT"), 1);
   assert.equal(log.saved.get(REQ(1)).route, "marketing/funnels");
   assert.equal(log.saved.get(REQ(1)).org_id, ORG_ID);
+  // Every value the new row was written with, not only the key and the lane.
+  const row = inserts[0].row;
+  assert.equal(row.name, "VIP call");
+  assert.equal(row.landing_url, "https://apply.fundhub.ai/vip");
+  assert.equal(row.offer_key, "capital_blueprint");
+  assert.equal(row.book_call, true);
+  assert.equal(row.cta_type, "LEARN_MORE");
+  assert.deepEqual(row.meta_campaign_ids, ["120212345678901234"]);
+  assert.equal(row.weight, 3);
+  assert.equal(row.active, true);
+  // The write is one transaction in this order: lock the request_id, look it up, lock the funnel row, look
+  // for a campaign on another funnel, make the funnel, save the answer last, commit.
+  assert.deepEqual(first.db.calls.map((c) => plainSql(c.sql)).filter((t) => !/FROM live JOIN staff|set_config\(/.test(t)), [
+    "BEGIN", pinned("request.lock"), pinned("request.find"), pinned("funnels.by_key"), pinned("funnels.campaign_taken"),
+    pinned("funnels.insert"), pinned("request.save"), "COMMIT",
+  ]);
+  assertSent(first, "request.lock", "request.find", "request.save", "funnels.by_key", "funnels.campaign_taken", "funnels.insert");
 
   const again = await call(funnelsHandler, { method: "POST", body: { request_id: REQ(1), funnel }, rules, deps: { now: () => NOW } });
   assert.equal(again.status, 200);
@@ -161,22 +203,40 @@ test("POST marketing/funnels makes a new funnel in the session's company, saves 
   assert.equal(inserts.length, 1, "and writes nothing");
 });
 
-test("POST marketing/funnels refuses a bad value, a stale save, an existing funnel with no updated_at, and a campaign already on another funnel", async () => {
-  const existing = funnelRow();
-  const stale = new Date("2026-10-02T11:00:00.000Z");
+/**
+ * The funnel table as the save sees it. The campaign-taken statement is answered by what the statement SAYS:
+ * the company clause and the own-key clause are applied only when the text still names them, so a lost
+ * clause changes the answer (and the statement is pinned besides).
+ */
+function funnelSaveWorld({ funnels }) {
   const writes = [];
   const rules = [
     ...requestLog().rules,
     [/FROM marketing_funnels WHERE org_id = \$1 AND key = \$2 FOR UPDATE/, (_sql, params) =>
-      (params[1] === "book_call" ? [existing] : [])],
-    [/meta_campaign_ids && \$3::text\[\]/, (_sql, params) =>
-      (params[2].includes("120200000000000009") ? [{ key: "roadmap_147", ids: ["120200000000000009"] }] : [])],
+      funnels.filter((f) => f.org_id === params[0] && f.key === params[1])],
+    [/meta_campaign_ids && \$3::text\[\]/, (sql, params) => {
+      const text = plainSql(sql);
+      const hit = funnels.find((f) =>
+        (!/\borg_id = \$1\b/.test(text) || f.org_id === params[0])
+        && (!/\bkey <> \$2\b/.test(text) || f.key !== params[1])
+        && (f.meta_campaign_ids || []).some((id) => params[2].includes(id)));
+      return hit ? [{ key: hit.key, ids: hit.meta_campaign_ids.filter((id) => params[2].includes(id)) }] : [];
+    }],
     [/^\s*(INSERT INTO marketing_funnels|UPDATE marketing_funnels)/, (sql, params) => {
       writes.push({ sql, params });
-      return [{ ...existing, ...updatedFields(sql, params), updated_at: NOW }];
+      const base = /^\s*UPDATE/.test(sql) ? funnels.find((f) => f.id === params[0]) : {};
+      return [{ ...base, ...(/^\s*UPDATE/.test(sql) ? updatedFields(sql, params) : insertedRow(sql, params)), updated_at: NOW }];
     }],
   ];
-  const post = (funnel, requestId) => call(funnelsHandler, { method: "POST", body: { request_id: requestId, funnel }, rules, deps: { now: () => NOW } });
+  const post = (funnel, requestId, extra = {}) => call(funnelsHandler, { method: "POST", body: { request_id: requestId, funnel }, rules, deps: { now: () => NOW }, ...extra });
+  return { rules, writes, post };
+}
+
+test("POST marketing/funnels refuses a bad value, a stale save, an existing funnel with no updated_at, and a campaign already on another funnel", async () => {
+  const existing = funnelRow();
+  const roadmap = funnelRow({ id: BUILT_ID, key: "roadmap_147", name: "Roadmap", meta_campaign_ids: ["120200000000000009"], updated_at: new Date("2026-10-03T11:00:00.000Z") });
+  const stale = new Date("2026-10-02T11:00:00.000Z");
+  const { writes, post, rules } = funnelSaveWorld({ funnels: [existing, roadmap] });
 
   const badLane = await post({ key: "x_funnel", name: "X", landing_url: "https://a.example/x", lane: "nonsense" }, REQ(2));
   assert.equal(badLane.status, 400);
@@ -190,6 +250,12 @@ test("POST marketing/funnels refuses a bad value, a stale save, an existing funn
   const needsName = await post({ key: "brand_new", landing_url: "https://a.example/x", lane: "uwiq" }, REQ(5));
   assert.equal(needsName.status, 400);
   assert.equal(needsName.body.field, "funnel.name");
+  const needsUrl = await post({ key: "brand_new", name: "New", lane: "uwiq" }, REQ(11));
+  assert.equal(needsUrl.status, 400);
+  assert.equal(needsUrl.body.field, "funnel.landing_url");
+  const needsLane = await post({ key: "brand_new", name: "New", landing_url: "https://a.example/x" }, REQ(12));
+  assert.equal(needsLane.status, 400);
+  assert.equal(needsLane.body.field, "funnel.lane");
 
   const noStamp = await post({ key: "book_call", name: "Renamed" }, REQ(6));
   assert.equal(noStamp.status, 409, "an existing funnel only changes with the updated_at the screen read");
@@ -199,22 +265,113 @@ test("POST marketing/funnels refuses a bad value, a stale save, an existing funn
   const old = await post({ key: "book_call", name: "Renamed", updated_at: "2026-09-01T00:00:00.000Z" }, REQ(7));
   assert.equal(old.status, 409);
   assert.equal(old.body.current.updated_at, stale.toISOString(), "the 409 hands back what is saved now");
+  const unreadable = await post({ key: "book_call", name: "Renamed", updated_at: "not a time" }, REQ(13));
+  assert.equal(unreadable.status, 400);
+  assert.equal(unreadable.body.field, "funnel.updated_at");
 
   const taken = await post({ key: "book_call", updated_at: stale.toISOString(), meta_campaign_ids: ["120200000000000009"] }, REQ(8));
   assert.equal(taken.status, 400);
   assert.equal(taken.body.field, "funnel.meta_campaign_ids");
   assert.match(taken.body.message, /roadmap_147/);
   assert.equal(writes.length, 0, "nothing was written by any refusal");
+  assertSent(taken, "funnels.campaign_taken");
+  assert.deepEqual(sentStatement(taken, "funnels.campaign_taken").params, [ORG_ID, "book_call", ["120200000000000009"]]);
 
   const ok = await post({ key: "book_call", updated_at: stale.toISOString(), name: "Book a call (new)", active: false }, REQ(9));
   assert.equal(ok.status, 200);
   assert.equal(ok.body.funnel.name, "Book a call (new)");
   assert.equal(writes.length, 1);
   assertSqlHas(writes[0].sql, { byId: "WHERE id = $1", moves: "updated_at = GREATEST(clock_timestamp(), updated_at + interval '1 millisecond')" });
+  assertSent(ok, "funnels.by_key", "funnels.update");
   assert.equal(writes[0].params[0], FUNNEL_ID);
   assert.deepEqual(updatedFields(writes[0].sql, writes[0].params), { name: "Book a call (new)", active: false });
 
   await assertRoleGate(funnelsHandler, ["owner", "admin"], { method: "POST", body: { request_id: REQ(10), funnel: { key: "x" } }, rules });
+});
+
+test("POST marketing/funnels lets a funnel keep a campaign it already holds, and a campaign held only by another company's funnel", async () => {
+  const mine = funnelRow({ meta_campaign_ids: ["120212345678901234"] });
+  const theirs = funnelRow({ id: OTHER_FUNNEL_ID, org_id: OTHER_ORG_ID, key: "other_company", meta_campaign_ids: ["120288888888888888"] });
+  const { writes, post } = funnelSaveWorld({ funnels: [mine, theirs] });
+  const stamp = mine.updated_at.toISOString();
+  const own = await post({ key: "book_call", updated_at: stamp, meta_campaign_ids: ["120212345678901234"] }, REQ(14));
+  assert.equal(own.status, 200, "a funnel's own campaign is not 'already on another funnel'");
+  const foreign = await post({ key: "book_call", updated_at: stamp, meta_campaign_ids: ["120288888888888888"] }, REQ(15));
+  assert.equal(foreign.status, 200, "a campaign on another company's funnel is not this company's business");
+  assert.equal(writes.length, 2);
+  assert.deepEqual(sentStatement(foreign, "funnels.campaign_taken").params, [ORG_ID, "book_call", ["120288888888888888"]]);
+});
+
+test("POST marketing/funnels answers 409 with the funnel that was made a moment ago when two presses race to make the same key", async () => {
+  const made = funnelRow({ key: "vip_call", name: "Made first" });
+  const rules = [
+    ...requestLog().rules,
+    [/FROM marketing_funnels WHERE org_id = \$1 AND key = \$2 FOR UPDATE/, []],
+    [/INSERT INTO marketing_funnels/, []], // ON CONFLICT DO NOTHING: another press saved first
+    [/^\s*SELECT \* FROM marketing_funnels WHERE org_id = \$1 AND key = \$2$/, (_sql, params) =>
+      (params[0] === ORG_ID && params[1] === "vip_call" ? [made] : [funnelRow({ key: "wrong", name: "Wrong lookup" })])],
+  ];
+  const result = await call(funnelsHandler, {
+    method: "POST", rules, deps: { now: () => NOW },
+    body: { request_id: REQ(70), funnel: { key: "vip_call", name: "VIP call", landing_url: "https://apply.fundhub.ai/vip", lane: "uwiq" } },
+  });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "stale");
+  assert.match(result.body.message, /made this funnel a moment ago/);
+  assert.equal(result.body.current.name, "Made first", "the 409 shows the funnel in this company with this key");
+  assert.deepEqual(sqlCalls(result, /^\s*SELECT \* FROM marketing_funnels WHERE org_id = \$1 AND key = \$2$/)[0].params, [ORG_ID, "vip_call"]);
+});
+
+test("POST marketing/funnels never changes the address, lane, offer or book-a-call flag of a funnel the dashboard built, and still renames it", async () => {
+  const built = funnelRow({ id: BUILT_ID, key: "blueprint", kind: "book_a_call", path: "/blueprint", tag: "fnl-blueprint", status: "draft", active: false });
+  const stamp = built.updated_at.toISOString();
+  const { writes, post } = funnelSaveWorld({ funnels: [built] });
+  const attempts = [
+    ["landing_url", "https://apply.fundhub.ai/elsewhere"],
+    ["lane", "premium"],
+    ["offer_key", "slo_roadmap"],
+    ["book_call", false],
+  ];
+  let n = 20;
+  for (const [field, value] of attempts) {
+    const refused = await post({ key: "blueprint", updated_at: stamp, [field]: value === "slo_roadmap" ? null : value }, REQ(n++));
+    assert.equal(refused.status, 400, `${field} is set by the builder`);
+    assert.equal(refused.body.field, `funnel.${field}`);
+    assert.match(refused.body.message, /built on the dashboard/);
+  }
+  assert.equal(writes.length, 0, "nothing is written by a refusal");
+  const renamed = await post({ key: "blueprint", updated_at: stamp, name: "Blueprint (new name)", weight: 2 }, REQ(n++));
+  assert.equal(renamed.status, 200, "the name and weight of a built funnel can change");
+  assert.deepEqual(updatedFields(writes[0].sql, writes[0].params), { name: "Blueprint (new name)", weight: 2 });
+});
+
+test("POST marketing/funnels answers a repeated request_id only for the same company and the same route, and nobody without a company can save", async () => {
+  const funnel = { key: "vip_call", name: "VIP call", landing_url: "https://apply.fundhub.ai/vip", lane: "uwiq" };
+  const answer = { funnel: { key: "vip_call" } };
+  const insertRule = [/INSERT INTO marketing_funnels/, () => { throw new Error("must not write"); }];
+  const found = (org, route) => [/FROM marketing_requests WHERE request_id = \$1/, [{ org_id: org, route, response: answer }]];
+
+  const sameAgain = await call(funnelsHandler, { method: "POST", body: { request_id: REQ(30), funnel }, rules: [found(ORG_ID, "marketing/funnels"), insertRule], deps: { now: () => NOW } });
+  assert.equal(sameAgain.status, 200);
+  assert.deepEqual(sameAgain.body, answer, "the same press answers what was saved");
+
+  const otherCompany = await call(funnelsHandler, { method: "POST", body: { request_id: REQ(31), funnel }, rules: [found(OTHER_ORG_ID, "marketing/funnels"), insertRule], deps: { now: () => NOW } });
+  assert.equal(otherCompany.status, 400, "another company's saved answer is never handed back");
+  assert.equal(otherCompany.body.field, "request_id");
+  assert.match(otherCompany.body.message, /already used for a different save/);
+
+  const otherRoute = await call(funnelsHandler, { method: "POST", body: { request_id: REQ(32), funnel }, rules: [found(ORG_ID, "marketing/settings"), insertRule], deps: { now: () => NOW } });
+  assert.equal(otherRoute.status, 400, "a request_id saved for another route is refused");
+  assert.equal(otherRoute.body.field, "request_id");
+
+  for (const staff of [{ org_id: null }, { org_id: "not-a-company" }]) {
+    const noCompany = await call(funnelsHandler, { method: "POST", body: { request_id: REQ(33), funnel }, staff, rules: [insertRule], deps: { now: () => NOW } });
+    assert.equal(noCompany.status, 403, "a sign-in with no company is refused");
+    assert.deepEqual(dataCalls(noCompany).map((c) => c.sql), [], "and reads or writes nothing");
+    const noCompanyRead = await call(funnelsHandler, { staff, rules: listRules({ funnels: [] }), deps: { now: () => NOW } });
+    assert.equal(noCompanyRead.status, 403);
+    assert.deepEqual(dataCalls(noCompanyRead).map((c) => c.sql), []);
+  }
 });
 
 /* ── the funnel builder: build, create, rename ─────────────────────────────────────────────────────── */
@@ -311,8 +468,19 @@ test("POST marketing/funnels/create picks the first free address for the offer, 
   assert.equal(made.row.active, false, "a draft is not active, so nothing plans or loads ads for it");
   assert.equal(made.row.created_by, STAFF_ID);
   assertSqlHas(made.sql, { lane: "$6::ad_lane", kind: "'book_a_call'", draft: "'draft'" });
+  // The whole row the new funnel is written with: name, address, offer, lane, the book-a-call flag, the
+  // kind, the tag, the utm campaign (= the lane), the campaign folder, who made it. Not only five fields.
+  assert.deepEqual(insertedRow(made.sql, made.params), {
+    org_id: ORG_ID, key: "blueprint_2", name: "Blueprint call", landing_url: "https://apply.fundhub.ai/blueprint-2",
+    offer_key: "capital_blueprint", lane: "uwiq", book_call: true, kind: "book_a_call", path: "/blueprint-2",
+    tag: "fnl-blueprint-2", utm_campaign: "uwiq", campaign: null, status: "draft", created_by: STAFF_ID, active: false,
+  });
   assert.equal(world.written.pageInserts.length, 3);
   assert.ok(world.written.pageInserts.every((p) => p.row.org_id === ORG_ID && p.row.funnel_id === BUILT_ID));
+  assert.deepEqual(world.written.pageInserts.map((p) => [p.row.position, p.row.role, p.row.path]), [
+    [1, "landing", "/blueprint-2"], [2, "booking", "/blueprint-2-book"], [3, "thank_you", "/blueprint-2-thank-you"],
+  ], "three pages, in order, each with its own address");
+  assertSent(result, "create.lock", "create.tags_read", "create.tag_set", "create.taken_pages", "create.funnel", "create.page", "job.requested_by");
   assert.deepEqual(JSON.parse(world.written.jobs[0].params[2]), { funnel_id: BUILT_ID });
   assert.equal(world.written.jobs[0].params[0], ORG_ID);
   assert.deepEqual(world.written.jobUpdates[0].params, [JOB_ID, STAFF_ID], "the job names who asked for it");
@@ -322,6 +490,48 @@ test("POST marketing/funnels/create picks the first free address for the offer, 
   const tagged = sqlCalls(result, /UPDATE marketing_funnels SET tag/);
   assert.deepEqual(tagged.map((entry) => entry.params), [[OTHER_FUNNEL_ID, "fnl-roadmap-147", ORG_ID]], "the older hand-mapped funnel gets its tag, in this company only");
   assertSqlHas(tagged[0].sql, { onlyUntagged: "AND tag IS NULL AND kind IS NULL" });
+  assert.equal(plainSql(tagged[0].sql), pinned("create.tag_set"), "the tag is set by id, in this company, on an untagged hand-mapped funnel only");
+});
+
+test("POST marketing/funnels/create keeps the typed lane, campaign and name, and refuses a lane, campaign, name, key or build flag it does not take", async () => {
+  const world = builderWorld();
+  const deps = { liveTaken: async () => ({ ok: true, taken: new Set() }), wake: WAKE_OK, env: {} };
+  const ask = (body, rules = world.rules) => call(createHandler, { method: "POST", body, rules, deps });
+
+  const typed = await ask({ request_id: REQ(60), offer_key: "funding_dfy", lane: "premium", campaign: "partner", name: "  VIP funding call  ", build: false });
+  assert.equal(typed.status, 200);
+  const [made] = world.written.funnelInserts;
+  assert.equal(made.row.lane, "premium", "the typed lane is used, not the offer's");
+  assert.equal(made.row.utm_campaign, "premium", "the utm campaign follows the lane");
+  assert.equal(made.row.campaign, "partner");
+  assert.equal(made.row.name, "VIP funding call", "the name is trimmed");
+  assert.equal(made.row.offer_key, "funding_dfy");
+  assert.equal(made.row.book_call, true);
+
+  const plain = builderWorld();
+  const defaulted = await call(createHandler, { method: "POST", body: { request_id: REQ(61), offer_key: "funding_dfy", build: false }, rules: plain.rules, deps });
+  assert.equal(defaulted.status, 200);
+  assert.equal(plain.written.funnelInserts[0].row.lane, "funding600", "no lane typed: the offer's own lane");
+  assert.equal(plain.written.funnelInserts[0].row.name, `${OFFERS.FUNDING_DFY.name} book a call`, "no name typed: the offer's name and 'book a call'");
+  assert.equal(plain.written.funnelInserts[0].row.campaign, null);
+
+  const before = world.written.funnelInserts.length;
+  const refusals = [
+    [{ request_id: REQ(62), offer_key: "capital_blueprint", lane: "nonsense" }, "lane"],
+    [{ request_id: REQ(63), offer_key: "capital_blueprint", lane: 7 }, "lane"],
+    [{ request_id: REQ(64), offer_key: "capital_blueprint", campaign: "../etc" }, "campaign"],
+    [{ request_id: REQ(65), offer_key: "capital_blueprint", name: "   " }, "name"],
+    [{ request_id: REQ(66), offer_key: "capital_blueprint", name: "x".repeat(81) }, "name"],
+    [{ request_id: REQ(67), offer_key: "capital_blueprint", build: "yes" }, "build"],
+    [{ request_id: REQ(68), offer_key: "capital_blueprint", org_id: OTHER_ORG_ID }, "org_id"],
+    [{ request_id: REQ(69), offer_key: "capital_blueprint", path: "!!" }, "path"],
+  ];
+  for (const [body, field] of refusals) {
+    const refused = await ask(body);
+    assert.equal(refused.status, 400, `${field} is refused`);
+    assert.equal(refused.body.field, field);
+  }
+  assert.equal(world.written.funnelInserts.length, before, "a refusal makes nothing");
 });
 
 test("POST marketing/funnels/create tags an untagged hand-mapped funnel, refuses a taken typed address, build:false queues nothing, and a ClickFunnels read failure makes nothing", async () => {
@@ -375,6 +585,8 @@ test("POST marketing/funnels/create fails the queued job in plain words when the
   assert.equal(result.body.job.status, "failed");
   assert.equal(world.written.failedJobs.length, 1, "the job nothing would run is marked failed");
   assert.equal(world.written.failedJobs[0].params[0], JOB_ID);
+  assertSent(result, "job.wake_failed");
+  assert.equal(plainSql(world.written.failedJobs[0].sql), pinned("job.wake_failed"), "only a job still queued is failed, by its own id");
 });
 
 test("POST marketing/funnels/create is owner and admin only", async () => {
@@ -473,7 +685,19 @@ test("POST marketing/funnels/rename moves the three page addresses and the landi
   const html = sqlCalls(result, /UPDATE marketing_funnel_pages SET html = \$2/);
   assert.equal(html.length, 3, "every built page is drawn again from its saved words, with no model call");
   assert.ok(html.every((entry) => /capital-plan/.test(entry.params[1])));
+  assert.deepEqual(html.map((entry) => entry.params[0]), draftPages().map((p) => p.id), "each page's own row is redrawn");
+  for (const entry of html) {
+    assert.equal(entry.params[2], createHash("sha256").update(entry.params[1]).digest("hex"), "the saved fingerprint is the fingerprint of the saved page");
+  }
   assert.equal(world.log.saved.get(REQ(40)).route, "marketing/funnels/rename");
+  // The pages move first, one by one, then the funnel (its updated_at moves forward), then the pages are redrawn.
+  assertSent(result, "funnel.load_locked", "funnel.pages", "funnel.in_flight", "create.taken_pages", "create.own_funnels", "rename.page_path", "rename.funnel", "rename.html");
+  assert.deepEqual(dataCalls(result).map((c) => plainSql(c.sql)).filter((t) => !/^SELECT pg_advisory/.test(t)), [
+    pinned("request.find"), pinned("funnel.load_locked"), pinned("funnel.pages"), pinned("funnel.in_flight"), pinned("create.taken_pages"), pinned("create.own_funnels"),
+    pinned("rename.page_path"), pinned("rename.page_path"), pinned("rename.page_path"), pinned("rename.funnel"),
+    pinned("rename.html"), pinned("rename.html"), pinned("rename.html"), pinned("funnel.load_locked").replace(" FOR UPDATE", ""), pinned("funnel.pages"),
+    pinned("request.save"),
+  ]);
 
   const sameAddress = await call(renameHandler, {
     method: "POST", body: { request_id: REQ(41), id: BUILT_ID, path: "/capital-plan" }, rules: world.rules,
@@ -498,6 +722,30 @@ test("POST marketing/funnels/rename refuses a live funnel, a taken or reserved a
   assert.equal(takenAnswer.status, 400);
   assert.equal(takenAnswer.body.field, "path");
   assert.match(takenAnswer.body.message, /already a page/);
+
+  const pushed = builderWorld({ funnels: [draftFunnel()], pages: draftPages({ cf_page_id: "cf-9" }) });
+  const pushedAnswer = await ask(pushed, "new-word", REQ(50));
+  assert.equal(pushedAnswer.status, 400, "a page already on ClickFunnels never moves, even while the funnel still says draft");
+  assert.match(pushedAnswer.body.message, /never changes/);
+  assert.equal(pushed.written.funnelUpdates.length, 0);
+  assert.equal(pushed.written.pageUpdates.length, 0);
+
+  const ownReuse = builderWorld({ funnels: [draftFunnel()], pages: draftPages() });
+  const ownReuseAnswer = await ask(ownReuse, "blueprint-book", REQ(51));
+  assert.equal(ownReuseAnswer.status, 400, "a new base whose landing page is this funnel's own booking address is refused");
+  assert.equal(ownReuseAnswer.body.field, "path");
+  assert.match(ownReuseAnswer.body.message, /reuses one of this funnel's own page addresses/);
+  assert.equal(ownReuse.written.pageUpdates.length, 0);
+
+  const stray = await call(renameHandler, { method: "POST", body: { request_id: REQ(52), id: BUILT_ID, path: "new-word", org_id: OTHER_ORG_ID }, rules: [], deps: ok });
+  assert.equal(stray.status, 400, "a key the button never sends is refused");
+  assert.equal(stray.body.field, "org_id");
+  const noPath = await call(renameHandler, { method: "POST", body: { request_id: REQ(53), id: BUILT_ID }, rules: [], deps: ok });
+  assert.equal(noPath.status, 400);
+  assert.equal(noPath.body.field, "path");
+  const badId = await call(renameHandler, { method: "POST", body: { request_id: REQ(54), id: "not-an-id", path: "new-word" }, rules: [], deps: ok });
+  assert.equal(badId.status, 400);
+  assert.equal(badId.body.field, "id");
 
   const reservedAnswer = await ask(builderWorld({ funnels: [draftFunnel()], pages: draftPages() }), "watch", REQ(44));
   assert.equal(reservedAnswer.status, 400);
@@ -607,6 +855,15 @@ test("GET marketing/funnels/stats rolls spend, page views, leads, booked, showed
   const [labels] = sqlCalls(result, /-- m5:ad_labels/);
   assert.deepEqual(labels.params, [ORG_ID]);
   assert.ok(result.body.rows.every((r) => r.funnel_key !== "not_ours"), "another company's funnel and numbers never appear");
+
+  // The stand-in hands back counted rows, so the statements that do the counting are pinned: which ads
+  // belong to which campaign and funnel, the spend window, only real people on a funnel page, demo rows
+  // out, which scripts are live, and what counts as a lead, a booked call, a show, a sale and cash.
+  assertSent(result, "stats.ad_labels", "stats.ad_spend", "stats.ad_numbers", "stats.script_labels", "stats.funnel_steps", "funnels.list", "sync.meta", "sync.metrics");
+  const [numbers] = sqlCalls(result, /WITH\s+lead_rows AS/);
+  assert.deepEqual(numbers.params, [ORG_ID, "2026-09-15", "2026-10-14", NOW.toISOString(), null], "the same 30 days, now for the 14-day settling rule, no number filter");
+  assert.deepEqual(steps.params.slice(0, 3), [ORG_ID, "2026-09-15", "2026-10-14"]);
+  assert.deepEqual(sqlCalls(result, /-- m5:script_labels/)[0].params, [ORG_ID, ["43", "44"]], "only the ad numbers that have spend or leads");
 });
 
 test("GET marketing/funnels/stats keeps unknown numbers null: no saved ad-day means no spend figure, a page the tracker does not run has no page views", async () => {

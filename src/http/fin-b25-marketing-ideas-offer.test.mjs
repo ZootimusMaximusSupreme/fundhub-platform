@@ -3,13 +3,13 @@
 // test runs the REAL api/ handler over a stand-in database that answers by the SQL text the code
 // sends. Fake data only. No model call, no worker: the wake and the input reader are injected.
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import ideasHandler from "../../api/marketing/ideas.mjs";
 import offerHandler from "../../api/marketing/offer/generate.mjs";
 import { rowsWhere } from "../testing/s3-scoped-rows.mjs";
 import {
-  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSqlHas, call, dataCalls, insertedRow, requestLog, sqlCalls,
+  ORG_ID, OTHER_ORG_ID, STAFF_ID, assertRoleGate, assertSent, assertSqlHas, call, dataCalls, insertedRow, requestLog, sentStatement, sqlCalls,
 } from "../testing/fin-b25-kit.mjs";
 
 const REQ = (n) => `req-${String(n).padStart(8, "0")}`;
@@ -47,7 +47,8 @@ function ideasWorld({ ideas = [], funnels = [{ org_id: ORG_ID, key: "book_call" 
       funnels.filter((f) => f.org_id === params[0] && f.key === params[1]).map(() => ({ "?column?": 1 }))],
     [/^\s*INSERT INTO ad_ideas/, (sql, params) => {
       // made at 8pm Arizona time, which is already the next day in UTC: the file is named for the Arizona day
-      const row = { id: IDEA_ID, topic: null, script_id: null, created_at: new Date("2026-10-15T03:00:00.000Z"), ...insertedRow(sql, params), status: "new", kind: "script" };
+      // The row is what the statement says it writes. Nothing here supplies status or kind for it.
+      const row = { id: IDEA_ID, topic: null, script_id: null, created_at: new Date("2026-10-15T03:00:00.000Z"), ...insertedRow(sql, params) };
       world.inserts.push({ sql, params, row });
       ideas.push(row);
       return [row];
@@ -92,6 +93,7 @@ test("GET marketing/ideas lists this company's ideas newest first, can filter by
   });
   assert.deepEqual(world.lists[0].params, [ORG_ID, null]);
   assertSqlHas(world.lists[0].sql, { company: "WHERE org_id = $1", order: "ORDER BY created_at DESC, id DESC", cap: "LIMIT 200" });
+  assertSent(all, "ideas.list");
 
   const written = await call(ideasHandler, { query: { status: "written" }, rules: world.rules });
   assert.deepEqual(written.body.ideas.map((i) => i.id), [IDEA_2]);
@@ -120,7 +122,19 @@ test("POST marketing/ideas saves the idea for the session's company, queues its 
   assert.equal(world.inserts[0].row.org_id, ORG_ID, "filed under the session's company, never the body's");
   assert.equal(world.inserts[0].row.raw_points, body.raw_points, "the words go in exactly as typed");
   assert.equal(world.inserts[0].row.created_by, STAFF_ID);
+  // Every value the statement writes: a new idea is status 'new' and kind 'script', from Chris, with
+  // the format, funnel and angle he chose. Nothing in the stand-in fills these in for the statement.
+  assert.deepEqual(
+    (({ org_id, source, kind, raw_points, script_format, funnel_key, angle_key, status, created_by }) =>
+      ({ org_id, source, kind, raw_points, script_format, funnel_key, angle_key, status, created_by }))(world.inserts[0].row),
+    {
+      org_id: ORG_ID, source: "chris", kind: "script", raw_points: body.raw_points, script_format: "sorting",
+      funnel_key: "book_call", angle_key: "cause", status: "new", created_by: STAFF_ID,
+    },
+  );
   assert.deepEqual(sqlCalls(result, /FROM marketing_funnels/)[0].params, [ORG_ID, "book_call"]);
+  assertSent(result, "request.lock", "request.find", "ideas.funnel", "ideas.insert", "outbox.insert", "request.save");
+  assert.equal(world.outbox[0].op_id, `idea-file:${IDEA_ID}`, "one file save per idea: the next idea must not reuse this op id");
 
   assert.equal(world.outbox.length, 1);
   assert.equal(world.outbox[0].org_id, ORG_ID);
@@ -135,6 +149,17 @@ test("POST marketing/ideas saves the idea for the session's company, queues its 
   assert.equal(world.inserts.length, 1);
   assert.equal(world.outbox.length, 1);
   assert.equal(world.log.saved.get(REQ(1)).route, "marketing/ideas");
+
+  // A second, different idea gets its own file save under its own id.
+  const second = ideasWorld();
+  second.rules.unshift([/^\s*INSERT INTO ad_ideas/, (sql, params) => {
+    const row = { id: IDEA_2, topic: null, script_id: null, created_at: new Date("2026-10-15T03:00:00.000Z"), ...insertedRow(sql, params) };
+    second.inserts.push({ sql, params, row });
+    return [row];
+  }]);
+  await call(ideasHandler, { method: "POST", body: { ...body, request_id: REQ(2) }, rules: second.rules, deps });
+  assert.equal(second.outbox[0].op_id, `idea-file:${IDEA_2}`);
+  assert.match(second.outbox[0].path, new RegExp(`${IDEA_2.slice(0, 8)}\\.md$`));
 });
 
 test("POST marketing/ideas refuses an empty or oversize idea, a source the machine owns, a bad format, a funnel this company has not got, and a non-boolean write_now", async () => {
@@ -189,6 +214,11 @@ test("POST marketing/ideas with write_now also queues a one-script batch and its
   const cost = sqlCalls(result, /WITH bounds AS/)[0];
   assert.equal(cost.params[0], ORG_ID);
   assert.equal(cost.params[1], result.body.batch_id);
+  // The batch row (a new on-command batch, planned, released NOW so the writer takes it at once), the
+  // idea stamp, the company-checked idea lookup and the start job are pinned as sent.
+  assertSent(result, "ideas.found", "health.cost", "ideas.batch", "ideas.stamp", "job.enqueue");
+  assert.deepEqual(sentStatement(result, "ideas.batch").params.slice(1, 3), [ORG_ID, "America/Phoenix"], "the week key is read in the company's own time zone");
+  assert.deepEqual(sentStatement(result, "ideas.found").params, [ORG_ID, [IDEA_ID]]);
 
   const capped = ideasWorld();
   capped.cost = { month_priced_usd: "300", batch_priced_usd: "0" };
@@ -202,6 +232,38 @@ test("POST marketing/ideas with write_now also queues a one-script batch and its
   assert.equal(capped.batches.length, 0);
   assert.equal(capped.jobs.length, 0, "nothing is queued when a cap is reached");
   assert.equal(capped.inserts.length, 1);
+
+  // The batch cap alone also stops it: a batch cap of $0 is reached by a batch that has spent nothing.
+  const batchCap = ideasWorld({ settings: { org_id: ORG_ID, enabled: false, scripts_per_day: 3, max_batch_cost_usd: 0, max_month_cost_usd: 300, timezone: "America/Phoenix", updated_at: NOW } });
+  const batchNote = await call(ideasHandler, {
+    method: "POST", body: { request_id: REQ(22), raw_points: "Write this now.", write_now: true }, rules: batchCap.rules, deps,
+  });
+  assert.equal(batchNote.status, 200);
+  assert.match(batchNote.body.note, /Your idea is saved\. It was not written now/);
+  assert.equal(batchCap.batches.length, 0);
+  assert.equal(batchCap.jobs.length, 0);
+  assert.equal(batchCap.inserts.length, 1, "the idea itself is kept");
+
+  // Both caps open and the batch spend is small: the run goes.
+  const open = ideasWorld();
+  open.cost = { month_priced_usd: "299.99", batch_priced_usd: "0" };
+  const goes = await call(ideasHandler, {
+    method: "POST", body: { request_id: REQ(23), raw_points: "Write this now.", write_now: true }, rules: open.rules, deps,
+  });
+  assert.equal(goes.body.note, undefined, "a cent under the month cap still runs");
+  assert.equal(open.jobs.length, 1);
+});
+
+test("POST marketing/ideas refuses write_now when one of the ideas it names is not in this company's list", async () => {
+  const world = ideasWorld();
+  const deps = { wake: async () => ({}), env: {} };
+  world.rules.unshift([/^\s*SELECT id FROM ad_ideas WHERE org_id = \$1 AND id = ANY/, []]); // the idea is not found for this company
+  const result = await call(ideasHandler, {
+    method: "POST", body: { request_id: REQ(24), raw_points: "Write this now.", write_now: true }, rules: world.rules, deps,
+  });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.field, "idea_ids");
+  assert.equal(world.jobs.length, 0);
 });
 
 /* ── Write offer: marketing/offer/generate ─────────────────────────────────────────────────────────── */
@@ -268,6 +330,11 @@ test("POST marketing/offer/generate saves one queued run for the session's compa
   assert.equal(wakes.length, 1);
   assert.equal(wakes[0].jobId, OFFER_JOB);
   assert.equal(world.expired[0][0], ORG_ID, "an old stuck run is closed for this company before a new one starts");
+  // The stuck-run close that runs before every start is what makes a double press safe, so the
+  // 16-minute window, the queued-or-running guard, the company and the kind are pinned as sent.
+  assertSent(result, "offer.expire", "offer.start");
+  assert.deepEqual(sentStatement(result, "offer.expire").params.length, 2);
+  assert.match(String(sentStatement(result, "offer.expire").params[1]), /./, "the stuck run is closed with a reason in words");
 
   const again = await call(offerHandler, { method: "POST", body: { campaign: "partner" }, rules: world.rules, deps });
   assert.equal(again.status, 202);
@@ -276,6 +343,21 @@ test("POST marketing/offer/generate saves one queued run for the session's compa
   assert.equal(again.body.job.id, OFFER_JOB);
   assert.equal(world.inserts.length, 1, "a double press cannot pay for two runs");
   assert.equal(wakes.length, 1);
+  assertSent(again, "offer.in_flight");
+  assert.deepEqual(sentStatement(again, "offer.in_flight").params, [ORG_ID]);
+});
+
+test("POST marketing/offer/generate stamps the run with today's date where Chris is (Arizona), not the UTC date", async () => {
+  mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-15T03:00:00.000Z") }); // 8 pm on Oct 14 in Arizona
+  try {
+    const world = offerWorld();
+    const deps = { env: MODEL_ENV, resolveInputs: () => INPUTS, wake: async () => ({ ok: true }) };
+    const result = await call(offerHandler, { method: "POST", body: { campaign: "partner" }, rules: world.rules, deps });
+    assert.equal(result.status, 202);
+    assert.equal(JSON.parse(world.inserts[0].params[1]).today, "2026-10-14");
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 test("POST marketing/offer/generate refuses with no model key, a bad input or campaign, and fails the saved run in plain words when the writer cannot be woken; the Mac runner waits instead", async () => {
@@ -302,6 +384,8 @@ test("POST marketing/offer/generate refuses with no model key, a bad input or ca
   assert.match(failed.body.message, /The writer could not be started: the worker answered 500\. Nothing was written\./);
   assert.equal(failed.body.job.status, "failed");
   assert.deepEqual([unwoken.failed[0].params[0], unwoken.failed[0].params[1]], [OFFER_JOB, ORG_ID], "the saved run is closed so it cannot block the next press");
+  assertSent(failed, "offer.fail");
+  assert.match(String(unwoken.failed[0].params[2]), /The writer could not be started/, "the closed run carries the reason in words");
 
   const mac = offerWorld();
   const waiting = await call(offerHandler, {
@@ -331,6 +415,7 @@ test("GET marketing/offer/generate reads one run back by id (this company's only
   assert.equal(one.body.offer.offer.name, "The Capital Plan");
   assert.equal(one.body.offer.winner, "A");
   assert.deepEqual(sqlCalls(one, /FROM marketing_jobs WHERE id = \$1/)[0].params, [OFFER_JOB, ORG_ID]);
+  assertSent(one, "offer.one");
 
   const other = await call(offerHandler, { query: { id: "0f000000-0000-4000-8000-0000000000aa" }, rules: world.rules, deps: { env: {} } });
   assert.equal(other.status, 404, "another company's run is not found");
@@ -345,6 +430,9 @@ test("GET marketing/offer/generate reads one run back by id (this company's only
   assert.equal(latest.body.job.status, "running");
   assert.equal(latest.body.offer.job_id, OFFER_JOB, "and the newest finished offer");
   assertSqlHas(sqlCalls(latest, /status = 'done'/)[0].sql, { company: "WHERE org_id = $1", doneOnly: "status = 'done'" });
+  // "The newest" must mean newest: newest run by when it was made, newest finished offer by when it
+  // finished. The stand-in sorts by itself, so the ordering words are pinned as sent.
+  assertSent(latest, "offer.newest", "offer.newest_done");
 
   const missingTable = await call(offerHandler, {
     rules: [[/FROM marketing_jobs/, new Error('relation "marketing_jobs" does not exist')]], deps: { env: {} },
