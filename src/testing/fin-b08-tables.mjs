@@ -14,11 +14,15 @@ const INSERT = /^\s*INSERT\s+INTO\s+([a-z_][a-z0-9_]*)\s*\(([^)]*)\)\s*VALUES\s*
 function splitValues(list) {
   const out = [];
   let depth = 0;
+  let quote = false;
   let cur = "";
   for (const ch of list) {
-    if (ch === "(") depth += 1;
-    if (ch === ")") depth -= 1;
-    if (ch === "," && depth === 0) { out.push(cur.trim()); cur = ""; } else cur += ch;
+    if (ch === "'") quote = !quote;
+    if (!quote) {
+      if (ch === "(" || ch === "[") depth += 1;
+      if (ch === ")" || ch === "]") depth -= 1;
+    }
+    if (ch === "," && depth === 0 && !quote) { out.push(cur.trim()); cur = ""; } else cur += ch;
   }
   if (cur.trim()) out.push(cur.trim());
   return out;
