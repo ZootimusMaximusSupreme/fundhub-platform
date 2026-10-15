@@ -69,7 +69,7 @@ Measured with `node scripts/pulse/count-not-proved.mjs` and the batch file: the 
 
 ## How a live check works here (so a reviewer can challenge it)
 
-Each live check is one read-only SQL text in `src/pulse/catalog/proofs/fin-b07-display-contracts.mjs`. It takes the company as `$1::uuid` and answers `sample_count` and `bad_count`. All 40 are `emptyAs: "quiet"`: a control nobody used in the window reads green with the words "no saved results yet", and goes red on the first wrong one.
+Each live check is one read-only SQL text (in `fin-b07-sql-desk.mjs`, `fin-b07-sql-repair.mjs`, `fin-b07-sql-misc.mjs`, listed by `fin-b07-display-contracts.mjs`). It takes the company as `$1::uuid` and answers `sample_count` and `bad_count`. All 40 are `emptyAs: "quiet"`: a control nobody used in the window reads green with the words "no saved results yet", and goes red on the first wrong one.
 
 - Windows: 60 days on `updated_at` / `created_at` / `started_at` (30 days for letters, which carry the mailing stamps only since 2026-09-05; 400 days for erasures). Demo rows are never judged.
 - The SQL is in the common subset of Postgres and SQLite (no regexes, no arrays, no `DISTINCT ON`), so the test can run the exact text. Where Postgres would raise on a bad cast, the cast sits under a `CASE` guard.
@@ -96,6 +96,7 @@ Every break was restored with `git checkout -- <file>`; `git status` showed only
 ## Files added
 
 - `src/pulse/catalog/proofs/fin-b07-display-contracts.mjs` (40 contracts, row table, live and practice cases, the two not-attachable reasons)
+- `src/pulse/catalog/proofs/fin-b07-sql-desk.mjs`, `fin-b07-sql-repair.mjs`, `fin-b07-sql-misc.mjs` (the SQL texts, 252 / 139 / 128 lines)
 - `src/pulse/catalog/proofs/fin-b07-sql-kit.mjs`, `fin-b07-case-runner.mjs` (test kit)
 - `src/pulse/catalog/proofs/fin-b07-live-contracts.test.mjs` (shape guard: 8 tests)
 - `src/pulse/catalog/proofs/fin-b07-live-cases-desk.test.mjs` (111 tests), `fin-b07-live-cases-repair.test.mjs` (90), `fin-b07-live-cases-misc.test.mjs` (64)

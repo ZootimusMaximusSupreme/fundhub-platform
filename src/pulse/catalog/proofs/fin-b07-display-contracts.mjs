@@ -13,8 +13,56 @@
 //
 // The SQL is written in the common subset of Postgres and SQLite on purpose (no regexes, no arrays,
 // no DISTINCT ON), so fin-b07-live-contracts.test.mjs can run the exact text against stand-in rows
-// built from the real column names. This file imports nothing: it is read at build time by
+// built from the real column names. The SQL texts sit in fin-b07-sql-desk.mjs, fin-b07-sql-repair.mjs
+// and fin-b07-sql-misc.mjs (this file imports only those). It is read at build time by
 // scripts/pulse/compile-catalog.mjs, and the live bundle reads the compiled copy in generated.json.
+
+import {
+  CASE_CLOSE_SQL,
+  CASE_CLEARED_SQL,
+  CASE_GENERATE_SQL,
+  CASE_SEND_SQL,
+  CASE_QUEUE_SQL,
+  CASE_STATUS_SQL,
+  CASE_UPLOAD_SQL,
+  WORK_QUEUE_SQL,
+  WORK_ROW_SQL,
+  LOG_ATTEMPT_SQL,
+  MARK_CONFIRMED_SQL,
+  SET_STATUS_SQL,
+  SAVE_EXPECTED_SQL,
+  REVEAL_SQL,
+  RECENT_LETTERS_SQL,
+  CLEAN_PERSONAL_SQL,
+} from "./fin-b07-sql-desk.mjs";
+import {
+  REPAIR_QUEUE_SQL,
+  REPAIR_ROW_SQL,
+  STAGE_INTAKE_SQL,
+  STAGE_AWAIT_DOCS_SQL,
+  STAGE_ANALYSIS_SQL,
+  STAGE_LETTERS_GEN_SQL,
+  STAGE_READY_SQL,
+  STAGE_TRANSIT_SQL,
+  STAGE_AWAIT_RESP_SQL,
+  STAGE_RESP_RECV_SQL,
+  STAGE_ROUND_DONE_SQL,
+  STAGE_STALLED_SQL,
+  STAGE_PROGRAM_DONE_SQL,
+  STAGE_CANCELLED_SQL,
+  ROW_SEND_SQL,
+  LETTER_ONE_SQL,
+  ROW_STAGE_SQL,
+} from "./fin-b07-sql-repair.mjs";
+import {
+  VAULT_UPLOAD_SQL,
+  LINK_EXCHANGE_SQL,
+  LENDER_APPLY_SQL,
+  APPLY_DIALOG_SQL,
+  BUSINESS_FIELDS_SQL,
+  AGREEMENTS_SQL,
+  SOCIAL_CONNECT_SQL,
+} from "./fin-b07-sql-misc.mjs";
 
 const ROWS = Object.freeze({
   lenderApply: Object.freeze(["desks-c.json", "lenders.html", "Lender row Apply button (only on a client-scoped view ?client_id=; opens the bank page through the proxy)"]),
@@ -85,504 +133,6 @@ function contract(rowKey, requirement, key, body) {
     rowKey,
   });
 }
-
-const W60 = "now() - interval '60 days'";
-const W30 = "now() - interval '30 days'";
-
-// ── Specialist desk: inquiry removal cases ───────────────────────────────────────────────────
-
-const CASE_CLOSE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE c.closed_at IS NULL
-         OR cl.id IS NULL
-         OR (c.completed_at IS NULL AND EXISTS (
-              SELECT 1 FROM events e
-               WHERE e.org_id = c.org_id AND e.name = 'inquiry.removed'
-                 AND (e.payload->>'inquiryRemovalCaseId' = c.id::text OR e.payload->>'caseId' = c.id::text))))::int AS bad_count
-  FROM inquiry_removal_cases c
-  LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid AND c.case_status::text = 'Canceled'
-   AND COALESCE(c.is_demo, false) = false
-   AND c.updated_at >= ${W60}`;
-
-const CASE_CLEARED_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE c.completed_at IS NULL
-         OR cl.id IS NULL
-         OR NOT EXISTS (
-              SELECT 1 FROM events e
-               WHERE e.org_id = c.org_id AND e.name = 'inquiry.removed'
-                 AND e.client_id = c.client_id
-                 AND e.created_at >= COALESCE(c.requested_at, c.created_at)))::int AS bad_count
-  FROM inquiry_removal_cases c
-  LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid AND c.case_status::text = 'Completed'
-   AND COALESCE(c.is_demo, false) = false
-   AND c.updated_at >= ${W60}`;
-
-const CASE_GENERATE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE c.id IS NULL
-         OR l.client_id IS DISTINCT FROM c.client_id
-         OR l.org_id IS DISTINCT FROM c.org_id
-         OR (upper(COALESCE(l.bureau, '')) IN ('EX', 'EQ', 'TU') AND NOT (
-               upper(COALESCE(c.selected_bureaus_raw, '')) LIKE '%' || upper(l.bureau) || '%'
-               OR (upper(l.bureau) = 'TU' AND upper(COALESCE(c.selected_bureaus_raw, '')) LIKE '%TRANS%'))))::int AS bad_count
-  FROM inquiry_log l
-  LEFT JOIN inquiry_removal_cases c ON c.id = l.case_id
- WHERE l.org_id = $1::uuid AND l.case_id IS NOT NULL
-   AND COALESCE(l.is_demo, false) = false
-   AND l.updated_at >= ${W60}`;
-
-const CASE_SEND_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR c.case_status::text = 'Queued'
-         OR (c.letter_provider_id IS NOT NULL AND NOT EXISTS (
-               SELECT 1 FROM inquiry_attempts a
-                 JOIN inquiry_log l ON l.id = a.inquiry_id
-                WHERE a.org_id = c.org_id AND l.client_id = c.client_id
-                  AND a.kind = 'letter' AND a.outcome = 'sent'))
-         OR (c.portal_confirmation IS NOT NULL AND NOT EXISTS (
-               SELECT 1 FROM inquiry_attempts a
-                 JOIN inquiry_log l ON l.id = a.inquiry_id
-                WHERE a.org_id = c.org_id AND l.client_id = c.client_id
-                  AND a.kind = 'portal' AND a.note = 'experian_ref:' || c.portal_confirmation)))::int AS bad_count
-  FROM inquiry_removal_cases c
-  LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid
-   AND (c.letter_provider_id IS NOT NULL OR c.portal_confirmation IS NOT NULL)
-   AND COALESCE(c.is_demo, false) = false
-   AND c.updated_at >= ${W60}`;
-
-const CASE_QUEUE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR c.requested_at IS NULL
-         OR NULLIF(BTRIM(COALESCE(c.selected_bureaus_raw, '')), '') IS NULL
-         OR COALESCE(c.open_inquiry_count, 0) < 0
-         OR (c.funding_round_id IS NOT NULL AND fr.id IS NULL))::int AS bad_count
-  FROM inquiry_removal_cases c
-  LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
-  LEFT JOIN funding_rounds fr ON fr.org_id = c.org_id AND fr.id = c.funding_round_id
- WHERE c.org_id = $1::uuid
-   AND c.case_status::text IN ('Queued', 'Scheduled', 'In Progress', 'Escalated', 'Blocked')
-   AND COALESCE(c.is_demo, false) = false
-   AND c.updated_at >= ${W60}`;
-
-const CASE_STATUS_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE (c.case_status::text = 'Completed' AND c.completed_at IS NULL)
-         OR (c.case_status::text = 'Canceled' AND c.closed_at IS NULL)
-         OR (c.case_status::text NOT IN ('Queued', 'Scheduled', 'In Progress', 'Escalated', 'Blocked', 'Completed', 'Canceled')))::int AS bad_count
-  FROM inquiry_removal_cases c
- WHERE c.org_id = $1::uuid
-   AND COALESCE(c.is_demo, false) = false
-   AND c.updated_at >= ${W60}`;
-
-const CASE_UPLOAD_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR v.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(v.storage_key, '')), '') IS NULL
-         OR COALESCE(v.byte_size, 0) <= 0
-         OR NULLIF(BTRIM(COALESCE(v.checksum, '')), '') IS NULL
-         OR COALESCE(v.mime_type, '') NOT IN ('application/pdf', 'image/png', 'image/jpeg'))::int AS bad_count
-  FROM documents d
-  LEFT JOIN clients cl ON cl.org_id = d.org_id AND cl.id = d.client_id
-  LEFT JOIN document_versions v ON v.org_id = d.org_id AND v.id = d.current_version_id
- WHERE d.org_id = $1::uuid AND d.subtype = 'additional_fraud_docs'
-   AND COALESCE(d.is_demo, false) = false
-   AND d.created_at >= ${W60}`;
-
-// ── Specialist desk: the work queue (inquiry_log) ────────────────────────────────────────────
-
-const WORK_QUEUE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(l.bureau, '')), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(l.inquiry_name, l.inquiry, '')), '') IS NULL
-         OR COALESCE(l.call_attempts, 0) < 0)::int AS bad_count
-  FROM inquiry_log l
-  LEFT JOIN clients cl ON cl.org_id = l.org_id AND cl.id = l.client_id
- WHERE l.org_id = $1::uuid AND COALESCE(l.is_open, true) = true
-   AND COALESCE(l.is_demo, false) = false
-   AND l.updated_at >= ${W60}`;
-
-const WORK_ROW_SQL = `
-SELECT ((SELECT count(*) FROM inquiry_attempts a
-          JOIN inquiry_log l ON l.id = a.inquiry_id
-         WHERE a.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false AND a.created_at >= ${W60})
-      + (SELECT count(*) FROM pii_identity p
-          JOIN clients c ON c.org_id = p.org_id AND c.id = p.client_id
-         WHERE p.org_id = $1::uuid AND p.ssn_enc IS NOT NULL AND COALESCE(c.is_demo, false) = false
-           AND p.updated_at >= ${W60}))::int AS sample_count,
-       ((SELECT count(*) FROM inquiry_attempts a
-          JOIN inquiry_log l ON l.id = a.inquiry_id
-          LEFT JOIN staff s ON s.id = a.staff_id
-         WHERE a.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false AND a.created_at >= ${W60}
-           AND (l.org_id IS DISTINCT FROM a.org_id OR s.id IS NULL OR s.org_id IS DISTINCT FROM a.org_id
-                OR NULLIF(BTRIM(COALESCE(s.name, '')), '') IS NULL))
-      + (SELECT count(*) FROM pii_identity p
-          JOIN clients c ON c.org_id = p.org_id AND c.id = p.client_id
-         WHERE p.org_id = $1::uuid AND p.ssn_enc IS NOT NULL AND COALESCE(c.is_demo, false) = false
-           AND p.updated_at >= ${W60} AND length(p.ssn_enc) < 30))::int AS bad_count`;
-
-const LOG_ATTEMPT_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE l.id IS NULL
-         OR l.org_id IS DISTINCT FROM a.org_id
-         OR s.id IS NULL
-         OR s.org_id IS DISTINCT FROM a.org_id
-         OR COALESCE(l.call_attempts, 0) IS DISTINCT FROM (
-              SELECT count(*) FROM inquiry_attempts x
-               WHERE x.inquiry_id = a.inquiry_id AND x.kind IN ('call', 'letter', 'portal')))::int AS bad_count
-  FROM inquiry_attempts a
-  LEFT JOIN inquiry_log l ON l.id = a.inquiry_id
-  LEFT JOIN staff s ON s.id = a.staff_id
- WHERE a.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false
-   AND a.created_at >= ${W60}`;
-
-const MARK_CONFIRMED_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR COALESCE(l.is_open, true) = true
-         OR l.cleared_at IS NULL
-         OR (c.id IS NOT NULL AND (
-               c.client_id IS DISTINCT FROM l.client_id
-               OR (c.case_status::text IN ('Queued', 'Scheduled', 'In Progress', 'Escalated', 'Blocked')
-                   AND NOT EXISTS (
-                     SELECT 1 FROM inquiry_log o
-                      WHERE o.case_id = c.id AND COALESCE(o.is_open, true) = true)))))::int AS bad_count
-  FROM inquiry_log l
-  LEFT JOIN clients cl ON cl.org_id = l.org_id AND cl.id = l.client_id
-  LEFT JOIN inquiry_removal_cases c ON c.id = l.case_id
- WHERE l.org_id = $1::uuid AND l.confirmed_at IS NOT NULL
-   AND COALESCE(l.is_demo, false) = false
-   AND l.updated_at >= ${W60}`;
-
-const SET_STATUS_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE l.status <> TRIM(l.status)
-         OR NULLIF(TRIM(l.status), '') IS NULL
-         OR (l.confirmed_at IS NULL AND (
-               lower(l.status) LIKE '%removed%' OR lower(l.status) LIKE '%confirmed%'
-               OR lower(l.status) LIKE '%deleted%' OR lower(l.status) LIKE '%cleared%')))::int AS bad_count
-  FROM inquiry_log l
- WHERE l.org_id = $1::uuid AND l.status IS NOT NULL
-   AND COALESCE(l.is_demo, false) = false
-   AND l.updated_at >= ${W60}`;
-
-const SAVE_EXPECTED_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NULLIF(TRIM(l.expected_name), '') IS NULL
-         OR l.expected_name <> TRIM(l.expected_name)
-         OR length(l.expected_name) > 200)::int AS bad_count
-  FROM inquiry_log l
- WHERE l.org_id = $1::uuid AND l.expected_name IS NOT NULL
-   AND COALESCE(l.is_demo, false) = false
-   AND l.updated_at >= ${W60}`;
-
-const REVEAL_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(a.accessed_by, '')), '') IS NULL
-         OR a.field NOT LIKE 'ssn (%)'
-         OR (length(a.accessed_by) = 36 AND s.id IS NULL))::int AS bad_count
-  FROM pii_access_log a
-  LEFT JOIN clients cl ON cl.org_id = a.org_id AND cl.id = a.client_id
-  LEFT JOIN staff s ON s.org_id = a.org_id AND s.id::text = a.accessed_by
- WHERE a.org_id = $1::uuid AND a.field LIKE 'ssn%'
-   AND COALESCE(cl.is_demo, false) = false
-   AND a.created_at >= ${W60}`;
-
-const RECENT_LETTERS_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE l.id IS NULL
-         OR cl.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(l.bureau, '')), '') IS NULL
-         OR s.id IS NULL
-         OR (a.kind = 'letter' AND a.outcome LIKE 'mail_failed%' AND NOT EXISTS (
-               SELECT 1 FROM inquiry_attempts b
-                WHERE b.inquiry_id = a.inquiry_id AND b.kind = 'letter' AND b.outcome = 'sent'
-                  AND b.created_at > a.created_at)))::int AS bad_count
-  FROM inquiry_attempts a
-  LEFT JOIN inquiry_log l ON l.id = a.inquiry_id AND l.org_id = a.org_id
-  LEFT JOIN clients cl ON cl.org_id = a.org_id AND cl.id = l.client_id
-  LEFT JOIN staff s ON s.org_id = a.org_id AND s.id = a.staff_id
- WHERE a.org_id = $1::uuid AND a.kind IN ('letter', 'portal')
-   AND COALESCE(l.is_demo, false) = false
-   AND a.created_at >= ${W60}`;
-
-// ── Specialist desk: the Repair queue ────────────────────────────────────────────────────────
-
-const REPAIR_QUEUE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR ps.id IS NULL
-         OR ps.pipeline_id IS DISTINCT FROM c.pipeline_id
-         OR COALESCE(c.entered_at, c.updated_at) IS NULL)::int AS bad_count
-  FROM cards c
-  JOIN pipelines p ON p.org_id = c.org_id AND p.id = c.pipeline_id AND p.key = 'optimization'
-  LEFT JOIN pipeline_stages ps ON ps.org_id = c.org_id AND ps.id = c.stage_id
-  LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false`;
-
-const REPAIR_ROW_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR EXISTS (SELECT 1 FROM dispute_items di WHERE di.case_id = dc.id AND di.client_id IS DISTINCT FROM dc.client_id)
-         OR EXISTS (SELECT 1 FROM dispute_letters dl WHERE dl.case_id = dc.id AND dl.client_id IS DISTINCT FROM dc.client_id)
-         OR (dc.pipeline_card_id IS NOT NULL AND NOT EXISTS (
-               SELECT 1 FROM cards k WHERE k.id = dc.pipeline_card_id AND k.client_id = dc.client_id)))::int AS bad_count
-  FROM dispute_cases dc
-  LEFT JOIN clients cl ON cl.org_id = dc.org_id AND cl.id = dc.client_id
- WHERE dc.org_id = $1::uuid AND dc.status NOT IN ('closed', 'cancelled')
-   AND COALESCE(cl.is_demo, false) = false
-   AND dc.updated_at >= ${W60}`;
-
-/** The cards sitting in one stage of the optimization board, judged by that stage's own clock or its own paper. */
-function stageSql(stageKey, badWhere) {
-  return `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE ${badWhere.trim()})::int AS bad_count
-  FROM cards c
-  JOIN pipelines p ON p.org_id = c.org_id AND p.id = c.pipeline_id AND p.key = 'optimization'
-  JOIN pipeline_stages ps ON ps.org_id = c.org_id AND ps.id = c.stage_id AND ps.key = '${stageKey}'
-  JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false AND COALESCE(cl.is_demo, false) = false`;
-}
-
-const CLOCK = "COALESCE(c.entered_at, c.updated_at)";
-const LETTER_IN = (statuses) => `EXISTS (
-         SELECT 1 FROM dispute_letters dl
-          WHERE dl.org_id = c.org_id AND dl.client_id = c.client_id
-            AND dl.status IN (${statuses.map((s) => `'${s}'`).join(", ")}))`;
-const OPEN_DUE = `SELECT 1 FROM dispute_cases dc
-          WHERE dc.org_id = c.org_id AND dc.client_id = c.client_id
-            AND dc.status NOT IN ('closed', 'cancelled') AND dc.response_due_at IS NOT NULL`;
-
-// Three business days are judged at five calendar days, so a weekend never turns a file red.
-const STAGE_INTAKE_SQL = stageSql("intake", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '5 days'`);
-const STAGE_AWAIT_DOCS_SQL = stageSql("awaiting_documents", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '14 days'`);
-const STAGE_ANALYSIS_SQL = stageSql("analysis", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '1 hour'`);
-const STAGE_LETTERS_GEN_SQL = stageSql("letters_generated", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '30 minutes'
-         OR NOT EXISTS (
-              SELECT 1 FROM dispute_letters dl WHERE dl.org_id = c.org_id AND dl.client_id = c.client_id)`);
-const STAGE_READY_SQL = stageSql("ready_to_send", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '4 hours'
-         OR NOT ${LETTER_IN(["generated", "ready"])}`);
-const STAGE_TRANSIT_SQL = stageSql("in_transit", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '10 days'
-         OR NOT ${LETTER_IN(["sending", "sent", "delivered"])}`);
-const STAGE_AWAIT_RESP_SQL = stageSql("awaiting_response", `NOT EXISTS (${OPEN_DUE})
-         OR (SELECT MIN(dc.response_due_at) FROM dispute_cases dc
-              WHERE dc.org_id = c.org_id AND dc.client_id = c.client_id
-                AND dc.status NOT IN ('closed', 'cancelled') AND dc.response_due_at IS NOT NULL)
-            < now() - interval '5 days'`);
-const STAGE_RESP_RECV_SQL = stageSql("response_received", `${CLOCK} IS NULL OR ${CLOCK} < now() - interval '24 hours'
-         OR NOT EXISTS (
-              SELECT 1 FROM dispute_responses dr WHERE dr.org_id = c.org_id AND dr.client_id = c.client_id)`);
-const STAGE_ROUND_DONE_SQL = stageSql("round_complete", `NOT EXISTS (
-              SELECT 1 FROM dispute_responses dr WHERE dr.org_id = c.org_id AND dr.client_id = c.client_id)
-         AND NOT EXISTS (
-              SELECT 1 FROM events e
-               WHERE e.org_id = c.org_id AND e.client_id = c.client_id
-                 AND e.name IN ('repair.round.complete', 'repair.response.parsed'))`);
-const STAGE_STALLED_SQL = stageSql("stalled", `NOT EXISTS (
-              SELECT 1 FROM repair_decision_log rd
-               WHERE rd.org_id = c.org_id AND rd.client_id = c.client_id
-                 AND rd.decision IN ('repair.stalled', 'repair.analysis.empty'))
-         AND NOT EXISTS (
-              SELECT 1 FROM dispute_cases dc
-               WHERE dc.org_id = c.org_id AND dc.client_id = c.client_id AND dc.status = 'stalled')`);
-const STAGE_PROGRAM_DONE_SQL = stageSql("program_complete", `NOT EXISTS (
-              SELECT 1 FROM repair_programs rp
-               WHERE rp.org_id = c.org_id AND rp.client_id = c.client_id
-                 AND rp.status IN ('complete', 'upsell_pending'))
-         AND NOT EXISTS (
-              SELECT 1 FROM events e
-               WHERE e.org_id = c.org_id AND e.client_id = c.client_id AND e.name = 'repair.program.complete')`);
-const STAGE_CANCELLED_SQL = stageSql("cancelled", `EXISTS (
-              SELECT 1 FROM repair_programs rp
-               WHERE rp.org_id = c.org_id AND rp.client_id = c.client_id AND rp.status = 'active')`);
-
-// ── Specialist desk: repair letters (dispute_letters) ────────────────────────────────────────
-
-const ROW_SEND_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE dc.id IS NULL
-         OR dc.client_id IS DISTINCT FROM dl.client_id
-         OR (dl.status IN ('sent', 'delivered') AND (dl.mailed_at IS NULL OR dl.send_claimed_at IS NULL))
-         OR (dl.status = 'sending' AND dl.send_claimed_at < now() - interval '1 days')
-         OR (dl.mailed_at IS NOT NULL AND dc.response_due_at IS NULL))::int AS bad_count
-  FROM dispute_letters dl
-  LEFT JOIN dispute_cases dc ON dc.org_id = dl.org_id AND dc.id = dl.case_id
- WHERE dl.org_id = $1::uuid
-   AND (dl.status IN ('sending', 'sent', 'delivered') OR dl.mailed_at IS NOT NULL)
-   AND dl.created_at >= ${W30}`;
-
-const LETTER_ONE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE (dl.target = 'furnisher' AND dl.furnisher_address_id IS NULL)
-         OR NULLIF(BTRIM(COALESCE(dl.bureau, '')), '') IS NULL
-         OR EXISTS (
-              SELECT 1 FROM dispute_letters o
-               WHERE o.org_id = dl.org_id AND o.case_id = dl.case_id AND o.bureau = dl.bureau
-                 AND o.round = dl.round AND o.target = dl.target
-                 AND o.id <> dl.id AND o.mailed_at IS NOT NULL))::int AS bad_count
-  FROM dispute_letters dl
- WHERE dl.org_id = $1::uuid AND dl.mailed_at IS NOT NULL
-   AND dl.created_at >= ${W30}`;
-
-const ROW_STAGE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE dc.id IS NULL
-         OR dc.client_id IS DISTINCT FROM dl.client_id
-         OR NULLIF(BTRIM(COALESCE(dl.body_text, '')), '') IS NULL
-         OR (dl.target = 'furnisher' AND dl.furnisher_address_id IS NULL)
-         OR dl.mailed_at IS NOT NULL)::int AS bad_count
-  FROM dispute_letters dl
-  LEFT JOIN dispute_cases dc ON dc.org_id = dl.org_id AND dc.id = dl.case_id
- WHERE dl.org_id = $1::uuid AND dl.status IN ('generated', 'ready')
-   AND dl.created_at >= ${W30}`;
-
-const CLEAN_PERSONAL_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE EXISTS (
-              SELECT 1 FROM pii_identity p
-               WHERE p.client_id = e.subject_client_id AND p.updated_at <= e.completed_at)
-         OR EXISTS (
-              SELECT 1 FROM plaid_items pi
-               WHERE pi.client_id = e.subject_client_id AND pi.created_at <= e.completed_at)
-         OR EXISTS (
-              SELECT 1 FROM bank_accounts b
-               WHERE b.client_id = e.subject_client_id AND b.created_at <= e.completed_at)
-         OR EXISTS (
-              SELECT 1 FROM clients c
-               WHERE c.id = e.subject_client_id AND c.updated_at <= e.completed_at
-                 AND (c.email IS NOT NULL OR c.phone IS NOT NULL OR c.first_name IS DISTINCT FROM '[erased]')))::int AS bad_count
-  FROM erasure_requests e
- WHERE e.org_id = $1::uuid AND e.kind = 'client_erasure' AND e.status = 'completed'
-   AND e.completed_at >= now() - interval '400 days'`;
-
-// ── Money vault, Plaid door, lenders Apply, business fields, agreements, social ──────────────
-
-const VAULT_UPLOAD_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE d.client_id IS NULL OR cl.id IS NULL
-         OR v.id IS NULL
-         OR v.document_id IS DISTINCT FROM d.id
-         OR NULLIF(BTRIM(COALESCE(v.storage_key, '')), '') IS NULL
-         OR COALESCE(v.byte_size, 0) <= 0
-         OR NULLIF(BTRIM(COALESCE(v.checksum, '')), '') IS NULL
-         OR COALESCE(v.mime_type, '') NOT IN ('application/pdf', 'image/png', 'image/jpeg')
-         OR v.storage_key IS DISTINCT FROM d.storage_key
-         OR (d.metadata->>'entity_id' IS NOT NULL AND NOT EXISTS (
-               SELECT 1 FROM entities en
-                WHERE en.org_id = d.org_id AND en.client_id = d.client_id
-                  AND en.id::text = d.metadata->>'entity_id')))::int AS bad_count
-  FROM documents d
-  LEFT JOIN clients cl ON cl.org_id = d.org_id AND cl.id = d.client_id
-  LEFT JOIN document_versions v ON v.org_id = d.org_id AND v.id = d.current_version_id
- WHERE d.org_id = $1::uuid
-   AND (d.generated_by LIKE 'client:%' OR d.generated_by LIKE 'staff:%')
-   AND COALESCE(d.is_demo, false) = false
-   AND d.created_at >= ${W60}`;
-
-const LINK_EXCHANGE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR i.plaid_item_id IS NULL
-         OR (i.link_state = 'active' AND (
-               NULLIF(BTRIM(COALESCE(i.encrypted_access_token, '')), '') IS NULL
-               OR i.consent_granted_at IS NULL
-               OR NOT EXISTS (
-                    SELECT 1 FROM bank_accounts b
-                     WHERE b.org_id = i.org_id AND b.plaid_item_id = i.id)))
-         OR (i.link_state = 'error' AND NULLIF(BTRIM(COALESCE(i.last_error_code, '')), '') IS NULL)
-         OR EXISTS (
-              SELECT 1 FROM bank_accounts b
-               WHERE b.plaid_item_id = i.id
-                 AND (b.client_id IS DISTINCT FROM i.client_id OR b.org_id IS DISTINCT FROM i.org_id)))::int AS bad_count
-  FROM plaid_items i
-  LEFT JOIN clients cl ON cl.org_id = i.org_id AND cl.id = i.client_id
- WHERE i.org_id = $1::uuid AND COALESCE(cl.is_demo, false) = false
-   AND i.created_at >= ${W60}`;
-
-const LENDER_APPLY_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(ps.application_url, '')), '') IS NULL
-         OR (ps.lender_id IS NULL AND ps.application_id IS NULL)
-         OR (ps.application_id IS NOT NULL AND (ap.id IS NULL OR ap.client_id IS DISTINCT FROM ps.client_id))
-         OR (ps.status = 'active' AND (ps.exit_ip IS NULL OR ps.granted_city IS NULL AND ps.granted_region IS NULL))
-         OR (ps.status = 'verifying' AND ps.started_at < now() - interval '15 minutes')
-         OR (ps.status IN ('failed', 'mismatch') AND NULLIF(BTRIM(COALESCE(ps.error_code, '')), '') IS NULL))::int AS bad_count
-  FROM proxy_sessions ps
-  LEFT JOIN clients cl ON cl.org_id = ps.org_id AND cl.id = ps.client_id
-  LEFT JOIN applications ap ON ap.org_id = ps.org_id AND ap.id = ps.application_id
- WHERE ps.org_id = $1::uuid AND COALESCE(cl.is_demo, false) = false
-   AND ps.started_at >= ${W60}`;
-
-const APPLY_DIALOG_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE ps.ended_at IS NULL
-         OR ps.ended_at < ps.started_at
-         OR ps.staff_id IS NULL)::int AS bad_count
-  FROM proxy_sessions ps
- WHERE ps.org_id = $1::uuid AND ps.status IN ('ended', 'failed', 'mismatch')
-   AND ps.started_at >= ${W60}`;
-
-const BUSINESS_FIELDS_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE cl.id IS NULL
-         OR NULLIF(BTRIM(COALESCE(b.name, '')), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(b.entity_data->>'address_line1', '')), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(b.entity_data->>'city', '')), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(b.entity_data->>'state', '')), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(b.entity_data->>'postal_code', '')), '') IS NULL
-         OR COALESCE(b.entity_data->>'ein', '') NOT LIKE '__-_______'
-         OR COALESCE(b.entity_data->>'incorporated_date', '') NOT LIKE '____-__%'
-         OR b.age_months IS NULL OR b.age_months < 0
-         OR CASE WHEN b.entity_data->>'incorporated_date' LIKE '____-__%'
-                 THEN b.age_months > (date_part('year', now()) - CAST(substr(b.entity_data->>'incorporated_date', 1, 4) AS INTEGER)) * 12
-                                   + (date_part('month', now()) - CAST(substr(b.entity_data->>'incorporated_date', 6, 2) AS INTEGER))
-                 ELSE false END)::int AS bad_count
-  FROM businesses b
-  LEFT JOIN clients cl ON cl.org_id = b.org_id AND cl.id = b.client_id
- WHERE b.org_id = $1::uuid AND b.entity_data->>'source' = 'soft_pull_approve'
-   AND COALESCE(cl.is_demo, false) = false
-   AND b.created_at >= ${W60}`;
-
-const AGREEMENTS_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE s.id IS NULL
-         OR (k.status IN ('sent', 'viewed', 'signed') AND k.document_id IS NULL)
-         OR (k.status = 'signed' AND (
-               k.signed_at IS NULL
-               OR NULLIF(BTRIM(COALESCE(k.signer_name, '')), '') IS NULL
-               OR k.signed_document_id IS NULL
-               OR sd.id IS NULL)))::int AS bad_count
-  FROM contracts k
-  LEFT JOIN staff s ON s.org_id = k.org_id AND s.id = k.staff_id
-  LEFT JOIN documents sd ON sd.org_id = k.org_id AND sd.id = k.signed_document_id
- WHERE k.org_id = $1::uuid AND k.staff_id IS NOT NULL
-   AND COALESCE(k.is_demo, false) = false
-   AND k.updated_at >= ${W60}`;
-
-const SOCIAL_CONNECT_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE p.id IS NULL
-         OR p.org_id IS DISTINCT FROM sc.org_id
-         OR sc.channel NOT IN ('facebook', 'instagram', 'linkedin')
-         OR NULLIF(BTRIM(COALESCE(sc.external_account_id, '')), '') IS NULL
-         OR (sc.channel = 'linkedin' AND lower(sc.external_account_id) LIKE 'urn:%')
-         OR (sc.connection_state = 'active'
-             AND NULLIF(BTRIM(COALESCE(sc.encrypted_access_token, '')), '') IS NULL))::int AS bad_count
-  FROM social_channels sc
-  LEFT JOIN partners p ON p.id = sc.partner_id
- WHERE sc.org_id = $1::uuid AND COALESCE(p.is_demo, false) = false
-   AND sc.created_at >= ${W60}`;
-
 
 const CONTRACTS = Object.freeze([
   // Case drawer
