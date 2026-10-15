@@ -8,6 +8,7 @@ import { LIVE_PAGE_JUDGES } from "./fin-b07-leads-page.mjs";
 import { leadsResetResults } from "./fin-b09-leads-reset.mjs";
 import { judgeLinkGate, linkGateState } from "./fin-b10-link-gate.mjs";
 import { HIDDEN_HEAD_CODE, judgeHiddenHeads, verifyHiddenHead } from "./fin-b19-hidden-head.mjs";
+import { ownerRemovedFor, ownerRemovedResults, ownerRemovedState } from "./fin-b21-owner-removed.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -194,6 +195,26 @@ function livePageReader(ctx = {}) {
   };
 }
 
+// One GET of a live file for fin-b21-owner-removed.mjs: { get, base }. get(path) never throws and answers
+// { ok: true, text } or { ok: false, why }. It is null when this run has no GET client.
+function liveFileReader(ctx = {}) {
+  const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
+  let base = null;
+  try { base = new URL(ctx.baseUrl || "https://fundhub.ai").origin; } catch { base = null; }
+  if (typeof fetchImpl !== "function") return { get: null, base };
+  const get = async (path) => {
+    const url = new URL(path, base).href;
+    try {
+      const response = await fetchImpl(url, { method: "GET", signal: AbortSignal.timeout(5000) });
+      if (response.status !== 200) return { ok: false, why: `${url} answered ${response.status}` };
+      return { ok: true, text: String(await response.text()) };
+    } catch (error) {
+      return { ok: false, why: `${url} could not be read: ${String(error?.message || error).replace(/\s+/g, " ").slice(0, 120)}` };
+    }
+  };
+  return { get, base };
+}
+
 export async function gapChecks(ctx = {}) {
   // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
   // shell is RUN against the page's own links, once per staff role, because the live file is what decides
@@ -208,12 +229,15 @@ export async function gapChecks(ctx = {}) {
   const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
   // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
   const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);
+  // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
+  const removed = await ownerRemovedResults(DISPLAY_TRACKING_CASES, liveFileReader(ctx));
   const gate = gateRead ? await gateRead : null;
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (notShipped.has(entry.id)) return notShipped.get(entry.id);
     if (leadsReset.has(entry.id)) return leadsReset.get(entry.id);
     if (hiddenHeads.has(entry.id)) return hiddenHeads.get(entry.id);
+    if (removed.has(entry.id)) return removed.get(entry.id);
     if (entry.contract?.mode === "link-gate") return judgeLinkGate(entry, gate);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
@@ -259,6 +283,14 @@ export const naVerify = Object.freeze({
       && item.surface === args.surface && item.control === args.control);
     if (!entry) return false;
     return (await retiredControlState(control, ctx)).status === "na";
+  },
+  "catalog-display-owner-removed": async (args, ctx = {}) => {
+    const control = ownerRemovedFor(args);
+    if (!control) return false;
+    const entry = DISPLAY_TRACKING_CASES.find((item) => item.sourceFile === args.sourceFile
+      && item.surface === args.surface && item.control === args.control);
+    if (!entry) return false;
+    return (await ownerRemovedState(control, liveFileReader(ctx))).status === "na";
   },
   "catalog-display-retired-autopsy": async (args, ctx = {}) => {
     const entry = DISPLAY_TRACKING_CASES.find((item) => item.retired

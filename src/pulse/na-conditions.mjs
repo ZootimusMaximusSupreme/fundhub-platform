@@ -583,6 +583,25 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A teleprompter control the owner took off the phone on purpose (finish-the-853, batch 21). True while the
+     lane that made the row reads the live files again (GET only) and finds the control still off the screen.
+     The day it is back the claim fails and the row goes red by name. The lane answers; it holds the list
+     (src/pulse/coverage/fin-b21-owner-removed.mjs, naVerify["catalog-display-owner-removed"]). */
+  "catalog-display-owner-removed": Object.freeze({
+    say() {
+      return "The owner took this control off the screen on purpose, and the live files still keep it off.";
+    },
+    claim() {
+      return "The live files still keep this control off the screen.";
+    },
+    problem(args) {
+      return isText(args?.sourceFile) && isText(args?.surface) && isText(args?.control)
+        ? null
+        : "the owner-removed control proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

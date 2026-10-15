@@ -21,6 +21,7 @@ import { FIN_B20_RESULT_CONTRACTS } from "./fin-b20-display-contracts.mjs";
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
 import { FIN_B13_DISPLAY_CONTRACTS } from "./fin-b13-display-contracts.mjs";
+import { FIN_B21_DISPLAY_CONTRACTS } from "./fin-b21-display-contracts.mjs";
 
 const TRACKED_CONTROL_KINDS = new Set([
   "api-action", "asset", "board-column", "bulk-action", "bulk-select", "button",
@@ -268,6 +269,7 @@ SELECT count(*)::int AS sample_count,
 
 export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   ...FIN_B13_DISPLAY_CONTRACTS,
+  ...FIN_B21_DISPLAY_CONTRACTS,
   query("Mark round submitted button", "A card-stacking round.submitted receipt must carry the client, stage, source, and round number.", "round-submitted", ROUND_SUBMITTED_SQL),
   query("Mark funded… button, amount box, Save funded, Cancel", "The round.funded receipt must link to the same funding round and preserve the exact funded amount.", "round-funded", ROUND_FUNDED_SQL),
   query("Close round button", "A card-stacking round.closeout receipt must name the closed stage and engagement-complete result.", "round-closed", ROUND_CLOSED_SQL),
