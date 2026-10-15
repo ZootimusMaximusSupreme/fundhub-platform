@@ -186,6 +186,20 @@ async function openDrawer(page, over) {
   await page.locator(`#campRows tr[data-c="${CAMP_1}"]`).click();
   await expect(page.locator("#drawer")).toHaveClass(/\bon\b/);
   await expect(page.locator('[data-cw="pause"]')).toBeEnabled();
+  // The drawer paints twice: once from the list row, once when the detail read lands,
+  // and the second paint rebuilds the budget box. Wait for the second so a typed
+  // value is never wiped by it.
+  await expect(page.locator("#dwSub")).toHaveText("last 30 days");
+  // A success line is replaced by the drawer's hint a moment later (the page reads the
+  // detail again), so record every sentence the line holds and judge those.
+  await page.evaluate(() => {
+    window.__cwSeen = [];
+    const note = () => {
+      const el = document.getElementById("cwMsg");
+      if (el && el.textContent) window.__cwSeen.push(el.textContent);
+    };
+    new MutationObserver(note).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
   return b;
 }
 
@@ -198,7 +212,7 @@ test.describe("campaign manager: drawer controls that change Meta", () => {
     await expect.poll(() => b.calls.write.length).toBe(1);
     expect(asked).toContain("Stop spending on “Funding spring push” on Meta?");
     expect(b.calls.write[0]).toEqual({ campaign_id: CAMP_1, action: "pause", reason: "campaign-manager drawer", partner_id: PARTNER_A });
-    await expect(page.locator("#cwMsg")).toHaveText("Meta has stopped spending on this campaign.");
+    await expect.poll(() => page.evaluate(() => window.__cwSeen)).toContain("Meta has stopped spending on this campaign.");
   });
 
   test("Stop spending answered No sends nothing and says so", async ({ page }) => {
@@ -218,7 +232,7 @@ test.describe("campaign manager: drawer controls that change Meta", () => {
     expect(asked).toContain("Start spending on “Funding spring push” again on Meta?");
     expect(b.calls.write[0].action).toBe("resume");
     expect(b.calls.write[0].campaign_id).toBe(CAMP_1);
-    await expect(page.locator("#cwMsg")).toHaveText("Meta is spending on this campaign again.");
+    await expect.poll(() => page.evaluate(() => window.__cwSeen)).toContain("Meta is spending on this campaign again.");
   });
 
   test("Change daily budget sends the typed cents, and the question shows the old and the new amount", async ({ page }) => {
@@ -232,7 +246,7 @@ test.describe("campaign manager: drawer controls that change Meta", () => {
     expect(asked).toContain("to 250.00?");
     expect(asked).toContain("It is now 100.00.");
     expect(b.calls.write[0]).toEqual({ campaign_id: CAMP_1, action: "update_budget", reason: "campaign-manager drawer", partner_id: PARTNER_A, budget_cents: 25000 });
-    await expect(page.locator("#cwMsg")).toHaveText("Meta has the new daily budget.");
+    await expect.poll(() => page.evaluate(() => window.__cwSeen)).toContain("Meta has the new daily budget.");
   });
 
   test("a daily budget under 100 cents is refused on the page: no question, nothing sent", async ({ page }) => {
