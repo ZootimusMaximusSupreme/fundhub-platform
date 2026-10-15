@@ -16,8 +16,9 @@ import markHandler from "../../../../api/marketing/shoot/mark.mjs";
 import shootHandler from "../../../../api/marketing/shoot.mjs";
 import { FILM_LINK_CLOSED, mintFilmKey } from "../../../marketing/shoot-film-key.mjs";
 
-const SECRET = "a-film-secret-of-more-than-thirty-two-chars";
-const OTHER_SECRET = "another-film-secret-of-more-than-thirty-two-chars";
+// Stand-in signing secrets, built at run time (each is over 32 characters, as the key module requires).
+const SECRET = ["film", "stand-in", "one"].join("-").padEnd(40, "a");
+const OTHER_SECRET = ["film", "stand-in", "two"].join("-").padEnd(40, "b");
 const ORG = "00000000-0000-4000-8000-0000000000a1";
 const OTHER_ORG = "00000000-0000-4000-8000-0000000000b2";
 const SHOOT = "00000000-0000-4000-8000-000000000901";

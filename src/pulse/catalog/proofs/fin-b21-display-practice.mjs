@@ -18,7 +18,8 @@ function proof(control, assertion, { tests = [TELEPROMPTER_TEST], runner = BROWS
     surface: TELEPROMPTER_SURFACE,
     control,
     depth: "deep",
-    evidence: tests[0],
+    // Every test file the case names must also be in the evidence text (display-proof-cases.test.mjs checks it).
+    evidence: tests.join(", "),
     tests: Object.freeze([...tests]),
     proof: Object.freeze({ runner, assertion })
   });
@@ -54,7 +55,7 @@ export const FIN_B21_NOT_ATTACHABLE = Object.freeze([
   social("Tab 'Sent' (posted, with the reference on the account)",
     "The tab can never fill. GET /api/social/posts reads marketing_content_queue only, whose status can never be posted (draft, queued, scheduled, awaiting_approval, discarded, blocked), so the Sent pane always prints its own note that it cannot yet see posts that went out. Posted posts live in social_posts, which this page never reads. The saved sent posts and their references are now judged by the live check on 'Post states legend' (a post that says Sent must have a time and a reference), but the tab itself cannot show them. Needs a product change: read social_posts for the Sent pane."),
   social("Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
-    "Half of it is broken. The row expands on a click and on Enter (measured), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change."),
+    "Half of it is broken. The row expands on a click (measured) and on Enter (the code does), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change."),
   social("Side drawer: close X, click outside, Escape",
     "There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first."),
   tele("Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",

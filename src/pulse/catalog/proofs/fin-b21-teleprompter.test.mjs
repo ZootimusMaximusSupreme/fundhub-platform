@@ -32,9 +32,14 @@ const playing = async (page) => (await state(page)).playing;
 /** Open the teleprompter with fake answers. `shootAnswer` may be a function (called per read). */
 async function openPage(world, {
   shootAnswer = SHOOT, query = "", token = true, settings = { countdown: false }, keys = null, viewport = { width: 390, height: 844 },
-  markStatus = 200, init = null
+  markStatus = 200, init = null, frozenClock = false
 } = {}) {
   const page = await world.browser.newPage({ viewport });
+  // A frozen clock keeps the page's own 5 second re-read from healing a dead button: only a press can.
+  if (frozenClock) {
+    await page.clock.install();
+    await page.clock.pauseAt(Date.now() + 1000);
+  }
   await blockOutside(page, world.origin);
   const log = { reads: [], marks: [], keys: [], errors: [], urls: [] };
   page.on("pageerror", (e) => log.errors.push(String(e)));
@@ -85,7 +90,7 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
 
   await t.test("empty and error states: a read that fails says so, and Try again reads the shoot again", async () => {
     let failing = true;
-    const { page, log } = await openPage(world, { shootAnswer: () => (failing ? { status: 500, body: { error: "boom" } } : SHOOT) });
+    const { page, log } = await openPage(world, { frozenClock: true, shootAnswer: () => (failing ? { status: 500, body: { error: "boom" } } : SHOOT) });
     await page.locator("#empty").waitFor({ state: "visible" });
     assert.equal(await page.locator("#empty-msg").innerText(), "The shoot did not load. Try again in a minute.");
     assert.equal(await page.locator("#empty-retry").isVisible(), true);
@@ -95,6 +100,7 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
     failing = false;
     await page.locator("#empty-retry").click();
     await waitFor(() => log.reads.length > before, "Try again did not read the shoot again");
+    assert.equal(log.reads.length, before + 1, "one press, one read");
     await page.locator("#empty").waitFor({ state: "hidden" });
     assert.equal(await page.locator("#s-title").innerText(), "Your file is worth more");
     assert.match(await page.locator("#content").innerText(), /MOST lenders read TWO files/);
@@ -157,6 +163,14 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
     await page.locator("#play").click();
     await waitFor(() => playing(page), "the second Play did not roll at once", 1500);
     assert.deepEqual(await page.evaluate(() => window.__counts), []);
+    // Nor does starting the take over (Page Up): the count is for the first play of a script only.
+    await page.locator("#play").click();
+    await waitFor(async () => !(await playing(page)), "Pause did not stop the words", 1500);
+    await page.evaluate(() => { window.__counts = []; });
+    await page.keyboard.press("PageUp");
+    await waitFor(() => playing(page), "starting the take over did not roll at once", 1500);
+    assert.deepEqual(await page.evaluate(() => window.__counts), [], "no second count");
+    assert.equal(await page.locator("#count").isHidden(), true);
     assert.equal(log.marks.length, 0, "playing and pausing sends no mark");
     await page.close();
   });
@@ -225,8 +239,7 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
     await page.waitForTimeout(1500);
     let asked = "";
     page.once("dialog", async (dialog) => { asked = dialog.message(); await dialog.dismiss(); });
-    await page.mouse.click(200, 10);
-    await page.mouse.click(200, 10);
+    await page.mouse.dblclick(200, 10);
     await waitFor(() => asked !== "", "the two taps did not ask first");
     assert.match(asked, /Mark ".*Your file is worth more" as complete\?/);
     await page.waitForTimeout(300);
@@ -234,8 +247,7 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
     // A yes marks that script Got it, and the next one still to film loads.
     await page.waitForTimeout(1500);
     page.once("dialog", async (dialog) => { await dialog.accept(); });
-    await page.mouse.click(200, 10);
-    await page.mouse.click(200, 10);
+    await page.mouse.dblclick(200, 10);
     await waitFor(() => log.marks.length === 1, "the yes did not mark the script");
     assert.equal(log.marks[0].mark, "got_it");
     assert.equal(log.marks[0].root_script_id, THREE.root_script_id);

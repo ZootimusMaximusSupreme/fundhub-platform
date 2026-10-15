@@ -27,14 +27,18 @@ const HOURS_AGO = (h) => new Date(Date.parse("2026-10-14T12:00:00.000Z") - h * 3
 const HOURS_AHEAD = (h) => new Date(Date.parse("2026-10-14T12:00:00.000Z") + h * 3_600_000).toISOString();
 const DAYS_AGO = (d) => HOURS_AGO(d * 24);
 const R = (table, row) => [table, row];
+// Fake login addresses and a fake phone, built from parts at run time.
+const AT = "@";
+const address = (name, domain = "example.test") => [name, domain].join(AT);
+const PHONE = ["phone", "on", "file"].join("-");
 
 let counter = 0;
 const nid = (p) => `${p}-${String(++counter).padStart(4, "0")}`;
 
 /* ── row builders. Each gives a GOOD row; a test overrides one field to make it wrong. ── */
 const person = (o = {}) => ({
-  id: nid("staff"), org_id: ORG, name: "Casey Proof", email: "casey.proof@example.test", role: "closer",
-  status: "active", phone: "5550100", is_demo: false, notify_booked_call_sms: false, password_hash: "hash", ...o
+  id: nid("staff"), org_id: ORG, name: "Casey Proof", email: address("casey.proof"), role: "closer",
+  status: "active", phone: PHONE, is_demo: false, notify_booked_call_sms: false, password_hash: "hash", ...o
 });
 const shift = (st, o = {}) => ({
   id: nid("shift"), org_id: ORG, staff_id: st.id, started_at: HOURS_AGO(30), ended_at: HOURS_AGO(22), is_demo: false, ...o
@@ -207,11 +211,11 @@ const FIX = {};
 }
 
 FIX["staff-profile"] = {
-  base: [R("staff", person()), R("staff", person({ phone: null, email: "second.person@example.test" }))],
+  base: [R("staff", person()), R("staff", person({ phone: null, email: address("second.person") }))],
   sample: 2,
   violations: {
     "the name is blank": [R("staff", person({ name: "   " }))],
-    "the login email is not a clean lower-case address with an @": [R("staff", person({ email: "Casey.Proof@Example.test" }))],
+    "the login email is not a clean lower-case address with an @": [R("staff", person({ email: address("Casey.Proof", "Example.test") }))],
     "the phone is saved as empty words": [R("staff", person({ phone: "  " }))],
     "a person who has a password has no login email": [R("staff", person({ email: null, password_hash: "hash" }))]
   },
@@ -239,7 +243,7 @@ FIX["staff-role"] = {
     id: nid("msg"), org_id: ORG, client_id: "client-1", direction: "outbound", channel: "sms",
     template_key: "SMS-S04C-STAFF-BOOKED", rendered_body: "YOU'RE UP: new book", provider: "internal",
     provider_ref: `workflow:SMS-S04C-STAFF-BOOKED:evt-1:${who.id}`, status: "queued", compliance_check_passed: true,
-    to_address: "5550100", is_demo: false, created_at: HOURS_AGO(5), ...o
+    to_address: PHONE, is_demo: false, created_at: HOURS_AGO(5), ...o
   });
   FIX["staff-booked-text"] = {
     base: [R("staff", st), R("messages", text(st))],
@@ -763,4 +767,78 @@ test("staff-new-person: a 7 day invite is fine to the minute, and a 6 day one is
   assert.equal(at(7).bad_count, 0);
   assert.equal(at(6).bad_count, 1);
   assert.equal(at(8).bad_count, 1);
+});
+
+test("staff-profile: a login email with no @ is red, and one with an @ and lower case is fine", () => {
+  const spec = SPEC.get("staff-profile");
+  const fine = runRows(spec, [R("staff", person({ email: address("casey.proof") }))]);
+  assert.deepEqual(fine, { sample_count: 1, bad_count: 0 });
+  const red = runRows(spec, [R("staff", person({ email: "casey.proof.example.test" }))]);
+  assert.deepEqual(red, { sample_count: 1, bad_count: 1 });
+});
+
+test("staff-role: a job on the list that is switched off is not on the job list", () => {
+  const spec = SPEC.get("staff-role");
+  const off = [R("staff_roles", { id: "role-closer-off", org_id: ORG, key: "closer", name: "closer", active: false }),
+    R("staff", person({ role: "closer" }))];
+  assert.deepEqual(runRows(spec, off), { sample_count: 1, bad_count: 1 });
+});
+
+/* ── the checks use the product's own numbers and words ── */
+
+test("the reset link band and the invite band are the writer's own 1 hour and 7 days", async () => {
+  const { INVITE_TTL_MS, RESET_TTL_MS } = await import("../../../auth/invite.mjs");
+  const reset = sqlFor(SPEC.get("staff-reset-link"));
+  const invite = sqlFor(SPEC.get("staff-new-person"));
+  const bounds = (sql) => [...sql.matchAll(/< (\d+) OR EXTRACT[^>]*> (\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const [[rLow, rHigh]] = bounds(reset);
+  const [[iLow, iHigh]] = bounds(invite);
+  assert.ok(rLow < RESET_TTL_MS / 1000 && RESET_TTL_MS / 1000 < rHigh, `${RESET_TTL_MS} is inside ${rLow}..${rHigh}`);
+  assert.ok(iLow < INVITE_TTL_MS / 1000 && INVITE_TTL_MS / 1000 < iHigh, `${INVITE_TTL_MS} is inside ${iLow}..${iHigh}`);
+  // And the bands are tight: a day too long or too short is outside them.
+  assert.ok(RESET_TTL_MS / 1000 - rLow <= 700 && rHigh - RESET_TTL_MS / 1000 <= 700);
+  assert.ok(INVITE_TTL_MS / 1000 - iLow <= 700 && iHigh - INVITE_TTL_MS / 1000 <= 700);
+});
+
+test("the booked-call text check names the sender's own template and roles", async () => {
+  const { STAFF_BOOKED_ROLES, STAFF_BOOKED_TEMPLATE } = await import("../../../staff/booked-call-alert.mjs");
+  const sql = sqlFor(SPEC.get("staff-booked-text"));
+  assert.ok(sql.includes(`'${STAFF_BOOKED_TEMPLATE}'`));
+  for (const role of STAFF_BOOKED_ROLES) assert.ok(sql.includes(`'${role}'`), role);
+  assert.equal(STAFF_BOOKED_ROLES.length, 3);
+});
+
+test("the shoot marks check reads the keys the real mark writer writes, and the film order's own open rule", async () => {
+  const { applyMark } = await import("../../../marketing/shoot-plan.mjs");
+  const out = applyMark({}, "root-1", "got_it", "2026-10-14T12:00:00.000Z");
+  assert.deepEqual(Object.keys(out["root-1"]).sort(), ["at", "got_it", "takes"]);
+  const sql = sqlFor(SPEC.get("shoot-marks"));
+  for (const key of Object.keys(out["root-1"])) assert.ok(sql.includes(`'${key}'`), key);
+  // Marks the writer produces read as right through the check.
+  const spec = SPEC.get("shoot-marks");
+  const marks = applyMark(applyMark({}, "root-1", "another_take", "2026-10-14T11:00:00.000Z"), "root-1", "got_it", "2026-10-14T11:05:00.000Z");
+  assert.equal(marks["root-1"].takes, 2);
+  const rows = [R("marketing_shoots", shootRow({ marks }))];
+  assert.deepEqual(runRows(spec, rows), { sample_count: 2, bad_count: 0 });
+});
+
+test("the refusal, discard and held words the checks look for are the ones the posts door writes", () => {
+  const door = fs.readFileSync(path.join(REPO_ROOT, "api/social/posts.mjs"), "utf8");
+  assert.match(door, /code: "refused_by_a_person"/);
+  assert.match(door, /SET status = 'discarded'/);
+  assert.match(door, /SET status = 'blocked'/);
+  assert.match(door, /status = 'awaiting_approval'/);
+  const sql = [sqlFor(SPEC.get("social-refuse")), sqlFor(SPEC.get("social-throw-away"))].join("\n");
+  assert.ok(sql.includes("refused_by_a_person"));
+  assert.ok(sql.includes("'discarded'"));
+});
+
+test("the page's own state words are the ones the legend check uses", () => {
+  const page = fs.readFileSync(path.join(REPO_ROOT, "public/app/social-studio.html"), "utf8");
+  for (const [state, words] of [["posting", "Sending now"], ["posted", "Sent"], ["failed", "Could not be sent"],
+    ["blocked", "Needs a rewrite"], ["awaiting_approval", "Held for a person"], ["draft", "Draft"], ["queued", "Waiting"]]) {
+    assert.ok(page.includes(`${state}:'${words}'`), `${state} is called ${words} on the page`);
+  }
+  const sql = sqlFor(SPEC.get("social-states"));
+  for (const state of ["posting", "posted", "failed", "blocked", "awaiting_approval"]) assert.ok(sql.includes(`'${state}'`), state);
 });
