@@ -1,21 +1,22 @@
 # Batch 22 manifest (Flow lane, 23 rows)
 
-Branch `fin/b22`, from `fin/base`. Generations 1 and 2. Local only: not pushed, not merged.
-Generation 2 is written at the bottom ("Generation 2"). The tables in between are kept current for it.
+Branch `fin/b22`, from `fin/base`. Generations 1, 2 and 3. Local only: not pushed, not merged.
+Generation 3 is written at the bottom ("Generation 3"). The tables in between are kept current for it:
+the outcome table below shows each row's FINAL outcome after generation 3.
 Lane: `src/pulse/coverage/gap-catalog-flow.mjs`. Builder: Sonnet.
 
 ## The count
 
-| | Start | After gen 1 | After gen 2 |
-|---|---|---|---|
-| Rows of this batch that print NOT_PROVED | 23 | 11 | **8** |
-| Flow lane NOT_PROVED, whole lane | 23 | 11 | **8** |
-| All four lanes together (count script) | 853 | 841 | **838** |
+| | Start | After gen 1 | After gen 2 | After gen 3 |
+|---|---|---|---|---|
+| Rows of this batch that print NOT_PROVED | 23 | 11 | 8 | **1** |
+| Flow lane NOT_PROVED, whole lane | 23 | 11 | 8 | **1** |
+| All four lanes together (count script) | 853 | 841 | 838 | **831** |
 
 Measured with `node scripts/pulse/count-not-proved.mjs` (offline, stub fetch, no database).
 With no database the ten saved-result checks print `skip` with the words "no database in this run", and the two
-page reads print `skip` with "no GET client" when none is handed in. Never NOT_PROVED. On the server they read
-real rows and the live page.
+page reads and the seven not-shipped reads print `skip` with "no GET client" when none is handed in. Never
+NOT_PROVED. On the server they read real rows and the live page.
 
 ## Outcomes, row by row
 
@@ -34,26 +35,30 @@ may be empty). **practice test** = a test with fake data that goes red when the 
 | 6 | `flow:message:script:one-off senders in scripts/` | not-attachable | See below. |
 | 7 | `flow:message:template-copy:seed-vs-live-drift` | live check | `TEMPLATE_ROWS_SQL` + `reduceSignOff`: every approved template that carries a sign-off record still hashes (subject, NUL, body) to `approved_body_sha`, the same hash `api/message-templates.mjs` writes. Catches the doc seeder, a SQL seed, or a hand edit changing words under a standing approval. It does not compare to the SQL seed text: an approved edit legitimately differs from its seed, and three writers (doc seeder, SQL seeds with `DO UPDATE` and `DO NOTHING`, the editor) make "the seed body" ambiguous. The sign-off hash is the owner-approved mechanism (migration 116). |
 | 8 | `flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-source` | live check | Same read + `reduceSqlOnlyKeys` over `fin-b22-sql-template-keys.json` (142 keys from the SQL seed and migration files that the doc source does not carry; 130 have a sender and are judged): each exists for this company, in its own channel, with real words (no `[DRAFT`, no lorem, no blank) and approved the way the seed approved it. The saved list is rebuilt from the SQL files by a test, so a new seed cannot slip past. A missing result is red here (no `emptyAs`). |
-| 9 | `flow:message:ui:ops-admin outbound mail panel` | not-attachable | See below. |
+| 9 | `flow:message:ui:ops-admin outbound mail panel` | na-verified (gen 3) | `fin-b22-not-shipped.mjs` reads the live `/app/ops-admin.html` and the two scripts it loads (`shell.js`, `data.js`) every run: `na` only while none of `alert_email`, `alertEmail`, `alert-email`, "alert address", "alert email" is in them and the page still holds the Outbound Mail card. The three buttons are judged by their own screen rows (`e2e/ops-admin-outbound.spec.mjs`) and the server action by its own door row. The day an alert field is on the page the row is NOT_PROVED again. |
 | 10 | `flow:message:owner-alert:owner_notifications queue (finance alerts)` | live check | `OWNER_QUEUE_SQL`: finance owner alerts (90 days) that waited over an hour in `owner_notifications` for a sender, or failed. Red as soon as one exists, because nothing sends them. |
 | 11 | `flow:message:manual-proof:comms-map-2026-09-19 (template delivery proof)` | live check | `TEMPLATE_DELIVERY_SQL`: every client template sent in the last 30 days that has two or more rows older than a day and was never once delivered. The hand-run delivery proof, read again each morning from the messages really sent. |
 | 12 | `flow:message:workflow:waypoint-nudge-sweeper` | live check | `WAYPOINT_NUDGE_SQL`: every rung spent in 14 days ended in its own message (one of the three named templates, same channel, same client, left the queue) or, at step 4, in the csm task from `waypoint-nudge`; none stuck on `claimed` over 15 minutes or on `template_pending`. |
-| 13 | `flow:journey:journey:climate-lead-magnet-intended#1-headline-button` | not-attachable | See below. |
+| 13 | `flow:journey:journey:climate-lead-magnet-intended#1-headline-button` | na-verified (gen 3) | Live read of `/climate/` and `/climate/lender-climate/` and the 8 files they lead to: `na` only while neither "See how many banks in our book fit your state" nor "Get your number" is in them. |
 | 14 | `flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map` | live check (gen 2), RED today | `fin-b22-page-reads.mjs` reads `GET /api/climate` (51 states) and the scripts the live `/climate/` page loads. Red because the page ships five state outlines (AZ, CA, NY, TX, FL), so 46 states have no shape on the map. Goes green the day the page holds all 51. Proved by `fin-b22-page-reads.test.mjs`. |
-| 15 | `flow:journey:journey:climate-lead-magnet-intended#3-state-click` | not-attachable | See below. |
-| 16 | `flow:journey:journey:climate-lead-magnet-intended#4-form` | not-attachable | See below. |
-| 17 | `flow:journey:journey:climate-lead-magnet-intended#6-gate` | not-attachable | See below. |
-| 18 | `flow:journey:journey:fh-consulting-intended#2-education-only` | not-attachable | See below. |
-| 19 | `flow:journey:journey:fh-consulting-intended#3-three-prices` | not-attachable | See below. |
+| 15 | `flow:journey:journey:climate-lead-magnet-intended#3-state-click` | na-verified (gen 3) | Same read: `na` only while "not a decision about you", "wider picture" and "Pick a state" are absent. |
+| 16 | `flow:journey:journey:climate-lead-magnet-intended#4-form` | na-verified (gen 3) | Same read: `na` only while `climate-match`, `climate_match`, "Show my number" and `website:climate` are absent (no page calls the lead door). |
+| 17 | `flow:journey:journey:climate-lead-magnet-intended#6-gate` | na-verified (gen 3) | Same read: `na` only while "Business Financial Assessment", "Get the full list", "more names are in the full list" and `/api/public/optimize` are absent. |
+| 18 | `flow:journey:journey:fh-consulting-intended#2-education-only` | na-verified (gen 3) | Live read of `/consulting/` and the file it leads to: `na` only while "education for business operations", "education only" and "not a lender" are absent. |
+| 19 | `flow:journey:journey:fh-consulting-intended#3-three-prices` | na-verified (gen 3) | Same read: `na` only while "$5,000", "$10,000" and the three program names are absent. |
 | 20 | `flow:journey:journey:fh-consulting-intended#5-request-enrollment` | live check (gen 2), green today | `fin-b22-page-reads.mjs` reads the live `/consulting/` page: the form's submit opens an email to the same support address the page lists, no card field, no payment script, no form posting away, and the page says nothing is charged. Proved by `fin-b22-page-reads.test.mjs` (10 page breaks, all red). |
 | 21 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#2-authorize-first` | practice test | `src/http/fin-b22-soft-pull-flow.test.mjs` (the real handler, stand-in database, signed link): the consent is written before any payment link is minted, in that order; a refused form or a failed consent write mints no link; the words come from the server. `src/pulse/catalog/proofs/fin-b22-soft-pull-page.test.mjs` (the real page in Chromium): no Pay button until the form is saved, the only action is submit, the page says authorize first, then pay. 16 product breaks, all red. |
 | 22 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#5-pay-same-page` | practice test | Same two files: the answer carries one link for exactly $32 + $10 per saved company (0, 1, 2, 3, 6, 20 companies tried), an open link at the same total is reused, an open link at another total is expired, and the same page shows "Pay $X assessment" with the server's total and link (not a number the page worked out); a refusal stays on the form; no checkout shows the total to ask for. |
 | 23 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files` | live check + practice test | `SOFT_PULL_BUSINESS_SQL`: every company saved on the soft-pull form has its client, name, street, a two-letter state, an EIN as `12-3456789`, and an age. Plus `src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.mjs`: the form's rows go through the real writer and the real staff read, then the Client Control Panel card and the pipeline drawer in Chromium show name, state, EIN, address, and the extra-owner warning only on the company that has one. |
 
-Count after generation 2: 12 live checks (three of them also have practice tests), 3 practice tests,
-8 not-attachable. No row is na-verified.
+Count after generation 3: 12 live checks (three of them also have practice tests), 3 practice tests,
+7 na-verified (new in gen 3, each re-read from the live site every run), 1 not-attachable
+(`script:one-off senders in scripts/`).
 
-## Not attachable (exact reasons, challenged again in generation 2)
+## Not attachable (exact reasons, challenged again in generation 2; generation 3 moved items 2, 3 and 4 to na-verified)
+
+The text of items 2, 3 and 4 is kept because it is the fact base the generation 3 reads were built on. Only
+item 1 is still open after generation 3.
 
 1. **`script:one-off senders in scripts/`.** Three hand-run scripts with fixed ids: a resend to two named hires
    on 2026-08-25, a prove run for one test client, a test push. They run once, on a person's say-so. Two of them
@@ -105,6 +110,11 @@ Count after generation 2: 12 live checks (three of them also have practice tests
 - `src/http/fin-b22-soft-pull-flow.test.mjs`
 - `src/pulse/catalog/proofs/fin-b22-soft-pull-page.test.mjs`
 - `src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.mjs`
+- `src/pulse/catalog/proofs/fin-b22-not-shipped.mjs` — (gen 3) the seven "not on the live page" claims, the live
+  reader (same reader as batch 06's `fin-b06-not-shipped.mjs`, copied so this branch stands alone), the judge, the
+  row builder and the audit's question. Imports nothing, reads no repo file at run time.
+- `src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs` — (gen 3) 36 tests: the real pages, every word and door
+  of every step, every way of hiding a word, every kind of unread page, the audit's question
 - `ops/workflows/finish-853-2026-10-14/manifest-b22.md` — this file
 
 ## Shared lines touched (smallest possible)
@@ -134,6 +144,23 @@ Count after generation 2: 12 live checks (three of them also have practice tests
   `FIN_B22_LIVE_PROOFS` in gen 2 (web push, climate #2, consulting #5).
 - `src/pulse/catalog/generated.json`: recompiled with `npm run pulse:catalog`. Expect a conflict after merging
   other branches; recompile.
+- (gen 3) `src/pulse/na-conditions.mjs`: ONE new code, `catalog-flow-step-not-shipped` (19 lines with its comment),
+  inserted just before the `no-sender` code. `verify: "lane"`; the Flow lane answers.
+- (gen 3) `src/pulse/na-conditions.test.mjs`: the closed list "fourteen" to "fifteen" and the new code on the
+  alphabetical list; the lane-code list names it ("nine" to "ten"); one line in the sample-args table.
+  Batch 06 adds a code on the same lines, so expect a conflict here; both codes stay.
+- (gen 3) `src/pulse/coverage/gap-catalog-flow.mjs`: one import line; the `Promise.all` gains
+  `runFinB22NotShipped(ctx)`; the lookup line becomes `live.get(rowId) || pages.get(rowId) || shipped.get(rowId)`;
+  `naVerify` gains `[NOT_SHIPPED_CODE]: (args, ctx = {}) => verifyNotShipped(args, ctx)`.
+- (gen 3) `src/pulse/catalog/proofs/fin-b22-flow-contracts.mjs` (my own file): seven entries with `shipped: true`
+  in `FIN_B22_LIVE_PROOFS`; `finB22FlowProof` gives a shipped row an evidence line that says "verified
+  nothing-to-judge". `asserts` stays the map row's own words (`flow-recipes.test.mjs` holds that).
+- (gen 3) `src/pulse/coverage/gap-catalog-flow.test.mjs`: the batch test names seven more rows; the "every
+  active control" guard: seven shipped rows are `skip` with "no GET client" there, NOT_PROVED 8 to 1; three tests
+  added (the real pages, the audit's check on the lane, an unreadable site).
+- (gen 3) `src/pulse/catalog/proofs/flow-result-proofs.test.mjs`: the red cases lose the six journey rows and
+  the ops-admin row ("2 leftovers" to "1"), the saved-result test skips shipped rows, one test added.
+- (gen 3) `src/pulse/catalog/proofs/flow-read-contracts.test.mjs`: flow 8 to 1, total 23 to 16, unproved 22 to 15.
 
 No product file changed. No migration. No `modules.mjs` change (nothing new in `src/pulse/coverage/`).
 
@@ -171,6 +198,18 @@ No product file changed. No migration. No `modules.mjs` change (nothing new in `
 14. (gen 2) The catalog text for `ui:ops-admin outbound mail panel` says no test presses the three buttons.
     `e2e/ops-admin-outbound.spec.mjs` does. Map text is stale.
 15. (gen 2) The consulting button reads "Email this request"; the journey step is "Request enrollment".
+
+16. (gen 3) `scripts/create-csm-staff.mjs --mail <address>` emails a credential link through
+    `sendStaffCredentialEmail` (the Resend provider). It is not in the row's list of one-off senders
+    (`resend-employee-contracts-2026-08-25`, `prove-soft-pull-live`, `send-test-push`).
+17. (gen 3) `scripts/prove-soft-pull-live.mjs` has no flag at all: running it mints a $32 checkout link and a
+    soft-pull approval link for one fixed client and emails them straight through the Resend provider, past the
+    gate, the opt-out and the unsubscribe footer. `scripts/resend-employee-contracts-2026-08-25.mjs` sends a test
+    contract to the prove inbox even without `--send`. Both are single-use scripts that already ran.
+18. (gen 3) The seven journey and panel steps in the third table above name things the live site does not have.
+    That is the intended journeys and one map row being out of date (or the site missing a build), not a
+    customer's wrong result. The reads keep it visible: each flips back to NOT_PROVED the day the site carries
+    the step.
 
 ## Product breaks made on purpose (each went red, each restored)
 
@@ -310,3 +349,84 @@ exactly true. Result: 11 rows in, 3 attached, 8 stay open with sharper reasons. 
    revenue"; step 3 "Prices are on the proposal and at checkout; the page posts none". Agents may not edit that file.
 3. **Ops admin panel.** Add the alert-address field the row and the owner's own alert text name, or correct
    the row and the alert text.
+
+## Generation 3 (2026-10-15)
+
+A fresh Sonnet builder continued on this branch with the same job as generation 2: challenge every remaining
+"not attachable" reason against the real page or handler. Result: 8 rows in, 7 attached, 1 stays open with an exact
+reason. Rows moved: 8 to 1 of this batch, 838 to 831 overall.
+
+### What was challenged and what was found
+
+| Row | Gen 2 said | Gen 3 found | Outcome |
+|---|---|---|---|
+| climate #1, #3, #4, #6 | the page is not deployed, a check can only say "absent" | "Only say absent" is exactly what a verified nothing-to-judge is. The step names a headline, a state card, a form and a gate that the owner took off the live site on 2026-09-18 (`f39cec357`). Batch 06 already handles the same page's screen controls this way. The honest answer is `na`, re-read from the live site every run, flipping to NOT_PROVED the day the site carries the step. | na-verified |
+| consulting #2, #3 | owner rewrite vs stale journey | The same read. The words and prices are not on the page the owner rewrote on 2026-10-05. The journey is a file agents may not edit, and the owner's call is final, so the row is "nothing to judge today", not a red for a decided call. | na-verified |
+| ops-admin outbound mail panel | the alert field is not on the page | The page has the three buttons and no alert field (git history shows it never had one). Every button is judged by its own screen row, and the server action by its own door row. The one thing the row names that nothing judges is the field, and it is not there: a verified "not on the live page". | na-verified |
+| one-off senders in scripts/ | no recurring result | Scanned `scripts/` for anything that can reach a person (a provider import, `sendTemplated`, a contract send, a vendor send address): 8 files match, and 4 can really transmit: the three the row names plus `create-csm-staff.mjs --mail` (not on the row's list). The other four only name a sender in a comment. Two of the four send through a provider directly and write no `messages` row, one sends through the contracts module, one needs `--send`. Nothing in the database or on the site shows whether or when any of them ran. A "nothing to judge" has to be re-checked at run time, and the live bundle carries no `scripts/` file; a build-time scan would be a guard on the folder, not a result check. | not-attachable |
+
+### How the new read works (what it can and cannot see)
+
+- One GET of the page (redirects not followed), then every same-site file it leads to: script tags (a bare
+  `src="data.js"` is resolved against the page), preloads, frames, dynamic and static imports, workers, and, for
+  the climate pages, any script or page path named in a string and a webpack chunk map. Up to 40 files, 8 seconds,
+  GET only. The ops-admin read follows only files the page really loads (its shell script names every other app
+  page in a string; a word on another page says nothing about this panel).
+- Words are searched after tags, entities, escapes, `"a" + "b"`, `.concat`, `.join`, `atob` and `fromCharCode`
+  are undone. Case and spacing do not matter.
+- An anchor must be on EVERY page the claim names, or the read is a skip (a login page that answers 200 is not
+  "the page has no such field"). Anchors: `/api/climate` (climate), "consult" (consulting), the Outbound Mail
+  card id (ops-admin).
+- It cannot see words built at run time from pieces that are not literals in any file. The lead form's SAVED
+  result is judged separately by batch 06's `climate-lead-saved` live check, so a form that works shows up there.
+- Offline (the count script) the stub page is empty, so the rows print `skip` there. Served the real `public/`
+  files they print `na`.
+
+### Decisions only Chris can make (unchanged in content, now they cannot be lost)
+
+1. **Climate lead page.** Build it from `marketing/landing-pages/climate-front-door-2026-09-18/` (rows #1, #3, #4,
+   #6 flip to NOT_PROVED by themselves the day the site carries it, then get a real check), or correct
+   `docs/journeys/climate-lead-magnet-intended.md` to describe the dashboard (the four rows then disappear).
+2. **Consulting journey.** Update steps 2 and 3 of `docs/journeys/fh-consulting-intended.md` to the page as
+   rewritten on 2026-10-05, or put education wording and prices back (the two rows flip by themselves).
+3. **Ops admin panel.** Add the alert-address field the row and the owner's own alert text
+   (`src/messaging/outbox.mjs`) name, or correct the row and the alert text.
+4. **One-off scripts.** Retire the two single-use scripts that already ran, or put a `--send` fence and a
+   `messages` row in `prove-soft-pull-live.mjs`. Until then the row stays open.
+
+### Product breaks made on purpose (gen 3)
+
+One edit at a time to the module or the lane, the named test files run, the edit put back. 23 breaks, 23 red
+(3 stayed green on the first run: a dynamic import and a frame that were also named in a string, and a consulting
+price word that another word on the same step also matched. Each got a sharper test and went red).
+
+| What was broken | Red |
+|---|---|
+| the judge ignoring found words | 21 tests |
+| anchors not required; anchors taken from the union of pages; a page answering 404 read as a page; a page that is not HTML accepted; the file cap off | 1 to 2 tests each |
+| unread counted as absent | 11 tests |
+| a tag's bare relative `src` not resolved against the page; the ops-admin read following guessed pages | 1 and 4 tests |
+| entities, concatenation not undone; a dynamic import not followed; a frame not followed | 1 test each |
+| the audit's question always true; the audit ignoring the family | 3 and 1 tests |
+| the lane ignoring the result; the lane handing the reads no client; the audit hook missing from the lane; the N/A code missing | 4, 2, 1, 2 tests |
+| a word dropped from the gate, the alert field, the consulting prices | 2 tests each |
+| the flow proof dropping a shipped row | 3 tests |
+
+### Numbers and commands (gen 3)
+
+- `node scripts/pulse/count-not-proved.mjs`: before **838** total (door 135, display 680, flow 8, reads 15), 8 of
+  this batch; after **831** (door 135, display 680, flow 1, reads 15), 1 of this batch
+  (`flow:message:script:one-off senders in scripts/`).
+- `npm run pulse:catalog`: 3919 wired, 23 red (the same 23 as base, other lanes). `compile-catalog.mjs --check`:
+  fresh. Rows with an explicit red verdict: 838 to 828 in `generated.json` (7 here, plus 3 counted by the catalog
+  that the count script does not print).
+- The live read, from this Mac with plain public GETs against `https://fundhub.ai` (15 GETs, 2 seconds): all seven
+  rows `na`, and the audit's question true with the global GET client. The repo's `public/` files are byte for
+  byte what the site serves for the pages read (`/app/ops-admin.html` 66,745 bytes both).
+- `src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs`: 36 of 36.
+- `src/pulse/*.test.mjs`, `src/pulse/catalog/*.test.mjs`, `src/pulse/coverage/*.test.mjs` with the b22 test files:
+  all pass (2,627 tests in the last coverage run, 200 skipped: the `.pg.test.mjs` files, no database).
+  `flow-result-proofs.test.mjs` 13 of 13 including "every test named by a flow proof passes", which now runs the
+  new test file too.
+- `npm run lint`: 3,579 files parse clean.
+- Not run: `npm run pulse:prove` (reads the live database; forbidden from here) and any `.pg.test.mjs`.
