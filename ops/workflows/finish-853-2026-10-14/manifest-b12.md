@@ -151,6 +151,21 @@ All 42 went red. `git status` was clean after every run.
    (`is_default`), not the signed-in company. The `hiring-bench` check reads the signed-in company, so on a second company the
    page and the check would disagree. Same finding as S5 finding 3.
 
+## The group run (measured on this Mac while other builders were running; load average 23 to 45)
+
+Command: `CI=1 node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs`
+
+- 577 results at the top level. 3 are `not ok`, 574 pass. Every batch 12 test passes (all 8 files, 56 tests).
+- `npm run lint`: 3,574 files parse clean.
+- The 3 that fail are not batch 12 files, and none names a batch 12 test:
+  1. `display-proof-cases.test.mjs` "the focused proof test runs every executable test named by every case". Its child
+     run ends with exit 1 and no failing test named. The same child run on an untouched `fin/base` checkout does the same
+     (609 tests ok, exit 1, no `not ok`), so it was not caused by this batch. Already listed as a flake in the S4 manifest.
+  2. `flow-result-proofs.test.mjs` "every test named by a flow proof passes with fake data or local reads": names
+     `src/sales/closer-deck.test.mjs`, the load timeout listed in the S1 and S4 manifests.
+  3. `read-reviewed-e2e.test.mjs` "the 64 proved read rows run their real focused result tests": same child-run shape as
+     item 1. Not re-run on `fin/base`.
+
 ## Commands run
 
 | Command | Result |
