@@ -55,8 +55,9 @@ No row is na-verified.
 
 1. **`provider:web-push-and-client-push`.** Nothing in `src/`, `api/` or `netlify/` calls `sendToClient`. The only
    caller is the hand-run script `scripts/push/send-test-push.mjs`. So no client push is ever sent and no result
-   exists to read (there is no push log table). The sender (`src/push/send.mjs`) and the provider have no test of
-   their own. A test of a function nothing calls would not judge a customer's result. The day a caller exists the
+   exists to read (there is no push log table). The sender (`src/push/send.mjs`) is tested only in
+   `src/http/push-endpoints.pg.test.mjs`, which needs a database and skips here. A test of a function nothing
+   calls would not judge a customer's result. The day a caller exists the
    row can be judged. `src/pulse/tripwires.mjs` already files this surface as dead.
 2. **`script:one-off senders in scripts/`.** Three hand-run scripts with fixed ids: a resend to two named hires
    on 2026-08-25, a prove run for one test client, a test push. They run once, on a person's say-so. Two of them
@@ -191,3 +192,26 @@ a template that is named nowhere, another company's copy of a template), for whi
 - The 11 not-attachable rows above. Each needs a product change or a decision from Chris first.
 - A look at whether the nine live checks should also get a heartbeat-style beat (`src/pulse/beats/`). They are
   morning-lane checks, not hourly; I did not add beats.
+
+## Generation 1 resume check (2026-10-14, evening)
+
+The agent resumed on this branch after an interruption and re-measured instead of trusting the notes above.
+
+- `node scripts/pulse/count-not-proved.mjs`: 841 total (door 135, display 680, flow 11, reads 15). The 11 left in
+  this batch are exactly the 11 not-attachable rows. The 12 attached rows no longer print NOT_PROVED.
+- The not-attachable reasons were re-checked against the LIVE site, not only the repo (public GET, no login):
+  - `https://fundhub.ai/climate/` is titled "Lending Climate Dashboard". Its HTML and its script bundle hold no
+    "fit your state" headline, no `climate-match` call and no "Business Financial Assessment". So climate rows
+    #1, #2, #3, #4, #6 name a page that is not on the live site.
+  - `https://fundhub.ai/consulting/` says "Marketing consulting for agencies". It holds no "$5,000", no
+    "$10,000", no "education" and no `support@fundhub.ai`. So consulting rows #2, #3, #5 name words that are not
+    on the live page.
+  - `sendToClient` has no caller in `src/`, `api/`, `netlify/` or `public/`. Callers are one hand-run script and
+    one database-only test.
+  - `public/app/ops-admin.html` has no alert-address field (the only `alert_email` writer is
+    `api/messages-outbound.mjs`, action `settings`).
+- Correction to "Not attachable" item 1: the sender does have a test, `src/http/push-endpoints.pg.test.mjs`, but
+  it needs a database and nothing calls the sender, so the reason stands.
+- Re-run: the 209 tests of the flow lane, journeys proxy, Twilio status door, soft-pull handler and live-check
+  files pass; the 18 tests of the two soft-pull page files and the flow-result proofs pass; the catalog is fresh
+  (`compile-catalog.mjs --check`); the SQL template key list is fresh.
