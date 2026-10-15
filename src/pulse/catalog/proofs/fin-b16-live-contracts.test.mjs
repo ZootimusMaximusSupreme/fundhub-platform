@@ -402,6 +402,9 @@ const sendClean = () => [
   message({ channel: "sms", to_address: "+15550109999" }),                    // a typed number, well shaped
   message({ to_address: "dana@example.com" }),                                // the address on file: not a typed one
   message({ channel: "sms", to_address: "+15550100001" }),                    // the number on file
+  ["clients", { id: "c2", org_id: ORG, first_name: "Omar", email: "omar-at-home", phone: "555-0100", updated_at: at(-20), is_demo: false }],
+  message({ client_id: "c2", channel: "sms", to_address: "555-0100" }),        // the record itself holds an old-style number
+  message({ client_id: "c2", channel: "email", to_address: "omar-at-home" }),
   message({ to_address: "not-an-email", created_at: at(-40) }),               // made before the record last changed
   message({ to_address: null }),                                              // no address at all
   message({ to_address: "bad", is_demo: true }),
