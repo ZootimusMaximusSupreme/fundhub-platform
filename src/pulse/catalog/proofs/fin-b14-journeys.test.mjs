@@ -64,6 +64,11 @@ const PATCH = {
   ops: [{ op: "insert", after: "n1", path: [], node: { type: "sms", title: "Follow up if they go quiet", cfg: { body: "Checking in {{first_name}}. Reply STOP to opt out.", delay: "after 2 hours" } } }],
 };
 
+const PATCH_UPDATE = {
+  summary: "Made the wait two days.",
+  ops: [{ op: "update", id: "n5", title: "Wait two days", cfg: { amount: "2", unit: "days" } }],
+};
+
 const RUN_ANSWER = {
   ok: true, runId: "run-test", journeySource: "database", journeysSkipped: [], startEventFindings: [], screensUnreadable: false,
   headline: "6 paths walked. One step is not wired.",
@@ -108,7 +113,11 @@ async function openJourneys({ trees = TREES, ask = null, run = null, put = null,
   await page.waitForSelector("#jlist .jrow");
   await waitFor(() => seen.gets >= 1, "the saved journeys read");
   // The saved Client journey replaces the example the page painted first.
-  await waitFor(async () => (await page.locator("#canvas .chead p").textContent()) === trees.client.desc, "the saved Client journey");
+  if (trees.client && trees.client.nodes.length) {
+    await waitFor(async () => (await page.locator("#canvas .chead p").textContent()) === trees.client.desc, "the saved Client journey");
+  } else {
+    await page.waitForTimeout(150);
+  }
   const talk = dialogs(page);
   page.on("request", (request) => { if (/\/api\/journeys/.test(request.url())) seen.requests.push(`${request.method()} ${new URL(request.url()).pathname}`); });
   return { page, errors, seen, talk };
@@ -485,6 +494,62 @@ test("the ask box: Make the change is off until there are words, the examples as
   assert.match(await noKey.page.locator("#canvas .askerr").innerText(), /ANTHROPIC_API_KEY is not set on this deployment, so this is a worked example/);
   assert.match(await noKey.page.locator("#canvas .bar .what").innerText(), /Added an email step\./);
   await noKey.page.close();
+});
+
+test("the step panel's Make the change rewrites that one step in place, tagged Changed until it is kept", { timeout: 60_000 }, async () => {
+  const { page, seen, errors } = await openJourneys({
+    ask: (body) => (/looking at step "n5"/.test(body.user) ? { ok: true, text: JSON.stringify(PATCH_UPDATE) } : { ok: true, text: JSON.stringify(PATCH) }),
+  });
+  assert.equal((await titles(page)).includes("Wait a day"), true);
+  await clickStep(page, "n5");
+  await page.locator("#sprompt").fill("Make it two days");
+  await page.locator("#sgo").click();
+  await page.locator("#accept").waitFor();
+  assert.equal(seen.asks.length, 1);
+  // The same step, rewritten, with a Changed tag; no step added.
+  const row = page.locator('#canvas .nrow[data-id="n5"]');
+  assert.equal(await row.locator("b").textContent(), "Wait two days");
+  assert.equal(await row.locator(".tagpill.c").textContent(), "Changed");
+  assert.match(await row.locator(".nsub").textContent(), /Nothing happens for 2 days/);
+  assert.equal(await page.locator("#canvas .nrow").count(), countSteps(TREES.client.nodes));
+  // Throw it away: the old words are back.
+  await page.locator("#reject").click();
+  assert.equal(await page.locator('#canvas .nrow[data-id="n5"] b').textContent(), "Wait a day");
+  assert.match(await page.locator('#canvas .nrow[data-id="n5"] .nsub').textContent(), /Nothing happens for 1 days/);
+  // Ask again and keep it: the rewrite stays and the tag goes.
+  await clickStep(page, "n5");
+  await page.locator("#sprompt").fill("Make it two days");
+  await page.locator("#sgo").click();
+  await page.locator("#accept").waitFor();
+  await page.locator("#accept").click();
+  assert.equal(await page.locator('#canvas .nrow[data-id="n5"] b').textContent(), "Wait two days");
+  assert.equal(await page.locator('#canvas .nrow[data-id="n5"] .tagpill').count(), 0);
+  assert.equal(await page.locator("#dirty").textContent(), "1 unsaved");
+  assert.equal(seen.puts.length, 0);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test("page load: a saved journey replaces the page's example; a journey with no steps or no row leaves the example", { timeout: 60_000 }, async () => {
+  const { page, seen, errors } = await openJourneys({ trees: { setter: TREES.setter, closer: { ...TREES.closer, nodes: [] } } });
+  const open = async (index) => {
+    await page.locator("#jlist .jrow").nth(index).click();
+    await page.waitForTimeout(50);
+    return { name: await page.locator("#canvas .chead h1").textContent(), desc: await page.locator("#canvas .chead p").textContent(), steps: await page.locator("#canvas .nrow").count() };
+  };
+  const setter = await open(1);
+  assert.deepEqual(setter, { name: "Setter", desc: TREES.setter.desc, steps: 2 }, "the saved Setter journey is what shows");
+  const client = await open(0);
+  assert.equal(client.name, "Client");
+  assert.notEqual(client.desc, TREES.client.desc);
+  assert.ok(client.steps > 5, "no saved Client row: the page's own example, with its steps");
+  const closer = await open(2);
+  assert.equal(closer.name, "Closer");
+  assert.notEqual(closer.desc, TREES.closer.desc, "a saved row with no steps is not drawn: the example shows instead");
+  assert.ok(closer.steps > 1);
+  assert.equal(seen.gets, 1, "one read of the saved journeys");
+  assert.deepEqual(errors, []);
+  await page.close();
 });
 
 test("an AI answer waits on the bar: Throw it away removes it, Keep it makes it part of the journey", { timeout: 60_000 }, async () => {
