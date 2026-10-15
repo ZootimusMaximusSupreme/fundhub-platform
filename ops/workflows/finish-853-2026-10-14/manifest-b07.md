@@ -139,7 +139,7 @@ Five of my rows (work queue table, work row, Mark confirmed, repair row, busines
 - **First-run reds are expected, and real.** Findings 1, 2 and 3 will show as reds the first time the lane reads live data, if such rows exist in the last 60 days. That is the point of the check; nobody should read them as a regression of this batch.
 - **Not run against live data.** No database access was used (brief). The 40 SQL texts were run only on stand-in rows in SQLite. They were written with Postgres types in mind (casts under `CASE`, `::text` on uuids, `bytea` only through `length()`), and every table and column was checked against the migrations. A Postgres-only mistake would show as a `skip` ("was not read") on the morning report, not as a false PASS.
 - **Lane time.** 40 more statements run one after another in the display lane. Each is a count over a windowed table; none was timed against production.
-- `display-proof-cases.test.mjs` "the focused proof test runs every executable test named by every case" now also runs 8 more files (three scenario files, the shape guard, and three practice files, one of them in Chromium through the S4 harness and its queue).
+- `display-proof-cases.test.mjs` "the focused proof test runs every executable test named by every case" now also runs 7 more files (three scenario files, the shape guard, and three practice files, one of them in Chromium through the S4 harness and its queue).
 
 ## Commands run
 
@@ -155,5 +155,7 @@ Measured on this Mac while other builders ran browser suites at the same time (l
 | `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs` | 81 tests, 81 pass |
 | `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 2 of 2 pass (red count 632) |
 | `npm run lint` | 3572 files and inline scripts parse clean |
-| `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the full file, which runs every executable test named by every case) | see the last line of this file |
+| `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the full file, which runs every executable test named by every case, including my seven files) | 3 of 3 pass, about 11 minutes, started before the SQL files were split (the SQL text did not change, `compile-catalog.mjs --check` still says current) |
+| the seven `fin-b07-*.test.mjs` files together, 10 runs in a row | 294 of 294 pass, 10 of 10 runs (includes the Chromium file) |
+| `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/na-conditions.test.mjs src/lib/no-unfenced-transmit.test.mjs` (after the last commit) | 122 tests, 122 pass |
 
