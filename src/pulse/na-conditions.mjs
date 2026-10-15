@@ -506,15 +506,16 @@ export const NA_CONDITIONS = Object.freeze({
   }),
 
   /* A sidebar head that the shared chrome shows to no role (batch 19, 2026-10-14). True while the lane that made the
-     row (gap-catalog-display, fin-b19-hidden-head.mjs) reads the live shell.js again and finds every row under
-     the head on NAV_HIDDEN, so the whole section is hidden. The day one row is shown the claim is false and the
-     row goes back to not proved. */
+     row (gap-catalog-display, fin-b19-hidden-head.mjs) reads the live shell.js again, finds every row under
+     the head on NAV_HIDDEN, and finds the gate code that applies that list still written the way the check
+     reads it, so the whole section is hidden. The day one row is shown, or the gate changes, the claim is
+     false and the row goes back to not proved. */
   "catalog-display-hidden-section-head": Object.freeze({
     say() {
       return "This sidebar head is shown to no role. Judged the day it is shown.";
     },
     claim() {
-      return "Every row under the sidebar head is still hidden.";
+      return "Every row under the sidebar head is still hidden, and the chrome still applies that list.";
     },
     problem(args) {
       return isText(args?.sourceFile) && isText(args?.surface) && isText(args?.control)

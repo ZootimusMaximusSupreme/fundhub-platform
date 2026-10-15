@@ -4,11 +4,12 @@
 // says emptyAs "quiet": green with "no saved results yet" until the first wrong result, then red.
 //
 // The SQL is written in the part of the language that Postgres and SQLite read the same way (LIKE, ||,
-// CASE, FILTER, joins, IS NOT NULL, ::casts that the test strips), so fin-b19-display-contracts.test.mjs
-// can run the very same text on stand-in tables and see it go red.
+// CASE, FILTER, joins, IS NOT NULL, UNION ALL, ::casts that the test strips, and regexp_replace as a
+// function, which the test supplies), so fin-b19-display-contracts.test.mjs can run the very same text on
+// stand-in tables and see it go red.
 //
-// Five more contracts at the end are not queries: three carry the claim that a sidebar head is shown to no
-// role (HEAD_CONTRACTS), and two name a pipeline control the page has to fix first (PAGE_GAP_CONTRACTS).
+// Six more contracts at the end are not queries: three carry the claim that a sidebar head is shown to no
+// role (HEAD_CONTRACTS), and three name a pipeline control the page has to fix first (PAGE_GAP_CONTRACTS).
 
 import { FIN_B19_HIDDEN_HEADS, FIN_B19_NOT_ATTACHABLE } from "./fin-b19-not-attachable.mjs";
 
@@ -20,20 +21,48 @@ const query = (control, requirement, key, body) => Object.freeze({
   sql: `/* display-result:${key} */\n${body.trim()}`,
 });
 
-// A rail tab opens one pipeline. Its board shows a card only when the card's column belongs to that
-// pipeline and the card's person (client or partner) is in the same company. A card that fails either
-// test is on the rail in the database and missing from the screen: the rail tab shows the wrong board.
-const railSql = (key) => `
+// A rail tab opens one pipeline (api/dashboard/pipeline.mjs). Two things make the tab wrong, and each is
+// a state the live database can really hold (the card's own columns are NOT NULL and the stage and person
+// are foreign keys, so those arms are not written here):
+//
+//   1. The company has no such pipeline, or the pipeline has no columns. The tab then answers
+//      "unknown_pipeline" and paints nothing. The company's own row is one saved result, so a missing
+//      rail is red even when no card exists yet.
+//   2. A card on the rail is left off the screen: its column belongs to another pipeline, its pipeline
+//      belongs to another company, or the client or partner it names belongs to another company. The
+//      board drops such a card without a word, so the person is on the rail in the database and missing
+//      from the tab.
+//
+// A demo card, a demo client and an archived client are left out of the board on purpose, so they are not
+// counted here. `applications` adds the Hiring tab's extra claim (see HIRING_REQUIREMENT).
+const railSql = (key, { applications = false } = {}) => `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE st.id IS NULL OR st.pipeline_id <> cd.pipeline_id
-         OR (c.id IS NULL AND pr.id IS NULL))::int AS bad_count
-  FROM cards cd
-  JOIN pipelines p ON p.id = cd.pipeline_id AND p.org_id = cd.org_id
-  LEFT JOIN pipeline_stages st ON st.id = cd.stage_id
-  LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = p.org_id
-  LEFT JOIN partners pr ON pr.id = cd.partner_id AND pr.org_id = p.org_id
- WHERE p.org_id = $1::uuid AND p.key = '${key}' AND COALESCE(cd.is_demo, false) = false
-   AND (c.id IS NULL OR (COALESCE(c.is_demo, false) = false AND c.custom_fields->>'crm_archived_at' IS NULL))`;
+       count(*) FILTER (WHERE x.bad = 1)::int AS bad_count
+  FROM (
+    SELECT CASE WHEN EXISTS (
+             SELECT 1 FROM pipelines p0
+               JOIN pipeline_stages s0 ON s0.pipeline_id = p0.id
+              WHERE p0.org_id = o.id AND p0.key = '${key}') THEN 0 ELSE 1 END AS bad
+      FROM orgs o
+     WHERE o.id = $1::uuid
+    UNION ALL
+    SELECT CASE WHEN st.pipeline_id <> cd.pipeline_id OR p.org_id <> cd.org_id
+             OR (cd.client_id IS NOT NULL AND c.id IS NULL)
+             OR (cd.partner_id IS NOT NULL AND pr.id IS NULL) THEN 1 ELSE 0 END AS bad
+      FROM cards cd
+      JOIN pipelines p ON p.id = cd.pipeline_id
+      LEFT JOIN pipeline_stages st ON st.id = cd.stage_id
+      LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = cd.org_id
+      LEFT JOIN partners pr ON pr.id = cd.partner_id AND pr.org_id = cd.org_id
+     WHERE cd.org_id = $1::uuid AND p.key = '${key}' AND COALESCE(cd.is_demo, false) = false
+       AND (c.id IS NULL OR (COALESCE(c.is_demo, false) = false AND c.custom_fields->>'crm_archived_at' IS NULL))${applications ? `
+    UNION ALL
+    SELECT 1 AS bad
+      FROM candidate_applications a
+      JOIN pipeline_stages s ON s.id = a.stage_id
+      JOIN pipelines p2 ON p2.id = s.pipeline_id AND p2.key = '${key}'
+     WHERE a.org_id = $1::uuid` : ""}
+  ) x`;
 
 const RAILS = [
   ["Rail tab R-01 Sales", "sales", "Sales"],
@@ -45,17 +74,44 @@ const RAILS = [
   ["Rail tab R-09 Hiring", "hiring", "Hiring"],
 ];
 
+const RAIL_REQUIREMENT = (label) => `The ${label} tab must have its pipeline and columns in this company, and every card saved on the ${label} rail must sit in a column of that same rail, in this company, and name a client or partner of this company, or the tab's board silently leaves it out.`;
+
+// The Hiring tab reads cards, like every rail. A job applicant is not a card: candidate_applications carries
+// its own stage into the same pipeline, and a card has to name a client or a partner (cards_client_or_partner_chk,
+// migration 265), so no applicant can ever be a card and the tab can never show one. hiring.html is the screen
+// that does. Every application sitting on a Hiring column is therefore one the tab does not show.
+const HIRING_REQUIREMENT = `${RAIL_REQUIREMENT("Hiring")} Every job application saved on a Hiring column must also be on this tab's board, and the tab reads cards, which no applicant can be, so each application is counted as one the tab does not show.`;
+
 const RAIL_CONTRACTS = RAILS.map(([control, key, label]) => query(
   control,
-  `Every card saved on the ${label} rail must sit in a column of that same rail and name a person in the same company, or the tab's board silently leaves it out.`,
+  key === "hiring" ? HIRING_REQUIREMENT : RAIL_REQUIREMENT(label),
   `fin-b19-rail-${key.replace(/_/g, "-")}`,
-  railSql(key),
+  railSql(key, { applications: key === "hiring" }),
 ));
 
+// The note a flag is filed with starts with the belief it is about (the label of the belief, or its key), and
+// carries the count that is saved on the row. The row also names the source it was cut by: the lead source
+// and the setter, as the floor builds them (COALESCE of the campaign, the source, the channel, then
+// "unknown"; the setter user id, then "unknown"). A flag always has a source, because the button is only
+// drawn for a belief that has calls, and a call is always cut by some source. So a flag must:
+//   name a staff member of the same company,
+//   say the same belief in its note as the row saved,
+//   say the same count in its note as the row saved,
+//   name a source and setter that some call of this company really has. A flag with no source, or no setter,
+//   matches no call (NULL equals nothing), so it is red by the same test, and so is a made-up pair.
 const FLAG_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE s.id IS NULL
-         OR f.note NOT LIKE ('% this period ' || f.outcome_count || ' vs last %'))::int AS bad_count
+         OR f.note NOT LIKE ('% this period ' || f.outcome_count || ' vs last %')
+         OR lower(f.note) NOT LIKE ('flagged from sales floor \u2014 ' || f.belief || '%')
+         OR NOT EXISTS (
+              SELECT 1
+                FROM call_outcomes o
+                JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
+                LEFT JOIN client_custom_fields cf ON cf.client_id = c.id AND cf.org_id = c.org_id
+               WHERE o.org_id = f.org_id AND o.logged_at < f.period_end
+                 AND COALESCE(cf.utm_campaign, cf.utm_source, c.channel_source, 'unknown') = f.lead_source
+                 AND COALESCE(cf.cf_setter_user_id, 'unknown') = f.setter_label))::int AS bad_count
   FROM marketing_flags f
   LEFT JOIN staff s ON s.id = f.flagged_by AND s.org_id = f.org_id
  WHERE f.org_id = $1::uuid AND COALESCE(f.is_demo, false) = false
@@ -74,33 +130,44 @@ SELECT count(*)::int AS sample_count,
   FROM staff s
  WHERE s.org_id = $1::uuid AND s.avatar_key IS NOT NULL`;
 
-// The shell paints a saved logo only when it is an https address or an inline image with no spaces,
-// quotes, brackets or angle marks in it. The colors and fonts are checked by the table itself; the logo
-// address is free text, so a saved logo the chrome refuses is the one brand result that can be wrong.
+// The chrome (safeWordmark in public/app/shell.js) paints a saved logo only when, after trimming, it is an
+// https address with no whitespace, quote, bracket or angle mark in it (any letter case), or an inline
+// data:image base64 value. The same two patterns are written here, with the same trim, so a logo the chrome
+// refuses is red, and a logo it paints (a stray space around an address) is not. The logos the chrome can
+// be handed are the company's own (staff, affiliate and client sessions) and a partner's approved one (a
+// partner session; api/org-brand.mjs holds an unapproved logo back). The colours, faces and ramp are held by
+// the tables' own CHECKs and cannot be wrong, so the logo is the one brand result that can.
 const BRAND_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE b.wordmark_url IS NOT NULL
-         AND NOT ((lower(b.wordmark_url) LIKE 'https://%' OR lower(b.wordmark_url) LIKE 'data:image/%;base64,%')
-           AND b.wordmark_url NOT LIKE '% %' AND b.wordmark_url NOT LIKE '%"%' AND b.wordmark_url NOT LIKE '%''%'
-           AND b.wordmark_url NOT LIKE '%<%' AND b.wordmark_url NOT LIKE '%>%'
-           AND b.wordmark_url NOT LIKE '%(%' AND b.wordmark_url NOT LIKE '%)%'))::int AS bad_count
-  FROM org_brand b
- WHERE b.org_id = $1::uuid`;
+       count(*) FILTER (WHERE regexp_replace(x.logo, '^https://[^\\s"''<>()]+$', '', 'i') <> ''
+         AND regexp_replace(x.logo, '^data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+$', '', '') <> '')::int AS bad_count
+  FROM (
+    SELECT regexp_replace(b.wordmark_url, '^\\s+|\\s+$', '', 'g') AS logo
+      FROM org_brand b
+     WHERE b.org_id = $1::uuid AND b.wordmark_url IS NOT NULL
+    UNION ALL
+    SELECT regexp_replace(pb.wordmark_url, '^\\s+|\\s+$', '', 'g') AS logo
+      FROM partner_brand pb
+     WHERE pb.org_id = $1::uuid AND pb.approval_status = 'approved' AND pb.wordmark_url IS NOT NULL
+  ) x
+ WHERE x.logo <> ''`;
 
 // A sidebar head that every role has hidden: the shared chrome hides each row under it by name (NAV_HIDDEN),
 // then hides the whole section. No saved result can show a head nobody sees, so the contract is an honest
 // gap that carries one claim: the live shell.js is read again on every run (src/pulse/coverage/
-// fin-b19-hidden-head.mjs). While every row under the head is hidden the row says "nothing to judge", and the
-// day one row is shown it goes back to not proved.
+// fin-b19-hidden-head.mjs), both the list and the code that applies it. While every row under the head is
+// hidden and the gate still applies the list the row says "nothing to judge", and the day one row is shown,
+// or the gate is written another way, it goes back to not proved.
 const HEAD_CONTRACTS = FIN_B19_HIDDEN_HEADS.map((head) => Object.freeze({
   control: head.control,
   mode: "always-red",
-  requirement: `The ${head.label} head of the sidebar folds and unfolds the rows under it. Every row under it (${head.links.join(", ")}) is on the shared chrome's hidden list, so no role is shown the head and there is nothing to fold. If a row is shown, the head must be proved.`,
+  requirement: `The ${head.label} head of the sidebar folds and unfolds the rows under it. Every row under it (${head.links.join(", ")}) is on the shared chrome's hidden list and the chrome's gate still applies that list, so no role is shown the head and there is nothing to fold. If a row is shown, or the gate changes, the head must be proved.`,
   sql: null,
   hiddenHead: Object.freeze({ path: "/app/shell.js", section: head.section, label: head.label }),
 }));
 
-// The two pipeline rows whose control does not do what its words say (Manual, and the x on the Sort chip).
+// The three pipeline rows whose control does not do what its words say (Manual, the x on the Sort chip, and the
+// search box that promises phone and email).
 // There is no saved result and the page has to change first, so the contract is an honest gap that names
 // exactly what is wrong, and the row stays NOT_PROVED with that sentence on the board.
 const PAGE_GAP_CONTRACTS = FIN_B19_NOT_ATTACHABLE.map((row) => Object.freeze({
@@ -116,7 +183,7 @@ export const FIN_B19_DISPLAY_CONTRACTS = Object.freeze([
   ...PAGE_GAP_CONTRACTS,
   query(
     "'Flag <belief>' button: stores a belief x source row for marketing",
-    "Every belief flag filed from the sales floor must name a staff member of the same company, and the count saved on the row must be the same count written in its note.",
+    "Every belief flag filed from the sales floor must name a staff member of the same company, say in its note the same belief and the same count the row saved, and carry a lead source and setter that some call of this company really has.",
     "fin-b19-sales-floor-flag",
     FLAG_SQL,
   ),
@@ -134,7 +201,7 @@ export const FIN_B19_DISPLAY_CONTRACTS = Object.freeze([
   ),
   query(
     "Brand paint: company colors and logo applied to the chrome",
-    "A saved company logo must be an https address or an inline image with no spaces, quotes, brackets or angle marks, or the chrome refuses to paint it.",
+    "A saved company logo, and a partner's approved logo, must be an https address with no whitespace, quote, bracket or angle mark in it, or an inline data:image base64 value, or the chrome refuses to paint it.",
     "fin-b19-brand-wordmark",
     BRAND_SQL,
   ),

@@ -2,7 +2,7 @@
 // Each listed control is exercised by the test file named beside it in fin-b19-rows.json: a real page in
 // Chromium, fake /api answers, one action, and a judgement of the exact request and the words painted.
 // That is a practice test, not a live check: it reads no saved data. A control under "notAttached" is
-// also exercised, but is left out here (see fin-b19-not-attachable.mjs): the Sort and filter-chip rows stay
+// also exercised, but is left out here (see fin-b19-not-attachable.mjs): the Sort, filter-chip and Search rows stay
 // reported as not proved, and the three sidebar heads that no role is shown are judged by the live shared
 // chrome (src/pulse/coverage/fin-b19-hidden-head.mjs), which says "nothing to judge" only while that holds.
 

@@ -24,7 +24,10 @@ const card = (id, name, extra = {}) => ({
 //   us     Alice (a text nobody answered), Eve (an approval with no dollar amount), Finn (an unanswered email)
 //   bank   Bob and Gus (sitting in Round Submitted)
 //   client Cara (sitting in Action Required)
-//   none   Dan
+//   none   Dan, Zed
+// Owners, in the order the board meets them: Casey Reed (Zed), Jordan Blake (Alice), Casey Stone (Cara). Two of
+// them share a first name and the order met is not the alphabet, so an owner list that is unsorted, or a match
+// on the first letters only, shows.
 const SALES = {
   ok: true, pipeline: "sales", total: 4,
   stages: [
@@ -40,7 +43,7 @@ const SALES = {
       card("eve", "Eve East", { entered_at: ago(36 * HOUR), amount: null, approval_amount_missing: true }),
     ] },
     { key: "action_required", name: "Action Required", sort_order: 2, count: 1, amount: 2000, cards: [
-      card("cara", "Cara Cole", { entered_at: ago(10 * DAY), amount: 2000 }),
+      card("cara", "Cara Cole", { owner: "Casey Stone", entered_at: ago(10 * DAY), amount: 2000 }),
     ] },
   ],
 };
@@ -92,7 +95,17 @@ async function openBoard({ role = "owner", boards = { sales: SALES }, clients = 
   return { page, reads, errors };
 }
 
-const shown = (page) => page.$$eval(".col-body > .card:not(.filtered)", (els) => els.map((e) => e.querySelector(".c-name").textContent.trim()).sort());
+// What the person sees: a row counts only when the browser really draws it (it has a box and is not
+// display:none). The page's own "filtered" class is NOT read, so a rule that stops hiding a filtered card
+// cannot pass for a working filter.
+const visibleNames = (page, selector, nameSelector) => page.$$eval(selector, (els, nameSel) => els
+  .filter((el) => {
+    const style = getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden" && el.getClientRects().length > 0;
+  })
+  .map((el) => el.querySelector(nameSel).textContent.trim())
+  .sort(), nameSelector);
+const shown = (page) => visibleNames(page, ".col-body > .card", ".c-name");
 const columnOrder = (page, stage) => page.$$eval(`.col[data-stage-key="${stage}"] .col-body > .card`, (els) => els.map((e) => e.querySelector(".c-name").textContent.trim()));
 // Opens the filter panel if it is shut. The Filter button toggles, so a second open must not close it.
 const openFilters = async (page) => {
@@ -100,26 +113,34 @@ const openFilters = async (page) => {
 };
 const pick = async (page, id, value) => { await page.locator(id).selectOption(value); };
 
-test("the Waiting on filter keeps only the cards whose next move is that party", { timeout: 120_000 }, async () => {
+test("the Waiting on filter keeps only the cards whose next move is that party, and each choice says what it keeps", { timeout: 120_000 }, async () => {
   await proof.check(/^Filter: Waiting on/, async () => {
     const { page, errors } = await openBoard();
     assert.deepEqual(await shown(page), ALL_NAMES, "Anyone shows every card");
     await openFilters(page);
-    const options = await page.$$eval("#fWait option", (os) => os.map((o) => [o.value, o.textContent.trim()]));
-    assert.deepEqual(options.map(([v]) => v), ["", "us", "us_amount", "bank", "client", "none"]);
-    const expected = {
-      us: ["Alice Adams", "Eve East", "Finn Fox"],
-      us_amount: ["Eve East"],
-      bank: ["Bob Baker", "Gus Green"],
-      client: ["Cara Cole"],
-      none: ["Dan Dyer", "Zed Zane"],
-    };
-    for (const [value, names] of Object.entries(expected)) {
-      await pick(page, "#fWait", value);
-      assert.deepEqual(await shown(page), names, `Waiting on = ${value}`);
+    // The choice is picked by the words a person reads, then judged by the cards that stay. A label that
+    // sits on the wrong value (A bank on the client's cards) cannot pass.
+    const choices = [
+      ["Us \u2014 someone here", "us", ["Alice Adams", "Eve East", "Finn Fox"]],
+      ["Us \u2014 an approval amount", "us_amount", ["Eve East"]],
+      ["A bank", "bank", ["Bob Baker", "Gus Green"]],
+      ["The client", "client", ["Cara Cole"]],
+      ["Nothing recorded", "none", ["Dan Dyer", "Zed Zane"]],
+    ];
+    assert.deepEqual(
+      await page.$$eval("#fWait option", (os) => os.map((o) => [o.value, o.textContent.trim()])),
+      [["", "Anyone"], ...choices.map(([label, value]) => [value, label])],
+      "the six choices, each with its own words",
+    );
+    for (const [label, value, names] of choices) {
+      await page.locator("#fWait").selectOption({ label });
+      assert.equal(await page.locator("#fWait").inputValue(), value, `${label} is the ${value} choice`);
+      assert.deepEqual(await shown(page), names, `Waiting on = ${label}`);
       assert.equal(await page.locator("#filterN").innerText(), "1", "the Filter control counts one active filter");
+      assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")),
+        `Waiting on: ${label}`, "and its chip says the same words");
     }
-    await pick(page, "#fWait", "");
+    await page.locator("#fWait").selectOption({ label: "Anyone" });
     assert.deepEqual(await shown(page), ALL_NAMES, "back to Anyone shows every card again");
     assert.deepEqual(errors, []);
     await page.close();
@@ -134,17 +155,22 @@ test("the Owner filter is hidden until a card has an owner, then keeps only that
     const bare = await openBoard({ boards: noOwners });
     await openFilters(bare.page);
     assert.equal(await bare.page.locator("#fOwnerWrap").isHidden(), true, "no card has an owner: the select is not drawn");
+    assert.equal(await bare.page.locator("#fOwner").isVisible(), false, "and neither is the select inside it");
     await bare.page.close();
 
     const { page, errors } = await openBoard();
     await openFilters(page);
     assert.equal(await page.locator("#fOwnerWrap").isVisible(), true, "a card has an owner: the select shows");
+    assert.equal(await page.locator("#fOwnerWrap .sl-k").innerText(), "Owner:");
     const options = await page.$$eval("#fOwner option", (os) => os.map((o) => o.value));
-    assert.deepEqual(options, ["", "Casey Reed", "Jordan Blake"], "Anyone, then each owner once, in order");
+    assert.deepEqual(options, ["", "Casey Reed", "Casey Stone", "Jordan Blake"],
+      "Anyone, then each owner once, in alphabetical order (the board meets them as Reed, Blake, Stone)");
     await pick(page, "#fOwner", "Jordan Blake");
     assert.deepEqual(await shown(page), ["Alice Adams", "Dan Dyer"]);
     await pick(page, "#fOwner", "Casey Reed");
-    assert.deepEqual(await shown(page), ["Bob Baker", "Zed Zane"]);
+    assert.deepEqual(await shown(page), ["Bob Baker", "Zed Zane"], "Casey Reed's cards, not Casey Stone's");
+    await pick(page, "#fOwner", "Casey Stone");
+    assert.deepEqual(await shown(page), ["Cara Cole"], "a second owner with the same first name is told apart");
     await pick(page, "#fOwner", "");
     assert.deepEqual(await shown(page), ALL_NAMES);
     assert.deepEqual(errors, []);
@@ -160,13 +186,20 @@ test("the search box keeps the cards whose name has the typed words, and nothing
     assert.deepEqual(await shown(page), ["Alice Adams"]);
     await page.locator("#q").fill("  EVE ");
     assert.deepEqual(await shown(page), ["Eve East"], "case and outer spaces do not matter");
-    // The placeholder promises phone and email. The filter reads the name text only, so a phone or an
-    // email typed here matches nothing. This pins that behaviour: if the filter starts to read them, the
-    // row's own words ("the filter compares the card's name text only") are no longer true.
+    await page.locator("#q").fill("adams");
+    assert.deepEqual(await shown(page), ["Alice Adams"], "a surname finds the card, not only the first letters of the name");
+    await page.locator("#q").fill("e e");
+    assert.deepEqual(await shown(page), ["Eve East"], "words from the middle of a name are matched as typed");
+    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: the
+    // placeholder promises phone and email, and the filter reads the name text only, so a phone or an email
+    // typed here matches nothing. Because a test that passes while the bug is there goes red on the fix, the
+    // row is exercised here and not attached (fin-b19-not-attachable.mjs).
     await page.locator("#q").fill("alice@example.com");
-    assert.deepEqual(await shown(page), [], "an email typed here matches no card");
+    assert.deepEqual(await shown(page), [],
+      "an email typed here matches no card. If this fails the product was fixed: attach the Search row.");
     await page.locator("#q").fill("+15550100");
-    assert.deepEqual(await shown(page), [], "a phone typed here matches no card");
+    assert.deepEqual(await shown(page), [],
+      "a phone typed here matches no card. If this fails the product was fixed: attach the Search row.");
     await page.locator("#q").fill("");
     assert.deepEqual(await shown(page), ALL_NAMES);
     assert.deepEqual(errors, []);
@@ -252,15 +285,19 @@ test("the headline counts agree with the filter and its buttons are the same fil
     none: document.querySelector("#hlNone b").textContent,
   }));
   assert.deepEqual(await numbers(), { us: "3", bank: "2", client: "1", none: "2" }, "3 + 2 + 1 + 2 is the 8 cards on the board");
+  // The words as written (the page draws the eyebrow in capitals with CSS; the words themselves are what is judged).
+  const words = (selector) => page.locator(selector).textContent().then((t) => t.replace(/\s+/g, " ").trim());
 
   await proof.check(/^Headline: Waiting on us/, async () => {
     const button = page.locator("#hlUs");
+    assert.equal(await words("#hlUs .eyebrow"), "Waiting on us", "the big number is named by its words");
+    assert.equal(await words("#hlUs"), "Waiting on us 3");
     assert.equal(await button.getAttribute("aria-pressed"), "false");
     await button.click();
     assert.equal(await page.locator("#fWait").inputValue(), "us", "the button writes the select");
     assert.equal(await button.getAttribute("aria-pressed"), "true");
     assert.deepEqual(await shown(page), ["Alice Adams", "Eve East", "Finn Fox"], "only the cards someone here must move");
-    assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*✕$/, "")), "Waiting on: Us — someone here");
+    assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")), "Waiting on: Us \u2014 someone here");
     await button.click();
     assert.equal(await page.locator("#fWait").inputValue(), "", "pressing it again clears the filter");
     assert.deepEqual(await shown(page), ALL_NAMES);
@@ -272,17 +309,23 @@ test("the headline counts agree with the filter and its buttons are the same fil
   });
 
   await proof.check(/^Headline counters: on a bank/, async () => {
+    // Each button is named by its words, and presses into the filter that keeps its own cards.
+    assert.equal(await words("#hlBank"), "2 on a bank");
+    assert.equal(await words("#hlClient"), "1 on the client");
+    assert.equal(await words("#hlNone"), "2 nothing recorded");
     const expected = [
-      ["#hlBank", "bank", ["Bob Baker", "Gus Green"]],
-      ["#hlClient", "client", ["Cara Cole"]],
-      ["#hlNone", "none", ["Dan Dyer", "Zed Zane"]],
+      ["#hlBank", "bank", ["Bob Baker", "Gus Green"], "Waiting on: A bank"],
+      ["#hlClient", "client", ["Cara Cole"], "Waiting on: The client"],
+      ["#hlNone", "none", ["Dan Dyer", "Zed Zane"], "Waiting on: Nothing recorded"],
     ];
-    for (const [selector, value, names] of expected) {
+    for (const [selector, value, names, chip] of expected) {
       const button = page.locator(selector);
       await button.click();
       assert.equal(await page.locator("#fWait").inputValue(), value, `${selector} writes the select`);
       assert.deepEqual(await shown(page), names, `${selector} shows its cards`);
       assert.equal(await button.getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")), chip,
+        `${selector} says the same words as the select`);
       await button.click();
       assert.equal(await page.locator("#fWait").inputValue(), "", `${selector} pressed again clears the filter`);
     }
@@ -297,7 +340,7 @@ test("the headline counts agree with the filter and its buttons are the same fil
   await proof.check(/^Headline: Longest wait link/, async () => {
     const link = page.locator("#hlNextLink");
     assert.equal(await link.isVisible(), true);
-    assert.equal((await link.innerText()).trim(), "Longest wait: Alice Adams — 5d in stage, New Lead",
+    assert.equal((await link.innerText()).trim(), "Longest wait: Alice Adams \u2014 5d in stage, New Lead",
       "of the cards someone here must move, the one that waited longest (Alice, 5 days; Eve is 36 hours, Finn 30 minutes)");
     assert.equal(await link.getAttribute("href"), "#fh-card-card-alice");
     await link.click();
@@ -314,51 +357,130 @@ test("the headline counts agree with the filter and its buttons are the same fil
   await page.close();
 });
 
-test("the Board / Fulfillment switch swaps the view, reads the client list once, and gives the board back", { timeout: 120_000 }, async () => {
+test("the longest wait link scrolls the board to the card it names", { timeout: 120_000 }, async () => {
+  // The column is taller than the screen and the card the link names sits at its very bottom, out of sight.
+  // Only a real scroll can bring it into view, so a link that rings the card and does not scroll is red.
+  const filler = Array.from({ length: 40 }, (_, i) => card(`fill${i}`, `Filler ${String(i).padStart(2, "0")}`, { entered_at: ago(HOUR) }));
+  const tall = {
+    ok: true, pipeline: "sales", total: 41,
+    stages: [{
+      key: "new_lead", name: "New Lead", sort_order: 0, count: 41, amount: 41000,
+      cards: [...filler, card("far", "Far Away", { entered_at: ago(9 * DAY), sms_needs_reply: true })],
+    }],
+  };
+  await proof.check(/^Headline: Longest wait link/, async () => {
+    const { page, errors } = await openBoard({ boards: { sales: tall } });
+    const body = page.locator('.col[data-stage-key="new_lead"] .col-body');
+    const inView = () => page.evaluate(() => {
+      const el = document.querySelector("#fh-card-card-far").getBoundingClientRect();
+      const box = document.querySelector('.col[data-stage-key="new_lead"] .col-body').getBoundingClientRect();
+      return el.top >= box.top - 1 && el.bottom <= box.bottom + 1;
+    });
+    assert.equal(await inView(), false, "before the click the card is below the fold of its column");
+    assert.equal(await body.evaluate((el) => el.scrollTop), 0);
+    assert.match((await page.locator("#hlNextLink").innerText()).trim(), /^Longest wait: Far Away /);
+    await page.locator("#hlNextLink").click();
+    await waitFor(inView, "the board to scroll the card into view");
+    assert.ok(await body.evaluate((el) => el.scrollTop) > 0, "the column itself scrolled");
+    assert.equal(await page.locator("#fh-card-card-far").evaluate((el) => el.classList.contains("fh-spot")), true, "and the card is ringed");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+});
+
+// The controls the lens puts away while it is up, and gives back as they were (public/app/pipeline.html,
+// boardOnly): search, Filter, New Client, the filter chips, the headline with its summary, the filter panel and
+// the Sales note. Each is read by what the browser draws, not by the page's own hidden flags.
+const BOARD_ONLY = [
+  [".search", "search"], ["#filterBtn", "the Filter button"], ["#fhNewClient", "New Client"], ["#filterChips", "the filter chips"],
+  [".headline", "the headline"], [".board-summary", "the card summary"], ["#filterPanel", "the filter panel"], ["#railNote", "the Sales note"],
+];
+const drawnNow = (page) => page.evaluate((list) => Object.fromEntries(list.map(([selector]) => {
+  const el = document.querySelector(selector);
+  const style = el ? getComputedStyle(el) : null;
+  return [selector, !!el && style.display !== "none" && style.visibility !== "hidden" && el.getClientRects().length > 0];
+})), BOARD_ONLY);
+
+test("the Board / Fulfillment switch swaps the view, reads the client list once, and gives the board back exactly as it was", { timeout: 120_000 }, async () => {
   const { page, errors } = await openBoard();
   const clientReads = () => page.apiCalls.filter((c) => c.path === "/api/dashboard/clients").map((c) => c.query);
 
   await proof.check(/^Lens switch: Board/, async () => {
     assert.equal(await page.locator("#lensBoard").getAttribute("aria-pressed"), "true");
+    assert.equal((await page.locator("#lensBoard").innerText()).trim(), "Board");
+    assert.equal((await page.locator("#lensFulfillment").innerText()).trim(), "Fulfillment");
     assert.deepEqual(clientReads(), [], "the client list is not read until Fulfillment is opened");
+
+    // The board as it stands before the switch: the panel is shut, the Sales note and the headline are drawn.
+    const before = await drawnNow(page);
+    assert.equal(before["#filterPanel"], false, "the filter panel starts shut");
+    for (const selector of [".search", "#filterBtn", "#fhNewClient", ".headline", ".board-summary", "#railNote"]) {
+      assert.equal(before[selector], true, `${selector} is on the board before the switch`);
+    }
     await page.locator("#lensFulfillment").click();
     assert.equal(await page.locator("#fhLens").isVisible(), true);
     assert.equal(await page.locator(".board-row").isHidden(), true, "the board is hidden");
-    assert.equal(await page.locator("#headline").isHidden(), true, "the board's headline goes with it");
     assert.equal(await page.locator("#lensFulfillment").getAttribute("aria-pressed"), "true");
     assert.equal(await page.locator("#lensBoard").getAttribute("aria-pressed"), "false");
+    // Everything that only describes the board goes with it, the Sales note included.
+    const during = await drawnNow(page);
+    for (const [selector, label] of BOARD_ONLY) assert.equal(during[selector], false, `${label} is not drawn over the client list`);
     await waitFor(() => clientReads().length === 1, "the client list read");
     assert.deepEqual(clientReads(), [{ limit: "200", fulfillment: "1" }]);
     await page.waitForSelector(".fh-lens-row");
     assert.equal(await page.locator("#ltTotalClients").innerText(), "3");
     assert.equal(await page.locator(".fh-lens-row").count(), 3);
+
     await page.locator("#lensBoard").click();
     assert.equal(await page.locator(".board-row").isVisible(), true, "the board is back");
-    assert.equal(await page.locator("#headline").isVisible(), true);
     assert.equal(await page.locator("#fhLens").isHidden(), true);
+    assert.deepEqual(await drawnNow(page), before, "every control is exactly as it was: the shut panel did not spring open");
+
+    // Opened this time: the filter panel and a filter chip are on the board, and they come back as they were.
+    await openFilters(page);
+    await pick(page, "#fWait", "bank");
+    const set = await drawnNow(page);
+    assert.equal(set["#filterPanel"], true);
+    assert.equal(set["#filterChips"], true);
     await page.locator("#lensFulfillment").click();
+    const away = await drawnNow(page);
+    assert.equal(away["#filterPanel"], false, "the open panel goes while the lens is up");
+    assert.equal(away["#filterChips"], false);
     await page.locator("#lensBoard").click();
+    assert.deepEqual(await drawnNow(page), set, "the open panel and the chip come back, nothing re-applied or cleared");
+    assert.equal(await page.locator("#fWait").inputValue(), "bank", "the filter itself was kept");
+    assert.deepEqual(await shown(page), ["Bob Baker", "Gus Green"]);
+    await pick(page, "#fWait", "");
     assert.equal(clientReads().length, 1, "opening it again does not read the list again");
   });
 
   await proof.check(/^Fulfillment lens: click a chip/, async () => {
     await page.locator("#lensFulfillment").click();
-    const visibleRows = () => page.$$eval(".fh-lens-row:not(.filtered) .lr-name", (els) => els.map((e) => e.textContent.trim()));
-    assert.deepEqual(await visibleRows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    const rows = () => visibleNames(page, ".fh-lens-row", ".lr-name");
+    const chipOf = (clientId) => page.locator(`.fh-lens-row[data-client-id="${clientId}"] .fh-chip`);
+    const lit = () => page.$$eval(".fh-lens-row .fh-chip.on", (els) => els.map((e) => e.closest(".fh-lens-row").dataset.clientId).sort());
+    assert.deepEqual(await rows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    assert.deepEqual(await lit(), [], "no chip is lit while nothing is filtered");
     assert.equal(await page.locator("#fhLensBar").isHidden(), true);
-    await page.locator('.fh-lens-row[data-client-id="c2"] .fh-chip').click();
-    assert.deepEqual(await visibleRows(), ["Mo Marsh"], "only the clients whose next action is Send documents");
-    assert.equal(await page.locator("#fhLensBarText").innerText(), 'Showing only "Send documents" — 1 of 3 clients.');
+    assert.equal((await chipOf("c2").innerText()).trim(), "Send documents");
+    await chipOf("c2").click();
+    assert.deepEqual(await rows(), ["Mo Marsh"], "only the clients whose next action is Send documents");
+    assert.deepEqual(await lit(), ["c2"], "the chip you pressed is lit");
+    assert.equal(await page.locator("#fhLensBarText").innerText(), 'Showing only "Send documents" \u2014 1 of 3 clients.');
     // Click the same chip again: the filter clears.
-    await page.locator('.fh-lens-row[data-client-id="c2"] .fh-chip').click();
-    assert.deepEqual(await visibleRows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    await chipOf("c2").click();
+    assert.deepEqual(await rows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    assert.deepEqual(await lit(), [], "and the chip goes out");
     assert.equal(await page.locator("#fhLensBar").isHidden(), true);
-    // A chip two clients share shows both, and Show all clears it.
-    await page.locator('.fh-lens-row[data-client-id="c1"] .fh-chip').click();
-    assert.deepEqual(await visibleRows(), ["Lena Lopez", "Nia North"]);
-    assert.equal(await page.locator("#fhLensBarText").innerText(), 'Showing only "Pull the report" — 2 of 3 clients.');
+    // A chip two clients share shows both, lights both, and Show all clears it.
+    await chipOf("c1").click();
+    assert.deepEqual(await rows(), ["Lena Lopez", "Nia North"]);
+    assert.deepEqual(await lit(), ["c1", "c3"], "every client with that action is lit");
+    assert.equal(await page.locator("#fhLensBarText").innerText(), 'Showing only "Pull the report" \u2014 2 of 3 clients.');
+    assert.equal((await page.locator("#fhLensClear").innerText()).trim(), "Show all");
     await page.locator("#fhLensClear").click();
-    assert.deepEqual(await visibleRows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    assert.deepEqual(await rows(), ["Lena Lopez", "Mo Marsh", "Nia North"]);
+    assert.deepEqual(await lit(), []);
     assert.equal(await page.locator("#fhLensBar").isHidden(), true);
   });
   assert.deepEqual(errors, []);
@@ -384,6 +506,14 @@ test("each rail tab asks for its own pipeline once and paints that rail's own co
   for (const [control, code, key, label] of RAILS) {
     await proof.check(control, async () => {
       const tab = page.locator(`.rail-tab[data-rail="${code}"]`);
+      // The tab is named by its words: the rail's code, then its name, exactly.
+      assert.equal(await tab.locator(".rt-code").innerText(), code, `${label}: the rail code on the tab`);
+      assert.equal((await tab.textContent()).replace(code, "").trim(), label, `${label}: the tab says the rail's name`);
+      assert.deepEqual(
+        await page.$$eval(".rail-tab", (els) => els.map((e) => e.dataset.rail)),
+        RAILS.map(([, rail]) => rail),
+        "the seven tabs, in rail order",
+      );
       if (code !== "R-01") {
         const before = reads.filter((k) => k === key).length;
         await tab.click();

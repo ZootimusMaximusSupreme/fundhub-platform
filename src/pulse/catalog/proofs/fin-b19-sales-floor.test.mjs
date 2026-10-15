@@ -16,18 +16,33 @@ const lab = sharedLab();
 const PERIOD = { start: "2026-10-01T00:00:00.000Z", end: "2026-11-01T00:00:00.000Z" };
 const closer = (name, extra = {}) => ({
   name, on_shift: false, calls: 8, close_rate: 0.5, funded_rate: 0.5, cash_cents: 120000, deposits: 3, action: `Call ${name}'s lead`,
-  offer_stack: { available: false, reason: "Offer details are not available yet." }, ...extra,
+  offer_stack: { available: false, reason: `${name}: offer details are not available yet.` }, ...extra,
 });
+// Three closers who share no number: calls, close rate, funded rate, cash, deposits, shift and the offer note all
+// differ, so a picker that changes the name and leaves another closer's figures on the screen is seen.
+const ANA = closer("Ana Archer", { on_shift: true, shift_elapsed_ms: 3_660_000, calls: 12, close_rate: 0.25, funded_rate: 0.4, cash_cents: 250000, deposits: 3 });
+const BEN = closer("Ben Brook", { on_shift: false, calls: 9, close_rate: 0.56, funded_rate: 0.75, cash_cents: 9900000, deposits: 6 });
+const CY = closer("Cy Cole", { on_shift: true, shift_elapsed_ms: 600_000, calls: 20, close_rate: 0.1, funded_rate: 0.2, cash_cents: 100, deposits: 1 });
 const FLOOR = {
   ok: true,
   period: PERIOD,
   hero: { cash_cents: 0, deposit_to_funded: 0.5, deposit_to_funded_n: { deposits: 4, funded: 2, rate: 0.5 } },
   today: { date: "2026-10-14", booked: 3, held: 2, deposits: 1, target_reason: "No daily target" },
   funnel: { booked: 10, held: 8, deposits: 4, funded: 2, downsells: 0, downsell_cash_cents: 0, show_rate: 0.8, close_rate: 0.5, funded_of_deposits: 0.5 },
-  closers: [closer("Ana Archer", { on_shift: true, shift_elapsed_ms: 3_660_000 }), closer("Ben Brook"), closer("Cy Cole")],
+  closers: [ANA, BEN, CY],
+  // Ranked as the floor ranks them: the belief with the most calls first, the source with the most desire first.
+  // The flag is for the top belief and the top source, so the others are what a wrong pick would send.
   beliefs: {
-    beliefs: [{ belief: "cost", label: "Cost", this_count: 5, last_count: 2 }],
-    sources: [{ lead_source: "meta", setter_key: "josh", held: 4, close_rate: 0.5, desire: 2 }],
+    beliefs: [
+      { belief: "cost", label: 'Cost \u00b7 "not right now"', this_count: 5, last_count: 2 },
+      { belief: "trust", label: 'Trust \u00b7 "how do I know"', this_count: 3, last_count: 4 },
+      { belief: "doubt", label: 'Doubt \u00b7 "I could do this myself"', this_count: 1, last_count: 0 },
+    ],
+    sources: [
+      { lead_source: "meta", setter_key: "josh", held: 4, close_rate: 0.5, desire: 2 },
+      { lead_source: "referral", setter_key: "mia", held: 9, close_rate: 0.3, desire: 1 },
+      { lead_source: "organic", setter_key: "unknown", held: 1, close_rate: 0, desire: 0 },
+    ],
   },
   recordings: { drive_ready: false, items: [], reason: "Google Drive is not connected yet." },
   compliance: { available: false, reason: "Not built yet.", items: [] },
@@ -59,44 +74,80 @@ async function openFloor({ floor = FLOOR, floorStatus = 200, api = null, role = 
   return { page, dialogs, errors, floorReads: () => page.apiCalls.filter((c) => c.method === "GET" && c.path === "/api/read/sales-floor").length };
 }
 
-test("one closer at a time: the arrows and the name buttons step through the closers already loaded", { timeout: 120_000 }, async () => {
+test("one closer at a time: the arrows and the name buttons step through the closers already loaded, and every figure follows the closer", { timeout: 120_000 }, async () => {
   await proof.check(/^'One closer at a time'/, async () => {
     const { page, floorReads, errors } = await openFloor();
-    const who = () => page.locator("#fh-closer-focus .pickwho").innerText().then((t) => t.split("\n")[0].trim());
-    const place = () => page.locator("#fh-closer-focus .picks .note").innerText();
-    assert.equal(await who(), "Ana Archer");
-    assert.equal(await place(), "Closer 1 of 3");
+    const focus = () => page.evaluate(() => {
+      const root = document.querySelector("#fh-closer-focus");
+      return {
+        who: root.querySelector(".pickwho").firstChild.textContent.trim(),
+        shift: root.querySelector(".pickwho em").textContent.trim(),
+        place: root.querySelector(".picks .note").textContent.trim(),
+        tiles: [...root.querySelectorAll(".funnel .f")].map((f) => [f.querySelector(".lb").textContent.trim(), f.querySelector(".vl").textContent.trim(), f.querySelector(".cv").textContent.trim()]),
+        action: root.querySelector(".say").textContent.trim(),
+        stack: root.querySelector(".focusbody").lastElementChild.querySelector(".note")?.textContent.trim() ?? null,
+        on: root.querySelector(".pickb.on")?.textContent.trim() ?? null,
+      };
+    });
+    // What the panel must say for each closer: all of it is that closer's own.
+    const WANT = {
+      "Ana Archer": {
+        shift: "On shift \u00b7 1h 1m", place: "Closer 1 of 3", action: "Do this. Call Ana Archer's lead", stack: "Ana Archer: offer details are not available yet.",
+        tiles: [["Deposits", "3", "Off 12 calls"], ["Close rate", "25%", "Of calls held"], ["Funded rate", "40%", "Of deposits taken"], ["Cash", "$2,500", "This month"]],
+      },
+      "Ben Brook": {
+        shift: "Off shift", place: "Closer 2 of 3", action: "Do this. Call Ben Brook's lead", stack: "Ben Brook: offer details are not available yet.",
+        tiles: [["Deposits", "6", "Off 9 calls"], ["Close rate", "56%", "Of calls held"], ["Funded rate", "75%", "Of deposits taken"], ["Cash", "$99,000", "This month"]],
+      },
+      "Cy Cole": {
+        shift: "On shift \u00b7 10m", place: "Closer 3 of 3", action: "Do this. Call Cy Cole's lead", stack: "Cy Cole: offer details are not available yet.",
+        tiles: [["Deposits", "1", "Off 20 calls"], ["Close rate", "10%", "Of calls held"], ["Funded rate", "20%", "Of deposits taken"], ["Cash", "$1", "This month"]],
+      },
+    };
+    const expectCloser = async (name, why) => {
+      const got = await focus();
+      assert.equal(got.who, name, `${why}: the name`);
+      assert.equal(got.on, name, `${why}: the lit name button`);
+      assert.deepEqual(
+        { shift: got.shift, place: got.place, tiles: got.tiles, action: got.action, stack: got.stack },
+        WANT[name],
+        `${why}: the shift line, the place, all four figures, the action and the offer note are ${name}'s own`,
+      );
+    };
     assert.deepEqual(
       await page.$$eval("#fh-closer-focus .pickb[data-fh-closer]", (els) => els.map((e) => e.textContent.trim())),
       ["Ana Archer", "Ben Brook", "Cy Cole"], "one name button per closer",
     );
-    assert.equal(await page.locator("#fh-closer-focus .pickb.on").innerText(), "Ana Archer");
+    await expectCloser("Ana Archer", "first load");
 
     await page.locator("#fh-closer-next").click();
-    assert.equal(await who(), "Ben Brook");
-    assert.equal(await place(), "Closer 2 of 3");
-    assert.match(await page.locator("#fh-closer-focus .say").innerText(), /Do this\. Call Ben Brook's lead/, "the action is that closer's own");
+    await expectCloser("Ben Brook", "Next");
     await page.locator("#fh-closer-prev").click();
     await page.locator("#fh-closer-prev").click();
-    assert.equal(await who(), "Cy Cole", "Previous from the first wraps to the last");
+    await expectCloser("Cy Cole", "Previous from the first wraps to the last");
     await page.locator("#fh-closer-next").click();
-    assert.equal(await who(), "Ana Archer", "Next from the last wraps to the first");
+    await expectCloser("Ana Archer", "Next from the last wraps to the first");
     await page.locator('#fh-closer-focus .pickb[data-fh-closer="1"]').click();
-    assert.equal(await who(), "Ben Brook", "a name button picks that closer");
-    assert.equal(await page.locator("#fh-closer-focus .pickb.on").innerText(), "Ben Brook");
+    await expectCloser("Ben Brook", "a name button picks that closer");
+    await page.locator('#fh-closer-focus .pickb[data-fh-closer="2"]').click();
+    await expectCloser("Cy Cole", "the last name button picks the last closer");
+    await page.locator('#fh-closer-focus .pickb[data-fh-closer="0"]').click();
+    await expectCloser("Ana Archer", "the first name button picks the first closer");
     assert.equal(floorReads(), 1, "picking a closer makes no second request");
     assert.deepEqual(errors, []);
     await page.close();
   });
 });
 
-test("the Flag button stores one belief by source row for marketing, and says what happened", { timeout: 120_000 }, async () => {
+test("the Flag button stores the top belief by the top source for marketing, and says what happened", { timeout: 120_000 }, async () => {
   await proof.check(/^'Flag <belief>' button/, async () => {
     const { page, dialogs, errors } = await openFloor({
       api: (request, url) => (request.method() === "POST" && url.pathname === "/api/marketing-flags" ? { ok: true, flag: { id: "flag-1" } } : undefined),
     });
     const flag = page.locator("#fh-flag-mkt");
-    assert.equal((await flag.innerText()).trim(), "Flag Cost", "the button names the belief on the board");
+    assert.equal((await flag.innerText()).trim(), 'Flag Cost \u00b7 "not right now"', "the button names the top belief on the board");
+    // The board lists three beliefs and three sources. Only the first of each is the flag, so a page that picks
+    // the last, or the busiest by some other rule, sends the wrong pair.
     await flag.click();
     await waitFor(() => dialogs.length === 1, "the answer");
     const post = page.apiCalls.find((c) => c.method === "POST" && c.path === "/api/marketing-flags");
@@ -106,11 +157,30 @@ test("the Flag button stores one belief by source row for marketing, and says wh
     assert.deepEqual(JSON.parse(post.body), {
       belief: "cost", lead_source: "meta", setter_label: "josh", outcome_count: 5,
       period_start: PERIOD.start, period_end: PERIOD.end,
-      note: "Flagged from sales floor — Cost this period 5 vs last 2",
+      note: 'Flagged from sales floor \u2014 Cost \u00b7 "not right now" this period 5 vs last 2',
     });
     assert.equal(dialogs[0], "Stored for marketing routing. Nothing was sent externally.");
     assert.deepEqual(errors, []);
     await page.close();
+
+    // A belief whose count is nothing this period and something last period is still flaggable, and it is
+    // flagged with its own two counts (0 now, 3 before), not the next belief's.
+    const quiet = await openFloor({
+      floor: { ...FLOOR, beliefs: { beliefs: [
+        { belief: "money", label: 'Money \u00b7 "can\'t afford it"', this_count: 0, last_count: 3 },
+        { belief: "pain", label: 'Pain \u00b7 "this still hurts"', this_count: 0, last_count: 1 },
+      ], sources: [{ lead_source: "organic", setter_key: "unknown", held: 1, close_rate: 0, desire: 0 }] } },
+      api: (request, url) => (request.method() === "POST" && url.pathname === "/api/marketing-flags" ? { ok: true } : undefined),
+    });
+    await quiet.page.locator("#fh-flag-mkt").click();
+    await waitFor(() => quiet.dialogs.length === 1, "the answer");
+    const second = JSON.parse(quiet.page.apiCalls.find((c) => c.path === "/api/marketing-flags").body);
+    assert.equal(second.belief, "money");
+    assert.equal(second.lead_source, "organic");
+    assert.equal(second.setter_label, "unknown");
+    assert.equal(second.outcome_count, 0);
+    assert.equal(second.note, 'Flagged from sales floor \u2014 Money \u00b7 "can\'t afford it" this period 0 vs last 3');
+    await quiet.page.close();
 
     // The server refusing says its own words, and nothing says "stored".
     const refused = await openFloor({
@@ -124,11 +194,11 @@ test("the Flag button stores one belief by source row for marketing, and says wh
     await refused.page.close();
 
     // No belief has a count yet: there is nothing to flag, so there is no button.
-    const quiet = await openFloor({
+    const none = await openFloor({
       floor: { ...FLOOR, beliefs: { beliefs: [{ belief: "cost", label: "Cost", this_count: 0, last_count: 0 }], sources: [] } },
     });
-    assert.equal(await quiet.page.locator("#fh-flag-mkt").count(), 0);
-    await quiet.page.close();
+    assert.equal(await none.page.locator("#fh-flag-mkt").count(), 0);
+    await none.page.close();
   });
 });
 

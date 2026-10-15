@@ -4,7 +4,9 @@
 //
 // Six heads are drawn for at least one role, so they are proved here. Home, Watch and Automation are
 // never drawn for any role (every link under them is on shell.js NAV_HIDDEN), so no person can click
-// their head: those three rows are exercised as "never visible" and stay reported as not proved.
+// their head: those three rows are exercised here as "never visible" in a real browser, and are judged
+// by the live shared chrome (src/pulse/coverage/fin-b19-hidden-head.mjs), which reads the hidden list and
+// the code that applies it, and says "nothing to judge" only while both hold.
 
 import assert from "node:assert/strict";
 import test from "node:test";

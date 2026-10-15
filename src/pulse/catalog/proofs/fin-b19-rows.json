@@ -18,10 +18,10 @@
     "Rail tab R-05 Inquiry Removal",
     "Rail tab R-06 AR / Collections",
     "Rail tab R-08 Affiliates + White Label",
-    "Rail tab R-09 Hiring",
-    "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)"
+    "Rail tab R-09 Hiring"
    ],
    "notAttached": [
+    "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)",
     "Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first",
     "The x on each active filter chip (clears that one filter)"
    ]

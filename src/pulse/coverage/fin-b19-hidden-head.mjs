@@ -9,12 +9,19 @@
 //
 //   - It reads the LIVE shell.js with one GET (redirects are not followed), takes the built-in sidebar and
 //     the NAV_HIDDEN list out of it, finds the head by its key and its words, and looks at every row under it.
-//   - Every row under the head is on NAV_HIDDEN: the head is drawn for no role. The row says "na" with the
-//     code below, and the morning audit asks this file again before it lets "na" stand.
+//   - It also reads the CODE THAT APPLIES the list, in the shapes shell.js writes it today (APPLY_SHAPES):
+//     the line that marks a menu row hidden when its screen is on NAV_HIDDEN, the line that hides a row
+//     marked that way, the line that counts the rows still shown, the line that hides a whole section when
+//     none is, the line that mounts the built-in sidebar, both calls of the gate, and that the list is
+//     written once and never emptied, reassigned or changed. A list that is right and a gate that no longer
+//     reads it would draw the head, so a gate it does not recognise is "changed", not "hidden".
+//   - Every row under the head is on NAV_HIDDEN and the gate still applies it: the head is drawn for no role.
+//     The row says "na" with the code below, and the morning audit asks this file again before it lets "na" stand.
 //   - One row under the head is not on NAV_HIDDEN, or the head lists no rows: the head can be drawn now, the
 //     claim is false, and the row goes back to NOT_PROVED so a person attaches a real check for folding it.
-//   - The head's key or words are not in the sidebar any more: the row goes back to NOT_PROVED too. Absence
-//     of a head is never taken as "hidden", because a renamed head is still a head.
+//   - The head's key or words are not in the sidebar any more, or the gate no longer applies the list in a
+//     shape this reader knows: the row goes back to NOT_PROVED too. Absence of a head is never taken as
+//     "hidden", because a renamed head is still a head, and a list nobody applies hides nothing.
 //   - Anything could not be read (no GET client, bad address, non-200, not the shared chrome, a list or a
 //     sidebar the reader does not understand): the row is "skip" with the reason. Never a guess.
 //
@@ -96,6 +103,64 @@ export function sidebarHtml(text) {
 
 const screenOf = (href) => String(href).split(/[?#]/)[0].replace(/^\.\//, "").trim();
 
+/**
+ * The code that applies NAV_HIDDEN, in the shapes shell.js writes it. Each shape is a statement the gate cannot
+ * work without. They are looked for after `function gateLinks(` and in this order, so a copy of one in a comment
+ * above the function does not stand in for the code. Whitespace between the pieces is free.
+ */
+export const APPLY_SHAPES = Object.freeze([
+  ["a menu row is marked hidden when its screen is on NAV_HIDDEN",
+    /var\s+hideNav\s*=\s*a\.classList\.contains\(\s*["']navitem["']\s*\)\s*&&\s*NAV_HIDDEN\.indexOf\(\s*file\s*\)\s*!==\s*-1\s*;/],
+  ["a row that is not allowed, or is marked hidden, is put away",
+    /if\s*\(\s*!allowed\s*\|\|\s*hideNav\s*\)\s*\{\s*box\.style\.display\s*=\s*["']none["']\s*;\s*box\.setAttribute\(\s*["']data-fh-gated["']\s*,\s*["']1["']\s*\)\s*;/],
+  ["a section looks at the rows under it",
+    /document\.querySelectorAll\(\s*["']\.navgroup["']\s*\)[\s\S]*?group\.querySelectorAll\(\s*["']\.navitem["']\s*\)/],
+  ["a row counts as shown only when it is not put away",
+    /items\[\s*j\s*\]\.style\.display\s*!==\s*["']none["']\s*&&\s*!items\[\s*j\s*\]\.hasAttribute\(\s*["']data-fh-gated["']\s*\)\s*\)\s*\{\s*any\s*=\s*true\s*;/],
+  ["a section with no row shown is put away",
+    /if\s*\(\s*!any\s*\)\s*\{\s*group\.style\.display\s*=\s*["']none["']\s*;\s*group\.setAttribute\(\s*["']data-fh-gated-group["']\s*,\s*["']1["']\s*\)\s*;/],
+]);
+
+/** Where the gate is run: once from the cached role and once from the session, which is the one that counts. */
+const GATE_CALLS = Object.freeze([
+  ["the gate runs on the session's answer", /\bgateLinks\(\s*ok\s*,\s*role\s*\)\s*;/],
+  ["the gate runs on the cached role", /\bgateLinks\(\s*hintedOk\s*,\s*hinted\s*\)\s*;/],
+]);
+
+/** What must be true of NAV_HIDDEN itself apart from its rows: written once, and never changed after. */
+const LIST_RULES = Object.freeze([
+  ["NAV_HIDDEN is written once", (text) => (text.match(/\bNAV_HIDDEN\s*=(?!=)/g) || []).length === 1],
+  ["NAV_HIDDEN is never changed in place",
+    (text) => !/\bNAV_HIDDEN\s*\.\s*(?:length\b|splice|push|pop|shift|unshift|sort|reverse|fill|copyWithin)/.test(text)
+      && !/\bNAV_HIDDEN\s*\[/.test(text)],
+]);
+
+/**
+ * Does shell.js still APPLY the list it writes? Returns { ok: true } or { ok: false, reason }. This reads code
+ * shapes, not behaviour: the Chromium test fin-b19-shell-sidebar.test.mjs is what draws the page for every role.
+ */
+export function applyingCode(text) {
+  const at = text.indexOf("function gateLinks(");
+  if (at < 0) return { ok: false, reason: "the live shared chrome has no function that gates the sidebar rows" };
+  const body = text.slice(at);
+  let from = 0;
+  for (const [what, shape] of APPLY_SHAPES) {
+    const found = shape.exec(body.slice(from));
+    if (!found) return { ok: false, reason: `the code that applies the hidden list changed (${what} is not written the way this check reads it)` };
+    from += found.index + found[0].length;
+  }
+  for (const [what, shape] of GATE_CALLS) {
+    if (!shape.test(text.slice(at))) return { ok: false, reason: `the code that applies the hidden list changed (${what} is not called the way this check reads it)` };
+  }
+  if (!/wrap\.innerHTML\s*=\s*SIDEBAR_HTML\s*;/.test(text)) {
+    return { ok: false, reason: "the code that applies the hidden list changed (the built-in sidebar is no longer the one that is mounted)" };
+  }
+  for (const [what, holds] of LIST_RULES) {
+    if (!holds(text)) return { ok: false, reason: `the code that applies the hidden list changed (${what}: it is no longer the list written out above)` };
+  }
+  return { ok: true };
+}
+
 /** The head with this key: its words and the screens of every row under it, or null when there is no such head. */
 export function sectionOf(html, key) {
   const marker = `data-fh-section="${key}"`;
@@ -155,7 +220,11 @@ export function judgeText(text, claim) {
   }
   const hidden = new Set(hiddenList.map(screenOf));
   const open = section.links.filter((file) => !hidden.has(file));
-  return { state: open.length ? "shown" : "hidden", links: section.links, open };
+  if (open.length) return { state: "shown", links: section.links, open };
+  // Every row is on the list. The head is drawn for no role only while the gate still applies the list.
+  const gate = applyingCode(text);
+  if (!gate.ok) return { state: "changed", reason: gate.reason, links: section.links, open: [] };
+  return { state: "hidden", links: section.links, open };
 }
 
 /** Read the live shared chrome once and judge one head. ctx follows the lane's own pattern (fetchImpl, baseUrl). */

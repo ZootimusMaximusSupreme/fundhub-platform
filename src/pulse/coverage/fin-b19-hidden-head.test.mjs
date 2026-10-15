@@ -16,6 +16,7 @@ import { FIN_B19_HIDDEN_HEADS } from "../catalog/proofs/fin-b19-not-attachable.m
 import { DISPLAY_TRACKING_CASES, gapChecks, naVerify } from "./gap-catalog-display.mjs";
 import {
   HIDDEN_HEAD_CODE,
+  applyingCode,
   headClaim,
   judgeHiddenHeads,
   judgeText,
@@ -238,4 +239,68 @@ test("the audit's own door (verifyNa) lets the row stay na while it holds, and t
   // A proof copied onto a row of another kind, or with its facts cut away, is refused.
   const missing = await verifyNa({ ...row, na: { code: HIDDEN_HEAD_CODE, args: { sourceFile: "desks-e.json" } } }, { laneNaVerify: laneNaVerify(serve(SHELL)) });
   assert.equal(missing.ok, false);
+});
+
+// ---- the code that APPLIES the list (a right list and a broken gate must not read as "hidden") -------------
+
+function mutate(text, from, to) {
+  const next = text.split(from).join(to);
+  assert.notEqual(next, text, `"${from.slice(0, 60)}" is not in shell.js`);
+  return next;
+}
+
+// Each edit is one a person could make by hand. The list and the sidebar are untouched in every one: only the
+// code that reads the list is changed, which is what the first version of this check could not see.
+const GATE_BREAKS = [
+  ["the hide condition stops reading the hidden mark", (t) => mutate(t, "if (!allowed || hideNav) {", "if (!allowed) {")],
+  ["the section is never put away", (t) => mutate(t, "if (!any) {", "if (false) {")],
+  ["the list is emptied after it is written", (t) => mutate(t, '    "partner-training.html"\n  ];', '    "partner-training.html"\n  ];\n  NAV_HIDDEN = [];')],
+  ["the list is emptied at run time", (t) => mutate(t, "function menuFor(ok) {", "NAV_HIDDEN.length = 0;\n  function menuFor(ok) {")],
+  ["the list is cut with splice", (t) => mutate(t, "function menuFor(ok) {", "NAV_HIDDEN.splice(0, 99);\n  function menuFor(ok) {")],
+  ["a row is never marked hidden", (t) => mutate(t, 'var hideNav = a.classList.contains("navitem") && NAV_HIDDEN.indexOf(file) !== -1;', "var hideNav = false;")],
+  ["a hidden row is put away with no mark", (t) => mutate(t, 'box.style.display = "none";\n        box.setAttribute("data-fh-gated", "1");', 'box.style.display = "";\n        box.setAttribute("data-fh-gated", "1");')],
+  ["a section counts a put-away row as shown", (t) => mutate(t, 'items[j].style.display !== "none" && !items[j].hasAttribute("data-fh-gated")', "items[j].style.display !== \"none\"")],
+  ["the session pass never runs the gate", (t) => mutate(t, "      gateLinks(ok, role);\n", "")],
+  ["the sidebar is no longer the built-in one", (t) => mutate(t, "wrap.innerHTML = SIDEBAR_HTML;", "wrap.innerHTML = '';")],
+];
+
+test("a gate that no longer applies the list is not hidden: every break goes back to not proved, for all three heads", () => {
+  for (const [name, edit] of GATE_BREAKS) {
+    const text = edit(SHELL);
+    for (const head of FIN_B19_HIDDEN_HEADS) {
+      const got = stateOf(text, head);
+      assert.equal(got.state, "changed", `${name}: ${head.label} read as ${got.state}`);
+      assert.match(got.reason, /the code that applies the hidden list changed/, name);
+    }
+    // The list and the sidebar are still exactly right in each of these: this is the hole.
+    assert.deepEqual(stringList(text.replace(/NAV_HIDDEN\s*=\s*\[\];|NAV_HIDDEN\.(?:length = 0|splice\(0, 99\));/g, ""), "NAV_HIDDEN"), stringList(SHELL, "NAV_HIDDEN"), name);
+  }
+  assert.equal(GATE_BREAKS.length, 10);
+});
+
+test("the shapes in a comment above the gate do not stand in for the gate", () => {
+  const stripped = mutate(SHELL, "if (!any) {", "if (false) {");
+  const decoy = stripped.replace("function gateLinks(", `/* if (!any) { group.style.display = "none"; group.setAttribute("data-fh-gated-group", "1"); } */\n  function gateLinks(`);
+  assert.notEqual(decoy, stripped);
+  for (const head of FIN_B19_HIDDEN_HEADS) assert.equal(stateOf(decoy, head).state, "changed", head.label);
+  // And the shapes found before the function are not read at all.
+  assert.equal(applyingCode(decoy).ok, false);
+  assert.deepEqual(applyingCode(SHELL), { ok: true });
+});
+
+test("through the lane: a broken gate turns the three rows back to not proved, and the morning audit refuses the na", async () => {
+  const broken = mutate(SHELL, "if (!allowed || hideNav) {", "if (!allowed) {");
+  const rows = headRows(await gapChecks({ fetchImpl: lane(broken) }));
+  for (const head of FIN_B19_HIDDEN_HEADS) {
+    const row = rows.get(head.control);
+    assert.equal(row.status, "NOT_PROVED", head.label);
+    assert.equal(row.na, undefined, head.label);
+    assert.match(row.detail, /the code that applies the hidden list changed/, head.label);
+  }
+  const verify = naVerify[HIDDEN_HEAD_CODE];
+  for (const head of FIN_B19_HIDDEN_HEADS) {
+    const args = { sourceFile: head.sourceFile, surface: head.surface, control: head.control };
+    assert.equal(await verify(args, { fetchImpl: serve(broken) }), false, head.label);
+    assert.equal(await verify(args, { fetchImpl: serve(SHELL) }), true, head.label);
+  }
 });

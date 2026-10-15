@@ -2,8 +2,10 @@
 // and exactly why. Each is a finding, not a failure. fin-b19-rows.test.mjs holds each reason to the repo:
 // the moment the reason stops being true, that test goes red and says the row can now be attached.
 //
-// Two are named by what the page does not do: picking Manual, or the x on the Sort chip, does not give the
-// first order back. They stay NOT_PROVED until a person changes the page.
+// Three are named by what the page does not do. Picking Manual, or the x on the Sort chip, does not give the
+// first order back. The search box says "name, phone, or email" and reads the name only. They stay NOT_PROVED
+// until a person changes the page. In each, the only test that can be written pins the bug as the right
+// answer, and a test that passes because the bug is there goes red on the fix, so none is attached.
 //
 // Three are sidebar heads that no person can see. They are not "not proved": there is nothing to judge, and
 // the computer re-checks that every morning (src/pulse/coverage/fin-b19-hidden-head.mjs, N/A code
@@ -34,7 +36,20 @@ const SORT_WHY = "applySort() in public/app/pipeline.html starts with `if(!mode)
   + "function) clears the select and the chip and leaves every column in the sorted order until the page is reloaded. "
   + "fin-b19-pipeline-controls.test.mjs exercises it and pins the behaviour.";
 
+const SEARCH_WHY = "The search box says \"Search name, phone, or email\" and the filter in public/app/pipeline.html "
+  + "(applyFilters) compares the card's name text only: `nameOf(c).toLowerCase().indexOf(term)`. A phone number or an email "
+  + "typed in the box matches no card, although the box promises both. fin-b19-pipeline-controls.test.mjs exercises it and "
+  + "pins the behaviour, so the day the filter reads phone and email that test goes red and says to attach the row.";
+
 export const FIN_B19_NOT_ATTACHABLE = Object.freeze([
+  Object.freeze({
+    id: `catalog-display:desks-e.json:${PIPELINE}:Search box (placeholder says name, phone, or email; the filter compares the card's name text only)`,
+    sourceFile: "desks-e.json",
+    surface: PIPELINE,
+    control: "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)",
+    why: `The search keeps the cards whose name has the typed words (practice test, green), but it does not do what its placeholder says. ${SEARCH_WHY}`,
+    requirement: "The search box must keep the cards whose name, phone or email has the typed words, as its placeholder says. Today it compares the name text only (applyFilters in public/app/pipeline.html), so a phone or an email typed in the box finds nothing, and this control cannot be proved until the page is changed.",
+  }),
   Object.freeze({
     id: `catalog-display:desks-e.json:${PIPELINE}:Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first`,
     sourceFile: "desks-e.json",

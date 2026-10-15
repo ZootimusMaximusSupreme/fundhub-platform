@@ -1,5 +1,5 @@
 // Guards for the batch 19 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the five rows
+// plain runnable test that opens no live site, every attached row has a proof case, and the six rows
 // left out stay out only while the reason in fin-b19-not-attachable.mjs is still true.
 
 import assert from "node:assert/strict";
@@ -36,14 +36,14 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "35 attached rows and 5 exercised-but-not-attached rows");
+  assert.equal(listed, 40, "34 attached rows and 6 exercised-but-not-attached rows");
 });
 
 test("attached rows have one proof case each; the exercised-but-not-attached rows have none", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls));
-  assert.equal(attached.length, 35);
-  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 35);
-  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 35);
+  assert.equal(attached.length, 34);
+  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 34);
+  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 34);
   const left = new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => c.control));
   for (const row of [...FIN_B19_NOT_ATTACHABLE, ...FIN_B19_HIDDEN_HEADS]) assert.equal(left.has(row.control), false, row.control);
   for (const c of FIN_B19_DISPLAY_PROOF_CASES) {
@@ -51,8 +51,8 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   }
 });
 
-test("the five left-out rows are real map rows: two named not attachable, three sidebar heads judged by the live shared chrome", () => {
-  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 2);
+test("the six left-out rows are real map rows: three named not attachable, three sidebar heads judged by the live shared chrome", () => {
+  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 3);
   assert.equal(FIN_B19_HIDDEN_HEADS.length, 3);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || []));
   assert.deepEqual(
@@ -71,6 +71,13 @@ test("the five left-out rows are real map rows: two named not attachable, three 
     "applySort() now handles an empty choice: Manual and the Sort chip x may work, attach the Sort and chip rows");
   assert.match(pipeline, /c\.el\.value=''; applyFilters\(\); if\(c\.el===fSort\) applySort\(\); syncChips\(\);/,
     "the chip x changed: re-check the chip row");
+
+  // The Search reason, held to the page: the filter still compares the card's name text only, and the box still
+  // promises phone and email. When either side changes, this row can be looked at again.
+  assert.match(pipeline, /if\(term && nameOf\(c\)\.toLowerCase\(\)\.indexOf\(term\)<0\) hit=false;/,
+    "the search filter changed: it may now read phone and email, attach the Search row");
+  assert.match(pipeline, /<input id="q" value="" placeholder="Search name, phone, or email">/,
+    "the search box words changed: re-check the Search row");
 
   // The three heads: every link under each is still on NAV_HIDDEN in shell.js, which is what hides the section.
   // (fin-b19-hidden-head.test.mjs holds the live reader to the same file, and breaks it on purpose.)
