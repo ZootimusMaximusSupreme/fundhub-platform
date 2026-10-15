@@ -157,4 +157,167 @@ describe("GET /api/money/banks", () => {
     }
     assert.deepEqual(letIn.sort(), ["admin", "closer", "owner", "sales_manager"]);
   });
+
+  // ── a client with a credit pull, a staff date and accounts at several stages ─────────────────────
+
+  function richFile({ staffDate = "2026-12-01", onFile = "45000", relationships = null, deposits = null, buyer = true, pullEstimate = "$30,000" } = {}) {
+    const cf = { home_state: "AZ", crs_negative_items_count: 0, crs_late_payments_count: 0, crs_inquiries_ex: 1, crs_inquiries_eq: 1, crs_inquiries_tu: 1 };
+    if (staffDate) cf.blueprint_next_sequence_ready_date = staffDate;
+    if (onFile) cf.total_funding_estimate = onFile;
+    const rel = (id, bank, over) => ({ id, org_id: ORG, client_id: CLIENT, bank_key: bank.toLowerCase(), bank_name: bank, account_kind: "business", state: "open",
+      lender_id: null, created_at: "2026-10-01T00:00:00Z", planned_open_on: null, planned_deposit_cents: null, opened_on: null, ...over });
+    const tables = {
+      clients: [{ id: CLIENT, org_id: ORG, first_name: "Dana", last_name: "Whitfield", custom_fields: cf }],
+      lenders: [
+        lender("l1", "Desert Bank", { insider_tips: "Checking account + 30-day seasoning required.", minimum_deposit: "500" }),
+        lender("l2", "Zion Bank", { insider_tips: "Open checking account 30 days prior when possible", minimum_deposit: "250" }),
+        lender("l3", "Mesa Bank", { minimum_deposit: null }),
+      ],
+      businesses: [{ id: "b1", org_id: ORG, client_id: CLIENT, name: "Acme LLC", age_months: 30, entity_data: { state: "AZ", naics: "541511" }, created_at: "2026-01-01T00:00:00Z" }],
+      crs_results: [{ id: "crs-1", client_id: CLIENT, org_id: ORG, created_at: "2026-10-05T12:00:00Z", result: {
+        environment: "production", bureausPulled: ["EX", "EQ", "TU"], scores: { ex: 731, eq: 740, tu: 725 }, fundingEstimate: pullEstimate,
+        inquiries: [{ source: "EX", date: "2026-09-14" }, { source: "EQ", date: "2026-09-15" }, { source: "TU", date: "2026-09-16" }] } }],
+      tradelines: [
+        { id: "t0", client_id: CLIENT, org_id: ORG, lender: "OLD", kind: "revolving", credit_limit_cents: 1500000, balance_cents: 150000, apr: "0.1899", opened_on: "2019-05-28", closed_at: null },
+        { id: "t1", client_id: CLIENT, org_id: ORG, lender: "NEW", kind: "revolving", credit_limit_cents: 1000000, balance_cents: 100000, apr: "0.1899", opened_on: "2026-09-20", closed_at: null },
+      ],
+      funding_rounds: [{ id: "r1", client_id: CLIENT, org_id: ORG, round_number: 1, status: "funded", funded_amount: "50000.00", approved_amount: "50000.00",
+        created_at: new Date("2026-09-10T00:00:00Z"), updated_at: new Date("2026-09-25T00:00:00Z") }],
+      blueprint_bank_relationship_todos: relationships || [
+        // Stored newest first on purpose: the tracker lists them oldest first.
+        rel("r3", "Mesa Bank", { opened_on: "2026-09-01", created_at: "2026-10-03T00:00:00Z" }),
+        rel("r2", "Zion Bank", { opened_on: "2026-08-01", created_at: "2026-10-02T00:00:00Z" }),
+        rel("r1", "Desert Bank", { opened_on: "2026-10-01", planned_deposit_cents: 70000, lender_id: "l1", created_at: "2026-10-01T00:00:00Z" }),
+      ],
+      bank_relationship_deposits: deposits || [],
+    };
+    const db = tablesDb({
+      tables,
+      rules: [
+        [/FROM transactions t/i, () => (buyer ? [{ x: 1 }] : [])],
+        [/FROM lenders\s+WHERE org_id = \$1::uuid AND id = ANY\(\$2::uuid\[\]\)/i, (s, p) => rowsWhere(tables.lenders, s, p).filter((r) => p[1].includes(r.id))],
+        [/FROM lenders\s+WHERE org_id = \$1::uuid AND COALESCE\(is_demo, false\) = false\s+AND \(id = ANY/i,
+          (s, p) => rowsWhere(tables.lenders, s, p).filter((r) => p[1].includes(r.id) || p[2].includes(String(r.name).toLowerCase()))],
+      ],
+    });
+    db.tables = tables;
+    return db;
+  }
+  const rel = (res, id) => res.body.relationships.find((r) => r.id === id);
+
+  test("each account is planned, seasoning, seasoned or open by the bank's own seasoning days, and says the day it will be seasoned", async () => {
+    const { res } = await call({ principal: staff(), db: richFile() });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body).slice(0, 300));
+    assert.deepEqual(res.body.relationships.map((r) => r.id), ["r1", "r2", "r3"], "oldest first");
+    const desert = rel(res, "r1");
+    assert.equal(desert.status, "seasoning", "opened 13 days ago, the bank wants 30");
+    assert.equal(desert.days_open, 13);
+    assert.equal(desert.seasoning.days, 30);
+    assert.equal(desert.seasoned_on, "2026-10-31", "the open day plus the bank's own 30 days");
+    assert.equal(desert.opened_on, "2026-10-01");
+    const zion = rel(res, "r2");
+    assert.equal(zion.status, "seasoned");
+    assert.equal(zion.seasoned_on, "2026-08-31");
+    assert.equal(zion.days_open, 74);
+    const mesa = rel(res, "r3");
+    assert.equal(mesa.status, "open", "the book names no seasoning period for this bank");
+    assert.equal(mesa.seasoning, null);
+    assert.equal(mesa.seasoned_on, null);
+    assert.equal(mesa.status_text, "Open");
+  });
+
+  test("the deposit to make is staff's own number first, then the bank book's minimum, else nothing; and it says which", async () => {
+    const { res } = await call({ principal: staff(), db: richFile() });
+    const desert = rel(res, "r1");
+    assert.equal(desert.deposit_plan_cents, 70000, "staff planned $700 and the book's minimum is $500");
+    assert.equal(desert.planned_deposit_cents, 70000);
+    assert.match(desert.deposit_plan_source.label, /staff/i);
+    const zion = rel(res, "r2");
+    assert.equal(zion.deposit_plan_cents, 25000, "no staff number: the book's $250");
+    assert.doesNotMatch(zion.deposit_plan_source.label, /staff/i);
+    assert.match(zion.deposit_plan_source.ref, /minimum_deposit/);
+    const mesa = rel(res, "r3");
+    assert.equal(mesa.deposit_plan_cents, null, "nobody named an amount: unknown stays unknown, not 0");
+    assert.equal(mesa.deposit_plan_source, null);
+  });
+
+  test("two deposits on one day come back in the order they were recorded, and a deposit with no date or amount is left out", async () => {
+    const dep = (id, over) => ({ id, org_id: ORG, client_id: CLIENT, relationship_id: "r1", amount_cents: 10000, deposited_on: "2026-10-02", note: id, created_at: "2026-10-02T09:00:00Z", ...over });
+    const deposits = [
+      dep("late", { created_at: "2026-10-02T17:00:00Z", amount_cents: 30000 }),
+      dep("early", { created_at: "2026-10-02T08:00:00Z", amount_cents: 20000 }),
+      dep("next-day", { deposited_on: "2026-10-03", amount_cents: 5000, created_at: "2026-10-03T08:00:00Z" }),
+      dep("no-amount", { amount_cents: null }),
+      dep("no-day", { deposited_on: null }),
+      dep("other-client", { client_id: "c8000000-0000-4000-8000-000000000008" }),
+    ];
+    const { res } = await call({ principal: staff(), db: richFile({ deposits }) });
+    const desert = rel(res, "r1");
+    assert.deepEqual(desert.deposits.map((d) => d.id), ["early", "late", "next-day"]);
+    assert.equal(desert.deposits_total_cents, 55000);
+    assert.equal(rel(res, "r2").deposits_total_cents, null, "no deposits recorded is unknown, not $0");
+  });
+
+  test("the next funding sequence: a staff date wins, the amount is the file's own figure first and the pull's second, and ready needs a date and no open gap", async () => {
+    const ready = await call({ principal: staff(), db: richFile() });
+    const n = ready.res.body.next_sequence;
+    assert.equal(n.date, "2026-12-01");
+    assert.equal(n.effective_date, "2026-12-01");
+    assert.equal(n.effective_source, "staff");
+    assert.equal(n.suggested_date, "2027-03-21", "the file math's own answer rides beside the staff date");
+    assert.equal(n.estimated_amount_cents, 4500000, "the figure on the client's file");
+    assert.match(n.amount_source.ref, /total_funding_estimate/);
+    assert.equal(n.can_set_date, true);
+    assert.deepEqual(n.readiness_gaps, []);
+    assert.equal(n.ready, true, "a date, a fundable file and nothing left to do");
+    assert.deepEqual(ready.res.body.not_set.filter((x) => x.key === "next_round_date"), []);
+
+    // The pull's figure is used when the file carries none.
+    const fromPull = await call({ principal: staff(), db: richFile({ onFile: null }) });
+    assert.equal(fromPull.res.body.next_sequence.estimated_amount_cents, 3000000);
+    assert.match(fromPull.res.body.next_sequence.amount_source.ref, /fundingEstimate/);
+
+    // No staff date: not ready, and the suggested date is what is offered as the effective one.
+    const noDate = await call({ principal: staff(), db: richFile({ staffDate: null }) });
+    assert.equal(noDate.res.body.next_sequence.date, null);
+    assert.equal(noDate.res.body.next_sequence.ready, false, "ready needs a date");
+    assert.equal(noDate.res.body.next_sequence.effective_date, "2027-03-21");
+    assert.equal(noDate.res.body.next_sequence.effective_source, "suggested");
+    assert.ok(noDate.res.body.not_set.some((x) => x.key === "next_round_date"));
+  });
+
+  test("an account not seasoned by the staff date is a gap that says how many days it will have; one seasoned in time is not; a planned one is always a gap", async () => {
+    // Desert Bank is seasoned on 2026-10-31. A staff date of 2026-10-20 is too soon for it.
+    const early = await call({ principal: staff(), db: richFile({ staffDate: "2026-10-20" }) });
+    const n = early.res.body.next_sequence;
+    assert.deepEqual(n.readiness_gaps.map((g) => g.id), ["season:r1"]);
+    assert.match(n.readiness_gaps[0].text, /Desert Bank will have 19 of 30 days of seasoning on that day/);
+    assert.equal(n.ready, false);
+    // With no staff date the same gap counts from today.
+    const none = await call({ principal: staff(), db: richFile({ staffDate: null }) });
+    assert.deepEqual(none.res.body.next_sequence.readiness_gaps.map((g) => g.id), ["season:r1"]);
+    assert.match(none.res.body.next_sequence.readiness_gaps[0].text, /needs 17 more days of seasoning/);
+    // An account still only planned is a gap on any date, and a skipped one is not.
+    const planned = await call({ principal: staff(), db: richFile({ relationships: [
+      { id: "r8", org_id: ORG, client_id: CLIENT, bank_key: "plain bank", bank_name: "Plain Bank", account_kind: "business", state: "open", lender_id: null, created_at: "2026-10-01T00:00:00Z", planned_open_on: null, planned_deposit_cents: null, opened_on: null },
+      { id: "r9", org_id: ORG, client_id: CLIENT, bank_key: "skipped bank", bank_name: "Skipped Bank", account_kind: "business", state: "skipped", lender_id: null, created_at: "2026-10-02T00:00:00Z", planned_open_on: null, planned_deposit_cents: null, opened_on: null },
+    ] }) });
+    assert.deepEqual(planned.res.body.next_sequence.readiness_gaps.map((g) => g.id), ["open:r8"]);
+    assert.equal(planned.res.body.next_sequence.ready, false);
+    assert.equal(rel(planned.res, "r9").status, "skipped");
+    assert.equal(rel(planned.res, "r8").status, "planned");
+    assert.equal(rel(planned.res, "r8").status_text, "Planned · date not set");
+  });
+
+  test("a client does not read the staff flags that staff do", async () => {
+    const staffRead = await call({ principal: staff(), db: richFile() });
+    const flags = staffRead.res.body.next_sequence.suggestion.flags;
+    assert.equal(flags.length, 1, "the staff date is before the file math's date");
+    assert.equal(flags[0].id, "staff_date_before_suggestion");
+    const clientRead = await call({ principal: clientPrincipal(CLIENT, ORG), db: richFile() });
+    assert.equal(clientRead.res.statusCode, 200);
+    assert.deepEqual(clientRead.res.body.next_sequence.suggestion.flags, []);
+    assert.deepEqual(clientRead.res.body.next_round.suggestion.flags, [], "the old name is the same object");
+    assert.equal(clientRead.res.body.next_sequence.date, "2026-12-01", "the date itself is the client's to see");
+  });
 });
