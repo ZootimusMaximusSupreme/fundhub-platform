@@ -41,9 +41,53 @@ export function scratch({ clients = [], links = [], messages = [], drop = [] } =
   return {
     calls,
     async query(sql, params = []) {
-      calls.push({ sql, params });
+      const call = { sql, params, returned: null };
+      calls.push(call);
       const bind = Object.fromEntries(params.map((value, index) => [`$${index + 1}`, value]));
-      return { rows: engine.prepare(sql).all(bind).map((row) => ({ ...row })) };
+      const rows = engine.prepare(sql).all(bind).map((row) => ({ ...row }));
+      call.returned = rows.length;
+      return { rows };
+    },
+  };
+}
+
+/** The same database, with rows handed back the way the pg driver hands them back. A timestamptz column
+ *  (payment_links.created_at, messages.created_at) is a JS Date. A jsonb ->> read (the client marker) is text.
+ *  The scratch engine alone returns text for both, so without this no test feeds the check a Date.
+ *  `fed` counts how many saved times were turned into a Date and how many stayed text. */
+export function postgresShaped(db) {
+  const fed = { dates: 0, texts: 0 };
+  return {
+    calls: db.calls,
+    fed,
+    async query(sql, params = []) {
+      const answer = await db.query(sql, params);
+      const timestamptz = /\bFROM (payment_links|messages)\b/.test(sql);
+      return {
+        rows: answer.rows.map((row) => {
+          if (timestamptz && typeof row.saved_at === "string") {
+            fed.dates += 1;
+            return { ...row, saved_at: new Date(row.saved_at) };
+          }
+          fed.texts += 1;
+          return row;
+        }),
+      };
+    },
+  };
+}
+
+/** A hand-made database that answers each trace with exactly the saved times given (any JS value: a Date,
+ *  text, null). `link`, `message` and `marker` are one value or an array. Nothing else is read. */
+export function handMade({ link, message, marker } = {}) {
+  const calls = [];
+  return {
+    calls,
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      const pick = /\bFROM payment_links\b/.test(sql) ? link : /\bFROM messages\b/.test(sql) ? message : marker;
+      const list = pick === undefined ? [] : [].concat(pick);
+      return { rows: list.map((saved_at) => ({ saved_at })) };
     },
   };
 }

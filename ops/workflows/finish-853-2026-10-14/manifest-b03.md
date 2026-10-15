@@ -3,6 +3,7 @@
 Branch `fin/b03`, built from `fin/base` at `2f4f574a0`. Nothing was pushed or merged.
 Lane: `gap-door-batch-routes`. Rows in the batch: 1. Product code changed: none.
 Repair cycle 1 (independent checker found the live read could stay green when the SQL broke): done, see below.
+Repair cycle 2 (independent checker found the Date path was never fed by a test that runs): done, see "Repair cycle 2".
 
 ## Numbers
 
@@ -78,10 +79,65 @@ closer, sales manager, owner and admin it answers 400 `unknown_action`, does not
 and inserts or updates nothing (no payment link, no message, no marker). A second test shows a served action on
 the same stand-in is not refused as unknown, so the refusal is the action's own.
 
-## Break it on purpose (every break made, test run, red seen, file put back)
+## Repair cycle 2: what the checker found, what changed
+
+The checker's finding: everything that runs went red on a real break except the Postgres Date path. The pay link
+and the email traces read `created_at`, a `timestamptz`, which the pg driver hands back as a JS `Date` (no
+`setTypeParser` override exists in `src`, `api`, `netlify` or `db`). The scratch engine hands back text, so no test
+that runs ever fed `toMillis()` a Date. The only test that did was the Postgres file, which skips without a
+database. Four breaks of the Date branch (returns 0, returns NaN, deleted, shifted 30 days back) stayed green with
+0 failures across 236 tests. The check was correct (the checker fed real Dates by hand), so this was an untested
+live path, not a live bug. Product code changed: none. The manifest line "timestamps are handled as text or Date
+... pinned in the scratch engine" was not true for Date. It is true now, and it is held by the tests below.
+
+| Finding | Fix |
+|---|---|
+| No running test fed a Date | Seven new tests in `fin-b03-route-retired.sql.test.mjs` ("Dates: ..." and the two after them). Two feeders in the kit: `handMade()` answers a trace with exactly the JS values given (a Date, text, an Invalid Date), and `postgresShaped()` wraps the scratch engine and turns the link and email times into Dates the way pg does, while the marker (`jsonb ->>`) stays text. It counts what it fed, and the test asserts the Dates really reached the check (`fed.dates`). |
+| Before, at and after the cutoff as a Date | Both Date traces (link, email) are judged with a Date 30 days before, 1 ms before, exactly at, 1 ms after, a day after, 30 days after the cutoff, and an Invalid Date. The answer is `na` or `FAIL` by name, with the history sentence on `na`. |
+| Date vs text | The same instant as a Date and as text gets the same answer on all three traces (including a `-07:00` Arizona-written time). |
+| Machine clock | The Date answer is held under five machine clocks (`UTC`, `Pacific/Auckland`, `America/Phoenix`, `America/Los_Angeles`, `Asia/Kolkata`), so a read that leans on the local zone goes red. |
+| Counts, verify | Counts and the history sentence add up with Dates (2 late links and 2 late emails read as such). `verifyRetiredRoute` is held with old Dates (true), a late Date (false) and an Invalid Date (false). |
+| Minor note: LIMIT | The old test compared the sent SQL to `ebookTraceSql` itself, so removing `LIMIT` stayed green. A new test pins that the sent statement ends with `LIMIT 1001` and that the engine stopped at 1,001 of 1,500 rows. |
+| Minor note: scope vs db | A new test gives the run both a staff scope and a plain database and asserts the scope was read and the plain database was not. |
+
+Kit change (test only): `scratch()` now records how many rows each statement returned (`calls[i].returned`).
+
+### Break it on purpose, cycle 2 (each break applied to the real file, `fin-b03-route-retired.sql.test.mjs` run, file restored, `cmp` against a saved good copy confirmed)
+
+| # | Break | Result |
+|---|---|---|
+| X1 | Date branch returns 0 | RED, 6 of 26 |
+| X2 | Date branch returns NaN | RED, 6 of 26 |
+| X3 | Date branch deleted | RED, 6 of 26 |
+| X4 | Date shifted 30 days back | RED, 6 of 26 |
+| X5 | Invalid Date read as 0 (`getTime() \|\| 0`) | RED, 2 of 26 |
+| X6 | Date shifted by the machine clock offset | RED, 6 of 26 |
+| X7 | Date read in seconds | RED, 6 of 26 |
+| X8 | Date shifted 30 days forward (false FAIL on old sends) | RED, 6 of 26 |
+| X9 | Date read through `Date.parse(String(date))` (loses milliseconds) | GREEN, 0 of 26. This one cannot change any answer: the cutoff is a whole second, so flooring a time to the second never moves it across the cutoff. An equivalent change, not a hole. |
+| X10 | Date read through its ISO text cut to the minute | RED, 1 of 26 (an Invalid Date makes `toISOString()` throw, so it is `skip`, not `FAIL`) |
+| M1 | `LIMIT` removed from the statement | RED, 1 of 26 |
+| M2 | plain database preferred over the staff scope | RED, 1 of 26 |
+| M3 | `LIMIT` is the cap itself (off by one) | RED, 2 of 26 |
+
+The four the checker named (X1 to X4) are red, 6 of 26 each.
+
+### What is still not proved (said plainly)
+
+- The Date path is now held on every machine by a hand-made Date and by engine rows turned into Dates. It is not
+  a Postgres run. A real `timestamptz` coming back from a real pool is still only exercised by
+  `fin-b03-route-retired.pg.test.mjs` (7 skipped here, never run by anyone). Its first real run is the CI job
+  "suite (real Postgres - blocks)".
+- If the pg driver were ever configured to hand `timestamptz` back as text, Postgres's text form is
+  `2026-10-13 20:10:00+00` (a space, not a `T`). This check reads only the ISO `T` form as text and would call that
+  unreadable, so it would go `FAIL` on old sends. That is the loud direction, not a missed red. No parser override
+  exists today. Not changed here.
+
+## Break it on purpose, cycle 1 (every break made, test run, red seen, file put back)
 
 Run against `fin-b03-route-retired.sql.test.mjs` unless noted. A runner applied each text change to the real file,
-ran the test file, and restored it (`cmp` against a saved good copy and `git diff` confirmed after).
+ran the test file, and restored it (`cmp` against a saved good copy and `git diff` confirmed after). The counts in the
+table are "of 18": the file had 18 tests then.
 
 | # | Break | Result |
 |---|---|---|
@@ -146,10 +202,10 @@ The three the checker named (S1, S2, S3 families) are all red now, on each of th
 ## Files added or rewritten
 
 - `src/pulse/coverage/fin-b03-route-retired.mjs` (rewritten: the traces, the SELECT builder, the judge, the verifier)
-- `src/pulse/coverage/fin-b03-route-retired.sql.test.mjs` (18 tests, SQL and judge on a real SQL engine, about 1 second)
+- `src/pulse/coverage/fin-b03-route-retired.sql.test.mjs` (26 tests since cycle 2: SQL and judge on a real SQL engine, plus Dates as Postgres hands them back, about 1 second)
 - `src/pulse/coverage/fin-b03-route-retired.test.mjs` (11 tests: the real handler, the lane wiring, the audit)
 - `src/pulse/coverage/fin-b03-route-retired.pg.test.mjs` (7 tests, Postgres, skips without a database)
-- `src/pulse/coverage/fin-b03-route-retired-kit.mjs` (tests only: the scratch engine and the made-up rows)
+- `src/pulse/coverage/fin-b03-route-retired-kit.mjs` (tests only: the scratch engine, the made-up rows, and since cycle 2 `postgresShaped()` and `handMade()`)
 - `ops/workflows/finish-853-2026-10-14/manifest-b03.md` (this file)
 
 ## Shared lines touched (integrator: please merge these)
@@ -170,6 +226,20 @@ Note for the integrator: the catalog still lists this row as "monitor stays red 
 fake-data test judges this named result". That text is the recipe and `door-batch-route-result.test.mjs` requires
 it for every row in the lane. The live lane is the one that tells the truth ("retired, nothing to judge"). If
 you want the catalog text to say "retired" too, that needs a recipe change and a change to that guard.
+
+## Commands run (cycle 2)
+
+- `node --test src/pulse/coverage/fin-b03-route-retired.sql.test.mjs`: 26 of 26 pass.
+- `node --test` on the three `fin-b03-route-retired` files together: 44 tests, 37 pass, 0 fail, 7 skipped (the pg
+  file, no `DATABASE_URL`). **This is not a Postgres result.**
+- Break runner X1 to X10 and M1 to M3 (table above): 12 of 13 red, X9 an equivalent change. Restored each time.
+- Regression group: `gap-door-batch-routes`, `na-conditions`, `self-audit`, `modules`, `tripwires`, `daily-pulse`,
+  `run-slices`, `s1-door-contracts` (206 pass, 0 fail), and `door-batch-route-result`, `scorecard`, `quiet-hours`,
+  `src/http/routes.test.mjs`, `gap-catalog-*`, `link` (117 pass, 0 fail).
+- `npm run lint`: 3,567 files and inline scripts parse clean.
+- `npm run pulse:catalog`: ran, `generated.json` unchanged (no diff).
+- `node scripts/pulse/count-not-proved.mjs` (offline): `{"total":852,"byLane":{"gap-door-batch-routes":134,"gap-catalog-display":680,"gap-catalog-flow":23,"gap-catalog-reads":15}}`. The
+  send_ebook row is not in the open list (it is `skip` offline, `na` or `FAIL` live).
 
 ## Commands run (cycle 1)
 

@@ -5,6 +5,11 @@
 // or flipped, a dropped column or a dropped filter changes what comes back and a test here goes red. Postgres is
 // not on this Mac; fin-b03-route-retired.pg.test.mjs runs the same strings on Postgres where a database is set.
 //
+// The scratch engine hands saved times back as text, and Postgres hands a timestamptz back as a JS Date (the pg
+// driver, no type parser override anywhere in src, api or netlify). Two of the three traces are timestamptz, so
+// the "Dates, as Postgres hands them back" section below feeds real Date objects, both by hand and by turning the
+// engine's rows into Dates, so that read path is held by a test that runs on every machine.
+//
 // This file imports only the check itself and the kit, so it runs in seconds. The wiring into the route lane, the
 // real closer-deck handler and the morning audit are in fin-b03-route-retired.test.mjs.
 import assert from "node:assert/strict";
@@ -13,7 +18,7 @@ import test from "node:test";
 
 import {
   AFTER, AT_CUTOFF, JUST_BEFORE, LANE_ORG, LINK_REF, LONG_AGO, OTHER_ORG,
-  email, link, marker, plainClient, scratch,
+  email, handMade, link, marker, plainClient, postgresShaped, scratch,
 } from "./fin-b03-route-retired-kit.mjs";
 import {
   EBOOK_TRACES,
@@ -280,4 +285,147 @@ test("the proof cannot name another action, control, map or route", async () => 
     assert.equal(retiredRouteEntryForArgs({ ...CODE_ARGS, ...change }), null, JSON.stringify(change));
     assert.equal(await verifyRetiredRoute({ ...CODE_ARGS, ...change }, { db: scratch(), orgId: LANE_ORG }), false, JSON.stringify(change));
   }
+});
+
+/* ---- what Postgres hands back: a Date for a timestamptz, text for a jsonb ->> read ---- */
+
+const dateAt = (iso) => new Date(iso);
+const CUTOFF_MS = Date.parse(AT_CUTOFF);
+/** The two traces whose saved time is a timestamptz column, so the driver gives a Date. */
+const DATE_TRACES = [
+  { key: "link", said: /1 pay link described as an e-book/, before: /Saved before it went off: 1 pay link\b/ },
+  { key: "message", said: /1 email sent as an e-book send/, before: /Saved before it went off: 1 email\b/ },
+];
+
+test("Dates: a saved time that is a Date is judged on its instant, one millisecond before, at and after the cutoff", async () => {
+  const cases = [
+    { name: "long before", at: dateAt(LONG_AGO), status: "na" },
+    { name: "30 days before the cutoff", at: new Date(CUTOFF_MS - 30 * 86_400_000), status: "na" },
+    { name: "one millisecond before", at: new Date(CUTOFF_MS - 1), status: "na" },
+    { name: "exactly at the cutoff", at: new Date(CUTOFF_MS), status: "FAIL" },
+    { name: "one millisecond after", at: new Date(CUTOFF_MS + 1), status: "FAIL" },
+    { name: "a day after", at: dateAt(AFTER), status: "FAIL" },
+    { name: "30 days after the cutoff", at: new Date(CUTOFF_MS + 30 * 86_400_000), status: "FAIL" },
+    { name: "an Invalid Date", at: new Date("not a time"), status: "FAIL" },
+  ];
+  for (const trace of DATE_TRACES) {
+    for (const { name, at, status } of cases) {
+      const row = await judgeRetiredRoute(ROW, ENTRY, { db: handMade({ [trace.key]: at }), orgId: LANE_ORG });
+      assert.equal(row.status, status, `${trace.key}, ${name}`);
+      assert.equal(row.id, ROW.id);
+      if (status === "FAIL") {
+        assert.match(row.detail, trace.said, `${trace.key}, ${name}`);
+        assert.equal(row.na, undefined);
+      } else {
+        assert.match(row.detail, trace.before, `${trace.key}, ${name}`);
+        assert.deepEqual(row.na, { code: "catalog-route-retired-action", args: CODE_ARGS });
+      }
+    }
+  }
+});
+
+test("Dates: the same instant as a Date and as text gets the same answer, on every trace", async () => {
+  const instants = [LONG_AGO, JUST_BEFORE, AT_CUTOFF, AFTER, "2026-10-12T09:36:00.000-07:00", "2026-10-12T09:35:59.999-07:00"];
+  for (const instant of instants) {
+    for (const key of ["link", "message", "marker"]) {
+      const asText = await judgeRetiredRoute(ROW, ENTRY, { db: handMade({ [key]: instant }), orgId: LANE_ORG });
+      const asDate = await judgeRetiredRoute(ROW, ENTRY, { db: handMade({ [key]: dateAt(instant) }), orgId: LANE_ORG });
+      assert.equal(asDate.status, asText.status, `${key} ${instant}`);
+      assert.equal(asDate.status, Date.parse(instant) < CUTOFF_MS ? "na" : "FAIL", `${key} ${instant}`);
+    }
+  }
+});
+
+test("Dates: a Date is an instant, so the answer is the same on any machine clock", async () => {
+  const zone = process.env.TZ;
+  try {
+    for (const tz of ["UTC", "Pacific/Auckland", "America/Phoenix", "America/Los_Angeles", "Asia/Kolkata"]) {
+      process.env.TZ = tz;
+      for (const key of ["link", "message"]) {
+        const before = await judgeRetiredRoute(ROW, ENTRY, { db: handMade({ [key]: dateAt(JUST_BEFORE) }), orgId: LANE_ORG });
+        const at = await judgeRetiredRoute(ROW, ENTRY, { db: handMade({ [key]: dateAt(AT_CUTOFF) }), orgId: LANE_ORG });
+        assert.equal(before.status, "na", `${key} one millisecond before, clock ${tz}`);
+        assert.equal(at.status, "FAIL", `${key} at the cutoff, clock ${tz}`);
+      }
+    }
+  } finally {
+    if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone;
+  }
+});
+
+test("Dates: the real statements on the engine, with the rows turned into Dates the way pg does, judge each trace", async () => {
+  // Before the cutoff, on every trace: history, nothing to judge. The link and email times are Dates, the marker is text.
+  const old = postgresShaped(scratch({ clients: [marker(LONG_AGO)], links: [link(JUST_BEFORE)], messages: [email(LONG_AGO)] }));
+  const oldRow = await judgeRetiredRoute(ROW, ENTRY, { db: old, orgId: LANE_ORG });
+  assert.equal(oldRow.status, "na");
+  assert.match(oldRow.detail, /Saved before it went off: 1 client file, 1 pay link, 1 email/);
+  assert.equal(old.fed.dates, 2, "the link time and the email time reached the check as Dates");
+  assert.equal(old.fed.texts, 1, "the marker time reached the check as text");
+
+  // After the cutoff, on the Date traces alone, one at a time: the Date path must go red by itself.
+  for (const [key, rows, said] of [
+    ["link", { links: [link(AFTER)] }, /1 pay link described as an e-book/],
+    ["message", { messages: [email(AFTER)] }, /1 email sent as an e-book send/],
+    ["link at the cutoff", { links: [link(AT_CUTOFF)] }, /1 pay link described as an e-book/],
+    ["message at the cutoff", { messages: [email(AT_CUTOFF)] }, /1 email sent as an e-book send/],
+  ]) {
+    const db = postgresShaped(scratch(rows));
+    const row = await judgeRetiredRoute(ROW, ENTRY, { db, orgId: LANE_ORG });
+    assert.equal(row.status, "FAIL", key);
+    assert.match(row.detail, said, key);
+    assert.doesNotMatch(row.detail, /client file/, key);
+    assert.equal(db.fed.dates, 1, `${key}: the saved time was a Date`);
+  }
+});
+
+test("Dates: counts and the history sentence add up when the times are Dates", async () => {
+  const bad = postgresShaped(scratch({
+    links: [link(AFTER), link(AT_CUTOFF, "ebook"), link(LONG_AGO), link(JUST_BEFORE)],
+    messages: [email(AFTER), email(AFTER, "staff:ebook-send:two"), email(LONG_AGO)],
+  }));
+  const badRow = await judgeRetiredRoute(ROW, ENTRY, { db: bad, orgId: LANE_ORG });
+  assert.equal(badRow.status, "FAIL");
+  assert.match(badRow.detail, /2 pay links described as an e-book/);
+  assert.match(badRow.detail, /2 emails sent as an e-book send/);
+  assert.equal(bad.fed.dates, 7);
+
+  const history = postgresShaped(scratch({
+    links: [link(LONG_AGO), link(JUST_BEFORE)],
+    messages: [email(LONG_AGO)],
+  }));
+  const historyRow = await judgeRetiredRoute(ROW, ENTRY, { db: history, orgId: LANE_ORG });
+  assert.equal(historyRow.status, "na");
+  assert.match(historyRow.detail, /Saved before it went off: 2 pay links, 1 email/);
+});
+
+test("Dates: verify holds for old Dates and not for a late Date or an Invalid Date", async () => {
+  assert.equal(await verifyRetiredRoute(CODE_ARGS, { db: handMade({ link: dateAt(JUST_BEFORE), message: dateAt(LONG_AGO) }), orgId: LANE_ORG }), true);
+  assert.equal(await verifyRetiredRoute(CODE_ARGS, { db: handMade({ link: dateAt(AT_CUTOFF) }), orgId: LANE_ORG }), false);
+  assert.equal(await verifyRetiredRoute(CODE_ARGS, { db: handMade({ message: dateAt(AFTER) }), orgId: LANE_ORG }), false);
+  assert.equal(await verifyRetiredRoute(CODE_ARGS, { db: handMade({ link: new Date("not a time") }), orgId: LANE_ORG }), false);
+  const shaped = postgresShaped(scratch({ links: [link(AFTER)] }));
+  assert.equal(await verifyRetiredRoute(CODE_ARGS, { db: shaped, orgId: LANE_ORG }), false);
+});
+
+/* ---- the read is bounded by the database, and the staff scope wins ---- */
+
+test("the statement carries its own row limit, so a huge trace is cut by the database and not pulled whole", async () => {
+  const db = scratch({ links: Array.from({ length: TRACE_ROW_CAP + 500 }, () => link(LONG_AGO)) });
+  const row = await judgeRetiredRoute(ROW, ENTRY, { db, orgId: LANE_ORG });
+  assert.equal(row.status, "skip");
+  const sent = db.calls.find((call) => /FROM payment_links/.test(call.sql));
+  assert.match(sent.sql, new RegExp(`LIMIT ${TRACE_ROW_CAP + 1}\\s*$`), "the sent statement ends with its own limit");
+  assert.equal(sent.returned, TRACE_ROW_CAP + 1, "the engine stopped at the limit and did not hand back all of them");
+});
+
+test("when the run has both a staff scope and a plain database, the scope is the one that is read", async () => {
+  const viaScope = scratch({ clients: [marker(AFTER)] });
+  const direct = scratch({});
+  let scoped = 0;
+  const scope = async (fn) => { scoped += 1; return fn(viaScope); };
+  const row = await judgeRetiredRoute(ROW, ENTRY, { scope, db: direct, orgId: LANE_ORG });
+  assert.equal(scoped, 1);
+  assert.equal(row.status, "FAIL", "the marker sits behind the scope; the plain database holds nothing");
+  assert.equal(direct.calls.length, 0, "the plain database was not read");
+  assert.equal(viaScope.calls.length, EBOOK_TRACES.length);
 });
