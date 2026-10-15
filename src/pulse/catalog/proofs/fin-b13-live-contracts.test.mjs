@@ -17,7 +17,8 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  FIN_B13_CHECKS, FIN_B13_DISPLAY_CONTRACTS, FIN_B13_SOURCE_FILE, sqlFor
+  BUREAU_SPELLINGS, FIN_B13_CHECKS, FIN_B13_DISPLAY_CONTRACTS, FIN_B13_SOURCE_FILE, POST_CHANNEL_BUTTONS,
+  POST_STATE_BUTTONS, sqlFor
 } from "./fin-b13-display-contracts.mjs";
 import { REPO_ROOT, makeStandIn, schemaColumns, tablesIn } from "./fin-b13-sql-kit.mjs";
 
@@ -244,45 +245,53 @@ const FIX = {
         id: nid("post"), org_id: ORG, role_id: "role-closer", channel: "job_board", status: "posted", title: "J",
         posted_at: T0, external_id: null, is_demo: false })],
       "a posting closed before it was posted": [R("hiring_job_postings", { id: nid("post"), org_id: ORG, role_id: "role-closer",
-        channel: "internal", status: "paused", title: "B", posted_at: T2, closed_at: T0, is_demo: false })]
+        channel: "internal", status: "paused", title: "B", posted_at: T2, closed_at: T0, is_demo: false })],
+      // The database allows zoho (migration 298) and src/hiring/zoho.mjs writes every Zoho posting on it;
+      // the page has no zoho button, so the posting is counted in "all channels" and in no channel.
+      "a posting is on a channel no channel button reaches": [R("hiring_job_postings", { id: nid("post"), org_id: ORG,
+        role_id: "role-closer", channel: "zoho", status: "draft", title: "Z", is_demo: false })],
+      "a posting is in a state no state button reaches": [R("hiring_job_postings", { id: nid("post"), org_id: ORG,
+        role_id: "role-closer", channel: "internal", status: "archived", title: "A", is_demo: false })]
     }
   },
-  "hiring-bench-tiles": {
-    base: [...STAGE_ROWS],
-    views: { v_hiring_bench: BENCH_VIEW },
-    good: [...benchApps(), R("v_hiring_bench", benchRow())],
-    sample: 1,
-    violations: {
-      // Each wrong row is its own role, with its own applications, so the good row's recount never moves.
-      "the open applications number is not the open applications on file": [
-        ...benchApps("role-setter"), R("v_hiring_bench", benchRow({ role_id: "role-setter", role_key: "setter", open_applications: 9 }))],
-      "the bench number is not the people at 1:1 or Offer": [
-        ...benchApps("role-coord"), R("v_hiring_bench", benchRow({ role_id: "role-coord", role_key: "coord", bench_count: 3, bench_shortfall: 3 }))],
-      "the short-by number is not the target minus the bench": [
-        ...benchApps("role-x"), R("v_hiring_bench", benchRow({ role_id: "role-x", role_key: "x", bench_shortfall: 0 }))]
-    }
-  },
-  "specialist-stat-tiles": (() => {
-    const worked = inquiry({ call_attempts: 2, worked_by: "staff-1", worked_at: T0 });
-    const confirmed = inquiry({ status: "Removed", confirmed_at: T0, is_open: false });
-    const badAttempts = inquiry({ call_attempts: 3, worked_by: "staff-1", worked_at: T0 });
-    const unattributed = inquiry({ call_attempts: 1, worked_by: null, worked_at: null });
+  "hiring-bench-tiles": (() => {
+    // A role, the people it holds, and the view's output row for it. Each wrong row is its own role, so
+    // the good row's recount never moves.
+    const group = (roleId, viewOver = {}, roleOver = {}) => [
+      R("hiring_roles", { id: roleId, org_id: ORG, key: roleId.replace("role-", ""), name: roleId, active: true, ...roleOver }),
+      ...benchApps(roleId),
+      R("v_hiring_bench", benchRow({ role_id: roleId, role_key: roleId.replace("role-", ""), ...viewOver }))
+    ];
+    // An application that is open but sits in a stage nobody is being considered in, on a role whose view
+    // row agrees with its own applications (so only the new condition can catch it).
+    const stuckOpen = () => {
+      const c = cand();
+      return [
+        R("hiring_roles", { id: "role-late", org_id: ORG, key: "late", name: "late", active: true }),
+        R("candidates", c), R("candidate_applications", app(c, "hired", { role_id: "role-late", status: "open" })),
+        R("v_hiring_bench", benchRow({ role_id: "role-late", role_key: "late", open_applications: 1, bench_count: 0, bench_shortfall: 4 }))
+      ];
+    };
+    // An open application on a role that is switched off: the view leaves the role out, so no tile counts it.
+    const orphan = () => {
+      const c = cand();
+      return [
+        R("hiring_roles", { id: "role-gone", org_id: ORG, key: "gone", name: "gone", active: false }),
+        R("candidates", c), R("candidate_applications", app(c, "applied", { role_id: "role-gone" }))
+      ];
+    };
     return {
-      base: [],
-      good: [R("inquiry_log", worked), R("inquiry_attempts", attempt(worked, { kind: "call" })),
-        R("inquiry_attempts", attempt(worked, { kind: "letter" })), R("inquiry_attempts", attempt(worked, { kind: "note" })),
-        R("inquiry_log", confirmed)],
-      sample: 2,
+      base: [...STAGE_ROWS],
+      views: { v_hiring_bench: BENCH_VIEW },
+      good: group("role-closer"),
+      // one view row, and the three open applications behind it (the hired one is not open)
+      sample: 4,
       violations: {
-        "a removal is confirmed but the status does not say removed": [
-          R("inquiry_log", inquiry({ status: "Pending Removal", confirmed_at: T0, is_open: false }))],
-        "a removal is confirmed but the inquiry still reads open": [
-          R("inquiry_log", inquiry({ status: "Removed", confirmed_at: T0, is_open: true }))],
-        "the attempt count is not the number of attempts logged for the row": [
-          R("inquiry_log", badAttempts), R("inquiry_attempts", attempt(badAttempts, { kind: "call" })),
-          R("inquiry_attempts", attempt(badAttempts, { kind: "portal" }))],
-        "attempts were logged but nobody and no time is recorded as having worked the row": [
-          R("inquiry_log", unattributed), R("inquiry_attempts", attempt(unattributed, { kind: "call" }))]
+        "the open applications number is not the open applications on file": group("role-setter", { open_applications: 9 }),
+        "the bench number is not the people at 1:1 or Offer": group("role-coord", { bench_count: 3, bench_shortfall: 3 }),
+        "the short-by number is not the target minus the bench": group("role-x", { bench_shortfall: 0 }),
+        "an open application sits in a stage nobody is being considered in, so the open number counts someone who is not open": stuckOpen(),
+        "an open application belongs to a role that is not an active hiring role, so no tile counts it": orphan()
       }
     };
   })(),
@@ -292,8 +301,10 @@ const FIX = {
       R("inquiry_log", inquiry({ bureau: "trans union" })), R("inquiry_log", inquiry({ bureau: "Experian" })),
       R("inquiry_log", inquiry({ bureau: "TU" })), R("inquiry_log", inquiry({ bureau: " eq " })),
       // A finished removal is not counted by any chip, so its bureau is not judged.
-      R("inquiry_log", inquiry({ bureau: "", status: "Removed", confirmed_at: T0 }))],
-    sample: 6,
+      R("inquiry_log", inquiry({ bureau: "", status: "Removed", confirmed_at: T0 })),
+      // A demo row is on the screen and in the chips, so it is judged like any other.
+      R("inquiry_log", inquiry({ bureau: "TRANSUNION", is_demo: true }))],
+    sample: 7,
     violations: {
       "an open inquiry names no bureau a chip counts": [R("inquiry_log", inquiry({ bureau: "Innovis" }))]
     }
@@ -319,6 +330,20 @@ const FIX = {
       return [R("inquiry_removal_cases", k), R("inquiry_log", l),
         ...(withAttempt ? [R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent" }))] : [])];
     };
+    // The send logs the attempt first and updates the case in a second statement: if the second one is
+    // lost the attempt is there and the case holds nothing.
+    const lostPortal = () => {
+      const k = kase({ portal_confirmation: null, selected_bureaus_raw: "EX" });
+      const l = linked(k);
+      return [R("inquiry_removal_cases", k), R("inquiry_log", l),
+        R("inquiry_attempts", attempt(l, { kind: "portal", outcome: "uploaded", note: "experian_ref:EX-REF-5" }))];
+    };
+    const lostMail = () => {
+      const k = kase({ letter_provider_id: null, selected_bureaus_raw: "TU" });
+      const l = linked(k);
+      return [R("inquiry_removal_cases", k), R("inquiry_log", l),
+        R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent", note: "provider:pg_letter_5" }))];
+    };
     // laterGood true: failed, then re-sent (fine). laterGood false: sent once, then a later one failed (wrong:
     // an earlier success does not excuse the last letter failing).
     const failed = (laterGood) => {
@@ -331,17 +356,24 @@ const FIX = {
           R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent", created_at: T0 })),
           R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "mail_failed:return_address_required", created_at: T1 }))];
     };
+    // Both unsent statuses are wrong after a send, in both halves, so each list is held to both words.
+    const bothWaiting = (make) => ({
+      bad: 2,
+      rows: [...make({ case_status: "Queued" }), ...make({ case_status: "Blocked" })]
+    });
     return {
       base: [],
       good: [...portalOk, ...mailOk, ...failed(true)],
-      // portal case part: 1, mail case part: 1, failed-letter part: 1 (the failed one that was re-sent)
-      sample: 3,
+      // portal case 1, mail case 1, logged portal upload 1, letter logged sent 1, the failed-then-resent letter 1
+      sample: 5,
       violations: {
         "a portal upload was saved on a case that is not Experian": freshPortal({ selected_bureaus_raw: "TU" }),
         "a portal reference was saved but no portal attempt was logged": freshPortal({}, false),
-        "a portal upload was saved but the case still reads waiting": freshPortal({ case_status: "Queued" }),
+        "a portal upload was saved but the case still reads waiting": bothWaiting(freshPortal),
         "a mail provider id was saved but no letter attempt was logged": freshMail({}, false),
-        "a letter was handed to the mail provider but the case still reads waiting": freshMail({ case_status: "Blocked" }),
+        "a letter was handed to the mail provider but the case still reads waiting": bothWaiting(freshMail),
+        "a portal upload was logged but the case kept no reference": lostPortal(),
+        "a letter was logged as sent but the case kept no provider id": lostMail(),
         "a letter failed to mail and no later letter went out for that inquiry": failed(false)
       }
     };
@@ -410,8 +442,12 @@ const DEMO_SIGNS = {
 };
 const ROW_FLAG_TABLES = new Set(["hiring_job_postings", "inquiry_log", "inquiry_removal_cases"]);
 
+// Two checks read demo rows on purpose, each with its own test below: the bench view counts every
+// application and the page takes demo rows off itself, and the queue page lists and counts demo inquiries.
+const READS_DEMO = new Set(["hiring-bench-tiles", "specialist-bureau-chips"]);
+
 for (const spec of FIN_B13_CHECKS) {
-  if (spec.key === "hiring-bench-tiles") continue; // the bench view counts every application, and the page takes demo rows off itself
+  if (READS_DEMO.has(spec.key)) continue;
   const fixture = FIX[spec.key];
   const allRows = Object.values(fixture.violations).flatMap((v) => (Array.isArray(v) ? v : v.rows));
   const hasCandidates = allRows.some(([table]) => table === "candidates");
@@ -424,6 +460,131 @@ for (const spec of FIN_B13_CHECKS) {
     });
   }
 }
+
+// The bench tiles: the view side counts demo applications and the page subtracts them, so only the two
+// saved-application conditions judge by candidate, and a demo candidate is never judged by them.
+for (const [sign, mark] of Object.entries(DEMO_SIGNS)) {
+  test(`hiring-bench-tiles: an open application of a candidate marked demo by ${sign} is not judged`, () => {
+    const spec = FIN_B13_CHECKS.find((item) => item.key === "hiring-bench-tiles");
+    const fixture = FIX[spec.key];
+    const names = [
+      "an open application sits in a stage nobody is being considered in, so the open number counts someone who is not open",
+      "an open application belongs to a role that is not an active hiring role, so no tile counts it"
+    ];
+    for (const name of names) {
+      const rows = fixture.violations[name].map(([table, row]) => [table, mark(table, row)]);
+      const red = runOn(spec, fixture, rows);
+      assert.equal(red.bad_count, 0, `a demo candidate must not turn the check red: ${name}`);
+    }
+  });
+}
+
+test("specialist-bureau-chips: a demo inquiry is counted, because the page lists and counts it", () => {
+  const spec = FIN_B13_CHECKS.find((item) => item.key === "specialist-bureau-chips");
+  const fixture = FIX[spec.key];
+  const wrongDemo = [R("inquiry_log", inquiry({ bureau: "Innovis", is_demo: true }))];
+  const out = runOn(spec, fixture, wrongDemo);
+  assert.deepEqual(out, { sample_count: fixture.sample + 1, bad_count: 1 });
+});
+
+// The live text carries literal lists that must be the page's own. The page is read here, so a button added,
+// dropped or respelled on the page without this text moving is a red test, not a quiet drift.
+test("the live checks use the same lists the page uses", () => {
+  const hiring = fs.readFileSync(path.join(REPO_ROOT, "public/app/hiring.html"), "utf8");
+  const list = (name) => {
+    const m = new RegExp(`var ${name}\\s*=\\s*\\[([^\\]]*)\\]`).exec(hiring);
+    assert.ok(m, `${name} is not on hiring.html`);
+    return [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+  };
+  assert.deepEqual(list("POST_STATES"), POST_STATE_BUTTONS);
+  assert.deepEqual(list("POST_CHANNELS"), POST_CHANNEL_BUTTONS);
+
+  const desk = fs.readFileSync(path.join(REPO_ROOT, "public/app/inquiry-remover.html"), "utf8");
+  const keys = /const BUREAU_KEYS = Object\.freeze\(\{([^}]*)\}\)/.exec(desk);
+  assert.ok(keys, "BUREAU_KEYS is not on inquiry-remover.html");
+  const spellings = [...keys[1].matchAll(/(?:"([^"]+)"|\b([A-Z]+))\s*:/g)].map((x) => x[1] || x[2]);
+  assert.deepEqual([...spellings].sort(), [...BUREAU_SPELLINGS].sort());
+
+  // The text really holds those lists, not a shorter copy.
+  const chips = sqlFor(FIN_B13_CHECKS.find((item) => item.key === "specialist-bureau-chips"));
+  for (const word of spellings) assert.ok(chips.includes(`'${word}'`), `${word} is not in the chips text`);
+  const postings = sqlFor(FIN_B13_CHECKS.find((item) => item.key === "hiring-postings"));
+  for (const word of [...list("POST_STATES"), ...list("POST_CHANNELS")]) assert.ok(postings.includes(`'${word}'`), `${word} is not in the postings text`);
+});
+
+// Breaking the text itself, a little at a time: each edit below is something a careless change could do to
+// one check. A check is only worth having if every one of them turns a fixture red. An edit that changes
+// nothing is itself a failure, so a no-op cannot pass for a catch.
+function nth(text, needle, n, replacement) {
+  let at = -1;
+  for (let i = 0; i <= n; i += 1) {
+    at = text.indexOf(needle, at + 1);
+    if (at < 0) throw new Error(`no occurrence ${n} of ${needle}`);
+  }
+  return text.slice(0, at) + replacement + text.slice(at + needle.length);
+}
+
+const BREAKS = [
+  ["hiring-column-screening", "the move into the column is not asked for", (t) => t.replace(/\n\s*OR \(NOT EXISTS \(SELECT 1 FROM hiring_decisions d WHERE d\.application_id = a\.id AND d\.to_stage_key = 'screening'\)\)/, "")],
+  ["hiring-column-screening", "the open status is not asked for", (t) => t.replace("a.status <> 'open'", "a.status <> 'hired'")],
+  ["hiring-column-hired", "the hired status is not asked for", (t) => t.replace("a.status <> 'hired'", "a.status <> 'open'")],
+  ["hiring-column-withdrawn", "the wrong stage is read", (t) => t.replace("s.key = 'withdrawn'", "s.key = 'rejected'")],
+  ["hiring-column-onboarding", "demo rows are read", (t) => t.replace("COALESCE(c.is_demo, false) = false", "1 = 1")],
+  ["hiring-column-offer", "the company filter is dropped", (t) => t.replace("a.org_id = $1::uuid", "$1::uuid IS NOT NULL")],
+  ["hiring-column-rejected", "a reason that is only spaces passes", (t) => t.replace("NULLIF(BTRIM(COALESCE(d.reason, '')), '') IS NOT NULL", "d.reason IS NOT NULL")],
+  ["hiring-bench-tiles", "One on One is left out of the open stages", (t) => nth(t, "'one_on_one', ", 3, "")],
+  ["hiring-bench-tiles", "Hired is let into the open stages", (t) => t.replace("NOT IN ('applied', 'screening', 'group_interview', 'one_on_one', 'offer')", "NOT IN ('applied', 'screening', 'group_interview', 'one_on_one', 'offer', 'hired')")],
+  ["hiring-bench-tiles", "an inactive role counts as active", (t) => t.replace("r.active = true", "1 = 1")],
+  ["hiring-bench-tiles", "the open recount counts everyone who is not rejected", (t) => t.replace("WHERE a.role_id = b.role_id AND a.status = 'open')", "WHERE a.role_id = b.role_id AND a.status <> 'rejected')")],
+  ["hiring-postings", "the channel list gains zoho", (t) => t.replace("NOT IN ('linkedin', 'facebook', 'job_board', 'internal')", "NOT IN ('linkedin', 'facebook', 'job_board', 'internal', 'zoho')")],
+  ["hiring-postings", "the state list gains archived", (t) => t.replace("NOT IN ('draft', 'posted', 'paused', 'closed', 'failed')", "NOT IN ('draft', 'posted', 'paused', 'closed', 'failed', 'archived')")],
+  ["hiring-postings", "an empty failure reason passes", (t) => t.replace("p.status = 'failed' AND NULLIF(BTRIM(COALESCE(p.last_error, '')), '') IS NULL", "p.status = 'failed' AND p.last_error IS NULL")],
+  ["specialist-bureau-chips", "TransUnion spelled as one word is not known", (t) => t.replace("'TRANSUNION', ", "")],
+  ["specialist-bureau-chips", "TransUnion spelled with a space is not known", (t) => t.replace("'TRANS UNION', ", "")],
+  ["specialist-bureau-chips", "the spelled-out Equifax is not known", (t) => t.replace("'EQUIFAX', ", "")],
+  ["specialist-bureau-chips", "the spelled-out Experian is not known", (t) => t.replace(", 'EXPERIAN'", "")],
+  ["specialist-bureau-chips", "demo rows are left out again", (t) => t.replace("l.org_id = $1::uuid AND NOT", "l.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false AND NOT")],
+  ["specialist-bureau-chips", "finished removals are judged too", (t) => t.replace(/ AND NOT \(LOWER\([\s\S]*?LIKE '%cleared%'\)/, "")],
+  ["specialist-send-options", "Blocked is not a waiting state after a portal upload", (t) => nth(t, "IN ('Queued', 'Blocked')", 0, "IN ('Queued')")],
+  ["specialist-send-options", "Queued is not a waiting state after a portal upload", (t) => nth(t, "IN ('Queued', 'Blocked')", 0, "IN ('Blocked')")],
+  ["specialist-send-options", "Blocked is not a waiting state after a mail", (t) => nth(t, "IN ('Queued', 'Blocked')", 1, "IN ('Queued')")],
+  ["specialist-send-options", "Queued is not a waiting state after a mail", (t) => nth(t, "IN ('Queued', 'Blocked')", 1, "IN ('Blocked')")],
+  ["specialist-send-options", "a portal upload on a case that is not Experian passes", (t) => t.replace("<> 'EX'", "<> 'EX' AND 1 = 0")],
+  ["specialist-send-options", "the lost portal reference is not read", (t) => t.replace("LIKE 'experian_ref:%'", "LIKE 'experian_ref:zzz%'")],
+  ["specialist-send-options", "the lost provider id is not read", (t) => t.replace("= 'sent'\n", "= 'sentx'\n")],
+  ["specialist-send-options", "a failed mail is excused by an earlier success", (t) => t.replace("AND u.created_at > t.created_at", "")],
+  ["specialist-send-options", "a failed mail is not read", (t) => t.replace("LIKE 'mail_failed%'\n", "LIKE 'mail_failedx%'\n")]
+];
+
+test("every break of a live text turns one of its fixtures red", () => {
+  for (const [key, label, edit] of BREAKS) {
+    const spec = FIN_B13_CHECKS.find((item) => item.key === key);
+    assert.ok(spec, `${key}: no such check`);
+    const fixture = FIX[key];
+    const original = sqlFor(spec);
+    const broken = edit(original);
+    assert.notEqual(broken, original, `${key}: "${label}" changed nothing, so it proves nothing`);
+    let caught = runOn(spec, fixture, [], { sql: broken }).bad_count !== 0;
+    for (const violation of Object.values(fixture.violations)) {
+      if (caught) break;
+      const rows = Array.isArray(violation) ? violation : violation.rows;
+      const wrong = Array.isArray(violation) ? 1 : violation.bad;
+      if (runOn(spec, fixture, rows, { sql: broken }).bad_count !== wrong) caught = true;
+    }
+    // Demo and company filters are judged by the demo and foreign-company fixtures, not by the violations.
+    if (!caught) {
+      const foreign = Object.values(fixture.violations).flatMap((v) => (Array.isArray(v) ? v : v.rows))
+        .map(([table, row]) => [table, "org_id" in row && table !== "pipeline_stages" ? { ...row, org_id: OTHER } : row]);
+      if (runOn(spec, fixture, foreign, { sql: broken }).bad_count !== 0) caught = true;
+    }
+    if (!caught) {
+      const demo = Object.values(fixture.violations).flatMap((v) => (Array.isArray(v) ? v : v.rows))
+        .map(([table, row]) => [table, table === "candidates" ? { ...row, is_demo: true } : row]);
+      if (runOn(spec, fixture, demo, { sql: broken }).bad_count !== 0) caught = true;
+    }
+    assert.equal(caught, true, `${key}: "${label}" stayed green`);
+  }
+});
 
 test("the live checks are read-only and use only real tables and columns", () => {
   const schema = schemaColumns();

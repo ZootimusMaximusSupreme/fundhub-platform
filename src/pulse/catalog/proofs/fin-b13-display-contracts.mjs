@@ -10,7 +10,9 @@
 //                 always have something to read (the hiring bench tiles) leaves emptyAs off, so a
 //                 company with no hiring role at all is red.
 //   PRACTICE TEST A real page in Chromium with a fake /api. It reads no live data. Those rows are listed
-//                 in fin-b13-display-practice.mjs.
+//                 in fin-b13-display-practice.mjs. A row whose screen half a saved read cannot see (a
+//                 filter, a column, a rail) has BOTH: the live check judges the saved rows behind it and
+//                 the practice test judges what the page does with them.
 //
 // Every live check is built from named bad-result conditions. The SQL text is the conditions joined
 // with OR, one SELECT per kind of saved row, stacked with UNION ALL. fin-b13-live-contracts.test.mjs
@@ -82,7 +84,10 @@ const STATUS_FOR = {
   rejected: "rejected", withdrawn: "withdrawn"
 };
 
-function boardColumn(stage, control, extra = []) {
+const FORWARD_NOTE = "A move forward may be made by a scheduling job and its reason is optional, so no person or words are judged here.";
+const NOT_ON_SCREEN = "The drawer stops at Hired, so nothing on the screen moves anyone into this column; it reads no results until someone is placed here (the decide endpoint accepts it), and then it goes red if that person is not marked hired.";
+
+function boardColumn(stage, control, requirement, extra = []) {
   const want = STATUS_FOR[stage];
   const wrongStatus = want === "open"
     ? ["a closed application is still sitting in an open stage", `a.status <> 'open'`]
@@ -93,7 +98,7 @@ function boardColumn(stage, control, extra = []) {
     key: `hiring-column-${stage.replace(/_/g, "-")}`,
     surface: "hiring.html",
     control,
-    requirement: `Every real application in the ${stage} column must be marked ${want}, must have a recorded move into ${stage}, and must carry the named person and the words that stage needs.`,
+    requirement,
     parts: [{
       from: APPLICATION_FROM,
       where: `a.org_id = $1::uuid AND s.key = '${stage}'\n      AND ${REAL_CANDIDATE}`,
@@ -106,21 +111,29 @@ function boardColumn(stage, control, extra = []) {
   });
 }
 
-boardColumn("screening", "Board column: Screening (screening)");
-boardColumn("offer", "Board column: Offer (offer)", [
+boardColumn("screening", "Board column: Screening (screening)",
+  `Every real application in the Screening column must be open and must have a recorded move into screening. ${FORWARD_NOTE}`);
+boardColumn("offer", "Board column: Offer (offer)",
+  "Every real application in the Offer column must be open, must have a recorded move into offer, and must have an offer decision that names a person (the database refuses an offer with nobody named). The reason is optional, so no words are judged.", [
   ["an offer was made by nobody",
     `NOT EXISTS (SELECT 1 FROM hiring_decisions d WHERE d.application_id = a.id AND d.decision = 'offer' AND d.decided_by IS NOT NULL)`]
 ]);
-boardColumn("hired", "Board column: Hired (hired)");
-boardColumn("onboarding", "Board column: Onboarding (onboarding)");
-boardColumn("ramp", "Board column: Ramp (60-day trial) (ramp)");
-boardColumn("performing", "Board column: Performing (performing)");
-boardColumn("rejected", "Board column: Not Moving Forward (rejected)", [
+boardColumn("hired", "Board column: Hired (hired)",
+  `Every real application in the Hired column must be marked hired and must have a recorded move into hired. ${FORWARD_NOTE}`);
+boardColumn("onboarding", "Board column: Onboarding (onboarding)",
+  `Every real application in the Onboarding column must be marked hired and must have a recorded move into onboarding. ${NOT_ON_SCREEN}`);
+boardColumn("ramp", "Board column: Ramp (60-day trial) (ramp)",
+  `Every real application in the Ramp column must be marked hired and must have a recorded move into ramp. ${NOT_ON_SCREEN}`);
+boardColumn("performing", "Board column: Performing (performing)",
+  `Every real application in the Performing column must be marked hired and must have a recorded move into performing. ${NOT_ON_SCREEN}`);
+boardColumn("rejected", "Board column: Not Moving Forward (rejected)",
+  "Every real application in the Not Moving Forward column must be marked rejected, must have a recorded move into rejected, and must have a reject decision that names a person and carries written words.", [
   ["turned down with no named person or no written reason",
     `NOT EXISTS (SELECT 1 FROM hiring_decisions d WHERE d.application_id = a.id AND d.decision = 'reject'
               AND d.decided_by IS NOT NULL AND NULLIF(BTRIM(COALESCE(d.reason, '')), '') IS NOT NULL)`]
 ]);
-boardColumn("withdrawn", "Board column: Withdrawn (withdrawn)");
+boardColumn("withdrawn", "Board column: Withdrawn (withdrawn)",
+  "Every real application in the Withdrawn column must be marked withdrawn and must have a recorded move into withdrawn. Nothing in the product writes this stage today, so this reads no results until someone is placed here.");
 
 const FEEDBACK_TASK = `EXISTS (SELECT 1 FROM tasks t WHERE t.org_id = d.org_id
               AND t.source_workflow = 'hiring-candidate-feedback'
@@ -171,11 +184,19 @@ check({
   }]
 });
 
+// The rails on the page. hiring.html builds its buttons from these two literal lists (POST_STATES and
+// POST_CHANNELS); fin-b13-live-contracts.test.mjs reads them off the page and fails if this text drifts.
+// The database allows a fifth channel, zoho (migration 298), and src/hiring/zoho.mjs writes every Zoho
+// posting on it. No button reaches it, so a Zoho posting is counted in "all channels" and in no channel.
+export const POST_STATE_BUTTONS = ["draft", "posted", "paused", "closed", "failed"];
+export const POST_CHANNEL_BUTTONS = ["linkedin", "facebook", "job_board", "internal"];
+const sqlList = (items) => items.map((item) => `'${item}'`).join(", ");
+
 check({
   key: "hiring-postings",
   surface: "hiring.html",
   control: "Postings: state rail (all, draft, posted, paused, closed, failed) and channel rail (all, linkedin, facebook, job_board, internal)",
-  requirement: "Every real posting must read the way its state says: failed keeps the channel's own words, posted has a posted date and is live on an outside channel, closed has a closed date, and closing never comes before posting.",
+  requirement: "Every real posting must be reachable from a button and read the way its state says: its state and its channel are ones a rail button names (a Zoho posting is counted in all channels and in no channel button), failed keeps the channel's own words, posted has a posted date and is live on an outside channel, closed has a closed date, and closing never comes before posting.",
   parts: [{
     from: "hiring_job_postings p",
     where: `p.org_id = $1::uuid AND COALESCE(p.is_demo, false) = false`,
@@ -186,7 +207,11 @@ check({
       ["a posting is marked posted on an outside channel but was never published",
         `p.status = 'posted' AND p.channel IN ('linkedin', 'facebook', 'job_board') AND ${BLANK("p.external_id")}`],
       ["a posting closed before it was posted",
-        `p.posted_at IS NOT NULL AND p.closed_at IS NOT NULL AND p.closed_at < p.posted_at`]
+        `p.posted_at IS NOT NULL AND p.closed_at IS NOT NULL AND p.closed_at < p.posted_at`],
+      ["a posting is on a channel no channel button reaches",
+        `p.channel NOT IN (${sqlList(POST_CHANNEL_BUTTONS)})`],
+      ["a posting is in a state no state button reaches",
+        `p.status NOT IN (${sqlList(POST_STATE_BUTTONS)})`]
     ]
   }]
 });
@@ -200,7 +225,7 @@ check({
   surface: "hiring.html",
   control: "Summary tiles: SHORT BY, WAITING ON YOU, ON THE BENCH, OPEN APPLICATIONS + bench chip",
   emptyAs: undefined,
-  requirement: "Every hiring role the tiles add up must show the open applications and the bench people a recount of its own applications gives, and its short-by number must be its target minus that bench, never below zero.",
+  requirement: "Every active hiring role the tiles add up must show the open applications and the bench people a recount of its own applications gives, with its short-by number its target minus that bench and never below zero; every open application must sit in a stage where a person is still being considered and belong to an active role, so the open number cannot count someone who is no longer open or leave someone out. WAITING ON YOU is read from the candidates list and is judged by the page test, not here.",
   parts: [{
     from: "v_hiring_bench b",
     where: "b.org_id = $1::uuid",
@@ -209,6 +234,17 @@ check({
       ["the bench number is not the people at 1:1 or Offer", `b.bench_count <> ${RECOUNT_BENCH}`],
       ["the short-by number is not the target minus the bench",
         `b.bench_shortfall <> CASE WHEN b.bench_target - ${RECOUNT_BENCH} > 0 THEN b.bench_target - ${RECOUNT_BENCH} ELSE 0 END`]
+    ]
+  }, {
+    // The open count above is a view recounted against its own predicates, so it can only go red if
+    // someone edits the view. These two read the saved applications themselves and go red from data.
+    from: APPLICATION_FROM,
+    where: `a.org_id = $1::uuid AND a.status = 'open'\n      AND ${REAL_CANDIDATE}`,
+    bad: [
+      ["an open application sits in a stage nobody is being considered in, so the open number counts someone who is not open",
+        `s.key NOT IN ('applied', 'screening', 'group_interview', 'one_on_one', 'offer')`],
+      ["an open application belongs to a role that is not an active hiring role, so no tile counts it",
+        `NOT EXISTS (SELECT 1 FROM hiring_roles r WHERE r.id = a.role_id AND r.active = true)`]
     ]
   }]
 });
@@ -219,56 +255,49 @@ const DONE_WORDS = (col) => `(LOWER(${col}) LIKE '%removed%' OR LOWER(${col}) LI
                   OR LOWER(${col}) LIKE '%deleted%' OR LOWER(${col}) LIKE '%cleared%')`;
 // The page shows status, and the outcome when there is no status (pill(status, outcome)).
 const SHOWN_STATUS = `COALESCE(NULLIF(BTRIM(COALESCE(l.status, '')), ''), l.outcome, '')`;
-const COUNTING_ATTEMPTS = `(SELECT count(*) FROM inquiry_attempts t WHERE t.inquiry_id = l.id AND t.kind IN ('call', 'letter', 'portal'))`;
-const ANY_ATTEMPT = `EXISTS (SELECT 1 FROM inquiry_attempts t WHERE t.inquiry_id = l.id)`;
 
-check({
-  key: "specialist-stat-tiles",
-  surface: "inquiry-remover.html",
-  control: "Stat tiles: Still open, Worked, Calls, Confirmed (move by the server's counts after each write)",
-  requirement: "Every real inquiry the four tiles add up must keep the counts the tiles use: a confirmed removal reads as done and closed, a row with logged attempts shows the same number of counted attempts, and worked rows say who worked them.",
-  parts: [{
-    from: "inquiry_log l",
-    where: "l.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false",
-    bad: [
-      ["a removal is confirmed but the status does not say removed",
-        `l.confirmed_at IS NOT NULL AND NOT ${DONE_WORDS(SHOWN_STATUS)}`],
-      ["a removal is confirmed but the inquiry still reads open", `l.confirmed_at IS NOT NULL AND l.is_open = true`],
-      ["the attempt count is not the number of attempts logged for the row",
-        `${ANY_ATTEMPT} AND l.call_attempts <> ${COUNTING_ATTEMPTS}`],
-      ["attempts were logged but nobody and no time is recorded as having worked the row",
-        `${ANY_ATTEMPT} AND (l.worked_by IS NULL OR l.worked_at IS NULL)`]
-    ]
-  }]
-});
+// The Stat tiles row (Still open, Worked, Calls, Confirmed) has no live check on purpose. After a confirm
+// the page bumps Worked by one even for a row that already had attempts, so its words ("move by the
+// server's counts after each write") are false for that tile and nothing saved can show a client-side bump
+// (see the manifest, finding 2). The row stays not proved until the page changes.
 
+// The page's bureau keys, written the way inquiry-remover.html writes them (BUREAU_KEYS). The test reads
+// them off the page and fails if this list drifts.
+export const BUREAU_SPELLINGS = ["EQ", "EQUIFAX", "TU", "TRANSUNION", "TRANS UNION", "EX", "EXPERIAN"];
 const BUREAU_UP = `UPPER(BTRIM(COALESCE(l.bureau, '')))`;
 
 check({
   key: "specialist-bureau-chips",
   surface: "inquiry-remover.html",
   control: "Bureau chips: Equifax, TransUnion, Experian (filter the work queue; show open counts)",
-  requirement: "Every open inquiry must name one of the three bureaus the chips count (Equifax, TransUnion or Experian), so the three open counts add up to the Still open tile and the filter can reach every open row.",
+  requirement: "Every open inquiry the queue lists must name one of the three bureaus the chips count, in any spelling the page's bureau keys know (EQ, EQUIFAX, TU, TRANSUNION, TRANS UNION, EX, EXPERIAN), so the three open counts add up to the open rows and the filter can reach every one. Demo rows are counted: the page lists and counts them.",
   parts: [{
     from: "inquiry_log l",
-    where: `l.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false
-      AND NOT ${DONE_WORDS(SHOWN_STATUS)}`,
+    // No demo filter: api/read/inquiries.mjs does not filter is_demo and the page does not drop those
+    // rows, so the chips on screen count them too.
+    where: `l.org_id = $1::uuid AND NOT ${DONE_WORDS(SHOWN_STATUS)}`,
     bad: [
       ["an open inquiry names no bureau a chip counts",
-        `${BUREAU_UP} NOT IN ('EQ', 'EQUIFAX', 'TU', 'TRANSUNION', 'TRANS UNION', 'EX', 'EXPERIAN')`]
+        `${BUREAU_UP} NOT IN (${sqlList(BUREAU_SPELLINGS)})`]
     ]
   }]
 });
 
+const CASE_OF = `COALESCE(l.inquiry_removal_case_id, l.case_id)`;
 const CASE_ATTEMPT = (kind) =>
   `EXISTS (SELECT 1 FROM inquiry_attempts t JOIN inquiry_log l ON l.id = t.inquiry_id
-              WHERE COALESCE(l.inquiry_removal_case_id, l.case_id) = k.id AND t.kind = '${kind}')`;
+              WHERE ${CASE_OF} = k.id AND t.kind = '${kind}')`;
+// Send options write in two steps with no transaction around them (src/inquiry-ops/send.mjs): the attempt
+// is logged first, then the case row is updated. A part per direction, so a lost value is red too.
+const ATTEMPT_OF_CASE = `inquiry_attempts t
+      JOIN inquiry_log l ON l.id = t.inquiry_id
+      JOIN inquiry_removal_cases k ON k.id = ${CASE_OF}`;
 
 check({
   key: "specialist-send-options",
   surface: "inquiry-remover.html",
   control: "Case drawer send options: 'Mail letter (PostGrid)' checkbox, 'Mail service' select (bureau default, first class, priority, priority express), Experian portal reference input, 'Upload to Experian portal' checkbox, 'Open Experian upload' link",
-  requirement: "Every case that was sent through the drawer must keep what the send options said: an Experian portal upload names an Experian case, keeps a reference, logs a portal attempt and moves the case on, and a mailed letter keeps its provider id, logs a letter attempt, moves the case on, and was not left failed.",
+  requirement: "Every case that was sent through the drawer must keep what the send options said, both ways: an Experian portal upload names an Experian case, keeps the reference, logs a portal attempt and moves the case on, and a logged portal upload has its reference on the case; a mailed letter keeps its provider id, logs a letter attempt and moves the case on, a letter logged as sent has its provider id on the case, and a failed mail is not left failed. The Mail service choice is sent to the mail provider and saved nowhere, so only the page's request is judged for it, by the page test.",
   parts: [
     {
       from: "inquiry_removal_cases k",
@@ -285,6 +314,22 @@ check({
       bad: [
         ["a mail provider id was saved but no letter attempt was logged", `NOT ${CASE_ATTEMPT("letter")}`],
         ["a letter was handed to the mail provider but the case still reads waiting", `k.case_status::text IN ('Queued', 'Blocked')`]
+      ]
+    },
+    {
+      from: ATTEMPT_OF_CASE,
+      where: `t.org_id = $1::uuid AND COALESCE(k.is_demo, false) = false AND t.kind = 'portal'
+      AND LOWER(COALESCE(t.outcome, '')) = 'uploaded' AND LOWER(COALESCE(t.note, '')) LIKE 'experian_ref:%'`,
+      bad: [
+        ["a portal upload was logged but the case kept no reference", BLANK("k.portal_confirmation")]
+      ]
+    },
+    {
+      from: ATTEMPT_OF_CASE,
+      where: `t.org_id = $1::uuid AND COALESCE(k.is_demo, false) = false AND t.kind = 'letter'
+      AND LOWER(COALESCE(t.outcome, '')) = 'sent'`,
+      bad: [
+        ["a letter was logged as sent but the case kept no provider id", BLANK("k.letter_provider_id")]
       ]
     },
     {
