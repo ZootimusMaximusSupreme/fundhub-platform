@@ -147,6 +147,25 @@ export function makeStandIn(tableNames) {
       });
       db.prepare(`INSERT INTO ${table} (${keys.map((k) => `"${k}"`).join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`).run(...values);
     },
+    /**
+     * A node-postgres-shaped db ({ query(sql, params) -> { rows } }) over the stand-in, so a real
+     * module can be run against it. Same limits as portableSql, plus ILIKE read as LIKE.
+     */
+    asPg() {
+      return {
+        async query(sql, params = []) {
+          const text = portableSql(sql).replace(/\bILIKE\b/gi, "LIKE");
+          const stmt = db.prepare(text);
+          if (/^\s*(select|with)\b/i.test(text) || /\breturning\b/i.test(text)) {
+            return { rows: stmt.all(...params).map((r) => ({ ...r })) };
+          }
+          const out = stmt.run(...params);
+          return { rows: [], rowCount: Number(out.changes) };
+        }
+      };
+    },
+    /** Every row of a table, for the assertions. */
+    all(table) { return db.prepare(`SELECT * FROM ${table}`).all().map((r) => ({ ...r })); },
     /** Run a contract's exact SQL text for one company. Returns { sample_count, bad_count }. */
     run(sql, orgId) {
       const row = db.prepare(portableSql(sql)).get(orgId);

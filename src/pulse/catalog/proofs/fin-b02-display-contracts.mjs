@@ -21,6 +21,7 @@ export const FIN_B02_LIVE_TEST = "src/pulse/catalog/proofs/fin-b02-live-contract
 export const FIN_B02_PRESENT_TEST = "src/pulse/catalog/proofs/fin-b02-present-buttons.test.mjs";
 export const FIN_B02_TRANSFERS_TEST = "src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs";
 export const FIN_B02_FUNDED_TEST = "src/pulse/catalog/proofs/fin-b02-funded-column.test.mjs";
+export const FIN_B02_FLOOR_TEST = "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs";
 
 /** The four offers the deck sells without a sale motion (src/sales/closer-deck.mjs sendDeckPayLink). */
 export const PRIMARY_PAY_OFFER_KEYS = Object.freeze(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
@@ -248,6 +249,12 @@ export const FIN_B02_PRACTICE_CASES = Object.freeze([
   practiceCase("desks-f.json", PRESENT, "'UnderwriteIQ package -> repair + funding' bridge button (S-19, repair route)", FIN_B02_PRESENT_TEST),
   practiceCase("desks-f.json", PRESENT, "Descent ladder, 6 buttons (Funding, Repair DFY, Repair trial, DIY letters, Funding Mastery, Education deliverables)", FIN_B02_PRESENT_TEST),
   practiceCase("desks-f.json", PRESENT, "Route the call (S-07): FULL FUNDING / FUNDING PLUS REPAIR / REPAIR ONLY buttons", FIN_B02_PRESENT_TEST),
+  practiceCase(
+    "desks-f.json",
+    "sales-floor.html (+ sales-floor.js)",
+    "Page open: the whole floor (hero, funnel, roster, offer stack, beliefs, sources, recordings, cold deals, discipline). The read also attaches loose Drive recordings to calls and clients (a write on a GET)",
+    FIN_B02_FLOOR_TEST,
+  ),
   practiceCase(
     "desks-e.json",
     "public/app/money-transfers.html",
