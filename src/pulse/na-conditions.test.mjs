@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these nineteen", () => {
+test("the list of codes is closed: exactly these twenty", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
+    "catalog-data-empty", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-flow-step-not-shipped", "catalog-route-retired-action", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -41,7 +41,7 @@ test("the five core codes verify here; the ten lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-display-retired-control", "catalog-route-retired-action", "catalog-display-control-not-shipped", "catalog-display-hidden-section-head", "catalog-display-owner-removed", "catalog-flow-step-not-shipped"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -65,7 +65,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "catalog-route-retired-action": { sourceFile: "routes-1.json", surface: "route:closer-deck", action: "send_ebook", control: "POST action=send_ebook" },
     "catalog-display-control-not-shipped": { sourceFile: "public-pages.json", surface: "button:climate/index.html#See how many banks in our bo", control: "See how many banks in our book fit your state" },
     "catalog-display-hidden-section-head": { sourceFile: "desks-e.json", surface: "public/app/shell.js (shared chrome)", control: "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html" },
-    "catalog-display-owner-removed": { sourceFile: "desks-f.json", surface: "teleprompter.html", control: "Header bar" }
+    "catalog-display-owner-removed": { sourceFile: "desks-f.json", surface: "teleprompter.html", control: "Header bar" },
+    "catalog-flow-step-not-shipped": { family: "journey", surface: "journey:climate-lead-magnet-intended#1-headline-button" }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);

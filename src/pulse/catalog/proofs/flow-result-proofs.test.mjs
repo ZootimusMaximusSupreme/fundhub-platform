@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 import { proofForFlowRow, proofTestFiles } from "./flow-result-proofs.mjs";
+import { FIN_B22_LIVE_PROOFS } from "./fin-b22-flow-contracts.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url);
 const MAP_ROOT = new URL("ops/workflows/coverage-every-surface-2026-10-10/", ROOT);
@@ -50,11 +51,12 @@ test("flow proofs name only real, runnable result tests", () => {
 });
 
 test("known flow gaps map to the exact executable red monitor", () => {
+  // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
+  // test), the web push devices (saved results), two journey steps (a live page read) and, in generation 3,
+  // seven steps the live page does not carry (a verified nothing-to-judge) out of this list; the row below is
+  // the one nothing can judge yet.
   const cases = [
-    ["messages.json", "dispatch:sms-duplicate-guard-NOT-WIRED"],
-    ["journeys.json", "journey:climate-lead-magnet-intended#2-reading-and-map"],
-    ["journeys.json", "journey:fh-consulting-intended#3-three-prices"],
-    ["agents.json", "ai-caller:api/journeys/ask.mjs"],
+    ["messages.json", "script:one-off senders in scripts/"],
   ];
 
   for (const [sourceFile, surface] of cases) {
@@ -68,25 +70,88 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("all 11 outbound message leftovers stay red without a final provider receipt", () => {
+test("the 1 outbound message leftover that nothing can judge stays red", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 11);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows.map(({ row }) => row.surface).sort(), [
+    "script:one-off senders in scripts/",
+  ]);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }
 });
 
-test("the journeys proxy stays red without a fixed live prompt and judged runtime", () => {
-  const rows = loadRows("agents.json")
-    .map((row) => ({ row, proof: proofForFlowRow("agents.json", row) }))
-    .filter(({ proof }) => proof?.verdict === "red");
+test("the 9 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
+  const live = loadRows("messages.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface] && !FIN_B22_LIVE_PROOFS[row.surface].shipped);
+  assert.equal(live.length, 9);
+  for (const row of live) {
+    const proof = proofForFlowRow("messages.json", row);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.equal(proof.depth, "deep", row.surface);
+    assert.match(proof.evidence, /Executable live saved-result check: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
+    assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs"), row.surface);
+    assert.equal(proof.asserts, row.control, row.surface);
+  }
+});
 
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].row.surface, "ai-caller:api/journeys/ask.mjs");
-  assert.deepEqual(proofTestFiles(rows[0].proof), [FLOW_GAP_TEST]);
+test("the two journey steps judged by a live page read carry a page-read proof, not a red verdict", () => {
+  const rows = loadRows("journeys.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface]?.page);
+  assert.deepEqual(rows.map((row) => row.surface).sort(), [
+    "journey:climate-lead-magnet-intended#2-reading-and-map",
+    "journey:fh-consulting-intended#5-request-enrollment",
+  ]);
+  for (const row of rows) {
+    const proof = proofForFlowRow("journeys.json", row);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.equal(proof.depth, "deep", row.surface);
+    assert.match(proof.evidence, /Executable live page read: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
+    assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs"), row.surface);
+    assert.equal(proof.asserts, row.control, row.surface);
+  }
+});
+
+test("the seven steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
+  const rows = [
+    ...loadRows("journeys.json").map((row) => ["journeys.json", row]),
+    ...loadRows("messages.json").map((row) => ["messages.json", row]),
+  ].filter(([, row]) => FIN_B22_LIVE_PROOFS[row.surface]?.shipped);
+  assert.deepEqual(rows.map(([, row]) => row.surface).sort(), [
+    "journey:climate-lead-magnet-intended#1-headline-button",
+    "journey:climate-lead-magnet-intended#3-state-click",
+    "journey:climate-lead-magnet-intended#4-form",
+    "journey:climate-lead-magnet-intended#6-gate",
+    "journey:fh-consulting-intended#2-education-only",
+    "journey:fh-consulting-intended#3-three-prices",
+    "ui:ops-admin outbound mail panel",
+  ]);
+  for (const [sourceFile, row] of rows) {
+    const proof = proofForFlowRow(sourceFile, row);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.match(proof.evidence, /Executable verified nothing-to-judge: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
+    assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs"), row.surface);
+    assert.match(proof.evidence, /says "na" only while the step is not on it/, row.surface);
+    assert.equal(proof.asserts, row.control, row.surface);
+  }
+});
+
+test("the web push row names the practice test of the sender beside its saved-result check", () => {
+  const row = loadRows("messages.json").find((candidate) => candidate.surface === "provider:web-push-and-client-push");
+  const files = proofTestFiles(proofForFlowRow("messages.json", row));
+  assert.ok(files.includes("src/push/fin-b22-send-to-client.test.mjs"));
+  assert.ok(files.includes("src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs"));
+});
+
+test("the journeys proxy is judged by a test with fake data: who may ask, what goes upstream, what comes back", () => {
+  const rows = loadRows("agents.json");
+  const row = rows.find((candidate) => candidate.surface === "ai-caller:api/journeys/ask.mjs");
+  const proof = proofForFlowRow("agents.json", row);
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "deep");
+  assert.deepEqual(proofTestFiles(proof), ["src/http/fin-b22-journeys-ask.test.mjs"]);
+  assert.equal(rows.filter((candidate) => proofForFlowRow("agents.json", candidate)?.verdict === "red").length, 0);
 });
 
 test("route counts never prove signed-in role access: only a test that signs in does", () => {
@@ -111,7 +176,7 @@ test("route counts never prove signed-in role access: only a test that signs in 
   }
 });
 
-test("rendered contracts prove two journey results while the three text-only rows stay red", () => {
+test("rendered contracts prove two journey results and the soft-pull steps carry real tests", () => {
   for (const surface of [
     "journey:slo-connections-intended#1-open-tab",
     "journey:optimize-intended#2-book-without-form",
@@ -122,17 +187,25 @@ test("rendered contracts prove two journey results while the three text-only row
     assert.match(proof.evidence, /flow-read-contracts\.test\.mjs/, surface);
   }
 
-  const surfaces = [
-    "journey:soft-pull-multi-biz-intended-draft#2-authorize-first",
-    "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page",
-    "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
-  ];
-  for (const surface of surfaces) {
+  // Batch 22: the soft-pull steps are no longer text-only. Steps 2 and 5 are judged by the server handler and
+  // the real page; step 6 is judged from the saved companies and by the two staff screens.
+  const server = "src/http/fin-b22-soft-pull-flow.test.mjs";
+  const page = "src/pulse/catalog/proofs/fin-b22-soft-pull-page.test.mjs";
+  const staff = "src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.mjs";
+  const expected = new Map([
+    ["journey:soft-pull-multi-biz-intended-draft#2-authorize-first", [page, server]],
+    ["journey:soft-pull-multi-biz-intended-draft#5-pay-same-page", [page, server]],
+    ["journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files", [
+      FLOW_GAP_TEST, "src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs", staff,
+    ]],
+  ]);
+  for (const [surface, files] of expected) {
     const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
     assert.ok(row, surface);
     const proof = proofForFlowRow("journeys.json", row);
-    assert.equal(proof.verdict, "red", surface);
-    assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], surface);
+    assert.equal(proof.verdict, undefined, surface);
+    assert.equal(proof.depth, "deep", surface);
+    assert.deepEqual(proofTestFiles(proof), [...files].sort(), surface);
   }
 });
 

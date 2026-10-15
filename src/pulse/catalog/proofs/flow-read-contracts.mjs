@@ -10,6 +10,7 @@ import {
   flowGapRows,
   isInactiveTemplateRow,
 } from "./flow-gap-cases.mjs";
+import { isFinB22LiveFlowRow } from "./fin-b22-flow-contracts.mjs";
 
 export const FLOW_READ_CONTRACTS_EVIDENCE =
   "src/pulse/catalog/proofs/flow-read-contracts.test.mjs";
@@ -139,8 +140,9 @@ const INBOUND_NOT_OUTBOUND = new Set([
   "api:POST /api/chat/portal-message",
 ]);
 
+// A row the Flow lane judges from saved results (batch 22) is a result check, not a red gap.
 const CURRENT_FLOW_RED = flowGapRows(messages, journeys, agents).filter((row) => (
-  !isInactiveTemplateRow(row) && !INBOUND_NOT_OUTBOUND.has(row.surface)
+  !isInactiveTemplateRow(row) && !INBOUND_NOT_OUTBOUND.has(row.surface) && !isFinB22LiveFlowRow(row)
 ));
 const CURRENT_READ_RED = READ_GAPS.map((row) => ({
   ...row,

@@ -11,6 +11,9 @@ import {
   flowGapRows,
   isInactiveTemplateRow,
 } from "../catalog/proofs/flow-gap-cases.mjs";
+import { runFinB22Live } from "../catalog/proofs/fin-b22-flow-live.mjs";
+import { runFinB22PageReads } from "../catalog/proofs/fin-b22-page-reads.mjs";
+import { NOT_SHIPPED_CODE, runFinB22NotShipped, verifyNotShipped } from "../catalog/proofs/fin-b22-not-shipped.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 export const LOOKBACK_DAYS = 7;
@@ -204,9 +207,20 @@ async function readInactiveCountsForVerify(ctx, since) {
 export async function gapChecks(ctx = {}) {
   const now = new Date(ctx.now || Date.now());
   const since = new Date(now.getTime() - LOOKBACK_DAYS * DAY).toISOString();
-  const read = await readInactiveCounts(ctx, INACTIVE_KEYS, since);
+  const [read, live, pages, shipped] = await Promise.all([
+    readInactiveCounts(ctx, INACTIVE_KEYS, since),
+    runFinB22Live({ ...ctx, now }),
+    runFinB22PageReads(ctx),
+    runFinB22NotShipped(ctx),
+  ]);
 
   return FLOW_ROWS.map((row) => {
+    // A row with a saved-result query (fin-b22-flow-live.mjs) is judged by what the flow really left behind;
+    // a row with a page read (fin-b22-page-reads.mjs) is judged by what the live public page holds; a step the
+    // live page does not carry is "nothing to judge" only while that read says so (fin-b22-not-shipped.mjs).
+    const rowId = `flow:${row.family}:${row.surface}`;
+    const liveRow = live.get(rowId) || pages.get(rowId) || shipped.get(rowId);
+    if (liveRow) return liveRow;
     if (!isInactiveTemplateRow(row)) return staticResult(row);
     if (read.error) return result(row, "skip", `${row.surface} was not checked: ${read.error}.`);
     return inactiveTemplateResult(row, read.counts.get(templateKey(row)) || 0, since);
@@ -214,6 +228,7 @@ export async function gapChecks(ctx = {}) {
 }
 
 export const naVerify = Object.freeze({
+  [NOT_SHIPPED_CODE]: (args, ctx = {}) => verifyNotShipped(args, ctx),
   "no-sender": async (args, ctx = {}) => {
     const surface = String(args?.surface || "");
     if (args?.kind === "inbound-only") {

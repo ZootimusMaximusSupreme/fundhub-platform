@@ -602,6 +602,23 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A flow step that names a control or words the live page does not carry (finish-853 batch 22, 2026-10-15).
+     True while the lane that made the row (gap-catalog-flow, fin-b22-not-shipped.mjs) reads the live page and
+     what it leads to again (GET only) and finds none of the step's words or doors. The day the page carries them
+     the claim is false and the row goes back to not proved. */
+  "catalog-flow-step-not-shipped": Object.freeze({
+    say() {
+      return "This step is on no page that ships. Judged the day it goes live.";
+    },
+    claim() {
+      return "The live page still does not carry this step.";
+    },
+    problem(args) {
+      return isText(args?.family) && isText(args?.surface) ? null : "the not-shipped proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row
