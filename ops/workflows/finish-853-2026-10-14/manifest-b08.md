@@ -16,6 +16,7 @@ Generation 2 (a fresh agent) re-read the three open rows from the real handlers 
 two of them on the real handlers, and found none of the three attachable (see "Generation 2 challenge").
 It also mutation-checked the 34 attached tests again and hardened four of them (see "Generation 2 hardening").
 The numbers above are unchanged: 37 rows, 34 practice tests, 3 not-attachable.
+A third pass (see "Re-verification run") re-measured and hardened two more tests; the numbers did not move.
 
 Words used on purpose: every attached row is a **practice test** (the real handler and the real library
 run over in-memory stand-in tables, fake data, no network, no database). None is a live check. None is
@@ -186,6 +187,30 @@ orders in banking import (reads, not the import), signer list order in contracts
 code from `signer_index`), pull series order in client-progress (the library sorts again), the first of two
 identical sorts in lender match (the second sort decides), `unknown rate treated as 0%` in the payoff math
 (only differs from a card with a known 0% rate, which no fixture has).
+
+## Re-verification run (2026-10-14, evening, after the Mac restart)
+
+The run was handed to a fresh agent as generation 1, but the branch already held generation 1 and 2. That
+agent did not redo the work. It re-measured, re-ran, and broke the product again on purpose.
+
+- Re-measured: 819 total, route lane 101, this batch 37 to 3 (same three ids as above). The three
+  not-attachable reasons were checked against the code again; `stampIncorporatedAsStaff` is still
+  referenced at `api/soft-pull-approve.mjs:279` and defined nowhere.
+- Product broken on purpose, 24 changes across 20 handlers, each restored (the handler file was clean after
+  each): a role gate removed or widened, an org or entity condition dropped, the signed-link check bypassed,
+  a stage key and an SMS consent flag changed, the teaser limit raised. 22 turned the matching test RED at once.
+- Two stayed green and were closed (each new check seen RED against the break, and green on the product):
+
+| Row | What stayed green | Fix | Now |
+|---|---|---|---|
+| documents-upload : POST multipart file | dropping `kind = 'business'` from the entity statement: the fixture held no personal container for the same client | this client's personal container and one archived business added; both must be refused 404 "no such business" and nothing saved | `AND archived_at IS NULL` only: RED. `AND kind = 'business'` only: RED |
+| contracts : Drafts / send / Template authoring / void | removing the staff role gate in `api/contracts.mjs`: every fixture role was already a staff role | a signed-in role outside the staff set must get 403 on create_draft, create_template and void, and nothing is saved | gate removed: RED |
+
+- `node --test src/http/fin-b08-*.test.mjs src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs`: 258
+  tests, 258 pass, 0 skipped (one test added).
+- `npm run pulse:catalog`: 3975 mapped, 3919 wired, 23 red; `generated.json` did not change.
+
+Still stated plainly: every attached row is a **practice test**, not a live check.
 
 ## Product findings (written down, not fixed)
 

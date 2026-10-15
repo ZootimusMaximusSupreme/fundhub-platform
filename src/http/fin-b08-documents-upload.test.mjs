@@ -15,6 +15,8 @@ const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
 const FOREIGN_CLIENT = "c9000000-0000-4000-8000-000000000009";
 const BIZ = "b1000000-0000-4000-8000-000000000001";
+const PERSONAL = "b3000000-0000-4000-8000-000000000003";
+const ARCHIVED_BIZ = "b4000000-0000-4000-8000-000000000004";
 const KEYS = ["DOCUMENT_URL_SECRET", "MESSAGING_DRY_RUN", "ADAPTERS_DRY_RUN", "INNGEST_EVENT_KEY", "DOCUMENT_STORE_PROVIDER"];
 const saved = {};
 const realFetch = globalThis.fetch;
@@ -49,6 +51,9 @@ function uploadFile({ docs = [], signed = [] } = {}) {
     entities: [
       { id: BIZ, org_id: ORG_ID, client_id: CLIENT, kind: "business", archived_at: null },
       { id: "b2000000-0000-4000-8000-000000000002", org_id: ORG_ID, client_id: OTHER_CLIENT, kind: "business", archived_at: null },
+      // this client's own personal container, and one of its businesses that was archived: neither takes a business paper
+      { id: PERSONAL, org_id: ORG_ID, client_id: CLIENT, kind: "personal", archived_at: null },
+      { id: ARCHIVED_BIZ, org_id: ORG_ID, client_id: CLIENT, kind: "business", archived_at: "2026-01-01T00:00:00Z" },
     ],
     documents: docs.slice(),
     document_versions: [],
@@ -184,6 +189,14 @@ describe("POST /api/documents-upload", () => {
     assert.equal(refused.res.statusCode, 404);
     assert.equal(refused.res.body.error, "no such business");
     assert.equal(other.tables.documents.length, 0);
+    // this client's own personal container and its archived business are not "active business containers" either
+    for (const entity of [PERSONAL, ARCHIVED_BIZ]) {
+      const g = uploadFile();
+      const r = await call({ fields: { client_id: CLIENT, subtype: "bank_statement", entity_id: entity }, files: [file(pdf(), "s.pdf", "application/pdf")] }, g, asClient());
+      assert.equal(r.res.statusCode, 404, entity);
+      assert.equal(r.res.body.error, "no such business");
+      assert.equal(g.tables.documents.length, 0);
+    }
   });
 
   test("the 'we still need your documents' flag comes off only when the whole packet is there", async () => {

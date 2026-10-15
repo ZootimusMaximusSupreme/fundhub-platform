@@ -383,4 +383,21 @@ describe("POST /api/contracts: the door", () => {
     await runWithSharedDb(fake, () => handler(req("GET", {}), get));
     assert.equal(get.statusCode, 405);
   });
+
+  test("a signed-in staff role outside the staff set is refused on every write and nothing is saved", async () => {
+    const fake = newFile();
+    const contractsBefore = fake.tables.contracts.length;
+    const templatesBefore = fake.tables.contract_templates.length;
+    const outsider = [staffSession({ role: "bookkeeper" })];
+    for (const body of [
+      { action: "create_draft", client_id: IDS.client, template_id: IDS.template, values: { service: "Credit review" } },
+      { action: "create_template", template_key: "NEW-ONE", name: "New", body: "Words." },
+      { action: "void", id: IDS.template, reason: "test" },
+    ]) {
+      const r = await call(body, fake, outsider);
+      assert.equal(r.res.statusCode, 403, body.action);
+    }
+    assert.equal(fake.tables.contracts.length, contractsBefore);
+    assert.equal(fake.tables.contract_templates.length, templatesBefore);
+  });
 });
