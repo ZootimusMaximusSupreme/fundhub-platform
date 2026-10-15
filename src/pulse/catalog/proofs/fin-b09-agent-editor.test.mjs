@@ -219,10 +219,13 @@ test("Closer drill: Send and Enter send the typed line with the earlier turns, a
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(writes.filter((w) => w.action === "run").length, 2);
 
-    // An agent that is not OP-06 gets no drill card at all.
+    // An agent that is not OP-06 gets no drill card at all, whether it is a draft or already in shadow.
     await page.locator('.aitem[data-a="AG-01"]').click();
     await nameBoxIs(page, "Lead Follow-up");
     assert.equal(await page.locator("#drillCard").isHidden(), true);
+    await page.locator('.aitem[data-a="AG-03"]').click();
+    await nameBoxIs(page, "Review Chaser");
+    assert.equal(await page.locator("#drillCard").isHidden(), true, "a shadow agent that is not OP-06 has no drill either");
     assert.deepEqual(errors, []);
     await page.close();
   });
