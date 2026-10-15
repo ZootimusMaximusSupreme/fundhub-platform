@@ -1,19 +1,21 @@
 # Batch 22 manifest (Flow lane, 23 rows)
 
-Branch `fin/b22`, from `fin/base`. Generation 1. Local only: not pushed, not merged.
+Branch `fin/b22`, from `fin/base`. Generations 1 and 2. Local only: not pushed, not merged.
+Generation 2 is written at the bottom ("Generation 2"). The tables in between are kept current for it.
 Lane: `src/pulse/coverage/gap-catalog-flow.mjs`. Builder: Sonnet.
 
 ## The count
 
-| | Before | After |
-|---|---|---|
-| Rows of this batch that print NOT_PROVED | 23 | 11 |
-| Flow lane NOT_PROVED, whole lane | 23 | 11 |
-| All four lanes together (count script) | 853 | 841 |
+| | Start | After gen 1 | After gen 2 |
+|---|---|---|---|
+| Rows of this batch that print NOT_PROVED | 23 | 11 | **8** |
+| Flow lane NOT_PROVED, whole lane | 23 | 11 | **8** |
+| All four lanes together (count script) | 853 | 841 | **838** |
 
 Measured with `node scripts/pulse/count-not-proved.mjs` (offline, stub fetch, no database).
-With no database the nine saved-result checks print `skip` with the words "no database in this run",
-never NOT_PROVED. On the server they read real rows.
+With no database the ten saved-result checks print `skip` with the words "no database in this run", and the two
+page reads print `skip` with "no GET client" when none is handed in. Never NOT_PROVED. On the server they read
+real rows and the live page.
 
 ## Outcomes, row by row
 
@@ -27,7 +29,7 @@ may be empty). **practice test** = a test with fake data that goes red when the 
 | 1 | `flow:agent:ai-caller:api/journeys/ask.mjs` | practice test | `src/http/fin-b22-journeys-ask.test.mjs`: the real handler, a stand-in for the model. Who may ask (all eight staff roles tried: owner and admin in, six out, none upstream), no login, GET, missing text, no key on the server, what goes upstream (the editor's two texts, the server's key, never a key from the browser), what comes back (text blocks only, the key never), model down and unreachable. 8 product breaks, all red. |
 | 2 | `flow:message:dispatch:sms-duplicate-guard-NOT-WIRED` | live check | `SMS_DUPLICATE_SQL` in `fin-b22-flow-live.mjs`: automated texts that left in the last 14 days, and how many were the later send of the same template (or same words) to the same phone inside the guard's 30 minutes. Reads what customers got, because the guard itself is not wired. |
 | 3 | `flow:message:job:staff-message-sweeper` | live check | `STAFF_REPLY_SQL`: staff-typed replies of the last 7 days that are still queued 30 minutes after they were due, stuck on sending, say they left with no provider id, or sat on sent a day with no receipt. |
-| 4 | `flow:message:provider:web-push-and-client-push` | not-attachable | See "Not attachable" below. |
+| 4 | `flow:message:provider:web-push-and-client-push` | live check + practice test (gen 2) | `PUSH_DEVICE_SQL` in `fin-b22-flow-live.mjs`: every live notification device a client turned on (not retired, not turned off, not a test client) that has waited 7 days with no push ever tried, or that the push service failed 3 times or more and was never retired. Plus `src/push/fin-b22-send-to-client.test.mjs`: the real sender, store and provider over stand-ins (fan out to every device, each body decrypts only with its own device key, 404 and 410 retire a device in the same pass, 503 counts a failure and keeps the row, banned words never reach the network, no VAPID key sends nothing, no endpoint or key in the answer). 18 product breaks, all red. The last test pins who may call `sendToClient`: when a caller appears the file goes red and the caller needs its own trigger-to-device proof. |
 | 5 | `flow:message:receipt:twilio-status-webhook` | live check + practice test | `TWILIO_RECEIPT_SQL`: texts the carrier took (provider id saved) that are still on sent after 24 hours. Plus `src/http/fin-b22-twilio-status.test.mjs`: the door through the router, signed and unsigned, every status word, the unmatched answer, and `TWILIO_AUTH_TOKEN` is on `LAUNCH_SECRETS` (the row's own finding is stale: it is). 8 product breaks, all red. |
 | 6 | `flow:message:script:one-off senders in scripts/` | not-attachable | See below. |
 | 7 | `flow:message:template-copy:seed-vs-live-drift` | live check | `TEMPLATE_ROWS_SQL` + `reduceSignOff`: every approved template that carries a sign-off record still hashes (subject, NUL, body) to `approved_body_sha`, the same hash `api/message-templates.mjs` writes. Catches the doc seeder, a SQL seed, or a hand edit changing words under a standing approval. It does not compare to the SQL seed text: an approved edit legitimately differs from its seed, and three writers (doc seeder, SQL seeds with `DO UPDATE` and `DO NOTHING`, the editor) make "the seed body" ambiguous. The sign-off hash is the owner-approved mechanism (migration 116). |
@@ -37,59 +39,61 @@ may be empty). **practice test** = a test with fake data that goes red when the 
 | 11 | `flow:message:manual-proof:comms-map-2026-09-19 (template delivery proof)` | live check | `TEMPLATE_DELIVERY_SQL`: every client template sent in the last 30 days that has two or more rows older than a day and was never once delivered. The hand-run delivery proof, read again each morning from the messages really sent. |
 | 12 | `flow:message:workflow:waypoint-nudge-sweeper` | live check | `WAYPOINT_NUDGE_SQL`: every rung spent in 14 days ended in its own message (one of the three named templates, same channel, same client, left the queue) or, at step 4, in the csm task from `waypoint-nudge`; none stuck on `claimed` over 15 minutes or on `template_pending`. |
 | 13 | `flow:journey:journey:climate-lead-magnet-intended#1-headline-button` | not-attachable | See below. |
-| 14 | `flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map` | not-attachable | See below. |
+| 14 | `flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map` | live check (gen 2), RED today | `fin-b22-page-reads.mjs` reads `GET /api/climate` (51 states) and the scripts the live `/climate/` page loads. Red because the page ships five state outlines (AZ, CA, NY, TX, FL), so 46 states have no shape on the map. Goes green the day the page holds all 51. Proved by `fin-b22-page-reads.test.mjs`. |
 | 15 | `flow:journey:journey:climate-lead-magnet-intended#3-state-click` | not-attachable | See below. |
 | 16 | `flow:journey:journey:climate-lead-magnet-intended#4-form` | not-attachable | See below. |
 | 17 | `flow:journey:journey:climate-lead-magnet-intended#6-gate` | not-attachable | See below. |
 | 18 | `flow:journey:journey:fh-consulting-intended#2-education-only` | not-attachable | See below. |
 | 19 | `flow:journey:journey:fh-consulting-intended#3-three-prices` | not-attachable | See below. |
-| 20 | `flow:journey:journey:fh-consulting-intended#5-request-enrollment` | not-attachable | See below. |
+| 20 | `flow:journey:journey:fh-consulting-intended#5-request-enrollment` | live check (gen 2), green today | `fin-b22-page-reads.mjs` reads the live `/consulting/` page: the form's submit opens an email to the same support address the page lists, no card field, no payment script, no form posting away, and the page says nothing is charged. Proved by `fin-b22-page-reads.test.mjs` (10 page breaks, all red). |
 | 21 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#2-authorize-first` | practice test | `src/http/fin-b22-soft-pull-flow.test.mjs` (the real handler, stand-in database, signed link): the consent is written before any payment link is minted, in that order; a refused form or a failed consent write mints no link; the words come from the server. `src/pulse/catalog/proofs/fin-b22-soft-pull-page.test.mjs` (the real page in Chromium): no Pay button until the form is saved, the only action is submit, the page says authorize first, then pay. 16 product breaks, all red. |
 | 22 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#5-pay-same-page` | practice test | Same two files: the answer carries one link for exactly $32 + $10 per saved company (0, 1, 2, 3, 6, 20 companies tried), an open link at the same total is reused, an open link at another total is expired, and the same page shows "Pay $X assessment" with the server's total and link (not a number the page worked out); a refusal stays on the form; no checkout shows the total to ask for. |
 | 23 | `flow:journey:journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files` | live check + practice test | `SOFT_PULL_BUSINESS_SQL`: every company saved on the soft-pull form has its client, name, street, a two-letter state, an EIN as `12-3456789`, and an age. Plus `src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.mjs`: the form's rows go through the real writer and the real staff read, then the Client Control Panel card and the pipeline drawer in Chromium show name, state, EIN, address, and the extra-owner warning only on the company that has one. |
 
-Count: 9 live checks (two of them also have practice tests), 3 practice tests, 11 not-attachable.
-No row is na-verified.
+Count after generation 2: 12 live checks (three of them also have practice tests), 3 practice tests,
+8 not-attachable. No row is na-verified.
 
-## Not attachable (exact reasons)
+## Not attachable (exact reasons, challenged again in generation 2)
 
-1. **`provider:web-push-and-client-push`.** Nothing in `src/`, `api/` or `netlify/` calls `sendToClient`. The only
-   caller is the hand-run script `scripts/push/send-test-push.mjs`. So no client push is ever sent and no result
-   exists to read (there is no push log table). The sender (`src/push/send.mjs`) is tested only in
-   `src/http/push-endpoints.pg.test.mjs`, which needs a database and skips here. A test of a function nothing
-   calls would not judge a customer's result. The day a caller exists the
-   row can be judged. `src/pulse/tripwires.mjs` already files this surface as dead.
-2. **`script:one-off senders in scripts/`.** Three hand-run scripts with fixed ids: a resend to two named hires
+1. **`script:one-off senders in scripts/`.** Three hand-run scripts with fixed ids: a resend to two named hires
    on 2026-08-25, a prove run for one test client, a test push. They run once, on a person's say-so. Two of them
-   call a provider directly, so they write no `messages` row. There is no recurring result to read.
-3. **`ui:ops-admin outbound mail panel`.** The row names "an alert-address field on `public/app/ops-admin.html`".
-   The page has no such field. It has three buttons (Send what is waiting, Pause/Resume sending, Email unsent
-   invoices), and each already has its own display row. The alert address can only be set by posting `alert_email`
-   to `/api/messages-outbound`. A row that names a control that is not on the page cannot be judged.
-4. **Climate rows #1, #2, #3, #4, #6.** The shipped `/climate/` page is the lending-climate dashboard
-   (`public/climate/index.html`, a Next.js export). The visitor page the journey describes was reverted
-   ("Revert Claude climate visitor page", commit `f39cec357`); `docs/tracking/page-inventory.md` says "Spec and
-   mock only. Not deployed." Measured in the page's own files and in Chromium:
-   - #1 no headline "See how many banks…" and no button that scrolls to a form.
-   - #2 the map draws **5** state shapes (AZ, CA, NY, TX, FL). Both `public/climate/maps/us-states-paths.json`
-     and the copy inside the page's bundle hold 5. The 51 states appear only in a table. The row says a map of
-     51 states.
-   - #3 a clicked state shows its two-letter code and a score and band word. No name, no plain sentence.
-   - #4 no four-answer form and no contact fields. `/api/public/climate-match` is called by no page.
-   - #6 no gate and no $32 button.
-   A check cannot be green and a failing test cannot be committed. Chris decides: build the page, or retire
-   the journey.
-5. **Consulting rows #2, #3, #5.** `docs/journeys/fh-consulting-intended.md` (2026-09-17) says education for
-   business operations, three posted prices ($5,000, $5,000, $10,000), and an email to `support@fundhub.ai`.
-   Owner-directed commits on 2026-10-05 (`a9af08158`, `159a537a2`, `c66504716`) rewrote the page to marketing
-   consulting for agencies, with no posted price, FH Consulting LLC, and `support@fhconsulting.online`. A check
-   of the old words would be red for a reason Chris already decided; a check of the new words contradicts a file
-   agents may not edit. Chris decides which one is true, then these three can be judged.
+   call a provider directly, so they write no `messages` row, and nothing else logs the send (the fence in
+   `src/lib/outbound-fetch.mjs` keeps no table). There is no recurring result to read and no bundle file a verified
+   "nothing to judge" could re-check at run time (the live bundle carries no `scripts/`).
+2. **`ui:ops-admin outbound mail panel`.** The row names "an alert-address field on `public/app/ops-admin.html`".
+   The page has none (searched `public/`, `e2e/`, `docs/journeys/`). It has three buttons (Send what is waiting,
+   Pause/Resume sending, Email unsent invoices). Those three are already pressed to their result by
+   `e2e/ops-admin-outbound.spec.mjs` (the row's evidence text says no such test exists; that is stale). The alert
+   address can only be set by posting `alert_email` to `/api/messages-outbound`, and `src/messaging/outbox.mjs`
+   even tells the owner "No alert address is set on the Outbound Mail panel" about a field that is not there. A row
+   that names a control that is not on the page cannot be proved without saying the page has it.
+3. **Climate rows #1, #3, #4, #6.** The shipped `/climate/` page is the lending-climate dashboard
+   (`public/climate/index.html`, a Next.js export). The visitor page the journey describes was reverted by Chris
+   the day it was built ("Revert Claude climate visitor page", `f39cec357`, 2026-09-18) and the Darwin dashboard
+   shipped in its place; `docs/tracking/page-inventory.md` lists the lead page under "Dead or old pages: spec and
+   mock only, not deployed". Measured again on the LIVE site on 2026-10-15 (public GET):
+   - #1 no "fit your state" headline and no scroll button in the HTML or any script.
+   - #3 a clicked state shows a two-letter code, a score and a band word. No name and no plain sentence.
+   - #4 no four-answer form and no contact fields; `/api/public/climate-match` is called by no page.
+   - #6 no gate and no $32 button (the string is in no script).
+   A check can only say "absent". That would be a finding about a decided call, not a customer's wrong result,
+   and the same fact already sits in `ops/workflows/proof-findings-2026-10-14.md` (S4). Chris decides: build the
+   page from the mock in `marketing/landing-pages/climate-front-door-2026-09-18/`, or correct the journey.
+4. **Consulting rows #2 and #3.** `docs/journeys/fh-consulting-intended.md` (2026-09-17) says education for
+   business operations, "not a lender", and three posted prices ($5,000, $5,000, $10,000). Owner-directed commits
+   of 2026-10-05 (`a9af08158`, `159a537a2`, `c66504716`) rewrote the page to marketing consulting for agencies:
+   no posted price, no "education", no "not a lender" (it still says it does not promise a revenue number). A
+   check of the old words is red for a call Chris already made; a check of the new words contradicts a file
+   agents may not edit. Row #5 of the same journey is judged (see the table) because its words, "the form opens an
+   email to the support address; it takes no card", are still true. Chris updates steps 2 and 3 of the journey.
 
 ## Files added
 
-- `src/pulse/catalog/proofs/fin-b22-flow-live.mjs` — the nine saved-result checks, the judge, the runner
-- `src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs` — runs each check's exact SQL over stand-in rows, 160 tests
+- `src/pulse/catalog/proofs/fin-b22-flow-live.mjs` — the ten saved-result checks, the judge, the runner
+- `src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs` — runs each check's exact SQL over stand-in rows, 176 tests
+- `src/pulse/catalog/proofs/fin-b22-page-reads.mjs` — (gen 2) the two live page reads and their judges
+- `src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs` — (gen 2) 30 tests: the real page files, changed copies, failed reads
+- `src/push/fin-b22-send-to-client.test.mjs` — (gen 2) the client push sender over stand-ins, 17 tests
 - `src/pulse/catalog/proofs/fin-b22-flow-contracts.mjs` — which rows left the gap monitor and what each rests on
 - `src/pulse/catalog/proofs/fin-b22-sql-kit.mjs` — test kit: real column names, SQLite stand-in (tests only)
 - `src/pulse/catalog/proofs/fin-b22-sql-template-keys.mjs` — build-time reader of the SQL seed files
@@ -105,8 +109,10 @@ No row is na-verified.
 
 ## Shared lines touched (smallest possible)
 
-- `src/pulse/coverage/gap-catalog-flow.mjs`: one import; `readInactiveCounts` and the live runner now run in one
-  `Promise.all`; one line `if (liveRow) return liveRow;` before the old static result.
+- `src/pulse/coverage/gap-catalog-flow.mjs`: two imports (gen 1 live runner, gen 2 page reads);
+  `readInactiveCounts`, the live runner and the page reads run in one `Promise.all`; one line
+  `const liveRow = live.get(rowId) || pages.get(rowId);` then `if (liveRow) return liveRow;` before the old
+  static result.
 - `src/pulse/catalog/proofs/flow-gap-cases.mjs`: one import; `isFinB22ProvedFlowRow` added to
   `needsMessageGapMonitor`, `needsJourneyGapMonitor`, `needsAgentGapMonitor`; `EXPECTED_FLOW_GAP_COUNTS`
   journey 11 to 9 and the `agent: 1` line removed (a family with no row left has no entry).
@@ -114,12 +120,18 @@ No row is na-verified.
   plug-in line.
 - `src/pulse/catalog/proofs/flow-read-contracts.mjs`: one import; `!isFinB22LiveFlowRow(row)` in
   `CURRENT_FLOW_RED`.
-- `src/pulse/coverage/gap-catalog-flow.test.mjs`: 183 to 180, NOT_PROVED 23 to 11, the "every active control"
-  guard now names the 11 not-proved ids and the nine judged ones; three tests added.
+- `src/pulse/coverage/gap-catalog-flow.test.mjs`: 183 to 180, NOT_PROVED 23 to 11 (gen 1) and then to 8 (gen 2),
+  the "every active control" guard now names the 8 not-proved ids and the twelve judged ones; seven tests added
+  (three in gen 1, four in gen 2: the page reads, the page reads going green and red, no GET client, web push).
 - `src/pulse/catalog/proofs/flow-result-proofs.test.mjs`: the sample list of red rows, "11 leftovers" to 3,
-  the journeys-proxy test, the soft-pull test (they are no longer text-only); two tests added. Counts of rows
-  with a proof (447 / 132 / 25) unchanged.
-- `src/pulse/catalog/proofs/flow-read-contracts.test.mjs`: flow 23 to 11, total 38 to 26, unproved 37 to 25.
+  the journeys-proxy test, the soft-pull test (they are no longer text-only); two tests added in gen 1. Gen 2:
+  the red cases no longer hold web push or climate #2, "3 leftovers" to 2, "8 message rows judged from saved
+  results" to 9, two tests added (the two page-read proofs, the web push proof names the sender's test).
+  Counts of rows with a proof (447 / 132 / 25) unchanged.
+- `src/pulse/catalog/proofs/flow-read-contracts.test.mjs`: flow 23 to 11, total 38 to 26, unproved 37 to 25
+  (gen 1); then flow 8, total 23, unproved 22 (gen 2).
+- `src/pulse/catalog/proofs/fin-b22-flow-contracts.mjs` (my own file): three entries added to
+  `FIN_B22_LIVE_PROOFS` in gen 2 (web push, climate #2, consulting #5).
 - `src/pulse/catalog/generated.json`: recompiled with `npm run pulse:catalog`. Expect a conflict after merging
   other branches; recompile.
 
@@ -132,7 +144,9 @@ No product file changed. No migration. No `modules.mjs` change (nothing new in `
    unanswered: no 201, no error body. No link is minted, which is right, but the client's page hangs.
 2. `src/messaging/sms-dedup.mjs` is imported by nothing (known). Also, when wired, it only matches rows with
    `status = 'sent'`, so a first text already moved to `delivered` is invisible to it.
-3. The shipped `/climate/` map draws 5 of 51 states (see above).
+3. The shipped `/climate/` map draws 5 of 51 states. The five outlines are plain boxes
+   (`"AZ":"M120,200 L200,200 L200,260 L120,260 Z"`), so the "map" is a placeholder, not a map of the United
+   States. The new page read (climate #2) is red on this today.
 4. `/climate/` state click shows a code, not a name, and no sentence.
 5. The climate lead page and `/api/public/climate-match` have no page in front of them.
 6. The consulting page and its intended journey disagree (see above).
@@ -145,6 +159,18 @@ No product file changed. No migration. No `modules.mjs` change (nothing new in `
 10. A rung of the waypoint ladder with an unapproved template ends `template_pending` and the rung is spent
     for good (by design: a step is spent once). Until the three templates are approved in the editor, a stalled
     client gets neither message. The new check counts each as wrong, so it will be red until they are approved.
+11. (gen 2) `src/push/send.mjs`: a notification the lock-screen gate refuses (a body with a dollar amount, an
+    unknown kind, an off-site tap target) is counted as a failure of the phone (`markFailure`). Three such
+    refusals to one client make that phone look "failing" to the new check, though the phone is fine.
+12. (gen 2) The client portal offers "Turn on notifications" when the server holds the VAPID and storage keys
+    (`public/app/client-portal.html`, push card), and nothing ever sends to that device. A client who turns it on
+    waits. `docs/journeys/push-flow.md` says so ("Nothing sends a notification today"). The new check goes red
+    for a device that has waited 7 days.
+13. (gen 2) `src/messaging/outbox.mjs` `alertOnFailures` writes "No alert address is set on the Outbound Mail
+    panel" into the owner's task, about a field that is not on that panel.
+14. (gen 2) The catalog text for `ui:ops-admin outbound mail panel` says no test presses the three buttons.
+    `e2e/ops-admin-outbound.spec.mjs` does. Map text is stale.
+15. (gen 2) The consulting button reads "Email this request"; the journey step is "Request enrollment".
 
 ## Product breaks made on purpose (each went red, each restored)
 
@@ -160,6 +186,15 @@ branch's own files were never touched. 47 breaks, 47 went red, 0 stayed green, 0
 | `fin-b22-soft-pull-staff.test.mjs` | 8 | the extra-owner flag dropped in the staff read; EIN dropped in the staff read; the state not saved by the writer; EIN missing on the control panel card; the warning missing on the card; EIN missing in the drawer; the warning missing in the drawer; the address missing in the drawer |
 | `fin-b22-flow-live.test.mjs` and `gap-catalog-flow.test.mjs` | 7 | the judge never red; a different sign-off hash; placeholder copy ignored; a failed read turned into green; the nudge workflow name changed; the lane ignoring the live result; the live read run for no company |
 
+Generation 2, same method (one break at a time, `git checkout` after each, mutation script outside the repo):
+
+| Test file | Breaks | What was broken |
+|---|---|---|
+| `src/push/fin-b22-send-to-client.test.mjs` | 18, all red | a gone device not retired; 404 no longer gone; only the first device sent to; a failure stamped as a success; retired devices sent to again; turned-off devices sent to; another client's devices sent to; the body sent in the clear; the lock-screen gate skipped; the no-device answer losing its reason; a success not clearing failures; a failure erasing the last success; the retired stamp also marking turned-off; no VAPID signature header; TTL dropped; an endpoint returned in the answer; a bad row throwing instead of being skipped; a new caller of the sender appearing |
+| `fin-b22-page-reads.test.mjs` | 23, all red in the end | outlines ignored; a code that is not a state counted; a short list from the data door passing; a data door that says not ok passing; a page with no scripts passing; other sites' scripts fetched; framework files fetched; the map file counted when the page never loads it; a failed read as a pass; any HTTP status accepted; the real site called with no client handed in; the card-field, payment-script, form-posts-away, listed-address, no-charge-sentence, submit-opens-an-email and missing-form checks each switched off; a thrown judge not caught; the per-read and whole-run time limits ignored. Three stayed green on the first run (the not-ok door with all 51 states present, another site's script under the same path, the whole-run limit); each got a test and went red |
+| `fin-b22-flow-live.test.mjs` (web push query) | 8 pieces of SQL | each condition taken out of `PUSH_DEVICE_SQL` changes the answer for some stand-in set (the "dropping any one condition" test) |
+| `gap-catalog-flow.test.mjs` and `fin-b22-flow-live.test.mjs` | 6, all red | the lane ignoring the page reads; the lane handing the page reads no client; the lane ignoring the saved-result checks; the web push proof entry dropped; the push wait set to 0 days; the push failure limit moved to 10 |
+
 On top of those, each of the nine saved-result queries was broken condition by condition: the test
 `dropping any one condition changes the answer for some stand-in set` takes each piece of the SQL text out
 (70 pieces in all, from 1 to 16 per query) and fails if no stand-in row set notices. It found eight weak spots in my first draft: three conditions another condition already covered, which I
@@ -169,7 +204,8 @@ a template that is named nowhere, another company's copy of a template), for whi
 
 ## Numbers and commands
 
-- `node scripts/pulse/count-not-proved.mjs`: before 853 total, 23 of this batch; after 841 total, 11 of this batch.
+- `node scripts/pulse/count-not-proved.mjs`: before 853 total, 23 of this batch; after gen 1 841 total, 11 of this
+  batch; after gen 2 **838** total (door 135, display 680, flow 8, reads 15), 8 of this batch.
 - `npm run pulse:catalog`, then `node scripts/pulse/compile-catalog.mjs --check`: fresh. 3919 wired, 23 red
   (the same 23 as base: those are other lanes). Rows with an explicit red verdict: 850 to 838.
 - My seven test files together (`node --test`): 215 tests, 215 pass, 0 fail, run twice (6 to 8 seconds).
@@ -182,6 +218,18 @@ a template that is named nowhere, another company's copy of a template), for whi
   recorded as killed under load in the S1 and S4 manifests. Every file this batch named passed inside it.
 - `npm run lint`: 3,574 files parse clean.
 - `node scripts/pulse/fin-b22-sql-template-keys.mjs`: fresh (142 keys).
+- Gen 2, final run: my nine test files and `flow-read-contracts.test.mjs` together (`node --test`): 284 tests,
+  284 pass, 0 fail (`fin-b22-journeys-ask`, `-twilio-status`, `-soft-pull-flow`, `-soft-pull-page`,
+  `-soft-pull-staff`, `-flow-live` 176, `-page-reads` 30, `-send-to-client` 17, `gap-catalog-flow` 17).
+- Gen 2: `src/pulse/catalog/*.test.mjs` with `modules`, `tripwires` and `gap-catalog-reads` tests: 56 of 56 pass.
+  `flow-read-contracts.test.mjs` 2 of 2. `flow-result-proofs.test.mjs` 11 of 11 plus the long "every test named
+  by a flow proof passes" case on its own (it ran out its 240 s limit twice while the machine load average was
+  130 to 240, and passed in 42 s at load 35; it names `fin-b22-send-to-client` and `fin-b22-page-reads`).
+  `node scripts/pulse/compile-catalog.mjs --check`: fresh (3919 wired, 23 red, same as base).
+  `npm run lint`: 3,577 files parse clean.
+- Gen 2: the live public site was read with plain GETs (`/api/climate`, `/climate/`, its scripts,
+  `/climate/maps/us-states-paths.json`, `/consulting/`). The repo's `public/` files are byte for byte what the
+  site serves for the pages and map file read.
 - Not run: `npm run pulse:prove` (reads the live database; the brief forbids production reads from here) and any
   `.pg.test.mjs` (no local Postgres). The SQL is checked against the real column names from `db/` and run in
   SQLite over stand-in rows; it uses only `FILTER`, `EXISTS`, `COALESCE`, `NULLIF`, `BTRIM`, `->>`, `!~*` and
@@ -189,9 +237,9 @@ a template that is named nowhere, another company's copy of a template), for whi
 
 ## Left for the next generation
 
-- The 11 not-attachable rows above. Each needs a product change or a decision from Chris first.
-- A look at whether the nine live checks should also get a heartbeat-style beat (`src/pulse/beats/`). They are
-  morning-lane checks, not hourly; I did not add beats.
+- The 8 not-attachable rows above. Each needs a product change or a decision from Chris first.
+- A look at whether the ten saved-result checks and the two page reads should also get a heartbeat-style beat
+  (`src/pulse/beats/`). They are morning-lane checks, not hourly; I did not add beats.
 
 ## Generation 1 resume check (2026-10-14, evening)
 
@@ -215,3 +263,50 @@ The agent resumed on this branch after an interruption and re-measured instead o
 - Re-run: the 209 tests of the flow lane, journeys proxy, Twilio status door, soft-pull handler and live-check
   files pass; the 18 tests of the two soft-pull page files and the flow-result proofs pass; the catalog is fresh
   (`compile-catalog.mjs --check`); the SQL template key list is fresh.
+
+## Generation 2 (2026-10-14 night to 2026-10-15)
+
+A fresh Sonnet builder continued on this branch with one job: challenge every "not attachable" reason of
+generation 1 by reading the real page or handler, and attach a live check or practice test unless the reason is
+exactly true. Result: 11 rows in, 3 attached, 8 stay open with sharper reasons. Rows moved: 11 to 8 of this batch,
+841 to 838 overall.
+
+| Row | Gen 1 said | Gen 2 found | Outcome |
+|---|---|---|---|
+| web push (`provider:web-push-and-client-push`) | no caller, so no result exists to read | The sender leaves its result on the device row (`last_success_at`, `failure_count`, `expired_at`), and a client can turn a device on in the portal. That is a saved result. The sender, store and provider were never run by any test that runs without a database. | live check + practice test + caller pin |
+| climate #2 reading and map | the visitor page is not deployed | The step names a number and a map from `GET /api/climate`, and the live `/climate/` dashboard has exactly that. It can be read, and it is wrong (5 of 51 outlines). | live check, red today |
+| consulting #5 request enrollment | the journey names an address the page does not use | The row's own words are "the form opens an email to the support address; it takes no card". It names no address. Those words are true on the live page. | live check, green today |
+| climate #1, #3, #4, #6 | page not deployed | Re-read live: still true. Same fact as `proof-findings-2026-10-14.md` (S4). | not attachable |
+| consulting #2, #3 | owner rewrite vs stale journey | Re-read live: still true. | not attachable |
+| one-off senders | no recurring result | Re-read: no log table, two scripts bypass `messages`, no bundle file to verify against. | not attachable |
+| ops-admin outbound panel | the alert field is not on the page | Re-read: still not on any page. Found that `e2e/ops-admin-outbound.spec.mjs` already presses the three buttons (the catalog's evidence text is stale). | not attachable |
+
+### What each new check says, and what it does not
+
+- **Web push devices (live check, `PUSH_DEVICE_SQL`).** Red when a device a real client turned on has waited more
+  than 7 days with no push ever tried, or has failed 3 times or more and is still on file. Green and quiet with
+  no devices. It does not prove that a push reached a phone (nothing records that beyond `last_success_at`).
+  When someone wires a caller for `sendToClient`, the waiting rule must be revisited (a client with nothing to
+  be told legitimately has no push for a week). The caller pin in the practice test makes that happen.
+- **Web push sender (practice test).** Real sender, real store, real provider and real crypto. A stand-in database,
+  a stand-in push service, fresh browser keys. Each body the sender posted is decrypted with the device's own key
+  and read as the device would read it. It does not prove that Apple, Google or Mozilla accept the request.
+- **Climate reading (live page read).** Reads the data door and the scripts the page loads. It judges "the data door
+  sends a good reading with 51 states" and "the page holds an outline for each of them". It does not render the
+  page, so it does not judge that the painted number equals `national.score` or that each fill equals the colour
+  the door sent (batch 23's `fin-b23-climate-map.test.mjs` covers the painted number and finds that the page
+  ignores the door's colour).
+- **Consulting request (live page read).** Reads the page's own HTML and script. It does not click the form or open
+  a mail program. It judges what the page does on submit and what it asks for.
+
+### Decisions only Chris can make (unchanged, now exact)
+
+1. **Climate lead page.** Build it from `marketing/landing-pages/climate-front-door-2026-09-18/` (rows #1, #3, #4,
+   #6 then get a check), or correct `docs/journeys/climate-lead-magnet-intended.md` to describe the dashboard.
+   Either way the map needs 51 real state outlines (row #2 is red until it has them).
+2. **Consulting journey.** Update steps 2 and 3 of `docs/journeys/fh-consulting-intended.md` to the page as
+   rewritten on 2026-10-05, or put education wording and prices back. Proposed wording from the live page:
+   step 2 "Read that this is marketing consulting for agencies: not legal, tax or investment advice, no promise of
+   revenue"; step 3 "Prices are on the proposal and at checkout; the page posts none". Agents may not edit that file.
+3. **Ops admin panel.** Add the alert-address field the row and the owner's own alert text name, or correct
+   the row and the alert text.
