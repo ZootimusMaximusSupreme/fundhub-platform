@@ -4,11 +4,21 @@
 // Snapshot, Bank Inbox), the credit partner links and the Declines "Use this email" button.
 // The expected words are worked out in this file from the fake data, not copied from the page.
 // It reads no live data. Each row is claimed only inside the callback that asserts it.
+//
+// The Quick launch links and the Credit Snapshot link are also judged live, from the deployed link gate
+// (src/pulse/coverage/fin-b10-link-gate.mjs). Here every role is opened in a real page and the link must be
+// shown exactly when that same role model says the role may open the screen. That ties the live check to
+// what a person sees, in both states: today the gate hides the Closer Deck and Credit Snapshot links from
+// every role, and the day the screen is added to the gate's lists the link must show and open.
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { json, OWNER, proofRows, sharedScreens, waitFor } from "./fin-b10-kit.mjs";
+import { parseShellLists, screensFor } from "../../coverage/fin-b10-link-gate.mjs";
 
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
@@ -18,6 +28,11 @@ const OTHER = "bbbbbbbb-2222-4222-8222-222222222222";
 const PARTNER = "cccccccc-3333-4333-8333-333333333333";
 
 const ROLES = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist"];
+
+// The gate this page loads: the repo's shell.js, read the way the live check reads the deployed one.
+const SHELL_LISTS = parseShellLists(fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../public/app/shell.js"), "utf8"));
+const mayOpen = (role, screen) => screensFor(SHELL_LISTS, role).includes(screen);
 const asRole = (role) => ({ ok: true, staff: { id: `staff-${role}`, name: "Casey Reed", email: "casey@fundhub.ai", role, org_id: "org-1", status: "active" } });
 
 const FILE = {
@@ -350,7 +365,7 @@ test("Open FinanceOS link: opens FinanceOS on this client for the roles that may
   });
 });
 
-test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right page; Closer Deck is hidden from every role", async () => {
+test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right page; the Closer Deck link follows the link gate for every role", async () => {
   await proof.check(/^Quick launch links/, async () => {
     const wanted = [
       ["ccp-link-pipeline", "Open Pipeline", /^pipeline\.html$/, /\/app\/pipeline\.html$/],
@@ -369,13 +384,28 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
       await page.close();
     }
 
-    // The fourth, Open Closer Deck, carries the right address but no person can see it: the page's link gate
-    // (shell.js ALL) does not list present.html for any role. That is why this row is not attached.
+    // Every role, every link: shown exactly when the link gate lets that role open the screen. The Closer Deck
+    // link carries this client in its address whether it is shown or not, and a shown one is pressed and
+    // lands on the deck screen for this client.
+    assert.ok(SHELL_LISTS, "the shell's screen lists are readable");
+    const links = [
+      ["ccp-link-pipeline", "pipeline.html"],
+      ["ccp-link-present", "present.html"],
+      ["ccp-link-messaging", "messaging.html"],
+      ["ccp-link-ir", "inquiry-remover.html"],
+    ];
     for (const role of ROLES) {
       const { page } = await openPanel({ session: asRole(role) });
-      const link = page.locator("#ccp-link-present");
-      assert.equal(await link.getAttribute("href"), `present.html?contact=${CLIENT}`, `${role}: address`);
-      assert.equal(await link.isVisible(), false, `${role}: Open Closer Deck is hidden`);
+      for (const [id, screen] of links) {
+        assert.equal(await page.locator(`#${id}`).isVisible(), mayOpen(role, screen),
+          `${role}: ${id} (${screen}) is shown only when the link gate lets this role open it`);
+      }
+      const deck = page.locator("#ccp-link-present");
+      assert.match(await deck.getAttribute("href"), new RegExp(`^present\\.html\\?contact=${CLIENT}`), `${role}: Closer Deck address`);
+      if (await deck.isVisible()) {
+        await deck.click();
+        await page.waitForURL(new RegExp(`/app/present\\.html\\?contact=${CLIENT}`));
+      }
       await page.close();
     }
   });
@@ -395,15 +425,22 @@ test("More menu: Funding Matrix and Credit Snapshot are links for this client, a
     await page.close();
   });
   await proof.check(/^More menu: Open Credit Snapshot link/, async () => {
-    // The address is right for this client, but the page's link gate hides the row from every role, so a
-    // person cannot press it. That is why this row is not attached.
+    // The address is right for this client and the same for everybody. The row is shown exactly when the link
+    // gate lets that role open present.html, and a shown link is pressed and lands on the screen.
+    assert.ok(SHELL_LISTS, "the shell's screen lists are readable");
     for (const role of ROLES) {
       const { page, errors } = await openPanel({ session: asRole(role) });
       await page.locator("#more-menu > summary").click();
       const link = page.locator("#ccp-link-present2");
-      assert.equal(await link.getAttribute("href"), `present.html?contact=${CLIENT}`, `${role}: address`);
-      assert.equal(await link.isVisible(), false, `${role}: Open Credit Snapshot is hidden`);
-      assert.deepEqual(errors, [], role);
+      assert.match(await link.getAttribute("href"), new RegExp(`^present\\.html\\?contact=${CLIENT}`), `${role}: address`);
+      const visible = await link.isVisible();
+      assert.equal(visible, mayOpen(role, "present.html"), `${role}: Open Credit Snapshot visible only when the gate lets this role open it`);
+      if (visible) {
+        await link.click();
+        await page.waitForURL(new RegExp(`/app/present\\.html\\?contact=${CLIENT}`));
+      } else {
+        assert.deepEqual(errors, [], role);
+      }
       await page.close();
     }
   });

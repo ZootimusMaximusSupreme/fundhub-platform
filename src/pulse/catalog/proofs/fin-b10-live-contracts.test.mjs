@@ -318,7 +318,7 @@ test("client picker: demo clients and another company's clients are not counted"
   } finally { s.close(); }
 });
 
-/* ── The five contracts are the right rows, written once, and each can fail ─ */
+/* ── The contracts are the right rows, written once, and each can fail ─ */
 test("every contract is one exact map row, and the five SQL texts differ", () => {
   const MAP_DIR = path.join(REPO_ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
   const maps = new Map();
@@ -328,6 +328,8 @@ test("every contract is one exact map row, and the five SQL texts differ", () =>
     const hits = maps.get(file).filter((r) => r.surface === surface && r.control === control);
     assert.equal(hits.length, 1, `${file} / ${surface} / ${control}`);
   }
-  assert.equal(new Set(FIN_B10_RESULT_CONTRACTS.map((c) => c.sql)).size, 5);
-  assert.equal(new Set(FIN_B10_RESULT_CONTRACTS.map((c) => c.control)).size, 5);
+  const queries = FIN_B10_RESULT_CONTRACTS.filter((c) => c.mode === "query");
+  assert.equal(queries.length, 5);
+  assert.equal(new Set(queries.map((c) => c.sql)).size, 5);
+  assert.equal(new Set(FIN_B10_RESULT_CONTRACTS.map((c) => c.control)).size, FIN_B10_RESULT_CONTRACTS.length);
 });

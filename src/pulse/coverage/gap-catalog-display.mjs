@@ -2,6 +2,7 @@
 // prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
+import { judgeLinkGate, linkGateState } from "./fin-b10-link-gate.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -36,6 +37,7 @@ export function judgeDisplayResult(entry, stats = null) {
       `Add a receipt that links this exact control's input to its saved result, then let the read-only pulse judge it.`,
     );
   }
+  if (entry.contract.mode === "link-gate") return judgeLinkGate(entry, stats);
   if (entry.contract.mode === "always-red") {
     return result(
       entry.id,
@@ -108,9 +110,15 @@ async function retiredPageState(ctx = {}) {
 }
 
 export async function gapChecks(ctx = {}) {
+  // One GET of the deployed shell serves every link-gate contract (the link a screen shows is hidden or not
+  // by shell.js, so the live file is what is judged). Started first so it overlaps the retired-page reads
+  // below; linkGateState never throws.
+  const gateRead = DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  const gate = gateRead ? await gateRead : null;
   const judge = (entry, stats) => {
+    if (entry.contract?.mode === "link-gate") return judgeLinkGate(entry, gate);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);

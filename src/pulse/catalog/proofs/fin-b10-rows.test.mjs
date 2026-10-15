@@ -1,7 +1,6 @@
 // Guards for the batch 10 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has exactly one proof case (a live check
-// or a practice test), and the two rows left out stay out only while the reason in
-// fin-b10-not-attachable.mjs is still true.
+// plain runnable test that opens no live site, and every row has exactly one proof case: a live check
+// (seven: five saved results, two link gates) or a practice test (thirty-three).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -10,8 +9,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B10_DISPLAY_PROOF_CASES, FIN_B10_PRACTICE_CASES } from "./fin-b10-display-proofs.mjs";
-import { FIN_B10_LIVE_CASES, FIN_B10_LIVE_ROWS } from "./fin-b10-display-contracts.mjs";
-import { FIN_B10_NOT_ATTACHABLE } from "./fin-b10-not-attachable.mjs";
+import { FIN_B10_LIVE_CASES, FIN_B10_LIVE_ROWS, FIN_B10_RESULT_CONTRACTS } from "./fin-b10-display-contracts.mjs";
+import { displaySavedResultContract } from "./display-saved-result.mjs";
 import ROWS from "./fin-b10-rows.json" with { type: "json" };
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -39,60 +38,51 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "all 40 batch rows are exercised: 38 attached and 2 left out");
+  assert.equal(listed, 40, "all 40 batch rows are exercised and attached");
 });
 
-test("attached rows have one proof case each (5 live, 33 practice); the two left out have none", () => {
+test("every row has one proof case each (7 live, 33 practice); none is left out", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls.map((control) => ({ sourceFile: g.sourceFile, surface: g.surface, control }))));
-  assert.equal(attached.length, 38);
-  assert.equal(FIN_B10_LIVE_CASES.length, 5);
+  assert.equal(attached.length, 40);
+  assert.equal(Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || [])).length, 0, "no row is left out any more");
+  assert.equal(FIN_B10_LIVE_CASES.length, 7);
   assert.equal(FIN_B10_PRACTICE_CASES.length, 33);
-  assert.equal(FIN_B10_DISPLAY_PROOF_CASES.length, 38);
+  assert.equal(FIN_B10_DISPLAY_PROOF_CASES.length, 40);
   const caseKeys = FIN_B10_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 38);
+  assert.equal(new Set(caseKeys).size, 40);
   assert.deepEqual([...caseKeys].sort(), attached.map(keyOf).sort());
-  for (const row of FIN_B10_NOT_ATTACHABLE) assert.equal(caseKeys.includes(keyOf(row)), false, row.control);
   // A live row names the lane (so it stays in the lane); a practice row never does.
   for (const c of FIN_B10_LIVE_CASES) assert.match(c.evidence, /gap-catalog-display\.mjs/);
   for (const c of FIN_B10_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
-  assert.equal(FIN_B10_LIVE_ROWS.length, 5);
+  assert.equal(FIN_B10_LIVE_ROWS.length, 7);
+  assert.equal(FIN_B10_RESULT_CONTRACTS.length, 7);
 });
 
-test("the two left-out rows are real map rows, each with a reason that is still true", () => {
-  assert.equal(FIN_B10_NOT_ATTACHABLE.length, 2);
-  for (const row of FIN_B10_NOT_ATTACHABLE) {
-    assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
-    assert.ok(row.why.length > 120, "the reason is written out");
-  }
-  // Still true: the page's link gate has no present.html on its ALL list of screens, so both rows stay hidden.
-  const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
-  const start = shell.indexOf("var ALL = [");
-  const end = shell.indexOf("];", start);
-  assert.ok(start > 0 && end > start, "the shell's ALL list moved");
-  const all = shell.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.ok(!/present\.html/.test(all), "present.html is on the ALL list now: attach the Credit Snapshot and Quick launch rows with the practice test (fin-b10-client-control-panel.test.mjs already presses them)");
-  // The control panel still carries both links, pointing at the deck for this client.
+test("the two link-gate rows are real map rows served by the lane, and the page still carries every link they judge", () => {
+  const gated = FIN_B10_RESULT_CONTRACTS.filter((c) => c.mode === "link-gate");
+  assert.equal(gated.length, 2);
   const panel = fs.readFileSync(path.join(ROOT, "public/app/client-control-panel.html"), "utf8");
-  assert.match(panel, /id="ccp-link-present2" href="present\.html"/);
-  assert.match(panel, /id="ccp-link-present" href="present\.html"/);
-});
-
-test("shell.js names present.html nowhere in code: no role list, no rule, no map can let the two links through", () => {
-  // The test above only reads the ALL list. A role can also be handed a screen by one of the small lists
-  // that allowedFor() adds on top (CLOSER_DESK_ONLY, ADVISOR_ONLY, STAFF_MONEY, CONSENT_DESK_ONLY, ...), so
-  // this reads the whole file: every mention of present.html must sit in a comment.
-  const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
-  const inCode = [];
-  for (let at = shell.indexOf("present.html"); at !== -1; at = shell.indexOf("present.html", at + 1)) {
-    const inBlockComment = shell.lastIndexOf("/*", at) > shell.lastIndexOf("*/", at);
-    const lineStart = shell.lastIndexOf("\n", at) + 1;
-    const inLineComment = shell.slice(lineStart, at).includes("//");
-    if (!inBlockComment && !inLineComment) inCode.push(shell.slice(lineStart, shell.indexOf("\n", at)).trim().slice(0, 120));
+  const wanted = new Map([
+    ["present.html", ["ccp-link-present", "ccp-link-present2"]],
+    ["pipeline.html", ["ccp-link-pipeline"]],
+    ["messaging.html", ["ccp-link-messaging"]],
+    ["inquiry-remover.html", ["ccp-link-ir"]],
+  ]);
+  for (const contract of gated) {
+    const row = FIN_B10_LIVE_ROWS.find(([, , control]) => control === contract.control);
+    assert.ok(row, `${contract.control} is not a live row`);
+    assert.equal(oneRow(row[0], row[1], row[2]).length, 1, contract.control);
+    assert.equal(displaySavedResultContract({ control: contract.control }), contract, "the lane serves this batch's own contract");
+    assert.ok(contract.links.length >= 1);
+    for (const { file, roles } of contract.links) {
+      assert.ok(wanted.has(file), `${file} is not a link the control panel carries`);
+      assert.ok(roles.length >= 1);
+      // Each judged screen is a real page, and the control panel really links to it by the id the row names.
+      assert.ok(fs.existsSync(path.join(ROOT, "public/app", file)), `${file} does not exist`);
+      assert.ok(wanted.get(file).some((id) => new RegExp(`id="${id}" href="${file.replace(".", "\\.")}"`).test(panel)),
+        `client-control-panel.html no longer links ${file} by ${wanted.get(file).join(" or ")}`);
+    }
   }
-  assert.deepEqual(inCode, [],
-    "present.html is named in shell.js code now, so some role may be shown the link: run fin-b10-client-control-panel.test.mjs; "
-    + "if the Credit Snapshot or Closer Deck link is visible, attach those two rows with that practice test");
-  // And the shell is still the file the control panel loads, so the gate above is the one that applies.
-  const panel = fs.readFileSync(path.join(ROOT, "public/app/client-control-panel.html"), "utf8");
+  // The gate that hides or shows those links is the one this page loads.
   assert.match(panel, /<script[^>]+src="shell\.js[^"]*"/);
 });

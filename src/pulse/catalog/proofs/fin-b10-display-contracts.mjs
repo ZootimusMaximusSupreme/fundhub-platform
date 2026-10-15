@@ -1,5 +1,6 @@
-// Finish-853 batch 10: live saved-result checks for five display controls that leave a durable result.
-// Each contract is one read-only SQL text. It takes the company as $1::uuid and returns sample_count
+// Finish-853 batch 10: live checks for seven display controls. Five leave a durable saved result (a SQL
+// contract each); two are links the app's own link gate decides (a link-gate contract each, see linkGate()).
+// Each SQL contract is one read-only SQL text. It takes the company as $1::uuid and returns sample_count
 // (how many saved results exist) and bad_count (how many are wrong).
 //
 // Every contract is `emptyAs: "quiet"`: a control nobody has used in the window has nothing to judge,
@@ -15,6 +16,7 @@
 
 export const FIN_B10_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B10_LIVE_TEST = "src/pulse/catalog/proofs/fin-b10-live-contracts.test.mjs";
+export const FIN_B10_LINK_GATE_TEST = "src/pulse/coverage/fin-b10-link-gate.test.mjs";
 
 function contract(control, requirement, key, body) {
   return Object.freeze({
@@ -23,6 +25,21 @@ function contract(control, requirement, key, body) {
     emptyAs: "quiet",
     requirement,
     sql: `/* display-result:${key} */\n${body.trim()}`,
+  });
+}
+
+// A link control. The result is not a saved row: it is whether the app's own link gate (public/app/shell.js)
+// lets the people the link is for see it. The lane reads the DEPLOYED shell with one GET and judges, per
+// named screen, the staff roles that must be able to open it (src/pulse/coverage/fin-b10-link-gate.mjs).
+// It is red the day a screen is missing from the gate's lists and green by itself once it is added.
+function linkGate(control, requirement, key, links) {
+  return Object.freeze({
+    control,
+    mode: "link-gate",
+    requirement,
+    key,
+    sql: null,
+    links: Object.freeze(links.map(([file, roles]) => Object.freeze({ file, roles: Object.freeze([...roles]) }))),
   });
 }
 
@@ -148,6 +165,18 @@ export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
     "client-picker-reach",
     PICKER_SQL,
   ),
+  linkGate(
+    "More menu: Open Credit Snapshot link",
+    "The Credit Snapshot link on the Client Control Panel must be shown to the owner and to a closer, so the deck screen it opens can be reached from the file.",
+    "credit-snapshot-link-gate",
+    [["present.html", ["owner", "closer"]]],
+  ),
+  linkGate(
+    "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
+    "All four Quick launch links on the Client Control Panel must be shown to the owner and to a closer: Pipeline, the Closer Deck, Messaging and Inquiry Remover.",
+    "quick-launch-link-gate",
+    [["pipeline.html", ["owner", "closer"]], ["present.html", ["owner", "closer"]], ["messaging.html", ["owner", "closer"]], ["inquiry-remover.html", ["owner", "closer"]]],
+  ),
 ]);
 
 /** The exact map rows (desks file, surface, control) each live check is attached to. */
@@ -157,7 +186,14 @@ export const FIN_B10_LIVE_ROWS = Object.freeze([
   ["desks-b.json", "company-brain.html", FIN_B10_RESULT_CONTRACTS[2].control],
   ["desks-a.json", "closer-dashboard.html", FIN_B10_RESULT_CONTRACTS[3].control],
   ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[4].control],
+  ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[5].control],
+  ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[6].control],
 ]);
+
+// The five saved-result checks are held by the SQL test; the two link-gate checks by the gate test.
+const testFor = (control) => (FIN_B10_RESULT_CONTRACTS.find((c) => c.control === control)?.mode === "link-gate"
+  ? FIN_B10_LINK_GATE_TEST
+  : FIN_B10_LIVE_TEST);
 
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B10_LIVE_CASES = Object.freeze(FIN_B10_LIVE_ROWS.map(([sourceFile, surface, control]) => Object.freeze({
@@ -165,6 +201,6 @@ export const FIN_B10_LIVE_CASES = Object.freeze(FIN_B10_LIVE_ROWS.map(([sourceFi
   surface,
   control,
   depth: "deep",
-  evidence: `${FIN_B10_LIVE_TEST}; ${FIN_B10_LANE}`,
-  tests: Object.freeze([FIN_B10_LIVE_TEST]),
+  evidence: `${testFor(control)}; ${FIN_B10_LANE}`,
+  tests: Object.freeze([testFor(control)]),
 })));

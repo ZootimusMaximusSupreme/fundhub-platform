@@ -47,13 +47,15 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 45 deep display controls own one exact contract", () => {
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 45);
-  assert.equal(DISPLAY_RESULT_CASES.length, 45);
+test("all 47 deep display controls own one exact contract", () => {
+  const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 47);
+  assert.equal(DISPLAY_RESULT_CASES.length, 47);
   assert.equal(PASS_CAPABLE_COUNT, 32);
   assert.equal(UNMEASURED_CONTRACT_COUNT, 13);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 45);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 45);
+  assert.equal(linkGates, 2);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + linkGates, 47);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 47);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -62,7 +64,7 @@ test("all 45 deep display controls own one exact contract", () => {
     assert.ok(entry.surface);
     assert.equal(entry.contract.control, entry.control);
     assert.ok(entry.contract.requirement.length > 40, entry.control);
-    assert.ok(["query", "always-red"].includes(entry.contract.mode));
+    assert.ok(["query", "always-red", "link-gate"].includes(entry.contract.mode));
     assert.equal(entry.contract.mode === "query", typeof entry.contract.sql === "string");
   }
 });
@@ -141,6 +143,9 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.equal(focused.filter((row) => row.status === "PASS").length, 32);
   assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
+  // The two link-gate rows read the deployed shell by GET. This stand-in GET answers a different page, so
+  // they say "skip" (could not read), never PASS and never NOT_PROVED. fin-b10-link-gate.test.mjs holds them.
+  assert.equal(focused.filter((row) => row.status === "skip").length, 2);
   assert.equal(unproved.length, unprovedIds.size);
   assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
 });
@@ -195,7 +200,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 45);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 47);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

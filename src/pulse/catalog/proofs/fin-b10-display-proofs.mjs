@@ -1,13 +1,13 @@
 // Display proof cases for batch 10 (finish the 853, tier 4, lane gap-catalog-display).
 //
 // Two kinds of attachment, and each row has exactly one:
-//   live check      the row has a saved-result contract in fin-b10-display-contracts.mjs. Its evidence names the
-//                   display lane, so the lane judges it from saved data, and it stays in the lane.
+//   live check      the row has a contract in fin-b10-display-contracts.mjs: a saved-result SQL contract (five)
+//                   or a link-gate contract (two). Its evidence names the display lane, so the lane judges it
+//                   from the live system and it stays in the lane.
 //   practice test   a real page in Chromium, fake /api answers, one action, a judgement of the exact request and
 //                   the words painted (the test file named beside the row in fin-b10-rows.json). It reads no
 //                   saved data. The row leaves the lane.
-// A control listed under "notAttached" is also exercised, but its row words name something no person can reach
-// today, so it is left out here and stays reported as not proved (see fin-b10-not-attachable.mjs).
+// A live row also has its practice test (extra cover). Every one of the 40 rows is attached.
 
 import ROWS from "./fin-b10-rows.json" with { type: "json" };
 import { FIN_B10_LIVE_CASES, FIN_B10_LIVE_ROWS } from "./fin-b10-display-contracts.mjs";

@@ -30,13 +30,11 @@
     "Declines: Use this email button",
     "Details toggle (email, phone, tier, path)",
     "More menu: Open Bank Inbox button",
+    "More menu: Open Credit Snapshot link",
     "More menu: Open Funding Matrix link",
     "Open FinanceOS link (owner, admin, sales_manager only)",
+    "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
     "System Facts toggle (last pull, scores, round, funded)"
-   ],
-   "notAttached": [
-    "More menu: Open Credit Snapshot link",
-    "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover"
    ]
   }
  ],
