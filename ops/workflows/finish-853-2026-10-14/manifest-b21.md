@@ -1,19 +1,21 @@
 # Batch 21 manifest (finish-853, tier 4, lane gap-catalog-display, 32 rows)
 
-Branch `fin/b21`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1.
+Branch `fin/b21`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1, then generation 2 (see "Generation 2" at the end: two rows moved from not attachable to a verified "nothing to judge").
 Rows: the Staff & Teams desk (`staff-teams.html`, 7 rows), the Social Studio (`social-studio.html`, 11 rows) and the Teleprompter (`teleprompter.html`, 14 rows), all in `desks-f.json`.
 
 ## The numbers
 
 | | Rows |
 |---|---|
-| Open before (count script, this batch) | 32 |
-| Open after | 10 |
+| Open before (count script on `fin/base`, this batch) | 32 |
+| Open after generation 1 | 10 |
+| Open after generation 2 | 8 |
 | Live check | 15 |
 | Practice test | 7 |
-| Not attachable | 10 |
+| Verified "nothing to judge" (na-verified) | 2 |
+| Not attachable | 8 |
 
-Whole lane, same script: 853 open before, 831 after (routes 135, flows 23 and reads 15 did not move).
+Whole lane, same script: 853 open before, 831 after generation 1, 829 after generation 2 (routes 135, flows 23 and reads 15 did not move).
 
 A **live check** is a read-only SQL text the display lane runs for the company: it reads real saved rows and goes red when one is wrong. A **practice test** is the real page in Chromium (or the real handler) with fake answers; it reads no live data. A row left **not attachable** stays NOT_PROVED on purpose, with the exact reason, so the morning report keeps saying it is not proved.
 
@@ -48,11 +50,11 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 | social-studio.html - Tab 'Sent' (posted, with the reference on the account) | not-attachable | - | The tab can never fill. GET /api/social/posts reads marketing_content_queue only, whose status can never be posted (draft, queued, scheduled, awaiting_approval, discarded, blocked), so the Sent pane always prints its own note that it cannot yet see posts that went out. Posted posts live in social_posts, which this page never reads. The saved sent posts and their references are now judged by the live check on 'Post states legend' (a post that says Sent must have a time and a reference), but the tab itself cannot show them. Needs a product change: read social_posts for the Sent pane. |
 | social-studio.html - Post row click / Enter (expand details) and 'See the details' (opens the side drawer) | not-attachable | - | Half of it is broken. The row expands on a click and on Enter (measured), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change. |
 | social-studio.html - Side drawer: close X, click outside, Escape | not-attachable | - | There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; dra... | not-attachable | - | Two of the four claims were removed by owner call 2026-10-13. A double tap pauses and shows Copy script and Paste script only, with no cursor, no keyboard and no edit box (act() 'caret' in public/app/teleprompter.js); holding a line does nothing now ('Holding a line does nothing now'). Measured in Chromium: double tap sets copying and no contenteditable; hold changes nothing. One tap plays or pauses and drag moves the words, and those are covered by e2e/teleprompter-touch.spec.mjs, but the row cannot be called proved while it names a cursor and line editing. Needs Chris to restate the row. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Sav... | not-attachable | - | The edit bar can never open. beginEdit() in public/app/teleprompter.js has no caller, so editing is never set; a double tap opens Copy script only and a hold does nothing (owner call 2026-10-13), and History was removed the same day. There is no cursor, so there is no bar to press. Needs Chris to retire or restate the row. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, coun... | not-attachable | - | No on-screen control opens the sheet. openSheet('set') is called only by the window.__fhtp test hook; teleprompter.html has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. Needs a product change: an on-screen way to open it, or retire the row. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - 'This shoot' script list sheet (tap a script to roll it) | not-attachable | - | No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. Needs a product change, or retire the row. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line | not-attachable | - | Nothing in the bar can be seen or pressed. teleprompter.css sets #top { display: none !important }, and the Shoot tab link, Copy name button, offline banner, pending-marks banner and camera line are all inside #top. Needs a product change, or retire the row. |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; dra... | not-attachable | - | Two of the four claims were removed by owner call 2026-10-13: a double tap pauses and shows Copy script and Paste script only (no cursor, no keyboard, no edit box), and a hold does nothing. One tap and drag are live and covered by `e2e/teleprompter-touch.spec.mjs`, so the row is not "nothing to judge" either: half of it is live. A test of today's behaviour contradicts the row's words, and a test of the row's words is red. Needs Chris to restate the row (play, pause, double tap for Copy script, drag). |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Save' (visible only while editing) | na-verified | `src/pulse/coverage/fin-b21-owner-removed.mjs`, `src/pulse/coverage/fin-b21-owner-removed.test.mjs` | Editing words on the phone was taken out by owner call 2026-10-13 (`docs/journeys/CHANGELOG.md`: "we just edit and copy and paste", "delete the history button"). The lane reads the live `/app/teleprompter.js` and `/app/teleprompter.html` every run (GET only). It is "nothing to judge" only while nothing calls `beginEdit()` or `placeCaret()`, no second place opens an edit or turns the edit mode on, and no History button exists. The day one comes back the row is FAIL by name. |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, coun... | not-attachable | - | No on-screen control opens the sheet. `openSheet('set')` is called only by the `window.__fhtp` test hook; `teleprompter.html` has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. NOT nothing to judge: the Settings button (`b-set`) was dropped in commit `8eea9ca9e` on 2026-10-07 with no owner call recorded for it, and the spec (`docs/specs/marketing-machine-2026-10-04.md`, Settings > Learn remote) and `docs/journeys/shoot-flow.md` still say the sheet exists. A practice test through the test hook would show a sheet nobody can open. Needs Chris: an on-screen way to open it, or retire the row. |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - 'This shoot' script list sheet (tap a script to roll it) | not-attachable | - | No on-screen control opens the sheet. `openSheet('lib')` is called only by the `window.__fhtp` test hook; the Still to film chip menu is the path a person has. The This shoot button (`b-lib`) was dropped in the same commit `8eea9ca9e` with no owner call recorded, so it is not nothing to judge. Needs a product change, or Chris retires the row. |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line | na-verified | `src/pulse/coverage/fin-b21-owner-removed.mjs`, `src/pulse/coverage/fin-b21-owner-removed.test.mjs` | The owner hid the whole top bar on purpose on 2026-10-07 (commit `1802d6a94`: the ad name, title and orange notes were pushing the words down; the comment above the rule in `teleprompter.css` names the Shoot tab). The lane reads the live `/app/teleprompter.css` and `/app/teleprompter.html` every run: it is "nothing to judge" only while the `#top` hide rule is there, no rule shows `#top` again, and the header has no inline show. Red by name the day the bar is back. |
 
 ## Files added
 
@@ -64,6 +66,8 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 - `src/pulse/catalog/proofs/fin-b21-teleprompter.test.mjs` (13 Chromium practice tests on the real teleprompter page)
 - `src/pulse/catalog/proofs/fin-b21-film-key.test.mjs` (7 tests on the real `api/marketing/shoot.mjs` and `shoot/mark.mjs` doors, stand-in database)
 - `src/pulse/catalog/proofs/fin-b21-wiring.test.mjs` (the 32 rows are one exact map row each, end in exactly one outcome, and the lane agrees)
+- `src/pulse/coverage/fin-b21-owner-removed.mjs` (generation 2: the list of the two controls the owner took off the phone, with what each live file must still hold or lack; pure judging of text, no network)
+- `src/pulse/coverage/fin-b21-owner-removed.test.mjs` (generation 2: 12 tests; shipped files, one test per way a control comes back, unreadable files, the lane, the audit)
 - `ops/workflows/finish-853-2026-10-14/manifest-b21.md` (this file)
 
 ## Shared lines I touched (the integrator must merge these)
@@ -75,9 +79,13 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | 1 import line and `...FIN_B21_DISPLAY_PROOF_CASES,` at the end of `PLUGIN_DISPLAY_PROOF_CASES`. |
 | `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count `672` to `665` (7 rows moved from red to a practice test). Sum the other batches. |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts 40 to 55, pass-capable 27 to 42, distinct SQL 27 to 42, DB calls 27 to 42, passes 27 to 42, shipped-data copy 40 to 55 (this batch adds 15 live checks, all PASS-capable). Add every batch together and use the numbers the test prints. |
-| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog`. Do not hand-merge; recompile after merging. |
+| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog`. Do not hand-merge; recompile after merging. Generation 2 changed nothing in it (`compile-catalog.mjs --check` is fresh). |
+| `src/pulse/coverage/gap-catalog-display.mjs` (generation 2) | 1 import line (`fin-b21-owner-removed.mjs`); a new function `liveFileReader(ctx)` before `gapChecks` (the one GET of a live file; the lane is the file of the pulse allowed to reach the network, so `src/lib/no-unfenced-transmit.test.mjs` needs no new entry); 2 lines in `gapChecks` (`const removed = await ownerRemovedResults(...)` and `if (removed.has(entry.id)) return removed.get(entry.id);` first in `judge`); 1 entry `"catalog-display-owner-removed"` at the START of the `naVerify` object. `fin/b01` adds the same kind of hunks for its `catalog-display-retired-control` at the same spots: keep both blocks, they are independent (different code, different list). |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` (generation 2) | 1 import line and the `unprovedIds` filter in "the lane keeps missing contracts not proved and measured gaps red" now skips an owner-removed control (`&& !ownerRemovedFor(entry)`). No guard number changed. |
+| `src/pulse/na-conditions.mjs` (generation 2) | one new code `"catalog-display-owner-removed"` (say, claim, problem, `verify: "lane"`) right after `catalog-display-retired-autopsy`. |
+| `src/pulse/na-conditions.test.mjs` (generation 2) | the closed list now has one more code ("fifteen", or add them up with `fin/b01`'s `catalog-display-retired-control`: sixteen), the lane-code list, and a sample arg line. |
 
-No product file is changed. `public/app/teleprompter.js`, `public/app/teleprompter.html`, `api/marketing/*` and `src/marketing/shoot-film-key.mjs` were broken on purpose one line at a time and restored (see below); `git status` was clean afterwards.
+No product file is changed (generation 2 broke four of them on purpose and restored them, see below). `public/app/teleprompter.js`, `public/app/teleprompter.html`, `api/marketing/*` and `src/marketing/shoot-film-key.mjs` were broken on purpose one line at a time and restored (see below); `git status` was clean afterwards.
 
 ## Product findings (found, not fixed)
 
@@ -90,8 +98,11 @@ No product file is changed. `public/app/teleprompter.js`, `public/app/teleprompt
 7. **Nothing closes a forgotten clock-out.** `autoCloseStale()` in `src/shifts/store.mjs` has no caller outside tests, and `suspendStaff` revokes sessions but not the open shift. The `staff-clock` check goes red on a person left clocked in for more than a day.
 8. **Teleprompter header bar is never shown.** `teleprompter.css` hides `#top`, and the offline banner and the "marks are saved on this phone" banner are inside it, so a person never sees either. Row left NOT_PROVED.
 9. **Teleprompter rows with words that are out of date.** "Words area" (cursor, hold to edit) and "Edit bar" (Put back, History, Done, Save) name controls the owner removed on 2026-10-13; `beginEdit()` has no caller. "Film key ... lasts a week" is ten years by owner call 2026-10-10 (the practice test records ten years). Chris needs to restate or retire these rows.
-10. **Teleprompter Settings sheet and "This shoot" list cannot be opened by a person.** `openSheet('set')` and `openSheet('lib')` are called only by the `window.__fhtp` test hook. Learn remote lives in that sheet, so a person cannot learn a button; buttons already saved on the phone still work (the keyboard practice test proves that).
-11. **Integration risk, display lane time.** The lane runs each distinct SQL text one after another inside one pulse step (Netlify cuts a step at 26 seconds). This batch adds 15 texts, and the other batches add more. Each text reads one company's rows with an `org_id` filter and a window (90 or 180 days). Not fixed here. The integrator should count the texts after the merge and run `npm run pulse:prove`.
+10. **Teleprompter Settings sheet and "This shoot" list cannot be opened by a person (generation 2: dropped on 2026-10-07 in commit `8eea9ca9e`, "Give the teleprompter Record, Stop, and Play", with no owner call recorded for it).** `openSheet('set')` and `openSheet('lib')` are called only by the `window.__fhtp` test hook. Learn remote lives in that sheet, so a person cannot learn a button; buttons already saved on the phone still work (the keyboard practice test proves that).
+11. **Integration risk, display lane time.** The lane runs each distinct SQL text one after another inside one pulse step (Netlify cuts a step at 26 seconds). This batch adds 15 texts, and the other batches add more. Each text reads one company's rows with an `org_id` filter and a window (90 or 180 days). Not fixed here. The integrator should count the texts after the merge and run `npm run pulse:prove`. Generation 2 adds three GETs (the page script, the page and the stylesheet), made in parallel with a 5 second limit each, once per run, before the SQL texts start: at most 5 seconds more in that one step.
+12. **(Generation 2) The Copy script bar has no row in the map.** A double tap shows Copy script, Paste script and X (`body.copying`, owner call 2026-10-13). None of the three is a map row, so nothing tracks them. The old edit bar row names an X and a Save that no longer do what it says. Map finding only, not fixed here.
+13. **(Generation 2) Dead markup and a stale line.** `teleprompter.html` still holds the "Edit entire script" dialog (`#whole-editor`) and the edit bar (`#editbar`); nothing in `teleprompter.js` wires `whole-*` ids. `TODO.md` line 68 still says "double-tap edits the *entire* script with working Copy/Paste/Save", which the 2026-10-13 call replaced. Left alone (not named by this batch).
+14. **(Generation 2) The 1080p pill and the countdown switch live only in the Settings sheet.** With no way to open the sheet a person cannot pick 1080p for an ad or turn the 3-2-1 countdown off. 4K is the default, which is the safe side of the "film in 4K unless it is an ad" law.
 
 ## Can each check fail? (break, then red, then restored)
 
@@ -121,3 +132,46 @@ The branch already held finished work when this agent started. Nothing in the pr
 - Ran again: `fin-b21-live-contracts.test.mjs`, `fin-b21-wiring.test.mjs`, `fin-b21-film-key.test.mjs` and `gap-catalog-display.test.mjs` together, 183 of 183 pass; `fin-b21-teleprompter.test.mjs`, 14 of 14 pass in Chromium; `display-proof-cases.test.mjs`, the two map tests pass (the third, which runs 139 files, was not run: the Mac was at load average 200).
 - Broke the product on purpose, five more times, saw red each time, and put it back (`git status` clean after each): `staff-revoke` looking at active people (1 red), `staff-clock` dropping the company filter on the open-shift group (1 red), the reset-link one-hour band widened to 24 hours (3 red), the Try again button wired to nothing (2 red), and Open SLO Ads pointing at another folder (2 red).
 - `node scripts/pulse/compile-catalog.mjs --check`: fresh (exit 0).
+
+## Generation 2 (2026-10-15): the ten not-attachable rows challenged one by one
+
+A fresh agent re-read the real page, handler and CSS for each of the ten rows and tried to attach a live check or a practice test.
+
+| Row | Result | Why |
+|---|---|---|
+| Load-time probe | still not attachable | `var PARTNERS = []` (line 793) is filled only by `applyPartners()`, which runs after an async read; the connect block runs at load and `probe()` returns on `partner()` being null. A practice test of the row's words is red on the shipped page. |
+| Writer 'Send at ... times are UTC' | still not attachable | Line 2313 sends `new Date(when).toISOString()` (browser local time) while the label, the verdict preview (line 1401, `+ ':00Z'`) and the queue box (`utcFromBox`) read UTC. The saved instant keeps no record of what was typed. |
+| Tab 'Sent' | still not attachable | `marketing_content_queue_status_ck` has no `posted` (migrations 172, 243) and `api/social/posts.mjs` reads only that table. The live check on 'Post states legend' judges the saved sent posts, but it must not be borrowed to call the tab proved: the tab shows nothing. |
+| Post row click and 'See the details' | still not attachable | The server read has no `screening` object (`api/social/posts.mjs` line 169); `openDrawer` reads `p.screening.state` and throws. Half the row is broken. |
+| Side drawer close X, click outside, Escape | still not attachable | The drawer cannot open with the server's answer, so a practice test would feed it a field the server never sends. Same rule slice 4 followed for the Lenders Apply rows: when the real path is broken the row stays red. |
+| Words area | still not attachable | Half the row's words were removed by an owner call that is written down (`docs/journeys/CHANGELOG.md`, 2026-10-13); half is live. Neither "proved" nor "nothing to judge" is honest. |
+| 'This shoot' sheet, Settings sheet | still not attachable | The only opener is the `window.__fhtp` test hook, but they are NOT retired by an owner call: the spec and the journey doc still list Learn remote and Settings. Calling them "nothing to judge" would bury a hole that is Chris's to decide. |
+| Edit bar | **na-verified** (new) | The owner call is written down; `beginEdit()` and `placeCaret()` have no caller. Read live every run. |
+| Header bar | **na-verified** (new) | The owner hid the bar himself (commit `1802d6a94`) and the comment in the stylesheet names what is in it. Read live every run. |
+
+### How the two verified "nothing to judge" rows work
+
+- The display lane (`gap-catalog-display.mjs`) makes one GET per live file (`/app/teleprompter.js`, `/app/teleprompter.html`, `/app/teleprompter.css`), once per run however many rows name it. Judging is in `fin-b21-owner-removed.mjs`, which only reads the text.
+- "Nothing to judge" needs the file to look like the file the check was written for (`mustHave`) and to hold none of the control (`mustLack`). A file that cannot be read is `skip`. A file that reads but no longer looks right is `FAIL`. The audit re-verifies the claim every morning through `naVerify["catalog-display-owner-removed"]` and the new closed code.
+- The offline count script (`count-not-proved.mjs`) stubs every GET with an empty body, so there these two rows print FAIL (not NOT_PROVED) and leave the count. With the shipped files they print `na`: test 9 of `fin-b21-owner-removed.test.mjs` and test 6 of `fin-b21-wiring.test.mjs` assert it.
+
+### Breaks made on purpose in generation 2 (then restored; `git status` showed only this batch's files)
+
+| Break | Result |
+|---|---|
+| A call to `beginEdit()` added to the real `public/app/teleprompter.js` | 7 red |
+| A second `classList.add("wording")` added to the real page script | 7 red |
+| A History button added to the real `public/app/teleprompter.html` | 6 red |
+| `#top { display: none }` changed to `display: block` in the real `public/app/teleprompter.css` | 6 red |
+| `#top` hide rule deleted from the real stylesheet | 6 red |
+| The `beginEdit` pattern removed from the check itself | 2 red |
+
+### What I ran in generation 2
+
+- `node scripts/pulse/count-not-proved.mjs`: 831 before (this batch 10), 829 after (this batch 8).
+- `node --test src/pulse/coverage/fin-b21-owner-removed.test.mjs`: 12 of 12.
+- `node --test src/pulse/coverage/gap-catalog-display.test.mjs src/pulse/catalog/proofs/fin-b21-wiring.test.mjs`: 11 and 8 pass.
+- `node --test src/pulse/na-conditions.test.mjs`: 36 of 36. `src/lib/no-unfenced-transmit.test.mjs`: 5 of 5 (the GET lives in the lane, which is already on its list; the new file has no network call, so the guard list is untouched).
+- 13 related files together (`na-conditions`, `fin-b21-*`, `gap-catalog-*`, `modules`, `tripwires`, `no-unfenced-transmit`): 271 of 271. `src/pulse/catalog/*.test.mjs` (without the proof-case aggregator), `self-audit` and `daily-pulse`: 165 of 165. `display-proof-cases.test.mjs`, the two map tests: pass (the aggregator that runs 139 files was not run: the Mac was at load average 63 to 80).
+- `npm run pulse:catalog`: no change to `generated.json` (the catalog sources did not change). `npm run lint`: 3,572 files parse clean.
+- Not run: `npm run pulse:prove` (it builds the whole Netlify bundle and reads live data; the integrator runs it once after the merge).

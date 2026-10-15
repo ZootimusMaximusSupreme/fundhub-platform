@@ -1,11 +1,13 @@
 // Finish-853 batch 21: the screen controls proved by a practice test (real Chromium or the real door, fake
-// data), and the ten rows that cannot honestly be attached, each with its exact reason.
+// data), the two rows that are verified "nothing to judge" (the owner took the control off the phone), and the
+// eight rows that cannot honestly be attached, each with its exact reason.
 //
 // A practice test is not a live check: it reads no live data. It is attached only when the control leaves
 // no saved result that could be wrong (a key, a swap, a card) or when its answer is the page's own.
 // The live checks of this batch are in fin-b21-display-contracts.mjs.
 
 import { FIN_B21_SOURCE_FILE, SOCIAL_SURFACE, TELEPROMPTER_SURFACE } from "./fin-b21-display-contracts.mjs";
+import { OWNER_REMOVED } from "../../coverage/fin-b21-owner-removed.mjs";
 
 const TELEPROMPTER_TEST = "src/pulse/catalog/proofs/fin-b21-teleprompter.test.mjs";
 const FILM_KEY_TEST = "src/pulse/catalog/proofs/fin-b21-film-key.test.mjs";
@@ -46,6 +48,15 @@ export const FIN_B21_DISPLAY_PROOF_CASES = Object.freeze([
 const social = (control, reason) => Object.freeze({ sourceFile: FIN_B21_SOURCE_FILE, surface: SOCIAL_SURFACE, control, reason });
 const tele = (control, reason) => Object.freeze({ sourceFile: FIN_B21_SOURCE_FILE, surface: TELEPROMPTER_SURFACE, control, reason });
 
+/**
+ * The two rows that are "nothing to judge": the owner took the control off the phone on purpose, and the
+ * display lane reads the live files every run (src/pulse/coverage/fin-b21-owner-removed.mjs) and goes red
+ * the day it is back. The list lives there; this is the same two rows, named for the wiring test.
+ */
+export const FIN_B21_OWNER_REMOVED_ROWS = Object.freeze(OWNER_REMOVED.map((entry) => Object.freeze({
+  sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, removed: entry.removed
+})));
+
 /** The rows no test or check can honestly be attached to without a product change or a new row text. */
 export const FIN_B21_NOT_ATTACHABLE = Object.freeze([
   social("Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
@@ -59,15 +70,11 @@ export const FIN_B21_NOT_ATTACHABLE = Object.freeze([
   social("Side drawer: close X, click outside, Escape",
     "There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first."),
   tele("Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
-    "Two of the four claims were removed by owner call 2026-10-13. A double tap pauses and shows Copy script and Paste script only, with no cursor, no keyboard and no edit box (act() 'caret' in public/app/teleprompter.js); holding a line does nothing now ('Holding a line does nothing now'). Measured in Chromium: double tap sets copying and no contenteditable; hold changes nothing. One tap plays or pauses and drag moves the words, and those are covered by e2e/teleprompter-touch.spec.mjs, but the row cannot be called proved while it names a cursor and line editing. Needs Chris to restate the row."),
-  tele("Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Save' (visible only while editing)",
-    "The edit bar can never open. beginEdit() in public/app/teleprompter.js has no caller, so editing is never set; a double tap opens Copy script only and a hold does nothing (owner call 2026-10-13), and History was removed the same day. There is no cursor, so there is no bar to press. Needs Chris to retire or restate the row."),
+    "Two of the four claims were removed by owner call 2026-10-13 (docs/journeys/CHANGELOG.md: \"we just edit and copy and paste\"). A double tap pauses and shows Copy script and Paste script only, with no cursor, no keyboard and no edit box (act() 'caret' in public/app/teleprompter.js); holding a line does nothing now ('Holding a line does nothing now'). Measured in Chromium: double tap sets copying and no contenteditable; hold changes nothing. One tap plays or pauses and drag moves the words, and those are covered by e2e/teleprompter-touch.spec.mjs, so the row is not nothing to judge either: half of it is live. A test of today's behaviour contradicts the row's words, and a test of the row's words is red. Needs Chris to restate the row (play, pause, double tap for Copy script, drag)."),
   tele("Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
-    "No on-screen control opens the sheet. openSheet('set') is called only by the window.__fhtp test hook; teleprompter.html has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. Needs a product change: an on-screen way to open it, or retire the row."),
+    "No on-screen control opens the sheet. openSheet('set') is called only by the window.__fhtp test hook; teleprompter.html has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. The Settings button (b-set) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it, and the spec (docs/specs/marketing-machine-2026-10-04.md, Settings > Learn remote) and docs/journeys/shoot-flow.md still say the sheet exists. So it is not a retired control (not nothing to judge), and a practice test through the test hook would show a sheet nobody can open. Needs Chris: an on-screen way to open it, or retire the row."),
   tele("'This shoot' script list sheet (tap a script to roll it)",
-    "No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. Needs a product change, or retire the row."),
-  tele("Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line",
-    "Nothing in the bar can be seen or pressed. teleprompter.css sets #top { display: none !important }, and the Shoot tab link, Copy name button, offline banner, pending-marks banner and camera line are all inside #top. Needs a product change, or retire the row.")
+    "No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. The This shoot button (b-lib) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it, so it is not a retired control (not nothing to judge). Needs a product change, or Chris retires the row."),
 ]);
 
 export const FIN_B21_PRACTICE_KEYS = Object.freeze(FIN_B21_DISPLAY_PROOF_CASES.map((entry) => entry.key));

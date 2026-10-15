@@ -6,6 +6,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { DISPLAY_RESULT_CONTRACTS } from "../catalog/proofs/display-saved-result.mjs";
+import { ownerRemovedFor } from "./fin-b21-owner-removed.mjs";
 import {
   CHECK_IDS,
   DISPLAY_RESULT_CASES,
@@ -130,8 +131,9 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const db = fakeDb();
   const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
+  // The owner-removed controls (fin-b21-owner-removed.mjs) are read live and answer on their own.
   const unprovedIds = new Set(DISPLAY_TRACKING_CASES
-    .filter((entry) => !entry.retired && !entry.contract)
+    .filter((entry) => !entry.retired && !entry.contract && !ownerRemovedFor(entry))
     .map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
