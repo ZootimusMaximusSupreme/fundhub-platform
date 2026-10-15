@@ -10,7 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B16_DISPLAY_PROOF_CASES, FIN_B16_LIVE_PROOF_CASES, FIN_B16_PRACTICE_CASES } from "./fin-b16-display-proofs.mjs";
-import { FIN_B16_LIVE_ROWS } from "./fin-b16-display-contracts.mjs";
+import { FIN_B16_LIVE_ROWS, FIN_B16_LIVE_TESTS } from "./fin-b16-display-contracts.mjs";
 import { FIN_B16_NOT_ATTACHABLE } from "./fin-b16-not-attachable.mjs";
 import ROWS from "./fin-b16-rows.json" with { type: "json" };
 
@@ -62,7 +62,7 @@ test("38 attached rows have one proof case each (6 live, 32 practice); the retir
   for (const c of FIN_B16_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
   assert.equal(FIN_B16_LIVE_ROWS.length, 6);
   // Every live row also runs the practice test that presses the same control, when there is one.
-  const withScreenHalf = FIN_B16_LIVE_PROOF_CASES.filter((c) => c.tests.length > 1).map((c) => c.control);
+  const withScreenHalf = FIN_B16_LIVE_PROOF_CASES.filter((c) => c.tests.some((t) => !FIN_B16_LIVE_TESTS.includes(t))).map((c) => c.control);
   assert.equal(withScreenHalf.length, 3);
   for (const c of FIN_B16_LIVE_PROOF_CASES) assert.ok(c.evidence.split("; ").every((p) => fs.existsSync(path.join(ROOT, p))), c.control);
 });

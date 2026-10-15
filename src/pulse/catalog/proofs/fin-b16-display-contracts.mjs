@@ -19,6 +19,7 @@
 
 export const FIN_B16_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B16_LIVE_TEST = "src/pulse/catalog/proofs/fin-b16-live-contracts.test.mjs";
+export const FIN_B16_LIVE_TESTS = Object.freeze([FIN_B16_LIVE_TEST, "src/pulse/catalog/proofs/fin-b16-live-contracts-2.test.mjs"]);
 export const FIN_B16_SOURCE_FILE = "desks-c.json";
 
 const BLANK = (expr) => `NULLIF(BTRIM(COALESCE(${expr}, '')), '') IS NULL`;
@@ -311,6 +312,6 @@ export const FIN_B16_LIVE_CASES = Object.freeze(FIN_B16_LIVE_ROWS.map(([sourceFi
   surface,
   control,
   depth: "deep",
-  evidence: `${FIN_B16_LIVE_TEST}; ${FIN_B16_LANE}`,
-  tests: Object.freeze([FIN_B16_LIVE_TEST]),
+  evidence: `${FIN_B16_LIVE_TESTS.join("; ")}; ${FIN_B16_LANE}`,
+  tests: FIN_B16_LIVE_TESTS,
 })));
