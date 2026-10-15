@@ -15,7 +15,9 @@ const NOW = new Date("2026-10-08T20:00:00.000Z");
 const GOOD = {
   "/app/closer-dashboard.html": '<title>Fundhub — Closer Dashboard</title><script src="shell.js"></script>',
   "/app/present.html": '<title>Closer · Present</title><script src="data.js"></script><script src="present.js"></script>',
-  "/app/present.js": 'fetch("/api/closer-deck", { body: JSON.stringify({ action: "log_disposition" }) })'
+  "/app/present.js": 'fetch("/api/closer-deck", { body: JSON.stringify({ action: "log_disposition" }) })',
+  "/app/contract-send.js": "(function (root) { root.FHContractSend = { copyText: function () {} }; })(window);",
+  "/app/data.js": "window.FHData = (function () { return { read: function () {}, write: function () {} }; })();"
 };
 
 /* A fetch that serves a page from a map. A value may be a string (a 200 page),
@@ -71,7 +73,7 @@ test("two checks, fixed ids", async () => {
   assert.equal((await gapChecks()).length, 2);
 });
 
-test("pages: all three answer and are the right pages", async () => {
+test("pages: all five answer and are the right pages", async () => {
   const fetchImpl = pagesFetch();
   const rows = await gapChecks({ fetchImpl, baseUrl: "https://fundhub.ai/" });
   const hit = check(rows, "closer:desk-pages");
@@ -133,10 +135,34 @@ test("pages: the Present script has no registry row, so when it is down this row
   assert.match(b.detail, /Present script not opened \(socket hang up\)/);
 });
 
+test("pages: contract-send.js and data.js have no registry row, so when either is down or wrong this row FAILS and says what stops working", async () => {
+  for (const [p, name, effect] of [
+    ["/app/contract-send.js", "Contract send script", "so Present cannot send a contract"],
+    ["/app/data.js", "Data script", "so Present cannot read or save anything"]
+  ]) {
+    assert.equal(PAGES.find((x) => x.path === p).reg, null, p);
+    for (const down of [404, 500, 503]) {
+      const hit = check(await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, [p]: down }) }), "closer:desk-pages");
+      assert.equal(hit.status, "FAIL", `${p} ${down}`);
+      assert.match(hit.detail, new RegExp(`${name} answered ${down}, ${effect}`));
+    }
+    const boom = check(await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, [p]: new Error("socket hang up") }) }), "closer:desk-pages");
+    assert.equal(boom.status, "FAIL");
+    assert.match(boom.detail, new RegExp(`${name} not opened \\(socket hang up\\), ${effect}`));
+  }
+  // a 200 that is some other file fails on its own marker
+  const wrongSend = check(await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/contract-send.js": "<html>Login</html>" }) }), "closer:desk-pages");
+  assert.equal(wrongSend.status, "FAIL");
+  assert.match(wrongSend.detail, /Contract send script does not define FHContractSend/);
+  const wrongData = check(await gapChecks({ fetchImpl: pagesFetch({ ...GOOD, "/app/data.js": "<html>Login</html>" }) }), "closer:desk-pages");
+  assert.equal(wrongData.status, "FAIL");
+  assert.match(wrongData.detail, /Data script does not define FHData/);
+});
+
 test("pages: every page is asked with a timeout, so a hung page cannot hold the lane", async () => {
   const fetchImpl = pagesFetch();
   await gapChecks({ fetchImpl });
-  assert.equal(fetchImpl.seen.length, 3);
+  assert.equal(fetchImpl.seen.length, 5);
   for (const s of fetchImpl.seen) {
     assert.ok(s.opts.signal instanceof AbortSignal, s.url);
   }
@@ -154,13 +180,13 @@ test("pages: one page down and another wrong is still a FAIL and mentions both",
 
 test("closerDeskPageReport counts the pages it could read", async () => {
   const ok = await closerDeskPageReport({ fetchImpl: pagesFetch() });
-  assert.deepEqual(ok, { wrong: [], down: [], read: 3 });
+  assert.deepEqual(ok, { wrong: [], down: [], read: 5 });
   const part = await closerDeskPageReport({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.html": 503 }) });
-  assert.equal(part.read, 2);
+  assert.equal(part.read, 4);
   assert.equal(part.down.length, 1);
   assert.equal(part.wrong.length, 0);
   const noScript = await closerDeskPageReport({ fetchImpl: pagesFetch({ ...GOOD, "/app/present.js": 503 }) });
-  assert.equal(noScript.read, 2);
+  assert.equal(noScript.read, 4);
   assert.equal(noScript.down.length, 0);
   assert.equal(noScript.wrong.length, 1);
 });

@@ -12,6 +12,8 @@
 // so a file read there fails every morning whether or not the page is fine.
 // present.js has no registry row. If it is down, nothing else says so, so that is a FAIL
 // here. The two html pages have registry rows, so a down page is a skip that names the row.
+// contract-send.js and data.js are the two scripts the deck needs to send a contract and to read or
+// save anything. They have no registry row either, so a missing one is a FAIL here too.
 
 export const CHECK_IDS = Object.freeze(["closer:desk-pages", "closer:held-disposition"]);
 
@@ -58,6 +60,22 @@ export const PAGES = Object.freeze([
       [/log_disposition/, "does not post log_disposition"],
       [/\/api\/closer-deck/, "does not call /api/closer-deck"]
     ],
+    mustNot: []
+  },
+  {
+    path: "/app/contract-send.js",
+    name: "Contract send script",
+    reg: null,
+    effect: "so Present cannot send a contract",
+    must: [[/window\.FHContractSend\s*=|root\.FHContractSend\s*=/, "does not define FHContractSend"]],
+    mustNot: []
+  },
+  {
+    path: "/app/data.js",
+    name: "Data script",
+    reg: null,
+    effect: "so Present cannot read or save anything",
+    must: [[/window\.FHData\s*=/, "does not define FHData"]],
     mustNot: []
   }
 ]);
@@ -183,7 +201,7 @@ export async function closerDeskPageReport({ fetchImpl, baseUrl } = {}) {
     if (!(one.status >= 200 && one.status < 300)) {
       const why = one.error ? `not opened (${one.error})` : `answered ${Number.isFinite(one.status) ? one.status : "no status"}`;
       if (page.reg) down.push(`${page.name} ${why}; ${page.reg} reports a page that is down`);
-      else wrong.push(`${page.name} ${why}, so no disposition can be saved`);
+      else wrong.push(`${page.name} ${why}, ${page.effect || "so no disposition can be saved"}`);
       continue;
     }
     read += 1;
