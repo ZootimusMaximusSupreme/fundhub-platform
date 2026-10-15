@@ -1,7 +1,6 @@
 // Guards for the batch 16 row table: every listed row is one exact map row, every named test file is a plain
 // runnable test that opens no live site, every attached row has exactly one proof case (a live check or a
-// practice test), the forty rows are all accounted for, and the one row left out stays out only while the
-// reason in fin-b16-not-attachable.mjs is still true.
+// practice test), and the forty rows are all accounted for (39 attached, 1 retired page row).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -11,7 +10,6 @@ import { fileURLToPath } from "node:url";
 
 import { FIN_B16_DISPLAY_PROOF_CASES, FIN_B16_LIVE_PROOF_CASES, FIN_B16_PRACTICE_CASES } from "./fin-b16-display-proofs.mjs";
 import { FIN_B16_LIVE_ROWS, FIN_B16_LIVE_TESTS } from "./fin-b16-display-contracts.mjs";
-import { FIN_B16_NOT_ATTACHABLE } from "./fin-b16-not-attachable.mjs";
 import ROWS from "./fin-b16-rows.json" with { type: "json" };
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -45,18 +43,17 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  // 32 practice rows, plus the 4 live rows whose screen half is also pressed (4 and 6 of the Shoot tab, 'Send this one to').
-  assert.equal(listed, 35);
+  // 33 practice rows, plus the 3 live rows whose screen half is also pressed (4 and 6 of the Shoot tab, 'Send this one to').
+  assert.equal(listed, 36);
 });
 
-test("38 attached rows have one proof case each (6 live, 32 practice); the retired row and the one left out have none", () => {
+test("39 attached rows have one proof case each (6 live, 33 practice); the retired row has none", () => {
   assert.equal(FIN_B16_LIVE_PROOF_CASES.length, 6);
-  assert.equal(FIN_B16_PRACTICE_CASES.length, 32);
-  assert.equal(FIN_B16_DISPLAY_PROOF_CASES.length, 38);
+  assert.equal(FIN_B16_PRACTICE_CASES.length, 33);
+  assert.equal(FIN_B16_DISPLAY_PROOF_CASES.length, 39);
   const caseKeys = FIN_B16_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 38);
+  assert.equal(new Set(caseKeys).size, 39);
   assert.equal(caseKeys.includes(keyOf(RETIRED)), false, "the retired page row is the lane's own live redirect check");
-  for (const row of FIN_B16_NOT_ATTACHABLE) assert.equal(caseKeys.includes(keyOf(row)), false, row.control);
   // A live row names the lane (so it stays in the lane); a practice row never does.
   for (const c of FIN_B16_LIVE_PROOF_CASES) assert.match(c.evidence, /gap-catalog-display\.mjs/);
   for (const c of FIN_B16_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
@@ -67,8 +64,8 @@ test("38 attached rows have one proof case each (6 live, 32 practice); the retir
   for (const c of FIN_B16_LIVE_PROOF_CASES) assert.ok(c.evidence.split("; ").every((p) => fs.existsSync(path.join(ROOT, p))), c.control);
 });
 
-test("all 40 rows of the batch are accounted for: 38 attached, 1 retired page, 1 left out with a reason", () => {
-  const all = [...FIN_B16_DISPLAY_PROOF_CASES, RETIRED, ...FIN_B16_NOT_ATTACHABLE];
+test("all 40 rows of the batch are accounted for: 39 attached and 1 retired page", () => {
+  const all = [...FIN_B16_DISPLAY_PROOF_CASES, RETIRED];
   assert.equal(all.length, 40);
   assert.equal(new Set(all.map(keyOf)).size, 40, "no row has two outcomes");
   for (const row of all) assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
@@ -77,19 +74,12 @@ test("all 40 rows of the batch are accounted for: 38 attached, 1 retired page, 1
   assert.deepEqual([count("desks-c.json"), count("public-pages.json"), count("desks-f.json")], [36, 1, 3]);
 });
 
-test("the left-out row is a real map row, with a reason that is still true", () => {
-  assert.equal(FIN_B16_NOT_ATTACHABLE.length, 1);
-  for (const row of FIN_B16_NOT_ATTACHABLE) {
-    assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
-    assert.ok(row.why.length > 120, "the reason is written out");
-  }
-  // Still true: the page carries the button inside #demozone, loads the brand sheet, and the brand sheet hides #demozone for good.
-  const page = fs.readFileSync(path.join(ROOT, "public/app/messaging.html"), "utf8");
-  assert.match(page, /id="demozone"/);
-  assert.match(page, /id="demoToggle"/);
-  assert.match(page, /href="fundhub-brand\.css"/);
-  const brand = fs.readFileSync(path.join(ROOT, "public/app/fundhub-brand.css"), "utf8");
-  const hidden = /([^{}]*#demozone[^{}]*)\{([^}]*)\}/.exec(brand);
-  assert.ok(hidden, "the brand sheet no longer mentions #demozone: attach the Reference disclosure row with a practice test");
-  assert.match(hidden[2], /display\s*:\s*none\s*!important/, "#demozone is no longer hidden: attach the Reference disclosure row with a practice test");
+test("the Reference disclosure row (who-sent-it colour key) is a practice test of the messaging page, not a live check", () => {
+  const control = "Reference disclosure (who-sent-it colour key)";
+  assert.equal(oneRow("desks-c.json", "messaging.html", control).length, 1, "a real map row");
+  const hits = FIN_B16_DISPLAY_PROOF_CASES.filter((c) => c.sourceFile === "desks-c.json" && c.surface === "messaging.html" && c.control === control);
+  assert.equal(hits.length, 1, "exactly one proof case");
+  assert.ok(FIN_B16_PRACTICE_CASES.includes(hits[0]), "a practice case");
+  assert.equal(hits[0].evidence, "src/pulse/catalog/proofs/fin-b16-messaging.test.mjs");
+  assert.doesNotMatch(hits[0].evidence, /gap-catalog-display\.mjs/, "it reads no saved data, so it does not stay in the lane");
 });

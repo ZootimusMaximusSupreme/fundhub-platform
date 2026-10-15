@@ -7,7 +7,11 @@
 //   the "Send this one to" box               filled from the record, sent for one message, never written back
 //   deep links                               ?client_id= ?channel= ?conversation_id=
 //   the right panel                          other threads, Their file link
-//   (the who-sent-it reference key is hidden by the brand stylesheet; see fin-b16-not-attachable.mjs)
+//   the Reference key (who-sent-it colours)  opens and closes by itself; its three colours are the three
+//                                            ways the thread paints a message. The brand stylesheet hides
+//                                            the whole drawer today (UI-STANDARDS section 5), so the press
+//                                            is made through the page (element.click()), not by a finger,
+//                                            and the test prints whether a person can see it.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -371,6 +375,88 @@ test("the right panel lists their other threads and links to their file", { time
     await page.waitForFunction(() => /only thread with them/.test(document.querySelector("#ctxThreads")?.textContent || ""));
     assert.equal(await page.locator('#ctxLinks a:has-text("Their file")').getAttribute("href"), `client-control-panel.html?id=${MARCUS_ID}`);
     assert.deepEqual(errors, []);
+    await page.close();
+  });
+});
+
+test("the Reference key opens and closes by itself, and its three colours are the three ways the thread paints a message", { timeout: 90_000 }, async (t) => {
+  await proof.check(/^Reference disclosure \(who-sent-it colour key\)/, async () => {
+    // One thread with all three kinds of sender: a person on the team, the system (no sender name) and the client.
+    const AUTO = { id: "m-auto", conversation_id: DANA_SMS, direction: "outbound", channel: "sms", rendered_body: "Your next step is ready.", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T11:56:00Z" };
+    const api = inboxApi();
+    api.handlers["/api/read/messages"] = async (route) => json(route, page_of([AUTO, ...THREADS[DANA_SMS]]));
+    const { page, log, errors } = await openInbox("", { api });
+    await page.locator(".convo").first().click();
+    await opened(page, "Dana Whitfield");
+    await page.waitForFunction(() => document.querySelectorAll("#thread .msg").length === 3);
+
+    // The key states three ways at once, and each way is on the message itself.
+    const messages = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll("#thread .msg")].map((m) => [m.dataset.id, {
+      out: m.classList.contains("out"),
+      avatar: m.querySelector(".av").className.replace(/^av\s*/, ""),
+      initials: m.querySelector(".av").textContent.trim(),
+      bubble: m.querySelector(".bubble").className.replace(/^bubble\s*/, ""),
+      name: m.querySelector(".nm").textContent.trim(),
+      tag: m.querySelector(".agent-tag") ? m.querySelector(".agent-tag").textContent.trim() : null,
+    }])));
+    assert.deepEqual(messages["m-s2"], { out: true, avatar: "human", initials: "JB", bubble: "out-human", name: "Jordan Blake", tag: null },
+      "someone on your team: dark avatar, dark bubble, their name on it, no Automatic tag");
+    assert.deepEqual(messages["m-auto"], { out: true, avatar: "agent", initials: "SYS", bubble: "out-agent", name: "Automatic", tag: "Automatic" },
+      "sent by the system: outlined avatar and the Automatic tag");
+    assert.deepEqual(messages["m-s1"], { out: false, avatar: "client", initials: "DW", bubble: "in", name: "Dana Whitfield", tag: null },
+      "the client: plain avatar, plain bubble, no tag");
+
+    // The key's three colours are the colours those messages are painted with.
+    const paint = await page.evaluate(() => {
+      const pick = (selector) => {
+        const style = getComputedStyle(document.querySelector(selector));
+        return { bg: style.backgroundColor, border: style.borderTopColor, width: style.borderTopWidth, display: style.display };
+      };
+      return {
+        keyHuman: pick("#demoBody .sw.human"), keyAgent: pick("#demoBody .sw.agent"), keyClient: pick("#demoBody .sw.client"),
+        avHuman: pick("#thread .av.human"), avAgent: pick("#thread .av.agent"), avClient: pick("#thread .av.client"),
+        bubbleHuman: pick("#thread .bubble.out-human"), bubbleIn: pick("#thread .bubble.in"),
+      };
+    });
+    assert.equal(paint.keyHuman.bg, paint.avHuman.bg, "key swatch 1 is the colour of the team avatar");
+    assert.equal(paint.keyHuman.bg, paint.bubbleHuman.bg, "and of the team bubble (dark avatar, dark bubble)");
+    assert.equal(paint.keyAgent.bg, paint.avAgent.bg, "key swatch 2 is the system avatar fill");
+    assert.equal(paint.keyAgent.border, paint.avAgent.border, "with the system avatar outline colour");
+    assert.equal(paint.keyAgent.width, paint.avAgent.width, "and the same outline width");
+    assert.equal(paint.keyClient.border, paint.avClient.border, "key swatch 3 has the client avatar outline");
+    assert.equal(paint.keyClient.bg, paint.bubbleIn.bg, "and the plain bubble fill");
+    for (const swatch of [paint.keyHuman, paint.keyAgent, paint.keyClient]) assert.notEqual(swatch.display, "none", "a swatch is drawn");
+    assert.notEqual(paint.keyHuman.bg, paint.keyAgent.bg, "the team and system swatches are not the same colour");
+    assert.notEqual(paint.keyHuman.bg, paint.keyClient.bg, "the team and client swatches are not the same colour");
+    assert.notEqual(paint.keyAgent.border, paint.keyClient.border, "the system and client swatches are not outlined the same");
+
+    // The three lines say who each colour is.
+    const lines = await page.evaluate(() => [...document.querySelectorAll("#demoBody .legend .li")].map((n) => n.textContent.replace(/\s+/g, " ").trim()));
+    assert.equal(lines.length, 3);
+    assert.match(lines[0], /^someone on your team — dark avatar, dark bubble, their name on it$/);
+    assert.match(lines[1], /^sent automatically by the system — outlined avatar, “Automatic” tag$/);
+    assert.match(lines[2], /^the client — plain avatar, plain bubble, no tag$/);
+
+    // Closed to start; one press opens it; the next press closes it. It asks the server for nothing.
+    const state = () => page.evaluate(() => ({
+      hidden: document.getElementById("demoBody").hasAttribute("hidden"),
+      expanded: document.getElementById("demoToggle").getAttribute("aria-expanded"),
+      zoneOpen: document.getElementById("demozone").classList.contains("open"),
+    }));
+    const press = () => page.evaluate(() => document.getElementById("demoToggle").click());
+    const traffic = () => JSON.stringify(log);
+    assert.deepEqual(await state(), { hidden: true, expanded: "false", zoneOpen: false });
+    const quiet = traffic();
+    await press();
+    assert.deepEqual(await state(), { hidden: false, expanded: "true", zoneOpen: true });
+    await press();
+    assert.deepEqual(await state(), { hidden: true, expanded: "false", zoneOpen: false });
+    await press();
+    assert.deepEqual(await state(), { hidden: false, expanded: "true", zoneOpen: true });
+    assert.equal(traffic(), quiet, "pressing the Reference key sends and reads nothing");
+    assert.deepEqual(log.writes, []);
+    assert.deepEqual(errors, []);
+    t.diagnostic(`shown to a person on this page: ${await page.locator("#demoToggle").isVisible()}`);
     await page.close();
   });
 });
