@@ -7,7 +7,7 @@ import { openLab, fulfillJson, waitForShell } from "./s5-browser-kit.mjs";
 export { openLab, fulfillJson, waitForShell };
 
 export const TOKEN = "browser-proof-fake-token";
-const DEFAULT_STAFF = { id: "staff-proof", name: "Casey Proof", email: "casey.proof@example.test", org_id: "org-proof", status: "active" };
+const DEFAULT_STAFF = { id: "staff-proof", name: "Casey Proof", org_id: "org-proof", status: "active" };
 
 /**
  * makePage(lab, options) → a page signed in as a fake person.
@@ -28,8 +28,11 @@ export async function makePage(lab, {
   const page = await lab.browser.newPage({ viewport: { width, height } });
   page.apiCalls = [];
   const hinted = hint === undefined ? role : hint;
+  // Seeded once per tab: a later page in the same tab (after a sign-out, say) must see what the app left.
   await page.addInitScript(({ tok, hintedRole, extra }) => {
     try {
+      if (sessionStorage.getItem("fin-b20-seeded")) return;
+      sessionStorage.setItem("fin-b20-seeded", "1");
       if (tok) localStorage.setItem("fh_token", tok);
       if (hintedRole) localStorage.setItem("fh_role", hintedRole);
       for (const [k, v] of Object.entries(extra || {})) localStorage.setItem(k, v);
@@ -56,6 +59,7 @@ export async function makePage(lab, {
     if (call.path === "/api/health") {
       const custom = health ? await health(call) : undefined;
       if (custom?.abort) return route.abort();
+      if (custom && custom.raw !== undefined) return route.fulfill({ status: custom.status ?? 200, contentType: "text/html", body: custom.raw });
       if (custom) return fulfillJson(route, custom.body, custom.status ?? 200);
       return fulfillJson(route, { ok: true, db: "up", migrations: 7 });
     }
