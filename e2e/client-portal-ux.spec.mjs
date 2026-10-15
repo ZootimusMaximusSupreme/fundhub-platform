@@ -311,4 +311,34 @@ test.describe("client portal go-live UX", () => {
     expect(posted[0]).toContain("ftc-report.pdf");
   });
 
+  /* CP-06 — a file the server refuses must say why, under the button, and must
+     not leave the client re-sending the same file. The body below is what
+     api/documents-upload.mjs answers for a HEIC (400, code + message). */
+  test("a refused file shows the server's reason and lets the client pick another", async ({ page }) => {
+    await openPortal(page, CLIENT_SESSION, [], { portalSummary: { inquiry_open: true } });
+
+    const reason = "only jpg, png and pdf are accepted (declared type: image/heic)";
+    let posts = 0;
+    await page.route("**/api/documents-upload", async (route) => {
+      posts += 1;
+      return json(route, { ok: false, error: "invalid_file_type", message: reason, filename: "photo.heic" }, 400);
+    });
+
+    const door = page.locator(".door-inquiry");
+    /* The picker no longer offers what the server refuses. */
+    await expect(door.locator("input[type=file]")).not.toHaveAttribute("accept", /heic/i);
+
+    await door.locator("input[type=file]").setInputFiles({
+      name: "photo.heic",
+      mimeType: "image/heic",
+      buffer: Buffer.from("not really a heic")
+    });
+    await door.locator(".upload-btn").click();
+
+    await expect(door.locator("[data-door-msg]")).toBeVisible({ timeout: 15_000 });
+    await expect(door.locator("[data-door-msg]")).toContainText(reason);
+    await expect(door.locator(".upload-btn")).not.toHaveText(/^Try again$/);
+    expect(posts).toBe(1);
+  });
+
 });
