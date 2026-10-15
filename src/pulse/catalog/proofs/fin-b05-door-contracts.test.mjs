@@ -52,20 +52,24 @@ test("every named test is a plain runnable file and every named test title is a 
     }
     assert.ok(entry.titles.length > 0, `${entry.key} names no test title`);
     // The source is READ, not searched: a title left in a comment or a string, a
-    // test.skip / test.todo / { skip: true }, a test nested under a condition and a
-    // test that asserts nothing all fail here. Node exits 0 on every one of them.
+    // test.skip / t.skip / test.todo / { skip: true }, a test nested under a
+    // condition, a test that asserts nothing or only a tautology, and a test that
+    // returns, breaks or continues before its assertions all fail here. Node exits
+    // 0 on every one of them.
     const reports = entry.tests.map((file) => ({
       file,
       report: inspectNamedTests(fs.readFileSync(new URL(file, ROOT), "utf8"), entry.titles),
     }));
     for (const { file, report } of reports) {
       assert.deepEqual(report.markers, [], `${file} switches a test off or ends the run early: ${report.markers.join(", ")}`);
+      assert.deepEqual(report.gutted, [], `${file} holds an assertion helper with nothing in it that can fail, or one that returns early: ${report.gutted.join(", ")}`);
     }
     for (const title of entry.titles) {
       const found = reports.filter(({ report }) => !report.missing.includes(title));
       assert.ok(found.length > 0, `no live test titled "${title}" in ${entry.tests.join(", ")}`);
       for (const { file, report } of found) {
-        assert.equal(report.hollow.includes(title), false, `the test "${title}" in ${file} asserts nothing`);
+        assert.equal(report.hollow.includes(title), false, `the test "${title}" in ${file} asserts nothing that can fail`);
+        assert.equal(report.earlyExit.includes(title), false, `the test "${title}" in ${file} can return, break or continue before its last assertion`);
       }
     }
   }

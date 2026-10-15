@@ -12,8 +12,18 @@
 //   * a top-level call at column 0:  test("<title>", async () => { ... });
 //     (not in a comment, not in a string, not inside any bracket pair such as an
 //     `if` block or a `describe`, no options object)
-//   * with at least one assertion in its body
-// And the file as a whole must hold no skip / todo / only marker and no process.exit.
+//   * with at least one assertion in its body that is not a tautology
+//     (assert.ok(true), assert.equal(1, 1) hold no result and do not count)
+//   * whose body never leaves early: no `return`, `break` or `continue` at the
+//     callback's own level (inside a nested function they are ordinary code).
+//     A test that returns before its assertions still passes, and so does one
+//     that calls t.skip() and returns; node's runner exits 0 on both.
+// The assertion helpers the file declares at top level (function assertX(...))
+// are held to the same two rules, because a test that calls a helper that was
+// emptied or made to return at once is a test that was switched off one step away.
+// And the file as a whole must hold no skip / todo / only call or key (t.skip,
+// ctx.todo, test.only, { skip: ... }), no constant-false `if`, and no
+// process.exit.
 //
 // It is a source reader, not a parser: it blanks comments with a small scanner that
 // understands strings, template literals and regex literals, then matches the
@@ -160,16 +170,165 @@ export function blankComments(source, { strings = false } = {}) {
 const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Anything that switches a test off, or lets a run end before the tests do.
-const MARKERS = /\b(?:test|it|describe|suite)\s*\.\s*(?:skip|todo|only)\b|\b(?:skip|todo|only)\s*:|\bprocess\s*\.\s*exit\b/g;
+// `.skip` / `.todo` / `.only` are matched on ANY receiver, not only `test`: the
+// first version read test.skip and nothing else, so t.skip("off") then return
+// kept the guard green. A constant-false `if` is the same switch written by hand.
+const MARKERS = new RegExp([
+  "\\.\\s*(?:skip|todo|only)\\b",
+  "\\b(?:skip|todo|only)\\s*:",
+  "\\bprocess\\s*\\.\\s*(?:exit|abort|kill)\\b",
+  "\\bif\\s*\\(\\s*(?:false|0|null|undefined)\\s*\\)",
+].join("|"), "g");
 const ASSERTS = /\bassert\w*\s*[.(]/;
+// Statements that end a callback, or a loop turn inside it, before its last line.
+const EXIT_WORDS = new Set(["return", "break", "continue"]);
+// A `(`...`)` before a `{` is a function body unless the word before the `(` is one of these.
+const CONTROL_WORDS = new Set(["if", "for", "while", "switch", "catch", "with", "await"]);
+// assert.<these>(...) with only literal arguments can never fail.
+const TAUTOLOGY_CALLS = /^assert(?:\s*\.\s*(?:ok|equal|strictEqual|deepEqual|deepStrictEqual|notEqual|notStrictEqual|notDeepEqual|notDeepStrictEqual|match|doesNotMatch))?$/;
+const LITERAL_ARG = /^\s*(?:true|false|null|undefined|NaN|-?\d[\d_.]*|"[^"]*"|'[^']*'|`[^`]*`|\/[^/]*\/[a-z]*|\[\s*\]|\{\s*\})\s*$/;
+
+/** Index of the bracket that closes the one at `open`, or -1. `shape` has strings and comments blanked. */
+function matching(shape, open, up, down) {
+  let depth = 0;
+  for (let i = open; i < shape.length; i += 1) {
+    if (shape[i] === up) depth += 1;
+    else if (shape[i] === down) {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Top-level comma split of an argument list text. */
+function splitArgs(text) {
+  const args = [];
+  let depth = 0;
+  let from = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === "(" || c === "[" || c === "{") depth += 1;
+    else if (c === ")" || c === "]" || c === "}") depth -= 1;
+    else if (c === "," && depth === 0) {
+      args.push(text.slice(from, i));
+      from = i + 1;
+    }
+  }
+  const last = text.slice(from);
+  if (last.trim() !== "") args.push(last);
+  return args;
+}
+
+/**
+ * Where the callback of a matched `test("title", <callback>` call has its body:
+ * { open, close } are the indexes of its `{` and `}`; null for an expression body.
+ * `from` is the index just past the matched call prefix, `matched` its text.
+ */
+function callbackBody(shape, from, matched) {
+  let i = from;
+  if (matched.endsWith("(")) {
+    const close = matching(shape, from - 1, "(", ")");
+    if (close === -1) return null;
+    i = close + 1;
+  } else if (/function$/.test(matched)) {
+    const open = shape.indexOf("(", from);
+    const close = open === -1 ? -1 : matching(shape, open, "(", ")");
+    if (close === -1) return null;
+    i = close + 1;
+  }
+  while (i < shape.length && /\s/.test(shape[i])) i += 1;
+  if (shape.startsWith("=>", i)) {
+    i += 2;
+    while (i < shape.length && /\s/.test(shape[i])) i += 1;
+  }
+  if (shape[i] !== "{") return null;
+  const close = matching(shape, i, "{", "}");
+  return { open: i, close: close === -1 ? shape.length : close };
+}
+
+/** Does the `{` at `at` open a function body (as opposed to a block or an object)? */
+function opensFunction(shape, at) {
+  let k = at - 1;
+  while (k >= 0 && /\s/.test(shape[k])) k -= 1;
+  if (k >= 1 && shape[k] === ">" && shape[k - 1] === "=") return true;
+  if (shape[k] !== ")") return false;
+  let depth = 0;
+  let q = k;
+  for (; q >= 0; q -= 1) {
+    if (shape[q] === ")") depth += 1;
+    else if (shape[q] === "(") {
+      depth -= 1;
+      if (depth === 0) break;
+    }
+  }
+  let p = q - 1;
+  while (p >= 0 && /\s/.test(shape[p])) p -= 1;
+  let e = p;
+  while (e >= 0 && WORD.test(shape[e])) e -= 1;
+  return !CONTROL_WORDS.has(shape.slice(e + 1, p + 1));
+}
+
+/**
+ * The `return` / `break` / `continue` statements that belong to the callback
+ * itself (or a loop or block inside it), not to a function nested in it.
+ */
+export function ownLevelExits(shape, open, close) {
+  const found = new Set();
+  const stack = [];
+  for (let i = open + 1; i < close; i += 1) {
+    const c = shape[i];
+    if (c === "{") {
+      stack.push(opensFunction(shape, i));
+      continue;
+    }
+    if (c === "}") {
+      stack.pop();
+      continue;
+    }
+    if (!/[A-Za-z_$]/.test(c) || (i > 0 && WORD.test(shape[i - 1]))) continue;
+    let j = i;
+    while (j < close && WORD.test(shape[j])) j += 1;
+    const word = shape.slice(i, j);
+    let b = i - 1;
+    while (b >= 0 && /\s/.test(shape[b])) b -= 1;
+    if (EXIT_WORDS.has(word) && shape[b] !== "." && !stack.includes(true)) found.add(word);
+    i = j - 1;
+  }
+  return [...found];
+}
+
+/** Every assert call in a body, with its argument texts. */
+function assertionCalls(shapeBody) {
+  const calls = [];
+  const re = /\b(assert\w*(?:\s*\.\s*\w+)?)\s*\(/g;
+  for (let m = re.exec(shapeBody); m; m = re.exec(shapeBody)) {
+    const open = m.index + m[0].length - 1;
+    const close = matching(shapeBody, open, "(", ")");
+    const inner = shapeBody.slice(open + 1, close === -1 ? shapeBody.length : close);
+    calls.push({ name: m[1].replace(/\s+/g, ""), args: splitArgs(inner) });
+  }
+  return calls;
+}
+
+/** True when the body holds an assertion that can fail: not a helper-free tautology. */
+function holdsRealAssertion(shapeBody) {
+  return assertionCalls(shapeBody).some(({ name, args }) => {
+    const tautology = TAUTOLOGY_CALLS.test(name) && args.length > 0 && args.every((arg) => LITERAL_ARG.test(arg));
+    return !tautology;
+  });
+}
 
 /**
  * @param {string} source  a test file's text
  * @param {string[]} titles the test titles a proof row names
- * @returns {{ missing: string[], hollow: string[], markers: string[] }}
- *   missing  no live top-level test with that exact title
- *   hollow   found, but its body holds no assertion
- *   markers  skip / todo / only / process.exit left in the executable code
+ * @returns {{ missing: string[], hollow: string[], markers: string[], earlyExit: string[], gutted: string[] }}
+ *   missing    no live top-level test with that exact title
+ *   hollow     found, but its body holds no assertion, or only tautologies
+ *   markers    skip / todo / only / process.exit / a constant-false if, left in the code
+ *   earlyExit  found, but its body can return, break or continue at its own level
+ *   gutted     a top-level assert* helper with no assertion that can fail, or that can
+ *              return, break or continue at its own level
  */
 export function inspectNamedTests(source, titles) {
   const code = blankComments(source);
@@ -187,6 +346,7 @@ export function inspectNamedTests(source, titles) {
   }
   const missing = [];
   const hollow = [];
+  const earlyExit = [];
   for (const title of titles) {
     const call = new RegExp(
       `^(?:test|it)\\(\\s*(["'\`])${escapeRegExp(title)}\\1\\s*,\\s*(?:async\\s*)?(?:\\(|function\\b|[A-Za-z_$][\\w$]*\\s*=>)`,
@@ -197,9 +357,24 @@ export function inspectNamedTests(source, titles) {
       missing.push(title);
       continue;
     }
-    const end = code.indexOf("\n});", hit.index);
-    const body = code.slice(hit.index, end === -1 ? code.length : end);
-    if (!ASSERTS.test(body)) hollow.push(title);
+    const callback = callbackBody(shape, hit.index + hit[0].length, hit[0]);
+    const open = callback ? callback.open : hit.index;
+    const close = callback ? callback.close : shape.length;
+    const body = shape.slice(open, close + 1);
+    if (!ASSERTS.test(body) || !holdsRealAssertion(body)) hollow.push(title);
+    if (callback && ownLevelExits(shape, callback.open, callback.close).length) earlyExit.push(title);
   }
-  return { missing, hollow, markers };
+  const gutted = [];
+  const helper = /^(?:async\s+)?function\s+(assert\w*)\s*\(/gm;
+  for (const m of shape.matchAll(helper)) {
+    if (depthAt[m.index] !== 0) continue;
+    const callback = callbackBody(shape, m.index + m[0].length, m[0]);
+    if (!callback) {
+      gutted.push(m[1]);
+      continue;
+    }
+    const body = shape.slice(callback.open, callback.close + 1);
+    if (!holdsRealAssertion(body) || ownLevelExits(shape, callback.open, callback.close).length) gutted.push(m[1]);
+  }
+  return { missing, hollow, markers, earlyExit, gutted };
 }

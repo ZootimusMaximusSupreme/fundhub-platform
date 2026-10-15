@@ -1,7 +1,7 @@
 # Batch 05 manifest — finish the 853 (tier 2, lane gap-door-batch-routes, 1 row)
 
 Branch `fin/b05`, built from `fin/base` (`2f4f574a0`). Nothing was pushed or merged.
-Generation 1 of 3. Builder: Sonnet. Repair cycle 1 (this file's last section) is done.
+Generation 1 of 3. Builder: Sonnet. Repair cycles 1 and 2 (the last two sections of this file) are done.
 
 ## Numbers
 
@@ -216,3 +216,96 @@ cycle 0 left them.
    the old guard here did (`s1-door-contracts.test.mjs` does: `text.includes(title)`). A
    skipped test there keeps its guard green. Not touched here: they are other batches' files.
    `fin-b05-test-binding.mjs` is written to be reused by them.
+
+## Repair cycle 2 (a second independent checker found 17 product breaks and 3 guard breaks that stayed green)
+
+The checker ran 26 or so breaks: 7 went red (the test has teeth on the gates and the happy path),
+17 product breaks stayed 14 of 14 green, and 3 break shapes stayed 7 of 7 green in the guard. This
+cycle closes every one that can be closed. Outcome for the row is unchanged: **practice-test** (fake
+data, stand-in database, in-memory provider). It is not a live check. No product code changed.
+No new files and no shared lines touched: the work is in the four batch 05 files.
+
+### What each break was and what pins it now
+
+| # | Weakness the checker named | What the test does now | Break that went red |
+|---|---|---|---|
+| 1 | `force_repair` never pressed with an allowed offer | New test presses the descent press the cockpit posts: tier `FULL_FUNDING` with `force_repair` and `REPAIR_DFY`, and tier `FUNDING_PLUS_REPAIR` with `force_repair` and `REPAIR_TRIAL`. Each must deliver the same repair pack, one letters email, tag, stamp with that offer key | S1 as `isFundingPath(tier) && !edu` (offer check also gone): red |
+| 2 | Only 2 of the 3 offers the button posts were pressed | `REPAIR_TRIAL` (rung 1) is pressed, same pack and email asserted | S2 `REPAIR_TRIAL letters:false`: red |
+| 3 | What is IN the pack was only counted | Exact set of files is pinned by subtype and path (repair) or bureau (funding). Every PDF is read back: each round letter opens with its own bureau's name and mailing box, carries no other bureau's box, covers exactly that bureau's derogatory accounts from the stored pull (last four digits and creditor names, none from another bureau). Personal-info letters carry their own bureau's facts and none from another. Inquiry letters list only their own bureau's pulls. All five analysis pages are required, the Business Duplication Map included. `metadata.pack` and `metadata.stack` are pinned | S8 (no round letters), S9 (no EQ round letter), S10 (Experian box swapped to the Equifax box), S11 (pack label), S19 (no map), S20 (no inquiry letters), S22 (no personal-info letters), plus two of mine: one bureau's personal info dropped, round letters filed under the other bureau's name: all red |
+| 4 | Email template key value not pinned, seeded body never rendered | The test writes both keys out and keys its stand-in templates by those literals, not by the product's imports. It reads the newest seed file under `db/seed` that inserts each key and uses that subject and body as the approved template. It asserts the product's constants equal the literals, the subject is the seeded subject, the greeting names the client, no `{{` is left, and the portal link carries this client's own address | S6 and S7 (key typos): red in two tests each |
+| 5 | Tag and stamp matched by verb only | The clients table is now rows with `tags` and `custom_fields`. An UPDATE reaches only the row named when the SQL ends in `WHERE id = $1`; without it, it reaches every client. Each press asserts the client holds the tag and stamp, and every other client (the other company's included) holds none | S4 (`addTags` WHERE gone) and S5 (`mergeCustomFields` WHERE gone): red |
+| 6 | Generic error path never reached | New test: an unexpected database error is a 500 `send_failed` carrying the error's own words (cut at 180), an empty error gets the fixed fallback sentence, and a connection-class error is a 503 `db_unavailable` with `db: "down"`. Nothing is built, saved, queued or sent in any of them | S3 (answers 200 ok), fallback sentence removed, 180 cut removed, `dbDown` removed: all red |
+| 7 | Pressed twice judged only messages | Both packs, pressed twice on one stand-in company: same ids, same keys, still version 1, same storage keys, `document_versions` count equals the document count, one message, one send, one tag. New test: a press at Round 1, then a Round 4 answer, then a press: the two complaints appear once, no key twice, every earlier letter is still the same row | S21 (discriminator unique per press), S26 (letters event key unique per press), S26b (deliverables event key unique per press): red |
+| 8 | Guard stayed green on a test switched off at run time | The reader (`fin-b05-test-binding.mjs`) now also fails: `.skip` / `.todo` / `.only` on any receiver (`t.skip("off")`), a constant-false `if`, `process.abort` / `kill`, a `return`, `break` or `continue` at the callback's own level (inside a nested function they are fine), an assertion whose arguments are all literals (`assert.ok(true)`, `assert.equal(1, 1)`), and any top-level `assert*` helper that was emptied or made to return early. The guard asserts `earlyExit` and `gutted` are empty | G6 (`t.skip` then `return`), G7 (bare `return`), G8 (`assert.ok(true)` then `return`), and mine: only a tautology, a `continue` in a loop, `t.todo`, `if (false)`, `test.skip`: all red |
+
+Also pinned (the checker called S27 equivalent, low weight): a sign-in whose company is not a
+company id is refused 403 `forbidden` before any client is looked up. With the stand-in rows the
+guard's removal is visible (it answers 404), so S27 goes red.
+
+### Breaks run (each made once, run, seen red, put back from saved text)
+
+| Group | Breaks | Result |
+|---|---|---|
+| Product code | S1, S2, S3, S3b, S3c, S3d, S4, S5, S6, S7, S8, S8b, S9, S10, S10c, S11, S19, S20, S21, S22, S26, S26b, S27, S28 (24 breaks) | every one red in the named test |
+| Handler test file against the guard | G6, G7, G8, G9, G10, G11, G12, G13 (8 breaks) | every one red in the guard |
+| Reader against its own tests | R1 to R7 (7 breaks) | every one red in at least one reader test |
+
+Equivalent mutants, left green on purpose, with the reason:
+- **S1 as written if only `!forceRepair` is dropped** (`isFundingPath(tier) && !edu && offerKey === "FUNDING_DFY"`).
+  `FUNDING_DFY` has `letters: false`, so `!offerAllowsLetters(offerKey)` refuses it anyway, and
+  every other offer key makes `fundingRoute` false because of the `offerKey === "FUNDING_DFY"`
+  clause. `force_repair` changes nothing this action returns. The refusal for `FUNDING_DFY` with
+  `force_repair` is pinned by the refusals test. A mutant that also drops the offer clause is red.
+- **S10b** (swapping the Experian entry of `crs/render-pdf.js` `BUREAU_ADDRESSES`): that table is
+  not used by these letters. `vendor/underwriteiq-full/api/lite/letter-generator.js` `BUREAUS` is
+  the one table behind round, inquiry and personal-info letters, and S10 and S10c are red.
+
+Labelling note, not a break: the catalog still gives this row `depth: "deep"` because the door
+recipe labels every attached proof that way (same label as s1 to s3). It is a practice test. The
+manifest, the test headers and this file say so.
+
+### Numbers (cycle 2)
+
+| | |
+|---|---|
+| Handler tests | 18 of 18 pass (was 14), about 100 s because every press builds real PDFs |
+| Guard | 7 of 7 pass |
+| Reader tests | 18 of 18 pass (was 11) |
+| Related group (gap-door-batch, door-*, s*-door-*, catalog, closer-deck, fin-b05-*; 46 files) | 1,323 of 1,323 pass, none skipped |
+| Open rows (`count-not-proved.mjs`) | 852 total, unchanged; `closer-deck` `generate_letters` is not on the open list |
+| `npm run pulse:catalog` | `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red`, `generated.json` unchanged |
+| `npm run lint` | 3,567 files parse clean |
+
+### Files changed in cycle 2 (all batch 05 files, none new)
+
+- `src/pulse/catalog/proofs/fin-b05-door-closer-deck-letters.test.mjs` (4 new tests, assertions added to 5 more)
+- `src/pulse/catalog/proofs/fin-b05-door-contracts.mjs` (4 new titles, 2 retitled)
+- `src/pulse/catalog/proofs/fin-b05-door-contracts.test.mjs` (asserts `earlyExit` and `gutted`)
+- `src/pulse/catalog/proofs/fin-b05-test-binding.mjs` (the stronger reader)
+- `src/pulse/catalog/proofs/fin-b05-test-binding.test.mjs` (7 new reader tests)
+
+### Product findings added in cycle 2 (not fixed)
+
+7. `force_repair` is a dead input in `generateDeckLetters`. It only matters inside `fundingRoute`,
+   and `fundingRoute` needs `offerKey === "FUNDING_DFY"`, which `letters: false` already refuses.
+   The descent works because the cockpit swaps the offer key to a repair offer when force repair
+   is on. A direct request with a funding tier and `REPAIR_DFY` delivers letters with or without
+   `force_repair`.
+8. A second press does not refresh letters. The document event key is stable per client, offer and
+   file, so the registry dedupes it. Probe on the original: press, rename the client, press again:
+   the response says `delivered: true` and `documentsStored: 7`, every document is still version 1,
+   and the saved PDF still carries the old name. A closer who corrects a name, an address or a
+   bureau answer and presses again is told the letters were sent, and gets the old PDFs. (The test
+   pins the case where nothing changed; it does not pin this one.)
+9. When the final stamp write fails, the door answers 500 `send_failed` although seven documents
+   were saved, the email was sent and the client was tagged. The screen reads that as "nothing
+   went out".
+10. The seeded letters email (`db/seed/023_ds02_letters_portal_copy.sql`) signs off "FundHub.ai",
+    which is not the company spelling. Seed copy, applied; noted only.
+
+### Commands run (cycle 2)
+
+- `node --test` on the handler test, the guard and the reader tests: 18, 7 and 18 pass.
+- The 46-file related group through `xargs node --test`: 1,323 pass, 0 fail, 0 skipped.
+- `npm run pulse:catalog`, `node scripts/pulse/count-not-proved.mjs`, `npm run lint`: as in the table.
+- No `.pg.test.mjs` file was run, `DATABASE_URL` was unset, and nothing reached the network.
