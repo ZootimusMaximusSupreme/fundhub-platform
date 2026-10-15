@@ -196,6 +196,9 @@ body.no-own .own-foot.own-empty{display:flex}
 .door-type{display:block;width:100%;margin-bottom:8px;padding:9px 11px;border:1px solid var(--amber-line);border-radius:8px;background:#fff;font-size:var(--fs-body);font-family:inherit;color:var(--ink)}
 .door-type:focus-visible{outline:2px solid var(--blue-line);outline-offset:2px}
 .upload-btn:disabled{opacity:.6;cursor:progress}
+/* Why a file did not send, in the server's own words, under the button that
+   sent it. A refused file used to say only "Try again" (CP-06). */
+.door-msg{margin:8px 0 0;font-size:var(--fs-body);font-weight:600;color:var(--red)}
 .upload-btn:focus-visible,.file-x:focus-visible,.upload-more:focus-visible{outline:2px solid var(--blue-line);outline-offset:2px}
 .upload-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .upload-more{background:none;border:0;padding:0;font-size:var(--fs-body);font-weight:700;color:var(--amber);text-decoration:underline;text-underline-offset:2px}
@@ -756,7 +759,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
               <option value="other">Something else</option>
             </select>
             <button class="upload-btn" type="button" data-upload-btn>Upload documents</button>
-            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg,.heic">
+            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg">
+            <p class="door-msg" data-door-msg role="alert" hidden></p>
           </div>
           <div class="upload-door door-inquiry" data-kind="inquiry_doc">
             <div class="door-title">Inquiry documents</div>
@@ -769,7 +773,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
               <option value="other">Something else</option>
             </select>
             <button class="upload-btn" type="button" data-upload-btn>Upload inquiry docs</button>
-            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg,.heic">
+            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg">
+            <p class="door-msg" data-door-msg role="alert" hidden></p>
           </div>
           <div class="upload-door door-bureau" data-kind="bureau_response">
             <div class="door-title">Upload your bureau response</div>
@@ -779,7 +784,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
               <option value="other">Something else</option>
             </select>
             <button class="upload-btn" type="button" data-upload-btn>Upload bureau response</button>
-            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg,.heic">
+            <input type="file" data-file-input multiple hidden accept=".pdf,.png,.jpg,.jpeg">
+            <p class="door-msg" data-door-msg role="alert" hidden></p>
           </div>
         </div>
       </section>
@@ -1517,10 +1523,13 @@ document.addEventListener('DOMContentLoaded', function(){
   [].slice.call(root.querySelectorAll(".upload-door")).forEach(function(door){
     var btn=door.querySelector("[data-upload-btn]"), input=door.querySelector("[data-file-input]"), kind=door.getAttribute("data-kind")||"client_upload", typeSel=door.querySelector("[data-subtype]"), picked=[];
     if(!btn||!input) return;
+    var msg=door.querySelector("[data-door-msg]"), idleLabel=btn.textContent;
+    function say(text){ if(!msg) return; msg.textContent=text||""; msg.hidden=!text; }
     btn.addEventListener("click", function(){
       if(!picked.length){ input.click(); return; }
       var id=clientId();
       if(!window.FHData||!id){ btn.textContent="Uploads are off"; return; }
+      say("");
       btn.textContent="Sending…";
       /* subtype is what checkDocPacket() matches on. Left unset the server
          defaults it to "other", which is exactly the old behaviour — so an
@@ -1530,11 +1539,27 @@ document.addEventListener('DOMContentLoaded', function(){
       var sub = typeSel && typeSel.value ? typeSel.value : "";
       if (sub) fields.subtype = sub;
       FHData.uploadFiles("/api/documents-upload", picked, fields).then(function(res){
-        btn.textContent = res.ok ? "Sent" : "Try again";
-        if(res.ok) picked=[];
+        if(res.ok){ btn.textContent="Sent"; picked=[]; return; }
+        /* CP-06: say WHY. The server already writes a plain sentence for a
+           refused file (wrong type, too big, empty) and FHData hands it back as
+           res.error when source is "badrequest" (or "server" / "nodb").
+           Every other source carries a developer string ("Failed to fetch",
+           "/api/* not deployed"), so those get one fixed line instead. */
+        var theirs = res.source==="badrequest" || res.source==="server" || res.source==="nodb";
+        if(res.source==="badrequest"){
+          /* The file itself was refused, so sending the same file again can
+             only fail the same way. Clear it and give the button back its
+             first job: open the picker. */
+          picked=[];
+          btn.textContent=idleLabel;
+          say((res.error || "That file did not send.") + " Pick a different file.");
+          return;
+        }
+        btn.textContent="Try again";
+        say(theirs && res.error ? res.error : "The file did not send. Check your connection and try again.");
       });
     });
-    input.addEventListener("change", function(){ picked=[].slice.call(input.files||[]); input.value=""; btn.textContent="Send "+picked.length+" file"+(picked.length===1?"":"s"); });
+    input.addEventListener("change", function(){ picked=[].slice.call(input.files||[]); input.value=""; say(""); btn.textContent="Send "+picked.length+" file"+(picked.length===1?"":"s"); });
   });
 })();
 
