@@ -1,5 +1,18 @@
 # TODO — unfinished work
 
+## 2026-10-14 — Ad takes and tonality
+
+The 17 BigVU takes are renamed per `marketing/ads/NAMING.md` and sit in `Fundhub Ads` on the owner's Desktop. Tool and report: `scripts/ad-tonality/`, `marketing/ads/tonality/` (draft PR #52).
+
+- [ ] Owner: move the Downloads folder "Fundhub Ads originals (already copied to Desktop)" to the Trash. Claude cannot permanently delete files.
+- [ ] Merge draft PR #52. Its `screens (real browser)` check also fails on main (b70570c, e4402dc), so it is not caused by #52.
+- [ ] Edit the 17 takes. Cut every pause over 1.5 s first: VSL 20, Ad 10 9, Ad 12 9, Capital Blueprint Ad 1 Take 4 9.
+- [ ] Level the volume across the videos in the edit. They range from about -17 to -33 LUFS.
+- [ ] Next reads: slow the teleprompter 10 to 20 wpm on Capital Blueprint Ad 2 (221, 224 wpm), Direct Book Ad 5 (225), Ad 4 (211) and Penthouse Take 3 (210).
+- [ ] Next filming: lift the voice on the ↑ lines (1 of 14 went up) and hit the CAPS words harder (they measure about 1 dB quieter than the words around them).
+- [ ] Direct Book Ad 12 (Industry slam) has no script and no number in `NAMING.md`. Its name is Claude's pick. Add the script and the number, or rename.
+- [ ] Capital Blueprint Ad 1 Take 1 could not be measured (the audio never goes quiet). Re-run the tool after it is trimmed.
+
 ## Today — 2026-10-13
 
 Afternoon update — owner reports it is about 2:30 PM Arizona/MST and plans to film in 15 minutes (about 2:45 PM). Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: filming now, then editing; outreach remains open. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
