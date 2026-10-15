@@ -16,6 +16,7 @@ import { FIN_B16_RESULT_CONTRACTS } from "./fin-b16-display-contracts.mjs";
 import { FIN_B17_RESULT_CONTRACTS } from "./fin-b17-display-contracts.mjs";
 import { FIN_B18_RESULT_CONTRACTS } from "./fin-b18-display-contracts.mjs";
 import { FIN_B19_DISPLAY_CONTRACTS } from "./fin-b19-display-contracts.mjs";
+import { FIN_B20_RESULT_CONTRACTS } from "./fin-b20-display-contracts.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -310,6 +311,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   ...FIN_B17_RESULT_CONTRACTS,
   ...FIN_B18_RESULT_CONTRACTS,
   ...FIN_B19_DISPLAY_CONTRACTS,
+  ...FIN_B20_RESULT_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));
