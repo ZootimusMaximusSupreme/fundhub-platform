@@ -81,18 +81,71 @@ describe("POST /api/brand/review", () => {
   });
 
   test("an action from the wrong state is refused with 409 and the row is left as it was", async () => {
+    // The sentence the partner reads names the state the brand is really in (it is not the
+    // "someone else changed this a moment ago" sentence, which is for a race between read and write).
     const cases = [
-      ["approve", "draft"], ["reject", "draft"], ["submit", "review"], ["submit", "approved"], ["approve", "approved"],
+      ["approve", "draft", "Nothing changed — this brand is still a draft."],
+      ["reject", "draft", "Nothing changed — this brand is still a draft."],
+      ["submit", "review", "Nothing was sent — this brand is already waiting for review."],
+      ["submit", "approved", "Nothing was sent — this brand is already approved."],
+      ["approve", "approved", "Nothing changed — this brand is already approved."],
     ];
-    for (const [action, state] of cases) {
+    for (const [action, state, words] of cases) {
       const rows = brands({ approval_status: state, approved_at: state === "approved" ? STAMP : null });
       const before = JSON.stringify(rows);
       const { res } = await post({ partner_id: PARTNER, action, note: "x" }, asStaff("owner"), rows);
       assert.equal(res.statusCode, 409, `${action} from ${state}`);
       assert.equal(res.body.error, "wrong_state");
       assert.equal(res.body.approval_status, state);
+      assert.equal(res.body.message, words, `${action} from ${state}`);
       assert.equal(JSON.stringify(rows), before, `${action} from ${state} changed nothing`);
     }
+  });
+
+  test("a staff sign-in with no company on it is refused before any brand is read, and nothing moves", async () => {
+    const rows = brands({ approval_status: "review" });
+    const before = JSON.stringify(rows);
+    for (const action of ["submit", "approve", "reject"]) {
+      const { res, fake } = await post({ partner_id: PARTNER, action, note: "x" }, asStaff("owner", null), rows);
+      assert.equal(res.statusCode, 403, action);
+      assert.equal(res.body.error, "no_org_scope", action);
+      assert.equal(fake.find(/partner_brand/).length, 0, `${action}: the brand table was not touched`);
+    }
+    assert.equal(JSON.stringify(rows), before);
+  });
+
+  test("the request has to be a POST naming a real action and a real partner; a bad one is refused and nothing moves", async () => {
+    const rows = brands({ approval_status: "review" });
+    const before = JSON.stringify(rows);
+    const get = await callShared(handler, req("GET", { query: { partner_id: PARTNER, action: "approve" } }), [...asStaff("owner"), ...brandRules(rows)]);
+    assert.equal(get.res.statusCode, 405);
+    assert.equal(get.res.headers.allow, "POST");
+    const shred = await post({ partner_id: PARTNER, action: "shred" }, asStaff("owner"), rows);
+    assert.equal(shred.res.statusCode, 400);
+    assert.equal(shred.res.body.error, "unknown_action");
+    assert.deepEqual(shred.res.body.allowed.sort(), ["approve", "reject", "submit"]);
+    const noPartner = await post({ action: "approve" }, asStaff("owner"), rows);
+    assert.equal(noPartner.res.statusCode, 400);
+    assert.equal(noPartner.res.body.error, "partner_id_required");
+    const badPartner = await post({ partner_id: "nope", action: "approve" }, asStaff("owner"), rows);
+    assert.equal(badPartner.res.statusCode, 400);
+    assert.equal(badPartner.res.body.error, "invalid_partner_id");
+    assert.equal(JSON.stringify(rows), before);
+    for (const r of [get, shred, noPartner, badPartner]) {
+      assert.equal(r.fake.find(/partner_brand/).length, 0, "the brand table was not touched");
+    }
+  });
+
+  test("a reason longer than 2000 characters is refused and the brand stays in review", async () => {
+    const rows = brands({ approval_status: "review" });
+    const long = await post({ partner_id: PARTNER, action: "reject", note: "x".repeat(2001) }, asStaff("owner"), rows);
+    assert.equal(long.res.statusCode, 400);
+    assert.equal(long.res.body.error, "note_too_long");
+    assert.equal(mine(rows).approval_status, "review");
+    assert.equal(mine(rows).review_note, "old note");
+    const exact = await post({ partner_id: PARTNER, action: "reject", note: "x".repeat(2000) }, asStaff("owner"), rows);
+    assert.equal(exact.res.statusCode, 200);
+    assert.equal(mine(rows).review_note.length, 2000);
   });
 
   test("the whole loop: submit, reject, resubmit clears the note, approve", async () => {

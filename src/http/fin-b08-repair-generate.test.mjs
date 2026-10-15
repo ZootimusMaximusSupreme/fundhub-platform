@@ -38,7 +38,7 @@ const asked = [];
 before(() => { globalThis.fetch = async (url) => { asked.push(String(url)); throw new Error("network refused in this test"); }; });
 after(() => { globalThis.fetch = realFetch; });
 
-function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY", olderPull = null } = {}) {
+function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY", olderPull = null, roundsCap = null } = {}) {
   const tables = {
     clients: [
       { id: CLIENT, org_id: ORG_ID, first_name: "Sim", last_name: "Repair", outcome_tier: tier },
@@ -73,6 +73,7 @@ function repairFile({ agreement = true, consent = false, verified = true, pull =
       [/^\s*SELECT id FROM cards WHERE client_id = \$1 AND pipeline_id = \$2/i, (_s, p) => tables.cards.filter((c) => c.client_id === p[0] && c.pipeline_id === p[1]).map((c) => ({ id: c.id }))],
       [/^\s*UPDATE cards SET stage_id = \$2 WHERE id = \$1/i, (_s, p) => { const c = tables.cards.find((x) => x.id === p[0]); if (c) c.stage_id = p[1]; return { rows: [], rowCount: 1 }; }],
       [/^\s*INSERT INTO cards \(org_id, client_id, pipeline_id, stage_id\)/i, (_s, p) => { tables.cards.push({ id: `k${tables.cards.length + 1}`, org_id: p[0], client_id: p[1], pipeline_id: p[2], stage_id: p[3] }); return { rows: [], rowCount: 1 }; }],
+      [/FROM repair_programs/i, () => (roundsCap == null ? [] : [{ program: "repair", rounds_cap: roundsCap, status: "active" }])],
       [/^\s*SELECT dc\.id, dc\.org_id, dc\.client_id, dc\.bureau, dc\.round,/i, []],
       [/^\s*SELECT MAX\(dl\.created_at\) AS newest/i, (_s, p) => {
         const rows = tables.dispute_letters.filter((l) => l.org_id === p[0] && l.client_id === p[1] && p[2].includes(l.round) && (l.target || "bureau") === "bureau");
@@ -199,9 +200,24 @@ describe("POST /api/repair/generate", () => {
     const done = await call({ client_id: CLIENT }, file);
     assert.equal(done.res.statusCode, 409);
     assert.equal(done.res.body.error, "rounds_exhausted");
-    const bad = await call({ client_id: CLIENT, round: "R9" }, repairFile());
+    const badFile = repairFile();
+    const bad = await call({ client_id: CLIENT, round: "R9" }, badFile);
     assert.equal(bad.res.statusCode, 400);
     assert.equal(bad.res.body.error, "invalid_round");
+    assert.equal(badFile.fake.calls.filter((c) => /FROM clients/.test(c.sql)).length, 0, "a round that does not exist is refused before the client is looked up");
+  });
+
+  test("a round past the client's repair program cap is refused with 400 and no letter is made", async () => {
+    const file = repairFile({ roundsCap: 2 });
+    const { res } = await call({ client_id: CLIENT, round: "R3" }, file);
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.error, "round_cap_exceeded");
+    assert.equal(res.body.rounds_cap, 2);
+    assert.equal(file.tables.dispute_cases.length, 0);
+    assert.equal(file.tables.dispute_letters.length, 0);
+    assert.equal(file.fake.calls.filter((c) => /FROM crs_results/.test(c.sql)).length, 0, "the credit file was not even read");
+    const inside = await call({ client_id: CLIENT, round: "R2" }, repairFile({ roundsCap: 2 }));
+    assert.notEqual(inside.res.body.error, "round_cap_exceeded", "a round inside the cap is not stopped by it");
   });
 
   test("a client of another company is 404 and nothing is read or written for them", async () => {

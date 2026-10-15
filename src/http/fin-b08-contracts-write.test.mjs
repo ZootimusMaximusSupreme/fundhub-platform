@@ -384,6 +384,32 @@ describe("POST /api/contracts: the door", () => {
     assert.equal(get.statusCode, 405);
   });
 
+  test("an id that is not an id is a 400 with its own error before any contract table is read or written", async () => {
+    const fake = newFile();
+    const SESSION = /FROM live JOIN staff|UPDATE account_sessions|FROM accounts WHERE id/;
+    const cases = [
+      [{ action: "save_template", id: "nope" }, "invalid_id"],
+      [{ action: "archive_template", id: "nope" }, "invalid_id"],
+      [{ action: "save_fields", id: "nope", fields: [] }, "invalid_id"],
+      [{ action: "create_draft", client_id: "nope", template_id: IDS.template }, "invalid_client_id"],
+      [{ action: "create_draft", client_id: IDS.client, template_id: "nope" }, "invalid_template_id"],
+      [{ action: "create_draft", client_id: IDS.client, template_id: IDS.template, staff_id: "nope" }, "invalid_staff_id"],
+      [{ action: "save_draft", id: "nope", values: {} }, "invalid_id"],
+      [{ action: "preview", template_id: "nope" }, "invalid_template_id"],
+      [{ action: "preview", template_id: IDS.template, client_id: "nope" }, "invalid_client_id"],
+      [{ action: "send", id: "nope" }, "invalid_id"],
+      [{ action: "void", id: "nope", reason: "Wrong terms" }, "invalid_id"],
+    ];
+    const contractsBefore = JSON.stringify(fake.tables.contracts);
+    for (const [body, error] of cases) {
+      const { res } = await call(body, fake, owner);
+      assert.equal(res.statusCode, 400, body.action);
+      assert.equal(res.body.error, error, body.action);
+    }
+    assert.deepEqual(fake.calls.filter((c) => !SESSION.test(c.sql)).map((c) => c.sql.trim().slice(0, 50)), [], "no statement ran against the contract tables");
+    assert.equal(JSON.stringify(fake.tables.contracts), contractsBefore);
+  });
+
   test("a signed-in staff role outside the staff set is refused on every write and nothing is saved", async () => {
     const fake = newFile();
     const contractsBefore = fake.tables.contracts.length;

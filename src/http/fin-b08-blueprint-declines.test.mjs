@@ -148,6 +148,17 @@ describe("/api/blueprint/declines, on the real decline store", () => {
     assert.equal(read.res.body.view.can_paste, false);
   });
 
+  test("a paste with no letter in it is refused with 400 letter_required, for a client and for staff, and nothing is saved", async () => {
+    for (const [who, principal, extra] of [["client", client(), {}], ["staff", staff("owner"), { client_id: TEST_CLIENT }]]) {
+      const mem = standIn();
+      const { res } = await call({ method: "POST", body: { action: "paste", text: "   \n ", bank: "Chase", ...extra }, principal, mem });
+      assert.equal(res.statusCode, 400, who);
+      assert.equal(res.body.error, "letter_required", who);
+      assert.equal(mem.t.declines.length, 0, who);
+      assert.equal(mem.t.tasks.length, 0, who);
+    }
+  });
+
   test("the paid check names this company, this client, the Blueprint product and a paid status", async () => {
     const mem = standIn();
     await call({ method: "POST", body: { action: "paste", text: LETTER, bank: "Chase" }, principal: client(), mem });

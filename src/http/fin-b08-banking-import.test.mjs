@@ -164,6 +164,35 @@ describe("POST /api/banking/accounts action=import", () => {
     assert.equal(fake.count("ROLLBACK") >= 1, true, "the half-made bank link row is rolled back");
   });
 
+  test("only GET and POST are served: a PUT, PATCH or DELETE that carries an import body imports nothing and answers 405", async () => {
+    for (const method of ["PUT", "PATCH", "DELETE"]) {
+      const fake = bankFile();
+      const session = fakeDb([staffSession({ role: "owner" })]);
+      const res = makeRes();
+      const combined = {
+        calls: fake.calls,
+        query: (sql, params) => (/FROM live JOIN staff/.test(typeof sql === "string" ? sql : sql.text) ? session.query(sql, params) : fake.query(sql, params)),
+        connect: () => fake.connect(),
+      };
+      await runWithSharedDb(combined, () => handler(req(method, { body: { client_id: CLIENT, action: "import" } }), res));
+      assert.equal(res.statusCode, 405, method);
+      assert.equal(res.headers.allow, "GET, POST");
+      assert.equal(fake.t.bank_accounts.length + fake.t.plaid_items.length, 0, `${method}: nothing imported`);
+      assert.equal(fake.calls.filter((c) => !/FROM live JOIN staff/.test(c.sql)).length, 0, `${method}: no data statement ran`);
+    }
+  });
+
+  test("an import with no client id, or one that is not an id, is 400 and nothing is looked up or written", async () => {
+    for (const client_id of [undefined, "", "not-an-id"]) {
+      const fake = bankFile();
+      const res = await call({ client_id, action: "import" }, fake);
+      assert.equal(res.statusCode, 400, String(client_id));
+      assert.match(res.body.error, /client_id is required/);
+      assert.equal(fake.t.bank_accounts.length + fake.t.plaid_items.length, 0);
+      assert.equal(fake.calls.filter((c) => !/FROM live JOIN staff/.test(c.sql)).length, 0, "no data statement ran");
+    }
+  });
+
   test("another company's client is 404 and nothing is written; only owner, admin and sales manager may import", async () => {
     const foreign = bankFile();
     const refused = await call({ client_id: FOREIGN_CLIENT, action: "import" }, foreign);

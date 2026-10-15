@@ -128,7 +128,30 @@ describe("GET /api/contracts/sign", () => {
     const mq = Object.fromEntries(new URL(mint.url).searchParams.entries());
     const draftView = await get(mq, draftFile);
     assert.equal(draftView.statusCode, 404, "a contract not yet sent is not there");
+    assert.deepEqual(draftView.body, { ok: false, error: "not_found" }, "and it answers exactly as a forged link does");
     void id;
+  });
+
+  test("with no signing secret on the server the link cannot be checked: 503 not_configured, and nothing is opened or recorded", async () => {
+    const { fake, id, links } = await sentContract();
+    const held = { a: process.env.CONTRACT_URL_SECRET, b: process.env.DOCUMENT_URL_SECRET };
+    delete process.env.CONTRACT_URL_SECRET;
+    delete process.env.DOCUMENT_URL_SECRET;
+    let view, decline;
+    try {
+      view = await get(links[0].query, fake);
+      decline = await post(links[0].query, { action: "decline", reason: "No." }, fake);
+    } finally {
+      process.env.CONTRACT_URL_SECRET = held.a;
+      process.env.DOCUMENT_URL_SECRET = held.b;
+    }
+    for (const r of [view, decline]) {
+      assert.equal(r.statusCode, 503);
+      assert.equal(r.body.error, "not_configured");
+      assert.equal(r.body.contract, undefined);
+    }
+    assert.equal(fake.tables.contracts.find((c) => c.id === id).view_count ?? 0, 0, "no view was recorded");
+    assert.equal(fake.tables.contract_signers[0].status === "declined", false);
   });
 
   test("a link that has really expired is told apart from a forged one", async () => {
@@ -260,5 +283,26 @@ describe("POST /api/contracts/sign", () => {
     assert.equal(wrongContract.statusCode, 404);
     const del = await sign({ method: "DELETE", query: q, headers: {}, body: {} }, fake);
     assert.equal(del.statusCode, 405);
+  });
+
+  test("a link with a good signature that names a signer who is not on this contract opens nothing, hands out no file and records nothing", async () => {
+    const { fake, id } = await sentContract();
+    // The signature is real (the server minted it), but the person is not a signer on this contract.
+    const stranger = "5e000000-0000-4000-8000-000000000999";
+    const minted = signContractUrl({ contractId: id, signerId: stranger, baseUrl: "https://app.example.test" });
+    const q = Object.fromEntries(new URL(minted.url).searchParams.entries());
+    const before = JSON.stringify([fake.tables.contract_signers, fake.tables.contracts, fake.tables.events]);
+    const gone = { ok: false, error: "not_found" };
+
+    const view = await get(q, fake);
+    assert.deepEqual([view.statusCode, view.body], [404, gone], "view");
+    const file = await get({ ...q, file: "1" }, fake);
+    assert.deepEqual([file.statusCode, file.body], [404, gone], "file");
+    assert.equal(file.body.pdf_base64, undefined);
+    const decline = await post(q, { action: "decline", reason: "This is not mine." }, fake);
+    assert.deepEqual([decline.statusCode, decline.body], [404, gone], "decline");
+    const signed = await post(q, { signer_name: "Dana Whitfield", agreed: true }, fake);
+    assert.deepEqual([signed.statusCode, signed.body], [404, gone], "sign");
+    assert.equal(JSON.stringify([fake.tables.contract_signers, fake.tables.contracts, fake.tables.events]), before, "nothing was recorded");
   });
 });

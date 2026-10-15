@@ -177,6 +177,18 @@ describe("POST /api/partner-marketing/generate-copy", () => {
     assert.equal(bad.statusCode, 400);
   });
 
+  test("a page that is not on file is 404: no model call is made, no tokens are metered and nothing is saved", async () => {
+    const fake = copyFile();
+    const before = JSON.stringify(fake.tables.partner_pages);
+    const res = await call({ page_id: "9c000000-0000-4000-8000-000000000099" }, fake);
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.error, "not_found");
+    assert.equal(modelCalls.length, 0);
+    assert.equal(fake.tables.partner_ai_usage.length, 0);
+    assert.equal(fake.tables.partner_page_section_versions.length, 0);
+    assert.equal(JSON.stringify(fake.tables.partner_pages), before);
+  });
+
   test("with no model on the site it says so with 503 and changes nothing", async () => {
     const held = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;

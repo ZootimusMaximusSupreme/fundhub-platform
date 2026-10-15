@@ -221,6 +221,37 @@ describe("GET, POST and PATCH /api/partner-pages", () => {
     assert.equal(t.pages.length, 0);
   });
 
+  test("a partner cannot start a page for another partner of the same company: 403 and no page is made", async () => {
+    const t = pagesTables({ pages: [] });
+    const { res, fake } = await call(pagesHandler, req("POST", { body: { partner_id: OTHER_PARTNER, funnel_key: "apply" } }), t, partner());
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "forbidden");
+    assert.equal(t.pages.length, 0);
+    assert.equal(fake.state.writes.length, 0, "the other partner's brand was not touched either");
+    // The same partner can still start their own.
+    const own = await call(pagesHandler, req("POST", { body: { partner_id: PARTNER, funnel_key: "apply" } }), t, partner());
+    assert.equal(own.res.statusCode, 200);
+    assert.equal(t.pages.length, 1);
+    assert.equal(t.pages[0].partner_id, PARTNER);
+  });
+
+  test("a sign-in with no company on it reads and writes nothing: 403 no_org_scope on every method", async () => {
+    const t = pagesTables();
+    const before = JSON.stringify(t.pages);
+    const calls = [
+      req("GET", { query: { partner_id: PARTNER } }),
+      req("POST", { body: { partner_id: PARTNER, funnel_key: "book" } }),
+      req("PATCH", { body: { id: "a2000000-0000-4000-8000-000000000002", status: "published" } }),
+    ];
+    for (const request of calls) {
+      const { res, fake } = await call(pagesHandler, request, t, owner("owner", null));
+      assert.equal(res.statusCode, 403, request.method);
+      assert.equal(res.body.error, "no_org_scope", request.method);
+      assert.equal(fake.sqlOf(/partner_pages|partner_brand|partners/).length, 0, `${request.method}: no partner table was read`);
+    }
+    assert.equal(JSON.stringify(t.pages), before);
+  });
+
   test("publishing stamps published_at and goes live; unpublishing clears the stamp", async () => {
     const t = pagesTables();
     const id = "a2000000-0000-4000-8000-000000000002";
