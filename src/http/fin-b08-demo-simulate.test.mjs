@@ -227,6 +227,56 @@ describe("POST /api/demo/simulate", () => {
     }
   });
 
+  test("the credit file reads as a real pull: FICO model names, every inquiry listed and counted the same way, one report per bureau, and a funded bank account", async () => {
+    as("owner");
+    const fake = world();
+    const { res } = await call("POST", { fake, body: {} });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    const client = fake.tables.clients[0];
+    const result = fake.tables.crs_results[0].result;
+    assert.deepEqual(result.scoreModels, { ex: "FICO 9", eq: "FICO 9", tu: "FICO 9" }, "a model that does not read as FICO is thrown away by the readers");
+    assert.deepEqual(result.bureausPulled, ["TU", "EX", "EQ"]);
+
+    // The inquiry list and the per-bureau counts written on the client are one fact, counted from one list.
+    assert.equal(result.inquiries.length, 7);
+    const count = (code) => result.inquiries.filter((i) => i.source === code).length;
+    assert.equal(count("EX"), client.custom_fields.crs_inquiries_ex);
+    assert.equal(count("EQ"), client.custom_fields.crs_inquiries_eq);
+    assert.equal(count("TU"), client.custom_fields.crs_inquiries_tu);
+    for (const i of result.inquiries) assert.match(i.date, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(result.inquiries.every((i) => i.creditorName && i.sourceType && i.inquiryDate === i.date));
+
+    // One report per bureau, in the shape a real merged pull keeps.
+    assert.deepEqual(Object.keys(result.bureaus).sort(), ["EQ", "EX", "TU"]);
+    const expectedScore = { EX: 718, EQ: 724, TU: 731 };
+    for (const [code, report] of Object.entries(result.bureaus)) {
+      assert.equal(report.scores[0].modelName, "FICO 9", code);
+      assert.equal(report.scores[0].scoreValue, expectedScore[code], code);
+      assert.equal(report.scores[0].scoreMaximumValue, 850);
+      assert.equal(report.inquiries.length, count(code), `${code}: its own inquiries`);
+      assert.ok(report.tradelines.every((t) => t.bureau === code), `${code}: its own accounts`);
+      assert.deepEqual(report.publicRecords, []);
+    }
+    assert.equal(result.bureaus.EX.tradelines.length, 2);
+    assert.equal(result.bureaus.EQ.tradelines.length, 1);
+    assert.equal(result.bureaus.TU.tradelines.length, 1);
+    assert.deepEqual(result.publicRecords, []);
+
+    // The client says what it is, and can be found again by the wipe.
+    assert.deepEqual(client.tags, ["is_demo", "simulated"]);
+    assert.equal(client.consent_sms, true);
+    assert.equal(client.first_name, "Simulated");
+    assert.match(client.phone, /^\+1555\d{7}$/);
+
+    const bank = fake.tables.bank_accounts[0];
+    assert.equal(bank.current_balance_cents, 500000, "the account holds $5,000.00, in cents");
+    assert.equal(bank.name, "Simulated Checking");
+    assert.equal(bank.account_type, "depository");
+    assert.equal(bank.mask, "4242");
+    assert.equal(bank.currency_code, "USD");
+    assert.deepEqual(bank.raw, { provider: "mock", is_demo: true });
+  });
+
   test("a company with no sales pipeline still gets its client and credit file, just no pipeline card; a bank table that fails does not undo the client", async () => {
     as("admin");
     const noPipeline = world({ pipelines: false });
@@ -414,6 +464,68 @@ describe("DELETE /api/demo/simulate", () => {
     assert.equal(res.statusCode, 500);
     assert.equal(fake.calls.some((c) => /DROP TABLE/i.test(c.sql)), false);
     assert.equal(fake.tables.clients.length, 5);
+  });
+
+  test("a demo client's invoice payments and document versions go with it, and only its own", async () => {
+    as("owner");
+    const fake = world({ catalog: [
+      { table_name: "messages", column_name: "client_id", on_delete: "a" },
+      { table_name: "events", column_name: "client_id", on_delete: "n" },
+      { table_name: "contracts", column_name: "client_id", on_delete: "a" },
+      { table_name: "invoices", column_name: "client_id", on_delete: "a" },
+      { table_name: "documents", column_name: "client_id", on_delete: "a" },
+    ] });
+    seedClients(fake);
+    for (const id of [CLIENT(1), CLIENT(2)]) {
+      fake.tables.invoices.push({ id: `inv-${id}`, client_id: id });
+      fake.tables.invoice_payments.push({ id: `pay-${id}`, invoice_id: `inv-${id}` });
+      fake.tables.documents.push({ id: `doc-${id}`, client_id: id });
+      fake.tables.document_versions.push({ id: `ver-${id}`, document_id: `doc-${id}` });
+    }
+    const { res } = await call("DELETE", { fake, body: { client_id: CLIENT(1) } });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.count, 1);
+    assert.deepEqual(fake.tables.invoice_payments.map((r) => r.id), [`pay-${CLIENT(2)}`], "the payment that hung off the invoice is gone");
+    assert.deepEqual(fake.tables.document_versions.map((r) => r.id), [`ver-${CLIENT(2)}`], "the version that hung off the document is gone");
+    assert.deepEqual(fake.tables.invoices.map((r) => r.id), [`inv-${CLIENT(2)}`]);
+    assert.deepEqual(fake.tables.documents.map((r) => r.id), [`doc-${CLIENT(2)}`]);
+    const wipe = fake.calls.find((c) => /^\s*WITH victim/.test(c.sql));
+    assert.match(wipe.sql, /DELETE FROM "invoice_payments" WHERE "invoice_id" IN \(SELECT id FROM "invoices" WHERE client_id IN \(SELECT id FROM victim\)\)/);
+    assert.match(wipe.sql, /DELETE FROM "document_versions" WHERE "document_id" IN \(SELECT id FROM "documents" WHERE client_id IN \(SELECT id FROM victim\)\)/);
+    assert.match(wipe.sql, /DELETE FROM "contract_signers" WHERE "contract_id" IN \(SELECT id FROM "contracts" WHERE client_id IN \(SELECT id FROM victim\)\)/);
+  });
+
+  test("the client id may arrive in the address, and then only that client goes; a company named in the body is ignored", async () => {
+    as("owner");
+    const fake = world();
+    seedClients(fake);
+    const named = await call("DELETE", { fake, query: { client_id: CLIENT(1) } });
+    assert.equal(named.res.statusCode, 200, JSON.stringify(named.res.body));
+    assert.deepEqual(named.res.body.removed.map((r) => r.id), [CLIENT(1)], "one client, not every demo client");
+    assert.ok(fake.tables.clients.some((c) => c.id === CLIENT(2)), "the other demo client of the company is still there");
+
+    // A body that names another company changes nothing: the company is the sign-in's.
+    const hostile = await call("DELETE", { fake, body: { org_id: OTHER_ORG_ID } });
+    assert.equal(hostile.res.statusCode, 200);
+    assert.deepEqual(hostile.res.body.removed.map((r) => r.id), [CLIENT(2)]);
+    assert.ok(fake.tables.clients.some((c) => c.id === CLIENT(4)), "the other company's demo client is untouched");
+    const list = fake.calls.filter((c) => /^\s*SELECT id, email FROM clients\s+WHERE org_id/.test(c.sql)).at(-1);
+    assert.equal(list.params[0], ORG_ID);
+  });
+
+  test("when there are more than 100, the 100 newest go and the oldest is left for the next call", async () => {
+    as("owner");
+    const fake = world();
+    for (let i = 0; i < 101; i += 1) {
+      fake.tables.clients.push({ id: CLIENT(100 + i), org_id: ORG_ID, email: `sim+${i}@demo.fundhub.local`, is_demo: true, tags: ["simulated"], created_at: new Date(1760000000000 + i * 1000).toISOString() });
+    }
+    const { res } = await call("DELETE", { fake, body: {} });
+    assert.equal(res.body.truncated, true);
+    assert.deepEqual(fake.tables.clients.map((c) => c.id), [CLIENT(100)], "the oldest one is the one left");
+    assert.equal(res.body.removed.some((r) => r.id === CLIENT(200)), true, "the newest went");
+    const list = fake.calls.find((c) => /^\s*SELECT id, email FROM clients\s+WHERE org_id/.test(c.sql));
+    assert.match(list.sql, /ORDER BY created_at DESC/);
+    assert.equal(list.params[2], 101, "one more than the cap is read, to know it was cut");
   });
 
   test("only owner and admin may tear down: other roles get 403 and the book is untouched", async () => {

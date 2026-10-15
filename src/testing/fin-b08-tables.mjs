@@ -154,6 +154,7 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
     const row = { id: `a${String(++idSeq).padStart(7, "0")}-0000-4000-8000-000000000000`, ...(defaults[name] || {}) };
     cols.forEach((col, i) => {
       const e = exprs[i] || "";
+      let arr;
       const p = /^\$(\d+)(::jsonb)?/.exec(e);
       if (p) {
         const v = params[Number(p[1]) - 1];
@@ -162,7 +163,10 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
       else if (/^'.*'(::\w+)?$/.test(e)) row[col] = e.slice(1, e.lastIndexOf("'"));
       else if (/^(true|false)$/i.test(e)) row[col] = e.toLowerCase() === "true";
       else if (/^-?\d+(\.\d+)?$/.test(e)) row[col] = Number(e);
-      else row[col] = null;
+      else if ((arr = /^ARRAY\[([\s\S]*)\](?:::[a-z0-9_]+\[\])?$/i.exec(e))) {
+        // A literal array: ARRAY['a','b'] or ARRAY[]::text[].
+        row[col] = arr[1].trim() === "" ? [] : splitValues(arr[1]).map((x) => (/^'(.*)'$/.exec(x) ? /^'(.*)'$/.exec(x)[1] : x));
+      } else row[col] = null;
     });
     tables[name].push(row);
     return [{ ...row }];
