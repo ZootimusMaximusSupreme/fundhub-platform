@@ -4,6 +4,7 @@
 
 import { FIN_B01_DISPLAY_RESULT_CONTRACTS } from "./fin-b01-display-contracts.mjs";
 import { FIN_B02_RESULT_CONTRACTS } from "./fin-b02-display-contracts.mjs";
+import { FIN_B04_RESULT_CONTRACTS } from "./fin-b04-display-results.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -280,7 +281,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
   gap("Contract cell: Void button (asks for a reason in a prompt; owner/admin only)", "The pulse needs a void receipt containing the contract id, submitted reason, actor, and saved void state."),
   query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
-  gap("Held-for-quiet-hours result: text deferred to the next window and the words stay in the box", "The saved message has a future schedule but no durable field saying quiet hours caused it, so the exact deferred outcome cannot be proved."),
   query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
@@ -292,6 +292,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
   ...FIN_B01_DISPLAY_RESULT_CONTRACTS,
   ...FIN_B02_RESULT_CONTRACTS,
+  ...FIN_B04_RESULT_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));
