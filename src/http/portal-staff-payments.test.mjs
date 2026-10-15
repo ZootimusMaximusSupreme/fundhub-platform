@@ -53,7 +53,7 @@ function makePane() {
   };
   vm.createContext(sandbox);
   vm.runInContext(
-    [sliceFn("esc"), sliceFn("fmtWhen"), sliceFn("payHref"), sliceFn("paintPays"), staffPayBlock()].join("\n"),
+    [sliceFn("esc"), sliceFn("fmtWhen"), sliceFn("fmtPayAmount"), sliceFn("fmtPayWhen"), sliceFn("payHref"), sliceFn("paintPays"), staffPayBlock()].join("\n"),
     sandbox
   );
   return { pane, paint: (part, value) => sandbox.paintStaffPays(part, value) };
@@ -123,5 +123,83 @@ describe("client portal — staff Payments tab shows the bill (hole 9)", () => {
     paint("rows", ROWS);
     assert.ok(pane.innerHTML.includes("We could not check what you owe"));
     assert.ok(pane.innerHTML.includes("Card Stacking DFY"));
+  });
+});
+
+/* Launch pass R20 / CP-02 — the paid list printed the raw database text, so the
+ * Payments tab read "Consulting Services Assessment  1/2/2026, 3:04:05 PM
+ * 147.00succeeded": no dollar sign, no gap before the status, seconds in the
+ * date. The tests read the pane text a person would read (tags stripped), so a
+ * pill that touches the amount again goes red. Product names and the word on
+ * the pill are copy and are not under test here. */
+describe("client portal — Payments tab money and date read cleanly (R20 / CP-02)", () => {
+  const paneText = (innerHTML) => innerHTML.replace(/<[^>]*>/g, "");
+  const paintRows = (rows) => {
+    const { pane, paint } = makePane();
+    paint("rows", rows);
+    paint("due", { count: 0, currency: "USD", total: 0, total_display: "$0.00", items: [] });
+    return pane.innerHTML;
+  };
+  const row = (amount_paid, extra = {}) => ({
+    product_name: "Capital Blueprint",
+    amount_paid,
+    status: "succeeded",
+    created_at: "2026-10-12T21:04:05Z",
+    ...extra
+  });
+
+  test("the database text 147.00 prints as $147.00, with a space before the status", () => {
+    const inner = paintRows([row("147.00")]);
+    assert.match(paneText(inner), /\$147\.00 succeeded/, "dollar sign, cents, then a space, then the status");
+    assert.ok(!paneText(inner).includes("147.00succeeded"), "the amount must not touch the status");
+    assert.ok(!/(^|[^$\d,.])147\.00/.test(paneText(inner)), "no bare 147.00 without a dollar sign");
+  });
+
+  test("thousands get a comma and a whole number gets cents", () => {
+    assert.match(paneText(paintRows([row("3000.00")])), /\$3,000\.00 succeeded/);
+    assert.match(paneText(paintRows([row(32)])), /\$32\.00 succeeded/);
+    assert.match(paneText(paintRows([row("1234567.5")])), /\$1,234,567\.50 succeeded/);
+  });
+
+  test("zero is $0.00, not a blank and not a dash", () => {
+    assert.match(paneText(paintRows([row("0.00")])), /\$0\.00 succeeded/);
+    assert.match(paneText(paintRows([row(0)])), /\$0\.00 succeeded/);
+  });
+
+  test("a missing amount stays a dash and never becomes $0.00 (NULL means unknown)", () => {
+    const text = paneText(paintRows([row(null)]));
+    assert.match(text, /— succeeded/);
+    assert.ok(!text.includes("$0.00"));
+  });
+
+  test("an amount that already has a dollar sign is not doubled (demo portal sample)", () => {
+    const text = paneText(paintRows([row("$297.00", { status: "paid" })]));
+    assert.match(text, /\$297\.00 paid/);
+    assert.ok(!text.includes("$$"));
+  });
+
+  test("text that is not a number prints as it arrived, not as a guess", () => {
+    assert.match(paneText(paintRows([row("see invoice")])), /see invoice succeeded/);
+  });
+
+  test("a negative amount keeps its sign in front of the dollar sign", () => {
+    assert.match(paneText(paintRows([row("-50.00", { status: "refunded" })])), /-\$50\.00 refunded/);
+  });
+
+  test("the date has no seconds", () => {
+    const text = paneText(paintRows([row("147.00")]));
+    assert.ok(!/\d{1,2}:\d{2}:\d{2}/.test(text), "no h:mm:ss anywhere in the row: " + text);
+    assert.match(text, /\d{1,2}:\d{2}/, "the hour and minute still show");
+  });
+
+  test("a date that cannot be read prints as it arrived", () => {
+    assert.match(paneText(paintRows([row("147.00", { created_at: "not a date" })])), /not a date/);
+  });
+
+  test("only the Payments tab changed: the other fmtWhen callers still use fmtWhen", () => {
+    assert.ok(
+      (html.match(/fmtWhen\(/g) || []).length >= 5,
+      "fmtWhen is shared by the agreements, documents and messages lists and is not touched by this fix"
+    );
   });
 });
