@@ -51,8 +51,8 @@ render();
 `;
 
 function page({ button = '<button class="reset" id="reset" title="Clear saved edits in this browser">Reset my edits</button>', script = SCRIPT } = {}) {
-  return `<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><title>Sample</title></head><body>
-<h1>Sample</h1>${button}
+  return `<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><title>${MARKER} title</title></head><body>
+<h1>${MARKER} heading</h1>${button}
 <table><thead><tr><th>Name</th><th>Number</th><th>Follow up date</th><th>Response</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table>
 <script>${script}</script></body></html>`;
 }
@@ -249,6 +249,19 @@ test("through the display lane: one GET of the registry address, judged, and no 
 
   const gone = await gapChecks({ fetchImpl: make("", 404) });
   assert.equal(gone.find((row) => row.id === idOf).status, "FAIL");
+  assert.match(gone.find((row) => row.id === idOf).detail, /is gone \(it answers 404\)/);
+
+  const moved = await gapChecks({ fetchImpl: make("", 302) });
+  assert.equal(moved.find((row) => row.id === idOf).status, "FAIL");
+  assert.match(moved.find((row) => row.id === idOf).detail, /somewhere else \(it answers 302\)/);
+
+  // A sign-in wall or a server error is an unread page, never a pass and never a break of the button.
+  for (const status of [401, 500]) {
+    const unread = await gapChecks({ fetchImpl: make(page(), status) });
+    const row = unread.find((item) => item.id === idOf);
+    assert.equal(row.status, "skip", String(status));
+    assert.match(row.detail, new RegExp(`answered ${status}`));
+  }
 
   const nothing = await gapChecks({ fetchImpl: null });
   assert.equal(nothing.find((row) => row.id === idOf).status, "skip");
