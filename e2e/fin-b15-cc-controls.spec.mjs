@@ -328,6 +328,28 @@ test("Numbers: with no funnel set up the Funnels view says so and Open Settings 
   expect(calls.filter((c) => c.startsWith("POST"))).toEqual([]);
 });
 
+test("Numbers: a funnel whose spend, cash and ROAS are not saved prints unknown, never $0 or 0.00x", async ({ page }) => {
+  const stats = exampleResponse("GET marketing/funnels/stats");
+  stats.rows[0].spend_cents = null;
+  stats.rows[0].cash_cents = null;
+  stats.rows[0].roas = null;
+  await page.clock.setFixedTime(new Date("2026-10-06T15:00:00Z"));
+  await routeStub(page);
+  await page.route("**/api/**", async (route) => {
+    const key = `${route.request().method()} ${new URL(route.request().url()).pathname.replace(/^\/api\//, "")}`;
+    const map = { "GET marketing/funnels/stats": stats, "GET marketing/funnels": exampleResponse("GET marketing/funnels") };
+    if (!map[key]) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(map[key]) });
+  });
+  await page.goto(NUMBERS_STUB_PATH + "#numbers/funnels");
+  const unknown = page.locator(`[data-test=funnel][data-funnel=${stats.rows[0].funnel_key}]`);
+  await expect(unknown).toContainText("Spend unknown · Cash unknown · Cash per $1 (ROAS) unknown");
+  await expect(unknown).not.toContainText("$0");
+  await expect(unknown).not.toContainText("0.00x");
+  const other = page.locator(`[data-test=funnel][data-funnel=${stats.rows[1].funnel_key}]`);
+  await expect(other).not.toContainText("unknown ·");
+});
+
 /* ── Launch tab: Open Settings and the 20 second poll ─────────────────────────────────────── */
 
 const VIDEO_A = "00000000-0000-4000-8000-000000000701";
