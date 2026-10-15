@@ -9,7 +9,7 @@ import handler from "../../api/money/fundability.mjs";
 import { makeRes } from "../testing/handler-harness.mjs";
 import { rowsWhere, bindProblem } from "../testing/s3-scoped-rows.mjs";
 import { gateAs, clientPrincipal, staffPrincipal } from "../testing/s3-mem-tasks-db.mjs";
-import { addMonths } from "../finance/fundability.mjs";
+import { addMonths, projectFile } from "../finance/fundability.mjs";
 
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
 const OTHER_ORG = "0b000000-0000-4000-8000-000000000002";
@@ -313,5 +313,21 @@ describe("GET /api/money/fundability", () => {
     const n = await call({ query: { client_id: CID }, principal: staff(), files: none });
     assert.equal(n.res.body.plan.if_removed, false);
     assert.equal(n.res.body.plan.dispute_accounts, 0);
+  });
+
+  test("the projected copy of the file moves every account and the business age forward by the months, and leaves the file it was given alone", () => {
+    const base = {
+      lines: [{ id: "x", opened_on: "2024-01-15", balance_cents: 100, credit_limit_cents: 1000, kind: "revolving" }],
+      customFields: { business_age_months: 18, crs_negative_items_count: 1 },
+      businesses: [{ id: "b", age_months: 10 }, { id: "c", age_months: null }],
+    };
+    const copy = JSON.parse(JSON.stringify(base));
+    const { input, notes } = projectFile(base, { months: 6, date: addMonths(TODAY, 6) });
+    assert.equal(input.lines[0].opened_on, "2023-07-15", "an account 6 months older opened 6 months earlier");
+    assert.equal(input.customFields.business_age_months, 24, "the age on the client's file moves with the months");
+    assert.deepEqual(input.businesses.map((b) => b.age_months), [16, null], "a business with no age stays unknown");
+    assert.equal(input.customFields.crs_negative_items_count, 1, "nothing else is touched");
+    assert.deepEqual(base, copy, "the base file is never changed");
+    assert.deepEqual(notes.map((n) => n.kind), ["time", "business_age"]);
   });
 });
