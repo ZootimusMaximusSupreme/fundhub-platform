@@ -1,0 +1,114 @@
+{
+ "fin-b18-money-pages.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money (current), Accounts, Credit, Connections, Payments, Setup (6 links)",
+    "Try again (button on the error panel)"
+   ]
+  },
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money-transfers.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money, Next steps, Plan, Accounts, Payments, Transfers, Setup (7 links to /app/financeos.html#tab)",
+    "Try again (button on the error panel)",
+    "What happened (details toggle: ledger events in words)"
+   ]
+  },
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/money-vault.html",
+   "controls": [
+    "Back to my portal / Back to Finance OS (header link)",
+    "Money nav: Money, Accounts, Credit, Applications, Funding papers (current), Connections, Payments, Setup (8 links)",
+    "Staff: Cancel (closes an open accept/reject/sort form)",
+    "Try again (button on the error panel)"
+   ]
+  }
+ ],
+ "fin-b18-ops-admin.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/ops-admin.html",
+   "controls": [
+    "Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline data yet)",
+    "Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)",
+    "Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes)",
+    "Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero)",
+    "Zone tabs: Money / People"
+   ]
+  }
+ ],
+ "fin-b18-partner-galaxy.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/partner-galaxy.html",
+   "controls": [
+    "Message Blaster for Mac: Download button (locked gift, .dmg)",
+    "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)"
+   ]
+  }
+ ],
+ "fin-b18-pipeline.test.mjs": [
+  {
+   "sourceFile": "desks-e.json",
+   "surface": "public/app/pipeline.html",
+   "controls": [
+    "Card: hover tooltip (last activity from the card footer)",
+    "Clear all (button in the filter panel)",
+    "Clock (Arizona time) and LIVE pill in the header",
+    "Drawer: Open full file link (client-control-panel.html?id=)",
+    "Filter button (opens the panel; count of active filters)",
+    "Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage)"
+   ]
+  }
+ ],
+ "fin-b18-money-declines-helper.test.mjs": [
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-declines.html",
+   "controls": [
+    "Bank name text box (shown for Another bank)",
+    "Your bank applications list",
+    "Your steps list + Fundhub's steps expander (done / skipped / not done yet)"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-helper.html",
+   "controls": [
+    "Banner: helper stopped / not switched on"
+   ]
+  }
+ ],
+ "fin-b18-money-next-pay-setup.test.mjs": [
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-next.html",
+   "controls": [
+    "Check your accounts link (empty state)",
+    "Try again buttons (steps) and (ready card)"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-payments.html",
+   "controls": [
+    "Empty state ('You do not owe Fundhub anything right now') and Error state with Try again"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-setup.html",
+   "controls": [
+    "Loading and error states with Try again",
+    "Step 2: See my credit link (after a pull)",
+    "Step 3: Add businesses and accounts / Add more link"
+   ]
+  }
+ ]
+}
