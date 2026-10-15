@@ -505,6 +505,25 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A screen control the journey lists but the live page does not carry (batch 06, 2026-10-14). True while the
+     lane that made the row (gap-catalog-display, fin-b06-not-shipped.mjs) reads the live page and its own
+     scripts again and finds neither the control's words nor the door behind it. The day it ships the claim
+     is false and the row goes back to not proved. */
+  "catalog-display-control-not-shipped": Object.freeze({
+    say() {
+      return "This control is on no page that ships. Judged the day it goes live.";
+    },
+    claim() {
+      return "The control is still not on the live page.";
+    },
+    problem(args) {
+      return isText(args?.sourceFile) && isText(args?.surface) && isText(args?.control)
+        ? null
+        : "the not-shipped proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

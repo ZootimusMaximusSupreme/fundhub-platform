@@ -139,7 +139,9 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.equal(db.calls.length, 62);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   assert.equal(focused.filter((row) => row.status === "PASS").length, 62);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 6);
+  // 6 unmeasured contracts; the climate button is read from the live page (fin-b06-not-shipped) and this
+  // stub page is not a web page, so that row says "skip" here instead of not proved.
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 5);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(unproved.length, unprovedIds.size);
   assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
@@ -151,7 +153,7 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 6);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 5);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 

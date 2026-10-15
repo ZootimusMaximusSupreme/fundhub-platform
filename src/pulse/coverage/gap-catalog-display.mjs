@@ -2,6 +2,7 @@
 // prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
+import { NOT_SHIPPED_CODE, judgeNotShipped, verifyNotShipped } from "./fin-b06-not-shipped.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -110,7 +111,10 @@ async function retiredPageState(ctx = {}) {
 export async function gapChecks(ctx = {}) {
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  // A control the live page does not carry is read from the live page, not from a table (fin-b06-not-shipped.mjs).
+  const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
   const judge = (entry, stats) => {
+    if (notShipped.has(entry.id)) return notShipped.get(entry.id);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
@@ -147,4 +151,5 @@ export const naVerify = Object.freeze({
     if (!entry) return false;
     return (await retiredPageState(ctx)).status === "na";
   },
+  [NOT_SHIPPED_CODE]: (args, ctx = {}) => verifyNotShipped(DISPLAY_TRACKING_CASES, args, ctx),
 });

@@ -1,17 +1,21 @@
 # Batch 06 manifest: customer-data screen controls (tier 3, lane gap-catalog-display)
 
-Branch `fin/b06`, built from `fin/base` at `2f4f574a0`. Generation 1. Nothing was pushed.
+Branch `fin/b06`, built from `fin/base` at `2f4f574a0`. Generation 1 wrote 39 of the 40; generation 2 (this
+update) challenged the one row left open. Nothing was pushed.
 
 ## The number
 
 | | |
 |---|---|
 | Rows in batch | 40 |
-| Open before (NOT_PROVED, offline count script) | 40 |
-| Open after | 1 |
-| Whole count before / after | 853 / 814 |
+| Open before generation 1 (NOT_PROVED, offline count script) | 40 |
+| Open at the start of generation 2 | 1 |
+| Open after generation 2 | 0 |
+| Whole count before / after generation 1 | 853 / 814 |
+| Whole count after generation 2 | 813 |
 
-Outcomes: 35 live checks, 4 practice tests, 1 not-attachable.
+Outcomes: 35 live checks, 4 practice tests, 1 verified "nothing to judge" (na-verified, re-read from the live
+page on every run).
 
 A live check reads real saved rows on the live server and goes red when one is wrong. A control nobody has used
 yet has no results, so it is green ("no saved results yet, none are wrong") and goes red on the first wrong one
@@ -21,7 +25,7 @@ yet has no results, so it is green ("no saved results yet, none are wrong") and 
 
 | # | Screen | Control | Outcome | Where |
 |---|---|---|---|---|
-| 1 | climate/index.html#See how man | See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts... | not-attachable | stays NOT_PROVED, reason below |
+| 1 | climate/index.html#See how man | See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts... | na-verified | live page read every run, section below |
 | 2 | client-control-panel.html | Authorized rep: Take them off this file button | live-check | check `authorized-rep-removed` |
 | 3 | client-control-panel.html | Businesses cards: Save month/year button (stamp incorporation) | live-check | check `business-incorporated-stamp` |
 | 4 | client-control-panel.html | Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs) | live-check | check `blueprint-bank-todo` |
@@ -62,16 +66,40 @@ yet has no results, so it is green ("no saved results yet, none are wrong") and 
 | 39 | inquiry-remover.html | 'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked... | live-check | check `repair-parse-confirmed` |
 | 40 | inquiry-remover.html | Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once ... | live-check | check `inquiry-bureau-call` |
 
-## The one row that stays open (not-attachable)
+## Row 1: the climate button, challenged in generation 2 (na-verified)
 
-Row 1, the climate "See how many banks in our book fit your state" button. The shipped page
-`public/climate/index.html` is a lending-climate dashboard ("Loading lending climate...") with no such button and no
-four-answers form, and no page in `public/` calls `/api/public/climate-match`. The control is not on any page that
-ships, and a scroll saves no row. There is nothing to click and nothing saved to read. It stays NOT_PROVED with that
-exact sentence (a `gap()` contract in `fin-b06-display-contracts.mjs`).
+Generation 1 said not-attachable: the button is on no shipped page. Generation 2 read the real page and the real
+handler and agrees the sentence is exactly true, so no saved-result check and no click test can exist for it. It
+was a permanent NOT_PROVED. That is the one outcome the heartbeat law does not allow (a "nothing to judge" must be
+re-checkable), so it now ends as a verified N/A that reads the live page on every run.
+
+What is true, read on 2026-10-14:
+
+- `public/climate/index.html` is the lending-climate dashboard ("Loading lending climate..."). Its page script
+  calls only `/api/climate` and `/api/climate/geocode`. The `climate-lead-magnet` page and form were reverted in
+  commit `f39cec357` ("Revert Claude climate visitor page; keep API and map JSON").
+- A read-only GET of `https://fundhub.ai/climate/` and each script it loads (7 own chunks plus `/funnel/rb2b.js`)
+  found neither the words "See how many banks in our book fit your state" nor the string `climate-match`. The live
+  page is byte-for-byte the repo page (4820 bytes).
+- No file under `public/`, `marketing/` or `api/` names the button. Only `docs/` and `ops/` do.
+
+How it works (`src/pulse/coverage/fin-b06-not-shipped.mjs`, GET only, redirects not followed, 4 s timeout):
+
+1. GET the page. Not 200, not a web page, or a network error: row says `skip` with the reason.
+2. GET each of the page's own scripts (same site only, at most 12). Any failure: `skip`. Never "absent" from a
+   partial read.
+3. Neither the button words nor the lead door string in the page or any script: the row says `na`, code
+   `catalog-display-control-not-shipped`. The morning audit asks this file again before it lets `na` stand.
+4. Either found: the control ships now. The row goes back to `NOT_PROVED` with a fix line, and a person attaches
+   a real check for the scroll and for the form it saves (the form row already has the `climate-lead-saved` live
+   check).
+
+The claim data lives on the contract (`contract.notShipped` in `fin-b06-display-contracts.mjs`), so it travels
+through `generated.json` like the rest. The contract is still `mode: "always-red"` (no saved result exists), so
+the guard numbers 68 / 62 / 6 did not move.
 
 The climate form row (`POST /api/public/climate-match`) is a live check on the saved lead, so a lead filed by any
-caller (the door has `Access-Control-Allow-Origin: *`) is judged. With no caller today it will read "no saved
+caller (the door has `Access-Control-Allow-Origin: *`) is judged. With no caller today it reads "no saved
 results yet". That is quiet, not proved by use.
 
 ## How the checks work (no local Postgres on this Mac)
@@ -98,6 +126,8 @@ The four practice tests were broken on purpose in the real pages (15 breaks acro
 - `src/pulse/catalog/proofs/fin-b06-display-contracts.test.mjs`
 - `src/pulse/catalog/proofs/fin-b06-display-practice.mjs` (4 practice proof cases)
 - `src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs` (4 Chromium tests)
+- `src/pulse/coverage/fin-b06-not-shipped.mjs` (generation 2: the live-page read for a control that is not shipped)
+- `src/pulse/coverage/fin-b06-not-shipped.test.mjs` (generation 2: 20 practice tests)
 - `ops/workflows/finish-853-2026-10-14/manifest-b06.md` (this file)
 
 ## Shared lines touched (for the integrator)
@@ -109,7 +139,11 @@ The four practice tests were broken on purpose in the real pages (15 breaks acro
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | one import line and one `...FIN_B06_DISPLAY_PROOF_CASES,` line |
 | `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 662 (rows that now have a live check or a practice test) |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | guard numbers 40 / 27 / 13 became 68 / 62 / 6 (contracts, pass-capable, unmeasured), `SQL_BATCHES` 27 to 62, result cases 40 to 68 |
-| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog` (a conflict is expected; recompile after merging) |
+| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog` (a conflict is expected; recompile after merging). Generation 2 changes one contract in it (the climate button gains `notShipped`) |
+| `src/pulse/coverage/gap-catalog-display.mjs` | generation 2: one import line; in `gapChecks` a `notShipped` map and one `if (notShipped.has(entry.id)) return ...` line at the top of `judge`; one `[NOT_SHIPPED_CODE]` entry at the end of `naVerify` |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | generation 2: two `NOT_PROVED` counts 6 became 5 (the climate row is no longer NOT_PROVED while the live page lacks the button). Comment says why |
+| `src/pulse/na-conditions.mjs` | generation 2: one new code `catalog-display-control-not-shipped` (`verify: "lane"`), inserted before the `no-sender` block. The closed list is now 15 codes |
+| `src/pulse/na-conditions.test.mjs` | generation 2: the closed list (14 to 15), the lane-code list, and the sample args for the sentence test. Three lines |
 
 Do not trust my guard numbers after the merge. Re-derive: contracts = base contracts minus replaced gaps plus every
 batch's contracts; pass-capable = base query contracts plus every batch's queries.
@@ -125,7 +159,8 @@ batch's contracts; pass-capable = base query contracts plus every batch's querie
 3. `api/consent/capture.mjs` takes `document_id` from the request body and stores it on the consent with no check that
    the document belongs to that client or company (the column is only a foreign key).
 4. The climate lead-magnet page and its form are described in `docs/journeys/climate-lead-magnet-intended.md` but are
-   not on the shipped page; no page calls `/api/public/climate-match`. (Also found by slice 4.)
+   not on the shipped page; no page calls `/api/public/climate-match`. Re-confirmed on the LIVE site on 2026-10-14
+   (page and all its scripts read by GET). The page was reverted on purpose in `f39cec357`. (Also found by slice 4.)
 5. `api/content/tiles.mjs` Save runs no transaction by design (its own comment says so): tile words can be saved and
    the video map fail. A read cannot see which half landed.
 

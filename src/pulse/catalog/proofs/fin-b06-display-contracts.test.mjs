@@ -815,14 +815,17 @@ test("a wrong column in a check would be caught before it ships", () => {
   assert.ok(schemaProblems(broken, schema).some((line) => /exit_address/.test(line)));
 });
 
-test("the not-attachable controls say exactly what is missing and stay not proved", () => {
+test("the not-attachable controls say exactly what is missing and stay not proved without the live page", () => {
   assert.equal(FIN_B06_GAPS.length, 1);
   for (const entry of FIN_B06_GAPS) {
     assert.equal(entry.mode, "always-red");
     assert.equal(entry.sql, null);
     assert.ok(entry.requirement.length > 60, entry.control);
+    // The pure judge never touches the network, so it never says "na". Only the lane's live read can.
     const out = judgeDisplayResult({ id: "x", surface: "s", control: entry.control, contract: entry }, { sample_count: 9, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED");
+    assert.equal(entry.notShipped.path, "/climate/");
+    assert.ok(entry.notShipped.markers.includes("climate-match"));
   }
 });
 
@@ -863,13 +866,28 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
       return { rows: [{ sample_count: redKeys.has(key) ? 4 : 2, bad_count: redKeys.has(key) ? 1 : 0 }] };
     }
   };
-  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: async () => new Response("", { status: 200 }) });
+  // The real shipped files under public/ stand in for the live site (GET only, redirects not followed).
+  const publicDir = path.join(ROOT, "public");
+  const liveSite = async (url, init) => {
+    assert.equal(init.method, "GET");
+    assert.equal(init.redirect, "manual");
+    let p = decodeURIComponent(new URL(url).pathname);
+    if (p.endsWith("/")) p += "index.html";
+    const file = path.join(publicDir, p);
+    return fs.existsSync(file) && fs.statSync(file).isFile()
+      ? new Response(fs.readFileSync(file, "utf8"), { status: 200 })
+      : new Response("not found", { status: 404 });
+  };
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveSite });
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const entry of cases) {
     const row = byId.get(entry.id);
     assert.ok(row, entry.control);
     if (entry.contract.mode === "always-red") {
-      assert.equal(row.status, "NOT_PROVED", entry.control);
+      // The climate button is on no page that ships: the lane reads the live page and says "na", and the audit
+      // re-checks that every run (see src/pulse/coverage/fin-b06-not-shipped.test.mjs). A contract with no claim
+      // would stay NOT_PROVED.
+      assert.equal(row.status, entry.contract.notShipped ? "na" : "NOT_PROVED", `${entry.control}: ${row.detail}`);
       continue;
     }
     const key = bySql(entry.contract.sql);

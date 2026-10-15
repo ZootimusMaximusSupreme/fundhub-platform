@@ -31,10 +31,12 @@ function check(key, control, requirement, parts, { quiet = true } = {}) {
   }));
 }
 
-/** An honest "no saved result can show this". Stays NOT_PROVED and says exactly what is missing. */
+/** An honest "no saved result can show this". Stays NOT_PROVED and says exactly what is missing.
+ *  `extra.notShipped` ({ path, markers }) lets the lane read the LIVE page and say "na" while the control is
+ *  not on it, and take that back the day it is (src/pulse/coverage/fin-b06-not-shipped.mjs). */
 export const FIN_B06_GAPS = [];
-function gap(control, requirement) {
-  FIN_B06_GAPS.push(Object.freeze({ control, mode: "always-red", requirement, sql: null }));
+function gap(control, requirement, extra = {}) {
+  FIN_B06_GAPS.push(Object.freeze({ control, mode: "always-red", requirement, sql: null, ...extra }));
 }
 
 const sameClient = (alias, left, right) => ({
@@ -647,7 +649,14 @@ check(
 
 gap(
   "See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
-  "The shipped page public/climate/index.html is a lending-climate dashboard with no such button, and no page in public/ calls the climate match door. The control is not on any page that ships, and a scroll saves no row, so there is nothing to click and nothing saved to read."
+  "The shipped page public/climate/index.html is a lending-climate dashboard with no such button, and no page in public/ calls the climate match door. The control is not on any page that ships, and a scroll saves no row, so there is nothing to click and nothing saved to read. The live page is read again on every run, so this goes back to not proved the day the control ships.",
+  {
+    notShipped: Object.freeze({
+      path: "/climate/",
+      // The words the journey gives the button, and the lead door the form behind it would call.
+      markers: Object.freeze(["See how many banks in our book fit your state", "climate-match"])
+    })
+  }
 );
 
 check(
