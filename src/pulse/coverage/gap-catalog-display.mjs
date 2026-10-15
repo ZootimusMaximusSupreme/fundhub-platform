@@ -6,6 +6,7 @@ import { retiredControlFor, retiredControlState } from "./fin-b01-retired-contro
 import { NOT_SHIPPED_CODE, judgeNotShipped, verifyNotShipped } from "./fin-b06-not-shipped.mjs";
 import { LIVE_PAGE_JUDGES } from "./fin-b07-leads-page.mjs";
 import { leadsResetResults } from "./fin-b09-leads-reset.mjs";
+import { judgeLinkGate, linkGateState } from "./fin-b10-link-gate.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -42,6 +43,7 @@ export function judgeDisplayResult(entry, stats = null) {
       `Add a receipt that links this exact control's input to its saved result, then let the read-only pulse judge it.`,
     );
   }
+  if (entry.contract.mode === "link-gate") return judgeLinkGate(entry, stats);
   if (entry.contract.mode === "always-red") {
     return result(
       entry.id,
@@ -192,6 +194,10 @@ function livePageReader(ctx = {}) {
 }
 
 export async function gapChecks(ctx = {}) {
+  // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
+  // shell is RUN against the page's own links, once per staff role, because the live file is what decides
+  // what a person sees. Started first so it overlaps the retired-page reads below; linkGateState never throws.
+  const gateRead = DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
   const retiredControls = await retiredControlResults(ctx);
@@ -199,10 +205,12 @@ export async function gapChecks(ctx = {}) {
   const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
   // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
   const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
+  const gate = gateRead ? await gateRead : null;
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (notShipped.has(entry.id)) return notShipped.get(entry.id);
     if (leadsReset.has(entry.id)) return leadsReset.get(entry.id);
+    if (entry.contract?.mode === "link-gate") return judgeLinkGate(entry, gate);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);

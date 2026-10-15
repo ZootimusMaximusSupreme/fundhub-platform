@@ -9,6 +9,7 @@ import { loadBeats } from "../../src/pulse/beats/index.mjs";
 import { DISPLAY_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-proof-cases.mjs";
 import { STAFF_UI_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-batch-staff-ui.mjs";
 import { FIN_B02_LIVE_CASES } from "../../src/pulse/catalog/proofs/fin-b02-display-contracts.mjs";
+import { FIN_B10_COMPILE_CASES } from "../../src/pulse/catalog/proofs/fin-b10-display-contracts.mjs";
 import { displaySavedResultContract, isTrackedDisplayControl } from "../../src/pulse/catalog/proofs/display-saved-result.mjs";
 import { FIN_B04_DISPLAY_PROOF_CASES } from "../../src/pulse/catalog/proofs/fin-b04-display-results.mjs";
 import { FIN_B07_LIVE_CASES } from "../../src/pulse/catalog/proofs/fin-b07-display-contracts.mjs";
@@ -53,7 +54,7 @@ const sources = files.map((sourceFile) => ({
 }));
 const catalog = compileCatalog(sources, [doors, display, data, flow], { resolve });
 Object.assign(catalog, compileDisplayRuntimeData(sources, {
-  proofCases: DISPLAY_PROOF_CASES, staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B02_LIVE_CASES, ...FIN_B04_DISPLAY_PROOF_CASES, ...FIN_B07_LIVE_CASES],
+  proofCases: DISPLAY_PROOF_CASES, staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B02_LIVE_CASES, ...FIN_B04_DISPLAY_PROOF_CASES, ...FIN_B07_LIVE_CASES, ...FIN_B10_COMPILE_CASES],
   contractFor: displaySavedResultContract, isTracked: isTrackedDisplayControl
 }));
 catalog.hourlyUncoveredSurfaces = compileHourlyUncoveredSurfaces(TRIPWIRES, await loadBeats());
