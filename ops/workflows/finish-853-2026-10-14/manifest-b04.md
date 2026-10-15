@@ -146,3 +146,28 @@ Measured on this Mac while other builders ran the same group (load average 11 to
 | `npm run lint` | 3,569 files parse clean |
 
 Nothing in this batch sends a text, an email or a vendor call, and nothing writes to a database. The queries are SELECT only.
+
+## Re-verified after the resume (2026-10-14, about 22:30 Arizona)
+
+The branch was found intact after the Mac restart (HEAD `6a40e7328`, clean tree). Nothing in the product or the checks was changed.
+Re-measured from a clean export of `fin/base` and from this branch with `scripts/pulse/count-not-proved.mjs`:
+
+| | Open rows of this batch |
+|---|---|
+| `fin/base` (all lanes 853, display 680) | 28 of 28 |
+| `fin/b04` (all lanes 825, display 652) | 0 of 28 |
+
+Also run again:
+
+- `node --test src/pulse/catalog/proofs/fin-b04-display-results.test.mjs`: 415 of 415 pass.
+- `node --test src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs`: 5 of 5 pass.
+- `node --test src/pulse/coverage/gap-catalog-display.test.mjs`: 11 of 11 pass.
+- `node scripts/pulse/compile-catalog.mjs --check`: fresh (exit 0).
+- `display-proof-cases.test.mjs`, the two guard tests (every case names one exact row; red count 647): pass.
+- One more break on purpose: the `status IS DISTINCT FROM 'received'` condition dropped from `PORTAL_MESSAGE_SQL` turned
+  `portal-message: BAD when the status is not received` red (414 pass, 1 fail); restored with `git checkout`.
+- The focused run of every named test in `display-proof-cases.test.mjs` (the third test in that file) was run once on a Mac at
+  load average 60 to 100. All 415 query tests and all 5 cockpit tests of this batch passed inside it. The run as a whole
+  failed on browser specs that are not this batch: `agent-editor-promote-demote` (wait for the saved "Escalate to" person),
+  `display-contracts-ef-public` (browser closed after its 90 second limit), `bank-amount-suggestion` and `cc-tab-ideas`
+  (30 second limits), and the slice-2 wrapper. These are the same load failures the slice manifests name.
