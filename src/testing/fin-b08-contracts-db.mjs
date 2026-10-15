@@ -36,6 +36,11 @@ export function contractsDb({
           return { ...c, first_name: cl.first_name, last_name: cl.last_name, client_email: cl.email, sent_by_name: (tables.staff.find((x) => x.id === c.sent_by) || {}).name || null };
         });
     }],
+    // The template list: this company's templates; the statement's own $2 asks for active ones only.
+    [/FROM contract_templates\s+WHERE org_id = \$1::uuid\s+AND \(\$2::boolean IS NOT TRUE OR active\)/i, (_s, p) => tables.contract_templates
+      .filter((t) => t.org_id === p[0] && (p[1] !== true || t.active))
+      .sort((a, b) => Number(b.active) - Number(a.active) || String(a.kind).localeCompare(String(b.kind)) || String(a.template_key).localeCompare(String(b.template_key)))
+      .slice(0, p[2])],
     // A known contact by email, inside the company.
     [/^\s*SELECT id, first_name, last_name, email FROM clients\s+WHERE org_id = \$1::uuid AND lower\(email\) = lower\(\$2\)/i,
       (_s, p) => tables.clients.filter((c) => c.org_id === p[0] && String(c.email || "").toLowerCase() === String(p[1]).toLowerCase())
