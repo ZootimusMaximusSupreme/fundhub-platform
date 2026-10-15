@@ -150,3 +150,26 @@ Breaks made alone, test run, file put back (`git status` clean after each loop):
 - The hero's live check is judged on stand-in rows only. Two legs could fire on real data the stand-in did not model: a deposit logged before its payment landed (cash stays 0 and cannot be edited), and a client flagged funded by an old import. The first is the design's own break; the second is not judged (only the "funded round but flag false" direction is). A first red on live is a finding.
 - The focused proof run is slow under load (12 to 13 minutes on this Mac with other builders running) and `e2e/teleprompter-touch.spec.mjs:715` is a known load flake inside it. Re-run it after merging and read that one test alone if it fails again.
 - A live check on production data could not be run (no database access by design). The SQL is judged only on stand-in rows with real column names. If a column holds values the stand-in did not model (for example `messages.provider_ref` prefixes written by another path), a first red on live would be a finding, not a surprise to be hidden.
+
+## Generation 3: independent re-check (no code change)
+
+A fresh agent re-measured the branch at `8dbf564bf` and did not change any product or test file. Offline, no database,
+no network.
+
+- `node scripts/pulse/count-not-proved.mjs`: total 840. Of the 14 batch rows, 13 are gone from the list and 1 is open
+  (the Ledger table, row 7). `openBefore` 14, `openAfter` 1.
+- `node scripts/pulse/compile-catalog.mjs --check`: clean (3975 mapped, 3942 unique, 3919 wired, 23 red).
+- `node --test` on `fin-b02-live-contracts`, `fin-b02-hero-live`, `fin-b02-transfers-open`, `fin-b02-present-buttons`
+  and `gap-catalog-display.test.mjs`: 122 of 122 pass.
+- `node --test` on `fin-b02-funded-column`, `fin-b02-sales-floor-open`, `fin-b02-hero-bar` (Chromium): 13 of 13 pass.
+- `display-proof-cases.test.mjs` quick tests (case list and unmapped rows): 2 of 2 pass. The 12 minute focused runner
+  was not re-run (other builders shared the machine; it passed alone in generation 1 and 2).
+- `node --test` on the six catalog recipe and compiler tests plus `modules.test.mjs`: 57 of 57 pass.
+- One fresh break: the `repair-amount-paid` contract with the full-program round cap leg removed. The test
+  "amount paid today: a full program has the trial round cap goes red" went red (72 of 73). File put back.
+- Row 7 challenged again: `public/app/products-commissions.html` still hard-codes `client: "—"` and `rule: "—"` in
+  both `ledgerFromApi` and `ledgerFromApiLive`, still does `Number(r.basis) || 0` on the text `front_end` / `back_end`,
+  and still paints `split_percent` as the rate. `api/read/commissions.mjs` still selects no client name, no
+  `base_amount`, no `rule_snapshot` or `rule_id`. A check that judges saved rows would be red on every real row by
+  construction and could never go green after a fix without being rewritten, so it would not be a result check. Left as
+  not attachable.
