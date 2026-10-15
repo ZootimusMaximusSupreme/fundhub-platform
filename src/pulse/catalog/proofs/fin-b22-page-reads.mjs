@@ -146,13 +146,13 @@ function pickFetch(ctx) {
   return null;
 }
 
-function within(total) {
-  const own = AbortSignal.timeout(READ_TIMEOUT_MS);
+function within(total, readMs) {
+  const own = AbortSignal.timeout(readMs);
   return typeof AbortSignal.any === "function" && total ? AbortSignal.any([own, total]) : own;
 }
 
-async function get(fetchImpl, url, total) {
-  const res = await fetchImpl(url, { method: "GET", headers: { accept: "*/*" }, signal: within(total) });
+async function get(fetchImpl, url, total, readMs = READ_TIMEOUT_MS) {
+  const res = await fetchImpl(url, { method: "GET", headers: { accept: "*/*" }, signal: within(total, readMs) });
   if (!res || res.status !== 200) throw new Error(`${url} answered ${res ? res.status : "nothing"}`);
   return String(await res.text());
 }
@@ -176,13 +176,13 @@ function skipped(surface, error) {
   return verdict(surface, "skip", `${surface} was not checked: ${message}.`);
 }
 
-async function readClimate(fetchImpl, origin, total, judge) {
+async function readClimate(fetchImpl, origin, total, judge, readMs) {
   let api;
   let html;
   try {
     const [raw, page] = await Promise.all([
-      get(fetchImpl, `${origin}/api/climate`, total),
-      get(fetchImpl, `${origin}/climate/`, total),
+      get(fetchImpl, `${origin}/api/climate`, total, readMs),
+      get(fetchImpl, `${origin}/climate/`, total, readMs),
     ]);
     html = page;
     try { api = JSON.parse(raw); } catch { throw new Error("the climate data door did not answer with JSON"); }
@@ -197,10 +197,10 @@ async function readClimate(fetchImpl, origin, total, judge) {
         `${CLIMATE_READING_SURFACE}: the live /climate/ page loads no script of its own, so nothing on it can draw a map.`,
         "Open /climate/ and find why its scripts are gone. Do not auto-fix. Chris fixes reds.");
     }
-    scripts = await Promise.all(urls.map((url) => get(fetchImpl, url, total)));
+    scripts = await Promise.all(urls.map((url) => get(fetchImpl, url, total, readMs)));
     // A page that fetches its outlines at run time names the file in its script; then the file counts.
     if (scripts.some((text) => /us-states-paths\.json/.test(text))) {
-      scripts.push(await get(fetchImpl, `${origin}/climate/maps/us-states-paths.json`, total));
+      scripts.push(await get(fetchImpl, `${origin}/climate/maps/us-states-paths.json`, total, readMs));
     }
   } catch (error) {
     return skipped(CLIMATE_READING_SURFACE, error);
@@ -210,10 +210,10 @@ async function readClimate(fetchImpl, origin, total, judge) {
   return judge({ api, outlines });
 }
 
-async function readConsulting(fetchImpl, origin, total, judge) {
+async function readConsulting(fetchImpl, origin, total, judge, readMs) {
   let html;
   try {
-    html = await get(fetchImpl, `${origin}/consulting/`, total);
+    html = await get(fetchImpl, `${origin}/consulting/`, total, readMs);
   } catch (error) {
     return skipped(CONSULTING_REQUEST_SURFACE, error);
   }
@@ -222,7 +222,8 @@ async function readConsulting(fetchImpl, origin, total, judge) {
 
 /**
  * Run both page reads. Returns Map(id -> { id, status, detail, suggestedFix }). Never throws.
- * ctx: { fetchImpl | fetch, baseUrl }. Without a GET client both rows are a skip with the reason.
+ * ctx: { fetchImpl | fetch, baseUrl, readTimeoutMs, runTimeoutMs }. Without a GET client both rows are a skip with
+ * the reason. The two time limits default to READ_TIMEOUT_MS and RUN_TIMEOUT_MS; only the tests change them.
  * `judges` is for the tests only: a judge that throws must end as a skip, never as a thrown lane.
  */
 export async function runFinB22PageReads(ctx = {}, judges = { climate: judgeClimateReading, consulting: judgeConsultingRequest }) {
@@ -237,12 +238,13 @@ export async function runFinB22PageReads(ctx = {}, judges = { climate: judgeClim
   }
   let origin;
   try { origin = new URL(ctx.baseUrl || DEFAULT_BASE_URL).origin; } catch { origin = DEFAULT_BASE_URL; }
-  const total = AbortSignal.timeout(RUN_TIMEOUT_MS);
+  const readMs = Number(ctx.readTimeoutMs) > 0 ? Number(ctx.readTimeoutMs) : READ_TIMEOUT_MS;
+  const total = AbortSignal.timeout(Number(ctx.runTimeoutMs) > 0 ? Number(ctx.runTimeoutMs) : RUN_TIMEOUT_MS);
   // A judge that throws on a page nobody planned for is a skip with the reason, never a thrown lane.
   const safe = (surface, pending) => pending.catch((error) => skipped(surface, error));
   const [climate, consulting] = await Promise.all([
-    safe(CLIMATE_READING_SURFACE, readClimate(fetchImpl, origin, total, judges.climate)),
-    safe(CONSULTING_REQUEST_SURFACE, readConsulting(fetchImpl, origin, total, judges.consulting)),
+    safe(CLIMATE_READING_SURFACE, readClimate(fetchImpl, origin, total, judges.climate, readMs)),
+    safe(CONSULTING_REQUEST_SURFACE, readConsulting(fetchImpl, origin, total, judges.consulting, readMs)),
   ]);
   out.set(climate.id, climate);
   out.set(consulting.id, consulting);

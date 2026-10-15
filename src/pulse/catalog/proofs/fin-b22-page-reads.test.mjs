@@ -207,6 +207,26 @@ test("a stand-in site that never answers is a skip inside the run's own time, no
   }
 });
 
+test("the whole run has its own time limit: three slow stages in a row end as a skip when together they run long", async () => {
+  // like a real fetch, a slow answer is dropped when the caller's signal aborts
+  const slow = (inner) => (url, init) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(inner(url, init)), 150);
+    init.signal.addEventListener("abort", () => { clearTimeout(timer); reject(new Error("aborted")); }, { once: true });
+  });
+  const fast = liveSite();
+  // each read answers in 150 ms inside its own 1 s limit; three stages in a row take about 450 ms
+  const hold = setTimeout(() => {}, 5000);
+  try {
+    const whole = await runFinB22PageReads({ fetchImpl: slow(fast), readTimeoutMs: 1000, runTimeoutMs: 5000 });
+    assert.equal(whole.get(CLIMATE_ID).status, "FAIL", "inside the run's time limit it answers");
+    const cut = await runFinB22PageReads({ fetchImpl: slow(fast), readTimeoutMs: 1000, runTimeoutMs: 300 });
+    assert.equal(cut.get(CLIMATE_ID).status, "skip", "past the run's time limit it is a skip");
+    assert.match(cut.get(CLIMATE_ID).detail, /was not checked/);
+  } finally {
+    clearTimeout(hold);
+  }
+});
+
 test("a read whose body cannot be read, and a judge that throws, are skips and not a thrown lane", async () => {
   const strange = async () => ({ status: 200, text: async () => { throw new TypeError("body stream locked"); } });
   for (const row of (await runFinB22PageReads({ fetchImpl: strange })).values()) assert.equal(row.status, "skip");
