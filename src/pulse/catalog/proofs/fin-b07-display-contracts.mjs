@@ -68,6 +68,9 @@ const ROWS = Object.freeze({
 export const FIN_B07_SOURCE = "src/pulse/catalog/proofs/fin-b07-display-contracts.mjs";
 export const FIN_B07_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B07_LIVE_TEST = "src/pulse/catalog/proofs/fin-b07-live-contracts.test.mjs";
+export const FIN_B07_DESK_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cases-desk.test.mjs";
+export const FIN_B07_REPAIR_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cases-repair.test.mjs";
+export const FIN_B07_MISC_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cases-misc.test.mjs";
 export const FIN_B07_GATES_TEST = "src/pulse/catalog/proofs/fin-b07-page-gates.test.mjs";
 export const FIN_B07_LINK_TOKEN_TEST = "src/pulse/catalog/proofs/fin-b07-link-token.test.mjs";
 export const FIN_B07_SEARCH_TEST = "src/pulse/catalog/proofs/fin-b07-search.test.mjs";
@@ -645,9 +648,31 @@ function liveCase([sourceFile, surface, control], tests) {
   });
 }
 
+const REPAIR_KEYS = new Set(["repairQueue", "repairRow", "stIntake", "stAwaitDocs", "stAnalysis", "stLettersGen", "stReady",
+  "stTransit", "stAwaitResp", "stRespRecv", "stRoundComplete", "stStalled", "stProgramComplete", "stCancelled",
+  "rowSend", "letterSendOne", "rowStage"]);
+const MISC_KEYS = new Set(["vaultUpload", "linkExchange", "lenderApply", "applyDialog", "bizFields", "agreements", "social"]);
+
+/** The scenario file that runs this row's exact SQL over stand-in rows. */
+function scenariosFor(rowKey) {
+  if (REPAIR_KEYS.has(rowKey)) return FIN_B07_REPAIR_SCENARIOS;
+  if (MISC_KEYS.has(rowKey)) return FIN_B07_MISC_SCENARIOS;
+  return FIN_B07_DESK_SCENARIOS;
+}
+
+/**
+ * Rows that display-batch-staff-ui.mjs already holds as deep cases (with their own browser tests).
+ * Repeating them here would put two results on one row, so the contract alone is what turns them
+ * from not proved to a live check. fin-b07-live-contracts.test.mjs keeps this list equal to the
+ * staff file, so it cannot rot.
+ */
+export const FIN_B07_ALREADY_DEEP = Object.freeze(["workQueue", "workRow", "markConfirmed", "repairRow", "bizFields"]);
+
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B07_LIVE_CASES = Object.freeze(
-  FIN_B07_LIVE_ROWS.map((row) => liveCase(row, [FIN_B07_LIVE_TEST])),
+  CONTRACTS
+    .filter((c) => !FIN_B07_ALREADY_DEEP.includes(c.rowKey))
+    .map((c) => liveCase(ROWS[c.rowKey], [scenariosFor(c.rowKey), FIN_B07_LIVE_TEST])),
 );
 
 function practiceCase(rowKey, test) {
