@@ -76,6 +76,7 @@ SELECT count(*)::int AS sample_count,
                     MIN(cp.staff_id::text) AS lo,
                     MAX(cp.staff_id::text) AS hi
                FROM conversation_participants cp
+               JOIN conversations c0 ON c0.id = cp.conversation_id AND c0.org_id = $1::uuid AND c0.kind = 'internal'
                LEFT JOIN staff s ON s.id = cp.staff_id
               GROUP BY cp.conversation_id) p ON p.conversation_id = c.id
  WHERE c.org_id = $1::uuid AND c.kind = 'internal' AND COALESCE(c.is_demo, false) = false
@@ -126,7 +127,8 @@ SELECT count(*)::int AS sample_count,
 // sales-floor.js), otherwise it says "No link". A file the page calls "Words ready" because it no
 // longer needs transcription must have words: indexed chunks, or a transcript on that client's call.
 // Two sources, last 14 days, demo calls left out. Name-only matches (a document with "recording" in
-// its title) are not recordings and are left out.
+// its title) are not recordings and are left out, and so are files a person uploaded to Company Brain or
+// the app wrote itself (source upload or generated): those have no Drive address by design.
 export const RECORDING_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE r.bad = 1)::int AS bad_count
@@ -152,7 +154,7 @@ SELECT count(*)::int AS sample_count,
                 THEN 1 ELSE 0 END AS bad
       FROM brain_files bf
       LEFT JOIN clients c2 ON c2.id = bf.client_id AND c2.org_id = bf.org_id
-     WHERE bf.org_id = $1::uuid
+     WHERE bf.org_id = $1::uuid AND bf.source = 'drive'
        AND (bf.mime_type LIKE 'video/%' OR bf.mime_type LIKE 'audio/%' OR bf.needs_transcription = true)
        AND COALESCE(bf.indexed_at, bf.created_at) > now() - interval '14 days'
   ) r`;

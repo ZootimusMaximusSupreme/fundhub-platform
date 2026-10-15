@@ -30,6 +30,8 @@ import {
 
 export const FIN_B20_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B20_LIVE_TEST = "src/pulse/catalog/proofs/fin-b20-live-contracts.test.mjs";
+export const FIN_B20_LIVE_FLOOR_TEST = "src/pulse/catalog/proofs/fin-b20-live-floor.test.mjs";
+export const FIN_B20_FLOOR_READS_TEST = "src/pulse/catalog/proofs/fin-b20-sales-floor-reads.test.mjs";
 export const FIN_B20_SHELL_TEST = "src/pulse/catalog/proofs/fin-b20-shell-chrome.test.mjs";
 export const FIN_B20_GATE_TEST = "src/pulse/catalog/proofs/fin-b20-shell-gate.test.mjs";
 export const FIN_B20_CHAT_TEST = "src/pulse/catalog/proofs/fin-b20-shell-chat.test.mjs";
@@ -90,11 +92,11 @@ const SCREEN_TESTS = Object.freeze({
   deskcStatus: [FIN_B20_SHELL_TEST],
   deskcBetaDismiss: [FIN_B20_GATE_TEST],
   sfRoster: [FIN_B20_FLOOR_TEST],
-  sfBelief: [FIN_B20_FLOOR_TEST],
-  sfSource: [FIN_B20_FLOOR_TEST],
+  sfBelief: [FIN_B20_FLOOR_READS_TEST, FIN_B20_FLOOR_TEST],
+  sfSource: [FIN_B20_FLOOR_READS_TEST, FIN_B20_FLOOR_TEST],
   sfRecordings: [FIN_B20_FLOOR_TEST],
-  sfCompliance: [FIN_B20_FLOOR_TEST],
-  sfDiscipline: [FIN_B20_FLOOR_TEST],
+  sfCompliance: [FIN_B20_FLOOR_READS_TEST, FIN_B20_FLOOR_TEST],
+  sfDiscipline: [FIN_B20_FLOOR_READS_TEST, FIN_B20_FLOOR_TEST],
   sfChips: [FIN_B20_FLOOR_TEST],
   fragHeads: [FIN_B20_SIDEBAR_TEST],
   linkHome: [FIN_B20_SIDEBAR_TEST],
@@ -123,9 +125,11 @@ function entry(rowKey, tests, withLane) {
   return Object.freeze({ sourceFile, surface, control, depth: "deep", evidence, tests: Object.freeze([...tests]) });
 }
 
+const FLOOR_LIVE_KEYS = new Set(["sfBelief", "sfSource", "sfDiscipline", "sfRecordings"]);
+
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B20_LIVE_CASES = Object.freeze(
-  LIVE_KEYS.map((key) => entry(key, [FIN_B20_LIVE_TEST, ...SCREEN_TESTS[key]], true)),
+  LIVE_KEYS.map((key) => entry(key, [FLOOR_LIVE_KEYS.has(key) ? FIN_B20_LIVE_FLOOR_TEST : FIN_B20_LIVE_TEST, ...SCREEN_TESTS[key]], true)),
 );
 
 /** Rows proved by a practice test only (the real page or read module, fake answers). */

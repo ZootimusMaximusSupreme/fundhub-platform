@@ -29,7 +29,8 @@ const words = (scope, selector) => scope.locator(selector).first().evaluate((el)
 // Search
 const HITS = {
   // keys on purpose out of the shell's order: the shell decides the order
-  cards: [{ href: "pipeline.html?card=k-1", title: "Casey card", subtitle: "Sales · Closed Won" }],
+  cards: [{ href: "pipeline.html?card=k-1", title: "Casey card", subtitle: "Sales \u00b7 Closed Won" }],
+  documents: [{ href: "documents.html?doc=d-1", title: "Casey ID scan", subtitle: "Uploaded Oct 2" }],
   conversations: [{ href: "messaging.html?c=m-1", title: "Casey thread", subtitle: "sms · 2 days ago" }],
   clients: [{ href: "client-control-panel.html?id=client-proof-1", title: "Casey Search Proof", subtitle: "Fake client · proof-001" }],
   contracts: [{ href: "contracts.html?id=k-9", title: "Casey agreement", subtitle: "Signed" }],
@@ -61,7 +62,7 @@ test("search: the typed term is what is asked for, groups come back in the shell
   assert.equal(asked[0].headers.authorization, `Bearer ${TOKEN}`);
   const order = await page.locator(".fh-search-group").evaluateAll((els) => els.map((e) => [e.getAttribute("data-group"), e.querySelector(".fh-search-ghead").textContent.replace(/\s+/g, " ").trim()]));
   assert.deepEqual(order, [
-    ["clients", "Clients 1"], ["contracts", "Contracts 1"], ["conversations", "Conversations 1"], ["cards", "Pipeline 1"],
+    ["clients", "Clients 1"], ["contracts", "Contracts 1"], ["documents", "Documents 1"], ["conversations", "Conversations 1"], ["cards", "Pipeline 1"],
   ]);
   const hit = page.locator('.fh-search-hit[href="client-control-panel.html?id=client-proof-1"]');
   assert.equal(await words(hit, ".fh-search-title"), "Casey Search Proof");
