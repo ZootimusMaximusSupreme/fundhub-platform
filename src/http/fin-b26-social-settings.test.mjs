@@ -10,13 +10,14 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/social/settings.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, writes, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, writes, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, OTHER_PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
+import { selectList, projectRow, whereOf, keep, runInsert } from "../testing/fin-b26-sql.mjs";
 
 const stored = (partner, org, over = {}) => ({
   org_id: org, partner_id: partner, approve_before_launch: true, weekly_asset_target: 5, max_concurrent_jobs: 3,
-  autopilot_enabled: true, launch_enabled: false, marketing_suite_enabled: true, updated_at: "2026-10-01T00:00:00.000Z", ...over,
+  autopilot_enabled: true, launch_enabled: true, marketing_suite_enabled: true, updated_at: "2026-10-01T00:00:00.000Z", ...over,
 });
 
 function world(over = {}) {
@@ -34,28 +35,29 @@ function world(over = {}) {
   };
 }
 
+/**
+ * The statements, answered by reading them: the settings read by its WHERE and its named columns, and
+ * the owner's upsert by its own column list, its ON CONFLICT ... DO UPDATE SET list and its guard.
+ */
 function rulesFor(t) {
   return [
     [/set_config\(/i, []],
     [/^\s*(BEGIN|COMMIT|ROLLBACK)\b/i, []],
-    [/FROM partner_module_settings\s+-- THE GUARD|FROM partner_module_settings\s+WHERE partner_id/i, (sql, p) => inSql(t.partner_module_settings, sql, p).slice(0, 1)],
-    [/FROM partners\s+WHERE id = \$1/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ org_id: r.org_id }))],
-    [/^\s*INSERT INTO partner_module_settings/i, (sql, p) => {
-      const [org, partner, approve] = p;
-      const hit = t.partner_module_settings.find((r) => r.partner_id === partner);
-      if (!hit) {
-        t.partner_module_settings.push({ org_id: org, partner_id: partner, approve_before_launch: approve, weekly_asset_target: null,
-          max_concurrent_jobs: null, autopilot_enabled: false, launch_enabled: false, marketing_suite_enabled: false, updated_at: "now" });
-        return [{ approve_before_launch: approve }];
-      }
-      // The guard on the update path is read from the statement: a row that belongs to another company
-      // is left alone only while the statement still says so.
-      const guarded = /WHERE partner_module_settings\.org_id = EXCLUDED\.org_id/.test(sql);
-      if (guarded && hit.org_id !== org) return [];
-      hit.approve_before_launch = approve;
-      hit.updated_at = "now";
-      return [{ approve_before_launch: hit.approve_before_launch }];
+    [/FROM partner_module_settings\s+-- THE GUARD|FROM partner_module_settings\s+WHERE partner_id/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.partner_module_settings, whereOf(sql), p, { alias: "partner_module_settings" })
+        .slice(0, 1).map((r) => projectRow(items, { params: p, row: r, rows: { partner_module_settings: r } }));
     }],
+    [/FROM partners\s+WHERE id = \$1/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.partners, whereOf(sql), p, { alias: "partners" })
+        .slice(0, 1).map((r) => projectRow(items, { params: p, row: r, rows: { partners: r } }));
+    }],
+    [/^\s*INSERT INTO partner_module_settings/i, (sql, p) => runInsert(sql, p, t.partner_module_settings, {
+      // What the table itself fills in for a row nobody has configured: nothing is switched on.
+      fill: (row) => ({ weekly_asset_target: null, max_concurrent_jobs: null, autopilot_enabled: false, launch_enabled: false,
+        marketing_suite_enabled: false, updated_at: "now", ...row }),
+    }).rows],
   ];
 }
 
@@ -70,13 +72,22 @@ describe("GET /api/social/settings", () => {
       assert.equal(res.body.partner_id, PARTNER);
       assert.deepEqual(res.body.settings, {
         stored: true, approve_before_launch: true, weekly_asset_target: 5, max_concurrent_jobs: 3,
-        autopilot_enabled: true, launch_enabled: false, marketing_suite_enabled: true, updated_at: "2026-10-01T00:00:00.000Z",
-      });
+        autopilot_enabled: true, launch_enabled: true, marketing_suite_enabled: true, updated_at: "2026-10-01T00:00:00.000Z",
+      }, "every one of the seven named columns is read from the statement's own SELECT list");
       assert.equal(wrote(fake), false);
       pinned(sqlOf(fake, /FROM partner_module_settings/)[0].sql, "the read names the partner and the company",
         "WHERE partner_id = $1 AND ($2::uuid IS NULL OR org_id = $2::uuid)");
       assert.deepEqual(sqlOf(fake, /FROM partner_module_settings/)[0].params, [PARTNER, ORG_ID]);
     }
+  });
+
+  test("the company is the session's: another company's id in the address changes nothing", async () => {
+    const { res, fake } = await call("GET", asRole("owner"), { query: { partner_id: PARTNER, org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID } });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.settings.stored, true);
+    assert.deepEqual(sqlOf(fake, /FROM partner_module_settings/)[0].params, [PARTNER, ORG_ID]);
+    const foreign = await call("GET", asRole("owner"), { query: { partner_id: FOREIGN_PARTNER, org_id: OTHER_ORG_ID } });
+    assert.equal(foreign.res.body.settings.stored, false, "company A's owner does not read company B's row by naming company B");
   });
 
   test("a partner with nothing saved reads the engine's own default and says nothing was saved", async () => {
@@ -154,6 +165,7 @@ describe("POST /api/social/settings", () => {
     assert.equal(row.weekly_asset_target, 5, "the caps are left alone");
     assert.equal(row.max_concurrent_jobs, 3);
     assert.equal(row.autopilot_enabled, true);
+    assert.equal(row.launch_enabled, true);
     assert.equal(row.marketing_suite_enabled, true);
     const insert = sqlOf(off.fake, /INSERT INTO partner_module_settings/)[0];
     assert.deepEqual(insert.params, [ORG_ID, PARTNER, false], "the company is the partner's own, read from the partner row");

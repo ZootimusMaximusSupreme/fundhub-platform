@@ -12,11 +12,15 @@ import handler from "../../api/social/publish.mjs";
 import { registerAdapter } from "../social/scheduler.mjs";
 import { ensureSocialAdapters } from "../social/publish-all.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, writes, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, writes, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, OTHER_PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
+import {
+  cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep, runUpdate, runInsert,
+} from "../testing/fin-b26-sql.mjs";
 
 const sent = [];            // every post an adapter was asked to publish
+let currentWorld = null;    // the tables of the call in flight, so an adapter can look at what was already written
 let failFor = new Set();    // post ids whose adapter call throws
 const realFetch = globalThis.fetch;
 before(() => {
@@ -26,7 +30,12 @@ before(() => {
     // ... then every channel the test uses is replaced by a recorder.
     registerAdapter(channel, {
       async post(post) {
-        sent.push({ id: post.id, channel: post.channel, caption: post.caption });
+        sent.push({
+          id: post.id, channel: post.channel, caption: post.caption,
+          // What the tables said at the moment the platform was asked: was this post already logged, and already 'posting'?
+          loggedFirst: !!currentWorld && currentWorld.action_log.some((l) => l.target_id === post.id),
+          wasPosting: !!currentWorld && currentWorld.social_posts.find((r) => r.id === post.id).status === "posting",
+        });
         if (failFor.has(post.id)) { const e = new Error("platform said no"); e.platformMessage = "platform said no"; throw e; }
         return { external_post_id: `ext-${post.id}` };
       },
@@ -48,7 +57,8 @@ function world(over = {}) {
   return {
     social_posts: [
       post("p-due-1", PARTNER, { scheduled_for: ago(3) }),
-      post("p-due-2", PARTNER, { scheduled_for: ago(1), channel_id: `ch-${PARTNER}-ig` }),
+      // Failed once before (one attempt used, an error on file): a later success must clear that error.
+      post("p-due-2", PARTNER, { scheduled_for: ago(1), channel_id: `ch-${PARTNER}-ig`, attempt: 1, last_error: "an earlier platform error" }),
       post("p-future", PARTNER, { scheduled_for: ahead(5) }),
       post("p-held", PARTNER, { status: "awaiting_approval" }),
       post("p-blocked", PARTNER, { status: "blocked" }),
@@ -75,61 +85,61 @@ function world(over = {}) {
   };
 }
 
+/**
+ * The statements, answered by reading them: the due read (its join, WHERE, ORDER BY, LIMIT and named
+ * columns), the all-partners read (its WHERE, DISTINCT list and LIMIT), the action-log INSERT by its own
+ * column list, and every UPDATE by its own SET list (so "attempt = attempt + 1", "posted_at = now()",
+ * "last_error = NULL" and the external id are what the statement says, not what a stand-in assumes).
+ */
 function rulesFor(t) {
-  const byId = (id) => t.social_posts.find((p) => p.id === id);
   return [
-    [/FROM partners WHERE id = \$1/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ org_id: r.org_id }))],
+    [/FROM partners WHERE id = \$1/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.partners, whereOf(sql), p, { alias: "partners" }).slice(0, 1)
+        .map((r) => projectRow(items, { params: p, row: r, rows: { partners: r } }));
+    }],
     [/SELECT DISTINCT p\.partner_id, p\.org_id\s+FROM social_posts p/i, (sql, p) => {
-      const now = p[0] ? new Date(p[0]).getTime() : Date.now();
+      const items = selectList(sql, 0);
+      const kept = keep(t.social_posts, whereOf(sql), p, { alias: "p" });
       const seen = new Map();
-      // The status condition is read from the statement's own text.
-      const onlyQueued = /p\.status = 'queued'/.test(sql);
-      for (const r of t.social_posts) {
-        if ((!onlyQueued || r.status === "queued") && r.scheduled_for && new Date(r.scheduled_for).getTime() <= now) seen.set(r.partner_id, r.org_id);
+      for (const r of kept) {
+        const row = projectRow(items, { params: p, row: r, rows: { p: r } });
+        seen.set(JSON.stringify(row), row);
       }
-      return [...seen].slice(0, p[1]).map(([partner_id, org_id]) => ({ partner_id, org_id }));
+      const lim = /LIMIT \$(\d+)/i.exec(cleanSql(sql));
+      return [...seen.values()].slice(0, p[Number(lim[1]) - 1]);
     }],
     [/FROM social_posts p\s+JOIN social_channels c ON c\.id = p\.channel_id/i, (sql, p) => {
-      const now = p[1] ? new Date(p[1]).getTime() : Date.now();
-      return t.social_posts
-        .filter((r) => r.partner_id === p[0] && r.status === "queued" && new Date(r.scheduled_for).getTime() <= now)
-        .sort((a, b) => String(a.scheduled_for).localeCompare(String(b.scheduled_for)))
-        .slice(0, 50)
-        .map((r) => {
-          const c = t.social_channels.find((ch) => ch.id === r.channel_id);
-          return { ...r, channel: c.channel, connection_state: c.connection_state, encrypted_access_token: c.encrypted_access_token,
-            external_account_id: c.external_account_id, channel_partner_id: c.partner_id };
-        });
+      const text = cleanSql(sql);
+      const items = selectList(sql, 0);
+      const joinText = /JOIN social_channels c ON ([\s\S]*?) WHERE/i.exec(text)[1];
+      const limit = Number(/LIMIT (\d+)/i.exec(text)[1]);
+      const joined = [];
+      for (const post of t.social_posts) {
+        const c = t.social_channels.find((x) => evalSql(joinText, { params: p, rows: { p: post, c: x } }) === true);
+        if (!c) continue;
+        const env = { params: p, rows: { p: post, c } };
+        if (evalSql(whereOf(sql), env) === true) joined.push(env);
+      }
+      return orderRows(joined, orderOf(sql), (env) => env).slice(0, limit).map((env) => projectRow(items, env));
     }],
-    [/^\s*INSERT INTO action_log/i, (sql, p) => {
-      const row = { id: `log-${t.action_log.length + 1}`, target_id: p[3], executed_at: null, execute_error: null, order: sent.length };
-      t.action_log.push(row);
-      return [{ id: row.id }];
-    }],
-    [/^\s*UPDATE social_posts SET status = 'posting'/i, (sql, p) => { const r = byId(p[0]); r.status = "posting"; r.attempt += 1; return []; }],
-    [/^\s*UPDATE social_posts SET status = 'posted'/i, (sql, p) => {
-      const r = byId(p[0]); Object.assign(r, { status: "posted", external_post_id: p[1], last_error: null }); return [];
-    }],
-    [/^\s*UPDATE social_posts SET status = \$2, last_error = \$3/i, (sql, p) => {
-      const r = byId(p[0]); Object.assign(r, { status: p[1], last_error: p[2] }); return [];
-    }],
-    [/^\s*UPDATE action_log SET executed_at = now\(\), execute_error = \$2/i, (sql, p) => {
-      const r = t.action_log.find((l) => l.id === p[0]); Object.assign(r, { executed_at: "now", execute_error: p[1] }); return [];
-    }],
-    [/^\s*UPDATE action_log SET executed_at = now\(\) WHERE id = \$1/i, (sql, p) => {
-      const r = t.action_log.find((l) => l.id === p[0]); r.executed_at = "now"; return [];
-    }],
-    [/^\s*INSERT INTO partner_onboarding_tasks/i, (sql, p) => {
-      const row = { id: `task-${t.onboarding_tasks.length + 1}`, org_id: p[0], partner_id: p[1], task_key: p[2], title: p[3], detail: p[4], severity: p[5] };
-      t.onboarding_tasks.push(row);
-      return [row];
-    }],
-    [/^\s*INSERT INTO tasks/i, (sql, p) => { t.internal_tasks.push({ org_id: p[0], title: p[2] }); return [{ id: `it-${t.internal_tasks.length}` }]; }],
+    [/^\s*INSERT INTO action_log/i, (sql, p) => runInsert(sql, p, t.action_log, {
+      fill: (row) => ({ executed_at: null, execute_error: null, ...row, id: `log-${t.action_log.length + 1}` }),
+    }).rows],
+    [/^\s*UPDATE social_posts\b/i, (sql, p) => runUpdate(sql, p, t.social_posts)],
+    [/^\s*UPDATE action_log\b/i, (sql, p) => runUpdate(sql, p, t.action_log)],
+    [/^\s*INSERT INTO partner_onboarding_tasks/i, (sql, p) => runInsert(sql, p, t.onboarding_tasks, {
+      fill: (row) => ({ resolved_at: null, ...row, id: `task-${t.onboarding_tasks.length + 1}` }),
+    }).rows],
+    [/^\s*INSERT INTO tasks/i, (sql, p) => runInsert(sql, p, t.internal_tasks, {
+      fill: (row) => ({ ...row, id: `it-${t.internal_tasks.length + 1}` }),
+    }).rows],
   ];
 }
 
 const call = (who, body = {}, { query = {}, t = world() } = {}) => {
   sent.length = 0;
+  currentWorld = t;
   return run(handler, req("POST", { body, query }), [...who, ...rulesFor(t)]).then((out) => ({ ...out, t }));
 };
 const status = (t, id) => t.social_posts.find((p) => p.id === id).status;
@@ -147,6 +157,14 @@ describe("POST /api/social/publish", () => {
     assert.equal(status(t, "p-due-1"), "posted");
     assert.equal(status(t, "p-due-2"), "posted");
     assert.equal(t.social_posts.find((p) => p.id === "p-due-1").external_post_id, "ext-p-due-1");
+    // What the UPDATE statements say, as stored.
+    const one = t.social_posts.find((p) => p.id === "p-due-1");
+    const two = t.social_posts.find((p) => p.id === "p-due-2");
+    assert.ok(one.posted_at, "a post that went out says when");
+    assert.equal(one.attempt, 1, "one try used");
+    assert.equal(two.attempt, 2, "the earlier try plus this one");
+    assert.equal(two.last_error, null, "a success clears the earlier error");
+    assert.equal(two.external_post_id, "ext-p-due-2");
     for (const untouched of ["p-future", "p-held", "p-blocked", "p-dead-channel", "o-due"]) {
       assert.equal(t.social_posts.find((p) => p.id === untouched).attempt, 0, `${untouched} was not attempted`);
     }
@@ -161,7 +179,29 @@ describe("POST /api/social/publish", () => {
     pinned(due.sql, "oldest first", "ORDER BY p.scheduled_for LIMIT 50");
     // Logged before it goes out, finished after.
     assert.equal(t.action_log.length, 2);
-    assert.ok(t.action_log.every((l) => l.executed_at === "now" && l.execute_error === null));
+    assert.ok(t.action_log.every((l) => l.executed_at && l.execute_error === null), "finished after it went out, with no error");
+    assert.ok(sent.every((s) => s.loggedFirst && s.wasPosting), "each post was logged, and marked 'posting', BEFORE the platform was asked");
+    const logRow = t.action_log.find((l) => l.target_id === "p-due-1");
+    assert.deepEqual(
+      [logRow.org_id, logRow.partner_id, logRow.actor, logRow.target_type, logRow.rule_key, logRow.reason],
+      [ORG_ID, PARTNER, "agent", "social_post", "social_publish", "scheduled post to facebook"]);
+    assert.deepEqual([logRow.before, logRow.after], [{ status: "queued" }, { status: "posted" }], "what it was and what it became");
+    assert.deepEqual(logRow.undo_payload, { action: "delete_post", post_id: "p-due-1", channel: "facebook" }, "how to take it back");
+  });
+
+  test("one run takes at most fifty due posts, oldest first, and leaves the rest queued for the next run", async () => {
+    const t = world();
+    for (let k = 0; k < 60; k += 1) {
+      t.social_posts.push(post(`bulk-${String(k).padStart(2, "0")}`, PARTNER, { scheduled_for: new Date(Date.now() - (100 - k) * 60000 - 7 * HOUR).toISOString() }));
+    }
+    const { res } = await call(asPartner(PARTNER), {}, { t });
+    assert.equal(res.body.results.length, 50, "fifty, not every post that is due");
+    assert.equal(sent.length, 50, "fifty went to the platform");
+    const left = t.social_posts.filter((p) => p.partner_id === PARTNER && p.status === "queued" && new Date(p.scheduled_for) < new Date());
+    assert.equal(left.length, 13, "ten bulk posts and the three older ones wait for the next run");
+    // Oldest first: the bulk posts (7+ hours old) go before the 3-hour-old one.
+    assert.equal(status(t, "bulk-00"), "posted");
+    assert.equal(status(t, "p-due-1"), "queued", "newer than all fifty that went, so it waits");
   });
 
   test("a partner is pinned to their own id: a partner_id in the body publishes nothing for anyone else", async () => {
@@ -195,7 +235,12 @@ describe("POST /api/social/publish", () => {
     assert.equal(t.onboarding_tasks[0].task_key, "social_post_failed");
     assert.equal(t.onboarding_tasks[0].partner_id, PARTNER);
     assert.equal(t.onboarding_tasks[0].org_id, ORG_ID);
+    assert.deepEqual([t.onboarding_tasks[0].severity, t.onboarding_tasks[0].detail], ["warning", "platform said no"], "the person is told why");
+    assert.match(t.onboarding_tasks[0].title, /facebook post failed after 3 attempts/);
     assert.equal(t.internal_tasks.length, 1);
+    assert.deepEqual([t.internal_tasks[0].org_id, t.internal_tasks[0].assignee_role, t.internal_tasks[0].source_workflow],
+      [ORG_ID, "admin", "creative-factory-onboarding"], "a Fundhub admin owns the follow-up");
+    assert.match(t.internal_tasks[0].title, /^Partner onboarding: A scheduled facebook post failed/);
     failFor = new Set();
   });
 
@@ -230,6 +275,10 @@ describe("POST /api/social/publish", () => {
       assert.equal(status(t, "p-future"), "queued");
       assert.equal(status(t, "p-held"), "awaiting_approval");
     }
+    const walk = await call(asRole("owner"), { all: true });
+    const partnersRead = sqlOf(walk.fake, /SELECT DISTINCT p\.partner_id/)[0];
+    assert.equal(partnersRead.params[1], 50, "at most fifty partners in one walk");
+    pinned(partnersRead.sql, "queued posts that are due, with a date", "WHERE p.status = 'queued' AND p.scheduled_for IS NOT NULL AND p.scheduled_for <= COALESCE($1::timestamptz, now())");
     const mine = await call(asPartner(PARTNER), { all: true });
     assert.equal(mine.res.statusCode, 403);
     assert.equal(mine.res.body.error, "staff_only_for_all");

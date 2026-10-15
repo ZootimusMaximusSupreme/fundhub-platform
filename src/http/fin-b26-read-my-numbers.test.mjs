@@ -12,31 +12,41 @@ import {
   run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
+import { cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep, splitTop } from "../testing/fin-b26-sql.mjs";
 
 const OTHER_CLOSER = "5b000000-0000-4000-8000-000000000002";
 const NOW = new Date();
 const monthStart = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
 const inMonth = (hours) => new Date(monthStart.getTime() + hours * 3600e3).toISOString();
 const lastMonth = (hours) => new Date(monthStart.getTime() - hours * 3600e3).toISOString();
+// 32 days after the first of this month is always inside NEXT month, whatever this month's length.
+const nextMonth = (hours) => new Date(monthStart.getTime() + 32 * 86400e3 + hours * 3600e3).toISOString();
 
 const call = (staff, outcome, cash, loggedAt, over = {}) => ({
   org_id: ORG_ID, staff_id: staff, outcome, cash_collected_cents: cash, logged_at: loggedAt, is_demo: false, ...over,
 });
 
-function world() {
+function world({ withDemo = false } = {}) {
   return {
+    staff: [
+      { id: STAFF_ID, org_id: ORG_ID, name: "Casey Closer", role: "closer", email: "casey@example.test" },
+      { id: OTHER_CLOSER, org_id: ORG_ID, name: "Other Closer", role: "closer", email: "other@example.test" },
+    ],
     call_outcomes: [
-      // This closer, this month: 2 deposits, a downsell and a no-sale held; one no-show.
+      // This closer, this month: 2 deposits, a downsell and a no-sale held; two no-shows.
       call(STAFF_ID, "deposit", 150000, inMonth(1)),
       call(STAFF_ID, "deposit", 50000, inMonth(2)),
       call(STAFF_ID, "downsell", 20000, inMonth(3)),
       call(STAFF_ID, "no_sale", 0, inMonth(4)),
       call(STAFF_ID, "no_show", 0, inMonth(5)),
-      // Not counted: a demo row, another company's row for the same closer, last month's row.
-      call(STAFF_ID, "deposit", 999900, inMonth(6), { is_demo: true }),
+      call(STAFF_ID, "no_show", 0, inMonth(6)),
+      // Not counted: another company's row for the same closer, last month's rows, next month's row.
       call(STAFF_ID, "deposit", 888800, inMonth(7), { org_id: OTHER_ORG_ID }),
       call(STAFF_ID, "deposit", 70000, lastMonth(24)),
       call(STAFF_ID, "no_sale", 0, lastMonth(48)),
+      call(STAFF_ID, "deposit", 55500, nextMonth(1)),
+      // A demo row: left out of this closer's own numbers.
+      ...(withDemo ? [call(STAFF_ID, "deposit", 999900, inMonth(8), { is_demo: true })] : []),
       // Another closer in this company.
       call(OTHER_CLOSER, "deposit", 300000, inMonth(1)),
       call(OTHER_CLOSER, "deposit", 100000, inMonth(2)),
@@ -45,39 +55,47 @@ function world() {
   };
 }
 
+/**
+ * The statements, answered by reading them: the WHERE as written (company, closer, window, demo flag),
+ * and every aggregate column the SELECT names (count FILTER, SUM) worked out from the rows that
+ * WHERE keeps. The team table is read the same way: its join, its roster condition, its GROUP BY, its
+ * aggregates and its ORDER BY.
+ */
 function rulesFor(t) {
-  const window = (rows, p) => rows.filter((r) => r.org_id === p[0] && r.staff_id === p[1]
-    && r.logged_at >= p[2] && r.logged_at < p[3]);
   return [
-    [/FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2\s+AND logged_at >= \$3 AND logged_at < \$4/i, (sql, p) => {
-      // The demo exclusion is read from the statement's own text.
-      const noDemo = /COALESCE\(is_demo, false\) = false/.test(sql);
-      const rows = window(t.call_outcomes, p).filter((r) => !noDemo || !r.is_demo);
-      const n = (fn) => rows.filter(fn).length;
-      return [{
-        cents: rows.reduce((sum, r) => sum + r.cash_collected_cents, 0),
-        deposits: n((r) => r.outcome === "deposit"),
-        downsells: n((r) => r.outcome === "downsell"),
-        no_shows: n((r) => r.outcome === "no_show"),
-        held: n((r) => r.outcome !== "no_show"),
-        logged: rows.length,
-      }];
+    [/FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      const kept = keep(t.call_outcomes, whereOf(sql), p, { alias: "call_outcomes" });
+      const group = kept.map((r) => ({ params: p, row: r, rows: { call_outcomes: r } }));
+      return [projectRow(items, { params: p, group, rows: {} })];
     }],
     [/FROM call_outcomes o\s+JOIN clients c ON c\.id = o\.client_id AND c\.org_id = o\.org_id\s+WHERE o\.org_id = \$1\s+AND o\.outcome = 'deposit'/i, (sql, p) => {
+      // Deposit-to-funded: not the subject of this row; the staff condition is the only part read here.
       const rows = t.call_outcomes.filter((r) => r.org_id === p[0] && r.outcome === "deposit" && r.logged_at >= p[1] && r.logged_at < p[2]
         && (p[3] === undefined || r.staff_id === p[3]));
       return [{ deposits: rows.length, funded: 0 }];
     }],
     [/FROM call_outcomes o\s+JOIN staff s ON s\.id = o\.staff_id/i, (sql, p) => {
-      const byStaff = new Map();
-      for (const r of t.call_outcomes.filter((x) => x.org_id === p[0] && x.logged_at >= p[1] && x.logged_at < p[2])) {
-        const cur = byStaff.get(r.staff_id) || { staff_id: r.staff_id, name: r.staff_id === STAFF_ID ? "Casey Closer" : "Other Closer", cash_cents: 0, deposits: 0, held: 0 };
-        cur.cash_cents += r.cash_collected_cents;
-        if (r.outcome === "deposit") cur.deposits += 1;
-        if (r.outcome !== "no_show") cur.held += 1;
-        byStaff.set(r.staff_id, cur);
+      const text = cleanSql(sql);
+      const items = selectList(sql, 0);
+      const joinText = /JOIN staff s ON ([\s\S]*?) WHERE/i.exec(text)[1];
+      const groupText = /GROUP BY ([\s\S]*?) ORDER BY/i.exec(text)[1];
+      const where = whereOf(sql);
+      const kept = [];
+      for (const o of t.call_outcomes) {
+        for (const s of t.staff) {
+          const env = { params: p, rows: { o, s } };
+          if (evalSql(joinText, env) === true && evalSql(where, env) === true) kept.push(env);
+        }
       }
-      return [...byStaff.values()].sort((a, b) => b.cash_cents - a.cash_cents);
+      const groups = new Map();
+      for (const env of kept) {
+        const key = splitTop(groupText).map((e) => String(evalSql(e, env))).join("|");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(env);
+      }
+      const out = [...groups.values()].map((g) => projectRow(items, { ...g[0], group: g }));
+      return orderRows(out, orderOf(sql), (row) => ({ row }));
     }],
   ];
 }
@@ -90,20 +108,27 @@ describe("GET /api/read/my-numbers", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.staff_id, STAFF_ID);
     assert.equal(res.body.month.calls_held, 4);
-    assert.equal(res.body.month.no_shows, 1);
+    assert.equal(res.body.month.no_shows, 2, "two calls nobody showed up for");
     assert.equal(res.body.month.deposits_closed, 2);
-    assert.equal(res.body.month.downsells, 1);
-    assert.equal(res.body.month.show_rate, 4 / 5, "held over held plus no-shows");
+    assert.equal(res.body.month.downsells, 1, "one downsell, not the deposits and not the no-shows");
+    assert.equal(res.body.month.show_rate, 4 / 6, "held over held plus no-shows");
     assert.equal(res.body.month.close_rate, 2 / 4, "deposits over calls held");
-    assert.equal(res.body.pace.cash_cents, 220000, "demo rows, last month and another company are not cash");
+    assert.equal(res.body.pace.deposits, 2);
+    assert.equal(res.body.pace.cash_cents, 220000, "last month, next month and another company are not cash");
     assert.equal(res.body.pace.cash_display, "$2,200");
     assert.deepEqual(res.body.month.prior, { deposits: 1, close_rate: 1 / 2 }, "last month: one deposit in two calls held");
     assert.equal(res.body.period.label, "this month");
     assert.equal(new Date(res.body.period.start).getTime(), monthStart.getTime());
-    // The team table lists both closers. (Its cash counts demo rows that this closer's own cash line leaves
-    // out: a product finding written in the manifest, not judged here.)
+    // The team table: best cash first, each closer's own deposits and close rate (deposits over calls
+    // held, a no-show is not a call held), and this closer's rank in it.
+    // (Its cash counts demo rows that this closer's own cash line leaves out: a product finding written
+    // in the manifest. This world has no demo row, so that difference is not judged here.)
     assert.equal(res.body.pace.team_size, 2);
-    assert.deepEqual(res.body.team.map((m) => m.staff_id).sort(), [OTHER_CLOSER, STAFF_ID].sort());
+    assert.deepEqual(res.body.team.map((m) => [m.rank, m.staff_id, m.name, m.cash_cents, m.deposits, m.close_rate]), [
+      [1, OTHER_CLOSER, "Other Closer", 400000, 2, 1],
+      [2, STAFF_ID, "Casey Closer", 220000, 2, 0.5],
+    ], "the team, ranked by cash");
+    assert.equal(res.body.pace.rank, 2, "this closer is second");
     // The words of the count, as the statement must spell them.
     const q = sqlOf(fake, /FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2/);
     assert.equal(q.length, 2, "this month and last month");
@@ -114,6 +139,24 @@ describe("GET /api/read/my-numbers", () => {
     pinned(q[0].sql, "deposits", "count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits");
     pinned(q[0].sql, "cash", "COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents");
     assert.equal(wrote(fake), false);
+  });
+
+  test("a demo row is left out of the closer's own numbers", async () => {
+    const { res } = await get(asRole("closer"), {}, world({ withDemo: true }));
+    assert.equal(res.body.pace.cash_cents, 220000, "the 9,999 demo deposit is not cash");
+    assert.equal(res.body.pace.deposits, 2);
+    assert.equal(res.body.month.deposits_closed, 2);
+    assert.equal(res.body.month.calls_held, 4);
+  });
+
+  test("the company is the session's: another company's id in the address changes nothing", async () => {
+    const { res, fake } = await get(asRole("closer"), { org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.pace.cash_cents, 220000);
+    assert.equal(res.body.month.calls_held, 4);
+    for (const call of sqlOf(fake, /FROM call_outcomes/)) assert.equal(call.params[0], ORG_ID, "every read is bound to the signed-in company");
+    const finance = await get(asRole("owner"), { staff_id: OTHER_CLOSER, org_id: OTHER_ORG_ID });
+    assert.equal(finance.res.body.pace.cash_cents, 400000);
   });
 
   test("a closer cannot ask for another closer; the address changes nothing and nothing is read", async () => {
@@ -133,6 +176,8 @@ describe("GET /api/read/my-numbers", () => {
       assert.equal(res.body.month.calls_held, 2);
       assert.equal(res.body.month.close_rate, 1);
       assert.equal(res.body.month.show_rate, 2 / 3);
+      assert.equal(res.body.month.no_shows, 1);
+      assert.equal(res.body.pace.rank, 1, `${role}: the other closer leads the team`);
       assert.deepEqual(sqlOf(fake, /FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2/)[0].params.slice(0, 2), [ORG_ID, OTHER_CLOSER]);
     }
     const bad = await get(asRole("owner"), { staff_id: "not-a-uuid" });
@@ -181,6 +226,10 @@ describe("GET /api/read/my-numbers", () => {
     const noOrg = await get(asRole("closer", { org_id: null }));
     assert.equal(noOrg.res.statusCode, 403);
     assert.equal(sqlOf(noOrg.fake, /FROM call_outcomes/).length, 0);
+    // A company id typed into the address does not give a company-less session a company.
+    const typedOrg = await get(asRole("closer", { org_id: null }), { org_id: ORG_ID });
+    assert.equal(typedOrg.res.statusCode, 403);
+    assert.equal(sqlOf(typedOrg.fake, /FROM call_outcomes/).length, 0);
     const nobody = await run(handler, req("GET"), rulesFor(world()));
     assert.equal(nobody.res.statusCode, 401);
     const post = await run(handler, req("POST", { body: {} }), [...asRole("closer"), ...rulesFor(world())]);

@@ -12,7 +12,10 @@ import assert from "node:assert/strict";
 import handler from "../../api/social/posts.mjs";
 import { clearRuleCache } from "../compliance/screen.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, writes, wrote, pinned, txTables,
+  cleanSql, selectList, projectRow, orderRows, orderOf, whereOf, keep, runUpdate, runInsert,
+} from "../testing/fin-b26-sql.mjs";
+import {
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, writes, wrote, pinned, txTables,
   ORG_ID, OTHER_ORG_ID, PARTNER, OTHER_PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
 
@@ -63,83 +66,42 @@ function world(over = {}) {
   return t;
 }
 
+/**
+ * The statements, answered by reading them: every WHERE as written (so a guard such as "AND status =
+ * 'awaiting_approval'" is a real condition), every UPDATE's SET list and RETURNING list, every INSERT's
+ * column list, and the named columns of the queue read. Nothing about a stored status, an approver or
+ * a returned row is written by hand here.
+ */
 function rulesFor(t) {
   const tx = txTables(t);
   let n = 0;
   const q = (re, fn) => [re, fn];
+  const project = (table, sql, p, rows) => {
+    const items = selectList(sql, 0);
+    return rows.map((r) => projectRow(items, { params: p, row: r, rows: { [table]: r } }));
+  };
+  const select = (table, rows) => (sql, p) =>
+    project(table, sql, p, keep(rows, whereOf(sql), p, { alias: table }).slice(0, 1));
   return [
     ...tx.rules,
-    q(/FROM marketing_content_queue\s+WHERE partner_id = \$1\s+ORDER BY created_at DESC/i, (sql, p) =>
-      inSql(t.marketing_content_queue, sql, p).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100)),
-    q(/FROM partner_module_settings\s+WHERE partner_id = \$1$/i, (sql, p) => inSql(t.partner_module_settings, sql, p).slice(0, 1)),
-    q(/SELECT approve_before_launch FROM partner_module_settings/i, (sql, p) => inSql(t.partner_module_settings, sql, p).slice(0, 1)),
-    q(/SELECT org_id FROM partners WHERE id = \$1/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ org_id: r.org_id }))),
-    q(/^\s*SELECT \* FROM marketing_content_queue/i, (sql, p) => inSql(t.marketing_content_queue, sql, p).slice(0, 1)),
-    q(/^\s*UPDATE social_posts\s+SET approved_at = now\(\)/i, (sql, p) => {
-      // The guard that the post must still be held is read from the statement's own text.
-      const guarded = /WHERE id = \$1 AND status = 'awaiting_approval'/.test(sql);
-      const post = t.social_posts.find((r) => r.id === p[0] && (!guarded || r.status === "awaiting_approval"));
-      if (!post) return [];
-      Object.assign(post, { approved_at: "now", approved_by: p[1], status: "queued" });
-      return [{ id: post.id, status: post.status, approved_at: post.approved_at }];
+    q(/FROM marketing_content_queue\s+WHERE partner_id = \$1\s+ORDER BY created_at DESC/i, (sql, p) => {
+      const limit = Number(/LIMIT (\d+)/i.exec(cleanSql(sql))[1]);
+      const kept = keep(t.marketing_content_queue, whereOf(sql), p, { alias: "marketing_content_queue" });
+      const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
+      return project("marketing_content_queue", sql, p, ordered.slice(0, limit));
     }),
-    q(/^\s*UPDATE social_posts\s+SET status = 'blocked',\s+blocked_reasons = COALESCE/i, (sql, p) => {
-      const guarded = /WHERE id = \$1 AND status = 'awaiting_approval'/.test(sql);
-      const post = t.social_posts.find((r) => r.id === p[0] && (!guarded || r.status === "awaiting_approval"));
-      if (!post) return [];
-      post.status = "blocked";
-      post.blocked_reasons = [...(post.blocked_reasons || []), ...JSON.parse(p[1])];
-      return [{ id: post.id, status: post.status }];
-    }),
-    q(/^\s*UPDATE social_posts SET status = 'blocked', blocked_reasons = \$2::jsonb/i, (sql, p) => {
-      const post = t.social_posts.find((r) => r.id === p[0]);
-      Object.assign(post, { status: "blocked", blocked_reasons: JSON.parse(p[1]) });
-      return [{ ...post }];
-    }),
-    q(/^\s*UPDATE social_posts SET status = \$2 WHERE id = \$1/i, (sql, p) => {
-      const post = t.social_posts.find((r) => r.id === p[0]);
-      post.status = p[1];
-      return [{ ...post }];
-    }),
-    q(/^\s*UPDATE marketing_content_queue\s+SET status = 'scheduled'/i, (sql, p) => {
-      const row = t.marketing_content_queue.find((r) => r.id === p[0]);
-      row.status = "scheduled";
-      return [{ ...row }];
-    }),
-    q(/^\s*UPDATE marketing_content_queue\s+SET status = 'blocked',\s+blocked_reasons = COALESCE/i, (sql, p) => {
-      const row = t.marketing_content_queue.find((r) => r.id === p[0]);
-      row.status = "blocked";
-      row.blocked_reasons = [...(row.blocked_reasons || []), ...JSON.parse(p[1])];
-      return [{ ...row }];
-    }),
-    q(/^\s*UPDATE marketing_content_queue\s+SET status = 'discarded'/i, (sql, p) => {
-      const row = t.marketing_content_queue.find((r) => r.id === p[0]);
-      row.status = "discarded";
-      return [{ ...row }];
-    }),
-    q(/^\s*UPDATE marketing_content_queue\s+SET status = 'queued',\s+scheduled_for = COALESCE/i, (sql, p) => {
-      const row = t.marketing_content_queue.find((r) => r.id === p[0]);
-      row.status = "queued";
-      row.scheduled_for = p[1] || row.scheduled_for;
-      return [{ ...row }];
-    }),
-    q(/^\s*UPDATE marketing_content_queue\s+SET status = \$2,\s+social_post_id = \$3/i, (sql, p) => {
-      const row = t.marketing_content_queue.find((r) => r.id === p[0]);
-      Object.assign(row, { status: p[1], social_post_id: p[2], blocked_reasons: JSON.parse(p[3]), scheduled_for: p[4] || row.scheduled_for });
-      return [{ ...row }];
-    }),
-    q(/FROM social_channels WHERE id = \$1/i, (sql, p) => inSql(t.social_channels, sql, p).slice(0, 1)),
-    q(/^\s*INSERT INTO social_posts/i, (sql, p) => {
-      const row = { id: `a${++n}000000-0000-4000-8000-00000000000${n}`, org_id: p[0], partner_id: p[1], channel_id: p[2], asset_id: p[3],
-        caption: p[4], offer_type: p[5], status: "draft", scheduled_for: p[6], approved_at: null, approved_by: null, blocked_reasons: [] };
-      t.social_posts.push(row);
-      return [{ ...row }];
-    }),
-    q(/FROM compliance_rules/i, (sql, p) => inSql(t.compliance_rules.map((r) => ({ ...r, org_id: ORG_ID })), "WHERE org_id = $1", p)),
-    q(/^\s*INSERT INTO compliance_screenings/i, (sql, p) => {
-      t.compliance_screenings.push({ org_id: p[0], partner_id: p[1], subject_id: p[2], offer_type: p[3], state: p[4], reasons: JSON.parse(p[5]) });
-      return [];
-    }),
+    q(/FROM partner_module_settings\s+WHERE partner_id = \$1$/i, select("partner_module_settings", t.partner_module_settings)),
+    q(/SELECT approve_before_launch FROM partner_module_settings/i, select("partner_module_settings", t.partner_module_settings)),
+    q(/SELECT org_id FROM partners WHERE id = \$1/i, select("partners", t.partners)),
+    q(/^\s*SELECT \* FROM marketing_content_queue/i, select("marketing_content_queue", t.marketing_content_queue)),
+    q(/^\s*UPDATE social_posts\b/i, (sql, p) => runUpdate(sql, p, t.social_posts)),
+    q(/^\s*UPDATE marketing_content_queue\b/i, (sql, p) => runUpdate(sql, p, t.marketing_content_queue)),
+    q(/FROM social_channels WHERE id = \$1/i, select("social_channels", t.social_channels)),
+    q(/^\s*INSERT INTO social_posts/i, (sql, p) => runInsert(sql, p, t.social_posts, {
+      fill: (row) => ({ approved_at: null, approved_by: null, blocked_reasons: [], ...row, id: `a${++n}000000-0000-4000-8000-00000000000${n}` }),
+    }).rows),
+    q(/FROM compliance_rules/i, (sql, p) => keep(t.compliance_rules.map((r) => ({ ...r, org_id: ORG_ID })), "org_id = $1", p)),
+    q(/^\s*INSERT INTO compliance_screenings/i, (sql, p) => runInsert(sql, p, t.compliance_screenings).rows),
   ];
 }
 
@@ -164,12 +126,31 @@ describe("GET /api/social/posts (the queue read)", () => {
     assert.equal(byId[Q(4)].blocked_reasons[0].message, "no guarantees");
     assert.equal(byId[Q(7)].status, "scheduled");
     assert.equal(byId[Q(7)].social_post_id, POST(7));
+    // Every named column is read from the statement's own SELECT list.
+    assert.deepEqual([byId[Q(1)].caption, byId[Q(1)].offer_type, byId[Q(1)].scheduled_for, byId[Q(1)].social_post_id],
+      ["Ask us how repair works", "funding", "2026-10-20T16:00:00.000Z", null]);
+    assert.ok(res.body.items.every((i) => i.created_at && i.updated_at && i.id && i.status));
+    assert.deepEqual(byId[Q(1)].blocked_reasons, [], "a held-for-nothing draft has an empty reasons list, not a missing one");
     const sorted = res.body.items.map((i) => i.created_at);
     assert.deepEqual(sorted, [...sorted].sort().reverse());
     const read = sqlOf(fake, /FROM marketing_content_queue/)[0];
     assert.deepEqual(read.params, [PARTNER]);
     pinned(read.sql, "this partner, newest first, 100 at most", "WHERE partner_id = $1 ORDER BY created_at DESC LIMIT 100");
     assert.equal(wrote(fake), false);
+  });
+
+  test("a long queue reads the newest hundred and no more", async () => {
+    const t = world();
+    for (let k = 0; k < 120; k += 1) {
+      t.marketing_content_queue.push(queueRow(`b${String(k).padStart(7, "0")}-0000-4000-8000-000000000000`, PARTNER, {
+        created_at: new Date(Date.UTC(2026, 8, 1, 0, 0, k)).toISOString(),
+      }));
+    }
+    const { res } = await call("GET", asPartner(PARTNER), {}, t);
+    assert.equal(res.body.items.length, 100, "a hundred rows, not the whole table");
+    const times = res.body.items.map((i) => i.created_at);
+    assert.deepEqual(times, [...times].sort().reverse(), "newest first");
+    assert.ok(res.body.items.every((i) => i.created_at >= "2026-09-01T00:00:20.000Z" || i.created_at.startsWith("2026-10")), "the oldest twenty-plus fall off the end");
   });
 
   test("a partner is pinned to their own id; staff name a partner; a client, an affiliate and nobody are refused", async () => {
@@ -263,7 +244,13 @@ describe("POST /api/social/posts", () => {
       assert.equal(res.body.item.status, "scheduled");
       const lookup = sqlOf(fake, /FROM marketing_content_queue\s+WHERE id/)[0];
       assert.deepEqual(lookup.params, [Q(2), PARTNER, ORG_ID], "the caller's own company is bound on an approval");
+      assert.equal(res.body.item.id, Q(2), "the answer is the queue row that was approved");
     }
+    // A company id sent in the address or the body is never the company that is bound.
+    const hostile = world();
+    const sneaky = await call("POST", owner, { query: { partner_id: PARTNER, org_id: OTHER_ORG_ID }, body: { id: Q(2), action: "approve", org_id: OTHER_ORG_ID } }, hostile);
+    assert.equal(sneaky.res.statusCode, 200);
+    assert.deepEqual(sqlOf(sneaky.fake, /FROM marketing_content_queue\s+WHERE id/)[0].params, [Q(2), PARTNER, ORG_ID]);
   });
 
   test("a refusal blocks the post for good and writes the reason a person gave it, keeping the old reasons", async () => {

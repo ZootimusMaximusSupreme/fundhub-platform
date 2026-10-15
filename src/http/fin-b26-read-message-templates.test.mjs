@@ -12,6 +12,7 @@ import {
   run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
+import { cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep } from "../testing/fin-b26-sql.mjs";
 
 const T = (id, key, channel, over = {}) => ({
   id, org_id: ORG_ID, template_key: key, channel, subject: channel === "email" ? `Subject of ${key}` : null,
@@ -45,17 +46,20 @@ function world(over = {}) {
 
 function rulesFor(t, { journeysFail = false } = {}) {
   return [
+    // The library statement is read from its own text: WHERE (company, channel, key search),
+    // ORDER BY, LIMIT/OFFSET, the join to staff, and every output column it names.
     [/FROM message_templates t\s+LEFT JOIN staff s/i, (sql, p) => {
-      // channel and key filters follow the statement: ($3 IS NULL OR t.channel = $3), ILIKE for the search.
-      let rows = inSql(t.message_templates, sql, p);
-      const q = p[3];
-      if (q != null && /t\.template_key ILIKE '%' \|\| \$4 \|\| '%'/.test(sql)) {
-        rows = rows.filter((r) => r.template_key.toLowerCase().includes(String(q).toLowerCase()));
-      }
-      return rows
-        .sort((a, b) => a.channel.localeCompare(b.channel) || a.template_key.localeCompare(b.template_key))
-        .slice(p[1], p[1] + p[0])
-        .map((r) => ({ ...r, approved_by_name: (t.staff.find((s) => s.id === r.approved_by) || {}).name || null }));
+      const text = cleanSql(sql);
+      const items = selectList(sql, 0);
+      const joinText = /LEFT JOIN staff s ON ([\s\S]*?) WHERE/i.exec(text)[1];
+      const lim = /LIMIT \$(\d+) OFFSET \$(\d+)/i.exec(text);
+      const limit = p[Number(lim[1]) - 1]; const offset = p[Number(lim[2]) - 1];
+      const kept = keep(t.message_templates, whereOf(sql), p, { alias: "t" });
+      const ordered = orderRows(kept, orderOf(sql), (r) => ({ params: p, rows: { t: r } }));
+      return ordered.slice(offset, offset + limit).map((r) => {
+        const s = t.staff.find((x) => evalSql(joinText, { params: p, rows: { s: x, t: r } }) === true) || null;
+        return projectRow(items, { params: p, rows: { t: r, s } });
+      });
     }],
     [/FROM journeys WHERE org_id = \$1/i, (sql, p) => (journeysFail ? new Error("journeys table missing") : inSql(t.journeys, sql, p))],
   ];
@@ -77,6 +81,16 @@ describe("GET /api/read/message-templates", () => {
     assert.equal(first.approved_by_name, "Olive Owner");
     assert.equal(first.approved_body_sha, "abc");
     assert.equal(first.compliance_passed, true);
+    // Every named column comes from the statement's own SELECT list.
+    assert.deepEqual([first.id, first.channel, first.approved_at, first.approved_by],
+      ["t1", "email", "2026-09-03T00:00:00.000Z", STAFF_ID]);
+    assert.deepEqual([first.created_at, first.updated_at, first.source_doc],
+      ["2026-09-01T00:00:00.000Z", "2026-09-02T00:00:00.000Z", null]);
+    const second = res.body.items.find((i) => i.template_key === "EMAIL-QQ-JOURNEY-ONLY");
+    assert.deepEqual([second.approved_at, second.approved_by, second.approved_by_name, second.approved_body_sha], [null, null, null, null],
+      "nobody has approved this one, and it says so");
+    assert.equal(second.subject, "Subject of EMAIL-QQ-JOURNEY-ONLY");
+    assert.equal(res.body.items.find((i) => i.template_key === "SMS-ZZ-ANOTHER").channel, "sms");
     const list = sqlOf(fake, /FROM message_templates t/)[0];
     assert.equal(list.params[4], ORG_ID);
     pinned(list.sql, "this company only", "WHERE t.org_id = $5::uuid");
@@ -84,6 +98,15 @@ describe("GET /api/read/message-templates", () => {
     pinned(list.sql, "ordered", "ORDER BY t.channel, t.template_key LIMIT $1 OFFSET $2");
     assert.deepEqual(sqlOf(fake, /FROM journeys/)[0].params, [ORG_ID], "the journeys read is this company's too");
     assert.equal(wrote(fake), false);
+  });
+
+  test("the company is the session's: another company's id in the address changes nothing, for the copy or for the journeys", async () => {
+    const { res, fake } = await get(asRole("owner"), { org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID });
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.body.items.every((i) => i.template_key !== "SMS-FOREIGN-COPY"));
+    assert.equal(res.body.items.length, 4);
+    assert.equal(sqlOf(fake, /FROM message_templates t/)[0].params[4], ORG_ID);
+    assert.deepEqual(sqlOf(fake, /FROM journeys/)[0].params, [ORG_ID]);
   });
 
   test("each row says who uses it: workflow code, a saved journey step, or nothing yet", async () => {

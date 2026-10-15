@@ -10,9 +10,10 @@ import assert from "node:assert/strict";
 
 import handler from "../../api/scripts/write.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, writes, wrote, pinned, txTables,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, writes, wrote, pinned, txTables,
   ORG_ID, OTHER_ORG_ID, PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
+import { selectList, projectRow, whereOf, keep, runInsert, runUpdate } from "../testing/fin-b26-sql.mjs";
 
 const HOUSE = "b1000000-0000-4000-8000-000000000001";
 const S = (n) => `5${n}000000-0000-4000-8000-00000000000${n}`;
@@ -45,45 +46,49 @@ function world(over = {}) {
   };
 }
 
+/**
+ * The statements, answered by reading them. The INSERT is placed by its own column list and VALUES
+ * list (so a column or parameter put in the wrong place stores words in the wrong field), the
+ * RETURNING list decides what comes back, the archive UPDATE applies its own SET list, and the label
+ * upsert follows its own ON CONFLICT ... WHERE. What the database adds itself (an id, a root that is its
+ * own id for a new script, the draft/chris defaults) is `fill`.
+ */
 function rulesFor(t, { failInsertOn = null, archiveRaces = false } = {}) {
   const tx = txTables(t);
+  const pick = (table, sql, p, rows) => {
+    const items = selectList(sql, 0);
+    return keep(rows, whereOf(sql), p, { alias: table })
+      .slice(0, 1).map((r) => projectRow(items, { params: p, row: r, rows: { [table]: r } }));
+  };
   return [
     ...tx.rules,
-    [/FROM ad_scripts WHERE id = \$1\s+FOR UPDATE/i, (sql, p) => inSql(t.ad_scripts, sql, p).slice(0, 1)],
-    [/FROM ad_scripts\s+WHERE root_script_id = \$1 AND archived_at IS NULL/i, (sql, p) =>
-      t.ad_scripts.filter((r) => r.root_script_id === p[0] && !r.archived_at).map(({ id, version, body, parts }) => ({ id, version, body, parts }))],
-    [/FROM partners WHERE org_id = \$1 AND slug = \$2/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ id: r.id }))],
-    [/SELECT id, org_id FROM partners WHERE id = \$1/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ id: r.id, org_id: r.org_id }))],
+    [/FROM ad_scripts WHERE id = \$1\s+FOR UPDATE/i, (sql, p) => pick("ad_scripts", sql, p, t.ad_scripts)],
+    [/FROM ad_scripts\s+WHERE root_script_id = \$1 AND archived_at IS NULL/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.ad_scripts, whereOf(sql), p, { alias: "ad_scripts" }).map((r) => projectRow(items, { params: p, row: r, rows: { ad_scripts: r } }));
+    }],
+    [/FROM partners WHERE org_id = \$1 AND slug = \$2/i, (sql, p) => pick("partners", sql, p, t.partners)],
+    [/SELECT id, org_id FROM partners WHERE id = \$1/i, (sql, p) => pick("partners", sql, p, t.partners)],
     [/^\s*UPDATE ad_scripts\s+SET archived_at = now\(\)/i, (sql, p) => {
-      if (archiveRaces) return { rows: [], rowCount: 0 };
-      const guarded = /AND archived_at IS NULL/.test(sql);
-      const row = t.ad_scripts.find((r) => r.id === p[0] && (!guarded || !r.archived_at));
-      if (!row) return { rows: [], rowCount: 0 };
-      row.archived_at = "now";
-      if (/CASE WHEN source = 'machine' THEN 'superseded' ELSE status END/.test(sql) && row.source === "machine") row.status = "superseded";
-      return { rows: [], rowCount: 1 };
+      // A race, played honestly: between the locked read and this write another save archived the same
+      // version. The statement then archives nothing only if it still says "AND archived_at IS NULL".
+      if (archiveRaces) {
+        const row = t.ad_scripts.find((r) => r.id === p[0]);
+        if (row) row.archived_at = "archived-by-the-other-save";
+      }
+      return runUpdate(sql, p, t.ad_scripts);
     }],
     [/^\s*INSERT INTO ad_scripts/i, (sql, p) => {
       if (failInsertOn) return failInsertOn;
-      const id = `9${++seq}000000-0000-4000-8000-00000000000${seq}`;
-      const [org, partner, parent, version, title, body, hook, type, lane, angle, hookKey, offer, root, adId, status] = p;
-      const row = {
-        id, org_id: org, partner_id: partner, parent_script_id: parent, version, title, body, hook_text: hook,
-        script_type: type, lane, angle_key: angle, hook_key: hookKey, offer_key: offer,
-        root_script_id: root || id, ad_id: adId, status, source: "chris", archived_at: null,
-        created_at: "now", updated_at: "now",
-      };
-      t.ad_scripts.push(row);
-      return [{ ...row }];
+      const out = runInsert(sql, p, t.ad_scripts, {
+        fill: (row) => {
+          const id = `9${++seq}000000-0000-4000-8000-00000000000${seq}`;
+          return { source: "chris", archived_at: null, created_at: "now", updated_at: "now", ...row, id, root_script_id: row.root_script_id || id };
+        },
+      });
+      return out.rows;
     }],
-    [/^\s*INSERT INTO ad_labels/i, (sql, p) => {
-      const [org, kind, key, name] = p;
-      const hit = t.ad_labels.find((r) => r.org_id === org && r.kind === kind && r.key === key);
-      if (!hit) { t.ad_labels.push({ org_id: org, kind, key, name }); return []; }
-      // Whether a typed name survives is read from the statement: only a blank name may be filled.
-      if (!/WHERE ad_labels\.name IS NULL/.test(sql) || hit.name === null) hit.name = name;
-      return [];
-    }],
+    [/^\s*INSERT INTO ad_labels/i, (sql, p) => runInsert(sql, p, t.ad_labels).rows],
   ];
 }
 
@@ -110,6 +115,13 @@ describe("POST /api/scripts/write: a new script", () => {
     assert.equal(row.status, "draft", "a status is the machine's, never sent");
     assert.equal(row.parent_script_id, null);
     assert.equal(row.root_script_id, row.id, "a new script is its own root");
+    // What the screen gets back is the statement's own RETURNING list, and it must say what was stored.
+    const back = res.body.script;
+    assert.deepEqual([back.id, back.org_id, back.partner_id, back.version, back.status, back.parent_script_id, back.root_script_id],
+      [row.id, ORG_ID, HOUSE, 1, "draft", null, row.id], "the saved script, as stored");
+    assert.deepEqual([back.title, back.body, back.hook_text, back.script_type, back.lane, back.angle_key, back.hook_key, back.offer_key],
+      ["Denial hook", "  Most people think a denial is the end.  ", "Most people think...", "story_hook", "funding600", "denial_angle", "denial_opener", "slo"],
+      "every field landed in its own column");
     assert.equal(row.body, "  Most people think a denial is the end.  ", "the words are stored as typed");
     assert.equal(row.title, "Denial hook");
     assert.equal(row.hook_text, "Most people think...");
@@ -170,6 +182,8 @@ describe("POST /api/scripts/write: a rewrite", () => {
     assert.equal(row.ad_id, 41, "the same ad number");
     assert.equal(row.partner_id, HOUSE, "the rewrite stays with the parent's partner");
     assert.equal(row.status, "draft");
+    assert.deepEqual([res.body.script.id, res.body.script.version, res.body.script.parent_script_id, res.body.script.root_script_id, res.body.script.ad_id, res.body.script.body],
+      [row.id, 2, S(1), ROOT, 41, "A better opening."], "the answer carries the new version, its parent and its root");
     const parent = find(t, S(1));
     assert.ok(parent.archived_at, "the replaced version stops being live");
     assert.equal(parent.body, "words of " + S(1), "its words are left exactly as they were");

@@ -12,9 +12,10 @@ import handler from "../../api/social/oauth.mjs";
 import { signState, verifyState } from "../social/oauth.mjs";
 import { decryptToken } from "../adplatforms/tokens.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
+import { runInsert, selectList, projectRow, whereOf, keep } from "../testing/fin-b26-sql.mjs";
 
 // Fake values, built at run time. The key is 32 bytes of 7s, base64, as the encryption demands.
 const ENV = Object.freeze({
@@ -27,28 +28,25 @@ const ENV = Object.freeze({
 });
 const PAGE_TOKEN = "page-access-value-for-the-test";
 
-function stand() {
+/**
+ * The stand-in database. The channel upsert is read from its own statement: its column list, its VALUES
+ * (including the literal 'active' state and the scopes it writes), and its ON CONFLICT ... DO UPDATE SET
+ * list. `existing` rows are already-connected accounts, so a reconnect shows what the UPDATE path does.
+ */
+function stand({ existing = [] } = {}) {
   const t = {
     partners: [{ id: PARTNER, org_id: ORG_ID }, { id: FOREIGN_PARTNER, org_id: OTHER_ORG_ID }],
-    social_channels: [],
+    social_channels: existing.map((row) => ({ ...row })),
   };
   const rules = [
     [/set_config\(/i, []],
     [/^\s*(BEGIN|COMMIT|ROLLBACK)\b/i, []],
-    [/SELECT org_id FROM partners WHERE id = \$1/i, (sql, p) => inSql(t.partners, sql, p).slice(0, 1).map((r) => ({ org_id: r.org_id }))],
-    [/^\s*INSERT INTO social_channels/i, (sql, p) => {
-      const channel = /VALUES \(\$1,\$2,'(\w+)'/.exec(sql)[1];
-      const linkedin = channel === "linkedin";
-      const row = {
-        org_id: p[0], partner_id: p[1], channel, external_account_id: p[2],
-        handle: linkedin ? null : p[3], encrypted_access_token: linkedin ? p[3] : p[4],
-        encrypted_refresh_token: linkedin ? p[4] : null, expires_in: linkedin ? p[5] : null,
-        upsert: /ON CONFLICT \(partner_id, channel, external_account_id\) DO UPDATE/.test(sql),
-        active: /'active'/.test(sql),
-      };
-      t.social_channels.push(row);
-      return [];
+    [/SELECT org_id FROM partners WHERE id = \$1/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.partners, whereOf(sql), p, { alias: "partners" }).slice(0, 1)
+        .map((r) => projectRow(items, { params: p, row: r, rows: { partners: r } }));
     }],
+    [/^\s*INSERT INTO social_channels/i, (sql, p) => runInsert(sql, p, t.social_channels).rows],
   ];
   return { t, rules };
 }
@@ -167,8 +165,9 @@ describe("GET /api/social/oauth, callback", () => {
     assert.equal(row.org_id, OTHER_ORG_ID);
     assert.equal(row.partner_id, FOREIGN_PARTNER);
     assert.equal(row.handle, "Acme Page");
-    assert.equal(row.active, true);
-    assert.equal(row.upsert, true, "connecting again refreshes the same account instead of adding a second");
+    assert.equal(row.external_account_id, "page-9");
+    assert.equal(row.connection_state, "active", "a new connection can post: its state is active, not pending");
+    assert.deepEqual(row.scopes, ["pages_manage_posts"]);
     assert.notEqual(row.encrypted_access_token, PAGE_TOKEN, "stored encrypted, never as sent");
     assert.doesNotMatch(String(row.encrypted_access_token), new RegExp(PAGE_TOKEN));
     assert.equal(decryptToken(row.encrypted_access_token, { partnerId: FOREIGN_PARTNER, env: ENV }), PAGE_TOKEN);
@@ -194,6 +193,13 @@ describe("GET /api/social/oauth, callback", () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.channels, [{ channel: "instagram", external_account_id: "ig-2" }]);
     assert.deepEqual(t.social_channels.map((r) => [r.channel, r.external_account_id]), [["instagram", "ig-2"]]);
+    const ig = t.social_channels[0];
+    assert.deepEqual([ig.org_id, ig.partner_id, ig.handle, ig.connection_state, ig.scopes],
+      [ORG_ID, PARTNER, "With IG", "active", ["instagram_content_publish"]]);
+    assert.notEqual(ig.encrypted_access_token, PAGE_TOKEN, "the Instagram token is stored encrypted too");
+    assert.doesNotMatch(String(ig.encrypted_access_token), new RegExp(PAGE_TOKEN));
+    assert.equal(decryptToken(ig.encrypted_access_token, { partnerId: PARTNER, env: ENV }), PAGE_TOKEN);
+    assert.throws(() => decryptToken(ig.encrypted_access_token, { partnerId: FOREIGN_PARTNER, env: ENV }), undefined, "bound to the partner");
     const none = await call(owner, { action: "callback", channel: "instagram", state: goodState({ channel: "instagram" }), code: "c" },
       { pf: platform({ pages: [{ id: "page-1", name: "No IG", access_token: PAGE_TOKEN }] }) });
     assert.equal(none.res.statusCode, 400);
@@ -217,13 +223,55 @@ describe("GET /api/social/oauth, callback", () => {
     assert.deepEqual([row.channel, row.org_id, row.partner_id, row.external_account_id], ["linkedin", ORG_ID, PARTNER, "777"]);
     assert.equal(decryptToken(row.encrypted_access_token, { partnerId: PARTNER, env: ENV }), "li-access-value");
     assert.equal(decryptToken(row.encrypted_refresh_token, { partnerId: PARTNER, env: ENV }), "li-refresh-value");
-    assert.equal(row.expires_in, 3600);
+    assert.equal(row.connection_state, "active");
+    assert.deepEqual(row.scopes, ["openid", "profile", "email", "w_member_social"]);
+    assert.deepEqual(row.token_expires_at, { plusSeconds: 3600 }, "the token runs out an hour from now, not an hour ago");
     assert.equal(pf.calls[0].init.method, "POST");
     assert.equal(new URLSearchParams(pf.calls[0].init.body).get("code"), "li-code");
     const noOrg = await call(owner, { action: "callback", channel: "linkedin", state: goodState({ channel: "linkedin", external_account_id: null }), code: "c" });
     assert.equal(noOrg.res.statusCode, 400);
     assert.equal(noOrg.res.body.error, "needs_org");
     assert.equal(noOrg.t.social_channels.length, 0);
+  });
+
+  test("connecting an account again refreshes that same row: new token, active again, last error cleared, no second row", async () => {
+    const old = (over) => ({
+      org_id: ORG_ID, partner_id: PARTNER, encrypted_access_token: "old-ciphertext", encrypted_refresh_token: null,
+      connection_state: "error", last_error: "token expired", handle: "Old name", token_expires_at: { plusSeconds: -5 },
+      scopes: ["old_scope"], ...over,
+    });
+    const pages = [{ id: "page-9", name: "Acme Page", access_token: PAGE_TOKEN, instagram_business_account: { id: "ig-9" } }];
+    // Facebook and Instagram.
+    for (const [channel, account] of [["facebook", "page-9"], ["instagram", "ig-9"]]) {
+      const s = stand({ existing: [old({ channel, external_account_id: account })] });
+      const { res, t } = await call(owner, { action: "callback", channel, state: goodState({ channel }), code: "c" }, { pf: platform({ pages }), s });
+      assert.equal(res.statusCode, 200, channel);
+      assert.equal(t.social_channels.length, 1, `${channel}: the same account is refreshed, not added twice`);
+      const row = t.social_channels[0];
+      assert.equal(row.connection_state, "active", `${channel}: connected again means active again`);
+      assert.equal(row.last_error, null, `${channel}: the old error is cleared`);
+      assert.equal(decryptToken(row.encrypted_access_token, { partnerId: PARTNER, env: ENV }), PAGE_TOKEN, `${channel}: the new token replaces the old`);
+      if (channel === "facebook") assert.equal(row.handle, "Acme Page", "a page's name is refreshed on reconnect");
+    }
+    // LinkedIn: the access token, the refresh token and the expiry are all replaced.
+    const s = stand({ existing: [old({
+      channel: "linkedin", external_account_id: "777", encrypted_refresh_token: "old-refresh-ciphertext", token_expires_at: { plusSeconds: -10 },
+    })] });
+    const state = goodState({ channel: "linkedin", external_account_id: "urn:li:organization:777" });
+    const { res, t } = await call(owner, { action: "callback", channel: "linkedin", state, code: "li-code" }, { s });
+    assert.equal(res.statusCode, 200);
+    assert.equal(t.social_channels.length, 1);
+    const row = t.social_channels[0];
+    assert.equal(row.connection_state, "active");
+    assert.equal(row.last_error, null);
+    assert.equal(decryptToken(row.encrypted_access_token, { partnerId: PARTNER, env: ENV }), "li-access-value");
+    assert.equal(decryptToken(row.encrypted_refresh_token, { partnerId: PARTNER, env: ENV }), "li-refresh-value", "the refresh token is replaced too");
+    assert.deepEqual(row.token_expires_at, { plusSeconds: 3600 });
+    // A different account of the same partner is a second row.
+    const other = stand({ existing: [old({ channel: "facebook", external_account_id: "page-1" })] });
+    const added = await call(owner, { action: "callback", channel: "facebook", state: goodState(), code: "c" }, { pf: platform({ pages }), s: other });
+    assert.equal(added.t.social_channels.length, 2);
+    assert.equal(added.t.social_channels[0].connection_state, "error", "the other account is left alone");
   });
 
   test("a callback with a tampered, expired or missing state, or no code, saves nothing and asks the platform nothing", async () => {

@@ -7,10 +7,15 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import handler from "../../api/trials/dashboard.mjs";
+import { trialDashboard } from "../trials/dashboard.mjs";
+import { strictFakeDb } from "../testing/s3-handler-call.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, OTHER_PARTNER, FOREIGN_PARTNER, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
+import {
+  cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep,
+} from "../testing/fin-b26-sql.mjs";
 
 const DAY = 86400000;
 const at = (days) => new Date(Date.now() + days * DAY).toISOString();
@@ -34,12 +39,19 @@ function world(over = {}) {
     client("c3", PARTNER, ORG_ID, -10, ["Old", "Lead"]),
     client("c4", OTHER_PARTNER, ORG_ID, -1, ["Other", "Buyer"]),
     client("c5", PARTNER, OTHER_ORG_ID, -1, ["Foreign", "Lead"]),
+    // Two leads who left no name: one booked under a typed attendee name, one under nothing.
+    client("c6", PARTNER, ORG_ID, -1, [null, null]),
+    client("c7", PARTNER, ORG_ID, -1.2, ["", ""]),
+    // Came in AFTER the seventh day ended, and came in BEFORE the clock started: neither is in the window.
+    client("c8", PARTNER, ORG_ID, 6, ["Late", "Lead"]),
+    client("c9", PARTNER, ORG_ID, -2.5, ["Early", "Lead"]),
   ];
   const metric = (partner, org, days, spend, imp, clicks) => ({
     partner_id: partner, org_id: org, date: at(days).slice(0, 10), spend_cents: spend, impressions: imp, clicks,
   });
   const booking = (id, clientId, org, startsDays, createdDays, attendee = null) => ({
-    id, client_id: clientId, org_id: org, starts_at: at(startsDays), ends_at: at(startsDays + 0.02),
+    id, client_id: clientId, org_id: org, starts_at: startsDays == null ? null : at(startsDays),
+    ends_at: startsDays == null ? null : at(startsDays + 0.02),
     status: "booked", source: "calendar", event_type_slug: "call", created_at: at(createdDays), attendee_name: attendee,
   });
   return {
@@ -49,15 +61,22 @@ function world(over = {}) {
       metric(PARTNER, ORG_ID, -1, 1200, 1000, 40),
       metric(PARTNER, ORG_ID, -0.5, 800, 500, 20),
       metric(PARTNER, ORG_ID, -9, 9999, 9999, 999),
+      // The day before the clock started (the trial row was created then): not part of the seven days.
+      metric(PARTNER, ORG_ID, -3, 4444, 4444, 444),
       metric(OTHER_PARTNER, ORG_ID, -1, 7777, 7777, 777),
       metric(PARTNER, OTHER_ORG_ID, -1, 5555, 5555, 555),
     ],
     bookings: [
       booking("b2", "c2", ORG_ID, 3, -1),
       booking("b1", "c1", ORG_ID, 1, -1),
+      booking("b3", "c6", ORG_ID, 2, -1, "Walk In"),
+      booking("b4", "c7", ORG_ID, null, -1),
       booking("bx", "c4", ORG_ID, 1, -1),
       booking("bf", "c5", OTHER_ORG_ID, 1, -1),
       booking("bo", "c3", ORG_ID, 2, -8),
+      // Created after the seventh day ended, and before the clock started: not in the window.
+      booking("bz", "c8", ORG_ID, 7, 6),
+      booking("bq", "c9", ORG_ID, 0, -2.5),
     ],
     live_trial_events: [
       { id: "e1", org_id: ORG_ID, live_trial_id: TRIAL_ID, kind: "clock_started", detail: {}, actor_staff_id: null, occurred_at: at(-2) },
@@ -67,37 +86,51 @@ function world(over = {}) {
   };
 }
 
-/** Stand-in rules: every statement is answered from the tables by the conditions it names. */
+/**
+ * Stand-in rules: every statement is read, not assumed. WHERE is evaluated as written (company, partner,
+ * window, both ends), every aggregate the SELECT names (count, SUM) is worked out from the rows that
+ * WHERE keeps, the booking read follows its own JOIN, ORDER BY, LIMIT and display-name expression, and
+ * every output column is only what the SELECT list names.
+ */
 function rulesFor(t) {
-  const inWindow = (value, from, to) => String(value) >= String(from) && (to == null || String(value) <= String(to));
   return [
-    [/FROM live_trials WHERE/i, (sql, p) => inSql(t.live_trials, sql, p)],
+    [/FROM live_trials WHERE/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      return keep(t.live_trials, whereOf(sql), p, { alias: "live_trials" }).slice(0, 1)
+        .map((r) => projectRow(items, { params: p, row: r, rows: { live_trials: r } }));
+    }],
     [/SELECT count\(\*\)::int AS n\s+FROM clients/i, (sql, p) => {
-      const mine = inSql(t.clients, sql, p).filter((c) => inWindow(c.created_at, p[2], p[3]));
-      return [{ n: mine.length }];
+      const items = selectList(sql, 0);
+      const group = keep(t.clients, whereOf(sql), p, { alias: "clients" }).map((r) => ({ params: p, row: r, rows: { clients: r } }));
+      return [projectRow(items, { params: p, group, rows: {} })];
     }],
     [/FROM ad_metrics_daily/i, (sql, p) => {
-      const mine = inSql(t.ad_metrics_daily, sql, p)
-        .filter((m) => String(m.date) >= String(p[2]).slice(0, 10) && (p[3] == null || String(m.date) <= String(p[3]).slice(0, 10)));
-      if (!mine.length) return [{ spend_cents: null, impressions: null, clicks: null, days_synced: 0 }];
-      const sum = (key) => mine.reduce((n, m) => n + Number(m[key] || 0), 0);
-      return [{ spend_cents: sum("spend_cents"), impressions: sum("impressions"), clicks: sum("clicks"), days_synced: mine.length }];
+      const items = selectList(sql, 0);
+      const group = keep(t.ad_metrics_daily, whereOf(sql), p, { alias: "ad_metrics_daily" })
+        .map((r) => ({ params: p, row: r, rows: { ad_metrics_daily: r } }));
+      return [projectRow(items, { params: p, group, rows: {} })];
     }],
     [/FROM bookings b/i, (sql, p) => {
-      // The JOIN carries the company on both sides; the answer follows what the statement names.
-      const withClient = t.bookings.map((b) => ({ b, c: t.clients.find((c) => c.id === b.client_id && c.org_id === b.org_id) }))
-        .filter(({ c }) => c);
-      return withClient
-        .filter(({ b, c }) => b.org_id === p[0] && c.partner_id === p[1] && inWindow(b.created_at, p[2], p[3]))
-        .sort((x, y) => String(x.b.starts_at).localeCompare(String(y.b.starts_at)))
-        .slice(0, p[4])
-        .map(({ b, c }) => ({
-          id: b.id, starts_at: b.starts_at, ends_at: b.ends_at, status: b.status, source: b.source,
-          event_type_slug: b.event_type_slug, created_at: b.created_at,
-          display_name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || b.attendee_name || "Lead",
-        }));
+      const text = cleanSql(sql);
+      const items = selectList(sql, 0);
+      const joinText = /JOIN clients c ON ([\s\S]*?) WHERE/i.exec(text)[1];
+      const limit = p[Number(/LIMIT \$(\d+)/i.exec(text)[1]) - 1];
+      const joined = [];
+      for (const b of t.bookings) {
+        const c = t.clients.find((x) => evalSql(joinText, { params: p, rows: { b, c: x } }) === true);
+        if (!c) continue;
+        const env = { params: p, rows: { b, c } };
+        if (evalSql(whereOf(sql), env) === true) joined.push(env);
+      }
+      return orderRows(joined, orderOf(sql), (env) => env).slice(0, limit).map((env) => projectRow(items, env));
     }],
-    [/FROM live_trial_events/i, (sql, p) => inSql(t.live_trial_events, sql, p)],
+    [/FROM live_trial_events/i, (sql, p) => {
+      const items = selectList(sql, 0);
+      const kept = keep(t.live_trial_events, whereOf(sql), p, { alias: "live_trial_events" });
+      const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
+      const limit = p[Number(/LIMIT \$(\d+)/i.exec(cleanSql(sql))[1]) - 1];
+      return ordered.slice(0, limit).map((r) => projectRow(items, { params: p, row: r, rows: { live_trial_events: r } }));
+    }],
   ];
 }
 
@@ -106,18 +139,32 @@ const get = (query, who, t = world()) =>
 
 describe("GET /api/trials/dashboard", () => {
   test("a partner sees their own numbers: leads, spend, booked calls and bookings, counted in the trial window only", async () => {
-    const { res, fake } = await get({}, asPartner(PARTNER));
+    const t = world();
+    const { res, fake } = await get({}, asPartner(PARTNER), t);
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.numbers, {
-      spend_cents: 2000, impressions: 1500, clicks: 60, leads: 2, booked_calls: 2, days_synced: 2,
-    });
-    assert.deepEqual(res.body.bookings.map((b) => [b.id, b.display_name]), [["b1", "Dana Whitfield"], ["b2", "Eli"]]);
+      spend_cents: 2000, impressions: 1500, clicks: 60, leads: 4, booked_calls: 4, days_synced: 2,
+    }, "spend, impressions and clicks are each their own sum; the day before the clock and the days after are not in it");
+    assert.deepEqual(res.body.bookings.map((b) => [b.id, b.display_name]),
+      [["b1", "Dana Whitfield"], ["b3", "Walk In"], ["b2", "Eli"], ["b4", "Lead"]],
+      "soonest call first, the call with no time last; a lead with no name shows the name they typed, then 'Lead'");
+    const first = res.body.bookings[0];
+    assert.deepEqual([first.status, first.source, first.event_type_slug], ["booked", "calendar", "call"], "what each booking says about itself");
+    const stored = t.bookings.find((b) => b.id === "b1");
+    assert.deepEqual([first.starts_at, first.ends_at, first.created_at], [stored.starts_at, stored.ends_at, stored.created_at]);
+    assert.equal(res.body.bookings[3].starts_at, null);
     assert.equal(res.body.trial.status, "running");
     assert.equal(res.body.trial.live, true);
     assert.equal(res.body.trial.of_days, 7);
     assert.equal(res.body.trial.day, 3);
     assert.equal(res.body.trial.days_remaining, 5);
-    assert.deepEqual(res.body.events.map((e) => e.id), ["e1"], "only this company's events");
+    assert.deepEqual(res.body.events.map((e) => [e.id, e.kind]), [["e1", "clock_started"]], "only this company's events");
+    assert.deepEqual(res.body.plan.map((d) => [d.day, d.title, d.human]), [
+      [1, "First spend, first clicks, first leads", false], [2, "First optimisation pass", false], [3, "Mid-trial check", true],
+      [4, "Creative refresh if the first set is tiring", true], [5, "Fundhub starts fulfilling", true], [6, "Nothing new", false],
+      [7, "Trial ends at the end of the seventh live day", false], [8, "The conversion call", true],
+    ], "the eight days a buyer is told about");
+    assert.ok(res.body.plan.every((d) => typeof d.detail === "string" && d.detail.length > 10));
     assert.equal(res.body.plan.length, 8);
     // The words of each count, as the statement must spell them: company AND partner, inside the window.
     const q = (re) => sqlOf(fake, re)[0].sql;
@@ -139,7 +186,7 @@ describe("GET /api/trials/dashboard", () => {
     const { res } = await get({}, asPartner(PARTNER), t);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.numbers.booked_calls, 0);
-    assert.equal(res.body.numbers.leads, 2);
+    assert.equal(res.body.numbers.leads, 4);
     assert.equal(res.body.numbers.spend_cents, null);
     assert.equal(res.body.numbers.impressions, null);
     assert.equal(res.body.numbers.clicks, null);
@@ -157,7 +204,62 @@ describe("GET /api/trials/dashboard", () => {
     assert.deepEqual(res.body.bookings, []);
     assert.equal(res.body.notes[0].key, "held_start");
     assert.equal(res.body.trial.phase, "held_start");
+    assert.equal(res.body.trial.live, false, "a trial whose clock has not started is not live");
+    assert.deepEqual(res.body.events.map((e) => e.id), ["e1"], "the activity strip still shows this trial's events");
+    assert.equal(res.body.plan.length, 8);
     assert.equal(sqlOf(fake, /FROM clients|FROM ad_metrics_daily|FROM bookings/).length, 0, "no window, nothing counted");
+  });
+
+  test("a trial that has not started, and one that is over, say so: not live, the right phase, the right note", async () => {
+    const waiting = await get({}, asPartner(PARTNER), world({
+      live_trials: [trialRow({ status: "provisioned", started_at: null, ends_at: null })],
+    }));
+    assert.equal(waiting.res.statusCode, 200);
+    assert.equal(waiting.res.body.notes[0].key, "not_started", "a paid, provisioned trial that has not begun says its seven days have not started");
+    assert.equal(waiting.res.body.trial.phase, "waiting_for_first_impression");
+    assert.equal(waiting.res.body.trial.live, false);
+    assert.equal(waiting.res.body.numbers.leads, null);
+    for (const [status, phase] of [["ended", "conversion_call"], ["converted", "converted"], ["declined", "declined"], ["refunded", "refunded"]]) {
+      const { res } = await get({}, asPartner(PARTNER), world({
+        live_trials: [trialRow({ status, started_at: at(-10), ends_at: at(-3) })],
+      }));
+      assert.equal(res.statusCode, 200, status);
+      assert.equal(res.body.trial.live, false, `${status} is not live: the numbers are frozen`);
+      assert.equal(res.body.trial.status, status);
+      assert.equal(res.body.trial.phase, phase, status);
+      assert.ok(res.body.numbers.leads !== null, `${status}: a trial that ran still shows its own numbers`);
+    }
+    const running = await get({}, asPartner(PARTNER));
+    assert.equal(running.res.body.trial.live, true);
+    assert.equal(running.res.body.trial.phase, "running");
+  });
+
+  test("bookings are capped at a hundred on one screen", async () => {
+    const t = world();
+    for (let k = 0; k < 120; k += 1) {
+      t.bookings.push({
+        id: `many-${k}`, client_id: "c1", org_id: ORG_ID, starts_at: at(1 + k / 1000), ends_at: at(1.01 + k / 1000),
+        status: "booked", source: "calendar", event_type_slug: "call", created_at: at(-1), attendee_name: null,
+      });
+    }
+    const { res, fake } = await get({}, asPartner(PARTNER), t);
+    assert.equal(res.body.bookings.length, 100);
+    assert.equal(sqlOf(fake, /FROM bookings b/)[0].params[4], 100);
+    // The dashboard library has the same bound for any other caller: 200 at most, 100 when it is not a usable number.
+    for (const [bookingLimit, want] of [[undefined, 100], [5000, 200], [0, 100], [-3, 100], [Number.NaN, 100], [25, 25]]) {
+      const lib = strictFakeDb(rulesFor(world()));
+      await trialDashboard(lib, { orgId: ORG_ID, partnerId: PARTNER, ...(bookingLimit === undefined ? {} : { bookingLimit }) });
+      assert.equal(sqlOf(lib, /FROM bookings b/)[0].params[4], want, String(bookingLimit));
+    }
+  });
+
+  test("the company is the session's: another company's id in the address changes nothing", async () => {
+    const { res, fake } = await get({ partner_id: PARTNER, org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID }, asRole("owner"));
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.numbers.leads, 4);
+    for (const call of fake.calls.filter((c) => /FROM (live_trials|clients|ad_metrics_daily|bookings b|live_trial_events)/.test(c.sql))) {
+      assert.equal(call.params[0], ORG_ID, call.sql.slice(0, 60));
+    }
   });
 
   test("a partner with no trial gets a 404, not an empty dashboard", async () => {
@@ -171,7 +273,7 @@ describe("GET /api/trials/dashboard", () => {
     const { res, fake } = await get({ partner_id: OTHER_PARTNER }, asPartner(PARTNER), t);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.trial.id, TRIAL_ID);
-    assert.equal(res.body.numbers.leads, 2);
+    assert.equal(res.body.numbers.leads, 4);
     assert.equal(sqlOf(fake, /FROM live_trials WHERE/)[0].params[1], PARTNER);
     assert.ok(fake.calls.filter((c) => /FROM (clients|ad_metrics_daily|bookings b)/.test(c.sql)).every((c) => c.params[1] === PARTNER));
   });
@@ -183,7 +285,7 @@ describe("GET /api/trials/dashboard", () => {
 
     const named = await get({ partner_id: PARTNER }, asRole("closer"));
     assert.equal(named.res.statusCode, 200);
-    assert.equal(named.res.body.numbers.booked_calls, 2);
+    assert.equal(named.res.body.numbers.booked_calls, 4);
 
     const otherCompany = await get({ partner_id: PARTNER }, asRole("owner", { org_id: OTHER_ORG_ID }));
     assert.equal(otherCompany.res.statusCode, 404, "another company's staff do not see this buyer's trial");

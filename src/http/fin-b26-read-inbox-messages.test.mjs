@@ -12,9 +12,10 @@ import assert from "node:assert/strict";
 import inbox from "../../api/read/inbox.mjs";
 import messages from "../../api/read/messages.mjs";
 import {
-  run, req, asRole, asPartner, asClient, asAffiliate, inSql, sqlOf, wrote, pinned,
+  run, req, asRole, asPartner, asClient, asAffiliate, sqlOf, wrote, pinned,
   ORG_ID, OTHER_ORG_ID, PARTNER, CLIENT, OTHER_CLIENT, FOREIGN_CLIENT, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
+import { cleanSql, selectList, projectRow, evalSql, orderRows, keep, whereOf, orderOf } from "../testing/fin-b26-sql.mjs";
 
 const CV = (n) => `cc00000${n}-0000-4000-8000-00000000000${n}`;
 const MS = (n) => `dd0000${String(n).padStart(2, "0")}-0000-4000-8000-0000000000${String(n).padStart(2, "0")}`;
@@ -56,66 +57,73 @@ function world({ reuseThreadId = false } = {}) {
   return t;
 }
 
-/** The newest message on a thread, in the direction the statement says. */
-function lastOf(t, conversationId, newestFirst) {
-  const mine = t.messages.filter((m) => m.conversation_id === conversationId);
-  const sorted = [...mine].sort((a, b) => (newestFirst ? 1 : -1) * (String(b.created_at).localeCompare(String(a.created_at)) || String(b.id).localeCompare(String(a.id))));
-  return sorted[0] || null;
+/** Pull one clause out of a statement by its own words, or fail naming what is missing. */
+function clause(text, re, what) {
+  const m = re.exec(text);
+  if (!m) throw new Error(`the statement no longer has ${what}`);
+  return m;
 }
 
 function rulesFor(t) {
   return [
+    // The inbox statement is read, clause by clause, from its own text: the thread filter (with the
+    // "newest message is theirs" subselect), the page order, the client join, the lateral last message,
+    // the final order and EVERY named output column. Nothing about the answer is built by hand.
     [/WITH page AS/i, (sql, p) => {
-      const [limitPlus, offset, org, needsReplyOnly] = p;
-      const newestFirst = /WHERE m\.conversation_id = page\.id\s+ORDER BY m\.created_at DESC, m\.id DESC\s+LIMIT 1/.test(sql);
-      const pageDesc = /ORDER BY COALESCE\(c\.last_pulse_at, c\.created_at\) DESC, c\.id DESC/.test(sql);
-      const finalDesc = /ORDER BY COALESCE\(last\.created_at, page\.last_pulse_at, page\.created_at\) DESC, page\.id DESC/.test(sql);
-      const spokeLast = (/\(last\.direction = '(\w+)'\)\s+AS needs_reply/.exec(sql) || [])[1];
-      const filterLiteral = (/LIMIT 1\s*\)\s*=\s*'(\w+)'\)/.exec(sql) || [])[1];
-      const keepsEmptyThreads = /LEFT JOIN LATERAL/.test(sql);
-      const clientRequiresCompany = /cl\.org_id = \$3::uuid/.test(sql);
-      const orgScoped = /WHERE c\.org_id = \$3::uuid/.test(sql);
-      const cmp = (a, b) => String(a).localeCompare(String(b));
-      let page = t.conversations.filter((c) => !orgScoped || c.org_id === org);
-      if (needsReplyOnly === true && filterLiteral) {
-        page = page.filter((c) => { const l = lastOf(t, c.id, newestFirst); return l && l.direction === filterLiteral; });
+      const text = cleanSql(sql);
+      const limitAt = clause(text, /LIMIT \$(\d+) OFFSET \$(\d+)/i, "LIMIT and OFFSET");
+      const whereFrom = clause(text, /FROM conversations c WHERE /i, "the page read");
+      const orderIdx = text.lastIndexOf(" ORDER BY ", limitAt.index);
+      let where = text.slice(whereFrom.index + whereFrom[0].length, orderIdx);
+      const pageOrder = text.slice(orderIdx + " ORDER BY ".length, limitAt.index).trim();
+      const offsetAt = limitAt[2];
+      // The "newest message on this thread" subselect, evaluated per thread from its own text.
+      const sub = clause(where, /\(\s*SELECT m\.direction FROM messages m WHERE ([\s\S]*?) ORDER BY ([\s\S]*?) LIMIT 1\s*\)/i, "the newest-message subselect");
+      where = where.replace(sub[0], "newest_direction");
+      const newestDirection = (conv) => {
+        const mine = t.messages.filter((m) => evalSql(sub[1], { params: p, rows: { m, c: conv } }) === true);
+        const first = orderRows(mine, sub[2], (m) => ({ params: p, rows: { m, c: conv } }))[0];
+        return first ? first.direction : null;
+      };
+      const pageItems = selectList(sql, /^c\.id,/);
+      const lateralItems = selectList(sql, /^m\.id,/);
+      const finalItems = selectList(sql, /^page\.id,/);
+      const cvCtx = (c) => ({ params: p, rows: { c, newest_direction: undefined }, row: { newest_direction: newestDirection(c) } });
+      let page = t.conversations.filter((c) => evalSql(where, { ...cvCtx(c), rows: { c } }) === true);
+      page = orderRows(page, pageOrder, (c) => ({ params: p, rows: { c } }));
+      page = page.slice(p[Number(offsetAt) - 1], p[Number(offsetAt) - 1] + p[Number(limitAt[1]) - 1]);
+      const pageRows = page.map((c) => projectRow(pageItems, { params: p, rows: { c } }));
+
+      const joinText = clause(text, /JOIN clients cl ON ([\s\S]*?) LEFT JOIN LATERAL/i, "the client join")[1];
+      const lat = clause(text, /LEFT JOIN LATERAL \(\s*SELECT [\s\S]*? FROM messages m WHERE ([\s\S]*?) ORDER BY ([\s\S]*?) LIMIT 1\s*\)\s*last ON true/i, "the last-message lateral");
+      const finalOrder = clause(text, /\)\s*last ON true ORDER BY ([\s\S]*)$/i, "the final order")[1];
+
+      const joined = [];
+      for (const pg of pageRows) {
+        const cl = t.clients.find((x) => evalSql(joinText, { params: p, rows: { cl: x, page: pg } }) === true);
+        if (!cl) continue; // an inner join: no client in this company, no row
+        const mine = t.messages.filter((m) => evalSql(lat[1], { params: p, rows: { m, page: pg } }) === true);
+        const newest = orderRows(mine, lat[2], (m) => ({ params: p, rows: { m, page: pg } }))[0] || null;
+        const last = newest ? projectRow(lateralItems, { params: p, rows: { m: newest } }) : null;
+        joined.push({ pg, cl, last });
       }
-      page.sort((a, b) => (pageDesc ? -1 : 1) * (cmp(a.last_pulse_at || a.created_at, b.last_pulse_at || b.created_at) || cmp(a.id, b.id)));
-      page = page.slice(offset, offset + limitPlus);
-      const rows = page
-        .map((c) => ({ c, cl: t.clients.find((x) => x.id === c.client_id && (!clientRequiresCompany || x.org_id === org)) }))
-        .filter(({ cl }) => cl)
-        .filter(({ c }) => keepsEmptyThreads || lastOf(t, c.id, newestFirst))
-        .map(({ c, cl }) => {
-          const last = lastOf(t, c.id, newestFirst);
-          return {
-            id: c.id, client_id: c.client_id, channel: c.channel, summary: c.summary, sentiment: c.sentiment,
-            last_pulse_at: c.last_pulse_at, created_at: c.created_at, first_name: cl.first_name, last_name: cl.last_name,
-            last_message_id: last ? last.id : null, last_direction: last ? last.direction : null,
-            last_body: last ? last.rendered_body : null, last_status: last ? last.status : null, last_at: last ? last.created_at : null,
-            needs_reply: last ? last.direction === spokeLast : null,
-            activity_at: (last && last.created_at) || c.last_pulse_at || c.created_at,
-          };
-        });
-      return rows.sort((a, b) => (finalDesc ? -1 : 1) * (cmp(a.activity_at, b.activity_at) || cmp(a.id, b.id)));
+      const ctxOf = ({ pg, cl, last }) => ({ params: p, rows: { page: pg, cl, last } });
+      return orderRows(joined, finalOrder, ctxOf).map((j) => projectRow(finalItems, ctxOf(j)));
     }],
+    // The messages statement: the WHERE, the join to staff, the ORDER BY, LIMIT/OFFSET and the named
+    // output columns, all read from the statement.
     [/FROM messages m\s+LEFT JOIN staff s ON s\.id = m\.sender_staff_id/i, (sql, p) => {
-      const blocked = /m\.status = \$4/.test(sql);
-      const rows = inSql(t.messages, sql, p);
-      const listed = /SELECT m\.id,[\s\S]*?FROM messages m/i.exec(sql)[0];
-      return rows
-        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)) || String(b.id).localeCompare(String(a.id)))
-        .slice(p[1], p[1] + p[0])
-        .map((m) => {
-          const { to_address, provider_ref, ...plain } = m;
-          return {
-            ...plain,
-            ...(/m\.to_address/.test(listed) ? { to_address } : {}),
-            ...(/m\.provider_ref/.test(listed) ? { provider_ref } : {}),
-            sender_name: (t.staff.find((s) => s.id === m.sender_staff_id) || {}).name || null,
-            _blockedQuery: blocked,
-          };
-        }).map(({ _blockedQuery, ...m }) => m);
+      const text = cleanSql(sql);
+      const items = selectList(sql, 0);
+      const joinText = clause(text, /LEFT JOIN staff s ON ([\s\S]*?) WHERE/i, "the staff join")[1];
+      const lim = clause(text, /LIMIT \$(\d+) OFFSET \$(\d+)/i, "LIMIT and OFFSET");
+      const limit = p[Number(lim[1]) - 1]; const offset = p[Number(lim[2]) - 1];
+      const kept = keep(t.messages, whereOf(sql), p, { alias: "m" });
+      const ordered = orderRows(kept, orderOf(sql), (m) => ({ params: p, rows: { m } }));
+      return ordered.slice(offset, offset + limit).map((m) => {
+        const s = t.staff.find((x) => evalSql(joinText, { params: p, rows: { s: x, m } }) === true) || null;
+        return projectRow(items, { params: p, rows: { m, s } });
+      });
     }],
   ];
 }
@@ -138,6 +146,13 @@ describe("GET /api/read/inbox", () => {
     assert.equal(c.needs_reply, null, "nobody spoke, so nobody is owed a reply, and it is not 'false'");
     assert.equal(a.summary, "Asked about the card");
     assert.equal(a.sentiment, null, "no guessed sentiment is passed on");
+    // Every named column is read from the statement's own SELECT list, so a column the product stops
+    // selecting is missing here and these go red.
+    assert.deepEqual([a.id, a.client_id, a.last_message_id, a.last_at, a.activity_at, a.created_at, a.last_pulse_at],
+      [CV(1), CLIENT, MS(2), at(13), at(13), at(1), at(13)], "the thread, who it is with, and the last message's own id and time");
+    assert.deepEqual([b.id, b.summary, b.last_message_id, b.last_at, b.activity_at], [CV(2), null, MS(4), at(12), at(12)]);
+    assert.deepEqual([c.id, c.last_at, c.last_direction, c.last_status, c.activity_at], [CV(3), null, null, null, at(10)],
+      "an empty thread falls back to its own date");
     assert.equal(res.body.hasMore, false);
     assert.equal(wrote(fake), false, "read only");
     const q = sqlOf(fake, /WITH page AS/)[0];
@@ -197,6 +212,14 @@ describe("GET /api/read/inbox", () => {
     const post = await run(inbox, req("POST", { body: {} }), [...asRole("owner"), ...rulesFor(world())]);
     assert.equal(post.res.statusCode, 405);
   });
+
+  test("the company is the session's and nothing in the address can change it: another company's id in the query is ignored", async () => {
+    const hostile = await getInbox(asRole("closer"), { org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID, company_id: OTHER_ORG_ID });
+    assert.equal(hostile.res.statusCode, 200);
+    assert.deepEqual(hostile.res.body.items.map((i) => i.id), [CV(1), CV(2), CV(3)], "still this company's threads");
+    assert.equal(sqlOf(hostile.fake, /WITH page AS/)[0].params[2], ORG_ID, "bound to the signed-in company");
+    assert.ok(hostile.res.body.items.every((i) => i.id !== CV(5)));
+  });
 });
 
 describe("GET /api/read/messages", () => {
@@ -240,10 +263,23 @@ describe("GET /api/read/messages", () => {
     const { res, fake } = await getMessages(asRole("csm"), { status: "blocked" });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.items.map((m) => m.id), [MS(5), MS(8)], "this company's two blocked messages, newest first");
+    const q = sqlOf(fake, /FROM messages m/)[0];
     assert.ok(res.body.items.every((m) => m.status === "blocked" && m.id !== MS(7)));
     assert.deepEqual(res.body.items.map((m) => m.blocked_reason), ["quiet_hours", "compliance"]);
     assert.equal(res.body.items[1].last_error, "gate said no");
-    const q = sqlOf(fake, /FROM messages m/)[0];
+    // The words, the sender and the block reason are read from the statement's own SELECT list.
+    assert.deepEqual(res.body.items.map((m) => [m.rendered_body, m.sender_name, m.subject, m.channel, m.direction]),
+      [["Held for quiet hours", "Olive Owner", null, "sms", "outbound"], ["Blocked by the gate", null, "x", "email", "outbound"]]);
+    assert.deepEqual(res.body.items.map((m) => [m.conversation_id, m.client_id, m.scheduled_at, m.created_at]),
+      [[CV(1), CLIENT, at(15), at(9)], [CV(2), OTHER_CLIENT, null, at(8)]]);
+    // No phone number and no provider key leave this door either: the blocked list is a different
+    // statement from the thread read and is judged on its own.
+    for (const m of res.body.items) {
+      assert.equal("to_address" in m, false);
+      assert.equal("provider_ref" in m, false);
+    }
+    assert.doesNotMatch(JSON.stringify(res.body), /\+1602555|ref-\d/);
+    assert.doesNotMatch(q.sql, /to_address|provider_ref/);
     assert.deepEqual(q.params, [51, 0, ORG_ID, "blocked"]);
     pinned(q.sql, "this company, blocked only", "WHERE m.org_id = $3::uuid AND m.status = $4");
   });
@@ -267,6 +303,15 @@ describe("GET /api/read/messages", () => {
     }
     const nobody = await run(messages, req("GET", { query: { conversation_id: CV(1) } }), rulesFor(world({ reuseThreadId: true })));
     assert.equal(nobody.res.statusCode, 401);
+  });
+
+  test("the company is the session's: another company's id in the query changes nothing, for a thread or for the blocked list", async () => {
+    const thread = await getMessages(asRole("closer"), { conversation_id: CV(1), org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID });
+    assert.deepEqual(thread.res.body.items.map((m) => m.id), [MS(2), MS(1), MS(5)]);
+    assert.deepEqual(sqlOf(thread.fake, /FROM messages m/)[0].params, [51, 0, CV(1), ORG_ID]);
+    const blocked = await getMessages(asRole("closer"), { status: "blocked", org_id: OTHER_ORG_ID, orgId: OTHER_ORG_ID });
+    assert.deepEqual(blocked.res.body.items.map((m) => m.id), [MS(5), MS(8)]);
+    assert.deepEqual(sqlOf(blocked.fake, /FROM messages m/)[0].params, [51, 0, ORG_ID, "blocked"]);
   });
 
   test("a page of messages is bounded and says if there are more", async () => {
