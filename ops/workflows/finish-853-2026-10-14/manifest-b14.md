@@ -169,3 +169,16 @@ then reads the history or the undo count, so no other test has this race.
 - Run `npm run pulse:catalog` once after merging.
 - The browser tests ask the S4 queue (`s4-browser-slots.mjs`, 3 places on the machine) before they start. With many batches running at once a file can wait for a place. Set `S4_BROWSER_PLACES` higher for a focused run.
 - `fin-b14-sql-kit.mjs` is a near copy of the kits in batches 10 and 15 plus the jsonb and regex spellings the journeys check needs. If you want one kit, merge them there; nothing else depends on it.
+
+## Generation 2 (challenge of the one row left out)
+
+The Page gate row ("owner and admin author journeys (PUT/ask/run answer 403 to others) ...") was challenged from the
+real handler, not from the earlier note. Result: the reason is exactly true, so the row stays NOT_PROVED.
+
+- `api/journeys/run.mjs` line 121 gates on `ROLE_SETS.FINANCE`. `src/http/read-api.mjs` line 169: `FINANCE = owner, admin, sales_manager`. Measured again with the real handler on a stand-in database, all eight staff roles (`fin-b14-journeys-handlers.test.mjs`): GET, PUT and ask let in `admin` and `owner` only; run lets in `admin`, `owner` and `sales_manager`.
+- The row says run answers 403 to every role but owner and admin. For the sales manager that is false. A test that passes the row would have to pin the wide set, which turns the row green over words the product does not keep. The same call was made on the Banks Page gate row in slice 4 (returned to NOT_PROVED on purpose).
+- A live check cannot judge it: the run door rolls back every time and leaves no saved result, and the ask door leaves none either. A check on the saver of saved journeys would judge only the PUT half of the words.
+- The guard goes red when the run door is narrowed. Made on purpose: `ROLE_SETS.FINANCE` to `ROLE_SETS.OPS` in `api/journeys/run.mjs`. `fin-b14-rows.test.mjs` "the left-out row is a real map row, and its reason is still true" and `fin-b14-journeys-handlers.test.mjs` "POST /api/journeys/run is wider than the row says" both went red. File restored (`git status` clean).
+- Decision only Chris can make (owner-set values are final, so this is a question, not a re-opening): narrow the run door to owner and admin (a one-word change in `api/journeys/run.mjs`, then this row attaches), or say the sales manager may run the test (then the row words, the file header and the toast change).
+
+Numbers re-measured in generation 2: `openBefore` 40 (count script on an export of `fin/base`: total 853), `openAfter` 1 (count script on this branch: total 814). Tests: 97 of 97 (rows guard, live contracts, both handler files, `gap-catalog-display`, `journeys-run-handler`), browser files 24 of 24, `display-proof-cases` red-count and map tests 2 of 2.
