@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import {
@@ -14,7 +16,10 @@ import {
 } from "../catalog/proofs/flow-gap-cases.mjs";
 import { FIN_B22_LIVE_SURFACES } from "../catalog/proofs/fin-b22-flow-live.mjs";
 import { FIN_B22_LIVE_PROOFS, FIN_B22_PRACTICE } from "../catalog/proofs/fin-b22-flow-contracts.mjs";
-import { makeStandIn, NOW as KIT_NOW } from "../catalog/proofs/fin-b22-sql-kit.mjs";
+import {
+  CLIMATE_READING_SURFACE, CONSULTING_REQUEST_SURFACE, STATE_CODES,
+} from "../catalog/proofs/fin-b22-page-reads.mjs";
+import { makeStandIn, NOW as KIT_NOW, REPO_ROOT } from "../catalog/proofs/fin-b22-sql-kit.mjs";
 
 const NOW = new Date("2026-10-12T12:00:00.000Z");
 
@@ -43,13 +48,16 @@ test("the Flow monitor owns the exact 180 remaining catalog rows", () => {
   assert.equal(FLOW_ROWS.filter(isInactiveTemplateRow).length, 158);
 });
 
-test("batch 22: three rows left for a practice test, nine are judged from saved results, eleven stay not proved", () => {
+const PAGE_SURFACES = [CLIMATE_READING_SURFACE, CONSULTING_REQUEST_SURFACE];
+
+test("batch 22: three rows left for a practice test, ten are judged from saved results, two from a live page read, eight stay not proved", () => {
   const surfaces = new Set(FLOW_ROWS.map((row) => row.surface));
   for (const surface of Object.keys(FIN_B22_PRACTICE)) assert.equal(surfaces.has(surface), false, `${surface} left the monitor`);
   for (const surface of Object.keys(FIN_B22_LIVE_PROOFS)) assert.equal(surfaces.has(surface), true, `${surface} stays in the lane`);
-  assert.deepEqual([...FIN_B22_LIVE_SURFACES].sort(), Object.keys(FIN_B22_LIVE_PROOFS).sort(), "the live checks and their proofs name the same rows");
+  assert.deepEqual([...FIN_B22_LIVE_SURFACES, ...PAGE_SURFACES].sort(), Object.keys(FIN_B22_LIVE_PROOFS).sort(),
+    "the saved-result checks, the page reads and their proofs name the same rows");
   assert.equal(Object.keys(FIN_B22_PRACTICE).length, 3);
-  assert.equal(FIN_B22_LIVE_SURFACES.size, 9);
+  assert.equal(FIN_B22_LIVE_SURFACES.size, 10);
 });
 
 test("the inactive-template read is one SELECT and never writes", () => {
@@ -89,7 +97,7 @@ test("one newly used inactive key turns only that exact template red", async () 
 test("every active control is either named not proved, judged from saved results, or checked inactive", async () => {
   const rows = await gapChecks({ db: dbWith([]).db, orgId: "00000000-0000-0000-0000-000000000001", now: NOW });
   const byId = new Map(rows.map((row) => [row.id, row]));
-  const live = new Set([...FIN_B22_LIVE_SURFACES].map((surface) => `${surface}`));
+  const live = new Set([...FIN_B22_LIVE_SURFACES, ...PAGE_SURFACES].map((surface) => `${surface}`));
 
   for (const source of FLOW_ROWS.filter((row) => !isInactiveTemplateRow(row))) {
     const result = byId.get(`flow:${source.family}:${source.surface}`);
@@ -105,17 +113,14 @@ test("every active control is either named not proved, judged from saved results
   }
 
   const notProved = rows.filter((row) => row.status === "NOT_PROVED").map((row) => row.id).sort();
-  assert.equal(notProved.length, 11);
+  assert.equal(notProved.length, 8);
   assert.deepEqual(notProved, [
     "flow:journey:journey:climate-lead-magnet-intended#1-headline-button",
-    "flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map",
     "flow:journey:journey:climate-lead-magnet-intended#3-state-click",
     "flow:journey:journey:climate-lead-magnet-intended#4-form",
     "flow:journey:journey:climate-lead-magnet-intended#6-gate",
     "flow:journey:journey:fh-consulting-intended#2-education-only",
     "flow:journey:journey:fh-consulting-intended#3-three-prices",
-    "flow:journey:journey:fh-consulting-intended#5-request-enrollment",
-    "flow:message:provider:web-push-and-client-push",
     "flow:message:script:one-off senders in scripts/",
     "flow:message:ui:ops-admin outbound mail panel",
   ].sort());
@@ -207,4 +212,89 @@ test("inbound-only nothing-to-judge claims verify the exact named controls", asy
     surface: "api:POST /api/chat/messages",
     kind: "inbound-only",
   }), false);
+});
+
+// ── generation 2: the live page reads and the notification devices ────────────
+
+const CLIMATE_ROW = `flow:journey:${CLIMATE_READING_SURFACE}`;
+const CONSULTING_ROW = `flow:journey:${CONSULTING_REQUEST_SURFACE}`;
+
+function liveSiteFetch(overrides = {}) {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const html = read("public/climate/index.html");
+  const routes = {
+    "/api/climate": JSON.stringify({ ok: true, national: { score: 54.3 }, states: STATE_CODES.map((state) => ({ state })) }),
+    "/climate/": html,
+    "/consulting/": read("public/consulting/index.html"),
+    ...overrides,
+  };
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc="(\/climate\/[^"]+)"/g)) routes[m[1]] ??= read(path.join("public", m[1]));
+  return async (url) => {
+    const hit = routes[String(url).replace("https://fundhub.ai", "")];
+    return hit === undefined ? new Response("", { status: 404 }) : new Response(hit, { status: 200 });
+  };
+}
+
+test("the two page-read rows are judged by what the live public page holds, and neither is filed as not proved", async () => {
+  const rows = await gapChecks({ fetchImpl: liveSiteFetch(), now: NOW });
+  const climate = rows.find((row) => row.id === CLIMATE_ROW);
+  const consulting = rows.find((row) => row.id === CONSULTING_ROW);
+  assert.equal(climate.status, "FAIL");
+  assert.match(climate.detail, /draws 5 of 51 state outlines/);
+  assert.equal(consulting.status, "PASS");
+  assert.match(consulting.detail, /opens an email to the support address/);
+  for (const row of [climate, consulting]) assert.notEqual(row.status, "NOT_PROVED");
+});
+
+test("the climate row goes green when the page draws all 51, and the consulting row goes red when the form takes a card", async () => {
+  const full = JSON.stringify(Object.fromEntries(STATE_CODES.map((c) => [c, "M1,1 L9,1 L9,9 Z"])));
+  const consulting = fs.readFileSync(path.join(REPO_ROOT, "public/consulting/index.html"), "utf8")
+    .replace('<button class="btn" type="submit">', '<input name="cardnumber"><button class="btn" type="submit">');
+  const rows = await gapChecks({
+    fetchImpl: liveSiteFetch({
+      "/climate/_next/static/chunks/app/page-b71b32356ee1b98a.js": `var a=JSON.parse('${full}');`,
+      "/consulting/": consulting,
+    }),
+    now: NOW,
+  });
+  assert.equal(rows.find((row) => row.id === CLIMATE_ROW).status, "PASS");
+  const red = rows.find((row) => row.id === CONSULTING_ROW);
+  assert.equal(red.status, "FAIL");
+  assert.match(red.detail, /card number or card details/);
+});
+
+test("with no GET client the page-read rows are skips, never green and never not proved", async () => {
+  const rows = await gapChecks({ now: NOW });
+  for (const id of [CLIMATE_ROW, CONSULTING_ROW]) {
+    const row = rows.find((item) => item.id === id);
+    assert.equal(row.status, "skip", id);
+    assert.match(row.detail, /no GET client/);
+  }
+});
+
+test("the web push row is judged from the devices a client turned on", async () => {
+  const org = "00000000-0000-4000-8000-000000000001";
+  const kit = makeStandIn(["client_push_subscriptions", "clients"]);
+  try {
+    const DAY = 86_400_000;
+    const ago = (days) => new Date(KIT_NOW.getTime() - days * DAY).toISOString();
+    kit.insert("clients", { id: "00000000-0000-4000-8000-0000000000c1", org_id: org, email: "pat@fundhub-client.test.io", is_demo: false, custom_fields: {} });
+    const device = (n, over = {}) => ({
+      id: `00000000-0000-4000-8000-0000000000d${n}`, org_id: org, client_id: "00000000-0000-4000-8000-0000000000c1",
+      endpoint_hash: String(n).padStart(64, "b"), created_at: ago(30), last_success_at: ago(1), failure_count: 0,
+      expired_at: null, revoked_at: null, ...over,
+    });
+    kit.insert("client_push_subscriptions", device(1));
+    let row = (await gapChecks({ db: kit.handle(), orgId: org, now: KIT_NOW })).find((item) => item.id === "flow:message:provider:web-push-and-client-push");
+    assert.equal(row.status, "PASS");
+    assert.match(row.detail, /1 saved result passed/);
+
+    kit.insert("client_push_subscriptions", device(2, { last_success_at: null, created_at: ago(9) }));
+    row = (await gapChecks({ db: kit.handle(), orgId: org, now: KIT_NOW })).find((item) => item.id === "flow:message:provider:web-push-and-client-push");
+    assert.equal(row.status, "FAIL");
+    assert.match(row.detail, /1 of 2 saved results failed/);
+    assert.notEqual(row.status, "NOT_PROVED");
+  } finally {
+    kit.close();
+  }
 });

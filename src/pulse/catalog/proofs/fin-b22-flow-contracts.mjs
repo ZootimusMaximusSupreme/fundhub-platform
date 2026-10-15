@@ -5,6 +5,9 @@
 //   live rows      The row stays in the Flow lane and is judged there from the saved results the flow leaves
 //                  behind (fin-b22-flow-live.mjs). Its proof names that lane and the tests that run the
 //                  lane's exact query over stand-in rows.
+//   page rows      The row stays in the Flow lane and is judged there by one read of the live public page
+//                  (fin-b22-page-reads.mjs). Its proof names that lane and the tests that hold the judge
+//                  to the page files and to changed copies of them.
 //
 // A surface not listed here is still not proved and stays in the gap monitor, red by its exact name.
 // This file imports nothing, so flow-gap-cases.mjs can import it without a cycle.
@@ -17,6 +20,8 @@ const SOFT_PULL_SERVER = "src/http/fin-b22-soft-pull-flow.test.mjs";
 const SOFT_PULL_PAGE = "src/pulse/catalog/proofs/fin-b22-soft-pull-page.test.mjs";
 const SOFT_PULL_STAFF = "src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.mjs";
 const TWILIO_TEST = "src/http/fin-b22-twilio-status.test.mjs";
+const PUSH_SEND_TEST = "src/push/fin-b22-send-to-client.test.mjs";
+const PAGE_TEST = "src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs";
 
 /** surface -> { file, tests }. A test with fake data judges the exact result. */
 export const FIN_B22_PRACTICE = Object.freeze({
@@ -41,6 +46,17 @@ export const FIN_B22_LIVE_PROOFS = Object.freeze({
   "template-copy:SQL-seeded-only-keys-not-in-doc-source": Object.freeze({ file: "messages.json", tests: Object.freeze([LIVE_TEST, LANE_TEST]) }),
   "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files": Object.freeze({
     file: "journeys.json", tests: Object.freeze([LIVE_TEST, SOFT_PULL_STAFF, LANE_TEST]),
+  }),
+  // Generation 2. Judged from the devices a client turned on; the sender itself is held by a practice test.
+  "provider:web-push-and-client-push": Object.freeze({
+    file: "messages.json", tests: Object.freeze([LIVE_TEST, PUSH_SEND_TEST, LANE_TEST]),
+  }),
+  // Generation 2. Judged by one read of the live public page.
+  "journey:climate-lead-magnet-intended#2-reading-and-map": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([PAGE_TEST, LANE_TEST]), page: true,
+  }),
+  "journey:fh-consulting-intended#5-request-enrollment": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([PAGE_TEST, LANE_TEST]), page: true,
   }),
 });
 
@@ -71,9 +87,12 @@ export function finB22FlowProof(sourceFile, row) {
     };
   }
   if (Object.hasOwn(FIN_B22_LIVE_PROOFS, surface) && FIN_B22_LIVE_PROOFS[surface].file === file) {
+    const live = FIN_B22_LIVE_PROOFS[surface];
     return {
       depth: "deep",
-      evidence: `Executable live saved-result check: ${LANE}; its query is run over stand-in rows by ${FIN_B22_LIVE_PROOFS[surface].tests.join(", ")}`,
+      evidence: live.page
+        ? `Executable live page read: ${LANE}; its judge is held to the page files and to changed copies of them by ${live.tests.join(", ")}`
+        : `Executable live saved-result check: ${LANE}; its query is run over stand-in rows by ${live.tests.join(", ")}`,
       asserts: row.control,
     };
   }

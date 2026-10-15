@@ -581,6 +581,73 @@ const signed = (key, over = {}) => {
   });
 }
 
+// ── client notification devices (web push) ──────────────────────────────────
+{
+  const device = (id, over = {}) => ({
+    id, org_id: ORG, client_id: u(910), endpoint_hash: String(id).padStart(64, "a"),
+    created_at: ago(30 * DAY), updated_at: ago(30 * DAY), last_success_at: ago(2 * DAY),
+    failure_count: 0, expired_at: null, revoked_at: null, ...over,
+  });
+  const client = (id, over = {}) => ({ id, org_id: ORG, email: "casey@fundhub-client.test.io", is_demo: false, custom_fields: {}, ...over });
+  FIXTURES.set("provider:web-push-and-client-push", {
+    tables: {
+      clients: [client(u(910))],
+      client_push_subscriptions: [
+        device(u(1)),                                                          // old and reached: fine
+        device(u(2), { created_at: ago(2 * DAY), last_success_at: null }),    // turned on two days ago, nothing yet: still new
+        device(u(3), { failure_count: 1 }),                                    // one bad answer after a success: fine
+      ],
+    },
+    sample: 3,
+    breaks: {
+      "a device that waited past the grace with no push ever tried": [
+        ["turned on 8 days ago, no success, no failure", (t) => t.client_push_subscriptions.push(
+          device(u(4), { created_at: ago(8 * DAY), last_success_at: null }))],
+        ["turned on 400 days ago, no success, no failure", (t) => t.client_push_subscriptions.push(
+          device(u(4), { created_at: ago(400 * DAY), last_success_at: null }))],
+      ],
+      "a device the push service keeps failing that is still on file": [
+        ["three failures after a success", (t) => t.client_push_subscriptions.push(device(u(4), { failure_count: 3 }))],
+        ["three failures and never a success", (t) => t.client_push_subscriptions.push(
+          device(u(4), { failure_count: 3, last_success_at: null, created_at: ago(1 * DAY) }))],
+        ["nine failures", (t) => t.client_push_subscriptions.push(device(u(4), { failure_count: 9 }))],
+      ],
+    },
+    ignored: [
+      ["two failures and never a success (not yet three)", (t) => t.client_push_subscriptions.push(
+        device(u(4), { failure_count: 2, last_success_at: null, created_at: ago(20 * DAY) })), { sample: 4 }],
+      ["a retired device (the push service said gone) with many failures", (t) => t.client_push_subscriptions.push(
+        device(u(4), { failure_count: 8, expired_at: ago(1 * DAY) })), { sample: 3 }],
+      ["a device the client turned off", (t) => t.client_push_subscriptions.push(
+        device(u(4), { revoked_at: ago(1 * DAY), last_success_at: null, created_at: ago(40 * DAY) })), { sample: 3 }],
+      ["a test client's waiting device", (t) => {
+        t.clients.push(client(u(911), { email: "qa@example.com" }));
+        t.client_push_subscriptions.push(device(u(4), { client_id: u(911), created_at: ago(40 * DAY), last_success_at: null }));
+      }, { sample: 3 }],
+      ["a demo client's waiting device", (t) => {
+        t.clients.push(client(u(912), { is_demo: true }));
+        t.client_push_subscriptions.push(device(u(4), { client_id: u(912), created_at: ago(40 * DAY), last_success_at: null }));
+      }, { sample: 3 }],
+      ["a synthetic client's failing device", (t) => {
+        t.clients.push(client(u(913), { custom_fields: { synthetic: "true" } }));
+        t.client_push_subscriptions.push(device(u(4), { client_id: u(913), failure_count: 5 }));
+      }, { sample: 3 }],
+      ["another company's waiting device", (t) => t.client_push_subscriptions.push(
+        device(u(4), { org_id: OTHER, created_at: ago(40 * DAY), last_success_at: null })), { sample: 3 }],
+    ],
+    drops: [
+      ["company scope", "s.org_id = $1::uuid", "1 = 1"],
+      ["not retired", "AND s.expired_at IS NULL", ""],
+      ["not turned off", "AND s.revoked_at IS NULL", ""],
+      ["never reached", "s.last_success_at IS NULL AND ", ""],
+      ["never tried", "AND s.failure_count = 0 ", ""],
+      ["past the grace", "AND s.created_at < $2::timestamptz", ""],
+      ["failing", "OR s.failure_count >= 3", ""],
+      ["not a test client", "AND NOT EXISTS (\n         SELECT 1 FROM clients cl", "AND NOT NOT EXISTS (\n         SELECT 1 FROM clients cl"],
+    ],
+  });
+}
+
 // ── the harness ─────────────────────────────────────────────────────────────
 
 function standIn(spec, tables) {

@@ -51,12 +51,13 @@ test("flow proofs name only real, runnable result tests", () => {
 });
 
 test("known flow gaps map to the exact executable red monitor", () => {
-  // Batch 22 moved the duplicate-text guard (judged from saved results) and the journeys proxy (a practice
-  // test) out of this list; the rows below are the ones nothing can judge yet.
+  // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
+  // test), the web push devices (saved results) and two journey steps (a live page read) out of this list;
+  // the rows below are the ones nothing can judge yet.
   const cases = [
-    ["messages.json", "provider:web-push-and-client-push"],
     ["messages.json", "script:one-off senders in scripts/"],
-    ["journeys.json", "journey:climate-lead-magnet-intended#2-reading-and-map"],
+    ["messages.json", "ui:ops-admin outbound mail panel"],
+    ["journeys.json", "journey:climate-lead-magnet-intended#1-headline-button"],
     ["journeys.json", "journey:fh-consulting-intended#3-three-prices"],
   ];
 
@@ -71,14 +72,13 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("the 3 outbound message leftovers that nothing can judge stay red", () => {
+test("the 2 outbound message leftovers that nothing can judge stay red", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(({ row }) => row.surface).sort(), [
-    "provider:web-push-and-client-push",
     "script:one-off senders in scripts/",
     "ui:ops-admin outbound mail panel",
   ]);
@@ -87,9 +87,9 @@ test("the 3 outbound message leftovers that nothing can judge stay red", () => {
   }
 });
 
-test("the 8 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
+test("the 9 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
   const live = loadRows("messages.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface]);
-  assert.equal(live.length, 8);
+  assert.equal(live.length, 9);
   for (const row of live) {
     const proof = proofForFlowRow("messages.json", row);
     assert.equal(proof.verdict, undefined, row.surface);
@@ -98,6 +98,29 @@ test("the 8 message rows judged from saved results carry a live-check proof, not
     assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs"), row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
   }
+});
+
+test("the two journey steps judged by a live page read carry a page-read proof, not a red verdict", () => {
+  const rows = loadRows("journeys.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface]?.page);
+  assert.deepEqual(rows.map((row) => row.surface).sort(), [
+    "journey:climate-lead-magnet-intended#2-reading-and-map",
+    "journey:fh-consulting-intended#5-request-enrollment",
+  ]);
+  for (const row of rows) {
+    const proof = proofForFlowRow("journeys.json", row);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.equal(proof.depth, "deep", row.surface);
+    assert.match(proof.evidence, /Executable live page read: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
+    assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs"), row.surface);
+    assert.equal(proof.asserts, row.control, row.surface);
+  }
+});
+
+test("the web push row names the practice test of the sender beside its saved-result check", () => {
+  const row = loadRows("messages.json").find((candidate) => candidate.surface === "provider:web-push-and-client-push");
+  const files = proofTestFiles(proofForFlowRow("messages.json", row));
+  assert.ok(files.includes("src/push/fin-b22-send-to-client.test.mjs"));
+  assert.ok(files.includes("src/pulse/catalog/proofs/fin-b22-flow-live.test.mjs"));
 });
 
 test("the journeys proxy is judged by a test with fake data: who may ask, what goes upstream, what comes back", () => {

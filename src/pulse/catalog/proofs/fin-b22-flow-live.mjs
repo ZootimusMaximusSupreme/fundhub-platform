@@ -45,6 +45,10 @@ export const TEMPLATE_PATH_MIN_ROWS = 2;
 export const NUDGE_LOOKBACK_DAYS = 14;
 export const NUDGE_CLAIM_GRACE_MINUTES = 15;
 export const SOFT_PULL_BUSINESS_SOURCE = "soft_pull_approve";
+/** A device a client turned on is waiting if this many days passed and no push was ever tried for it. */
+export const PUSH_WAITING_DAYS = 7;
+/** The push service failed this many times in a row and the device is still on file (only a 404 or 410 retires one). */
+export const PUSH_FAILURE_LIMIT = 3;
 /** What the nudge runner writes (src/nudge/run.mjs SOURCE_WORKFLOW and STAFF_TASK_ROLE). A test pins both. */
 export const NUDGE_SOURCE_WORKFLOW = "waypoint-nudge";
 export const NUDGE_STAFF_TASK_ROLE = "csm";
@@ -208,6 +212,30 @@ SELECT count(*)::int AS sample_count,
  WHERE b.org_id = $1::uuid
    AND b.entity_data ->> 'source' = '${SOFT_PULL_BUSINESS_SOURCE}'`.trim();
 
+/**
+ * $1 org, $2 waited-before, $3 test-address pattern. A notification device a client turned on, as the sender
+ * left it: src/push/store.mjs markSuccess stamps last_success_at and clears failure_count, markFailure adds one,
+ * markExpired (a 404 or 410) retires the row. Two states are wrong. WAITING: the device is older than the grace
+ * and nothing was ever tried (no success, no failure), which is what a customer lives through while nothing calls
+ * sendToClient. FAILING: the push service failed it three times or more and it is still on file.
+ */
+export const PUSH_DEVICE_SQL = `
+SELECT count(*)::int AS sample_count,
+       count(*) FILTER (WHERE
+            (s.last_success_at IS NULL AND s.failure_count = 0 AND s.created_at < $2::timestamptz)
+         OR s.failure_count >= ${PUSH_FAILURE_LIMIT}
+       )::int AS bad_count
+  FROM client_push_subscriptions s
+ WHERE s.org_id = $1::uuid
+   AND s.expired_at IS NULL
+   AND s.revoked_at IS NULL
+   AND NOT EXISTS (
+         SELECT 1 FROM clients cl
+          WHERE cl.id = s.client_id
+            AND (COALESCE(cl.is_demo, false) = true
+              OR COALESCE(cl.custom_fields ->> 'synthetic', '') = 'true'
+              OR COALESCE(cl.email, '') ~* $3::text))`.trim();
+
 /** The EIN shape normalizeSoftPullEin writes: two digits, a dash, seven digits. */
 export const EIN_PATTERN = "^[0-9]{2}-[0-9]{7}$";
 
@@ -328,6 +356,14 @@ export const FIN_B22_LIVE = Object.freeze([
     sql: TEMPLATE_ROWS_SQL,
     params: (ctx) => [ctx.orgId],
     reduce: (rows) => reduceSqlOnlyKeys(rows),
+  }),
+  Object.freeze({
+    surface: "provider:web-push-and-client-push",
+    family: "message",
+    emptyAs: "quiet",
+    requirement: `Every notification device a client turned on is being reached or is still new: none has waited more than ${PUSH_WAITING_DAYS} days with no push ever tried, and none has failed ${PUSH_FAILURE_LIMIT} times or more without being retired. Nothing in the app calls sendToClient today, so a device waits until someone wires a caller.`,
+    sql: PUSH_DEVICE_SQL,
+    params: (ctx) => [ctx.orgId, when(ctx, PUSH_WAITING_DAYS * DAY), TEST_ADDRESS_RE],
   }),
   Object.freeze({
     surface: "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
