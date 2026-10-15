@@ -86,7 +86,9 @@ All from the worktree `.claude/worktrees/fin-b02`, no database, no network.
 - `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog-*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs` plus the three fast new files: 171 tests, 171 pass.
 - `node --test src/pulse/*.test.mjs src/pulse/coverage/modules.test.mjs`: 716 pass (the `.pg.test.mjs` files skip: no `DATABASE_URL` in this shell).
 - `node --test src/pulse/catalog/proofs/display-contracts-*.test.mjs` and the door and flow contract tests that read `generated.json`: 215 pass.
-- `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the focused run that executes every test named by every case, browser ones included): all 3 pass on `ec6010f37`; the final run on the last commit is listed under "Tests still running" if it had not finished when this was written.
+- `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the focused run that executes every test named by every case, browser ones included), twice:
+  - on `ec6010f37` (before the funded-column and sales-floor tests were added to the cases): 3 of 3 pass, 12 minutes 41 seconds.
+  - on `054bb36e7` (final case list): tests 1 and 2 pass. Test 3 fails on ONE nested test and nothing else: `e2e/teleprompter-touch.spec.mjs:715` "volume buttons, no finger on the glass" (379 of 380 browser tests passed, 764 seconds). That spec is not in this batch and I touched no teleprompter file. The slice 4 manifest recorded the same test failing under load on clean `origin/main` ("373 of 374 passed"). All five new `fin-b02-*` test files passed inside that run.
 - `npm run lint`: 3,569 files parse clean.
 
 ## Break checks (each break made alone, test run, file put back, `git status` clean)
@@ -101,5 +103,5 @@ All from the worktree `.claude/worktrees/fin-b02`, no database, no network.
 ## Left undone, for the next generation
 
 - Rows 7 and 12 need a product change (see above). Nothing else in batch 02 is open.
-- The focused proof run is slow under load (12 minutes on this Mac with other builders running). It passed with the new tests listed; re-run it after merging.
+- The focused proof run is slow under load (12 to 13 minutes on this Mac with other builders running) and `e2e/teleprompter-touch.spec.mjs:715` is a known load flake inside it. Re-run it after merging and read that one test alone if it fails again.
 - A live check on production data could not be run (no database access by design). The SQL is judged only on stand-in rows with real column names. If a column holds values the stand-in did not model (for example `messages.provider_ref` prefixes written by another path), a first red on live would be a finding, not a surprise to be hidden.
