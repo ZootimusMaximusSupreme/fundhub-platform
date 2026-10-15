@@ -1,0 +1,434 @@
+{
+ "file": "Direct Book Ad 4 — High earners Take 1.mp4",
+ "ad": "Direct Book Ad 4 — High earners",
+ "lufs": -27.3,
+ "lra": 2.9,
+ "true_peak_db": -9.8,
+ "timing_ok": true,
+ "duration_s": 88.0,
+ "lead_silence_s": 0.44,
+ "trail_silence_s": 1.57,
+ "words": 303,
+ "wpm_overall": 211,
+ "wpm_speaking": 247,
+ "pauses": 24,
+ "pauses_per_min": 16.8,
+ "pause_total_s": 12.4,
+ "pause_pct_of_span": 14.5,
+ "pause_median_s": 0.41,
+ "pause_max_s": 1.76,
+ "pauses_over_1s": 2,
+ "pauses_over_1_5s": 1,
+ "phrase_len_mean_s": 2.94,
+ "phrase_len_sd_s": 2.15,
+ "gaps": [
+  0.38,
+  0.3,
+  1.76,
+  0.4,
+  0.46,
+  0.42,
+  0.48,
+  0.42,
+  0.34,
+  0.52,
+  0.36,
+  0.74,
+  0.38,
+  0.36,
+  0.52,
+  0.3,
+  0.38,
+  0.6,
+  0.42,
+  0.36,
+  0.36,
+  1.1,
+  0.76,
+  0.32
+ ],
+ "pitch_ok": true,
+ "f0_median_hz": 134.6,
+ "pitch_sd_st": 3.38,
+ "pitch_p10_p90_st": 8.74,
+ "voiced_pct_of_speech": 54.3,
+ "phrases": 25,
+ "phrase_level_sd_st": 1.82,
+ "phrase_range_mean_st": 6.62,
+ "loud_sd_db": 7.47,
+ "loud_p10_p90_db": 21.58,
+ "phrase_loud_sd_db": 1.4,
+ "accents_total": 55,
+ "fillers_heard": 0,
+ "restarts": 0,
+ "silence_threshold_db": -38.8,
+ "word_time_lag_s": 0.14,
+ "script": {
+  "script_words": 329,
+  "said_words": 303,
+  "script_covered_pct": 76.0,
+  "said_off_script_pct": 17.5,
+  "line_ends": [
+   {
+    "line": 0,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 4.64,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 1,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 7.98,
+    "end_slope_st": null,
+    "pause_after_s": 0.38,
+    "is_last": false
+   },
+   {
+    "line": 2,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 14.16,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 3,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 15.64,
+    "end_slope_st": -4.816666666666666,
+    "pause_after_s": 1.76,
+    "is_last": false
+   },
+   {
+    "line": 4,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 27.14,
+    "end_slope_st": 0.3438095238095258,
+    "pause_after_s": 0.46,
+    "is_last": false
+   },
+   {
+    "line": 5,
+    "found": false,
+    "pitch_up": false
+   },
+   {
+    "line": 6,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 42.06,
+    "end_slope_st": -2.2666666666666666,
+    "pause_after_s": 0.36,
+    "is_last": false
+   },
+   {
+    "line": 7,
+    "found": true,
+    "pitch_up": true,
+    "t_end": 45.24,
+    "end_slope_st": -1.0988888888888884,
+    "pause_after_s": 0.74,
+    "is_last": false
+   },
+   {
+    "line": 8,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 56.72,
+    "end_slope_st": -0.037500000000000644,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 9,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 63.52,
+    "end_slope_st": -2.4642857142857144,
+    "pause_after_s": 0.36,
+    "is_last": false
+   },
+   {
+    "line": 10,
+    "found": false,
+    "pitch_up": false
+   },
+   {
+    "line": 11,
+    "found": true,
+    "pitch_up": true,
+    "t_end": 74.48,
+    "end_slope_st": null,
+    "pause_after_s": 1.1,
+    "is_last": false
+   },
+   {
+    "line": 12,
+    "found": true,
+    "pitch_up": true,
+    "t_end": 79.68,
+    "end_slope_st": 3.9015151515151505,
+    "pause_after_s": 0.76,
+    "is_last": false
+   },
+   {
+    "line": 13,
+    "found": false,
+    "pitch_up": false
+   },
+   {
+    "line": 14,
+    "found": false,
+    "pitch_up": false
+   }
+  ],
+  "up_lines_checked": 2,
+  "up_lines_rising": 1,
+  "up_slope_mean_st": 1.4,
+  "other_slope_mean_st": -1.85,
+  "other_lines_rising_pct": 0.0,
+  "breaks_checked": 11,
+  "breaks_paused": 8,
+  "break_pause_mean_s": 0.54,
+  "caps_matched": 9,
+  "caps_lift_st": 1.62,
+  "caps_lift_db": -2.24,
+  "other_lift_st": 1.99,
+  "other_lift_db": -2.04
+ },
+ "transcript": "Making a million dollars takes two things, a proven investment and access to capital. You might have good credit and high income and still be missing the second one. Maybe you paid cash your whole life or you've got credit you never used or maybe you have an old LLC or a company you forgot about. That company is worth a lot of money. You'll build your income by being a professional and managing money well and that's exactly why banks want to lend you. I'm not going to tell you where to put the money, but here's what that capital does in the right hands. Every dollar I put in a medic comes back about four times, and that's on my poor performing ads. So 200k, run through a system that already has proven returns, turns into 800k pretty quickly. Capital lets you grow in a proven system much faster than cashflow ever will. And here's what that company you forgot about is actually worth. Every business qualifies for Own funding and the older the businesses the more capital it gets just from having that age one business is a hundred K at minimum and the older one gets up to 300k they're basic they're basically individual money machines So look at this business you already have that you're not using if you have one that's up to 300k if you have two that's up to 600k if you have three that's up to $900,000 sitting in your account and the next seven to 30 days Just ask yourself one question. Do you want access to that capital to put into a proven system you already make money with? If the answer is yes, book a call below and your advisor will show you how much money we can actually get you.",
+ "phrase_meta": [
+  {
+   "k": 0,
+   "t0": 0.44,
+   "t1": 7.98,
+   "loud_db": -35.60808181762695,
+   "level_st": 0.20000000000000068,
+   "range_st": 8.580000000000005,
+   "accents": 9
+  },
+  {
+   "k": 1,
+   "t0": 8.36,
+   "t1": 11.02,
+   "loud_db": -35.21051788330078,
+   "level_st": -2.7000000000000024,
+   "range_st": 3.1300000000000017,
+   "accents": 0
+  },
+  {
+   "k": 2,
+   "t0": 11.32,
+   "t1": 15.64,
+   "loud_db": -34.30562973022461,
+   "level_st": -1.4500000000000004,
+   "range_st": 7.269999999999998,
+   "accents": 2
+  },
+  {
+   "k": 3,
+   "t0": 17.4,
+   "t1": 22.72,
+   "loud_db": -33.31109619140625,
+   "level_st": -1.9500000000000015,
+   "range_st": 10.560000000000002,
+   "accents": 5
+  },
+  {
+   "k": 4,
+   "t0": 23.12,
+   "t1": 27.14,
+   "loud_db": -35.84402847290039,
+   "level_st": -2.100000000000004,
+   "range_st": 8.520000000000003,
+   "accents": 4
+  },
+  {
+   "k": 5,
+   "t0": 27.6,
+   "t1": 29.96,
+   "loud_db": -34.190696716308594,
+   "level_st": -0.8500000000000019,
+   "range_st": 6.690000000000005,
+   "accents": 1
+  },
+  {
+   "k": 6,
+   "t0": 30.38,
+   "t1": 30.86,
+   "loud_db": -31.507429122924805,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 7,
+   "t0": 31.34,
+   "t1": 31.8,
+   "loud_db": -32.48195266723633,
+   "level_st": -4.700000000000003,
+   "range_st": 4.98,
+   "accents": 0
+  },
+  {
+   "k": 8,
+   "t0": 32.22,
+   "t1": 35.56,
+   "loud_db": -35.26659393310547,
+   "level_st": -0.4000000000000008,
+   "range_st": 7.220000000000002,
+   "accents": 2
+  },
+  {
+   "k": 9,
+   "t0": 35.9,
+   "t1": 37.62,
+   "loud_db": -35.042545318603516,
+   "level_st": 0.6999999999999943,
+   "range_st": 3.2999999999999976,
+   "accents": 0
+  },
+  {
+   "k": 10,
+   "t0": 38.14,
+   "t1": 42.06,
+   "loud_db": -34.46666717529297,
+   "level_st": 0.4000000000000011,
+   "range_st": 9.0,
+   "accents": 5
+  },
+  {
+   "k": 11,
+   "t0": 42.42,
+   "t1": 45.24,
+   "loud_db": -35.00413513183594,
+   "level_st": -0.8000000000000028,
+   "range_st": 9.1,
+   "accents": 3
+  },
+  {
+   "k": 12,
+   "t0": 45.98,
+   "t1": 47.16,
+   "loud_db": -32.9329948425293,
+   "level_st": 1.599999999999999,
+   "range_st": 7.900000000000001,
+   "accents": 2
+  },
+  {
+   "k": 13,
+   "t0": 47.54,
+   "t1": 50.58,
+   "loud_db": -34.68049240112305,
+   "level_st": -0.30000000000000593,
+   "range_st": 7.8999999999999995,
+   "accents": 2
+  },
+  {
+   "k": 14,
+   "t0": 50.94,
+   "t1": 52.02,
+   "loud_db": -32.09362030029297,
+   "level_st": -0.1500000000000031,
+   "range_st": 3.3199999999999985,
+   "accents": 0
+  },
+  {
+   "k": 15,
+   "t0": 52.54,
+   "t1": 53.22,
+   "loud_db": -31.137985229492188,
+   "level_st": 4.399999999999997,
+   "range_st": 4.3400000000000025,
+   "accents": 1
+  },
+  {
+   "k": 16,
+   "t0": 53.52,
+   "t1": 54.86,
+   "loud_db": -33.120975494384766,
+   "level_st": -0.5000000000000021,
+   "range_st": 8.619999999999997,
+   "accents": 1
+  },
+  {
+   "k": 17,
+   "t0": 55.24,
+   "t1": 60.06,
+   "loud_db": -33.72934341430664,
+   "level_st": 0.8000000000000002,
+   "range_st": 8.66,
+   "accents": 3
+  },
+  {
+   "k": 18,
+   "t0": 60.66,
+   "t1": 62.24,
+   "loud_db": -32.21443557739258,
+   "level_st": 1.7999999999999972,
+   "range_st": 6.600000000000003,
+   "accents": 1
+  },
+  {
+   "k": 19,
+   "t0": 62.66,
+   "t1": 63.52,
+   "loud_db": -32.204689025878906,
+   "level_st": -2.200000000000002,
+   "range_st": 5.0,
+   "accents": 0
+  },
+  {
+   "k": 20,
+   "t0": 63.88,
+   "t1": 72.78,
+   "loud_db": -35.83576965332031,
+   "level_st": 0.050000000000000086,
+   "range_st": 7.699999999999999,
+   "accents": 6
+  },
+  {
+   "k": 21,
+   "t0": 73.14,
+   "t1": 74.48,
+   "loud_db": -34.15056228637695,
+   "level_st": -0.3000000000000022,
+   "range_st": 2.7000000000000055,
+   "accents": 1
+  },
+  {
+   "k": 22,
+   "t0": 75.58,
+   "t1": 79.68,
+   "loud_db": -33.284019470214844,
+   "level_st": 1.3999999999999968,
+   "range_st": 6.4300000000000015,
+   "accents": 2
+  },
+  {
+   "k": 23,
+   "t0": 80.44,
+   "t1": 81.4,
+   "loud_db": -31.629684448242188,
+   "level_st": 1.9999999999999973,
+   "range_st": 5.039999999999998,
+   "accents": 1
+  },
+  {
+   "k": 24,
+   "t0": 81.72,
+   "t1": 86.4,
+   "loud_db": -33.364532470703125,
+   "level_st": 1.1999999999999953,
+   "range_st": 6.250000000000001,
+   "accents": 4
+  }
+ ]
+}

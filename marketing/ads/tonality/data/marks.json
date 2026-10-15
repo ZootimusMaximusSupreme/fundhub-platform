@@ -1,0 +1,1288 @@
+{
+ "Capital Blueprint Ad 1 — Industry call-out": {
+  "paragraphs": 15,
+  "words": 372,
+  "caps": 6,
+  "pitch_ups": 2,
+  "pauses": 14,
+  "caps_per_100_words": 1.6,
+  "pitch_ups_per_100_words": 0.5,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "The way this industry teaches funding costs you $5,000 to $10,000 and HUNDREDS of hours of outdated videos and Zoom calls that pull you away from your business.",
+    "words": 28,
+    "first_word_index": 0,
+    "caps": [
+     "HUNDREDS"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "And after all of that, some of them still charge you $2,000 a MONTH for the one piece that decides how much you get approved for.",
+    "words": 26,
+    "first_word_index": 28,
+    "caps": [
+     "MONTH"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "They all say they want to help you, but anyone who really wanted to help would look at YOUR file and tell you exactly what to do next.",
+    "words": 28,
+    "first_word_index": 54,
+    "caps": [
+     "YOUR"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "So I built the Capital Blueprint, which reviews your file the way a lender does and shows you how much we think you'll qualify for right now.",
+    "words": 27,
+    "first_word_index": 82,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "From there, your dashboard lays out every step to get your file to the MAXIMUM amount of funding, in the exact order you need to take them.",
+    "words": 27,
+    "first_word_index": 109,
+    "caps": [
+     "MAXIMUM"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "And the Blueprint gets you past the exact point where most people give up on learning funding.",
+    "words": 17,
+    "first_word_index": 136,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "Every step has a due date and a reminder, and each one clears only when you upload proof that you finished.",
+    "words": 21,
+    "first_word_index": 153,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "A real person on our team checks in with you whenever you fall behind, and once your file is ready, you're set up to fund YOURSELF.",
+    "words": 26,
+    "first_word_index": 174,
+    "caps": [
+     "YOURSELF"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "After that, the system tells you when you're ready for your next funding sequence, so the Blueprint becomes your own operating system for funding.",
+    "words": 24,
+    "first_word_index": 200,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "Only about 1 in 8 people finish an online course they sign up for, which is why every step in the Blueprint has a deadline and a person behind it.",
+    "words": 30,
+    "first_word_index": 224,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "You learn funding by taking action on your own file, and since you end up funded, the Blueprint is worth more than any course.",
+    "words": 24,
+    "first_word_index": 254,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "If you'd rather have us handle everything, we're happy to optimize your credit or run your funding for you.",
+    "words": 19,
+    "first_word_index": 278,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "That $2,000-a-month piece is the bank data, meaning what each bank approves and why, and you get it from day one.",
+    "words": 21,
+    "first_word_index": 297,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 13,
+    "text": "I've done tens of MILLIONS of dollars in funding over the last decade, and every data point from all of that is built into UnderwriteIQ, the software behind your Blueprint.",
+    "words": 30,
+    "first_word_index": 318,
+    "caps": [
+     "MILLIONS"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 14,
+    "text": "Click the link below and hop on a call, and we'll figure out which path gets your file to the maximum amount of funding.",
+    "words": 24,
+    "first_word_index": 348,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/2026-10-13.md",
+  "heading": "## 1. Capital Blueprint",
+  "seconds_at_150wpm": 148.8,
+  "seconds_at_205wpm": 108.9
+ },
+ "Capital Blueprint Ad 2 — Learn it yourself": {
+  "paragraphs": 18,
+  "words": 398,
+  "caps": 5,
+  "pitch_ups": 2,
+  "pauses": 17,
+  "caps_per_100_words": 1.3,
+  "pitch_ups_per_100_words": 0.5,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "Higher interest rates, harder application sequences and extra verification on credit cards make funding harder to get every single year.",
+    "words": 20,
+    "first_word_index": 0,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "But one part of getting funded has stayed exactly the same for the 10 years I've been doing this, and it decides who still gets approved for the MOST.",
+    "words": 29,
+    "first_word_index": 20,
+    "caps": [
+     "MOST"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "That part works the same whether your credit is great or somewhere in the middle, and whether you have a business yet or not.",
+    "words": 24,
+    "first_word_index": 49,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "If you take the time to learn this and work a system, you go from where you are right now to HUNDREDS of thousands of dollars in funding.",
+    "words": 28,
+    "first_word_index": 73,
+    "caps": [
+     "HUNDREDS"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "And you keep repeating that process for as long as the banking system exists.",
+    "words": 14,
+    "first_word_index": 101,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "So I built the Capital Blueprint, a dashboard that walks you through the whole process one waypoint at a time.",
+    "words": 20,
+    "first_word_index": 115,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "The Blueprint also gets you past the exact point where most people give up on learning funding.",
+    "words": 17,
+    "first_word_index": 135,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "Each waypoint tells you exactly what move to make next and shows you how to get there.",
+    "words": 17,
+    "first_word_index": 152,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "You'll know which letters to send to optimize your credit and which banks to apply to, in the EXACT order.",
+    "words": 20,
+    "first_word_index": 169,
+    "caps": [
+     "EXACT"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "You'll also know which banks to open accounts with when you need them, and how to start and optimize your businesses.",
+    "words": 21,
+    "first_word_index": 189,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "The system holds you accountable and nudges you along, so every move you make is the right one while you focus on making money.",
+    "words": 24,
+    "first_word_index": 210,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "Only about 1 in 8 people finish an online course they sign up for.",
+    "words": 14,
+    "first_word_index": 234,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "With the Blueprint, you skip the hours of videos and note-taking and go straight to making the next move on your own file.",
+    "words": 23,
+    "first_word_index": 248,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 13,
+    "text": "Or you can buy a $5,000 course or pay someone $2,000 a MONTH for data points, even though a lot of the people selling funding don't know what they're doing.",
+    "words": 30,
+    "first_word_index": 271,
+    "caps": [
+     "MONTH"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 14,
+    "text": "Every data point I've collected over the last decade is built into UnderwriteIQ, the software behind your Blueprint, so you have the data from day one.",
+    "words": 26,
+    "first_word_index": 301,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 15,
+    "text": "The part that's stayed the same for 10 years is how your file is optimized and set up before you ever apply.",
+    "words": 22,
+    "first_word_index": 327,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 16,
+    "text": "When you get that right, you give yourself the best possible chance at the MAXIMUM amount of funding, no matter what the banks change.",
+    "words": 24,
+    "first_word_index": 349,
+    "caps": [
+     "MAXIMUM"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 17,
+    "text": "Click the link below and hop on a call, and we'll look at where your file is right now and map out your first moves.",
+    "words": 25,
+    "first_word_index": 373,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/2026-10-13.md",
+  "heading": "## 2. Capital Blueprint",
+  "seconds_at_150wpm": 159.2,
+  "seconds_at_205wpm": 116.5
+ },
+ "Direct Book Ad 4 — High earners": {
+  "paragraphs": 15,
+  "words": 329,
+  "caps": 10,
+  "pitch_ups": 3,
+  "pauses": 14,
+  "caps_per_100_words": 3.0,
+  "pitch_ups_per_100_words": 0.9,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "Making a million dollars takes TWO things, a proven investment and access to capital.",
+    "words": 14,
+    "first_word_index": 0,
+    "caps": [
+     "TWO"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "You might have good credit and a high income and still be MISSING the second one.",
+    "words": 16,
+    "first_word_index": 14,
+    "caps": [
+     "MISSING"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "Maybe you've paid cash your whole life, or you've got credit you never use. Or maybe you have an old LLC or a company you forgot about.",
+    "words": 27,
+    "first_word_index": 30,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "That company is worth a LOT of money to a bank.",
+    "words": 11,
+    "first_word_index": 57,
+    "caps": [
+     "LOT"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "You built your income by being a professional and managing money well, and that's EXACTLY why banks want to lend to you. I'm not going to tell you where to put the money, but here's what capital does in the right hands.",
+    "words": 42,
+    "first_word_index": 68,
+    "caps": [
+     "EXACTLY"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "Every dollar I put into Meta comes back about FOUR times, and that's on the low end, so $200,000 run through a system that already has proven returns turns into a LOT more than $200,000.",
+    "words": 35,
+    "first_word_index": 110,
+    "caps": [
+     "FOUR",
+     "LOT"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "Capital lets you grow on a proven system MUCH faster than cash flow ever will.",
+    "words": 15,
+    "first_word_index": 145,
+    "caps": [
+     "MUCH"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "Here's what that company you forgot about is worth.",
+    "words": 9,
+    "first_word_index": 160,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "Every business qualifies for funding on its own, and the older the business is, the MORE capital it gets, just from having that age. One business is $100,000 at a minimum, and an older one gets up to $300,000.",
+    "words": 39,
+    "first_word_index": 169,
+    "caps": [
+     "MORE"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "So look at the businesses you have that you aren't using.",
+    "words": 11,
+    "first_word_index": 208,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "If you have one, that's up to $300,000. If you have two, that's up to $600,000, and if you have THREE, that's up to $900,000, sitting in your account in the next 15 to 30 days, depending on what your roadmap takes to get you there.",
+    "words": 46,
+    "first_word_index": 219,
+    "caps": [
+     "THREE"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "Then ask yourself ONE question.",
+    "words": 5,
+    "first_word_index": 265,
+    "caps": [
+     "ONE"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "Do you want access to that capital to put into the proven system you already make money with?",
+    "words": 18,
+    "first_word_index": 270,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 13,
+    "text": "If the answer is yes, book a call below, and your advisor will show you what your file and every one of your companies are worth to a bank right now.",
+    "words": 31,
+    "first_word_index": 288,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 14,
+    "text": "If the answer is no, keep doing what you're doing.",
+    "words": 10,
+    "first_word_index": 319,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+  "heading": "## 4. Ad 15",
+  "seconds_at_150wpm": 131.6,
+  "seconds_at_205wpm": 96.3
+ },
+ "Direct Book Ad 5 — Paying for speed": {
+  "paragraphs": 9,
+  "words": 229,
+  "caps": 5,
+  "pitch_ups": 1,
+  "pauses": 8,
+  "caps_per_100_words": 2.2,
+  "pitch_ups_per_100_words": 0.4,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "You can spend the next year figuring out how credit turns into money, or you can get my last TEN years of it on one call.",
+    "words": 26,
+    "first_word_index": 0,
+    "caps": [
+     "TEN"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "There's ONE move I see on most of the files I review that costs about $300,000 in funding, and it feels like the responsible thing to do.",
+    "words": 27,
+    "first_word_index": 26,
+    "caps": [
+     "ONE"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "In those ten years I've funded a little over $1 million for myself, worked hundreds of other people's files, and made every expensive mistake there is, including this one.",
+    "words": 29,
+    "first_word_index": 53,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "Here it is.",
+    "words": 3,
+    "first_word_index": 82,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "Paying off a card and CLOSING it.",
+    "words": 7,
+    "first_word_index": 85,
+    "caps": [
+     "CLOSING"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "When you close a card, you lose years of history you can't buy back, and you lose that limit with it. Close a $20,000 card and every approval after it comes in $20,000 to $40,000 SMALLER, because banks size you off the limits you already have.",
+    "words": 46,
+    "first_word_index": 92,
+    "caps": [
+     "SMALLER"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "Five approvals on one company is $100,000 to $200,000 gone, and across two or three companies you're at $300,000 or more.",
+    "words": 21,
+    "first_word_index": 138,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "When you work with us, our system catches costly moves like that BEFORE they ever happen, so you get the maximum amount of funding and keep access to capital whenever you want it, for the rest of your life.",
+    "words": 39,
+    "first_word_index": 159,
+    "caps": [
+     "BEFORE"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "I learned every one of those moves the hard way so you don't have to. Click below and book a call, and your advisor will go through your file with you.",
+    "words": 31,
+    "first_word_index": 198,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+  "heading": "## 5. Ad 17",
+  "seconds_at_150wpm": 91.6,
+  "seconds_at_205wpm": 67.0
+ },
+ "Direct Book Ad 9 — The bank": {
+  "paragraphs": 7,
+  "words": 260,
+  "caps": 0,
+  "pitch_ups": 0,
+  "pauses": 6,
+  "caps_per_100_words": 0.0,
+  "pitch_ups_per_100_words": 0.0,
+  "has_marks": false,
+  "lines": [
+   {
+    "i": 0,
+    "text": "The bank behind me already decided how much they'd give you, and how much money you make barely factors into it.",
+    "words": 21,
+    "first_word_index": 0,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "One thing on your credit report decides it, and it outweighs your income and your score.",
+    "words": 16,
+    "first_word_index": 21,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "A guy making three hundred thousand dollars a year with perfect payment history gets approved for eight thousand dollars, while his buddy making half that walks out of the same bank the same week with eighty. Same bank, same week, and the only real difference between them is one thing on their credit reports.",
+    "words": 54,
+    "first_word_index": 37,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "It's been on your report for years, and it sets your approvals every time you apply. Fixing it is a simple tweak, and once you do, every approval after that comes in bigger.",
+    "words": 33,
+    "first_word_index": 91,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "It's your highest limit card. Banks look at the biggest limit another bank has already given you, and they'll approve you for one to two times that amount depending on the bank. The guy with eighty thousand had a big limit on his report, and the guy with eight didn't.",
+    "words": 50,
+    "first_word_index": 124,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "Here at Fundhub, we make sure you get the highest limits possible so you can maximize your fundability across the board. We set your profile up so you get funded over and over again, and you're never the guy walking out of a bank with eight thousand dollars again.",
+    "words": 49,
+    "first_word_index": 174,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "Click the link below. Your highest limit is one of 13 things on your file that decide how much you get, and your advisor will walk you through the other 12 so you can maximize your fundability.",
+    "words": 37,
+    "first_word_index": 223,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+  "heading": "## 9. Ad 9",
+  "seconds_at_150wpm": 104.0,
+  "seconds_at_205wpm": 76.1
+ },
+ "Direct Book Ad 10 — Scale without your own cash": {
+  "paragraphs": 20,
+  "words": 697,
+  "caps": 7,
+  "pitch_ups": 4,
+  "pauses": 19,
+  "caps_per_100_words": 1.0,
+  "pitch_ups_per_100_words": 0.6,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "Putting MORE money into your business is the fastest way to stop running out of cash.",
+    "words": 16,
+    "first_word_index": 0,
+    "caps": [
+     "MORE"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "And you can do it without using your own cash.",
+    "words": 10,
+    "first_word_index": 16,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "Here's what I found scaling my own businesses. Jeremy Haynes, one of the biggest names in ads, explains this all the time. When your business is stuck with limited cash, you have to turn your spending UP. More spend gets you more data, your ads perform better, and you can finally pay for the people and tools that help you break free.",
+    "words": 62,
+    "first_word_index": 26,
+    "caps": [
+     "UP"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "Maybe your business makes $10,000 a month, maybe $20,000 a month, maybe $50,000 a month. Or maybe you don't have a business yet and you're looking to start one. Wherever you're starting, if you want to get past $100,000 a month, you need capital to get there.",
+    "words": 47,
+    "first_word_index": 88,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "I'm in my early 30s, and I know how hard it is to build real freedom on limited capital. It's hard to save for retirement, and it's even harder to buy back the time with your family that you missed the last few years while you were grinding on your business.",
+    "words": 51,
+    "first_word_index": 135,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "Everybody knows it. I know it, because I've been there. Sometimes you're not taking the right action, and sometimes you just don't have enough capital to take the right action.",
+    "words": 30,
+    "first_word_index": 186,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "You already know what your business needs. Maybe you don't have the money to do it. Or maybe you have the money, but it's your savings, and you don't want to risk it.",
+    "words": 33,
+    "first_word_index": 216,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "Your family wants you to take that leap. Your mom, your brother, your sister, your son, your daughter. They want to see you win, and they want more of your time when you do.",
+    "words": 34,
+    "first_word_index": 249,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "The hard part is that the savings you'd use to take that leap are the same savings that keep your family safe. Funding lets you take the leap and keep that safety net right where it is.",
+    "words": 37,
+    "first_word_index": 283,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "Mark Zuckerberg said, \"The biggest risk is not taking any risk.\"",
+    "words": 11,
+    "first_word_index": 320,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "You might not be ready to take that risk yet, and that's okay. But start getting ready NOW. The economy is getting harder for entrepreneurs. Interest rates just went up, banks are giving out less money, and the business owners who get ready FIRST are the ones who still get funded.",
+    "words": 51,
+    "first_word_index": 331,
+    "caps": [
+     "NOW",
+     "FIRST"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "Here's the plan, and one step in it took me years of driving bank to bank to figure out.",
+    "words": 19,
+    "first_word_index": 382,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "Step one, fix up your credit FIRST. If it's not with me, do it with somebody. I want you to win either way. Just get it right.",
+    "words": 27,
+    "first_word_index": 401,
+    "caps": [
+     "FIRST"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 13,
+    "text": "Step two, open your businesses and build their credit. If you have extra cash, buy an older company. Those are assets banks will fund. Your personal credit is the main one, and every business you add MULTIPLIES it.",
+    "words": 38,
+    "first_word_index": 428,
+    "caps": [
+     "MULTIPLIES"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 14,
+    "text": "Step three is the one that took me years. You need to know exactly which banks fit your credit profile and your business profile, and apply to them in the right order.",
+    "words": 32,
+    "first_word_index": 466,
+    "caps": [],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 15,
+    "text": "I used to drive to every single bank in my state to learn what each one looks for. You'll learn a lot doing that, and it's worth doing. But it takes a TON of time when you also have a business to run. That's time away from your business and your family, and it makes everything harder.",
+    "words": 57,
+    "first_word_index": 498,
+    "caps": [
+     "TON"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 16,
+    "text": "Working with someone who already knows every bank and every detail they look for saves you all of that time.",
+    "words": 20,
+    "first_word_index": 555,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 17,
+    "text": "Once you have that plan, you have everything you need to get funded. If you feel confident doing it yourself, go do it. Or work with someone who's done this their whole career. That's the plan while interest rates rise.",
+    "words": 40,
+    "first_word_index": 575,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 18,
+    "text": "And that's how you scale without touching your own cash. We get you funding on your credit and your businesses, so you put that money into growth, your cash stays right where it is, and you finally get the freedom and the time back that you've been working for.",
+    "words": 49,
+    "first_word_index": 615,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 19,
+    "text": "Click the link below, and your advisor will walk you through the plan for where your credit is right now and show you how much funding you can get to grow your business.",
+    "words": 33,
+    "first_word_index": 664,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+  "heading": "## 10. Scale without your own cash",
+  "seconds_at_150wpm": 278.8,
+  "seconds_at_205wpm": 204.0
+ },
+ "Direct Book Ad 11 — The penthouse": {
+  "paragraphs": 5,
+  "words": 224,
+  "caps": 0,
+  "pitch_ups": 0,
+  "pauses": 4,
+  "caps_per_100_words": 0.0,
+  "pitch_ups_per_100_words": 0.0,
+  "has_marks": false,
+  "lines": [
+   {
+    "i": 0,
+    "text": "The guys up there figured out one thing that nobody seems to talk about. Your parents won't tell you, your friends won't, maybe not even your business partner, and you won't find it online.",
+    "words": 34,
+    "first_word_index": 0,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "When I used to live here, I knew a guy up there with a $1.5 million penthouse, and he was struggling. He was struggling mentally to get his businesses and his other ventures off the ground, sitting in a penthouse he owned outright.",
+    "words": 43,
+    "first_word_index": 34,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "So he moved out of state and cut out the distractions. He optimized his credit, then put it to work alongside investors and credit partners, and within six months his income was over $400,000 a year.",
+    "words": 36,
+    "first_word_index": 77,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "The one thing he figured out is how to leverage your credit correctly. I know plenty of people up here who run companies and scale businesses, and the ones who do it most efficiently use other people's money. Archimedes said, \"Give me a lever long enough and I can move the world.\" Credit is that lever, and building with only your own cash is the slowest way to build wealth there is.",
+    "words": 72,
+    "first_word_index": 113,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "Click the link below. Wherever your credit is right now, we'll walk you through how to optimize it and how to get your own funding, and if you want us to help along the way, we'll do that too.",
+    "words": 39,
+    "first_word_index": 185,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/book-a-call-final-2026-10-03.md",
+  "heading": "## 11. The penthouse",
+  "seconds_at_150wpm": 89.6,
+  "seconds_at_205wpm": 65.6
+ },
+ "Direct Book Ad 12 — Industry slam": {
+  "script": null
+ },
+ "Direct Book Thank You": {
+  "paragraphs": 13,
+  "words": 548,
+  "caps": 20,
+  "pitch_ups": 2,
+  "pauses": 12,
+  "caps_per_100_words": 3.6,
+  "pitch_ups_per_100_words": 0.4,
+  "has_marks": true,
+  "lines": [
+   {
+    "i": 0,
+    "text": "Your call is BOOKED. In the next few minutes, you're going to see EXACTLY what happens on the call and what you walk away with, so you can show up ready and get the MOST out of your time with your advisor.",
+    "words": 42,
+    "first_word_index": 0,
+    "caps": [
+     "BOOKED",
+     "EXACTLY",
+     "MOST"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "On that call, you get something that took me YEARS of driving bank to bank to build.",
+    "words": 17,
+    "first_word_index": 42,
+    "caps": [
+     "YEARS"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "Your funding advisor pulls your credit file with you on a live Google Meet. It's a tri-bureau soft pull that costs $32, which covers what the bureaus charge for the reports, and it has ZERO impact on your score. And there's a big reason we pull all THREE bureaus instead of just one.",
+    "words": 53,
+    "first_word_index": 59,
+    "caps": [
+     "ZERO",
+     "THREE"
+    ],
+    "pitch_up": true,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "Then we analyze your file with UnderwriteIQ, the AI machine learning software we built to underwrite files the SAME way lenders do, and we go through your file TOGETHER. You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back if anything, and the FASTEST way to get your file to the maximum amount of funding.",
+    "words": 66,
+    "first_word_index": 112,
+    "caps": [
+     "SAME",
+     "TOGETHER",
+     "FASTEST"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "Different banks pull different bureaus, so your information has to match on all three. When it doesn't match, about 1 in 3 banks approve you, and when it MATCHES, it's 2 in 3 and sometimes 3 out of 3. That's why we check all three before you apply anywhere.",
+    "words": 49,
+    "first_word_index": 178,
+    "caps": [
+     "MATCHES"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "Most of the people we work with are aiming for somewhere between $250,000 and $400,000. Some files are ready for that TODAY, and a lot of them aren't there YET, which is completely normal. Wherever your file is right now, we have a path for that phase.",
+    "words": 47,
+    "first_word_index": 227,
+    "caps": [
+     "TODAY",
+     "YET"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "If your file is ready, we go get the capital in funding rounds and keep your credit CLEAN between each round. If something is holding it back, we optimize your credit FIRST and then fund you. And if you'd rather do the work on your file YOURSELF, we'll walk you through every step with a detailed accountability system.",
+    "words": 58,
+    "first_word_index": 274,
+    "caps": [
+     "CLEAN",
+     "FIRST",
+     "YOURSELF"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "On the call, your advisor walks you through the options and pricing for your path, and EVERYTHING is in writing. You can see some of the approvals our clients have gotten right here on this page.",
+    "words": 36,
+    "first_word_index": 332,
+    "caps": [
+     "EVERYTHING"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "The part that took me years is knowing exactly what every bank looks for. I used to drive to every SINGLE bank in my state to learn it myself, and over the last decade we've worked hundreds of files and collected THOUSANDS of data points on what lenders approve. All of that is built into UnderwriteIQ, so in one call your advisor can tell you what's most likely for your file.",
+    "words": 71,
+    "first_word_index": 368,
+    "caps": [
+     "SINGLE",
+     "THOUSANDS"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "Your advisor is holding that time JUST for you, so right after this video, open the confirmation email and accept the calendar invite to lock it in on your calendar.",
+    "words": 30,
+    "first_word_index": 439,
+    "caps": [
+     "JUST"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "Your advisor shares their screen with you on the call, so take it from a COMPUTER somewhere quiet. If you're going after business funding, have your business basics handy: your entity name, how long you've been in business, and your average monthly revenue.",
+    "words": 43,
+    "first_word_index": 469,
+    "caps": [
+     "COMPUTER"
+    ],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "And if something comes up, use the reschedule link on this page to pick a new time, so you keep your spot with your advisor.",
+    "words": 25,
+    "first_word_index": 512,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "Thank you for booking, and I'll see you on the call.",
+    "words": 11,
+    "first_word_index": 537,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/2026-10-13.md",
+  "heading": "## 5. Call funnel thank-you video",
+  "seconds_at_150wpm": 219.2,
+  "seconds_at_205wpm": 160.4
+ },
+ "Direct Book VSL 1 — Watch page": {
+  "paragraphs": 14,
+  "words": 910,
+  "caps": 0,
+  "pitch_ups": 0,
+  "pauses": 13,
+  "caps_per_100_words": 0.0,
+  "pitch_ups_per_100_words": 0.0,
+  "has_marks": false,
+  "lines": [
+   {
+    "i": 0,
+    "text": "The condition of your credit decides whether you walk away with $10,000, $20,000, $30,000 in funding, or you walk away with $200,000, $300,000, $400,000, even a million dollars in funding across multiple businesses, and maybe even a couple hundred grand in personal funding if you want. Your credit score is only part of it. There are small details in your file, like your personal data and your business codes, that most people never think about, and even with an 800 credit score they can hold you back from the maximum amount of funding. There's also one step most people miss that makes the biggest difference, and I'll show you what it is in a couple of minutes.",
+    "words": 117,
+    "first_word_index": 0,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 1,
+    "text": "I'm Chris, I run Fundhub. I learned the funding game ten years ago, and since then I've funded a little over a million dollars for myself.",
+    "words": 26,
+    "first_word_index": 117,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 2,
+    "text": "If you've been trying to get funding, you've probably been through one of a few scenarios. You went to your bank, they denied you, and nobody told you why. Or you paid someone who said they'd get you funded, they sent your file to every lender on their list, and you came out with a couple of approvals and a credit report full of hard inquiries. Or you've never applied at all, because you didn't want a hard pull on your report just to find out what you qualify for.",
+    "words": 90,
+    "first_word_index": 143,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 3,
+    "text": "Here's what all three of those have in common. Nobody sat down and reviewed your credit the way a lender does before your applications went out. So your file got sent to banks that were never going to approve it, and every one of those applications left a hard inquiry behind.",
+    "words": 51,
+    "first_word_index": 233,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 4,
+    "text": "Here's how we handle it. Our underwriting software, UnderwriteIQ, reviews your file the way a lender does. It catches those small details I mentioned, like your personal data and your business codes, so we can fix them before anything goes out. Then it matches your file against thousands of lenders to find the thirty to fifty that fit you, and we apply in funding rounds, in the order that protects your score.",
+    "words": 72,
+    "first_word_index": 284,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 5,
+    "text": "Now here's the step I told you about at the start. It's removing the hard inquiries between each funding round. Every application creates a hard inquiry, and when the next round goes out with those inquiries still on your report, the next lender sees a file that's been shopping and approves less. That's why most people get one good round and then hit a wall.",
+    "words": 65,
+    "first_word_index": 356,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 6,
+    "text": "We remove the inquiries between each round, so your file goes into the next round clean, and that's how a funding sequence keeps going for three to six rounds and builds into substantial capital. We're the only company in this industry that runs your file this way.",
+    "words": 47,
+    "first_word_index": 421,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 7,
+    "text": "Most of the people we work with, from startups to established business owners, are aiming for somewhere between two hundred fifty and four hundred thousand dollars. Some files are ready for that today, and a lot of them aren't there yet, which is completely normal. Wherever your file is right now, Fundhub has a solution for that phase.",
+    "words": 58,
+    "first_word_index": 468,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 8,
+    "text": "If your file is ready, we go get the capital. A funding advisor starts on your file within twenty-four business hours, and as long as nothing major is holding your file back, your first applications go out within seventy-two. We only take the upfront fee once you're confirmed qualified for funding.",
+    "words": 51,
+    "first_word_index": 526,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 9,
+    "text": "If something on your report is holding you back, we'll show you exactly what it is, optimize your credit for you, and fund you once your file is ready.",
+    "words": 29,
+    "first_word_index": 577,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 10,
+    "text": "And if you'd rather do the work on your file yourself, we have a path for that too, and we're with you the whole way. We'll tell you exactly which steps to take and in what order to get your file from where it is today to a prime file. We'll help you fix how your current companies are set up, and strategize on opening or aging companies so the amount of funding you can qualify for goes from a hundred or two hundred thousand dollars up to around four hundred thousand. You'll have a detailed accountability system that walks you through every step, so you don't make costly mistakes or waste months on education you don't need. And when your file is ready, we go get the funding with you.",
+    "words": 131,
+    "first_word_index": 606,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 11,
+    "text": "We've worked hundreds of files and have thousands of data points on what lenders approve. That data is how we tell you what's most likely for your file, based on where you're at right now and what you're aiming for.",
+    "words": 40,
+    "first_word_index": 737,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 12,
+    "text": "Here's what happens next. Click the button below and fill out the short application, which takes about ten seconds, then pick a time for your call. On the call, your funding advisor meets you on Google Meet and runs a tri-bureau soft pull with you. It's thirty-two dollars, which covers what the bureaus charge for the reports, and it has zero impact on your score. You'll go through your file together and see how much we think you'll qualify for right now, what's holding it back if anything, and the fastest way to get your file to the maximum amount of funding.",
+    "words": 102,
+    "first_word_index": 777,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": true
+   },
+   {
+    "i": 13,
+    "text": "If you've been told no before, or you just want to know what's possible for you, this call is where you find out. Click the button below and book your call.",
+    "words": 31,
+    "first_word_index": 879,
+    "caps": [],
+    "pitch_up": false,
+    "pause_after": false
+   }
+  ],
+  "script": "marketing/ads/scripts/machine/on-demand/08-watch-vsl-book-a-call.md",
+  "heading": null,
+  "seconds_at_150wpm": 364.0,
+  "seconds_at_205wpm": 266.3
+ }
+}
