@@ -173,3 +173,34 @@ no network.
   `base_amount`, no `rule_snapshot` or `rule_id`. A check that judges saved rows would be red on every real row by
   construction and could never go green after a fix without being rewritten, so it would not be a result check. Left as
   not attachable.
+
+## Generation 4 (workflow generation 2 after resume): row 7 challenged a fourth time, still not attachable
+
+No code or test change. Offline, no database, no network. Measured at `b63ef453b`.
+
+- `node scripts/pulse/count-not-proved.mjs`: total 840. Of the 14 batch rows, 1 is open (the Ledger table). The 13 others
+  stay off the list. Batch numbers from `fin/base`: `openBefore` 14, `openAfter` 1.
+- Re-read the real handler and page, not the earlier notes:
+  - `api/read/commissions.mjs` selects `id, staff_id, staff_name, employee_code, client_id, role, basis, amount, currency,
+    status, split_percent, product_name_at_earning, earned_at, approved_at, paid_at, void_reason, created_at`. No client
+    name, no `base_amount`, no `rule_id`, no `rule_snapshot`.
+  - `public/app/products-commissions.html` `ledgerFromApiLive` (line 747) and `ledgerFromApi` (line 1032) still hard-code
+    `client: "—"`, `rule: "—"`, `ver: ""`, still run `Number(r.basis) || 0` on the text `front_end` / `back_end`
+    (migration 014 CHECK), and still paint `split_percent` as the rate.
+  - `e2e/products-commissions-ledger.spec.mjs` lines 20 to 22 still feed `basis: "3000.00"`, a value the read never
+    returns.
+  - No other `fin/*` branch and not `main` changed `api/read/commissions.mjs`, `public/app/products-commissions.html` or
+    that spec (checked with `git diff --name-only` against `fin/base`, all 27 branches and `main`).
+- Options considered and why each fails the honest-outcome rule:
+  1. A live check on saved `commission_ledger` rows: it would judge the saved rows (payout, status), not the table. It
+     would stay green while four of nine columns on screen are wrong on every row. That is a false green.
+  2. A check that runs the page's own mapper on a real-shape row and compares to the saved facts: it is red on every row
+     today and cannot be written as a passing test without pinning the wrong paint. Pinning the wrong paint would be a
+     test that is green when the product is wrong, which is not allowed.
+  3. A practice test on the five correct columns only (date, person, product, payout, status): the row names nine
+     columns. Attaching it would call a table with four wrong columns proved.
+- Result: not-attachable, same reason, same four columns. Unblock is the product change already written above. When it
+  lands, the row takes a practice test fed with a real-shape row (client name, `base_amount`, rule version, rate).
+- Commands: `node scripts/pulse/compile-catalog.mjs --check` clean (3975 mapped, 3942 unique, 3919 wired, 23 red);
+  `node --test` on `gap-catalog-display.test.mjs`, `fin-b02-live-contracts.test.mjs`, `fin-b02-hero-live.test.mjs`:
+  100 of 100 pass. No new check was added, so no new break was needed.
