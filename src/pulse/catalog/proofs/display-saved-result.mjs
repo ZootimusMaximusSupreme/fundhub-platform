@@ -17,8 +17,8 @@ const TRACKED_CONTROL_KINDS = new Set([
   "toggle",
 ]);
 
-function query(control, requirement, key, body, extra = {}) {
-  return Object.freeze({ control, mode: "query", requirement, ...extra, sql: `/* display-result:${key} */\n${body.trim()}` });
+function query(control, requirement, key, body) {
+  return Object.freeze({ control, mode: "query", requirement, sql: `/* display-result:${key} */\n${body.trim()}` });
 }
 
 function gap(control, requirement) {
@@ -262,7 +262,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Send: message box, Send button, Enter key (20,000 character cap)", "A saved helper turn must retain the input and a completed reply, brain, and answer time on the same row.", "helper-send", HELPER_TURN_SQL),
   query("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
   query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
-  query("Do task (per step the money helper or a person can do)", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL, { emptyAs: "quiet" }),
   query("'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)", "The ready-to-fund log must link the exact Blueprint prep task, client, round, process, and FinanceOS source.", "ready-to-fund", READY_TO_FUND_SQL),
   gap("Save changes button (saves tiles and the tier-to-video map)", "No request receipt keeps the submitted tile names, outcomes, prices, visibility, and tier map together for exact comparison."),
   gap("Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)", "The saved catalog row has no receipt naming the tile and submitted visibility state."),

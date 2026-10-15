@@ -54,6 +54,9 @@ async function openDeck(tier, { answer = null } = {}) {
   const select = {
     addEventListener(type, fn) { listeners.set(type, fn); }
   };
+  // The repair offer's "Amount paid today" box. Its value is what the person typed; until they type,
+  // it holds what the page painted into it (the html's own value="...").
+  const box = { value: null };
   const sandbox = {
     console,
     URLSearchParams,
@@ -65,6 +68,10 @@ async function openDeck(tier, { answer = null } = {}) {
       getElementById: (id) => {
         if (id === "app") return root;
         if (id === "fh-sale-motion" && root.innerHTML.includes('id="fh-sale-motion"')) return select;
+        if (id === "fh-repair-paid" && root.innerHTML.includes('id="fh-repair-paid"')) {
+          if (box.value === null) box.value = /id="fh-repair-paid" value="([^"]*)"/.exec(root.innerHTML)?.[1] ?? "";
+          return box;
+        }
         return null;
       },
       addEventListener: (type, fn) => { if (type === "click") onClick = fn; }
@@ -98,6 +105,23 @@ async function openDeck(tier, { answer = null } = {}) {
     buttons() {
       return [...root.innerHTML.matchAll(/<button type="button" class="ck-btn( k)?" data-act="([^"]+)"/g)]
         .map((m) => ({ act: m[2], lit: m[1] === " k" }));
+    },
+    /** What the "Amount paid today" box shows before anyone types in it (null: the box is not on screen). */
+    boxShows() {
+      const m = /id="fh-repair-paid" value="([^"]*)"/.exec(root.innerHTML);
+      return m ? m[1] : null;
+    },
+    /** Type into the box, as a person would. */
+    type(value) { box.value = value; return deck; },
+    /** Press "Stage letters" on S-23 and return the exact enrolment the page sent. */
+    async stageRepair() {
+      const before = writes.length;
+      deck.click("stack-go:S-23").click("stage-letters");
+      await flush();
+      await flush();
+      const mine = writes.slice(before).filter((w) => w.url === "/api/repair/enroll");
+      assert.equal(mine.length, 1, "pressing Stage letters should enrol exactly once");
+      return JSON.parse(JSON.stringify(mine[0].body)); // out of the page's vm realm, plain data
     },
     async sendPayLink() {
       const before = writes.length;
@@ -380,4 +404,58 @@ test("Send soft pull: a refusal is said in the server's words, nothing is claime
   await flush();
   assert.equal(deck.writes.filter((w) => w.body.action === "send_soft_pull").length, 2);
   assert.match(deck.html(), /Soft pull emailed/);
+});
+
+/* ── Repair offers: the 'Amount paid today' box ──────────────────────────── */
+// What the program row will hold comes from this one press: price_total from the offer catalogue (never
+// typed), amount_paid from the box. The saved result is judged by the live check "repair-amount-paid".
+
+const PRICE = (key) => OFFERS.find((o) => o.key === key).priceCents / 100;
+
+test("Amount paid today: the box starts at the offer's catalogue price, and Stage letters sends that price and that amount", async () => {
+  const deck = await openDeck("REPAIR_ONLY");
+  deck.click("stack-go:S-23");
+  assert.equal(deck.boxShows(), String(PRICE("REPAIR_DFY")), "the box is drawn with the price in it");
+  const body = await deck.stageRepair();
+  assert.deepEqual(body, { client_id: CONTACT, program: "full", price_total: PRICE("REPAIR_DFY"), amount_paid: PRICE("REPAIR_DFY") });
+});
+
+test("Amount paid today: what is typed is what is sent, as a number, and the price is still the catalogue's", async () => {
+  const cases = [["250", 250], ["0", 0], ["$1,200.50", 1200.5], ["  75  ", 75]];
+  for (const [typed, sent] of cases) {
+    const deck = await openDeck("REPAIR_ONLY");
+    deck.click("stack-go:S-23");
+    deck.type(typed);
+    const body = await deck.stageRepair();
+    assert.equal(body.amount_paid, sent, `typed ${JSON.stringify(typed)}`);
+    assert.equal(body.price_total, PRICE("REPAIR_DFY"), "the price never comes from the box");
+    assert.equal(body.program, "full");
+  }
+});
+
+test("Amount paid today: the repair trial rung sends the trial program at the trial price", async () => {
+  const deck = await openDeck("REPAIR_ONLY");
+  deck.click("desc:trial");
+  deck.click("stack-go:S-23");
+  deck.type("50");
+  const body = await deck.stageRepair();
+  assert.deepEqual(body, { client_id: CONTACT, program: "trial", price_total: PRICE("REPAIR_TRIAL"), amount_paid: 50 });
+  assert.equal(PRICE("REPAIR_TRIAL"), 200);
+});
+
+test("Amount paid today: a negative or unreadable box is not sent as money paid below zero", async () => {
+  for (const typed of ["-40", "abc"]) {
+    const deck = await openDeck("REPAIR_ONLY");
+    deck.click("stack-go:S-23");
+    deck.type(typed);
+    const body = await deck.stageRepair();
+    assert.ok(body.amount_paid >= 0, `typed ${JSON.stringify(typed)} sent ${body.amount_paid}`);
+  }
+});
+
+test("Amount paid today: a funding sale has no box and Stage letters sends nothing", async () => {
+  const deck = await openDeck("FULL_FUNDING");
+  deck.click("stack-go:S-23");
+  assert.equal(deck.boxShows(), null);
+  assert.ok(!deck.buttons().some((b) => b.act === "stage-letters"));
 });

@@ -2,7 +2,7 @@
 // the lane runs.
 //
 // Row (desks-f.json, sales-floor.html): "Hero: 'Today' deposits, booked and held, 'Funded, not
-// just sold' rate and target bar".
+// just sold' rate and target bar". NOT ATTACHED to that row (see below); these tests hold the SQL ready.
 //
 // The hero counts call_outcomes rows with outcome 'deposit' twice: today's deposits and the month's
 // funded rate (src/sales/metrics.mjs floorFunnelDay and depositToFunded). The check judges those
@@ -16,21 +16,23 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { makeStandIn } from "./fin-b02-sql-kit.mjs";
-import { FIN_B02_RESULT_CONTRACTS } from "./fin-b02-display-contracts.mjs";
-import { displaySavedResultContract } from "./display-saved-result.mjs";
+import { FIN_B02_HERO_READY_CONTRACT } from "./fin-b02-display-contracts.mjs";
 import { judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
-const CONTROL = FIN_B02_RESULT_CONTRACTS[6].control;
+const CONTROL = FIN_B02_HERO_READY_CONTRACT.control;
 const TABLES = ["call_outcomes", "clients", "transactions", "funding_rounds", "funding_closeout"];
 
 function ago(days) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 19).replace("T", " ");
 }
 
-const contract = displaySavedResultContract({ control: CONTROL });
-assert.ok(contract, "the hero control owns a contract");
+// Repair cycle 1: the hero row is NOT attached (its target bar follows no target; see the manifest and
+// fin-b02-hero-bar.test.mjs). This is the live SQL for its deposit legs, kept tested and ready: the day the
+// bar is built the row takes this contract back with one line, and every leg below is already held.
+const contract = FIN_B02_HERO_READY_CONTRACT;
+assert.equal(contract.mode, "query");
 
 function withStandIn(fn) {
   const s = makeStandIn(TABLES);
@@ -92,7 +94,10 @@ test("hero live check: a paid deposit with its cash, and a funded client, passes
     // a payment other wordings of paid use
     deposit(s, ORG, { suffix: "e", status: "paid" });
     deposit(s, ORG, { suffix: "f", status: "completed" });
-    assert.deepEqual(run(s), { sample_count: 6, bad_count: 0 });
+    // flagged funded by a closed round, and flagged funded with only a closeout on a round: both are funded
+    deposit(s, ORG, { suffix: "g", funded: true, round: "closed" });
+    deposit(s, ORG, { suffix: "h", funded: true, round: "submitted", closeout: true });
+    assert.deepEqual(run(s), { sample_count: 8, bad_count: 0 });
   });
 });
 
@@ -104,6 +109,10 @@ const WRONG = [
   ["a deposit whose payment failed", { status: "failed" }],
   ["a deposit whose cash is not what the payment was", { amount: 1000 }],
   ["a deposit whose client has a funded round but reads not funded and has no closeout", { round: "funded" }],
+  // The other direction: the rate counts a client flagged funded as funded, so a flag with nothing under it
+  // makes "Funded, not just sold" read better than it is.
+  ["a deposit whose client is flagged funded with no round at all and no closeout", { funded: true }],
+  ["a deposit whose client is flagged funded and whose only round never funded", { funded: true, round: "submitted" }],
 ];
 
 for (const [label, change] of WRONG) {
@@ -114,6 +123,14 @@ for (const [label, change] of WRONG) {
     });
   });
 }
+
+test("hero live check: another client's funded round does not excuse a flag with nothing under it", () => {
+  withStandIn((s) => {
+    deposit(s, ORG, { suffix: "flag", funded: true });
+    deposit(s, ORG, { suffix: "real", funded: true, round: "funded" });
+    assert.deepEqual(run(s), { sample_count: 2, bad_count: 1 });
+  });
+});
 
 test("hero live check: another client's closeout does not excuse this client's missing funded flag", () => {
   withStandIn((s) => {

@@ -1,7 +1,11 @@
 # Finish the 853 — batch 02 manifest (tier 1, lane gap-catalog-display, 14 money rows)
 
-Builder: Sonnet, generation 1 built rows 1 to 11, 13 and 14. Generation 2 (this file's last pass) challenged the two
-rows generation 1 left open (rows 7 and 12). Branch `fin/b02`, built from `fin/base` (`2f4f574a0`). Not pushed, not merged.
+Builder: Sonnet. Generation 1 built rows 1 to 11, 13 and 14. Generation 2 challenged rows 7 and 12. Generations 3 and 4
+re-checked row 7. **Repair cycle 1 (this file's newest section)** fixed what an independent checker showed stays green
+when the product breaks, across eight ids. Branch `fin/b02`, built from `fin/base` (`2f4f574a0`). Not pushed, not merged.
+
+Words used: "live check" is a read-only query on saved results. "Practice test" is a fake-data test. Neither is called
+"proof" or "deep" here.
 
 ## The numbers
 
@@ -9,198 +13,177 @@ rows generation 1 left open (rows 7 and 12). Branch `fin/b02`, built from `fin/b
 |---|---|
 | Rows in batch 02 | 14 |
 | `openBefore` (NOT_PROVED in this batch, `count-not-proved.mjs` on `fin/base`) | 14 |
-| `openAfter` (same script, this branch, after generation 2) | 1 |
-| All four lanes together | 853 before, 840 after |
+| `openAfter` (same script, this branch, after repair cycle 1) | 2 (Ledger table, Hero) |
+| All four lanes together | 853 before, 841 after |
 
-Generation 1 left 2 open (841 in all four lanes). Generation 2 attached one of them (row 12, the hero) and
-kept one as not attachable after a real challenge (row 7, the ledger table).
-
-Outcomes: 8 live checks, 5 practice tests, 0 verified N/A, 1 not attachable.
+Outcomes: 7 live checks (each with the practice tests that press or run what it names), 5 practice tests,
+0 verified N/A, **2 not attachable** (Ledger table, Hero).
 
 ## Every row
 
 | # | Row (control) | Outcome | What judges it |
 |---|---|---|---|
-| 1 | present.html 'Send soft pull ($32 + approval form)' | live-check | contract `deck-soft-pull-send` in `fin-b02-display-contracts.mjs`. Reads `messages` (`staff:soft-pull-send:<link id>`), `payment_links`, `clients`. Red when the pay link is missing, not diagnostic, not the catalog $32, on another client, or the email has no address or is not an email, or the client has a phone and no text row (`staff:soft-pull-sms:<link id>`) was written. Screen half (one press, one request, held off for a second press, refusal said in words): `fin-b02-present-buttons.test.mjs`. |
-| 2 | present.html bridge button (S-19) | practice-test | `fin-b02-present-buttons.test.mjs` (Bridge button, 3 tests) |
-| 3 | present.html Descent ladder, 6 buttons | practice-test | `fin-b02-present-buttons.test.mjs` (Descent ladder, 4 tests; all 36 from-to pairs; route buttons after every rung) |
-| 4 | present.html 'Amount paid today' box | live-check | contract `repair-amount-paid`. Reads `repair_programs` joined to non-demo `clients`. Red when amount paid is negative or above the price, or the round cap does not match the program (trial 2, full 6). |
-| 5 | present.html Route the call (S-07) buttons | practice-test | `fin-b02-present-buttons.test.mjs` (Route the call, 3 tests) |
-| 6 | present.html S-23 'Sale motion' select | live-check | contract `deck-sale-motion`. Reads `messages` (`staff:pay-link-send:<link id>`) and `payment_links`. Red when a primary offer's link carries a motion, a non-primary offer's link carries none, or the link is missing or on another client. Screen half (select drawn only for non-primary offers, pick sent, never sent for primary offers): `fin-b02-present-buttons.test.mjs` (Sale motion select, 2 tests). |
-| 7 | products-commissions.html Ledger table | not-attachable | see "Not attachable". Generation 2 ran the real page with the real read shape: a row that paid $150 draws Client `—`, Rule version `—`, Basis `$0`, Rate `100%`. Four of nine named columns are wrong, not two. |
-| 8 | money-next.html Do task | live-check | the existing `do-task` SQL (`DO_TASK_SQL`, money_agent_log joined to money_agent_tasks) now also owns this exact control text, with `emptyAs: "quiet"`. Tested through `fin-b02-live-contracts.test.mjs` ("do task", 7 tests). The page half is already held by `src/http/money-next-screen.test.mjs`. |
-| 9 | money-transfers.html Open the page; 401 sends to sign-in | practice-test | `fin-b02-transfers-open.test.mjs` (7 tests: client read with token and no client id, staff read with `?client_id=`, back link and nav keep it, 401 to `/portal-login.html` or `/login.html?next=`, 403/500/503 never sign out) |
-| 10 | ops-admin.html email_invoice_backlog (server) | live-check | contract `invoice-backlog-email`. Reads `invoices` and `messages`. Red when an invoice is stamped emailed with no linked message, the message is another client's, not an email, or has no address, or the client was emailed (`invoice:<id>:sent`) but the invoice still reads never emailed. "Bounded to 200" is held by `src/http/s2-message-routes-outbound.test.mjs` ("the bound is 200"); `fin-b02-live-contracts.test.mjs` pins that the test and the handler line are still there. |
-| 11 | pipeline.html Card Stacking 'Funded' column | live-check | contract `card-stacking-funded-column`. Reads `cards`, `pipelines`, `pipeline_stages`, `funding_rounds`, `events`. Red when a card entered Funded in the last 60 days and the client has no funded round with a positive amount, or no `round.funded` receipt. Screen half (count, funding est., the amount box, exact move, Cancel and empty send nothing): `fin-b02-funded-column.test.mjs` (Chromium). |
-| 12 | sales-floor.html Hero (deposits, booked, held, rate and target bar) | live-check | contract `sales-floor-hero-deposits` in `fin-b02-display-contracts.mjs` (tested in `fin-b02-hero-live.test.mjs`, 16 tests). Reads `call_outcomes` (every `outcome = 'deposit'` the hero counts), `transactions`, `clients`, `funding_rounds`, `funding_closeout`. Red when a deposit has no cash, the payment belongs to another client, no payment is linked, the payment was refunded or failed, the cash is not what the payment was, one payment is used by two deposits, or the client has a funded round but reads not funded and has no closeout (the rate would miss it). Screen half: `fin-b02-hero-bar.test.mjs` (4 tests, Chromium): the four numbers, a dash and never a zero for a number the read could not give, and an empty bar with the words "no daily target". See "The target bar" below for what is and is not held. |
-| 13 | sales-floor.html Page open: the whole floor + write on a GET | practice-test | `fin-b02-sales-floor-open.test.mjs`: Chromium paints all nine panels from one fake read; and `listRecentRecordings` is run against a stand-in database with the real column names (attach by unique name, stamp the latest call without a recording, leave ambiguous, unnamed and already attached files alone, never cross companies, second read changes nothing). |
-| 14 | soft-pull-approve.html 'I agree - submit soft-pull approval' | live-check | contract `soft-pull-approve-submit`. Reads `client_consents` (typed, client, not withdrawn), `clients`, `accounts`, `pii_identity`, `payment_links`, `businesses`, `account_magic_links`. Red when the consent has no named client account, blank words, version or name, no identity (SSN and DOB), no diagnostic link at all, an open link that is not $32 + $10 per saved business, or no issued sign-in link. Page half: `s4-soft-pull-approve.test.mjs` already presses the submit and holds the exact request. |
+| 1 | present.html 'Send soft pull ($32 + approval form)' | live-check | contract `deck-soft-pull-send`. Per send email: its own $32 diagnostic link for the same client; an address; email status not `failed` or `blocked`; a body that carries the signed approval form for THIS client (`/app/soft-pull-approve.html?` and `client=<id>`) and the pay link's own checkout address; the text row when the client has a phone. Other direction: a client the deck stamped as sent (`closer_deck_soft_pull_link_id`) with no email row. Screen half: `fin-b02-present-buttons.test.mjs`. |
+| 2 | present.html bridge button (S-19) | practice-test | `fin-b02-present-buttons.test.mjs` |
+| 3 | present.html Descent ladder, 6 buttons | practice-test | `fin-b02-present-buttons.test.mjs` |
+| 4 | present.html 'Amount paid today' box | live-check | contract `repair-amount-paid`. All-time: bounds and round cap. Programs made in the last 60 days also: price is the catalog price (trial 200, full 1000) or a repair sale of this client agreed it; amount paid never exceeds the money on file (paid repair pay link, or repair sale payments); a client who had paid the whole price before the program was made is not saved as $0. Page half: `fin-b02-present-buttons.test.mjs` (the real box typed into, vm) and `s4-present-deck.test.mjs` (Chromium, types 500). |
+| 5 | present.html Route the call (S-07) buttons | practice-test | `fin-b02-present-buttons.test.mjs` |
+| 6 | present.html S-23 'Sale motion' select | live-check | contract `deck-sale-motion`. Screen half: `fin-b02-present-buttons.test.mjs`. |
+| 7 | products-commissions.html Ledger table | not-attachable | see "Not attachable". |
+| 8 | money-next.html Do task | live-check | contract `do-task-person-leg` (own SQL since repair cycle 1; no longer the shared do-task text). Task row and log agree on key, assignee, idempotency key; a person's step has a CSM task of the same client (source `money-task`, role `csm`) that the row AND the log point at; a money step carries the same amount on row and log. Practice halves: `fin-b02-do-task.test.mjs` (runs the real `doTask`, then the live SQL on what it saved), `src/finance/money-tasks.test.mjs`, `src/http/money-tasks.test.mjs`, `src/http/money-next-screen.test.mjs` (the press). |
+| 9 | money-transfers.html Open the page; 401 sends to sign-in | practice-test | `fin-b02-transfers-open.test.mjs`. Since repair cycle 1 it reads the REAL html: the script is the file the `<script src>` names, the stand-in page hands the script only ids the html really has, the nav links are the html's own, and every local script and stylesheet must exist. |
+| 10 | ops-admin.html email_invoice_backlog (server) | live-check | contract `invoice-backlog-email`: stamped invoice must link its own email (same client, an address, status not `failed` or `blocked`); an email on file with the invoice still reading never emailed is wrong. Practice halves, both attached since repair cycle 1: `src/http/s2-message-routes-outbound.test.mjs` (the handler: every never-sent invoice emailed once, bound 200) and `fin-b02-invoice-backlog.test.mjs` (the same handler, then the live SQL on what it saved). |
+| 11 | pipeline.html Card Stacking 'Funded' column | live-check | contract `card-stacking-funded-column`. Screen half: `fin-b02-funded-column.test.mjs`. |
+| 12 | sales-floor.html Hero | **not-attachable** | see "Not attachable". Back to NOT_PROVED in repair cycle 1. |
+| 13 | sales-floor.html Page open: the whole floor + write on a GET | practice-test | `fin-b02-sales-floor-open.test.mjs`: Chromium paints all nine panels from one read, and the real `listRecentRecordings` runs against a stand-in database with the real column names. Repair cycle 1 added the insight stamp, both windows, the file with no link, first-or-last name, words and the 240-character excerpt. |
+| 14 | soft-pull-approve.html 'I agree - submit soft-pull approval' | live-check | contract `soft-pull-approve-submit`. Consent typed by a client with a named account, words, version and name all non-blank; identity (SSN and DOB); one open or paid diagnostic link at the exact total; and, since repair cycle 1, a sign-in link issued within a day of the consent whose OWN email (`workflow:EMAIL-PORTAL-MAGIC-LINK:magic-link:<link id>`) went to this client and did not fail or get blocked. Page half: `s4-soft-pull-approve.test.mjs`. |
 
-All live checks are `emptyAs: "quiet"` with a 60-day window on message, invoice, card and consent rows (repair programs are small and judged all-time), so an unused control is green with "no saved results yet" and goes red on the first wrong result.
+All live checks are `emptyAs: "quiet"` with a 60-day window on message, invoice, card and consent rows (repair
+programs: bounds all-time, money legs 60 days; do-task presses all-time), so an unused control is green with "no saved
+results yet" and goes red on the first wrong result.
 
-## Not attachable (1), with the exact missing piece
+## Repair cycle 1: what the checker found, and what each id ended as
+
+Eight ids. For each: the break the checker made, what changed, and the breaks I made myself to prove the new check is
+red (each made alone, test run, file put back; `git status` clean after each loop).
+
+| Id (control) | Outcome | What changed |
+|---|---|---|
+| 'Amount paid today' box | live-check | SQL now judges price against the catalog or the client's own sale, amount paid against money on file, and the lost-$0 case (see row 4). Attached `s4-present-deck.test.mjs`. Added 5 vm tests that type into the real box (default shows the price; typed `250`, `0`, `$1,200.50`, `  75  `; trial rung; funding deck has no box). |
+| Do task | live-check | Own SQL with the person leg, task key and assignee agreement, amount agreement. Attached the press (`money-next-screen`), the route (`money-tasks` route test) and `doTask` (`money-tasks`). New `fin-b02-do-task.test.mjs` runs the real `doTask` against a stand-in that saves what it is told to, then runs the live SQL on the saved rows. |
+| Open the page (Transfers) | practice-test | Reads the real html (see row 9). |
+| email_invoice_backlog | live-check | Status leg (failed, blocked). Attached the handler test `s2-message-routes-outbound`. New `fin-b02-invoice-backlog.test.mjs` runs the real handler and then the live SQL. The "emails every invoice" claim is held by those two practice tests (a live read cannot tell "not pressed" from "pressed and emailed nobody"; that is said here, not hidden). |
+| Hero | **not-attachable** | See below. |
+| Send soft pull | live-check | Status, body, form and checkout address legs, and the inverse leg from the deck's own stamp. |
+| Page open: the whole floor | practice-test | Fixtures for the 11 breaks (below). |
+| 'I agree - submit soft-pull approval' | live-check | Sign-in email half tied to the link's own message; version and name legs now tested alone. |
+
+### Breaks made alone (all red unless noted)
+
+- **Live SQL (`fin-b02-display-contracts.mjs`)**: 67 breaks in the first run, 9 survived, each fixed by a new fixture or
+  by removing a redundant leg (`t.staff_task_id IS NULL` was covered by the NOT EXISTS leg, so it was deleted), then all
+  9 red. Legs broken: soft pull (status, failed only, blocked only, null body, approval form, client in form, checkout
+  null, checkout in body, channel, inverse branch, its window, demo, company, not-exists); repair (price, trial price,
+  full price, sale excuse, sale category, sale client, paid-on-file both conjuncts and whole, window, lost payment,
+  free price guard, link timing, sale timing, link purpose, link status, both derived tables, sale category);
+  invoice (status leg, each word alone); approval (version, name, words, outcome, client, both window edges, mail
+  client, channel, direction, status, each word alone, tie to the link's own id); do task (key, assignee, person leg,
+  log link, CSM task exists, client, source, role, company, amount null, amount mismatch, money leg); hero over-count
+  (leg, rounds client, status, closed).
+- **`src/sales/recordings.mjs`**: 26 breaks (insight stamp without client, company, over a link, oldest first; call
+  stamp without client, company, over a link; file with no link; each of the three recent-client windows; booking
+  name; file window; type filter; first OR last name; last name only; ambiguous match; has_words ignoring words;
+  excerpt not cut (file row and call row); transcript not trimmed; 30-day lookback; words by link; words by client;
+  update without company; attach never marks attached). 5 survived the first run, all red after new fixtures.
+- **`public/app/present.js`**: 9 breaks (paid always 0, price sent as 1, amount always the price, box value ignored,
+  price taken from the box, program always full, box drawn without the price, enroll URL changed): 8 red. One stays
+  green and is an equivalent mutant: removing `state.amountPaidDollars = paidEl.value` changes nothing, because the
+  same function falls back to reading the box. The three that matter were also run on `s4-present-deck.test.mjs`
+  (Chromium): 3 of 3 red.
+- **`public/app/money-transfers.html`**: 9 breaks (script src to a missing file, script tag removed, defer removed,
+  root id, back-link id, nav id, page css missing, brand css missing, root outside main): 9 of 9 red.
+- **`src/finance/money-tasks.mjs`, `public/app/money-next.js`**: 14 breaks on the existing tests, 12 red; the two that
+  survived (log not linked to the CSM task, task key dropped from the log) were closed by `fin-b02-do-task.test.mjs`,
+  then 8 of 8 red there.
+- **`src/invoices/notify.mjs`, `api/messages-outbound.mjs`**: 10 breaks (backlog read returns nobody, loop skips the
+  first, loop emails only the first, counts without sending, never-sent filter, status filter, bound raised to 5000,
+  stamp without the message link, wrong address, void invoice emailed). 9 red on the attached route test alone; the
+  stamp-without-link one was only caught by the live SQL, so `fin-b02-invoice-backlog.test.mjs` was added; 10 of 10 red.
+
+## Not attachable (2), with the exact missing piece
 
 | Row | Why | What a product change must do |
 |---|---|---|
-| Ledger table (date, person, client, product, rule version, basis, rate, payout, status) | Generation 2 re-read the page and the read, then opened the real page in Chromium with the exact shape `api/read/commissions.mjs` returns (scratch script, not committed). One earned row paying $150 was drawn as: Date `2026-10-02`, Person `Casey Reed`, Client `—`, Product `Funding Bundle`, Rule version `—`, Basis `$0`, Rate `100%`, Payout `$150`, Status `Accrued`. Four of nine columns are wrong. (1) Client and Rule version: `ledgerFromApi` (about line 1032) and `ledgerFromApiLive` (about line 747) hard-code `client: "—"`, `rule: "—"`, `ver: ""`. The read selects `client_id` but no client name or code, and no `rule_id` or `rule_snapshot`. (2) Basis: both functions do `Number(r.basis) \|\| 0`, but `commission_ledger.basis` is the text `front_end` or `back_end` (migration 014 CHECK), so it is always `$0`. The dollars the rate applied to are `base_amount`, which the read does not select. (3) Rate: both functions paint `split_percent`, the share between people (default 100, `src/commissions/calculate.mjs` `applySplit`), not the commission rate. The rate is inside `rule_snapshot`, which the read does not select. Date, Person, Product, Payout and Status are right. No saved-row read can go red for a display that is wrong on every row, and a test of the real table cannot go green honestly. | Make `api/read/commissions.mjs` return client name, `base_amount` and the rule version and rate (from `rule_snapshot`, or a join on `commission_rules`), then paint those in both page functions. The existing spec `e2e/products-commissions-ledger.spec.mjs` feeds `basis: "3000.00"`, which is not what the read returns, so it needs a real-shape row in the same change. After that, this row can take a practice test. |
+| Ledger table (date, person, client, product, rule version, basis, rate, payout, status) | Unchanged from generation 2 to 4. The real page with the real read shape draws one earned $150 row as Date `2026-10-02`, Person `Casey Reed`, Client `—`, Product `Funding Bundle`, Rule version `—`, Basis `$0`, Rate `100%`, Payout `$150`, Status `Accrued`. Four of nine columns are wrong: Client and Rule version are hard-coded dashes in `ledgerFromApi` and `ledgerFromApiLive`; Basis does `Number("front_end") \|\| 0`; Rate paints `split_percent`, not the commission rate. A saved-row read cannot go red for a display wrong on every row, and a test of the real table cannot go green honestly. | Make `api/read/commissions.mjs` return client name, `base_amount` and the rule version and rate (from `rule_snapshot` or a join on `commission_rules`), then paint those in both page functions. `e2e/products-commissions-ledger.spec.mjs` feeds `basis: "3000.00"`, a shape the read never returns, so it needs a real-shape row in the same change. |
+| **Hero: 'Today' deposits, booked and held, 'Funded, not just sold' rate and target bar** | **Repair cycle 1.** The row names a target bar. `public/app/sales-floor.js` sets the bar to `0%` on every paint and sets the second mark to the "no daily target" words, and `src/sales/metrics.mjs` hard-codes `today.target_cents` to `null`. The same read carries `hero.target_cents` (the monthly sales target, stored times 100) and `hero.cash_cents`; the page paints neither. The checker fed a read with `hero.target_cents` 5,000,000 and `hero.cash_cents` 2,500,000: the bar stayed at 0% with every attached test green. A test that is red on that (assert 50%) cannot be committed, because the product is what is wrong; a test that pins 0% passes whatever the read carries, which is the green-on-break the checker found. A live SQL that goes red whenever a target is saved would be red by construction and could not go green after the bar is built without being rewritten, the same reason the Ledger table is held. Booked and held are counted fresh on every read and leave no saved result. | Make the page set the bar from the read (`hero.cash_cents` over `hero.target_cents`, or deposits over a deposit target; which one is a decision for Chris, finding 2 below says the stored target is a COUNT stored as dollars). Then the row takes back one live check and one screen test, both already written and kept (below). |
 
-The row text in `display-saved-result.mjs` (the line the morning report prints for this row) now names all four wrong
-columns, not only the two dashes.
+### Kept ready for the Hero row (tested, not attached)
 
-## The target bar (row 12)
+- `FIN_B02_HERO_READY_CONTRACT` in `fin-b02-display-contracts.mjs`: the live SQL for the deposit legs, with
+  18 tests in `fin-b02-hero-live.test.mjs` (a deposit with no cash, with another client's payment, with no payment,
+  refunded, failed, with a different cash, a payment reused by two deposits, a funded round with the flag off, and
+  — added in repair cycle 1 — a client flagged funded with no round or closeout, a flag whose only round never
+  funded, another client's funded round not excusing the flag). The over-count leg was mutation checked (4 of 4 red,
+  one survivor closed by a new fixture).
+- `fin-b02-hero-bar.test.mjs` (Chromium, 4 tests): the four numbers, a dash and never a zero, and the empty bar with its
+  words. It says nothing about a target bar, and nothing here claims it does.
+- Not built: a practice test of `salesFloor()` for booked and held. A probe showed the real function runs on the
+  stand-in with only the two `AT TIME ZONE 'America/Phoenix'` day queries (and two LATERAL ones) failing on SQLite; a
+  kit translation for those two is the missing piece.
 
-The row names a "target bar". What exists today: `src/sales/metrics.mjs` `salesFloor()` sets `today.target_cents` to
-`null` with the fixed words "No daily deposit target has been set for the sales team yet." (no daily target exists in
-`staff_targets` or anywhere else), and `public/app/sales-floor.js` (about lines 227 to 228) sets the bar to `0%` on every
-paint and prints that reason under it. The words are true, so the screen half pins them: an empty bar and the reason, and
-no dollar figure the read did not give. What is NOT held, because it does not exist: a bar that follows a target. If a
-daily target is ever added to the read, this row must be judged again; the page would ignore it today.
-
-The row is a `live-check` for what has a result to judge (the deposits behind "Today" and the funded rate). The bar has
-nothing to judge. This is a deliberate split, said here so the morning report line is not read as "the bar follows a
-target".
+The row's always-red words now state all of the above (`HERO_GAP_REQUIREMENT`), so the morning report prints the
+exact reason.
 
 ## Files added
 
-- `src/pulse/catalog/proofs/fin-b02-display-contracts.mjs` — the seven new contracts (six from generation 1, the hero from generation 2), the row lists, and the live and practice cases.
-- `src/pulse/catalog/proofs/fin-b02-sql-kit.mjs` — test kit: reads the real table and column names from `db/schema` and `db/migrations`, builds an in-memory SQLite stand-in with those columns, runs a contract's exact SQL text (`$1`, `::casts`, `BTRIM`, `now() - interval 'N days'` spelled for SQLite), and a node-postgres-shaped adapter for running a real module against it. Tests only.
-- `src/pulse/catalog/proofs/fin-b02-live-contracts.test.mjs` — 73 tests, no browser.
-- `src/pulse/catalog/proofs/fin-b02-present-buttons.test.mjs` — 15 tests, runs `public/app/present.js` in a vm.
-- `src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs` — 7 tests, runs `public/app/money-transfers.js` in a vm.
-- `src/pulse/catalog/proofs/fin-b02-funded-column.test.mjs` — 3 tests, Chromium, uses the S4 harness.
-- `src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs` — 6 tests, 2 in Chromium and 4 on the stand-in database.
-- `src/pulse/catalog/proofs/fin-b02-hero-live.test.mjs` — 16 tests, no browser (generation 2). The hero's live check, run as its exact SQL text on a stand-in database with the real column names.
-- `src/pulse/catalog/proofs/fin-b02-hero-bar.test.mjs` — 4 tests, Chromium (generation 2). The hero's numbers, dashes and empty bar.
+- `src/pulse/catalog/proofs/fin-b02-display-contracts.mjs` — the contracts, the row lists, the case lists.
+- `src/pulse/catalog/proofs/fin-b02-sql-kit.mjs` — test kit: real column names from `db/schema` and `db/migrations`, an
+  in-memory SQLite stand-in, `portableSql` (repair cycle 1 added `table.column ± interval 'N day'`), a node-postgres-shaped
+  adapter. Tests only.
+- `src/pulse/catalog/proofs/fin-b02-live-contracts.test.mjs` — 128 tests.
+- `src/pulse/catalog/proofs/fin-b02-present-buttons.test.mjs` — 20 tests (vm).
+- `src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs` — 10 tests (vm, real html).
+- `src/pulse/catalog/proofs/fin-b02-funded-column.test.mjs` — 3 tests (Chromium).
+- `src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs` — 13 tests (2 Chromium, 11 on the stand-in database).
+- `src/pulse/catalog/proofs/fin-b02-hero-live.test.mjs` — 18 tests (not attached, ready).
+- `src/pulse/catalog/proofs/fin-b02-hero-bar.test.mjs` — 4 tests (Chromium).
+- `src/pulse/catalog/proofs/fin-b02-do-task.test.mjs` — 5 tests (new, repair cycle 1).
+- `src/pulse/catalog/proofs/fin-b02-invoice-backlog.test.mjs` — 4 tests (new, repair cycle 1).
 - `ops/workflows/finish-853-2026-10-14/manifest-b02.md` — this file.
 
 ## Shared lines touched (the integrator merges these)
 
 | File | Change |
 |---|---|
-| `src/pulse/catalog/proofs/display-saved-result.mjs` | 1 import line (`FIN_B02_RESULT_CONTRACTS`). `query()` takes a fifth argument `extra = {}` spread into the contract (so a contract can say `emptyAs`). One added entry for the control `Do task (per step the money helper or a person can do)` that reuses `DO_TASK_SQL` with `{ emptyAs: "quiet" }`. One spread line `...FIN_B02_RESULT_CONTRACTS,` at the end of `DISPLAY_RESULT_CONTRACTS`. Generation 2: the `requirement` string of the existing `gap(...)` entry for `Ledger table (date, person, client, product, rule version, basis, rate, payout, status)` now names all four wrong columns (words only; the row stays not proved). |
+| `src/pulse/catalog/proofs/display-saved-result.mjs` | 1 import line (`FIN_B02_RESULT_CONTRACTS`) and 1 spread line `...FIN_B02_RESULT_CONTRACTS,` at the end of `DISPLAY_RESULT_CONTRACTS`. The `requirement` string of the existing `gap(...)` for the Ledger table names all four wrong columns (words only). Repair cycle 1 REMOVED the generation-1 entry for `Do task (per step the money helper or a person can do)` and the fifth `extra` argument of `query()`: the do-task contract now lives in `FIN_B02_RESULT_CONTRACTS`. Net diff against `fin/base` is the import, the spread and the Ledger words. |
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | 1 import line and 1 spread line `...FIN_B02_DISPLAY_CASES,` at the end of `PLUGIN_DISPLAY_PROOF_CASES`. |
-| `scripts/pulse/compile-catalog.mjs` | 1 import line and `staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B02_LIVE_CASES]` (a row only becomes a lane-judged result case if it is in this list). |
-| `src/pulse/coverage/gap-catalog-display.test.mjs` | Guard numbers: contracts and cases 40 to 48 (title, three asserts, unique controls, and the shipped-data test), pass-capable 27 to 35, SQL batches 27 to 34 (the do-task SQL is shared), `db.calls` 27 to 34, focused PASS rows 27 to 35. My increase: +8, +8, +7. Always-red stays 13. (Generation 1 had 47 / 34 / 33 / 33 / 34; generation 2 added the hero: +1 each, SQL batches and `db.calls` +1.) |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | `redCount` 672 to 660 (my decrease: 12; the ops-admin row was already not red in that count; generation 1 left it at 661, the hero row took it to 660). If other batches also move it, add the decreases and use the number the test prints. |
-| `src/pulse/catalog/proofs/fin-b02-live-contracts.test.mjs` | One number: `FIN_B02_LIVE_ROWS.length` 7 to 8 (my own batch's file, not shared). |
+| `scripts/pulse/compile-catalog.mjs` | 1 import line and `staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B02_LIVE_CASES]`. |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | Guard numbers, now: contracts and cases 48 (+8 from `fin/base`'s 40), pass-capable 34 (was 27 on `fin/base`; my +7), always-red 14 (was 13; the Hero's), SQL batches 34, `db.calls` 34, focused PASS rows 34, focused NOT_PROVED rows 14. |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | `redCount` 672 on `fin/base` to 661 (my decrease: 11; the invoice row was already not red in that count; the Hero is red again). If other batches also move it, add the decreases and use the number the test prints. |
 | `src/pulse/catalog/generated.json` | Recompiled with `npm run pulse:catalog`. Conflicts are expected; recompile after merging, do not hand-merge. |
 
-Row ids that left the lane's tracking list: the 5 practice rows (rows 2, 3, 5, 9, 13) are proved directly and no longer appear in `DISPLAY_TRACKING_CASES` (710 on `fin-b02`'s base, 705 now).
+Row ids that left the lane's tracking list: the 5 practice rows (2, 3, 5, 9, 13) are held directly by their practice
+tests and no longer appear in `DISPLAY_TRACKING_CASES`.
 
 ## Product findings (not fixed)
 
-1. Ledger table (row 7), corrected and widened in generation 2: Client and Rule version are hard-coded dashes, Basis is always `$0` (`Number("front_end") || 0`; the real dollars are `base_amount`, not read) and Rate paints `split_percent` (the share between people), not the commission rate. The read selects none of `base_amount`, `rule_id`, `rule_snapshot`, client name. `e2e/products-commissions-ledger.spec.mjs` feeds `basis: "3000.00"`, a shape the read never returns, so its green hid this.
-2. Sales floor hero bar (row 12): `today.target_cents` is always null and the bar is always 0% (the page ignores any target). The read also returns `hero.cash_cents` and `hero.target_cents` and the page paints neither. `hero.target_cents` is `staff_targets.target_value * 100`, but that metric is a COUNT of deposits (the closer path says so), so if it were ever painted it would read "$20" for 20 deposits.
-2b. Sales floor counts demo calls: `floorFunnel`, `floorFunnelDay` and `depositToFunded` in `src/sales/metrics.mjs` have no `is_demo` filter (the closer stats query does). The new live check skips demo rows on purpose, so it cannot see this.
-2c. `logCallOutcome` (`src/sales/call-outcomes.mjs`) saves a `deposit` with cash 0 and no transaction when no paid payment is found in the last 48 hours, and cash is never editable after. The hero then counts a deposit nobody paid. This is what the new hero live check goes red on; nothing stops one being saved.
-3. Sales floor read writes on a GET (`listRecentRecordings` updates `brain_files` and `call_outcomes.recording_url`). Already finding 6 in slice 1; now covered by a practice test but still a write on a read.
-4. Descent ladder: on a deck whose engine tier is REPAIR_ONLY, the "Funding" rung changes nothing (`isFunding()` also needs a funding tier), and the pay link still goes out for REPAIR_DFY with route REPAIR_ONLY. The ladder proof holds the Funding rung on funding-tier decks only.
+1. Ledger table (row 7): Client and Rule version are hard-coded dashes, Basis is always `$0`, Rate paints `split_percent`. The read selects none of `base_amount`, `rule_id`, `rule_snapshot`, client name. `e2e/products-commissions-ledger.spec.mjs` feeds a shape the read never returns.
+2. Sales floor hero bar (row 12): `today.target_cents` is always null and the bar is always 0%; the read also returns `hero.cash_cents` and `hero.target_cents` and the page paints neither. `hero.target_cents` is `staff_targets.target_value * 100`, but that metric is a COUNT of deposits, so painted as money it would read "$20" for 20 deposits. `staff_targets` allows a `daily` period; the read never looks for one and says there is none.
+2b. Sales floor counts demo calls: `floorFunnel`, `floorFunnelDay` and `depositToFunded` in `src/sales/metrics.mjs` have no `is_demo` filter (the closer stats query does).
+2c. `logCallOutcome` saves a `deposit` with cash 0 and no transaction when no paid payment is found in the last 48 hours, and cash is never editable after. The hero counts a deposit nobody paid.
+3. The sales floor read writes on a GET (`listRecentRecordings` updates `brain_files`, `call_outcomes.recording_url` and, per this cycle's fixtures, `customer_insights.recording_url`).
+4. Descent ladder: on a deck whose engine tier is REPAIR_ONLY, the "Funding" rung changes nothing, and the pay link still goes out for REPAIR_DFY with route REPAIR_ONLY.
 5. Ops & Admin "Email unsent invoices" sends no limit, so one press emails at most 50, while the row and the confirm text promise every invoice; 200 is only the cap if a caller sends a limit.
-6. `enrollRepairProgram` (`src/repair/enroll.mjs`) accepts an amount paid above the price. The new live check goes red on such a row; nothing stops one being saved.
-7. The soft-pull email tells the client "optionally add businesses ($10 each, up to 5)" while the approval form allows 20 (`SOFT_PULL_MAX_BUSINESSES`). Same note as in the map evidence.
-8. Pipeline Funded column: after a drop the column's money label is redrawn as "$X est." instead of "$X funding est." (the page's own `bump` helper). The funded-column test holds the number only.
+6. `enrollRepairProgram` accepts an amount paid above the price. The live check goes red on such a row; nothing stops one being saved.
+7. The soft-pull email tells the client "optionally add businesses ($10 each, up to 5)" while the approval form allows 20.
+8. Pipeline Funded column: after a drop the column's money label is redrawn as "$X est." instead of "$X funding est.".
+9. (repair cycle 1) The repair "Amount paid today" box is drawn with the offer's full price in it, and an untouched box sends `amount_paid` equal to the price: "paid in full" with nothing paid.
+10. (repair cycle 1) `public/app/inquiry-remover.html` Enroll button posts `program: "trial", price_total: 200, amount_paid: 200` with no payment behind it. The new live check goes red on any such program made in the last 60 days.
+11. (repair cycle 1) `doTask` saves the queued row and the "to a person on our team" log even when the CSM task cannot be made (`createTask` answers null), so nobody has a task. The new live SQL goes red on it (`fin-b02-do-task.test.mjs` shows the case).
+12. (repair cycle 1) `emailInvoice` stamps `emailed_at` when the message is queued. A message that later fails or is blocked leaves the invoice reading emailed, and the same `provider_ref` blocks a resend with purpose `sent`. The new status leg goes red on it.
+13. (repair cycle 1) The soft-pull handler reports `portal_link.sent: false` in its reply when the sign-in link cannot be made or is rate limited, and nothing retries. The new sign-in leg goes red on that consent.
 
 ## Commands run
 
 All from the worktree `.claude/worktrees/fin-b02`, no database, no network.
 
-- `node scripts/pulse/count-not-proved.mjs` before: total 853, 14 of 14 batch rows open. After: total 841, 2 of 14 open (rows 7 and 12).
-- `npm run pulse:catalog` and `node scripts/pulse/compile-catalog.mjs --check`: clean.
-- `node --test` on the five new test files: 73, 15, 7, 3 and 6 tests, all pass.
-- `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog-*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs` plus the three fast new files: 171 tests, 171 pass.
-- `node --test src/pulse/*.test.mjs src/pulse/coverage/modules.test.mjs`: 716 pass (the `.pg.test.mjs` files skip: no `DATABASE_URL` in this shell).
-- `node --test src/pulse/catalog/proofs/display-contracts-*.test.mjs` and the door and flow contract tests that read `generated.json`: 215 pass.
-- `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the focused run that executes every test named by every case, browser ones included), twice:
-  - on `ec6010f37` (before the funded-column and sales-floor tests were added to the cases): 3 of 3 pass, 12 minutes 41 seconds.
-  - on `054bb36e7` (final case list): tests 1 and 2 pass. Test 3 fails on ONE nested test and nothing else: `e2e/teleprompter-touch.spec.mjs:715` "volume buttons, no finger on the glass" (379 of 380 browser tests passed, 764 seconds). That spec is not in this batch and I touched no teleprompter file. Run alone it passes (2 of 2 in this folder). The slice 4 manifest recorded the same test failing under load on clean `origin/main` ("373 of 374 passed"). All five new `fin-b02-*` test files passed inside that run.
-- `npm run lint`: 3,569 files parse clean.
-
-## Generation 2: commands and breaks (rows 7 and 12)
-
-All from the worktree `.claude/worktrees/fin-b02`, no database, no network.
-
-- `node scripts/pulse/count-not-proved.mjs` at the start of generation 2: total 841, 2 of 14 batch rows open (rows 7 and 12). After: total 840, 1 of 14 open (row 7).
-- `npm run pulse:catalog` and `node scripts/pulse/compile-catalog.mjs --check`: clean.
-- `node --test src/pulse/catalog/proofs/fin-b02-hero-live.test.mjs`: 16 of 16 pass. `node --test src/pulse/catalog/proofs/fin-b02-hero-bar.test.mjs`: 4 of 4 pass.
-- `node --test src/pulse/coverage/gap-catalog-display.test.mjs`: 11 of 11 pass (guard numbers above).
-- `node --test` on the two quick `display-proof-cases.test.mjs` tests: 2 of 2 pass at `redCount` 660.
-- `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog-*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs` plus `fin-b02-live-contracts`, `fin-b02-hero-live`, `fin-b02-transfers-open`, `fin-b02-present-buttons`: 187 of 187 pass (the focused display runner excluded by name).
-- `npm run lint`: 3,571 files parse clean.
-- The 55 proof test files with no browser, run together (1,473 tests): 1,472 pass, 1 fail. The one fail was `flow-result-proofs` "every test named by a flow proof passes", which timed out on `src/sales/closer-deck.test.mjs` while `npm run lint` ran beside it (load average 25 to 40). Alone: `flow-result-proofs.test.mjs` 9 of 9 pass (65 seconds), `src/sales/closer-deck.test.mjs` 27 of 27 pass. Same flake slice 1 recorded.
-- The focused runner (`display-proof-cases.test.mjs`, "the focused proof test runs every executable test named by every case"), on commit `b72a3409d`, 651 seconds: one nested test failed, `s2-display-contracts` "the browser specs press every named control in a real page", with "http://127.0.0.1:46326/app/messaging.html is already used": another builder's server held the port the runner derives from its process id (`s2-run-specs.mjs`). Alone it passes (2 of 2, 2 minutes 50). All 16 `fin-b02-hero-live` and 4 `fin-b02-hero-bar` tests ran inside that run and passed. Every other nested test passed (no teleprompter flake this time).
-- Ledger evidence (row 7): a scratch Chromium script (not committed, in the session scratchpad) opened `/app/products-commissions.html` with a read row in the exact shape `api/read/commissions.mjs` returns. Cells: `2026-10-02 | Casey Reed | — | Funding Bundle | — | $0 | 100% | $150 | Accrued`.
-
-Breaks made alone, test run, file put back (`git status` clean after each loop):
-
-- Hero SQL (`HERO_DEPOSITS_SQL`): 20 breaks (each of the six legs removed; shared-payment leg without the company, and one that counts a deposit against itself; funded leg off, funded leg ignoring the flag, any round status instead of `funded`, closeout excuse removed, closeout excuse not tied to the client; company, outcome (removed and wrong), demo outcome, demo client and 60-day window conditions removed; payment join without the company; `succeeded` dropped from the paid list). 2 stayed green on the first pass (the closeout excuse of another client, and the payment join without the company). Two tests were added for exactly those, then 20 of 20 red.
-- `public/app/sales-floor.js` hero paint: 14 breaks (deposits from the funnel; null shown as zero; rate from the close rate; rate floors instead of rounds; booked and held swapped; held null as zero; reason dropped from the line; funded and deposits swapped in "x of y"; the no-count words changed; bar filled to 50%; bar tied to the rate; target mark printing "Target —"; mark fallback emptied; "Today" label changed): 14 of 14 red.
-
-## Break checks, generation 1 (each break made alone, test run, file put back, `git status` clean)
-
-- Live SQL (`fin-b02-display-contracts.mjs`): 24 breaks (a leg or condition removed from each of the six contracts, plus the company condition replaced by `$1 IS NOT NULL` in each): 24 of 24 red, and the six company breaks red on the "another company's wrong result" test.
-- `public/app/present.js`: 27 breaks (bridge tier, slide, force_repair and education reset; each rung's flags and rung number; ladder row removed and price label; route button list and `setTier`; primary offer set; sale motion never sent, sent for primary, pick never remembered, select drawn for primary, Upsell option removed; soft pull held-off guard, wrong action, claims sent on refusal): 26 red. One stayed green on purpose: the bridge's `state.edu = false` cannot be reached, because the button is not drawn while education is on.
-- `public/app/money-transfers.js`: 12 breaks (both sign-in targets swapped, next drops the query, staff-by-client-id ignored, client role counted as staff, 401 not redirected, 403 redirected, client id dropped from the read, token not sent, back link and nav not keeping the client, staff form shown to a client): 12 of 12 red.
-- `public/app/pipeline.html` Funded drop: 5 breaks (amount never sent, amount box skipped, Cancel and empty still send, wrong stage posted): 5 of 5 red.
-- `public/app/sales-floor.js` and `src/sales/recordings.mjs`: 20 breaks (hero deposits source, belief hot rules and bars and last-period text, sources cap and unknown and close rate, non-https and non-Drive links, unmatched label, words label, cold days, discipline chip; attach company condition, ambiguous match, stamp overwrite, stamp on the oldest call, re-attach of an attached file, recent-client and file-list company conditions). 15 red on the first pass; 5 stayed green and were fixed by new fixtures (a belief that grew but is under three, an http link on a Drive host, a duplicate file id in another company, a client whose latest call already has a recording, a cross-company call). All 5 red after the fix.
-- `public/app/present.js` vm tests were first written with four gaps (bridge education reset, Funding rung from education, a rung that did not jump to S-19, route button keeping a descent pick). All closed with the 36-pair matrix and a rung-then-route matrix.
+- `node scripts/pulse/count-not-proved.mjs`: before repair cycle 1, total 840, 1 of 14 batch rows open. After: total 841, 2 of 14 open (Ledger table, Hero). On `fin/base`: 853, 14 of 14.
+- `npm run pulse:catalog`: clean (3975 mapped, 3942 unique, 3919 wired, 23 red).
+- `node --test` on `src/pulse/catalog/*.test.mjs`, `src/pulse/coverage/gap-catalog-*.test.mjs`, `src/pulse/coverage/gap-door-batch*.test.mjs`, the six fast `fin-b02-*` files (live-contracts, hero-live, transfers-open, present-buttons, do-task, invoice-backlog), `modules.test.mjs`, the four attached product tests (`src/finance/money-tasks`, `src/http/money-tasks`, `src/http/money-next-screen`, `src/http/s2-message-routes-outbound`) and `display-contracts-*.test.mjs`: 447 of 447 pass.
+- All 109 proof test files under `src/pulse/catalog/proofs/` except the focused runner (1,801 tests, Chromium ones included: funded column, sales floor open, hero bar, s4 present deck, s4 soft-pull approve, the staff runner): 1,801 of 1,801 pass.
+- `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the focused run: every test named by every case, browser ones included), 8 minutes: 3 of 3 pass.
+- `npm run lint`: 3,573 files parse clean.
 
 ## Left undone, for the next generation
 
-- Row 7 (the ledger table) needs a product change (see above). Nothing else in batch 02 is open.
-- The hero's live check is judged on stand-in rows only. Two legs could fire on real data the stand-in did not model: a deposit logged before its payment landed (cash stays 0 and cannot be edited), and a client flagged funded by an old import. The first is the design's own break; the second is not judged (only the "funded round but flag false" direction is). A first red on live is a finding.
-- The focused proof run is slow under load (12 to 13 minutes on this Mac with other builders running) and `e2e/teleprompter-touch.spec.mjs:715` is a known load flake inside it. Re-run it after merging and read that one test alone if it fails again.
-- A live check on production data could not be run (no database access by design). The SQL is judged only on stand-in rows with real column names. If a column holds values the stand-in did not model (for example `messages.provider_ref` prefixes written by another path), a first red on live would be a finding, not a surprise to be hidden.
+- Ledger table and Hero need the product changes above. Nothing else in batch 02 is open.
+- The live SQL is judged on stand-in rows with the real column names only, never on production data (no database access by design). A first red on live would be a finding, not a surprise to hide. The new money legs on the repair row are the most likely to show real history (programs enrolled by hand, trials from the inquiry-remover button, financed sales whose payments live in a table the legs do not read).
+- The focused run (`display-proof-cases.test.mjs`, 12 to 13 minutes) was run once at the end of this cycle; `e2e/teleprompter-touch.spec.mjs:715` is a known load flake inside it.
+- Unattached but kept: the hero's live SQL and its tests (see above).
 
-## Generation 3: independent re-check (no code change)
+## History (compact)
 
-A fresh agent re-measured the branch at `8dbf564bf` and did not change any product or test file. Offline, no database,
-no network.
-
-- `node scripts/pulse/count-not-proved.mjs`: total 840. Of the 14 batch rows, 13 are gone from the list and 1 is open
-  (the Ledger table, row 7). `openBefore` 14, `openAfter` 1.
-- `node scripts/pulse/compile-catalog.mjs --check`: clean (3975 mapped, 3942 unique, 3919 wired, 23 red).
-- `node --test` on `fin-b02-live-contracts`, `fin-b02-hero-live`, `fin-b02-transfers-open`, `fin-b02-present-buttons`
-  and `gap-catalog-display.test.mjs`: 122 of 122 pass.
-- `node --test` on `fin-b02-funded-column`, `fin-b02-sales-floor-open`, `fin-b02-hero-bar` (Chromium): 13 of 13 pass.
-- `display-proof-cases.test.mjs` quick tests (case list and unmapped rows): 2 of 2 pass. The 12 minute focused runner
-  was not re-run (other builders shared the machine; it passed alone in generation 1 and 2).
-- `node --test` on the six catalog recipe and compiler tests plus `modules.test.mjs`: 57 of 57 pass.
-- One fresh break: the `repair-amount-paid` contract with the full-program round cap leg removed. The test
-  "amount paid today: a full program has the trial round cap goes red" went red (72 of 73). File put back.
-- Row 7 challenged again: `public/app/products-commissions.html` still hard-codes `client: "—"` and `rule: "—"` in
-  both `ledgerFromApi` and `ledgerFromApiLive`, still does `Number(r.basis) || 0` on the text `front_end` / `back_end`,
-  and still paints `split_percent` as the rate. `api/read/commissions.mjs` still selects no client name, no
-  `base_amount`, no `rule_snapshot` or `rule_id`. A check that judges saved rows would be red on every real row by
-  construction and could never go green after a fix without being rewritten, so it would not be a result check. Left as
-  not attachable.
-
-## Generation 4 (workflow generation 2 after resume): row 7 challenged a fourth time, still not attachable
-
-No code or test change. Offline, no database, no network. Measured at `b63ef453b`.
-
-- `node scripts/pulse/count-not-proved.mjs`: total 840. Of the 14 batch rows, 1 is open (the Ledger table). The 13 others
-  stay off the list. Batch numbers from `fin/base`: `openBefore` 14, `openAfter` 1.
-- Re-read the real handler and page, not the earlier notes:
-  - `api/read/commissions.mjs` selects `id, staff_id, staff_name, employee_code, client_id, role, basis, amount, currency,
-    status, split_percent, product_name_at_earning, earned_at, approved_at, paid_at, void_reason, created_at`. No client
-    name, no `base_amount`, no `rule_id`, no `rule_snapshot`.
-  - `public/app/products-commissions.html` `ledgerFromApiLive` (line 747) and `ledgerFromApi` (line 1032) still hard-code
-    `client: "—"`, `rule: "—"`, `ver: ""`, still run `Number(r.basis) || 0` on the text `front_end` / `back_end`
-    (migration 014 CHECK), and still paint `split_percent` as the rate.
-  - `e2e/products-commissions-ledger.spec.mjs` lines 20 to 22 still feed `basis: "3000.00"`, a value the read never
-    returns.
-  - No other `fin/*` branch and not `main` changed `api/read/commissions.mjs`, `public/app/products-commissions.html` or
-    that spec (checked with `git diff --name-only` against `fin/base`, all 27 branches and `main`).
-- Options considered and why each fails the honest-outcome rule:
-  1. A live check on saved `commission_ledger` rows: it would judge the saved rows (payout, status), not the table. It
-     would stay green while four of nine columns on screen are wrong on every row. That is a false green.
-  2. A check that runs the page's own mapper on a real-shape row and compares to the saved facts: it is red on every row
-     today and cannot be written as a passing test without pinning the wrong paint. Pinning the wrong paint would be a
-     test that is green when the product is wrong, which is not allowed.
-  3. A practice test on the five correct columns only (date, person, product, payout, status): the row names nine
-     columns. Attaching it would call a table with four wrong columns proved.
-- Result: not-attachable, same reason, same four columns. Unblock is the product change already written above. When it
-  lands, the row takes a practice test fed with a real-shape row (client name, `base_amount`, rule version, rate).
-- Commands: `node scripts/pulse/compile-catalog.mjs --check` clean (3975 mapped, 3942 unique, 3919 wired, 23 red);
-  `node --test` on `gap-catalog-display.test.mjs`, `fin-b02-live-contracts.test.mjs`, `fin-b02-hero-live.test.mjs`:
-  100 of 100 pass. No new check was added, so no new break was needed.
+- Generation 1: rows 1 to 11, 13, 14. 24 SQL breaks, 27 `present.js` breaks (26 red, 1 equivalent), 12 `money-transfers.js`, 5 pipeline, 20 sales floor and recordings (15 red, 5 closed by fixtures).
+- Generation 2: row 12 attached (20 SQL breaks, 2 closed; 14 page breaks, 14 red); row 7 widened to four wrong columns.
+- Generations 3 and 4: independent re-checks of row 7, no code change.
+- Repair cycle 1: this file.

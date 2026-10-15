@@ -3,7 +3,11 @@
 // Row (desks-e.json, public/app/money-transfers.html): "Open the page (client signed in, or
 // staff with ?client_id=); 401 sends to /portal-login.html or /login.html?next=".
 //
-// public/app/money-transfers.js is run WHOLE in a vm with a stand-in page and a fake network.
+// The page is built from the REAL files (repair cycle 1). public/app/money-transfers.html is read as
+// text: the script it loads is the file its <script src> points at (a missing file or a removed tag
+// stops the test), and the stand-in page can only hand the script an element whose id is really in
+// that html (a renamed #transfers-root, #money-back or #money-nav opens a blank page here too). The
+// money nav's links are the html's own. The script then runs WHOLE in a vm with a fake network.
 // The test reads the exact request the page sends on open, what it paints from the fake answer,
 // and where a 401 sends the person. Practice test with fake data: not a real client's session.
 
@@ -15,7 +19,25 @@ import vm from "node:vm";
 
 import { REPO_ROOT } from "./fin-b02-sql-kit.mjs";
 
-const JS = fs.readFileSync(path.join(REPO_ROOT, "public/app/money-transfers.js"), "utf8");
+const APP = path.join(REPO_ROOT, "public/app");
+const HTML = fs.readFileSync(path.join(APP, "money-transfers.html"), "utf8");
+
+/** Every local file the html asks the browser for (scripts and stylesheets), resolved under /app. */
+function localAssets(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)) out.push({ kind: "script", src: m[1], tag: m[0] });
+  for (const m of html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"[^>]*>/gi)) out.push({ kind: "style", src: m[1], tag: m[0] });
+  return out.filter((a) => !/^(?:[a-z]+:)?\/\//i.test(a.src) && !a.src.startsWith("data:"));
+}
+const ASSETS = localAssets(HTML);
+const SCRIPT = ASSETS.find((a) => a.kind === "script" && path.basename(a.src) === "money-transfers.js");
+assert.ok(SCRIPT, "money-transfers.html no longer loads money-transfers.js, so the page opens blank");
+const JS = fs.readFileSync(path.join(APP, SCRIPT.src), "utf8");
+
+/** ids really present in the html, and the money nav's own links, in order. */
+const HTML_IDS = new Set([...HTML.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+const NAV_HTML = /<nav\b[^>]*\bid="money-nav"[^>]*>([\s\S]*?)<\/nav>/.exec(HTML);
+const NAV_HREFS = NAV_HTML ? [...NAV_HTML[1].matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)].map((m) => m[1]) : [];
 const FIXTURE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "src/http/fixtures/money-transfers.sample.json"), "utf8"));
 const PATH = "/app/money-transfers.html";
 const flush = () => new Promise((r) => setImmediate(r));
@@ -32,7 +54,7 @@ async function openPage({ search = "", role = null, token = "", answer = { statu
   const root = { innerHTML: "", addEventListener() {}, removeEventListener() {}, contains: () => true };
   const attrs = new Map();
   const back = { setAttribute: (k, v) => attrs.set(`back:${k}`, v), textContent: "Back" };
-  const links = ["money-overview.html", "money-banks.html#plan"].map((href) => ({
+  const links = NAV_HREFS.map((href) => ({
     href,
     getAttribute() { return this.href; },
     setAttribute(k, v) { if (k === "href") this.href = v; }
@@ -54,7 +76,8 @@ async function openPage({ search = "", role = null, token = "", answer = { statu
     },
     document: {
       readyState: "complete",
-      getElementById: (id) => ({ "transfers-root": root, "money-back": back, "money-nav": nav })[id] || null,
+      // Only an element the real html has: a renamed or removed id is a null here, as in the browser.
+      getElementById: (id) => (HTML_IDS.has(id) ? ({ "transfers-root": root, "money-back": back, "money-nav": nav })[id] || null : null),
       addEventListener() {}
     }
   };
@@ -89,10 +112,12 @@ test("Open as staff with ?client_id=: the read carries that client, and the back
   assert.equal(page.calls[0].url, `/api/money/transfers?client_id=${encodeURIComponent(id)}`);
   assert.equal(page.back.attrs.get("back:href"), `finance-os.html?client_id=${encodeURIComponent(id)}`);
   assert.equal(page.back.node.textContent, "Back to Finance OS");
-  assert.deepEqual(page.links.map((a) => a.href), [
-    `money-overview.html?client_id=${encodeURIComponent(id)}`,
-    `money-banks.html?client_id=${encodeURIComponent(id)}#plan`
-  ]);
+  // The nav is the html's own seven links; each keeps the client, a #section stays after the query.
+  assert.ok(page.links.length >= 5, "the money nav has its links in the html");
+  assert.deepEqual(page.links.map((a) => a.href), NAV_HREFS.map((href) => {
+    const [base, ...frag] = href.split("#");
+    return `${base}?client_id=${encodeURIComponent(id)}${frag.length ? `#${frag.join("#")}` : ""}`;
+  }));
   const t = text(page.html());
   assert.match(t, /Waiting for the client's OK/);
   assert.match(t, /Staff only/);
@@ -133,4 +158,31 @@ test("a 401 never paints the page's error card, and other refusals do not sign t
     assert.match(text(page.html()), /We could not load your money moves/, `status ${status} says so`);
     assert.match(page.html(), /data-act="retry"/);
   }
+});
+
+/* ── the page file itself: what the browser is told to load and where the script finds its places ── */
+
+test("the html loads its script and its stylesheet from files that exist, and the script is not left out", () => {
+  assert.ok(ASSETS.length >= 3, "the html asks for brand css, page css and the script");
+  for (const a of ASSETS) {
+    const file = path.join(APP, a.src);
+    assert.ok(fs.existsSync(file), `${a.src} is not a file under public/app`);
+    assert.ok(fs.statSync(file).size > 0, `${a.src} is empty`);
+  }
+  assert.match(SCRIPT.tag, /\bdefer\b/, "the script is deferred so the root exists when it runs");
+});
+
+test("every element the script looks for by id is in the html", () => {
+  const wanted = [...JS.matchAll(/getElementById\("([^"]+)"\)/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(wanted)].sort(), ["money-back", "money-nav", "transfers-root"]);
+  for (const id of new Set(wanted)) assert.ok(HTML_IDS.has(id), `#${id} is not in money-transfers.html`);
+  // and the root really starts the page: it is inside <main>, with the loading line the script replaces
+  assert.match(HTML, /<main>\s*<div id="transfers-root"/);
+});
+
+test("with the html's own ids the page opens and paints; with the root gone it would open blank", async () => {
+  const page = await openPage({ role: "client", token: "fake-token" });
+  assert.equal(page.calls.length, 1, "one read on open");
+  assert.match(text(page.html()), /Transfers/);
+  assert.notEqual(page.html(), "", "the root was painted");
 });

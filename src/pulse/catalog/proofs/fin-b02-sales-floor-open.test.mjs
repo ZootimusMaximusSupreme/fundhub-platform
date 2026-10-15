@@ -338,3 +338,200 @@ test("a second read changes nothing more", async () => {
     assert.equal(JSON.stringify([s.all("brain_files"), s.all("call_outcomes")]), first);
   } finally { s.close(); }
 });
+
+/* ── B2. the write on the GET, the other half (repair cycle 1) ─────────────────
+   The tests above hold the call_outcomes half and the name match. These hold what they did not:
+   the customer_insights stamp (same client, same company, never over a link already there), the
+   windows (a client or file older than 7 days, a booking event of another kind), a file with no
+   link, a first name or a last name on its own, and the words and excerpt the read hands back.
+   Each fixture is built so that exactly one broken line in src/sales/recordings.mjs changes what
+   it holds. */
+
+const TABLES_B2 = ["clients", "call_outcomes", "customer_insights", "events", "brain_files", "brain_drive_sync"];
+function file(s, id, name, extra = {}) {
+  s.insert("brain_files", {
+    id, org_id: ORG, name, web_view_link: L(id), client_id: null, unattached: true,
+    mime_type: "video/mp4", needs_transcription: true, created_at: iso(1), indexed_at: iso(1), ...extra,
+  });
+}
+/** SQLite hands booleans back as 0 and 1; Postgres hands back true and false, and the read tests `=== false`. */
+function postgresBooleans(s) {
+  const pg = s.asPg();
+  return {
+    async query(sql, params) {
+      const out = await pg.query(sql, params);
+      for (const row of out.rows) {
+        for (const key of ["needs_transcription", "unattached"]) {
+          if (key in row && row[key] !== null) row[key] = Boolean(row[key]);
+        }
+      }
+      return out;
+    }
+  };
+}
+function withB2(fn) {
+  const s = makeStandIn(TABLES_B2);
+  return Promise.resolve(fn(s)).finally(() => s.close());
+}
+
+test("the link is stamped on the matched client's latest insight that has none: not another client's, not another company's, not over a link already there", async () => {
+  await withB2(async (s) => {
+    s.insert("clients", { id: "mia", org_id: ORG, first_name: "Mia", last_name: "Patel" });
+    s.insert("clients", { id: "noah", org_id: ORG, first_name: "Noah", last_name: "Reyes" });
+    // Mia's newest insight already carries a link; the one before it has none.
+    s.insert("customer_insights", { id: "ins-mia-latest", org_id: ORG, client_id: "mia", occurred_at: iso(1), recording_url: L("keep") });
+    s.insert("customer_insights", { id: "ins-mia-prev", org_id: ORG, client_id: "mia", occurred_at: iso(3), recording_url: null });
+    // and an older one with none either: the newest one without a link is the one that is stamped
+    s.insert("customer_insights", { id: "ins-mia-oldest", org_id: ORG, client_id: "mia", occurred_at: iso(6), recording_url: null });
+    // Newer than both, with no link, belonging to another client of the same company ...
+    s.insert("customer_insights", { id: "ins-noah", org_id: ORG, client_id: "noah", occurred_at: iso(0.5), recording_url: null });
+    // ... and one for the same client id in another company, newest of all.
+    s.insert("customer_insights", { id: "ins-mia-other-org", org_id: OTHER, client_id: "mia", occurred_at: iso(0.25), recording_url: null });
+    file(s, "f-mia", "Mia Patel - Meet Recording.mp4");
+
+    await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+
+    const insights = s.all("customer_insights");
+    assert.equal(byId(s.all("brain_files"), "f-mia").client_id, "mia");
+    assert.equal(byId(insights, "ins-mia-prev").recording_url, L("f-mia"), "the newest insight with no link gets it");
+    assert.equal(byId(insights, "ins-mia-oldest").recording_url, null, "an older one with no link is left alone");
+    assert.equal(byId(insights, "ins-mia-latest").recording_url, L("keep"), "a link already there is never written over");
+    assert.equal(byId(insights, "ins-noah").recording_url, null, "another client's insight is never stamped");
+    assert.equal(byId(insights, "ins-mia-other-org").recording_url, null, "another company's insight is never stamped");
+  });
+});
+
+test("the call stamp stays inside the company: another company's newer call of the same client id is never stamped", async () => {
+  await withB2(async (s) => {
+    s.insert("clients", { id: "zed", org_id: ORG, first_name: "Zed", last_name: "Moon" });
+    s.insert("call_outcomes", { id: "call-zed", org_id: ORG, client_id: "zed", logged_at: iso(3), recording_url: null });
+    s.insert("call_outcomes", { id: "call-zed-other-org", org_id: OTHER, client_id: "zed", logged_at: iso(0.5), recording_url: null });
+    file(s, "f-zed", "Zed Moon - Meet Recording.mp4");
+    await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+    const calls = s.all("call_outcomes");
+    assert.equal(byId(calls, "call-zed").recording_url, L("f-zed"));
+    assert.equal(byId(calls, "call-zed-other-org").recording_url, null);
+  });
+});
+
+test("a file with no link is never attached to anyone", async () => {
+  const s = standIn();
+  try {
+    s.insert("brain_files", {
+      id: "f-nolink", org_id: ORG, name: "Lee Carter - Notes recording.mp4", web_view_link: null, client_id: null,
+      unattached: true, mime_type: "video/mp4", needs_transcription: true, created_at: iso(1), indexed_at: iso(1),
+    });
+    await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+    const row = byId(s.all("brain_files"), "f-nolink");
+    assert.equal(row.client_id, null);
+    assert.equal(Number(row.unattached), 1);
+  } finally { s.close(); }
+});
+
+test("only a client with a call, a booking or an insight in the last 7 days can be matched by name", async () => {
+  await withB2(async (s) => {
+    // Old activity of every kind: not a recent client, so a file with their name is left loose.
+    s.insert("clients", { id: "ola", org_id: ORG, first_name: "Ola", last_name: "Stone" });
+    s.insert("call_outcomes", { id: "call-ola", org_id: ORG, client_id: "ola", logged_at: iso(20), recording_url: null });
+    s.insert("events", { id: "ev-ola", org_id: ORG, client_id: "ola", name: "booking.created", created_at: iso(20) });
+    s.insert("customer_insights", { id: "ins-ola", org_id: ORG, client_id: "ola", occurred_at: iso(20), recording_url: null });
+    file(s, "f-ola", "Ola Stone - Meet Recording.mp4");
+    // A recent event, but not a booking: not a recent client either.
+    s.insert("clients", { id: "evan", org_id: ORG, first_name: "Evan", last_name: "Cole" });
+    s.insert("events", { id: "ev-evan", org_id: ORG, client_id: "evan", name: "booking.cancelled", created_at: iso(1) });
+    file(s, "f-evan", "Evan Cole - Meet Recording.mp4");
+    // Recent booking only (no call, no insight): matched.
+    s.insert("clients", { id: "bea", org_id: ORG, first_name: "Bea", last_name: "Long" });
+    s.insert("events", { id: "ev-bea", org_id: ORG, client_id: "bea", name: "booking.created", created_at: iso(2) });
+    s.insert("call_outcomes", { id: "call-bea", org_id: ORG, client_id: "bea", logged_at: iso(40), recording_url: null });
+    file(s, "f-bea", "Bea Long - Meet Recording.mp4");
+
+    await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+
+    const files = s.all("brain_files");
+    assert.equal(byId(files, "f-ola").client_id, null, "old call, booking and insight: not a recent client");
+    assert.equal(byId(files, "f-evan").client_id, null, "a recent event that is not a booking does not count");
+    assert.equal(byId(files, "f-bea").client_id, "bea", "a recent booking alone is enough");
+    assert.equal(byId(s.all("call_outcomes"), "call-ola").recording_url, null);
+  });
+});
+
+test("a file older than 7 days, or one that is not a recording, is not listed and not attached", async () => {
+  await withB2(async (s) => {
+    s.insert("clients", { id: "gus", org_id: ORG, first_name: "Gus", last_name: "Rivera" });
+    s.insert("call_outcomes", { id: "call-gus", org_id: ORG, client_id: "gus", logged_at: iso(1), recording_url: null });
+    file(s, "f-gus-old", "Gus Rivera - Meet Recording.mp4", { created_at: iso(20), indexed_at: iso(20) });
+    file(s, "f-gus-doc", "Gus Rivera - Contract.pdf", { mime_type: "application/pdf", needs_transcription: false });
+
+    const out = await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+
+    assert.equal(byId(s.all("brain_files"), "f-gus-old").client_id, null);
+    assert.equal(byId(s.all("brain_files"), "f-gus-doc").client_id, null);
+    assert.equal(byId(s.all("call_outcomes"), "call-gus").recording_url, null);
+    assert.deepEqual(out.items.map((it) => it.id), [], "neither is on the list");
+  });
+});
+
+test("a first name on its own or a last name on its own never matches a client", async () => {
+  const s = standIn();
+  try {
+    file(s, "f-first-only", "Dana Smith - Meet Recording.mp4");
+    file(s, "f-last-only", "Whitfield Realty recording.mp4");
+    await listRecentRecordings(s.asPg(), { orgId: ORG, now: NOW, env: {} });
+    const files = s.all("brain_files");
+    assert.equal(byId(files, "f-first-only").client_id, null);
+    assert.equal(byId(files, "f-last-only").client_id, null);
+    // the whole name still does: the fixture's Dana is real
+    assert.equal(files.find((f) => f.id === "f-dana" && f.org_id === ORG).client_id, "dana");
+  } finally { s.close(); }
+});
+
+test("words and excerpt: a transcript on the recording's call makes it 'words ready', cut to 240 characters and trimmed", async () => {
+  await withB2(async (s) => {
+    const short = "We talked about the card stacking order and the three card plan.";
+    const long = `   ${"a".repeat(120)} ${"b".repeat(300)}   `;
+    for (const [id, first, last] of [["pia", "Pia", "Moss"], ["rex", "Rex", "Hart"], ["quin", "Quin", "Dale"], ["tess", "Tess", "Ward"], ["solo", "Solo", "Case"]]) {
+      s.insert("clients", { id, org_id: ORG, first_name: first, last_name: last });
+    }
+    s.insert("call_outcomes", { id: "call-pia", org_id: ORG, client_id: "pia", logged_at: iso(1), recording_url: L("f-pia"), transcript: short });
+    s.insert("call_outcomes", { id: "call-rex", org_id: ORG, client_id: "rex", logged_at: iso(1), recording_url: L("f-rex"), transcript: long });
+    s.insert("call_outcomes", { id: "call-solo", org_id: ORG, client_id: "solo", logged_at: iso(2), recording_url: L("only-on-call"), transcript: long });
+    s.insert("call_outcomes", { id: "call-quin", org_id: ORG, client_id: "quin", logged_at: iso(1), recording_url: null });
+    file(s, "f-pia", "Pia Moss - Meet Recording.mp4", { client_id: "pia", unattached: false });
+    file(s, "f-rex", "Rex Hart - Meet Recording.mp4", { client_id: "rex", unattached: false });
+    file(s, "f-quin", "Quin Dale - Meet Recording.mp4", { client_id: "quin", unattached: false });
+    // already transcribed in the brain: words ready with no excerpt of its own
+    file(s, "f-tess", "Tess Ward - Meet Recording.mp4", { client_id: "tess", unattached: false, needs_transcription: false });
+    // words found by the file's own link alone: the file is loose, the call that holds that link is Ulf's
+    s.insert("clients", { id: "ulf", org_id: ORG, first_name: "Ulf", last_name: "Berg" });
+    s.insert("call_outcomes", { id: "call-ulf", org_id: ORG, client_id: "ulf", logged_at: iso(1), recording_url: L("f-loose"), transcript: short });
+    file(s, "f-loose", "team standup recording.mp4", { web_view_link: L("f-loose") });
+    // words found by the client alone: the file is Cy's, the call with words is Cy's but holds another link
+    s.insert("clients", { id: "cy", org_id: ORG, first_name: "Cy", last_name: "Hale" });
+    s.insert("call_outcomes", { id: "call-cy", org_id: ORG, client_id: "cy", logged_at: iso(1), recording_url: L("cy-call"), transcript: short });
+    file(s, "f-cy", "Cy Hale - Meet Recording.mp4", { client_id: "cy", unattached: false });
+
+    const out = await listRecentRecordings(postgresBooleans(s), { orgId: ORG, now: NOW, env: {} });
+    const item = (id) => out.items.find((it) => it.id === id);
+
+    assert.equal(item("f-pia").has_words, true);
+    assert.equal(item("f-pia").excerpt, short);
+    assert.equal(item("f-rex").has_words, true);
+    assert.equal(item("f-rex").excerpt.length, 240, "cut to 240 characters");
+    assert.equal(item("f-rex").excerpt, long.trim().slice(0, 240), "trimmed first, then cut");
+    assert.equal(item("f-quin").has_words, false, "no transcript, still waiting for words");
+    assert.equal(item("f-quin").excerpt, null);
+    assert.equal(item("f-tess").has_words, true, "transcribed already: words ready");
+    assert.equal(item("f-tess").excerpt, null);
+    assert.equal(item("f-loose").has_words, true, "words found by the recording's own link");
+    assert.equal(item("f-loose").excerpt, short);
+    assert.equal(item("f-cy").has_words, true, "words found by the client when the link is another");
+    assert.equal(item("f-cy").excerpt, short);
+    // a recording that lives only on a call: its own row, with the same words and the same cut
+    const solo = item("call-call-solo");
+    assert.equal(solo.has_words, true);
+    assert.equal(solo.excerpt.length, 240);
+    assert.equal(solo.url, L("only-on-call"));
+    assert.equal(solo.client_name, "Solo Case");
+  });
+});

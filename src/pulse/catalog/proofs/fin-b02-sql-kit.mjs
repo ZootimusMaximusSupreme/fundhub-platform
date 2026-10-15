@@ -110,6 +110,11 @@ export function schemaColumns() {
 /** The Postgres text of a contract, spelled for SQLite. $1 becomes ?1; casts and BTRIM are plain. */
 export function portableSql(sql) {
   return sql
+    // `table.column + interval '1 day'` (or minus): the same date maths, spelled for SQLite.
+    .replace(
+      /\b([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)\s*([+-])\s*interval\s*'(\d+)\s*(day|hour|minute)s?'/gi,
+      (_all, col, sign, n, unit) => `datetime(${col}, '${sign}${n} ${unit}s')`,
+    )
     .replace(/\bnow\(\)\s*-\s*interval\s*'(\d+)\s*(day|hour|minute)s?'/gi, "datetime('now', '-$1 $2s')")
     .replace(/::(?:uuid|int|integer|bigint|text|numeric|jsonb|json|boolean|date|timestamptz)\b/gi, "")
     .replace(/\$(\d+)/g, "?$1")

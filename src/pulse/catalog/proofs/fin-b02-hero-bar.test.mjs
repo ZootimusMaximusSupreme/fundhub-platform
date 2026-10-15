@@ -12,6 +12,14 @@
 // What this test does NOT hold, on purpose: a bar that follows a target. public/app/sales-floor.js
 // sets the bar to 0% on every paint, so there is no such behaviour to hold yet. It is a product
 // finding in the manifest, not a promise made here.
+//
+// REPAIR CYCLE 1: because that half does not exist, the hero row is NOT attached to a live check or
+// to this test as proof. A fresh checker showed a read that carries hero.target_cents and
+// hero.cash_cents still paints a 0% bar with every attached test green. A test that would go red on
+// that (an assertion of 50%) cannot be committed, since the product is what is wrong. So the row went
+// back to NOT_PROVED with the exact words (fin-b02-display-contracts.mjs HERO_GAP_REQUIREMENT). These
+// four tests stay as the practice half for the numbers, dashes and empty bar; they run in the
+// focused proof run, and they say nothing about a target bar.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
