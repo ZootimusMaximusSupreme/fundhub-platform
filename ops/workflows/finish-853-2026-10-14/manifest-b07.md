@@ -1,7 +1,187 @@
 # Batch 07 manifest: Specialist desk, lenders Apply, vault, Plaid, soft pull, agreements, social
 
 Branch `fin/b07`, built from `fin/base` (2f4f574a0). Nothing was pushed or merged. Tests and catalog data only. No product file was changed.
-Generation 2 of at most 3 (generation 1 left 2 rows open; generation 2 challenged both). Lane `gap-catalog-display`, 46 rows.
+Generation 3 (repair cycle 1, 2026-10-15) follows generation 2. Lane `gap-catalog-display`, 46 rows.
+**Read "Repair cycle 1" first.** Everything after it is the generation 1 and 2 record; where it disagrees with the cycle section, the cycle section wins.
+
+
+## Repair cycle 1 (2026-10-15): twenty rows an independent checker kept green while the product was broken
+
+An independent checker broke each of twenty rows on purpose and watched the check stay green. Every one of the
+twenty was challenged again here. Each row now ends in exactly one of three states, and none is left green over a
+break the checker named. Tests, catalog data and this manifest only. No product file was changed (every break
+below was made in a throwaway copy of a file, then put back with the original text; `git status` shows only
+the files listed under "Files").
+
+| | Rows |
+|---|---|
+| Rows in this batch | 46 |
+| Attached as a live check (saved-result SQL, 39; live page read, 1) | 40 |
+| Attached as a practice test only (page home, link token, search) | 3 |
+| Not attachable, so NOT_PROVED (Banks page gate, Page gate, Work queue table) | 3 |
+| Open before this cycle, whole count | 808 |
+| Open after this cycle, whole count | 810 (the two rows taken off are the +2) |
+
+Measured with `node scripts/pulse/count-not-proved.mjs`: 808 before, 810 after. The two that came back are
+`Page gate: inquiry_specialist...` and `Work queue table: one row per disputed inquiry line...`. The Banks page
+gate was already open and stays open.
+
+Honest direction: a row that the product makes false is not proved, and it is better red on the board than green.
+
+### What each of the twenty ended as
+
+| Row | Outcome | What now judges it |
+|---|---|---|
+| inquiry-remover.html Page gate (roles; setter/closer bounced) | not-attachable | Taken off. See finding A: the Work queue read is open to every staff role, so the row's claim is false of the product. The practice test that was attached only held 2 of the 4 doors. |
+| Letter drawer 'Send this one' | live-check | `fin-b07-letter-send-one`. The dead "two mailed stamps" clause (migration 332's unique index makes that state impossible) is gone. Reads a twin that is out by status (sending, sent, delivered) with no stamp, and one provider letter id on two rows. Plus a page test: the drawer sends exactly that one letter with mail on, and never offers a letter already mailed. |
+| Case drawer 'Mark cleared' | live-check | `fin-b07-case-cleared`. The receipt is matched to THIS case (`payload.inquiryRemovalCaseId` or `payload.caseId`), for that client, not any receipt of the client. A sibling case's receipt no longer covers a case whose own emit was lost. |
+| Case drawer 'Send' | live-check | `fin-b07-case-send` + `src/inquiry-ops/send.test.mjs`. Sent attempt must be the case's own bureau and after the request (a sibling bureau's cannot cover it). A case that reads In Progress after a failed mail and never sent is read too. The packet refusal is held by `send.test.mjs` (broken on purpose: gate removed, red). Removing the In Progress update is not held by `send.test.mjs`; the live SQL reads a mailed case that still reads Queued. |
+| Expanded row 'Clean personal info' | live-check | `fin-b07-clean-personal` now reads last name, CRM contact id, CRM field bag, tags, and merchant name and raw payload on every transaction. Plus a round trip: the real `eraseClient` over a stand-in, then the live SQL; the owner/admin door; the page button (owner and admin only, asks first, sends this client with the confirmation). |
+| Case drawer 'Upload FTC or police report' | live-check | `fin-b07-case-upload`. Starts from either the subtype or `metadata.label.given`, so a file the button sent and the handler filed as "other" is wrong. Plus a page test (sends this case's client, subtype additional_fraud_docs, says "choose file" with no file). |
+| Case queue table | live-check | `fin-b07-case-queue`: dead clauses removed (requested_at, client NOT NULL); Items below the open inquiries attached to the case; round of another client; client in another company. Plus page test (nine cells, ready first then oldest first), handler test (each case carries its own client's packet; a failed read gives no verdict) and `src/inquiry-ops/cases.test.mjs` (ORDER BY). |
+| Repair queue table | live-check | `fin-b07-repair-queue`: an active repair program with no card on the board is wrong (a paid file nobody can see); program word; rounds. Plus page test (columns, need-me first, most overdue first), `fin-b07-repair-read.test.mjs` and the two older repair read tests. |
+| Repair row click/Enter expands | live-check | `fin-b07-repair-row`: letters of another client or another round, a timeline entry of another client's case, client in another company; scope clauses pinned. Plus page test (items, letters, what is next, timeline, Enter) and the repair read tests. |
+| Repair stage awaiting_response | live-check | `fin-b07-stage-await-response` judges the file's CURRENT round (R1..R6, then FURNISHER). A round-2 file with an unclosed round-1 case no longer reads red. The closed/cancelled clause is pinned. |
+| Work queue table | not-attachable | Taken off. See finding B: the Hold column compares `call_state` to "holding", the database enum spells it "on_hold". The SQL check and the seven working columns are written and tested but not attached. |
+| Work row click/Enter expands | live-check | `fin-b07-work-row` + `fin-b07-desk-page.test.mjs` (a real browser: click and Enter expand; the attempt history loads, newest on top; the masked identity line; folds back). |
+| Apply dialog (Copy, End session, Close) | live-check + practice test | `fin-b07-apply-dialog.test.mjs`: the REAL `launchProxySession` and `endActiveProxySession` write a stand-in `proxy_sessions` table and the live SQL reads what they wrote; the page's Copy, End session (ends THAT session), Close (ends nothing). |
+| Lender row Apply button | live-check + practice test | `fin-b07-lender-apply`: the saved page must be the lender's (or application's) own; an active city session's granted city must hold the requested one; state sessions the right state. Plus the same round trip, `src/proxy/launch.test.mjs`, and a page test that Apply appears only on a client-scoped list and only for a lender with an address. |
+| Private leads list page | live-check | `fin-b07-leads-page.mjs`: scripts are read by a small lexer (comments and strings are not code). Sinks: location, open, write, href/src/formAction/ping assignment (except an address made by `URL.createObjectURL`, a file made inside the browser), setAttribute of an address, eval, postMessage, worker, import, ping attribute, formaction, base tag, CSS url(). localStorage must be read AND written in code. The stricter judge could not be run on the real page (it is 404 live and git-excluded, and I may not read the main checkout), so its first live read is the first real test of it: a red naming a sink word means the judge is stricter than the page, not that data left. See finding C: the live page answers 404 today. |
+| documents-upload (server) | live-check | `fin-b07-vault-upload`: a document with more than one version, two documents on one stored file, a container that is not a business or was archived before the paper arrived. Plus `fin-b07-vault-upload.test.mjs`: the real handler with a stand-in (one document per file, bytes sniffed, size limit, client pinned, company pinned, business folder checked). |
+| link-exchange (server) | live-check + practice test | `fin-b07-link-exchange`: sealed token (four parts, never a bare access token), consent scope not empty. Plus `fin-b07-link-exchange.test.mjs`: the real `completeLink` with Plaid answered by a stand-in that returns THREE accounts; all three are saved, token sealed and bound to the item id, errored link carries a code. |
+| link-token (server) | practice-test | `fin-b07-link-token.test.mjs` now also runs the real `startLink` with Plaid's address answered by a stand-in and reads `client_user_id` off the request, end to end from the door for a client, a staff member and a refused role. |
+| Search button and Cmd/Ctrl+K | practice-test | `fin-b07-search.test.mjs` (server) + `fin-b07-shell-search.test.mjs` (the real shell.js on a real staff screen: button, Ctrl+K and Cmd+K open and close, Escape and backdrop close, the typed word is what is asked, five groups in order, hit links, "no matches" and "not signed in" copy). |
+| Business fields | live-check | `fin-b07-business-fields`: city and state clauses are now pinned; state two capital letters; ZIP five digits (or ZIP+4) as digits; EIN made of digits; incorporated month 01 to 12; age within one month of the months to the saved day, judged BOTH ways. Plus `fin-b07-business-save.test.mjs` (the real parser and saver, then the SQL) and `src/http/soft-pull-approve.test.mjs` (extra owner saved). |
+
+### The not attachable rows, exact
+
+- **A. Page gate, inquiry-remover.html.** The row says setter and closer roles are bounced. Measured through the real
+  handlers on 2026-10-15 (stand-in database): `GET /api/read/inquiries` (the Work queue) answers 200 with the client's
+  name, bureau and inquiry name to owner, admin, inquiry_specialist, funding_advisor AND closer, setter, csm and
+  sales_manager. `GET /api/read/inquiry-cases`, `GET /api/read/repair-cases` and `GET /api/inquiries?recent=letters`
+  answer 403 to the last four, as the row says. The page has no role gate of its own; it only says "This queue is for
+  staff on this desk." when a door answers 403. Needs a product change: gate `api/read/inquiries.mjs`
+  (`roles: ROLE_SETS.STAFF`) to `ROLE_SETS.SPECIALIST_DESK`, or restate the row.
+- **B. Work queue table.** The row names a Hold column. `public/app/inquiry-remover.html` line 1756 draws Hold as
+  "live" only when `it.call_state === 'holding'`. `inquiry_log.call_state` is the enum `inquiry_call_state`
+  (`db/migrations/140_inquiry_ops.sql`), whose spelling is `on_hold`, and `src/inquiry-removal/cases.mjs`
+  (`CALL_STATE_TO_ENUM`: holding to on_hold) writes the enum spelling. `api/read/inquiries.mjs` hands the enum
+  spelling back. So on real data no line shows a hold, and a row green over that would be a lie about the screen.
+  The other seven columns are held by `fin-b07-desk-page.test.mjs` and the stored fields by the unattached
+  `fin-b07-work-queue` SQL (kept in `FIN_B07_UNATTACHED_CONTRACTS`, scenario-tested). Needs a product change:
+  compare the page to the enum's spelling (`on_hold`).
+- **C. Money Banks page gate** (unchanged, still open): see the generation 2 note below.
+
+### Product findings from this cycle (nothing fixed)
+
+1. `api/read/inquiries.mjs` is open to every staff role (finding A).
+2. The Hold column cannot light on real data (finding B).
+3. **The private leads page is not live.** `GET` of the registry address answered 404 (Netlify, 3356 bytes) on
+   2026-10-15 while `https://fundhub.ai/` answered 200. The generation 2 note had warned that a ship from a runner
+   without `PRIVATE_LEADS_PAGE_B64` drops it. The row's live check will read red ("the live page is gone"), which is
+   correct. The file is on the Mac under `public/leads/`.
+4. **The Apply dialog does not scroll and is taller than a laptop screen.** Measured in Chromium with the sample
+   proxy string: the dialog box is 1095 pixels tall in a fixed, centered, non-scrolling overlay. On a 900 pixel
+   window its End session and Close buttons sit below the fold and cannot be clicked. (The test uses a 2000 pixel
+   window for that reason.)
+5. `api/soft-pull-approve.mjs` accepts any non-blank ZIP (`!postal`), so "abc" is saved. The live SQL now judges the
+   shape (five digits or ZIP+4); a row saved that way reads red the first time.
+6. `src/repair/cases.mjs` (`LIST_SQL`) and `src/repair/read-repair-signals.mjs` (`DUE_SQL`) take the queue's Due from
+   `MIN(response_due_at)` over EVERY open case, and nothing closes a case, so a file in round 2 shows round 1's
+   long-gone due date. The stage check was fixed to judge the current round; the screen still shows the oldest.
+7. The expanded repair row's card is titled "Letters this round" but `LETTERS_SQL` returns every round's letters
+   (newest 50 by `created_at`, no round filter).
+8. `sendCase` (`src/inquiry-ops/send.mjs`) writes the failed-mail attempt, writes no provider id, then sets the case
+   In Progress anyway, and the page reads In Progress as "Sent". The Send check now reads that state.
+9. The Items column is stale after Send (`ensureCaseInquiries` inserts lines and never refreshes
+   `open_inquiry_count`, earlier finding 6). The Case queue check now reads it, so it will be red the first time it
+   meets such a case.
+10. `evaluateSlaBreach` is still never called and the tasks the stage rows name are never created (earlier
+    finding 7). The stage checks judge the clock only.
+
+### How each was broken on purpose and put back
+
+`mutate.mjs` (scratchpad) made one edit to one product file, ran the named test files, and restored the original
+text whether or not they failed. `git status` after each batch showed only my own files. R = the tests went red,
+G = they stayed green.
+
+| Row | Break (one at a time) | Result |
+|---|---|---|
+| Work row | loadHistory() never called; loadIdentity() never called; Enter no longer expands | R R R |
+| Work queue columns (held, not attached) | Client always "(unnamed client)"; Bureau blank; Actual shows expected name | R R R |
+| Case queue | Items from another field; Round always a dash; no oldest-first sort; Docs fixed; Delivery empty; Call fixed | R R R R R R |
+| Case queue (server) | packet from the wrong client; failed read coerced to "not complete"; newest first; company dropped from the list; signature consent ignored; role gate widened to closer | R R R R R R |
+| Repair queue (page) | need-me no longer first; most overdue no longer first; Program shows round; Due fixed | R R R R |
+| Repair queue (server) | need-me stages emptied; order flipped; latest instead of oldest; company dropped; optimization board filter dropped; due from MAX; need_me flag always false | R R R R R R R |
+| Repair row (page) | Enter no longer expands; letters cut to one; timeline not drawn; what is next not drawn; items not drawn | R R R R R |
+| Repair row (server) | items read loses the company; letters cut to one; letters read loses the client; letter words shown for a sent letter; items never returned; timeline never returned | R R R R R R |
+| Upload button | wrong subtype; no client sent; sends with no file chosen; never says attached | R R R R |
+| Clean personal info (erasure) | last name left; CRM contact id left; CRM field bag left; tags left; email left; merchant name left; raw payload left; identity row not deleted; bank login not deleted; company dropped; kept data deleted | R x 11 |
+| Clean personal info (door) | closer allowed; role gate removed; inquiry_specialist allowed | R R R (the older handler test did not catch the third; the door test in `fin-b07-clean-personal.test.mjs` does) |
+| Clean personal info (button) | shown to every role; sends without asking; no confirmation id; another client | R R R R |
+| Send | packet gate removed; short packet never marks Blocked; portal for any bureau; portal with no reference | R R R R |
+| Apply and dialog | launch saves another bank's page; citiesMatch always true; statesMatch always true; End session stops writing ended_at; End session never takes effect; any staff may end; Apply with no client; Apply for the wrong lender; Copy copies nothing; End session posts no id; Close also ends; End session button does not end | R x 12 |
+| Letter buttons | drawer sends the letter twice; mail flag off; wrong client; enabled for a sent letter; row Send includes a sent letter; Stage also mails | R x 6 |
+| Search | shortcut key changed; button does nothing; read address changed; group order changed; Escape no longer closes; refused read drawn as no matches | R x 6 |
+| Vault upload | no per-file key; bytes not sniffed; declared type stored; client names another client; staff company check dropped; business folder not checked; size limit ignored | R x 7 |
+| Business fields (save) | city, state, ZIP, street, EIN, incorporated month no longer required; extra owner dropped; extra owner never parsed; age not saved; incorporated date not saved; state saved lower case; EIN saved without dash; delete takes another form's rows | R x 13 |
+
+SQL and scenario breaks are made inside the test (`fin-b07-case-runner.mjs`): every wrong-result case reads clean
+once its named clause is switched off, and every scope clause (60 day window, closed and cancelled, demo, company)
+is pinned by a case that must not be counted until that clause is switched off.
+
+### Files
+
+New: `src/pulse/catalog/proofs/` `fin-b07-desk-page-kit.mjs`, `fin-b07-desk-page.test.mjs`,
+`fin-b07-desk-buttons.test.mjs`, `fin-b07-case-queue-read.test.mjs`, `fin-b07-repair-read.test.mjs`,
+`fin-b07-clean-personal.test.mjs`, `fin-b07-apply-dialog.test.mjs`, `fin-b07-link-exchange.test.mjs`,
+`fin-b07-vault-upload.test.mjs`, `fin-b07-shell-search.test.mjs`, `fin-b07-business-save.test.mjs`,
+`fin-b07-live-cases-work.test.mjs` (the work-side scenarios split out of `fin-b07-live-cases-desk.test.mjs`).
+
+Changed (mine): the four SQL text files, `fin-b07-sql-kit.mjs` (adds `translate`, column defaults, a Postgres-shaped
+`pg()` handle over the stand-in, `rows()`), `fin-b07-case-runner.mjs` (adds the `ignored` scope case),
+`fin-b07-display-contracts.mjs`, the three scenario files, `fin-b07-live-contracts.test.mjs`,
+`fin-b07-link-token.test.mjs`, `src/pulse/coverage/fin-b07-leads-page.mjs` and its test.
+
+Shared lines touched (the integrator must merge these):
+
+| File | Change |
+|---|---|
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | the deep-control count 80 to 79 (the Work queue contract came off), PASS-capable 67 to 66, SQL batches 67 to 66, lane PASS 68 to 67, bundle case count 80 to 79; and the stand-in leads page now says `setItem` and `getItem` (the stricter judge requires both). Sum with the other batches: take -1 contract and -1 PASS. |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | display red count 631 to 632 (+1: the Page gate row is unmapped again). The Work queue row keeps the staff file's case and is not in the red count. |
+| `src/pulse/catalog/generated.json` | recompiled. Recompile after merging; do not hand-merge. |
+
+`display-saved-result.mjs`, `display-proof-cases.mjs` and `compile-catalog.mjs` are unchanged this cycle.
+
+### Commands run (this cycle)
+
+Measured on this Mac while other builders ran browser suites at the same time (load average 16 to 25).
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` before this cycle | 808 open in all |
+| `npm run pulse:catalog`, then `node scripts/pulse/count-not-proved.mjs` | 810 open in all (the two rows taken off). Of the twenty ids, 18 are no longer open and 2 are (`Page gate`, `Work queue table`) |
+| `node scripts/pulse/compile-catalog.mjs --check` | exit 0, 3975 mapped, catalog current |
+| `node --test src/pulse/catalog/*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/na-conditions.test.mjs src/lib/no-unfenced-transmit.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/coverage/fin-b07-leads-page.test.mjs src/pulse/catalog/proofs/fin-b07-*.test.mjs` | 574 tests, 574 pass, 0 fail, 0 skipped, 25 seconds |
+| `npm run lint` | 3589 files and inline scripts parse clean |
+| `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (the full file: runs every executable test named by every case, including the new Chromium files and the staff browser specs) | 2 of 3 pass. The third ran 2385 tests, 2384 pass. The one failure is `e2e/teleprompter-take-flow.spec.mjs:1419` (recording still paints and rolls on a browser without video-frame callbacks): not a file this batch touches. It passes alone (`E2E_PORT=47123 node node_modules/@playwright/test/cli.js test e2e/teleprompter-take-flow.spec.mjs:1419`, 1 passed, 9.5 s), so it is a load flake of the 380 spec browser run (7.9 minutes). 8 minutes 2 seconds in all |
+| `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` | 2 of 2 pass (red count 632) |
+| `node --test src/pulse/coverage/gap-catalog-display.test.mjs` | 11 of 11 pass (79 contracts, 66 SQL batches, lane PASS 67, 12 always-red) |
+| every break in "How each was broken" above | each run before and after on the same files; the original text was restored every time (`git status` clean for `public/` and the product `src/` files) |
+| one live GET of the leads page address (read only, only the status printed) | 404 (not live), see finding 3 |
+| the four real handlers called as eight staff roles on the stand-in database (read only) | the Work queue read answered 200 to closer, setter, csm and sales_manager, with the client's name |
+
+Notes for a reviewer:
+
+- Every live check is `emptyAs: "quiet"`, so a control nobody used reads green with "no saved results yet" and goes red on the first wrong one.
+- **First-run reds are expected and real** the first time the lane meets rows like these in the last 60 days: a case whose Items count is stale after Send (finding 9), a failed mail left In Progress (finding 8), a ZIP that is not a ZIP (finding 5), the leads page (finding 3).
+- The Postgres statements were not run on Postgres (there is none on this Mac and the brief forbids the live database). They are the common subset of Postgres and SQLite, plus `translate()` (the stand-in defines it) and a `VALUES` list; every table and column is checked against `db/schema` and `db/migrations` by `fin-b07-live-contracts.test.mjs`. A Postgres-only mistake would show as `skip` ("was not read") on the morning report, never as a false PASS.
+- The two older not-proved facts still stand: the Banks page gate is open (generation 2, finding 5) and the Work queue and Page gate rows are open now.
+
+
+---
+
+# Generations 1 and 2 (the record before repair cycle 1)
 
 ## Generation 2: what changed
 

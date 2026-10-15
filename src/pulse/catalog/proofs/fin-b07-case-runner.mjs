@@ -10,13 +10,19 @@
 //         edit. A plain string is a wrong-result test and is switched off by putting `1 = 0 AND`
 //         in front of it. { piece, with } gives the replacement text when the piece is a filter.
 //
+//   ignored  a wrong row that is OUT OF SCOPE (an old row, a closed case, a demo file, a row changed
+//         after the event it is judged against). { name, rows, breaks: {piece, with}, expectBad }.
+//         The check must not count it wrong (extraSamples says how many samples it adds, 0 by default).
+//         The same check with that scope clause switched off
+//         must count it, so the scope clause is pinned: it cannot be dropped or widened unseen.
+//
 // Also checked for every key: no results reads zero of zero, and another company's wrong row is
 // never counted for this company.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FIN_B07_RESULT_CONTRACTS } from "./fin-b07-display-contracts.mjs";
+import { FIN_B07_RESULT_CONTRACTS, FIN_B07_UNATTACHED_CONTRACTS } from "./fin-b07-display-contracts.mjs";
 import { makeStandIn } from "./fin-b07-sql-kit.mjs";
 
 export const ORG = "11111111-1111-4111-8111-111111111111";
@@ -53,7 +59,7 @@ export function switchOff(sql, brk) {
   return sql.slice(0, found.index) + replacement + sql.slice(found.index + found[0].length);
 }
 
-const BY_KEY = new Map(FIN_B07_RESULT_CONTRACTS.map((c) => [/display-result:([^\s*]+)/.exec(c.sql)[1], c]));
+const BY_KEY = new Map([...FIN_B07_RESULT_CONTRACTS, ...FIN_B07_UNATTACHED_CONTRACTS].map((c) => [/display-result:([^\s*]+)/.exec(c.sql)[1], c]));
 
 export function contractSql(key) {
   const found = BY_KEY.get(key);
@@ -104,6 +110,24 @@ export function runCases(cases) {
         for (const piece of pieces) broken = switchOff(broken, piece);
         const mutated = judge(spec.tables, [...spec.good, ...bad.rows], broken);
         assert.equal(mutated.bad_count, 0, "with the clause switched off the wrong row must read clean");
+      });
+    }
+
+    for (const out of spec.ignored || []) {
+      test(`${key}: ${out.name} is not judged, and is counted once that scope clause is switched off`, () => {
+        const goodOnly = judge(spec.tables, spec.good, sql);
+        const result = judge(spec.tables, [...spec.good, ...out.rows], sql);
+        assert.deepEqual(
+          result,
+          { sample_count: goodOnly.sample_count + (out.extraSamples ?? 0), bad_count: goodOnly.bad_count },
+          "an out-of-scope row must not be counted wrong",
+        );
+
+        const pieces = Array.isArray(out.breaks) ? out.breaks : [out.breaks];
+        let broken = sql;
+        for (const piece of pieces) broken = switchOff(broken, piece);
+        const widened = judge(spec.tables, [...spec.good, ...out.rows], broken);
+        assert.equal(widened.bad_count, goodOnly.bad_count + (out.expectBad ?? 1), "with the scope clause off the row must be counted wrong");
       });
     }
 

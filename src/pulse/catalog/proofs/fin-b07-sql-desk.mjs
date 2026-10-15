@@ -22,6 +22,11 @@ SELECT count(*)::int AS sample_count,
    AND COALESCE(c.is_demo, false) = false
    AND c.updated_at >= ${W60}`;
 
+// The receipt is matched to THIS case. Every writer of inquiry.removed names the case it closed:
+// api/inquiry-cases.mjs and the IRA webhook carry the case row id (payload.inquiryRemovalCaseId or
+// payload.caseId), and src/inquiries/work.mjs carries it as payload.caseId. A client can hold up to
+// three open cases (one per bureau), so matching on the client alone let one case's receipt cover
+// a sibling case whose own emit was lost.
 export const CASE_CLEARED_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE c.completed_at IS NULL
@@ -30,6 +35,7 @@ SELECT count(*)::int AS sample_count,
               SELECT 1 FROM events e
                WHERE e.org_id = c.org_id AND e.name = 'inquiry.removed'
                  AND e.client_id = c.client_id
+                 AND (e.payload->>'inquiryRemovalCaseId' = c.id::text OR e.payload->>'caseId' = c.id::text)
                  AND e.created_at >= COALESCE(c.requested_at, c.created_at)))::int AS bad_count
   FROM inquiry_removal_cases c
   LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
@@ -51,6 +57,13 @@ SELECT count(*)::int AS sample_count,
    AND COALESCE(l.is_demo, false) = false
    AND l.updated_at >= ${W60}`;
 
+// A letter or portal attempt belongs to a case when it is the same client, the same bureau (send.mjs
+// copies the case's bureau onto the inquiry line it logs the attempt on) and was logged after the case
+// was requested. A sibling case holds another bureau, so its attempt can never stand in for this one.
+const OWN_ATTEMPT = `a.org_id = c.org_id AND l.client_id = c.client_id
+                  AND upper(COALESCE(l.bureau, '')) = upper(COALESCE(c.selected_bureaus_raw, ''))
+                  AND a.created_at >= c.requested_at`;
+
 export const CASE_SEND_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE cl.id IS NULL
@@ -58,27 +71,52 @@ SELECT count(*)::int AS sample_count,
          OR (c.letter_provider_id IS NOT NULL AND NOT EXISTS (
                SELECT 1 FROM inquiry_attempts a
                  JOIN inquiry_log l ON l.id = a.inquiry_id
-                WHERE a.org_id = c.org_id AND l.client_id = c.client_id
+                WHERE ${OWN_ATTEMPT}
                   AND a.kind = 'letter' AND a.outcome = 'sent'))
          OR (c.portal_confirmation IS NOT NULL AND NOT EXISTS (
                SELECT 1 FROM inquiry_attempts a
                  JOIN inquiry_log l ON l.id = a.inquiry_id
-                WHERE a.org_id = c.org_id AND l.client_id = c.client_id
-                  AND a.kind = 'portal' AND a.note = 'experian_ref:' || c.portal_confirmation)))::int AS bad_count
+                WHERE ${OWN_ATTEMPT}
+                  AND a.kind = 'portal' AND a.note = 'experian_ref:' || c.portal_confirmation))
+         OR (c.case_status::text = 'In Progress'
+             AND c.letter_provider_id IS NULL AND c.portal_confirmation IS NULL
+             AND EXISTS (
+               SELECT 1 FROM inquiry_attempts a
+                 JOIN inquiry_log l ON l.id = a.inquiry_id
+                WHERE ${OWN_ATTEMPT}
+                  AND a.kind = 'letter' AND a.outcome LIKE 'mail_failed%')
+             AND NOT EXISTS (
+               SELECT 1 FROM inquiry_attempts a
+                 JOIN inquiry_log l ON l.id = a.inquiry_id
+                WHERE ${OWN_ATTEMPT}
+                  AND a.kind = 'letter' AND a.outcome = 'sent')))::int AS bad_count
   FROM inquiry_removal_cases c
   LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
  WHERE c.org_id = $1::uuid
-   AND (c.letter_provider_id IS NOT NULL OR c.portal_confirmation IS NOT NULL)
+   AND (c.letter_provider_id IS NOT NULL OR c.portal_confirmation IS NOT NULL
+        OR EXISTS (
+             SELECT 1 FROM inquiry_attempts a
+               JOIN inquiry_log l ON l.id = a.inquiry_id
+              WHERE ${OWN_ATTEMPT}
+                AND a.kind IN ('letter', 'portal')))
    AND COALESCE(c.is_demo, false) = false
    AND c.updated_at >= ${W60}`;
 
+// What can be wrong on the saved row behind each column of the queue. Client: the client belongs to
+// another company (the join pins the company; the column itself is NOT NULL with a foreign key).
+// Bureau: blank. Items: LOWER than the open inquiries attached to the case (a stale count: Send adds
+// inquiry lines and never refreshes the number), which also covers a count below zero. A count HIGHER
+// than the attached lines is normal before "Generate letters" has staged them, so that direction is
+// not judged. Round: the round is missing, or belongs to another client or company. Status, Docs, Call and Delivery are drawn
+// from the case row by the page and the read handler (see the page and handler practice tests).
 export const CASE_QUEUE_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE cl.id IS NULL
-         OR c.requested_at IS NULL
          OR NULLIF(BTRIM(COALESCE(c.selected_bureaus_raw, '')), '') IS NULL
-         OR COALESCE(c.open_inquiry_count, 0) < 0
-         OR (c.funding_round_id IS NOT NULL AND fr.id IS NULL))::int AS bad_count
+         OR COALESCE(c.open_inquiry_count, 0) < (
+              SELECT count(*) FROM inquiry_log o
+               WHERE o.org_id = c.org_id AND o.case_id = c.id AND COALESCE(o.is_open, true) = true)
+         OR (c.funding_round_id IS NOT NULL AND fr.client_id IS DISTINCT FROM c.client_id))::int AS bad_count
   FROM inquiry_removal_cases c
   LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
   LEFT JOIN funding_rounds fr ON fr.org_id = c.org_id AND fr.id = c.funding_round_id
@@ -97,9 +135,13 @@ SELECT count(*)::int AS sample_count,
    AND COALESCE(c.is_demo, false) = false
    AND c.updated_at >= ${W60}`;
 
+// The control sends subtype additional_fraud_docs. api/documents-upload.mjs files an unrecognised
+// subtype as "other" and keeps what the caller asked for in metadata.label.given, so a file the
+// button sent is found by either name, and one filed under any other subtype is wrong.
 export const CASE_UPLOAD_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE cl.id IS NULL
+         OR d.subtype IS DISTINCT FROM 'additional_fraud_docs'
          OR v.id IS NULL
          OR NULLIF(BTRIM(COALESCE(v.storage_key, '')), '') IS NULL
          OR COALESCE(v.byte_size, 0) <= 0
@@ -108,7 +150,8 @@ SELECT count(*)::int AS sample_count,
   FROM documents d
   LEFT JOIN clients cl ON cl.org_id = d.org_id AND cl.id = d.client_id
   LEFT JOIN document_versions v ON v.org_id = d.org_id AND v.id = d.current_version_id
- WHERE d.org_id = $1::uuid AND d.subtype = 'additional_fraud_docs'
+ WHERE d.org_id = $1::uuid
+   AND (d.subtype = 'additional_fraud_docs' OR d.metadata->'label'->>'given' = 'additional_fraud_docs')
    AND COALESCE(d.is_demo, false) = false
    AND d.created_at >= ${W60}`;
 
@@ -231,6 +274,10 @@ SELECT count(*)::int AS sample_count,
    AND COALESCE(l.is_demo, false) = false
    AND a.created_at >= ${W60}`;
 
+// Everything src/privacy/erasure.mjs says it removes, read back after the erasure finished: the
+// identity row, the bank logins and accounts, the client row (both names, email, phone, the CRM
+// contact id, the 252-field CRM bag and the tags) and the merchant name and raw payload on every
+// bank transaction. A row touched after the erasure completed is not judged: that is new data.
 export const CLEAN_PERSONAL_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE EXISTS (
@@ -243,10 +290,20 @@ SELECT count(*)::int AS sample_count,
               SELECT 1 FROM bank_accounts b
                WHERE b.client_id = e.subject_client_id AND b.created_at <= e.completed_at)
          OR EXISTS (
+              SELECT 1 FROM bank_transactions t
+               WHERE t.org_id = e.org_id
+                 AND (t.subject_client_id = e.subject_client_id OR t.client_id = e.subject_client_id)
+                 AND t.updated_at <= e.completed_at
+                 AND (t.merchant_name IS NOT NULL OR COALESCE(t.raw::text, '{}') <> '{}'))
+         OR EXISTS (
               SELECT 1 FROM clients c
                WHERE c.id = e.subject_client_id AND c.updated_at <= e.completed_at
-                 AND (c.email IS NOT NULL OR c.phone IS NOT NULL OR c.first_name IS DISTINCT FROM '[erased]')))::int AS bad_count
+                 AND (c.email IS NOT NULL OR c.phone IS NOT NULL
+                      OR c.first_name IS DISTINCT FROM '[erased]'
+                      OR c.last_name IS DISTINCT FROM '[erased]'
+                      OR c.ghl_contact_id IS NOT NULL
+                      OR COALESCE(c.custom_fields::text, '{}') <> '{}'
+                      OR COALESCE(c.tags::text, '{}') NOT IN ('{}', '[]'))))::int AS bad_count
   FROM erasure_requests e
  WHERE e.org_id = $1::uuid AND e.kind = 'client_erasure' AND e.status = 'completed'
    AND e.completed_at >= now() - interval '400 days'`;
-

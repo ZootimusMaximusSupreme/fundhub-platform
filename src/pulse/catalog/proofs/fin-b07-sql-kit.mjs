@@ -111,6 +111,7 @@ export function schemaColumns() {
 /** The Postgres text of a contract, spelled for SQLite. */
 export function portableSql(sql) {
   return sql
+    .replace(/\s+FOR\s+UPDATE\b/gi, "")
     .replace(/\bdate_part\(\s*'year'\s*,\s*now\(\)\s*\)/gi, "CAST(strftime('%Y', 'now') AS INTEGER)")
     .replace(/\bdate_part\(\s*'month'\s*,\s*now\(\)\s*\)/gi, "CAST(strftime('%m', 'now') AS INTEGER)")
     .replace(/\bnow\(\)\s*-\s*interval\s*'(\d+)\s*(day|hour|minute)s?'/gi, "datetime('now', '-$1 $2s')")
@@ -120,19 +121,55 @@ export function portableSql(sql) {
     .replace(/\bnow\(\)/gi, "datetime('now')");
 }
 
+/** A uuid-shaped default for a stand-in primary key. */
+export const UUID_DEFAULT = "(lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-8' || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))))";
+
+/** Columns the product writes as JSON. A stand-in keeps them as text, so a read parses them back. */
+const JSON_COLUMNS = new Set(["custom_fields", "entity_data", "metadata", "verification", "payload", "raw", "tags", "removed", "kept"]);
+
+/** Postgres translate(): each character found in `from` becomes the character at the same place in `to`, or nothing. */
+function translate(value, from, to) {
+  if (value === null || value === undefined) return null;
+  let out = "";
+  for (const ch of String(value)) {
+    const at = String(from).indexOf(ch);
+    if (at < 0) out += ch;
+    else if (at < String(to).length) out += String(to)[at];
+  }
+  return out;
+}
+
+function bindable(v) {
+  if (v === undefined) return null;
+  if (v === true) return 1;
+  if (v === false) return 0;
+  if (v instanceof Date) return v.toISOString().replace("T", " ").slice(0, 19);
+  if (v !== null && typeof v === "object") return JSON.stringify(v);
+  return v;
+}
+
 /**
  * A stand-in database for the named tables. Each table holds the REAL columns of that table,
  * untyped. insert() refuses a column the real table does not have.
+ *
+ * options.defaults is { table: { column: "<sqlite expression>" } } for the columns the product
+ * lets the database fill (an id, a status, a start time), so product code that never names them
+ * still leaves a whole row.
  */
-export function makeStandIn(tableNames) {
+export function makeStandIn(tableNames, { defaults = {} } = {}) {
   const schema = schemaColumns();
   const db = new DatabaseSync(":memory:");
+  db.function("translate", translate);
   const known = new Map();
   for (const name of tableNames) {
     const cols = schema.get(name);
     if (!cols || !cols.size) throw new Error(`no such table in db/schema or db/migrations: ${name}`);
     known.set(name, cols);
-    db.exec(`CREATE TABLE ${name} (${[...cols].map((c) => `"${c}"`).join(", ")})`);
+    const own = defaults[name] || {};
+    for (const col of Object.keys(own)) {
+      if (!cols.has(col)) throw new Error(`${name} has no column ${col} in db/schema or db/migrations`);
+    }
+    db.exec(`CREATE TABLE ${name} (${[...cols].map((c) => (own[c] ? `"${c}" DEFAULT ${own[c]}` : `"${c}"`)).join(", ")})`);
   }
   return {
     db,
@@ -141,13 +178,7 @@ export function makeStandIn(tableNames) {
       if (!cols) throw new Error(`stand-in has no table ${table}`);
       const keys = Object.keys(row);
       for (const k of keys) if (!cols.has(k)) throw new Error(`${table} has no column ${k} in db/schema or db/migrations`);
-      const values = keys.map((k) => {
-        const v = row[k];
-        if (v === true) return 1;
-        if (v === false) return 0;
-        if (v !== null && typeof v === "object") return JSON.stringify(v);
-        return v;
-      });
+      const values = keys.map((k) => bindable(row[k]));
       db.prepare(`INSERT INTO ${table} (${keys.map((k) => `"${k}"`).join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`).run(...values);
     },
     /** Run a contract's exact SQL text for one company. Returns { sample_count, bad_count }. */
@@ -155,6 +186,36 @@ export function makeStandIn(tableNames) {
       const row = db.prepare(portableSql(sql)).get(orgId);
       return { sample_count: Number(row.sample_count), bad_count: Number(row.bad_count) };
     },
+    /** Every row of one table, JSON columns parsed back. For asserting what product code wrote. */
+    rows(table) {
+      return db.prepare(`SELECT * FROM ${table}`).all().map(readBack);
+    },
+    /**
+     * A pg-shaped handle (query(sql, params) -> { rows, rowCount }) over this stand-in, so the REAL
+     * product functions can run against it. Postgres casts and now() are spelled for SQLite.
+     */
+    pg({ now = null } = {}) {
+      return {
+        async query(sql, params = []) {
+          // `now` pins the clock the way a Postgres transaction does: every now() in it is one instant.
+          const text = now ? portableSql(sql).split("datetime('now')").join(`'${now}'`) : portableSql(sql);
+          const stmt = db.prepare(text);
+          const values = params.map(bindable);
+          const out = stmt.all(...values).map(readBack);
+          return { rows: out, rowCount: out.length };
+        },
+      };
+    },
     close() { db.close(); }
   };
+}
+
+function readBack(row) {
+  const out = { ...row };
+  for (const [k, v] of Object.entries(out)) {
+    if (JSON_COLUMNS.has(k) && typeof v === "string") {
+      try { out[k] = JSON.parse(v); } catch { /* not JSON: keep the text */ }
+    }
+  }
+  return out;
 }

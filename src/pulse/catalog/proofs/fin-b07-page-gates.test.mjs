@@ -1,8 +1,12 @@
-// Practice test for two page-gate rows, run with fake answers and no database:
-//   1. the Specialist desk (inquiry-remover.html) "Page gate" row: who gets the case and repair
-//      queues and who is refused, on the real handlers and on the real page.
-//   2. the partner home (partner-galaxy.html) "Open the page" row: who stays, who is sent to their
-//      own home, and what the three tiles say.
+// Practice test for the partner home page row, and for two of the Specialist desk's doors:
+//   1. the partner home (partner-galaxy.html) "Open the page" row: who stays, who is sent to their
+//      own home, and what the three tiles say. THIS is the row this file is attached to.
+//   2. the Specialist desk (inquiry-remover.html): who gets the case and repair queues and who is
+//      refused, on the real handlers and on the real page. These two doors are true statements and
+//      stay in this file, but they are NOT attached to the desk's "Page gate" row any more: the
+//      desk's Work queue door (api/read/inquiries.mjs) is open to every staff role, so the row's
+//      claim that setter and closer roles are bounced is false of the product (see the manifest,
+//      finding A, and FIN_B07_NOT_ATTACHABLE).
 //
 // The role lists are written out here, by hand, from the row's own words. They are NOT read from
 // the product, so a role slipped into (or out of) a list turns the test red.

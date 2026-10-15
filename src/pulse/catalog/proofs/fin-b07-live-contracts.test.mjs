@@ -19,22 +19,26 @@ import {
   FIN_B07_PAGE_CONTRACTS,
   FIN_B07_PRACTICE_CASES,
   FIN_B07_RESULT_CONTRACTS,
+  FIN_B07_STAFF_EXTENDED,
+  FIN_B07_UNATTACHED_CONTRACTS,
 } from "./fin-b07-display-contracts.mjs";
 import { schemaColumns } from "./fin-b07-sql-kit.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SCENARIO_TEXT = ["desk", "repair", "misc"]
+const SCENARIO_TEXT = ["desk", "work", "repair", "misc"]
   .map((name) => fs.readFileSync(path.join(HERE, `fin-b07-live-cases-${name}.test.mjs`), "utf8")).join("\n");
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
 const keyOf = (c) => /display-result:([^\s*]+)/.exec(c.sql)[1];
+const ALL_CONTRACTS = [...FIN_B07_RESULT_CONTRACTS, ...FIN_B07_UNATTACHED_CONTRACTS];
 
-test("46 rows: 40 saved-result checks, 1 live page read, 4 practice tests, 1 that cannot be attached", () => {
-  assert.equal(FIN_B07_RESULT_CONTRACTS.length, 40);
-  assert.equal(FIN_B07_LIVE_ROWS.length, 40);
+test("46 rows: 39 saved-result checks, 1 live page read, 3 practice tests, 3 that cannot be attached", () => {
+  assert.equal(FIN_B07_RESULT_CONTRACTS.length, 39);
+  assert.equal(FIN_B07_LIVE_ROWS.length, 39);
   assert.equal(FIN_B07_PAGE_CONTRACTS.length, 1);
-  assert.equal(FIN_B07_PRACTICE_CASES.length, 4);
-  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 1);
+  assert.equal(FIN_B07_PRACTICE_CASES.length, 3);
+  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 3);
+  assert.equal(FIN_B07_UNATTACHED_CONTRACTS.length, 1, "the Work queue check is written and tested and not attached");
   const pageRows = FIN_B07_LIVE_CASES.filter((c) => FIN_B07_PAGE_CONTRACTS.some((p) => p.control === c.control));
   assert.equal(pageRows.length, 1);
   const keys = new Set([
@@ -42,7 +46,7 @@ test("46 rows: 40 saved-result checks, 1 live page read, 4 practice tests, 1 tha
     ...pageRows.map((c) => [c.sourceFile, c.surface, c.control]),
     ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control]),
   ].map((r) => r.join("\0")));
-  assert.equal(keys.size, 45, "no row may be named twice");
+  assert.equal(keys.size, 43, "no row may be named twice");
 });
 
 test("the live page read carries no SQL, names its reader, and its test file exists and names the lane", () => {
@@ -61,7 +65,7 @@ test("the live page read carries no SQL, names its reader, and its test file exi
 
 test("every contract is one read-only statement that takes the company and answers sample_count and bad_count", () => {
   const seen = new Set();
-  for (const c of FIN_B07_RESULT_CONTRACTS) {
+  for (const c of ALL_CONTRACTS) {
     const key = keyOf(c);
     assert.ok(!seen.has(key), `duplicate key ${key}`);
     seen.add(key);
@@ -79,7 +83,7 @@ test("every contract is one read-only statement that takes the company and answe
 });
 
 test("every contract judges a field: the wrong-result clause compares or tests a column, it never just counts", () => {
-  for (const c of FIN_B07_RESULT_CONTRACTS) {
+  for (const c of ALL_CONTRACTS) {
     const afterSample = c.sql.slice(c.sql.indexOf("AS sample_count"));
     const body = afterSample.slice(afterSample.search(/FILTER \(WHERE|bad_count|\(SELECT/));
     assert.ok(
@@ -106,14 +110,19 @@ test("every control is exactly one display row of the coverage map", () => {
     const found = rowsOf(file).filter((r) => r.surface === surface && r.control === control);
     assert.equal(found.length, 1, `${file} / ${surface} / ${control}`);
   }
-  const controls = [...FIN_B07_RESULT_CONTRACTS, ...FIN_B07_PAGE_CONTRACTS].map((c) => c.control);
+  for (const r of FIN_B07_NOT_ATTACHABLE) {
+    const [file, surface, control] = r.row;
+    const found = rowsOf(file).filter((row) => row.surface === surface && row.control === control);
+    assert.equal(found.length, 1, `the not-attachable row ${r.rowKey} must be exactly one map row`);
+  }
+  const controls = [...ALL_CONTRACTS, ...FIN_B07_PAGE_CONTRACTS].map((c) => c.control);
   assert.equal(new Set(controls).size, controls.length, "a control may own one contract only");
 });
 
 test("every contract names tables and columns that db/schema and db/migrations really define", () => {
   const schema = schemaColumns();
   const aliasRe = /\b(?:FROM|JOIN)\s+([a-z_]+)\s+(?:AS\s+)?([a-z]{1,3})\b/gi;
-  for (const c of FIN_B07_RESULT_CONTRACTS) {
+  for (const c of ALL_CONTRACTS) {
     const aliases = new Map();
     let m;
     while ((m = aliasRe.exec(c.sql))) {
@@ -131,7 +140,7 @@ test("every contract names tables and columns that db/schema and db/migrations r
 });
 
 test("every contract has a scenario that runs it", () => {
-  for (const c of FIN_B07_RESULT_CONTRACTS) {
+  for (const c of ALL_CONTRACTS) {
     assert.ok(SCENARIO_TEXT.includes(`"${keyOf(c)}"`), `no scenario for ${keyOf(c)}`);
   }
   for (const c of FIN_B07_LIVE_CASES) {
@@ -142,13 +151,19 @@ test("every contract has a scenario that runs it", () => {
     for (const t of c.tests) assert.ok(fs.existsSync(path.join(ROOT, t)), `${t} does not exist`);
     assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
   }
-  assert.equal(FIN_B07_DISPLAY_CASES.length, 45 - FIN_B07_ALREADY_DEEP.length);
+  for (const c of FIN_B07_STAFF_EXTENDED) {
+    for (const t of c.tests) assert.ok(fs.existsSync(path.join(ROOT, t)), `${t} does not exist`);
+    assert.match(c.evidence, /gap-catalog-display\.mjs/);
+    assert.equal(c.tests[0], "src/pulse/catalog/proofs/display-batch-staff-ui.test.mjs", "the staff browser spec stays first");
+  }
+  // 43 attached rows, 4 already held by the staff file (not repeated for the compiler), 3 of those extended with more tests
+  assert.equal(FIN_B07_DISPLAY_CASES.length, 43 - FIN_B07_ALREADY_DEEP.length + FIN_B07_STAFF_EXTENDED.length);
 });
 
 test("the rows left out of the live cases are exactly the ones the staff file already holds as deep cases", () => {
   const held = new Set(STAFF_UI_PROOF_CASES.map((c) => [c.sourceFile, c.surface, c.control].join("\0")));
   const mine = new Map(FIN_B07_RESULT_CONTRACTS.map((c, i) => [FIN_B07_LIVE_ROWS[i].join("\0"), c]));
-  assert.equal(mine.size, 40);
+  assert.equal(mine.size, 39);
   const already = [...mine.keys()].filter((k) => held.has(k));
   assert.equal(already.length, FIN_B07_ALREADY_DEEP.length, "the staff file holds a different set of these rows");
   for (const key of already) {
@@ -156,9 +171,18 @@ test("the rows left out of the live cases are exactly the ones the staff file al
   }
 });
 
-test("each row that cannot be attached carries an exact reason", () => {
+test("each row that cannot be attached carries an exact reason that names the file and the fact", () => {
   for (const r of FIN_B07_NOT_ATTACHABLE) {
-    assert.ok(r.reason.length > 120, r.rowKey);
-    assert.match(r.reason, /public\/app\/money-banks\.js|git/);
+    assert.ok(r.reason.length > 200, r.rowKey);
+    assert.match(r.reason, /public\/app\/|api\//, `${r.rowKey}: names a file`);
+    assert.match(r.reason, /product change/, `${r.rowKey}: says what is missing`);
   }
+  // None of them is attached to anything, so each one is NOT_PROVED again.
+  const attached = new Set([...FIN_B07_LIVE_ROWS, ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control])].map((r) => r.join("\0")));
+  for (const row of ["banksGate", "irGate", "workQueue"]) {
+    const found = FIN_B07_NOT_ATTACHABLE.find((r) => r.rowKey === row);
+    assert.ok(found, row);
+  }
+  assert.equal([...attached].some((k) => /Page gate: inquiry_specialist|Work queue table: one row per disputed|Page gate: client reads own file/.test(k)), false,
+    "a not-attachable row must not also be attached");
 });
