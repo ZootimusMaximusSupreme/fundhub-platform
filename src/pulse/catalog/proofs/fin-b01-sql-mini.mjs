@@ -15,6 +15,10 @@
 //
 // It is a test tool. It never touches a database and nothing live imports it.
 
+// A JSON null inside a jsonb value is not SQL NULL: jsonb_typeof says 'null' and
+// ->> says NULL. A key that is absent altogether is SQL NULL for both.
+const JSON_NULL = Symbol("json-null");
+
 const KEYWORDS = new Set(["AND", "OR", "NOT", "IS", "NULL", "DISTINCT", "FROM", "IN", "TRUE", "FALSE"]);
 
 function stripComments(sql) {
@@ -78,6 +82,7 @@ function compare(a, b) {
 }
 
 function jsonType(v) {
+  if (v === JSON_NULL) return "null";
   if (v === null || v === undefined) return null;
   if (Array.isArray(v)) return "array";
   if (typeof v === "object") return "object";
@@ -197,10 +202,11 @@ function parseExpression(text, usedColumns) {
         const inner = e;
         e = (s, c) => {
           const base = inner(s, c);
-          if (base === null || typeof base !== "object") return null;
+          if (base === null || base === JSON_NULL || typeof base !== "object") return null;
           const k = key(s, c);
           const v = Array.isArray(base) ? base[Number(k)] : base[k];
-          if (v === undefined || v === null) return null;
+          if (v === undefined) return null;
+          if (v === null) return text ? null : JSON_NULL;
           return text ? (typeof v === "object" ? JSON.stringify(v) : String(v)) : v;
         };
         continue;

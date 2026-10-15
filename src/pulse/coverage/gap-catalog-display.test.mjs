@@ -47,13 +47,13 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 38 deep display controls own one exact contract", () => {
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 38);
-  assert.equal(DISPLAY_RESULT_CASES.length, 38);
-  assert.equal(PASS_CAPABLE_COUNT, 27);
+test("all 41 deep display controls own one exact contract", () => {
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 41);
+  assert.equal(DISPLAY_RESULT_CASES.length, 41);
+  assert.equal(PASS_CAPABLE_COUNT, 30);
   assert.equal(UNMEASURED_CONTRACT_COUNT, 11);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 38);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 38);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 41);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 41);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -68,7 +68,7 @@ test("all 38 deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 27);
+  assert.equal(SQL_BATCHES.length, 30);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -136,9 +136,9 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
 
-  assert.equal(db.calls.length, 27);
+  assert.equal(db.calls.length, 30);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 27);
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 30);
   assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 11);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(unproved.length, unprovedIds.size);
@@ -195,7 +195,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 38);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 41);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
