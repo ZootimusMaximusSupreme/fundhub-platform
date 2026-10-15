@@ -19,10 +19,12 @@ import { proofRows } from "./fin-b16-kit.mjs";
 
 const proof = proofRows(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
-const PRESENT = path.join(ROOT, "public/app/present.js");
-const SEND = path.join(ROOT, "public/app/contract-send.js");
-const PRESENT_JS = fs.readFileSync(PRESENT, "utf8");
-const SEND_JS = fs.readFileSync(SEND, "utf8");
+const APP = path.join(ROOT, "public/app");
+// The page itself is read, not assumed: the scripts it loads, in its own order, and the ids it holds. A page
+// that drops contract-send.js or renames #app is a deck with no Copy button, and this test sees it.
+const HTML = fs.readFileSync(path.join(APP, "present.html"), "utf8");
+const SCRIPTS = [...HTML.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map((m) => m[1]);
+const PAGE_IDS = new Set([...HTML.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
 const OFFERS = offersForClient();
 const CONTACT = "33333333-3333-3333-3333-333333333333";
 const LINK = "https://sign.example.test/c/abc123";
@@ -66,7 +68,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
     },
     document: {
       readyState: "complete",
-      getElementById: (id) => (id === "app" ? root : null),
+      getElementById: (id) => (id === "app" && PAGE_IDS.has("app") ? root : null),
       querySelectorAll: () => [],
       addEventListener: (type, fn) => { if (type === "click") onClick = fn; },
     },
@@ -93,8 +95,11 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   sandbox.window = sandbox;
   sandbox.addEventListener = () => {};
   vm.createContext(sandbox);
-  vm.runInContext(SEND_JS, sandbox, { filename: SEND });
-  vm.runInContext(PRESENT_JS, sandbox, { filename: PRESENT });
+  // data.js is the stand-in FHData above; every other script the page names is run, in the page's order.
+  for (const src of SCRIPTS.filter((name) => name !== "data.js")) {
+    const file = path.join(APP, src);
+    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+  }
   await flush();
   await flush();
   assert.ok(onClick, "present.js registered no click listener");
@@ -161,12 +166,34 @@ test("Copy the sign link appears only once a contract was sent, with the link in
     assert.equal(box[1], LINK);
     assert.deepEqual(deck.copied, [LINK], "the link is put on the clipboard once when it is sent");
 
-    // The button copies the same link again, and says so.
+    // The button copies the same link again, and says so. Copying sends nothing: the writes are counted
+    // again after the press, from the live list (the first list is a copy made before it).
+    const writesBefore = deck.writes.length;
     deck.click("contract-copy");
     await deck.settle();
     assert.deepEqual(deck.copied, [LINK, LINK]);
     assert.ok(deck.text().includes("Sign link copied."));
-    assert.equal(sends.length, 2, "copying sends nothing");
+    assert.equal(deck.writes.length, writesBefore, "copying sends nothing");
+    assert.equal(deck.writes.filter((w) => w.url === "/api/contracts").length, 2, "still one draft and one send");
+  });
+
+  await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {
+    // The page names its script and its root: contract-send.js is loaded by present.html, and #app is there.
+    assert.ok(SCRIPTS.includes("contract-send.js"), "present.html loads contract-send.js");
+    assert.ok(SCRIPTS.includes("present.js"), "present.html loads present.js");
+    assert.ok(SCRIPTS.indexOf("contract-send.js") < SCRIPTS.indexOf("present.js"), "the helper is loaded before the deck");
+    assert.ok(PAGE_IDS.has("app"), "present.html holds the #app the deck draws into");
+    // A link with characters that mean something in a page is shown as text, not as markup, and is
+    // copied exactly as it is.
+    const odd = 'https://sign.example.test/c/a"b<c>&d';
+    const deck = await openDeck("FULL_FUNDING", { sendAnswer: async (url, body) => (body.action === "create_draft"
+      ? { ok: true, data: { contract: { id: "contract-2" } } }
+      : { ok: true, data: { links: [{ url: odd }], message: "Sent." } }) });
+    deck.click("stack-go:S-23").click("more").click("contract");
+    await deck.settle();
+    assert.ok(deck.html().includes('value="https://sign.example.test/c/a&quot;b&lt;c&gt;&amp;d"'), "the box value is escaped");
+    assert.ok(!deck.html().includes('value="https://sign.example.test/c/a"b'), "no raw quote breaks out of the box");
+    assert.deepEqual(deck.copied, [odd], "the clipboard gets the real link");
   });
 
   await proof.check(/^'Copy the sign link' and the read-only sign-link box/, async () => {

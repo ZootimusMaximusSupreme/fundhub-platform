@@ -20,29 +20,49 @@ const DIR = "src/pulse/catalog/proofs";
 const keyOf = (sourceFile, surface, control) => `${sourceFile}\0${surface}\0${control}`;
 const LIVE = new Set(FIN_B16_LIVE_ROWS.map(([sourceFile, surface, control]) => keyOf(sourceFile, surface, control)));
 
-const rowsOf = () => Object.entries(ROWS).flatMap(([file, groups]) => groups.flatMap((group) => group.controls.map((control) => ({
-  file: `${DIR}/${file}`, sourceFile: group.sourceFile, surface: group.surface, control,
-}))));
+// Tests that already existed in the repo and judge the same control, attached beside the batch's own.
+//   compose.test.mjs   the server half of "Send this one to": a typed address is checked before anything is
+//                      written, and compose.mjs holds no UPDATE of the clients table (a source scan; the
+//                      statement trace is fin-b16-compose-writes.test.mjs).
+const EXTRA_TESTS = new Map([
+  [keyOf("desks-c.json", "messaging.html", "'Send this one to' address box (applies to this one message only; never written back to the record)"),
+    ["src/messaging/compose.test.mjs"]],
+]);
+
+/** One entry per exact map row: every practice test file that lists it (a row can be pressed by several), in file order. */
+const ROW_FILES = new Map();
+for (const [file, groups] of Object.entries(ROWS)) {
+  for (const group of groups) {
+    for (const control of group.controls) {
+      const key = keyOf(group.sourceFile, group.surface, control);
+      if (!ROW_FILES.has(key)) ROW_FILES.set(key, { sourceFile: group.sourceFile, surface: group.surface, control, files: [] });
+      ROW_FILES.get(key).files.push(`${DIR}/${file}`);
+    }
+  }
+}
+const testsOf = (key, files) => [...new Set([...files, ...(EXTRA_TESTS.get(key) || [])])];
 
 export const FIN_B16_PRACTICE_CASES = Object.freeze(
-  rowsOf()
-    .filter((row) => !LIVE.has(keyOf(row.sourceFile, row.surface, row.control)))
-    .map((row) => Object.freeze({
-      sourceFile: row.sourceFile,
-      surface: row.surface,
-      control: row.control,
-      depth: "e2e",
-      evidence: row.file,
-      tests: Object.freeze([row.file]),
-    })),
+  [...ROW_FILES.entries()]
+    .filter(([key]) => !LIVE.has(key))
+    .map(([key, row]) => {
+      const tests = testsOf(key, row.files);
+      return Object.freeze({
+        sourceFile: row.sourceFile,
+        surface: row.surface,
+        control: row.control,
+        depth: "e2e",
+        evidence: tests.join("; "),
+        tests: Object.freeze(tests),
+      });
+    }),
 );
 
-// A live row keeps the lane in its evidence, and also runs the practice test that presses the same control.
+// A live row keeps the lane in its evidence, and also runs the practice tests that press the same control.
 export const FIN_B16_LIVE_PROOF_CASES = Object.freeze(FIN_B16_LIVE_CASES.map((live) => {
-  const extra = rowsOf()
-    .filter((row) => keyOf(row.sourceFile, row.surface, row.control) === keyOf(live.sourceFile, live.surface, live.control))
-    .map((row) => row.file);
-  const tests = [...live.tests, ...extra];
+  const key = keyOf(live.sourceFile, live.surface, live.control);
+  const extra = ROW_FILES.has(key) ? ROW_FILES.get(key).files : [];
+  const tests = [...live.tests, ...testsOf(key, extra).filter((t) => !live.tests.includes(t))];
   return Object.freeze({ ...live, evidence: [...tests, FIN_B16_LANE].join("; "), tests: Object.freeze(tests) });
 }));
 

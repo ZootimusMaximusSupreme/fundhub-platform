@@ -19,7 +19,7 @@ import {
   FIN_B16_LIVE_ROWS,
   FIN_B16_LIVE_TESTS,
   quietHoursSql, scheduleSql,
-  QUIET_BAD, DROP_BAD, STYLE_BAD, EXPIRY_BAD,
+  QUIET_BAD, DROP_BAD, NO_DROP_BAD, STYLE_BAD, EXPIRY_BAD,
 } from "./fin-b16-display-contracts.mjs";
 import { portableSql, schemaColumns, tablesIn } from "./fin-b16-sql-kit.mjs";
 
@@ -66,12 +66,13 @@ function buzz(over = {}) {
 
 const quietClean = () => [
   settings(),
+  settings({ org_id: OTHER_ORG }),
   buzz(),                                                           // made and sent in the day
-  buzz({ created_at: phx(-3, 22), sent_at: phx(-2, 7, 0) }),        // made at night, sent the second quiet hours ended
+  buzz({ created_at: phx(-3, 22), sent_at: phx(-2, 7, 0) }),        // made at night, texted the second quiet hours ended
   buzz({ created_at: phx(-3, 22), sent_at: null }),                 // still waiting
-  buzz({ created_at: phx(-3, 20, 59), sent_at: phx(-3, 21, 1) }),   // made just before quiet hours (a late worker), not judged
-  ["marketing_buzzes", { id: id("buzz"), org_id: OTHER_ORG, kind: "x", body: "y", created_at: phx(-3, 22), sent_at: phx(-3, 22, 5) }],
-  buzz({ created_at: at(-60), sent_at: at(-60, 0.1) }),              // made before the hours were last saved
+  buzz({ created_at: phx(-3, 20, 0), sent_at: phx(-3, 20, 59) }),   // made and texted just before quiet hours
+  ["marketing_buzzes", { id: id("buzz"), org_id: OTHER_ORG, kind: "x", body: "y", created_at: phx(-3, 22), sent_at: phx(-3, 22, 5) }], // another company's night text
+  buzz({ created_at: at(-60), sent_at: at(-60, 0.1) }),             // texted before the hours were last saved
 ];
 
 conditionTest({
@@ -81,12 +82,22 @@ conditionTest({
   names: QUIET_BAD.map(([n]) => n),
   clean: quietClean,
   bads: {
-    "a buzz made inside quiet hours was texted before they ended": [
-      [buzz({ created_at: phx(-3, 22), sent_at: phx(-3, 22, 30) })],
-      [buzz({ created_at: phx(-3, 3), sent_at: phx(-3, 6, 59) })],
-      [buzz({ created_at: phx(-3, 21, 0), sent_at: phx(-3, 21, 0) })],
+    "a buzz was texted inside quiet hours": [
+      [buzz({ created_at: phx(-3, 22), sent_at: phx(-3, 22, 30) })],   // made and texted at night
+      [buzz({ created_at: phx(-3, 3), sent_at: phx(-3, 6, 59) })],     // made at night, texted a minute before they end
+      [buzz({ created_at: phx(-3, 21, 0), sent_at: phx(-3, 21, 0) })], // right on the start
+      [buzz({ created_at: phx(-3, 20, 59), sent_at: phx(-3, 21, 3) })],// made just before, picked up by a late worker
+      [buzz({ created_at: phx(-3, 20, 0), sent_at: phx(-3, 23, 30) })],// made at 8 pm, texted at 11:30 pm
     ],
   },
+});
+
+test("quiet hours: a night text from before the settings were last saved is not judged (the evidence leaves with a re-save)", () => {
+  // The limit, written as a test so it is not a surprise: updated_at moves on every save of any setting.
+  const rows = [settings({ updated_at: phx(-1, 12) }), buzz({ created_at: phx(-2, 22), sent_at: phx(-2, 22, 30) })];
+  assert.deepEqual(counts(["marketing_buzzes", "marketing_settings"], seedRows(rows), quietHoursSql()), { sample_count: 0, bad_count: 0 });
+  const after = [settings({ updated_at: phx(-3, 12) }), buzz({ created_at: phx(-2, 22), sent_at: phx(-2, 22, 30) })];
+  assert.deepEqual(counts(["marketing_buzzes", "marketing_settings"], seedRows(after), quietHoursSql()), { sample_count: 1, bad_count: 1 });
 });
 
 test("quiet hours: a window that does not wrap midnight is read the same way, and start equal to end means none", () => {
@@ -129,14 +140,32 @@ function script(over = {}) {
 const FUNNEL = ["marketing_funnels", { id: id("funnel"), org_id: ORG, key: "roadmap_147", name: "Roadmap", active: true }];
 const SCHEDULE_TABLES = ["marketing_batches", "marketing_settings", "ad_scripts", "marketing_funnels"];
 
+const THIRD_ORG = "0c000000-0000-4000-8000-000000000003";
 const scheduleClean = () => [
   settings(), FUNNEL,
-  batch(),                                                                  // right day, right time, 21 scripts
+  // Two more companies. Each carries a bad row in every branch, so a branch that forgets the company filter
+  // counts them and the clean rows turn red. OTHER has a weekly batch; THIRD has the switch on and none.
+  settings({ org_id: OTHER_ORG }), settings({ org_id: THIRD_ORG, enabled: true }),
+  ["marketing_funnels", { id: id("funnel"), org_id: OTHER_ORG, key: "other_funnel", name: "Other", active: true }],
+  batch({ id: "b-o-day", org_id: OTHER_ORG, release_at: "2026-10-13T14:00:00.000Z", released_at: "2026-10-13T14:00:00.000Z" }),   // Tuesday
+  batch({ id: "b-o-late", org_id: OTHER_ORG, release_at: MONDAY_7AM, released_at: "2026-10-12T20:00:00.000Z", week_key: "2026-W43" }), // 6 hours late
+  batch({ id: "b-o-stuck", org_id: OTHER_ORG, status: "ready", released_at: null, release_at: "2026-10-05T14:00:00.000Z", week_key: "2026-W41" }),
+  ["marketing_batches", { id: "b-o-rel", org_id: OTHER_ORG, kind: "on_command", status: "released", release_at: at(-40), released_at: at(-40), plan: null, total: 3, created_at: at(-41) }],
+  script({ org_id: OTHER_ORG, style: "words", script_format: "standard" }),
+  script({ org_id: OTHER_ORG, status: "draft", batch_id: "b-o-rel" }),
+  script({ org_id: OTHER_ORG, status: "expired", batch_id: "b-o-new" }),
+  ["marketing_batches", { id: "b-o-new", org_id: OTHER_ORG, kind: "on_command", status: "released", release_at: at(-2), released_at: at(-2), plan: null, total: 3, created_at: at(-3) }],
+  ["marketing_batches", { id: "b-t-od", org_id: THIRD_ORG, kind: "on_command", status: "released", release_at: at(-5), released_at: at(-5), plan: null, total: 1, created_at: at(-6) }],
+  batch(),                                                                  // right day, right time, 21 scripts, released on time
+  batch({ id: "b-slow", release_at: "2026-10-05T14:00:00.000Z", released_at: "2026-10-05T15:30:00.000Z", week_key: "2026-W41" }), // 1.5 hours: inside the two
+  batch({ id: "b-next", status: "ready", released_at: null, release_at: "2026-10-19T14:00:00.000Z", week_key: "2026-W43" }),       // ready and not due yet
+  batch({ id: "b-plan", status: "planned", released_at: null, release_at: "2026-10-26T14:00:00.000Z", week_key: "2026-W44" }),     // planned, not due yet
   batch({ id: "b-per", kind: "on_command", week_key: null, release_at: at(-20), released_at: at(-20) }), // write now: not a weekly drop
   batch({ id: "b-failed", status: "failed", release_at: "2026-10-13T20:00:00.000Z", plan: { size_rule: "total", total: 0, overrides: null } }),
   batch({ id: "b-old", release_at: "2026-08-03T14:00:00.000Z", plan: { size_rule: "per_funnel", total: 5, overrides: null } }), // before the last save
+  // planned before the save finished (its planning window began before it): wrong time, but not judged
+  batch({ id: "b-edge", release_at: "2026-09-14T13:30:00.000Z", released_at: "2026-09-14T13:30:00.000Z", week_key: "2026-W38" }),
   batch({ id: "b-override", plan: { size_rule: "total", total: 40, overrides: { total: 40 } } }),               // a one-time override
-  batch({ org_id: OTHER_ORG, release_at: "2026-10-13T20:00:00.000Z" }),                                         // another company
   script({ style: "bullets", script_format: "standard" }),
   script({ style: "words", script_format: "sorting" }),
   script({ source: "chris", style: "words", script_format: "standard" }),   // a person's own version
@@ -145,6 +174,8 @@ const scheduleClean = () => [
   // expiry: a released batch from 30 days ago, one expired draft (right), one young draft (not due yet)
   ["marketing_batches", { id: "b-rel-old", org_id: ORG, kind: "on_command", status: "released", release_at: at(-30), released_at: at(-30), plan: null, total: 3, created_at: at(-31) }],
   ["marketing_batches", { id: "b-rel-new", org_id: ORG, kind: "on_command", status: "released", release_at: at(-10), released_at: at(-10), plan: null, total: 3, created_at: at(-11) }],
+  ["marketing_batches", { id: "b-rel-grace", org_id: ORG, kind: "on_command", status: "released", release_at: at(-15), released_at: at(-15), plan: null, total: 3, created_at: at(-16) }],
+  script({ status: "draft", batch_id: "b-rel-grace" }),                      // 15 days, 14 saved + 2 days for the nightly chore: not yet blamed
   script({ status: "expired", batch_id: "b-rel-old" }),
   script({ status: "draft", batch_id: "b-rel-new" }),
   script({ status: "draft", batch_id: "b-rel-old", archived_at: at(-5) }),   // an archived draft is not expired by the chore
@@ -156,7 +187,7 @@ conditionTest({
   title: "schedule fields",
   tables: SCHEDULE_TABLES,
   sqlOf: scheduleSql,
-  names: [...DROP_BAD, ...STYLE_BAD, ...EXPIRY_BAD].map(([n]) => n),
+  names: [...DROP_BAD, ...NO_DROP_BAD, ...STYLE_BAD, ...EXPIRY_BAD].map(([n]) => n),
   clean: scheduleClean,
   bads: {
     "the weekly drop is on a different weekday than the one saved": [
@@ -164,6 +195,8 @@ conditionTest({
     ],
     "the weekly drop is at a different time than the one saved": [
       [batch({ release_at: "2026-10-12T15:00:00.000Z" })],
+      // four hours after the save: judged (its planning window began after it); two hours would not be
+      [batch({ release_at: "2026-09-14T16:00:00.000Z", released_at: "2026-09-14T16:00:00.000Z", week_key: "2026-W38" })],
     ],
     "the weekly plan was made under a different count rule than the one saved": [
       // total is a whole number of days, so only the rule words differ
@@ -174,9 +207,27 @@ conditionTest({
       [batch({ plan: { size_rule: "total", total: 42, overrides: null }, total: 42 })],
     ],
     "a plan under the per funnel rule is not a whole number of funnels' scripts a day times days": [
-      { clean: () => [...scheduleClean().filter(([t]) => t !== "marketing_settings"), settings({ size_rule: "per_funnel" })]
-          .filter(([t, r]) => !(t === "marketing_batches" && r.plan && r.plan.size_rule === "total")),
+      { clean: () => [...scheduleClean().filter(([t, r]) => !(t === "marketing_settings" && r.org_id === ORG)), settings({ size_rule: "per_funnel" }),
+          batch({ id: "b-pf-ok", plan: { size_rule: "per_funnel", total: 21, overrides: null } })]
+          .filter(([t, r]) => !(t === "marketing_batches" && r.org_id === ORG && r.plan && r.plan.size_rule === "total")),
         rows: [batch({ plan: { size_rule: "per_funnel", total: 22, overrides: null }, total: 22 })] },
+    ],
+    "a weekly batch was released more than two hours after its drop time": [
+      [batch({ released_at: "2026-10-12T17:00:00.000Z" })],                      // three hours late
+      [batch({ released_at: "2026-10-13T14:00:00.000Z" })],                      // a day late
+    ],
+    "a weekly batch was still not released two hours after its drop time": [
+      [batch({ id: "b-stuck-ready", status: "ready", released_at: null, release_at: "2026-10-12T14:00:00.000Z" })],
+      [batch({ id: "b-stuck-writing", status: "writing", released_at: null, release_at: "2026-10-12T14:00:00.000Z" })],
+      [batch({ id: "b-stuck-planned", status: "planned", released_at: null, release_at: "2026-09-28T14:00:00.000Z", week_key: "2026-W40" })],
+    ],
+    "the weekly switch is on and nine days after the last save no weekly batch was made": [
+      // the switch is on, the save is old, and the only batches are not weekly, not after the save, or not this company's
+      { clean: () => [settings({ enabled: false }), FUNNEL],
+        rows: [settings({ enabled: true }),
+          ["marketing_batches", { id: id("batch"), org_id: ORG, kind: "on_command", status: "released", release_at: at(-5), released_at: at(-5), plan: null, total: 3 }],
+          batch({ id: "b-before-save", release_at: at(-40), released_at: at(-40), plan: null }),
+          batch({ id: "b-theirs", org_id: OTHER_ORG, release_at: MONDAY_7AM })] },
     ],
     "a machine-written script has a different style than the one saved for its kind": [
       [script({ script_format: "standard", style: "words" })],
@@ -185,7 +236,35 @@ conditionTest({
     "a machine draft is still a draft after its batch's expiry days and the nightly grace": [
       [script({ status: "draft", batch_id: "b-rel-old" })],
     ],
+    "a machine draft was expired before its batch's saved expiry days had passed": [
+      [script({ status: "expired", batch_id: "b-rel-new" })],                    // released 10 days ago, saved 14
+      [script({ status: "expired", batch_id: "b-o-ok" }),
+        ["marketing_batches", { id: "b-o-ok", org_id: ORG, kind: "on_command", status: "released", release_at: at(-1), released_at: at(-1), plan: null, total: 1 }]],
+    ],
   },
+});
+
+test("schedule fields: the switch is judged only when it is on, and only once the save is more than nine days old", () => {
+  const T = SCHEDULE_TABLES;
+  const run = (rows) => counts(T, seedRows(rows), scheduleSql());
+  assert.deepEqual(run([settings({ enabled: false })]), { sample_count: 0, bad_count: 0 }, "switched off: nothing is promised");
+  assert.deepEqual(run([settings({ updated_at: at(-8) })]), { sample_count: 0, bad_count: 0 }, "a save eight days old has not had a week and a day yet");
+  assert.deepEqual(run([settings({ updated_at: at(-10) })]), { sample_count: 1, bad_count: 1 }, "ten days, switch on, no weekly batch");
+  // Any status of weekly batch after the save is a batch that was made (a failed one was planned and failed in words).
+  const failed = batch({ id: "b-f", status: "failed", release_at: at(-3), released_at: null });
+  assert.equal(run([settings({ updated_at: at(-10) }), failed]).bad_count, 0);
+});
+
+test("schedule fields: a draft expired before its days is blamed only when the batch was released after the last save", () => {
+  const T = SCHEDULE_TABLES;
+  const released = ["marketing_batches", { id: "b-x", org_id: ORG, kind: "on_command", status: "released", release_at: at(-5), released_at: at(-5), plan: null, total: 1 }];
+  const expired = script({ status: "expired", batch_id: "b-x" });
+  // Saved 30 days ago, released 5 days ago, 14 saved: expired too early.
+  assert.equal(counts(T, seedRows([settings({ enabled: false }), released, expired]), scheduleSql()).bad_count, 1);
+  // Saved 2 days ago (after the release): the number may have been raised since, so it is not blamed.
+  const later = counts(T, seedRows([settings({ enabled: false, updated_at: at(-2) }), released, expired]), scheduleSql());
+  assert.equal(later.bad_count, 0);
+  assert.ok(later.sample_count >= 1, "the expired draft is still a sample");
 });
 
 test("schedule fields: a weekly plan with a one-time override, or with no active funnel, is not judged on its count", () => {
@@ -199,8 +278,8 @@ test("schedule fields: a weekly plan with a one-time override, or with no active
 
 test("schedule fields: the weekday and time are read in the saved zone, not in UTC", () => {
   // Monday 07:00 in New York is 11:00 UTC. With the zone saved as New York that is the right drop.
-  const rows = (tz) => [settings({ timezone: tz }), FUNNEL, batch({ release_at: "2026-10-12T11:00:00.000Z" })];
-  assert.deepEqual(counts(SCHEDULE_TABLES, seedRows(rows("America/New_York")), scheduleSql()), { sample_count: 1, bad_count: 0 });
+  const rows = (tz) => [settings({ timezone: tz }), FUNNEL, batch({ release_at: "2026-10-12T11:00:00.000Z", released_at: "2026-10-12T11:00:00.000Z" })];
+  assert.equal(counts(SCHEDULE_TABLES, seedRows(rows("America/New_York")), scheduleSql()).bad_count, 0);
   assert.equal(counts(SCHEDULE_TABLES, seedRows(rows("America/Phoenix")), scheduleSql()).bad_count, 1, "04:00 in Arizona is wrong");
 });
 

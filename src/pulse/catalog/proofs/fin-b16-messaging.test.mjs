@@ -58,7 +58,10 @@ function inboxApi({ inbox = null, sendOutcome = "sent" } = {}) {
     "/api/read/inbox": async (route, { url }) => {
       const query = new URL(url).search;
       log.inbox.push(query);
-      if (inbox) return json(route, page_of(inbox(query)));
+      if (inbox) {
+        const out = inbox(query);
+        return json(route, Array.isArray(out) ? page_of(out) : out);
+      }
       const owed = new URLSearchParams(query).get("needs_reply") === "1";
       const rows = [CONVOS[DANA_SMS], CONVOS[MARCUS_EMAIL]];
       return json(route, page_of(owed ? rows.filter((r) => r.needs_reply) : rows));
@@ -97,7 +100,11 @@ function inboxApi({ inbox = null, sendOutcome = "sent" } = {}) {
 async function openInbox(query = "", { api = inboxApi(), at = null, wait = ".convo" } = {}) {
   const before = async (page) => {
     api.watch(page);
-    if (at) await page.clock.install({ time: new Date(at) });
+    if (at) {
+      // Fixed, not just started there: a slow machine must not drift past 8:00pm or 8:00am mid-test.
+      await page.clock.install({ time: new Date(at) });
+      await page.clock.setFixedTime(new Date(at));
+    }
   };
   const opened = await screens.open(`/app/messaging.html${query}`, { session: CLOSER, handlers: api.handlers, init, before });
   if (wait) await opened.page.waitForSelector(wait);
@@ -315,8 +322,11 @@ test("Send this one to: filled from the record, sent for this message only, and 
   });
 });
 
-test("deep links open the named client's thread, on the named channel, or one conversation by id", { timeout: 120_000 }, async () => {
-  await proof.check(/^Deep links: \?client_id=, \?channel=, \?conversation_id=/, async () => {
+// NOT ATTACHED TO ITS ROW (finding 8 in manifest-b16.md). ?conversation_id= for a thread that is not in the
+// loaded list opens a stub with no client: the header reads "Unnamed client" and "Their file" goes to ?id=null.
+// So this test runs, but it is not the row's proof: it would have to either encode that or go red.
+test("deep links open the named client's thread, on the named channel, or one conversation by id (row not attached)", { timeout: 120_000 }, async () => {
+  {
     // ?client_id= alone opens their text thread.
     const bySms = await openInbox(`?client_id=${DANA_ID}`, { wait: null });
     await opened(bySms.page, "Dana Whitfield");
@@ -351,11 +361,13 @@ test("deep links open the named client's thread, on the named channel, or one co
     assert.equal(await bad.page.locator("#thName").innerText(), "No conversation open");
     assert.deepEqual(bad.log.messages, []);
     await bad.page.close();
-  });
+  }
 });
 
-test("the right panel lists their other threads and links to their file", { timeout: 90_000 }, async () => {
-  await proof.check(/^Right panel: 'Their other threads' list/, async () => {
+// NOT ATTACHED TO ITS ROW (finding 8 in manifest-b16.md): the same stub, opened by ?conversation_id=, gives a
+// "Their file" link to ?id=null and asks for the other threads with no client.
+test("the right panel lists their other threads and links to their file (row not attached)", { timeout: 90_000 }, async () => {
+  {
     const { page, log, errors } = await openInbox("");
     await page.locator(".convo").first().click();
     await opened(page, "Dana Whitfield");
@@ -376,11 +388,13 @@ test("the right panel lists their other threads and links to their file", { time
     assert.equal(await page.locator('#ctxLinks a:has-text("Their file")').getAttribute("href"), `client-control-panel.html?id=${MARCUS_ID}`);
     assert.deepEqual(errors, []);
     await page.close();
-  });
+  }
 });
 
-test("the Reference key opens and closes by itself, and its three colours are the three ways the thread paints a message", { timeout: 90_000 }, async (t) => {
-  await proof.check(/^Reference disclosure \(who-sent-it colour key\)/, async () => {
+// NOT ATTACHED TO ITS ROW (finding 1 in manifest-b16.md): the brand sheet hides #demozone with
+// display:none !important, so no person can see or press the key. This tests the code behind it.
+test("the Reference key opens and closes by itself, and its three colours are the three ways the thread paints a message (row not attached)", { timeout: 90_000 }, async (t) => {
+  {
     // One thread with all three kinds of sender: a person on the team, the system (no sender name) and the client.
     const AUTO = { id: "m-auto", conversation_id: DANA_SMS, direction: "outbound", channel: "sms", rendered_body: "Your next step is ready.", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T11:56:00Z" };
     const api = inboxApi();
@@ -458,6 +472,266 @@ test("the Reference key opens and closes by itself, and its three colours are th
     assert.deepEqual(errors, []);
     t.diagnostic(`shown to a person on this page: ${await page.locator("#demoToggle").isVisible()}`);
     await page.close();
+  }
+});
+
+// ───────────────────────── second pass: the holes an independent check found ─────────────────────────
+
+const NORA_ID = "cccccccc-3333-4333-8333-333333333333";
+const NORA_EMAIL = "44444444-4444-4444-8444-444444444444";
+const NORA_ROW = { ...base, id: NORA_EMAIL, client_id: NORA_ID, channel: "email", first_name: "Nora", last_name: "Quill",
+  last_body: null, last_direction: null, needs_reply: null, last_at: null, last_pulse_at: null };
+
+/** Hold an answer until the test lets it go. */
+function gate() {
+  let open;
+  const promise = new Promise((resolve) => { open = resolve; });
+  return { armed: false, promise, release: () => open() };
+}
+
+test("the two tab counts count only threads owed a reply; a thread with no messages is one thread and owes nothing", { timeout: 90_000 }, async () => {
+  await proof.check(/^Tab: Needs reply \(client spoke last/, async () => {
+    // The server answers all three whatever the query says (a stand-in), so the page itself must not call
+    // the answered thread or the empty one "waiting on us".
+    const api = inboxApi({ inbox: () => [CONVOS[DANA_SMS], CONVOS[MARCUS_EMAIL], NORA_ROW] });
+    const { page, errors } = await openInbox("", { api });
+    assert.deepEqual(await names(page), ["Dana Whitfield"], "the Needs reply tab lists only the thread that is owed");
+    assert.equal(await page.locator("#nAll").innerText(), "3");
+    assert.equal(await page.locator("#nReply").innerText(), "1", "one thread is owed; the answered one and the empty one are not");
+    await page.locator('.ctab[data-filter="all"]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".convo").length === 3);
+    const flags = await page.locator(".convo").evaluateAll((els) => els.map((e) => ({
+      name: e.querySelector(".cv-name").textContent.trim(),
+      owed: e.classList.contains("unread"),
+      tag: /Waiting on us/.test(e.textContent),
+      preview: e.querySelector(".cv-prev").textContent.trim(),
+    })));
+    assert.deepEqual(flags.find((f) => f.name === "Dana Whitfield"), { name: "Dana Whitfield", owed: true, tag: true, preview: "any update on my file?" });
+    assert.deepEqual(flags.find((f) => f.name === "Marcus Okoye"), { name: "Marcus Okoye", owed: false, tag: false, preview: "Thanks, got it." });
+    assert.deepEqual(flags.find((f) => f.name === "Nora Quill"), { name: "Nora Quill", owed: false, tag: false, preview: "No messages on this thread yet." });
+    assert.equal(await page.locator("#nReply").innerText(), "1");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+});
+
+test("after Email / Text the header, the avatar and the reply state still name the same person and the thread's own state", { timeout: 90_000 }, async () => {
+  await proof.check(/^Channel toggle: Email \/ Text buttons/, async () => {
+    const owed = async (page) => (await page.locator("#ctxRows .ctx-row").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()).find((t) => t.startsWith("Waiting on us"));
+    const { page, errors } = await openInbox("");
+    await page.locator(".convo").first().click();
+    await opened(page, "Dana Whitfield");
+    assert.equal((await page.locator("#thSub").innerText()).trim(), "SMS · waiting on a reply from us");
+
+    await page.locator("#chEmail").click();
+    await page.waitForFunction(() => document.querySelector("#thSub")?.textContent.startsWith("EMAIL"));
+    assert.equal((await page.locator("#thName").innerText()).trim(), "Dana Whitfield", "the same person, not Unnamed client");
+    assert.equal((await page.locator("#thAv").innerText()).trim(), "DW");
+    assert.equal((await page.locator("#footName").textContent()).trim(), "Dana Whitfield");
+    assert.equal((await page.locator("#thSub").innerText()).trim(), "EMAIL · no reply owed", "the email thread was answered");
+    await page.waitForFunction(() => /Waiting on us\s*no/.test(document.querySelector("#ctxRows")?.textContent || ""));
+    assert.match(await owed(page), /^Waiting on us no$/);
+
+    await page.locator("#chText").click();
+    await page.waitForFunction(() => document.querySelector("#thSub")?.textContent.startsWith("SMS"));
+    assert.equal((await page.locator("#thName").innerText()).trim(), "Dana Whitfield");
+    assert.equal((await page.locator("#thSub").innerText()).trim(), "SMS · waiting on a reply from us", "the text thread is still owed");
+    await page.waitForFunction(() => /Waiting on us\s*yes/.test(document.querySelector("#ctxRows")?.textContent || ""));
+    assert.match(await owed(page), /^Waiting on us yes$/);
+
+    // A channel with no thread yet: still the same person, and nothing is owed.
+    await page.locator('.ctab[data-filter="all"]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".convo").length === 2);
+    await page.locator('.convo:has-text("Marcus")').click();
+    await opened(page, "Marcus Okoye");
+    await page.locator("#chText").click();
+    await page.waitForFunction(() => /no thread yet/.test(document.querySelector("#thSub")?.textContent || ""));
+    assert.equal((await page.locator("#thName").innerText()).trim(), "Marcus Okoye");
+    assert.equal((await page.locator("#thAv").innerText()).trim(), "MO");
+    assert.equal((await page.locator("#thSub").innerText()).trim(), "SMS · no thread yet");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+
+  await proof.check(/^Channel toggle: Email \/ Text buttons/, async () => {
+    // Pressing Email and then opening somebody else before the answer comes back: the late answer must not
+    // open the first person's thread over the second person's.
+    const api = inboxApi();
+    const held = gate();
+    api.handlers["/api/read/conversations"] = async (route, { url }) => {
+      const clientId = new URL(url).searchParams.get("client_id");
+      api.log.conversations.push(clientId);
+      if (held.armed && clientId === DANA_ID) await held.promise;
+      return json(route, page_of(Object.values(CONVOS).filter((c) => c.client_id === clientId)));
+    };
+    const { page } = await openInbox("", { api });
+    await page.locator('.ctab[data-filter="all"]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".convo").length === 2);
+    await page.locator('.convo:has-text("Dana")').click();
+    await opened(page, "Dana Whitfield");
+    await page.waitForFunction(() => /EMAIL/.test(document.querySelector("#ctxThreads")?.textContent || ""));
+    held.armed = true;
+    await page.locator("#chEmail").click();
+    await page.locator('.convo:has-text("Marcus")').click();
+    await opened(page, "Marcus Okoye");
+    held.release();
+    await page.waitForTimeout(400);
+    assert.equal((await page.locator("#thName").innerText()).trim(), "Marcus Okoye", "the late answer did not take the screen back");
+    assert.match(await page.locator("#thread").innerText(), /Thanks, got it\./);
+    await page.close();
+  });
+});
+
+test("the texting-hours notice flips exactly at 8:00pm and 8:00am Arizona time", { timeout: 120_000 }, async () => {
+  await proof.check(/^Compose box: type reply, Enter sends/, async () => {
+    const OPEN = /^Texting hours: 8:00am to 8:00pm Arizona time\./;
+    const CLOSED = /^Texting hours are closed\./;
+    // Arizona is UTC-7 all year.
+    const cases = [
+      ["19:59 is open", "2026-10-14T02:59:00Z", OPEN, false],
+      ["20:00 is closed", "2026-10-14T03:00:00Z", CLOSED, true],
+      ["23:30 is closed", "2026-10-14T06:30:00Z", CLOSED, true],
+      ["07:59 is closed", "2026-10-14T14:59:00Z", CLOSED, true],
+      ["08:00 is open", "2026-10-14T15:00:00Z", OPEN, false],
+    ];
+    for (const [label, at, words, closed] of cases) {
+      const { page } = await openInbox("", { at });
+      await page.locator(".convo").first().click();
+      await opened(page, "Dana Whitfield");
+      const note = page.locator("#quietNote");
+      assert.match((await note.innerText()).trim(), words, label);
+      assert.equal(await note.evaluate((n) => n.classList.contains("closed")), closed, label);
+      await page.close();
+    }
+  });
+});
+
+test("the compose box: an empty box sends nothing, what was typed goes as typed, and words stay when the send is stopped", { timeout: 120_000 }, async () => {
+  await proof.check(/^Compose box: type reply, Enter sends/, async () => {
+    const send = async (outcome, words) => {
+      const api = inboxApi({ sendOutcome: outcome });
+      const run = await openInbox("", { api, at: DAYTIME });
+      await run.page.locator(".convo").first().click();
+      await opened(run.page, "Dana Whitfield");
+      await run.page.locator("#composeBody").click();
+      await run.page.keyboard.type(words);
+      await run.page.keyboard.press("Enter");
+      await waitFor(() => run.log.posts.length === 1);
+      await run.page.waitForFunction(() => !/^Sending/.test(document.querySelector("#sendStatus")?.textContent || "Sending"));
+      return run;
+    };
+
+    // Nothing, or only spaces, typed: Enter sends nothing.
+    const empty = await openInbox("", { at: DAYTIME });
+    await empty.page.locator(".convo").first().click();
+    await opened(empty.page, "Dana Whitfield");
+    await empty.page.locator("#composeBody").click();
+    await empty.page.keyboard.press("Enter");
+    await empty.page.keyboard.type("   ");
+    await empty.page.keyboard.press("Enter");
+    await empty.page.waitForTimeout(250);
+    assert.deepEqual(empty.log.posts, [], "an empty or blank box is not a message");
+    await empty.page.close();
+
+    // What was typed is what is sent: spaces at either end are kept.
+    const typed = await send("sent", "  spaced words  ");
+    assert.equal(typed.log.posts[0].body, "  spaced words  ");
+    assert.equal(await typed.page.locator("#sendStatus").innerText(), "Sent.");
+    assert.equal(await typed.page.locator("#composeBody").inputValue(), "", "a sent message leaves the box empty");
+    await typed.page.close();
+
+    // Held for the morning: also saved, so the box is emptied and the words say when it goes out.
+    const held = await send("deferred", "see you at nine");
+    assert.match(await held.page.locator("#sendStatus").innerText(), /^Saved\. It goes out automatically at 8:00am Arizona time/);
+    assert.equal(await held.page.locator("#composeBody").inputValue(), "");
+    await held.page.close();
+
+    // Stopped by the compliance check: the words stay in the box so nothing typed is lost, and it says so.
+    const stopped = await send("blocked", "this one is stopped");
+    assert.match(await stopped.page.locator("#sendStatus").innerText(), /^Not sent\. The compliance check stopped it/);
+    assert.equal(await stopped.page.locator("#composeBody").inputValue(), "this one is stopped", "a hard stop keeps the words");
+    await stopped.page.close();
+  });
+});
+
+test("Send this one to: an email box checks its shape, and a late read of the record never wipes what was typed", { timeout: 120_000 }, async () => {
+  await proof.check(/^'Send this one to' address box/, async () => {
+    // An email thread: the box starts as the email on file; a bad shape stops Send and says why.
+    const email = await openInbox("?client_id=" + MARCUS_ID, { wait: null });
+    await opened(email.page, "Marcus Okoye");
+    await email.page.waitForFunction(() => document.querySelector("#composeTo")?.value === "marcus@example.com");
+    await email.page.locator("#composeBody").fill("hello");
+    await email.page.locator("#composeTo").fill("marcus@@example");
+    assert.equal(await email.page.locator("#sendBtn").isDisabled(), true);
+    assert.match(await email.page.locator("#composeToNote").innerText(), /That does not look like an email address\./);
+    await email.page.locator("#composeTo").fill("marcus at home");
+    assert.equal(await email.page.locator("#sendBtn").isDisabled(), true, "a space is not an address");
+    await email.page.locator("#composeTo").fill("other@example.com");
+    assert.equal(await email.page.locator("#sendBtn").isEnabled(), true);
+    assert.equal(await email.page.locator("#composeToNote").isHidden(), true);
+    await email.page.locator("#sendBtn").click();
+    await waitFor(() => email.log.posts.length === 1);
+    assert.equal(email.log.posts[0].to, "other@example.com");
+    assert.deepEqual(email.log.writes, []);
+    await email.page.close();
+
+    // The record answers late: what the person typed in the meantime is kept.
+    const api = inboxApi();
+    const slow = gate();
+    api.handlers["/api/dashboard/client?id="] = async (route, { url }) => {
+      const id = new URL(url).searchParams.get("id");
+      api.log.client.push(id);
+      await slow.promise;
+      return json(route, { ok: true, client: CLIENTS[id] || { id }, transactions: [], crs_results: [], messages: [], tasks: [] });
+    };
+    const { page, log } = await openInbox("", { api, at: DAYTIME });
+    await page.locator(".convo").first().click();
+    await opened(page, "Dana Whitfield");
+    await waitFor(() => log.client.includes(DANA_ID));
+    await page.locator("#composeTo").fill("+15550107777");
+    slow.release();
+    await page.waitForFunction(() => /dana@example\.com/.test(document.querySelector("#ctxRows")?.textContent || ""));
+    assert.equal(await page.locator("#composeTo").inputValue(), "+15550107777", "the late read did not overwrite the typed number");
+    await page.locator("#composeBody").fill("hi");
+    await page.locator("#sendBtn").click();
+    await waitFor(() => log.posts.length === 1);
+    assert.equal(log.posts[0].to, "+15550107777");
+    await page.close();
+  });
+});
+
+test("the search box ignores capitals and stray spaces, and says how much it searched", { timeout: 120_000 }, async () => {
+  await proof.check(/^Search box: search people and messages/, async () => {
+    const { page } = await openInbox("");
+    await page.locator("#q").fill("MARCUS");
+    await page.waitForFunction(() => [...document.querySelectorAll(".convo .cv-name")].map((n) => n.textContent.trim()).join() === "Marcus Okoye");
+    await page.locator("#q").fill("  marcus  ");
+    assert.deepEqual(await names(page), ["Marcus Okoye"], "spaces at either end of the word are not part of it");
+    await page.locator("#q").fill("tHaNkS");
+    assert.deepEqual(await names(page), ["Marcus Okoye"], "the words of the last message match in any case");
+    await page.locator("#q").fill("SMS");
+    assert.deepEqual(await names(page), ["Dana Whitfield"], "so does the channel");
+    await page.close();
+
+    // How much was searched. Everything loaded and nothing more waiting: no note on the All tab.
+    const all = await openInbox("");
+    await all.page.locator('.ctab[data-filter="all"]').click();
+    await all.page.waitForFunction(() => document.querySelectorAll(".convo").length === 2);
+    await all.page.locator("#q").fill("dana");
+    assert.equal(await all.page.locator(".search-scope").count(), 0, "searching all of them says nothing extra");
+    await all.page.close();
+
+    // More waiting than was loaded: the box says it searched only the newest ones, on either tab.
+    const more = (items) => ({ ok: true, count: items.length, limit: 200, offset: 0, hasMore: true, items });
+    const big = inboxApi({ inbox: () => more([CONVOS[DANA_SMS], CONVOS[MARCUS_EMAIL]]) });
+    const onReply = await openInbox("", { api: big });
+    await onReply.page.locator("#q").fill("dana");
+    assert.equal((await onReply.page.locator(".search-scope").innerText()).trim(),
+      "Searching the 2 most recent conversations only. Searching everyone, not just Needs reply.");
+    await onReply.page.locator('.ctab[data-filter="all"]').click();
+    await onReply.page.waitForFunction(() => !/not just Needs reply/.test(document.querySelector(".search-scope")?.textContent || ""));
+    assert.equal((await onReply.page.locator(".search-scope").innerText()).trim(), "Searching the 2 most recent conversations only.");
+    await onReply.page.close();
   });
 });
 

@@ -8,9 +8,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { HIGHEST_KNOWN_RATE, WEB_SEARCH_USD } from "../../../marketing/model-usage.mjs";
 import {
   shootCreateSql, shootOrderSql, avatarSql, sendToSql,
-  SHOOT_CREATE_BAD, SHOOT_ORDER_BAD, AVATAR_BAD, SEND_TO_BAD,
+  SHOOT_CREATE_BAD, SHOOT_ORDER_BAD, AVATAR_BAD, SEND_TO_BAD, WORST_RATE,
 } from "./fin-b16-display-contracts.mjs";
 import { ORG, OTHER_ORG, at, id, counts, seedRows, conditionTest } from "./fin-b16-live-harness.mjs";
 
@@ -93,13 +94,19 @@ function usage(jobId, cost, over = {}) {
 }
 const AVATAR_TABLES = ["marketing_jobs", "marketing_model_usage"];
 const avatarClean = () => [
-  job({ id: "j-done" }), usage("j-done", 12.5), usage("j-done", 7.5),         // exactly at the stop amount
+  // exactly at the stop amount; the second call carries its tokens AND its price: it is counted by its price, once
+  job({ id: "j-done" }), usage("j-done", 12.5), usage("j-done", 7.5, { input_tokens: 1_000_000, output_tokens: 350_000 }),
+  // A call with no price on file counts at the highest known rate: 3,000,000 input tokens at $4 and 400,000
+  // output at $20 is exactly $20, the stop amount. One search more would be $20.01.
+  job({ id: "j-unpriced-edge" }), usage("j-unpriced-edge", null, { input_tokens: 3_000_000, output_tokens: 400_000 }),
   job({ id: "j-running", status: "running", result: null, payload: { campaign: "partner", step: "quotes", run_cap_usd: 20 } }), usage("j-running", 1),
   job({ id: "j-stop", status: "failed", result: null, error: "The run stopped at $20.",
     payload: { campaign: "partner", step: "quotes", run_cap_usd: 20, progress: { stopped_at_cap: { cap: "run", sentence: "Stopped at the $20 run cap after step 3." } } } }),
   job({ id: "j-offer", kind: "offer", status: "done", payload: { campaign: "partner", run_cap_usd: 1 } }), usage("j-offer", 99),
+  job({ id: "j-offer-nocap", kind: "offer", status: "done", payload: { campaign: "partner" } }),   // another kind: its cap is not judged
   job({ id: "j-other", org_id: OTHER_ORG, payload: { campaign: "partner", step: "quotes", run_cap_usd: 1 } }),
   ["marketing_model_usage", { id: id("use"), org_id: OTHER_ORG, job_id: "j-done", model: "x", cost_usd: 500 }],
+  ["marketing_model_usage", { id: id("use"), org_id: OTHER_ORG, job_id: "j-unpriced-edge", model: "x", cost_usd: null, input_tokens: 99_000_000 }],
 ];
 
 conditionTest({
@@ -109,8 +116,17 @@ conditionTest({
   names: AVATAR_BAD.map(([n]) => n),
   clean: avatarClean,
   bads: {
+    "a run has no stop amount saved on it": [
+      [job({ id: "j-nocap", payload: { campaign: "partner", step: "done" } })],
+      [job({ id: "j-zerocap", payload: { campaign: "partner", step: "done", run_cap_usd: 0 } })],
+      [job({ id: "j-blankcap", status: "running", result: null, payload: { campaign: "partner", step: "quotes", run_cap_usd: "" } })],
+    ],
     "a run spent more than the stop amount saved on it": [
       [job({ id: "j-over" }), usage("j-over", 15), usage("j-over", 5.01)],
+      // unpriced calls, counted at the highest known rate: $12 + $8 + one search at a cent
+      [job({ id: "j-unp" }), usage("j-unp", null, { input_tokens: 3_000_000, output_tokens: 400_000, web_search_requests: 1 })],
+      [job({ id: "j-unp-cache" }), usage("j-unp-cache", 19), usage("j-unp-cache", null, { cache_read_tokens: 10_000_000 })],   // 19 + $2
+      [job({ id: "j-unp-write" }), usage("j-unp-write", 19), usage("j-unp-write", null, { cache_write_tokens: 1_000_000 })], // 19 + $5
     ],
     "a finished run is not on its last step": [
       [job({ payload: { campaign: "partner", step: "quotes", run_cap_usd: 20 } })],
@@ -126,9 +142,21 @@ conditionTest({
   },
 });
 
-test("Build the avatar: a run with no price on a call is never counted as free money, and no saved stop amount is not judged", () => {
-  const rows = [job({ id: "j-np", payload: { campaign: "partner", step: "done" } }), usage("j-np", 400), job({ id: "j-null" }), usage("j-null", null), usage("j-null", 3)];
-  assert.deepEqual(counts(AVATAR_TABLES, seedRows(rows), avatarSql()), { sample_count: 2, bad_count: 0 });
+test("Build the avatar: the rates the check counts an unpriced call at are the product's own highest known rates", () => {
+  assert.deepEqual({ input: WORST_RATE.input, output: WORST_RATE.output, cache_read: WORST_RATE.cache_read, cache_write: WORST_RATE.cache_write },
+    { input: HIGHEST_KNOWN_RATE.input, output: HIGHEST_KNOWN_RATE.output, cache_read: HIGHEST_KNOWN_RATE.cache_read, cache_write: HIGHEST_KNOWN_RATE.cache_write },
+    "src/marketing/model-usage.mjs HIGHEST_KNOWN_RATE moved: update WORST_RATE in fin-b16-display-contracts.mjs");
+  assert.equal(WORST_RATE.search, WEB_SEARCH_USD);
+});
+
+test("Build the avatar: a priced call is counted as priced, an unpriced one adds on top, and the exact stop amount is not an overspend", () => {
+  const priced = [job({ id: "a" }), usage("a", 20)];
+  assert.equal(counts(AVATAR_TABLES, seedRows(priced), avatarSql()).bad_count, 0, "exactly $20 of $20");
+  const both = [job({ id: "a" }), usage("a", 12), usage("a", null, { input_tokens: 2_000_000 }), usage("a", null, { output_tokens: 1_000 })];
+  // 12 + 8 + 0.02 = 20.02: over
+  assert.equal(counts(AVATAR_TABLES, seedRows(both), avatarSql()).bad_count, 1);
+  const free = [job({ id: "a" }), usage("a", 0), usage("a", 0), usage("a", 0)];
+  assert.equal(counts(AVATAR_TABLES, seedRows(free), avatarSql()).bad_count, 0, "a free model ($0) is a real zero");
 });
 
 // ───────────────────────── Send this one to ─────────────────────────
@@ -156,7 +184,12 @@ const sendClean = () => [
   message({ to_address: "bad", direction: "inbound" }),
   message({ to_address: "bad", sender_kind: "system" }),
   message({ to_address: "bad", org_id: OTHER_ORG }),
+  ["clients", { id: "c3", org_id: OTHER_ORG, first_name: "Other", email: "o@example.com", phone: "+15550100003", updated_at: at(-20), is_demo: false }],
+  message({ client_id: "c3", org_id: OTHER_ORG, to_address: "bad" }),    // another company's own client and a bad address
   message({ to_address: "bad", created_at: at(-120) }),
+  // older than the 90 days judged, for a client whose record has not changed since: only the window excludes it
+  ["clients", { id: "c4", org_id: ORG, first_name: "Old", email: "old@example.com", phone: "+15550100004", updated_at: at(-300), is_demo: false }],
+  message({ client_id: "c4", to_address: "bad", created_at: at(-120) }),
 ];
 
 conditionTest({

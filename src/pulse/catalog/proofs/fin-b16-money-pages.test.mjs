@@ -141,30 +141,61 @@ function textRow(i, kind = "payment_timing", over = {}) {
     cleared_at: null, open: false, ...over };
 }
 
-test("Alerts: Show all N lists every text of that one protection, Show fewer folds it back", { timeout: 90_000 }, async () => {
+test("Alerts: Show all N lists every text of that one protection, Show fewer folds it back, and no other protection moves", { timeout: 120_000 }, async () => {
   await proof.check(/^'Show all N' \/ fewer texts list per protection/, async () => {
     const data = fixtureCopy();
-    data.alerts = [textRow(1), textRow(2), textRow(3), textRow(4), textRow(5), textRow(6, "promo_end", { kind_label: "Promo rate ending" })];
+    // Five texts on one protection, four on another, exactly three on a third, one on a fourth.
+    data.alerts = [
+      textRow(1), textRow(2), textRow(3), textRow(4), textRow(5),
+      textRow(6, "promo_end", { kind_label: "Promo rate ending" }), textRow(7, "promo_end", { kind_label: "Promo rate ending" }),
+      textRow(8, "promo_end", { kind_label: "Promo rate ending" }), textRow(9, "promo_end", { kind_label: "Promo rate ending" }),
+      textRow(10, "cash_reserve", { kind_label: "Cash cushion" }), textRow(11, "cash_reserve", { kind_label: "Cash cushion" }),
+      textRow(12, "cash_reserve", { kind_label: "Cash cushion" }),
+      textRow(13, "new_credit", { kind_label: "New credit" }),
+    ];
     const { page, errors } = await screens.open(`/app/money-alerts.html?client_id=${CLIENT_ID}`, {
       session: STAFF, handlers: { "/api/money/alerts": data },
     });
     await page.waitForSelector("#fa-k-payment_timing");
-    const card = page.locator("#fa-k-payment_timing");
-    const sent = () => card.locator(".sent-item").count();
-    assert.equal(await sent(), 3, "three texts are listed before Show all");
-    const more = card.locator('[data-act="more"]');
-    assert.equal((await more.innerText()).trim(), "Show all 5 texts", "the button says how many there are");
-    assert.equal(await more.getAttribute("aria-expanded"), "false");
-    await more.click();
+    const card = (kind) => page.locator(`#fa-k-${kind}`);
+    const bodies = (kind) => card(kind).locator(".sent-item .sent-body").allInnerTexts();
+    const moreOf = (kind) => card(kind).locator('[data-act="more"]');
+    const numbers = async (kind) => (await bodies(kind)).map((t) => Number(/number (\d+):/.exec(t)[1]));
+
+    // Closed: the first three texts, in the order the server sent them, and a button that says how many there are.
+    assert.deepEqual(await numbers("payment_timing"), [1, 2, 3], "the first three texts show first, not the last three");
+    assert.deepEqual(await numbers("promo_end"), [6, 7, 8]);
+    assert.equal((await moreOf("payment_timing").innerText()).trim(), "Show all 5 texts");
+    assert.equal((await moreOf("promo_end").innerText()).trim(), "Show all 4 texts");
+    assert.equal(await moreOf("payment_timing").getAttribute("aria-expanded"), "false");
+    // Exactly three, or fewer: nothing to open.
+    assert.deepEqual(await numbers("cash_reserve"), [10, 11, 12]);
+    assert.equal(await moreOf("cash_reserve").count(), 0, "three texts fit, so there is no button");
+    assert.deepEqual(await numbers("new_credit"), [13]);
+    assert.equal(await moreOf("new_credit").count(), 0);
+
+    // Open one: it lists all five, and no other protection moves.
+    await moreOf("payment_timing").click();
     await page.waitForFunction(() => document.querySelectorAll("#fa-k-payment_timing .sent-item").length === 5);
-    assert.equal((await card.locator('[data-act="more"]').innerText()).trim(), "Show fewer");
-    assert.equal(await card.locator('[data-act="more"]').getAttribute("aria-expanded"), "true");
-    assert.match(await card.innerText(), /Fundhub alert number 5/);
-    assert.equal(await page.locator("#fa-k-promo_end .sent-item").count(), 1, "another protection is not opened by it");
-    assert.equal(await page.locator('#fa-k-promo_end [data-act="more"]').count(), 0, "a protection with three or fewer texts has no button");
-    await card.locator('[data-act="more"]').click();
+    assert.deepEqual(await numbers("payment_timing"), [1, 2, 3, 4, 5]);
+    assert.equal((await moreOf("payment_timing").innerText()).trim(), "Show fewer");
+    assert.equal(await moreOf("payment_timing").getAttribute("aria-expanded"), "true");
+    assert.deepEqual(await numbers("promo_end"), [6, 7, 8], "another protection with more texts is not opened by it");
+    assert.equal((await moreOf("promo_end").innerText()).trim(), "Show all 4 texts");
+    assert.equal(await moreOf("promo_end").getAttribute("aria-expanded"), "false");
+    assert.deepEqual(await numbers("cash_reserve"), [10, 11, 12]);
+
+    // Open the second one too; closing the first leaves the second open.
+    await moreOf("promo_end").click();
+    await page.waitForFunction(() => document.querySelectorAll("#fa-k-promo_end .sent-item").length === 4);
+    assert.deepEqual(await numbers("promo_end"), [6, 7, 8, 9]);
+    assert.equal(await moreOf("payment_timing").getAttribute("aria-expanded"), "true");
+    await moreOf("payment_timing").click();
     await page.waitForFunction(() => document.querySelectorAll("#fa-k-payment_timing .sent-item").length === 3);
-    assert.equal((await card.locator('[data-act="more"]').innerText()).trim(), "Show all 5 texts");
+    assert.deepEqual(await numbers("payment_timing"), [1, 2, 3]);
+    assert.equal((await moreOf("payment_timing").innerText()).trim(), "Show all 5 texts");
+    assert.deepEqual(await numbers("promo_end"), [6, 7, 8, 9], "the other one stays open");
+    assert.equal((await moreOf("promo_end").innerText()).trim(), "Show fewer");
     assert.deepEqual(errors, []);
     await page.close();
   }, "money-alerts.html");
@@ -213,44 +244,99 @@ test("Alerts: the Back link and the seven-link nav, for the client and for staff
   }, "money-alerts.html");
 });
 
-test("Alerts: the jump links go to Accounts or Setup, and carry the client for staff", { timeout: 120_000 }, async () => {
+test("Alerts: each jump link goes where it says, from the spot it is in, and the in-page jumps land on their box", { timeout: 150_000 }, async () => {
   await proof.check(/^Jump links to Accounts and Setup/, async () => {
-    const linksOf = (page) => page.evaluate(() => [...document.querySelectorAll("#alerts-root a")]
-      .map((a) => [a.textContent.trim(), a.getAttribute("href")]));
     const open = async (data, session, query) => {
       const o = await screens.open(`/app/money-alerts.html${query}`, { session, handlers: { "/api/money/alerts": data } });
       await o.page.waitForSelector("#alerts-root .card");
       return o;
     };
-    // Cash that cannot be checked for a reason the client can fix, and cards not sorted into personal or business.
+    const hrefs = (page, selector) => page.evaluate((sel) => [...document.querySelectorAll(sel)]
+      .map((a) => [a.textContent.trim(), a.getAttribute("href")]), selector);
+    const toAccounts = `${FRAME}?client_id=${CLIENT_ID}#accounts`;
+    const toSetup = `${FRAME}?client_id=${CLIENT_ID}#setup`;
+
+    // One file with all three kinds of jump on it: a card with no statement day, cash that cannot be checked
+    // for a reason the client can fix, and cards not sorted into personal or business.
     const fixable = fixtureCopy();
     fixable.reserve.personal = { state: "unknown", reason: "no_cash_accounts", months: 6, cash_cents: null, cash_accounts: 0,
       minimums_cents: null, need_cents: null, short_cents: null, open_alert_id: null };
     fixable.reserve.not_counted = { debts: 2, minimums_cents: 5000 };
     const a = await open(fixable, STAFF, `?client_id=${CLIENT_ID}`);
-    const toAccounts = `${FRAME}?client_id=${CLIENT_ID}#accounts`;
-    const links = await linksOf(a.page);
-    assert.ok(links.some(([t, h]) => t === "Open Accounts" && h === toAccounts), "the unfixable-cash note jumps to Accounts, with the client");
-    assert.ok(links.some(([t, h]) => t === "Sort them in Accounts" && h === toAccounts), "the not-sorted note jumps to Accounts, with the client");
+    // Each link is judged where it sits: the "needs" tile, the personal cash box, and the not-counted line.
+    assert.deepEqual(await hrefs(a.page, ".need-list a"), [["Open Accounts", toAccounts]], "the needs tile has one Open Accounts, to Accounts with the client");
+    assert.deepEqual(await hrefs(a.page, "#fa-cash-personal a"), [["Open Accounts", toAccounts]], "the personal cash box has its own");
+    assert.deepEqual(await hrefs(a.page, "#fa-cash-business a"), [], "the business cash box is fine, so it has none");
+    assert.deepEqual(await hrefs(a.page, ".nc-line a"), [["Sort them in Accounts", toAccounts]]);
+
+    // The two in-page jumps scroll to and focus their own box: "Add the day" to that card's day picker,
+    // "See it" to the cash box that is short.
+    const cardId = fixable.cards.find((c) => c.statement_close_day === null).account_id;
+    const focus = () => a.page.evaluate(() => document.activeElement && document.activeElement.id);
+    const jumps = await a.page.evaluate(() => [...document.querySelectorAll('.need-list [data-act="jump"]')]
+      .map((b) => [b.textContent.trim(), b.getAttribute("data-to")]));
+    assert.deepEqual(jumps, [["Add the day", `fa-cd-${cardId}`], ["See it", "fa-cash-personal"]]);
+    await a.page.locator('.need-list [data-act="jump"]', { hasText: "Add the day" }).click();
+    await waitFor(async () => (await focus()) === `fa-cd-${cardId}`);
+    await a.page.locator('.need-list [data-act="jump"]', { hasText: "See it" }).click();
+    await waitFor(async () => (await focus()) === "fa-cash-personal");
     await a.page.close();
+
+    // Cash that is SHORT (not unknown) has its own "See it": it lands on the short box and says how short.
+    const short = await open(fixtureCopy(), STAFF, `?client_id=${CLIENT_ID}`);
+    const shortJumps = await short.page.evaluate(() => [...document.querySelectorAll('.need-list [data-act="jump"]')]
+      .map((b) => [b.closest("li").textContent.replace(/\s+/g, " ").trim(), b.getAttribute("data-to")]));
+    assert.ok(shortJumps.some(([text, to]) => /Personal cash is \$85\.57 short of 6 months of minimums\./.test(text) && to === "fa-cash-personal"), JSON.stringify(shortJumps));
+    await short.page.locator('.need-list [data-act="jump"]', { hasText: "See it" }).click();
+    await waitFor(async () => (await short.page.evaluate(() => document.activeElement && document.activeElement.id)) === "fa-cash-personal");
+    await short.page.close();
+
+    // Only cash that cannot be checked: the one Open Accounts is in the cash box, and none is in the needs tile.
+    const cashOnly = fixtureCopy();
+    cashOnly.cards = cashOnly.cards.map((c) => ({ ...c, statement_close_day: c.statement_close_day || 12 }));
+    cashOnly.reserve.personal = { state: "unknown", reason: "no_cash_accounts", months: 6, cash_cents: null, cash_accounts: 0,
+      minimums_cents: null, need_cents: null, short_cents: null, open_alert_id: null };
+    const c = await open(cashOnly, STAFF, `?client_id=${CLIENT_ID}`);
+    assert.deepEqual(await hrefs(c.page, "#fa-cash-personal a"), [["Open Accounts", toAccounts]]);
+    assert.equal((await hrefs(c.page, ".need-list a")).length, 0, "no needs link when nothing is not counted");
+    await c.page.close();
+
+    // Only not-counted cards, cash fine: the one Open Accounts is in the needs tile.
+    const notCounted = fixtureCopy();
+    notCounted.cards = notCounted.cards.map((c) => ({ ...c, statement_close_day: c.statement_close_day || 12 }));
+    notCounted.reserve.personal = { ...notCounted.reserve.personal };
+    notCounted.reserve.not_counted = { debts: 1, minimums_cents: 2500 };
+    const n = await open(notCounted, STAFF, `?client_id=${CLIENT_ID}`);
+    assert.deepEqual(await hrefs(n.page, ".need-list a"), [["Open Accounts", toAccounts]]);
+    assert.deepEqual(await hrefs(n.page, "#fa-cash-personal a"), []);
+    await n.page.close();
+
     // The same data for the client themself names nobody.
     const own = await open(fixable, CLIENT, "");
-    assert.ok((await linksOf(own.page)).some(([t, h]) => t === "Open Accounts" && h === `${FRAME}#accounts`));
+    assert.deepEqual(await hrefs(own.page, ".need-list a"), [["Open Accounts", `${FRAME}#accounts`]]);
+    assert.deepEqual(await hrefs(own.page, "#fa-cash-personal a"), [["Open Accounts", `${FRAME}#accounts`]]);
     await own.page.close();
+
     // Not on a plan yet: Set up FinanceOS goes to Setup.
     const notEnrolled = fixtureCopy();
     notEnrolled.enrolled = { blueprint: false, finance_os: false, any: false };
     const s = await open(notEnrolled, STAFF, `?client_id=${CLIENT_ID}`);
-    assert.ok((await linksOf(s.page)).some(([t, h]) => t === "Set up FinanceOS" && h === `${FRAME}?client_id=${CLIENT_ID}#setup`));
+    assert.deepEqual(await hrefs(s.page, ".notice a"), [["Set up FinanceOS", toSetup]]);
     await s.page.close();
-    // Nothing to watch: Add an account goes to Accounts.
+
+    // Nothing to watch: Add an account goes to Accounts. No cards on file but cash known: Add a card goes there too.
     const empty = fixtureCopy();
     empty.cards = [];
     empty.alerts = [];
     empty.reserve = { months: 6, personal: { state: "unknown", reason: "no_cash_accounts" }, business: { state: "unknown", reason: "no_cash_accounts" }, not_counted: { debts: 0, minimums_cents: null } };
     const e = await open(empty, STAFF, `?client_id=${CLIENT_ID}`);
-    assert.ok((await linksOf(e.page)).some(([t, h]) => t === "Add an account" && h === toAccounts));
+    assert.deepEqual(await hrefs(e.page, "#alerts-root .empty a"), [["Add an account", toAccounts]]);
     await e.page.close();
+    const noCards = fixtureCopy();
+    noCards.cards = [];
+    const k = await open(noCards, STAFF, `?client_id=${CLIENT_ID}`);
+    assert.ok((await hrefs(k.page, "#alerts-root a")).some(([t, h]) => t === "Add a card" && h === toAccounts));
+    await k.page.close();
   }, "money-alerts.html");
 });
 

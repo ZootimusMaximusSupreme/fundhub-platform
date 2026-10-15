@@ -102,38 +102,70 @@ test("the teleprompter link carries the film key from the shoot; the Drive folde
   });
 });
 
-test("the Before you roll checklist keeps four boxes on this device, one set per shoot, and writes nothing to the server", { timeout: 90_000 }, async () => {
+test("the Before you roll checklist keeps four boxes on this device, one set per shoot, and writes nothing to the server", { timeout: 120_000 }, async () => {
   await proof.check(/^Shoot: checklist: Rig set, Mirror on/, async () => {
+    const key = `fhcc.shoot.check.${BASE.shoot.id}`;
+    const KEYS = ["rig", "mirror", "remote", "phone"];
+    const boxesOf = (page) => page.getByRole("group", { name: "Before you roll" }).locator("input[type=checkbox]");
+    const ticked = (page) => boxesOf(page).evaluateAll((els) => els.map((e) => e.checked));
+    const saved = async (page) => JSON.parse(await page.evaluate((k) => localStorage.getItem(k), key));
+
     const first = await openShootTab({ get: openShoot() });
     const group = first.page.getByRole("group", { name: "Before you roll" });
     const labels = (await group.locator("label").allInnerTexts()).map((t) => t.trim());
     assert.deepEqual(labels, ["Rig set", "Mirror on", "Remote paired", "Phone charged, with storage free"]);
     assert.match(await first.page.locator("section.card:has([aria-label='Before you roll'])").innerText(), /Saved on this device\./);
-    const boxes = group.locator("input[type=checkbox]");
-    assert.equal(await boxes.count(), 4);
-    for (let i = 0; i < 4; i += 1) assert.equal(await boxes.nth(i).isChecked(), false);
-    await boxes.nth(0).check();
-    await boxes.nth(2).check();
-    const key = `fhcc.shoot.check.${BASE.shoot.id}`;
-    assert.deepEqual(JSON.parse(await first.page.evaluate((k) => localStorage.getItem(k), key)), { rig: true, remote: true });
-    assert.deepEqual(first.log.posts, [], "ticking a box is not a request");
-
-    // Reloaded in the same browser, the same boxes are ticked; unticking one is saved too.
-    await first.page.reload();
-    await first.page.waitForSelector("[aria-label='Before you roll']");
-    const again = first.page.getByRole("group", { name: "Before you roll" }).locator("input[type=checkbox]");
-    assert.deepEqual(await again.evaluateAll((els) => els.map((e) => e.checked)), [true, false, true, false]);
-    await again.nth(0).uncheck();
-    await again.nth(3).check();
-    assert.deepEqual(JSON.parse(await first.page.evaluate((k) => localStorage.getItem(k), key)), { rig: false, remote: true, phone: true });
-    // Another shoot starts with its own empty list.
-    const other = { ...openShoot() };
-    other.shoot = { ...other.shoot, id: "00000000-0000-4000-8000-000000000999" };
+    assert.equal(await boxesOf(first.page).count(), 4);
+    assert.deepEqual(await ticked(first.page), [false, false, false, false]);
     await first.page.close();
-    const second = await openShootTab({ get: other });
-    const fresh = second.page.getByRole("group", { name: "Before you roll" }).locator("input[type=checkbox]");
-    assert.deepEqual(await fresh.evaluateAll((els) => els.map((e) => e.checked)), [false, false, false, false]);
-    await second.page.close();
+
+    // Each of the four boxes on its own, Mirror on included: it saves under its own name (no two boxes share
+    // one), it is the only ticked box after a reload, and unticking it is saved too.
+    for (let i = 0; i < 4; i += 1) {
+      const run = await openShootTab({ get: openShoot() });
+      await boxesOf(run.page).nth(i).check();
+      assert.deepEqual(await saved(run.page), { [KEYS[i]]: true }, `${KEYS[i]} saves under its own name`);
+      assert.deepEqual(run.log.posts, [], "ticking a box is not a request");
+      await run.page.reload();
+      await run.page.waitForSelector("[aria-label='Before you roll']");
+      assert.deepEqual(await ticked(run.page), KEYS.map((_, j) => j === i), `${KEYS[i]} is the only ticked box after a reload`);
+      await boxesOf(run.page).nth(i).uncheck();
+      assert.deepEqual(await saved(run.page), { [KEYS[i]]: false }, `${KEYS[i]} unticked is saved`);
+      await run.page.reload();
+      await run.page.waitForSelector("[aria-label='Before you roll']");
+      assert.deepEqual(await ticked(run.page), [false, false, false, false], `${KEYS[i]} stays unticked after a reload`);
+      await run.page.close();
+    }
+
+    // All four together, then two of them in the same browser across a reload.
+    const everything = await openShootTab({ get: openShoot() });
+    for (let i = 0; i < 4; i += 1) await boxesOf(everything.page).nth(i).check();
+    assert.deepEqual(await saved(everything.page), { rig: true, mirror: true, remote: true, phone: true });
+    await everything.page.close();
+
+    let current = openShoot();
+    const pair = await openShootTab({ get: () => current });
+    await boxesOf(pair.page).nth(0).check();
+    await boxesOf(pair.page).nth(2).check();
+    assert.deepEqual(await saved(pair.page), { rig: true, remote: true });
+    await pair.page.reload();
+    await pair.page.waitForSelector("[aria-label='Before you roll']");
+    assert.deepEqual(await ticked(pair.page), [true, false, true, false]);
+    await boxesOf(pair.page).nth(0).uncheck();
+    await boxesOf(pair.page).nth(3).check();
+    assert.deepEqual(await saved(pair.page), { rig: false, remote: true, phone: true });
+
+    // Another shoot, in the same browser, starts with its own empty list and leaves this one's alone.
+    const otherId = "00000000-0000-4000-8000-000000000999";
+    current = { ...openShoot() };
+    current.shoot = { ...current.shoot, id: otherId };
+    await pair.page.reload();
+    await pair.page.waitForSelector("[aria-label='Before you roll']");
+    assert.deepEqual(await ticked(pair.page), [false, false, false, false], "a different shoot does not inherit these ticks");
+    await boxesOf(pair.page).nth(1).check();
+    assert.deepEqual(JSON.parse(await pair.page.evaluate((k) => localStorage.getItem(k), `fhcc.shoot.check.${otherId}`)), { mirror: true });
+    assert.deepEqual(await saved(pair.page), { rig: false, remote: true, phone: true }, "the first shoot's boxes were not touched");
+    await pair.page.close();
   });
 });
 
@@ -151,12 +183,35 @@ test("before a shoot, Film first and the arrows set the order that Save the plan
     assert.deepEqual(await order(page), [C2.root_script_id, C3.root_script_id, C1.root_script_id]);
     await page.getByRole("button", { name: "Move Ad 92 down" }).click();
     assert.deepEqual(await order(page), [C3.root_script_id, C2.root_script_id, C1.root_script_id]);
-    await rows(page).nth(0).getByLabel("On the plan").uncheck();
+    // The Up arrow moves a script one place toward the top (Ad 91 is third, so it goes second).
+    await page.getByRole("button", { name: "Move Ad 91 up" }).click();
+    assert.deepEqual(await order(page), [C3.root_script_id, C1.root_script_id, C2.root_script_id]);
+    assert.equal(await rows(page).nth(0).getByRole("button", { name: /Move Ad 93 up/ }).isDisabled(), true, "the first row cannot move up");
+    await page.getByRole("button", { name: "Move Ad 91 up" }).click();
+    assert.deepEqual(await order(page), [C1.root_script_id, C3.root_script_id, C2.root_script_id]);
+    await page.getByRole("button", { name: "Move Ad 91 down" }).click();
+    assert.deepEqual(await order(page), [C3.root_script_id, C1.root_script_id, C2.root_script_id]);
+
+    // The "On the plan" box is a real switch: off dims the row, on again brings it back, and with every
+    // box off there is nothing to save.
+    const include = (i) => rows(page).nth(i).getByLabel("On the plan");
+    assert.equal(await include(0).isChecked(), true, "every script starts on the plan");
+    await include(0).uncheck();
+    assert.match((await rows(page).nth(0).getAttribute("class")) || "", /\boff\b/);
+    await include(0).check();
+    assert.doesNotMatch((await rows(page).nth(0).getAttribute("class")) || "", /\boff\b/);
+    assert.equal(await include(0).isChecked(), true);
+    for (let i = 0; i < 3; i += 1) await include(i).uncheck();
+    assert.equal(await page.getByRole("button", { name: "Save the plan" }).isDisabled(), true, "nothing on the plan, nothing to save");
+    await include(1).check();
+    await include(2).check();
+    assert.equal(await include(0).isChecked(), false);
+    assert.equal(await page.getByRole("button", { name: "Save the plan" }).isDisabled(), false);
     assert.equal(log.posts.length, 0, "nothing is sent until Save the plan");
     saved = true;
     await page.getByRole("button", { name: "Save the plan" }).click();
     await waitFor(() => log.posts.length === 1);
-    assert.deepEqual(log.posts[0].root_script_ids, [C2.root_script_id, C1.root_script_id], "the plan, in the order on screen, without the one unticked");
+    assert.deepEqual(log.posts[0].root_script_ids, [C1.root_script_id, C2.root_script_id], "the plan, in the order on screen, without the one unticked");
     assert.match(log.posts[0].request_id, /^[A-Za-z0-9._:-]{8,200}$/, "one tap, one request id");
     assert.equal("id" in log.posts[0], false, "a new plan is a create, not a change to a shoot");
     assert.deepEqual(errors, []);
@@ -178,15 +233,22 @@ test("on an open shoot, the arrows, Film first, Take off the plan and Add to the
     await waitFor(() => log.posts.length === 1);
     assert.deepEqual(log.posts[0], { id: BASE.shoot.id, root_script_ids: [b, a], request_id: log.posts[0].request_id, wpm: 150 },
       "the whole new order, the shoot it changes, and the reading speed this device saved");
-    await rows(page).nth(1).getByRole("button", { name: "Film first" }).click();
+    // Up on the second row sends it first. (The stand-in answers the same shoot, so each press starts from [a, b].)
+    await rows(page).nth(1).getByRole("button", { name: "Move Ad 92 up" }).click();
     await waitFor(() => log.posts.length === 2);
-    assert.deepEqual(log.posts[1].root_script_ids, [b, a], "the shown list did not change (the stand-in answers the same shoot), so the order sent is from that list: second to the top");
-    await rows(page).nth(1).getByRole("button", { name: "Take off the plan" }).click();
+    assert.deepEqual(log.posts[1].root_script_ids, [b, a], "Up on the second row puts it first");
+    await rows(page).nth(1).getByRole("button", { name: "Film first" }).click();
     await waitFor(() => log.posts.length === 3);
-    assert.deepEqual(log.posts[2].root_script_ids, [a], "the other script is dropped from the list, the one left stays");
-    await page.getByRole("button", { name: "Add to the plan" }).click();
+    assert.deepEqual(log.posts[2].root_script_ids, [b, a], "the shown list did not change (the stand-in answers the same shoot), so the order sent is from that list: second to the top");
+    await rows(page).nth(1).getByRole("button", { name: "Take off the plan" }).click();
     await waitFor(() => log.posts.length === 4);
-    assert.deepEqual(log.posts[3].root_script_ids, [a, b, C3.root_script_id], "an approved script is added to the end");
+    assert.deepEqual(log.posts[3].root_script_ids, [a], "the other script is dropped from the list, the one left stays");
+    await rows(page).nth(0).getByRole("button", { name: "Take off the plan" }).click();
+    await waitFor(() => log.posts.length === 5);
+    assert.deepEqual(log.posts[4].root_script_ids, [b], "taking off the first row drops the first, the second stays");
+    await page.getByRole("button", { name: "Add to the plan" }).click();
+    await waitFor(() => log.posts.length === 6);
+    assert.deepEqual(log.posts[5].root_script_ids, [a, b, C3.root_script_id], "an approved script is added to the end");
     for (const post of log.posts) assert.equal(post.id, BASE.shoot.id, "every change names the shoot it changes");
     assert.deepEqual(errors, []);
     await page.close();

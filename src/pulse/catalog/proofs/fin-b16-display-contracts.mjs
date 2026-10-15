@@ -34,11 +34,16 @@ function orJoin(pairs, without, indent = "         ") {
 // ───────────────────── Settings: quiet hours (marketing-command-center.html) ─────────────────────
 //
 // The Settings page says: "No buzzes from 9:00 pm to 7:00 am, Arizona time. They wait until 7:00 am."
-// A buzz is a text to Chris's phone (marketing_buzzes). src/marketing/notify.mjs holds a buzz that is
-// made inside quiet hours until they end (send_after). So the saved result of the two time boxes is
-// when buzzes went out: one that was made inside quiet hours must not have been sent before they ended.
-// Only buzzes made after the settings were last saved are judged (they were made under these hours).
+// A buzz is a text to Chris's phone (marketing_buzzes). The promise is about when a text GOES OUT, so
+// the saved result is sent_at: no buzz may have been texted inside quiet hours, whenever it was made.
+// (src/marketing/notify.mjs holds a buzz made inside quiet hours until they end; a buzz made at 8:59 pm
+// and picked up by the worker at 9:03 pm is texted inside them, and is judged here too.)
+// Only buzzes texted after the settings were last saved are judged: they went out under these hours.
 // A start equal to its end means no quiet hours at all, so that company has nothing to judge.
+//
+// What this does not see, said plainly: re-saving ANY setting moves marketing_settings.updated_at, and a
+// night text sent before that save is no longer in the window. A change to the quiet hours themselves
+// has no history to read, so a text sent under the old hours is never blamed on the new ones.
 
 function inQuiet(column) {
   const wall = `(${column} AT TIME ZONE s.timezone)::time`;
@@ -48,7 +53,7 @@ function inQuiet(column) {
 }
 
 export const QUIET_BAD = Object.freeze([
-  ["a buzz made inside quiet hours was texted before they ended", `${inQuiet("b.created_at")}\n         AND ${inQuiet("b.sent_at")}`],
+  ["a buzz was texted inside quiet hours", inQuiet("b.sent_at")],
 ]);
 
 export function quietHoursSql({ without = [] } = {}) {
@@ -59,23 +64,29 @@ SELECT count(*)::int AS sample_count,
   JOIN marketing_settings s ON s.org_id = b.org_id
  WHERE b.org_id = $1::uuid
    AND b.sent_at IS NOT NULL
-   AND b.created_at >= s.updated_at
+   AND b.sent_at >= s.updated_at
    AND s.quiet_start <> s.quiet_end`;
 }
 
 // ───────────────────── Settings: schedule fields (marketing-command-center.html) ─────────────────────
 //
-// Three results, one per saved box group:
+// Four results, one per saved box group:
 //   the weekly drop      a weekly batch's release_at lands on the saved weekday and time in the saved zone,
-//                        and its plan was made under the saved count rule and the saved scripts a day times
-//                        days in a batch (src/marketing/planner.mjs step 1). A batch is judged only when its
-//                        whole planning window (3 hours before release_at) came after the last save; a plan
-//                        with a one-time override, or with no active funnel, is not judged on its count.
+//                        its plan was made under the saved count rule and the saved scripts a day times
+//                        days in a batch (src/marketing/planner.mjs step 1), and it went out when it was
+//                        due: released within two hours of release_at, not left unreleased past it. A batch
+//                        is judged only when its whole planning window (3 hours before release_at) came
+//                        after the last save; a plan with a one-time override, or with no active funnel,
+//                        is not judged on its count.
+//   no drop at all       the weekly switch is on and nine days (a week and the 24 hour planning retry,
+//                        and a day) have gone by since the last save, yet no weekly batch was ever made.
 //   the six script kinds a machine-written script made after the last save carries the style saved for its
 //                        kind (planner styleFor, then the writer keeps the slot's style).
 //   drafts expiry        a machine draft of a released batch is expired once the saved number of days (and a
 //                        two day grace for the nightly chore) have passed (src/marketing/batch-run.mjs
-//                        expireDrafts).
+//                        expireDrafts) and is not expired before the saved days. Only batches released after
+//                        the last save are judged for "too early": a raised number must not blame what was
+//                        expired under the old one.
 
 export const DROP_BAD = Object.freeze([
   ["the weekly drop is on a different weekday than the one saved",
@@ -94,6 +105,16 @@ export const DROP_BAD = Object.freeze([
          AND COALESCE(jsonb_typeof(b.plan -> 'overrides'), 'null') = 'null'
          AND EXISTS (SELECT 1 FROM marketing_funnels f WHERE f.org_id = b.org_id AND f.active = true)
          AND (b.plan ->> 'total')::int % (s.scripts_per_day * s.days_per_batch) <> 0`],
+  ["a weekly batch was released more than two hours after its drop time",
+    `b.status = 'released' AND b.released_at > b.release_at + interval '2 hours'`],
+  ["a weekly batch was still not released two hours after its drop time",
+    `b.status IN ('planned', 'writing', 'ready') AND b.release_at < now() - interval '2 hours'`],
+]);
+
+export const NO_DROP_BAD = Object.freeze([
+  ["the weekly switch is on and nine days after the last save no weekly batch was made",
+    `NOT EXISTS (SELECT 1 FROM marketing_batches w
+                 WHERE w.org_id = s.org_id AND w.kind = 'weekly' AND w.release_at > s.updated_at)`],
 ]);
 
 export const STYLE_BAD = Object.freeze([
@@ -103,7 +124,10 @@ export const STYLE_BAD = Object.freeze([
 
 export const EXPIRY_BAD = Object.freeze([
   ["a machine draft is still a draft after its batch's expiry days and the nightly grace",
-    `a.status = 'draft'`],
+    `a.status = 'draft' AND EXTRACT(EPOCH FROM (now() - b.released_at)) > (s.draft_expiry_days + 2) * 86400`],
+  ["a machine draft was expired before its batch's saved expiry days had passed",
+    `a.status = 'expired' AND b.released_at >= s.updated_at
+         AND EXTRACT(EPOCH FROM (now() - b.released_at)) < s.draft_expiry_days * 86400`],
 ]);
 
 export function scheduleSql({ without = [] } = {}) {
@@ -119,6 +143,12 @@ SELECT count(*)::int AS sample_count,
        AND b.status <> 'failed'
        AND b.release_at IS NOT NULL
        AND b.release_at > s.updated_at + interval '3 hours'
+  UNION ALL
+    SELECT CASE WHEN ${orJoin(NO_DROP_BAD, without, "              ")} THEN 1 ELSE 0 END AS bad
+      FROM marketing_settings s
+     WHERE s.org_id = $1::uuid
+       AND s.enabled = true
+       AND s.updated_at < now() - interval '9 days'
   UNION ALL
     SELECT CASE WHEN ${orJoin(STYLE_BAD, without, "              ")} THEN 1 ELSE 0 END AS bad
       FROM ad_scripts a
@@ -138,7 +168,6 @@ SELECT count(*)::int AS sample_count,
        AND a.status IN ('draft', 'expired')
        AND b.status = 'released'
        AND b.released_at IS NOT NULL
-       AND EXTRACT(EPOCH FROM (now() - b.released_at)) > (s.draft_expiry_days + 2) * 86400
   ) r`;
 }
 
@@ -182,16 +211,35 @@ export const shootOrderSql = ({ without = [] } = {}) => shootSql("fin-b16-shoot-
 
 // ───────────────────── Today: 'Build the avatar' (marketing-command-center.html) ─────────────────────
 //
-// The button queues one marketing_jobs row of kind 'avatar'. The run stops before a step that would take
-// it past the stop amount frozen on the row at the tap (payload.run_cap_usd), so what it spent is never
-// more than that. A finished run is on its last step and names the files it saved. A run that stopped at
-// the cap says why in plain words (src/marketing/avatar/run.mjs).
+// The button queues one marketing_jobs row of kind 'avatar'. The stop amount is frozen on the row at the
+// tap (payload.run_cap_usd). The run stops before a step that would take it past that, so what it spent
+// is never more than that; a call with no price on file counts at the highest known rate. A finished run
+// is on its last step and names the files it saved. A run that stopped at the cap says why in plain words
+// (src/marketing/avatar/run.mjs).
+
+// The run counts a call whose model has no price at the HIGHEST known rate (src/marketing/model-usage.mjs
+// jobSpendUsd, worstCaseUsd): input 4, output 20, cache read 0.2, cache write 5 dollars per million tokens,
+// and one cent a web search. The same rule is used here, so an unknown model's overspend is not invisible.
+// fin-b16-live-contracts-2.test.mjs holds these numbers to the product's own constants.
+export const WORST_RATE = Object.freeze({ input: 4, output: 20, cache_read: 0.2, cache_write: 5, search: 0.01 });
+
+const SPENT = `(COALESCE((SELECT sum(u.cost_usd) FROM marketing_model_usage u
+                          WHERE u.org_id = j.org_id AND u.job_id = j.id), 0)
+         + COALESCE((SELECT (COALESCE(sum(u.input_tokens), 0) * ${WORST_RATE.input}
+                           + COALESCE(sum(u.output_tokens), 0) * ${WORST_RATE.output}
+                           + COALESCE(sum(u.cache_read_tokens), 0) * ${WORST_RATE.cache_read}
+                           + COALESCE(sum(u.cache_write_tokens), 0) * ${WORST_RATE.cache_write}) / 1000000.0
+                           + COALESCE(sum(u.web_search_requests), 0) * ${WORST_RATE.search}
+                      FROM marketing_model_usage u
+                     WHERE u.org_id = j.org_id AND u.job_id = j.id AND u.cost_usd IS NULL), 0))`;
 
 export const AVATAR_BAD = Object.freeze([
+  ["a run has no stop amount saved on it",
+    `NULLIF(BTRIM(COALESCE(j.payload ->> 'run_cap_usd', '')), '') IS NULL
+         OR (j.payload ->> 'run_cap_usd')::numeric <= 0`],
   ["a run spent more than the stop amount saved on it",
     `(j.payload ->> 'run_cap_usd') IS NOT NULL
-         AND COALESCE((SELECT sum(u.cost_usd) FROM marketing_model_usage u
-                        WHERE u.org_id = j.org_id AND u.job_id = j.id), 0) > (j.payload ->> 'run_cap_usd')::numeric`],
+         AND ${SPENT} > (j.payload ->> 'run_cap_usd')::numeric`],
   ["a finished run is not on its last step",
     `j.status = 'done' AND (j.payload ->> 'step') IS DISTINCT FROM 'done'`],
   ["a finished run lists no saved files",
@@ -251,16 +299,16 @@ const CHECKS = [
   {
     surface: "marketing-command-center.html",
     control: "Settings: quiet hours: start and end time inputs",
-    requirement: "Every buzz that was made inside the saved quiet hours (after they were last saved) must have waited: none may have been texted before quiet hours ended.",
+    requirement: "No buzz may have been texted inside the saved quiet hours (judged for texts sent after they were last saved), whenever the buzz was made.",
     sql: quietHoursSql,
     names: QUIET_BAD.map(([name]) => name),
   },
   {
     surface: "marketing-command-center.html",
     control: "Settings: schedule fields: drop day, drop time (Arizona), scripts a day, days in a batch, count rule (total / per funnel), style for each of 6 script kinds, drafts expiry",
-    requirement: "Every weekly batch planned under the saved schedule must drop on the saved weekday and time and hold the saved count; every machine script written since the last save must carry the style saved for its kind; and no machine draft may still be a draft past the saved expiry days.",
+    requirement: "Every weekly batch planned under the saved schedule must drop on the saved weekday and time, hold the saved count, and be released within two hours of its drop time; a switched-on schedule must have made a weekly batch within nine days of the last save; every machine script written since the last save must carry the style saved for its kind; and no machine draft may be a draft past the saved expiry days or expired before them.",
     sql: scheduleSql,
-    names: [...DROP_BAD, ...STYLE_BAD, ...EXPIRY_BAD].map(([name]) => name),
+    names: [...DROP_BAD, ...NO_DROP_BAD, ...STYLE_BAD, ...EXPIRY_BAD].map(([name]) => name),
   },
   {
     surface: "marketing-command-center.html",
@@ -279,7 +327,7 @@ const CHECKS = [
   {
     surface: "marketing-command-center.html",
     control: "Today: 'Build the avatar' button on step 1 (cost sheet, run, live step words, Retry after a stop)",
-    requirement: "Every avatar run must have spent no more than the stop amount saved on it; a finished run must be on its last step and list its saved files; a run that stopped at the cap must say why.",
+    requirement: "Every avatar run must carry a stop amount and have spent no more than it (a call with no price counted at the highest known rate); a finished run must be on its last step and list its saved files; a run that stopped at the cap must say why.",
     sql: avatarSql,
     names: AVATAR_BAD.map(([name]) => name),
   },
