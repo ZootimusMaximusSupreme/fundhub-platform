@@ -249,6 +249,10 @@ Clarity Data Export: one pull per time Chris asks. Go through `src/adapters/clar
 
 Every ad line is written fresh, because each ad is a test. Reuse a line only when the numbers show it is a high-converting phrase. Same law: `.cursor/rules/ad-no-recycled-lines.mdc` and `.claude/rules/ad-no-recycled-lines.md`.
 
+### 100% certainty in scripts (owner-set 2026-10-15)
+
+Every script speaks with certainty. Never "we think", "you might", "maybe", "could" or "likely". Same law: `.cursor/rules/copy-certainty.mdc` and `.claude/rules/copy-certainty.md`.
+
 ### Monday is 100% (owner-set 2026-10-14)
 
 By **Monday 2026-10-19** the whole company is 100% coded, wired and working, proven by the heartbeat, and then we refactor. Every item green or verified "nothing to judge", every money and customer item on a live deep check, every real break fixed, and 48 clean hours first. Chris set it; do not re-open it. Same law: `.cursor/rules/monday-100-percent.mdc` and `.claude/rules/monday-100-percent.md`.

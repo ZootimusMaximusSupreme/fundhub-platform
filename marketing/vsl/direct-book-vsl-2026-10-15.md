@@ -16,6 +16,7 @@ What changed (Chris, 2026-10-15):
   funding. It ends with "we go get the funding with you" so the upsell stays.
 - No upfront fee line. The funding path uses the guarantee instead.
 - Numbers written as numerals.
+- 100% certainty (owner rule 10:18): no "we think", "maybe", "most likely".
 - Call line in Chris's words (10:17): "runs a 3-bureau report. You pay $32, and there's no impact on your score." He found "tri-bureau soft pull" hard to read on camera.
 
 Shoot: 4K, vertical (it is a VSL, not an ad). Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
@@ -31,13 +32,13 @@ And there's one step most people miss that makes the biggest difference of all. 
 
 I'm Chris, I run Fundhub. I learned the funding game ten years ago, and I've funded a little over $1 million for myself since then.
 
-Maybe your bank denied you and never told you why.
+When a bank denies you and never tells you why, nobody checked your file against what that bank approves.
 
-Maybe someone sent your file to every lender on their list, and you walked away with two approvals and a report full of hard inquiries.
+When someone sends your file to every lender on their list, you walk away with two approvals and a report full of hard inquiries.
 
-Or maybe you've never applied, because you didn't want a hard pull just to find out what you qualify for.
+And when you skip applying because you don't want a hard pull, you never find out what you qualify for.
 
-All three happen for the same reason. Nobody checked your file against what each bank approves before the applications went out.
+All three come from the same mistake. Nobody checks your file against what each bank approves before the applications go out.
 
 Our underwriting software, UnderwriteIQ, catches those small details before anything goes out, so we fix them first.
 
@@ -73,12 +74,12 @@ You learn funding by doing it on your own file, with an advisor checking in and 
 
 We GUARANTEE it's the last tool you'll need to learn the funding game, and when your file is ready, we go get the funding with you.
 
-We've worked hundreds of files and collected thousands of data points on what lenders approve, so we can tell you what's most likely for your file.
+We've worked hundreds of files and collected thousands of data points on what lenders approve, so we know exactly what your file qualifies for.
 
 Click the button below, fill out the 10-second application, and pick a time for your call.
 
 Your advisor meets with you on a Google Meet and runs a 3-bureau report. You pay $32, and there's no impact on your score.
 
-You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back, and the fastest way to the maximum amount of funding.
+You'll see how much you qualify for based on where you're at right now, what's holding your file back, and the fastest way to the maximum amount of funding.
 
 If you've been told no before, or you just want to know what's possible, this call is where you find out. Click the button below and book your call.
