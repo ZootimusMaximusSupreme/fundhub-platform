@@ -215,27 +215,147 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
   return fake;
 }
 
+/* ── a richer, strict reader for UPDATE statements (used by runUpdate) ─────────────────────────── */
+
+function splitArgs(list) {
+  return splitTop(list);
+}
+function stripOuterParens(e) {
+  let t = e.trim();
+  while (t.startsWith("(") && t.endsWith(")")) {
+    let depth = 0;
+    let wraps = true;
+    for (let i = 0; i < t.length; i += 1) {
+      if (t[i] === "(") depth += 1;
+      if (t[i] === ")") depth -= 1;
+      if (depth === 0 && i < t.length - 1) { wraps = false; break; }
+    }
+    if (!wraps) break;
+    t = t.slice(1, -1).trim();
+  }
+  return t;
+}
+const listOf = (inner) => splitArgs(inner).map((x) => { const m = /^'(.*)'$/.exec(x.trim()); return m ? m[1] : x.trim(); });
+
+/** One boolean condition of a CASE WHEN or a WHERE: a flag param, IN (...), = literal or param, IS [NOT] NULL. */
+function evalCond(cond, row, params) {
+  const c = stripOuterParens(cond);
+  let m;
+  if ((m = /^\$(\d+)(?:::\w+)?$/.exec(c))) return Boolean(params[Number(m[1]) - 1]);
+  if ((m = /^(?:[a-z]\w*\.)?([a-z_]\w*)\s+(NOT\s+)?IN\s*\(([^)]*)\)$/i.exec(c))) {
+    const hit = listOf(m[3]).includes(String(row[m[1]]));
+    return m[2] ? !hit : hit;
+  }
+  if ((m = /^(?:[a-z]\w*\.)?([a-z_]\w*)\s*=\s*'([^']*)'$/i.exec(c))) return String(row[m[1]]) === m[2];
+  if ((m = /^(?:[a-z]\w*\.)?([a-z_]\w*)\s*=\s*\$(\d+)(?:::\w+)?$/i.exec(c))) return String(row[m[1]]) === String(params[Number(m[2]) - 1]);
+  if ((m = /^(?:[a-z]\w*\.)?([a-z_]\w*)\s+IS\s+(NOT\s+)?NULL$/i.exec(c))) {
+    const isNull = row[m[1]] === null || row[m[1]] === undefined;
+    return m[2] ? !isNull : isNull;
+  }
+  throw new Error(`runUpdate: cannot read the condition: ${c}`);
+}
+
+let clockTick = 0;
+/** now(): each call is a later moment, so keeping an old stamp and overwriting it can be told apart. */
+const nextNow = () => new Date(Date.UTC(2026, 9, 14, 12, 0, 0) + (clockTick += 1) * 1000).toISOString();
+
+function evalExpr2(expr, row, params, resolvers = {}, column = null) {
+  const e = stripOuterParens(expr);
+  if (column && resolvers[column]) return resolvers[column](e, row, params);
+  let m;
+  if ((m = /^\$(\d+)(?:::[a-z0-9_\[\]]+)?$/i.exec(e))) {
+    const v = params[Number(m[1]) - 1];
+    return typeof v === "string" && /^\s*[[{]/.test(v) ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v;
+  }
+  if (/^NULL$/i.test(e)) return null;
+  if (/^now\(\)$/i.test(e)) return nextNow();
+  if ((m = /^'((?:[^']|'')*)'(?:::[a-z0-9_]+)?$/.exec(e))) return m[1].replace(/''/g, "'");
+  if (/^-?\d+(\.\d+)?$/.test(e)) return Number(e);
+  if (/^(true|false)$/i.test(e)) return e.toLowerCase() === "true";
+  if ((m = /^COALESCE\(([\s\S]*)\)$/i.exec(e))) {
+    for (const part of splitArgs(m[1])) {
+      const v = evalExpr2(part, row, params, resolvers);
+      if (v !== null && v !== undefined) return v;
+    }
+    return null;
+  }
+  if ((m = /^NULLIF\(([\s\S]*)\)$/i.exec(e))) {
+    const [a, b] = splitArgs(m[1]);
+    const av = evalExpr2(a, row, params, resolvers);
+    const bv = evalExpr2(b, row, params, resolvers);
+    return String(av) === String(bv) ? null : av;
+  }
+  if ((m = /^btrim\(([\s\S]*)\)$/i.exec(e))) {
+    const v = evalExpr2(m[1], row, params, resolvers);
+    return v === null || v === undefined ? v : String(v).trim();
+  }
+  if ((m = /^CASE\s+WHEN\s+([\s\S]+?)\s+THEN\s+([\s\S]+?)\s+ELSE\s+([\s\S]+?)\s+END$/i.exec(e))) {
+    return evalCond(m[1], row, params) ? evalExpr2(m[2], row, params, resolvers) : evalExpr2(m[3], row, params, resolvers);
+  }
+  if ((m = /^([a-z_]\w*)\s*\+\s*(\d+)$/i.exec(e))) return Number(row[m[1]] || 0) + Number(m[2]);
+  if ((m = /^(?:[a-z]\w*\.)?([a-z_]\w*)$/i.exec(e))) return row[m[1]] === undefined ? null : row[m[1]];
+  return undefined;
+}
+
 /**
  * Run one `UPDATE t SET col = expr, ... WHERE ... [RETURNING cols]` statement over `rows` and apply the
- * statement's OWN set list to every row its WHERE keeps (the conditions are judged by rowsWhere). Unlike
- * the tablesDb autoUpdate this one is strict: a SET expression it cannot read throws, so a test can
- * never silently ignore a column the product writes. Returns { hit, returning } where `returning` is the
- * RETURNING column list (or null). `rows` is the live array.
+ * statement's OWN set list to every row its WHERE keeps (the conditions are judged by rowsWhere, plus
+ * `col [NOT] IN (...)`). Unlike the tablesDb autoUpdate this one is strict: a SET expression or a
+ * condition it cannot read throws, so a test can never silently ignore a column the product writes.
+ * `resolvers` is `{ column: (expr, row, params) => value }` for a column whose expression the reader
+ * cannot know (a sub-select), evaluated by the caller from the statement text it is handed.
+ * Returns { hit, returning, columns } where `returning` is the RETURNING column list (or null).
  */
-export function runUpdate(rows, sql, params = []) {
-  const m = UPDATE.exec(String(sql).trim().replace(/;\s*$/, ""));
-  if (!m) throw new Error(`runUpdate: not an UPDATE ... SET ... WHERE statement: ${String(sql).slice(0, 80)}`);
-  const hit = rowsWhere(rows, `WHERE ${m[3]}`, params);
-  const sets = splitTop(m[2]).map((a) => { const i = a.indexOf("="); return [a.slice(0, i).trim(), a.slice(i + 1).trim()]; });
-  for (const row of hit) {
+/** Split `UPDATE t SET <set> WHERE <where> [RETURNING <cols>]` at the top-level keywords (sub-selects are left whole). */
+function splitUpdate(text) {
+  const head = /^\s*UPDATE\s+([a-z_][a-z0-9_]*)\s+SET\s+/i.exec(text);
+  if (!head) return null;
+  const rest = text.slice(head[0].length);
+  let depth = 0;
+  let quote = false;
+  let whereAt = -1;
+  let returningAt = -1;
+  for (let i = 0; i < rest.length; i += 1) {
+    const ch = rest[i];
+    if (ch === "'") quote = !quote;
+    if (quote) continue;
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (depth === 0 && /\s/.test(ch)) {
+      const tail = rest.slice(i + 1);
+      if (whereAt < 0 && /^WHERE\s/i.test(tail)) whereAt = i + 1;
+      else if (returningAt < 0 && /^RETURNING\s/i.test(tail)) returningAt = i + 1;
+    }
+  }
+  if (whereAt < 0) return null;
+  const setText = rest.slice(0, whereAt).trim();
+  const whereEnd = returningAt >= 0 ? returningAt : rest.length;
+  const whereText = rest.slice(whereAt + "WHERE".length, whereEnd).trim();
+  const returningText = returningAt >= 0 ? rest.slice(returningAt + "RETURNING".length).trim() : null;
+  return { table: head[1], setText, whereText, returningText };
+}
+
+export function runUpdate(rows, sql, params = [], { resolvers = {} } = {}) {
+  const text = String(sql).replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ").trim().replace(/;\s*$/, "");
+  const parts = splitUpdate(text);
+  if (!parts) throw new Error(`runUpdate: not an UPDATE ... SET ... WHERE statement: ${text.slice(0, 80)}`);
+  const inConds = [];
+  const where = parts.whereText.replace(/\b(?:[a-z]\w*\.)?([a-z_]\w*)\s+(NOT\s+)?IN\s*\(([^)]*)\)/gi, (whole, col, not, list) => {
+    inConds.push({ col, not: !!not, values: listOf(list) });
+    return " ";
+  });
+  const kept = rowsWhere(rows, `WHERE ${where}`, params)
+    .filter((r) => inConds.every((c) => (c.values.includes(String(r[c.col])) !== c.not)));
+  const sets = splitTop(parts.setText).map((a) => { const i = a.indexOf("="); return [a.slice(0, i).trim(), a.slice(i + 1).trim()]; });
+  for (const row of kept) {
     const next = {};
     for (const [col, expr] of sets) {
-      const v = evalExpr(expr, row, params);
+      const v = evalExpr2(expr, row, params, resolvers, col);
       if (v === undefined) throw new Error(`runUpdate: cannot read the SET expression for ${col}: ${expr}`);
       next[col] = v;
     }
     Object.assign(row, next);
   }
-  const returning = m[4] ? m[4].split(",").map((c) => c.trim()) : null;
-  return { hit, returning, columns: sets.map(([c]) => c) };
+  const returning = parts.returningText ? parts.returningText.split(",").map((c) => c.trim()) : null;
+  return { hit: kept, returning, columns: sets.map(([c]) => c), text, table: parts.table };
 }

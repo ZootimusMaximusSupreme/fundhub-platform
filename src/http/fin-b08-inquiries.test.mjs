@@ -10,12 +10,16 @@ import assert from "node:assert/strict";
 import handler from "../../api/inquiries.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { rowsWhere, bindProblem, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
+import { runUpdate } from "../testing/fin-b08-tables.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const INQ = "b1000000-0000-4000-8000-000000000001";
 const OTHER_INQ = "b2000000-0000-4000-8000-000000000002";
 const FOREIGN_INQ = "b9000000-0000-4000-8000-000000000009";
 const CASE = "ca000000-0000-4000-8000-000000000001";
+const CASE_2 = "ca000000-0000-4000-8000-000000000002";
+const CASE_DONE = "ca000000-0000-4000-8000-000000000003";
+const CLIENT_2 = "c2000000-0000-4000-8000-000000000002";
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const SHIFT = "5e000000-0000-4000-8000-0000000000aa";
 
@@ -26,7 +30,11 @@ function inquiryFile({ openShift = true, log, attempts = [] } = {}) {
     { id: FOREIGN_INQ, org_id: OTHER_ORG_ID, client_id: "c9000000-0000-4000-8000-000000000009", bureau: "EQ", inquiry: "Foreign Bank", status: "Open", is_open: true, call_attempts: 0, outcome: null, worked_by: null, case_id: null, confirmed_at: null, cleared_at: null },
   ];
   const inquiry_attempts = attempts;
-  const state = { inquiry_log, inquiry_attempts, staffEvents: [], events: [], cases: [{ id: CASE, case_status: "In Progress", open_inquiry_count: 2 }] };
+  const state = { inquiry_log, inquiry_attempts, staffEvents: [], events: [], cases: [
+    { id: CASE, case_status: "In Progress", open_inquiry_count: 2, cleared_at: null, completed_at: null },
+    { id: CASE_2, case_status: "In Progress", open_inquiry_count: 1, cleared_at: null, completed_at: null },
+    { id: CASE_DONE, case_status: "Canceled", open_inquiry_count: 1, cleared_at: null, completed_at: null },
+  ] };
   let seq = 0;
   const fake = fakeDb([
     [/^\s*SELECT \* FROM shifts\s+WHERE staff_id = \$1 AND ended_at IS NULL/i, (_s, p) => (openShift && p[0] === STAFF_ID ? [{ id: SHIFT, staff_id: STAFF_ID, org_id: ORG_ID, started_at: "2026-10-14T08:00:00Z" }] : [])],
@@ -36,12 +44,16 @@ function inquiryFile({ openShift = true, log, attempts = [] } = {}) {
       return { rows: [], rowCount: 1 };
     }],
     [/^\s*UPDATE inquiry_log\s+SET call_attempts = \(/i, (s, p) => {
-      const hit = rowsWhere(inquiry_log, s.slice(s.indexOf("WHERE id = $1 AND org_id = $4")), p);
-      for (const r of hit) {
-        r.call_attempts = inquiry_attempts.filter((a) => a.inquiry_id === r.id && ["call", "letter", "portal"].includes(a.kind)).length;
-        r.outcome = p[1] ?? r.outcome;
-        r.worked_by = p[2];
-      }
+      // The statement's own set list is applied. Only the sub-select (the attempt count) is answered here,
+      // from the attempt rows and the kinds the sub-select itself names.
+      const { hit } = runUpdate(inquiry_log, s, p, { resolvers: {
+        call_attempts: (expr, _row, params) => {
+          const m = /^SELECT count\(\*\) FROM inquiry_attempts WHERE inquiry_id = \$1 AND kind IN \(([^)]*)\)$/i.exec(expr.replace(/\s+/g, " "));
+          if (!m) throw new Error(`the inquiries stand-in cannot read the count: ${expr}`);
+          const kinds = m[1].split(",").map((k) => k.trim().replace(/^'|'$/g, ""));
+          return inquiry_attempts.filter((a) => a.inquiry_id === params[0] && kinds.includes(a.kind)).length;
+        },
+      } });
       return hit.map((r) => ({ ...r }));
     }],
     [/^\s*INSERT INTO staff_events/i, (_s, p) => {
@@ -49,25 +61,17 @@ function inquiryFile({ openShift = true, log, attempts = [] } = {}) {
       state.staffEvents.push(row);
       return [row];
     }],
-    [/^\s*UPDATE inquiry_log\s+SET status = \$3,\s+confirmed_at = now\(\)/i, (s, p) => {
-      const hit = rowsWhere(inquiry_log, s.slice(s.indexOf("WHERE id = $1 AND org_id = $4")), p);
-      for (const r of hit) Object.assign(r, { status: p[2], confirmed_at: "now", cleared_at: r.cleared_at || "now", is_open: false, worked_by: p[1] });
-      return hit.map((r) => ({ ...r }));
-    }],
+    [/^\s*UPDATE inquiry_log\s+SET status = \$3,\s+confirmed_at = now\(\)/i, (s, p) => runUpdate(inquiry_log, s, p).hit.map((r) => ({ ...r }))],
     [/^\s*SELECT COUNT\(\*\)::int AS n FROM inquiry_log WHERE case_id = \$1 AND is_open = true/i, (_s, p) => [{ n: inquiry_log.filter((r) => r.case_id === p[0] && r.is_open).length }]],
-    [/^\s*UPDATE inquiry_removal_cases SET\s+case_status = 'Completed'/i, (_s, p) => { const c = state.cases.find((x) => x.id === p[0]); if (c) { c.case_status = "Completed"; c.open_inquiry_count = 0; } return { rows: [], rowCount: 1 }; }],
-    [/^\s*UPDATE inquiry_removal_cases SET\s+open_inquiry_count = \$2::int/i, (_s, p) => { const c = state.cases.find((x) => x.id === p[0]); if (c) c.open_inquiry_count = p[1]; return { rows: [], rowCount: 1 }; }],
+    [/^\s*UPDATE inquiry_removal_cases SET\s+case_status = 'Completed'/i, (s, p) => { runUpdate(state.cases, s, p); return { rows: [], rowCount: 1 }; }],
+    [/^\s*UPDATE inquiry_removal_cases SET\s+open_inquiry_count = \$2::int/i, (s, p) => { runUpdate(state.cases, s, p); return { rows: [], rowCount: 1 }; }],
     [/^\s*INSERT INTO events \(org_id, name, version, idempotency_key, client_id, payload\)/i, (_s, p) => {
       if (p[3] && state.events.some((e) => e.org_id === p[0] && e.idempotency_key === p[3])) return [];
       const e = { id: `ev${state.events.length + 1}`, org_id: p[0], name: p[1], idempotency_key: p[3], client_id: p[4], payload: p[5] };
       state.events.push(e);
       return [{ id: e.id }];
     }],
-    [/^\s*UPDATE inquiry_log\s+SET status = \$3,\s+confirmed_at = CASE/i, (s, p) => {
-      const hit = rowsWhere(inquiry_log, s.slice(s.indexOf("WHERE id = $1 AND org_id = $5")), p);
-      for (const r of hit) Object.assign(r, { status: p[2], confirmed_at: p[3] ? (r.confirmed_at || "now") : null, worked_by: p[1] });
-      return hit.map((r) => ({ ...r }));
-    }],
+    [/^\s*UPDATE inquiry_log\s+SET status = \$3,\s+confirmed_at = CASE/i, (s, p) => runUpdate(inquiry_log, s, p).hit.map((r) => ({ ...r }))],
     [/^\s*SELECT a\.id, a\.kind, a\.outcome, a\.note, a\.created_at, a\.staff_id,/i, (s, p) => {
       const ok = new Set(inquiry_log.filter((r) => r.org_id === p[1]).map((r) => r.id));
       return inquiry_attempts.filter((a) => a.inquiry_id === p[0] && a.org_id === p[1] && ok.has(a.inquiry_id))
@@ -264,5 +268,77 @@ describe("/api/inquiries", () => {
     assert.equal(none.res.statusCode, 401);
     const bad = await call(post({ inquiry_id: INQ, action: "wipe" }), inquiryFile());
     assert.equal(bad.res.statusCode, 400);
+  });
+
+  test("reopening a confirmed inquiry takes the confirmation with it, and a note on a counted outcome leaves the outcome alone", async () => {
+    const fake = inquiryFile();
+    const confirmed = await call(post({ inquiry_id: INQ, action: "confirm" }), fake);
+    assert.equal(confirmed.res.statusCode, 200);
+    const row = fake.state.inquiry_log.find((r) => r.id === INQ);
+    assert.ok(row.confirmed_at && row.cleared_at);
+    assert.equal(row.is_open, false);
+    assert.equal(row.status, "Removed");
+    const stamped = row.cleared_at;
+    const reopened = await call(post({ inquiry_id: INQ, action: "status", status: "Bureau re-reported it" }), fake);
+    assert.equal(reopened.res.statusCode, 200);
+    assert.equal(row.confirmed_at, null, "a row that is not confirmed carries no confirmation time");
+    assert.equal(row.cleared_at, stamped, "the clearing time is history and stays");
+    // A second confirm with a custom word keeps the first clearing time and writes the word.
+    await call(post({ inquiry_id: INQ, action: "confirm", status: "Deleted by Experian" }), fake);
+    assert.equal(row.status, "Deleted by Experian");
+    assert.equal(row.cleared_at, stamped);
+  });
+
+  test("a case somebody already closed or canceled is not reopened as completed when its last inquiry is confirmed", async () => {
+    const fake = inquiryFile();
+    const last = "b4000000-0000-4000-8000-000000000004";
+    fake.state.inquiry_log.push({ id: last, org_id: ORG_ID, client_id: CLIENT, bureau: "EQ", inquiry: "Discover", status: "Open", is_open: true, case_id: CASE_DONE, call_attempts: 0, outcome: null, worked_by: null });
+    const { res } = await call(post({ inquiry_id: last, action: "confirm" }), fake);
+    assert.equal(res.statusCode, 200);
+    const done = fake.state.cases.find((c) => c.id === CASE_DONE);
+    assert.equal(done.case_status, "Canceled", "a canceled case stays canceled");
+    assert.equal(done.completed_at, null);
+    // And a live case is completed with its times and counters written by the statement.
+    const live = "b5000000-0000-4000-8000-000000000005";
+    fake.state.inquiry_log.push({ id: live, org_id: ORG_ID, client_id: CLIENT_2, bureau: "TU", inquiry: "Citi", status: "Open", is_open: true, case_id: CASE_2, call_attempts: 0, outcome: null, worked_by: null });
+    await call(post({ inquiry_id: live, action: "confirm" }), fake);
+    const c2 = fake.state.cases.find((c) => c.id === CASE_2);
+    assert.equal(c2.case_status, "Completed");
+    assert.equal(c2.open_inquiry_count, 0);
+    assert.equal(c2.master_call_state, "completed");
+    assert.ok(c2.completed_at && c2.cleared_at);
+  });
+
+  test("each client's removal is announced under its own key: two clients' last inquiries make two events, and so do two status changes", async () => {
+    const fake = inquiryFile();
+    const a = "b6000000-0000-4000-8000-000000000006";
+    const b = "b7000000-0000-4000-8000-000000000007";
+    fake.state.inquiry_log.push(
+      { id: a, org_id: ORG_ID, client_id: CLIENT, bureau: "EQ", inquiry: "Discover", status: "Open", is_open: true, case_id: CASE_DONE === "x" ? null : CASE_2, call_attempts: 0, outcome: null, worked_by: null },
+      { id: b, org_id: ORG_ID, client_id: CLIENT_2, bureau: "TU", inquiry: "Citi", status: "Open", is_open: true, case_id: CASE_DONE, call_attempts: 0, outcome: null, worked_by: null },
+    );
+    // Two different cases, each down to its last open inquiry.
+    await call(post({ inquiry_id: a, action: "confirm" }), fake);
+    await call(post({ inquiry_id: b, action: "confirm" }), fake);
+    const removed = fake.state.events.filter((e) => e.name === "inquiry.removed");
+    // Each confirm announces twice: once from the case being completed, once from the "removed" status.
+    const fromCase = removed.filter((e) => e.idempotency_key.includes("case-cleared"));
+    const fromStatus = removed.filter((e) => e.idempotency_key.startsWith("inquiry.removed:log:"));
+    assert.equal(fromCase.length, 2, "the second client's case completion is not swallowed as a repeat of the first");
+    assert.equal(fromStatus.length, 2, "nor is its status announcement");
+    assert.deepEqual(fromCase.map((e) => e.client_id).sort(), [CLIENT, CLIENT_2].sort());
+    assert.equal(new Set(removed.map((e) => e.idempotency_key)).size, 4);
+    assert.ok(fromCase.some((e) => e.idempotency_key.includes(a)) && fromCase.some((e) => e.idempotency_key.includes(b)), "each key names its own inquiry");
+
+    const statusFile = inquiryFile();
+    await call(post({ inquiry_id: INQ, action: "status", status: "Removed" }), statusFile);
+    await call(post({ inquiry_id: OTHER_INQ, action: "status", status: "Removed" }), statusFile);
+    const viaStatus = statusFile.state.events.filter((e) => e.name === "inquiry.removed");
+    assert.equal(viaStatus.length, 2, "two inquiries marked removed are two announcements");
+    assert.equal(new Set(viaStatus.map((e) => e.idempotency_key)).size, 2);
+    assert.ok(viaStatus.every((e) => e.idempotency_key.includes(INQ) || e.idempotency_key.includes(OTHER_INQ)));
+    // The same inquiry marked removed twice is one announcement.
+    await call(post({ inquiry_id: INQ, action: "status", status: "Removed" }), statusFile);
+    assert.equal(statusFile.state.events.filter((e) => e.name === "inquiry.removed").length, 2);
   });
 });
