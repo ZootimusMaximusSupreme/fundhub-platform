@@ -19,29 +19,85 @@ const CLIENT_BIZ = "9988776655";
 const TOKEN = ["meta", "agency", "token", "for", "tests"].join("-");
 const ENV = () => ({ META_BUSINESS_ID: AGENCY, META_ACCESS_TOKEN: TOKEN, AD_TOKEN_ENC_KEY: crypto.randomBytes(32).toString("base64") });
 
-function metaFile({ connections = [] } = {}) {
+
+/* The statement's own upsert, read from its text: the columns and values it inserts, the conflict key it
+   names, the assignments of its DO UPDATE list and its RETURNING list. Nothing about what a re-save does
+   is decided here: change the SQL and the stored rows change. An expression this reader does not know
+   throws, so a new clause in the statement cannot be ignored. */
+function splitTop(list) {
+  const out = [];
+  let depth = 0;
+  let quote = false;
+  let cur = "";
+  for (const ch of list) {
+    if (ch === "'") quote = !quote;
+    if (!quote) {
+      if (ch === "(") depth += 1;
+      if (ch === ")") depth -= 1;
+      if (ch === "," && depth === 0) { out.push(cur.trim()); cur = ""; continue; }
+    }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+const parseJson = (v) => (typeof v === "string" && /^[[{]/.test(v) ? JSON.parse(v) : v);
+function upsert(state, sql, params, newId) {
+  const text = String(sql).replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").trim();
+  const m = /^INSERT INTO (\w+) \(([^)]+)\) VALUES \((.+?)\) ON CONFLICT \(([^)]+)\) DO UPDATE SET (.+?) RETURNING (.+)$/i.exec(text);
+  if (!m) throw new Error(`upsert: the statement has a shape this stand-in does not know: ${text.slice(0, 120)}`);
+  const table = m[1];
+  const cols = m[2].split(",").map((c) => c.trim());
+  const values = splitTop(m[3]);
+  const key = m[4].split(",").map((c) => c.trim());
+  const insert = {};
+  cols.forEach((col, i) => {
+    const v = values[i];
+    let mm;
+    if ((mm = /^\$(\d+)(?:::\w+)?$/.exec(v))) insert[col] = parseJson(params[Number(mm[1]) - 1]);
+    else if ((mm = /^'(.*)'$/.exec(v))) insert[col] = mm[1];
+    else if (/^now\(\)$/i.test(v)) insert[col] = "now";
+    else throw new Error(`upsert: cannot read the value for ${col}: ${v}`);
+  });
+  if (insert.org_id === null || insert.org_id === undefined) {
+    throw Object.assign(new Error('null value in column "org_id" violates not-null constraint'), { code: "23502" });
+  }
+  const existing = state.connections.find((c) => key.every((k) => c[k] === insert[k]));
+  let row;
+  if (!existing) {
+    row = { id: newId(), ...insert };
+    state.connections.push(row);
+  } else {
+    row = existing;
+    for (const part of splitTop(m[5])) {
+      const i = part.indexOf("=");
+      const col = part.slice(0, i).trim();
+      const rhs = part.slice(i + 1).trim();
+      let mm;
+      if ((mm = /^EXCLUDED\.(\w+)$/i.exec(rhs))) row[col] = insert[mm[1]];
+      else if ((mm = /^COALESCE\(\s*EXCLUDED\.(\w+)\s*,\s*\w+\.(\w+)\s*\)$/i.exec(rhs))) row[col] = insert[mm[1]] ?? row[mm[2]];
+      else if ((mm = /^CASE WHEN \w+\.(\w+) = '([^']*)' THEN '([^']*)' ELSE '([^']*)' END$/i.exec(rhs))) row[col] = row[mm[1]] === mm[2] ? mm[3] : mm[4];
+      else if (/^now\(\)$/i.test(rhs)) row[col] = "now";
+      else throw new Error(`upsert: cannot read the assignment for ${col}: ${rhs}`);
+    }
+  }
+  const out = {};
+  for (const item of splitTop(m[6])) {
+    let mm;
+    if ((mm = /^\(\s*(\w+)\s+IS NOT NULL\s*\)\s+AS\s+(\w+)$/i.exec(item))) out[mm[2]] = row[mm[1]] !== null && row[mm[1]] !== undefined;
+    else if (/^\w+$/.test(item)) out[item] = row[item];
+    else throw new Error(`upsert: cannot read the RETURNING item: ${item}`);
+  }
+  void table;
+  return [out];
+}
+
+function metaFile({ connections = [], failInsert = null } = {}) {
   const state = { connections, fetches: [] };
   let seq = 0;
   const fake = fakeDb([
     [/^\s*SELECT id, org_id FROM partners WHERE id = \$1/i, (_s, p) => [{ id: PARTNER, org_id: ORG_ID }, { id: OTHER_PARTNER, org_id: OTHER_ORG_ID }].filter((r) => r.id === p[0])],
-    [/^\s*INSERT INTO ad_platform_connections/i, (s, p) => {
-      const [org_id, partner_id, external_business_id, external_ad_account_id, enc, scopes, last_error] = p;
-      const existing = state.connections.find((c) => c.partner_id === partner_id && c.platform === "meta" && c.external_ad_account_id === external_ad_account_id);
-      if (existing) {
-        existing.external_business_id = external_business_id;
-        existing.encrypted_access_token = enc ?? existing.encrypted_access_token;
-        // The statement's own CASE: an active connection stays active, anything else stays pending.
-        if (/WHEN ad_platform_connections\.connection_state = 'active' THEN 'active'\s+ELSE 'pending'/.test(s)) {
-          existing.connection_state = existing.connection_state === "active" ? "active" : "pending";
-        } else existing.connection_state = "pending";
-        existing.last_error = last_error;
-        return [{ ...existing, has_access_token: !!existing.encrypted_access_token }];
-      }
-      const row = { id: `f${++seq}000000-0000-4000-8000-000000000000`, org_id, partner_id, platform: "meta", external_business_id, external_ad_account_id,
-        encrypted_access_token: enc, scopes: JSON.parse(scopes), connection_state: /VALUES \([^)]*'pending'/.test(s) ? "pending" : "active", last_error };
-      state.connections.push(row);
-      return [{ ...row, has_access_token: !!enc }];
-    }],
+    [/^\s*INSERT INTO ad_platform_connections/i, (s, p) => (failInsert ? failInsert : upsert(state, s, p, () => `f${++seq}000000-0000-4000-8000-000000000000`))],
     [/^\s*(BEGIN|COMMIT|ROLLBACK)\b|set_config/i, []],
   ]);
   const inner = fake.query;
@@ -168,5 +224,81 @@ describe("POST /api/campaigns/meta-agency", () => {
     const get = makeRes();
     await runWithSharedDb(fake, () => handler(req("GET", { query: { partner_id: PARTNER } }), get, { db: fake, env: ENV(), fetch: async () => metaOk() }));
     assert.equal(get.statusCode, 405);
+  });
+
+  test("saving the same ad account again updates that row in place: the business id, the token, the scopes and the last words all follow the new save", async () => {
+    const stale = {
+      id: "f9000000-0000-4000-8000-000000000009", org_id: ORG_ID, partner_id: PARTNER, platform: "meta",
+      external_business_id: "1111111111", external_ad_account_id: "act_555", encrypted_access_token: "old-ciphertext-not-a-token",
+      scopes: ["ads_read"], connection_state: "pending", platform_verification_state: "unverified", last_error: "an old complaint",
+    };
+    const fake = metaFile({ connections: [stale] });
+    const first = await call({ partner_id: PARTNER, meta_business_id: CLIENT_BIZ, ad_account_id: "act_555" }, fake);
+    assert.equal(first.res.statusCode, 200);
+    assert.equal(fake.state.connections.length, 1, "the same partner, platform and ad account is one row");
+    const row = fake.state.connections[0];
+    assert.equal(row.id, stale.id);
+    assert.equal(row.external_business_id, CLIENT_BIZ, "the business id follows the latest save");
+    assert.equal(decryptToken(row.encrypted_access_token, { partnerId: PARTNER, env: first.env }), TOKEN, "the stored token is the one just used");
+    assert.deepEqual(row.scopes, ["ads_management", "ads_read", "business_management"]);
+    assert.match(row.last_error, /Waiting on Meta approve/);
+    assert.doesNotMatch(row.last_error, /an old complaint/);
+    assert.equal(first.res.body.connection.id, stale.id);
+    assert.equal(first.res.body.connection.external_business_id, CLIENT_BIZ);
+
+    // Meta refuses this time: the row's last words become Meta's reason plus the waiting line.
+    const refused = await call({ partner_id: PARTNER, meta_business_id: CLIENT_BIZ, ad_account_id: "act_555" }, fake, { responses: () => metaRefused(400, "Capability not granted") });
+    assert.equal(refused.res.statusCode, 200);
+    assert.match(fake.state.connections[0].last_error, /^Capability not granted · Waiting on Meta approve/);
+
+    // A different ad account of the same partner is a second row, not an overwrite of the first.
+    const second = await call({ partner_id: PARTNER, meta_business_id: CLIENT_BIZ, ad_account_id: "act_777" }, fake);
+    assert.equal(second.res.statusCode, 200);
+    assert.equal(fake.state.connections.length, 2);
+    assert.deepEqual(fake.state.connections.map((c) => c.external_ad_account_id).sort(), ["act_555", "act_777"]);
+    // And the same ad account of ANOTHER partner is its own row too.
+    const other = await call({ partner_id: OTHER_PARTNER, meta_business_id: CLIENT_BIZ, ad_account_id: "act_555" }, fake);
+    assert.equal(other.res.statusCode, 200);
+    assert.equal(fake.state.connections.length, 3);
+    assert.equal(fake.state.connections.find((c) => c.partner_id === OTHER_PARTNER).org_id, OTHER_ORG_ID);
+  });
+
+  test("a new connection says it is unverified, and the company stored is the partner row's own, never the sign-in's", async () => {
+    const fake = metaFile();
+    // The partner's login sits in a different company than the partner row (a data problem the handler
+    // must not paper over by stamping the login's company on the connection).
+    const { res } = await call({ meta_business_id: CLIENT_BIZ }, fake, { who: accountSession({ kind: "partner", partnerId: PARTNER, orgId: OTHER_ORG_ID }) });
+    assert.equal(res.statusCode, 200);
+    const row = fake.state.connections[0];
+    assert.equal(row.platform_verification_state, "unverified", "Meta has not verified anything yet");
+    assert.equal(row.connection_state, "pending");
+    assert.equal(row.org_id, ORG_ID, "the connection belongs to the partner's own company");
+  });
+
+  test("the answer never carries the stored ciphertext or any token field", async () => {
+    const fake = metaFile();
+    const { res } = await call({ partner_id: PARTNER, meta_business_id: CLIENT_BIZ }, fake);
+    const stored = fake.state.connections[0].encrypted_access_token;
+    assert.ok(stored && stored.length > 10);
+    const blob = JSON.stringify(res.body);
+    assert.equal(blob.includes(stored), false, "no ciphertext");
+    assert.equal(blob.includes(TOKEN), false);
+    assert.doesNotMatch(blob, /"encrypted_access_token"|"access_token"|"token"/);
+    assert.deepEqual(Object.keys(res.body.connection).sort(), [
+      "connection_state", "external_ad_account_id", "external_business_id", "has_access_token", "id", "last_error", "partner_id", "platform",
+    ]);
+  });
+
+  test("a failed save answers 500 with no stack and no raw database text, and saves nothing", async () => {
+    const boom = new Error('duplicate key value violates unique constraint "ad_platform_connections_pkey" host=10.1.2.3 password=hunter2');
+    boom.stack = `Error: ${boom.message}\n    at upsertConnection (/srv/app/api/campaigns/meta-agency.mjs:99:9)`;
+    const fake = metaFile({ failInsert: boom });
+    const { res } = await call({ partner_id: PARTNER, meta_business_id: CLIENT_BIZ }, fake);
+    assert.equal(res.statusCode, 500);
+    assert.equal(res.body.error, "server_error");
+    assert.equal(res.body.stack, undefined);
+    const blob = JSON.stringify(res.body);
+    assert.doesNotMatch(blob, /hunter2|10\.1\.2\.3|\/srv\/app|upsertConnection|meta-agency\.mjs/);
+    assert.equal(fake.state.connections.length, 0);
   });
 });

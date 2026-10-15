@@ -210,3 +210,28 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
   fake.tables = tables;
   return fake;
 }
+
+/**
+ * Run one `UPDATE t SET col = expr, ... WHERE ... [RETURNING cols]` statement over `rows` and apply the
+ * statement's OWN set list to every row its WHERE keeps (the conditions are judged by rowsWhere). Unlike
+ * the tablesDb autoUpdate this one is strict: a SET expression it cannot read throws, so a test can
+ * never silently ignore a column the product writes. Returns { hit, returning } where `returning` is the
+ * RETURNING column list (or null). `rows` is the live array.
+ */
+export function runUpdate(rows, sql, params = []) {
+  const m = UPDATE.exec(String(sql).trim().replace(/;\s*$/, ""));
+  if (!m) throw new Error(`runUpdate: not an UPDATE ... SET ... WHERE statement: ${String(sql).slice(0, 80)}`);
+  const hit = rowsWhere(rows, `WHERE ${m[3]}`, params);
+  const sets = splitTop(m[2]).map((a) => { const i = a.indexOf("="); return [a.slice(0, i).trim(), a.slice(i + 1).trim()]; });
+  for (const row of hit) {
+    const next = {};
+    for (const [col, expr] of sets) {
+      const v = evalExpr(expr, row, params);
+      if (v === undefined) throw new Error(`runUpdate: cannot read the SET expression for ${col}: ${expr}`);
+      next[col] = v;
+    }
+    Object.assign(row, next);
+  }
+  const returning = m[4] ? m[4].split(",").map((c) => c.trim()) : null;
+  return { hit, returning, columns: sets.map(([c]) => c) };
+}

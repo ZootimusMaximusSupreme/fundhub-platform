@@ -10,6 +10,7 @@ import handler from "../../api/brand/review.mjs";
 import { staffSession, accountSession, req, ORG_ID, OTHER_ORG_ID, STAFF_ID } from "../testing/handler-harness.mjs";
 import { callShared } from "../testing/s3-handler-call.mjs";
 import { tableRules } from "../testing/s3-scoped-rows.mjs";
+import { runUpdate } from "../testing/fin-b08-tables.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
 
 const PARTNER = "d1000000-0000-4000-8000-000000000001";
@@ -23,19 +24,31 @@ function brands(over = {}) {
   ];
 }
 
-/** The partner_brand table as the SQL text drives it: the SET clause decides the new state. */
-function brandRules(rows) {
-  return tableRules("partner_brand", rows, {
-    set(row, params, sql) {
-      if (/SET\s+approval_status = 'review'/i.test(sql)) {
-        Object.assign(row, { approval_status: "review", submitted_at: STAMP, submitted_by: params[2], review_note: null });
-      } else if (/SET\s+approval_status = 'approved'/i.test(sql)) {
-        Object.assign(row, { approval_status: "approved", approved_at: STAMP, approved_by: params[2], review_note: null });
-      } else if (/SET\s+approval_status = 'draft'/i.test(sql)) {
-        Object.assign(row, { approval_status: "draft", approved_at: null, approved_by: null, review_note: params[2] });
-      }
-    },
-  });
+/** Migration 043's CHECK: a brand is approved exactly when it has an approved_at. */
+function assertCoupling(row) {
+  if ((row.approval_status === "approved") !== (row.approved_at !== null && row.approved_at !== undefined)) {
+    throw Object.assign(new Error('new row for relation "partner_brand" violates check constraint "partner_brand_approval_coupling_ck"'), { code: "23514" });
+  }
+}
+
+/**
+ * The partner_brand table as the product's own SQL drives it: the statement's WHERE keeps the rows
+ * (partner, company, state) and its SET list is applied as written (runUpdate reads it; a column it
+ * cannot read throws). Nothing here stamps a column on the product's behalf. After the write the
+ * table's CHECK runs, and the columns the statement's RETURNING names are what comes back.
+ */
+function brandRules(rows, { beforeUpdate = null } = {}) {
+  const selectRule = tableRules("partner_brand", rows)[2]; // [delete, update, select]
+  return [
+    [(sql) => /^\s*UPDATE\s+partner_brand\b/i.test(sql), (sql, params) => {
+      if (beforeUpdate) beforeUpdate(rows);
+      const { hit, returning } = runUpdate(rows, sql, params);
+      for (const row of hit) assertCoupling(row);
+      const project = (row) => (returning ? Object.fromEntries(returning.map((c) => [c, row[c]])) : { ...row });
+      return { rows: hit.map(project), rowCount: hit.length };
+    }],
+    selectRule,
+  ];
 }
 
 const asStaff = (role = "owner", orgId = ORG_ID) => [staffSession({ role, org_id: orgId })];
@@ -53,6 +66,9 @@ describe("POST /api/brand/review", () => {
     assert.equal(res.body.review_note, null);
     assert.equal(mine(rows).approval_status, "review");
     assert.equal(mine(rows).submitted_by, STAFF_ID);
+    assert.ok(mine(rows).submitted_at, "the time it was sent is saved by the statement itself");
+    assert.ok(res.body.submitted_at, "and the answer carries it");
+    assert.equal(res.body.approved_at, null);
     assert.equal(mine(rows).review_note, null);
     assert.equal(mine(rows).approved_at, null, "approval and its time move together: not approved");
   });
@@ -63,7 +79,10 @@ describe("POST /api/brand/review", () => {
     assert.equal(approved.res.statusCode, 200);
     assert.equal(approved.res.body.approval_status, "approved");
     assert.equal(mine(approveRows).approved_by, STAFF_ID);
-    assert.equal(mine(approveRows).approved_at, STAMP);
+    assert.ok(mine(approveRows).approved_at, "the approval time is written by the statement (the table's CHECK refuses an approval without it)");
+    assert.ok(approved.res.body.approved_at, "and the answer carries it");
+    assert.equal(mine(approveRows).review_note, null, "an approval carries no reviewer complaint");
+    assert.equal(approved.res.body.review_note, null);
 
     const rejectRows = brands({ approval_status: "review", approved_at: null });
     const noReason = await post({ partner_id: PARTNER, action: "reject" }, asStaff("owner"), rejectRows);
@@ -78,6 +97,82 @@ describe("POST /api/brand/review", () => {
     assert.equal(mine(rejectRows).approval_status, "draft");
     assert.equal(mine(rejectRows).approved_at, null);
     assert.equal(mine(rejectRows).approved_by, null);
+  });
+
+  test("a reject clears a stale approver and an approve clears the old reviewer note; the answer says what was saved", async () => {
+    const stale = brands({ approval_status: "review", approved_by: "00000000-0000-4000-8000-0000000000aa" });
+    const rejected = await post({ partner_id: PARTNER, action: "reject", note: "Fix the logo" }, asStaff("owner"), stale);
+    assert.equal(rejected.res.statusCode, 200);
+    assert.equal(mine(stale).approved_by, null, "the approval columns go with the approval");
+    assert.equal(mine(stale).approved_at, null);
+    assert.equal(mine(stale).review_note, "Fix the logo");
+
+    const withNote = brands({ approval_status: "review", review_note: "an old complaint" });
+    const approved = await post({ partner_id: PARTNER, action: "approve" }, asStaff("admin"), withNote);
+    assert.equal(approved.res.statusCode, 200);
+    assert.equal(mine(withNote).review_note, null);
+    assert.equal(approved.res.body.review_note, null);
+    assert.equal(approved.res.body.partner_id, PARTNER);
+    assert.equal(approved.res.body.action, "approve");
+  });
+
+  test("the approver and the sender come off the sign-in, never off the body", async () => {
+    const hostile = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+    const rows = brands({ approval_status: "review" });
+    const approved = await post({ partner_id: PARTNER, action: "approve", staff_id: hostile, staffId: hostile, approved_by: hostile }, asStaff("owner"), rows);
+    assert.equal(approved.res.statusCode, 200);
+    assert.equal(mine(rows).approved_by, STAFF_ID);
+    const draft = brands();
+    const submitted = await post({ partner_id: PARTNER, action: "submit", staff_id: hostile, staffId: hostile, submitted_by: hostile }, asStaff("owner"), draft);
+    assert.equal(submitted.res.statusCode, 200);
+    assert.equal(mine(draft).submitted_by, STAFF_ID);
+  });
+
+  test("someone moving the brand between the read and the write is a 409 and their change is not overwritten", async () => {
+    // Each case: the row is in the state the action needs when it is read, and another person moves it
+    // to `then` before the statement runs. The statement's own state condition has to stop the write.
+    const cases = [
+      { action: "submit", from: "draft", then: { approval_status: "review", submitted_by: "00000000-0000-4000-8000-0000000000b1", submitted_at: STAMP }, keep: "submitted_by" },
+      { action: "approve", from: "review", then: { approval_status: "draft", review_note: "Sent back by someone else" }, keep: "review_note" },
+      { action: "reject", from: "review", then: { approval_status: "approved", approved_at: STAMP, approved_by: "00000000-0000-4000-8000-0000000000b2" }, keep: "approved_by" },
+    ];
+    for (const c of cases) {
+      const rows = brands({ approval_status: c.from });
+      let reads = 0;
+      const selectRule = tableRules("partner_brand", rows)[2];
+      const rules = [
+        [(sql) => /^\s*UPDATE\s+partner_brand\b/i.test(sql), (sql, params) => {
+          Object.assign(mine(rows), c.then); // the other person's change lands first
+          const { hit, returning } = runUpdate(rows, sql, params);
+          for (const row of hit) assertCoupling(row);
+          return { rows: hit.map((r) => Object.fromEntries((returning || []).map((k) => [k, r[k]]))), rowCount: hit.length };
+        }],
+        [selectRule[0], (sql, params) => { reads += 1; return selectRule[1](sql, params); }],
+      ];
+      const before = { ...c.then };
+      const { res } = await callShared(handler, req("POST", { body: { partner_id: PARTNER, action: c.action, note: "x" } }), [...asStaff("owner"), ...rules]);
+      assert.equal(res.statusCode, 409, c.action);
+      assert.equal(res.body.error, "wrong_state");
+      assert.equal(res.body.approval_status, c.then.approval_status, `${c.action}: the answer names the state it really is in`);
+      assert.match(res.body.message, /someone else changed this brand a moment ago/);
+      assert.equal(mine(rows).approval_status, c.then.approval_status, `${c.action}: the other person's change stands`);
+      assert.equal(mine(rows)[c.keep], before[c.keep], `${c.action}: ${c.keep} was not overwritten`);
+      assert.equal(reads, 2, `${c.action}: read, write, read again`);
+    }
+  });
+
+  test("a write that fails answers 500 with a plain sentence and no database text, and the brand is untouched", async () => {
+    const rows = brands({ approval_status: "review" });
+    const rules = [
+      [/^\s*UPDATE\s+partner_brand\b/i, new Error('duplicate key value violates unique constraint "partner_brand_pkey" host=10.1.2.3 password=hunter2')],
+      tableRules("partner_brand", rows)[2],
+    ];
+    const { res } = await callShared(handler, req("POST", { body: { partner_id: PARTNER, action: "approve" } }), [...asStaff("owner"), ...rules]);
+    assert.equal(res.statusCode, 500);
+    assert.equal(res.body.error, "write_failed");
+    assert.deepEqual(Object.keys(res.body).sort(), ["error", "message", "ok"], "nothing else rides along");
+    assert.doesNotMatch(JSON.stringify(res.body), /constraint|pkey|10\.1\.2\.3|hunter2|duplicate/);
+    assert.equal(mine(rows).approval_status, "review");
   });
 
   test("an action from the wrong state is refused with 409 and the row is left as it was", async () => {
