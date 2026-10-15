@@ -29,5 +29,47 @@
     "Try again (button on the error panel)"
    ]
   }
+ ],
+ "fin-b18-money-client-pages.test.mjs": [
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-declines.html",
+   "controls": [
+    "Bank name text box (shown for Another bank)",
+    "Your bank applications list",
+    "Your steps list + Fundhub's steps expander (done / skipped / not done yet)"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-helper.html",
+   "controls": [
+    "Banner: helper stopped / not switched on"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-next.html",
+   "controls": [
+    "Check your accounts link (empty state)",
+    "Try again buttons (steps) and (ready card)"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-payments.html",
+   "controls": [
+    "Empty state ('You do not owe Fundhub anything right now') and Error state with Try again"
+   ]
+  },
+  {
+   "sourceFile": "desks-d.json",
+   "surface": "public/app/money-setup.html",
+   "controls": [
+    "Loading and error states with Try again",
+    "Step 2: See my credit link (after a pull)",
+    "Step 3: Add businesses and accounts / Add more link"
+   ]
+  }
  ]
 }
