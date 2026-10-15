@@ -122,6 +122,9 @@ export function finB22FlowProof(sourceFile, row) {
         : live.page
           ? `Executable live page read: ${LANE}; its judge is held to the page files and to changed copies of them by ${live.tests.join(", ")}`
           : `Executable live saved-result check: ${LANE}; its query is run over stand-in rows by ${live.tests.join(", ")}`,
+      // The catalog holds `asserts` equal to the map row's own words (flow-recipes.test.mjs). For a shipped row the
+      // `evidence` above is what says "nothing to judge, read again every run", so no reader takes it for a check
+      // that the step works.
       asserts: row.control,
     };
   }

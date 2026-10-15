@@ -132,6 +132,7 @@ test("the seven steps the live page does not carry are a verified nothing-to-jud
     assert.equal(proof.verdict, undefined, row.surface);
     assert.match(proof.evidence, /Executable verified nothing-to-judge: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
     assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs"), row.surface);
+    assert.match(proof.evidence, /says "na" only while the step is not on it/, row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
   }
 });
