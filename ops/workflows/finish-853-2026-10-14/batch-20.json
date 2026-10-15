@@ -1,0 +1,287 @@
+{
+ "batch": "20",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Header chips: 'N closers on shift' and the signed-in name",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Header chips: 'N closers on shift' and the signed-in name: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Panel 'Compliance' (call recording flags: shows the reason text only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Panel 'Compliance' (call recording flags: shows the reason text only): no exact safe action/result contract is attached ye"
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Panel 'Floor discipline': calls not logged, calls not recorded, shifts late, follow-ups overdue, log lag",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Panel 'Floor discipline': calls not logged, calls not recorded, shifts late, follow-ups overdue, log lag: no exact safe ac"
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Panel 'Where it is coming from' (lead source, held, close, desire)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Panel 'Where it is coming from' (lead source, held, close, desire): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Panel 'Which belief failed' (this period vs last period)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Panel 'Which belief failed' (this period vs last period): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Recording rows: name, client, 'Words ready / Waiting for words', 'Open in Drive' link (https drive.google.com or docs.google.com only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Recording rows: name, client, 'Words ready / Waiting for words', 'Open in Drive' link (https drive.google.com or docs.goog"
+  },
+  {
+   "id": "catalog-display:desks-f.json:sales-floor.html (+ sales-floor.js):Roster row click and Enter/Space (selects that closer in the focus panel and scrolls to it)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sales-floor.html (+ sales-floor.js) — Roster row click and Enter/Space (selects that closer in the focus panel and scrolls to it): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Avatar photo upload (click avatar, choose image)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js (shared chrome on every staff desk) — Avatar photo upload (click avatar, choose image): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Beta banner Dismiss button (owner only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js (shared chrome on every staff desk) — Beta banner Dismiss button (owner only): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Global Search button + overlay input (type to search clients, contracts, documents, conversations, cards)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js (shared chrome on every staff desk) — Global Search button + overlay input (type to search clients, contracts, documents, conversations, cards): no exa"
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Sidebar group heads (collapse/expand), burger collapse, mobile menu button + scrim",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js (shared chrome on every staff desk) — Sidebar group heads (collapse/expand), burger collapse, mobile menu button + scrim: no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Sidebar nav: links in 9 groups (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals), filtered per role and by NAV_HIDDEN (hiring, journeys, finance-os, consent-capture, galaxy, partner-galaxy, ops-admin, automations, brand-studio, affiliate, agent-editor, partner-training have no menu row)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js (shared chrome on every staff desk) — Sidebar nav: links in 9 groups (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals), "
+  },
+  {
+   "id": "catalog-display:desks-c.json:shell.js (shared chrome on every staff desk):Top bar status chip: LIVE / NO API / DB DOWN word (reads /api/health on load)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js (shared chrome on every staff desk) — Top bar status chip: LIVE / NO API / DB DOWN word (reads /api/health on load): no exact safe action/result contra"
+  },
+  {
+   "id": "catalog-display:desks-f.json:shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams):Account chip: name, role, backend source, 'Sign out' button, hide/show chip",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams) — Account chip: name, role, backend source, 'Sign out' button, hide/sh"
+  },
+  {
+   "id": "catalog-display:desks-f.json:shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams):Avatar upload in the account chip",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams) — Avatar upload in the account chip: no exact safe action/result contr"
+  },
+  {
+   "id": "catalog-display:desks-f.json:shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams):Chat widget (staff modes: Ask the knowledge base; message a staff peer)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams) — Chat widget (staff modes: Ask the knowledge base; message a staff pe"
+  },
+  {
+   "id": "catalog-display:desks-f.json:shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams):Clock chip, health chip and brand paint (read-only chrome)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams) — Clock chip, health chip and brand paint (read-only chrome): no exact"
+  },
+  {
+   "id": "catalog-display:desks-f.json:shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams):Role gate: shell.js bounces a role that may not open this screen and hides its sidebar rows (ROLE_TABS, readCachedRole then /api/auth/session)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (loaded by sales-floor, products-commissions, social-studio, staff-teams) — Role gate: shell.js bounces a role that may not open this screen and"
+  },
+  {
+   "id": "catalog-display:desks-a.json:shell.js chrome (mounted on all 10 desks):Account chip: avatar upload",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js chrome (mounted on all 10 desks) — Account chip: avatar upload: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:shell.js chrome (mounted on all 10 desks):Account chip: sign out",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (mounted on all 10 desks) — Account chip: sign out: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:shell.js chrome (mounted on all 10 desks):Global search button and overlay (types a name, opens a hit)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (mounted on all 10 desks) — Global search button and overlay (types a name, opens a hit): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:shell.js chrome (mounted on all 10 desks):Sidebar: 9 group header buttons (fold) + collapse burger + 32 links (one inline copy per desk file)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js chrome (mounted on all 10 desks) — Sidebar: 9 group header buttons (fold) + collapse burger + 32 links (one inline copy per desk file): no exact safe a"
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Account chip: add or change your photo (file picker)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Account chip: add or change your photo (file picker): no exact safe action/result contract i"
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Account chip: Sign out",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Account chip: Sign out: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Owner-only beta banner and demo-mode banner mounted by shell.js",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Owner-only beta banner and demo-mode banner mounted by shell.js: no exact safe action/result"
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Session check on every page load (decides which links and desks this role may see; signs out when no real or demo session)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Session check on every page load (decides which links and desks this role may see; signs out"
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Sidebar group headers (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals) collapse and expand",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Sidebar group headers (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin"
+  },
+  {
+   "id": "catalog-display:desks-b.json:shell.js shared chrome (on every desk here except financeos.html):Sidebar navigation: 32 static links in each desk, replaced at load by the role-filtered copy in shell.js",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "shell.js shared chrome (on every desk here except financeos.html) — Sidebar navigation: 32 static links in each desk, replaced at load by the role-filtered copy"
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:9 section head buttons (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals): fold and unfold",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — 9 section head buttons (Home, Sales, Funding, Client ops, Watch, Automation, Marketing, Admin, Portals): fold and unfold: no exact safe "
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Admin > Brand Studio (brand-studio.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Admin > Brand Studio (brand-studio.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Admin > Hiring (hiring.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Admin > Hiring (hiring.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Automation > Agent Editor (agent-editor.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Automation > Agent Editor (agent-editor.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Automation > Journeys (journeys.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Automation > Journeys (journeys.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Automation > Workflows (automations.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Automation > Workflows (automations.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Client ops > Consent (consent-capture.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Client ops > Consent (consent-capture.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Funding > Finance OS (finance-os.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Funding > Finance OS (finance-os.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Home > Home (partner-galaxy.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Home > Home (partner-galaxy.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Portals > Affiliate (affiliate.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Portals > Affiliate (affiliate.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Watch > Galaxy (galaxy.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Watch > Galaxy (galaxy.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:sidebar.fragment.html:Nav link: Watch > Ops & Admin (ops-admin.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "sidebar.fragment.html — Nav link: Watch > Ops & Admin (ops-admin.html): no exact safe action/result contract is attached yet."
+  }
+ ]
+}

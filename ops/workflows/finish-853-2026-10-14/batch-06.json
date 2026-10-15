@@ -1,0 +1,287 @@
+{
+ "batch": "06",
+ "tier": 3,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:public-pages.json:button:climate/index.html#See how many banks in our bo:See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "button:climate/index.html#See how many banks in our bo — See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts; listed fr"
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Authorized rep: Take them off this file button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Authorized rep: Take them off this file button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Businesses cards: Save month/year button (stamp incorporation)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Businesses cards: Save month/year button (stamp incorporation): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Add credit partner button and First/Last/Email/Phone inputs",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Add credit partner button and First/Last/Email/Phone inputs: no exact safe action/result contract is attached yet"
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Bank list state buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Bank list state buttons: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Offer bank tracker button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Offer bank tracker button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Save ready date button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Save ready date button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Capital Blueprint: Take the offer back button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Capital Blueprint: Take the offer back button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Record decline and build the plan button (bank, product, date, bureaus, letter text)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Declines: Record decline and build the plan button (bank, product, date, bureaus, letter text): no exact safe action/result contract"
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Save and mark done / Skip / Open again step buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Declines: Save and mark done / Skip / Open again step buttons: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Save call date button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Declines: Save call date button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Upload letter button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Declines: Upload letter button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Documents toggle, drop zone, file input, drag and drop upload",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Documents toggle, drop zone, file input, drag and drop upload: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Identity-on-file state line and client approval link box + Copy link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Identity-on-file state line and client approval link box + Copy link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Issue Inquiry Removal button (opens a case, goes to Inquiry Remover)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Issue Inquiry Removal button (opens a case, goes to Inquiry Remover): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Lender row: Apply button (proxy launch, opens bank page)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Lender row: Apply button (proxy launch, opens bank page): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Lender row: Pending button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Lender row: Pending button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Notes textarea and Save notes button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-control-panel.html — Notes textarea and Save notes button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Agreements tab: Review & sign link per contract",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Agreements tab: Review & sign link per contract: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Authorized-rep file switcher buttons (one per file)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Authorized-rep file switcher buttons (one per file): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Sign to authorize dispute letters: legal name input",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Sign to authorize dispute letters: legal name input: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Sign to authorize dispute letters: signature pad (draw)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Sign to authorize dispute letters: signature pad (draw): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Sign to authorize dispute letters: submit button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Sign to authorize dispute letters: submit button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Upload door: bureau response (type select, Upload button, file picker)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Upload door: bureau response (type select, Upload button, file picker): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Upload door: ID and personal documents (type select, Upload button, file picker)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Upload door: ID and personal documents (type select, Upload button, file picker): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Upload door: Inquiry documents (type select, Upload button, file picker)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — Upload door: Inquiry documents (type select, Upload button, file picker): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:What You Own: Download link per file",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "client-portal.html — What You Own: Download link per file: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:consent-capture.html:Consent wording, version badge and current status banner (read from the server, never typed in the page)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "consent-capture.html — Consent wording, version badge and current status banner (read from the server, never typed in the page): The pulse has no client id and "
+  },
+  {
+   "id": "catalog-display:desks-b.json:content-admin.html:Locked tile editor: client-facing name box",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "content-admin.html — Locked tile editor: client-facing name box: The saved catalog row has no receipt carrying the exact submitted client-facing name."
+  },
+  {
+   "id": "catalog-display:desks-b.json:content-admin.html:Locked tile editor: outcome copy box (one line shown to the client)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "content-admin.html — Locked tile editor: outcome copy box (one line shown to the client): The saved catalog row has no receipt carrying the exact submitted outc"
+  },
+  {
+   "id": "catalog-display:desks-b.json:content-admin.html:Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "content-admin.html — Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too): The saved catalog row has no receipt naming the tile and sub"
+  },
+  {
+   "id": "catalog-display:desks-b.json:content-admin.html:Save changes button (saves tiles and the tier-to-video map)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "content-admin.html — Save changes button (saves tiles and the tier-to-video map): No request receipt keeps the submitted tile names, outcomes, prices, visibilit"
+  },
+  {
+   "id": "catalog-display:desks-b.json:contracts.html:PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner to resize",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "contracts.html — PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner to resize: no exact safe action/result contract is a"
+  },
+  {
+   "id": "catalog-display:desks-b.json:contracts.html:Save (create a new wording)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "contracts.html — Save (create a new wording): The pulse needs the submitted template key, name, kind, body, and actor to compare with the newly created wording "
+  },
+  {
+   "id": "catalog-display:desks-b.json:contracts.html:Save (edit an existing wording)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "contracts.html — Save (edit an existing wording): The pulse needs the template id and exact submitted wording fields to compare with the updated row."
+  },
+  {
+   "id": "catalog-display:desks-b.json:documents.html:Contract cell: Void button (asks for a reason in a prompt; owner/admin only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "documents.html — Contract cell: Void button (asks for a reason in a prompt; owner/admin only): The pulse needs a void receipt containing the contract id, submit"
+  },
+  {
+   "id": "catalog-display:public-pages.json:form:climate/index.html#Four answers (home state req:Four answers (home state required, business state, do you have a business, your credit guess) plus name, email, phone: POST /api/public/climate-match returns the count, lane counts and five bank names, and saves the lead (clients row, entry.captured, survey.submitted) (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "form:climate/index.html#Four answers (home state req — Four answers (home state required, business state, do you have a business, your credit guess) plus name, "
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "inquiry-remover.html — 'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button: no exact safe action/result contrac"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "customerData",
+   "detail": "inquiry-remover.html — Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired): no exact safe action/result contract "
+  }
+ ]
+}

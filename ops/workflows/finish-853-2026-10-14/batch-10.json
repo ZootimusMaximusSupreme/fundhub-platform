@@ -1,0 +1,287 @@
+{
+ "batch": "10",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Drawer: metric buttons (spend, impressions, clicks, conversions, and more)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Drawer: metric buttons (spend, impressions, clicks, conversions, and more): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Fatigue row: Label button (opens link box)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Fatigue row: Label button (opens link box): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Fatigue state rail (all, refresh, queue, ok, unconfigured)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Fatigue state rail (all, refresh, queue, ok, unconfigured): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Fatigue Window select (7, 14, 30 days)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Fatigue Window select (7, 14, 30 days): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Funnel pages: Sync now button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Funnel pages: Sync now button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Link box: Close button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Link box: Close button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Link box: Creative select",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Link box: Creative select: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Link box: Our ad number input",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Link box: Our ad number input: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Reload button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Reload button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Spend rail filter (all, breached, ok)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "campaign-manager.html — Spend rail filter (all, breached, ok): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Agent context toggle and pre block (what the AI sees)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Agent context toggle and pre block (what the AI sees): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Blueprint group toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Blueprint group toggle: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Client picker select (200 clients, navigates to ?id=)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Client picker select (200 clients, navigates to ?id=): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Credit & Hold Status toggle (credit status, income estimates, hold reason)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Credit & Hold Status toggle (credit status, income estimates, hold reason): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Credit partner links: Open the partner's file, Record the partner's own consent",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Credit partner links: Open the partner's file, Record the partner's own consent: no exact safe action/result contract is attached ye"
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Use this email button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Declines: Use this email button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Details toggle (email, phone, tier, path)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Details toggle (email, phone, tier, path): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:More menu: Open Bank Inbox button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — More menu: Open Bank Inbox button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:More menu: Open Credit Snapshot link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — More menu: Open Credit Snapshot link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:More menu: Open Funding Matrix link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — More menu: Open Funding Matrix link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Open FinanceOS link (owner, admin, sales_manager only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Open FinanceOS link (owner, admin, sales_manager only): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:System Facts toggle (last pull, scores, round, funded)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-control-panel.html — System Facts toggle (last pull, scores, round, funded): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Account drawer tabs: Payments, Agreements, Documents, Activity, Messages",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — Account drawer tabs: Payments, Agreements, Documents, Activity, Messages: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Course tiles: Open course and expand modules (Funding Mastery, Deliverables)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — Course tiles: Open course and expand modules (Funding Mastery, Deliverables): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Facebook wins group card (external link)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — Facebook wins group card (external link): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:See exactly where your file stands link (to /progress.html)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — See exactly where your file stands link (to /progress.html): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Sign to authorize dispute letters: Clear button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — Sign to authorize dispute letters: Clear button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Staff view: Open this client in Documents link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — Staff view: Open this client in Documents link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:What You Own: Open course button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "client-portal.html — What You Own: Open course button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-call.html:Redirect page: open Closer Dashboard link and auto-redirect script",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-call.html — Redirect page: open Closer Dashboard link and auto-redirect script: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Belief failed buttons (pain, doubt, cost, desire, money, support, trust, none)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-dashboard.html — Belief failed buttons (pain, doubt, cost, desire, money, support, trust, none): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Contract panel: Copy link button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-dashboard.html — Contract panel: Copy link button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Deal breakdown details toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-dashboard.html — Deal breakdown details toggle: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Join call button (opens the booked call link)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-dashboard.html — Join call button (opens the booked call link): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Present button (opens present.html?contact= in a new tab)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "closer-dashboard.html — Present button (opens present.html?contact= in a new tab): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:company-brain.html:'N waiting' pending badges (two)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "company-brain.html — 'N waiting' pending badges (two): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:company-brain.html:Add a document: '+' button then file picker (PDF, Word, Excel, PowerPoint, text; 25 MB cap)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "company-brain.html — Add a document: '+' button then file picker (PDF, Word, Excel, PowerPoint, text; 25 MB cap): no exact safe action/result contract is attach"
+  },
+  {
+   "id": "catalog-display:desks-b.json:company-brain.html:Answer source list: 'Open in Drive' link and 'Client record' link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "company-brain.html — Answer source list: 'Open in Drive' link and 'Client record' link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:company-brain.html:Class quiz: 'Which quiz' picker",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "company-brain.html — Class quiz: 'Which quiz' picker: no exact safe action/result contract is attached yet."
+  }
+ ]
+}

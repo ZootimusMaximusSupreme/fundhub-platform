@@ -1,0 +1,287 @@
+{
+ "batch": "16",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Settings: quiet hours: start and end time inputs",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Settings: quiet hours: start and end time inputs: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Settings: schedule fields: drop day, drop time (Arizona), scripts a day, days in a batch, count rule (total / per funnel), style for each of 6 script kinds, drafts expiry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Settings: schedule fields: drop day, drop time (Arizona), scripts a day, days in a batch, count rule (total / per funnel), style"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Shoot: 'Open the teleprompter' link (carries the film key) and the SLO Ads Drive folder link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Shoot: 'Open the teleprompter' link (carries the film key) and the SLO Ads Drive folder link: no exact safe action/result contra"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Shoot: 'Save the plan' (before a shoot; sends the film order)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Shoot: 'Save the plan' (before a shoot; sends the film order): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Shoot: checklist: Rig set, Mirror on, Remote paired, Phone charged (4 checkboxes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Shoot: checklist: Rig set, Mirror on, Remote paired, Phone charged (4 checkboxes): no exact safe action/result contract is attac"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Shoot: plan row: include checkbox, Up / Down / 'Film first', 'Remove from shoot', 'Add to the end'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Shoot: plan row: include checkbox, Up / Down / 'Film first', 'Remove from shoot', 'Add to the end': no exact safe action/result "
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 1 (avatar, 'Who we sell to'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 1 (avatar, 'Who we sell to'): state chip + 'Read it' / 'Hide it' review card toggle: no exact safe action/re"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 2 (ad-research, 'What the market sells'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 2 (ad-research, 'What the market sells'): state chip + 'Read it' / 'Hide it' review card toggle: no exact sa"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 3 (offer, 'Offer'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 3 (offer, 'Offer'): state chip + 'Read it' / 'Hide it' review card toggle: no exact safe action/result contr"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 4 (copy, 'Ad copy'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 4 (copy, 'Ad copy'): state chip + 'Read it' / 'Hide it' review card toggle: no exact safe action/result cont"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 5 (ad-strategy, 'Ad strategy'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 5 (ad-strategy, 'Ad strategy'): state chip + 'Read it' / 'Hide it' review card toggle: no exact safe action/"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today flywheel step 6 (spend, 'Spend'): state chip + 'Read it' / 'Hide it' review card toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today flywheel step 6 (spend, 'Spend'): state chip + 'Read it' / 'Hide it' review card toggle: no exact safe action/result contr"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today: 'Build the avatar' button on step 1 (cost sheet, run, live step words, Retry after a stop)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Today: 'Build the avatar' button on step 1 (cost sheet, run, live step words, Retry after a stop): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today: 'Show more' / 'Read it' text folds, link 'See every ad in Campaigns', link 'Open Creative Factory'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today: 'Show more' / 'Read it' text folds, link 'See every ad in Campaigns', link 'Open Creative Factory': no exact safe action/"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today: 'Waiting on you' list (Mac queue, videos awaiting approval, flywheel steps waiting)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today: 'Waiting on you' list (Mac queue, videos awaiting approval, flywheel steps waiting): no exact safe action/result contract"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today: 'What is turned on' tile and health list (Meta numbers, house account, offer and market files, copy writer)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Today: 'What is turned on' tile and health list (Meta numbers, house account, offer and market files, copy writer): no exact saf"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Today: spend tiles (7 days vs the 7 before, last 30 days) with the 'Old numbers' lead when the Meta pull is late",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Today: spend tiles (7 days vs the 7 before, last 30 days) with the 'Old numbers' lead when the Meta pull is late: no exact safe "
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:'Send this one to' address box (applies to this one message only; never written back to the record)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — 'Send this one to' address box (applies to this one message only; never written back to the record): no exact safe action/result contract is at"
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Channel toggle: Email / Text buttons (open that client's other-channel conversation)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Channel toggle: Email / Text buttons (open that client's other-channel conversation): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Compose box: type reply, Enter sends, Shift+Enter newline; texting-hours notice shown before typing",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Compose box: type reply, Enter sends, Shift+Enter newline; texting-hours notice shown before typing: no exact safe action/result contract is at"
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Deep links: ?client_id=, ?channel=, ?conversation_id= open a thread straight from another desk",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Deep links: ?client_id=, ?channel=, ?conversation_id= open a thread straight from another desk: no exact safe action/result contract is attache"
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Reference disclosure (who-sent-it colour key)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Reference disclosure (who-sent-it colour key): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Right panel: 'Their other threads' list and 'Open elsewhere -> Their file' link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Right panel: 'Their other threads' list and 'Open elsewhere -> Their file' link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Search box: search people and messages (client-side filter; typing drops needs_reply=1 from the server query on the Needs-reply tab)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Search box: search people and messages (client-side filter; typing drops needs_reply=1 from the server query on the Needs-reply tab): no exact "
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Tab: All",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Tab: All: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:messaging.html:Tab: Needs reply (client spoke last, nobody answered; server-side filter)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "messaging.html — Tab: Needs reply (client spoke last, nobody answered; server-side filter): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-accounts.html:'Try again' button on a load error",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-accounts.html — 'Try again' button on a load error: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-accounts.html:Head buttons: 'Add account' and 'Add a business' (open and focus their forms)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-accounts.html — Head buttons: 'Add account' and 'Add a business' (open and focus their forms): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-accounts.html:Header link 'Back to my portal' (staff with ?client_id= get 'Back to Finance OS')",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-accounts.html — Header link 'Back to my portal' (staff with ?client_id= get 'Back to Finance OS'): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-accounts.html:Money nav: Money, Accounts, Credit, Connections, Payments, Setup (carry ?client_id= for staff)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-accounts.html — Money nav: Money, Accounts, Credit, Connections, Payments, Setup (carry ?client_id= for staff): no exact safe action/result contract is at"
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-alerts.html:'Show all N' / fewer texts list per protection",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-alerts.html — 'Show all N' / fewer texts list per protection: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-alerts.html:'Try again' button on a load error",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-alerts.html — 'Try again' button on a load error: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-alerts.html:Header link 'Back to my portal' and Money nav (adds an Alerts tab)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-alerts.html — Header link 'Back to my portal' and Money nav (adds an Alerts tab): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-alerts.html:Jump links to Accounts and Setup ('Add the close day', 'Connect a bank')",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-alerts.html — Jump links to Accounts and Setup ('Add the close day', 'Connect a bank'): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-banks.html:'Try again' button on a load error",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-banks.html — 'Try again' button on a load error: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:money-banks.html:Header link 'Back to my portal' and Money nav (8 links incl. Plan and Banks)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "money-banks.html — Header link 'Back to my portal' and Money nav (8 links incl. Plan and Banks): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:public-pages.json:page:partner/autopsy/index.html:Decline Autopsy sales page (SHELVED 2026-08-31): netlify.toml sends /partner/autopsy/* to the menu, so the file is not reachable; its routes are commented out in netlify/functions/api.mjs.",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "page:partner/autopsy/index.html — Decline Autopsy sales page (SHELVED 2026-08-31): netlify.toml sends /partner/autopsy/* to the menu, so the file is not reachab"
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Copy the sign link' and the read-only sign-link box",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Copy the sign link' and the read-only sign-link box: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Other actions' open/close toggle (S-23)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Other actions' open/close toggle (S-23): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Show the full Blueprint stack' (opens section 06 from S-19)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Show the full Blueprint stack' (opens section 06 from S-19): no exact safe action/result contract is attached y"
+  }
+ ]
+}

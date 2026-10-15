@@ -1,0 +1,168 @@
+{
+ "batch": "22",
+ "tier": 4,
+ "lane": "gap-catalog-flow",
+ "rows": [
+  {
+   "id": "flow:agent:ai-caller:api/journeys/ask.mjs",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "ai-caller:api/journeys/ask.mjs: the journeys proxy accepts caller-supplied system and user prompts, so there is no fixed active prompt and judged runtime result"
+  },
+  {
+   "id": "flow:message:dispatch:sms-duplicate-guard-NOT-WIRED",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "dispatch:sms-duplicate-guard-NOT-WIRED: The SMS duplicate guard is not imported by dispatch, so this named brake does not run."
+  },
+  {
+   "id": "flow:message:job:staff-message-sweeper",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "job:staff-message-sweeper: The staff-message sweeper has no exact proof that each released row reaches its final provider receipt."
+  },
+  {
+   "id": "flow:journey:journey:climate-lead-magnet-intended#1-headline-button",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:climate-lead-magnet-intended#1-headline-button: no executable check walks this exact event order to its named result: A headline and one button that scr"
+  },
+  {
+   "id": "flow:journey:journey:climate-lead-magnet-intended#2-reading-and-map",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:climate-lead-magnet-intended#2-reading-and-map: no executable check walks this exact event order to its named result: Today's reading: national number a"
+  },
+  {
+   "id": "flow:journey:journey:climate-lead-magnet-intended#3-state-click",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:climate-lead-magnet-intended#3-state-click: no executable check walks this exact event order to its named result: A clicked state shows its name, score "
+  },
+  {
+   "id": "flow:journey:journey:climate-lead-magnet-intended#4-form",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:climate-lead-magnet-intended#4-form: no executable check walks this exact event order to its named result: Four answers (home state required) and contac"
+  },
+  {
+   "id": "flow:journey:journey:climate-lead-magnet-intended#6-gate",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:climate-lead-magnet-intended#6-gate: no executable check walks this exact event order to its named result: The gate: how many more names, and the $32 as"
+  },
+  {
+   "id": "flow:journey:journey:fh-consulting-intended#2-education-only",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:fh-consulting-intended#2-education-only: no executable check walks this exact event order to its named result: The page says this is education for busin"
+  },
+  {
+   "id": "flow:journey:journey:fh-consulting-intended#3-three-prices",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:fh-consulting-intended#3-three-prices: no executable check walks this exact event order to its named result: Three posted prices: $5,000, $5,000, $10,00"
+  },
+  {
+   "id": "flow:journey:journey:fh-consulting-intended#5-request-enrollment",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:fh-consulting-intended#5-request-enrollment: no executable check walks this exact event order to its named result: Request enrollment: the form opens an"
+  },
+  {
+   "id": "flow:journey:journey:soft-pull-multi-biz-intended-draft#2-authorize-first",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:soft-pull-multi-biz-intended-draft#2-authorize-first: no executable check walks this exact event order to its named result: They authorize the soft pull"
+  },
+  {
+   "id": "flow:journey:journey:soft-pull-multi-biz-intended-draft#5-pay-same-page",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page: no executable check walks this exact event order to its named result: After submit the same page sho"
+  },
+  {
+   "id": "flow:journey:journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files: no executable check walks this exact event order to its named result: Each saved company is a fun"
+  },
+  {
+   "id": "flow:message:manual-proof:comms-map-2026-09-19 (template delivery proof)",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "manual-proof:comms-map-2026-09-19 (template delivery proof): The named delivery proof is a stale hand-run document, not a recurring executable result."
+  },
+  {
+   "id": "flow:message:owner-alert:owner_notifications queue (finance alerts)",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "owner-alert:owner_notifications queue (finance alerts): Finance owner alerts can enter owner_notifications, but no sender consumes that queue."
+  },
+  {
+   "id": "flow:message:provider:web-push-and-client-push",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "provider:web-push-and-client-push: The client push sender has no caller, so no client push result can occur."
+  },
+  {
+   "id": "flow:message:receipt:twilio-status-webhook",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "receipt:twilio-status-webhook: The Twilio receipt door is not covered by the launch-secret check for its signing token."
+  },
+  {
+   "id": "flow:message:script:one-off senders in scripts/",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "script:one-off senders in scripts/: The named one-off senders have no recurring exact receipt check."
+  },
+  {
+   "id": "flow:message:template-copy:seed-vs-live-drift",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "template-copy:seed-vs-live-drift: No executable check compares each live template body and approval flag with its SQL seed."
+  },
+  {
+   "id": "flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-source",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "template-copy:SQL-seeded-only-keys-not-in-doc-source: No executable check proves the named SQL-only templates remain present and correct in live data."
+  },
+  {
+   "id": "flow:message:ui:ops-admin outbound mail panel",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "ui:ops-admin outbound mail panel: The four outbound-mail controls have no exact click-to-result checks."
+  },
+  {
+   "id": "flow:message:workflow:waypoint-nudge-sweeper",
+   "lane": "gap-catalog-flow",
+   "kind": "flow",
+   "impact": "none",
+   "detail": "workflow:waypoint-nudge-sweeper: The hourly waypoint sequence has no exact final receipt check for its three named templates and staff-task finish."
+  }
+ ]
+}

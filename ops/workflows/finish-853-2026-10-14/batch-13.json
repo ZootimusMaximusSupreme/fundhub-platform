@@ -1,0 +1,287 @@
+{
+ "batch": "13",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Hired (hired)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Hired (hired): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Not Moving Forward (rejected)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Not Moving Forward (rejected): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Offer (offer)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Offer (offer): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Onboarding (onboarding)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Onboarding (onboarding): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Performing (performing)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Performing (performing): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Ramp (60-day trial) (ramp)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Ramp (60-day trial) (ramp): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Screening (screening)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Screening (screening): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Withdrawn (withdrawn)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Withdrawn (withdrawn): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board filter: 'flagged only' toggle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Board filter: 'flagged only' toggle: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board filter: role select (all, closer, setter, sales_coordinator)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Board filter: role select (all, closer, setter, sales_coordinator): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board filter: source select (referral, client_base, audience, social, job_board, ads, linkedin, recruiter, inbound)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Board filter: source select (referral, client_base, audience, social, job_board, ads, linkedin, recruiter, inbound): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Decisions log: role select, days select, decision-kind rail (advance, reject, offer, offer_accepted, offer_declined, withdraw, hold)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Decisions log: role select, days select, decision-kind rail (advance, reject, offer, offer_accepted, offer_declined, withdraw, hold): no exact saf"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Demo Mode rows: shown with a demo label when demo mode is on, counted nowhere; sample data when localStorage fh_demo=1",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Demo Mode rows: shown with a demo label when demo mode is on, counted nowhere; sample data when localStorage fh_demo=1: no exact safe action/resul"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Drawer close: X button, scrim click, Escape key",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Drawer close: X button, scrim click, Escape key: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Drawer: Reject button + required reason box (asks confirm, no undo)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Drawer: Reject button + required reason box (asks confirm, no undo): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Drawer: stage select + Advance button (move to next stage up to hired, optional reason)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Drawer: stage select + Advance button (move to next stage up to hired, optional reason): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Funnel: role select + days select (30, 90, 180, 365, 730) -> where applications come from",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Funnel: role select + days select (30, 90, 180, 365, 730) -> where applications come from: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Page gate: only owner and admin open Hiring; no sidebar row exists (NAV_HIDDEN), so it is reached only by typing /app/hiring.html or a link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Page gate: only owner and admin open Hiring; no sidebar row exists (NAV_HIDDEN), so it is reached only by typing /app/hiring.html or a link: no ex"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Page load: fires demo/mode + candidates + postings + decisions + bench reads, paints tiles, board and tables",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Page load: fires demo/mode + candidates + postings + decisions + bench reads, paints tiles, board and tables: no exact safe action/result contract"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Postings table row: expand/collapse detail",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Postings table row: expand/collapse detail: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Postings: state rail (all, draft, posted, paused, closed, failed) and channel rail (all, linkedin, facebook, job_board, internal)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Postings: state rail (all, draft, posted, paused, closed, failed) and channel rail (all, linkedin, facebook, job_board, internal): no exact safe a"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Reports disclosure (summary toggle) holding the funnel and decisions tables",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Reports disclosure (summary toggle) holding the funnel and decisions tables: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Reset filters button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Reset filters button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Stage rail: 'all stages' button + one button per stage (filters the board, 11 buttons)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Stage rail: 'all stages' button + one button per stage (filters the board, 11 buttons): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Summary tiles: SHORT BY, WAITING ON YOU, ON THE BENCH, OPEN APPLICATIONS + bench chip",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Summary tiles: SHORT BY, WAITING ON YOU, ON THE BENCH, OPEN APPLICATIONS + bench chip: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Waiting-on-a-person table: click or Enter on a row opens the candidate drawer",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "hiring.html — Waiting-on-a-person table: click or Enter on a row opens the candidate drawer: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:index.html:No session / unknown role: sends person to sign-in (login.html?next= or portal-login)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "index.html — No session / unknown role: sends person to sign-in (login.html?next= or portal-login): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:'Retry' button when the queue fails to load",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — 'Retry' button when the queue fails to load: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:'Show more' button under the case queue (25 rows a time)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — 'Show more' button under the case queue (25 rows a time): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Bureau chips: Equifax, TransUnion, Experian (filter the work queue; show open counts)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Bureau chips: Equifax, TransUnion, Experian (filter the work queue; show open counts): no exact safe action/result contract is attached y"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Case drawer send options: 'Mail letter (PostGrid)' checkbox, 'Mail service' select (bureau default, first class, priority, priority express), Experian portal reference input, 'Upload to Experian portal' checkbox, 'Open Experian upload' link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Case drawer send options: 'Mail letter (PostGrid)' checkbox, 'Mail service' select (bureau default, first class, priority, priority expre"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Case drawer: 'Open documents' link (documents.html?client_id=)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Case drawer: 'Open documents' link (documents.html?client_id=): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Case row: click or Enter expands the case drawer (items, letter draft, identity packet, send options)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Case row: click or Enter expands the case drawer (items, letter draft, identity packet, send options): no exact safe action/result contra"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Desk headline number + 'next' button (Ready to send / Need me; opens the next case or file)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Desk headline number + 'next' button (Ready to send / Need me; opens the next case or file): no exact safe action/result contract is atta"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Desk tabs: 'Inquiries' and 'Repair' (remembers the last pane in browser storage)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Desk tabs: 'Inquiries' and 'Repair' (remembers the last pane in browser storage): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Expanded row 'Soft pull' button (owner, admin, closer, funding_advisor only; opens the PULL modal)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Expanded row 'Soft pull' button (owner, admin, closer, funding_advisor only; opens the PULL modal): no exact safe action/result contract "
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Letter list item in an expanded row: opens the letter drawer (letter text, rules, signature); drawer Close buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Letter list item in an expanded row: opens the letter drawer (letter text, rules, signature); drawer Close buttons: no exact safe action/"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Repair headline 'Open <client>' next button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Repair headline 'Open <client>' next button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Repair tile filters: Need me, Ready to send, Waiting on bureau, Stuck, Trial ending (press again to clear)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Repair tile filters: Need me, Ready to send, Waiting on bureau, Stuck, Trial ending (press again to clear): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Stat tiles: Still open, Worked, Calls, Confirmed (move by the server's counts after each write)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "inquiry-remover.html — Stat tiles: Still open, Worked, Calls, Confirmed (move by the server's counts after each write): no exact safe action/result contract is "
+  }
+ ]
+}

@@ -1,0 +1,287 @@
+{
+ "batch": "12",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-b.json:creative-factory.html:Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "creative-factory.html — Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits: no exact safe action/result contract is "
+  },
+  {
+   "id": "catalog-display:desks-b.json:creative-factory.html:Video performance table (YouTube views, watch time per video per day) and connection badge",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "creative-factory.html — Video performance table (YouTube views, watch time per video per day) and connection badge: no exact safe action/result contract is atta"
+  },
+  {
+   "id": "catalog-display:desks-b.json:creative-factory.html:Video performance: Client ID, Client secret, Refresh token boxes and Connect button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "creative-factory.html — Video performance: Client ID, Client secret, Refresh token boxes and Connect button: no exact safe action/result contract is attached ye"
+  },
+  {
+   "id": "catalog-display:desks-b.json:creative-factory.html:Video performance: Sync now button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "creative-factory.html — Video performance: Sync now button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:creative-factory.html:Write a script and label it: words box, name, kind, angle, hook, offer (suggestion lists) and lane picker",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "creative-factory.html — Write a script and label it: words box, name, kind, angle, hook, offer (suggestion lists) and lane picker: no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-b.json:documents.html:Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "documents.html — Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode: no exact safe act"
+  },
+  {
+   "id": "catalog-display:desks-b.json:documents.html:Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, signature expired)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "documents.html — Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, signature expired): no exact safe action/re"
+  },
+  {
+   "id": "catalog-display:desks-b.json:finance-os.html:Client picker select (up to 500 clients)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "finance-os.html — Client picker select (up to 500 clients): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:finance-os.html:Header text 'no client open' / client name",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "finance-os.html — Header text 'no client open' / client name: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:finance-os.html:Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "finance-os.html — Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode: no exact sa"
+  },
+  {
+   "id": "catalog-display:desks-b.json:finance-os.html:Paydown simulator result block (pre-approval today vs estimate after, per-card split)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "finance-os.html — Paydown simulator result block (pre-approval today vs estimate after, per-card split): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:finance-os.html:Promo tracking panel (labelled NOT LIVE; nothing stored)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "finance-os.html — Promo tracking panel (labelled NOT LIVE; nothing stored): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html (frame):Back link ('Back to my portal' for a client, 'Back to Finance OS' for staff with ?client_id=)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html (frame) — Back link ('Back to my portal' for a client, 'Back to Finance OS' for staff with ?client_id=): no exact safe action/result contract is "
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html (frame):Tab bar: 16 tabs (Overview, Next steps, Money helper, Money moves, Plan, Banks, Strategy, Fundability, Applications, Alerts, Funding papers, Accounts, Credit, Connections, Payments, Setup); Left/Right/Home/End keys; #hash opens a tab",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html (frame) — Tab bar: 16 tabs (Overview, Next steps, Money helper, Money moves, Plan, Banks, Strategy, Fundability, Applications, Alerts, Funding pa"
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#accounts:'Add account' and 'Add a business' buttons that open the forms",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#accounts — 'Add account' and 'Add a business' buttons that open the forms: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#alerts:'Show all' on the texts-sent list, jump links, Try again",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#alerts — 'Show all' on the texts-sent list, jump links, Try again: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#connections:Copy address / Copy key buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#connections — Copy address / Copy key buttons: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#credit:Try again; link to Setup",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#credit — Try again; link to Setup: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#fundability:Chart columns (hover or focus shows a month) and Try again",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#fundability — Chart columns (hover or focus shows a month) and Try again: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#helper:'Check again' button (when a turn looks stuck) and Try again",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#helper — 'Check again' button (when a turn looks stuck) and Try again: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#next:Links: 'Open your checklist', 'Check your accounts', 'Book a call'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#next — Links: 'Open your checklist', 'Check your accounts', 'Book a call': no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#next:Try again buttons (tasks, ready-to-fund)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#next — Try again buttons (tasks, ready-to-fund): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#overview:Try again button (overview failed to load)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#overview — Try again button (overview failed to load): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#plan:A pin (calendar chip or list row) opens its detail panel; '+N more'; Close; Esc; Tab stays inside",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#plan — A pin (calendar chip or list row) opens its detail panel; '+N more'; Close; Esc; Tab stays inside: no exact safe action/result contract is"
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#plan:Link: 'Add an account' (empty state), 'See it on Payments'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#plan — Link: 'Add an account' (empty state), 'See it on Payments': no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#plan:Previous month / Next month / Today buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#plan — Previous month / Next month / Today buttons: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#setup:Try again button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#setup — Try again button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#strategy:Method buttons (highest rate first, card use first, smallest balance first), monthly amount slider and box, goal select and date, 'Use $X' buttons, 'Show more months'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#strategy — Method buttons (highest rate first, card use first, smallest balance first), monthly amount slider and box, goal select and date, 'Use"
+  },
+  {
+   "id": "catalog-display:desks-b.json:financeos.html#transfers:Go back (cancels the review step)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "financeos.html#transfers — Go back (cancels the review step): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:public-pages.json:form:careers.html#apply-form:Job application form: role, name, email, phone, LinkedIn, how heard, website (a hidden trap field). Posts to /api/hiring/apply and starts the applicant follow-up cadence.",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "form:careers.html#apply-form — Job application form: role, name, email, phone, LinkedIn, how heard, website (a hidden trap field). Posts to /api/hiring/apply an"
+  },
+  {
+   "id": "catalog-display:public-pages.json:form:consulting/index.html#consult-form:Consult request form: name, email, agency, help, note. It takes no card and saves nothing here: it opens an email to the support mailbox.",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "form:consulting/index.html#consult-form — Consult request form: name, email, agency, help, note. It takes no card and saves nothing here: it opens an email to t"
+  },
+  {
+   "id": "catalog-display:desks-b.json:galaxy.html:Legend strip (size, brightness, pace colors)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "galaxy.html — Legend strip (size, brightness, pace colors): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:galaxy.html:Live feed on load: workers, clients, routes and numbers for the sky",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "galaxy.html — Live feed on load: workers, clients, routes and numbers for the sky: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:galaxy.html:Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "galaxy.html — Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:galaxy.html:Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Affiliates + Hiring) and hand-off threads",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "galaxy.html — Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Affiliates + Hiring) and hand-off threads: n"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags: no exact saf"
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board card: click opens the application drawer (name, scores, flags, source, video/resume tags)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board card: click opens the application drawer (name, scores, flags, source, video/resume tags): no exact safe action/result contract is attached "
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: 1:1 Interview (one_on_one)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: 1:1 Interview (one_on_one): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Applied (applied)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Applied (applied): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:hiring.html:Board column: Group Interview (group_interview)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "hiring.html — Board column: Group Interview (group_interview): no exact safe action/result contract is attached yet."
+  }
+ ]
+}

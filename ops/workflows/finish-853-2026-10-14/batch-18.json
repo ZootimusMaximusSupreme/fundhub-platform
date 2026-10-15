@@ -1,0 +1,287 @@
+{
+ "batch": "18",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-declines.html:Bank name text box (shown for Another bank)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-declines.html — Bank name text box (shown for Another bank): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-declines.html:Your bank applications list",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-declines.html — Your bank applications list: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-declines.html:Your steps list + Fundhub's steps expander (done / skipped / not done yet)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-declines.html — Your steps list + Fundhub's steps expander (done / skipped / not done yet): no exact safe action/result contract is attached ye"
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-helper.html:Banner: helper stopped / not switched on",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-helper.html — Banner: helper stopped / not switched on: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-next.html:Check your accounts link (empty state)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-next.html — Check your accounts link (empty state): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-next.html:Try again buttons (steps) and (ready card)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-next.html — Try again buttons (steps) and (ready card): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-payments.html:Empty state ('You do not owe Fundhub anything right now') and Error state with Try again",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-payments.html — Empty state ('You do not owe Fundhub anything right now') and Error state with Try again: no exact safe action/result contract "
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-setup.html:Loading and error states with Try again",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-setup.html — Loading and error states with Try again: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-setup.html:Step 2: See my credit link (after a pull)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-setup.html — Step 2: See my credit link (after a pull): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-d.json:public/app/money-setup.html:Step 3: Add businesses and accounts / Add more link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-setup.html — Step 3: Add businesses and accounts / Add more link: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-transfers.html:Back to my portal / Back to Finance OS (header link)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-transfers.html — Back to my portal / Back to Finance OS (header link): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-transfers.html:Money nav: Money, Next steps, Plan, Accounts, Payments, Transfers, Setup (7 links to /app/financeos.html#tab)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-transfers.html — Money nav: Money, Next steps, Plan, Accounts, Payments, Transfers, Setup (7 links to /app/financeos.html#tab): no exact safe a"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-transfers.html:Try again (button on the error panel)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-transfers.html — Try again (button on the error panel): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-transfers.html:What happened (details toggle: ledger events in words)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-transfers.html — What happened (details toggle: ledger events in words): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-vault.html:Back to my portal / Back to Finance OS (header link)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-vault.html — Back to my portal / Back to Finance OS (header link): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-vault.html:Money nav: Money, Accounts, Credit, Applications, Funding papers (current), Connections, Payments, Setup (8 links)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-vault.html — Money nav: Money, Accounts, Credit, Applications, Funding papers (current), Connections, Payments, Setup (8 links): no exact safe "
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-vault.html:Staff: Cancel (closes an open accept/reject/sort form)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-vault.html — Staff: Cancel (closes an open accept/reject/sort form): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money-vault.html:Try again (button on the error panel)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money-vault.html — Try again (button on the error panel): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money.html:Back to my portal / Back to Finance OS (header link)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money.html — Back to my portal / Back to Finance OS (header link): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money.html:Money nav: Money (current), Accounts, Credit, Connections, Payments, Setup (6 links)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money.html — Money nav: Money (current), Accounts, Credit, Connections, Payments, Setup (6 links): no exact safe action/result contract is attached y"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/money.html:Try again (button on the error panel)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/money.html — Try again (button on the error panel): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline data yet)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/ops-admin.html — Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline d"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:AR column header sort (click or Enter on Client, Invoice, Amount owed, Overdue, Status)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/ops-admin.html — AR column header sort (click or Enter on Client, Invoice, Amount owed, Overdue, Status): no exact safe action/result contract is att"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:AR row expand (terms, payment method, owner, outstanding, collection history)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/ops-admin.html — AR row expand (terms, payment method, owner, outstanding, collection history): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:hire-closer (server): writes hire / diagnose / ads-review tasks and, when LinkedIn is connected, posts the closer job on LinkedIn",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "public/app/ops-admin.html — hire-closer (server): writes hire / diagnose / ads-review tasks and, when LinkedIn is connected, posts the closer job on LinkedIn: n"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "public/app/ops-admin.html — Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "public/app/ops-admin.html — Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes): no exact safe action/result contract is att"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "public/app/ops-admin.html — Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero): no exact sa"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/ops-admin.html:Zone tabs: Money / People",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/ops-admin.html — Zone tabs: Money / People: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/partner-galaxy.html:Message Blaster for Mac: Download button (locked gift, .dmg)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/partner-galaxy.html — Message Blaster for Mac: Download button (locked gift, .dmg): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/partner-galaxy.html:Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/partner-galaxy.html — Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role): no exact saf"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/partner-galaxy.html:Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Agents, Ops Agents)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/partner-galaxy.html — Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Ag"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/partner-galaxy.html:Sky canvas: click a worker to open the detail panel (NODES, CLIENTS and ROUTES are empty arrays, so no worker exists to click)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/partner-galaxy.html — Sky canvas: click a worker to open the detail panel (NODES, CLIENTS and ROUTES are empty arrays, so no worker exists to click):"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/partner-galaxy.html:Sky canvas: click empty space or press Escape to pull back; panel close button (esc)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/partner-galaxy.html — Sky canvas: click empty space or press Escape to pull back; panel close button (esc): no exact safe action/result contract is a"
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Card: hover tooltip (last activity from the card footer)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Card: hover tooltip (last activity from the card footer): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Clear all (button in the filter panel)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Clear all (button in the filter panel): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Clock (Arizona time) and LIVE pill in the header",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Clock (Arizona time) and LIVE pill in the header: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Drawer: Open full file link (client-control-panel.html?id=)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Drawer: Open full file link (client-control-panel.html?id=): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Filter button (opens the panel; count of active filters)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Filter button (opens the panel; count of active filters): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-e.json:public/app/pipeline.html:Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "public/app/pipeline.html — Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage): no exact safe action/result contract is attached yet."
+  }
+ ]
+}

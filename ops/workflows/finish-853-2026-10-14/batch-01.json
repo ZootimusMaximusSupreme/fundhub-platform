@@ -1,0 +1,287 @@
+{
+ "batch": "01",
+ "tier": 1,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-a.json:agent-editor.html:Authority switch: May run a soft pull",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "agent-editor.html — Authority switch: May run a soft pull: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:agent-editor.html:Authority switch: May take a payment",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "agent-editor.html — Authority switch: May take a payment: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:agent-editor.html:Authority: Max discount input (percent)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "agent-editor.html — Authority: Max discount input (percent): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:brand-studio.html:Generation: Turn on for this partner (owner)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "brand-studio.html — Generation: Turn on for this partner (owner): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:brand-studio.html:Write page copy button (AI model call, locked legal blocks skipped)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "brand-studio.html — Write page copy button (AI model call, locked legal blocks skipped): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:public-pages.json:button:climate/index.html#Gate button: unlock the full:Gate button: unlock the full list with the $32 assessment (POST /api/public/optimize returns the Commas checkout) (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "button:climate/index.html#Gate button: unlock the full — Gate button: unlock the full list with the $32 assessment (POST /api/public/optimize returns the Commas"
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Drawer: New daily budget input and Change daily budget button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Drawer: New daily budget input and Change daily budget button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Drawer: Start spending again button (resume on Meta, confirm dialog)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Drawer: Start spending again button (resume on Meta, confirm dialog): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Drawer: Stop spending button (pause on Meta, confirm dialog)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Drawer: Stop spending button (pause on Meta, confirm dialog): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Link box: Save this link button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Link box: Save this link button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Needs-attention tile: Campaigns with an error on them",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Needs-attention tile: Campaigns with an error on them: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Needs-attention tile: Changes that did not go through",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Needs-attention tile: Changes that did not go through: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Needs-attention tile: Connections that cannot go live",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Needs-attention tile: Connections that cannot go live: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Needs-attention tile: Daily limits already hit",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Needs-attention tile: Daily limits already hit: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Partner select (changes whose ads every panel shows)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Partner select (changes whose ads every panel shows): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Request Meta agency access: Business ID input, Ad account input, Request access button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Request Meta agency access: Business ID input, Ad account input, Request access button: no exact safe action/result contract is attached"
+  },
+  {
+   "id": "catalog-display:desks-a.json:campaign-manager.html:Sync Meta now button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "campaign-manager.html — Sync Meta now button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Declines: Save outcome button (approved amount, reapply date, notes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-control-panel.html — Declines: Save outcome button (approved amount, reapply date, notes): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Pull Equifax button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-control-panel.html — Pull Equifax button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Pull Experian button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-control-panel.html — Pull Experian button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-control-panel.html:Pull TransUnion button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-control-panel.html — Pull TransUnion button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:FinanceOS card link (Open or Set up FinanceOS)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-portal.html — FinanceOS card link (Open or Set up FinanceOS): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Payments tab: Pay now link per open invoice",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-portal.html — Payments tab: Pay now link per open invoice: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Refer a friend: Copy button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-portal.html — Refer a friend: Copy button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Unlock buttons (Soft pull, Funding DFY, Repair DFY, Repair trial, Deliverables, Funding Mastery; opens modal)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-portal.html — Unlock buttons (Soft pull, Funding DFY, Repair DFY, Repair trial, Deliverables, Funding Mastery; opens modal): no exact safe action/result "
+  },
+  {
+   "id": "catalog-display:desks-a.json:client-portal.html:Unlock modal: Unlock pay now button (goes to product checkoutUrl)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "client-portal.html — Unlock modal: Unlock pay now button (goes to product checkoutUrl): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Deal calculator: Draw amount input",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "closer-dashboard.html — Deal calculator: Draw amount input: The calculator has no saved action receipt containing the typed draw and rendered result to compare."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Pay link panel: offer select and downsell/upsell select",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "closer-dashboard.html — Pay link panel: offer select and downsell/upsell select: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Pay link panel: Send pay link button (mints a checkout link, emails and texts the client)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "closer-dashboard.html — Pay link panel: Send pay link button (mints a checkout link, emails and texts the client): no exact safe action/result contract is attac"
+  },
+  {
+   "id": "catalog-display:desks-a.json:closer-dashboard.html:Send pay link button (opens panel; closers only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "closer-dashboard.html — Send pay link button (opens panel; closers only): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-b.json:content-admin.html:Locked tile editor: price shown box",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "content-admin.html — Locked tile editor: price shown box: The saved catalog row has no receipt carrying the exact submitted display price in cents."
+  },
+  {
+   "id": "catalog-display:public-pages.json:form:optimize.html#opt:Audit intake and Pay for Audit: first name, last name, email, phone, SMS consent. Posts to /api/public/optimize, which mints a Commas checkout on the Consulting Services Assessment title.",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "form:optimize.html#opt — Audit intake and Pay for Audit: first name, last name, email, phone, SMS consent. Posts to /api/public/optimize, which mints a Commas c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:Expanded row 'Enroll' button (puts the client in the trial program; sends price_total 200 and amount_paid 200)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "inquiry-remover.html — Expanded row 'Enroll' button (puts the client in the trial program; sends price_total 200 and amount_paid 200): no exact safe action/resu"
+  },
+  {
+   "id": "catalog-display:desks-c.json:inquiry-remover.html:PULL modal: type PULL, Cancel, 'Pull' (three bureau pulls in a row; stops on the first refusal; Escape closes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "inquiry-remover.html — PULL modal: type PULL, Cancel, 'Pull' (three bureau pulls in a row; stops on the first refusal; Escape closes): no exact safe action/resu"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Frame: cost sheet and two-tap confirm sheet drawn before every paid tap (Cancel / yes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "marketing-command-center.html — Frame: cost sheet and two-tap confirm sheet drawn before every paid tap (Cancel / yes): no exact safe action/result contract is "
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'$ amount' e-book price box",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "present.html (+ present.js, contract-send.js) — '$ amount' e-book price box: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Invoice this client': reads the open invoice, emails it",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Invoice this client': reads the open invoice, emails it: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Log disposition and close': writes the call outcome (deposit or downsell) and the offer",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Log disposition and close': writes the call outcome (deposit or downsell) and the offer: no exact safe action/r"
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Send agreement + pay link': mints the pay link for the chosen offer, emails and texts it",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Send agreement + pay link': mints the pay link for the chosen offer, emails and texts it: no exact safe action/"
+  },
+  {
+   "id": "catalog-display:desks-f.json:present.html (+ present.js, contract-send.js):'Send e-book email': pay link at the typed price, with a placeholder PDF attached",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "money",
+   "detail": "present.html (+ present.js, contract-send.js) — 'Send e-book email': pay link at the typed price, with a placeholder PDF attached: no exact safe action/result c"
+  }
+ ]
+}

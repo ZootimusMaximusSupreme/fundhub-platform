@@ -1,0 +1,266 @@
+{
+ "batch": "08",
+ "tier": 3,
+ "lane": "gap-door-batch-routes",
+ "rows": [
+  {
+   "id": "catalog-route:routes-1.json:route:banking/accounts:POST action=import (pull accounts from the configured banking provider, mock or Plaid, into this client)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:banking/accounts — POST action=import (pull accounts from the configured banking provider, mock or Plaid, into this client): the banking/accounts handler "
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:blueprint/declines:GET/POST /api/blueprint/declines — Capital Blueprint decline defense: GET the client's plain-words view of a bank decline and plan; POST actions paste, record, link_letter, step, schedule, outcome. Client acts on own file (paste, link_letter); staff STAFF role for the rest; lender-book lines only for owner/admin/funding_advisor. Writes need a paid Capital Blueprint (403 otherwise).",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:blueprint/declines — GET/POST /api/blueprint/declines — Capital Blueprint decline defense: GET the client's plain-words view of a bank decline and plan; P"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:brand/review:POST /api/brand/review — moves a white-label partner's brand through review: submit (owning partner or owner/admin), approve and reject (owner/admin only). Only writer of partner_brand.approval_status; decides whether the partner's disclosure copy may go live.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:brand/review — POST /api/brand/review — moves a white-label partner's brand through review: submit (owning partner or owner/admin), approve and reject (ow"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:campaigns/meta-agency:POST {partner_id, meta_business_id, ad_account_id} save a partner's Meta Business id and send Meta an agency-access request (state stays pending)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:campaigns/meta-agency — POST {partner_id, meta_business_id, ad_account_id} save a partner's Meta Business id and send Meta an agency-access request (state"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:contracts:Drafts: create_client (inserts a client), create_draft, save_draft, preview against a client's values.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts — Drafts: create_client (inserts a client), create_draft, save_draft, preview against a client's values.: the contracts handler is registered; i"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:contracts:send: freezes the words, registers the document, returns the signed link for staff to pass on (no email from here).",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts — send: freezes the words, registers the document, returns the signed link for staff to pass on (no email from here).: the contracts handler is "
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:contracts:Template authoring: create / save / archive / upload contract templates and fields (the words clients sign).",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts — Template authoring: create / save / archive / upload contract templates and fields (the words clients sign).: the contracts handler is registe"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:contracts:void: voids a contract (owner/admin) so it can no longer be signed.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts — void: voids a contract (owner/admin) so it can no longer be signed.: the contracts handler is registered; its separate safe-refusal probe is c"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:contracts/sign:GET ?id&exp&sig (view contract for signing; records viewed_at and view_count; ?file=1 returns the PDF bytes)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts/sign — GET ?id&exp&sig (view contract for signing; records viewed_at and view_count; ?file=1 returns the PDF bytes): the contracts/sign handler "
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:contracts/sign:POST {signer_name, agreed:true, field_values} (a client signs: typed name, tick, time, IP; refused if wording changed after send)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts/sign — POST {signer_name, agreed:true, field_values} (a client signs: typed name, tick, time, IP; refused if wording changed after send): the co"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:contracts/sign:POST action=decline {reason} (signer declines; recorded and the sender is told)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:contracts/sign — POST action=decline {reason} (signer declines; recorded and the sender is told): the contracts/sign handler is registered; its separate s"
+  },
+  {
+   "id": "catalog-route:routes-3.json:route:dashboard/pipeline:GET ?key=<board> the board as the database holds it: the stages in order, each with the client cards sitting in it (cards.stage_id), plus amounts, conversation and funding-round facts. The read every board screen draws.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:dashboard/pipeline — GET ?key=<board> the board as the database holds it: the stages in order, each with the client cards sitting in it (cards.stage_id), "
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:demo/simulate:DELETE: tears down simulated clients (one or all demo clients in the org). Deletes rows.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:demo/simulate — DELETE: tears down simulated clients (one or all demo clients in the org). Deletes rows.: the demo/simulate handler is registered; its sep"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:demo/simulate:POST: loads one simulated demo client (CRS file, tradelines, card, bank account) for the demo.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:demo/simulate — POST: loads one simulated demo client (CRS file, tradelines, card, bank account) for the demo.: the demo/simulate handler is registered; i"
+  },
+  {
+   "id": "catalog-route:routes-3.json:route:documents-upload:POST multipart file: sniffs the bytes against the accepted types, stores it, registers the document, and raises docs.received so the reader runs.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:documents-upload — POST multipart file: sniffs the bytes against the accepted types, stores it, registers the document, and raises docs.received so the re"
+  },
+  {
+   "id": "catalog-route:routes-3.json:route:inquiries:GET ?inquiry_id= expands one row's attempt history; ?recent=letters lists recent letters (specialist desk only). POST {inquiry_id, action: attempt, confirm, or status} writes what a specialist did to a client's inquiry. The POST needs an open shift.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:inquiries — GET ?inquiry_id= expands one row's attempt history; ?recent=letters lists recent letters (specialist desk only). POST {inquiry_id, action: att"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:inquiry:POST action=launch: places a Bland phone call to a credit bureau's dispute line for one inquiry case.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:inquiry — POST action=launch: places a Bland phone call to a credit bureau's dispute line for one inquiry case.: the inquiry handler is registered; its se"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:inquiry-cases:POST action=send {mail, portal} (mail the bureau letter on the client's behalf, or record a portal upload; gated on the document packet)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:inquiry-cases — POST action=send {mail, portal} (mail the bureau letter on the client's behalf, or record a portal upload; gated on the document packet): "
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:inquiry-cases (clear_inquiry):POST /api/inquiry-cases action clear_inquiry — marks one inquiry cleared; when that clears its case it emits inquiry.removed on the event bus (which wakes C-03 and the funding path). Caller: ROLE_SETS.STAFF, org from the session.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:inquiry-cases (clear_inquiry) — POST /api/inquiry-cases action clear_inquiry — marks one inquiry cleared; when that clears its case it emits inquiry.remov"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:inquiry-cases (send):POST /api/inquiry-cases action send — sends the inquiry-removal letter for a case: mail:true prints and mails a paper letter to the bureau through the mail provider with the client's return address and the chosen service level; portal:true records a bureau-portal upload; a document gate (SendGateError) names missing papers. Caller: ROLE_SETS.STAFF.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:inquiry-cases (send) — POST /api/inquiry-cases action send — sends the inquiry-removal letter for a case: mail:true prints and mails a paper letter to the"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:money/banks:GET ?client_id= (banks to open by location, card stacking order, next funding sequence, bank relationship tracker)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:money/banks — GET ?client_id= (banks to open by location, card stacking order, next funding sequence, bank relationship tracker): the money/banks handler "
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:money/fundability:GET ?client_id= (UnderwriteIQ fundability score now, 3/6/12 months ahead, per business; never runs a pull)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:money/fundability — GET ?client_id= (UnderwriteIQ fundability score now, 3/6/12 months ahead, per business; never runs a pull): the money/fundability hand"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:money/strategy:GET/POST /api/money/strategy — GET the payoff inputs and the plan for saved or default settings (highest rate first, card use first, smallest balance first); POST save_plan recomputes on the server, refuses a first month the cash cannot cover and stores the plan, whose steps then show as pins. Moves no money. Caller: client (own file) or staff ROLE_SETS.FINANCE_OS.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:money/strategy — GET/POST /api/money/strategy — GET the payoff inputs and the plan for saved or default settings (highest rate first, card use first, smal"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:money/tasks:POST do_task: hands one step to the money agent or a CSM. A payment becomes a transfer proposal that waits for the client's yes; nothing moves here.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:money/tasks — POST do_task: hands one step to the money agent or a CSM. A payment becomes a transfer proposal that waits for the client's yes; nothing mov"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:partner-brand:GET ?partner_id= (a white-label partner's brand, trading name, address, support email, domain, funnels)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:partner-brand — GET ?partner_id= (a white-label partner's brand, trading name, address, support email, domain, funnels): the partner-brand handler is regi"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:partner-brand:PUT {partner_id, wordmark_url, ink, paper, ramp, voice, entity_name, entity_address, support_email, domain, selected_funnels} (cannot write disclosure or approval fields)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:partner-brand — PUT {partner_id, wordmark_url, ink, paper, ramp, voice, entity_name, entity_address, support_email, domain, selected_funnels} (cannot writ"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:partner-marketing/generate-copy:POST /api/partner-marketing/generate-copy — rewrites the unlocked sections of a white-label partner's page with the writing model, inside the partner's monthly token cap and versions each section. Locked sections refuse. Caller: staff or the owning partner.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:partner-marketing/generate-copy — POST /api/partner-marketing/generate-copy — rewrites the unlocked sections of a white-label partner's page with the writ"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:partner-pages:GET/POST/PATCH /api/partner-pages — Brand Studio funnel page drafts for white-label partners: GET list, POST create from a funnel template, PATCH title, slug, status, body_json; setting status to published stamps published_at (the partner's public page goes live), unpublishing clears it. Caller: owner, admin, or the owning partner.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:partner-pages — GET/POST/PATCH /api/partner-pages — Brand Studio funnel page drafts for white-label partners: GET list, POST create from a funnel template"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:pii:GET/POST /api/pii — a client's identity data: GET masked identity (last four) or the access history; POST reveal (full SSN, reason required, access-logged) and store (ssn, dob, addresses encrypted). Caller: staff owner, admin, inquiry_specialist, funding_advisor only. The handler and src/pii/index.mjs read, reveal and list by client_id with no org check, and no row-level policy on pii_identity was found in db/.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:pii — GET/POST /api/pii — a client's identity data: GET masked identity (last four) or the access history; POST reveal (full SSN, reason required, access-"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:public/climate-match:GET/POST /api/public/climate-match — public lending-climate lead magnet: GET how many active lenders the book holds; POST runs the staff matcher over active non-demo lenders and returns a count, lane counts and 5 bank names (no odds, no amounts). With a name and email it also files the lead through the homepage-survey path (a client row and the entry.captured and survey.submitted events) and merges states and ad tags onto custom_fields. No auth.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:public/climate-match — GET/POST /api/public/climate-match — public lending-climate lead magnet: GET how many active lenders the book holds; POST runs the "
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:public/education-enroll:The /education/enroll/ form: saves an enrollment, resolves or creates the client, drops a Sales / new_lead card. No email, no event.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:public/education-enroll — The /education/enroll/ form: saves an enrollment, resolves or creates the client, drops a Sales / new_lead card. No email, no ev"
+  },
+  {
+   "id": "catalog-route:routes-3.json:route:read/client-progress:GET every fact the client progress page draws: scores, checklist, next step. Facts, not copy; the page renders the words.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:read/client-progress — GET every fact the client progress page draws: scores, checklist, next step. Facts, not copy; the page renders the words.: the read"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:read/contracts:GET ?view=templates|contracts, ?id= (one contract with frozen wording, integrity, signers), ?file=template|contract (PDF bytes)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:read/contracts — GET ?view=templates|contracts, ?id= (one contract with frozen wording, integrity, signers), ?file=template|contract (PDF bytes): the read"
+  },
+  {
+   "id": "catalog-route:routes-3.json:route:read/lender-matches:GET ?client_id= lenders that fit a client's underwrite and inquiry profile for round planning (structural filters: state, inquiry sensitivity, bureau rotation). Returns 0 when the lender table is empty; never invents names.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:read/lender-matches — GET ?client_id= lenders that fit a client's underwrite and inquiry profile for round planning (structural filters: state, inquiry se"
+  },
+  {
+   "id": "catalog-route:routes-2.json:route:repair/generate:POST /api/repair/generate {client_id, round?} — analyses a client's stored credit file and stores the dispute letters it supports (cases, items, letters, saved letter files) and moves the repair card; mails nothing (repair/send is the human step). Honest refusals answer 200 ok:false (no_credit_file, no_violations, no_authorization, stale pull, identity not verified). Caller: owner, admin, closer, inquiry_specialist.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:repair/generate — POST /api/repair/generate {client_id, round?} — analyses a client's stored credit file and stores the dispute letters it supports (cases"
+  },
+  {
+   "id": "catalog-route:routes-0.json:route:repair/inbound-mail:Process a bureau response (pasted text or an uploaded document): parses it, updates dispute items and responses, advances the repair file.",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:repair/inbound-mail — Process a bureau response (pasted text or an uploaded document): parses it, updates dispute items and responses, advances the repair"
+  },
+  {
+   "id": "catalog-route:routes-1.json:route:soft-pull-approve:POST action=stamp_incorporated (staff stamp a business incorporation date from Present or the control panel)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "customerData",
+   "detail": "route:soft-pull-approve — POST action=stamp_incorporated (staff stamp a business incorporation date from Present or the control panel): the soft-pull-approve ha"
+  }
+ ]
+}

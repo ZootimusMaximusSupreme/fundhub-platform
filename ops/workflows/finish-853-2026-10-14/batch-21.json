@@ -1,0 +1,231 @@
+{
+ "batch": "21",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:'Check the wording' (live copy check beside the writer: rules held as a copy inside the page)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — 'Check the wording' (live copy check beside the writer: rules held as a copy inside the page): no exact safe action/result contract is atta"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:'Who approves posts' card (read-only: shows the saved approval switch, the safe default, or 'could not read')",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — 'Who approves posts' card (read-only: shows the saved approval switch, the safe default, or 'could not read'): no exact safe action/result "
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Connected accounts and 'Not connected yet' cards (display; no disconnect control)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Connected accounts and 'Not connected yet' cards (display; no disconnect control): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Held row (owner and admin only): 'Refuse it' (asks first; the post will never go out)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Held row (owner and admin only): 'Refuse it' (asks first; the post will never go out): no exact safe action/result contract is attached yet"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up: no exac"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Post row click / Enter (expand details) and 'See the details' (opens the side drawer): no exact safe action/result contract is attached yet"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Post states legend: Draft, Waiting, Sending now, Sent, Could not be sent, Needs a rewrite (plus Held for approval)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Post states legend: Draft, Waiting, Sending now, Sent, Could not be sent, Needs a rewrite (plus Held for approval): no exact safe action/re"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Side drawer: close X, click outside, Escape",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Side drawer: close X, click outside, Escape: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Tab 'Sent' (posted, with the reference on the account)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Tab 'Sent' (posted, with the reference on the account): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Waiting row: 'Throw it away' and row-detail 'Throw this post away' (asks first, marks discarded, never deletes)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Waiting row: 'Throw it away' and row-detail 'Throw this post away' (asks first, marks discarded, never deletes): no exact safe action/resul"
+  },
+  {
+   "id": "catalog-display:desks-f.json:social-studio.html:Writer: 'Send at (optional) - times are UTC' box",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "social-studio.html — Writer: 'Send at (optional) - times are UTC' box: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Clock tab 'Clock in' / 'Clock out' (your own row only)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Clock tab 'Clock in' / 'Clock out' (your own row only): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor 'Reset password': makes a 1 hour reset link and shows it in a prompt box to copy",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor 'Reset password': makes a 1 hour reset link and shows it in a prompt box to copy: no exact safe action/result contract is attached yet"
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor 'Revoke login' (confirm): suspends the person and kills their sessions",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor 'Revoke login' (confirm): suspends the person and kills their sessions: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor 'Save' for a NEW person: creates the login, mails the invite, shows the 7 day link",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor 'Save' for a NEW person: creates the login, mails the invite, shows the 7 day link: no exact safe action/result contract is attached y"
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor 'Save' for an EXISTING person: name, email, phone, start date, booked-call text switch: no exact safe action/result contract is attach"
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor 'Save' with a changed role (what that person may do)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor 'Save' with a changed role (what that person may do): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-f.json:staff-teams.html:Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "staff-teams.html — Editor switch: 'Text when a call is booked' (sends the client's name, phone, email, typed score and survey answers to this person's phone): n"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):'Got it' and 'Another take' on the end card (Space, Enter, Page Down = Got it; Page Up = Another take): counts the take and names the next file",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — 'Got it' and 'Another take' on the end card (Space, Enter, Page Down = Got it; Page Up = Another "
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):'Shoot finished' card: 'Open SLO Ads' (Drive folder 13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ) and 'Back to the Shoot tab'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — 'Shoot finished' card: 'Open SLO Ads' (Drive folder 13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ) and 'Back "
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):'This shoot' script list sheet (tap a script to roll it)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — 'This shoot' script list sheet (tap a script to roll it): no exact safe action/result contract is"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Save' (visible only while editing)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Empty and error states: 'No shoot is planned', 'Plan it on the Shoot tab' link, 'Try again'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Empty and error states: 'No shoot is planned', 'Plan it on the Shoot tab' link, 'Try again': no e"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Film key (?k=) rules: a key names one shoot and lasts a week; a forged, expired or swapped key is closed; no sign-in wall ever",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Film key (?k=) rules: a key names one shoot and lasts a week; a forged, expired or swapped key is"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line: no exact safe acti"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Keyboard and remote keys: Space / Enter / Page Down, Page Up, arrow keys, volume keys, learned buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Keyboard and remote keys: Space / Enter / Page Down, Page Up, arrow keys, volume keys, learned bu"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Page open: reads the open shoot and its scripts (film key ?k=, a staff session, or open with no key)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Page open: reads the open shoot and its scripts (film key ?k=, a staff session, or open with no k"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Play / Pause button and the 3-2-1 countdown",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Play / Pause button and the 3-2-1 countdown: no exact safe action/result contract is attached yet"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, "
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Tiny file-name chip under the words: two taps open 'Still to film'; tap a script to load it",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Tiny file-name chip under the words: two taps open 'Still to film'; tap a script to load it: no e"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Top edge of the phone: tap then scroll up or down swaps to the next or previous script still to film; a second tap marks it Got it",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Top edge of the phone: tap then scroll up or down swaps to the next or previous script still to f"
+  },
+  {
+   "id": "catalog-display:desks-f.json:teleprompter.html (+ teleprompter.js, teleprompter-edits.js):Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "teleprompter.html (+ teleprompter.js, teleprompter-edits.js) — Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that"
+  }
+ ]
+}

@@ -1,0 +1,287 @@
+{
+ "batch": "15",
+ "tier": 4,
+ "lane": "gap-catalog-display",
+ "rows": [
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Mismatch queue row: Dismiss button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Mismatch queue row: Dismiss button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Page gate: owner, admin, funding_advisor only (read + write endpoints return 403 to every other role)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Page gate: owner, admin, funding_advisor only (read + write endpoints return 403 to every other role): no exact safe action/result contract is at"
+  },
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Page load: list read + mismatch-queue read; empty-book banner",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Page load: list read + mismatch-queue read; empty-book banner: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Tab: AI bureau config",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Tab: AI bureau config: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Tab: Bureau mismatch queue (with open-count badge)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Tab: Bureau mismatch queue (with open-count badge): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:lenders.html:Tab: Lender list",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "lenders.html — Tab: Lender list: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Frame: 5-minute auto reload, reload on focus, footer 'as of' stamp",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Frame: 5-minute auto reload, reload on focus, footer 'as of' stamp: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Frame: gear button (opens Settings tab, Today comes back as it was)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Frame: gear button (opens Settings tab, Today comes back as it was): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Frame: tab strip (Today, Ideas, Scripts, Shoot, Launch, Numbers) with hash routing that keeps its place",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Frame: tab strip (Today, Ideas, Scripts, Shoot, Launch, Numbers) with hash routing that keeps its place: no exact safe action/re"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 1 (avatar): run button 'Build the avatar', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 1 (avatar): run button 'Build the avatar', Read it, Approve, Tweak, Resume / Start over / Retry: no exact sa"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 2 (ad-research): run button 'Research the market', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 2 (ad-research): run button 'Research the market', Read it, Approve, Tweak, Resume / Start over / Retry: no "
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 3 (offer): run button 'Write the offer', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 3 (offer): run button 'Write the offer', Read it, Approve, Tweak, Resume / Start over / Retry: no exact safe"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 4 (copy): run button 'Write the copy; needs step 3 approved', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 4 (copy): run button 'Write the copy; needs step 3 approved', Read it, Approve, Tweak, Resume / Start over /"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 5 (ad-strategy): run button 'Pick the strategy; needs steps 3 and 4 approved', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 5 (ad-strategy): run button 'Pick the strategy; needs steps 3 and 4 approved', Read it, Approve, Tweak, Resu"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas flywheel step 6 (spend): run button 'Read the spend (free, no model)', Read it, Approve, Tweak, Resume / Start over / Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas flywheel step 6 (spend): run button 'Read the spend (free, no model)', Read it, Approve, Tweak, Resume / Start over / Retr"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas funnels: 'Change the address' input + 'Save the address'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas funnels: 'Change the address' input + 'Save the address': no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas funnels: 'See the pages' / 'Hide the pages' + preview role buttons (sandboxed page preview)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Ideas funnels: 'See the pages' / 'Hide the pages' + preview role buttons (sandboxed page preview): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas funnels: 'Write the pages' / 'Write the pages again' (one model call, copy check)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas funnels: 'Write the pages' / 'Write the pages again' (one model call, copy check): no exact safe action/result contract is"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas: 'Go to step N' jump button",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Ideas: 'Go to step N' jump button: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas: angles list: 'Make more of this' button on each angle",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas: angles list: 'Make more of this' button on each angle: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas: month spend meter (used of cap)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas: month spend meter (used of cap): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas: research card buttons: Read it / Hide it, Approve, Tweak (+ 'Run the tweak'), Redo, 'Save to the brain', Retry",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas: research card buttons: Read it / Hide it, Approve, Tweak (+ 'Run the tweak'), Redo, 'Save to the brain', Retry: no exact "
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Ideas: research form: question box, depth toggle (Quick look / Leave nothing unturned), 3 source checkboxes, belief input, 'Stop at $' cap, 'Research it'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Ideas: research form: question box, depth toggle (Quick look / Leave nothing unturned), 3 source checkboxes, belief input, 'Stop"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Launch: 'Load all approved' (asks first, then {all:true})",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Launch: 'Load all approved' (asks first, then {all:true}): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Launch: 'Load to Meta' per approved video, and 'Retry load' (creates the ad PAUSED, $0)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Launch: 'Load to Meta' per approved video, and 'Retry load' (creates the ad PAUSED, $0): no exact safe action/result contract is"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Launch: links: 'Open Settings', 'Open Videos', 'Open Campaigns to pause a campaign or change its budget'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Launch: links: 'Open Settings', 'Open Videos', 'Open Campaigns to pause a campaign or change its budget': no exact safe action/r"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Launch: load-state poll every 20 s (uploading, waiting for Meta, making the ad, saving) + ad-video list",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Launch: load-state poll every 20 s (uploading, waiting for Meta, making the ad, saving) + ad-video list: no exact safe action/re"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Numbers: Ads table: 'Ad N' row button opens the drawer (watch curve, day select, 'What to film next', Close)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Numbers: Ads table: 'Ad N' row button opens the drawer (watch curve, day select, 'What to film next', Close): no exact safe acti"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Numbers: Angles cards: 'Make more of this' -> idea box (text + Save idea / Cancel)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Numbers: Angles cards: 'Make more of this' -> idea box (text + Save idea / Cancel): no exact safe action/result contract is atta"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Numbers: Funnels view: page views, click to page, page to lead, lead to call, call to sale, spend, ROAS per funnel; 'Open Settings' when none",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Numbers: Funnels view: page views, click to page, page to lead, lead to call, call to sale, spend, ROAS per funnel; 'Open Settin"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: 'Try again' buttons on a failed part",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Scripts: 'Try again' buttons on a failed part: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: 'Write now' batch button (hidden while write_now_ready is false)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: 'Write now' batch button (hidden while write_now_ready is false): no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: card 'Edit' (one box per part) + 'Save new version' / Cancel",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: card 'Edit' (one box per part) + 'Save new version' / Cancel: no exact safe action/result contract is attached yet."
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: card 'Fix' (note + 'Make this a rule' + 'Rewrite it'; rewrite job returns a new version)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: card 'Fix' (note + 'Make this a rule' + 'Rewrite it'; rewrite job returns a new version): no exact safe action/result c"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: card Previous / Next buttons and swipe between drafts (never saves)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Scripts: card Previous / Next buttons and swipe between drafts (never saves): no exact safe action/result contract is attached y"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: conflict banner: 'Use mine' / 'Use theirs' / 'Read the new version' (409 on a stale version)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: conflict banner: 'Use mine' / 'Use theirs' / 'Read the new version' (409 on a stale version): no exact safe action/resu"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: filter chips: Drafts, Approved, Filmed, Rejected, All (with counts)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "none",
+   "detail": "marketing-command-center.html — Scripts: filter chips: Drafts, Approved, Filmed, Rejected, All (with counts): no exact safe action/result contract is attached y"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: idea box: idea text, format, funnel, 'Save idea', 'Write it now', 'Show all N' / 'Show fewer', 'Open the script'",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: idea box: idea text, format, funnel, 'Save idea', 'Write it now', 'Show all N' / 'Show fewer', 'Open the script': no ex"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Scripts: rules: 'Change' + 'Save the rule', 'Add the rule', 'Ban the phrase' (rule saved to the repo through the outbox)",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Scripts: rules: 'Change' + 'Save the rule', 'Add the rule', 'Ban the phrase' (rule saved to the repo through the outbox): no exa"
+  },
+  {
+   "id": "catalog-display:desks-c.json:marketing-command-center.html:Settings: funnel card: name, landing page, lane select (funding600, premium, sorting, uwiq, wl, slo, unknown), ad button select, weight, Running checkbox, 'books a call' checkbox, mix of 6 script kinds",
+   "lane": "gap-catalog-display",
+   "kind": "display",
+   "impact": "staffOnly",
+   "detail": "marketing-command-center.html — Settings: funnel card: name, landing page, lane select (funding600, premium, sorting, uwiq, wl, slo, unknown), ad button select,"
+  }
+ ]
+}

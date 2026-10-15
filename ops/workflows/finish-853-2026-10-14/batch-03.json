@@ -1,0 +1,14 @@
+{
+ "batch": "03",
+ "tier": 1,
+ "lane": "gap-door-batch-routes",
+ "rows": [
+  {
+   "id": "catalog-route:routes-1.json:route:closer-deck:POST action=send_ebook {client_id, amount_cents} (mint an ad-hoc priced pay link and send it)",
+   "lane": "gap-door-batch-routes",
+   "kind": "route",
+   "impact": "money",
+   "detail": "route:closer-deck — POST action=send_ebook {client_id, amount_cents} (mint an ad-hoc priced pay link and send it): the closer-deck handler is registered; its se"
+  }
+ ]
+}
