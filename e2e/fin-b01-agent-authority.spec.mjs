@@ -9,6 +9,9 @@
 import { test, expect } from "@playwright/test";
 import { openScreen, json, OWNER } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const ROW = {
   code: "AG-01", name: "Lead Follow-up", agent_class: "client_facing",
   channel: "sms", status: "draft", runtime: null, owner_label: "Sarah Whitfield",

@@ -11,6 +11,9 @@
 import { test, expect } from "@playwright/test";
 import { openScreen, json, OWNER, CLIENT_ID } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const CONSENT_OK = { ok: true, status: { valid: true }, identity: { on_file: true }, approval_link: null };
 
 async function openPulls(page, { consent = CONSENT_OK, consentStatus = 200, pull, query = `?client_id=${CLIENT_ID}` } = {}) {

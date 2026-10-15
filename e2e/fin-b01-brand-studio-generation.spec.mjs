@@ -9,6 +9,9 @@
 import { test, expect } from "@playwright/test";
 import { openScreen, json, OWNER, PARTNER_ID } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const PAGE_ID = "99999999-0000-4000-8000-000000000001";
 const ADMIN = { ok: true, staff: { id: "staff-3", name: "Ada Admin", email: "ada@fundhub.ai", role: "admin", org_id: "org-1", status: "active" } };
 

@@ -9,6 +9,9 @@
 import { test, expect } from "@playwright/test";
 import { CLIENT_ID, json } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const CLIENT = { ok: true, staff: { id: CLIENT_ID, client_id: CLIENT_ID, name: "Dana Whitfield", email: "dana@example.com", role: "client", org_id: "org-1", status: "active" } };
 const OWNER = { ok: true, staff: { id: "staff-1", name: "Jordan Blake", email: "jordan@fundhub.ai", role: "owner", org_id: "org-1", status: "active" } };
 

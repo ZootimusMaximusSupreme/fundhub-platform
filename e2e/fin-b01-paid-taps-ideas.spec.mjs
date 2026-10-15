@@ -12,6 +12,9 @@
 import { test, expect } from "@playwright/test";
 import { mountIdeas, flywheel, blueprintFunnel } from "./helpers/cc-tab-ideas-host.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 test.use({ timezoneId: "America/Phoenix", locale: "en-US", viewport: { width: 1280, height: 900 } });
 
 const writesTo = (posts, p) => posts.filter((x) => x.path === p);

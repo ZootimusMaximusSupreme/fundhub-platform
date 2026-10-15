@@ -10,6 +10,9 @@
 import { test, expect } from "@playwright/test";
 import { openScreen, json, OWNER } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const PARTNER_A = "aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa";
 const PARTNER_B = "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb";
 const CAMP_1 = "c1c1c1c1-0000-4000-8000-000000000001";

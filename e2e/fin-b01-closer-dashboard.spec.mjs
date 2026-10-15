@@ -10,6 +10,9 @@
 import { test, expect } from "@playwright/test";
 import { openScreen, json, CLOSER, CLIENT_ID } from "./harness.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 const DUE = "2026-09-01T17:00:00.000Z";
 
 function cockpit(over = {}) {

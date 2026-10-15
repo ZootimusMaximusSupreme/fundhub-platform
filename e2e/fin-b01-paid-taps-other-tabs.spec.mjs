@@ -17,6 +17,9 @@ import { exampleResponse, CONTRACT } from "../src/marketing/api-contract.mjs";
 import { openTabHarness } from "./helpers/cc-tab-harness.mjs";
 import { STUB_PATH, stubHtml } from "./helpers/cc-launch-stub.mjs";
 
+// These run on a Mac that is often busy with other browser runs: give each test room.
+test.describe.configure({ timeout: 60_000 });
+
 test.use({ timezoneId: "America/Phoenix", locale: "en-US", viewport: { width: 1280, height: 900 } });
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
