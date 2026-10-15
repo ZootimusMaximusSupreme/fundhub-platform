@@ -183,7 +183,7 @@ Measured on this Mac while about 100 other Playwright processes from sibling bat
 | `node scripts/pulse/count-not-proved.mjs` (after) | 819 open; 6 of the 40 batch rows open (display lane 680 to 646) |
 | `node scripts/pulse/compile-catalog.mjs` then `--check` | fresh |
 | `npm run lint` (run again after the last edit) | 3,571 files parse clean |
-| every `src/pulse/catalog/**` and `gap-catalog*` / `gap-door-batch*` test that does not start a browser | 1,525 tests, 1,525 pass, 0 fail, 0 skipped |
+| every `src/pulse/catalog/**` and `gap-catalog*` / `gap-door-batch*` test that does not start a browser | 1,529 tests, 1,529 pass, 0 fail, 0 skipped |
 | `src/pulse/catalog/proofs/fin-b01-sql-mini.test.mjs`, `fin-b01-display-contracts.test.mjs`, `fin-b01-paid-taps.test.mjs` | 6 + 7 + 4 pass |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | 11 of 11 pass with the new numbers |
 | `display-proof-cases.test.mjs` "every display proof case..." and "unmapped display rows..." | pass (639 red) |
