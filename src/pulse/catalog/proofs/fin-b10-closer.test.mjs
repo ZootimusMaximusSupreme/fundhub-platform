@@ -51,7 +51,7 @@ function stubs({ copyFails = false } = {}) {
   })();`;
 }
 
-async function openCall({ cockpit = COCKPIT(), query = `?client_id=${CLIENT}&task_id=task-1`, init = stubs(), extra = {}, ready = "#fh-save-next" } = {}) {
+async function openCall({ cockpit = COCKPIT(), query = `?client_id=${CLIENT}&task_id=task-1`, init = stubs(), extra = {}, ready = "#fh-save-next", noLink = false } = {}) {
   const posted = [];
   const alerts = [];
   const contracts = [];
@@ -67,6 +67,7 @@ async function openCall({ cockpit = COCKPIT(), query = `?client_id=${CLIENT}&tas
       const body = bodyOf(route);
       contracts.push(body);
       if (body.action === "create_draft") return json(route, { ok: true, contract: { id: "contract-1" } });
+      if (noLink) return json(route, { ok: true, links: [], message: "Sent. The signer has the link by email." });
       return json(route, { ok: true, links: [{ url: SIGN }], message: "Sent. Copy the link and give it to the client." });
     },
     "/api/call-outcomes": async (route) => {
@@ -193,6 +194,18 @@ test("Contract panel Copy link: off until a contract is sent, then copies that s
     await refused.page.locator("#fh-contract-copy").click();
     await waitFor(async () => (await refused.page.locator("#fh-contract-copy").textContent()) === "Copy failed", "the failure word");
     await refused.page.close();
+
+    // A send that returns no link has nothing to copy: the button stays off and no link box is shown.
+    const bare = await openCall({ noLink: true });
+    await bare.page.locator("#fh-send-contract").click();
+    await bare.page.waitForFunction(() => document.querySelectorAll("#fh-contract-tpl option").length === 1);
+    await bare.page.locator("#fh-contract-go").click();
+    await waitFor(() => bare.contracts.length === 2, "draft and send");
+    await waitFor(async () => /signer has the link by email/.test(await bare.page.locator("#fh-contract-msg").textContent()), "the sent words");
+    assert.equal(await bare.page.locator("#fh-contract-copy").isDisabled(), true);
+    assert.equal(await bare.page.locator("#fh-contract-link").isHidden(), true);
+    assert.deepEqual(await bare.page.evaluate(() => window.__copied), []);
+    await bare.page.close();
   });
 });
 

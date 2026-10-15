@@ -89,7 +89,17 @@ test("N waiting badges: both show the pending count, hide at zero, follow a refr
     assert.deepEqual(errors, []);
     await page.close();
 
-    // A read that fails shows no badge at all: it never keeps a count it cannot back.
+    // A read that fails after a good one clears the badge: it never keeps a count it cannot back.
+    const later = await openBrain({ uploads: (n) => (n === 1 ? UPLOADS(3) : { ok: false, error: "forbidden_role" }) });
+    assert.equal(await later.page.locator("#pendPill").textContent(), "3 waiting");
+    await later.page.locator("#docsBtn").click();
+    await later.page.locator("#refreshDocs").click();
+    await waitFor(async () => (await later.page.locator("#pendPill").getAttribute("hidden")) !== null, "the badge cleared by the failed read");
+    assert.notEqual(await later.page.locator("#pendPill2").getAttribute("hidden"), null);
+    assert.match(await later.page.locator("#docList").textContent(), /Your role is not allowed to use Company Brain\./);
+    await later.page.close();
+
+    // And a read that fails from the start shows no badge at all.
     const failed = await openBrain({ uploads: { ok: false, error: "forbidden_role" } });
     assert.notEqual(await failed.page.locator("#pendPill").getAttribute("hidden"), null);
     assert.notEqual(await failed.page.locator("#pendPill2").getAttribute("hidden"), null);
@@ -251,6 +261,19 @@ test("Which quiz picker: each role gets its own quizzes, and picking one paints 
     await page.locator("#quizForm button[type=submit]").click();
     assert.deepEqual(await page.$$eval("#quizBox .qmark", (els) => els.map((e) => e.textContent)), Array(day5.questions).fill("Write an answer."));
     assert.equal(await page.locator("#quizResult").textContent(), `Fail. Day 5 must miss zero. You got 0 of ${day5.questions} right.`);
+    // All five answered well: the Day 5 rule passes.
+    const good = [
+      "We are not the bank. We help you apply and the lenders decide.",
+      "The $32 is the soft pull, a look at your file.",
+      "700 for funding, 500 for the course, and the cash downsell.",
+      "The start counts toward the 10%.",
+      "Never promise a score, that you are approved, or a dollar amount.",
+    ];
+    assert.equal(good.length, day5.questions);
+    for (const [i, answer] of good.entries()) await page.locator(`#qa-${i}`).fill(answer);
+    await page.locator("#quizForm button[type=submit]").click();
+    assert.deepEqual(await page.$$eval("#quizBox .qmark", (els) => els.map((e) => e.textContent)), Array(day5.questions).fill("Right"));
+    assert.equal(await page.locator("#quizResult").textContent(), `Pass. You got every question right (${day5.questions} of ${day5.questions}).`);
 
     // Back on Day 1, typed answers are marked right and wrong one by one.
     await page.locator("#quizPick").selectOption("closer-d1");

@@ -63,13 +63,14 @@ async function openPanel({ session = OWNER, query = `?id=${CLIENT}`, overrides =
       seen.context.push(new URL(url).searchParams.get("client_id"));
       return json(route, overrides.context || { ok: true, context: { as_prompt_block: "CLIENT Dana Whitfield\nsaid: I need $50,000 for the shop" } });
     },
-    "/api/read/blueprint-combined-approval": overrides.combined || COMBINED,
+    "/api/read/blueprint-combined-approval": async (route) => json(route, overrides.combined || COMBINED),
     "/api/read/bank-inbox": async (route, { url }) => {
       const q = new URL(url).searchParams;
       seen.inbox.push({ client_id: q.get("client_id"), limit: q.get("limit") });
       return json(route, overrides.inbox || { ok: true, items: [{ subject: "Chase update", body_preview: "We received your documents." }] });
     },
     "/api/blueprint/declines": async (route) => { seen.declines += 1; return json(route, overrides.declines || DECLINES); },
+    ...(overrides.extra || {}),
   };
   const { page, errors } = await screens.open(`/app/client-control-panel.html${query}`, { session, handlers });
   await page.waitForFunction(() => document.getElementById("ccp-name") && document.getElementById("ccp-name").textContent !== "Loading…");
@@ -219,17 +220,43 @@ test("Credit partner links: both point at the partner's own file and consent, an
     assert.deepEqual(errors, []);
     await page.close();
 
-    const none = await openPanel({ overrides: { combined: NO_PARTNER } });
+    // With no partner on the file the links are put away and the add form shows. Adding one reads the file again:
+    // the form goes away and both links appear for the new partner.
+    let added = false;
+    const posted = [];
+    const none = await openPanel({ overrides: {
+      get combined() { return added ? COMBINED : NO_PARTNER; },
+      extra: { "/api/blueprint/staff-actions": async (route) => {
+        const body = JSON.parse(route.request().postData() || "{}");
+        // The page also asks for the bank list on this same address; only the add is judged here.
+        if (body.action === "create_credit_partner") {
+          posted.push(body);
+          added = true;
+        }
+        return json(route, { ok: true, todos: [] });
+      } },
+    } });
     await none.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
     await waitFor(async () => /No credit partner yet/.test(await none.page.locator("#bp-partner-now").textContent()), "the no partner line");
     assert.equal(await none.page.locator("#bp-partner-open").isHidden(), true);
     assert.equal(await none.page.locator("#bp-partner-consent").isHidden(), true);
     assert.equal(await none.page.locator("#bp-partner-form").isVisible(), true, "the add form shows instead");
+
+    await none.page.locator("#bp-first").fill("Sam");
+    await none.page.locator("#bp-last").fill("Whitfield");
+    await none.page.locator("#bp-email").fill("sam@acme.test");
+    await none.page.locator("#bp-partner-add").click();
+    await waitFor(() => posted.length === 1, "the add request");
+    assert.deepEqual(posted[0], { action: "create_credit_partner", client_id: CLIENT, first_name: "Sam", last_name: "Whitfield", email: "sam@acme.test", phone: null });
+    await waitFor(async () => (await none.page.locator("#bp-partner-open").isVisible()), "the partner links");
+    assert.equal(await none.page.locator("#bp-partner-form").isHidden(), true, "the add form is put away");
+    assert.equal(await none.page.locator("#bp-partner-open").getAttribute("href"), `client-control-panel.html?id=${PARTNER}`);
+    assert.equal(await none.page.locator("#bp-partner-consent").getAttribute("href"), `consent-capture.html?client_id=${PARTNER}`);
     await none.page.close();
   });
 });
 
-test("Declines Use this email: copies that email's subject and preview into the letter box and opens the form", async () => {
+test("Declines Use this email: copies that email's subject and preview into the letter box and moves the cursor there", async () => {
   await proof.check(/^Declines: Use this email button/, async () => {
     const { page, errors } = await openPanel();
     await page.locator('.group-title.tog[aria-controls="bp-body"]').click();

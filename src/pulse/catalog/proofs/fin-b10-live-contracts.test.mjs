@@ -292,6 +292,20 @@ test("client picker: the 201st newest client and every one after it cannot be pi
     assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 205, bad_count: 5 });
   } finally { s.close(); }
 });
+test("client picker: the cut is the newest 200, so a nameless new client and five old ones are six different problems", () => {
+  const contract = contractFor(PICKER_CONTROL);
+  const s = makeStandIn(["clients"]);
+  try {
+    for (let n = 1; n <= 199; n += 1) client(s, ORG, n);
+    // The newest client has no name and no email: inside the newest 200, and unnameable.
+    s.insert("clients", { id: "newest-blank", org_id: ORG, first_name: "", last_name: "", email: "", is_demo: false, created_at: "2099-01-01 00:00:00" });
+    // Five old clients, cut off by the picker.
+    for (let n = 1; n <= 5; n += 1) {
+      s.insert("clients", { id: `old-${n}`, org_id: ORG, first_name: "Old", last_name: String(n), email: `old${n}@acme.test`, is_demo: false, created_at: `2020-01-01 00:00:0${n}` });
+    }
+    assert.deepEqual(s.run(contract.sql, ORG), { sample_count: 205, bad_count: 6 });
+  } finally { s.close(); }
+});
 test("client picker: demo clients and another company's clients are not counted", () => {
   const contract = contractFor(PICKER_CONTROL);
   const s = makeStandIn(["clients"]);
