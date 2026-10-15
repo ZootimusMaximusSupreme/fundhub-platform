@@ -6,6 +6,7 @@ import { FIN_B01_DISPLAY_RESULT_CONTRACTS } from "./fin-b01-display-contracts.mj
 import { FIN_B02_RESULT_CONTRACTS } from "./fin-b02-display-contracts.mjs";
 import { FIN_B04_RESULT_CONTRACTS } from "./fin-b04-display-results.mjs";
 import { FIN_B06_DISPLAY_CONTRACTS } from "./fin-b06-display-contracts.mjs";
+import { FIN_B07_PAGE_CONTRACTS, FIN_B07_RESULT_CONTRACTS } from "./fin-b07-display-contracts.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -281,12 +282,13 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("'Approve selected': moves Accrued rows to Approved", "Each commission.approved receipt must link to the same ledger amount and an approved timestamp and actor.", "commission-approved", COMMISSION_APPROVED_SQL),
   query("'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)", "Each commission.paid receipt must link to the same paid ledger amount and exact payout reference.", "commission-paid", COMMISSION_PAID_SQL),
   gap("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "The screen paints Client and Rule version as dashes, Basis as $0 (it reads the text front_end or back_end as a number) and Rate as the split share, so no saved-row read can prove this named table displays correct values."),
-  gap("Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner", "The pulse needs the soft-pull request id and exact submitted business array to compare each field with the saved business rows."),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
   ...FIN_B01_DISPLAY_RESULT_CONTRACTS,
   ...FIN_B02_RESULT_CONTRACTS,
   ...FIN_B04_RESULT_CONTRACTS,
   ...FIN_B06_DISPLAY_CONTRACTS,
+  ...FIN_B07_RESULT_CONTRACTS,
+  ...FIN_B07_PAGE_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));

@@ -21,6 +21,7 @@ import { FIN_B01_DISPLAY_SPEC_PROOFS } from "./fin-b01-display-specs.mjs";
 import { FIN_B02_DISPLAY_CASES } from "./fin-b02-display-contracts.mjs";
 import { FIN_B04_DISPLAY_PROOF_CASES } from "./fin-b04-display-results.mjs";
 import { FIN_B06_DISPLAY_PROOF_CASES } from "./fin-b06-display-practice.mjs";
+import { FIN_B07_DISPLAY_CASES } from "./fin-b07-display-contracts.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -406,6 +407,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...FIN_B02_DISPLAY_CASES,
   ...FIN_B04_DISPLAY_PROOF_CASES,
   ...FIN_B06_DISPLAY_PROOF_CASES,
+  ...FIN_B07_DISPLAY_CASES,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));
