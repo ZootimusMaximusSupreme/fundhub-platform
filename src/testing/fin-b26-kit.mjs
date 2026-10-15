@@ -56,6 +56,23 @@ export const wrote = (fake) => writes(fake).length > 0;
 
 const ANY_OF = /\b(?:[a-z]\w*\.)?([a-z_]\w*)(?:::\w+)?\s*=\s*ANY\(\s*\$(\d+)(?:::\w+\[\])?\s*\)/gi;
 
+/** The WHERE text with every parenthesised group that holds an OR taken out, so an alternative is never read as a must. */
+function withoutOrGroups(text) {
+  let out = text;
+  for (let guard = 0; guard < 50; guard += 1) {
+    let changed = false;
+    // Find the innermost-first groups: "(" ... ")" with no "(" inside once nested ANY( ) calls are neutralised.
+    const neutral = out.replace(/\bANY\(([^()]*)\)/gi, (m, inner) => `ANY\u0001${inner}\u0002`);
+    const next = neutral.replace(/\(([^()]*)\)/g, (m, inner) => {
+      if (/\bOR\b/i.test(inner)) { changed = true; return " "; }
+      return m;
+    });
+    out = next.replace(/\u0001/g, "(").replace(/\u0002/g, ")");
+    if (!changed) break;
+  }
+  return out;
+}
+
 /**
  * The rows a statement's WHERE keeps, judged from the statement's own text: `col = $n`, `col = 'x'`,
  * the optional `($n IS NULL OR col = $n)` filter and `col = ANY($n)`. A condition the product drops
@@ -65,7 +82,7 @@ export function inSql(rows, sql, params = []) {
   const where = /\bWHERE\b([\s\S]*)$/i.exec(sql);
   let kept = rowsWhere(rows, sql, params);
   if (!where) return kept;
-  for (const m of where[1].matchAll(ANY_OF)) {
+  for (const m of withoutOrGroups(where[1]).matchAll(ANY_OF)) {
     const list = params[Number(m[2]) - 1];
     const values = (Array.isArray(list) ? list : [list]).map(String);
     kept = kept.filter((row) => values.includes(String(row[m[1]])));
