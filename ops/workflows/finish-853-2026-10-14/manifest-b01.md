@@ -1,17 +1,144 @@
 # Batch 01 manifest: finish the 853 (tier 1, lane gap-catalog-display, 40 rows)
 
 Branch `fin/b01`, built from `fin/base` at `2f4f574a0`. Worktree `.claude/worktrees/fin-b01`. Nothing was pushed or merged.
-Generation 1 of at most 3. Tests only. No product file was changed.
+Generation 1 built the 34 rows below that are bound to browser specs and live checks and left six rows open as
+"not attachable". Generation 2 (this file's top section) challenged all six and closed every one: two with a practice
+test, four as verified nothing-to-judge (the controls were removed from the product on purpose). The generation 1
+text further down is kept; where it says "not attachable" for these six, the generation 2 section wins.
 
+## Generation 2: the six rows that were left open
+
+Measured with `node scripts/pulse/count-not-proved.mjs` on this branch: the batch had 6 rows open at the start of this
+run (819 open in all), and 0 after (813 open in all; display lane 646 to 640). The six are all in this batch, none in
+another.
+
+| Row | Generation 1 said | Generation 2 outcome | Why |
+|---|---|---|---|
+| client-portal.html "Unlock buttons (...; opens modal)" | not attachable: no product has a checkout link | **practice-test** | The page has a written rule for the day a product gets a `checkoutUrl` (paintTile and openUnlock say so). The new spec gives products a fake link the way a later change would and judges that rule in a real page, and it judges the shipped state (no link, no button) too. |
+| client-portal.html "Unlock modal: Unlock pay now button (goes to product checkoutUrl)" | not attachable | **practice-test** | Same spec: pay now goes to that product's own link, says it is opening, turns itself off; Close and Escape never go to a checkout link. Six products, six tests. |
+| present.html "'$ amount' e-book price box" | not attachable: stale row | **na-verified** | The control was retired on purpose, and the repo pins it twice (`src/http/closer-deck-present.test.mjs`: "has no retired e-book control"; `src/http/closer-deck-endpoints.test.mjs`: "retired ebook action is refused"). A stale row is not a "needs the control built" case. It is nothing to judge, and the pulse re-reads the live files every run. |
+| present.html "'Send e-book email' ..." | not attachable: stale row | **na-verified** | Same. |
+| optimize.html "Audit intake and Pay for Audit ..." | not attachable | **na-verified** | `docs/journeys/optimize-actual.md`: "The Audit section and the Pay-for-Audit checkout stay removed by owner decision" (2026-08-28) and "nothing calls POST /api/public/optimize". The page only reads its sign-up config. |
+| climate/index.html "Gate button: unlock the full list ..." | not attachable | **na-verified** | The page that held the gate was reverted (`f39cec357`, "Revert Claude climate visitor page") and `/climate/` is now Darwin's dashboard (`8547bb72a`), which has no gate. The row was listed from a journey doc, not from the shipped page. |
+
+### How a verified nothing-to-judge works for the four retired controls
+
+`src/pulse/coverage/fin-b01-retired-controls.mjs` lists, per row, the live files to read (GET only) and what must NOT be
+in them: an e-book control in `/app/present.html`, `/app/present.js`, `/app/contract-send.js`; Pay for Audit, the
+Consulting Services Assessment title or a POST on `/optimize`; the gate, the `$32` text or a call to
+`/api/public/optimize` on `/climate/` and the page scripts it names. Each file also has a marker that must be there, so a
+blank page or a sign-in page cannot read as "gone".
+
+- All four files and markers present, none of the control: row is `na`, code `catalog-display-retired-control`.
+- The control is back in any file: row is `FAIL` and says which file ("The control is back and has no proof attached").
+- A file that loads but no longer looks like the page (marker missing, empty body): `FAIL`.
+- A file that cannot be read (network, non-200, no GET client): `skip`. Never `na`, never a pass.
+- The morning audit re-runs the claim through `naVerify["catalog-display-retired-control"]` in
+  `gap-catalog-display.mjs`, so a stale "nothing to judge" becomes "not checked", which is red.
+
+Run once against the live public site by hand (GET only, six requests, each page read once): all four rows `na`.
+
+**Read the offline count honestly.** `count-not-proved.mjs` answers every GET with an empty 200 body. The four retired
+rows cannot be proved from an empty body, so offline they print `FAIL` (not `NOT_PROVED`) and drop off the count. On the
+live server they read the real files and print `na`. That is the same way the retired Decline Autopsy rows already behave
+offline. The 813 is "rows that still say NOT_PROVED", not "rows that are green offline".
+
+### What was broken on purpose in generation 2 (each went red, then was put back)
+
+Practice test, in `public/app/client-portal.html` (`e2e/fin-b01-portal-unlock.spec.mjs`, 13 tests):
+| # | Break in `public/app/client-portal.html` | Tests red |
+|---|---|---|
+| 1 | Unlock button always shown (`unlockBtn.hidden = false`) | 2 (shipped state; one link, one button) |
+| 2 | Unlock button never shown (`hidden = true`) | 11 |
+| 3 | Button for every product (`canBuy` ignores `checkoutUrl`) | 2 |
+| 4 | Pay now always goes to the soft pull's link | 5 (the other five products) |
+| 5 | "Opening secure checkout…" text not set | 6 |
+| 6 | Pay now never shown in the modal (`go.hidden = true`) | 7 |
+| 7 | Pay now says only "Unlock", not "Unlock — price" | 1 |
+| 8 | Close no longer closes a View status modal | 1 |
+| 9 | Escape handler removed | 1 |
+| 10 | An owned product keeps its Unlock attribute | 2 |
+| 11 | A finished soft pull is sold again | 1 |
+| 12 | Pay now stays pressable while leaving (`disabled` removed) | 6 |
+| 13 | Talk button text not changed when a link exists | 1 |
+| 14 | "Online checkout is not available" note always shown | 1 |
+| 15 | Modal price not painted | 1 |
+
+Each was applied alone, the spec was run, and the file was put back from memory and checked clean against HEAD. Two
+breaks were not made because no person can see them: `go.hidden = false` in `openUnlock` (the modal cannot be opened
+from an Unlock button that is hidden, so the pay button is never reached without a link), and the "Checkout not
+available" branch of the pay button (same reason).
+
+Retired controls, in the real product files (`src/pulse/coverage/fin-b01-retired-controls.test.mjs`, 10 tests; the file
+was restored and checked clean against HEAD after each):
+
+| Break | Red |
+|---|---|
+| `public/app/present.js`: a "Send e-book email" comment appended | 4 tests (shipped-files nothing-to-judge, both e-book rows, lane) |
+| `public/app/present.html`: an `fh-ebook` price box appended | 4 tests |
+| `public/optimize.html`: a "Pay for Audit" button appended | 3 tests |
+| `public/climate/_next/static/chunks/app/page-*.js`: a POST to `/api/public/optimize` appended | 2 tests |
+
+The tests also hold the break in memory: every file is changed one at a time through a fake site that serves the shipped
+files (e-book word, `send_ebook`, `fh-ebook`, `ebookDollars`, Pay for Audit, the assessment title, a POST, the gate text,
+the `$32` text). "Facebook" is not an e-book control, and a test pins that.
+
+### Generation 2 files added or touched
+
+Added:
+- `e2e/fin-b01-portal-unlock.spec.mjs` (13 browser tests, practice test with fake checkout links)
+- `src/pulse/coverage/fin-b01-retired-controls.mjs`, `fin-b01-retired-controls.test.mjs`
+
+Touched, shared (smallest edit; the integrator merges these):
+
+| File | Change |
+|---|---|
+| `src/pulse/coverage/gap-catalog-display.mjs` | 1 import line; new `retiredControlResults()` (about 20 lines) and one line in `gapChecks`' `judge`; one `naVerify["catalog-display-retired-control"]` entry |
+| `src/pulse/na-conditions.mjs` | one new code `catalog-display-retired-control` (the closed list goes from 14 to 15) |
+| `src/pulse/na-conditions.test.mjs` | closed list (fifteen), lane-code list, sample args |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | 1 import; the "not proved" filter skips the four retired controls |
+| `src/pulse/catalog/proofs/fin-b01-display-specs.mjs`, `.test.mjs` | 2 rows added (34 to 36); header comment |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 639 to 637 (the two portal rows are now attached). If other batches lower it too, add the drops together and use the number the test prints |
+| `src/pulse/catalog/generated.json` | recompiled; the integrator recompiles after merging |
+
+No `compiler.mjs`, `compile-catalog.mjs`, `door-proof.mjs`, `display-saved-result.mjs` or `display-proof-cases.mjs` line was
+touched in generation 2.
+
+### Generation 2 traps
+
+- **Playwright waits for a navigation you started.** A press that sets `location.href` makes `click()` and any locator
+  call wait for the new page. The pay page cannot be "held" and read at the same time. The spec reports the pay button out
+  of the page with `exposeFunction` and a `MutationObserver`, and uses `click({ noWaitAfter: true })`. `page.evaluate`
+  inside the route handler made the navigation abort.
+- **`var PRODUCTS = {...}` can be given a checkout link from an init script**: define `window.PRODUCTS` as a configurable
+  accessor first, and the page's own assignment goes through the setter. The page text is not changed.
+- **`rm -rf` is denied for agents here**, so Playwright's `test-results/` folder is left where it is (it is git-ignored).
+
+### Generation 2 product findings (not fixed, one line each)
+
+1. client-portal `um-go`: `window.location.href = checkout` has no check that the address is http or https. Today the
+   address is a constant in the page, so nothing reaches it; a `javascript:` link would run. (The Pay now links on invoices
+   do refuse a non-http address.)
+2. optimize.html: the intended journey (`docs/journeys/optimize-intended.md`) still says "Pay for Audit opens a Commas
+   checkout"; the actual journey says it was removed by owner decision. The two disagree. Not edited (intended files are
+   not mine).
+3. climate: `docs/journeys/climate-lead-magnet-intended.md` describes a gate and a `$32` unlock that the shipped Darwin
+   dashboard does not have. Same kind of gap.
+4. The surviving half of the optimize intake (first name, last name, email, phone, SMS box) has only text tests
+   (`src/http/optimize-html.test.mjs` pins `sms_consent: sms.checked === true`); no browser test types into it.
+
+## Generation 1 text (kept)
 ## The numbers
 
 | | Rows |
 |---|---|
-| Open before (batch rows that were NOT_PROVED) | 40 of 40 |
-| Open after | 6 |
+| Open before generation 1 (batch rows that were NOT_PROVED) | 40 of 40 |
+| Open after generation 1 | 6 |
+| Open after generation 2 | 0 |
 | Live check (reads saved results, goes red when one is wrong) | 3 |
-| Practice test (fake data, mutation-verified) | 31 |
-| Not attachable (the control is not in the product, exact reason below) | 6 |
+| Practice test (fake data, mutation-verified) | 33 (31 from generation 1, 2 from generation 2) |
+| Verified nothing-to-judge (control removed on purpose, live files re-read every run) | 4 |
+| Not attachable | 0 |
 
 Measured with `node scripts/pulse/count-not-proved.mjs` (offline, stub fetch): the whole list went 853 to 819, so 34 rows
 left it: the 33 display rows bound by the plug-in plus the frame row. By lane: display 680 to 646; routes 135, flows 23
@@ -35,7 +162,7 @@ live imports them.
 | agent-editor.html | Authority: Max discount input (percent) | live-check | LIVE CHECK `fin-b01-display-contracts.mjs` + `e2e/fin-b01-agent-authority.spec.mjs` |
 | brand-studio.html | Generation: Turn on for this partner (owner) | practice-test | `e2e/fin-b01-brand-studio-generation.spec.mjs` |
 | brand-studio.html | Write page copy button (AI model call, locked legal blocks skipped) | practice-test | `e2e/fin-b01-brand-studio-generation.spec.mjs` |
-| climate/index.html#Gate button: unlock … | Gate button: unlock the full list with the $32 assessment (POST /api/public/opt… | not-attachable | The shipped climate page has no gate button: public/climate/index.html is a static export whose page chunk (public/climate/_next/static/chunks/app/page-b71b32356ee1b98a.js) holds no gate, no $32 text and no /api/public/optimize call. The row is listed from the journey doc, not from the page. Needs the gate built, or the row removed. |
+| climate/index.html#Gate button: unlock … | Gate button: unlock the full list with the $32 assessment (POST /api/public/opt… | na-verified | The gate page was reverted and replaced by a dashboard with no gate. `fin-b01-retired-controls.mjs` reads `/climate/` and its page script live (GET) and goes red if the gate, the `$32` text or the optimize call appears. Test: `fin-b01-retired-controls.test.mjs`. |
 | campaign-manager.html | Drawer: New daily budget input and Change daily budget button | practice-test | `e2e/fin-b01-campaign-manager.spec.mjs` |
 | campaign-manager.html | Drawer: Start spending again button (resume on Meta, confirm dialog) | practice-test | `e2e/fin-b01-campaign-manager.spec.mjs` |
 | campaign-manager.html | Drawer: Stop spending button (pause on Meta, confirm dialog) | practice-test | `e2e/fin-b01-campaign-manager.spec.mjs` |
@@ -54,24 +181,24 @@ live imports them.
 | client-portal.html | FinanceOS card link (Open or Set up FinanceOS) | practice-test | `e2e/fin-b01-client-portal.spec.mjs` |
 | client-portal.html | Payments tab: Pay now link per open invoice | practice-test | `e2e/fin-b01-client-portal.spec.mjs` |
 | client-portal.html | Refer a friend: Copy button | practice-test | `e2e/fin-b01-client-portal.spec.mjs` |
-| client-portal.html | Unlock buttons (Soft pull, Funding DFY, Repair DFY, Repair trial, Deliverables,… | not-attachable | paintTile in public/app/client-portal.html sets every Unlock button hidden unless PRODUCTS[key].checkoutUrl exists, and no product sets checkoutUrl, so no client ever sees an Unlock button. The only way to open the modal is View status. Needs checkout links on the products. |
-| client-portal.html | Unlock modal: Unlock pay now button (goes to product checkoutUrl) | not-attachable | um-go stays hidden unless PRODUCTS[key].checkoutUrl exists (openUnlock), and no product has one, and the modal itself cannot be opened from an Unlock button. A test could only inject a field the page never sets. Needs checkout links on the products. |
+| client-portal.html | Unlock buttons (Soft pull, Funding DFY, Repair DFY, Repair trial, Deliverables,… | practice-test | `e2e/fin-b01-portal-unlock.spec.mjs` (five tests: shipped state with no link, link gives the button and the modal, one link one button, owned product, soft pull already run). Fake checkout links; no client sees these buttons today. |
+| client-portal.html | Unlock modal: Unlock pay now button (goes to product checkoutUrl) | practice-test | `e2e/fin-b01-portal-unlock.spec.mjs` (pay now goes to each of the six products' own link and says it is opening; Close and Escape never go to a checkout link). Fake checkout links. |
 | closer-dashboard.html | Deal calculator: Draw amount input | practice-test | `e2e/closer-dashboard-calculators.spec.mjs`, `e2e/fin-b01-closer-dashboard.spec.mjs` |
 | closer-dashboard.html | Pay link panel: offer select and downsell/upsell select | practice-test | `e2e/fin-b01-closer-dashboard.spec.mjs`; server half `src/pulse/catalog/proofs/s1-door-closer-deck.test.mjs` |
 | closer-dashboard.html | Pay link panel: Send pay link button (mints a checkout link, emails and texts t… | practice-test | `e2e/fin-b01-closer-dashboard.spec.mjs`; server half `src/pulse/catalog/proofs/s1-door-closer-deck.test.mjs` |
 | closer-dashboard.html | Send pay link button (opens panel; closers only) | practice-test | `e2e/fin-b01-closer-dashboard.spec.mjs`; server half `src/pulse/catalog/proofs/s1-door-closer-deck.test.mjs` |
 | content-admin.html | Locked tile editor: price shown box | practice-test | `e2e/content-admin-clicks.spec.mjs`, `e2e/fin-b01-content-price.spec.mjs` |
-| optimize.html#opt | Audit intake and Pay for Audit: first name, last name, email, phone, SMS consen… | not-attachable | public/optimize.html never posts to /api/public/optimize (its only call is a GET for the sign-up config) and has no Pay for Audit control; the form fields are only written to sessionStorage fh_opt when the SmartCredit or roadmap link is pressed. The row names a post and a Commas checkout the page does not make. |
+| optimize.html#opt | Audit intake and Pay for Audit: first name, last name, email, phone, SMS consent… | na-verified | Pay for Audit was removed by owner decision (`docs/journeys/optimize-actual.md`); the page only reads its config. `fin-b01-retired-controls.mjs` reads `/optimize` live and goes red if Pay for Audit, the assessment title or a POST appears. |
 | inquiry-remover.html | Expanded row 'Enroll' button (puts the client in the trial program; sends price… | practice-test | `e2e/fin-b01-inquiry-remover-repair.spec.mjs` |
 | inquiry-remover.html | PULL modal: type PULL, Cancel, 'Pull' (three bureau pulls in a row; stops on th… | practice-test | `e2e/fin-b01-inquiry-remover-repair.spec.mjs` |
 | marketing-command-center.html | Frame: cost sheet and two-tap confirm sheet drawn before every paid tap (Cancel… | practice-test | `e2e/marketing-command-center.spec.mjs`, `e2e/fin-b01-paid-taps-ideas.spec.mjs`, `e2e/fin-b01-paid-taps-other-tabs.spec.mjs`; server half `src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs` |
-| present.html (+ present.js, contract-se… | '$ amount' e-book price box | not-attachable | present.html, present.js and contract-send.js have no e-book price box anywhere (no ebook string at all). Row is stale; needs the control built or the row removed. |
+| present.html (+ present.js, contract-se… | '$ amount' e-book price box | na-verified | Retired on purpose (pinned by `src/http/closer-deck-present.test.mjs`). `fin-b01-retired-controls.mjs` reads `/app/present.html`, `present.js`, `contract-send.js` live and goes red if an e-book control comes back. |
 | present.html (+ present.js, contract-se… | 'Invoice this client': reads the open invoice, emails it | practice-test | `e2e/fin-b01-present-deck.spec.mjs` |
 | present.html (+ present.js, contract-se… | 'Log disposition and close': writes the call outcome (deposit or downsell) and … | practice-test | `e2e/fin-b01-present-deck.spec.mjs` |
 | present.html (+ present.js, contract-se… | 'Send agreement + pay link': mints the pay link for the chosen offer, emails an… | practice-test | `e2e/fin-b01-present-deck.spec.mjs`; server half `src/pulse/catalog/proofs/s1-door-closer-deck.test.mjs` |
-| present.html (+ present.js, contract-se… | 'Send e-book email': pay link at the typed price, with a placeholder PDF attach… | not-attachable | present.js has no Send e-book email button and the server refuses action send_ebook as unknown_action (s1-door-closer-deck.test.mjs pins that). Row is stale; needs the control built or the row removed. |
+| present.html (+ present.js, contract-se… | 'Send e-book email': pay link at the typed price, with a placeholder PDF attach… | na-verified | Retired on purpose; the server refuses `send_ebook` (`closer-deck-endpoints.test.mjs`, `s1-door-closer-deck.test.mjs`). Same live read as the price box. |
 
-The six rows left open, with the exact reason (a challenger can check each one in the file named):
+The six rows generation 1 left open, with its reasons (generation 2 re-read each one and closed it, see the top of this file):
 
 1. **climate Gate button.** `public/climate/index.html` is a static export. Its page chunk
    `public/climate/_next/static/chunks/app/page-b71b32356ee1b98a.js` holds no gate button, no `$32` text and no
@@ -207,4 +334,4 @@ A fresh agent picked this batch up after the shutdown and re-read it instead of 
 | `gap-catalog-display.test.mjs` + `fin-b01-sql-mini`, `fin-b01-display-contracts`, `fin-b01-paid-taps` tests | 28 of 28 pass |
 | Break the live check on purpose (drop the true-or-false test on the switch; let the discount reach 999) | each turned 3 tests red; both put back, files identical to the commit |
 | `e2e/fin-b01-agent-authority.spec.mjs` + `e2e/fin-b01-content-price.spec.mjs` in Chromium | 13 of 13 pass |
-| The six not-attachable reasons re-read in the files | all six still true: `PRODUCTS` in `public/app/client-portal.html` has no `checkoutUrl` and nothing assigns one; `public/optimize.html` has only the GET at its config call and no POST or Pay for Audit control; `present.html`, `present.js`, `contract-send.js` hold no e-book text; `public/climate` holds no `api/public/optimize`, no "unlock the full" and no `$32` |
+| The six not-attachable reasons re-read in the files | all six facts were still true, but four were retired controls (nothing to judge) and two were practice-testable; generation 2 closed them: `PRODUCTS` in `public/app/client-portal.html` has no `checkoutUrl` and nothing assigns one; `public/optimize.html` has only the GET at its config call and no POST or Pay for Audit control; `present.html`, `present.js`, `contract-send.js` hold no e-book text; `public/climate` holds no `api/public/optimize`, no "unlock the full" and no `$32` |
