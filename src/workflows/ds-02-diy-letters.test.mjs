@@ -114,3 +114,52 @@ test("duplicate delivery: replaying the same event does not double-send, double-
   assert.equal(db.tasks.length, 1);
   assert.deepEqual(db.clients[0].tags, ["client:diy-letters"]);
 });
+
+// R03 (launch pass 2026-10-14). The Capital Blueprint's Commas title IS
+// "Consulting Services Package" (src/config/offers.mjs), and money-chain's
+// bucket map files its product code under 'diy'. Name-only routing therefore
+// read a $5,000 Blueprint payment as the old $1,000 DIY downsell: a REPAIR_ONLY
+// buyer got a draft diy_letters invoice, an admin task and a "letters ready"
+// email for a product he did not buy. A product code carried on the payment is
+// the durable identity and wins over the name; the name is only for a payment
+// that carries no code at all.
+test("R03 — a Blueprint payment is NEVER the DIY product, even when its name and bucket say so", async () => {
+  // The Blueprint, plus every other product code that exists and is not the DIY pack.
+  for (const productCode of ["consulting-package", "repair-bundle", "funding-mastery", "card-stacking-dfy"]) {
+    const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY", custom_fields: {} }], templates: withTemplate() });
+    let delivered = 0;
+    const res = await handle({
+      event: ev("payment.received", {
+        productName: "Consulting Services Package", product: "diy", productCode, amount: 5000
+      }, { clientId: "cl-1" }),
+      db, step: fakeStep(), fetchImpl: fakeFetch(true),
+      deliverLettersFn: async () => { delivered++; return { delivered: true, letterCount: 1, event: "diy.package.ready" }; }
+    });
+    assert.equal(res.done, false, `${productCode}: must not run DS-02`);
+    assert.equal(res.reason, "not_diy_product", `${productCode}: wrong reason`);
+    assert.equal(db.invoices.length, 0, `${productCode}: no false diy_letters invoice`);
+    assert.equal(db.tasks.length, 0, `${productCode}: no false admin task`);
+    assert.equal(db.messages.length, 0, `${productCode}: no false "letters ready" email`);
+    assert.equal(db.clients[0].tags, undefined, `${productCode}: never tagged client:diy-letters`);
+    assert.equal(db.clients[0].custom_fields.diy_status, undefined, `${productCode}: diy_status untouched`);
+    assert.equal(delivered, 0, `${productCode}: no letters delivered`);
+  }
+});
+
+test("R03 — the DIY letter pack is routed by its own product code, not by its title", async () => {
+  const db = pgFake({ clients: [{ id: "cl-1", org_id: "org-1", email: "a@b.com", outcome_tier: "REPAIR_ONLY", custom_fields: {} }], templates: withTemplate() });
+  const res = await handle({
+    // 'Consulting Services Letters' is the pack's own vendor title and matches
+    // no name rule, so only the code can route this payment.
+    event: ev("payment.received", {
+      productName: "Consulting Services Letters", product: "unmatched", productCode: "diy-letter-pack", amount: 1000
+    }, { clientId: "cl-1" }),
+    db, step: fakeStep(), fetchImpl: fakeFetch(true), deliverLettersFn: deliverOk
+  });
+  assert.equal(res.done, true);
+  assert.equal(db.invoices.length, 1);
+  assert.equal(db.invoices[0].source, "diy_letters");
+  assert.equal(db.tasks.length, 1);
+  assert.equal(db.messages.length, 1);
+  assert.deepEqual(db.clients[0].tags, ["client:diy-letters"]);
+});
