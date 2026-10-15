@@ -182,3 +182,38 @@ I wrote two helper files into the shared scratchpad folder under the names `muta
 - The three hidden-head rows are only as good as the live read: if fundhub.ai cannot be reached from the pulse they show `skip`, never `na`.
 - The hiring rail check will say "no results yet" for as long as no card is placed there (hiring applications are not `cards`); it can still go red on the first wrong card.
 - `fin-b19-display-contracts.test.mjs` needs `node:sqlite` (Node 22.13 or newer; the repo's engines and CI are 22.x).
+
+## Generation 2: the challenge pass on the two open rows (Sort, and the x on the Sort chip)
+
+Asked to challenge every earlier "not attachable" reason and attach unless the reason is exactly true. No source file changed in this pass. Result: the reason is exactly true, so both rows stay `not-attachable`.
+
+What was checked, and what it said:
+
+| Check | Result |
+|---|---|
+| `git diff fin/base main -- public/app/pipeline.html` | empty: `main` has the same page, nobody fixed it since |
+| Read `applySort()` and the chip x handler in `public/app/pipeline.html` | `applySort()` starts with `var mode=fSort.value; if(!mode) return;`. The chip x handler sets the select to empty and calls `applySort()` for the Sort chip on purpose (`if(c.el===fSort) applySort();`), so the page's own author meant "give the order back". The call does nothing. |
+| The page keeps no copy of the first order | Cards are moved with `insertBefore`, and nothing records where they were. So even removing the early return would not restore anything (the comparator answers 0 and the sort is stable). It needs a page change that remembers the first position of each card. |
+| `fin-b19-pipeline-controls.test.mjs` in Chromium, real page, fake `/api` | 11 of 11 pass: the four sorts order a column correctly, and Manual and the Sort chip x both leave the columns in the last sorted order (pinned) |
+| Tripwire flip, done once and put back: a 3-line edit to `applySort()` (stamp each card's first position in a data attribute, sort by it on an empty choice) | tests 4, 5 and 11 go red with the words "If this fails the product was fixed: attach the Sort row" and "...attach the chip row". `git checkout public/app/pipeline.html` put the page back; `git status` clean. So the day the page is fixed, a person is told exactly what to do. |
+| Could a live check read a saved result instead? | No. Sort and chips "call no request", write no row, and keep nothing in storage. The only result is the order of the cards on screen. |
+| Could a practice test be attached for the part that works? | Not honestly. A green test on the four working sorts would take the row off the board while the first choice, Manual, still does not do what its name says. A test that passes because the bug is there goes red on the fix. Neither is allowed. |
+
+How to attach the two rows the day the page is fixed (nothing to invent):
+
+1. In `fin-b19-pipeline-controls.test.mjs`, flip the two pinned assertions to expect the first order (`["Zed Zane", "Alice Adams", "Finn Fox", "Dan Dyer"]` in `new_lead`).
+2. Move the two ids out of `notAttached` in `fin-b19-rows.json` so the proof chain attaches them, and delete the two entries in `fin-b19-not-attachable.mjs` and the two page-gap contracts in `fin-b19-display-contracts.mjs`.
+3. `npm run pulse:catalog`. Both rows leave the lane.
+
+Numbers for this generation: `openBefore` 40 (re-measured at `fin/base`, 853 total), `openAfter` 2 (815 total).
+
+Commands run this pass, all exit 0, 0 skipped:
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` at `fin/base`, ids intersected with `batch-19.json` | total 853, batch rows open 40 |
+| the same on `fin/b19` | total 815, batch rows open 2 (the two Sort rows) |
+| `node scripts/pulse/compile-catalog.mjs --check` | exit 0 (3975 mapped, 3919 wired, 23 red) |
+| `node --test` pipeline controls, shell chrome, shell sidebar, sales floor | 11 + 10 + 7 + 6 pass |
+| `node --test` rows, display contracts, hidden head, gap-catalog-display, na-conditions, modules, tripwires | 94 of 94 pass |
+| `node --test src/pulse/catalog/*.test.mjs` with the three browser files above | 65 of 65 pass |
