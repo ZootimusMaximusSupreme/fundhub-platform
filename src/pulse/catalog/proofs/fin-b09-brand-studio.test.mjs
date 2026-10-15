@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bodyOf, dialogs, json, OWNER, proofRows, sharedScreens, waitFor } from "./fin-b09-kit.mjs";
+import { bodyOf, dialogs, json, OWNER, proofRows, sharedScreens, textsSeen, waitFor, watchText } from "./fin-b09-kit.mjs";
 
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
@@ -333,11 +333,13 @@ test("DNS copy buttons put CNAME, ALIAS/A and TXT on the clipboard and say copie
     await page.waitForFunction(() => document.querySelector("#dnsBox").style.display === "block");
     const buttons = page.locator("#dnsBox .copyb");
     assert.equal(await buttons.count(), 3);
+    // The label says "copied" for 1.1 seconds and then goes back, so every label is recorded from here on.
+    await watchText(page, "#dnsBox .copyb");
 
     const expected = ["partners.fundhub.ai", "75.2.60.5", `fundhub-site-verify=${PID}`];
     for (let i = 0; i < 3; i += 1) {
       await buttons.nth(i).click();
-      assert.equal(await buttons.nth(i).innerText(), "copied", `button ${i} says copied`);
+      await waitFor(async () => ((await textsSeen(page, "#dnsBox .copyb"))[i] || []).includes("copied"), `button ${i} says copied`);
       assert.equal(await page.evaluate(() => window.__copied.at(-1)), expected[i], `button ${i} copies its own value`);
     }
     assert.deepEqual(await page.evaluate(() => window.__copied), expected);

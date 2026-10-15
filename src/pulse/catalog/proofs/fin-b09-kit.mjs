@@ -72,7 +72,7 @@ export function sharedScreens() {
 }
 
 /** Poll until the predicate is true. Fails with the label so a red run says what never happened. */
-export async function waitFor(predicate, label = "condition", ms = 8000) {
+export async function waitFor(predicate, label = "condition", ms = 20000) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
     if (await predicate()) return;
@@ -97,3 +97,26 @@ export function dialogs(page) {
   });
   return { seen, next: (...list) => answers.push(...list) };
 }
+
+/**
+ * Some words on a page are shown for a moment and then cleared by the page's own timer (a "SAVED" note
+ * for 2.2 seconds, a "copied" label for 1.1 seconds). Reading such a word after an await is a race that a
+ * slow Mac loses. watchText() installs, before the click, a recorder that keeps every text each matching
+ * element takes; textsSeen() returns, per element, the list of texts it showed in order. The test then
+ * asserts the word appeared, which is red when the page never paints it and steady when the Mac is slow.
+ */
+export async function watchText(page, selector) {
+  await page.evaluate((sel) => {
+    const store = (window.__finB09Seen = window.__finB09Seen || {});
+    const nodes = [...document.querySelectorAll(sel)];
+    store[sel] = nodes.map((node) => [node.textContent]);
+    nodes.forEach((node, index) => {
+      new MutationObserver(() => {
+        const list = store[sel][index];
+        if (list[list.length - 1] !== node.textContent) list.push(node.textContent);
+      }).observe(node, { childList: true, characterData: true, subtree: true });
+    });
+  }, selector);
+}
+
+export const textsSeen = (page, selector) => page.evaluate((sel) => (window.__finB09Seen || {})[sel] || [], selector);

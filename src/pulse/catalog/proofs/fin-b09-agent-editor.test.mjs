@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bodyOf, dialogs, json, proofRows, sharedScreens, waitFor } from "./fin-b09-kit.mjs";
+import { bodyOf, dialogs, json, proofRows, sharedScreens, textsSeen, waitFor, watchText } from "./fin-b09-kit.mjs";
 
 const proof = proofRows(import.meta.url);
 const screens = sharedScreens();
@@ -78,14 +78,17 @@ async function openEditor({ agents = [LEAD, CHASER, COACH], reply = {} } = {}) {
   });
   const dlg = dialogs(page);
   await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Lead Follow-up");
-  return { page, errors, writes, shadowReads, dlg };
+  // The save note clears itself after 2.2 seconds, so every word it shows is recorded from here on.
+  await watchText(page, "#saveNote");
+  const noteShown = async (word) => ((await textsSeen(page, "#saveNote"))[0] || []).includes(word);
+  return { page, errors, writes, shadowReads, dlg, noteShown };
 }
 
 const nameBoxIs = (page, text) => page.waitForFunction((v) => document.querySelector("#a_name").value === v, text);
 
 test("+ New agent asks for a name, creates one draft client-facing agent, and selects it", async () => {
   await proof.check("+ New agent button", async () => {
-    const { page, errors, writes, dlg } = await openEditor();
+    const { page, errors, writes, dlg, noteShown } = await openEditor();
     const rowsBefore = await page.locator(".aitem").count();
     // A padded name is trimmed, and the create is exactly this one request.
     dlg.next("  Dispute Helper  ");
@@ -99,7 +102,7 @@ test("+ New agent asks for a name, creates one draft client-facing agent, and se
     assert.equal(await page.locator("#a_code").inputValue(), "AG-09");
     assert.equal(await page.locator(".aitem").count(), rowsBefore + 1, "the new agent is in the list");
     assert.equal(await page.locator('.aitem[data-a="AG-09"].on').count(), 1, "and it is the selected one");
-    assert.equal(await page.locator("#saveNote").innerText(), "CREATED");
+    await waitFor(() => noteShown("CREATED"), "the CREATED note");
 
     // Cancelling the question, or answering with spaces, creates nothing.
     const before = writes.length;
@@ -313,7 +316,7 @@ const lastSave = (writes) => writes.filter((w) => w.action === "save").at(-1);
 
 test("Identity: the Agent name box is saved as typed and shows in the list at once", async () => {
   await proof.check("Identity: Agent name input", async () => {
-    const { page, errors, writes } = await openIdentity();
+    const { page, errors, writes, noteShown } = await openIdentity();
     await page.locator("#a_name").fill("  Warm Lead Follow-up  ");
     assert.equal(await page.locator("#saveNote").innerText(), "UNSAVED CHANGES");
     assert.equal(await page.locator('.aitem[data-a="AG-01"] .an').innerText(), "Warm Lead Follow-up",
@@ -328,7 +331,7 @@ test("Identity: the Agent name box is saved as typed and shows in the list at on
     assert.equal(body.agent_class, "client_facing");
     assert.equal(body.channel, "sms");
     assert.equal(body.owner_label, "Sarah Whitfield");
-    await page.waitForFunction(() => document.querySelector("#saveNote").innerText === "SAVED");
+    await waitFor(() => noteShown("SAVED"), "the SAVED note");
     assert.deepEqual(errors, []);
     await page.close();
   });
@@ -336,7 +339,7 @@ test("Identity: the Agent name box is saved as typed and shows in the list at on
 
 test("Identity: the Class select is saved as client_facing or ops and moves the agent between list groups", async () => {
   await proof.check(/^Identity: Class select/, async () => {
-    const { page, errors, writes } = await openIdentity();
+    const { page, errors, writes, noteShown } = await openIdentity();
     const groupOf = (code) => page.evaluate((c) => {
       let node = document.querySelector(`.aitem[data-a="${c}"]`);
       while (node && !(node.classList && node.classList.contains("agrp"))) node = node.previousElementSibling;
@@ -350,7 +353,7 @@ test("Identity: the Class select is saved as client_facing or ops and moves the 
     await waitFor(() => lastSave(writes), "the first save");
     assert.equal(lastSave(writes).agent_class, "ops");
 
-    await page.waitForFunction(() => document.querySelector("#saveNote").innerText === "SAVED");
+    await waitFor(() => noteShown("SAVED"), "the SAVED note");
     await page.locator("details.card > summary").nth(0).click();
     await page.locator("#a_class").selectOption("Client-facing");
     await page.locator("#saveBtn").click();
@@ -380,7 +383,7 @@ test("Identity: the Owner select lists the staff and the chosen person is saved 
 
 test("Revert puts the identity boxes back to the last saved agent and sends nothing", async () => {
   await proof.check("Revert button", async () => {
-    const { page, errors, writes } = await openIdentity();
+    const { page, errors, writes, noteShown } = await openIdentity();
     await page.locator("#a_name").fill("Something else");
     await page.locator("#a_class").selectOption("Ops");
     await page.locator("#a_owner").selectOption("Jordan Blake");
@@ -396,7 +399,7 @@ test("Revert puts the identity boxes back to the last saved agent and sends noth
     await page.locator("details.card > summary").nth(0).click();
     await page.locator("#a_name").fill("Saved Name");
     await page.locator("#saveBtn").click();
-    await page.waitForFunction(() => document.querySelector("#saveNote").innerText === "SAVED");
+    await waitFor(() => noteShown("SAVED"), "the SAVED note");
     await page.locator("details.card > summary").nth(0).click();
     await page.locator("#a_name").fill("Typed after the save");
     await page.locator("#revertBtn").click();
