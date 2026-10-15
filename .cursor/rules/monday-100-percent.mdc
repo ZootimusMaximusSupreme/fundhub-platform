@@ -15,6 +15,17 @@ alwaysApply: true
 - The alert road works: a real break reaches Chris by email (texts return when Twilio does).
 - The whole board stays clean for 48 hours (Saturday and Sunday) before refactor starts Monday.
 
+## The order of work (owner-set 2026-10-14, later the same night)
+
+1. **Tonight:** every one of the 853 rows gets a recorded result (live check, practice test, or an exact reason).
+2. **Tomorrow, Thursday 2026-10-15: ONE big sweep, most important to least.** Money, then customer messages, then
+   customer records, then staff tools. Every item is run live and shown to work, in one pass, with the real breaks
+   fixed in rank order. When every item works, end to end is assumed hardened.
+3. **Then hardening.** Capacity, speed, retries, alerts that reach Chris, the false-alarm causes.
+4. **Then the refactor.** Not before the 48 clean hours.
+
+Get as close to this as possible every day. Say in one line how far the sweep is.
+
 ## How agents work toward it
 
 - Order of work: money, then customer messages, then customer records, then staff tools. Ranked list: `ops/workflows/heartbeat-ranked-2026-10-14.md`.
