@@ -14,6 +14,7 @@ What changed (Chris, 2026-10-15: shorter, less repetition, more direct):
   UnderwriteIQ and data-points lines.
 - Certainty rule: no "we think", "if anything", "most likely", "about".
 - Each to-do gives the reason it helps them.
+- 10:23: cut the "approvals on this page" line (they can already see them).
 
 Shoot: 4K, vertical (not an ad). Marks: CAPS = punch, blank line = pause, ↑ = pitch up.
 
@@ -31,7 +32,7 @@ Then UnderwriteIQ runs your file, and you see how much you qualify for based on 
 
 You also see what's holding your file back and the FASTEST way to the maximum amount of funding. That system is built on ten years of my own funding and hundreds of client files.
 
-Your advisor walks you through the options and pricing for your path, and EVERYTHING is in writing. You can see approvals our clients have gotten right here on this page.
+Your advisor walks you through the options and pricing for your path, and EVERYTHING is in writing.
 
 Join from a COMPUTER somewhere quiet, because your advisor shares their screen and goes through your file with you.
 
