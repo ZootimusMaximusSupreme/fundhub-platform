@@ -43,6 +43,7 @@ Inventory reference: `ops/workflows/coverage-deep-proof-2026-10-12.md` last reco
 
 ### 6. After the priority work
 
+- [ ] Decide on the data-points offer ideas (a $1,000 bank-order step inside the Blueprint, a $2,000 to $3,000 a month data subscription). Ideas only, not decided. Saved in `marketing/offers/data-points-ideas-2026-10-14.md`. (owner 2026-10-14)
 - [ ] Add more specifics about the Capital Blueprint to the VSL: which letters to send, which banks to apply to and in what order, which banks to open accounts with, and how to start and optimize your businesses. Keep it specific but short. (owner ask 2026-10-13; scripts in `marketing/ads/scripts/2026-10-13.md`)
 
 - [ ] End of this week: pay the $99 Apple developer account so the teleprompter iPhone app can be built — that app is what gets the front camera to 60 fps. Until then 30 fps stays (owner call 2026-10-13).
