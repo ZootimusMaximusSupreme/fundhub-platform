@@ -199,3 +199,49 @@ Commands run, generation 2:
 - `npm run pulse:catalog`: no change to `generated.json` (the new file is not in any shared list).
 - `node scripts/pulse/count-not-proved.mjs`: 816 total, 3 of them this batch.
 
+
+## Resume run (the workflow was restarted after the Mac shut down; builder generation 1 again)
+
+The branch already held generations 1 and 2. This run re-measured everything from a clean state, re-challenged the three
+left-over rows, and fixed one flaky test of this batch that the whole-group run exposed.
+
+Numbers (count script, offline, stub fetch), measured again on `fin/base` and on `fin/b09`:
+
+| | |
+|---|---|
+| Batch rows open before (`fin/base`) | 40 |
+| Batch rows open after (`fin/b09`) | 3 |
+| All lanes before / after | 853 / 816 (display lane 680 / 643) |
+| practice-test / live-check / na-verified / not-attachable | 37 / 0 / 0 / 3 |
+
+Re-challenge of the three left-over rows: all three reasons are still exactly true.
+- Agent list row: read `public/app/agent-editor.html`. The list click asks `confirm()` and then calls `select()`, but every
+  input already ran `collect()`, which wrote the typed words into the agent object. Yes only clears the unsaved mark. The words stay.
+- Climate state click: the shipped bundle shows score, band and trend with no sentence (`fin-b09-g2-findings.test.mjs` runs it).
+- Leads reset: `grep` for the button words finds no page file in the repo; the page is shipped outside git.
+
+The flake that was fixed (test only, no page file touched): in a whole-group run under a load average near 100, the
+"+ New agent" test read the page's `CREATED` note after the page's own 2.2 second timer had already cleared it, so the file
+failed once and "every listed row was exercised" failed with it. The same race sat in the three `SAVED` waits of the identity
+tests and in the 1.1 second `copied` label of the DNS copy buttons. `fin-b09-kit.mjs` now has `watchText()` and `textsSeen()`:
+a recorder, installed before the click, that keeps every text an element took. The tests assert the word appeared in that list.
+`waitFor` in the kit now allows 20 seconds instead of 8. No assertion was removed or loosened: a page that never paints the word
+still goes red (see the breaks).
+
+Break checks for this run (page file broken, test run red, file put back with `git checkout`):
+- `saveNote('CREATED')` changed to an empty note: "+ New agent" red (2 red with the row guard).
+- `saveNote('SAVED')` changed to `DONE`: name, class and revert tests red (4 red with the row guard).
+- Brand Studio copy label `copied` changed to `done`: DNS copy test red (2 red with the row guard).
+- Spot checks of earlier breaks, still red: contract.html filename ignored (3 red), download button shown before everyone signed
+  (1 red), campaign pager next steps by one (2 red), agent editor Revert never restores (2 red), brand studio Presets cycle of five (2 red).
+
+Commands run in this resume run:
+- `node --test` over the six `fin-b09-*` files: 52 of 52 pass (before and after the fix).
+- `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs`: 3 of 3 pass (exact rows, red count 635, and the run of every
+  test named by every display case, this batch's four files included). A first run of the same file under a load average near 100
+  had one failure in this batch (the race above) and failures in other batches' browser specs (staff display batch payment and
+  teleprompter timing tests, EF/Public contracts, cc-tab-ideas, marketing-cc-settings); those are not files of this batch.
+- `node scripts/pulse/compile-catalog.mjs --check`: fresh. `npm run pulse:catalog`: no change to `generated.json`.
+- `node scripts/lint.mjs`: 3,571 files parse clean.
+
+Shared lines touched in this run: none. The three files changed in the fix are all new files of this batch.
