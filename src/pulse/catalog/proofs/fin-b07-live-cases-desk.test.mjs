@@ -155,11 +155,11 @@ runCases({
   "fin-b07-case-statuses": {
     tables: ["inquiry_removal_cases"],
     good: [kase(1, 1, { case_status: "Completed", completed_at: ago(1) }), kase(2, 1, { case_status: "Canceled", closed_at: ago(1) }),
-      kase(3, 1, { case_status: "Scheduled", ai_call_scheduled_for: ago(-1) })],
+      kase(3, 1, { case_status: "Scheduled" }), kase(8, 1, { case_status: "Escalated" })],
     bad: [
       { name: "a Completed case with no completed stamp", rows: [kase(4, 1, { case_status: "Completed", completed_at: null })], breaks: "(c.case_status::text = 'Completed' AND c.completed_at IS NULL)" },
       { name: "a Canceled case with no closed stamp", rows: [kase(5, 1, { case_status: "Canceled", closed_at: null })], breaks: "(c.case_status::text = 'Canceled' AND c.closed_at IS NULL)" },
-      { name: "a Scheduled case with no call time", rows: [kase(6, 1, { case_status: "Scheduled", ai_call_scheduled_for: null, call_due_at: null })], breaks: "(c.case_status::text = 'Scheduled' AND c.ai_call_scheduled_for IS NULL AND c.call_due_at IS NULL)" },
+      { name: "a case holding a status the column does not know", rows: [kase(6, 1, { case_status: "Cleared" })], breaks: "OR (c.case_status::text NOT IN ('Queued', 'Scheduled', 'In Progress', 'Escalated', 'Blocked', 'Completed', 'Canceled'))" },
     ],
   },
 

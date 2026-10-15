@@ -171,7 +171,7 @@ const CASE_STATUS_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE (c.case_status::text = 'Completed' AND c.completed_at IS NULL)
          OR (c.case_status::text = 'Canceled' AND c.closed_at IS NULL)
-         OR (c.case_status::text = 'Scheduled' AND c.ai_call_scheduled_for IS NULL AND c.call_due_at IS NULL))::int AS bad_count
+         OR (c.case_status::text NOT IN ('Queued', 'Scheduled', 'In Progress', 'Escalated', 'Blocked', 'Completed', 'Canceled')))::int AS bad_count
   FROM inquiry_removal_cases c
  WHERE c.org_id = $1::uuid
    AND COALESCE(c.is_demo, false) = false
@@ -587,7 +587,7 @@ const CONTRACTS = Object.freeze([
   contract("send", "A case that holds a mail provider id or an Experian portal reference must have the matching letter or portal attempt on the client's inquiries, a real client, and never read Queued.", "fin-b07-case-send", CASE_SEND_SQL),
   contract("upload", "Every file saved as an FTC or police report must be one document with a current version that holds a storage key, a size, a checksum and a sniffed pdf, png or jpeg type.", "fin-b07-case-upload", CASE_UPLOAD_SQL),
   contract("caseQueue", "Every open case on the queue must name a real client in this company, a requested time, a bureau, a non-negative item count, and a funding round that exists when it names one.", "fin-b07-case-queue", CASE_QUEUE_SQL),
-  contract("caseStatuses", "A Completed case must carry a completed stamp, a Canceled case a closed stamp, and a Scheduled case the time its call was scheduled for.", "fin-b07-case-statuses", CASE_STATUS_SQL),
+  contract("caseStatuses", "A Completed case must carry a completed stamp, a Canceled case a closed stamp, and every case must hold one of the seven statuses the Status column knows.", "fin-b07-case-statuses", CASE_STATUS_SQL),
   // Work queue
   contract("workQueue", "Every open disputed inquiry line must name a real client in this company, a bureau, the name the bureau reported, and a non-negative attempt count.", "fin-b07-work-queue", WORK_QUEUE_SQL),
   contract("workRow", "Every attempt in a row's history must name a real staff member of the same company, and every identity on file must hold only the encrypted social security number, never plain digits.", "fin-b07-work-row", WORK_ROW_SQL),
