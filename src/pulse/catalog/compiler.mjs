@@ -27,16 +27,19 @@ export function compileDisplayRuntimeData(sources, { proofCases, staffProofCases
     if (!contract) return null;
     return { id: `catalog-display:${entry.sourceFile}:${entry.surface}:${entry.control}`, sourceFile: entry.sourceFile, surface: entry.surface, control: entry.control, contract };
   }).filter(Boolean);
-  // A tracked money or customer row that owns a registered saved-result contract is judged even when no
-  // browser spec names it. Without this its SQL would never be read and its contract would never run.
+  // A tracked row that owns a registered saved-result contract is judged even when no browser spec names
+  // it. Without this its SQL would never be read and its contract would never run. A money or customer
+  // row qualifies by its impact. Any other row (the staff-only and no-impact rows of the finish-853
+  // batches) qualifies only when its contract is marked anyImpact.
   const judged = new Set(resultCases.map(keyFor));
   for (const sourceFile of DISPLAY_SOURCES) {
     for (const row of maps.get(sourceFile) || []) {
-      if (row.repeats_row_in || !DEEP_IMPACT.has(row.impact) || !isTracked(row)) continue;
+      if (row.repeats_row_in || !isTracked(row)) continue;
       const entry = { sourceFile, surface: row.surface, control: row.control };
       if (judged.has(keyFor(entry))) continue;
       const contract = contractFor(row);
       if (!contract) continue;
+      if (!DEEP_IMPACT.has(row.impact) && contract.anyImpact !== true) continue;
       judged.add(keyFor(entry));
       resultCases.push({ id: `catalog-display:${sourceFile}:${row.surface}:${row.control}`, ...entry, contract });
     }

@@ -54,16 +54,16 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 101 deep display controls own one exact contract", () => {
+test("all 118 deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 101);
-  assert.equal(DISPLAY_RESULT_CASES.length, 101);
-  assert.equal(PASS_CAPABLE_COUNT, 83);
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 118);
+  assert.equal(DISPLAY_RESULT_CASES.length, 118);
+  assert.equal(PASS_CAPABLE_COUNT, 100);
   assert.equal(UNMEASURED_CONTRACT_COUNT, 15);
   assert.equal(LIVE_PAGE_CONTRACT_COUNT, 1);
   assert.equal(linkGates, 2);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 101);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 101);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 118);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 118);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -78,7 +78,7 @@ test("all 101 deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 83);
+  assert.equal(SQL_BATCHES.length, 100);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -148,10 +148,10 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
 
-  assert.equal(db.calls.length, 83);
+  assert.equal(db.calls.length, 100);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
-  // 83 saved-result checks plus the one live-page read of the private leads list.
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 84);
+  // 100 saved-result checks plus the one live-page read of the private leads list.
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 101);
   assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 15);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   // The two link-gate rows read the deployed shell by GET. This stand-in GET answers a different page, so
@@ -211,7 +211,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 101);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 118);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

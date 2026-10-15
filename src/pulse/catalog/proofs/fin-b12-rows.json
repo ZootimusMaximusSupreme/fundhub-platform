@@ -1,0 +1,178 @@
+{
+  "fin-b12-frame-chrome.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html (frame)",
+      "controls": [
+        "Back link ('Back to my portal' for a client, 'Back to Finance OS' for staff with ?client_id=)",
+        "Tab bar: 16 tabs (Overview, Next steps, Money helper, Money moves, Plan, Banks, Strategy, Fundability, Applications, Alerts, Funding papers, Accounts, Credit, Connections, Payments, Setup); Left/Right/Home/End keys; #hash opens a tab"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#overview",
+      "controls": [
+        "Try again button (overview failed to load)"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#setup",
+      "controls": [
+        "Try again button"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#credit",
+      "controls": [
+        "Try again; link to Setup"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#fundability",
+      "controls": [
+        "Chart columns (hover or focus shows a month) and Try again"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#helper",
+      "controls": [
+        "'Check again' button (when a turn looks stuck) and Try again"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#next",
+      "controls": [
+        "Links: 'Open your checklist', 'Check your accounts', 'Book a call'",
+        "Try again buttons (tasks, ready-to-fund)"
+      ]
+    }
+  ],
+  "fin-b12-plan-strategy.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#plan",
+      "controls": [
+        "A pin (calendar chip or list row) opens its detail panel; '+N more'; Close; Esc; Tab stays inside",
+        "Link: 'Add an account' (empty state), 'See it on Payments'",
+        "Previous month / Next month / Today buttons"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#strategy",
+      "controls": [
+        "Method buttons (highest rate first, card use first, smallest balance first), monthly amount slider and box, goal select and date, 'Use $X' buttons, 'Show more months'"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#transfers",
+      "controls": [
+        "Go back (cancels the review step)"
+      ]
+    }
+  ],
+  "fin-b12-frame-forms.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#accounts",
+      "controls": [
+        "'Add account' and 'Add a business' buttons that open the forms"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#alerts",
+      "controls": [
+        "'Show all' on the texts-sent list, jump links, Try again"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "financeos.html#connections",
+      "controls": [
+        "Copy address / Copy key buttons"
+      ]
+    }
+  ],
+  "fin-b12-finance-os-page.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "finance-os.html",
+      "controls": [
+        "Paydown simulator result block (pre-approval today vs estimate after, per-card split)"
+      ]
+    }
+  ],
+  "fin-b12-consult-form.test.mjs": [
+    {
+      "sourceFile": "public-pages.json",
+      "surface": "form:consulting/index.html#consult-form",
+      "controls": [
+        "Consult request form: name, email, agency, help, note. It takes no card and saves nothing here: it opens an email to the support mailbox."
+      ]
+    }
+  ],
+  "fin-b12-repair-pages.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "documents.html",
+      "controls": [
+        "Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "finance-os.html",
+      "controls": [
+        "Client picker select (up to 500 clients)",
+        "Header text 'no client open' / client name",
+        "Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the primary demo client in demo mode"
+      ]
+    }
+  ],
+  "fin-b12-repair-creative.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "creative-factory.html",
+      "controls": [
+        "Summary tiles: jobs in flight, failed jobs, awaiting review, library assets, active brand kits",
+        "Video performance table (YouTube views, watch time per video per day) and connection badge"
+      ]
+    }
+  ],
+  "fin-b12-repair-galaxy.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "galaxy.html",
+      "controls": [
+        "Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill)"
+      ]
+    }
+  ],
+  "fin-b12-repair-hiring.test.mjs": [
+    {
+      "sourceFile": "desks-c.json",
+      "surface": "hiring.html",
+      "controls": [
+        "Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags",
+        "Board card: click opens the application drawer (name, scores, flags, source, video/resume tags)",
+        "Board column: Applied (applied)"
+      ]
+    }
+  ],
+  "fin-b12-repair-hiring-bench-sql.test.mjs": [
+    {
+      "sourceFile": "desks-c.json",
+      "surface": "hiring.html",
+      "controls": [
+        "Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting screen, hiring manager, flags"
+      ]
+    }
+  ]
+}
