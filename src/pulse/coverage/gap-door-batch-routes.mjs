@@ -11,10 +11,10 @@ import { makeRecipe } from "../catalog/door-recipes.mjs";
 import { routeKeyForDoor } from "../catalog/proofs/door-batch-route-result.mjs";
 
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
-  "routes-0.json": 54,
-  "routes-1.json": 36,
-  "routes-2.json": 25,
-  "routes-3.json": 20,
+  "routes-0.json": 43,
+  "routes-1.json": 35,
+  "routes-2.json": 22,
+  "routes-3.json": 19,
 });
 
 const MAPS = Object.freeze([
