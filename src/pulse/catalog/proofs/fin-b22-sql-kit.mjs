@@ -203,7 +203,7 @@ export function tablesIn(sql) {
   const names = new Set();
   for (const m of stripComments(sql).matchAll(/(?<!distinct\s)\b(?:from|join)\s+([a-z_][a-z0-9_]*)\b/gi)) {
     const word = m[1].toLowerCase();
-    if (!["select", "jsonb_array_elements", "json_each", "sms", "per", "candidates"].includes(word)) names.add(word);
+    if (!["select", "jsonb_array_elements", "json_each", "sms", "per", "repeats", "candidates"].includes(word)) names.add(word);
   }
   return [...names];
 }

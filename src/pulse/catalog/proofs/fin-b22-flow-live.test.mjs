@@ -125,11 +125,11 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ["inside the lookback", "AND COALESCE(m.last_attempt_at, m.created_at) >= $2::timestamptz", ""],
       ["not demo", "COALESCE(m.is_demo, false) = false", "1 = 1"],
       ["not a test client", "AND NOT EXISTS (\n           SELECT 1 FROM clients cl", "AND NOT NOT EXISTS (\n           SELECT 1 FROM clients cl"],
-      ["earlier send", "AND p.sent_at < a.sent_at", ""],
+      ["earlier send", "WHERE p.sent_at < a.sent_at", "WHERE 1 = 1"],
       ["inside the guard window", "AND p.sent_at >= a.sent_at - interval '30 minutes'", ""],
       ["same template", "(a.template_key IS NOT NULL AND p.template_key = a.template_key)", "1 = 0"],
       ["same words when untemplated", "OR (a.template_key IS NULL AND p.template_key IS NULL AND p.rendered_body = a.rendered_body)", ""],
-      ["same phone", "AND p.to_address = a.to_address", ""],
+      ["same phone", "JOIN sms p ON p.to_address = a.to_address", "JOIN sms p ON 1 = 1"],
     ],
   });
 }
@@ -618,6 +618,7 @@ for (const entry of FIN_B22_LIVE) {
     assert.ok(fixture, "every live check has stand-in rows");
     assert.ok(entry.requirement.length > 40);
     assert.match(entry.sql, /^(WITH|SELECT) /);
+    assert.ok(entry.sql.length < 4000, "one small statement");
     assert.doesNotMatch(entry.sql, /\b(?:INSERT|UPDATE|DELETE|CALL|CREATE|DROP|ALTER|TRUNCATE|SET)\b/i);
     assert.ok(FIN_B22_LIVE_SURFACES.has(entry.surface));
   });
@@ -625,7 +626,7 @@ for (const entry of FIN_B22_LIVE) {
   test(`${entry.surface}: names only real tables and columns`, () => {
     const schema = schemaColumns();
     for (const table of tablesIn(entry.sql)) {
-      if (["sms", "per"].includes(table)) continue;
+      if (["sms", "per", "repeats"].includes(table)) continue;
       assert.ok(schema.has(table), `no table ${table}`);
     }
     for (const { table, column, alias } of columnsUsed(entry.sql)) {

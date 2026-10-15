@@ -69,7 +69,12 @@ export function realMessage(m, re) {
 
 // ── the queries ──────────────────────────────────────────────────────────────
 
-/** $1 org, $2 since, $3 test-address pattern. The later send of a pair the duplicate guard would have refused. */
+/**
+ * $1 org, $2 since, $3 test-address pattern. The later send of a pair the duplicate guard would have refused:
+ * the same phone, an earlier send inside the guard window, and the same template (or the same words when
+ * there is no template). A hash join on the phone, so the read stays small however many texts left. A row is
+ * never its own earlier send, because it cannot be sent before itself.
+ */
 export const SMS_DUPLICATE_SQL = `
 WITH sms AS (
   SELECT m.id, m.template_key, m.rendered_body, m.to_address,
@@ -83,18 +88,18 @@ WITH sms AS (
      AND NULLIF(BTRIM(COALESCE(m.to_address, '')), '') IS NOT NULL
      AND COALESCE(m.last_attempt_at, m.created_at) >= $2::timestamptz
      AND ${realMessage("m", "$3")}
+),
+repeats AS (
+  SELECT DISTINCT a.id
+    FROM sms a
+    JOIN sms p ON p.to_address = a.to_address
+   WHERE p.sent_at < a.sent_at
+     AND p.sent_at >= a.sent_at - interval '${DUPLICATE_WINDOW_MINUTES} minutes'
+     AND ((a.template_key IS NOT NULL AND p.template_key = a.template_key)
+       OR (a.template_key IS NULL AND p.template_key IS NULL AND p.rendered_body = a.rendered_body))
 )
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE EXISTS (
-         SELECT 1 FROM sms p
-          WHERE p.id <> a.id
-            AND p.to_address = a.to_address
-            AND p.sent_at < a.sent_at
-            AND p.sent_at >= a.sent_at - interval '${DUPLICATE_WINDOW_MINUTES} minutes'
-            AND ((a.template_key IS NOT NULL AND p.template_key = a.template_key)
-              OR (a.template_key IS NULL AND p.template_key IS NULL AND p.rendered_body = a.rendered_body))
-       ))::int AS bad_count
-  FROM sms a`.trim();
+SELECT (SELECT count(*)::int FROM sms) AS sample_count,
+       (SELECT count(*)::int FROM repeats) AS bad_count`.trim();
 
 /** $1 org, $2 since, $3 stuck-before, $4 receipt-before. A staff-typed reply that never reached a provider receipt. */
 export const STAFF_REPLY_SQL = `
