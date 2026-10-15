@@ -83,16 +83,26 @@ const WORLDS = {
 
   "blueprint-ready-date": {
     world() {
-      const buyer = client();
+      const buyer = client({ updated_at: "2026-10-14T11:00:00Z" });
+      // A buyer whose day is well past and whose record has been still for days: the sweep must have made the task.
+      const past = client({
+        custom_fields: { blueprint_next_sequence_ready_date: "2026-10-01" }, updated_at: "2026-10-05T00:00:00Z"
+      });
       return {
         clients: [
           { ...buyer, custom_fields: { blueprint_next_sequence_ready_date: "2026-11-02" } },
+          past,
           client({ custom_fields: {} }) // never saved a date: not part of the sample
         ],
-        transactions: [buyerTx(buyer.id)]
+        transactions: [buyerTx(buyer.id), buyerTx(past.id)],
+        tasks: [
+          { id: uid(), org_id: ORG, client_id: past.id, source_workflow: "blueprint-next-funding-sequence", body: `blueprint-next-sequence:${past.id}:2026-10-01` },
+          // another workflow's task on the same client is not the sweep's
+          { id: uid(), org_id: ORG, client_id: past.id, source_workflow: "blueprint-coach", body: "other" }
+        ]
       };
     },
-    sample: 1,
+    sample: 3,
     breaks: {
       "the saved day is not a day": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-13-40"; },
       "the saved day is words": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "next week"; },
@@ -104,13 +114,31 @@ const WORLDS = {
       "the saved day is 29 February of a century that is not a leap year": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2100-02-29"; },
       "the saved day has padding": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = " 2026-11-02"; },
       "the client never bought the Blueprint": (db) => { db.transactions = []; },
-      "the client's only Blueprint order failed": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "failed")]; }
+      "the client's only Blueprint order failed": (db) => { db.transactions = [buyerTx(db.clients[0].id, BLUEPRINT, "failed")]; },
+      "the sweep never made the closer task for a past day": (db) => { db.tasks = []; },
+      "the closer task is for another day": (db) => { db.tasks[0].body = `blueprint-next-sequence:${db.clients[1].id}:2026-09-30`; },
+      "the closer task is for another client": (db) => { db.tasks[0].client_id = uid(); },
+      "the closer task is from another workflow": (db) => { db.tasks[0].source_workflow = "blueprint-coach"; },
+      "the closer task is in another company": (db) => { db.tasks[0].org_id = OTHER_ORG; },
+      "the closer task body is the day with no client in it": (db) => { db.tasks[0].body = "blueprint-next-sequence:2026-10-01"; }
     },
     stillGreen: {
       "29 February of a leap year": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2028-02-29"; },
       "29 February of a leap century": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2000-02-29"; },
       "31 December": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-12-31"; },
-      "30 April": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-04-30"; }
+      "30 April": (db) => { db.clients[0].custom_fields.blueprint_next_sequence_ready_date = "2026-04-30"; },
+      "a day only one day past, no task yet (the daily sweep has not had a whole run)": (db) => {
+        db.clients[1].custom_fields.blueprint_next_sequence_ready_date = "2026-10-13";
+        db.tasks = [];
+      },
+      "a day exactly two days past with its task": (db) => {
+        db.clients[1].custom_fields.blueprint_next_sequence_ready_date = "2026-10-12";
+        db.tasks[0].body = `blueprint-next-sequence:${db.clients[1].id}:2026-10-12`;
+      },
+      "a past day, no task, but the record changed 10 hours ago (the save may be that recent)": (db) => {
+        db.clients[1].updated_at = "2026-10-14T02:00:00Z";
+        db.tasks = [];
+      }
     }
   },
 
@@ -167,13 +195,15 @@ const WORLDS = {
       "the tracker was never offered to this client (the save is refused with 409)": (db) => { delete db.clients[0].custom_fields.blueprint_bank_tracker_offered; },
       "the tracker flag is empty": (db) => { db.clients[0].custom_fields.blueprint_bank_tracker_offered = null; },
       "the client never bought the Blueprint": (db) => { db.transactions = db.transactions.filter((tx) => tx.client_id !== db.clients[0].id); },
-      "the client's only Blueprint order failed": (db) => { db.transactions[0].status = "failed"; },
-      "the note is only spaces": (db) => { db.blueprint_bank_relationship_todos[0].notes = "   "; },
-      "the note was saved with padding": (db) => { db.blueprint_bank_relationship_todos[0].notes = " Call Monday. "; }
+      "the client's only Blueprint order failed": (db) => { db.transactions[0].status = "failed"; }
     },
     stillGreen: {
       "the offer was taken back and a row from before stays": (db) => { db.clients[1].custom_fields.blueprint_bank_tracker_offered = "false"; },
-      "no note at all": (db) => { db.blueprint_bank_relationship_todos[0].notes = null; }
+      "no note at all": (db) => { db.blueprint_bank_relationship_todos[0].notes = null; },
+      // The handler stores the note as given and never trims it, so a padded note is a result a direct call may
+      // legitimately leave. What the page sends is a practice test of the page, not a saved-row clause.
+      "a note with padding (a direct call, the handler allows it)": (db) => { db.blueprint_bank_relationship_todos[0].notes = " Call Monday. "; },
+      "a note of only spaces (a direct call, the handler allows it)": (db) => { db.blueprint_bank_relationship_todos[0].notes = "   "; }
     }
   },
 
@@ -251,18 +281,21 @@ const WORLDS = {
   }
 };
 
-// Upload doors share one world builder. The file the door wrote carries generated_by "<sender>:<id>" and a label.
+// Upload doors share one world builder. The file the door wrote carries generated_by "<sender>:<id>", a label, the
+// sender's id in its metadata, and one docs.received announcement.
+const PDF = "application/pdf";
 function documentWorld(kind, uploader, { selected }) {
   return () => {
     const person = client();
-    const version = { id: uid(), org_id: ORG, storage_key: "k/abc", checksum: "sha256:aa", byte_size: 1200 };
+    const sender = { id: uid(), org_id: ORG, ...(uploader === "client" ? { client_id: person.id } : {}) };
+    const version = { id: uid(), org_id: ORG, storage_key: "k/abc", checksum: "sha256:aa", byte_size: 1200, mime_type: PDF };
     const document = {
       id: uid(), org_id: ORG, client_id: person.id, kind, subtype: "bank_statement", is_demo: false,
       created_at: "2026-10-10T10:00:00Z",
-      generated_by: `${uploader}:x`,
+      generated_by: `${uploader}:${sender.id}`,
       current_version_id: version.id, storage_key: "k/abc", checksum: "sha256:aa",
       metadata: {
-        uploaded_by: { kind: uploader, id: "x" },
+        uploaded_by: { kind: uploader, id: sender.id },
         label: selected ? { given: "bank_statement", filed_as: "bank_statement", source: "given" } : { given: null, filed_as: "other", source: "none_given" }
       }
     };
@@ -273,7 +306,19 @@ function documentWorld(kind, uploader, { selected }) {
     const elsewhere = { ...document, id: uid(), generated_by: `${other}:y`, metadata: { uploaded_by: { kind: other, id: "y" }, label: { given: "x", filed_as: "other", source: "unrecognised" } }, current_version_id: null };
     // A phone-text intake file: kind client_upload, no label, no uploader prefix. Another control.
     const textIntake = { ...document, id: uid(), generated_by: "inbound-mms", metadata: { uploaded_by: { kind: "client", id: "z" }, classified_by: null }, current_version_id: null };
-    return { clients: [person], documents: [document, elsewhere, textIntake], document_versions: [version] };
+    return {
+      clients: [person],
+      documents: [document, elsewhere, textIntake],
+      document_versions: [version],
+      ...(uploader === "client" ? { accounts: [sender], staff: [] } : { staff: [sender], accounts: [] }),
+      client_authorized_reps: [],
+      events: [
+        { id: uid(), org_id: ORG, name: "docs.received", client_id: person.id, payload: { document_id: document.id, client_id: person.id } },
+        // another event on the same client is not this file's announcement
+        { id: uid(), org_id: ORG, name: "entry.captured", client_id: person.id, payload: { document_id: document.id } }
+      ],
+      _sender: sender.id
+    };
   };
 }
 const DOCUMENT_BREAKS = {
@@ -283,10 +328,17 @@ const DOCUMENT_BREAKS = {
   "the version has no checksum": (db) => { db.document_versions[0].checksum = null; },
   "the document checksum differs from the version": (db) => { db.documents[0].checksum = "sha256:bb"; },
   "the file is zero bytes": (db) => { db.document_versions[0].byte_size = 0; },
+  "the file has no size": (db) => { db.document_versions[0].byte_size = null; },
+  "the file is 80 MB (over the 10 MB the door accepts)": (db) => { db.document_versions[0].byte_size = 80_000_000; },
+  "the file is an html page that got past the type gate": (db) => { db.document_versions[0].mime_type = "text/html"; },
+  "the file has no type": (db) => { db.document_versions[0].mime_type = null; },
+  "the file is a plain text page": (db) => { db.document_versions[0].mime_type = "text/plain"; },
   "the client is in another company": (db) => { db.clients[0].org_id = OTHER_ORG; },
   "it was filed under another type than the one labeled": (db) => { db.documents[0].subtype = "tax_return"; },
   "the sender was not recorded in the file's metadata": (db) => { delete db.documents[0].metadata.uploaded_by; },
   "the file names another kind of sender": (db) => { db.documents[0].metadata.uploaded_by.kind = db.documents[0].metadata.uploaded_by.kind === "staff" ? "client" : "staff"; },
+  "the sender id is not a login or person of this company": (db) => { db.documents[0].metadata.uploaded_by.id = uid(); },
+  "the sender is in another company": (db) => { [...(db.accounts || []), ...(db.staff || [])].forEach((row) => { row.org_id = OTHER_ORG; }); },
   "the label was never written (a file after the label shipped)": (db) => { delete db.documents[0].metadata.label; },
   "the server did not know the type and filed it as other": (db) => {
     Object.assign(db.documents[0].metadata.label, { given: "bureau_letter", filed_as: "other", source: "unrecognised" });
@@ -294,7 +346,12 @@ const DOCUMENT_BREAKS = {
   },
   "the type the person picked is not the type it was filed under": (db) => {
     db.documents[0].metadata.label.given = "tax_return";
-  }
+  },
+  "the file was stored and never announced (no docs.received event)": (db) => { db.events = db.events.filter((e) => e.name !== "docs.received"); },
+  "the announcement is on another client's file": (db) => { db.events[0].client_id = uid(); },
+  "the announcement names another document": (db) => { db.events[0].payload.document_id = uid(); },
+  "the announcement is in another company": (db) => { db.events[0].org_id = OTHER_ORG; },
+  "the only event on the client is another event that names the document": (db) => { db.events = db.events.filter((e) => e.name !== "docs.received"); }
 };
 const DOOR_STILL_GREEN = {
   "a client sent the file and picked no type (the select is optional): filed as other, nothing was chosen": (db) => {
@@ -308,6 +365,30 @@ const DOOR_STILL_GREEN = {
   "the person picked other and it was filed as other": (db) => {
     Object.assign(db.documents[0].metadata.label, { given: "other", filed_as: "other", source: "given" });
     db.documents[0].subtype = "other";
+  },
+  "a jpg and a png are accepted types": (db) => { db.document_versions[0].mime_type = "image/jpeg"; },
+  "a file of exactly the 10 MB the door accepts": (db) => { db.document_versions[0].byte_size = 10 * 1024 * 1024; }
+};
+// A client login may file on its own file or on one it is an authorized representative of. A staff door has no such rule.
+const CLIENT_DOOR_BREAKS = {
+  "a client login filed a paper on ANOTHER client's file": (db) => { db.accounts[0].client_id = uid(); },
+  "an authorized representative filed on a file they are not linked to": (db) => {
+    db.accounts[0].client_id = null;
+    db.client_authorized_reps = [{ id: uid(), org_id: ORG, account_id: db.accounts[0].id, client_id: uid(), removed_at: null }];
+  },
+  "a representative was linked to another company's file with the same id": (db) => {
+    db.accounts[0].client_id = null;
+    db.client_authorized_reps = [{ id: uid(), org_id: OTHER_ORG, account_id: db.accounts[0].id, client_id: db.clients[0].id, removed_at: null }];
+  }
+};
+const CLIENT_DOOR_STILL_GREEN = {
+  "an authorized representative linked to the file filed on it": (db) => {
+    db.accounts[0].client_id = null;
+    db.client_authorized_reps = [{ id: uid(), org_id: ORG, account_id: db.accounts[0].id, client_id: db.clients[0].id, removed_at: null }];
+  },
+  "a representative whose link was taken off afterwards (the file was filed while linked)": (db) => {
+    db.accounts[0].client_id = null;
+    db.client_authorized_reps = [{ id: uid(), org_id: ORG, account_id: db.accounts[0].id, client_id: db.clients[0].id, removed_at: "2026-10-12T00:00:00Z" }];
   }
 };
 for (const [key, kind, uploader, selected] of [
@@ -316,11 +397,12 @@ for (const [key, kind, uploader, selected] of [
   ["documents-door-inquiry", "inquiry_doc", "client", true],
   ["documents-door-bureau", "bureau_response", "client", true]
 ]) {
+  const client_ = uploader === "client";
   WORLDS[key] = {
     world: documentWorld(kind, uploader, { selected }),
     sample: 1,
-    breaks: { ...DOCUMENT_BREAKS },
-    stillGreen: DOOR_STILL_GREEN
+    breaks: { ...DOCUMENT_BREAKS, ...(client_ ? CLIENT_DOOR_BREAKS : {}) },
+    stillGreen: { ...DOOR_STILL_GREEN, ...(client_ ? CLIENT_DOOR_STILL_GREEN : {}) }
   };
 }
 
@@ -336,8 +418,8 @@ Object.assign(WORLDS, {
     world() {
       const versions = [];
       const documents = DELIVERABLE_SUBTYPES.map((subtype) => {
-        const version = { id: uid(), org_id: ORG, storage_key: `k/${subtype}` };
-        const document = { id: uid(), org_id: ORG, kind: "deliverable", subtype, is_demo: false, expires_at: null, current_version_id: version.id, storage_key: `k/${subtype}` };
+        const version = { id: uid(), org_id: ORG, storage_key: `k/${subtype}`, checksum: `sha256:${subtype.length}a` };
+        const document = { id: uid(), org_id: ORG, kind: "deliverable", subtype, is_demo: false, expires_at: null, current_version_id: version.id, storage_key: `k/${subtype}`, checksum: `sha256:${subtype.length}a` };
         version.document_id = document.id;
         versions.push(version);
         return document;
@@ -350,6 +432,10 @@ Object.assign(WORLDS, {
       "no current version": (db) => { db.documents[0].current_version_id = null; },
       "the document has no stored object": (db) => { db.documents[0].storage_key = ""; },
       "the version has no stored object": (db) => { db.document_versions[0].storage_key = null; },
+      "the document row names a different object than its current version": (db) => { db.documents[0].storage_key = "k/old-version-object"; },
+      "the current version has no checksum, so the download is never verified": (db) => { db.document_versions[0].checksum = null; },
+      "the current version has a blank checksum": (db) => { db.document_versions[0].checksum = "  "; },
+      "the document row's checksum is another file's": (db) => { db.documents[0].checksum = "sha256:ffff"; },
       // Each subtype on its own. The check once judged only the first five; the later subtypes are letters and complaints.
       ...Object.fromEntries(DELIVERABLE_SUBTYPES.map((subtype, index) => [
         `a ${subtype} deliverable has no stored object`,
@@ -536,11 +622,19 @@ Object.assign(WORLDS, {
 
   "contract-wording-edited": {
     world() {
-      const staff = { id: uid(), org_id: ORG };
+      const staff = { id: uid(), org_id: ORG, role: "admin" };
       const words = "Frozen contract words.";
       const made = "2026-09-01T10:00:00Z";
       const edited = "2026-10-01T10:00:00Z";
       const migrated = "2026-09-20T09:00:01Z";
+      const frozen = (status, over = {}) => {
+        const version = { id: uid(), org_id: ORG, checksum: sha(words) };
+        return {
+          version,
+          contract: { id: uid(), org_id: ORG, status, rendered_body: words, body_sha: sha(words), document_version_id: version.id, is_demo: false, ...over }
+        };
+      };
+      const sent = frozen("sent"); const signed = frozen("signed"); const voided = frozen("void");
       return {
         staff: [staff],
         // a deploy ran a migration at 09:00 on 20 September
@@ -555,27 +649,54 @@ Object.assign(WORLDS, {
           // a wording nobody has edited
           { id: uid(), org_id: ORG, source_kind: "text", created_by: staff.id, updated_by: null, created_at: made, updated_at: made, is_demo: false }
         ],
-        contracts: [{ id: uid(), org_id: ORG, status: "sent", rendered_body: words, body_sha: sha(words), is_demo: false }]
+        contracts: [sent.contract, signed.contract, voided.contract,
+          // never sent: no frozen words yet
+          { id: uid(), org_id: ORG, status: "draft", rendered_body: null, body_sha: null, document_version_id: null, is_demo: false }],
+        document_versions: [sent.version, signed.version, voided.version]
       };
     },
-    sample: 3,
+    sample: 5,
     breaks: {
       "the editor is not staff in this company": (db) => { db.staff = []; },
       "the editor is staff in another company": (db) => { db.staff[0].org_id = OTHER_ORG; },
+      "a closer edited legal wording (the handler refuses every role but owner and admin)": (db) => { db.staff[0].role = "closer"; },
+      "an inquiry specialist edited legal wording": (db) => { db.staff[0].role = "inquiry_specialist"; },
+      "the editor has no role at all": (db) => { db.staff[0].role = null; },
       "an edit stopped recording who made it (a text wording changed with no editor)": (db) => { db.contract_templates[0].updated_by = null; },
       "an uploaded PDF wording was saved with no editor": (db) => { db.contract_templates[1].updated_by = null; },
       "a wording was changed with no editor and no migration ran near that moment": (db) => {
         db.contract_templates[3].updated_at = "2026-10-05T12:00:00Z";
       },
       "a sent contract's words changed after it was sent": (db) => { db.contracts[0].rendered_body = "Edited after sending."; },
-      "a sent contract has no fingerprint": (db) => { db.contracts[0].body_sha = null; }
+      "a sent contract has no fingerprint": (db) => { db.contracts[0].body_sha = null; },
+      // The tamper that the row's own fingerprint cannot see: words and fingerprint rewritten together.
+      "a sent contract's words and its row fingerprint were rewritten together": (db) => {
+        db.contracts[0].rendered_body = "Quietly rewritten.";
+        db.contracts[0].body_sha = sha("Quietly rewritten.");
+      },
+      "a SIGNED contract's words and its row fingerprint were rewritten together": (db) => {
+        db.contracts[1].rendered_body = "Quietly rewritten.";
+        db.contracts[1].body_sha = sha("Quietly rewritten.");
+      },
+      "a voided contract's words and its row fingerprint were rewritten together": (db) => {
+        db.contracts[2].rendered_body = "Quietly rewritten.";
+        db.contracts[2].body_sha = sha("Quietly rewritten.");
+      },
+      "a signed contract's row fingerprint no longer matches its words": (db) => { db.contracts[1].body_sha = sha("Another."); },
+      "a signed contract has no frozen copy": (db) => { db.contracts[1].document_version_id = null; },
+      "a signed contract's frozen copy is gone": (db) => { db.document_versions = db.document_versions.filter((v) => v.id !== db.contracts[1].document_version_id); },
+      "a signed contract's frozen copy has no checksum": (db) => { db.document_versions[1].checksum = null; },
+      "the frozen copy is in another company": (db) => { db.document_versions[0].org_id = OTHER_ORG; }
     },
     stillGreen: {
       "a seeded wording a migration rewrote has no editor": (db) => { db.contract_templates[2].updated_by = null; },
       "a wording a person made and never edited has no editor": (db) => { db.contract_templates[3].updated_by = null; },
       "a migration ran a few minutes after a staff edit of an unrecorded wording": (db) => {
         db.contract_templates[3].updated_at = "2026-09-20T09:03:00Z";
-      }
+      },
+      "the editor is an owner": (db) => { db.staff[0].role = "owner"; },
+      "the editor's role has capitals and padding": (db) => { db.staff[0].role = " Admin "; },
+      "a draft with no words has no fingerprint": (db) => { db.contracts[3].body_sha = null; }
     }
   },
 
@@ -704,49 +825,75 @@ Object.assign(WORLDS, {
   "inquiry-bureau-call": {
     world() {
       const person = client();
-      const call = (over = {}) => ({ id: uid(), org_id: ORG, client_id: person.id, kind: "inquiry_bureau", call_id: `call-${uid()}`, created_at: "2026-10-14T10:00:00Z", ...over });
+      const other = client();
+      const at = "2026-10-14T10:00:00Z";
+      const call = (over = {}) => ({ id: uid(), org_id: ORG, client_id: person.id, kind: "inquiry_bureau", call_id: `call-${uid()}`, created_at: at, ...over });
+      const reveal = (over = {}) => ({ id: uid(), org_id: ORG, client_id: person.id, accessed_by: "staff", field: "ssn (bureau_dispute_call)", created_at: "2026-10-14T09:59:58Z", ...over });
+      const fired = (over = {}) => ({ id: uid(), org_id: ORG, client_id: person.id, call_fired_at: "2026-10-14T10:00:01Z", ...over });
       return {
+        clients: [person, other],
         outbound_calls: [
           call(),
-          { id: uid(), org_id: ORG, client_id: uid(), kind: "other_call", call_id: "call-2", created_at: "2026-10-14T10:00:00Z" }
+          // another kind of call is not judged here
+          { id: uid(), org_id: ORG, client_id: other.id, kind: "other_call", call_id: "call-2", created_at: at }
         ],
-        pii_access_log: [{ id: uid(), org_id: ORG, client_id: person.id, field: "ssn (bureau_dispute_call)" }],
-        inquiry_removal_cases: [{ id: uid(), org_id: ORG, client_id: person.id, call_fired_at: "2026-10-14T10:00:00Z" }],
-        _client: person.id
+        pii_access_log: [reveal()],
+        inquiry_removal_cases: [fired()],
+        _client: person.id,
+        _other: other.id
       };
     },
     sample: 1,
     breaks: {
       "the number-reveal was never logged": (db) => { db.pii_access_log = []; },
       "the log entry is for another reason": (db) => { db.pii_access_log[0].field = "ssn"; },
+      "the only reveal log is another client's": (db) => { db.pii_access_log[0].client_id = db._other; },
+      "the only reveal log is in another company": (db) => { db.pii_access_log[0].org_id = OTHER_ORG; },
+      "the only reveal log is from two days before the call (an old launch answering for this one)": (db) => {
+        db.pii_access_log[0].created_at = "2026-10-12T10:00:00Z";
+      },
       "the case was never marked fired, so the scheduler would call again": (db) => { db.inquiry_removal_cases[0].call_fired_at = null; },
       "the case is in another company": (db) => { db.inquiry_removal_cases[0].org_id = OTHER_ORG; },
+      "the only stamped case is another client's": (db) => { db.inquiry_removal_cases[0].client_id = db._other; },
+      // The checker's break: the scheduler stamped case B with no call, then Call bureau was pressed twice on case A.
+      "two launches on one case, with another case the scheduler stamped fired and called nobody": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-again", created_at: "2026-10-14T11:30:00Z" });
+        db.pii_access_log.push({ id: uid(), org_id: ORG, client_id: db._client, accessed_by: "staff", field: "ssn (bureau_dispute_call)", created_at: "2026-10-14T11:29:58Z" });
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T08:00:00Z" });
+      },
       "a second launch on the same case placed a second call": (db) => {
         db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-again", created_at: "2026-10-14T11:00:00Z" });
+        db.pii_access_log.push({ id: uid(), org_id: ORG, client_id: db._client, accessed_by: "staff", field: "ssn (bureau_dispute_call)", created_at: "2026-10-14T10:59:58Z" });
       },
       "a call was placed for a second case whose fired stamp never landed": (db) => {
         db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-case-b", created_at: "2026-10-14T11:00:00Z" });
+        db.pii_access_log.push({ id: uid(), org_id: ORG, client_id: db._client, accessed_by: "staff", field: "ssn (bureau_dispute_call)", created_at: "2026-10-14T10:59:58Z" });
         db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: null });
       },
-      "three calls and two fired cases": (db) => {
-        for (const id of ["call-b", "call-c"]) {
-          db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: id, created_at: "2026-10-14T11:00:00Z" });
-        }
-        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:00Z" });
-      }
+      "a second call whose reveal log was dropped (an earlier log exists for this client)": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-case-b", created_at: "2026-10-14T11:00:00Z" });
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:01Z" });
+      },
+      "a bad call from 10 days ago (the window is 30 days, not one)": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-old", created_at: "2026-10-04T11:00:00Z" });
+      },
+      "the stamp is an hour from the call": (db) => { db.inquiry_removal_cases[0].call_fired_at = "2026-10-14T11:00:00Z"; }
     },
     stillGreen: {
-      "two cases, each fired and each called once": (db) => {
+      "two cases, each stamped fired and each called once": (db) => {
         db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-case-b", created_at: "2026-10-14T11:00:00Z" });
-        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:00Z" });
+        db.pii_access_log.push({ id: uid(), org_id: ORG, client_id: db._client, accessed_by: "staff", field: "ssn (bureau_dispute_call)", created_at: "2026-10-14T10:59:58Z" });
+        db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T11:00:01Z" });
       },
       "a case the scheduler stamped fired with no call placed yet": (db) => {
         db.inquiry_removal_cases.push({ id: uid(), org_id: ORG, client_id: db._client, call_fired_at: "2026-10-14T09:00:00Z" });
       },
-      "an old repeat from before the 30 day window": (db) => {
-        db.outbound_calls[0].created_at = "2026-08-01T10:00:00Z";
+      "a call whose reveal log was written a few seconds after the call row": (db) => { db.pii_access_log[0].created_at = "2026-10-14T10:00:30Z"; },
+      "an old unmatched call from before the 30 day window": (db) => {
         db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "inquiry_bureau", call_id: "call-old", created_at: "2026-08-01T11:00:00Z" });
-        db.inquiry_removal_cases[0].call_fired_at = "2026-08-01T10:00:00Z";
+      },
+      "a call of another kind with no log and no stamp": (db) => {
+        db.outbound_calls.push({ id: uid(), org_id: ORG, client_id: db._client, kind: "client_dial", call_id: "call-dial", created_at: "2026-10-14T11:00:00Z" });
       }
     }
   },
@@ -755,21 +902,44 @@ Object.assign(WORLDS, {
     world() {
       const staff = { id: uid(), org_id: ORG };
       const person = client();
+      const caseId = uid();
       const row = (over = {}) => ({
-        id: uid(), org_id: ORG, client_id: person.id, confirmed: true, confidence: 0.99, parse_json: {},
+        id: uid(), org_id: ORG, client_id: person.id, case_id: caseId, confirmed: true, confidence: 0.99, parse_json: {},
         confirmed_at: "2026-10-01T00:00:00Z", confirmed_by: null, created_at: "2026-10-01T00:00:00Z", ...over
+      });
+      const confirmRecord = (over = {}) => ({
+        id: uid(), org_id: ORG, client_id: person.id, case_id: caseId, decision: "parse.confirmed",
+        payload: { confidence: 1, confirmedBy: staff.id, log: [] }, created_at: "2026-10-01T00:00:00Z", ...over
+      });
+      const stage = (key) => ({ id: uid(), key });
+      const stalled = stage("stalled"); const analysis = stage("analysis");
+      const optimization = { id: uid(), key: "optimization" }; const sales = { id: uid(), key: "sales" };
+      const card = (stageRow, pipeline, over = {}) => ({
+        id: uid(), org_id: ORG, client_id: person.id, stage_id: stageRow.id, pipeline_id: pipeline.id, is_demo: false,
+        updated_at: "2026-10-14T08:00:00Z", ...over
       });
       return {
         staff: [staff], clients: [person],
         dispute_responses: [
           row({ confidence: 0.6, confirmed_by: staff.id }),
-          row({ parse_json: { heldForEscalation: true }, confirmed_by: staff.id }),
+          row({ parse_json: { heldForEscalation: true }, confirmed_by: staff.id, confirmed_at: "2026-10-02T00:00:00Z" }),
           row(), // machine-confirmed, sure: not one that needed a person
           row({ confirmed: false, confirmed_at: null, confidence: 0.5, created_at: "2026-10-14T08:00:00Z" }) // waiting 4 hours: inside the clock
+        ],
+        // what the button writes: one entry per person-confirmed answer, naming that person
+        repair_decision_log: [
+          confirmRecord(),
+          confirmRecord({ created_at: "2026-10-02T00:00:00Z", payload: { confidence: 1, confirmedBy: staff.id.toUpperCase(), log: [] } })
+        ],
+        pipeline_stages: [stalled, analysis],
+        pipelines: [optimization, sales],
+        cards: [
+          card(stalled, optimization), // stuck 4 hours: inside the clock
+          card(analysis, optimization, { updated_at: "2026-09-01T00:00:00Z" }) // not on Stalled: another check's
         ]
       };
     },
-    sample: 3,
+    sample: 6,
     breaks: {
       "no confirm time": (db) => { db.dispute_responses[0].confirmed_at = null; },
       "no confirming person": (db) => { db.dispute_responses[0].confirmed_by = null; },
@@ -782,14 +952,46 @@ Object.assign(WORLDS, {
       },
       "an unchecked answer whose confirmed flag is empty sits past the clock": (db) => {
         Object.assign(db.dispute_responses[3], { confirmed: null, created_at: "2026-10-01T08:00:00Z" });
-      }
+      },
+      // "Mark as checked" flipped the flag and advanced nothing: no confirm record behind it.
+      "a person confirmed an answer and no confirm record exists (nothing was advanced)": (db) => { db.repair_decision_log = []; },
+      "only one of two person-confirmed answers has its confirm record": (db) => { db.repair_decision_log.pop(); },
+      "the confirm record names another person": (db) => {
+        db.repair_decision_log.forEach((r) => { r.payload.confirmedBy = uid(); });
+      },
+      "the confirm record is an older one by the same person on the same case (this answer's own was never written)": (db) => {
+        db.repair_decision_log[1].created_at = "2026-09-15T00:00:00Z";
+      },
+      "the confirm record is for another case": (db) => { db.repair_decision_log.forEach((r) => { r.case_id = uid(); }); },
+      "the confirm record is for another client": (db) => { db.repair_decision_log.forEach((r) => { r.client_id = uid(); }); },
+      "the confirm record is in another company": (db) => { db.repair_decision_log.forEach((r) => { r.org_id = OTHER_ORG; }); },
+      "the record is a different decision (the parse was only held)": (db) => {
+        db.repair_decision_log.forEach((r) => { r.decision = "parse.held_low_confidence"; });
+      },
+      "a repair card sat on the Stalled stage for three days": (db) => { db.cards[0].updated_at = "2026-10-11T08:00:00Z"; },
+      "a repair card sat on the Stalled stage for 25 hours": (db) => { db.cards[0].updated_at = "2026-10-13T10:00:00Z"; }
     },
     stillGreen: {
       "an old unchecked answer on a demo client": (db) => {
         db.clients[0].is_demo = true;
         Object.assign(db.dispute_responses[3], { created_at: "2026-09-01T08:00:00Z" });
       },
-      "an unchecked answer 23 hours old": (db) => { db.dispute_responses[3].created_at = "2026-10-13T13:00:00Z"; }
+      "an unchecked answer 23 hours old": (db) => { db.dispute_responses[3].created_at = "2026-10-13T13:00:00Z"; },
+      "a card on Stalled for 23 hours": (db) => { db.cards[0].updated_at = "2026-10-13T13:00:00Z"; },
+      "an old card on Stalled that is a demo": (db) => { Object.assign(db.cards[0], { updated_at: "2026-08-01T00:00:00Z", is_demo: true }); },
+      "an old card on Stalled whose client is a demo (the card was made before the mark existed)": (db) => {
+        db.clients[0].is_demo = true;
+        db.cards[0].updated_at = "2026-08-01T00:00:00Z";
+        // the answer waiting on the demo client is left out too, so the sample is only the confirms
+        db.dispute_responses[3].created_at = "2026-10-14T08:00:00Z";
+      },
+      "an old card on Stalled in another pipeline": (db) => {
+        db.cards[0].pipeline_id = db.pipelines.find((p) => p.key === "sales").id;
+        db.cards[0].updated_at = "2026-08-01T00:00:00Z";
+      },
+      "the confirmer id is written in capitals in the record": (db) => {
+        db.repair_decision_log.forEach((r) => { r.payload.confirmedBy = db.staff[0].id.toUpperCase(); });
+      }
     }
   },
 
@@ -1061,6 +1263,71 @@ test("the not-attachable controls say exactly what is missing and stay not prove
   assert.match(stamp.requirement, /ReferenceError/);
 });
 
+// ── the words the checks read are the words the product writes ──────────────────────────────────────────
+// A check that names a literal the product no longer writes goes quiet: with nothing to judge it is green. These
+// pins read the product's own source and fail the day a name is changed on either side.
+
+test("the bureau call check reads the strings the launch writes", () => {
+  const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");
+  const launch = read("src/inquiry-ops/bureau-call.mjs");
+  const sql = checkByKey("inquiry-bureau-call").contract.sql;
+  assert.match(launch, /kind:\s*"inquiry_bureau"/, "the launch no longer records its call under kind inquiry_bureau");
+  assert.match(sql, /o\.kind = 'inquiry_bureau'/);
+  assert.match(launch, /reason:\s*"bureau_dispute_call"/, "the launch no longer reveals the number for bureau_dispute_call");
+  assert.match(read("src/pii/index.mjs"), /`ssn \(\$\{reason\}\)`/, "a reveal is no longer logged as ssn (<reason>)");
+  assert.match(sql, /p\.field = 'ssn \(bureau_dispute_call\)'/);
+  assert.match(launch, /call_fired_at = coalesce\(call_fired_at, now\(\)\)/, "the launch no longer keeps the first stamp");
+  // The scheduler stamps without a call: the reason the check ties a call to a stamp by time and not by count.
+  assert.match(read("src/inquiry-ops/call-scheduler.mjs"), /SET call_fired_at = \$2::timestamptz/);
+});
+
+test("the upload door checks read the strings the upload handler writes", () => {
+  const handler = fs.readFileSync(path.join(ROOT, "api/documents-upload.mjs"), "utf8");
+  assert.match(handler, /emit\(db, "docs\.received", \{\s*document_id: document\.id/, "the announcement or its document_id changed");
+  assert.match(handler, /generatedBy: `\$\{actor\.kind\}:\$\{actor\.id/);
+  assert.match(handler, /uploaded_by: actor/);
+  assert.match(handler, /: \{ kind: "client", id: principal\.accountId \|\| principal\.clientId \}/, "a client sender is no longer the account id");
+  for (const entry of FIN_B06_CHECKS.filter((item) => item.key.startsWith("documents-door") || item.key === "documents-staff-dropzone")) {
+    assert.match(entry.contract.sql, /e\.name = 'docs\.received'/);
+    // Postgres refuses uuid = text, and SQLite (which runs these in the tests) does not care, so the casts are pinned.
+    assert.match(entry.contract.sql, /e\.payload->>'document_id' = d\.id::text/);
+    assert.match(entry.contract.sql, /a\.id::text = d\.metadata->'uploaded_by'->>'id'/);
+  }
+  const validate = fs.readFileSync(path.join(ROOT, "src/documents/upload-validate.mjs"), "utf8");
+  assert.match(validate, /ALLOWED_MIME_TYPES = Object\.freeze\(\["image\/jpeg", "image\/png", "application\/pdf"\]\)/);
+  assert.match(checkByKey("documents-door-identity").contract.sql, /IN \('image\/jpeg', 'image\/png', 'application\/pdf'\)/);
+  assert.match(checkByKey("documents-door-identity").contract.sql, /> 10485760/);
+});
+
+test("the ready date check reads the task key and workflow the daily sweep writes", async () => {
+  const { nextSequenceAlertKey, SOURCE_WORKFLOW, NEXT_SEQUENCE_READY_DATE_KEY } = await import("../../../blueprint/next-funding-sequence.mjs");
+  assert.equal(nextSequenceAlertKey({ clientId: "C", readyDate: "2026-10-01" }), "blueprint-next-sequence:C:2026-10-01");
+  const sql = checkByKey("blueprint-ready-date").contract.sql;
+  assert.ok(sql.includes("'blueprint-next-sequence:' || c.id::text || ':' ||"));
+  assert.ok(sql.includes(`t.source_workflow = '${SOURCE_WORKFLOW}'`));
+  assert.ok(sql.includes(`->>'${NEXT_SEQUENCE_READY_DATE_KEY}'`));
+});
+
+test("the wording edit check reads the roles the contracts handler lets write wording", () => {
+  const handler = fs.readFileSync(path.join(ROOT, "api/contracts.mjs"), "utf8");
+  assert.match(handler, /OWNER_ADMIN_ACTIONS = new Set\(\[\s*"create_template", "save_template"/);
+  assert.match(handler, /OWNER_ADMIN_ACTIONS\.has\(action\) && !hasRole\(staff, \["admin"\]\)/);
+  const sql = checkByKey("contract-wording-edited").contract.sql;
+  assert.match(sql, /NOT COALESCE\(lower\(btrim\(s\.role\)\) IN \('owner', 'admin'\), false\)/);
+});
+
+test("the answer confirm check reads the record the confirm writes", () => {
+  const confirm = fs.readFileSync(path.join(ROOT, "src/metro2/inbound/confirm.mjs"), "utf8");
+  assert.match(confirm, /decision: "parse\.confirmed",\s*payload: \{\s*confidence: parseResult\.confidence,\s*confirmedBy: confirmedBy \|\| null/);
+  const loop = fs.readFileSync(path.join(ROOT, "src/repair/parse-loop.mjs"), "utf8");
+  assert.match(loop, /UPDATE dispute_responses SET confirmed = true, confirmed_at = now\(\), confirmed_by = \$2/);
+  const sql = checkByKey("repair-parse-confirmed").contract.sql;
+  assert.match(sql, /l\.decision = 'parse\.confirmed'/);
+  // uuid columns are cast to text before they are trimmed or compared with json text (SQLite would not notice).
+  assert.match(sql, /lower\(btrim\(r\.confirmed_by::text\)\)/);
+  assert.match(sql, /lower\(btrim\(l\.payload->>'confirmedBy'\)\)/);
+});
+
 // ── wiring ─────────────────────────────────────────────────────────────────────────────────────────────
 
 function mapRows() {
@@ -1127,17 +1394,20 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
   }
 });
 
-test("the practice-tested controls are direct proofs; the consent screen and the three upload doors also keep a live check", () => {
-  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 9);
+test("the practice-tested controls are direct proofs; the rows that also keep a live check keep it", () => {
+  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 16);
   const rows = mapRows();
+  const TEST_1 = "src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs";
+  const TEST_2 = "src/pulse/catalog/proofs/fin-b06-display-browser-2.test.mjs";
   for (const entry of FIN_B06_DISPLAY_PROOF_CASES) {
     const hits = rows.filter((row) => row.sourceFile === entry.sourceFile && row.surface === entry.surface && row.control === entry.control);
     assert.equal(hits.length, 1, entry.control);
     const kept = DISPLAY_PROOF_CASES.find((item) => item.control === entry.control && item.surface === entry.surface);
-    assert.equal(kept.evidence, "src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs");
+    assert.ok(kept.tests.every((file) => [TEST_1, TEST_2].includes(file)), `${entry.control}: names a test file that is not one of ours`);
+    for (const file of kept.tests) assert.ok(kept.evidence.includes(file), `${entry.control}: ${file} missing from evidence`);
     assert.equal(kept.depth, "deep");
     if (FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS.includes(entry.control)) {
-      // The words and version are judged on saved rows, and the lane still judges them.
+      // The saved half is judged on saved rows, and the lane still judges it.
       assert.ok(displaySavedResultContract(hits[0]), `${entry.control}: the live check is kept`);
       assert.ok(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), `${entry.control}: still judged by the live lane`);
     } else {
@@ -1149,7 +1419,14 @@ test("the practice-tested controls are direct proofs; the consent screen and the
     "Consent wording, version badge and current status banner (read from the server, never typed in the page)",
     "Upload door: ID and personal documents (type select, Upload button, file picker)",
     "Upload door: Inquiry documents (type select, Upload button, file picker)",
-    "Upload door: bureau response (type select, Upload button, file picker)"
+    "Upload door: bureau response (type select, Upload button, file picker)",
+    "What You Own: Download link per file",
+    "Capital Blueprint: Save ready date button",
+    "Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs)",
+    "Capital Blueprint: Offer bank tracker button",
+    "Capital Blueprint: Take the offer back button",
+    "'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
+    "Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)"
   ].sort());
   assert.equal(FIN_B06_DISPLAY_PRACTICE_CONTROLS.length, 5);
 });

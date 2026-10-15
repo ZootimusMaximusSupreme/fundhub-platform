@@ -205,6 +205,42 @@ export function olderThanMinutes(expr, minutes) {
   };
 }
 
+/** expr::text, so a uuid column can be compared with the text a json field holds (uuid = text raises). */
+export function asText(expr) {
+  return { sql: `${expr.sql}::text`, ev: (ctx, db) => text(expr.ev(ctx, db)) };
+}
+
+/** a and b are timestamps within N minutes of each other, either way round. NULL on either side is false. */
+export function withinMinutes(a, b, minutes) {
+  const n = Number(minutes);
+  if (!Number.isInteger(n) || n <= 0) throw new Error("minutes must be a positive whole number");
+  return {
+    sql: `COALESCE(${a.sql} >= ${b.sql} - interval '${n} minutes' AND ${a.sql} <= ${b.sql} + interval '${n} minutes', false)`,
+    ev: (ctx, db) => {
+      const l = a.ev(ctx, db); const r = b.ev(ctx, db);
+      if (l === null || l === undefined || r === null || r === undefined) return false;
+      return Math.abs(new Date(l).getTime() - new Date(r).getTime()) <= n * 60_000;
+    }
+  };
+}
+
+/**
+ * A YYYY-MM-DD text that is on or before the day N days ago (UTC). Text comparison of real days is a calendar
+ * comparison, and it never raises on a bad day the way a date cast does. Pair it with realDay().
+ */
+export function dayNotAfterDaysAgo(expr, days) {
+  const n = Number(days);
+  if (!Number.isInteger(n) || n <= 0) throw new Error("days must be a positive whole number");
+  return {
+    sql: `COALESCE((${expr.sql})::text <= substr((now() - interval '${n} days')::text, 1, 10), false)`,
+    ev: (ctx, db) => {
+      const v = text(expr.ev(ctx, db));
+      if (v === null) return false;
+      return v <= new Date(new Date(db.now).getTime() - n * 86_400_000).toISOString().slice(0, 10);
+    }
+  };
+}
+
 /** expr > now() */
 export function afterNow(expr) {
   return {

@@ -130,6 +130,8 @@ function openDatabase(tablesSql, db, now) {
 
   for (const [table, set] of columns) {
     const names = [...set];
+    // A stand-in table the SQL never names and that holds no rows has no columns to make.
+    if (!names.length) continue;
     lite.exec(`CREATE TABLE ${table} (${names.map((n) => `"${n}"`).join(", ")})`);
     const rows = Array.isArray(db[table]) ? db[table] : [];
     const insert = lite.prepare(`INSERT INTO ${table} (${names.map((n) => `"${n}"`).join(", ")}) VALUES (${names.map(() => "?").join(", ")})`);

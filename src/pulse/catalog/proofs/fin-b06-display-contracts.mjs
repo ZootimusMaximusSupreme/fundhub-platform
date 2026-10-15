@@ -5,20 +5,25 @@
 //
 // Each check is built from one definition that prints the SQL and also runs as a JavaScript judge over
 // stand-in rows (fin-b06-sql-kit.mjs), so the test file can break the data on purpose and see it go red.
-// There is no local Postgres on the build Mac: the SQL itself is checked against db/schema and
-// db/migrations by fin-b06-schema.mjs, not executed here.
+// There is no local Postgres on the build Mac: the SQL is checked against db/schema and db/migrations by
+// fin-b06-schema.mjs, and the printed text is also run in SQLite over the same stand-in rows
+// (fin-b06-sqlite.mjs). Neither is Postgres: a uuid compared with text, which SQLite accepts, is pinned by the
+// tests that read the printed SQL.
 
 import { createHash } from "node:crypto";
 
+import { NEXT_SEQUENCE_READY_DATE_KEY, SOURCE_WORKFLOW as NEXT_SEQUENCE_WORKFLOW } from "../../../blueprint/next-funding-sequence.mjs";
 import { OFFERS } from "../../../config/offers.mjs";
 import { disclosureFor, versionsFor } from "../../../consent/disclosures.mjs";
+import { ALLOWED_MIME_TYPES, DEFAULT_MAX_BYTES } from "../../../documents/upload-validate.mjs";
 import { PAID_TRANSACTION_STATUS } from "../../../entitlements/entitlements.mjs";
+import { SUPER_ROLES } from "../../../http/middleware/requireRole.mjs";
 import { STAGE_SLA } from "../../../repair/sla.mjs";
 import {
-  afterNow, and, blank, bodyHash, c, charLength, contract, custom, distinct, elem, eq, equal, exists, existsElement,
-  gt, hasBlueprintTransaction, isNull, jsonGet, jtext, jtype, lit, lowerTrim, lt, matches, missing, newerThanDays,
-  not, notDemo, notMatches, notNull, notOneOf, numberFrom, olderThanMinutes, oneOf, or, part, realDay, startsWith,
-  trimmed, earlier, valuesTable, onOrAfter
+  afterNow, and, asText, blank, bodyHash, c, charLength, contract, custom, dayNotAfterDaysAgo, distinct, elem, eq,
+  exists, existsElement, gt, hasBlueprintTransaction, isNull, jsonGet, jtext, jtype, lit, lowerTrim, lt, matches,
+  missing, newerThanDays, not, notDemo, notMatches, notNull, notOneOf, numberFrom, olderThanMinutes, oneOf, or, part,
+  realDay, startsWith, trimmed, earlier, valuesTable, onOrAfter, withinMinutes
 } from "./fin-b06-sql-kit.mjs";
 
 const sha256Hex = (value) => createHash("sha256").update(value, "utf8").digest("hex");
@@ -78,19 +83,43 @@ check(
   })
 );
 
-const READY_DATE = jtext(c("c", "custom_fields"), "blueprint_next_sequence_ready_date");
+const READY_DATE = jtext(c("c", "custom_fields"), NEXT_SEQUENCE_READY_DATE_KEY);
+// The daily sweep (src/workflows/blueprint-next-funding-sequence-sweeper.mjs, cron 06:30 UTC) opens one closer task
+// for every saved day that has come: source_workflow blueprint-next-funding-sequence, body
+// blueprint-next-sequence:<client id>:<day> (nextSequenceAlertKey in src/blueprint/next-funding-sequence.mjs, pinned
+// by a test). The save time is not stored, so a client record that changed in the last 36 hours is not judged yet,
+// and the day must be at least two days past, which gives a daily sweep a whole run to have happened.
+const SWEEP_GRACE_DAYS = 2;
+const RECORD_STILL_MINUTES = 36 * 60;
+const EXPECTED_SWEEP_TASK_BODY = custom(
+  `'blueprint-next-sequence:' || c.id::text || ':' || (${READY_DATE.sql})`,
+  (ctx, db) => `blueprint-next-sequence:${ctx.c.id}:${READY_DATE.ev(ctx, db)}`
+);
 check(
   "blueprint-ready-date",
   "Capital Blueprint: Save ready date button",
-  "Every client with a saved next-funding-sequence ready date must hold a REAL calendar day written YYYY-MM-DD (a 31 February is not one, and 29 February needs a leap year) and must be a paying Capital Blueprint buyer. The daily closer alert casts every saved day to a date in the database, and one day that is not on the calendar makes that read fail for the whole company.",
-  part({
-    table: "clients", alias: "c",
-    where: and(notDemo("c"), not(blank(READY_DATE))),
-    bad: or(
-      not(realDay(READY_DATE)),
-      not(boughtBlueprint(c("c", "id"), "c"))
-    )
-  })
+  "Every client with a saved next-funding-sequence ready date must hold a REAL calendar day written YYYY-MM-DD (a 31 February is not one, and 29 February needs a leap year) and must be a paying Capital Blueprint buyer. The daily closer alert casts every saved day to a date in the database, and one day that is not on the calendar makes that read fail for the whole company. And the button promises \"the closer gets a task on that day\": once a saved day is two days past and the client record has not changed for 36 hours (the save time is not stored, so a record changed since then is not judged yet), the closer task the daily sweep makes for that day must exist. A dead sweep leaves a past ready date and no task.",
+  [
+    part({
+      table: "clients", alias: "c",
+      where: and(notDemo("c"), not(blank(READY_DATE))),
+      bad: or(
+        not(realDay(READY_DATE)),
+        not(boughtBlueprint(c("c", "id"), "c"))
+      )
+    }),
+    part({
+      table: "clients", alias: "c",
+      where: and(
+        notDemo("c"), not(blank(READY_DATE)), realDay(READY_DATE), dayNotAfterDaysAgo(READY_DATE, SWEEP_GRACE_DAYS),
+        olderThanMinutes(c("c", "updated_at"), RECORD_STILL_MINUTES), boughtBlueprint(c("c", "id"), "c")
+      ),
+      bad: missing("tasks", "t", and(
+        eq(c("t", "org_id"), c("c", "org_id")), eq(c("t", "client_id"), c("c", "id")),
+        eq(c("t", "source_workflow"), lit(NEXT_SEQUENCE_WORKFLOW)), eq(c("t", "body"), EXPECTED_SWEEP_TASK_BODY)
+      ))
+    })
+  ]
 );
 
 const TRACKER_FLAG = jtext(c("c", "custom_fields"), "blueprint_bank_tracker_offered");
@@ -120,11 +149,14 @@ check(
 // (src/finance/bank-strategy.mjs planBank / openAccount) writes the same table WITH a bank_name and no offer gate.
 // So a row with no bank_name was written by this control, and the offer gate applies to it. The offer can be taken
 // back later (flag "false"), which leaves the rows in place, so only a client who was never offered is wrong.
+// What the PAGE sends (the Bank box as the bank, the Account choice, the trimmed note) is not a thing a saved row can
+// show: addBankRelationshipTodo stores the note as given and never trims it, so a note with padding is something a
+// direct call may legitimately store. That half is a practice test of the page (fin-b06-display-browser-2.test.mjs).
 const TODO_CLIENT_FLAG = jtext(c("k", "custom_fields"), "blueprint_bank_tracker_offered");
 check(
   "blueprint-bank-todo",
   "Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs)",
-  "Every bank-list row saved by this button (a row with no FinanceOS bank name) must sit on a client in the same company who was offered the bank tracker and is a paying Capital Blueprint buyer, because the save is refused otherwise; its bank key must be trimmed lower case, and its note either empty or real words with no padding. (A blank bank key and an account kind other than personal or business are refused by database rules, so they are not judged here.)",
+  "Every bank-list row saved by this button (a row with no FinanceOS bank name) must sit on a client in the same company who was offered the bank tracker and is a paying Capital Blueprint buyer, because the save is refused otherwise; and its bank key must be trimmed lower case, which the handler writes. (A blank bank key and an account kind other than personal or business are refused by database rules, so they are not judged here. What the page sent for the Bank, Account and Notes boxes is a practice test of the page, because the note is stored as given and a saved row cannot tell the page from a direct call.)",
   part({
     table: "blueprint_bank_relationship_todos", alias: "t",
     joins: [sameClient("k", "t", "client_id")],
@@ -133,8 +165,7 @@ check(
       distinct(c("t", "bank_key"), lowerTrim(c("t", "bank_key"))),
       and(isNull(c("t", "bank_name")), or(
         isNull(TODO_CLIENT_FLAG),
-        not(boughtBlueprint(c("t", "client_id"), "t")),
-        and(notNull(c("t", "notes")), or(blank(c("t", "notes")), distinct(c("t", "notes"), trimmed(c("t", "notes")))))
+        not(boughtBlueprint(c("t", "client_id"), "t"))
       ))
     )
   })
@@ -228,15 +259,32 @@ const LABEL = (key) => jtext(c("d", "metadata"), "label", key);
  * handler is the only writer that sets generated_by to "<staff|client>:<id>" (the phone-text intake sets
  * "inbound-mms" and is another door). The type select is optional ("What is this? (helps us file it)"), so a
  * file sent with no type is filed as other and is not wrong; what a saved row CAN show is a chosen type the
- * server did not know. Whether the page sends the door's kind and the chosen type is a practice test of the page
- * (fin-b06-display-browser.test.mjs), because a dropped choice looks the same as no choice in a saved row.
+ * server did not know. Whether the page sends the door's kind and the chosen type, and what it says when the
+ * server refuses a file, is a practice test of the page (fin-b06-display-browser.test.mjs), because a dropped
+ * choice looks the same as no choice in a saved row.
+ *
+ * The sender in metadata.uploaded_by.id is the staff id (staff doors) or the login's account id (client doors:
+ * requirePrincipal always carries accountId for a client). A client login may file only on its own file or on a
+ * file it is an authorized representative of, so the account must belong to this company and to this file; a
+ * login filing on another client's file is the wrong-client result no field of the file itself would show.
+ * The stored object must be one of the three types the door accepts and not over its size limit (the validator
+ * sniffs the bytes; a file that got past it, or a validator that was bypassed, is the break). The handler also
+ * announces every file with a docs.received event (it clears the "Missing Documents" hold and wakes the document
+ * agent), so a file that was stored and never announced leaves a client told to send what they already sent.
  */
+const MAX_UPLOAD_BYTES = DEFAULT_MAX_BYTES;
+const SENDER_ID = jtext(c("d", "metadata"), "uploaded_by", "id");
 function uploadDoor(key, control, requirement, { kind, uploader }) {
+  const staffDoor = uploader === "staff";
   check(key, control, requirement, part({
     table: "documents", alias: "d",
     joins: [
       { table: "document_versions", alias: "v", on: and(eq(c("v", "id"), c("d", "current_version_id")), eq(c("v", "document_id"), c("d", "id"))) },
-      sameClient("k", "d", "client_id")
+      sameClient("k", "d", "client_id"),
+      {
+        table: staffDoor ? "staff" : "accounts", alias: "a",
+        on: and(eq(asText(c("a", "id")), SENDER_ID), eq(c("a", "org_id"), c("d", "org_id")))
+      }
     ],
     where: and(notDemo("d"), eq(c("d", "kind"), lit(kind)), startsWith(c("d", "generated_by"), `${uploader}:`)),
     bad: or(
@@ -245,10 +293,25 @@ function uploadDoor(key, control, requirement, { kind, uploader }) {
       distinct(c("d", "storage_key"), c("v", "storage_key")),
       blank(c("v", "checksum")),
       distinct(c("d", "checksum"), c("v", "checksum")),
-      and(notNull(c("v", "byte_size")), not(gt(c("v", "byte_size"), lit(0)))),
+      not(oneOf(c("v", "mime_type"), [...ALLOWED_MIME_TYPES])),
+      // Above zero: a NULL size is not above zero either, so a file with no size is red here too.
+      not(gt(c("v", "byte_size"), lit(0))),
+      gt(c("v", "byte_size"), lit(MAX_UPLOAD_BYTES)),
       isNull(c("k", "id")),
-      // Who sent it: the handler writes the sender into the file's metadata as well as generated_by.
+      // Who sent it: the handler writes the sender into the file's metadata as well as generated_by, and the
+      // sender must be a real person or login of this company.
       distinct(jtext(c("d", "metadata"), "uploaded_by", "kind"), lit(uploader)),
+      isNull(c("a", "id")),
+      ...(staffDoor ? [] : [
+        and(distinct(c("a", "client_id"), c("d", "client_id")), missing("client_authorized_reps", "r", and(
+          eq(c("r", "account_id"), c("a", "id")), eq(c("r", "client_id"), c("d", "client_id")), eq(c("r", "org_id"), c("d", "org_id"))
+        )))
+      ]),
+      // The announcement: one docs.received event on this client's file naming this document.
+      missing("events", "e", and(
+        eq(c("e", "org_id"), c("d", "org_id")), eq(c("e", "name"), lit("docs.received")),
+        eq(c("e", "client_id"), c("d", "client_id")), eq(jtext(c("e", "payload"), "document_id"), asText(c("d", "id")))
+      )),
       // What it was filed as, against what the person picked. A type the server does not know is filed as
       // "other" (and stamped source "unrecognised"), so what was picked and what was filed differ: a real answer lost.
       and(notNull(LABEL("filed_as")), distinct(c("d", "subtype"), LABEL("filed_as"))),
@@ -263,36 +326,40 @@ function uploadDoor(key, control, requirement, { kind, uploader }) {
 uploadDoor(
   "documents-staff-dropzone",
   "Documents toggle, drop zone, file input, drag and drop upload",
-  "Every file staff dropped on a client file must have a current version with a stored object and checksum that match the document row, sit on a client in the same company, name staff as the sender, and be filed under the type it was labeled with (the drop zone sends no type, so it files as other; a file that names a type the server does not know is wrong).",
+  "Every file staff dropped on a client file must have a current version with a stored object and checksum that match the document row, be a jpg, png or pdf of a size the door accepts, sit on a client in the same company, name a staff member of this company as the sender, have its docs.received announcement on that client's file, and be filed under the type it was labeled with (the drop zone sends no type, so it files as other; a file that names a type the server does not know is wrong).",
   { kind: "client_upload", uploader: "staff" }
 );
 uploadDoor(
   "documents-door-identity",
   "Upload door: ID and personal documents (type select, Upload button, file picker)",
-  "Every file a client sent through the ID and personal documents door must have a current version with a stored object and checksum that match the document row, sit on that client, name the client as the sender, and be filed under EXACTLY the type chosen in the select. A chosen type the server does not know (it would be filed as other) is wrong; a file sent with no type chosen is filed as other and is not.",
+  "Every file a client sent through the ID and personal documents door must have a current version with a stored object and checksum that match the document row, be a jpg, png or pdf of a size the door accepts, sit on a file the sending login belongs to (its own file, or one it is an authorized representative of), name that client login as the sender, have its docs.received announcement on that file, and be filed under EXACTLY the type chosen in the select. A chosen type the server does not know (it would be filed as other) is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "client_upload", uploader: "client" }
 );
 uploadDoor(
   "documents-door-inquiry",
   "Upload door: Inquiry documents (type select, Upload button, file picker)",
-  "Every file a client sent through the inquiry documents door must be an inquiry document with a current version, stored object and checksum that match the document row, on that client, named as sent by the client, and filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
+  "Every file a client sent through the inquiry documents door must be an inquiry document with a current version, stored object and checksum that match the document row, be a jpg, png or pdf of a size the door accepts, sit on a file the sending login belongs to (its own file, or one it is an authorized representative of), be named as sent by that client login, have its docs.received announcement on that file, and be filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "inquiry_doc", uploader: "client" }
 );
 uploadDoor(
   "documents-door-bureau",
   "Upload door: bureau response (type select, Upload button, file picker)",
-  "Every file a client sent through the bureau response door must be a bureau response with a current version, stored object and checksum that match the document row, on that client, named as sent by the client, and filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
+  "Every file a client sent through the bureau response door must be a bureau response with a current version, stored object and checksum that match the document row, be a jpg, png or pdf of a size the door accepts, sit on a file the sending login belongs to (its own file, or one it is an authorized representative of), be named as sent by that client login, have its docs.received announcement on that file, and be filed under EXACTLY the type chosen in the select. A chosen type the server does not know is wrong; a file sent with no type chosen is filed as other and is not.",
   { kind: "bureau_response", uploader: "client" }
 );
 
 // The portal paints a Download link for EVERY document of kind "deliverable" (client-portal.html ownRows: kind
 // is the whole filter), whatever its subtype. An expired one is given no link on purpose
 // (api/read/portal-summary.mjs: "an expired document gets no link"), so only a deliverable that is still
-// valid must have an object to hand over.
+// valid must have an object to hand over. The signed link carries the current version id, and the download route
+// (api/documents/[id].mjs resolveStorageTarget) reads that version's object, or the document row's own copy when the
+// link names no version, and verifies the bytes against the stored checksum when it holds one. So the two copies of
+// the key must be the same object, and the checksum must exist and agree, or a link opens a different file or
+// opens one that nothing verified. Which file each link opens on the page is a practice test of the page.
 check(
   "documents-download-link",
   "What You Own: Download link per file",
-  "Every deliverable document a client can own, of any type (the five reports and packs, the dispute letters, complaints and validation letters, the duplication map), that has not expired must point at a current version and a stored object, because the signed download link reads exactly that object.",
+  "Every deliverable document a client can own, of any type (the five reports and packs, the dispute letters, complaints and validation letters, the duplication map), that has not expired must point at a current version with a stored object, the document row's copy of that object must be the same object and checksum, and the checksum must be there, because the signed download link reads exactly that object and checks its bytes against that checksum.",
   part({
     table: "documents", alias: "d",
     joins: [{ table: "document_versions", alias: "v", on: and(eq(c("v", "id"), c("d", "current_version_id")), eq(c("v", "document_id"), c("d", "id"))) }],
@@ -300,7 +367,11 @@ check(
       notDemo("d"), eq(c("d", "kind"), lit("deliverable")),
       or(isNull(c("d", "expires_at")), afterNow(c("d", "expires_at")))
     ),
-    bad: or(isNull(c("v", "id")), blank(c("d", "storage_key")), blank(c("v", "storage_key")))
+    bad: or(
+      isNull(c("v", "id")), blank(c("d", "storage_key")), blank(c("v", "storage_key")),
+      distinct(c("d", "storage_key"), c("v", "storage_key")),
+      blank(c("v", "checksum")), distinct(c("d", "checksum"), c("v", "checksum"))
+    )
   })
 );
 
@@ -514,9 +585,13 @@ const FROZEN_HASH = bodyHash(c("k", "rendered_body"), sha256Hex);
 // no migration having run near that moment. A migration that rewrote a seeded wording (273, 287 and 288 do)
 // moves updated_at and records no editor, because a migration is not a person; schema_migrations.applied_at
 // says when each one ran, so those rows are left out. Everything else that moved and names nobody is an edit
-// that stopped recording who made it. The editor must be staff in this company. A blank name, blank words or a
-// blank signature sentence are refused by database rules (124, 125), so they are not judged here.
+// that stopped recording who made it. The editor must be staff in this company AND an owner or an admin: the
+// handler refuses every wording write from any other role (api/contracts.mjs OWNER_ADMIN_ACTIONS, hasRole), so a
+// closer's name on a wording is a write the gate let through. The role read is the person's role today: an
+// editor who was an admin then and is not now reads as wrong until the wording is saved again. A blank name,
+// blank words or a blank signature sentence are refused by database rules (124, 125), so they are not judged here.
 const MIGRATION_SLACK_MINUTES = 5;
+const WORDING_EDITOR_ROLES = [...SUPER_ROLES, "admin"];
 const notRewrittenByMigration = custom(
   `NOT EXISTS (SELECT 1 FROM schema_migrations m WHERE m.applied_at >= t.updated_at - interval '${MIGRATION_SLACK_MINUTES} minutes' AND m.applied_at <= t.updated_at + interval '${MIGRATION_SLACK_MINUTES} minutes')`,
   (ctx, db) => !(db.schema_migrations || []).some((row) =>
@@ -525,7 +600,7 @@ const notRewrittenByMigration = custom(
 check(
   "contract-wording-edited",
   "Save (edit an existing wording)",
-  "Every wording that was edited must name a staff editor in the same company (an edit that stopped recording who made it is wrong, whether the wording is text or an uploaded PDF), and every contract already sent must still hold words that match its stored fingerprint. Wordings that only a migration rewrote are left out, and a blank name or blank words are refused by database rules, so they are not judged here.",
+  "Every wording that was edited must name a staff editor in the same company who is an owner or an admin (an edit that stopped recording who made it is wrong, whether the wording is text or an uploaded PDF, and so is a closer or any other role changing legal wording, which the handler refuses). And every contract already sent, viewed, signed or voided must still hold the words whose fingerprint was stored in its frozen copy (document_versions.checksum, the one the contract row cannot rewrite), and the contract row's own fingerprint must agree with it, so rewriting the words and the row's fingerprint together is seen. Wordings that only a migration rewrote are left out, and a blank name or blank words are refused by database rules, so they are not judged here.",
   [
     part({
       table: "contract_templates", alias: "t",
@@ -534,12 +609,17 @@ check(
         notNull(c("t", "updated_by")),
         and(earlier(c("t", "created_at"), c("t", "updated_at")), notRewrittenByMigration)
       )),
-      bad: isNull(c("s", "id"))
+      bad: or(isNull(c("s", "id")), notOneOf(lowerTrim(c("s", "role")), WORDING_EDITOR_ROLES))
     }),
     part({
       table: "contracts", alias: "k",
-      where: and(notDemo("k"), oneOf(c("k", "status"), ["sent", "viewed", "signed"]), notNull(c("k", "rendered_body"))),
-      bad: or(isNull(c("k", "body_sha")), distinct(c("k", "body_sha"), FROZEN_HASH))
+      joins: [{ table: "document_versions", alias: "v", on: and(eq(c("v", "id"), c("k", "document_version_id")), eq(c("v", "org_id"), c("k", "org_id"))) }],
+      where: and(notDemo("k"), oneOf(c("k", "status"), ["sent", "viewed", "signed", "void"]), notNull(c("k", "rendered_body"))),
+      bad: or(
+        isNull(c("k", "document_version_id")), isNull(c("v", "id")), isNull(c("v", "checksum")),
+        distinct(FROZEN_HASH, c("v", "checksum")),
+        isNull(c("k", "body_sha")), distinct(c("k", "body_sha"), FROZEN_HASH)
+      )
     })
   ]
 );
@@ -647,41 +727,41 @@ check(
 
 // ───────────────────────── Inquiry remover and repair desk ─────────────────────────
 
-// outbound_calls stores no case id (call_id, client_id, org_id, kind only), and the launch writes the call row and
-// stamps the case in two separate steps. So a repeat is read at the client: in the last 30 days a client may have
-// no more bureau calls logged than cases marked fired. A second launch on one case, or a call whose case stamp
-// never landed, leaves more calls than fired cases and is wrong. What this cannot see (needs the product to store
-// a case id on the call): a repeat on a case when the client has other cases the scheduler already stamped
-// fired, and a call that was placed but whose log write failed (the launch swallows that error).
+// outbound_calls stores no case id (call_id, client_id, org_id, kind, created_at only), and the launch writes the call
+// row and stamps the case in two separate steps (src/inquiry-ops/bureau-call.mjs). So a call is tied to its case by
+// TIME: the stamp (call_fired_at = coalesce(call_fired_at, now())) lands within moments of the call row, because
+// recordDispatch and the stamp run back to back in one request. Each call must have a case of the same client whose
+// stamp sits within five minutes of it, and a reveal log entry ("ssn (bureau_dispute_call)", written by revealSsn
+// before the call is placed) within five minutes of it too.
+//   * A second launch on a case that is already stamped keeps the first stamp (coalesce), so the second call has no
+//     stamp near it and is seen, even when the client has other cases the scheduler stamped fired with no call
+//     (call-scheduler.mjs stamps call_fired_at and ai_call_status 'queued' and places nothing).
+//   * A call whose stamp never landed has no stamp near it and is seen.
+//   * Any earlier reveal log no longer answers for a later call: the log must be near the call itself.
+// What this cannot see, said in the requirement as well: a repeat launched within five minutes of another launch on
+// ANOTHER case of the same client (its time matches that case's stamp), and a call that was placed but whose
+// dispatch record failed to write (the launch swallows that error, so nothing is left to read). Calls older than 30
+// days are not judged. The strings it tests are the ones the launch writes; a test reads the handler and fails if
+// either one is renamed.
 const BUREAU_CALL_WINDOW_DAYS = 30;
-const callsInWindow = custom(
-  `SELECT count(*) FROM outbound_calls o2 WHERE o2.org_id = o.org_id AND o2.client_id = o.client_id AND o2.kind = 'inquiry_bureau' AND o2.created_at > now() - interval '${BUREAU_CALL_WINDOW_DAYS} days'`,
-  (ctx, db) => (db.outbound_calls || []).filter((row) => row.org_id === ctx.o.org_id && row.client_id === ctx.o.client_id
-    && row.kind === "inquiry_bureau"
-    && new Date(row.created_at).getTime() > new Date(db.now).getTime() - BUREAU_CALL_WINDOW_DAYS * 86_400_000).length
-);
-const firedCasesInWindow = custom(
-  `SELECT count(*) FROM inquiry_removal_cases r2 WHERE r2.org_id = o.org_id AND r2.client_id = o.client_id AND r2.call_fired_at IS NOT NULL AND r2.call_fired_at > now() - interval '${BUREAU_CALL_WINDOW_DAYS} days'`,
-  (ctx, db) => (db.inquiry_removal_cases || []).filter((row) => row.org_id === ctx.o.org_id && row.client_id === ctx.o.client_id
-    && row.call_fired_at !== null && row.call_fired_at !== undefined
-    && new Date(row.call_fired_at).getTime() > new Date(db.now).getTime() - BUREAU_CALL_WINDOW_DAYS * 86_400_000).length
-);
+const BUREAU_CALL_MATCH_MINUTES = 5;
 check(
   "inquiry-bureau-call",
   "Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)",
-  "Every bureau call that was placed must have left its number-reveal log entry for that client and a case marked as fired; and in the last 30 days a client may not have more bureau calls logged than cases marked fired, because a second launch on one case (the button is disabled by the page only, the server does not refuse it) or a call whose case was never stamped places a second call to the bureau.",
+  "Every bureau call placed in the last 30 days must have, for that client, a number-reveal log entry and a case stamped as fired, each within five minutes of the call itself. A second launch on a case that was already stamped (the button is disabled by the page only, the server does not refuse it) has no new stamp and is seen, and so is a call whose case was never stamped; a case the scheduler stamped without placing a call does not answer for a call. What this cannot see: a repeat placed within five minutes of a launch on another case of the same client, and a call placed whose dispatch record failed to write.",
   part({
     table: "outbound_calls", alias: "o",
-    where: eq(c("o", "kind"), lit("inquiry_bureau")),
+    where: and(eq(c("o", "kind"), lit("inquiry_bureau")), newerThanDays(c("o", "created_at"), BUREAU_CALL_WINDOW_DAYS)),
     bad: or(
       missing("pii_access_log", "p", and(
-        eq(c("p", "client_id"), c("o", "client_id")), eq(c("p", "org_id"), c("o", "org_id")),
-        eq(c("p", "field"), lit("ssn (bureau_dispute_call)"))
+        eq(c("p", "org_id"), c("o", "org_id")), eq(c("p", "client_id"), c("o", "client_id")),
+        eq(c("p", "field"), lit("ssn (bureau_dispute_call)")),
+        withinMinutes(c("p", "created_at"), c("o", "created_at"), BUREAU_CALL_MATCH_MINUTES)
       )),
       missing("inquiry_removal_cases", "r", and(
-        eq(c("r", "client_id"), c("o", "client_id")), eq(c("r", "org_id"), c("o", "org_id")), notNull(c("r", "call_fired_at"))
-      )),
-      gt(callsInWindow, firedCasesInWindow)
+        eq(c("r", "org_id"), c("o", "org_id")), eq(c("r", "client_id"), c("o", "client_id")),
+        withinMinutes(c("r", "call_fired_at"), c("o", "created_at"), BUREAU_CALL_MATCH_MINUTES)
+      ))
     )
   })
 );
@@ -690,11 +770,23 @@ check(
 // ("owner_reviews_parse", src/repair/sla.mjs). api/repair/exceptions.mjs lists answers that are unconfirmed AND
 // (confidence under 0.85 or held for escalation). An answer the list hides, or one nobody reads, sits unconfirmed
 // past that clock.
+//
+// The other half of the list is the cards the repair program parked on its Stalled stage ("the only human queue",
+// src/repair/sla.mjs STALLED_STAGE; the morning pulse already reds any card there). The program sets no clock for
+// that stage, so a stuck file is read against the one human-read clock it does have, the same 24 hours, and the
+// requirement text says so. A card is not judged by what the list printed (the list is a read and saves nothing):
+// it is judged by the fact the list exists to change, a person has moved it.
+//
+// What "Mark as checked" does (confirmHeldParse in src/repair/parse-loop.mjs): confirmParse advances the case's
+// items and writes a repair_decision_log row "parse.confirmed" carrying the confirmer's id, and only then is the
+// answer flagged confirmed with its confirmer. A flag flipped with nothing behind it has no log row.
 const READ_WITHIN_MINUTES = STAGE_SLA.response_received.hours * 60;
+const STUCK_CARD_MINUTES = STAGE_SLA.response_received.hours * 60;
+const CONFIRM_RECORD_MATCH_MINUTES = 5;
 check(
   "repair-parse-confirmed",
   "'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
-  "Every bureau answer that needed a person (no confidence at all, low confidence, or held for escalation) and is marked checked must carry the confirm time and a staff member in the same company who confirmed it; and no bureau answer on a real client may sit unchecked past the repair program's own 24 hour clock, which is how a list that hides an answer shows up.",
+  "Every bureau answer that needed a person (no confidence at all, low confidence, or held for escalation) and is marked checked must carry the confirm time and a staff member in the same company who confirmed it; every answer a person confirmed must have the confirm record the button writes (a parse.confirmed entry for that client and case, written within five minutes of the confirm, naming that same person), so a flag flipped with nothing advanced is seen; no bureau answer on a real client may sit unchecked past the repair program's own 24 hour clock, which is how a list that hides an answer shows up; and no real client's repair card may sit on the Stalled stage past that same 24 hour human-read clock (the program sets no clock for Stalled, so this is the one it has), because the list exists so a person moves it.",
   [
     part({
       table: "dispute_responses", alias: "r",
@@ -710,6 +802,29 @@ check(
       joins: [sameClient("k", "r", "client_id")],
       where: and(distinct(c("r", "confirmed"), lit(true)), notDemo("k")),
       bad: olderThanMinutes(c("r", "created_at"), READ_WITHIN_MINUTES)
+    }),
+    part({
+      table: "dispute_responses", alias: "r",
+      where: and(eq(c("r", "confirmed"), lit(true)), notNull(c("r", "confirmed_by"))),
+      bad: missing("repair_decision_log", "l", and(
+        eq(c("l", "org_id"), c("r", "org_id")), eq(c("l", "client_id"), c("r", "client_id")),
+        eq(c("l", "case_id"), c("r", "case_id")), eq(c("l", "decision"), lit("parse.confirmed")),
+        eq(lowerTrim(jtext(c("l", "payload"), "confirmedBy")), lowerTrim(asText(c("r", "confirmed_by")))),
+        // The record is written an instant before the flag, so it is tied to THIS confirm by time: an older record
+        // by the same person on the same case does not answer for a later flag flipped with nothing behind it.
+        withinMinutes(c("l", "created_at"), c("r", "confirmed_at"), CONFIRM_RECORD_MATCH_MINUTES)
+      ))
+    }),
+    part({
+      table: "cards", alias: "ca",
+      joins: [
+        { table: "pipeline_stages", alias: "ps", on: eq(c("ps", "id"), c("ca", "stage_id")) },
+        { table: "pipelines", alias: "p", on: and(eq(c("p", "id"), c("ca", "pipeline_id")), eq(c("p", "key"), lit("optimization"))) },
+        sameClient("k", "ca", "client_id")
+      ],
+      // A demo card is marked, and so is a demo client; a card made before the mark existed has only its client's.
+      where: and(notDemo("ca"), notDemo("k"), notNull(c("p", "id")), eq(c("ps", "key"), lit("stalled"))),
+      bad: olderThanMinutes(c("ca", "updated_at"), STUCK_CARD_MINUTES)
     })
   ]
 );

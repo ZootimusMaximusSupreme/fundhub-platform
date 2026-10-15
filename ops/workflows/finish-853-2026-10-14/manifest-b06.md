@@ -1,8 +1,9 @@
 # Batch 06 manifest: customer-data screen controls (tier 3, lane gap-catalog-display)
 
 Branch `fin/b06`, built from `fin/base` at `2f4f574a0`. Generation 1 wrote 39 of the 40; generation 2 challenged the
-one row left open; repair cycle 1 (this update, 2026-10-15) answers a checker that found 16 rows whose check could
-stay green while the product was broken. Nothing was pushed.
+one row left open; repair cycle 1 (2026-10-15) answered a checker that found 16 rows whose check could stay green
+while the product was broken; repair cycle 2 (this update, 2026-10-15) answers a second checker that found 13 more.
+Nothing was pushed.
 
 ## The number
 
@@ -14,13 +15,18 @@ stay green while the product was broken. Nothing was pushed.
 | Open after generation 2 | 0 |
 | Open at the start of repair cycle 1 | 0 |
 | Open after repair cycle 1 | 1 (the Save month/year button, whose handler is dead; see below) |
+| Open at the start of repair cycle 2 | 1 (the same one) |
+| Open after repair cycle 2 | 1 (the same one; none of the 13 cycle 2 rows is open) |
 | Whole count before / after generation 1 | 853 / 814 |
 | Whole count after generation 2 | 813 |
 | Whole count after repair cycle 1 | 814 (one honest row went back to not proved) |
+| Whole count after repair cycle 2 | 814 (unchanged: cycle 2 strengthened checks, it opened and closed no row) |
 
-Outcomes after repair cycle 1: 33 live checks (4 of them also carry a practice test for the half no saved row can
-show), 5 practice tests only, 1 verified "nothing to judge" (re-read from the live page on every run), and 1
-not-attachable (the dead Save month/year button, left NOT_PROVED on purpose).
+Outcomes after repair cycle 2: 33 live checks (11 of them also carry a practice test for the half no saved row can
+show: the three upload doors, the consent screen, the download link, Save ready date, Add bank, Offer bank
+tracker, Take the offer back, the "Needs a human read" list and Call bureau), 5 practice tests only, 1 verified
+"nothing to judge" (re-read from the live page on every run), and 1 not-attachable (the dead Save month/year
+button, left NOT_PROVED on purpose).
 
 A live check reads real saved rows on the live server and goes red when one is wrong. A control nobody has used
 yet has no results, so it is green ("no saved results yet, none are wrong") and goes red on the first wrong one
@@ -33,18 +39,18 @@ yet has no results, so it is green ("no saved results yet, none are wrong") and 
 | 1 | climate/index.html#See how man | See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts... | na-verified | live page read every run, section below |
 | 2 | client-control-panel.html | Authorized rep: Take them off this file button | live-check | check `authorized-rep-removed` |
 | 3 | client-control-panel.html | Businesses cards: Save month/year button (stamp incorporation) | not-attachable | button is dead today (handler calls a function that does not exist); row stays NOT_PROVED, see repair cycle 1 |
-| 4 | client-control-panel.html | Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs) | live-check | check `blueprint-bank-todo` |
+| 4 | client-control-panel.html | Capital Blueprint: Add bank to the list button (Bank, Account, Notes inputs) | live-check | check `blueprint-bank-todo` (+ practice test of what the page sends, cycle 2) |
 | 5 | client-control-panel.html | Capital Blueprint: Add credit partner button and First/Last/Email/Phone inputs | live-check | check `blueprint-credit-partner` |
 | 6 | client-control-panel.html | Capital Blueprint: Bank list state buttons | practice-test | practice test in fin-b06-display-browser.test.mjs (two banks, each button must send its own row's id) |
-| 7 | client-control-panel.html | Capital Blueprint: Offer bank tracker button | live-check | check `blueprint-tracker-offered` |
-| 8 | client-control-panel.html | Capital Blueprint: Save ready date button | live-check | check `blueprint-ready-date` |
-| 9 | client-control-panel.html | Capital Blueprint: Take the offer back button | live-check | check `blueprint-tracker-taken-back` |
+| 7 | client-control-panel.html | Capital Blueprint: Offer bank tracker button | live-check | check `blueprint-tracker-offered` (+ practice test of the button, cycle 2) |
+| 8 | client-control-panel.html | Capital Blueprint: Save ready date button | live-check | check `blueprint-ready-date`, now also reads the closer task (+ practice test of the page, cycle 2) |
+| 9 | client-control-panel.html | Capital Blueprint: Take the offer back button | live-check | check `blueprint-tracker-taken-back` (+ practice test of the button, cycle 2) |
 | 10 | client-control-panel.html | Declines: Record decline and build the plan button (bank, product, date, bureaus, letter text) | live-check | check `blueprint-decline-recorded` |
 | 11 | client-control-panel.html | Declines: Save and mark done / Skip / Open again step buttons | live-check | check `blueprint-decline-steps` |
 | 12 | client-control-panel.html | Declines: Save call date button | live-check | check `blueprint-decline-call-date` |
 | 13 | client-control-panel.html | Declines: Upload letter button | live-check | check `blueprint-decline-letter` |
 | 14 | client-control-panel.html | Documents toggle, drop zone, file input, drag and drop upload | live-check | check `documents-staff-dropzone` |
-| 15 | client-control-panel.html | Identity-on-file state line and client approval link box + Copy link | practice-test | four practice tests in fin-b06-display-browser.test.mjs (the live check judged another control and was removed) |
+| 15 | client-control-panel.html | Identity-on-file state line and client approval link box + Copy link | practice-test | eleven practice tests in fin-b06-display-browser.test.mjs and fin-b06-display-browser-2.test.mjs (the live check judged another control and was removed) |
 | 16 | client-control-panel.html | Issue Inquiry Removal button (opens a case, goes to Inquiry Remover) | live-check | check `inquiry-removal-case-opened` |
 | 17 | client-control-panel.html | Lender row: Apply button (proxy launch, opens bank page) | live-check | check `proxy-apply-session` |
 | 18 | client-control-panel.html | Lender row: Pending button | live-check | check `bank-decision-pending` |
@@ -54,22 +60,22 @@ yet has no results, so it is green ("no saved results yet, none are wrong") and 
 | 22 | client-portal.html | Sign to authorize dispute letters: legal name input | practice-test | practice test in fin-b06-display-browser.test.mjs |
 | 23 | client-portal.html | Sign to authorize dispute letters: signature pad (draw) | practice-test | practice test in fin-b06-display-browser.test.mjs |
 | 24 | client-portal.html | Sign to authorize dispute letters: submit button | live-check | check `dispute-authorization-signed` |
-| 25 | client-portal.html | Upload door: bureau response (type select, Upload button, file picker) | live-check | check `documents-door-bureau` (+ practice test of what the page posts) |
-| 26 | client-portal.html | Upload door: ID and personal documents (type select, Upload button, file picker) | live-check | check `documents-door-identity` (+ practice test of what the page posts) |
-| 27 | client-portal.html | Upload door: Inquiry documents (type select, Upload button, file picker) | live-check | check `documents-door-inquiry` (+ practice test of what the page posts) |
-| 28 | client-portal.html | What You Own: Download link per file | live-check | check `documents-download-link` |
-| 29 | consent-capture.html | Consent wording, version badge and current status banner (read from the server, never typed ... | live-check | check `consent-wording-matches-server` (+ practice test of the banner and what the page posts) |
+| 25 | client-portal.html | Upload door: bureau response (type select, Upload button, file picker) | live-check | check `documents-door-bureau` (+ practice test of what the page posts and says) |
+| 26 | client-portal.html | Upload door: ID and personal documents (type select, Upload button, file picker) | live-check | check `documents-door-identity` (+ practice test of what the page posts and says) |
+| 27 | client-portal.html | Upload door: Inquiry documents (type select, Upload button, file picker) | live-check | check `documents-door-inquiry` (+ practice test of what the page posts and says) |
+| 28 | client-portal.html | What You Own: Download link per file | live-check | check `documents-download-link` (+ practice test of which file each link opens, cycle 2) |
+| 29 | consent-capture.html | Consent wording, version badge and current status banner (read from the server, never typed ... | live-check | check `consent-wording-matches-server` (+ practice tests of the banner, its dates, and what the page posts) |
 | 30 | content-admin.html | Locked tile editor: client-facing name box | live-check | check `content-tile-name` |
 | 31 | content-admin.html | Locked tile editor: outcome copy box (one line shown to the client) | live-check | check `content-tile-copy` |
 | 32 | content-admin.html | Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too) | practice-test | practice test in fin-b06-display-browser.test.mjs |
 | 33 | content-admin.html | Save changes button (saves tiles and the tier-to-video map) | live-check | check `content-save-changes` |
 | 34 | contracts.html | PDF editor: drag on a page to draw a box; click a box to select; drag to move; drag corner t... | live-check | check `contract-pdf-boxes` |
 | 35 | contracts.html | Save (create a new wording) | live-check | check `contract-wording-created` |
-| 36 | contracts.html | Save (edit an existing wording) | live-check | check `contract-wording-edited` |
+| 36 | contracts.html | Save (edit an existing wording) | live-check | check `contract-wording-edited` (editor role and the frozen copy's checksum, cycle 2) |
 | 37 | documents.html | Contract cell: Void button (asks for a reason in a prompt; owner/admin only) | live-check | check `contract-voided` |
 | 38 | climate/index.html#Four answer | Four answers (home state required, business state, do you have a business, your credit guess... | live-check | check `climate-lead-saved` |
-| 39 | inquiry-remover.html | 'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked... | live-check | check `repair-parse-confirmed` |
-| 40 | inquiry-remover.html | Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once ... | live-check | check `inquiry-bureau-call` |
+| 39 | inquiry-remover.html | 'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked... | live-check | check `repair-parse-confirmed` (+ practice test of the list, cycle 2) |
+| 40 | inquiry-remover.html | Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once ... | live-check | check `inquiry-bureau-call` (rebuilt, cycle 2; + practice test of the button) |
 
 ## Repair cycle 1 (2026-10-15): 16 rows a checker showed could stay green
 
@@ -128,6 +134,142 @@ judge and the printed SQL both count as wrong; every break was run through both 
   one case is hidden when the same client has other cases the scheduler already stamped fired
   (`call-scheduler.mjs` stamps `call_fired_at` without placing a call); and a call that was placed but whose log write
   failed leaves nothing to read (the launch swallows that error).
+
+## Repair cycle 2 (2026-10-15): 13 rows a second checker showed could stay green
+
+A second independent checker broke the product under 13 of the rows above and the check (or its practice test)
+stayed green. Each row below says what was broken, what the check does now, and how it was proved. Where a saved
+row cannot show the break (a button wired to the wrong action, a box read wrongly, a message the page did not
+say), the answer is a practice test of the page next to the live check, never a clause that pretends. Where the
+data could show it, the live check now does.
+
+| # | Row | The break that stayed green | Outcome now | What is red now |
+|---|---|---|---|---|
+| 1 | Identity-on-file line, link box, Copy link | the box never offered when consent is missing, the consent sentence replaced by the identity one, an unknown identity (null) read as missing, the expiry line removed, the clipboard fallback saying nothing | practice-test (7 new, 11 in all) | all five breaks and four more (no-clipboard branch, box not selected, expiry words, both missing); see "Row 1" |
+| 2 to 4 | the three upload doors | a login filing on another client's file, an html or 80 MB file stored past the validator, a file stored and never announced, a refused upload still saying "Sent" | live-check, stronger, plus the practice test (now also the refused-upload half) | see "Rows 2 to 4" |
+| 5 | What You Own: Download link | the two copies of the object key could differ, a missing checksum passed, and which file each link opens was untested | live-check, stronger, plus a practice test of the page | keys that differ, a missing or different checksum; a page that opens the wrong document's file |
+| 6 | Save ready date | the page posting a wrong day, and the promise "the closer gets a task on that day" that nothing read | live-check (now reads the sweep's task) plus a practice test of the page | a past day with no closer task after the sweep has had a run; a button that posts another day |
+| 7 | Add bank to the list | the page sending the wrong Account, dropping the note, posting the notes box as the bank | practice-test of the page next to the live check; the note clauses left the live check | each page break, run on the real page |
+| 8, 9 | Offer bank tracker, Take the offer back | the two buttons swapped | practice-test of the page next to the live check | a button that posts the other action |
+| 10 | Consent wording, version badge, status banner | the expired and expires lines removable; Record consent left on with no words or after a failed read | live-check plus practice tests | each of the four breaks, run on the real page |
+| 11 | Save (edit an existing wording) | a closer changing legal wording; words and fingerprint rewritten together on a signed contract | live-check, stronger | the editor's role, and the words against the frozen copy's checksum for sent, viewed, signed and voided contracts |
+| 12 | 'Needs a human read' list | a card stalled for 60 days; a confirm that flips the flag and advances nothing | live-check (two new halves) plus a practice test of the page | see "Row 12" |
+| 13 | Call bureau | a repeat hidden by another case the scheduler stamped; an earlier reveal log answering a later call; a renamed kind going quiet; a check whose own tests did not pin its SQL | live-check rebuilt, source pins, a practice test of the page | see "Row 13" |
+
+### What each outcome rests on (cycle 2)
+
+**Row 1, identity line and approval link (practice test).** There is nothing saved by this control, so no live
+check could ever judge it (the cycle 1 manifest says so). Seven new practice tests in
+`fin-b06-display-browser-2.test.mjs` drive what cycle 1 did not: consent missing with identity on file (the box is
+offered, with the consent sentence, and the identity line is still true); both missing (the sentence for both);
+identity missing with a valid consent (the identity sentence, not the consent one); an identity the server did not
+answer (null means "not asked": no line, no box for a valid consent, the consent sentence alone for a missing
+one); the expiry line (22:42 UTC reads 3:42 PM, the Phoenix clock, with the exact sentence, and is hidden with no
+expiry); the clipboard refused (the box is selected and the button says "Press Ctrl+C", then goes back); and no
+clipboard at all (same fallback). The assertion text on the proof case now lists exactly what the tests drive and
+no more.
+
+**Rows 2 to 4, upload doors (live check, stronger, plus practice test).** The saved row now has to pass these, for
+each door (staff drop zone, ID, inquiry, bureau response):
+
+- the sender in `metadata.uploaded_by.id` is a login (client doors: `accounts`) or a person (staff door: `staff`)
+  of this company. For a client login the account must belong to the file (`accounts.client_id` equals the
+  document's client) or be an authorized representative linked to it (`client_authorized_reps`, a link removed
+  later still counts, because the file was filed while linked). A client login that filed a paper on another
+  client's file is red. This matters most on the ID door.
+- the stored object is one of the three types the door accepts (`ALLOWED_MIME_TYPES`, imported so it cannot
+  drift), has a size, the size is above zero and not over `DEFAULT_MAX_BYTES` (10 MB). A NULL size used to pass.
+- the `docs.received` event the handler emits exists on that client's file and names this document. A file that
+  was stored and never announced leaves the "Missing Documents" hold on and the document agent asleep.
+- what was already judged still is: current version, object and checksum equal on both rows, sender kind, the
+  label rules.
+
+The page half (a refused upload must say "Try again", keep the picked file so the next press sends it again, and
+only an accepted one says "Sent") is a practice test across all three doors with a 400, a 500 and then a 200.
+Limit, said plainly: the 10 MB number is `DEFAULT_MAX_BYTES`. `DOCUMENT_UPLOAD_MAX_BYTES` can raise the real limit
+and this check does not read env at run time (query contracts are compiled), so a deliberate raise past 10 MB
+reads red until the number is moved in `fin-b06-display-contracts.mjs`. Nothing in the repo sets that variable.
+
+**Row 5, download link (live check, stronger, plus practice test).** The signed link carries the current version
+id, and the download route reads that version's object (or the document row's own copy when the link names no
+version) and verifies the bytes against the stored checksum when there is one. So the live check now also needs
+`documents.storage_key` equal to the version's, a checksum on the version, and the document's checksum equal to
+it. The page half (each Download link is its own document's link, matched by type and not by position) is a
+practice test: documents in a different order from the owned items, one with its link withheld, one unclaimed
+deliverable, one upload that is not a deliverable, and no two rows sharing a link.
+
+**Row 6, ready date (live check, now reads the task; practice test of the page).** The button's own promise is
+"Saved. The closer gets a task on that day." The daily sweep (cron 06:30 UTC) makes that task: source workflow
+`blueprint-next-funding-sequence`, body `blueprint-next-sequence:<client>:<day>`. A second part of the check reads
+it: a paying buyer with a real saved day at least two days past, whose client record has not changed for 36 hours,
+must have that task. Limit: the save time is not stored, so a record changed in the last 36 hours is not judged
+yet (the client record's `updated_at` is the nearest lower bound), and a client record that is touched every
+day by something else is never judged. A dead sweep still reds on every other client. The page half (the day
+typed is the day posted, an empty box posts nothing, the saved sentence) is a practice test.
+
+**Row 7, add bank (practice test of the page, note clauses left the live check).** The handler stores the note as
+given and never trims it, so "the note has no padding" asserted something only the page does, and a direct call
+that stores padding would have gone red on a result the handler allows. Those two clauses were removed from the
+live check (the offer gate, the paid order, the same-company client and the trimmed lower case bank key stay).
+The practice test drives the page: an empty Bank box posts nothing, the Bank box is the bank, the Account choice
+is the account kind, the note is trimmed and goes as null when empty, the boxes clear, and a refusal because the
+tracker was never offered puts the Offer button back.
+
+**Rows 8 and 9, offer and take back (practice test of the page).** The flag cannot show which button wrote it. The
+practice test drives both buttons: Offer posts `offered: true` and shows the bank form and the take-back button,
+take-back posts `offered: false` and puts the Offer button back, a refusal says the client has not paid and does
+not flip the screen, and a client who was already offered opens on the take-back button.
+
+**Row 10, consent (practice tests).** The "It expired on" and "It expires on" lines are pinned (and absent with no
+expiry), and Record consent is off, with nothing posted, when the server sends no wording and when the read fails.
+
+**Row 11, edit wording (live check, stronger).** Two holes closed. (1) The editor must be an owner or an admin: the
+handler (`api/contracts.mjs` `OWNER_ADMIN_ACTIONS`, `hasRole`) refuses every wording write from any other role, so
+a closer's name on a wording is a write the gate let through. The role is read as it is today: an editor who was
+an admin then and is not now reads as wrong until an admin saves the wording again. (2) The tamper half compared
+`rendered_body` with `body_sha`, both on the same mutable row. It now anchors on `document_versions.checksum`, the
+frozen copy the contract row cannot rewrite (the schema's own header says so), for sent, viewed, signed and voided
+contracts, and also compares the row's own fingerprint to it, so words and fingerprint rewritten together are red.
+No migration rewrites a contract's words (273, 287 and 288 write only `contract_templates`).
+
+**Row 12, 'Needs a human read' (live check, two new halves, plus practice test).**
+
+- What "Mark as checked" does (`confirmHeldParse`): `confirmParse` advances the case's items and writes a
+  `repair_decision_log` row `parse.confirmed` carrying the confirmer's id; only then is the answer flagged
+  confirmed with its confirmer. Every answer a person confirmed must have that record, for that client and case,
+  within five minutes of the confirm and naming the same person. A flag flipped with nothing advanced has none.
+  What this cannot see: whether each item row was then written (the items move on afterwards, so their status
+  now is not what the confirm wrote).
+- The stuck half. The list also prints cards parked on the Stalled stage. The program sets no clock for that
+  stage ("the only human queue", and the morning pulse already reds any card there). A card is judged by the fact
+  the list exists to change, a person has moved it: a real client's repair card still on Stalled 24 hours after it
+  last changed is red. The 24 hours is the one human-read clock the program has (`STAGE_SLA.response_received`),
+  borrowed because no clock exists for Stalled. It is one line to change if Chris wants another number.
+- The page half: the stuck client is printed by email, each Mark as checked posts THAT row's response id, and a
+  refused one shows the server's reason and not "Checked".
+
+**Row 13, Call bureau (live check rebuilt, source pins, practice test of the page).**
+
+- Tied by time, not by count. `outbound_calls` stores no case id, so each call in the last 30 days must have, for
+  that client, a case whose `call_fired_at` is within five minutes of the call row, and a reveal log entry
+  (`ssn (bureau_dispute_call)`) within five minutes of it. The launch keeps the first stamp (`coalesce`), so a
+  second launch on a stamped case has no stamp near it and is red, even when the same client has another case the
+  scheduler stamped with no call (that stamp is not near any call, so it answers for none). A call whose stamp
+  never landed is red. An earlier reveal log no longer answers for a later call.
+- Said in the requirement text (it was only in this manifest): a repeat placed within five minutes of a launch on
+  another case of the same client matches that case's stamp and is not seen, and a call placed whose dispatch
+  record failed to write leaves nothing to read.
+- A source pin test reads `bureau-call.mjs`, `pii/index.mjs` and `call-scheduler.mjs` and fails if the kind
+  (`inquiry_bureau`), the reveal reason (`bureau_dispute_call`), the `ssn (<reason>)` log format or the
+  first-stamp-wins `coalesce` change, so a rename can no longer turn the check quiet.
+- The check is one definition that prints the SQL and runs the judge (no hand-written second copy of a count that
+  could drift, which is what cycle 1's two `custom()` subqueries were). The tests now pin every clause: another
+  client's log, another company's log, an old log, another reason, another client's stamp, another company's
+  stamp, a stamp an hour away, a repeat beside a scheduler-only stamp, a 10 day old bad call, a 40 day old one
+  that must stay quiet, and another kind of call.
+- The page half: Call bureau is off, with the title "Call already started", for a fired case and posts nothing;
+  for an open case it posts the launch door with that case's id and nothing else; a refused launch says the
+  server's words and leaves the button usable.
 
 ## Row 1: the climate button, challenged in generation 2 and again in repair cycle 1 (na-verified)
 
@@ -200,12 +342,17 @@ breaks of the shipped pages; two of the not-shipped mutants first stayed green a
 ## Files added
 
 - `src/pulse/catalog/proofs/fin-b06-sql-kit.mjs` (the builder; repair cycle 1 added `realDay`, `startsWith`, `onOrAfter`
-  and the paid-order rule)
+  and the paid-order rule; repair cycle 2 added `asText`, `withinMinutes` and `dayNotAfterDaysAgo`)
 - `src/pulse/catalog/proofs/fin-b06-schema.mjs` (the migration reader; repair cycle 1 added `schema_migrations`)
-- `src/pulse/catalog/proofs/fin-b06-sqlite.mjs` (repair cycle 1: runs the printed SQL in SQLite over the stand-in rows)
-- `src/pulse/catalog/proofs/fin-b06-display-contracts.mjs` (33 checks and 2 gaps)
+- `src/pulse/catalog/proofs/fin-b06-sqlite.mjs` (repair cycle 1: runs the printed SQL in SQLite over the stand-in rows;
+  cycle 2: a stand-in table with no columns is skipped)
+- `src/pulse/catalog/proofs/fin-b06-display-contracts.mjs` (33 checks and 2 gaps; cycle 2 rewrote the three upload
+  doors, the download link, ready date, add bank, edit wording, needs-a-human-read and call-bureau definitions)
 - `src/pulse/catalog/proofs/fin-b06-display-contracts.test.mjs`
-- `src/pulse/catalog/proofs/fin-b06-display-practice.mjs` (9 practice proof cases: 5 practice only, 4 that also keep a live check)
+- `src/pulse/catalog/proofs/fin-b06-display-practice.mjs` (16 practice proof cases: 5 practice only, 11 that also keep a
+  live check; cycle 2 added 7 and gave 5 of the others a second test file)
+- `src/pulse/catalog/proofs/fin-b06-display-browser-2.test.mjs` (cycle 2: 21 Chromium tests, listed in
+  "Repair cycle 2" above)
 - `src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs` (11 Chromium tests)
 - `src/pulse/coverage/fin-b06-not-shipped.mjs` (the live-page read for a control that is not shipped; rebuilt in repair cycle 1)
 - `src/pulse/coverage/fin-b06-not-shipped.test.mjs` (36 practice tests)
@@ -218,7 +365,7 @@ breaks of the shipped pages; two of the not-shipped mutants first stayed green a
 | `src/pulse/catalog/proofs/display-saved-result.mjs` | one import line; eight old `gap(...)` lines removed (Save changes, Showing/Hidden switch, name box, outcome copy box, Save create wording, Save edit wording, Consent wording banner, Void button); one `...FIN_B06_DISPLAY_CONTRACTS,` line at the end of the array |
 | `src/pulse/catalog/compiler.mjs` | `compileDisplayRuntimeData`: a tracked money or customer row that owns a registered contract is now judged even when no browser spec names it (16 new lines, plus `DEEP_IMPACT`). Without this a contract keyed by control text was never attached or queried |
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | one import line and one `...FIN_B06_DISPLAY_PROOF_CASES,` line |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 662 (rows that now have a live check or a practice test); repair cycle 1: 662 to 661 (the identity-on-file row has a practice test now) |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 662 (rows that now have a live check or a practice test); repair cycle 1 wrote 661, which was never run (measured 658 at the end of cycle 1: the pattern in the cycle 1 command used `\|` for "or", which matches nothing); repair cycle 2: 658 to **651** (seven rows that keep a live check also have a practice test of the page now). One line and its comment |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | guard numbers 40 / 27 / 13 became 68 / 62 / 6 (contracts, pass-capable, unmeasured), `SQL_BATCHES` 27 to 62, result cases 40 to 68. Repair cycle 1 moved them again to 67 / 60 / 7 and `SQL_BATCHES` 60: the identity-on-file row left the live lane for a practice test, and Save month/year became an unmeasured contract. The two `NOT_PROVED` counts are 6 |
 | `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog` (a conflict is expected; recompile after merging). Generation 2 changes one contract in it (the climate button gains `notShipped`) |
 | `src/pulse/coverage/gap-catalog-display.mjs` | generation 2: one import line; in `gapChecks` a `notShipped` map and one `if (notShipped.has(entry.id)) return ...` line at the top of `judge`; one `[NOT_SHIPPED_CODE]` entry at the end of `naVerify` |
@@ -226,7 +373,9 @@ breaks of the shipped pages; two of the not-shipped mutants first stayed green a
 | `src/pulse/na-conditions.mjs` | generation 2: one new code `catalog-display-control-not-shipped` (`verify: "lane"`), inserted before the `no-sender` block. The closed list is now 15 codes |
 | `src/pulse/na-conditions.test.mjs` | generation 2: the closed list (14 to 15), the lane-code list, and the sample args for the sentence test. Three lines |
 
-Do not trust my guard numbers after the merge (they are 67 / 60 / 7 and `SQL_BATCHES` 60 on this branch). Re-derive: contracts = base contracts minus replaced gaps plus every
+Do not trust my guard numbers after the merge (they are 67 / 60 / 7 and `SQL_BATCHES` 60 on this branch, and the
+display red count in `display-proof-cases.test.mjs` is 651; measure that one with the script in the cycle 2 commands
+table, because the 661 cycle 1 wrote was wrong). Re-derive: contracts = base contracts minus replaced gaps plus every
 batch's contracts; pass-capable = base query contracts plus every batch's queries.
 
 ## Product findings (one line each, nothing fixed)
@@ -255,6 +404,20 @@ batch's contracts; pass-capable = base query contracts plus every batch's querie
 8. `api/repair/exceptions.mjs` lists only unconfirmed answers that are under 0.85 confidence or stamped held. An
    answer with no confidence at all is auto-confirmed by `runParseAdvanceLoop` (NaN is not under the threshold) and
    is hidden from that list too. The check now reads a confirmed answer with no confidence as one that needed a person.
+9. (cycle 2) Add bank, refused because the tracker was never offered: `client-control-panel.html` writes the sentence
+   "Offer the bank tracker to this client first." into `#bp-todo-status`, which sits inside `#bp-todo-form`, and the
+   same handler hides that form (`paintOffered(false)`). So the person sees the form vanish and the Offer button come
+   back, and the words are written and not shown. Pinned as it is by the practice test; not fixed.
+10. (cycle 2) `confirmHeldParse` writes the `parse.confirmed` log row and queues the client's email (inside
+    `confirmParse`) BEFORE it persists the items and flags the answer confirmed. A failure in between leaves a log
+    row and an email for an answer the list still shows as unchecked, and pressing Mark as checked again logs and
+    queues again. The cycle 2 check ties a confirm to its record by time, so it still reads that answer as unchecked.
+11. (cycle 2) The call scheduler stamps `call_fired_at` and sets `ai_call_status = 'queued'` on a due case and places
+    no call. Nothing in this repo places a call for such a case, and the page turns Call bureau off for any stamped
+    case. So a scheduler-stamped case can only be called by a direct API launch (or by something outside this repo
+    that reads that status; none was found). The rebuilt check does not count such a stamp as an answer for a call.
+12. (cycle 2) Cycle 1's display red count (661) was never run: the command used `\|` between test names, which the
+    runner reads as a literal pipe, so it matched nothing and printed no result. The real number then was 658.
 
 ## Things the integrator and Chris should know
 
@@ -272,6 +435,22 @@ batch's contracts; pass-capable = base query contracts plus every batch's querie
 - Day-one reds are real findings, not noise, but they will name old rows: the ready date check will name any client
   already holding a day that is not on the calendar; the unchecked-answer half will name every bureau answer nobody
   has read in 24 hours; the bureau call check names a client with more calls than fired cases in 30 days.
+
+- (cycle 2) Day-one reds will be real and will name old rows: a paying buyer whose saved ready date is two or more days
+  past with no sweep task (this also happens to any client the sweep skipped because one bad day broke its read);
+  any real client's repair card sitting on Stalled for more than 24 hours; a bureau call in the last 30 days with no
+  case stamp or no reveal log within five minutes of it; an editor of a contract wording who is not an owner or an
+  admin today; a signed or voided contract whose words do not match its frozen copy; a door file with no
+  `docs.received` event.
+- (cycle 2) Two numbers are mine and are one line each to change: the 24 hour clock for a card on Stalled
+  (`STUCK_CARD_MINUTES`, borrowed from the response-read clock because the program sets none for Stalled), and the
+  10 MB upload ceiling (`MAX_UPLOAD_BYTES`, `DEFAULT_MAX_BYTES`; `DOCUMENT_UPLOAD_MAX_BYTES` is not read).
+- (cycle 2) The SQL still has never run on Postgres. The new casts that SQLite does not care about (`uuid::text`
+  before a compare with json text or a `btrim`) are pinned by tests that read the printed SQL. The first live
+  pulse is the first Postgres run, same as cycle 1.
+- (cycle 2) The lane still runs 60 SQL reads (no read was added or removed). The door checks gained three joins and
+  an events probe per document, the ready date check a second pass over clients, and the repair check two more
+  parts; none was timed against the real database.
 
 ## Commands run and results
 
@@ -332,6 +511,27 @@ thing to look at.
 | mutants (22) of `fin-b06-not-shipped.mjs` | all red, restored |
 | breaks of the real pages: `client-control-panel.html` 9, `consent-capture.html` 9, `client-portal.html` 5, each restored after its run | all red; `git status` shows no page changed |
 | read-only GET of `https://fundhub.ai/climate/` and `/climate/lender-climate/` and what they lead to, through the new read | `absent`, 10 GETs, no marker found |
+
+Not run: `npm run pulse:prove` (no database here, and the brief forbids production), and the third test in
+`display-proof-cases.test.mjs` (it spawns every proof test in the repo).
+
+### Repair cycle 2 commands (2026-10-15)
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` | `{"total":814,...,"gap-catalog-display":641}`; none of the 13 cycle 2 ids is open; the one batch row open is Save month/year |
+| `npm run pulse:catalog` then `node scripts/pulse/compile-catalog.mjs --check` | exit 0, `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red` |
+| `node --test src/pulse/coverage/*.test.mjs src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/fin-b06-display-contracts.test.mjs` | 2413 tests, 2213 pass, 0 fail, 200 skipped (pg tests, no database here) |
+| `node --test src/pulse/*.test.mjs src/pulse/beats/*.test.mjs scripts/pulse/*.test.mjs` | 1113 tests, 1097 pass, 0 fail, 16 skipped |
+| every `src/pulse/catalog/proofs/*.test.mjs` that opens no browser and is not display-proof-cases (78 files) | 1484 tests, 1484 pass, 0 fail |
+| `node --test src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs src/pulse/catalog/proofs/fin-b06-display-browser-2.test.mjs` | 32 pass (11 + 21), 0 fail |
+| `node --test --test-name-pattern="every display proof case names\|unmapped display rows" src/pulse/catalog/proofs/display-proof-cases.test.mjs` (a plain pipe inside the quotes; escaped here only for this table) | 2 pass; the red count is 651 |
+| `node --test src/security/*.test.mjs` | 15 pass, 1 skipped |
+| `node scripts/lint.mjs` | 3572 files and inline scripts parse clean |
+| 34 breaks of the real pages (`client-control-panel.html` 18, `client-portal.html` 5, `consent-capture.html` 4, `inquiry-remover.html` 7), each run on the real page and each restored after its run | all red. One stayed green the first time: the Call bureau test opened the first case in the list, so a button that posted the first row's id looked right. The test now opens the middle and the last case and a fired first one; then the first-row and last-row breaks were both red |
+| 55 mutants of the check definitions in `fin-b06-display-contracts.mjs` (upload door sender, cross-client, type, size, announcement, download keys and checksum, ready date task parts, editor role, frozen copy, confirm record, stuck card, call bureau scoping, window, tolerance, reason literal), each restored after its run | all red. One clause stayed green because it was redundant (a NULL size is already "not above zero"); it was removed rather than kept as a clause that cannot fire |
+| 6 mutants of `fin-b06-sql-kit.mjs` (`withinMinutes` judge and both SQL bounds, `dayNotAfterDaysAgo` SQL and judge, `asText` cast) | all red |
+| red count script (rows with no exact proof case, over the display maps) | 651 now; 658 at the cycle 1 commit; the 7 rows that left red are the 7 listed in the shared lines table |
 
 Not run: `npm run pulse:prove` (no database here, and the brief forbids production), and the third test in
 `display-proof-cases.test.mjs` (it spawns every proof test in the repo).
