@@ -217,4 +217,78 @@ describe("POST /api/money/tasks do_task", () => {
     assert.equal(res.body.error, "unknown_action");
     assert.equal(file.state.agentTasks.length, 0);
   });
+
+  // ── what the saved row and the log say ───────────────────────────────────────────────────────────
+
+  test("a payment already set up and finished for that due date is never proposed again", async () => {
+    const file = taskFile();
+    file.state.agentTasks.push({
+      id: "f9999999-0000-4000-8000-000000000001", org_id: ORG, client_id: CLIENT, task_key: `clarity:${INSTALLMENT}`, kind: "due",
+      title: "Pay $100.00 to Fundhub LLC", assignee: "agent", status: "done", moves_money: true, amount_cents: 10000, to_kind: "fundhub",
+      created_at: "2026-10-10T00:00:00Z", done_at: "2026-10-11T00:00:00Z", requested_by_kind: "client",
+    });
+    const { res } = await call({ body: press(`clarity:${INSTALLMENT}`), principal: clientPrincipal(CLIENT, ORG), file });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(res.body.created, false);
+    assert.equal(file.state.agentTasks.length, 1, "no second proposal");
+    assert.equal(file.state.log.length, 0, "and nothing is logged as assigned again");
+  });
+
+  test("the proposal keeps the due day, the reason and the kind from the server's own list", async () => {
+    const { res, file } = await call({ body: press(`clarity:${INSTALLMENT}`, { due_on: "2030-01-01", why: "forged", kind: "other" }), principal: clientPrincipal(CLIENT, ORG) });
+    assert.equal(res.statusCode, 200);
+    const row = file.state.agentTasks[0];
+    assert.equal(row.due_on, "2026-10-20", "the installment's own due day");
+    assert.ok(row.why && row.why !== "forged");
+    assert.equal(row.why, res.body.task.why);
+    assert.equal(row.kind, res.body.task.kind);
+    assert.notEqual(row.kind, "other");
+    assert.equal(row.source, res.body.task.source);
+    assert.equal(res.body.task.due_on, "2026-10-20");
+  });
+
+  test("a person's step keeps its due day on the saved row and on the team's task", async () => {
+    const file = taskFile();
+    file.tables.client_waypoints[0].due_at = "2026-10-25T00:00:00Z";
+    const { res } = await call({ body: press(`waypoint:${LOAN_STEP}`), principal: staff("closer"), file });
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(file.state.agentTasks[0].due_on, "2026-10-25");
+    assert.equal(file.state.staffTasks[0].due_at, "2026-10-25", "the team's task is due the same day");
+    assert.match(file.state.agentTasks[0].why, /\S/);
+  });
+
+  test("two different hand-overs are two team tasks and two log rows, each under its own key", async () => {
+    const file = taskFile();
+    const LOAN_STEP_2 = "e3000000-0000-4000-8000-000000000003";
+    file.tables.client_waypoints.push({ id: LOAN_STEP_2, org_id: ORG, client_id: CLIENT, key: "personal_loan", title: "Talk to your advisor about a second loan", detail: null, owner_kind: "client", state: "not_started", due_at: null, verify_kind: null, position: 3 });
+    const a = await call({ body: press(`waypoint:${LOAN_STEP}`), principal: staff("closer"), file });
+    const b = await call({ body: press(`waypoint:${LOAN_STEP_2}`), principal: staff("closer"), file });
+    assert.equal(a.res.statusCode, 200, JSON.stringify(a.res.body));
+    assert.equal(b.res.statusCode, 200, JSON.stringify(b.res.body));
+    assert.equal(file.state.agentTasks.length, 2);
+    assert.equal(file.state.staffTasks.length, 2, "the second step is not swallowed as a repeat of the first");
+    assert.deepEqual(file.state.agentTasks.map((r) => r.task_key), [`waypoint:${LOAN_STEP}`, `waypoint:${LOAN_STEP_2}`]);
+    assert.ok(file.state.agentTasks.every((r) => r.staff_task_id), "each row points at its own team task");
+    assert.notEqual(file.state.agentTasks[0].staff_task_id, file.state.agentTasks[1].staff_task_id);
+    assert.equal(file.state.log.length, 2);
+    assert.equal(new Set(file.state.log.map((r) => r.idempotency_key)).size, 2);
+    for (const row of file.state.agentTasks) {
+      assert.ok(file.state.log.some((l) => l.idempotency_key === `money-task:${row.id}:assigned`), `the log key names the row ${row.id}`);
+    }
+  });
+
+  test("the log says who pressed it and why: staff or client, a person on the team or a payment set up for the client's OK", async () => {
+    const byStaff = await call({ body: press(`waypoint:${LOAN_STEP}`), principal: staff("closer") });
+    assert.equal(byStaff.file.state.log[0].actor, "staff");
+    assert.equal(byStaff.file.state.log[0].reason, "to a person on our team");
+    assert.equal(byStaff.file.state.log[0].amount_cents ?? null, null, "a talk has no amount");
+    const byClient = await call({ body: press(`clarity:${INSTALLMENT}`), principal: clientPrincipal(CLIENT, ORG) });
+    assert.equal(byClient.file.state.log[0].actor, "client");
+    assert.equal(byClient.file.state.log[0].reason, "set up for your OK: $100.00");
+    assert.equal(byClient.file.state.log[0].amount_cents, 10000);
+    const staffMoney = await call({ body: press(`clarity:${INSTALLMENT}`), principal: staff("owner") });
+    assert.equal(staffMoney.file.state.log[0].actor, "staff");
+    assert.equal(staffMoney.file.state.agentTasks[0].requested_by_staff_id, STAFF);
+    assert.equal(staffMoney.file.state.agentTasks[0].requested_by_kind, "staff");
+  });
 });
