@@ -177,6 +177,9 @@ test("Scripts: after a stale Edit, Use theirs drops my words, reads the live ver
   await conflict.getByRole("button", { name: "Use theirs" }).click();
   await expect(page.locator(".ccs-conflict")).toHaveCount(0);
   await expect.poll(() => calls.filter((c) => c.key === "GET marketing/scripts").length).toBeGreaterThan(readsBefore);
+  // The card is the live version 2 now; my typed words are gone.
+  await expect(card(page)).toHaveAttribute("aria-label", /version 2/);
+  await expect(card(page)).not.toContainText("Tap below and see your number today.");
   expect(calls.filter((c) => c.key === "POST marketing/scripts/edit"), "Use theirs sends nothing").toHaveLength(editsBefore);
   expect(posts(calls)).toHaveLength(1);
 });
@@ -199,6 +202,8 @@ test("Scripts: after a stale Approve, Read the new version closes the banner, re
   await conflict.getByRole("button", { name: "Read the new version" }).click();
   await expect(page.locator(".ccs-conflict")).toHaveCount(0);
   await expect.poll(() => calls.filter((c) => c.key === "GET marketing/scripts").length).toBeGreaterThan(readsBefore);
+  // The card now holds the version that was saved, not the one that was on screen.
+  await expect(card(page)).toHaveAttribute("aria-label", /version 3/);
   expect(calls.filter((c) => c.key === "POST marketing/scripts/approve")).toHaveLength(1);
 });
 
@@ -301,5 +306,7 @@ test("Launch: when nothing is loading the state is not polled at all", async ({ 
   await expect(page.locator("[data-tab=launch]")).toContainText("Ad 90");
   expect(reads(sent, "marketing/meta/load-status")).toBe(1);
   await page.clock.runFor(120_000);
+  await page.waitForTimeout(600);
   expect(reads(sent, "marketing/meta/load-status"), "no timer runs while nothing is in flight").toBe(1);
+  expect(reads(sent, "ad-videos")).toBe(1);
 });
