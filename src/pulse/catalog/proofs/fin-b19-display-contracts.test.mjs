@@ -20,7 +20,7 @@ CREATE TABLE pipelines (id TEXT, org_id TEXT, key TEXT);
 CREATE TABLE pipeline_stages (id TEXT, org_id TEXT, pipeline_id TEXT);
 CREATE TABLE clients (id TEXT, org_id TEXT, is_demo INTEGER, custom_fields TEXT);
 CREATE TABLE partners (id TEXT, org_id TEXT);
-CREATE TABLE cards (id TEXT, org_id TEXT, client_id TEXT, partner_id TEXT, pipeline_id TEXT, stage_id TEXT);
+CREATE TABLE cards (id TEXT, org_id TEXT, client_id TEXT, partner_id TEXT, pipeline_id TEXT, stage_id TEXT, is_demo INTEGER);
 CREATE TABLE staff (id TEXT, org_id TEXT, avatar_key TEXT);
 CREATE TABLE marketing_flags (id TEXT, org_id TEXT, flagged_by TEXT, belief TEXT, outcome_count INTEGER, note TEXT, is_demo INTEGER);
 CREATE TABLE brain_drive_sync (org_id TEXT, page_token TEXT, last_sync_at TEXT, last_error TEXT);
@@ -135,7 +135,7 @@ for (const [control, key] of Object.entries(KEYS)) {
     noPerson.db.prepare("UPDATE cards SET client_id = NULL, partner_id = NULL WHERE id = ?").run(`cd-${key}-g`);
     assert.equal((await stats(control, noPerson)).bad_count, 1, "no person");
 
-    // A card of another company's client, a demo client and an archived client are not part of the board's
+    // A card of another company's client, a demo client, a demo card and an archived client are not part of the board's
     // answer for this company: not counted, not wrong.
     const apart = stand();
     const a = seedRail(apart, key);
@@ -144,6 +144,7 @@ for (const [control, key] of Object.entries(KEYS)) {
     apart.insert("cards", { id: "cd-demo", org_id: ORG, client_id: "cl-demo", partner_id: null, pipeline_id: `p-${key}`, stage_id: "missing-stage" });
     apart.insert("clients", { id: "cl-arch", org_id: ORG, is_demo: 0, custom_fields: '{"crm_archived_at":"2026-10-01"}' });
     apart.insert("cards", { id: "cd-arch", org_id: ORG, client_id: "cl-arch", partner_id: null, pipeline_id: `p-${key}`, stage_id: "missing-stage" });
+    apart.insert("cards", { id: "cd-demo-card", org_id: ORG, client_id: `cl-${key}`, partner_id: null, pipeline_id: `p-${key}`, stage_id: "missing-stage", is_demo: 1 });
     const theirs = seedRail(apart, key, { org: OTHER, tag: `${key}-theirs` });
     theirs.good();
     apart.db.prepare("UPDATE cards SET stage_id = 'nowhere' WHERE id = ?").run(`cd-${key}-theirs-g`);

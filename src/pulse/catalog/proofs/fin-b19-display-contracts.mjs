@@ -27,7 +27,7 @@ SELECT count(*)::int AS sample_count,
   LEFT JOIN pipeline_stages st ON st.id = cd.stage_id
   LEFT JOIN clients c ON c.id = cd.client_id AND c.org_id = p.org_id
   LEFT JOIN partners pr ON pr.id = cd.partner_id AND pr.org_id = p.org_id
- WHERE p.org_id = $1::uuid AND p.key = '${key}'
+ WHERE p.org_id = $1::uuid AND p.key = '${key}' AND COALESCE(cd.is_demo, false) = false
    AND (c.id IS NULL OR (COALESCE(c.is_demo, false) = false AND c.custom_fields->>'crm_archived_at' IS NULL))`;
 
 const RAILS = [
