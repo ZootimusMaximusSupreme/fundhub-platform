@@ -6,6 +6,11 @@
 // cooldown and leaves a "Sent at" line, the line counts repeat sends, and a
 // failed send is not counted and can be pressed again at once.
 // The page clock is paused, so the cooldown moves only when this test says.
+//
+// What is NOT proved here, and why the catalog row stays open (two product findings, see the
+// batch 23 manifest): "Generate letters and email now" shows "Nothing was sent" and starts no
+// cooldown when the pack WAS delivered, and "Send soft pull" is drawn as a plain button with no
+// "Sending…", no "Sent at" line and no count. Only the half of those two that works today is judged.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -49,16 +54,19 @@ function held() {
   return gate;
 }
 
-async function openDeck(open, { tier, handlers }) {
+async function openDeck(open, { tier, handlers, phase = "07" }) {
   const opened = await open(`/app/present.html?contact=${CLIENT}`, {
     session: CLOSER,
     clock: true,
     handlers: { "/api/read/closer-deck": deck(tier), ...handlers },
   });
-  await opened.page.waitForSelector('[data-act="phase:07"]');
-  await opened.page.locator('[data-act="phase:07"]').click();
+  await opened.page.waitForSelector(`[data-act="phase:${phase}"]`);
+  await opened.page.locator(`[data-act="phase:${phase}"]`).click();
   return opened;
 }
+
+/** Real time for a stray request to reach the stand-in before a count is read. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
 
 /**
  * The whole lock story for one send button.
@@ -160,6 +168,67 @@ test("Generate letters and email now cannot be pressed again while its request i
   await btn.click({ force: true });
   assert.equal(gate.calls.length, 1, "extra presses while it is out send nothing");
   assert.equal(gate.calls[0].action, "generate_letters");
+  gate.release();
+  await page.close();
+});
+
+test("Send soft pull sends once per press: more presses while it is out, or inside the 4 second hold, send nothing", { timeout: 90_000 }, async (t) => {
+  // The soft pull button is drawn as a plain button (no "Sending…", no Sent at line): a product
+  // finding in the manifest. What it still does is refuse a repeat press, and that is judged here.
+  // A press is a bare click event so a toast sitting over the button cannot swallow it.
+  const { open } = await startPages(t);
+  const gate = held();
+  const { page, errors } = await openDeck(open, {
+    tier: "FULL_FUNDING",
+    phase: "03",
+    handlers: { "/api/closer-deck": gate.handler(() => ({ body: { ok: true, action: "send_soft_pull" } })) },
+  });
+  const btn = page.locator('[data-act="softpull"]');
+  const press = () => btn.dispatchEvent("click");
+
+  await press();
+  await waitFor(() => gate.calls.length === 1, "the soft pull request");
+  assert.equal(gate.calls[0].action, "send_soft_pull");
+  assert.equal(gate.calls[0].client_id, CLIENT);
+  await press();
+  await press();
+  await settle();
+  assert.equal(gate.calls.length, 1, "presses while the request is out send nothing");
+
+  gate.release();
+  await page.waitForFunction(() => /Soft pull emailed/.test(document.body.innerText));
+  await press();
+  await settle();
+  assert.equal(gate.calls.length, 1, "a press right after the send sends nothing");
+
+  await page.clock.fastForward(3_900);
+  await press();
+  await settle();
+  assert.equal(gate.calls.length, 1, "still held just before 4 seconds");
+
+  await page.clock.fastForward(200);
+  await press();
+  await waitFor(() => gate.calls.length === 2, "the second soft pull request, after the hold");
+  gate.release();
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test("a failed soft pull is not a send: the button works again at once", { timeout: 60_000 }, async (t) => {
+  const { open } = await startPages(t);
+  const gate = held();
+  const { page } = await openDeck(open, {
+    tier: "FULL_FUNDING",
+    phase: "03",
+    handlers: { "/api/closer-deck": gate.handler(() => ({ body: { ok: false, error: "soft_pull_failed", message: "The soft pull could not be sent." } })) },
+  });
+  const btn = page.locator('[data-act="softpull"]');
+  await btn.dispatchEvent("click");
+  await waitFor(() => gate.calls.length === 1, "the soft pull request");
+  gate.release();
+  await page.waitForFunction(() => /could not be sent/.test(document.body.innerText));
+  await btn.dispatchEvent("click");
+  await waitFor(() => gate.calls.length === 2, "the second soft pull request, no hold after a failure");
   gate.release();
   await page.close();
 });

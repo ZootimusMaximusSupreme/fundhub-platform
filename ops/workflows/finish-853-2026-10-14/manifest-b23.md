@@ -3,6 +3,107 @@
 Branch `fin/b23`, work folder `.claude/worktrees/fin-b23`, generation 1. Nothing pushed, nothing merged.
 Base: `fin/base` (2f4f574a0).
 
+## Generation 2 (resumed run): the two open rows, challenged
+
+Branch `fin/b23`, same work folder. I was told to challenge every earlier "not-attachable" reason and attach a
+check unless the reason is exactly true. I read the real page, the real handler and the real bundle myself. Both
+reasons are exactly true. Both rows stay `not-attachable`. Nothing was pushed or merged.
+
+| Row | Challenge | Result |
+|---|---|---|
+| `catalog-read:present-send-lock` | Read `public/app/present.js` `fire()` (line 1726) and `public/app/data.js` `write()` (line 409) side by side, then pressed the real buttons in the real page with a delivered answer (`{ ok: true, delivered: true, documentsStored: 2 }`). | Reason holds, and there is a SECOND break the first pass missed. See findings 1 and 1b. |
+| `catalog-read:climate-map` | Read the shipped bundle (`public/climate/_next/static/chunks/375-*.js`), `public/climate/maps/us-states-paths.json`, `marketing/landing-pages/climate-front-door-2026-09-18/SPEC.md` and searched the whole repo and `credentials/` for state outlines. | Reason holds. The page draws five placeholder rectangles. The project's own SPEC calls the file "five placeholder rectangles". No 51-state outline exists anywhere in the repo, so there is nothing real to bundle. I will not invent map geometry. |
+
+### Why present-send-lock cannot be attached, exactly
+
+The page has **six** send controls (the first pass counted five): `pay`, `softpull`, `letters` (label "Generate
+letters and email now", or "Send deliverables package now" on the education path), `send-letters`, `invoice`,
+`contract`. The row's contract is: "Sending...", 4 second cooldown, "Sent at" line, count of sends.
+
+| Control | Sending... | Cooldown | Sent at + count | Proved by |
+|---|---|---|---|---|
+| Send agreement + pay link | yes | yes | yes | `fin-b23-present-send-lock.test.mjs` |
+| Invoice this client | yes | yes | yes | same |
+| Send contract | yes | yes | yes | same |
+| Send letters now | yes | yes | yes | same |
+| Generate letters and email now | yes (in flight only) | **no** after a delivered pack | **no** | in-flight half only |
+| Send soft pull ($32 + approval form) | **no** (plain button) | refuses a repeat press, shows nothing | **no** | refusal half only (new this pass) |
+
+A row is only proved when a test of mine goes red if the product breaks AND the product meets the contract. Two of
+six controls do not meet it, so a green row would be false.
+
+**I proved the reason is exactly "a present.js change", and that the change is small.** In this folder I applied a
+3-line change to `public/app/present.js` (read `r.data || r` in `fire()`, and draw the soft pull with `sendBtn`
+instead of `ckBtn`), ran three extra cases against it, then reverted it with `git checkout`:
+
+| Case (temporary file, deleted) | Today's product | With the 3-line change |
+|---|---|---|
+| Generate letters, delivered: locks, "Sent — hold on", Sent at, 4 s, "sent 2 times" | red (timeout) | green |
+| Generate letters, not delivered: says "Nothing was sent — <the server's reason>", no Sent at, button usable | red (the server's reason is lost too) | green |
+| Soft pull: locks, "Sent — hold on", Sent at, 4 s, "sent 2 times" | red (timeout) | green |
+
+Those three cases use the existing `proveLock` helper in the test file. Once the product change lands, add them to
+`fin-b23-present-send-lock.test.mjs`, move the row from `READ_GAPS` to `FIN_B23_READ_PROVED`, and the row is closed.
+`present.js` is a product file, so per the brief I did not keep the change.
+
+### What I added this pass (all in files owned by this batch)
+
+- `fin-b23-present-send-lock.test.mjs`: two new tests for Send soft pull (the half that works today), and an
+  `openDeck(..., { phase })` option. Soft pull: one press is one request with `action: send_soft_pull` and the
+  client id; presses while it is out send nothing; a press right after the send, and one at 3.9 s, send nothing;
+  a press after 4.0 s sends a second one. A failed soft pull starts no hold and works again at once.
+  A press is a bare click event so a toast over the button cannot swallow it, and the test waits 150 ms of real
+  time before it reads a count, so a stray request cannot arrive after the assert.
+- `src/pulse/coverage/gap-catalog-reads.mjs`: the finding text of `present-send-lock` now names both broken
+  controls (was: one). One string, nothing else.
+
+### Breaks made on purpose this pass (each: one text swap in `public/app/present.js`, test run, file restored)
+
+| Break | Soft pull "once per press" | Soft pull "failed is not a send" |
+|---|---|---|
+| cooldown 4000 ms to 1000 ms | red | green (not its job) |
+| `fire()` no longer calls `markSending` | red | green |
+| a failed send starts the cooldown | green | red |
+| the click handler no longer asks `sendLocked` | red | green |
+
+4 of 4 breaks are caught by exactly the test that owns them. `git status` after: only the test file differs.
+
+### Numbers
+
+| | Not proved (my 15 rows) |
+|---|---|
+| openBefore, measured at `fin/base` (detached folder, `count-not-proved.mjs`) | **15** |
+| openAfter, measured at `fin/b23` | **2** (`present-send-lock`, `climate-map`) |
+
+Lane totals: all lanes 853 to 840; reads lane 15 to 2.
+
+### Product findings added
+
+1b. **The soft pull button is drawn with `ckBtn`, not `sendBtn`** (`public/app/present.js` line 1241). Pressing it
+    sends a real $32 pay link and approval form, but the button never says "Sending...", never shows a "Sent at"
+    line and never counts repeats. The guard still refuses the second press (the click handler asks `sendLocked`),
+    so a closer who presses again sees nothing happen. This is the same F24 complaint the page's own comment quotes.
+1.  (restated, with the live result) After a delivered pack the page shows "Nothing was sent - the pack came out
+    empty." and the server's `reason` is also lost, because `fire()` reads `r.delivered` / `r.reason` off the
+    wrapper. The button stays usable, so a second press right away sends the pack again.
+
+### Commands run this pass
+
+| Command | Result |
+|---|---|
+| `count-not-proved.mjs` at `fin/base` and at `fin/b23` | 853 / reads 15, then 840 / reads 2 (my open rows: `present-send-lock`, `climate-map`) |
+| `node --test src/pulse/catalog/proofs/fin-b23-*.test.mjs` | 37 of 37 pass (was 35) |
+| `node --test` on `gap-catalog-reads.test`, `read-proof-cases.test`, `flow-read-contracts.test`, `door-flow-read-contracts-2.test` | 9 of 9 pass |
+| `npm run pulse:catalog` | `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red`; `generated.json` unchanged |
+| 4 breaks (table above) | 4 of 4 red, each file restored |
+| temporary "after the fix" cases (table above) | 3 red today, 3 green with the 3-line change, change and file removed |
+| `node --test` on `src/pulse/*.test.mjs`, `src/pulse/coverage/*.test.mjs`, `src/pulse/catalog/*.test.mjs` (139 files, not `.pg.`) | 2890 tests, 2871 pass, **0 fail**, 19 skipped (all "no DATABASE_URL") |
+| `npm run lint` | `3574 file(s) and inline script(s) parse clean` |
+
+---
+
+## Generation 1 record
+
 ## Numbers
 
 | | Not proved |
@@ -23,7 +124,7 @@ stand-in server, judging the exact rendered or saved result. None of them reads 
 | `catalog-read:campaign-fatigue-label` | practice-test | `fin-b23-campaign-fatigue-label.test.mjs` | Label button carries its own ad id, box names that ad, save sends exactly that ad |
 | `catalog-read:portal-welcome-video` | practice-test | `fin-b23-portal-welcome-video.test.mjs` | player uses the returned link, one retry after expiry, "not available" after two failures |
 | `catalog-read:closer-logbar` | practice-test | `fin-b23-closer-logbar.test.mjs` | note shown only once a call loaded; note shortens when "said" is on file |
-| `catalog-read:present-send-lock` | not-attachable | (4 of 5 buttons proved in `fin-b23-present-send-lock.test.mjs`) | see product finding 1: Generate letters never shows success or starts a cooldown |
+| `catalog-read:present-send-lock` | not-attachable | (4 of 6 controls proved in `fin-b23-present-send-lock.test.mjs`) | findings 1 and 1b: Generate letters never shows success or starts a cooldown, and Send soft pull shows no Sending / Sent at |
 | `catalog-read:money-helper-poll` | practice-test | `fin-b23-money-helper-poll.test.mjs` | 3 s beat, exactly 100 re-reads then stops, Check again |
 | `catalog-read:plaid-link` | practice-test | `fin-b23-money-page.test.mjs` | script fetched only on press, exact address, no exchange without it |
 | `catalog-read:money-trends` | practice-test | `fin-b23-money-page.test.mjs` | exact values on the frame page; standalone money.html leaves the slot empty (finding 2) |
@@ -149,7 +250,9 @@ files that do touch it ran green.
 
 ## Left undone
 
-- `catalog-read:present-send-lock`: needs the `present.js` change in finding 1. Then the four tests already written
-  cover the rest and the fifth button needs one more case (success shows Sent at, cooldown, count).
-- `catalog-read:climate-map`: needs the 51 state paths in the climate bundle. `fin-b23-climate-map.test.mjs` already
-  counts shapes from the bundle's own list, so it will count 51 when they are there; then the row can be closed.
+- `catalog-read:present-send-lock`: needs the `present.js` change in findings 1 and 1b (about 3 lines: read the
+  answer from `r.data || r` in `fire()`, and draw the soft pull with `sendBtn`). The three cases in the Generation 2
+  section then close it. Verified in a temporary copy, reverted.
+- `catalog-read:climate-map`: needs real outlines for 51 states in the climate bundle (the page draws 5 placeholder
+  rectangles). `fin-b23-climate-map.test.mjs` already counts shapes from the bundle's own list, so it will count 51
+  when they are there; then the row can be closed. The map also ignores the `color` the API sends (finding 4).
