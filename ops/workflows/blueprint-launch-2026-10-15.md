@@ -156,3 +156,13 @@ Two notes for whoever ships:
 
 - Put the fixes on GitHub's main line, not on this Mac's own copy of main. That copy has drifted from GitHub: 6 commits ahead and 5 behind.
 - The script that started the fixers made broken branch names. So each fixer picked a real name, and the names above are the true ones.
+
+## Shipped at 01:43 Arizona, 2026-10-15 (build 14c11a84)
+
+Nine launch fixes are live: R03, R06, R07, R18, R19, R20, R22, R23, R24. Related tests 266 of 266, portal browser
+specs 18 of 18, type check clean. Held back: R15 (the CSM picker; needs a real CSM named first).
+
+## Leftover card (not part of this launch pass, not fixed)
+
+`e2e/teleprompter-take-flow.spec.mjs:1419` "recording still paints and rolls on a browser without video-frame
+callbacks" fails on untouched main as well as on the launch build. Found while testing; nobody asked for it.
