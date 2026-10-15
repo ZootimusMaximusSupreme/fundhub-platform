@@ -3,6 +3,53 @@
 Branch `fin/b23`, work folder `.claude/worktrees/fin-b23`, generation 1. Nothing pushed, nothing merged.
 Base: `fin/base` (2f4f574a0).
 
+## Repair cycle 1: five checks that stayed green when the product broke
+
+Branch `fin/b23`, same work folder, fresh repair agent. An independent checker broke the product five ways and
+the attached practice test stayed green. Every one is a hole in the TEST, not a missing product feature. All five
+rows keep their attachment (practice test, fake data, real page or real handler) and each hole now goes red. No
+product file was changed. Nothing pushed, nothing merged. No shared file touched (`generated.json` is unchanged).
+
+| Row | Outcome | What the old test missed | What now judges it |
+|---|---|---|---|
+| `catalog-read:campaign-fatigue-label` | practice-test | Only the Label button was judged. The four values (frequency, CTR, ROAS, next rotation), the recommendation badge and the row stripe were never read by this row's test. | New test reads every column of four different ads under its own header and checks all values, the badge tone and the stripe. |
+| `catalog-read:portal-welcome-video` | practice-test | The fake server answered the second read for anyone. Sign-in and client id were judged on read 1 only; the retry flag reset, the resume place and "a video that played stays on screen" were untested. | Strict server (refuses no sign-in, hands another client's video to a read without the client id). Three new tests: retry carries same sign-in and client id, a later lapse gets a fresh link and resumes at 0.5 s, a played video stays when no fresh link exists (empty and refused). |
+| `catalog-read:money-trends` | practice-test | The drawn lines were never judged: a flat line, a bridge across a missing day, lost dashes, no dots, a changed default range all passed. Test 4 also failed the day the page gained the script. | New test reads every polyline (point positions from the value scale, solid versus dashed runs, a break at the missing day, dots, axis words, table). New range test (default, button, remembered, junk, blocked storage, draw default). Test 4 is now conditional on whether the page loaded the script. |
+| `catalog-read:social-oauth` | practice-test | The stand-in database never ran the SQL, and the provider answered with a token whatever it was asked. | Strict provider (needs app id, secret, code, redirect, grant). The saved SQL is read statement by statement: columns, values, `CASE` expiry, checked against `db/migrations/049_social.sql` (channels, states, required columns, active-needs-token, unique key). A reconnect of an expired channel is played. Signed state beats the query-string partner and the session company. |
+| `catalog-read:ops-compliance` | practice-test, with a product finding | The fixture invented `client_name`, which the live read never sends, and then pinned the raw id. | The page is now fed by the REAL `api/read/messages.mjs` handler over a stand-in database. The rows carry exactly the columns that handler's `SELECT` lists, and the query (company, status, order, limit) is judged. |
+
+### Breaks made on purpose this cycle (one text swap, test run, file restored)
+
+Counted red unless marked.
+
+- Fatigue: swapped frequency and ROAS cells, verdict fixed to "ok", CTR hard-coded 0.00%, frequency to one decimal, ROAS shows CTR, next rotation loses its "h", badge tone wrong, stripe wrong, null spend shown as 0.00, Label carries the ad name. 10 of 10 red.
+- Welcome video: retry drops the client id, retry sends no sign-in, retry flag never given back after a good load, resume place removed, resume at half, give-up ignores "already loaded", no retry at all, retry keeps the old link, retry flag never set. 9 of 9 red.
+- Trends: every point drawn at zero, line bridged across a missing day (two ways), dashed class removed, dots off, default range changed in four places (the `||` fallback, the initial value, the junk-value fallback, the draw default), range choice not remembered, x spacing off by one, debt chart loses its zero floor, estimated test looks only at the previous day, lone dots always round, a gap printed as $0.00, the client id dropped from the read, y axis flipped. 17 of 17 red. Also: `money.html` given the script tag (the page gaining the feature) stays green.
+- Social OAuth: Facebook channel literal 'twitter', Facebook and Instagram state 'pending', Instagram literal 'facebook', LinkedIn state 'revoked', LinkedIn channel literal changed, expiry forced NULL, expiry param null, refresh token not saved, three reconnect updates that leave the old state and error, reconnect keeps old token and old expiry, partner taken from the query string, company taken from the staff session, three scope lists wrong, conflict key without channel, Facebook token saved plain, Meta exchange without secret or redirect or with the wrong app id, pages read with the wrong token, LinkedIn exchange without secret, without redirect, with the wrong grant. 28 of 28 red.
+- Compliance: top 16, client name only, channel without dash fallback, reason order swapped, "when" shows channel, page asks for `failed`, page asks limit 10, endpoint stops selecting `client_id`, endpoint stops selecting `channel`, endpoint binds no company, endpoint orders oldest first, endpoint ignores status. 12 of 12 red.
+  - One equal break stays green on purpose: the Client cell reading `client_id` only (no name). The live read sends no name, so the page output is the same. It is not a hole in the test.
+
+### Product findings added or restated this cycle (nothing fixed)
+
+1. **The Compliance Gate table's Client column prints a raw client id.** `api/read/messages.mjs` (status=blocked) selects `client_id` and no name, and `public/app/ops-admin.html` prints `r.client_name || r.client_id`. On the live page staff see a uuid. The row stays attached because the test now judges the live shape and the page does what its code says; the missing name is the finding. If the read ever joins a client name as `client_name`, the test follows it (it derives the expected cell from the rows the real handler returned).
+2. (restated, finding 2 above) `public/app/money.html` loads no `money-trends.js`, so its Trends slot stays empty. The test no longer pins that: it requires an empty slot and no read when the script is absent, and the graphs when it is present.
+3. Practice-test limit: a link that lapses in the middle of a play cannot be made by the stand-in media server, so the welcome-video tests fire the same `error` event the browser raises by hand. The real browser path (a range request refused) is not exercised.
+4. Practice-test limit: the stand-in database does not run SQL. The OAuth test reads each saved statement with a small reader that only knows the forms in `api/social/oauth.mjs` (bound value, quoted literal, `NULL`, `now()`, the expiry `CASE`, `EXCLUDED.col`). A new form raises "cannot read this value" instead of passing.
+
+### Commands run this cycle
+
+| Command | Result |
+|---|---|
+| each of the 5 attached tests, alone | 44 of 44 pass across all `fin-b23-*.test.mjs` files |
+| 77 breaks (list above), one at a time, file restored each time | 76 red, 1 equal break green (named above); `git status` clean of product edits after |
+| `node scripts/pulse/count-not-proved.mjs` | total **840**, reads lane **2** (`present-send-lock`, `climate-map`), none of the five ids open |
+| `npm run pulse:catalog` | `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red`; `generated.json` unchanged |
+| `gap-catalog-reads.test`, `read-proof-cases.test`, `flow-read-contracts.test`, `door-flow-read-contracts-2.test` | 9 of 9 pass (the 76 proved read tests run for real, mine included) |
+| `node --test` on `src/pulse/*.test.mjs`, `src/pulse/coverage/*.test.mjs`, `src/pulse/catalog/*.test.mjs` (not `.pg.`) | 2890 tests, 2871 pass, **0 fail**, 19 skipped (all "no DATABASE_URL") |
+| `npm run lint` | `3574 file(s) and inline script(s) parse clean` |
+
+---
+
 ## Generation 2 (resumed run): the two open rows, challenged
 
 Branch `fin/b23`, same work folder. I was told to challenge every earlier "not-attachable" reason and attach a

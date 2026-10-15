@@ -2,8 +2,12 @@
 // public/app/ops-admin.html that were only ever checked as extracted code.
 //   - AR + Collections: exact invoice rows, money, overdue words, status, the
 //     top 25 limit with the "N more" line, and the total line.
-//   - Compliance Gate: the stopped messages, top 15 only, with channel, reason
-//     and age; the empty and failed words.
+//   - Compliance Gate: the stopped messages, top 15 only, with client, channel,
+//     reason and age; the empty and failed words. The page is fed by the REAL
+//     read handler (api/read/messages.mjs, status=blocked) over a stand-in
+//     database, and the rows the page gets carry exactly the columns that
+//     handler's SELECT lists, so a field the live read never sends cannot be
+//     invented by the fixture.
 //   - Failed events tile: the returned count and its caption in the KPI grid.
 //   - Staff Monitoring Consent: one row per returned person, Signed or
 //     Not yet signed, and the hidden-people line.
@@ -12,6 +16,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { run as readMessages } from "../../../../api/read/messages.mjs";
+import { requireAuth } from "../../../http/middleware/requireAuth.mjs";
+import { fakeDb, makeRes, ORG_ID, req, staffSession } from "../../../testing/handler-harness.mjs";
 import { json, startPages } from "./fin-b23-browser-kit.mjs";
 
 const NOW = 1_700_000_001_000;
@@ -71,23 +78,91 @@ test("AR + Collections says nothing is outstanding, and says when it could not l
   await broken.page.close();
 });
 
-test("Compliance Gate prints the stopped messages, top 15 only, with channel, reason and age", { timeout: 60_000 }, async (t) => {
+/** The column names a SELECT returns: the alias after AS, else the name without its table prefix. */
+function selectedColumns(sql) {
+  const body = /SELECT\s+([\s\S]*?)\s+FROM\s+messages\s+m\b/i.exec(sql)[1];
+  return body.split(",").map((part) => {
+    const one = part.trim().replace(/\s+/g, " ");
+    const alias = /\sAS\s+(\w+)$/i.exec(one);
+    return alias ? alias[1] : one.replace(/^\w+\./, "");
+  });
+}
+
+const CLIENT_NAMES = {};   // the live read joins no client name today; if it ever does, a name flows in from here
+const message = (n, over) => ({
+  id: uuid(500 + n), conversation_id: uuid(900 + n), client_id: uuid(700 + n), direction: "outbound", channel: "sms",
+  rendered_body: "text we stopped", subject: null, status: "blocked", provider: null, blocked_reason: "stop word",
+  last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: ago(96 * 3_600_000 + n * 60_000), ...over,
+});
+
+/**
+ * The real GET /api/read/messages handler, answering with the stand-in database.
+ * `stored` is what the messages table holds (newest first, as the SQL orders it).
+ * Only the columns the handler's own SELECT names reach the page.
+ */
+function liveMessagesRoute(stored, record) {
+  return async (route, { url }) => {
+    const query = Object.fromEntries(new URL(url).searchParams);
+    const fake = fakeDb([
+      staffSession(),
+      [/FROM messages m/, (sql, params) => {
+        const columns = selectedColumns(sql);
+        record.queries.push({ sql, params, columns });
+        return stored.slice(params[1], params[1] + params[0]).map((row) => Object.fromEntries(columns.map((c) => [
+          c, c in row ? row[c] : (c === "client_name" ? (CLIENT_NAMES[row.client_id] ?? null) : null),
+        ])));
+      }],
+    ]);
+    const res = makeRes();
+    await readMessages(req("GET", { query }), res, { db: fake, requireAuth });
+    record.responses.push({ status: res.statusCode, body: res.body });
+    return json(route, res.body, res.statusCode);
+  };
+}
+
+test("Compliance Gate prints the stopped messages from the live read: client, channel, reason and age, top 15 only", { timeout: 60_000 }, async (t) => {
   const { open } = await startPages(t);
-  const items = [
-    { client_name: "Whitfield Freight", channel: "sms", blocked_reason: "quiet hours", created_at: ago(5 * 60_000) },
-    { client_id: "cl-77", channel: "email", status: "blocked", created_at: ago(3 * 3_600_000) },
-    { client_name: "Okafor Logistics", channel: "sms", blocked_reason: "no consent", created_at: ago(72 * 3_600_000) },
+  const stored = [
+    message(1, { client_id: uuid(7001), channel: "sms", blocked_reason: "quiet hours", created_at: ago(5 * 60_000) }),
+    message(2, { client_id: uuid(7002), channel: "email", blocked_reason: null, status: "blocked", created_at: ago(3 * 3_600_000) }),
+    message(3, { client_id: uuid(7003), channel: "sms", blocked_reason: "no consent", created_at: ago(72 * 3_600_000) }),
+    message(4, { client_id: null, channel: null, blocked_reason: "stop word" }),
   ];
-  for (let i = 4; i <= 17; i += 1) items.push({ client_name: `Client ${i}`, channel: "sms", blocked_reason: "stop word", created_at: ago(i * 60_000) });
-  const { page, seen } = await openOps(open, { "/api/read/messages": { ok: true, items } });
+  for (let i = 5; i <= 17; i += 1) stored.push(message(i));
+  const record = { queries: [], responses: [] };
+  const { page } = await open("/app/ops-admin.html", { handlers: { "/api/read/messages": liveMessagesRoute(stored, record) }, clock: true });
   await page.waitForFunction(() => document.querySelectorAll("#compliance-blocked-table tr").length > 2);
+
+  // The page asked the live read for stopped messages, and the read asked the database for this company's blocked rows, newest first.
+  assert.equal(record.queries.length, 1);
+  const [asked] = record.queries;
+  assert.match(asked.sql, /WHERE\s+m\.org_id = \$3::uuid\s+AND m\.status = \$4/);
+  assert.match(asked.sql, /ORDER BY m\.created_at DESC/);
+  assert.deepEqual([asked.params[0], asked.params[1], asked.params[2], asked.params[3]], [31, 0, ORG_ID, "blocked"], "limit 30 plus one, from the start, this company, blocked");
+  // The rows the page was handed are exactly what that SELECT lists.
+  const served = record.responses[0].body.items;
+  assert.equal(record.responses[0].status, 200);
+  assert.equal(served.length, 17);
+  assert.deepEqual(Object.keys(served[0]).sort(), [...asked.columns].sort());
+  assert.ok(asked.columns.includes("client_id") && asked.columns.includes("channel") && asked.columns.includes("blocked_reason") && asked.columns.includes("created_at"));
+  t.diagnostic(`the live read returns ${asked.columns.includes("client_name") ? "a client_name" : "no client name, only client_id"}`);
+
   const rows = await page.locator("#compliance-blocked-table tr").evaluateAll((trs) => trs.map((tr) => [...tr.children].map((c) => c.textContent.trim())));
   assert.deepEqual(rows[0], ["Client", "Channel", "Reason", "When"]);
-  assert.deepEqual(rows[1], ["Whitfield Freight", "sms", "quiet hours", "5m ago"]);
-  assert.deepEqual(rows[2], ["cl-77", "email", "blocked", "3h ago"]);
-  assert.deepEqual(rows[3], ["Okafor Logistics", "sms", "no consent", "3d ago"]);
   assert.equal(rows.length, 1 + 15, "the header and the top 15; the 16th and 17th are not shown");
-  assert.deepEqual(seen.map((s) => s.search), ["?status=blocked&limit=30"]);
+  // What the page must print for each row it was given: the client by name if the read sent one, else by id; the
+  // channel; the gate's reason, else the status word; and how long ago. Rows 4 on are four days old.
+  const clientOf = (item) => item.client_name || item.client_id || "\u2014";
+  const expected = served.slice(0, 15).map((item, i) => [
+    clientOf(item), item.channel || "\u2014", item.blocked_reason || item.status || "blocked",
+    ["5m ago", "3h ago", "3d ago"][i] || "4d ago",
+  ]);
+  assert.deepEqual(rows.slice(1), expected);
+  // Spot checks that cannot be satisfied by a page that prints the wrong field:
+  assert.deepEqual(rows[1], [CLIENT_NAMES[uuid(7001)] || uuid(7001), "sms", "quiet hours", "5m ago"]);
+  assert.deepEqual(rows[2].slice(1), ["email", "blocked", "3h ago"], "no gate reason: the status word is shown");
+  assert.deepEqual(rows[4], ["\u2014", "\u2014", "stop word", "4d ago"], "a stopped message with no client and no channel prints dashes, not blanks");
+  assert.equal(rows.some((r) => r[0] === ""), false, "no empty client cell");
   await page.close();
 
   const empty = await openOps(open, { "/api/read/messages": { ok: true, items: [] } });
