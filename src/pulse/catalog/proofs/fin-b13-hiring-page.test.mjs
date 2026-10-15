@@ -30,7 +30,7 @@ function candidate(name, role, source, stage, over = {}) {
   return {
     application_id: `app-${String(n).padStart(3, "0")}`, candidate_id: `cand-${n}`, status: "open",
     applied_at: "2026-07-10 09:00", entered_stage_at: "2026-07-20 09:00", full_name: name,
-    email: `cand${n}@example.test`, phone: null, source, source_detail: null, disc_profile: null,
+    email: null, phone: null, source, source_detail: null, disc_profile: null,
     linkedin_profile_url: null, ...ROLE[role], ...STAGE[stage], average: 3.2, recommendation: "advance",
     flags: [], rubric_version: 1, is_automated: true, has_video: false, has_resume: true,
     recommendation_status: "advisory — a human decides", ...over
@@ -527,7 +527,7 @@ test("only owner and admin stay on the Hiring page; every other staff role is se
     assert.equal(await link.isVisible(), false, `${role}: the sidebar must not show a Hiring row`);
     await page.close();
   }
-  for (const role of ["closer", "setter", "csm", "sales_manager", "funding_advisor", "inquiry_specialist"]) {
+  for (const role of ["closer", "setter", "csm", "sales_manager", "funding_advisor", "inquiry_specialist", "partner"]) {
     const page = await newStaffPage(lab, { role, api: makeApi(freshState()) });
     await page.goto(`${lab.origin}/app/hiring.html`, { waitUntil: "domcontentloaded" });
     await page.waitForURL((url) => !/\/app\/hiring\.html$/.test(url.pathname), { timeout: 30_000 });

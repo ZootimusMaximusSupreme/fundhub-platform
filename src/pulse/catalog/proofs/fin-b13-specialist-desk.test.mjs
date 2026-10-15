@@ -34,7 +34,7 @@ const INQUIRIES = [
 /* ── the case queue (inquiry_removal_cases rows) ── */
 const caseRow = (n, over = {}) => ({
   id: U(200 + n), case_id: `IRC-${n}`, client_id: CLIENT_A, client_name: `Client ${String(n).padStart(2, "0")}`,
-  client_email: `client${n}@example.test`, selected_bureaus_raw: "EQ", open_inquiry_count: 2, case_status: "Queued",
+  selected_bureaus_raw: "EQ", open_inquiry_count: 2, case_status: "Queued",
   requested_at: daysAgo(40 - n), docs_complete: true, docs_missing: [], letter_draft_html: "<p>Dear bureau</p>",
   funding_round_id: null, call_due_at: null, call_fired_at: null, first_delivery_at: null, letter_provider_id: null,
   portal_confirmation: null, ...over
@@ -545,7 +545,7 @@ test("the app front door sends a person with no session, or with no role, to the
     const url = new URL(route.request().url());
     calls.push(`${route.request().method()} ${url.pathname}`);
     if (url.pathname === "/api/auth/session") {
-      return fulfillJson(route, { ok: true, staff: { id: "s-1", name: "Odd Role", email: "odd@example.test", role: "", org_id: "org-proof", status: "active" } });
+      return fulfillJson(route, { ok: true, staff: { id: "s-1", name: "Odd Role", role: "", org_id: "org-proof", status: "active" } });
     }
     return fulfillJson(route, { ok: true });
   });

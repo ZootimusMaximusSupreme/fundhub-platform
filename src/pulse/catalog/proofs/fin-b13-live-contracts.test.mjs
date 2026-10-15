@@ -44,7 +44,7 @@ const STATUS_FOR = {
 /* ── hiring row builders. Each gives a GOOD row; a test overrides one field to make it wrong. ── */
 const STAFF = R("staff", { id: "staff-1", org_id: ORG, name: "Casey Proof" });
 const cand = (o = {}) => ({
-  id: nid("cand"), org_id: ORG, full_name: "Pat Doe", email: `${nid("mail")}@example.test`, source: "referral",
+  id: nid("cand"), org_id: ORG, full_name: "Pat Doe", source: "referral",
   source_detail: null, is_demo: false, ...o
 });
 const app = (c, stage, o = {}) => ({
@@ -156,8 +156,13 @@ const FIX = {
       const x = applicationAt("rejected", { decisionOver: { to_stage_key: "screening" } });
       return x.rows;
     })(),
-    "turned down with no named person or no written reason": [
-      ...applicationAt("rejected", { decisionOver: { decided_by: null } }).rows]
+    // Two wrong turn-downs, one with nobody named and one with a person but no words; each alone trips it.
+    "turned down with no named person or no written reason": {
+      bad: 2,
+      rows: [
+        ...applicationAt("rejected", { decisionOver: { decided_by: null } }).rows,
+        ...applicationAt("rejected", { decisionOver: { reason: "   " } }).rows]
+    }
   }),
   "hiring-column-withdrawn": columnFix("withdrawn", {
     "the application sits in withdrawn but its status is not withdrawn": [
@@ -284,10 +289,11 @@ const FIX = {
   "specialist-bureau-chips": {
     base: [],
     good: [R("inquiry_log", inquiry({ bureau: "EX" })), R("inquiry_log", inquiry({ bureau: "Equifax" })),
-      R("inquiry_log", inquiry({ bureau: "trans union" })),
+      R("inquiry_log", inquiry({ bureau: "trans union" })), R("inquiry_log", inquiry({ bureau: "Experian" })),
+      R("inquiry_log", inquiry({ bureau: "TU" })), R("inquiry_log", inquiry({ bureau: " eq " })),
       // A finished removal is not counted by any chip, so its bureau is not judged.
       R("inquiry_log", inquiry({ bureau: "", status: "Removed", confirmed_at: T0 }))],
-    sample: 3,
+    sample: 6,
     violations: {
       "an open inquiry names no bureau a chip counts": [R("inquiry_log", inquiry({ bureau: "Innovis" }))]
     }
@@ -313,11 +319,17 @@ const FIX = {
       return [R("inquiry_removal_cases", k), R("inquiry_log", l),
         ...(withAttempt ? [R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent" }))] : [])];
     };
+    // laterGood true: failed, then re-sent (fine). laterGood false: sent once, then a later one failed (wrong:
+    // an earlier success does not excuse the last letter failing).
     const failed = (laterGood) => {
       const l = inquiry({ id: nid("inq") });
-      return [R("inquiry_log", l),
-        R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "mail_failed:return_address_required", created_at: T0 })),
-        ...(laterGood ? [R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent", created_at: T1 }))] : [])];
+      return laterGood
+        ? [R("inquiry_log", l),
+          R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "mail_failed:return_address_required", created_at: T0 })),
+          R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent", created_at: T1 }))]
+        : [R("inquiry_log", l),
+          R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "sent", created_at: T0 })),
+          R("inquiry_attempts", attempt(l, { kind: "letter", outcome: "mail_failed:return_address_required", created_at: T1 }))];
     };
     return {
       base: [],
@@ -368,10 +380,13 @@ for (const spec of FIN_B13_CHECKS) {
     assert.deepEqual(out, { sample_count: fixture.sample, bad_count: 0 });
   });
 
-  for (const [name, rows] of Object.entries(fixture.violations)) {
+  for (const [name, violation] of Object.entries(fixture.violations)) {
+    // A violation is its rows, or { rows, bad } when it holds more than one wrong row.
+    const rows = Array.isArray(violation) ? violation : violation.rows;
+    const wrong = Array.isArray(violation) ? 1 : violation.bad;
     test(`${spec.key}: "${name}" goes red on its own row, and only that condition catches it`, () => {
       const red = runOn(spec, fixture, rows);
-      assert.equal(red.bad_count >= 1, true, `the check stayed green for: ${name}`);
+      assert.equal(red.bad_count, wrong, `the check must catch every wrong row for: ${name}`);
       assert.equal(red.sample_count > fixture.sample, true, "the wrong row must be a counted sample");
       // Same rows, with that one condition left out of the text: now it reads as right.
       const blind = runOn(spec, fixture, rows, { sql: sqlFor(spec, { without: [name] }) });
@@ -380,11 +395,34 @@ for (const spec of FIN_B13_CHECKS) {
   }
 
   test(`${spec.key}: another company's wrong rows are never read`, () => {
-    const foreign = Object.values(fixture.violations).flat()
+    const foreign = Object.values(fixture.violations).flatMap((v) => (Array.isArray(v) ? v : v.rows))
       .map(([table, row]) => [table, "org_id" in row && table !== "pipeline_stages" ? { ...row, org_id: OTHER } : row]);
     const out = runOn(spec, fixture, foreign);
     assert.deepEqual(out, { sample_count: fixture.sample, bad_count: 0 });
   });
+}
+
+// Demo Mode rows are counted nowhere on these screens, so a wrong demo row must never turn a check red.
+const DEMO_SIGNS = {
+  "the demo flag": (table, row) => (table === "candidates" ? { ...row, is_demo: true } : row),
+  "the seeder's source_detail": (table, row) => (table === "candidates" ? { ...row, source_detail: "platform_demo" } : row),
+  "a name that starts DEMO": (table, row) => (table === "candidates" ? { ...row, full_name: "DEMO Candidate \u2014 Juniper Vale" } : row)
+};
+const ROW_FLAG_TABLES = new Set(["hiring_job_postings", "inquiry_log", "inquiry_removal_cases"]);
+
+for (const spec of FIN_B13_CHECKS) {
+  if (spec.key === "hiring-bench-tiles") continue; // the bench view counts every application, and the page takes demo rows off itself
+  const fixture = FIX[spec.key];
+  const allRows = Object.values(fixture.violations).flatMap((v) => (Array.isArray(v) ? v : v.rows));
+  const hasCandidates = allRows.some(([table]) => table === "candidates");
+  const signs = hasCandidates ? Object.entries(DEMO_SIGNS) : [["the demo flag", (table, row) => (ROW_FLAG_TABLES.has(table) ? { ...row, is_demo: true } : row)]];
+  for (const [sign, mark] of signs) {
+    test(`${spec.key}: wrong rows marked demo by ${sign} are never read`, () => {
+      const demo = allRows.map(([table, row]) => [table, mark(table, ROW_FLAG_TABLES.has(table) ? { ...row, is_demo: true } : row)]);
+      const out = runOn(spec, fixture, demo);
+      assert.deepEqual(out, { sample_count: fixture.sample, bad_count: 0 });
+    });
+  }
 }
 
 test("the live checks are read-only and use only real tables and columns", () => {
