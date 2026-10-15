@@ -423,7 +423,7 @@ test("every live control text is one exact map row and owns exactly one contract
     }
     return MAPS.get(file);
   };
-  assert.equal(FIN_B02_LIVE_ROWS.length, 7);
+  assert.equal(FIN_B02_LIVE_ROWS.length, 8);
   const seen = new Set();
   for (const [file, surface, control] of FIN_B02_LIVE_ROWS) {
     const rows = rowsFor(file).filter((r) => r.surface === surface && r.control === control);

@@ -22,6 +22,8 @@ export const FIN_B02_PRESENT_TEST = "src/pulse/catalog/proofs/fin-b02-present-bu
 export const FIN_B02_TRANSFERS_TEST = "src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs";
 export const FIN_B02_FUNDED_TEST = "src/pulse/catalog/proofs/fin-b02-funded-column.test.mjs";
 export const FIN_B02_FLOOR_TEST = "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs";
+export const FIN_B02_HERO_TEST = "src/pulse/catalog/proofs/fin-b02-hero-bar.test.mjs";
+export const FIN_B02_HERO_LIVE_TEST = "src/pulse/catalog/proofs/fin-b02-hero-live.test.mjs";
 
 /** The four offers the deck sells without a sale motion (src/sales/closer-deck.mjs sendDeckPayLink). */
 export const PRIMARY_PAY_OFFER_KEYS = Object.freeze(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
@@ -147,6 +149,37 @@ SELECT count(*)::int AS sample_count,
    AND k.revoked_at IS NULL AND COALESCE(c.is_demo, false) = false
    AND k.granted_at >= now() - interval '60 days'`;
 
+
+// The hero's "Today" deposits and its "Funded, not just sold" rate both count call_outcomes rows with
+// outcome 'deposit' (src/sales/metrics.mjs floorFunnelDay and depositToFunded). Each one must be a deposit
+// somebody really paid: cash copied from one paid transaction of the same client, that payment used by
+// one deposit only, and, when the client has a funded round, a funded flag the rate can count.
+// A deposit with no linked payment has no transaction row, so it reads as another client's payment, not
+// paid, and an amount of 0 against positive cash. Those legs are what catch it.
+const HERO_DEPOSITS_SQL = `
+SELECT count(*)::int AS sample_count,
+       count(*) FILTER (WHERE o.cash_collected_cents IS NULL OR o.cash_collected_cents <= 0
+         OR t.client_id IS DISTINCT FROM o.client_id
+         OR COALESCE(t.status, '') NOT IN ('paid', 'succeeded', 'complete', 'completed')
+         OR ROUND(COALESCE(t.amount_paid, 0) * 100) IS DISTINCT FROM o.cash_collected_cents
+         OR EXISTS (
+              SELECT 1 FROM call_outcomes d
+               WHERE d.org_id = o.org_id AND d.id <> o.id AND d.transaction_id = o.transaction_id)
+         OR (COALESCE(c.funded, false) = false
+             AND EXISTS (
+                  SELECT 1 FROM funding_rounds fr
+                   WHERE fr.org_id = o.org_id AND fr.client_id = o.client_id AND fr.status = 'funded')
+             AND NOT EXISTS (
+                  SELECT 1 FROM funding_rounds fr
+                    JOIN funding_closeout fc ON fc.org_id = fr.org_id AND fc.funding_round_id = fr.id
+                   WHERE fr.org_id = o.org_id AND fr.client_id = o.client_id)))::int AS bad_count
+  FROM call_outcomes o
+  JOIN clients c ON c.org_id = o.org_id AND c.id = o.client_id
+  LEFT JOIN transactions t ON t.org_id = o.org_id AND t.id = o.transaction_id
+ WHERE o.org_id = $1::uuid AND o.outcome = 'deposit'
+   AND COALESCE(o.is_demo, false) = false AND COALESCE(c.is_demo, false) = false
+   AND o.logged_at >= now() - interval '60 days'`;
+
 export const FIN_B02_RESULT_CONTRACTS = Object.freeze([
   contract(
     "'Send soft pull ($32 + approval form)': mints the $32 pay link, emails and texts the approval form",
@@ -184,6 +217,12 @@ export const FIN_B02_RESULT_CONTRACTS = Object.freeze([
     "soft-pull-approve-submit",
     SOFT_PULL_APPROVE_SQL,
   ),
+  contract(
+    "Hero: 'Today' deposits, booked and held, 'Funded, not just sold' rate and target bar",
+    "Every deposit call the hero counts must have cash copied from one paid payment of the same client that no other deposit uses, and a client with a funded round must read funded so the rate counts it. The target bar has no target to judge: the page says so in words.",
+    "sales-floor-hero-deposits",
+    HERO_DEPOSITS_SQL,
+  ),
 ]);
 
 /** The exact map rows (desks file, surface) each live check is attached to. */
@@ -198,6 +237,9 @@ export const FIN_B02_LIVE_ROWS = Object.freeze([
   ["desks-f.json", "soft-pull-approve.html", FIN_B02_RESULT_CONTRACTS[5].control],
   // Reuses the existing do-task SQL (one entry in display-saved-result.mjs, same key and text).
   ["desks-d.json", "public/app/money-next.html", "Do task (per step the money helper or a person can do)"],
+  // Generation 2: the sales floor hero. The live check judges the deposit calls the hero counts;
+  // the screen half (numbers, dashes, the empty bar and its words) is fin-b02-hero-bar.test.mjs.
+  ["desks-f.json", "sales-floor.html (+ sales-floor.js)", FIN_B02_RESULT_CONTRACTS[6].control],
 ]);
 
 function liveCase([sourceFile, surface, control], tests) {
@@ -222,13 +264,17 @@ const SCREEN_HALF = new Map([
   // The page half: s4-soft-pull-approve.test.mjs fills the form, presses the submit button and holds
   // the exact request and the "Consent saved" / "Pay $42 assessment" result screen.
   [FIN_B02_RESULT_CONTRACTS[5].control, "src/pulse/catalog/proofs/s4-soft-pull-approve.test.mjs"],
+  [FIN_B02_RESULT_CONTRACTS[6].control, FIN_B02_HERO_TEST],
 ]);
 
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B02_LIVE_CASES = Object.freeze(
   FIN_B02_LIVE_ROWS
     .filter(([, , control]) => !ALREADY_IN_STAFF_GROUPS.has(control))
-    .map((row) => liveCase(row, [FIN_B02_LIVE_TEST, ...(SCREEN_HALF.has(row[2]) ? [SCREEN_HALF.get(row[2])] : [])])),
+    .map((row) => liveCase(row, [
+      row[2] === FIN_B02_RESULT_CONTRACTS[6].control ? FIN_B02_HERO_LIVE_TEST : FIN_B02_LIVE_TEST,
+      ...(SCREEN_HALF.has(row[2]) ? [SCREEN_HALF.get(row[2])] : []),
+    ])),
 );
 
 function practiceCase(sourceFile, surface, control, test) {
