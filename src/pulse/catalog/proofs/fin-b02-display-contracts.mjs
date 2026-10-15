@@ -189,6 +189,8 @@ export const FIN_B02_LIVE_ROWS = Object.freeze([
   ["desks-f.json", "present.html (+ present.js, contract-send.js)", FIN_B02_RESULT_CONTRACTS[0].control],
   ["desks-f.json", "present.html (+ present.js, contract-send.js)", FIN_B02_RESULT_CONTRACTS[1].control],
   ["desks-f.json", "present.html (+ present.js, contract-send.js)", FIN_B02_RESULT_CONTRACTS[2].control],
+  // Already a deep case in display-batch-staff-ui.mjs (STAFF_UI_GROUPS), so it is not repeated in
+  // FIN_B02_LIVE_CASES below; the contract alone is what turns it from not proved to a live check.
   ["desks-e.json", "public/app/ops-admin.html", FIN_B02_RESULT_CONTRACTS[3].control],
   ["desks-e.json", "public/app/pipeline.html", FIN_B02_RESULT_CONTRACTS[4].control],
   ["desks-f.json", "soft-pull-approve.html", FIN_B02_RESULT_CONTRACTS[5].control],
@@ -207,9 +209,13 @@ function liveCase([sourceFile, surface, control], tests) {
   });
 }
 
+const ALREADY_IN_STAFF_GROUPS = new Set([FIN_B02_RESULT_CONTRACTS[3].control]);
+
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B02_LIVE_CASES = Object.freeze(
-  FIN_B02_LIVE_ROWS.map((row) => liveCase(row, [FIN_B02_LIVE_TEST])),
+  FIN_B02_LIVE_ROWS
+    .filter(([, , control]) => !ALREADY_IN_STAFF_GROUPS.has(control))
+    .map((row) => liveCase(row, [FIN_B02_LIVE_TEST])),
 );
 
 function practiceCase(sourceFile, surface, control, test) {

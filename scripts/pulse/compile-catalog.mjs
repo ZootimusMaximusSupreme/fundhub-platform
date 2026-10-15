@@ -8,6 +8,7 @@ import { TRIPWIRES } from "../../src/pulse/tripwires.mjs";
 import { loadBeats } from "../../src/pulse/beats/index.mjs";
 import { DISPLAY_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-proof-cases.mjs";
 import { STAFF_UI_PROOF_CASES } from "../../src/pulse/catalog/proofs/display-batch-staff-ui.mjs";
+import { FIN_B02_LIVE_CASES } from "../../src/pulse/catalog/proofs/fin-b02-display-contracts.mjs";
 import { displaySavedResultContract, isTrackedDisplayControl } from "../../src/pulse/catalog/proofs/display-saved-result.mjs";
 import * as doors from "../../src/pulse/catalog/door-recipes.mjs";
 import * as display from "../../src/pulse/catalog/display-recipes.mjs";
@@ -50,7 +51,7 @@ const sources = files.map((sourceFile) => ({
 }));
 const catalog = compileCatalog(sources, [doors, display, data, flow], { resolve });
 Object.assign(catalog, compileDisplayRuntimeData(sources, {
-  proofCases: DISPLAY_PROOF_CASES, staffProofCases: STAFF_UI_PROOF_CASES,
+  proofCases: DISPLAY_PROOF_CASES, staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B02_LIVE_CASES],
   contractFor: displaySavedResultContract, isTracked: isTrackedDisplayControl
 }));
 catalog.hourlyUncoveredSurfaces = compileHourlyUncoveredSurfaces(TRIPWIRES, await loadBeats());
