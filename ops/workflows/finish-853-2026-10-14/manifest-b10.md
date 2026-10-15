@@ -37,6 +37,22 @@ Generation 2 numbers: `fin-b10-*.test.mjs` 98 tests, 98 pass (97 before, plus th
 line: add `"present.html"` to the right role list in `public/app/shell.js` (the page's own comment at `client-control-panel.html` line 1354 says the same).
 The moment it lands, the new guard and the browser test go red and say "attach now".
 
+## Resume check (2026-10-14, after the Mac restart, run from a fresh agent)
+
+No product or test file changed. Everything was re-measured on this branch (`fd86e967b`, cut from `fin/base` `2f4f574a0`):
+
+| Check | Result |
+|---|---|
+| `count-not-proved.mjs` on `fin/base` (temp worktree, removed) | 853 open in all, 40 of the 40 batch rows open (`openBefore` 40) |
+| `count-not-proved.mjs` on this branch | 815 open in all, 2 of the 40 batch rows open (`openAfter` 2) |
+| `node --test src/pulse/catalog/proofs/fin-b10-*.test.mjs` | 98 tests, 98 pass, 0 fail |
+| `gap-catalog-display.test.mjs`, `display-proof-cases.test.mjs`, `modules.test.mjs` | 18 tests, 18 pass, 0 fail |
+| `npm run lint` | exit 0, 3,574 files parse clean |
+| `node scripts/pulse/compile-catalog.mjs --check` | exit 0, catalog fresh |
+| Spot break checks, each put back (tree clean after each) | 9 of 9 red: Fatigue Window select without the re-read, signature Clear doing nothing, Which quiz picker always painting the first quiz, Present link without the client, Funding Matrix link with the wrong query name, upload SQL without `uploaded_by`, Join call SQL without `rescheduled`, waiting SQL judging Drive files too (and the page break checks also turn the "every listed row was exercised" guard red) |
+| The two `not-attachable` rows, re-read | `public/app/shell.js` names `present.html` nowhere in code, so `gateLinks()` hides both rows for every role (`screenOf("present.html")` is not on `ALL` or any role list). Both reasons are still exactly true. |
+| Live contract SQL columns | every table and column named by the five contracts exists in `db/migrations` (`bookings`, `tasks.body` = booking uid, `tasks.meeting_url`, `brain_files.source/size_bytes/uploaded_by/approval_status`, `brain_classification_reviews`, `funnel_page_stats`, `analytics_connections`, `clients.is_demo`) |
+
 ## The numbers
 
 | | Rows |
