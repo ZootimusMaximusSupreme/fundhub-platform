@@ -9,9 +9,12 @@ import { resolveClient } from "../handlers/client-lifecycle.mjs";
 import { mergeCustomFields } from "./custom-fields.mjs";
 import { addTags } from "./tags.mjs";
 import { detectAndPauseFunding } from "../crs/snapshot-negatives.mjs";
+import { isEmptyRehearsal } from "./simulated-pull.mjs";
 
 export async function handle({ event, db, step }) {
   if (event.payload?.source !== "crs") return { done: false, reason: "not_crs_source" };
+  // A rehearsal pull has no file. Writing it would null the client's stored score.
+  if (isEmptyRehearsal(event.payload)) return { done: false, reason: "simulated_no_file" };
 
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };

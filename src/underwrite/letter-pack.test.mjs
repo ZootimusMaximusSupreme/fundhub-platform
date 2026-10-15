@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
   buildLetterPack, buildLetterPackForClient, personalFromClient, bureausFromEngine, PACK_REASON,
-  NO_HOME_ADDRESS, homeAddressFromIdentity
+  NO_HOME_ADDRESS, homeAddressFromIdentity, pickCrsResultForPack, isStandInResult
 } from "./letter-pack.mjs";
 import { mergeBureauReports } from "../finance/crs-map.mjs";
 import { extractPdfText } from "../company-brain/pdf-text.mjs";
@@ -378,4 +378,76 @@ test("homeAddressFromIdentity reads the shape the credit form saves, and a missi
   assert.deepEqual(homeAddressFromIdentity([{ city: "Mesa", zip: "85201" }]), { address: "", city: "", state: "", zip: "" });
   // All four parts or none: a street with no ZIP is empty too.
   assert.deepEqual(homeAddressFromIdentity([{ addressLine1: "1 Elm", city: "Mesa", state: "AZ" }]), { address: "", city: "", state: "", zip: "" });
+});
+
+// CB-11 / R18. A rehearsal pull (crs-pull `simulate: true`) is the NEWEST row and
+// holds no scores or tradelines. Reading "the newest row" built the pack from
+// nothing while the client's real pull sat one row down.
+const REHEARSAL_ROW = { result: { simulated: true, environment: "sandbox", scores: { ex: null, eq: null, tu: null }, bureaus: {} } };
+const REAL_ROW = { result: { environment: "production", scores: { ex: 702, eq: 709, tu: 706 }, bureaus: { EX: { tradelines: [] } } } };
+const SANDBOX_ROW = { result: { environment: "sandbox", scores: { ex: 800, eq: 800, tu: 800 }, bureaus: {} } };
+const WALKTHROUGH_ROW = { result: { simulated: true, environment: "simulated", scores: { ex: 771, eq: 778, tu: 766 }, bureaus: {} } };
+
+function fakeRowsDb({ client, rows, identity }) {
+  const seen = { crsSql: null };
+  return {
+    seen,
+    async query(sql) {
+      if (/FROM clients/.test(sql)) return { rows: [client] };
+      if (/FROM pii_identity/.test(sql)) return { rows: identity ? [{ addresses: identity }] : [] };
+      if (/FROM crs_results/.test(sql)) { seen.crsSql = sql; return { rows }; }
+      return { rows: [] };
+    }
+  };
+}
+
+/** runEngine spy: records which stored pull the pack was built from, then stops. */
+function engineSpy() {
+  const spy = { arg: undefined, runEngine(stored) { spy.arg = stored; throw new Error("spy: stop here"); } };
+  return spy;
+}
+
+test("CB-11: a newer rehearsal pull does not hide the client's real pull from the letter pack", async () => {
+  const spy = engineSpy();
+  const db = fakeRowsDb({ client: SANDBOX_CLIENT, rows: [REHEARSAL_ROW, REAL_ROW], identity: SANDBOX_IDENTITY });
+  await buildLetterPackForClient(db, { clientId: "cl-cb11", pack: "funding" }, { runEngine: spy.runEngine });
+  assert.equal(spy.arg, REAL_ROW.result, "the pack must be built from the real pull, not the rehearsal above it");
+  assert.match(db.seen.crsSql, /LIMIT\s+10\b/, "the read must fetch more than the single newest row");
+});
+
+test("CB-11: a sandbox fixture does not outrank a real pull either", async () => {
+  const spy = engineSpy();
+  const db = fakeRowsDb({ client: SANDBOX_CLIENT, rows: [SANDBOX_ROW, REAL_ROW], identity: SANDBOX_IDENTITY });
+  await buildLetterPackForClient(db, { clientId: "cl-cb11", pack: "funding" }, { runEngine: spy.runEngine });
+  assert.equal(spy.arg, REAL_ROW.result);
+});
+
+test("CB-11: a client with only stand-in rows (walkthrough, sandbox host) still gets their newest one", async () => {
+  for (const rows of [[WALKTHROUGH_ROW], [SANDBOX_ROW, REHEARSAL_ROW], [WALKTHROUGH_ROW, REHEARSAL_ROW]]) {
+    const spy = engineSpy();
+    const db = fakeRowsDb({ client: SANDBOX_CLIENT, rows, identity: SANDBOX_IDENTITY });
+    await buildLetterPackForClient(db, { clientId: "cl-cb11", pack: "funding" }, { runEngine: spy.runEngine });
+    assert.equal(spy.arg, rows[0].result, "falls back to the newest row exactly as before");
+  }
+});
+
+test("CB-11: pickCrsResultForPack takes the newest own pull and answers null on no rows", () => {
+  const older = { result: { environment: "production", scores: { ex: 650 } } };
+  assert.equal(pickCrsResultForPack([REHEARSAL_ROW, REAL_ROW, older]), REAL_ROW.result);
+  assert.equal(pickCrsResultForPack([REAL_ROW, REHEARSAL_ROW]), REAL_ROW.result);
+  assert.equal(pickCrsResultForPack([]), null);
+  assert.equal(pickCrsResultForPack(undefined), null);
+  assert.equal(pickCrsResultForPack([{ result: null }]), null);
+});
+
+test("CB-11: isStandInResult names rehearsal, sandbox and sample files, and never a real pull", () => {
+  assert.equal(isStandInResult(REHEARSAL_ROW.result), true);
+  assert.equal(isStandInResult(SANDBOX_ROW.result), true);
+  assert.equal(isStandInResult(WALKTHROUGH_ROW.result), true);
+  assert.equal(isStandInResult({ simulated: true }), true);
+  assert.equal(isStandInResult(JSON.stringify({ environment: "Sandbox" })), true);
+  assert.equal(isStandInResult(REAL_ROW.result), false);
+  assert.equal(isStandInResult({ scores: { ex: 700 } }), false);
+  assert.equal(isStandInResult("not json"), false);
+  assert.equal(isStandInResult(null), false);
 });

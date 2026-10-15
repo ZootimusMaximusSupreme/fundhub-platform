@@ -843,6 +843,36 @@ export function companiesFromRows(rows = [], ages = []) {
   });
 }
 
+/* Is this stored pull a stand-in rather than the client's own bureau file?
+   A rehearsal (crs-pull `simulate: true`) is stamped simulated:true and
+   environment "sandbox". A walkthrough or sample file is stamped
+   environment "simulated". A sandbox host's pull is environment "sandbox". None
+   of those is this person's credit file, the same call client-detail makes when
+   it will not paint one. Unreadable answers false. Never throws. */
+export function isStandInResult(result) {
+  let r = result;
+  if (typeof r === "string") {
+    try { r = JSON.parse(r); } catch { return false; }
+  }
+  if (!r || typeof r !== "object") return false;
+  if (r.simulated === true) return true;
+  const env = String(r.environment || "").toLowerCase();
+  return env === "sandbox" || env === "simulated";
+}
+
+/* Which stored pull the letters are built from. The newest pull that is the
+   client's own file wins. A rehearsal pull sits newest and holds no scores or
+   tradelines, so reading "the newest row" built the pack from nothing, or from a
+   sandbox fixture, while the real pull sat one row down (CB-11). When every row
+   is a stand-in the newest one is used as before, because walkthrough clients
+   and sandbox hosts only ever have stand-ins. `rows` is newest first. */
+export function pickCrsResultForPack(rows) {
+  const list = (Array.isArray(rows) ? rows : []).filter((r) => r && r.result);
+  if (!list.length) return null;
+  const own = list.find((r) => !isStandInResult(r.result));
+  return (own || list[0]).result;
+}
+
 export async function buildLetterPackForClient(
   db,
   { clientId, pack = "funding" } = {},
@@ -881,13 +911,16 @@ export async function buildLetterPackForClient(
   // logic can tell a broken pull apart from a client who simply has no pull yet.
   let engineFault = null;
   try {
+    // Newest first. More than one row so a newer rehearsal pull cannot hide the
+    // real one (pickCrsResultForPack).
     const crs = await db.query(
-      `SELECT result FROM crs_results WHERE client_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT result FROM crs_results WHERE client_id = $1 ORDER BY created_at DESC LIMIT 10`,
       [clientId]
     );
-    if (!crs.rows[0]?.result) engineSkip = PACK_REASON.NO_CRS_RESULT;
+    const picked = pickCrsResultForPack(crs.rows);
+    if (!picked) engineSkip = PACK_REASON.NO_CRS_RESULT;
     else {
-      storedCrs = crs.rows[0].result;
+      storedCrs = picked;
       try {
         engine = runEngine(storedCrs, {
           submittedName: personal.name,
