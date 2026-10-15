@@ -1,0 +1,54 @@
+{
+ "fin-b14-journeys.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "journeys.html",
+   "controls": [
+    "Bottom bar: Discard (revert unsaved edits)",
+    "Canvas: '+' between steps opens the add-step menu (10 types: text, email, wait, question, move card, assign, hand off, agent, take payment, save)",
+    "Canvas: 'Keep it' / 'Throw it away' on an AI patch",
+    "Canvas: click a step to select it (opens Step panel)",
+    "Header: 'Test against the code' (walks every branch with throwaway clients inside a rolled-back transaction)",
+    "Header: Save version",
+    "Header: Undo (also Cmd/Ctrl+Z)",
+    "History tab: 'Roll back to this' (saved version) and 'Put it back' (single change)",
+    "Journey list tab: Affiliate",
+    "Journey list tab: Client",
+    "Journey list tab: Closer",
+    "Journey list tab: Funding Advisor",
+    "Journey list tab: Setter",
+    "Journey list tab: White-Label Partner",
+    "Run report panel: Close button",
+    "Simulate tab: 'At a question' select + Run the journey / Stop",
+    "Step panel fields: text body and timing (text), subject/body/timing (email), wait length + unit, question field + test, stage + pipeline, role, agent + note, payment amount + product, note",
+    "Step panel: 'Make the change' (AI rewrites one step) and canvas ask box 'Make the change' + example prompts",
+    "Step panel: 'Run from here' (plays the journey in the browser from this step)",
+    "Step panel: Move up / Move down / Delete"
+   ],
+   "notAttached": [
+    "Page gate: owner and admin author journeys (PUT/ask/run answer 403 to others); no sidebar row exists (NAV_HIDDEN), reached only by URL or link"
+   ]
+  }
+ ],
+ "fin-b14-lenders.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
+    "AI bureau config row: 7 fields (code, name, service number, IVR version, menu path, hold minutes, active)",
+    "AI bureau config: Add bureau row button (adds an empty editable row)",
+    "Apply filters button",
+    "Export CSV button (downloads lenders.csv for the current filters)",
+    "Import CSV button (opens paste box) and Cancel button",
+    "Lender row inline cells: name, product table, bureaus, requirements, tier, status, eligible states (7 editable fields)",
+    "Lender row Save button (writes the 7 fields, stamps last_updated_by)",
+    "List filter: Bureau pulled input (EX / EQ / TU)",
+    "List filter: Eligible state input",
+    "List filter: Name search input",
+    "List filter: Priority tier select (1, 2, 3)",
+    "List filter: Product table select (OnlineBizCC, InBranchBizCC, BizLOC_Stated, BizLOC_Documented, PersonalCC, PersonalLoans, PersonalLOC)",
+    "List filter: Status select (Active / Inactive)"
+   ]
+  }
+ ]
+}
