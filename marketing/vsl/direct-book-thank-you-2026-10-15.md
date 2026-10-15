@@ -1,6 +1,6 @@
 # Direct Book Thank You — direct version (draft 2026-10-15)
 
-Status: draft for Chris to review. Written with Chris in a Claude chat on 2026-10-15.
+Status: GREEN-LIT by Chris 2026-10-15 10:23. Ready to film. Written with Chris in a Claude chat on 2026-10-15.
 
 Source: the 10/13 version filmed as "Direct Book Thank You" (`marketing/ads/scripts/2026-10-13.md`
 section 5, about 560 words). The app keeps its own copy (ad 104), so this version needs loading into
