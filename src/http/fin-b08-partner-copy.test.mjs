@@ -45,7 +45,7 @@ const SECTIONS = () => [
   { id: "legal-lender", type: "legal", locked: true, headline: "Not a direct lender", text: "We are not a lender." },
 ];
 
-function copyFile({ suite = true, cap = 1000, used = 0, rules = [] } = {}) {
+function copyFile({ suite = true, cap = 1000, used = 0, lastMonth = 0, rules = [] } = {}) {
   const tables = {
     partner_pages: [
       { id: PAGE, org_id: ORG_ID, partner_id: PARTNER, funnel_key: "apply", title: "Apply", body_json: { sections: SECTIONS() } },
@@ -53,7 +53,11 @@ function copyFile({ suite = true, cap = 1000, used = 0, rules = [] } = {}) {
     ],
     partner_brand: [{ partner_id: PARTNER, org_id: ORG_ID, entity_name: "Acme Capital", voice: "plain", ink: "#101820", paper: "#ffffff", display_face: "Inter" }],
     partner_module_settings: [{ partner_id: PARTNER, org_id: ORG_ID, marketing_suite_enabled: suite, ai_token_cap_monthly: cap }],
-    partner_ai_usage: used ? [{ org_id: ORG_ID, partner_id: PARTNER, input_tokens: used, output_tokens: 0, created_at: new Date().toISOString() }] : [],
+    partner_ai_usage: [
+      ...(used ? [{ org_id: ORG_ID, partner_id: PARTNER, input_tokens: used, output_tokens: 0, created_at: new Date().toISOString() }] : []),
+      // Spent in an earlier month: it is the meter's past, not this month's budget.
+      ...(lastMonth ? [{ org_id: ORG_ID, partner_id: PARTNER, input_tokens: lastMonth, output_tokens: 0, created_at: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1) - 5 * 86400000).toISOString() }] : []),
+    ],
     partner_page_section_versions: [],
     compliance_rules: rules,
     partners: [{ id: PARTNER, org_id: ORG_ID }, { id: OTHER_PARTNER, org_id: ORG_ID }],
@@ -63,8 +67,14 @@ function copyFile({ suite = true, cap = 1000, used = 0, rules = [] } = {}) {
     autoInsert: true,
     autoUpdate: true,
     rules: [
-      [/^\s*SELECT COALESCE\(SUM\(input_tokens \+ output_tokens\), 0\)::int AS used\s+FROM partner_ai_usage/i,
-        (_s, p) => [{ used: tables.partner_ai_usage.filter((u) => u.partner_id === p[0]).reduce((n, u) => n + u.input_tokens + u.output_tokens, 0) }]],
+      [/^\s*SELECT COALESCE\(SUM\(input_tokens \+ output_tokens\), 0\)::int AS used\s+FROM partner_ai_usage/i, (sql, p) => {
+        // This month's rows only when the statement itself says so: its own window decides, not this stand-in.
+        const windowed = /created_at\s*>=\s*date_trunc\('month',\s*timezone\('utc',\s*now\(\)\)\)/i.test(sql);
+        const now = new Date();
+        const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+        const rows = tables.partner_ai_usage.filter((u) => u.partner_id === p[0] && (!windowed || new Date(u.created_at ?? now).getTime() >= monthStart)); // the database stamps a new row with now()
+        return [{ used: rows.reduce((n, u) => n + u.input_tokens + u.output_tokens, 0) }];
+      }],
       [/^\s*SELECT \* FROM partner_pages WHERE id = \$1/i, (_s, p) => tables.partner_pages.filter((r) => r.id === p[0])],
       [/^\s*SELECT \* FROM partner_brand WHERE partner_id = \$1/i, (_s, p) => tables.partner_brand.filter((r) => r.partner_id === p[0])],
       [/FROM compliance_rules/i, () => tables.compliance_rules],
@@ -199,5 +209,62 @@ describe("POST /api/partner-marketing/generate-copy", () => {
       assert.equal(res.body.error, "no_model");
       assert.equal(fake.tables.partner_pages[0].body_json.sections[0].headline, "Get funded");
     } finally { process.env.OPENAI_API_KEY = held; }
+  });
+
+  test("only this month's tokens count against the monthly cap: an earlier month's spending is not held against the partner", async () => {
+    const fake = copyFile({ cap: 1000, lastMonth: 5000 });
+    const res = await call({ page_id: PAGE, section_id: "hero" }, fake);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+    assert.equal(modelCalls.length, 1);
+    assert.equal(fake.tables.partner_ai_usage.filter((u) => u.purpose === "copy").length, 1);
+  });
+
+  test("the cap is checked again before every section: once it is spent the next section is not written and the answer is 429", async () => {
+    // Each call spends 150 tokens (120 in, 30 out). A cap of 150 is gone after the first section.
+    const fake = copyFile({ cap: 150 });
+    const res = await call({ page_id: PAGE }, fake);
+    assert.equal(res.statusCode, 429, JSON.stringify(res.body));
+    assert.equal(res.body.error, "token_cap");
+    assert.equal(modelCalls.length, 1, "the second section was never sent to the model");
+    assert.equal(fake.tables.partner_ai_usage.filter((u) => u.purpose === "copy").length, 1);
+    // With room for exactly one more token, the second section is still written (the cap is "none left", not "almost none").
+    modelCalls.length = 0;
+    const roomy = copyFile({ cap: 151 });
+    const ok = await call({ page_id: PAGE }, roomy);
+    assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+    assert.equal(modelCalls.length, 2);
+  });
+
+  test("both halves of the model's token count are metered, against this page, this partner and this company", async () => {
+    const fake = copyFile();
+    const res = await call({ page_id: PAGE, section_id: "hero" }, fake);
+    assert.equal(res.statusCode, 200);
+    const usage = fake.tables.partner_ai_usage.at(-1);
+    assert.equal(usage.input_tokens, 120);
+    assert.equal(usage.output_tokens, 30, "what the model wrote is metered too, not just what it read");
+    assert.equal(usage.purpose, "copy");
+    assert.equal(usage.source_id, PAGE);
+    assert.equal(usage.partner_id, PARTNER);
+    assert.equal(usage.org_id, ORG_ID);
+    assert.ok(usage.model);
+    // The saved version belongs to this page, this section, this partner and this company.
+    const version = fake.tables.partner_page_section_versions[0];
+    assert.equal(version.page_id, PAGE);
+    assert.equal(version.section_id, "hero");
+    assert.equal(version.partner_id, PARTNER);
+    assert.equal(version.org_id, ORG_ID);
+  });
+
+  test("a partner with no cap of its own gets the default monthly budget, no more", async () => {
+    // Default is 250,000 tokens a month. 249,999 spent leaves one token: one section is written; 250,000 leaves none.
+    const room = copyFile({ cap: null, used: 249999 });
+    const ok = await call({ page_id: PAGE, section_id: "hero" }, room);
+    assert.equal(ok.statusCode, 200, JSON.stringify(ok.body));
+    const spent = copyFile({ cap: null, used: 250000 });
+    const refused = await call({ page_id: PAGE, section_id: "hero" }, spent);
+    assert.equal(refused.statusCode, 429);
+    assert.equal(refused.body.usage.cap, 250000);
+    assert.equal(refused.body.usage.used, 250000);
+    assert.equal(refused.body.usage.remaining, 0);
   });
 });
