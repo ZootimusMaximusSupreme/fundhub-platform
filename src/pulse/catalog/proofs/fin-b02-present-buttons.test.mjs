@@ -7,6 +7,7 @@
 // proves the page script does what each row says, with fake data, not what a real client saw.
 //
 // Rows proved here (desks-f.json, surface "present.html (+ present.js, contract-send.js)"):
+//   - the screen half of 'Send soft pull ($32 + approval form)' (the saved half is a live check)
 //   - Route the call (S-07): FULL FUNDING / FUNDING PLUS REPAIR / REPAIR ONLY buttons
 //   - 'UnderwriteIQ package -> repair + funding' bridge button (S-19, repair route)
 //   - Descent ladder, 6 buttons
@@ -45,7 +46,7 @@ function payload(tier) {
 const flush = () => new Promise((r) => setImmediate(r));
 
 /** The real present.js against a stand-in page that records every write the page makes. */
-async function openDeck(tier) {
+async function openDeck(tier, { answer = null } = {}) {
   const root = { innerHTML: "" };
   const writes = [];
   const listeners = new Map();
@@ -71,7 +72,10 @@ async function openDeck(tier) {
     localStorage: { getItem: (k) => (k === "fh_role" ? "owner" : null) },
     FHData: {
       read: async () => ({ ok: true, data: payload(tier) }),
-      write: async (url, body) => { writes.push({ url, body }); return { ok: true, data: {} }; }
+      write: async (url, body) => {
+        writes.push({ url, body });
+        return answer ? answer(url, body) : { ok: true, data: {} };
+      }
     }
   };
   sandbox.window = sandbox;
@@ -339,4 +343,41 @@ test("Sale motion select: not drawn for the four primary offers, and a pick made
     assert.equal(body.offer_key, offer);
     assert.equal(body.sale_motion, null, `${act} never sends a motion`);
   }
+});
+
+/* ── 'Send soft pull ($32 + approval form)': the screen half ─────────────── */
+
+test("Send soft pull: one press sends one send_soft_pull for this client, says so, and a second press is held off", async () => {
+  const deck = await openDeck("FULL_FUNDING");
+  deck.click("stack-go:S-06");
+  assert.equal(deck.slide(), "S-06");
+  assert.match(deck.html(), /Send soft pull \(\$32 \+ approval form\)/);
+  assert.match(deck.html(), /Catalog price \$32\./);
+  deck.click("softpull");
+  await flush();
+  const sends = deck.writes.filter((w) => w.body.action === "send_soft_pull");
+  assert.equal(sends.length, 1);
+  assert.equal(sends[0].url, "/api/closer-deck");
+  assert.equal(sends[0].body.client_id, CONTACT);
+  assert.match(deck.html(), /Soft pull emailed — pay link \+ approval form\./);
+  // Two more presses in the cool-down send nothing: this is what stopped two pay links for one sale.
+  deck.click("softpull").click("softpull");
+  await flush();
+  assert.equal(deck.writes.filter((w) => w.body.action === "send_soft_pull").length, 1);
+});
+
+test("Send soft pull: a refusal is said in the server's words, nothing is claimed sent, and the press can be retried", async () => {
+  let refuse = true;
+  const deck = await openDeck("FULL_FUNDING", {
+    answer: () => (refuse ? { ok: false, error: { message: "No checkout key is set" } } : { ok: true, data: {} })
+  });
+  deck.click("stack-go:S-06").click("softpull");
+  await flush();
+  assert.match(deck.html(), /No checkout key is set/);
+  assert.doesNotMatch(deck.html(), /Soft pull emailed/);
+  refuse = false;
+  deck.click("softpull");
+  await flush();
+  assert.equal(deck.writes.filter((w) => w.body.action === "send_soft_pull").length, 2);
+  assert.match(deck.html(), /Soft pull emailed/);
 });

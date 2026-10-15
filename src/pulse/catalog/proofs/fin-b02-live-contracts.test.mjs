@@ -274,6 +274,14 @@ test("invoice backlog email: the backlog itself (sent, never emailed, no message
   } finally { s.close(); }
 });
 
+test("invoice backlog email: the 'bounded to 200' half is held by the route test, and the handler still says 200", () => {
+  const route = fs.readFileSync(path.join(REPO_ROOT, "src/http/s2-message-routes-outbound.test.mjs"), "utf8");
+  assert.match(route, /the backlog emails every never-sent invoice once and the bound is 200/);
+  assert.match(route, /read\.params\[1\], 200/);
+  const handler = fs.readFileSync(path.join(REPO_ROOT, "api/messages-outbound.mjs"), "utf8");
+  assert.match(handler, /Math\.min\(Number\(body\.limit\) \|\| 50, 200\)/);
+});
+
 /* ── 5. Card Stacking 'Funded' column ────────────────────────────────────── */
 suite(
   "funded column",

@@ -20,6 +20,7 @@ export const FIN_B02_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B02_LIVE_TEST = "src/pulse/catalog/proofs/fin-b02-live-contracts.test.mjs";
 export const FIN_B02_PRESENT_TEST = "src/pulse/catalog/proofs/fin-b02-present-buttons.test.mjs";
 export const FIN_B02_TRANSFERS_TEST = "src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs";
+export const FIN_B02_FUNDED_TEST = "src/pulse/catalog/proofs/fin-b02-funded-column.test.mjs";
 
 /** The four offers the deck sells without a sale motion (src/sales/closer-deck.mjs sendDeckPayLink). */
 export const PRIMARY_PAY_OFFER_KEYS = Object.freeze(["FUNDING_DFY", "REPAIR_DFY", "REPAIR_TRIAL", "FUNDING_MASTERY"]);
@@ -211,11 +212,22 @@ function liveCase([sourceFile, surface, control], tests) {
 
 const ALREADY_IN_STAFF_GROUPS = new Set([FIN_B02_RESULT_CONTRACTS[3].control]);
 
+// A live check judges the saved result. Where the row also names a screen half, the practice
+// test that presses it is listed beside the live check, so the focused proof run executes both.
+const SCREEN_HALF = new Map([
+  [FIN_B02_RESULT_CONTRACTS[0].control, FIN_B02_PRESENT_TEST],
+  [FIN_B02_RESULT_CONTRACTS[1].control, FIN_B02_PRESENT_TEST],
+  [FIN_B02_RESULT_CONTRACTS[4].control, FIN_B02_FUNDED_TEST],
+  // The page half: s4-soft-pull-approve.test.mjs fills the form, presses the submit button and holds
+  // the exact request and the "Consent saved" / "Pay $42 assessment" result screen.
+  [FIN_B02_RESULT_CONTRACTS[5].control, "src/pulse/catalog/proofs/s4-soft-pull-approve.test.mjs"],
+]);
+
 /** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
 export const FIN_B02_LIVE_CASES = Object.freeze(
   FIN_B02_LIVE_ROWS
     .filter(([, , control]) => !ALREADY_IN_STAFF_GROUPS.has(control))
-    .map((row) => liveCase(row, [FIN_B02_LIVE_TEST])),
+    .map((row) => liveCase(row, [FIN_B02_LIVE_TEST, ...(SCREEN_HALF.has(row[2]) ? [SCREEN_HALF.get(row[2])] : [])])),
 );
 
 function practiceCase(sourceFile, surface, control, test) {
