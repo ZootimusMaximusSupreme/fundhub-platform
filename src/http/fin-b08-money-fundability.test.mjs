@@ -172,4 +172,146 @@ describe("GET /api/money/fundability", () => {
     assert.equal((await call({ query: {}, principal: staff() })).res.statusCode, 400);
     assert.equal((await call({ query: { client_id: "nope" }, principal: staff() })).res.statusCode, 400);
   });
+
+  // ── looking ahead: what the plan line and the "if removed" line say ──────────────────────────────
+
+  const CARD = (id, lender, limit, balance, opened) => LINE({ id, lender, limit, balance, opened });
+  const CURRENT_OF = (ids) => ids.map((id) => ({ client_id: CID, org_id: ORG, tradeline_id: id, payment_status: "current", as_of: "2026-09-30" }));
+  const cleanFile = (over = {}, cf = {}) => fileTables({
+    ...over,
+    clients: [{ id: CID, org_id: ORG, first_name: "Sim", last_name: "Young",
+      custom_fields: { crs_inquiries_ex: 0, crs_inquiries_eq: 0, crs_inquiries_tu: 0, crs_negative_items_count: 0, crs_late_payments_count: 0, ...cf } }],
+  });
+  const plan = (res) => res.body.projections.filter((p) => p.scenario === "plan");
+
+  test("time makes accounts older: a card passes the two-year check only once it is two years old, and the money appears with it", async () => {
+    // Three cards, 14 months old, light use. The best card is $10,000, so a seasoned file is worth $10,000 x 5.5.
+    const files = cleanFile({
+      tradelines: [CARD("a1", "CHASE", "1000000", "100000", ago(14)), CARD("a2", "AMEX", "800000", "100000", ago(14)), CARD("a3", "CAPITAL ONE", "600000", "50000", ago(14))],
+      card_liabilities: CURRENT_OF(["a1", "a2", "a3"]),
+    }, { business_age_months: 18 });
+    const { res } = await call({ query: { client_id: CID }, principal: staff(), files });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.now.tier, "fundable");
+    assert.equal(res.body.now.funding_estimate_cents, 0, "fundable, but no card is old enough to count: a real zero");
+    assert.equal(res.body.now.factors.find((f) => f.key === "anchor_card").passed, false);
+    const points = plan(res);
+    assert.deepEqual(points.map((p) => p.months), [3, 6, 12]);
+    assert.deepEqual(points.map((p) => p.checks.anchor_card), [false, false, true], "14 months now, 26 at +12");
+    assert.deepEqual(points.map((p) => p.funding_estimate_cents), [0, 0, 5500000]);
+    assert.deepEqual(points.map((p) => p.score), [5, 5, 6]);
+    assert.deepEqual(points.map((p) => p.date), [addMonths(TODAY, 3), addMonths(TODAY, 6), addMonths(TODAY, 12)]);
+    assert.ok(points.every((p) => p.assumptions.some((t) => /months go by/.test(t))), "every point names the time assumption");
+    assert.ok(points.every((p) => p.tier === "fundable"));
+    // Scores and inquiries are not guessed: they are today's at every point.
+    assert.ok(points.every((p) => p.checks.score_700 === true && p.checks.no_inquiries === true));
+  });
+
+  test("a business grows older too: its age band, its multiplier and its figure follow the months, never backwards", async () => {
+    const files = cleanFile({
+      tradelines: [CARD("a1", "CHASE", "1000000", "100000", ago(14)), CARD("a2", "AMEX", "800000", "100000", ago(14)), CARD("a3", "CAPITAL ONE", "600000", "50000", ago(14))],
+      card_liabilities: CURRENT_OF(["a1", "a2", "a3"]),
+      businesses: [{ id: "b1", client_id: CID, org_id: ORG, name: "Alpha LLC", age_months: 18, entity_data: { name: "Alpha LLC", naics: "541511" }, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }],
+    }, { business_age_months: 18 });
+    const { res } = await call({ query: { client_id: CID }, principal: staff(), files });
+    const [alpha] = res.body.businesses;
+    assert.equal(alpha.age_months, 18);
+    assert.equal(alpha.now.multiplier, 1, "under 24 months");
+    assert.deepEqual(alpha.projections.map((p) => p.multiplier), [1, 2, 2], "21, 24 and 30 months old");
+    assert.deepEqual(alpha.projections.map((p) => p.checks.age_24), [false, true, true]);
+    assert.deepEqual(alpha.projections.map((p) => p.funding_estimate_cents), [null, null, 11000000], "the card figure x 2 once a card counts");
+    assert.deepEqual(alpha.projections.map((p) => p.assumptions.find((t) => /months old/.test(t))),
+      ["Alpha LLC is 21 months old.", "Alpha LLC is 24 months old.", "Alpha LLC is 30 months old."]);
+    assert.equal(alpha.now.funding_estimate_cents, null);
+    // Its five checks are counted on their own: the personal file's gate, the personal anchor card, its age, its name, its industry code.
+    assert.deepEqual(alpha.now.factors.map((f) => [f.key, f.passed]), [
+      ["personal_fundable", true], ["anchor_card", false], ["age_24", false], ["name_on_file", true], ["naics_on_file", true],
+    ]);
+    assert.equal(alpha.now.score, 3);
+    assert.deepEqual(alpha.projections.map((p) => p.score), [3, 4, 5]);
+    assert.deepEqual(alpha.projections.map((p) => p.checks.anchor_card), [false, false, true], "no personal anchor card, no business slice");
+    assert.deepEqual(alpha.projections.map((p) => p.checks.personal_fundable), [true, true, true]);
+    assert.deepEqual(alpha.projections.map((p) => p.tier), ["not_fundable", "not_fundable", "fundable"]);
+    // A business with no age of its own takes the client's own age on file, and ages from there.
+    const fallbackFiles = cleanFile({
+      tradelines: [CARD("a1", "CHASE", "1000000", "100000", ago(40)), CARD("a2", "AMEX", "800000", "100000", ago(40)), CARD("a3", "CAPITAL ONE", "600000", "50000", ago(40))],
+      card_liabilities: CURRENT_OF(["a1", "a2", "a3"]),
+      businesses: [{ id: "b2", client_id: CID, org_id: ORG, name: "Beta LLC", age_months: null, entity_data: { name: "Beta LLC", naics: "541511" }, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }],
+    }, { business_age_months: 20 });
+    const fb = await call({ query: { client_id: CID }, principal: staff(), files: fallbackFiles });
+    const [beta] = fb.res.body.businesses;
+    assert.equal(beta.age_months, 20, "the client's own figure on file");
+    assert.deepEqual(beta.projections.map((p) => p.multiplier), [1, 2, 2], "23, 26 and 32 months");
+  });
+
+  test("a paydown in the client's own plan lowers that card's use only at the points on or after its due date", async () => {
+    const due = addMonths(TODAY, 4);
+    const waypoint = (key, creditor, target, state = "not_started", dueAt = `${due}T12:00:00Z`) => ({
+      client_id: CID, org_id: ORG, key, state, due_at: dueAt, verify_kind: "paydown", position: 1,
+      params: { definition_key: "paydown_revolving_account", creditor, creditor_key: creditor.toLowerCase().replace(/\W+/g, "_"), target_cents: target, account_prints: [] },
+    });
+    const files = cleanFile({
+      tradelines: [CARD("a1", "CHASE", "1000000", "400000", ago(40)), CARD("a2", "AMEX", "800000", "400000", ago(40)), CARD("a3", "CAPITAL ONE", "600000", "300000", ago(40))],
+      card_liabilities: CURRENT_OF(["a1", "a2", "a3"]),
+      client_waypoints: [
+        waypoint("paydown_chase", "CHASE", 100000),
+        waypoint("paydown_amex", "AMEX", 80000),
+        waypoint("paydown_capone", "CAPITAL ONE", 0, "skipped"),               // not the plan any more: never applied
+        waypoint("paydown_nodate", "CAPITAL ONE", 0, "not_started", null),     // no date: listed, never applied
+      ],
+    });
+    const { res } = await call({ query: { client_id: CID }, principal: staff(), files });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.now.factors.find((f) => f.key === "utilization_30").passed, false);
+    assert.equal(res.body.now.factors.find((f) => f.key === "utilization_30").value, 45.8);
+    const points = plan(res);
+    assert.deepEqual(points.map((p) => p.checks.utilization_30), [false, true, true], "the paydowns are due after +3 and before +6");
+    assert.deepEqual(points.map((p) => p.tier), ["not_fundable", "fundable", "fundable"]);
+    assert.deepEqual(points.map((p) => p.funding_estimate_cents), [null, 5500000, 5500000]);
+    assert.equal(points[0].assumptions.filter((t) => /You pay/.test(t)).length, 0);
+    assert.equal(points[1].assumptions.filter((t) => /You pay/.test(t)).length, 2, "Chase and Amex only");
+    assert.ok(points[1].assumptions.some((t) => /You pay CHASE down to \$1,000/.test(t)));
+    assert.ok(points[1].assumptions.some((t) => /You pay AMEX down to \$800/.test(t)));
+    assert.equal(points[1].assumptions.some((t) => /CAPITAL ONE/.test(t)), false);
+    assert.deepEqual(res.body.plan.paydowns.map((p) => [p.creditor, p.target_cents, p.state]).sort(),
+      [["AMEX", 80000, "not_started"], ["CAPITAL ONE", 0, "not_started"], ["CHASE", 100000, "not_started"]]);
+  });
+
+  test("a dispute plan draws a separate if-removed line from the open derogatory items only, and says it is not promised", async () => {
+    const item = (id, rule, status, creditor, last4) => ({ id, client_id: CID, org_id: ORG, rule_id: rule, status, creditor, account_last4: last4 });
+    const files = cleanFile({
+      tradelines: [CARD("a1", "CHASE", "1000000", "100000", ago(40)), CARD("a2", "AMEX", "800000", "100000", ago(40)), CARD("a3", "CAPITAL ONE", "600000", "50000", ago(40))],
+      card_liabilities: CURRENT_OF(["a1", "a2", "a3"]),
+      dispute_items: [
+        item("d1", "DEROG-COLLECTION", "open", "Midland Credit", "1111"),
+        item("d2", "DEROG-CHARGEOFF", "sent", "Portfolio Recovery", "2222"),
+        item("d2b", "DEROG-CHARGEOFF", "sent", "Portfolio Recovery", "2222"),   // the same account again: one account
+        item("d3", "DEROG-CHARGEOFF", "closed", "Old Debt", "3333"),            // finished: not in play
+        item("d4", "MET2-ACCOUNT-STATUS", "open", "Metro Only", "4444"),        // a format check, not a derogatory claim
+      ],
+    }, { crs_negative_items_count: 2 });
+    const { res } = await call({ query: { client_id: CID }, principal: staff(), files });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.plan, { paydowns: [], dispute_accounts: 2, if_removed: true });
+    assert.equal(res.body.now.factors.find((f) => f.key === "no_negatives").passed, false);
+    assert.equal(res.body.now.tier, "not_fundable");
+    assert.deepEqual(plan(res).map((p) => p.checks.no_negatives), [false, false, false], "the plan line does not assume a removal");
+    const removed = res.body.projections.filter((p) => p.scenario === "if_removed");
+    assert.deepEqual(removed.map((p) => p.months), [3, 6, 12]);
+    assert.deepEqual(removed.map((p) => p.checks.no_negatives), [true, true, true], "2 negatives, 2 accounts targeted, 0 left");
+    assert.deepEqual(removed.map((p) => p.tier), ["fundable", "fundable", "fundable"]);
+    assert.deepEqual(removed.map((p) => p.funding_estimate_cents), [5500000, 5500000, 5500000]);
+    assert.ok(removed.every((p) => p.assumptions.some((t) => /targets 2 negative accounts.*go from 2 to 0.*not promised/.test(t))));
+    assert.ok(plan(res).every((p) => !p.assumptions.some((t) => /dispute plan/.test(t))));
+
+    // With no measured negatives count there is nothing for the line to say, and with none targeted there is no line.
+    const unknown = cleanFile({ tradelines: files.tables.tradelines, card_liabilities: files.tables.card_liabilities, dispute_items: files.tables.dispute_items }, { crs_negative_items_count: null });
+    const u = await call({ query: { client_id: CID }, principal: staff(), files: unknown });
+    assert.equal(u.res.body.plan.if_removed, false);
+    assert.equal(u.res.body.projections.some((p) => p.scenario === "if_removed"), false);
+    const none = cleanFile({ tradelines: files.tables.tradelines, card_liabilities: files.tables.card_liabilities }, { crs_negative_items_count: 2 });
+    const n = await call({ query: { client_id: CID }, principal: staff(), files: none });
+    assert.equal(n.res.body.plan.if_removed, false);
+    assert.equal(n.res.body.plan.dispute_accounts, 0);
+  });
 });
