@@ -193,3 +193,27 @@ batch's contracts; pass-capable = base query contracts plus every batch's querie
 Not run to the end: the third test in `display-proof-cases.test.mjs` ("the focused proof test runs every executable
 test named by every case") spawns every proof test file in the repo in one process. With 26 agents on this Mac it did
 not finish in 15 minutes, so I stopped it. My own files run inside it and pass alone.
+
+### Generation 2 commands (2026-10-14)
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` at the start | `{"total":814,...,"gap-catalog-display":641}`; batch rows open: 1 |
+| `node scripts/pulse/count-not-proved.mjs` after | `{"total":813,...,"gap-catalog-display":640}`; batch rows open: 0. The stub page here is empty, so the climate row reads `skip` offline; served the real `public/` files it reads `na` |
+| display lane run with the real `public/climate` files served as the live site | climate row `na`, code `catalog-display-control-not-shipped`; "/climate/ opens, and neither the page nor its 8 own scripts carry it or the door it would call" |
+| read-only GET of `https://fundhub.ai/climate/` and its 7 chunks plus `/funnel/rb2b.js` | 200 each; none carry the button words or `climate-match`; page is 4820 bytes, same as the repo file |
+| `node --test src/pulse/coverage/fin-b06-not-shipped.test.mjs` | 20 pass |
+| mutation of the real page (button text added to `public/climate/index.html`; script made to call the lead door), each restored after its run | 4 and 3 tests red, then 20 pass after restore |
+| mutation of the new check's own code (9 breaks: scripts not read, non-200 read as absent, failed script ignored, audit verify always true, door string not looked for, other sites fetched, redirects followed, script cap removed, empty body accepted) plus lane hook removed and audit hook removed | every one red (1 to 15 tests each), restored, 20 pass |
+| `npm run pulse:catalog` then `node scripts/pulse/compile-catalog.mjs --check` | exit 0, `3975 mapped, 33 marked repeats, 3942 unique; 3919 wired, 23 red` |
+| `node --test src/pulse/coverage/*.test.mjs src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/fin-b06-display-contracts.test.mjs` | 2391 tests, 2191 pass, 0 fail, 200 skipped (pg tests, no database here) |
+| `node --test src/pulse/*.test.mjs src/pulse/beats/*.test.mjs scripts/pulse/*.test.mjs` | 1113 tests, 1097 pass, 0 fail, 16 skipped |
+| `node --test src/pulse/na-conditions.test.mjs` | 36 pass |
+| `node --test src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs` (re-run) | 4 pass |
+| `node --test --test-name-pattern="every display proof case names\|unmapped display rows" display-proof-cases.test.mjs` | 2 pass |
+| every other `src/pulse/catalog/proofs/*.test.mjs` in one run | NOT finished. It spawned playwright e2e specs and ran for over 15 minutes on a busy Mac; stopped. 13 results before the stop, 0 failed. Nothing in it touches this change |
+
+What was not run: `npm run pulse:prove` (it builds the bundle and reads the live database; there is no database
+here and the brief says never to run against production). The new read adds up to 9 GETs (4 s each, in parallel
+after the first) to the display lane, plus the audit asks once more. If the lane step gets slow, this is the first
+thing to look at.
