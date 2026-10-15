@@ -33,3 +33,16 @@ ideas, not decisions.** His words: "there's no need for more offers. But these a
   the same thing.
 
 Related: the competitor's data-points upsell is $2,000 a month (owner-corrected 2026-10-13).
+
+## Later the same night (23:17): the data points offer
+
+Chris, thinking out loud. Ideas only, not decided.
+
+- **Monthly data points, updated every month.** His worry: selling the full, always-updated data
+  gives away Fundhub's edge, and at that point Fundhub is selling a service to funding companies.
+- **Per-file data points for $1,000.** The client runs their credit, and Fundhub tells them exactly
+  which banks to apply to for that file. "Boom, that's it."
+- **It needs serious credibility** or it will be hard to sell.
+- **Bump sell after the Blueprint:** once a client has paid for the Blueprint, offer two choices at
+  the funding point: $1,000 for the data points to apply on their own, or a $3,000 deposit to fund
+  with Fundhub.
