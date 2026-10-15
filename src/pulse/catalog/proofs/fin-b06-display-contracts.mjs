@@ -124,11 +124,6 @@ check(
   })
 );
 
-gap(
-  "Capital Blueprint: Bank list state buttons",
-  "The state is one of open, done or skipped, which the database already refuses to break, and the click saves no receipt of who moved it or when. No saved row can tell a right click from a wrong one."
-);
-
 // ───────────────────────── Declines (client-control-panel.html) ─────────────────────────
 
 check(
@@ -332,15 +327,6 @@ check(
       distinct(trimmed(c("k", "consent_text")), c("w", "words"))
     )
   })
-);
-
-gap(
-  "Sign to authorize dispute letters: signature pad (draw)",
-  "The page checks that ink was drawn, then sends only the typed name and the word signature. The drawing is never sent or saved, so no saved row can show whether the pad was drawn on."
-);
-gap(
-  "Sign to authorize dispute letters: legal name input",
-  "The typed name is saved as granted_name, and the database already refuses a signature with no name. It is saved nowhere else and compared with nothing, so no saved row can show a wrong name."
 );
 
 // ───────────────────────── Authorized representative ─────────────────────────
@@ -599,11 +585,6 @@ check(
   })
 );
 
-gap(
-  "Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)",
-  "The switch saves one true or false in entitlement_catalog.active with no receipt of what was submitted. Both values are valid, so no saved row can tell a right flip from a wrong one."
-);
-
 check(
   "content-save-changes",
   "Save changes button (saves tiles and the tier-to-video map)",
@@ -662,7 +643,7 @@ check(
 
 gap(
   "See how many banks in our book fit your state: scrolls to the form (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)",
-  "The button only moves the page down to the form. It sends no request and saves no row, and the page is a compiled bundle with no source contract, so no saved row can show the scroll happened."
+  "The shipped page public/climate/index.html is a lending-climate dashboard with no such button, and no page in public/ calls the climate match door. The control is not on any page that ships, and a scroll saves no row, so there is nothing to click and nothing saved to read."
 );
 
 check(

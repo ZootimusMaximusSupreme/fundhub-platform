@@ -16,6 +16,8 @@ import { FIN_B06_CHECKS, FIN_B06_GAPS, FIN_B06_DISPLAY_CONTRACTS } from "./fin-b
 import { judgeCheck } from "./fin-b06-sql-kit.mjs";
 import { loadSchema, schemaProblems } from "./fin-b06-schema.mjs";
 import { displaySavedResultContract } from "./display-saved-result.mjs";
+import { FIN_B06_DISPLAY_PROOF_CASES } from "./fin-b06-display-practice.mjs";
+import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
 import { disclosureFor } from "../../../consent/disclosures.mjs";
 import { DISPLAY_RESULT_CASES, DISPLAY_TRACKING_CASES, gapChecks, judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 
@@ -813,7 +815,7 @@ test("a wrong column in a check would be caught before it ships", () => {
 });
 
 test("the not-attachable controls say exactly what is missing and stay not proved", () => {
-  assert.equal(FIN_B06_GAPS.length, 5);
+  assert.equal(FIN_B06_GAPS.length, 1);
   for (const entry of FIN_B06_GAPS) {
     assert.equal(entry.mode, "always-red");
     assert.equal(entry.sql, null);
@@ -837,7 +839,7 @@ function mapRows() {
 
 test("each control text matches exactly one screen row, and the registry hands back its contract", () => {
   const rows = mapRows();
-  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 40);
+  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 36);
   for (const entry of FIN_B06_DISPLAY_CONTRACTS) {
     const hits = rows.filter((row) => row.control === entry.control);
     assert.equal(hits.length, 1, `${entry.control.slice(0, 60)}: matched ${hits.length} rows`);
@@ -871,5 +873,19 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
     }
     const key = bySql(entry.contract.sql);
     assert.equal(row.status, redKeys.has(key) ? "FAIL" : "PASS", `${key}: ${row.detail}`);
+  }
+});
+
+test("the four practice-tested controls are direct proofs: not in the live lane, and no contract claims them twice", () => {
+  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 4);
+  const rows = mapRows();
+  for (const entry of FIN_B06_DISPLAY_PROOF_CASES) {
+    const hits = rows.filter((row) => row.sourceFile === entry.sourceFile && row.surface === entry.surface && row.control === entry.control);
+    assert.equal(hits.length, 1, entry.control);
+    assert.equal(displaySavedResultContract(hits[0]), null, `${entry.control}: also has a saved-result contract`);
+    assert.equal(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), false, `${entry.control}: still judged by the live lane`);
+    const kept = DISPLAY_PROOF_CASES.find((item) => item.control === entry.control && item.surface === entry.surface);
+    assert.equal(kept.evidence, "src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs");
+    assert.equal(kept.depth, "deep");
   }
 });

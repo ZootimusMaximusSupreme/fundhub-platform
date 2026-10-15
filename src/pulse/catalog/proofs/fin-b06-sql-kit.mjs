@@ -69,7 +69,7 @@ export function jsonGet(expr, key) {
 
 /** A hand-written expression with its stand-in judge, for the few things the builder has no word for. */
 export function custom(sqlText, evFn) {
-  return { sql: sqlText, ev: evFn };
+  return { sql: `(${sqlText})`, ev: evFn };
 }
 
 /** jsonb_typeof(expr) */
@@ -103,7 +103,7 @@ export function numberFrom(expr) {
 /** 'sha256:' + hex sha256 of the UTF-8 words, the way src/contracts/send.mjs bodyHash writes it. */
 export function bodyHash(expr, sha256Hex) {
   return {
-    sql: `'sha256:' || encode(sha256(convert_to(COALESCE(${expr.sql}, ''), 'UTF8')), 'hex')`,
+    sql: `('sha256:' || encode(sha256(convert_to(COALESCE(${expr.sql}, ''), 'UTF8')), 'hex'))`,
     ev: (ctx, db) => `sha256:${sha256Hex(String(text(expr.ev(ctx, db)) ?? ""))}`
   };
 }
