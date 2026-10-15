@@ -1,11 +1,14 @@
 // Instant pulse — text Chris when a critical door breaks between morning checks.
 // Audit only on the read side; the text is the alert. Never auto-fixes product code.
+// The alert goes out through textMorningBrief (./notify.mjs), so it carries the email copy
+// (PULSE_EMAIL_TO) the same way every other pulse alert does. Twilio dead must not mean silence.
 
 import { checkHealth, checkLogin, checkApplyDoor, defaultOrgId } from "./daily-pulse.mjs";
 import { checkFunnelRoadmapSales, DEFAULT_FUNNEL_BASE_URL } from "./funnel-doors.mjs";
 import { readPipelineMotionCounts } from "./pipeline-motion.mjs";
-import { normalizeUsNumber } from "./notify.mjs";
+import { chrisPulseSmsTo, textMorningBrief } from "./notify.mjs";
 import { send as sendSms } from "../messaging/providers/twilio.mjs";
+import { send as sendEmail } from "../messaging/providers/resend.mjs";
 import { inTextWindow, HELD } from "./quiet-hours.mjs";
 
 export const INSTANT_AGENT_CODE = "pulse-instant";
@@ -86,7 +89,8 @@ export async function recordInstantAlert(db, { orgId, fingerprint, detail, sent 
 }
 
 /**
- * runInstantWatch — critical uptime + outbound stuck. Returns failures and SMS result.
+ * runInstantWatch — critical uptime + outbound stuck. Returns failures and the alert result.
+ * The result key stays `sms` (callers read it). `sms.sent` is true when the text OR the email copy went out.
  */
 export async function runInstantWatch({
   db,
@@ -95,6 +99,7 @@ export async function runInstantWatch({
   baseUrl,
   now = new Date(),
   sendImpl = sendSms,
+  emailImpl = sendEmail,
   cooldownMs = INSTANT_COOLDOWN_MS
 } = {}) {
   const origin = String(baseUrl || process.env.URL || "https://fundhub.ai").replace(/\/+$/, "");
@@ -171,16 +176,40 @@ export async function runInstantWatch({
   if (inCooldown) {
     return { ok: true, failures, sms: { sent: false, reason: "cooldown" } };
   }
-  const to = normalizeUsNumber(String(env.PULSE_SMS_TO || env.CHRIS_PULSE_SMS || "").trim());
+  const to = chrisPulseSmsTo(env);
   const body = formatInstantSms(failures);
+  /* ONE ROAD OUT: textMorningBrief. It sends the text to PULSE_SMS_TO and, in the same breath, the email copy
+     to PULSE_EMAIL_TO (the Twilio account is inactive, so the email is the copy that actually arrives). It
+     holds outside texting hours, counts the alert as delivered when either one went out, and never throws.
+     dryRun is false ON PURPOSE: that function defaults to true. The cooldown above is unchanged. */
   let sms = { sent: false, reason: "no_dest", body, to: null };
-  if (to) {
-    try {
-      const res = await sendImpl({ id: `pulse-instant-${now.getTime()}`, to, body, channel: "sms" }, { env, fetchImpl });
-      sms = { sent: res?.ok === true || res?.status === "sent", reason: res?.error || res?.status || "sent", body, to: to.slice(-4) };
-    } catch (err) {
-      sms = { sent: false, reason: String((err && err.message) || err).slice(0, 160), body, to: to.slice(-4) };
-    }
+  try {
+    const brief = await textMorningBrief({
+      body,
+      env,
+      dryRun: false,
+      now,
+      sendImpl: async (message, options) => {
+        try {
+          return await sendImpl({ id: `pulse-instant-${now.getTime()}`, ...message }, { ...options, fetchImpl });
+        } catch (err) {
+          // A throwing text sender must not hide the email copy that is sent beside it.
+          return { status: "failed", error: String((err && err.message) || err).slice(0, 160) };
+        }
+      },
+      emailImpl: (message, options) => emailImpl(message, { ...options, fetchImpl })
+    });
+    const delivered = brief.delivery_status === "sent";
+    sms = {
+      sent: delivered,
+      reason: delivered ? "sent" : brief.delivery_status === "no_number" ? "no_dest" : brief.error || brief.delivery_status,
+      body,
+      to: to ? to.slice(-4) : null,
+      text_status: brief.text_status ?? null,
+      email_status: brief.email_status ?? null
+    };
+  } catch (err) {
+    sms = { sent: false, reason: String((err && err.message) || err).slice(0, 160), body, to: to ? to.slice(-4) : null };
   }
   if (db && orgId) {
     try {

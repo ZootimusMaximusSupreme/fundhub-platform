@@ -185,3 +185,141 @@ test("texting hours: 9:59:59 p.m. texts, 10:00:00 p.m. is held, 5:59:59 a.m. is 
     assert.equal(sent.length, want ? 1 : 0, iso);
   }
 });
+
+/* THE EMAIL COPY (owner-set 2026-10-14: "we can just do emails for now"). The Twilio account is inactive, so the
+   5-minute watch used to send its alert through a dead road and nobody was told (launch pass 2026-10-14, R06 /
+   HB-01). It now goes through textMorningBrief, which sends the same body to PULSE_EMAIL_TO. These tests go red
+   if the email copy is missing, if the cooldown or texting hours stop holding it, or if a dead text hides it. */
+const OWNER_EMAIL = "owner-alerts@fundhub.ai";
+const DAY_ISO = "2026-10-10T19:00:00Z"; // noon Arizona: inside texting hours
+const deadTwilio = async () => ({ ok: false, status: "failed", error: "Twilio account is inactive" });
+
+function emailRecorder(result = { status: "sent" }) {
+  const emails = [];
+  return { emails, emailImpl: async (message) => { emails.push(message); return result; } };
+}
+
+test("email copy: a door down with Twilio dead still emails the owner the same alert body", async () => {
+  const db = watchDb();
+  const { emails, emailImpl } = emailRecorder();
+  const result = await runInstantWatch({
+    db,
+    now: new Date(DAY_ISO),
+    env: { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch,
+    sendImpl: deadTwilio,
+    emailImpl
+  });
+  assert.equal(result.failures.length > 0, true);
+  assert.equal(emails.length, 1, "one email copy went out");
+  assert.equal(emails[0].to, OWNER_EMAIL);
+  assert.equal(emails[0].channel, "email");
+  assert.match(emails[0].subject, /^Fundhub pulse: /);
+  assert.equal(emails[0].body, result.sms.body, "the email carries the same alert body as the text");
+  assert.match(emails[0].body, /health:/);
+  assert.equal(result.sms.sent, true, "delivered: the email went out even though the text did not");
+  assert.equal(result.sms.text_status, "failed");
+  assert.equal(result.sms.email_status, "sent");
+  assert.equal(db.rows.length, 1);
+  assert.equal(db.rows[0].outcome, "pass", "the alert row says delivered, so the cooldown holds");
+});
+
+test("email copy: with no phone set at all the email still goes out", async () => {
+  const { emails, emailImpl } = emailRecorder();
+  let texted = 0;
+  const result = await runInstantWatch({
+    db: null,
+    now: new Date(DAY_ISO),
+    env: { PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch,
+    sendImpl: async () => { texted += 1; return { ok: true, status: "sent" }; },
+    emailImpl
+  });
+  assert.equal(texted, 0, "no phone number, so no text attempt");
+  assert.equal(emails.length, 1);
+  assert.equal(result.sms.sent, true);
+  assert.equal(result.sms.to, null);
+});
+
+test("email copy: a sent text still sends the email copy too, and an email failure does not hide a sent text", async () => {
+  const both = emailRecorder();
+  const a = await runInstantWatch({
+    db: null, now: new Date(DAY_ISO), env: { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch, sendImpl: async () => ({ ok: true, status: "sent" }), emailImpl: both.emailImpl
+  });
+  assert.equal(both.emails.length, 1);
+  assert.equal(a.sms.sent, true);
+  assert.equal(a.sms.text_status, "sent");
+
+  const emailDown = emailRecorder({ status: "failed", error: "resend 403" });
+  const b = await runInstantWatch({
+    db: null, now: new Date(DAY_ISO), env: { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch, sendImpl: async () => ({ ok: true, status: "sent" }), emailImpl: emailDown.emailImpl
+  });
+  assert.equal(b.sms.sent, true, "the text went, so the alert is delivered");
+  assert.equal(b.sms.email_status, "failed");
+});
+
+test("email copy: text and email both failing is a failed alert that names both errors", async () => {
+  const db = watchDb();
+  const { emailImpl } = emailRecorder({ status: "failed", error: "resend 403" });
+  const result = await runInstantWatch({
+    db, now: new Date(DAY_ISO), env: { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch, sendImpl: deadTwilio, emailImpl
+  });
+  assert.equal(result.sms.sent, false);
+  assert.match(result.sms.reason, /Twilio account is inactive/);
+  assert.match(result.sms.reason, /email: resend 403/);
+  assert.equal(db.rows[0].outcome, "fail");
+});
+
+test("email copy: a text sender that throws does not hide the email copy", async () => {
+  const { emails, emailImpl } = emailRecorder();
+  const result = await runInstantWatch({
+    db: null, now: new Date(DAY_ISO), env: { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL },
+    fetchImpl: downFetch, sendImpl: async () => { throw new Error("socket hang up"); }, emailImpl
+  });
+  assert.equal(emails.length, 1);
+  assert.equal(result.sms.sent, true);
+});
+
+test("email copy: no phone and no email address is still reported as no_dest, and nothing is sent", async () => {
+  const { emails, emailImpl } = emailRecorder();
+  let texted = 0;
+  const result = await runInstantWatch({
+    db: null, now: new Date(DAY_ISO), env: {}, fetchImpl: downFetch,
+    sendImpl: async () => { texted += 1; return { ok: true, status: "sent" }; }, emailImpl
+  });
+  assert.equal(result.sms.sent, false);
+  assert.equal(result.sms.reason, "no_dest");
+  assert.equal(texted, 0);
+  assert.equal(emails.length, 0);
+});
+
+test("email copy: the cooldown holds, so a door that stays down emails once an hour, not every 5 minutes", async () => {
+  const db = watchDb();
+  const { emails, emailImpl } = emailRecorder();
+  const env = { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL };
+  const run = (iso) => runInstantWatch({ db, now: new Date(iso), env, fetchImpl: downFetch, sendImpl: deadTwilio, emailImpl });
+  const first = await run("2026-10-10T19:00:00Z");
+  assert.equal(first.sms.sent, true);
+  assert.equal(emails.length, 1);
+  const second = await run("2026-10-10T19:05:00Z");
+  assert.equal(second.sms.sent, false);
+  assert.equal(second.sms.reason, "cooldown");
+  assert.equal(emails.length, 1, "no second email inside the cooldown");
+});
+
+test("email copy: texting hours hold the email too. Nothing at 2:07 a.m., no alert row, and 6:00 a.m. emails at once", async () => {
+  const db = watchDb();
+  const { emails, emailImpl } = emailRecorder();
+  const env = { PULSE_SMS_TO: "+16025551234", PULSE_EMAIL_TO: OWNER_EMAIL };
+  const night = await runInstantWatch({ db, now: new Date("2026-10-10T09:07:00Z"), env, fetchImpl: downFetch, sendImpl: deadTwilio, emailImpl });
+  assert.equal(night.sms.sent, false);
+  assert.equal(night.sms.reason, "held_quiet_hours");
+  assert.equal(emails.length, 0, "no email at night");
+  assert.equal(db.rows.length, 0, "no alert row at night");
+  const six = await runInstantWatch({ db, now: new Date("2026-10-10T13:00:00Z"), env, fetchImpl: downFetch, sendImpl: deadTwilio, emailImpl });
+  assert.equal(six.sms.sent, true);
+  assert.equal(emails.length, 1);
+});
