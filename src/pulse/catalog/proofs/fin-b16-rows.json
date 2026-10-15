@@ -1,1 +1,32 @@
-{}
+{
+ "fin-b16-money-pages.test.mjs": [
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "money-accounts.html",
+   "controls": [
+    "'Try again' button on a load error",
+    "Head buttons: 'Add account' and 'Add a business' (open and focus their forms)",
+    "Header link 'Back to my portal' (staff with ?client_id= get 'Back to Finance OS')",
+    "Money nav: Money, Accounts, Credit, Connections, Payments, Setup (carry ?client_id= for staff)"
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "money-alerts.html",
+   "controls": [
+    "'Show all N' / fewer texts list per protection",
+    "'Try again' button on a load error",
+    "Header link 'Back to my portal' and Money nav (adds an Alerts tab)",
+    "Jump links to Accounts and Setup ('Add the close day', 'Connect a bank')"
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "money-banks.html",
+   "controls": [
+    "'Try again' button on a load error",
+    "Header link 'Back to my portal' and Money nav (8 links incl. Plan and Banks)"
+   ]
+  }
+ ]
+}

@@ -31,18 +31,19 @@ export function proofRows(testFile) {
   if (!groups) throw new Error(`fin-b16-rows.json has no rows for ${name}`);
   const controls = groups.flatMap((group) => group.controls.map((control) => ({ ...group, control })));
   const claimed = new Set();
-  const find = (matcher) => {
-    const hits = controls.filter((row) => (matcher instanceof RegExp ? matcher.test(row.control) : row.control === matcher));
-    if (hits.length !== 1) throw new Error(`expected one listed row for ${matcher}, found ${hits.length}`);
+  const find = (matcher, surface = null) => {
+    const hits = controls.filter((row) => (!surface || row.surface === surface)
+      && (matcher instanceof RegExp ? matcher.test(row.control) : row.control === matcher));
+    if (hits.length !== 1) throw new Error(`expected one listed row for ${matcher} on ${surface || "any surface"}, found ${hits.length}`);
     return hits[0];
   };
   return {
     rows: controls,
-    async check(matcher, run) {
+    async check(matcher, run, surface = null) {
       if (typeof run !== "function" || isEmptyCallback(run)) {
         throw new Error("proof.check needs the row's own assertions in its callback, not an empty one");
       }
-      const row = find(matcher);
+      const row = find(matcher, surface);
       await run(row.control);
       claimed.add(`${row.surface}\0${row.control}`);
     },
