@@ -7,6 +7,9 @@
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
 //   npm run pulse:prove -- --beats      the HOURLY pulse: build netlify/functions/pulse-hourly.mjs the way Netlify does,
 //                                       unzip it, run the beats from inside it (see proveBeats() at the bottom)
+//   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every database round trip
+//   npm run pulse:prove -- --beats --slow-apply-links=10500 --read-delay=120
+//                                                      hold one worker for 10.5 s while the other 14 beats still run
 //   npm run pulse:prove -- --beats --fixture       also run one built-in fixture beat (green) through the runner
 //   npm run pulse:prove -- --beats --fixture=red   the same fixture, forced red: proves the text path with a fake sink
 //
@@ -16,8 +19,8 @@
 //   3. Checks that read repo files at run time passed on a laptop and went red on the server.
 // This script catches all three, because it runs the bundle the server runs.
 //
-// SAFE. Two Postgres connections as DATABASE_URL's role (the app role the pulse uses), each inside
-// BEGIN READ ONLY with every query in its own SAVEPOINT; both ROLLBACK. Any write is refused and
+// SAFE. One proof connection plus the runner's three beat connections use DATABASE_URL's role (the app role the
+// pulse uses), each inside BEGIN READ ONLY with every query in its own SAVEPOINT; all ROLLBACK. Any write is refused and
 // counted. Any BEGIN/COMMIT/SET sent to ctx.db is refused and counted (ctx.db is a shared pool in
 // production). fetch allows GET and HEAD only, so no model call can be billed. Any module that opens its own pool gets a dead
 // address. No text, no email, no AI call, no Plaid, no credit pull.
@@ -339,6 +342,19 @@ function guardedFetch() {
 async function proveBeats() {
   const BEAT_RUN_LIMIT_MS = 22000;
   const COLD_LIMIT_MS = 8000;
+  const readDelayArg = args.find((a) => a.startsWith("--read-delay="));
+  const READ_DELAY_MS = readDelayArg ? Number(readDelayArg.split("=")[1]) : 0;
+  if (!Number.isInteger(READ_DELAY_MS) || READ_DELAY_MS < 0 || READ_DELAY_MS > 1000) fail("--read-delay must be a whole number from 0 to 1000 ms");
+  const slowApplyArg = args.find((a) => a.startsWith("--slow-apply-links="));
+  const SLOW_APPLY_LINKS_MS = slowApplyArg ? Number(slowApplyArg.split("=")[1]) : 0;
+  if (!Number.isInteger(SLOW_APPLY_LINKS_MS) || SLOW_APPLY_LINKS_MS < 0 || SLOW_APPLY_LINKS_MS > 11_000) {
+    fail("--slow-apply-links must be a whole number from 0 to 11000 ms");
+  }
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const queryRoundTrip = async (client, ...queryArgs) => {
+    if (READ_DELAY_MS) await wait(READ_DELAY_MS);
+    return client.query(...queryArgs);
+  };
   const fixtureArg = args.find((a) => a === "--fixture" || a.startsWith("--fixture="));
   /* green (default) | red | and three NEGATIVE CONTROLS that must make the proof exit 1, so it is known to have teeth:
        hang    a step that never returns            -> "hit its own deadline"
@@ -346,6 +362,8 @@ async function proveBeats() {
        send    a POST made outside the sinks        -> "tried to send outside the declared sinks" */
   const FIXTURE = fixtureArg ? (fixtureArg.includes("=") ? fixtureArg.split("=")[1] : "green") : null;
   if (FIXTURE && !["green", "red", "hang", "refuse", "send"].includes(FIXTURE)) fail(`unknown fixture "${FIXTURE}"`);
+  if (FIXTURE && SLOW_APPLY_LINKS_MS) fail("--fixture and --slow-apply-links cannot be used together");
+  const DELAYED_DEADLINE_MODE = READ_DELAY_MS > 0 && !FIXTURE;
   const problems = [];
   const crashes = [];
 
@@ -385,7 +403,7 @@ async function proveBeats() {
       proofEntryFile = path.join(REPO, "scripts/pulse", `.prove-entry-${process.pid}.mjs`);
       const rel = (r) => JSON.stringify(`../../${r}`);
       fs.writeFileSync(proofEntryFile, [
-        `export { runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS } from ${rel("src/pulse/runner.mjs")};`,
+        `export { runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS, READ_BOX_COUNT } from ${rel("src/pulse/runner.mjs")};`,
         `export { recordingSinks } from ${rel("src/pulse/alerts.mjs")};`,
         `export { BEAT_FILES, loadBeats } from ${rel("src/pulse/beats/index.mjs")};`,
         ""
@@ -400,19 +418,19 @@ async function proveBeats() {
     }
   }
   const t0 = Date.now();
-  let BEAT_FILES, loadBeats, runPulse, recordingSinks, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, entryModule;
+  let BEAT_FILES, loadBeats, runPulse, recordingSinks, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, READ_BOX_COUNT = 3, entryModule;
   const fnRel = "netlify/functions/pulse-hourly.mjs";
   try {
     if (!fs.existsSync(path.join(rootFn, fnRel))) problems.push("the function bundle does not hold netlify/functions/pulse-hourly.mjs");
     else entryModule = await import(href(rootFn, fnRel));
     if (FROM_REPO) {
       ({ BEAT_FILES, loadBeats } = await import(href(REPO, "src/pulse/beats/index.mjs")));
-      ({ runPulse, RUN_BUDGET_MS } = await import(href(REPO, "src/pulse/runner.mjs")));
+      ({ runPulse, RUN_BUDGET_MS, READ_BOX_COUNT } = await import(href(REPO, "src/pulse/runner.mjs")));
       ({ recordingSinks } = await import(href(REPO, "src/pulse/alerts.mjs")));
     } else {
       const entryOut = fs.readdirSync(rootProof, { recursive: true }).map(String).find((f) => /(^|\/)\.prove-entry-\d+\.m?js$/.test(f));
       if (!entryOut) throw new Error(`the proof bundle holds no proof entry (it holds: ${fs.readdirSync(rootProof).slice(0, 8).join(", ")})`);
-      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, recordingSinks } = await import(href(rootProof, entryOut)));
+      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, READ_BOX_COUNT, recordingSinks } = await import(href(rootProof, entryOut)));
     }
   } catch (err) {
     console.log(`  the bundle could not be loaded: ${clip(err && err.stack ? err.stack.split("\n").slice(0, 3).join(" | ") : err, 400)}`);
@@ -456,6 +474,13 @@ async function proveBeats() {
   console.log(`  ${FROM_REPO ? "from this checkout" : `function bundle: ${rootFn}\n  proof bundle: ${rootProof}`}`);
   if (unlisted.length) console.log(`  ${unlisted.length} beat file(s) are on disk but not on the list, so they are not run here: ${unlisted.join(", ")}`);
   if (FIXTURE) console.log(`  fixture: ${FIXTURE}${["hang", "refuse", "send"].includes(FIXTURE) ? " (a negative control: this run MUST fail)" : ""}`);
+  if (SLOW_APPLY_LINKS_MS) console.log(`  capacity fixture: apply-links holds one worker for ${SLOW_APPLY_LINKS_MS} ms; the full beat list still runs`);
+  if (READ_DELAY_MS) {
+    const timingRule = DELAYED_DEADLINE_MODE
+      ? "; real beats are judged against their full unchanged deadlines in this artificial-delay run"
+      : "; the built-in fixture keeps the normal under-half-deadline rule";
+    console.log(`  artificial delay: ${READ_DELAY_MS} ms before every database round trip${timingRule}`);
+  }
   console.log(`  cold load: ${coldMs} ms; listed beats: ${listed.length}${listed.length ? ` (${listed.join(", ")})` : " (the list is EMPTY)"}; loaded from the bundle: ${loadedBeats.length}`);
 
   // 2. Guards: GET and HEAD only.
@@ -480,8 +505,8 @@ async function proveBeats() {
   });
   client.on("error", () => {});
   await client.connect();
-  await client.query("BEGIN READ ONLY");
-  await client.query("SET LOCAL statement_timeout = '8s'");
+  await queryRoundTrip(client, "BEGIN READ ONLY");
+  await queryRoundTrip(client, "SET LOCAL statement_timeout = '8s'");
   let n = 0;
   let chain = Promise.resolve();
   const rdbLog = [];
@@ -501,7 +526,7 @@ async function proveBeats() {
         plainSettings.on("error", () => {});
         await plainSettings.connect();
       }
-      return plainSettings.query(sql);
+      return queryRoundTrip(plainSettings, sql);
     },
     query(sql, params) {
       const text = String(typeof sql === "string" ? sql : (sql && sql.text) || "");
@@ -512,14 +537,14 @@ async function proveBeats() {
       }
       const p = chain.then(async () => {
         const sp = `pb_${++n}`;
-        await client.query(`SAVEPOINT ${sp}`);
+        await queryRoundTrip(client, `SAVEPOINT ${sp}`);
         try {
-          const r = await client.query(sql, params);
-          await client.query(`RELEASE SAVEPOINT ${sp}`);
+          const r = await queryRoundTrip(client, sql, params);
+          await queryRoundTrip(client, `RELEASE SAVEPOINT ${sp}`);
           rdbLog.push({ sql: clip(text, 60), rows: r.rowCount });
           return r;
         } catch (err) {
-          try { await client.query(`ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* keep the real error */ }
+          try { await queryRoundTrip(client, `ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* keep the real error */ }
           rdbLog.push({ sql: clip(text, 60), error: clip(err && err.message, 120) });
           throw err;
         }
@@ -539,7 +564,13 @@ async function proveBeats() {
     statement_timeout: 15000
   });
   boxPool.on("error", () => {});
-  const connect = () => boxPool.connect();
+  const connect = async () => {
+    const client = await boxPool.connect();
+    return {
+      query: (...queryArgs) => queryRoundTrip(client, ...queryArgs),
+      release: (destroy) => client.release(destroy)
+    };
+  };
 
   // 4. The beats: the bundle's own list, plus a built-in fixture when asked.
   const fixtureBeat = FIXTURE && {
@@ -559,6 +590,25 @@ async function proveBeats() {
       return ctx.done("fixture ok");
     }
   };
+  let proofBeats = fixtureBeat ? [fixtureBeat] : null;
+  if (SLOW_APPLY_LINKS_MS) {
+    const matches = loadedBeats.filter((beat) => beat.id === "apply-links");
+    if (matches.length !== 1) {
+      problems.push(`the slow apply-links capacity fixture found ${matches.length} apply-links beats, expected exactly 1`);
+    } else {
+      const sourceBeat = matches[0];
+      const [slowStep, ...skippedSteps] = sourceBeat.steps;
+      const slowApplyBeat = {
+        ...sourceBeat,
+        async run(ctx) {
+          await ctx.step(slowStep, () => wait(SLOW_APPLY_LINKS_MS));
+          for (const step of skippedSteps) ctx.skipStep(step, "capacity proof: this apply-links run is the 10.5 second worker fixture");
+          return ctx.done(`capacity proof held apply-links for ${SLOW_APPLY_LINKS_MS} ms`);
+        }
+      };
+      proofBeats = loadedBeats.map((beat) => beat.id === "apply-links" ? slowApplyBeat : beat);
+    }
+  }
   const sinks = recordingSinks();
   const env = { ...process.env, URL: process.env.URL || "https://fundhub.ai", ADAPTERS_DRY_RUN: "0" };
   delete env.AWS_LAMBDA_FUNCTION_NAME;
@@ -567,12 +617,12 @@ async function proveBeats() {
   let out;
   const t1 = Date.now();
   try {
-    out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(fixtureBeat ? { beats: [fixtureBeat] } : {}) });
+    out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(proofBeats ? { beats: proofBeats } : {}) });
   } catch (err) {
     crashes.push(`runPulse threw: ${clip(err && err.message)}`);
   }
   const runMs = Date.now() - t1;
-  try { await client.query("ROLLBACK"); } catch { /* closing */ }
+  try { await queryRoundTrip(client, "ROLLBACK"); } catch { /* closing */ }
   try { await client.end(); } catch { /* closing */ }
   if (plainSettings) { try { await plainSettings.end(); } catch { /* closing */ } }
   const poolBefore = { total: boxPool.totalCount, idle: boxPool.idleCount, waiting: boxPool.waitingCount };
@@ -588,21 +638,50 @@ async function proveBeats() {
     }
     if (out.alerts?.body) console.log(`  the text the pulse WOULD send (fake sink, nothing sent): ${out.alerts.body}`);
     if (out.box) console.log(`  box pool after the run: ${poolBefore.total} open, ${poolBefore.idle} idle, ${poolBefore.waiting} waiting`);
-    if (out.box) console.log(`  read box: ${out.box.reads} reads, ${out.box.errors} errors, ${out.box.refused.length} refused, commitsSent ${out.box.commitsSent}, readOnlyAtClose ${out.box.readOnlyAtClose}, rolledBack ${out.box.rolledBack}, destroyed ${out.box.destroyed}`);
+    if (out.box) console.log(`  read boxes: ${out.box.count}, ${out.box.reads} reads, ${out.box.errors} errors, ${out.box.refused.length} refused, commitsSent ${out.box.commitsSent}, readOnlyAtClose ${out.box.readOnlyAtClose}, rolledBack ${out.box.rolledBack}, destroyed ${out.box.destroyed}`);
     if (out.error && !/^records:/.test(out.error)) problems.push(`the run reported: ${clip(out.error, 200)}`);
     if (!out.dbUp && out.ran) problems.push("the runner could not read the database before the beats ran");
     if (runMs > RUN_BUDGET_MS) problems.push(`the run took ${(runMs / 1000).toFixed(1)} s (budget ${RUN_BUDGET_MS / 1000} s)`);
     if (out.timedOut) problems.push(`${out.timedOut} beat(s) were cut at the beats-phase budget`);
+    const judgedBeats = proofBeats || loadedBeats;
+    const deadlines = new Map(judgedBeats.map((beat) => [beat.id, beat.deadlineMs]));
     for (const r of out.results) {
       if (/^deadline \d+ ms passed/.test(String(r.detail))) problems.push(`beat ${r.beatId} hit its own deadline: ${clip(r.detail, 120)}`);
       if (r.step === "no-refusals" || /^refused sql/.test(String(r.detail))) problems.push(`beat ${r.beatId} was refused: ${clip(r.detail, 140)}`);
+      const deadlineMs = deadlines.get(r.beatId);
+      const injectedSlowApply = Boolean(SLOW_APPLY_LINKS_MS && r.beatId === "apply-links");
+      if (injectedSlowApply && r.ms !== null) {
+        if (r.ms < SLOW_APPLY_LINKS_MS) problems.push(`the apply-links capacity fixture finished in ${r.ms} ms, before its ${SLOW_APPLY_LINKS_MS} ms hold elapsed`);
+        if (deadlineMs && r.ms >= deadlineMs) problems.push(`the apply-links capacity fixture took ${r.ms} ms and reached its ${deadlineMs} ms deadline`);
+        if (!String(r.detail).includes(`held apply-links for ${SLOW_APPLY_LINKS_MS} ms`)) problems.push("the apply-links capacity fixture did not return its expected proof detail");
+      } else if (r.ms !== null && deadlineMs) {
+        const timingLimitMs = DELAYED_DEADLINE_MODE ? deadlineMs : deadlineMs / 2;
+        if (r.ms >= timingLimitMs) {
+          const timingRule = DELAYED_DEADLINE_MODE
+            ? `reached its unchanged ${deadlineMs} ms deadline in artificial-delay mode`
+            : `was not under half its ${deadlineMs} ms deadline`;
+          problems.push(`beat ${r.beatId} took ${r.ms} ms and ${timingRule}`);
+        }
+      }
     }
-    for (const x of out.box?.refused || []) if (x.kind === "sql") problems.push(`a read was refused as SQL: ${clip(x.what, 120)}`);
-    if (out.box && out.box.commitsSent !== 0) problems.push(`the read box saw ${out.box.commitsSent} COMMIT(s)`);
-    if (out.box && out.box.leaked) problems.push("the read box leaked out of READ ONLY");
-    if (out.box && out.box.began && !out.box.rolledBack) problems.push("the read box did not ROLLBACK");
+    if (SLOW_APPLY_LINKS_MS && out.ran !== loadedBeats.length) problems.push(`the slow apply-links capacity proof ran ${out.ran} beat(s), expected the full ${loadedBeats.length}`);
+    if (!out.box) problems.push("the runner returned no read-box report");
+    else {
+      const expectedBoxCount = Math.min(READ_BOX_COUNT, judgedBeats.length);
+      if (out.box.count !== expectedBoxCount || out.box.reports?.length !== expectedBoxCount) {
+        problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${expectedBoxCount}`);
+      }
+    }
+    for (const [lane, report] of (out.box?.reports || []).entries()) {
+      for (const x of report.refused || []) if (x.kind === "sql") problems.push(`read box ${lane + 1} refused SQL: ${clip(x.what, 120)}`);
+      if (!report.began || !report.readOnlyVerified) problems.push(`read box ${lane + 1} did not prove BEGIN READ ONLY`);
+      if (report.commitsSent !== 0) problems.push(`read box ${lane + 1} saw ${report.commitsSent} COMMIT(s)`);
+      if (report.leaked) problems.push(`read box ${lane + 1} leaked out of READ ONLY`);
+      if (report.began && !report.rolledBack) problems.push(`read box ${lane + 1} did not ROLLBACK`);
+      if (!report.destroyed) problems.push(`read box ${lane + 1} was not destroyed`);
+    }
     if (out.records?.written) problems.push("a non-live run wrote records");
-    if (poolBefore.total > 1) problems.push(`the run left ${poolBefore.total} connections open in the box pool (the box must destroy its one connection)`);
+    if (poolBefore.total > 0) problems.push(`the run left ${poolBefore.total} connection(s) open in the box pool (all three boxes must destroy theirs)`);
   }
   for (const s of sendLog) problems.push(`something tried to send outside the declared sinks: ${s}`);
   for (const c of crashes) problems.push(c);

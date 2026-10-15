@@ -1,7 +1,7 @@
 // The hourly pulse runner: fire every beat, decide, text Chris, then keep the record.
 //
 // Pulse v1 (ops/workflows/pulse-layer-2026-10-09-v1.md) cutting contract section 3.
-// READ ONLY TONIGHT. A beat reaches data through ONE read box for the whole run (BEGIN READ ONLY, then
+// READ ONLY TONIGHT. Beats reach data through three read boxes for the whole run (BEGIN READ ONLY, then
 // ROLLBACK; src/pulse/beats/readbox.mjs) and the web through GET and HEAD only (pulse-probe). Nothing a beat
 // can do saves a row, sends a message, calls a vendor with a write, or emits an event.
 //
@@ -11,8 +11,8 @@
 //
 // THE CLOCK (one deadline, counted from entry; critic issue 3):
 //
-//   0 s ---- prefetch (2 s cap) ---- box opens ---- beats (13 s cap) ---- close box ---- TEXT (6 s reserved) ---- records (2.5 s cap)
-//            org, open incidents,                    all beats at once                    cannot start later      best effort
+//   0 s ---- prefetch (2 s cap) ---- boxes open ---- beats (13 s cap) ---- close boxes --- TEXT (6 s reserved) ---- records (2.5 s cap)
+//            org, open incidents,                    three shared-queue workers            cannot start later      best effort
 //            last results, bank links                                                     than 16 s from entry
 //
 // The beats phase ends at the earlier of entry + 13 s and entry + 22 s - 6 s, so the text always has its 6 s.
@@ -57,6 +57,7 @@ export const RECORDS_MS = 2_500;
 export const PREFETCH_MS = 2_000;
 export const BOX_OPEN_MS = 2_500;
 export const BOX_CLOSE_MS = 2_500;
+export const READ_BOX_COUNT = 3;
 /** The text never gets less than this, even when the earlier phases ran late. */
 export const MIN_TEXT_MS = 2_500;
 
@@ -133,14 +134,16 @@ function slim(r) {
  * @param {string[]} [o.only]    run just these beat ids
  * @param {object} [o.sinks]     { text, ntfy } (alerts.mjs). Ignored in live mode only when null.
  * @param {object} [o.rdb]       { query(sql, params) } for records and the pre-run reads. Default: the shared pool
- * @param {Function} [o.connect] () => pg client, for the one read box. Default: shared pool connect
+ * @param {Function} [o.connect] () => pg client, for each read box. Default: shared pool connect
  * @param {object} [o.probe]     { get, head }. Default: pulse-probe (GET and HEAD only)
  * @param {object} [o.budgets]   override the phase caps (tests)
  * @param {Function} [o.loadBeatsImpl]  replaces the literal-list loader (tests)
+ * @param {Function} [o.onWorkersStarted] test hook called after workers start; production leaves it unset
  */
 export async function runPulse({
   env = process.env, now = new Date(), beats, mode = "live", only = null, sinks = null,
-  rdb = sharedDb, connect = () => sharedPool().connect(), probe, budgets = {}, loadBeatsImpl = loadBeats
+  rdb = sharedDb, connect = () => sharedPool().connect(), probe, budgets = {}, loadBeatsImpl = loadBeats,
+  onWorkersStarted = null
 } = {}) {
   const t0 = Date.now();
   const runId = crypto.randomUUID();
@@ -221,82 +224,125 @@ export async function runPulse({
       if (links && links.ok && links.value?.ok) bankLinks = links.value.rows;
     }
 
-    // 4. ONE read box for the whole run. If it will not open, beats that read go red at their first read with "db:".
-    let box = null;
-    let boxProblem = null;
-    if (!dbUp) {
-      boxProblem = "the database is not answering";
-    } else {
-      const opening = openReadBox({ connect });
-      const o = await settle(opening, B.boxOpen);
-      if (o.ok) box = o.value;
-      else {
-        boxProblem = o.timedOut ? "the read box did not open in time" : say(o.error);
-        // If it opens late, close it at once so the connection is never left holding a slot.
-        opening.then((late) => late.close({ timedOut: true }), () => {});
-      }
-    }
-    const dbError = boxProblem ? `db: ${boxProblem}` : null;
-    const read = box ? (text, params) => box.read(text, params) : async () => { throw new Error(dbError || "db: no database"); };
-
-    const plain = (sql) => {
-      if (sql !== DB_SETTINGS_SQL) throw new Error("only the fixed settings query may run outside the read box");
-      return rdb.query(sql);
-    };
-    const theProbe = probe || makeProbe({ env });
-    const site = siteUrlOf(env);
-    const ctxEnv = { ...env, URL: site };
-
-    // 5. The beats phase. All at once, whole phase capped. Each beat has its own ctx and its own deadline.
-    // The phase is capped at 13 s from its own start, and never runs into the text's 6 s (entry + 22 s - 6 s).
-    const phaseMs = Math.max(1, Math.min(B.beats, t0 + B.run - B.alerts - Date.now()));
-    const entries = list.map((beat) => {
-      const e = { beat, ctx: null, result: null, promise: null };
-      try {
-        e.ctx = makeBeatCtx({
-          beat, runId, env: ctxEnv, now, siteUrl: site,
-          state: Array.isArray(beat.needs) && beat.needs.includes("bankLinks") ? { bankLinks } : null,
-          read, probe: theProbe, dbSettings: () => readDbSettings(plain)
-        });
-        e.promise = runBeat(beat, e.ctx, { deadlineMs: beat.deadlineMs }).then(
-          (r) => { e.result = r; return r; },
-          (err) => { e.result = failedResult(beat.id, "start", `harness error: ${say(err)}`); return e.result; }
-        );
-      } catch (err) {
-        e.result = failedResult(beat.id, "start", `could not start: ${say(err)}`);
-        e.promise = Promise.resolve(e.result);
-      }
-      return e;
-    });
-    const phaseTimer = cancellableWait(phaseMs);
-    await Promise.race([Promise.all(entries.map((e) => e.promise)), phaseTimer.promise]);
-    phaseTimer.cancel();
-
-    let cut = 0;
-    for (const e of entries) {
-      if (e.result) continue;
-      cut++;
-      const h = e.ctx?.[HARNESS];
-      let step = "deadline";
-      let steps = [];
-      try { step = h?.currentStep() || h?.lastStep() || "deadline"; steps = h ? h.steps() : []; h?.abort("run cut"); } catch { /* ignore */ }
-      e.result = {
-        beatId: e.beat.id, ok: false, step: String(step),
-        detail: cutDetail(B.beats),
-        ms: null, steps, skipped: [], notRun: [], evidence: null, box: null
-      };
-    }
-    const results = entries.map((e) => e.result);
-
-    // 6. Close the box (ROLLBACK, then destroy). Capped, so a stuck statement cannot eat the text's time.
+    // 4. Open no more than three read boxes, and never more boxes than beats. Each worker owns one box.
+    // If a box will not open, beats taken by that worker go red at their first read with "db:".
+    const workerCount = Math.min(READ_BOX_COUNT, list.length);
+    const boxes = Array(workerCount).fill(null);
+    const boxProblems = Array(workerCount).fill(null);
     let boxReport = null;
-    if (box) {
-      const closed = await settle(box.close({ timedOut: cut > 0 }), B.boxClose);
-      boxReport = closed.ok ? closed.value : { ...box.report(), closeTimedOut: true };
+    let cut = 0;
+    let results = [];
+    let entries = [];
+    let phaseClosed = false;
+    let phaseTimer = null;
+
+    // Once box opening starts, every box that did open is closed even if setup or the beat phase crashes.
+    try {
+      if (!dbUp) {
+        boxProblems.fill("the database is not answering");
+      } else {
+        const openings = Array.from({ length: workerCount }, () => openReadBox({ connect }));
+        const opened = await Promise.all(openings.map((opening) => settle(opening, B.boxOpen)));
+        for (let worker = 0; worker < workerCount; worker++) {
+          const o = opened[worker];
+          if (o.ok) boxes[worker] = o.value;
+          else {
+            boxProblems[worker] = o.timedOut ? "the read box did not open in time" : say(o.error);
+            // If it opens late, close it at once so the connection is never left holding a slot.
+            openings[worker].then((late) => late.close({ timedOut: true }), () => {});
+          }
+        }
+      }
+      const readForWorker = (worker) => boxes[worker]
+        ? (text, params) => boxes[worker].read(text, params)
+        : async () => { throw new Error(`db: ${boxProblems[worker] || "no database"}`); };
+
+      const plain = (sql) => {
+        if (sql !== DB_SETTINGS_SQL) throw new Error("only the fixed settings query may run outside the read box");
+        return rdb.query(sql);
+      };
+      const theProbe = probe || makeProbe({ env });
+      const site = siteUrlOf(env);
+      const ctxEnv = { ...env, URL: site };
+
+      // 5. Three workers pull from one shared queue. A slow beat occupies one worker, not a fixed lane of later
+      // beats. A beat is not created or passed to runBeat until a worker takes it, so its deadline starts then.
+      // The phase is capped at 13 s from its own start, and never runs into the text's 6 s.
+      const phaseMs = Math.max(1, Math.min(B.beats, t0 + B.run - B.alerts - Date.now()));
+      entries = list.map((beat) => ({ beat, ctx: null, result: null, promise: null }));
+      let nextEntry = 0;
+      const allBoxesFailed = boxProblems.every(Boolean);
+      const startEntry = async (e, worker) => {
+        if (phaseClosed) return e.result;
+        try {
+          e.ctx = makeBeatCtx({
+            beat: e.beat, runId, env: ctxEnv, now, siteUrl: site,
+            state: Array.isArray(e.beat.needs) && e.beat.needs.includes("bankLinks") ? { bankLinks } : null,
+            read: readForWorker(worker), probe: theProbe, dbSettings: () => readDbSettings(plain)
+          });
+          return await runBeat(e.beat, e.ctx, { deadlineMs: e.beat.deadlineMs }).then(
+            (r) => { e.result = r; return r; },
+            (err) => { e.result = failedResult(e.beat.id, "start", `harness error: ${say(err)}`); return e.result; }
+          );
+        } catch (err) {
+          e.result = failedResult(e.beat.id, "start", `could not start: ${say(err)}`);
+          return e.result;
+        }
+      };
+      const work = async (worker) => {
+        let jobsRun = 0;
+        while (!phaseClosed) {
+          // A worker without a box reports one honest beat-level database failure, then leaves the shared
+          // queue to healthy workers. When every box failed, all workers keep going so every beat is red.
+          if (jobsRun > 0 && boxProblems[worker] && !allBoxesFailed) return;
+          const index = nextEntry++;
+          if (index >= entries.length) return;
+          const e = entries[index];
+          jobsRun++;
+          e.promise = startEntry(e, worker);
+          await e.promise;
+        }
+      };
+      const workers = Array.from({ length: workerCount }, (_, worker) => work(worker));
+      if (onWorkersStarted) await onWorkersStarted();
+      phaseTimer = cancellableWait(phaseMs);
+      await Promise.race([Promise.all(workers), phaseTimer.promise]);
+      phaseClosed = true;
+      phaseTimer.cancel();
+
+      for (const e of entries) {
+        if (e.result) continue;
+        cut++;
+        const h = e.ctx?.[HARNESS];
+        let step = "deadline";
+        let steps = [];
+        try { step = h?.currentStep() || h?.lastStep() || "deadline"; steps = h ? h.steps() : []; h?.abort("run cut"); } catch { /* ignore */ }
+        e.result = {
+          beatId: e.beat.id, ok: false, step: String(step),
+          detail: cutDetail(B.beats),
+          ms: null, steps, skipped: [], notRun: [], evidence: null, box: null
+        };
+      }
+      results = entries.map((e) => e.result);
+    } finally {
+      phaseClosed = true;
+      phaseTimer?.cancel();
+      for (const e of entries) {
+        if (e.result) continue;
+        try { e.ctx?.[HARNESS]?.abort("runner cleanup"); } catch { /* ignore */ }
+      }
+      // 6. Close every opened box (ROLLBACK, then destroy). Capped in parallel so one stuck close cannot hold up another.
+      if (boxes.some(Boolean)) {
+        const reports = await Promise.all(boxes.filter(Boolean).map(async (box) => {
+          const closed = await settle(box.close({ timedOut: cut > 0 }), B.boxClose);
+          return closed.ok ? closed.value : { ...box.report(), closeTimedOut: true };
+        }));
+        boxReport = summarizeBoxReports(reports);
+      }
     }
 
     // 7. Decide, and SEND THE TEXT (before any record is written).
-    const plan = decide({ results, open, prev, beatsById, now, dbDown: !dbUp || Boolean(boxProblem) });
+    const plan = decide({ results, open, prev, beatsById, now, dbDown: !dbUp || boxProblems.every(Boolean) });
     const textBudget = Math.max(B.minText, Math.min(B.alerts, t0 + B.run - Date.now()));
     const sent = await act(plan, { env, sinks: theSinks, beatsById, capMs: textBudget, now });
 
@@ -372,6 +418,36 @@ export async function runPulse({
 /** What a beat that was still running at the cut is recorded as. */
 export function cutDetail(budgetMs) {
   return `cut at the ${budgetMs >= 1000 ? `${Math.round(budgetMs / 1000)} s` : `${budgetMs} ms`} beat budget`;
+}
+
+/** One backward-compatible report for the three independently closed read boxes. */
+function summarizeBoxReports(reports) {
+  const every = (key) => reports.length > 0 && reports.every((r) => Boolean(r?.[key]));
+  const sum = (key) => reports.reduce((n, r) => n + (Number(r?.[key]) || 0), 0);
+  const refused = reports.flatMap((r, lane) => (r?.refused || []).map((x) => ({ ...x, lane })));
+  const readOnlyAtClose = reports.every((r) => r?.readOnlyAtClose === true)
+    ? true
+    : reports.some((r) => r?.readOnlyAtClose === false) ? false : null;
+  return {
+    count: reports.length,
+    reports,
+    began: every("began"),
+    readOnlyVerified: every("readOnlyVerified"),
+    closed: every("closed"),
+    rolledBack: every("rolledBack"),
+    destroyed: every("destroyed"),
+    readOnlyAtClose,
+    leaked: reports.some((r) => Boolean(r?.leaked)),
+    hung: reports.some((r) => Boolean(r?.hung)),
+    broken: reports.some((r) => Boolean(r?.broken)),
+    timedOut: reports.some((r) => Boolean(r?.timedOut)),
+    closeTimedOut: reports.some((r) => Boolean(r?.closeTimedOut)),
+    commitsSent: sum("commitsSent"),
+    statements: sum("statements"),
+    reads: sum("reads"),
+    errors: sum("errors"),
+    refused
+  };
 }
 
 function failedResult(beatId, step, detail) {

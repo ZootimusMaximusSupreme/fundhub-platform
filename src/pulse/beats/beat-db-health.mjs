@@ -17,9 +17,9 @@
 // with a database in use (18 percent), of which only 5 belong to the app role.
 //
 // TWO THINGS TO KNOW ABOUT THE SPEED CHECK.
-//   1. ctx.read goes through the shared read box. Reads from every beat queue behind each other on
-//      ONE connection, so a read can be slow only because other beats were ahead of it. So a slow read
-//      is red only when the plain pooled queries (which do not queue) were slow or silent too.
+//   1. ctx.read goes through one of three shared read boxes. Reads inside that beat's lane queue behind
+//      each other, so a read can still be slow because an earlier statement in its lane was ahead of it.
+//      A slow read is red only when the plain pooled queries (which do not queue) were slow or silent too.
 //   2. The pooler hands each plain query to some server connection. One sample sees one connection.
 //      Three samples are taken at once, and any one that is read-only turns the beat red. A stuck
 //      pool can still hide for an hour; that is the limit of a sample.
