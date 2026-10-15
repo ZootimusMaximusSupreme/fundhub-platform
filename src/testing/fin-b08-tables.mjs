@@ -85,6 +85,56 @@ function evalExpr(expr, row, params) {
 }
 
 /**
+ * The statement's own closing ORDER BY and LIMIT, applied to the rows its WHERE kept. Only plain terms
+ * are understood (`[alias.]column [ASC|DESC] [NULLS FIRST|LAST]`); a statement that orders by an
+ * expression keeps the stored order and applies no LIMIT, so nothing is dropped on a guess.
+ * Without this a stand-in hands back rows in the order the test stored them, and a product that lost
+ * or turned its ORDER BY could never be told from one that kept it.
+ */
+export function orderAndLimit(rows, sql, params = []) {
+  const text = String(sql).replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ").trim().replace(/;\s*$/, "");
+  const tail = /\bORDER\s+BY\s+([^()]+?)(?:\s+LIMIT\s+(\$\d+|\d+))?(?:\s+OFFSET\s+(?:\$\d+|\d+))?\s*$/i.exec(text);
+  const limitOnly = tail ? null : /\bLIMIT\s+(\$\d+|\d+)\s*$/i.exec(text);
+  const out = rows.slice();
+  let simple = true;
+  if (tail) {
+    const terms = tail[1].split(",").map((t) => t.trim()).map((t) => {
+      const m = /^(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)(?:\s+(ASC|DESC))?(?:\s+NULLS\s+(FIRST|LAST))?$/i.exec(t);
+      return m ? { col: m[1], desc: /^desc$/i.test(m[2] || ""), nulls: m[3] ? m[3].toUpperCase() : null } : null;
+    });
+    if (terms.every(Boolean)) {
+      const compare = (x, y) => {
+        const xt = x instanceof Date ? x.getTime() : x;
+        const yt = y instanceof Date ? y.getTime() : y;
+        if (typeof xt === "number" && typeof yt === "number") return xt - yt;
+        if (typeof xt === "boolean" && typeof yt === "boolean") return Number(xt) - Number(yt);
+        return String(xt).localeCompare(String(yt));
+      };
+      out.sort((a, b) => {
+        for (const { col, desc, nulls } of terms) {
+          const x = a[col] === undefined ? null : a[col];
+          const y = b[col] === undefined ? null : b[col];
+          if (x === null || y === null) {
+            if (x === y) continue;
+            const nullsLast = nulls ? nulls === "LAST" : !desc; // Postgres: NULLs sort as the largest value
+            return (x === null) === nullsLast ? 1 : -1;
+          }
+          const c = compare(x, y);
+          if (c !== 0) return desc ? -c : c;
+        }
+        return 0;
+      });
+    } else simple = false;
+  }
+  const limitToken = tail ? tail[2] : limitOnly && limitOnly[1];
+  if (limitToken && simple) {
+    const n = limitToken.startsWith("$") ? Number(params[Number(limitToken.slice(1)) - 1]) : Number(limitToken);
+    if (Number.isFinite(n) && n >= 0) return out.slice(0, n);
+  }
+  return out;
+}
+
+/**
  * tablesDb({ tables: { clients: [...], ... }, rules: [[match, answer], ...], strict, autoInsert, autoUpdate })
  * autoUpdate: an `UPDATE t SET col = $n, col2 = 'x', ... WHERE <conditions> RETURNING ...` on a table in
  * `tables` changes the rows the WHERE keeps (the statement's own conditions, judged by rowsWhere),
@@ -144,7 +194,7 @@ export function tablesDb({ tables = {}, rules = [], strict = false, autoInsert =
       }
       // The WHERE of the statement's own FROM clause, never a subquery's earlier WHERE.
       const from = sql.search(new RegExp(`\\bFROM\\s+(?:public\\.)?${name}\\b`, "i"));
-      return rowsWhere(tables[name], sql.slice(from), params).map((r) => ({ ...r }));
+      return orderAndLimit(rowsWhere(tables[name], sql.slice(from), params), sql.slice(from), params).map((r) => ({ ...r }));
     }],
     [/^\s*(BEGIN|COMMIT|ROLLBACK)\b/i, []],
   ]);

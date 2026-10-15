@@ -9,6 +9,7 @@ import handler from "../../api/read/client-progress.mjs";
 import { fakeDb, makeRes, req, runWithSharedDb, staffSession, accountSession, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 import { rowsWhere, bindProblem, assertSqlHas } from "../testing/s3-scoped-rows.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
+import { orderAndLimit } from "../testing/fin-b08-tables.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
 const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
@@ -30,7 +31,8 @@ function fileTables({ pulls = [pull("p1", "2026-08-01T00:00:00Z", 640, 655, 648)
   ];
   const fake = fakeDb([
     [/^\s*SELECT 1 FROM clients/i, (s, p) => rowsWhere(clients, s, p).map(() => ({ "?column?": 1 }))],
-    [/FROM crs_results/i, (s, p) => rowsWhere(pulls, s, p).sort((a, b) => b.created_at.localeCompare(a.created_at))],
+    // Rows come back in the order the statement's own ORDER BY names (pulls are stored oldest first).
+    [/FROM crs_results/i, (s, p) => orderAndLimit(rowsWhere(pulls, s, p), s, p)],
     [/FROM dispute_items/i, (s, p) => {
       const rows = rowsWhere(items, s.slice(s.indexOf("FROM dispute_items")), p);
       return [{ disputed: rows.length, removed: rows.filter((r) => r.status === "deleted" || r.outcome === "deleted").length }];

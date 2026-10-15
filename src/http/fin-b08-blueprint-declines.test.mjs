@@ -12,6 +12,7 @@ import { rowsWhere, bindProblem, assertSqlHas } from "../testing/s3-scoped-rows.
 import { gateAs, clientPrincipal, staffPrincipal } from "../testing/s3-mem-tasks-db.mjs";
 import { memoryDb, TEST_ORG, TEST_CLIENT } from "../blueprint/decline-defense.test.db.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
+import { orderAndLimit } from "../testing/fin-b08-tables.mjs";
 import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 import { PAID_TRANSACTION_STATUS } from "../entitlements/entitlements.mjs";
 
@@ -64,6 +65,20 @@ function standIn({ buyer = true, ...opts } = {}) {
         && t.code.toLowerCase() === String(code).toLowerCase() && String(t.status).toLowerCase() === status);
       return { rows: hit ? [{ "?column?": 1 }] : [] };
     }
+    // The stored decline tables sort for themselves in the shared stand-in, which would hide a product that
+    // lost its ORDER BY. These two reads are answered here, from the stored rows, in the order the
+    // statement itself names: declines are kept oldest first and steps last step first, so only the
+    // statement's own ORDER BY can put them in the order a client reads.
+    const flat = String(sql).replace(/\s+/g, " ").trim();
+    if (/^SELECT \* FROM blueprint_declines WHERE org_id = \$1::uuid AND client_id = \$2::uuid/i.test(flat)) {
+      const mine = mem.t.declines.filter((d) => d.org_id === params[0] && d.client_id === params[1]
+        && (params[2] == null || params[2].includes(d.id)));
+      return { rows: orderAndLimit(mine, sql, params) };
+    }
+    if (/^SELECT \* FROM blueprint_decline_steps WHERE org_id/i.test(flat)) {
+      const mine = mem.t.steps.filter((x) => x.org_id === params[0] && params[1].includes(x.decline_id));
+      return { rows: orderAndLimit([...mine].reverse(), sql, params) };
+    }
     return inner(sql, params);
   };
   return mem;
@@ -98,6 +113,27 @@ describe("/api/blueprint/declines, on the real decline store", () => {
     assert.equal(read.res.body.view.client.id, TEST_CLIENT, "a client_id in the address is never read for a client");
     assert.equal(read.res.body.view.declines.length, 1);
     assert.equal(read.res.body.staff, undefined);
+  });
+
+  test("a client reads the newest decline first and each plan's steps in plan order", async () => {
+    const mem = standIn();
+    const first = await call({ method: "POST", body: { action: "record", client_id: TEST_CLIENT, text: LETTER, bank: "Chase", product: "Ink Business Cash" }, principal: staff("owner"), mem });
+    const second = await call({ method: "POST", body: { action: "record", client_id: TEST_CLIENT, text: RELATIONSHIP_LETTER, bank: "Wells Fargo", product: "Signature Card" }, principal: staff("owner"), mem });
+    assert.equal(first.res.statusCode, 201);
+    assert.equal(second.res.statusCode, 201);
+    // Two different days, so "newest first" is a fact of the saved rows and not a tie.
+    mem.t.declines.find((d) => d.id === first.res.body.decline.id).created_at = new Date("2026-10-10T15:00:00Z");
+    mem.t.declines.find((d) => d.id === second.res.body.decline.id).created_at = new Date("2026-10-12T15:00:00Z");
+    const { res } = await call({ principal: client(), mem });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.view.declines.map((d) => d.bank), ["Wells Fargo", "Chase"], "newest decline first");
+    for (const d of res.body.view.declines) {
+      const planned = mem.t.steps.filter((s) => s.decline_id === d.id && s.who !== "client").sort((a, b) => a.position - b.position).map((s) => s.client_text);
+      assert.ok(planned.length >= 2, "this letter makes at least two Fundhub steps, so their order can be told");
+      assert.deepEqual(d.fundhub_steps.map((s) => s.text), planned, `${d.bank}: Fundhub's steps are read in plan order`);
+      const yours = mem.t.steps.filter((s) => s.decline_id === d.id && s.who === "client").sort((a, b) => a.position - b.position).map((s) => s.client_text);
+      assert.deepEqual(d.your_steps.map((s) => s.text), yours, `${d.bank}: the client's own steps are read in plan order`);
+    }
   });
 
   test("a client who has not bought the Capital Blueprint cannot paste: 403 and nothing is saved", async () => {

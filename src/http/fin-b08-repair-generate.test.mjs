@@ -38,13 +38,17 @@ const asked = [];
 before(() => { globalThis.fetch = async (url) => { asked.push(String(url)); throw new Error("network refused in this test"); }; });
 after(() => { globalThis.fetch = realFetch; });
 
-function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY" } = {}) {
+function repairFile({ agreement = true, consent = false, verified = true, pull = FILE, cases = [], pulledAt = "2026-09-03T00:00:00Z", tier = "REPAIR_ONLY", olderPull = null } = {}) {
   const tables = {
     clients: [
       { id: CLIENT, org_id: ORG_ID, first_name: "Sim", last_name: "Repair", outcome_tier: tier },
       { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, first_name: "Foreign", last_name: "Person", outcome_tier: tier },
     ],
-    crs_results: pull ? [{ id: "p1", org_id: ORG_ID, client_id: CLIENT, result: pull, created_at: pulledAt }] : [],
+    // The older pull is stored FIRST, so only the statement's own ORDER BY ... LIMIT 1 puts the newest one on top.
+    crs_results: pull ? [
+      ...(olderPull ? [{ id: "p0", org_id: ORG_ID, client_id: CLIENT, result: olderPull, created_at: "2026-06-01T00:00:00Z" }] : []),
+      { id: "p1", org_id: ORG_ID, client_id: CLIENT, result: pull, created_at: pulledAt },
+    ] : [],
     pii_identity: [{
       org_id: ORG_ID, client_id: CLIENT, addresses: [{ address_line1: "412 Pecan St", city: "Austin", state: "TX", zip: "78701" }],
       ...(verified ? { verified_legal_name: "Sim Repair", verified_address: { line1: "412 Pecan St", city: "Austin", state: "TX", zip: "78701" },
@@ -116,6 +120,20 @@ describe("POST /api/repair/generate", () => {
     assert.equal(file.stored.length, 1, "the letter file is saved");
     assert.deepEqual([file.stored[0].filename, file.stored[0].kind, file.stored[0].orgId, file.stored[0].clientId], ["EX_R1_bureau.html", "deliverable", ORG_ID, CLIENT]);
     assert.match(file.stored[0].html, /Sim Repair/);
+  });
+
+  test("when the client has two stored credit files the newest one is the one analysed", async () => {
+    const older = JSON.parse(JSON.stringify(FILE));
+    older.bureaus.EX.tradelines[0].creditorName = "OLDER FURNISHER LLC";
+    older.bureaus.EX.tradelines[0].accountIdentifier = "SIM-OLD-1001";
+    const file = repairFile({ olderPull: older });
+    const { res } = await call({ client_id: CLIENT }, file);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    const letter = file.tables.dispute_letters[0];
+    assert.match(letter.body_text, /MIDLAND CREDIT MANAGEMENT/);
+    assert.doesNotMatch(letter.body_text, /OLDER FURNISHER/);
+    assert.deepEqual(file.fake.calls.find((c) => /FROM crs_results/.test(c.sql)).params, [CLIENT, ORG_ID]);
   });
 
   test("it mails nothing: no web call, no mail provider, and the letter is saved as generated, never sent", async () => {

@@ -12,6 +12,11 @@ Branch `fin/b08` (worktree `.claude/worktrees/fin-b08`), cut from `fin/base`. No
 | Route lane `gap-door-batch-routes`, before / after | 135 / 101 |
 | Route lane per file (routes-0 / 1 / 2 / 3) | 54/36/25/20 to 44/26/16/15 |
 
+Generation 2 (a fresh agent) re-read the three open rows from the real handlers and screens, re-measured
+two of them on the real handlers, and found none of the three attachable (see "Generation 2 challenge").
+It also mutation-checked the 34 attached tests again and hardened four of them (see "Generation 2 hardening").
+The numbers above are unchanged: 37 rows, 34 practice tests, 3 not-attachable.
+
 Words used on purpose: every attached row is a **practice test** (the real handler and the real library
 run over in-memory stand-in tables, fake data, no network, no database). None is a live check. None is
 called "deep" or "proof" in what is handed back. (The catalog still stores `depth: "deep"` on a plug-in
@@ -96,7 +101,8 @@ Tests (`src/http/`): `fin-b08-banking-import`, `fin-b08-blueprint-declines`, `fi
 `fin-b08-money-tasks`, `fin-b08-partner-copy`, `fin-b08-partner-surface`, `fin-b08-pii`,
 `fin-b08-read-contracts`, `fin-b08-repair-generate`, `fin-b08-repair-inbound-mail` (all `.test.mjs`).
 
-Stand-in helpers (`src/testing/`): `fin-b08-tables.mjs`, `fin-b08-partner-tables.mjs`, `fin-b08-contracts-db.mjs`.
+Stand-in helpers (`src/testing/`): `fin-b08-tables.mjs` (generation 2 added `orderAndLimit`),
+`fin-b08-partner-tables.mjs`, `fin-b08-contracts-db.mjs`.
 
 Plug-in: `src/pulse/catalog/proofs/fin-b08-door-contracts.mjs` and `fin-b08-door-contracts.test.mjs`.
 
@@ -116,23 +122,70 @@ This manifest: `ops/workflows/finish-853-2026-10-14/manifest-b08.md`.
 The integrator will see conflicts on the three count lines and the plug-in chain from the other route
 batches. Each batch's count change is its own number of attached rows (34 here); apply them together.
 
-## Left red, with the exact reason (3)
+## Generation 2 challenge: the three rows left red
 
-1. `routes-1 route:contracts/sign : POST action=decline {reason}`. The handler records the decline on the
-   signer (`declineSigner`, status `declined`, reason, time) and answers "the person who sent this has been
-   told". Nothing tells the sender: no message, event or notify call follows `declineSigner` anywhere in
-   `api/contracts/sign.mjs` or `src/contracts/signers.mjs`. The control says "recorded and the sender is
-   told", and the second half has no code to judge. The recorded half is covered in
-   `fin-b08-contracts-sign.test.mjs`, but attaching the row would call a half-built control green.
-2. `routes-2 route:inquiry-cases (clear_inquiry)`. The control says the company comes from the session.
-   `clearInquiry` (`src/inquiry-removal/cases.mjs`) reads and updates `inquiry_log` by id alone, and the
-   session's company never reaches it; no row-level policy exists on `inquiry_log` in `db/`. A company
-   boundary test goes red on today's product, and a test that skips the boundary would claim a control
-   the code does not keep. (The existing `s3-inquiry-cases-handler.test.mjs` deliberately leaves
-   `clear_inquiry` out of its "another company's case" list.)
-3. `routes-1 route:soft-pull-approve : POST action=stamp_incorporated`. `api/soft-pull-approve.mjs:279`
-   calls `stampIncorporatedAsStaff`, which is defined and imported nowhere in the repo. The action throws
-   a ReferenceError and answers 500. There is no working result to judge.
+Each reason was re-read from the code and the screens, not taken from the first pass. Two were also
+measured by running the real handler (a scratch script, not committed).
+
+1. `routes-1 route:contracts/sign : POST action=decline {reason}` ("recorded and the sender is told").
+   Still not attachable. The recorded half is judged (fin-b08-contracts-sign.test.mjs). The told half has
+   nothing to judge:
+   - `api/contracts/sign.mjs` calls `declineSigner` and answers "The person who sent this has been told";
+     after it there is no message, event, task or notify call, here or in `src/contracts/signers.mjs`.
+   - the contract's own status does not change: `contracts.status` only allows draft, sent, viewed,
+     signed, void (`db/migrations/124_contracts.sql:169`).
+   - the Documents screen (`public/app/documents.html`) reads the contract list, which carries no signer
+     state, so a declined contract still shows as sent / Awaiting there, with a Remind button.
+   - the one place the decline is visible to staff is `GET /api/read/contracts?id=` (signers[].status and
+     decline_reason). No screen in `public/` calls that read.
+   - the heartbeat (`src/pulse/coverage/gap-contracts.mjs`) labels the contract declined for the owner. That
+     is not the sender.
+2. `routes-2 route:inquiry-cases (clear_inquiry)` ("org from the session"). Still not attachable.
+   Measured on the real handler with a stand-in table: staff of company A clear an inquiry whose row says
+   company B (answer 200, case_cleared true). The statements the handler runs carry no company:
+   `SELECT * FROM inquiry_log WHERE id = $1` and `UPDATE inquiry_log ... WHERE id = $1`. The `inquiry.removed`
+   event goes out with `orgId` = company A and the case's client of company B. The session company is used
+   for the sign-in gate and for the event, never for the read or the write. `inquiry_log` has no row policy
+   in `db/`. The rest of the control (clears one inquiry, completes its case, emits `inquiry.removed` once,
+   keyed to the case, staff roles only) is already judged by `s3-inquiry-cases-handler.test.mjs`; the one
+   claim that is false today is the company boundary, and a green mark here would hide it.
+3. `routes-1 route:soft-pull-approve : POST action=stamp_incorporated`. Still not attachable. Measured on
+   the real handler: the call throws `ReferenceError: stampIncorporatedAsStaff is not defined`
+   (`api/soft-pull-approve.mjs:279`). The function was added in commit ddcd92d18 and is not in the file
+   today; nothing else in `api/`, `src/`, `public/` or `scripts/` defines or imports it. The Present screen
+   (`public/app/present.js:1610`) and the client control panel
+   (`public/app/client-control-panel.html:2662`) both call it. No working result exists to judge.
+
+The three reasons are also written, with the same facts, in `FIN_B08_NOT_ATTACHED` in
+`src/pulse/catalog/proofs/fin-b08-door-contracts.mjs`, and `fin-b08-door-contracts.test.mjs` fails if any of
+the three is attached by mistake.
+
+## Generation 2 hardening of the attached tests
+
+Mutation check: 40 hand-picked product changes (role gates, the reason-required rule, masking, the tamper
+check, the paid-Blueprint gate, partner approve, the upload company check, payoff comparators, stacking
+order, newest-record picks) and 78 `ORDER BY` flips across the handlers and the libraries they call, each
+restored after its run (git status clean). Most turned the matching test RED. Four areas had a claim the
+test could not tell from a broken product (the first four rows below); each is closed and each new check was
+seen RED against the break. A fifth stand-in, which hard-coded the product's own order, was made honest.
+
+| Row | What stayed green | Fix | Now |
+|---|---|---|---|
+| dashboard/pipeline | dropping or changing the stage statement's `ORDER BY s.sort_order` (the stand-in returned stages in the order the test stored them) | stages stored out of order; the stand-in answers in the order the statement's own ORDER BY names; the statement text is pinned; the two "newest message" ORDER BYs (text and email) are counted | `ORDER BY s.name`, no ORDER BY, `sort_order DESC`, either newest-message ORDER BY flipped: all RED |
+| money/strategy | the "card use first" claim: with the old fixture the highest-use card was also the highest-rate card, so dropping the whole card-use phase changed nothing | third card (lowest rate, most of its limit used) so avalanche, snowball and utilization each put a different card first; a card with an unknown rate is paid after every known rate | `[...phase1, ...avalanche]` reduced to `avalanche`, unknown rate sorted first, avalanche, snowball and utilization comparators flipped: all RED |
+| repair/generate | "analyses a client's stored credit file": nothing told the newest file from an older one | the client has an older pull stored first and the newest second; the letter must come from the newest | `ORDER BY created_at ASC` and no ORDER BY: RED |
+| blueprint/declines | the plan's steps order and newest decline first: the shared stand-in sorted by itself | the two reads are answered from the stored rows in the statement's own order (steps stored last step first); new test reads two declines and the plan steps in order | declines oldest first, steps unordered, steps `position DESC`: all RED |
+| client-progress | the stand-in hard-coded the newest-first sort of the pulls | it now follows the statement's ORDER BY (the library re-sorts, so this stays an equivalent mutant; noted) | n/a |
+
+The shared stand-in `src/testing/fin-b08-tables.mjs` now applies a statement's closing plain `ORDER BY` and
+`LIMIT` (`orderAndLimit`, exported). Every test that uses it still passes; a statement that orders by an
+expression keeps the stored order and applies no LIMIT.
+
+Mutants left green, on purpose (each is a second layer or an unclaimed read): the 3 account/holding list
+orders in banking import (reads, not the import), signer list order in contracts/sign (turn is computed in
+code from `signer_index`), pull series order in client-progress (the library sorts again), the first of two
+identical sorts in lender match (the second sort decides), `unknown rate treated as 0%` in the payoff math
+(only differs from a card with a known 0% rate, which no fixture has).
 
 ## Product findings (written down, not fixed)
 
@@ -151,7 +204,20 @@ batches. Each batch's count change is its own number of attached rows (34 here);
    language about another account at the top of a letter marks an unnamed item deleted, and with one open
    item that read is confident enough (0.90) to advance without a person.
 
-## Commands run
+## Commands run (generation 2, on top of the list below)
+
+- `node scripts/pulse/count-not-proved.mjs`: 819 total, route lane 101, this batch 3 (unchanged).
+- `node --test src/http/fin-b08-*.test.mjs src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs`:
+  257 tests, 257 pass, 0 skipped.
+- `node --test src/pulse/coverage/gap-door-batch-routes.test.mjs src/pulse/catalog/proofs/door-batch-route-result.test.mjs
+  src/pulse/catalog/proofs/door-proof.test.mjs src/pulse/catalog/proofs/s3-door-contracts.test.mjs`:
+  998 tests, 998 pass, 0 skipped.
+- `node scripts/lint.mjs`: 3593 files and inline scripts parse clean.
+- `npm run pulse:catalog`: 3975 mapped, 3919 wired, 23 red; `generated.json` did not change.
+- Mutation runs (not kept): 40 hand-picked product mutations and 78 ORDER BY flips (run before and after the
+  hardening), each restored; the flips ran in a throwaway worktree that was removed afterwards.
+
+## Commands run (generation 1)
 
 - `node scripts/pulse/count-not-proved.mjs` before and after: 853 / 819 total, route lane 135 / 101, this
   batch 37 / 3.

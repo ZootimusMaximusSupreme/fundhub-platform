@@ -4,7 +4,9 @@
 // the handler does with them: stages in order, each card under its own stage, the column money
 // (a sum of known amounts, unknown not 0, an empty column a real 0), the company from the session
 // only, and it pins the clauses of the statement that carry the company, the demo filter, the
-// last-message-inbound facts and the newest-round-only funding flag. Practice test, fake data.
+// last-message-inbound facts and the newest-round-only funding flag. The stages are kept in a scrambled
+// order and the stand-in hands them back in the order the statement's own ORDER BY names, so a board
+// whose stage statement lost or changed that clause comes back out of order. Practice test, fake data.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
@@ -17,7 +19,25 @@ const STAGE_NEW = "a1000000-0000-4000-8000-000000000001";
 const STAGE_CALL = "a2000000-0000-4000-8000-000000000002";
 const STAGE_WON = "a3000000-0000-4000-8000-000000000003";
 const stage = (id, key, name, sort_order) => ({ id, key, name, sort_order });
-const STAGES = [stage(STAGE_NEW, "new_lead", "New Lead", 1), stage(STAGE_CALL, "booked_call", "Booked Call", 2), stage(STAGE_WON, "closed_won", "Closed Won", 3)];
+// Kept out of order on purpose: the order the board shows comes from the statement's ORDER BY, not from here.
+const STAGES = [stage(STAGE_WON, "closed_won", "Closed Won", 3), stage(STAGE_NEW, "new_lead", "New Lead", 1), stage(STAGE_CALL, "booked_call", "Booked Call", 2)];
+
+/** Rows in the order the statement's own ORDER BY terms name (column, ASC or DESC). No ORDER BY keeps the stored order. */
+function orderedBy(rows, sql) {
+  const m = /ORDER BY\s+([^\n]+?)\s*$/i.exec(String(sql).trim());
+  if (!m) return [...rows];
+  const terms = m[1].split(",").map((t) => t.trim().split(/\s+/)).map(([col, dir]) => ({ col: col.replace(/^\w+\./, ""), desc: /^desc$/i.test(dir || "") }));
+  return [...rows].sort((a, b) => {
+    for (const { col, desc } of terms) {
+      const x = a[col];
+      const y = b[col];
+      if (x === y) continue;
+      const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+      return desc ? -c : c;
+    }
+    return 0;
+  });
+}
 const card = (over) => ({
   id: "c-1", stage_id: STAGE_NEW, owner: "closer-1", entered_at: "2026-10-10T10:00:00Z", client_id: "k-1", first_name: "Dana", last_name: "Whitfield",
   email: "dana@example.test", phone: "+16025550100", outcome_tier: null, funded: false, funded_amount: null, is_demo: false,
@@ -27,7 +47,7 @@ const card = (over) => ({
 
 function boardDb({ stages = STAGES, cards = [], demoMode = false } = {}) {
   const fake = fakeDb([
-    [/FROM pipeline_stages s\s+JOIN pipelines p/i, (_s, p) => (p[1] === ORG_ID ? stages : [])],
+    [/FROM pipeline_stages s\s+JOIN pipelines p/i, (sql, p) => (p[1] === ORG_ID ? orderedBy(stages, sql) : [])],
     [/SELECT demo_mode_enabled FROM orgs WHERE id = \$1/i, [{ demo_mode_enabled: demoMode }]],
     [/FROM cards cd\s+JOIN pipelines p/i, (_s, p) => (p[1] === ORG_ID ? cards : [])],
   ]);
@@ -132,6 +152,11 @@ describe("GET /api/dashboard/pipeline", () => {
   test("the statement keeps this company's cards only and carries the rules the board's facts rest on", async () => {
     const fake = boardDb({ cards: [card({})] });
     await call({}, fake);
+    const stagesSql = fake.calls.find((c) => /FROM pipeline_stages/.test(c.sql)).sql;
+    assertSqlHas(stagesSql, {
+      "this pipeline of this company only": "WHERE p.key = $1 AND p.org_id = $2",
+      "stages in their set order, then by name": "ORDER BY s.sort_order ASC, s.name ASC",
+    });
     const sql = fake.calls.find((c) => /FROM cards cd/.test(c.sql)).sql;
     assertSqlHas(sql, {
       "the pipeline and the company, on the pipeline and on the card": "WHERE p.key = $1 AND p.org_id = $2 AND cd.org_id = $2",
@@ -146,6 +171,9 @@ describe("GET /api/dashboard/pipeline", () => {
       "an approval with no amount, not excluded": "status = 'Approved' AND a.approval_excluded_at IS NULL AND (a.approved_amount IS NULL OR a.approved_amount <= 0)",
       "the newest funding round only": "ORDER BY fr.round_number DESC, fr.created_at DESC LIMIT 1",
     });
+    // The text flag and the email flag each read their own conversation's newest message: two places, both pinned.
+    const newestMessage = "ORDER BY m.created_at DESC, m.id DESC LIMIT 1";
+    assert.equal(sql.replace(/\s+/g, " ").split(newestMessage).length - 1, 2, "text and email each judge the newest message");
   });
 
   test("an unknown pipeline key is 404 and the cards are never read", async () => {

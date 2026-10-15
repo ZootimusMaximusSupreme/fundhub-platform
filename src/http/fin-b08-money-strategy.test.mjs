@@ -26,7 +26,7 @@ const acct = (over) => ({
   closed_at: null, institution_name: null, plaid_item_id: null, ...over,
 });
 
-function strategyFile({ checking = 900000, plans = [] } = {}) {
+function strategyFile({ checking = 900000, plans = [], amex = false, amexRate = true } = {}) {
   const tables = {
     clients: [
       { id: CLIENT, org_id: ORG, first_name: "Dana", last_name: "Whitfield", custom_fields: {} },
@@ -37,6 +37,8 @@ function strategyFile({ checking = 900000, plans = [] } = {}) {
       acct({ id: "chk", name: "Checking", account_type: "depository", current_balance_cents: checking, available_balance_cents: checking }),
       acct({ id: "visa", name: "Visa", account_type: "credit", current_balance_cents: 300000, credit_limit_cents: 1000000, mask: "4242" }),
       acct({ id: "mc", name: "Mastercard", account_type: "credit", current_balance_cents: 100000, credit_limit_cents: 500000, mask: "1111" }),
+      // Third card, only when asked: the lowest rate, a middle balance and the most of its limit used.
+      ...(amex ? [acct({ id: "amex", name: "Amex", account_type: "credit", current_balance_cents: 250000, credit_limit_cents: 300000, mask: "3005" })] : []),
       // Someone else's card and another company's card must never become this client's debt.
       acct({ id: "pat", client_id: OTHER_CLIENT, name: "Pat's Amex", account_type: "credit", current_balance_cents: 999999, credit_limit_cents: 2000000 }),
       acct({ id: "foreign", org_id: OTHER_ORG, name: "Foreign card", account_type: "credit", current_balance_cents: 888888, credit_limit_cents: 2000000 }),
@@ -44,6 +46,7 @@ function strategyFile({ checking = 900000, plans = [] } = {}) {
     account_statement_cycles: [
       { client_id: CLIENT, org_id: ORG, bank_account_id: "visa", statement_close_day: 10, payment_due_day: 5, minimum_payment_cents: 9000, apr: "0.2499", last_statement_balance_cents: 300000 },
       { client_id: CLIENT, org_id: ORG, bank_account_id: "mc", statement_close_day: 12, payment_due_day: 8, minimum_payment_cents: 2500, apr: "0.1599", last_statement_balance_cents: 100000 },
+      ...(amex && amexRate ? [{ client_id: CLIENT, org_id: ORG, bank_account_id: "amex", statement_close_day: 15, payment_due_day: 10, minimum_payment_cents: 7500, apr: "0.0999", last_statement_balance_cents: 250000 }] : []),
     ],
     payment_strategy_plans: plans,
   };
@@ -183,6 +186,32 @@ describe("POST /api/money/strategy save_plan", () => {
     const u = await save({ method: "utilization", monthly_cents: 60000 }, { principal: staff(), file: util });
     assert.equal(u.res.body.saved.method, "utilization");
     assert.equal(util.writes[0].milestones[0].key, "visa:util10", "the card with the most of its limit used first");
+  });
+
+  // Three cards that each point a different way, so the three methods cannot be mistaken for each other:
+  // Visa has the highest rate, Mastercard the smallest balance, Amex the most of its limit used.
+  const firstCard = async (method, fileOptions) => {
+    const file = strategyFile(fileOptions);
+    const { res } = await save({ method, monthly_cents: 90000 }, { principal: staff(), file });
+    assert.equal(res.statusCode, 200, method);
+    // "overall:*" is the whole-wallet milestone, not a card.
+    return file.writes[0].milestones.find((m) => !m.key.startsWith("overall:")).key;
+  };
+
+  test("with the rate, the balance and the card use each pointing at a different card, each method puts its own card first", async () => {
+    assert.equal(await firstCard("avalanche", { amex: true }), "visa:util10", "highest rate first");
+    assert.equal(await firstCard("snowball", { amex: true }), "mc:util10", "smallest balance first");
+    assert.equal(await firstCard("utilization", { amex: true }), "amex:util10", "the card with the most of its limit used first");
+  });
+
+  test("a card whose rate is not known is paid after every card whose rate is known, not first and not as 0%", async () => {
+    const file = strategyFile({ amex: true, amexRate: false });
+    const { res } = await save({ method: "avalanche", monthly_cents: 90000 }, { principal: staff(), file });
+    assert.equal(res.statusCode, 200);
+    const month = (key) => file.writes[0].milestones.find((m) => m.key === key).month;
+    assert.ok(month("visa:payoff") < month("amex:payoff"), "Visa (24.99%) is paid off before the card with no known rate");
+    assert.ok(month("mc:payoff") < month("amex:payoff"), "Mastercard (15.99%) is paid off before the card with no known rate");
+    assert.equal(await firstCard("avalanche", { amex: true, amexRate: false }), "visa:util10");
   });
 
   test("a client saves for their own file and is named as the saver", async () => {
