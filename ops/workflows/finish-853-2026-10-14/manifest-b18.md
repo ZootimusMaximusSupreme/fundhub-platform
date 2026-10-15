@@ -61,6 +61,31 @@ The sixth (the server row of the C-suite task writer) is judged by the live chec
 | pipeline.html | Filter button (opens the panel; count of active filters) | practice-test | `fin-b18-pipeline.test.mjs` | Opens and shuts the panel with aria-expanded; the count shows each filter on, counts Sort too, stays when the panel is shut. 5 breaks red. |
 | pipeline.html | Filter: Age (Any / Over 1h / Over 1d / Over 3d in stage) | practice-test | `fin-b18-pipeline.test.mjs` | Over 1h / 1d / 3d keep only cards with an arrival time older than that; a card with no date never counts; chip and its cross. 6 breaks red. |
 
+## Generation 2: the three open rows, challenged again
+
+A fresh agent re-read the real page and the real read for each of the three rows and tried to attach a live check or
+a practice test. All three reasons are exactly true. No test was added, because every test that could be written is
+either red today (the product is broken) or green only by pinning the break. Nothing in the product was changed.
+
+| Row | Measured again (Chromium, the real page, fake answers) | What is missing, exactly |
+|---|---|---|
+| ops-admin.html: AR column header sort | Three open invoices (Zed Co, Amy Co, Mid Co) painted by the real `paintAr`. All five header cells carry no `sortable` class and `tabIndex` -1. A click on Client, a click on Amount owed and Enter on Client each left the order Zed, Amy, Mid. No page error. | The SORTABLE TABLES block binds each header cell once at page parse, to the cells that exist then. `paintAr` runs after the read and writes `table.innerHTML`, so the headers a person sees are new cells with no handler. A product change must bind after the paint (or delegate on the table). |
+| ops-admin.html: AR row expand | The same three rows: 0 rows with `data-ar`. A click on a row opens no `ar-detail` row. | Two gaps, not one. The expand binds to `tr[data-ar]` once at parse, and `paintAr` rows carry no `data-ar` and none of `data-terms`, `data-method`, `data-owner`, `data-timeline` that `expand()` reads. And `GET /api/read/invoices` (api/read/invoices.mjs, view `v_invoice_aging`) returns no terms, no payment method and no owner at all (it does return payment_count, last_payment_at, reminder_count, escalated_at, sent_at, due_at). Rebinding alone would show Terms, Payment method and Owner as a dash. The row names five facts; two (Outstanding, and a history built from the dates above) could be shown, three have no source. |
+| partner-galaxy.html: click a worker | `var NODES = []`, `var CLIENTS = []`, `var ROUTES = []` and nothing in the page (or in shell.js, data.js) writes to them: no `NODES.push`, no assignment, no feed. `hitTest` loops over NODES, so it can never return a worker, `goWorker` can never run and the panel can never open. | The staff screen (public/app/galaxy.html) has a boot that fetches `/api/read/company-activity` and fills NODES. The partner copy has no such fetch (its header says staff identities are never shown to a partner), so the control has no data for a partner. Needs a decision by Chris: give the partner screen a partner-scoped feed, or drop the control from the map. A test that pushes a made-up worker into NODES would run code a partner can never reach, so it is not attached. |
+
+Why a pin was not written: a test that is green while the sort is dead (or while NODES is empty) would take the row out
+of NOT_PROVED and the morning board would say the control is proved. It is not. Left in the lane, the row keeps saying
+"Not proved" until the product is changed. When it is, a fresh agent attaches a real practice test (the recipe in
+fin-b18-ops-admin.test.mjs: open the page as owner, answer `/api/read/invoices`, click a header, read the order).
+
+Numbers, generation 2, this worktree: batch rows open before 40 (measured on `fin/base` in a throwaway checkout), after 3.
+Four-lane total 853 to 816. Re-run of the whole batch on this branch: 36 non-browser tests and 42 browser tests pass,
+0 fail, 0 skipped; catalog and lane tests 81 of 81; `compile-catalog.mjs --check` fresh; `npm run lint` clean.
+Three fresh product breaks, each red then restored with `git checkout --`: pipeline.html Clear all no longer repaints the
+cards (2 tests red), partner-galaxy.html Escape does nothing (3 red), money-setup.js step 3 words swapped (2 red).
+Column names of the six live checks were re-read against db/migrations (blueprint_declines, blueprint_decline_steps,
+money_helper_threads, opt_outs, money_transfer_events, hiring_job_postings): all present.
+
 ## What the live checks judge, and what they cannot
 
 A live check is one read-only SQL text the display lane runs for the company. It returns `sample_count` and `bad_count`.
