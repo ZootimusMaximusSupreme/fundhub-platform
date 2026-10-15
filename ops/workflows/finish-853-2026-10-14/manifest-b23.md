@@ -86,7 +86,12 @@ stand-in server, judging the exact rendered or saved result. None of them reads 
 3. **The climate page draws 5 state shapes, not 51.** The page bundle's path list holds AZ, CA, NY, TX and FL
    only (the `public/climate/maps/us-states-paths.json` file has the same five). The States table lists all
    returned states and the national number matches, which the test proves. The intended journey says 51 shapes.
-4. Small: the older `door-flow-read-contracts-2` / `display-contracts-teleprompter-4` tests passed with the
+4. **The climate map ignores the `color` the API sends.** `docs/journeys/climate-lead-magnet-intended.md` says each
+   shape's `fill` equals the `color` the API sent for that state. The bundled page ignores that field and picks its
+   own colour band from `score` (80 / 65 / 50 / 35). The two agree today only because the API's bands use the same
+   cut points. `fin-b23-climate-map.test.mjs` sends `#000000` as `color` on every state and proves the painted
+   fill follows the score band, so the test would go red if the page switched to the API colour or the cut points moved.
+5. Small: the older `door-flow-read-contracts-2` / `display-contracts-teleprompter-4` tests passed with the
    teleprompter poll set to 15 seconds, because the page clock kept running in real time while the wait was 30 s.
    Not a product bug; the new test pins 5 s to the millisecond with a paused clock.
 
@@ -123,6 +128,18 @@ All from `.claude/worktrees/fin-b23` (branch `fin/b23`), no live database, no ne
 | `node --test` on `gap-catalog-reads.test`, `read-proof-cases.test`, `flow-read-contracts.test`, `door-flow-read-contracts-2.test` | 9 of 9 pass; `read-proof-cases` runs the 76 proved read tests for real, mine included |
 | `node --test` on every `src/pulse/catalog/*.test.mjs`, `src/pulse/coverage/*.test.mjs`, `src/pulse/*.test.mjs` (not `.pg.`) | 2890 tests, 2871 pass, **0 fail**, 19 skipped (all say "no DATABASE_URL": gap SQL tests that need a Postgres) |
 | `npm run lint` | `3574 file(s) and inline script(s) parse clean` |
+
+### Second pass (resumed run, same branch, no product or test file changed)
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` | total **840**, reads lane **2** (`present-send-lock`, `climate-map`) |
+| all 10 `fin-b23-*.test.mjs` files, one `node --test` run | 35 of 35 pass, 6 s |
+| `npm run pulse:catalog` | same line as above, `generated.json` has no drift |
+| `gap-catalog-reads.test`, `read-proof-cases.test`, `flow-read-contracts.test`, `door-flow-read-contracts-2.test` | 9 of 9 pass |
+| `node --test` on `src/pulse/*.test.mjs`, `src/pulse/coverage/*.test.mjs`, `src/pulse/catalog/*.test.mjs` | 3071 tests, 2871 pass, **0 fail**, 200 skipped (every skip is a `.pg.test.mjs` with no `DATABASE_URL`) |
+| 3 fresh breaks (teleprompter poll 5 s to 15 s, ops AR top 25 to 30, Facebook page token saved plain), each restored | all 3 red |
+| `present.js fire()` read again against `public/app/data.js write()` and `api/closer-deck.mjs` | finding 1 holds: the server answers `delivered` at the top of its JSON, `write()` returns it under `data` |
 
 Not run: the full `src/pulse/catalog/proofs/*` tree. The `display-*`, `s1-display-specs` and `s4-*` files start a
 Playwright command line run each, and with 20 other agents on this Mac one hung for 12 minutes; I stopped it and
