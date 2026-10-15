@@ -19,6 +19,7 @@ import {
   judgeDisplayResult,
   naVerify,
 } from "./gap-catalog-display.mjs";
+import { leadsResetFor } from "./fin-b09-leads-reset.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 
@@ -139,7 +140,8 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   // Controls the product no longer has are judged "nothing to judge" by the live files (fin-b01-retired-controls.test.mjs).
   const unprovedIds = new Set(DISPLAY_TRACKING_CASES
-    .filter((entry) => !entry.retired && !entry.contract && !retiredControlFor(entry))
+    // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
+    .filter((entry) => !entry.retired && !entry.contract && !retiredControlFor(entry) && !leadsResetFor(entry))
     .map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
