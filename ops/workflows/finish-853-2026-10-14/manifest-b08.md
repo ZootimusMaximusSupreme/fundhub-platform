@@ -17,6 +17,9 @@ two of them on the real handlers, and found none of the three attachable (see "G
 It also mutation-checked the 34 attached tests again and hardened four of them (see "Generation 2 hardening").
 The numbers above are unchanged: 37 rows, 34 practice tests, 3 not-attachable.
 A third pass (see "Re-verification run") re-measured and hardened two more tests; the numbers did not move.
+A fourth pass (see "Generation 3") ran a guard-off sweep over every handler of the batch, found 86 guards
+the row tests never asserted, and pinned them with 60 new tests; the numbers did not move
+(37 rows, 34 practice tests, 3 not-attachable).
 
 Words used on purpose: every attached row is a **practice test** (the real handler and the real library
 run over in-memory stand-in tables, fake data, no network, no database). None is a live check. None is
@@ -101,6 +104,8 @@ Tests (`src/http/`): `fin-b08-banking-import`, `fin-b08-blueprint-declines`, `fi
 `fin-b08-meta-agency`, `fin-b08-money-banks`, `fin-b08-money-fundability`, `fin-b08-money-strategy`,
 `fin-b08-money-tasks`, `fin-b08-partner-copy`, `fin-b08-partner-surface`, `fin-b08-pii`,
 `fin-b08-read-contracts`, `fin-b08-repair-generate`, `fin-b08-repair-inbound-mail` (all `.test.mjs`).
+
+Generation 3 added `src/http/fin-b08-door-guards.test.mjs` (41 tests; see "Generation 3").
 
 Stand-in helpers (`src/testing/`): `fin-b08-tables.mjs` (generation 2 added `orderAndLimit`),
 `fin-b08-partner-tables.mjs`, `fin-b08-contracts-db.mjs`.
@@ -229,6 +234,18 @@ Still stated plainly: every attached row is a **practice test**, not a live chec
    language about another account at the top of a letter marks an unnamed item deleted, and with one open
    item that read is confident enough (0.90) to advance without a person.
 
+6. `soft-pull-approve` stamp_incorporated, exact cause (added generation 3): merge `8d9a693ae` (2026-08-27,
+   "Merge remote-tracking branch 'origin/main' into merge/2026-08-27-threads-live") brought in the call at
+   `api/soft-pull-approve.mjs:279` but not `stampIncorporatedAsStaff` and `stampBusinessIncorporated`, which commit
+   `ddcd92d18` (2026-08-25) added. The text of both functions is in that commit.
+7. `contracts/sign` decline has no way in for a person (added generation 3): `public/contract.html` defines
+   `decline()` (line 563) and nothing calls it (owner answer 2026-08-17: "contract sign has no decline button").
+   Only a direct call to the endpoint declines, and that call answers "the person who sent this has been told"
+   while nothing tells anyone (finding 3).
+8. `public/education-enroll` with no default company row answers 500, not 400: `defaultOrgId` (`src/events/bus.mjs`)
+   throws when the `orgs` row is missing, so the `org_required` branch in `runEducationEnroll` and its 400 mapping
+   in the handler cannot be reached by the handler's own call. Nothing is saved either way (added generation 3).
+
 ## Commands run (generation 2, on top of the list below)
 
 - `node scripts/pulse/count-not-proved.mjs`: 819 total, route lane 101, this batch 3 (unchanged).
@@ -257,3 +274,103 @@ Still stated plainly: every attached row is a **practice test**, not a live chec
   what this branch changed.
 - `npm run pulse:catalog`: regenerated `generated.json` (3975 mapped, 3919 wired, 23 red).
 - Plug-in mutations seen red: a changed id, a removed chain line, a skipped test file.
+
+## Generation 3 (2026-10-14, night, a fresh Sonnet builder)
+
+Handed this batch as "generation 2 of 3" with the three open rows. The branch already held the work of the
+earlier passes, so this agent did not redo it. It (a) re-challenged the three red rows from the code, (b) tried
+to prove its predecessors wrong with a method they had not used, and (c) closed what that method found.
+
+### Numbers
+
+| | Count |
+|---|---|
+| Rows in this batch | 37 |
+| Open at the start of this generation (`count-not-proved.mjs`, intersected with `batch-08.json`) | 3 |
+| Open after (same measure) | 3 (the same three ids, each still justified) |
+| Whole catalog, before / after | 819 / 819 |
+| Practice tests in the batch (`src/http/fin-b08-*.test.mjs` + the plug-in test) | 258 before, 318 after (60 new), 0 skipped |
+
+### The three red rows, challenged again
+
+Each reason was re-read in the code, and two were re-measured by running the real handler.
+
+1. `contracts/sign` POST action=decline ("recorded and the sender is told"). Still true: `declineSigner` only
+   updates `contract_signers` and the handler answers that the sender was told. Nothing in `api/`, `src/contracts/`,
+   `src/workflows/`, `netlify/` or `db/` consumes a declined signer except the heartbeat label. New fact: the signing
+   page has a `decline()` function and no button calls it (finding 7). A green mark would hide a false sentence.
+2. `inquiry-cases` clear_inquiry ("org from the session"). Still true: `clearInquiry` reads and updates
+   `inquiry_log` by id alone; no row policy for `inquiry_log` exists in `db/` (checked every RLS enable and
+   policy loop in `db/migrations` and `db/schema`; the only `inquiry_log` loop is the `updated_at` trigger).
+   The reading "org from the session" as only "the org comes off the session, not the body" was considered and
+   rejected: attaching the row would put a green mark on a route that lets staff of one company clear another
+   company's inquiry and complete its case. The `s3` plug-in already judges the rest of the action under its own row.
+3. `soft-pull-approve` stamp_incorporated. Re-measured this run: the handler throws
+   `ReferenceError: stampIncorporatedAsStaff is not defined`. Exact cause in finding 6.
+
+### The method: turn each guard off, see if any test notices
+
+A scratch harness (not committed) took every `if (` in the 27 handler files of the batch that sits in front of a
+4xx/5xx answer or a `throw` (297 of them), replaced that one condition with `true ? false : <condition>`, ran every
+test of the batch that imports the handler, and put the file back. Run once on the branch as it was: 165 of 297
+survived. Run again after this generation's tests: 80 of 297 survived; the shift gate in `api/inquiries.mjs` was
+closed right after that run, so 79 of 297 survive and 218 are killed.
+
+The 86 that were closed (each seen red against its break, and green on the product; the harness refuses to
+run a mutant on a red baseline):
+
+| Test (new or sharpened) | Guards it now holds |
+|---|---|
+| `fin-b08-door-guards.test.mjs` (new, 41 tests) | a staff sign-in with no company is refused before any data table is touched, on 15 doors (`banking/accounts`, `blueprint/declines`, `contracts`, `documents-upload`, `inquiries`, `inquiry-cases`, `inquiry`, `money/banks`, `money/fundability`, `money/strategy`, `money/tasks`, `read/client-progress`, `read/lender-matches`, `repair/generate`, `repair/inbound-mail`); a client login with no client file is refused on 6; a staff caller who names no client is 400 on 5; a method the door does not take is 405 on 10 (banks, strategy, tasks and declines take a PUT; fundability, progress and lender-matches a POST; repair/generate, inbound-mail and generate-copy a GET); a non-JSON body is 400 on 4 |
+| `fin-b08-contracts-sign.test.mjs` | a link with a good signature that names a signer not on this contract opens nothing, hands out no file, records no decline and no signature (GET, `?file=1`, decline, sign); no signing secret is 503 `not_configured`; a draft answers exactly as a forged link does |
+| `fin-b08-partner-surface.test.mjs` | a partner cannot start a page for another partner of the same company (403, no page); no company on the sign-in is 403 `no_org_scope` on GET, POST and PATCH; page and brand requests must name a real partner and, to change a page, a real page with something to change |
+| `fin-b08-brand-review.test.mjs` | a staff sign-in with no company is refused before the brand table is read (the one tenancy guard the handler's own comment calls "no other one"); a reason over 2000 characters is refused; the wrong-state sentence names the real state; GET, an unknown action and a bad partner id are refused |
+| `fin-b08-contracts-write.test.mjs` | a malformed id, client id, template id or staff id is 400 with its own error before any contract table is read, across 8 write actions (11 requests) of the rows |
+| `fin-b08-read-contracts.test.mjs` | another company's contract or template is "not found" (not "no file"); the list filters (client, staff, document ids, more than 200) are 400 before any list is read |
+| `fin-b08-repair-generate.test.mjs` | a round past the client's repair program cap is 400 `round_cap_exceeded` with no letter made; a round that does not exist is refused before the client is looked up |
+| `fin-b08-banking-import.test.mjs` | a PUT, PATCH or DELETE carrying an import body imports nothing (405); an import with no client id is 400 and nothing is looked up |
+| `fin-b08-pii.test.mjs` | POST with a client id that is not an id is 400 for store and reveal; a store with no company on the sign-in and none in the body saves nothing |
+| `fin-b08-inquiries.test.mjs` | no login is 401 and the handler stops cleanly; a bad inquiry id is 400 on GET and POST; the shift gate stops after its 403 instead of carrying on |
+| `fin-b08-inquiry-cases-send.test.mjs` | a GET or an unknown action sends no letter and touches no case table |
+| `fin-b08-documents-upload.test.mjs` | an entity id that is not an id is 400 and is not looked up |
+| `fin-b08-blueprint-declines.test.mjs` | a paste with no letter in it is 400 `letter_required` for a client and for staff |
+| `fin-b08-partner-copy.test.mjs` | a page that is not on file is 404: no model call, no tokens metered, nothing saved |
+
+The plug-in `fin-b08-door-contracts.mjs` now lists `fin-b08-door-guards.test.mjs` as evidence on the 20 rows whose
+handler it covers (so the catalog names it); no row id changed.
+
+### The 79 that still survive, by kind (none is a claim of a row)
+
+| Kind | Count | Why it cannot be judged here |
+|---|---|---|
+| A. Database error mapping (`CLIENT_DATA_ERRORS`, `dbDown`, a named input error, a CHECK-constraint message) | 27 | needs a real database error code; a stand-in that returns rows cannot raise one (judged by the `.pg.test.mjs` files, which the brief forbids running against production) |
+| B. Another action of the same file that is not in this batch's rows | 34 | `banking` create_account / set_cycle / replace_holdings; `contracts` remind; `inquiry-cases` create / update / clear_inquiry / close; `inquiry` cases and status; `money/banks` POST actions; `money/tasks` GET. Judged under their own rows or left red on purpose |
+| C. Equivalent or unreachable | 18 | a second layer gives the same answer (partner-pages PATCH owner check, contracts unknown action falls to `default`, `sign` id shape checks covered by the signature, banking `no_org_on_session` answered again by `requireClientInOrg`); or the branch cannot be reached by the handler's own call (`documents-upload` `ownsClient`, `education-enroll` `org_required`); or a store that only returns null for a client the earlier company check already refused |
+
+### Shared lines touched this generation
+
+| File | Edit |
+|---|---|
+| `src/pulse/catalog/proofs/fin-b08-door-contracts.mjs` | (our file) `fin-b08-door-guards.test.mjs` added to 20 entries; two of the three `FIN_B08_NOT_ATTACHED` reasons gained one sentence each |
+| `src/pulse/catalog/generated.json` | regenerated with `npm run pulse:catalog` (evidence strings only; 3975 mapped, 3919 wired, 23 red, unchanged) |
+
+No shared list, count or chain line was touched: no row was attached or detached, so the three count lines in
+`gap-door-batch-routes.mjs`, `gap-door-batch-routes.test.mjs` and `door-batch-route-result.test.mjs`, the
+`door-proof.mjs` chain and the `door-proof.test.mjs` regex are exactly as the earlier passes left them.
+
+### Commands run (generation 3)
+
+- `node scripts/pulse/count-not-proved.mjs`: 819 total, route lane 101, this batch 3 (unchanged), before and after.
+- `node --test src/http/fin-b08-*.test.mjs src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs`:
+  318 tests, 318 pass, 0 skipped.
+- `node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/door-*.test.mjs
+  src/pulse/catalog/proofs/s1-door-contracts.test.mjs s2-door-contracts s3-door-contracts fin-b08-door-contracts
+  src/pulse/coverage/gap-catalog*.test.mjs src/pulse/coverage/gap-door-batch-routes.test.mjs`: 1127 tests, 1127 pass.
+- `node scripts/lint.mjs`: 3594 files and inline scripts parse clean.
+- `npm run pulse:catalog`: 3975 mapped, 3919 wired, 23 red; `generated.json` evidence strings changed.
+- Guard-off sweep: twice over 297 mutants (not kept), each restored; worktree clean after each run.
+- A probe script (not kept) ran each handler with a staff session whose `org_id` is null, once as is and once per
+  guard turned off, to tell a guard that changes the answer from one that a second layer repeats.
+
+Still stated plainly: every attached row is a **practice test**, not a live check. The three red rows are product
+findings 1, 3 and 4 above, not gaps in the test work.

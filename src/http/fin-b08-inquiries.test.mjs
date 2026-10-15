@@ -153,8 +153,9 @@ describe("/api/inquiries", () => {
 
   test("the POST needs an open shift: with none it is 403 and nothing is written; an owner does not clock in", async () => {
     const closed = inquiryFile({ openShift: false });
-    const { res } = await call(post({ inquiry_id: INQ, action: "attempt", kind: "call" }), closed);
+    const { res, error } = await call(post({ inquiry_id: INQ, action: "attempt", kind: "call" }), closed);
     assert.equal(res.statusCode, 403);
+    assert.equal(error, null, "the handler stops at the shift gate instead of carrying on after the refusal");
     assert.equal(closed.state.inquiry_attempts.length, 0);
     assert.equal(closed.state.inquiry_log[0].worked_by, null);
     const owner = await call(post({ inquiry_id: INQ, action: "attempt", kind: "call" }), inquiryFile({ openShift: false }), [staffSession({ role: "owner" })]);
