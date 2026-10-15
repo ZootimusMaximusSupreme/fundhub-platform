@@ -14,6 +14,7 @@ import { s1DoorContractsProof } from "./s1-door-contracts.mjs";
 import { s5DoorProof } from "./s5-door-contracts.mjs";
 import { finB05DoorProof } from "./fin-b05-door-contracts.mjs";
 import { finB08DoorProof } from "./fin-b08-door-contracts.mjs";
+import { finB24DoorProof } from "./fin-b24-door-contracts.mjs";
 import { keyHealthProof } from "../../coverage/gap-door-batch-keys.mjs";
 import { jobResultProof } from "../../coverage/gap-door-batch-jobs.mjs";
 import { webhookResultProof } from "../../coverage/gap-door-batch-webhooks.mjs";
@@ -232,7 +233,8 @@ export function proofForDoor(sourceFile, row) {
     || s3DoorProof(sourceFile, row)
     || s5DoorProof(sourceFile, row)
     || finB05DoorProof(sourceFile, row)
-    || finB08DoorProof(sourceFile, row);
+    || finB08DoorProof(sourceFile, row)
+    || finB24DoorProof(sourceFile, row);
   if (plugIn) return plugIn;
   if (name === "keys.json") return keyProof(row);
   if (name === "webhooks.json") {
