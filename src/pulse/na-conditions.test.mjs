@@ -25,9 +25,9 @@ function fakeDb(answer) {
 
 const fn = (id, opts = {}) => ({ opts: { id, triggers: [], ...opts } });
 
-test("the list of codes is closed: exactly these fourteen", () => {
+test("the list of codes is closed: exactly these fifteen", () => {
   assert.deepEqual([...NA_CODES].sort(), [
-    "catalog-data-empty", "catalog-display-retired-autopsy", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
+    "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-flow-step-not-shipped", "low-traffic", "monthly-not-due", "no-card-on-stage", "no-demand", "no-limit-set", "no-real-lead",
     "no-running-ad", "no-sender", "no-trigger", "no-work-waiting", "not-connected", "not-registered"
   ]);
   assert.equal(Object.isFrozen(NA_CONDITIONS), true);
@@ -37,11 +37,11 @@ test("the list of codes is closed: exactly these fourteen", () => {
   assert.equal(isNaCode("toString"), false, "an inherited property is not a code");
 });
 
-test("the five core codes verify here; the nine lane codes say \"lane\"", () => {
+test("the five core codes verify here; the ten lane codes say \"lane\"", () => {
   for (const code of ["no-demand", "no-trigger", "not-registered", "monthly-not-due", "no-work-waiting"]) {
     assert.equal(typeof NA_CONDITIONS[code].verify, "function", code);
   }
-  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy"]) {
+  for (const code of ["no-running-ad", "low-traffic", "no-real-lead", "not-connected", "no-card-on-stage", "no-limit-set", "no-sender", "catalog-data-empty", "catalog-display-retired-autopsy", "catalog-flow-step-not-shipped"]) {
     assert.equal(NA_CONDITIONS[code].verify, "lane", code);
   }
 });
@@ -60,7 +60,8 @@ test("every reason sentence is short, plain, ends with a period, and spells Fund
     "no-card-on-stage": { stages: ["sales/confirmed", "hiring/ramp"] },
     "no-limit-set": { boards: ["sales", "hiring"] },
     "no-sender": { count: 158, days: 7 },
-    "catalog-display-retired-autopsy": { sourceFile: "public-pages.json", surface: "partner/autopsy/index.html", control: "redirect" }
+    "catalog-display-retired-autopsy": { sourceFile: "public-pages.json", surface: "partner/autopsy/index.html", control: "redirect" },
+    "catalog-flow-step-not-shipped": { family: "journey", surface: "journey:climate-lead-magnet-intended#1-headline-button" }
   };
   for (const code of NA_CODES) {
     const text = NA_CONDITIONS[code].say(samples[code], NOW);

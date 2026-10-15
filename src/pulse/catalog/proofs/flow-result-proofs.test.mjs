@@ -52,13 +52,11 @@ test("flow proofs name only real, runnable result tests", () => {
 
 test("known flow gaps map to the exact executable red monitor", () => {
   // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
-  // test), the web push devices (saved results) and two journey steps (a live page read) out of this list;
-  // the rows below are the ones nothing can judge yet.
+  // test), the web push devices (saved results), two journey steps (a live page read) and, in generation 3,
+  // seven steps the live page does not carry (a verified nothing-to-judge) out of this list; the row below is
+  // the one nothing can judge yet.
   const cases = [
     ["messages.json", "script:one-off senders in scripts/"],
-    ["messages.json", "ui:ops-admin outbound mail panel"],
-    ["journeys.json", "journey:climate-lead-magnet-intended#1-headline-button"],
-    ["journeys.json", "journey:fh-consulting-intended#3-three-prices"],
   ];
 
   for (const [sourceFile, surface] of cases) {
@@ -72,15 +70,14 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("the 2 outbound message leftovers that nothing can judge stay red", () => {
+test("the 1 outbound message leftover that nothing can judge stays red", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 1);
   assert.deepEqual(rows.map(({ row }) => row.surface).sort(), [
     "script:one-off senders in scripts/",
-    "ui:ops-admin outbound mail panel",
   ]);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
@@ -88,7 +85,7 @@ test("the 2 outbound message leftovers that nothing can judge stay red", () => {
 });
 
 test("the 9 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
-  const live = loadRows("messages.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface]);
+  const live = loadRows("messages.json").filter((row) => FIN_B22_LIVE_PROOFS[row.surface] && !FIN_B22_LIVE_PROOFS[row.surface].shipped);
   assert.equal(live.length, 9);
   for (const row of live) {
     const proof = proofForFlowRow("messages.json", row);
@@ -112,6 +109,29 @@ test("the two journey steps judged by a live page read carry a page-read proof, 
     assert.equal(proof.depth, "deep", row.surface);
     assert.match(proof.evidence, /Executable live page read: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
     assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs"), row.surface);
+    assert.equal(proof.asserts, row.control, row.surface);
+  }
+});
+
+test("the seven steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
+  const rows = [
+    ...loadRows("journeys.json").map((row) => ["journeys.json", row]),
+    ...loadRows("messages.json").map((row) => ["messages.json", row]),
+  ].filter(([, row]) => FIN_B22_LIVE_PROOFS[row.surface]?.shipped);
+  assert.deepEqual(rows.map(([, row]) => row.surface).sort(), [
+    "journey:climate-lead-magnet-intended#1-headline-button",
+    "journey:climate-lead-magnet-intended#3-state-click",
+    "journey:climate-lead-magnet-intended#4-form",
+    "journey:climate-lead-magnet-intended#6-gate",
+    "journey:fh-consulting-intended#2-education-only",
+    "journey:fh-consulting-intended#3-three-prices",
+    "ui:ops-admin outbound mail panel",
+  ]);
+  for (const [sourceFile, row] of rows) {
+    const proof = proofForFlowRow(sourceFile, row);
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.match(proof.evidence, /Executable verified nothing-to-judge: src\/pulse\/coverage\/gap-catalog-flow\.mjs/, row.surface);
+    assert.ok(proofTestFiles(proof).includes("src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs"), row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
   }
 });

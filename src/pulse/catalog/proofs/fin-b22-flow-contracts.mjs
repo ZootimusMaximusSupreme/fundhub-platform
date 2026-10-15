@@ -8,6 +8,10 @@
 //   page rows      The row stays in the Flow lane and is judged there by one read of the live public page
 //                  (fin-b22-page-reads.mjs). Its proof names that lane and the tests that hold the judge
 //                  to the page files and to changed copies of them.
+//   shipped rows   (generation 3) The step names a control or words the live page does not carry. The row stays in
+//                  the Flow lane and says "nothing to judge" ONLY while one read of the live page (and what it
+//                  leads to) still finds none of it (fin-b22-not-shipped.mjs, N/A code
+//                  catalog-flow-step-not-shipped). The day the page carries it the row is NOT_PROVED again.
 //
 // A surface not listed here is still not proved and stays in the gap monitor, red by its exact name.
 // This file imports nothing, so flow-gap-cases.mjs can import it without a cycle.
@@ -22,6 +26,7 @@ const SOFT_PULL_STAFF = "src/pulse/catalog/proofs/fin-b22-soft-pull-staff.test.m
 const TWILIO_TEST = "src/http/fin-b22-twilio-status.test.mjs";
 const PUSH_SEND_TEST = "src/push/fin-b22-send-to-client.test.mjs";
 const PAGE_TEST = "src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs";
+const SHIPPED_TEST = "src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs";
 
 /** surface -> { file, tests }. A test with fake data judges the exact result. */
 export const FIN_B22_PRACTICE = Object.freeze({
@@ -58,6 +63,28 @@ export const FIN_B22_LIVE_PROOFS = Object.freeze({
   "journey:fh-consulting-intended#5-request-enrollment": Object.freeze({
     file: "journeys.json", tests: Object.freeze([PAGE_TEST, LANE_TEST]), page: true,
   }),
+  // Generation 3. Nothing to judge while the live page does not carry the step; read again every run.
+  "journey:climate-lead-magnet-intended#1-headline-button": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "journey:climate-lead-magnet-intended#3-state-click": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "journey:climate-lead-magnet-intended#4-form": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "journey:climate-lead-magnet-intended#6-gate": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "journey:fh-consulting-intended#2-education-only": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "journey:fh-consulting-intended#3-three-prices": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
+  "ui:ops-admin outbound mail panel": Object.freeze({
+    file: "messages.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
+  }),
 });
 
 function basename(sourceFile) {
@@ -90,9 +117,11 @@ export function finB22FlowProof(sourceFile, row) {
     const live = FIN_B22_LIVE_PROOFS[surface];
     return {
       depth: "deep",
-      evidence: live.page
-        ? `Executable live page read: ${LANE}; its judge is held to the page files and to changed copies of them by ${live.tests.join(", ")}`
-        : `Executable live saved-result check: ${LANE}; its query is run over stand-in rows by ${live.tests.join(", ")}`,
+      evidence: live.shipped
+        ? `Executable verified nothing-to-judge: ${LANE} reads the live page and what it leads to every run and says "na" only while the step is not on it; the reader is held to the page files and to changed copies of them by ${live.tests.join(", ")}`
+        : live.page
+          ? `Executable live page read: ${LANE}; its judge is held to the page files and to changed copies of them by ${live.tests.join(", ")}`
+          : `Executable live saved-result check: ${LANE}; its query is run over stand-in rows by ${live.tests.join(", ")}`,
       asserts: row.control,
     };
   }
