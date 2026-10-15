@@ -1,7 +1,8 @@
 # Finish the 853 - batch 12 manifest
 
 Branch `fin/b12`, built from `fin/base` (`2f4f574a0`). Tier 4, lane `gap-catalog-display`, 40 rows. Nothing was pushed or merged.
-Generation 1 of at most 3. Tests only: no product file was edited.
+Generation 1 attached 37 rows. Generation 2 (this file's last section) challenged the 3 that were left, kept all 3 as
+not attachable with exact reasons, and added a real-page test that holds each reason. Tests only: no product file was edited.
 
 ## The numbers
 
@@ -14,10 +15,11 @@ Generation 1 of at most 3. Tests only: no product file was edited.
 
 Outcomes: 18 `live-check`, 19 `practice-test`, 3 `not-attachable`, 0 `na-verified`.
 
-The three left are findings, each held to the repo by `fin-b12-rows.test.mjs` so the test goes red the day the reason stops being true:
+The three left are findings, each held to the repo by `fin-b12-rows.test.mjs` (page source) and `fin-b12-held-reasons.test.mjs`
+(the real page in Chromium) so the tests go red the day the reason stops being true:
 
-1. documents.html Status filter select: the option "Generation failed" can never match anything.
-2. galaxy.html Legend strip: size and brightness are moved on dice in the live sky.
+1. documents.html Status filter select: two of the six options, "Generation failed" and "Not generated", can never list a saved document.
+2. galaxy.html Legend strip: size and brightness are moved on dice in the live sky (and the census and worker panel read the dice).
 3. galaxy.html Rail pulses and hand-off threads: a hand-off thread is labelled with a client picked at random.
 
 ## Every row
@@ -30,7 +32,7 @@ The three left are findings, each held to the repo by `fin-b12-rows.test.mjs` so
 | 4 | desks-b.json:creative-factory.html:Video performance: Sync now button | live-check | `fin-b12-display-contracts.mjs` | cf-sync: video rows that are a made-up zero (0 views and 0 minutes), have no capture time, or belong to a connection that never synced; a synced connection still pending. |
 | 5 | desks-b.json:creative-factory.html:Write a script and label it: words box, name, kind, angle, hook, offer (suggestion lists) and l | live-check | `fin-b12-display-contracts.mjs` | cf-script: ad_scripts written by chris or an agent: labels not in settled form, labels with no ad_labels entry, rewrite with no parent, wrong version or root, and a rewritten version still live. |
 | 6 | desks-b.json:documents.html:Page itself loads (optionally ?client_id=); owner/admin with no client is redirected to the primary de | live-check | `fin-b12-display-contracts.mjs` | docs-page-load: listed documents naming a client outside the company, with no title or key, generated file never stamped, sent with no sent time, signed though not required; plus Demo Mode on with no primary demo client. |
-| 7 | desks-b.json:documents.html:Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, si | not-attachable | `fin-b12-not-attachable.mjs` | The select offers Generation failed but documents.html maps generated_at to generated or queued only, and the documents table has no generation-failure column, so that option always shows an empty list. Held by fin-b12-rows.test.mjs. |
+| 7 | desks-b.json:documents.html:Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, signature expired) | not-attachable | `fin-b12-not-attachable.mjs` | Four options work (Not delivered, Bounced, Awaiting signature, Signature expired). Generation failed and Not generated can never list a saved document: the loader sets gen from generated_at only (generated or queued), the table has no generation failure column, and documents.generated_at is NOT NULL DEFAULT now(), so queued never happens. Held by fin-b12-held-reasons.test.mjs and fin-b12-rows.test.mjs. |
 | 8 | desks-b.json:finance-os.html:Client picker select (up to 500 clients) | live-check | `fin-b12-display-contracts.mjs` | fos-picker: a client the picker lists with no name and no email (prints Unnamed client), and a company with more than 500 clients (the oldest cannot be picked). |
 | 9 | desks-b.json:finance-os.html:Header text 'no client open' / client name | live-check | `fin-b12-display-contracts.mjs` | fos-header: a client with no name and no email, so the header prints the first eight letters of the id. |
 | 10 | desks-b.json:finance-os.html:Page itself loads (with or without ?client_id=); owner/admin with no client is redirected to the prim | live-check | `fin-b12-display-contracts.mjs` | fos-page-load: Demo Mode on with no primary demo client (demo.client.01) for the owner redirect to land on. |
@@ -55,10 +57,10 @@ The three left are findings, each held to the repo by `fin-b12-rows.test.mjs` so
 | 29 | desks-b.json:financeos.html#transfers:Go back (cancels the review step) | practice-test | `fin-b12-plan-strategy.test.mjs` | Review this move opens the question and holds the From account; Go back closes it, frees the account and sends nothing; checked for one account and a choice of accounts. |
 | 30 | public-pages.json:form:careers.html#apply-form:Job application form: role, name, email, phone, LinkedIn, how heard, website (a hid | live-check | `fin-b12-display-contracts.mjs` | careers-apply: applications filed 1 hour to 30 days ago with no candidate, no new-application task, or no follow-up cadence (candidate_outreach). The cadence is never started by the form (ensureOutreach has no non-test caller), so this is expected red on live applications. Product finding. |
 | 31 | public-pages.json:form:consulting/index.html#consult-form:Consult request form: name, email, agency, help, note. It takes no card  | practice-test | `fin-b12-consult-form.test.mjs` | Real /consulting/ in Chromium: five fields and no card field, empty form does not leave, the typed words go into the mailto subject and body to the address shown on the page, and no /api request is made. |
-| 32 | desks-b.json:galaxy.html:Legend strip (size, brightness, pace colors) | not-attachable | `fin-b12-not-attachable.mjs` | The legend says size is output today and brightness is working right now, but evActivity adds 1 to 3 to output at random and flips idle workers to active on dice, so the sky is not the day's numbers. Swatch colours do match. Held by fin-b12-rows.test.mjs. |
+| 32 | desks-b.json:galaxy.html:Legend strip (size, brightness, pace colors) | not-attachable | `fin-b12-not-attachable.mjs` | After the feed loads the page moves size (evActivity adds 1 to 3 to output) and brightness (idle workers flip to active at random, and never back) on dice, and the census and the worker panel read the same dice. Also: the feed never sends blocked, and an agent size is 3 or 1 by sort order. Swatch colours do match the canvas palette. Held by fin-b12-held-reasons.test.mjs and fin-b12-rows.test.mjs. |
 | 33 | desks-b.json:galaxy.html:Live feed on load: workers, clients, routes and numbers for the sky | live-check | `fin-b12-display-contracts.mjs` | galaxy-feed: person with two open shifts, shift open over 24 hours, shift or event naming nobody on staff, live agent with no go-live time, negative cash collected, call outcome naming a client of another company, funded client with no amount. |
 | 34 | desks-b.json:galaxy.html:Page itself loads (full-screen canvas, clock, census, LIVE / WAITING pill) | live-check | `fin-b12-display-contracts.mjs` | galaxy-page-load: the company has no active person and no live agent to show, or a person the census counts has no name. |
-| 35 | desks-b.json:galaxy.html:Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Aff | not-attachable | `fin-b12-not-attachable.mjs` | Rail pulses name only a stage, but a hand-off thread is labelled with a real client picked at random from the feed (fillC), so it says a handoff happened that did not. Held by fin-b12-rows.test.mjs. |
+| 35 | desks-b.json:galaxy.html:Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Affiliates + Hiring) and hand-off threads | not-attachable | `fin-b12-not-attachable.mjs` | Rail pulses name only a stage, but the feed sends routes: [], so the page invents routes between list neighbours and labels each thread with a client picked at random (fillC): the sky says a hand-off happened that was never saved. Held by fin-b12-held-reasons.test.mjs and fin-b12-rows.test.mjs. |
 | 36 | desks-c.json:hiring.html:Bench table: one row per role (closer, setter, sales_coordinator) with bench count, short-by, awaiting sc | live-check | `fin-b12-display-contracts.mjs` | hiring-bench: v_hiring_bench bench count vs an independent recount of open applications at one-on-one and offer, short-by vs target minus bench, hiring manager not on staff, active role with negative target or no name. |
 | 37 | desks-c.json:hiring.html:Board card: click opens the application drawer (name, scores, flags, source, video/resume tags) | live-check | `fin-b12-display-contracts.mjs` | hiring-card: open application with candidate or role outside the company, video tag not a web address, resume tag pointing at a missing document; scores outside 1-4, flags not a list, score for another company, person-scored with no person. |
 | 38 | desks-c.json:hiring.html:Board column: 1:1 Interview (one_on_one) | live-check | `fin-b12-display-contracts.mjs` | hiring-col-one-on-one: open application in 1:1 Interview with no decision that moved it there, or candidate or role outside the company. |
@@ -137,8 +139,10 @@ All 42 went red. `git status` was clean after every run.
 2. **Finance OS "Promo tracking ... NOT LIVE; nothing stored" is out of date.** Migration 471 added
    `account_statement_cycles.promo_ends_on` and the Alerts tab saves promo end dates there. The panel in `finance-os.html`
    still says none are stored. The `fos-promo` live check is red for any company that has saved one.
-3. **Documents: the "Generation failed" filter can never match.** The loader maps `generated_at` to generated or queued only,
-   and there is no failure column. Row left not proved.
+3. **Documents: two filter options can never match.** "Generation failed": the loader maps `generated_at` to generated or queued
+   only, and there is no failure column. "Not generated": `documents.generated_at` is `NOT NULL DEFAULT now()` (030_documents.sql,
+   never relaxed), so every saved document is generated and "queued" is never set. Both always show "Nothing matches that filter."
+   Row left not proved.
 4. **Galaxy invents output and activity.** `evActivity` adds 1 to 3 to a worker's output on a timer and flips idle workers to
    active at random (`evHandoff` too). The legend says size is output today and brightness is working right now.
 5. **Galaxy hand-off threads name a random real client.** `fillC` picks any client from the feed, and the routes are just
@@ -177,3 +181,93 @@ Command: `CI=1 node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs
 | `node --test src/pulse/coverage/gap-catalog-display.test.mjs` | 11 of 11 pass |
 | `npm run pulse:catalog` | rebuilt `generated.json`; 3942 unique, 23 red |
 | 42 break checks (above) | 42 of 42 red |
+
+## Generation 2: the three rows challenged
+
+Brief: read the real page or handler, and attach a live check or practice test unless the earlier reason is exactly true.
+Result: all three reasons are true, and two of them were too small. Nothing was attached. Each is now held by a real-page
+test, not only by patterns over the page source.
+
+| Not proved | Before gen 2 | After gen 2 |
+|---|---|---|
+| Batch 12 rows (`count-not-proved.mjs`, intersected with `batch-12.json`) | 3 | 3 |
+| Whole repo, all four lanes | 816 | 816 |
+
+(Generation 1 took the batch from 40 to 3 and the repo from 853 to 816. Generation 2 made no further attachment, on purpose.)
+
+### What was challenged and what was found
+
+1. **documents.html Status filter select.** Challenge: attach a practice test of the select. Why not: a test with fake rows
+   would prove the page logic over a state the database cannot hold. Facts read: `documents.generated_at` is `timestamptz NOT NULL
+   DEFAULT now()` (`db/migrations/030_documents.sql`, no later migration changes it), and `api/read/documents.mjs` returns it as
+   saved. The loader sets `gen` from `generated_at` only. So "Not generated" is dead as well as "Generation failed" (generation 1
+   named only the second). Four options work. A fake-data test over the four working options would be green while two of the six
+   options in the row's own name are dead, so the row would read proved when it is not.
+2. **galaxy.html Legend strip.** Challenge: attach a live check on the feed. Why not: the feed (`src/galaxy/company-activity.mjs`)
+   is judged on load by the `galaxy-feed` check, and the legend breaks AFTER load, on the page, where nothing is saved. Read in
+   the page: `evActivity` adds 1 to 3 to `n.out` and flips idle to active with `Math.random`, `evHandoff` flips the next worker
+   to active at random, and the only flip back needs a pool line that begins with "Idle", which the feed never sends. Shown in
+   Chromium with the feed held still: the worker panel's Total events climbs past its own Events today plus Calls today, and the
+   census counts two people with no open shift as working. Extra gaps in the same strip: the feed never sends `blocked` (state is
+   only active or idle) so the blocked swatch cannot light; an agent's size is 3 or 1 by `sort_order`, not output. The swatch
+   colours do match the canvas palette (checked from computed styles).
+3. **galaxy.html Rail pulses and hand-off threads.** Challenge: the rail pulses carry no client (true, `evMove` says so), so attach
+   that half. Why not: the row's name includes the hand-off threads, and those are invented: the feed sends `routes: []`, the page
+   makes neighbour routes with the label `handoff — {C}`, and `fillC` fills `{C}` with a client picked at random. Shown in
+   Chromium: with `routes: []` and no worker holding a file, the canvas draws `Casey Reed  →  Jordan Lee` with `handoff — Dana
+   Whitfield` under it.
+
+### The test that holds the three reasons
+
+`src/pulse/catalog/proofs/fin-b12-held-reasons.test.mjs` (5 tests, about 18 seconds). The real page in Chromium, fake `/api` answers
+shaped exactly like the saved rows, fixed dice, a fake clock, and a spy on the canvas text. Each test is GREEN while the product is
+wrong and goes RED the day it is fixed, which is the signal to attach the row for real. It is a held finding. It is not a proof and
+it is not attached to any row.
+
+| Test | What it shows |
+|---|---|
+| documents status filter, real-shaped rows | Seven saved-shape rows. Not delivered, Bounced, Awaiting signature and Signature expired list exactly their documents (positive control). Not generated and Generation failed list nothing. The option list is exactly Any plus the six. |
+| documents table | `generated_at` NOT NULL in 030_documents.sql, no generation failure column, and no later migration drops NOT NULL or adds one. |
+| galaxy legend, dice | Feed held still. Total events climbs past saved Events today plus Calls today. The census counts a worker with no open shift as working. |
+| galaxy legend, swatches and blocked | Swatch colours equal the canvas palette. The feed builder only ever sets active or idle. Agent size is the 3 or 1 constant. |
+| galaxy rails | With `routes: []` the sky draws a thread between two workers labelled with a real client's name. |
+
+### Break checks for generation 2 (product or source broken on purpose, test run, put back; `git status` clean after each)
+
+| Break | Result |
+|---|---|
+| galaxy: output no longer bumped (`n.out += ...` removed) | legend test RED |
+| galaxy: the idle to active flip removed from `evActivity` only | still green: `evHandoff` flips workers too (correct, two flip sites) |
+| galaxy: both flips removed | legend test RED on "counted as working" |
+| galaxy: thread label no longer carries a client | rails test RED |
+| documents: delivery_status failed mapped to gen failed | filter test RED |
+| documents: Bounced option broken | filter test RED (positive control works) |
+| feed: sends `blocked` | swatch and blocked test RED |
+| galaxy: green swatch recoloured | swatch test RED |
+| migration text: `generated_at` made nullable | table test RED |
+
+### Files added or touched in generation 2
+
+- Added: `src/pulse/catalog/proofs/fin-b12-held-reasons.test.mjs`
+- Edited (batch 12's own file): `src/pulse/catalog/proofs/fin-b12-not-attachable.mjs` (three reasons restated exactly)
+- Edited: this manifest
+- Shared lists touched: none. `generated.json` rebuilt with `npm run pulse:catalog` and is byte-identical.
+
+### Commands run in generation 2
+
+| Command | Result |
+|---|---|
+| `node scripts/pulse/count-not-proved.mjs` before and after | repo 816 and 816; batch rows 3 and 3 |
+| `CI=1 node --test src/pulse/catalog/proofs/fin-b12-*.test.mjs` | 58 of 58 pass (9 files, including the new one) |
+| `node --test src/pulse/coverage/gap-catalog-display.test.mjs` | 11 of 11 pass |
+| `npm run pulse:catalog` | 3942 unique, 23 red, `generated.json` unchanged |
+| 9 break checks (above) | 8 red as expected, 1 correctly green (two flip sites) |
+
+### New product findings (one line each, not fixed)
+
+1. Documents: "Not generated" can never list a document (`generated_at` is NOT NULL). Generation 1 named only "Generation failed".
+2. Galaxy: the worker panel's Total events and the census "working" count both read the dice, so they disagree with the saved rows on the same panel (Events today, Calls today, Open shift).
+3. Galaxy: the feed never sends `blocked`, so the blocked swatch in the legend can never light on live data.
+4. Galaxy: an agent's size is 3 or 1 by `sort_order` in `buildAgentNode`, not its output, while the legend says size is output today.
+5. Galaxy: "output today" counts from `date_trunc('day', now())` in the database session and the page clock is Arizona time. No time zone is set in the repo. Not verified on the live database.
+6. Seen in an earlier round, not changed: `display-contracts-ab.test.mjs` draws the QUEUED badge from a document with `generated_at: null`, a state the table cannot hold.
