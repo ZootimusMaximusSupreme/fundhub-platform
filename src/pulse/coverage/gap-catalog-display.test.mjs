@@ -47,13 +47,13 @@ function fakeDb(overrides = {}, failOn = null) {
   };
 }
 
-test("all 40 deep display controls own one exact contract", () => {
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 40);
-  assert.equal(DISPLAY_RESULT_CASES.length, 40);
-  assert.equal(PASS_CAPABLE_COUNT, 27);
-  assert.equal(UNMEASURED_CONTRACT_COUNT, 13);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 40);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 40);
+test("all 72 deep display controls own one exact contract", () => {
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 72);
+  assert.equal(DISPLAY_RESULT_CASES.length, 72);
+  assert.equal(PASS_CAPABLE_COUNT, 62);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 10);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT, 72);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 72);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -68,7 +68,7 @@ test("all 40 deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 27);
+  assert.equal(SQL_BATCHES.length, 62);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -116,7 +116,7 @@ test("missing contracts are not proved while measured breaks stay broken", () =>
 
 test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
-  assert.equal(entries.length, 13);
+  assert.equal(entries.length, 10);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED", entry.control);
@@ -136,10 +136,10 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
 
-  assert.equal(db.calls.length, 27);
+  assert.equal(db.calls.length, 62);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 27);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 62);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 10);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   assert.equal(unproved.length, unprovedIds.size);
   assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
@@ -151,7 +151,7 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
   assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 13);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 10);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 
@@ -195,7 +195,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 40);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 72);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
