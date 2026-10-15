@@ -1,4 +1,5 @@
 import { isS2ProvedFlowRow } from "./s2-flow-contracts.mjs";
+import { isFinB22ProvedFlowRow } from "./fin-b22-flow-contracts.mjs";
 
 export const FLOW_GAP_LANE = "src/pulse/coverage/gap-catalog-flow.mjs";
 export const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
@@ -54,20 +55,20 @@ export function isInactiveTemplateRow(row) {
 }
 
 export function needsMessageGapMonitor(row) {
-  if (isS2ProvedFlowRow(row)) return false;
+  if (isS2ProvedFlowRow(row) || isFinB22ProvedFlowRow(row)) return false;
   return isInactiveTemplateRow(row)
     || row?.surface === "template:payment_link_notice"
     || MESSAGE_CONTROL_SURFACES.has(row?.surface);
 }
 
 export function needsJourneyGapMonitor(row) {
-  if (isS2ProvedFlowRow(row)) return false;
+  if (isS2ProvedFlowRow(row) || isFinB22ProvedFlowRow(row)) return false;
   const roleAccess = /#(?:reach-.+|stays-blocked)$/.test(String(row?.surface || ""));
   return roleAccess || JOURNEY_RESULT_SURFACES.has(row?.surface);
 }
 
 export function needsAgentGapMonitor(row) {
-  return row?.surface === "ai-caller:api/journeys/ask.mjs";
+  return row?.surface === "ai-caller:api/journeys/ask.mjs" && !isFinB22ProvedFlowRow(row);
 }
 
 export function flowGapRows(messages, journeys, agents) {
@@ -78,8 +79,9 @@ export function flowGapRows(messages, journeys, agents) {
   ];
 }
 
+// Batch 22: the journeys proxy and two soft-pull steps left the monitor for a practice test, so journey is
+// 9 and no agent row is left (a family with no row left has no entry; the drift guard checks listed families).
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
   message: 171,
-  journey: 11,
-  agent: 1,
+  journey: 9,
 });
