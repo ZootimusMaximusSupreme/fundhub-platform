@@ -41,3 +41,11 @@ It does not only show you. It walks you through doing all of it, so you learn by
 
 When a Blueprint client becomes fundable, a CSM reaches out and upsells them to fund with Fundhub
 instead of on their own. Chris: "I don't know." Related ideas: `marketing/offers/data-points-ideas-2026-10-14.md`.
+
+## What Blueprint ads leave out (owner-set 2026-10-15)
+
+- No application sequences, no bank order, and no "what to put on each application" in Blueprint ads.
+- Nothing about what happens after funding (no "it tells you when you're ready to go again").
+- Reason (Chris): if a $10,000 product gives them everything and lets them use the system forever,
+  they never need Fundhub again, and that cuts lifetime value. Leave something out so they keep
+  working with Fundhub (the funding itself, or the data points).
