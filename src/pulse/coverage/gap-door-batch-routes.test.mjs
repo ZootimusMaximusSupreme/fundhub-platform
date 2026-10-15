@@ -9,6 +9,7 @@ import {
   gapChecks,
   judgeRouteGap,
 } from "./gap-door-batch-routes.mjs";
+import { retiredRouteEntry } from "./fin-b03-route-retired.mjs";
 
 test("the route gap monitor owns the exact 135 rows", () => {
   const counts = ROUTE_GAP_ROWS.reduce((out, row) => {
@@ -28,9 +29,16 @@ test("every missing route result emits one exact not-proved row", async () => {
     const source = ROUTE_GAP_ROWS[index];
     const result = results[index];
     assert.equal(result.id, source.id);
-    assert.equal(result.status, "NOT_PROVED", source.id);
     assert.ok(result.detail.includes(source.surface), source.id);
     assert.ok(result.detail.includes(source.control), source.id);
+    if (retiredRouteEntry(source)) {
+      // The one retired action is judged from saved sends (fin-b03-route-retired.test.mjs). With no
+      // database in this run it is "skip" with the reason, never not-proved and never green.
+      assert.equal(result.status, "skip", source.id);
+      assert.match(result.detail, /no database in this run/);
+      continue;
+    }
+    assert.equal(result.status, "NOT_PROVED", source.id);
     assert.match(result.detail, /No fake-data check calls .* named business result, so this route stays not proved\.$/);
     assert.doesNotMatch(result.detail, /(?:the API|the route|the business result) works/i);
   }
