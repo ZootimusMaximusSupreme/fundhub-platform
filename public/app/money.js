@@ -123,7 +123,9 @@
     var bal = 0, lim = 0, counted = 0, missing = 0;
     list(cards).forEach(function (c) {
       if (isNum(c.balance_cents) && isNum(c.limit_cents) && c.limit_cents > 0) {
-        bal += c.balance_cents; lim += c.limit_cents; counted++;
+        /* Owed, not signed: an overpaid card (negative balance) owes 0 and must not
+           pull the total down. Same floor as the server (money-overview.mjs owed). */
+        bal += Math.max(0, c.balance_cents); lim += c.limit_cents; counted++;
       } else {
         missing++;
       }
