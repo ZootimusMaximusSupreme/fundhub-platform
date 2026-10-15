@@ -177,10 +177,13 @@ you want the catalog text to say "retired" too, that needs a recipe change and a
 - `node --test src/pulse/coverage/fin-b03-route-retired.test.mjs`: 11 of 11 pass (real handler, lane wiring, audit).
 - `node --test src/pulse/coverage/fin-b03-route-retired.pg.test.mjs` with no `DATABASE_URL`: 7 skipped, 0 failed.
   **This is not a Postgres result.** See "Not proved here".
-- The break runner (every row in the table above): 40 of 40 red, and the files were restored each time
+- The break runner (every row in the table above): 41 of 41 red, and the files were restored each time
   (`cmp` against a saved good copy, `git diff` clean on `api/closer-deck.mjs` and `gap-door-batch-routes.mjs`).
-  The first pass ran the older single test file against S1 to S9 and was red on all of them; the table is the
-  second pass against the final code.
+  The first pass ran the older single test file against S1 to S9 and was red on all of them. The S and J rows
+  in the table are from a second pass against the final code. W1 to W3 and P1 to P2 ran just before the select
+  column was renamed from `at` to `saved_at` (a change made so the column label is not the SQL word AT); that
+  rename does not touch the wiring or the handler, and the handler and wiring tests were green again after it
+  in the regression group above.
 - Regression group, same run as the pulse guards: `fin-b03-route-retired` (3 files), `gap-door-batch-routes`,
   `na-conditions`, `self-audit`, `scorecard`, `modules`, `tripwires`, `quiet-hours`, `s1-door-contracts`,
   `door-batch-route-result`, `src/http/routes.test.mjs`: 263 tests, 256 pass, 0 fail, 7 skipped (the pg file).
