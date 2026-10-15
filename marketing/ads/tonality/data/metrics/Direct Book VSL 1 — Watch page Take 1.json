@@ -1,0 +1,1291 @@
+{
+ "file": "Direct Book VSL 1 — Watch page Take 1.mp4",
+ "ad": "Direct Book VSL 1 — Watch page",
+ "lufs": -32.6,
+ "lra": 6.2,
+ "true_peak_db": -13.0,
+ "timing_ok": true,
+ "duration_s": 345.9,
+ "lead_silence_s": 0.5,
+ "trail_silence_s": 1.01,
+ "words": 1024,
+ "wpm_overall": 178,
+ "wpm_speaking": 255,
+ "pauses": 109,
+ "pauses_per_min": 19.0,
+ "pause_total_s": 103.0,
+ "pause_pct_of_span": 29.9,
+ "pause_median_s": 0.5,
+ "pause_max_s": 4.72,
+ "pauses_over_1s": 26,
+ "pauses_over_1_5s": 20,
+ "phrase_len_mean_s": 2.19,
+ "phrase_len_sd_s": 1.46,
+ "gaps": [
+  0.3,
+  4.72,
+  0.32,
+  3.22,
+  0.42,
+  0.32,
+  0.3,
+  0.38,
+  2.58,
+  0.36,
+  2.88,
+  0.54,
+  0.32,
+  2.5,
+  0.64,
+  0.64,
+  0.5,
+  0.38,
+  1.18,
+  0.32,
+  0.7,
+  1.78,
+  0.44,
+  3.8,
+  0.34,
+  2.1,
+  0.36,
+  3.5,
+  0.5,
+  2.06,
+  2.62,
+  0.32,
+  0.38,
+  0.44,
+  1.18,
+  0.46,
+  0.36,
+  1.26,
+  0.32,
+  0.3,
+  0.3,
+  0.32,
+  0.32,
+  0.82,
+  0.42,
+  0.6,
+  0.34,
+  0.4,
+  0.44,
+  0.32,
+  0.44,
+  0.64,
+  2.08,
+  0.38,
+  0.88,
+  0.4,
+  0.84,
+  3.16,
+  2.06,
+  0.6,
+  3.5,
+  0.48,
+  0.52,
+  0.34,
+  0.4,
+  0.68,
+  0.68,
+  0.64,
+  0.56,
+  2.6,
+  0.4,
+  0.54,
+  0.44,
+  0.32,
+  0.3,
+  0.7,
+  0.46,
+  0.64,
+  0.34,
+  0.58,
+  0.36,
+  0.34,
+  0.7,
+  0.48,
+  0.42,
+  0.36,
+  1.18,
+  0.82,
+  1.24,
+  1.5,
+  1.06,
+  0.44,
+  3.02,
+  0.7,
+  0.42,
+  0.74,
+  0.3,
+  0.32,
+  0.74,
+  0.36,
+  0.46,
+  0.58,
+  0.64,
+  3.68,
+  0.44,
+  0.34,
+  3.46,
+  0.38,
+  0.58
+ ],
+ "pitch_ok": true,
+ "f0_median_hz": 114.5,
+ "pitch_sd_st": 2.43,
+ "pitch_p10_p90_st": 5.6,
+ "voiced_pct_of_speech": 58.4,
+ "phrases": 110,
+ "phrase_level_sd_st": 1.47,
+ "phrase_range_mean_st": 4.38,
+ "loud_sd_db": 5.81,
+ "loud_p10_p90_db": 15.56,
+ "phrase_loud_sd_db": 1.74,
+ "accents_total": 133,
+ "fillers_heard": 0,
+ "restarts": 4,
+ "silence_threshold_db": -42.0,
+ "word_time_lag_s": 0.12,
+ "script": {
+  "script_words": 910,
+  "said_words": 1024,
+  "script_covered_pct": 93.6,
+  "said_off_script_pct": 16.8,
+  "line_ends": [
+   {
+    "line": 0,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 43.14,
+    "end_slope_st": null,
+    "pause_after_s": 2.88,
+    "is_last": false
+   },
+   {
+    "line": 1,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 56.64,
+    "end_slope_st": null,
+    "pause_after_s": 0.64,
+    "is_last": false
+   },
+   {
+    "line": 2,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 82.72,
+    "end_slope_st": null,
+    "pause_after_s": 3.8,
+    "is_last": false
+   },
+   {
+    "line": 3,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 102.44,
+    "end_slope_st": null,
+    "pause_after_s": 3.5,
+    "is_last": false
+   },
+   {
+    "line": 4,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 132.86,
+    "end_slope_st": -1.3375000000000004,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 5,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 159.84,
+    "end_slope_st": null,
+    "pause_after_s": 0.42,
+    "is_last": false
+   },
+   {
+    "line": 6,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 177.1,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 7,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 200.58,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 8,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 221.96,
+    "end_slope_st": null,
+    "pause_after_s": 2.6,
+    "is_last": false
+   },
+   {
+    "line": 9,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 231.44,
+    "end_slope_st": 0.14615384615384563,
+    "pause_after_s": 0.44,
+    "is_last": false
+   },
+   {
+    "line": 10,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 275.34,
+    "end_slope_st": 0.45999999999999863,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 11,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 297.02,
+    "end_slope_st": -0.057142857142857384,
+    "pause_after_s": 0.0,
+    "is_last": false
+   },
+   {
+    "line": 12,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 329.12,
+    "end_slope_st": null,
+    "pause_after_s": 3.46,
+    "is_last": false
+   },
+   {
+    "line": 13,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 345.1,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": true
+   }
+  ],
+  "up_lines_checked": 0,
+  "up_lines_rising": 0,
+  "up_slope_mean_st": null,
+  "other_slope_mean_st": -0.2,
+  "other_lines_rising_pct": 0.0,
+  "breaks_checked": 13,
+  "breaks_paused": 8,
+  "break_pause_mean_s": 1.36,
+  "caps_matched": 0,
+  "caps_lift_st": null,
+  "caps_lift_db": null,
+  "other_lift_st": 1.2,
+  "other_lift_db": -2.0
+ },
+ "transcript": "The condition of your credit decides whether you walk away with 10,000, 20,000, 40,000, 50,000 in funding or you walk away with 100k, 200, 300, 400,000, even a million dollars in funding. Even a million dollars in funding across multiple businesses and even maybe a couple hundred grand in personal funding if you want. If your credit score is Your credit score is only part of it. There are small details in your file like your personal data and your business codes that most people never think about. And even with an 800 credit score, they can hold you back from the maximum amount of funding. There's also one step most people miss that makes the biggest difference. And I'll show you what that is in a couple of minutes. I'm Chris. I run FunHub. I learned the funding game 10 years ago. And since then, I funded a little over a million dollars for myself. A million dollars for myself. If you've been trying to get funding, you've probably been through one of a few scenarios. You went to a bank, they denied you, and nobody told you why. Or you paid someone who said they'd get you funded, they sent your file to every lender on their list, and you came out with a couple approvals. And you came out with a couple approvals and a credit report full of hard inquiries or you never applied at all because you didn't want a hard poll on your credit report just to find out what you qualify for. Here's what all those three have in common. Nobody sat down and reviewed your file the way a lender does before your app before your applications went out. So your file got sent to banks that were never going to approve it and every one of those applications left a hard inquiry behind. Here's how we handle it. Our underwriting software, underwriting IQ reviews your file away a lender does. It catches those small details I mentioned. Like your personal data and your business codes. So we can fix them before anything goes out. Then it matches your files against thousands of lenders to find the 30 to 50 that fit you. And we apply in funding rounds any order that protects your score. Now here's the step I told you at the start. It's removing the hard inquiries. Here's the step I told you about at the start. It's removing the hard inquiries between each funding round. Every application creates a hard inquiry. And when the next round goes out with those inquiries still on your report, the next lender sees a file that's been shopping and improves less or you should get straight out denied. That's why most people get one good round and then hit a wall. We remove the inquiries between each round so your file goes into the next round clean. And that's how a funding sequence keeps going for three to six, maybe even nine rounds and builds into substantial capital. We're the only company in this industry that runs your file this way. Most of the people we work with from startups to established business owners are aiming for somewhere between $250 to $400,000. Some files are ready for that today, and a lot of them aren't there yet, which is completely normal. Wherever your file is right now, Fundhub has a solution for that phase. If your file is ready, we go get the capital. If your file is ready, we can go get the capital now. A funding advisor starts on your file within 24 business hours, and as long as nothing major is holding your file back, your first applications go out within 72 hours. We only take the upfront fee once you're confirmed. We only take the upfront fee once you're confirmed, qualified for funding. If something on your report is holding you back, we'll show you exactly what it is. Optimize your credit for you and fund you once your file is ready. And if you're ready, and if you'd rather do the work on your file yourself, we have a path for that too. And we're with you the whole time. We're with you the whole way. We'll tell you exactly which steps to take and in what order to get your file from where it is today to a prime file. We'll help you fix how your current companies are set up and strategize an opening or agent company. So the amount of funding you can qualify for goes from $100 or $200,000 up to around $400,000 in funding. You'll have a detailed accountability system that walks you through every step so you don't make costly mistakes or waste months on education you don't need. And when your file is ready, we go get the funding with you or you can do it yourself if you'd like. We've worked with hundreds of files and have thousands of data points on what lenders approve. That data is how we tell you what's likely for your file, what's most likely for your file based on where you're at right now and what you're aiming for. Here's what happens next. Click the link below and fill out the short application which takes about 10 seconds and then pick a time for your call. On the call, your funding advisor meets you on a Google Meet and runs a tri-buro, it runs a three-buro soft pole, and an experienced business report. It's $32 which covers what the bureaus charge for the reports, and has zero impact on your score. We'll go through your file together and see how much we think you qualify for right now, and what's holding you back if anything, and the fastest way to get your file to the maximum amount of funding. If you've been told before, if you've been told, if you've been told no before or you just want to know what's possible for you, this call is where you click to find out. Click the button below and book, click the button below and book your call.",
+ "phrase_meta": [
+  {
+   "k": 0,
+   "t0": 0.5,
+   "t1": 6.66,
+   "loud_db": -36.78581619262695,
+   "level_st": 0.2999999999999983,
+   "range_st": 3.58,
+   "accents": 6
+  },
+  {
+   "k": 1,
+   "t0": 6.96,
+   "t1": 10.9,
+   "loud_db": -37.74742889404297,
+   "level_st": -0.8999999999999986,
+   "range_st": 3.2999999999999994,
+   "accents": 2
+  },
+  {
+   "k": 2,
+   "t0": 15.62,
+   "t1": 19.38,
+   "loud_db": -38.95516586303711,
+   "level_st": -0.8000000000000008,
+   "range_st": 3.480000000000001,
+   "accents": 1
+  },
+  {
+   "k": 3,
+   "t0": 19.7,
+   "t1": 20.5,
+   "loud_db": -41.3746452331543,
+   "level_st": -6.000000000000002,
+   "range_st": 2.5,
+   "accents": 0
+  },
+  {
+   "k": 4,
+   "t0": 23.72,
+   "t1": 24.46,
+   "loud_db": -35.93282699584961,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 5,
+   "t0": 24.88,
+   "t1": 28.82,
+   "loud_db": -38.2840576171875,
+   "level_st": 0.8499999999999993,
+   "range_st": 6.999999999999998,
+   "accents": 3
+  },
+  {
+   "k": 6,
+   "t0": 29.14,
+   "t1": 31.66,
+   "loud_db": -40.8047981262207,
+   "level_st": -2.700000000000001,
+   "range_st": 4.64,
+   "accents": 2
+  },
+  {
+   "k": 7,
+   "t0": 31.96,
+   "t1": 32.9,
+   "loud_db": -37.738685607910156,
+   "level_st": 1.599999999999999,
+   "range_st": 2.0,
+   "accents": 0
+  },
+  {
+   "k": 8,
+   "t0": 33.28,
+   "t1": 35.8,
+   "loud_db": -39.448768615722656,
+   "level_st": -2.0000000000000004,
+   "range_st": 5.129999999999998,
+   "accents": 2
+  },
+  {
+   "k": 9,
+   "t0": 38.38,
+   "t1": 40.38,
+   "loud_db": -36.46379852294922,
+   "level_st": -1.250000000000003,
+   "range_st": 5.7200000000000015,
+   "accents": 1
+  },
+  {
+   "k": 10,
+   "t0": 40.74,
+   "t1": 43.14,
+   "loud_db": -39.33275604248047,
+   "level_st": -0.6000000000000011,
+   "range_st": 2.800000000000001,
+   "accents": 2
+  },
+  {
+   "k": 11,
+   "t0": 46.02,
+   "t1": 47.44,
+   "loud_db": -37.29354476928711,
+   "level_st": 0.20000000000000068,
+   "range_st": 2.3899999999999997,
+   "accents": 1
+  },
+  {
+   "k": 12,
+   "t0": 47.98,
+   "t1": 49.74,
+   "loud_db": -34.716941833496094,
+   "level_st": 1.599999999999999,
+   "range_st": 6.680000000000001,
+   "accents": 0
+  },
+  {
+   "k": 13,
+   "t0": 50.06,
+   "t1": 53.02,
+   "loud_db": -36.62432861328125,
+   "level_st": -0.10000000000000067,
+   "range_st": 4.160000000000002,
+   "accents": 0
+  },
+  {
+   "k": 14,
+   "t0": 55.52,
+   "t1": 56.64,
+   "loud_db": -34.53134536743164,
+   "level_st": 1.4000000000000004,
+   "range_st": 3.3800000000000012,
+   "accents": 1
+  },
+  {
+   "k": 15,
+   "t0": 57.28,
+   "t1": 58.64,
+   "loud_db": -37.50967025756836,
+   "level_st": 2.5999999999999974,
+   "range_st": 7.9999999999999964,
+   "accents": 0
+  },
+  {
+   "k": 16,
+   "t0": 59.28,
+   "t1": 61.2,
+   "loud_db": -37.8954963684082,
+   "level_st": -0.4999999999999981,
+   "range_st": 5.489999999999998,
+   "accents": 1
+  },
+  {
+   "k": 17,
+   "t0": 61.7,
+   "t1": 62.38,
+   "loud_db": -34.62076187133789,
+   "level_st": 0.39999999999999736,
+   "range_st": 3.3,
+   "accents": 0
+  },
+  {
+   "k": 18,
+   "t0": 62.76,
+   "t1": 64.94,
+   "loud_db": -35.59734344482422,
+   "level_st": -0.7000000000000022,
+   "range_st": 4.1,
+   "accents": 0
+  },
+  {
+   "k": 19,
+   "t0": 66.12,
+   "t1": 68.08,
+   "loud_db": -35.52311706542969,
+   "level_st": 0.49999999999999706,
+   "range_st": 4.9399999999999995,
+   "accents": 1
+  },
+  {
+   "k": 20,
+   "t0": 68.4,
+   "t1": 70.28,
+   "loud_db": -35.02643585205078,
+   "level_st": 1.2999999999999994,
+   "range_st": 4.860000000000003,
+   "accents": 0
+  },
+  {
+   "k": 21,
+   "t0": 70.98,
+   "t1": 72.64,
+   "loud_db": -37.85984420776367,
+   "level_st": -0.44999999999999946,
+   "range_st": 2.9600000000000017,
+   "accents": 0
+  },
+  {
+   "k": 22,
+   "t0": 74.42,
+   "t1": 77.62,
+   "loud_db": -37.42467498779297,
+   "level_st": -0.10000000000000067,
+   "range_st": 5.64,
+   "accents": 1
+  },
+  {
+   "k": 23,
+   "t0": 78.06,
+   "t1": 82.72,
+   "loud_db": -38.638118743896484,
+   "level_st": -1.2000000000000002,
+   "range_st": 5.52,
+   "accents": 4
+  },
+  {
+   "k": 24,
+   "t0": 86.52,
+   "t1": 92.0,
+   "loud_db": -37.81795883178711,
+   "level_st": -0.30000000000000204,
+   "range_st": 7.5400000000000045,
+   "accents": 2
+  },
+  {
+   "k": 25,
+   "t0": 92.34,
+   "t1": 94.12,
+   "loud_db": -38.248985290527344,
+   "level_st": 1.9500000000000006,
+   "range_st": 2.250000000000002,
+   "accents": 2
+  },
+  {
+   "k": 26,
+   "t0": 96.22,
+   "t1": 100.64,
+   "loud_db": -37.78717041015625,
+   "level_st": 0.39999999999999736,
+   "range_st": 5.379999999999999,
+   "accents": 2
+  },
+  {
+   "k": 27,
+   "t0": 101.0,
+   "t1": 102.44,
+   "loud_db": -38.23973846435547,
+   "level_st": -0.6000000000000011,
+   "range_st": 3.2999999999999967,
+   "accents": 1
+  },
+  {
+   "k": 28,
+   "t0": 105.94,
+   "t1": 111.18,
+   "loud_db": -37.34919357299805,
+   "level_st": 0.04999999999999818,
+   "range_st": 6.499999999999998,
+   "accents": 4
+  },
+  {
+   "k": 29,
+   "t0": 111.68,
+   "t1": 113.36,
+   "loud_db": -39.342437744140625,
+   "level_st": -1.0000000000000013,
+   "range_st": 3.8999999999999995,
+   "accents": 2
+  },
+  {
+   "k": 30,
+   "t0": 115.42,
+   "t1": 117.5,
+   "loud_db": -38.735111236572266,
+   "level_st": -0.6000000000000011,
+   "range_st": 3.3199999999999985,
+   "accents": 0
+  },
+  {
+   "k": 31,
+   "t0": 120.12,
+   "t1": 121.96,
+   "loud_db": -37.406898498535156,
+   "level_st": 0.9999999999999971,
+   "range_st": 6.240000000000002,
+   "accents": 2
+  },
+  {
+   "k": 32,
+   "t0": 122.28,
+   "t1": 124.68,
+   "loud_db": -39.28083801269531,
+   "level_st": -0.8000000000000008,
+   "range_st": 5.100000000000002,
+   "accents": 1
+  },
+  {
+   "k": 33,
+   "t0": 125.06,
+   "t1": 126.92,
+   "loud_db": -39.28926086425781,
+   "level_st": -0.2500000000000019,
+   "range_st": 5.769999999999998,
+   "accents": 1
+  },
+  {
+   "k": 34,
+   "t0": 127.36,
+   "t1": 128.74,
+   "loud_db": -36.10960388183594,
+   "level_st": -0.6000000000000011,
+   "range_st": 5.96,
+   "accents": 0
+  },
+  {
+   "k": 35,
+   "t0": 129.92,
+   "t1": 130.12,
+   "loud_db": -39.63486099243164,
+   "level_st": -5.350000000000001,
+   "range_st": 0.6400000000000023,
+   "accents": 0
+  },
+  {
+   "k": 36,
+   "t0": 130.58,
+   "t1": 137.1,
+   "loud_db": -36.317161560058594,
+   "level_st": -6.700000000000005,
+   "range_st": 8.76,
+   "accents": 6
+  },
+  {
+   "k": 37,
+   "t0": 137.46,
+   "t1": 139.0,
+   "loud_db": -35.75038146972656,
+   "level_st": 1.099999999999998,
+   "range_st": 3.2999999999999994,
+   "accents": 1
+  },
+  {
+   "k": 38,
+   "t0": 140.26,
+   "t1": 142.46,
+   "loud_db": -36.27296829223633,
+   "level_st": 1.8500000000000005,
+   "range_st": 5.300000000000001,
+   "accents": 1
+  },
+  {
+   "k": 39,
+   "t0": 142.78,
+   "t1": 145.44,
+   "loud_db": -36.17820358276367,
+   "level_st": -0.7000000000000022,
+   "range_st": 8.070000000000004,
+   "accents": 0
+  },
+  {
+   "k": 40,
+   "t0": 145.74,
+   "t1": 147.52,
+   "loud_db": -36.695247650146484,
+   "level_st": -1.2000000000000002,
+   "range_st": 2.429999999999998,
+   "accents": 1
+  },
+  {
+   "k": 41,
+   "t0": 147.82,
+   "t1": 150.74,
+   "loud_db": -37.50815200805664,
+   "level_st": -0.4000000000000008,
+   "range_st": 3.429999999999999,
+   "accents": 2
+  },
+  {
+   "k": 42,
+   "t0": 151.06,
+   "t1": 153.56,
+   "loud_db": -38.66225814819336,
+   "level_st": 1.5000000000000004,
+   "range_st": 2.140000000000004,
+   "accents": 0
+  },
+  {
+   "k": 43,
+   "t0": 153.88,
+   "t1": 156.14,
+   "loud_db": -39.147403717041016,
+   "level_st": -0.4999999999999981,
+   "range_st": 4.099999999999998,
+   "accents": 3
+  },
+  {
+   "k": 44,
+   "t0": 156.96,
+   "t1": 159.84,
+   "loud_db": -38.58132553100586,
+   "level_st": -0.8999999999999986,
+   "range_st": 5.159999999999998,
+   "accents": 2
+  },
+  {
+   "k": 45,
+   "t0": 160.26,
+   "t1": 161.6,
+   "loud_db": -34.455657958984375,
+   "level_st": 0.9999999999999971,
+   "range_st": 4.520000000000001,
+   "accents": 1
+  },
+  {
+   "k": 46,
+   "t0": 162.2,
+   "t1": 163.92,
+   "loud_db": -36.97206497192383,
+   "level_st": 0.39999999999999736,
+   "range_st": 5.339999999999998,
+   "accents": 2
+  },
+  {
+   "k": 47,
+   "t0": 164.26,
+   "t1": 166.08,
+   "loud_db": -40.15571212768555,
+   "level_st": 0.6000000000000013,
+   "range_st": 4.000000000000003,
+   "accents": 2
+  },
+  {
+   "k": 48,
+   "t0": 166.48,
+   "t1": 167.6,
+   "loud_db": -39.7047119140625,
+   "level_st": 0.0,
+   "range_st": 3.5000000000000027,
+   "accents": 1
+  },
+  {
+   "k": 49,
+   "t0": 168.04,
+   "t1": 168.8,
+   "loud_db": -40.618255615234375,
+   "level_st": -0.8999999999999986,
+   "range_st": 1.659999999999999,
+   "accents": 0
+  },
+  {
+   "k": 50,
+   "t0": 169.12,
+   "t1": 170.48,
+   "loud_db": -39.151329040527344,
+   "level_st": -1.6999999999999993,
+   "range_st": 5.16,
+   "accents": 0
+  },
+  {
+   "k": 51,
+   "t0": 170.92,
+   "t1": 173.36,
+   "loud_db": -41.41608428955078,
+   "level_st": -0.1500000000000012,
+   "range_st": 3.4999999999999973,
+   "accents": 2
+  },
+  {
+   "k": 52,
+   "t0": 174.0,
+   "t1": 176.42,
+   "loud_db": -39.272945404052734,
+   "level_st": 0.0,
+   "range_st": 5.979999999999993,
+   "accents": 1
+  },
+  {
+   "k": 53,
+   "t0": 178.5,
+   "t1": 179.7,
+   "loud_db": -37.732421875,
+   "level_st": 2.1500000000000004,
+   "range_st": 5.43,
+   "accents": 1
+  },
+  {
+   "k": 54,
+   "t0": 180.08,
+   "t1": 180.38,
+   "loud_db": -33.32228469848633,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 55,
+   "t0": 181.26,
+   "t1": 183.3,
+   "loud_db": -39.54657745361328,
+   "level_st": -0.4000000000000008,
+   "range_st": 3.8900000000000006,
+   "accents": 0
+  },
+  {
+   "k": 56,
+   "t0": 183.7,
+   "t1": 184.16,
+   "loud_db": -39.98333740234375,
+   "level_st": 0.8000000000000002,
+   "range_st": 2.2600000000000033,
+   "accents": 0
+  },
+  {
+   "k": 57,
+   "t0": 185.0,
+   "t1": 185.9,
+   "loud_db": -39.216941833496094,
+   "level_st": -0.7500000000000016,
+   "range_st": 3.2300000000000013,
+   "accents": 1
+  },
+  {
+   "k": 58,
+   "t0": 189.06,
+   "t1": 193.54,
+   "loud_db": -37.68023681640625,
+   "level_st": 0.0,
+   "range_st": 4.899999999999996,
+   "accents": 4
+  },
+  {
+   "k": 59,
+   "t0": 195.6,
+   "t1": 197.58,
+   "loud_db": -36.33631896972656,
+   "level_st": 0.2999999999999983,
+   "range_st": 5.010000000000002,
+   "accents": 2
+  },
+  {
+   "k": 60,
+   "t0": 198.18,
+   "t1": 198.64,
+   "loud_db": -39.171836853027344,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 61,
+   "t0": 202.14,
+   "t1": 204.36,
+   "loud_db": -38.874176025390625,
+   "level_st": -0.6000000000000011,
+   "range_st": 5.76,
+   "accents": 2
+  },
+  {
+   "k": 62,
+   "t0": 204.84,
+   "t1": 206.86,
+   "loud_db": -37.62227249145508,
+   "level_st": 0.2999999999999983,
+   "range_st": 5.679999999999998,
+   "accents": 2
+  },
+  {
+   "k": 63,
+   "t0": 207.38,
+   "t1": 210.12,
+   "loud_db": -39.87453842163086,
+   "level_st": -0.30000000000000204,
+   "range_st": 4.16,
+   "accents": 1
+  },
+  {
+   "k": 64,
+   "t0": 210.46,
+   "t1": 212.56,
+   "loud_db": -39.288299560546875,
+   "level_st": -1.2499999999999993,
+   "range_st": 4.300000000000002,
+   "accents": 1
+  },
+  {
+   "k": 65,
+   "t0": 212.96,
+   "t1": 215.36,
+   "loud_db": -40.05834197998047,
+   "level_st": -1.4000000000000026,
+   "range_st": 2.499999999999998,
+   "accents": 1
+  },
+  {
+   "k": 66,
+   "t0": 216.04,
+   "t1": 216.76,
+   "loud_db": -37.6152229309082,
+   "level_st": 1.2499999999999978,
+   "range_st": 3.810000000000001,
+   "accents": 0
+  },
+  {
+   "k": 67,
+   "t0": 217.44,
+   "t1": 217.82,
+   "loud_db": -38.45875549316406,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 68,
+   "t0": 218.46,
+   "t1": 218.7,
+   "loud_db": -34.65855026245117,
+   "level_st": -0.7000000000000011,
+   "range_st": 4.159999999999996,
+   "accents": 0
+  },
+  {
+   "k": 69,
+   "t0": 219.26,
+   "t1": 221.96,
+   "loud_db": -38.78608322143555,
+   "level_st": 0.49999999999999706,
+   "range_st": 4.799999999999997,
+   "accents": 4
+  },
+  {
+   "k": 70,
+   "t0": 224.56,
+   "t1": 227.68,
+   "loud_db": -36.59429168701172,
+   "level_st": 1.5000000000000004,
+   "range_st": 7.579999999999998,
+   "accents": 1
+  },
+  {
+   "k": 71,
+   "t0": 228.08,
+   "t1": 229.48,
+   "loud_db": -37.278175354003906,
+   "level_st": 1.199999999999996,
+   "range_st": 7.159999999999998,
+   "accents": 0
+  },
+  {
+   "k": 72,
+   "t0": 230.02,
+   "t1": 231.44,
+   "loud_db": -36.967803955078125,
+   "level_st": -2.1000000000000014,
+   "range_st": 5.1,
+   "accents": 1
+  },
+  {
+   "k": 73,
+   "t0": 231.88,
+   "t1": 232.52,
+   "loud_db": -34.40857696533203,
+   "level_st": 1.199999999999996,
+   "range_st": 4.799999999999999,
+   "accents": 1
+  },
+  {
+   "k": 74,
+   "t0": 232.84,
+   "t1": 234.66,
+   "loud_db": -36.63984298706055,
+   "level_st": 0.6000000000000013,
+   "range_st": 6.4200000000000035,
+   "accents": 1
+  },
+  {
+   "k": 75,
+   "t0": 234.96,
+   "t1": 236.06,
+   "loud_db": -39.05250930786133,
+   "level_st": 0.699999999999998,
+   "range_st": 3.88,
+   "accents": 1
+  },
+  {
+   "k": 76,
+   "t0": 236.76,
+   "t1": 237.1,
+   "loud_db": -32.18785095214844,
+   "level_st": 2.999999999999999,
+   "range_st": 3.4399999999999986,
+   "accents": 0
+  },
+  {
+   "k": 77,
+   "t0": 237.56,
+   "t1": 240.76,
+   "loud_db": -35.413818359375,
+   "level_st": 0.8000000000000002,
+   "range_st": 4.929999999999996,
+   "accents": 4
+  },
+  {
+   "k": 78,
+   "t0": 241.4,
+   "t1": 243.02,
+   "loud_db": -37.14643096923828,
+   "level_st": 2.100000000000002,
+   "range_st": 5.48,
+   "accents": 0
+  },
+  {
+   "k": 79,
+   "t0": 243.36,
+   "t1": 245.56,
+   "loud_db": -37.51188659667969,
+   "level_st": -0.050000000000000336,
+   "range_st": 5.200000000000004,
+   "accents": 0
+  },
+  {
+   "k": 80,
+   "t0": 246.14,
+   "t1": 246.64,
+   "loud_db": -38.046817779541016,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 81,
+   "t0": 247.0,
+   "t1": 249.02,
+   "loud_db": -38.80818176269531,
+   "level_st": 1.099999999999998,
+   "range_st": 3.5000000000000053,
+   "accents": 0
+  },
+  {
+   "k": 82,
+   "t0": 249.36,
+   "t1": 252.64,
+   "loud_db": -38.705055236816406,
+   "level_st": 0.20000000000000068,
+   "range_st": 2.600000000000004,
+   "accents": 1
+  },
+  {
+   "k": 83,
+   "t0": 253.34,
+   "t1": 254.98,
+   "loud_db": -39.45136260986328,
+   "level_st": -0.8999999999999986,
+   "range_st": 3.0400000000000014,
+   "accents": 1
+  },
+  {
+   "k": 84,
+   "t0": 255.46,
+   "t1": 257.78,
+   "loud_db": -39.277217864990234,
+   "level_st": 0.2999999999999983,
+   "range_st": 4.220000000000001,
+   "accents": 1
+  },
+  {
+   "k": 85,
+   "t0": 258.2,
+   "t1": 259.46,
+   "loud_db": -37.43158721923828,
+   "level_st": 1.2499999999999978,
+   "range_st": 1.3500000000000025,
+   "accents": 0
+  },
+  {
+   "k": 86,
+   "t0": 259.82,
+   "t1": 261.6,
+   "loud_db": -39.174251556396484,
+   "level_st": -0.7000000000000022,
+   "range_st": 1.4500000000000022,
+   "accents": 2
+  },
+  {
+   "k": 87,
+   "t0": 262.78,
+   "t1": 265.66,
+   "loud_db": -38.41367721557617,
+   "level_st": 0.2999999999999983,
+   "range_st": 4.559999999999999,
+   "accents": 1
+  },
+  {
+   "k": 88,
+   "t0": 266.48,
+   "t1": 270.42,
+   "loud_db": -37.78681182861328,
+   "level_st": -0.3500000000000014,
+   "range_st": 3.1800000000000006,
+   "accents": 2
+  },
+  {
+   "k": 89,
+   "t0": 271.66,
+   "t1": 276.68,
+   "loud_db": -36.96384048461914,
+   "level_st": 0.8999999999999985,
+   "range_st": 3.400000000000002,
+   "accents": 3
+  },
+  {
+   "k": 90,
+   "t0": 278.18,
+   "t1": 279.6,
+   "loud_db": -37.528865814208984,
+   "level_st": 1.6999999999999988,
+   "range_st": 5.299999999999999,
+   "accents": 0
+  },
+  {
+   "k": 91,
+   "t0": 280.66,
+   "t1": 282.02,
+   "loud_db": -39.03180694580078,
+   "level_st": 0.0,
+   "range_st": 4.340000000000002,
+   "accents": 1
+  },
+  {
+   "k": 92,
+   "t0": 282.46,
+   "t1": 283.5,
+   "loud_db": -37.01552963256836,
+   "level_st": -1.0000000000000013,
+   "range_st": 1.4399999999999986,
+   "accents": 0
+  },
+  {
+   "k": 93,
+   "t0": 286.52,
+   "t1": 287.22,
+   "loud_db": -36.34136962890625,
+   "level_st": 1.099999999999998,
+   "range_st": 3.9800000000000026,
+   "accents": 0
+  },
+  {
+   "k": 94,
+   "t0": 287.92,
+   "t1": 289.06,
+   "loud_db": -36.86017990112305,
+   "level_st": 0.6000000000000013,
+   "range_st": 2.08,
+   "accents": 0
+  },
+  {
+   "k": 95,
+   "t0": 289.48,
+   "t1": 292.02,
+   "loud_db": -39.565006256103516,
+   "level_st": 0.699999999999998,
+   "range_st": 6.299999999999999,
+   "accents": 2
+  },
+  {
+   "k": 96,
+   "t0": 292.76,
+   "t1": 295.46,
+   "loud_db": -39.59096908569336,
+   "level_st": 0.8499999999999993,
+   "range_st": 4.19,
+   "accents": 0
+  },
+  {
+   "k": 97,
+   "t0": 295.76,
+   "t1": 302.0,
+   "loud_db": -34.8515625,
+   "level_st": -0.30000000000000204,
+   "range_st": 3.5600000000000023,
+   "accents": 3
+  },
+  {
+   "k": 98,
+   "t0": 302.32,
+   "t1": 303.44,
+   "loud_db": -38.77260208129883,
+   "level_st": -0.1500000000000012,
+   "range_st": 2.2300000000000004,
+   "accents": 0
+  },
+  {
+   "k": 99,
+   "t0": 304.18,
+   "t1": 308.82,
+   "loud_db": -38.24911880493164,
+   "level_st": -0.30000000000000204,
+   "range_st": 4.0400000000000045,
+   "accents": 4
+  },
+  {
+   "k": 100,
+   "t0": 309.18,
+   "t1": 309.38,
+   "loud_db": -33.421958923339844,
+   "level_st": -0.8000000000000008,
+   "range_st": 1.4399999999999953,
+   "accents": 0
+  },
+  {
+   "k": 101,
+   "t0": 309.84,
+   "t1": 311.32,
+   "loud_db": -37.152557373046875,
+   "level_st": 0.10000000000000034,
+   "range_st": 8.620000000000003,
+   "accents": 0
+  },
+  {
+   "k": 102,
+   "t0": 311.9,
+   "t1": 314.42,
+   "loud_db": -37.88515853881836,
+   "level_st": 0.6000000000000013,
+   "range_st": 3.2600000000000002,
+   "accents": 1
+  },
+  {
+   "k": 103,
+   "t0": 315.06,
+   "t1": 316.44,
+   "loud_db": -36.65195083618164,
+   "level_st": 0.34999999999999787,
+   "range_st": 4.400000000000002,
+   "accents": 2
+  },
+  {
+   "k": 104,
+   "t0": 320.12,
+   "t1": 323.62,
+   "loud_db": -35.76719284057617,
+   "level_st": 0.8000000000000002,
+   "range_st": 4.64,
+   "accents": 1
+  },
+  {
+   "k": 105,
+   "t0": 324.06,
+   "t1": 325.54,
+   "loud_db": -36.83220291137695,
+   "level_st": 1.4000000000000004,
+   "range_st": 2.0599999999999996,
+   "accents": 0
+  },
+  {
+   "k": 106,
+   "t0": 325.88,
+   "t1": 329.12,
+   "loud_db": -37.28971862792969,
+   "level_st": -0.7000000000000022,
+   "range_st": 2.3199999999999967,
+   "accents": 0
+  },
+  {
+   "k": 107,
+   "t0": 332.58,
+   "t1": 341.06,
+   "loud_db": -37.34016418457031,
+   "level_st": 1.6999999999999988,
+   "range_st": 8.000000000000002,
+   "accents": 8
+  },
+  {
+   "k": 108,
+   "t0": 341.44,
+   "t1": 342.78,
+   "loud_db": -36.249107360839844,
+   "level_st": -1.9000000000000006,
+   "range_st": 8.86,
+   "accents": 1
+  },
+  {
+   "k": 109,
+   "t0": 343.36,
+   "t1": 344.86,
+   "loud_db": -36.15156555175781,
+   "level_st": -0.10000000000000284,
+   "range_st": 3.439999999999997,
+   "accents": 1
+  }
+ ]
+}

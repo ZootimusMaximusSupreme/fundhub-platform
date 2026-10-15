@@ -1,0 +1,336 @@
+{
+ "file": "Direct Book Ad 11 — The penthouse Take 3.mp4",
+ "ad": "Direct Book Ad 11 — The penthouse",
+ "lufs": -28.1,
+ "lra": 6.0,
+ "true_peak_db": -10.3,
+ "timing_ok": true,
+ "duration_s": 72.9,
+ "lead_silence_s": 0.8,
+ "trail_silence_s": 3.0,
+ "words": 242,
+ "wpm_overall": 210,
+ "wpm_speaking": 285,
+ "pauses": 22,
+ "pauses_per_min": 19.1,
+ "pause_total_s": 18.1,
+ "pause_pct_of_span": 26.1,
+ "pause_median_s": 0.38,
+ "pause_max_s": 3.46,
+ "pauses_over_1s": 4,
+ "pauses_over_1_5s": 3,
+ "phrase_len_mean_s": 2.22,
+ "phrase_len_sd_s": 1.43,
+ "gaps": [
+  0.5,
+  0.34,
+  0.38,
+  0.44,
+  3.32,
+  0.92,
+  3.46,
+  0.42,
+  2.6,
+  0.32,
+  0.46,
+  1.42,
+  0.34,
+  0.3,
+  0.34,
+  0.32,
+  0.38,
+  0.32,
+  0.34,
+  0.34,
+  0.5,
+  0.3
+ ],
+ "pitch_ok": true,
+ "f0_median_hz": 117.8,
+ "pitch_sd_st": 2.87,
+ "pitch_p10_p90_st": 7.4,
+ "voiced_pct_of_speech": 66.0,
+ "phrases": 23,
+ "phrase_level_sd_st": 1.53,
+ "phrase_range_mean_st": 6.41,
+ "loud_sd_db": 6.7,
+ "loud_p10_p90_db": 18.26,
+ "phrase_loud_sd_db": 2.14,
+ "accents_total": 38,
+ "fillers_heard": 0,
+ "restarts": 2,
+ "silence_threshold_db": -39.7,
+ "word_time_lag_s": 0.12,
+ "script": {
+  "script_words": 224,
+  "said_words": 242,
+  "script_covered_pct": 82.6,
+  "said_off_script_pct": 23.6,
+  "line_ends": [
+   {
+    "line": 0,
+    "found": false,
+    "pitch_up": false
+   },
+   {
+    "line": 1,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 13.96,
+    "end_slope_st": null,
+    "pause_after_s": 0.38,
+    "is_last": false
+   },
+   {
+    "line": 2,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 28.8,
+    "end_slope_st": -1.0181318681318672,
+    "pause_after_s": 3.46,
+    "is_last": false
+   },
+   {
+    "line": 3,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 60.96,
+    "end_slope_st": -0.660000000000001,
+    "pause_after_s": 0.34,
+    "is_last": false
+   },
+   {
+    "line": 4,
+    "found": true,
+    "pitch_up": false,
+    "t_end": 70.18,
+    "end_slope_st": null,
+    "pause_after_s": 0.0,
+    "is_last": true
+   }
+  ],
+  "up_lines_checked": 0,
+  "up_lines_rising": 0,
+  "up_slope_mean_st": null,
+  "other_slope_mean_st": -0.84,
+  "other_lines_rising_pct": 0.0,
+  "breaks_checked": 3,
+  "breaks_paused": 3,
+  "break_pause_mean_s": 1.39,
+  "caps_matched": 0,
+  "caps_lift_st": null,
+  "caps_lift_db": null,
+  "other_lift_st": 2.09,
+  "other_lift_db": -2.12
+ },
+ "transcript": "When I used to live here, I knew a guy up there with a one and a half. When I used to live here, I knew a guy up there with a one and a half million dollar penthouse. And he was struggling. He was struggling mentally to get his businesses and his other ventures off the ground, sitting in the penthouse he owned out right. So he moved out, so he moved out of state and cut out the distractions. He optimized his credit, and then he pulled the ball. Then you put it to work alongside investors and credit partners and within six months his income was over $400,000 a month. The one thing you figured out is how to leverage your credit correctly. I know plenty of people up here who run companies and scale businesses and the ones who do it most, most efficiently, use other people's money. Use other people's money. Archimedes, who was a Greek physicist, said, \"Give me a lever long enough and I can move the world.\" Credit is that lever and building with only your own cash is the slowest way to build wealth. It's the slowest way to build wealth there is. Click the link below. Wherever your credit is right now, we'll walk you through how to optimize it and how to get your own funding. And if you want us to help you along the way, we'll do that too.",
+ "phrase_meta": [
+  {
+   "k": 0,
+   "t0": 0.8,
+   "t1": 3.96,
+   "loud_db": -33.40660095214844,
+   "level_st": 2.100000000000002,
+   "range_st": 8.209999999999999,
+   "accents": 2
+  },
+  {
+   "k": 1,
+   "t0": 4.46,
+   "t1": 8.6,
+   "loud_db": -33.91752243041992,
+   "level_st": -0.09999999999999873,
+   "range_st": 9.279999999999998,
+   "accents": 2
+  },
+  {
+   "k": 2,
+   "t0": 8.94,
+   "t1": 13.96,
+   "loud_db": -35.311851501464844,
+   "level_st": -1.2999999999999985,
+   "range_st": 6.999999999999998,
+   "accents": 3
+  },
+  {
+   "k": 3,
+   "t0": 14.34,
+   "t1": 15.0,
+   "loud_db": -28.89042091369629,
+   "level_st": 0.5000000000000008,
+   "range_st": 4.620000000000003,
+   "accents": 0
+  },
+  {
+   "k": 4,
+   "t0": 15.44,
+   "t1": 17.16,
+   "loud_db": -33.87661361694336,
+   "level_st": 2.500000000000002,
+   "range_st": 3.53,
+   "accents": 0
+  },
+  {
+   "k": 5,
+   "t0": 20.48,
+   "t1": 21.98,
+   "loud_db": -35.016441345214844,
+   "level_st": -1.2999999999999985,
+   "range_st": 7.399999999999997,
+   "accents": 1
+  },
+  {
+   "k": 6,
+   "t0": 22.9,
+   "t1": 28.8,
+   "loud_db": -35.91572570800781,
+   "level_st": -0.8999999999999986,
+   "range_st": 5.519999999999997,
+   "accents": 5
+  },
+  {
+   "k": 7,
+   "t0": 32.26,
+   "t1": 34.28,
+   "loud_db": -32.85321044921875,
+   "level_st": 1.2999999999999994,
+   "range_st": 6.32,
+   "accents": 1
+  },
+  {
+   "k": 8,
+   "t0": 34.7,
+   "t1": 35.08,
+   "loud_db": -38.29015350341797,
+   "level_st": null,
+   "range_st": null,
+   "accents": 0
+  },
+  {
+   "k": 9,
+   "t0": 37.68,
+   "t1": 40.66,
+   "loud_db": -34.55046844482422,
+   "level_st": 0.3000000000000021,
+   "range_st": 5.899999999999997,
+   "accents": 4
+  },
+  {
+   "k": 10,
+   "t0": 40.98,
+   "t1": 43.48,
+   "loud_db": -34.78678512573242,
+   "level_st": 0.4000000000000011,
+   "range_st": 4.960000000000003,
+   "accents": 2
+  },
+  {
+   "k": 11,
+   "t0": 43.94,
+   "t1": 45.94,
+   "loud_db": -34.94966125488281,
+   "level_st": 1.5000000000000004,
+   "range_st": 5.6899999999999995,
+   "accents": 2
+  },
+  {
+   "k": 12,
+   "t0": 47.36,
+   "t1": 48.92,
+   "loud_db": -34.94065856933594,
+   "level_st": -1.6,
+   "range_st": 8.3,
+   "accents": 2
+  },
+  {
+   "k": 13,
+   "t0": 49.26,
+   "t1": 49.92,
+   "loud_db": -31.543664932250977,
+   "level_st": 3.5000000000000036,
+   "range_st": 7.600000000000001,
+   "accents": 2
+  },
+  {
+   "k": 14,
+   "t0": 50.22,
+   "t1": 51.4,
+   "loud_db": -33.97161102294922,
+   "level_st": 0.8000000000000038,
+   "range_st": 6.659999999999998,
+   "accents": 1
+  },
+  {
+   "k": 15,
+   "t0": 51.74,
+   "t1": 52.86,
+   "loud_db": -28.367700576782227,
+   "level_st": 2.100000000000002,
+   "range_st": 6.919999999999999,
+   "accents": 1
+  },
+  {
+   "k": 16,
+   "t0": 53.18,
+   "t1": 54.32,
+   "loud_db": -32.74114990234375,
+   "level_st": -0.4000000000000008,
+   "range_st": 5.340000000000002,
+   "accents": 2
+  },
+  {
+   "k": 17,
+   "t0": 54.7,
+   "t1": 58.98,
+   "loud_db": -33.539649963378906,
+   "level_st": -0.5999999999999991,
+   "range_st": 8.1,
+   "accents": 4
+  },
+  {
+   "k": 18,
+   "t0": 59.3,
+   "t1": 60.96,
+   "loud_db": -32.71466064453125,
+   "level_st": -0.7000000000000002,
+   "range_st": 7.100000000000001,
+   "accents": 1
+  },
+  {
+   "k": 19,
+   "t0": 61.3,
+   "t1": 62.12,
+   "loud_db": -30.43861961364746,
+   "level_st": 3.8500000000000023,
+   "range_st": 5.3500000000000005,
+   "accents": 0
+  },
+  {
+   "k": 20,
+   "t0": 62.46,
+   "t1": 65.32,
+   "loud_db": -33.16964340209961,
+   "level_st": -0.7999999999999988,
+   "range_st": 7.45,
+   "accents": 1
+  },
+  {
+   "k": 21,
+   "t0": 65.82,
+   "t1": 67.2,
+   "loud_db": -34.13718032836914,
+   "level_st": -0.7499999999999996,
+   "range_st": 6.080000000000002,
+   "accents": 2
+  },
+  {
+   "k": 22,
+   "t0": 67.5,
+   "t1": 69.88,
+   "loud_db": -33.85210418701172,
+   "level_st": -0.4000000000000008,
+   "range_st": 3.61,
+   "accents": 0
+  }
+ ]
+}
