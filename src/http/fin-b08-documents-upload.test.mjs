@@ -235,4 +235,89 @@ describe("POST /api/documents-upload", () => {
     assert.equal(get.statusCode, 405);
     assert.deepEqual(asked, []);
   });
+
+  test("a caller cannot pick any kind they like: only the three upload doors are honoured, anything else is filed as a client upload", async () => {
+    const cases = [
+      ["contract", "client_upload"],            // a real document kind, but not an upload door
+      ["authorization", "client_upload"],
+      ["made_up_kind", "client_upload"],
+      ["inquiry_doc", "inquiry_doc"],           // the inquiry door
+      ["bureau_response", "bureau_response"],   // the repair door
+      ["client_upload", "client_upload"],
+      ["", "client_upload"],
+    ];
+    for (const [asked, filed] of cases) {
+      const f = uploadFile();
+      const { res } = await call({ fields: { client_id: CLIENT, kind: asked }, files: [file(pdf(), "a.pdf", "application/pdf")] }, f, asClient());
+      assert.equal(res.statusCode, 200, asked);
+      assert.equal(f.tables.documents[0].kind, filed, `asked for "${asked}"`);
+      assert.equal(f.tables.events[0].payload.kind, filed, `the event carries the kind it was filed under ("${asked}")`);
+    }
+  });
+
+  test("the type stored and announced is what the bytes are, not what the caller said they were", async () => {
+    const f = uploadFile();
+    const { res } = await call({ fields: { client_id: CLIENT, subtype: "id_document" }, files: [file(png(), "id.pdf", "application/pdf")] }, f, asClient());
+    assert.equal(res.statusCode, 200);
+    assert.equal(f.tables.documents[0].mime_type, "image/png", "a PNG declared as a PDF is stored as the PNG it is");
+    assert.equal(f.tables.document_versions[0].mime_type, "image/png");
+    assert.equal(f.tables.events[0].payload.mime_type, "image/png");
+    assert.equal(res.body.documents[0].mime_type, "image/png");
+  });
+
+  test("a file over the size limit is refused whole: nothing stored, registered or announced", async () => {
+    const f = uploadFile();
+    const big = Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(10 * 1024 * 1024, 7)]);
+    const { res } = await call({ fields: { client_id: CLIENT, subtype: "bank_statement" }, files: [file(big, "huge.pdf", "application/pdf")] }, f, asClient());
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.error, "file_too_large");
+    assert.equal(res.body.filename, "huge.pdf");
+    assert.equal(f.tables.documents.length, 0);
+    assert.equal(f.tables.document_versions.length, 0);
+    assert.equal(f.tables.events.length, 0);
+    // One bad file in a batch refuses the call; the good file before it was already filed, the bad one and later ones were not.
+    const mixed = uploadFile();
+    const second = await call({ fields: { client_id: CLIENT }, files: [file(pdf(), "ok.pdf", "application/pdf"), file(big, "huge.pdf", "application/pdf"), file(png(), "later.png", "image/png")] }, mixed, asClient());
+    assert.equal(second.res.statusCode, 400);
+    assert.equal(mixed.tables.documents.some((d) => /later/.test(d.metadata)), false, "nothing after the refused file is filed");
+  });
+
+  test("the docs.received event carries the version, fingerprint, size, type, uploader and original name of what was filed", async () => {
+    const f = uploadFile();
+    const bytes = pdf();
+    const { res } = await call({ fields: { client_id: CLIENT, subtype: "bank_statement" }, files: [file(bytes, "march statement.pdf", "application/pdf")] }, f, asClient());
+    assert.equal(res.statusCode, 200);
+    const [event] = f.tables.events;
+    const version = f.tables.document_versions[0];
+    const doc = f.tables.documents[0];
+    assert.equal(event.name, "docs.received");
+    assert.deepEqual({
+      document_id: event.payload.document_id, version_id: event.payload.version_id, version: event.payload.version,
+      kind: event.payload.kind, subtype: event.payload.subtype, client_id: event.payload.client_id,
+      mime_type: event.payload.mime_type, byte_size: event.payload.byte_size, original_filename: event.payload.original_filename,
+    }, {
+      document_id: doc.id, version_id: version.id, version: 1,
+      kind: "client_upload", subtype: "bank_statement", client_id: CLIENT,
+      mime_type: "application/pdf", byte_size: bytes.length, original_filename: "march statement.pdf",
+    });
+    assert.equal(event.payload.checksum, `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`, "the fingerprint is the file's own");
+    assert.equal(event.payload.checksum, version.checksum);
+    assert.equal(event.payload.uploaded_by.kind, "client");
+    assert.ok(event.payload.uploaded_by.id);
+    const staffF = uploadFile();
+    await call({ fields: { client_id: CLIENT, subtype: "bank_statement" }, files: [file(bytes, "a.pdf", "application/pdf")] }, staffF);
+    assert.deepEqual(staffF.tables.events[0].payload.uploaded_by, { kind: "staff", id: STAFF_ID });
+  });
+
+  test("the company comes off the sign-in: a company named in the form is ignored for a client and for staff", async () => {
+    for (const who of [asClient(), [staffSession({ role: "closer" })]]) {
+      const f = uploadFile();
+      const { res } = await call({ fields: { client_id: CLIENT, org_id: OTHER_ORG_ID, subtype: "id_document" }, files: [file(png(), "id.png", "image/png")] }, f, who);
+      assert.equal(res.statusCode, 200);
+      assert.equal(f.tables.documents[0].org_id, ORG_ID);
+      assert.equal(f.tables.document_versions[0].org_id, ORG_ID);
+      assert.equal(f.tables.events[0].org_id, ORG_ID);
+      assert.equal(f.tables.documents[0].client_id, CLIENT);
+    }
+  });
 });
