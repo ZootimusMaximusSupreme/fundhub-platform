@@ -631,6 +631,39 @@ describe("the database is down", () => {
     for (const pg of opened) assert.deepEqual(pg.released, [true]);
   });
 
+  test("three database-shaped reds do not claim the whole database is down while one box is healthy", async () => {
+    const healthyBoxRed = beat("c", async (ctx) => {
+      await ctx.step("one", async () => (await ctx.read("SELECT 2 AS n")).rows);
+      ctx.skipStep("two", "x");
+      ctx.skipStep("three", "x");
+      return ctx.done("never");
+    });
+    const h = harness([greenBeat("a"), greenBeat("b"), healthyBoxRed, greenBeat("d"), greenBeat("e")]);
+    let attempts = 0;
+    let healthy = null;
+    const connect = async () => {
+      const worker = attempts++;
+      if (worker < 2) throw new Error(`box ${worker} unavailable`);
+      healthy = createFakePg({
+        answer: () => [{ n: 1 }],
+        fail: (sql) => sql === "SELECT 2 AS n" ? new Error("db: healthy box query failed") : undefined
+      });
+      return healthy;
+    };
+
+    const out = await h.go({ connect });
+    const databaseReds = out.results.filter((result) => !result.ok && /^threw: db: /.test(result.detail));
+    assert.equal(out.dbUp, true);
+    assert.equal(out.failed, 3);
+    assert.equal(databaseReds.length, 3);
+    assert.deepEqual(databaseReds.map((result) => result.beatId).sort(), ["a", "b", "c"]);
+    assert.ok(out.results.filter((result) => ["d", "e"].includes(result.beatId)).every((result) => result.ok));
+    assert.equal(out.box.count, 1, "one read box stayed healthy");
+    assert.equal(h.sinks.calls.text.length, 1);
+    assert.doesNotMatch(h.sinks.calls.text[0], /database is not answering/);
+    assert.deepEqual(healthy.released, [true]);
+  });
+
   test("beats that read go red at 'db:'; the text says the database is down ONCE; no state, so it texts every hour", async () => {
     const h = harness(readers(["a", "b", "c", "d"]), { rdbOpts: { down: true } });
     const out = await h.go();

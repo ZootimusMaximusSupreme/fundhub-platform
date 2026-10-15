@@ -41,6 +41,8 @@ Source: tag `archive/pr48-hourly-capacity-71d7727ff` at `71d7727ff`. The review 
 
 The same file also proves a one-beat run opens one box and that a queued beat never starts after the shared phase closes. `scripts/pulse/prove-policy.test.mjs` pins the one delayed query path, dynamic box count, full-list slow fixture, unchanged deadlines, and absence of a `money-funding` exception.
 
+Claude's follow-up case now proves that two boxes may fail to open while the healthy box produces a third `threw: db:` result. All three failures count as database-shaped reds, one box is still healthy, and the text does not claim the whole database is down.
+
 ## Documentation and connection ceiling
 
 - `docs/journeys/heartbeat-flow.md` now describes the shared queue, up-to-three boxes, deadline start, and guaranteed cleanup.
@@ -49,7 +51,8 @@ The same file also proves a one-beat run opens one box and that a queued beat ne
 
 ## Exact checks and results
 
-- `node --test src/pulse/runner.test.mjs src/pulse/beats/readbox.test.mjs src/pulse/beats/ctx.test.mjs src/pulse/beats/contract.test.mjs src/pulse/beats/beats.test.mjs scripts/pulse/prove-policy.test.mjs` — 172 passed, 0 failed, 0 skipped.
+- `node --test src/pulse/runner.test.mjs src/pulse/beats/readbox.test.mjs src/pulse/beats/ctx.test.mjs src/pulse/beats/contract.test.mjs src/pulse/beats/beats.test.mjs scripts/pulse/prove-policy.test.mjs` — 173 passed, 0 failed, 0 skipped.
+- Mutation proof: changing only `boxProblems.every(Boolean)` to `boxProblems.some(Boolean)` made the new targeted test fail because the text wrongly said `the database is not answering`; restoring `every(Boolean)` made it pass.
 - Independent review: `node --test src/pulse/runner.test.mjs src/pulse/beats/readbox.test.mjs scripts/pulse/prove-policy.test.mjs` — 94 passed, 0 failed, 0 skipped.
 - `npm run lint` — 3,561 files and inline scripts parsed cleanly.
 - `env -u DATABASE_URL npx --no-install tsc --noEmit` — exit 0.
