@@ -2,6 +2,8 @@
 // the named control to a durable receipt or to the exact saved rows it changes.
 // If that link does not exist, the contract stays deliberately red.
 
+import { FIN_B01_DISPLAY_RESULT_CONTRACTS } from "./fin-b01-display-contracts.mjs";
+
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
 const TRACKED_CONTROL_KINDS = new Set([
@@ -256,7 +258,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Lender row: Approved button", "An Approved bank-decision receipt must link to the exact application and named staff actor.", "approved-decision", APPROVED_DECISION_SQL),
   query("Lender row: Declined button", "A Denied bank-decision receipt must link to the exact application and named staff actor.", "denied-decision", DENIED_DECISION_SQL),
   query("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "The exclusion or reinstatement receipt must link the application, actor, time, and saved reason.", "approval-exclusion", EXCLUSION_SQL),
-  gap("Deal calculator: Draw amount input", "The calculator has no saved action receipt containing the typed draw and rendered result to compare."),
   query("Send: message box, Send button, Enter key (20,000 character cap)", "A saved helper turn must retain the input and a completed reply, brain, and answer time on the same row.", "helper-send", HELPER_TURN_SQL),
   query("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
   query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
@@ -265,7 +266,6 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   gap("Locked tile editor: Showing/Hidden switch per tile (keyboard Space/Enter too)", "The saved catalog row has no receipt naming the tile and submitted visibility state."),
   gap("Locked tile editor: client-facing name box", "The saved catalog row has no receipt carrying the exact submitted client-facing name."),
   gap("Locked tile editor: outcome copy box (one line shown to the client)", "The saved catalog row has no receipt carrying the exact submitted outcome copy."),
-  gap("Locked tile editor: price shown box", "The saved catalog row has no receipt carrying the exact submitted display price in cents."),
   query("Tier assignment: one welcome-video select per product tier and one for Default", "Every saved tier selection must link to a real video in the same company with a title and storage object.", "content-tier-map", CONTENT_VIDEO_MAP_SQL),
   query("Upload welcome video: Upload button (then saves the tier map)", "The saved tier map must link the uploaded video row to its title and storage object in the same company.", "content-video-upload", CONTENT_VIDEO_MAP_SQL),
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
@@ -289,6 +289,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   gap("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "The screen hardcodes Client and Rule version as dashes, so no saved-row read can prove this named table displays correct values."),
   gap("Business fields: name, street, city, state, ZIP, EIN, incorporated month, extra owner", "The pulse needs the soft-pull request id and exact submitted business array to compare each field with the saved business rows."),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
+  ...FIN_B01_DISPLAY_RESULT_CONTRACTS,
 ]);
 
 const CONTRACT_BY_CONTROL = new Map(DISPLAY_RESULT_CONTRACTS.map((entry) => [entry.control, entry]));

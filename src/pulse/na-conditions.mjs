@@ -505,6 +505,25 @@ export const NA_CONDITIONS = Object.freeze({
     verify: "lane"
   }),
 
+  /* A control the map lists that the product no longer has (finish-the-853, batch 01). True while the lane
+     that made the row reads the live files again (GET only) and finds none of the control in them. The day
+     the control is back the claim fails and the row goes red by name. The lane answers; it holds the list
+     (src/pulse/coverage/fin-b01-retired-controls.mjs, naVerify["catalog-display-retired-control"]). */
+  "catalog-display-retired-control": Object.freeze({
+    say() {
+      return "This control is no longer in the live product, so there is nothing to judge.";
+    },
+    claim() {
+      return "The live files hold none of this retired control.";
+    },
+    problem(args) {
+      return isText(args?.sourceFile) && isText(args?.surface) && isText(args?.control)
+        ? null
+        : "the retired control proof is incomplete";
+    },
+    verify: "lane"
+  }),
+
   /* A message template that nothing sends (W4 messages truth, 2026-10-10). True when the lane that made the row
      reads the messages table again and finds no queued message from any key on its dead list
      (msg:dead-senders, src/pulse/coverage/gap-msg.mjs, naVerify["no-sender"]). The day one is queued the row

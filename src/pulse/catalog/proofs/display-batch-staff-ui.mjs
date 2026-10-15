@@ -6,6 +6,7 @@ import {
   DISPLAY_RESULT_LANE,
   needsDeepDisplayResult,
 } from "./display-saved-result.mjs";
+import { FIN_B01_STAFF_UI_GROUPS } from "./fin-b01-staff-groups.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
@@ -271,6 +272,7 @@ export const STAFF_UI_GROUPS = Object.freeze([
   ], [
     "Refer a friend: Get my link button",
   ]),
+  ...FIN_B01_STAFF_UI_GROUPS,
 ]);
 
 export const STAFF_UI_SPECS = Object.freeze([
