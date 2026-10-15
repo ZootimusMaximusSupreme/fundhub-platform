@@ -34,11 +34,11 @@ const shippedSite = async (url, init) => {
   return new Response(fs.readFileSync(file, "utf8"), { status: 200 });
 };
 
-test("32 rows: 15 live checks, 7 practice tests, 2 nothing to judge, 8 named as not attachable, no row twice", () => {
+test("32 rows: 15 live checks, 8 practice tests, 2 nothing to judge, 7 named as not attachable, no row twice", () => {
   assert.equal(LIVE.length, 15);
-  assert.equal(PRACTICE.length, 7);
+  assert.equal(PRACTICE.length, 8);
   assert.equal(REMOVED.length, 2);
-  assert.equal(NOT_ATTACHABLE.length, 8);
+  assert.equal(NOT_ATTACHABLE.length, 7);
   const all = [...LIVE, ...PRACTICE, ...REMOVED, ...NOT_ATTACHABLE].map((r) => idFor(r.surface, r.control));
   assert.equal(all.length, 32);
   assert.equal(new Set(all).size, 32);

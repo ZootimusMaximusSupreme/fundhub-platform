@@ -1,6 +1,6 @@
 # Batch 21 manifest (finish-853, tier 4, lane gap-catalog-display, 32 rows)
 
-Branch `fin/b21`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1, then generation 2 (see "Generation 2" at the end: two rows moved from not attachable to a verified "nothing to judge").
+Branch `fin/b21`, cut from `fin/base` (2f4f574a0). Nothing was pushed or merged. Generation 1, then generation 2 (two rows moved from not attachable to a verified "nothing to judge"), then generation 3 (see "Generation 3" at the end: one row moved from not attachable to a practice test, the other seven re-read and re-measured).
 Rows: the Staff & Teams desk (`staff-teams.html`, 7 rows), the Social Studio (`social-studio.html`, 11 rows) and the Teleprompter (`teleprompter.html`, 14 rows), all in `desks-f.json`.
 
 ## The numbers
@@ -10,12 +10,13 @@ Rows: the Staff & Teams desk (`staff-teams.html`, 7 rows), the Social Studio (`s
 | Open before (count script on `fin/base`, this batch) | 32 |
 | Open after generation 1 | 10 |
 | Open after generation 2 | 8 |
+| Open after generation 3 | 7 |
 | Live check | 15 |
-| Practice test | 7 |
+| Practice test | 8 |
 | Verified "nothing to judge" (na-verified) | 2 |
-| Not attachable | 8 |
+| Not attachable | 7 |
 
-Whole lane, same script: 853 open before, 831 after generation 1, 829 after generation 2 (routes 135, flows 23 and reads 15 did not move).
+Whole lane, same script: 853 open before, 831 after generation 1, 829 after generation 2, 828 after generation 3 (routes 135, flows 23 and reads 15 did not move).
 
 A **live check** is a read-only SQL text the display lane runs for the company: it reads real saved rows and goes red when one is wrong. A **practice test** is the real page in Chromium (or the real handler) with fake answers; it reads no live data. A row left **not attachable** stays NOT_PROVED on purpose, with the exact reason, so the morning report keeps saying it is not proved.
 
@@ -50,10 +51,10 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 | social-studio.html - Tab 'Sent' (posted, with the reference on the account) | not-attachable | - | The tab can never fill. GET /api/social/posts reads marketing_content_queue only, whose status can never be posted (draft, queued, scheduled, awaiting_approval, discarded, blocked), so the Sent pane always prints its own note that it cannot yet see posts that went out. Posted posts live in social_posts, which this page never reads. The saved sent posts and their references are now judged by the live check on 'Post states legend' (a post that says Sent must have a time and a reference), but the tab itself cannot show them. Needs a product change: read social_posts for the Sent pane. |
 | social-studio.html - Post row click / Enter (expand details) and 'See the details' (opens the side drawer) | not-attachable | - | Half of it is broken. The row expands on a click and on Enter (measured), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change. |
 | social-studio.html - Side drawer: close X, click outside, Escape | not-attachable | - | There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; dra... | not-attachable | - | Two of the four claims were removed by owner call 2026-10-13: a double tap pauses and shows Copy script and Paste script only (no cursor, no keyboard, no edit box), and a hold does nothing. One tap and drag are live and covered by `e2e/teleprompter-touch.spec.mjs`, so the row is not "nothing to judge" either: half of it is live. A test of today's behaviour contradicts the row's words, and a test of the row's words is red. Needs Chris to restate the row (play, pause, double tap for Copy script, drag). |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words | practice-test | `src/pulse/catalog/proofs/fin-b21-words-area.test.mjs` | (generation 3) One tap plays and a second pauses with no mark sent; a drag moves the words (thumb up forward, thumb down back) and does not start them; a double tap, paused or rolling, stops the words and shows Copy script, Paste script and X with no cursor, no keyboard, no edit box and no Save; a hold changes nothing, even while the finger is still down. The row's words "opens a cursor" and "hold a line edits that line" were taken out by owner call 2026-10-13, so the test proves what the owner chose and goes red if a cursor or a hold-to-edit box comes back. The map's row text is stale (see finding 15). |
 | teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Edit bar while a cursor is open: 'Put back', 'History', 'Done', plus the X (throws away this edit) and 'Save' (visible only while editing) | na-verified | `src/pulse/coverage/fin-b21-owner-removed.mjs`, `src/pulse/coverage/fin-b21-owner-removed.test.mjs` | Editing words on the phone was taken out by owner call 2026-10-13 (`docs/journeys/CHANGELOG.md`: "we just edit and copy and paste", "delete the history button"). The lane reads the live `/app/teleprompter.js` and `/app/teleprompter.html` every run (GET only). It is "nothing to judge" only while nothing calls `beginEdit()` or `placeCaret()`, no second place opens an edit or turns the edit mode on, and no History button exists. The day one comes back the row is FAIL by name. |
 | teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, coun... | not-attachable | - | No on-screen control opens the sheet. `openSheet('set')` is called only by the `window.__fhtp` test hook; `teleprompter.html` has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. NOT nothing to judge: the Settings button (`b-set`) was dropped in commit `8eea9ca9e` on 2026-10-07 with no owner call recorded for it, and the spec (`docs/specs/marketing-machine-2026-10-04.md`, Settings > Learn remote) and `docs/journeys/shoot-flow.md` still say the sheet exists. A practice test through the test hook would show a sheet nobody can open. Needs Chris: an on-screen way to open it, or retire the row. |
-| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - 'This shoot' script list sheet (tap a script to roll it) | not-attachable | - | No on-screen control opens the sheet. `openSheet('lib')` is called only by the `window.__fhtp` test hook; the Still to film chip menu is the path a person has. The This shoot button (`b-lib`) was dropped in the same commit `8eea9ca9e` with no owner call recorded, so it is not nothing to judge. Needs a product change, or Chris retires the row. |
+| teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - 'This shoot' script list sheet (tap a script to roll it) | not-attachable | - | No on-screen control opens the sheet. `openSheet('lib')` is called only by the `window.__fhtp` test hook; the Still to film chip menu is the path a person has. The This shoot button (`b-lib`) was dropped in the same commit `8eea9ca9e` with no owner call recorded. Generation 3 found commit `483670419` the same afternoon ("Open the script list on a double-tap"): the file-name chip got a different list, Still to film (`#qmenu`), which the file-name chip row proves. The likely intent is that the chip list replaced this sheet, but nothing written down says the owner retired it, so it is not nothing to judge. Needs Chris: retire the row (and the dead `#lib` markup and `drawList`), or give the sheet a button. |
 | teleprompter.html (+ teleprompter.js, teleprompter-edits.js) - Header bar: 'Shoot tab' link, 'Copy name' button, offline banner, camera line | na-verified | `src/pulse/coverage/fin-b21-owner-removed.mjs`, `src/pulse/coverage/fin-b21-owner-removed.test.mjs` | The owner hid the whole top bar on purpose on 2026-10-07 (commit `1802d6a94`: the ad name, title and orange notes were pushing the words down; the comment above the rule in `teleprompter.css` names the Shoot tab). The lane reads the live `/app/teleprompter.css` and `/app/teleprompter.html` every run: it is "nothing to judge" only while the `#top` hide rule is there, no rule shows `#top` again, and the header has no inline show. Red by name the day the bar is back. |
 
 ## Files added
@@ -68,6 +69,7 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 - `src/pulse/catalog/proofs/fin-b21-wiring.test.mjs` (the 32 rows are one exact map row each, end in exactly one outcome, and the lane agrees)
 - `src/pulse/coverage/fin-b21-owner-removed.mjs` (generation 2: the list of the two controls the owner took off the phone, with what each live file must still hold or lack; pure judging of text, no network)
 - `src/pulse/coverage/fin-b21-owner-removed.test.mjs` (generation 2: 12 tests; shipped files, one test per way a control comes back, unreadable files, the lane, the audit)
+- `src/pulse/catalog/proofs/fin-b21-words-area.test.mjs` (generation 3: 4 Chromium practice tests on the real teleprompter page: tap, drag, double tap, hold)
 - `ops/workflows/finish-853-2026-10-14/manifest-b21.md` (this file)
 
 ## Shared lines I touched (the integrator must merge these)
@@ -77,9 +79,9 @@ A **live check** is a read-only SQL text the display lane runs for the company: 
 | `src/pulse/catalog/proofs/display-saved-result.mjs` | 1 import line (`FIN_B21_DISPLAY_CONTRACTS`) and 1 spread line `...FIN_B21_DISPLAY_CONTRACTS,` at the START of `DISPLAY_RESULT_CONTRACTS` (so it does not collide with siblings that append; the same place `fin/b13` puts its spread, so expect both lines in that spot). |
 | `src/pulse/catalog/compiler.mjs` | 14 lines in `compileDisplayRuntimeData`: a tracked row that owns a contract marked `anyImpact: true` is judged even when it is not money or customer. Byte for byte the same hunk as `fin/b13` and `fin/b15`, so they merge as one. |
 | `src/pulse/catalog/proofs/display-proof-cases.mjs` | 1 import line and `...FIN_B21_DISPLAY_PROOF_CASES,` at the end of `PLUGIN_DISPLAY_PROOF_CASES`. |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count `672` to `665` (7 rows moved from red to a practice test). Sum the other batches. |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count `672` to `664` (generation 1: 7 rows moved from red to a practice test; generation 3: 1 more). Sum the other batches. |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` | contracts 40 to 55, pass-capable 27 to 42, distinct SQL 27 to 42, DB calls 27 to 42, passes 27 to 42, shipped-data copy 40 to 55 (this batch adds 15 live checks, all PASS-capable). Add every batch together and use the numbers the test prints. |
-| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog`. Do not hand-merge; recompile after merging. Generation 2 changed nothing in it (`compile-catalog.mjs --check` is fresh). |
+| `src/pulse/catalog/generated.json` | recompiled with `npm run pulse:catalog`. Do not hand-merge; recompile after merging. Generation 2 changed nothing in it; generation 3 changed it (one more practice proof; 4 lines), and `compile-catalog.mjs --check` is fresh. |
 | `src/pulse/coverage/gap-catalog-display.mjs` (generation 2) | 1 import line (`fin-b21-owner-removed.mjs`); a new function `liveFileReader(ctx)` before `gapChecks` (the one GET of a live file; the lane is the file of the pulse allowed to reach the network, so `src/lib/no-unfenced-transmit.test.mjs` needs no new entry); 2 lines in `gapChecks` (`const removed = await ownerRemovedResults(...)` and `if (removed.has(entry.id)) return removed.get(entry.id);` first in `judge`); 1 entry `"catalog-display-owner-removed"` at the START of the `naVerify` object. `fin/b01` adds the same kind of hunks for its `catalog-display-retired-control` at the same spots: keep both blocks, they are independent (different code, different list). |
 | `src/pulse/coverage/gap-catalog-display.test.mjs` (generation 2) | 1 import line and the `unprovedIds` filter in "the lane keeps missing contracts not proved and measured gaps red" now skips an owner-removed control (`&& !ownerRemovedFor(entry)`). No guard number changed. |
 | `src/pulse/na-conditions.mjs` (generation 2) | one new code `"catalog-display-owner-removed"` (say, claim, problem, `verify: "lane"`) right after `catalog-display-retired-autopsy`. |
@@ -97,7 +99,7 @@ No product file is changed (generation 2 broke four of them on purpose and resto
 6. **"Refuse it" records no person.** (Known: no `rejected_by` column. The `social-refuse` check judges the result: blocked on the queue and on the post, with the reason, never sent.)
 7. **Nothing closes a forgotten clock-out.** `autoCloseStale()` in `src/shifts/store.mjs` has no caller outside tests, and `suspendStaff` revokes sessions but not the open shift. The `staff-clock` check goes red on a person left clocked in for more than a day.
 8. **Teleprompter header bar is never shown.** `teleprompter.css` hides `#top`, and the offline banner and the "marks are saved on this phone" banner are inside it, so a person never sees either. Row left NOT_PROVED.
-9. **Teleprompter rows with words that are out of date.** "Words area" (cursor, hold to edit) and "Edit bar" (Put back, History, Done, Save) name controls the owner removed on 2026-10-13; `beginEdit()` has no caller. "Film key ... lasts a week" is ten years by owner call 2026-10-10 (the practice test records ten years). Chris needs to restate or retire these rows.
+9. **Teleprompter rows with words that are out of date.** "Words area" (cursor, hold to edit) and "Edit bar" (Put back, History, Done, Save) name controls the owner removed on 2026-10-13; `beginEdit()` has no caller. "Film key ... lasts a week" is ten years by owner call 2026-10-10 (the practice test records ten years). (Generation 3: "Words area" now has a practice test of what the owner chose, see finding 15; "Edit bar" is a verified nothing to judge; the film key row still says a week and needs its words fixed in the map.)
 10. **Teleprompter Settings sheet and "This shoot" list cannot be opened by a person (generation 2: dropped on 2026-10-07 in commit `8eea9ca9e`, "Give the teleprompter Record, Stop, and Play", with no owner call recorded for it).** `openSheet('set')` and `openSheet('lib')` are called only by the `window.__fhtp` test hook. Learn remote lives in that sheet, so a person cannot learn a button; buttons already saved on the phone still work (the keyboard practice test proves that).
 11. **Integration risk, display lane time.** The lane runs each distinct SQL text one after another inside one pulse step (Netlify cuts a step at 26 seconds). This batch adds 15 texts, and the other batches add more. Each text reads one company's rows with an `org_id` filter and a window (90 or 180 days). Not fixed here. The integrator should count the texts after the merge and run `npm run pulse:prove`. Generation 2 adds three GETs (the page script, the page and the stylesheet), made in parallel with a 5 second limit each, once per run, before the SQL texts start: at most 5 seconds more in that one step.
 12. **(Generation 2) The Copy script bar has no row in the map.** A double tap shows Copy script, Paste script and X (`body.copying`, owner call 2026-10-13). None of the three is a map row, so nothing tracks them. The old edit bar row names an X and a Save that no longer do what it says. Map finding only, not fixed here.
@@ -175,3 +177,66 @@ A fresh agent re-read the real page, handler and CSS for each of the ten rows an
 - 13 related files together (`na-conditions`, `fin-b21-*`, `gap-catalog-*`, `modules`, `tripwires`, `no-unfenced-transmit`): 271 of 271. `src/pulse/catalog/*.test.mjs` (without the proof-case aggregator), `self-audit` and `daily-pulse`: 165 of 165. `display-proof-cases.test.mjs`, the two map tests: pass (the aggregator that runs 139 files was not run: the Mac was at load average 63 to 80).
 - `npm run pulse:catalog`: no change to `generated.json` (the catalog sources did not change). `npm run lint`: 3,572 files parse clean.
 - Not run: `npm run pulse:prove` (it builds the whole Netlify bundle and reads live data; the integrator runs it once after the merge).
+
+## Generation 3 (2026-10-15): the eight open rows challenged again, one moved
+
+A fresh agent re-read the real page and handler for each of the eight rows still open, and measured the five Social Studio rows again in Chromium (the real page, a fake API, the Mac in Arizona time). One row moved. Seven stay NOT_PROVED, each with a reason that is exactly true.
+
+| Row | Result | What was checked this time |
+|---|---|---|
+| Words area | **practice-test** (new) | See below. The row's words are partly out of date by an owner call that is written down, so the case proves what the owner chose. |
+| Load-time probe | still not attachable | Read: `PARTNERS` is assigned in one place only (`applyPartners`, after the async partner read); the probe runs at load and `partnerId()` is `PARTNERS[P] \|\| null`, so it returns. Measured: 0 GETs to `/api/social/oauth` after load, and Connect Facebook, Instagram and LinkedIn all enabled while the server answers `not_configured`. |
+| Writer 'Send at ... times are UTC' | still not attachable | Read: line 2313 `new Date(when).toISOString()`. Measured with the browser in Phoenix time: typed 2026-10-20 10:00, the page sent `scheduled_for` 2026-10-20T17:00:00.000Z (7 hours off the UTC the label promises). |
+| Tab 'Sent' | still not attachable | Read: `marketing_content_queue_status_ck` (migration 243) allows draft, queued, scheduled, awaiting_approval, discarded, blocked; no later migration touches it; the page reads only that table. Measured: the pane prints "This screen cannot yet see posts that went out." |
+| Post row click and 'See the details' | still not attachable | Measured with a post shaped exactly like `GET /api/social/posts`: the row opens, 'See the details' throws `TypeError: Cannot read properties of undefined (reading 'state')`, the drawer stays closed. `p.screening` appears only inside `openDrawer`; `openDrawer` has one caller. |
+| Side drawer close X, click outside, Escape | still not attachable | Same measurement: the drawer never opens with the server's answer, so there is nothing to close. |
+| 'This shoot' sheet | still not attachable | Read: `openSheet` is called with `"qmenu"` (line 1902) and by the `window.__fhtp` hook only. New fact: commit `483670419` (2026-10-07 14:54, "Open the script list on a double-tap") gave the file-name chip the Still to film list the same afternoon the button was dropped, so the chip list probably replaced this sheet. No owner call says so. Chris decides: retire the row or give the sheet a button. |
+| Settings sheet | still not attachable | Read: no Settings button in `teleprompter.html`; the sheet is opened by the hook only. Mirror can still be flipped by the `?mirror=` link value and the `Mirror` button on the page, and the 4K or 1080p choice is made by the script type, so the sheet is mostly vestigial, but Learn remote, text size, line width and the reading line have no other way in. No owner call retires it. |
+
+### The Words area practice test
+
+`src/pulse/catalog/proofs/fin-b21-words-area.test.mjs`, 4 Chromium tests on the real `teleprompter.html`, fake API, 390 x 844:
+
+1. One tap on the words plays them (button reads Pause, words roll), a second tap pauses them (button reads Play, words stop), no mark and no POST.
+2. A drag by hand: thumb up moves the words forward, thumb down moves them back, never starts the roll, no mark.
+3. A double tap while paused and while rolling: the words are stopped, Copy script, Paste script and X show, X closes them, and `wording`, `editing`, `contenteditable`, edit boxes, the Save button and a focused field are all absent.
+4. A hold of 900 ms (the page's own hold is 550 ms): nothing opens while the finger is still down, nothing opens after, the words do not move or play, and nothing is sent.
+
+Why a practice test and not "restate the row": the owner called for it on 2026-10-13 ("we just edit and copy and paste", written in `docs/journeys/CHANGELOG.md`; `docs/journeys/shoot-flow.md` 4a draws exactly one tap, drag, double tap to Copy script, nothing for hold). The map text still says "opens a cursor" and "hold a line edits that line", so the map row is stale and the product is not. The case says that in its own words (`FIN_B21_DISPLAY_PROOF_CASES`, assertion text). This is the same call slice 4 made for the pipeline map ("the proof goes red if the owner's call is undone"). If Chris wants the cursor or hold-to-edit back, this test goes red by name and the row words become true again.
+
+Breaks made on purpose (each alone, test run, file restored, `git status` clean after): 14 effective breaks, 14 red.
+
+| Break in `public/app/teleprompter.js` | Result |
+|---|---|
+| A single tap never settles | 2 red |
+| The resume act does nothing | 2 red |
+| The pause act does nothing | 2 red |
+| The drag moves the words by zero | 2 red |
+| Drag direction flipped | 2 red |
+| A double tap shows no Copy script bar | 2 red |
+| A double tap does not stop rolling words | 2 red |
+| A double tap also plays the words | 2 red |
+| A double tap puts a cursor in the words (`placeCaret`, the old way) | 2 red |
+| A hold plays the words | 2 red |
+| A hold opens word editing (class set while the finger is down) | 2 red |
+| A hold puts a cursor in the line (`placeCaret`) | 2 red |
+| A hold opens the line edit box (`beginEdit`) | 2 red |
+| A hold makes the script text editable | 2 red |
+
+Two breaks stayed green on the first pass and were fixed in the test, not in the product: a class or `contenteditable` set during a hold was cleaned by the page's own `pointerup` before the old check looked, so the hold test now looks while the finger is still down. One more, "a double tap adds the `wording` class", cannot be seen by anyone: the page's pointer-up handler clears it in the same event (`disarmEdit()`), so it is not a break a person could feel and it is not counted.
+
+### Product findings (generation 3, found, not fixed)
+
+15. **The map row text for "Words area" is stale.** It says "opens a cursor" and "hold a line edits that line", which the owner took out on 2026-10-13. The row id is the control text, so changing it changes the id; a map edit is not this batch's to make. Chris or the integrator can restate the row; the practice test stays valid under the new words.
+16. **The `#lib` sheet and `#whole-editor` dialog are dead markup, and `drawList()` runs only for the dead sheet.** (Same family as finding 13.) Left alone.
+17. **Social Studio "Sent" pane tells the truth.** It says it cannot see sent posts. That is honest, and it is also why the row cannot be proved.
+
+### What I ran in generation 3
+
+- `node scripts/pulse/count-not-proved.mjs`: 829 before (this batch 8), 828 after (this batch 7). The seven left are the seven rows in the table above.
+- `npm run pulse:catalog` then `node scripts/pulse/compile-catalog.mjs --check`: fresh (exit 0).
+- `node --test src/pulse/catalog/proofs/fin-b21-words-area.test.mjs`: 4 of 4 (5 with the group), 14 breaks, 14 red.
+- `node --test src/pulse/catalog/proofs/fin-b21-wiring.test.mjs src/pulse/coverage/gap-catalog-display.test.mjs`: 19 of 19.
+- `node --test --test-name-pattern=... src/pulse/catalog/proofs/display-proof-cases.test.mjs`: the two map tests pass (red count 664). The third test in that file (runs every named test file, long) was not run.
+- Not run: `npm run pulse:prove` (the integrator runs it once after the merge).
+

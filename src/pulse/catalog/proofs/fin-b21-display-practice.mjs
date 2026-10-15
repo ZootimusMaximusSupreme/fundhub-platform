@@ -1,6 +1,6 @@
 // Finish-853 batch 21: the screen controls proved by a practice test (real Chromium or the real door, fake
 // data), the two rows that are verified "nothing to judge" (the owner took the control off the phone), and the
-// eight rows that cannot honestly be attached, each with its exact reason.
+// seven rows that cannot honestly be attached, each with its exact reason.
 //
 // A practice test is not a live check: it reads no live data. It is attached only when the control leaves
 // no saved result that could be wrong (a key, a swap, a card) or when its answer is the page's own.
@@ -11,6 +11,7 @@ import { OWNER_REMOVED } from "../../coverage/fin-b21-owner-removed.mjs";
 
 const TELEPROMPTER_TEST = "src/pulse/catalog/proofs/fin-b21-teleprompter.test.mjs";
 const FILM_KEY_TEST = "src/pulse/catalog/proofs/fin-b21-film-key.test.mjs";
+const WORDS_AREA_TEST = "src/pulse/catalog/proofs/fin-b21-words-area.test.mjs";
 const BROWSER_RUNNER = "real Chromium on the real teleprompter page with a fake API";
 
 function proof(control, assertion, { tests = [TELEPROMPTER_TEST], runner = BROWSER_RUNNER } = {}) {
@@ -42,7 +43,13 @@ export const FIN_B21_DISPLAY_PROOF_CASES = Object.freeze([
     "Space, Enter and Page Down play and pause; the arrows move the speed by 5; Page Up starts the take over; volume up plays from a pause and volume down slows it by 5; at the end of a script Space, Enter and Page Down send got_it and Page Up sends another_take and moves to take 2; buttons saved on the phone for Play and Got it are honoured."),
   proof("Film key (?k=) rules: a key names one shoot and lasts a week; a forged, expired or swapped key is closed; no sign-in wall ever",
     "At the door a good key reads its own shoot with no sign-in; a key for another shoot, another company, a forged, expired or other-secret key, or no secret is closed with the film-link-closed words and nothing is read; a key cannot write the shoot or mark another shoot; on the page a closed key shows those words and never opens a sign-in page. The key lasts ten years by owner call 2026-10-10, not a week.",
-    { tests: [FILM_KEY_TEST, TELEPROMPTER_TEST], runner: "the real api/marketing handlers with a stand-in database, and real Chromium on the page" })
+    { tests: [FILM_KEY_TEST, TELEPROMPTER_TEST], runner: "the real api/marketing handlers with a stand-in database, and real Chromium on the page" }),
+  // Generation 3. Half of this row's words were taken out by owner call 2026-10-13 (docs/journeys/CHANGELOG.md:
+  // "we just edit and copy and paste"; docs/journeys/shoot-flow.md 4a). The case proves what the owner chose
+  // and a person gets today, and says so in its own words. The map's row text is stale, not the product.
+  proof("Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
+    "One tap on the words plays them and a second tap pauses them with no mark sent; a drag moves the words by hand (thumb up forward, thumb down back) and does not start them; a double tap, paused or rolling, stops the words and shows Copy script, Paste script and X with no cursor, no keyboard, no edit box and no Save; holding a line changes nothing, not even while the finger is still down. The row's words 'opens a cursor' and 'hold a line edits that line' were removed by owner call 2026-10-13, so this proves today's behaviour and goes red if a cursor or a hold-to-edit box comes back.",
+    { tests: [WORDS_AREA_TEST] })
 ]);
 
 const social = (control, reason) => Object.freeze({ sourceFile: FIN_B21_SOURCE_FILE, surface: SOCIAL_SURFACE, control, reason });
@@ -69,12 +76,10 @@ export const FIN_B21_NOT_ATTACHABLE = Object.freeze([
     "Half of it is broken. The row expands on a click (measured) and on Enter (the code does), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change."),
   social("Side drawer: close X, click outside, Escape",
     "There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first."),
-  tele("Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
-    "Two of the four claims were removed by owner call 2026-10-13 (docs/journeys/CHANGELOG.md: \"we just edit and copy and paste\"). A double tap pauses and shows Copy script and Paste script only, with no cursor, no keyboard and no edit box (act() 'caret' in public/app/teleprompter.js); holding a line does nothing now ('Holding a line does nothing now'). Measured in Chromium: double tap sets copying and no contenteditable; hold changes nothing. One tap plays or pauses and drag moves the words, and those are covered by e2e/teleprompter-touch.spec.mjs, so the row is not nothing to judge either: half of it is live. A test of today's behaviour contradicts the row's words, and a test of the row's words is red. Needs Chris to restate the row (play, pause, double tap for Copy script, drag)."),
   tele("Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
     "No on-screen control opens the sheet. openSheet('set') is called only by the window.__fhtp test hook; teleprompter.html has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. The Settings button (b-set) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it, and the spec (docs/specs/marketing-machine-2026-10-04.md, Settings > Learn remote) and docs/journeys/shoot-flow.md still say the sheet exists. So it is not a retired control (not nothing to judge), and a practice test through the test hook would show a sheet nobody can open. Needs Chris: an on-screen way to open it, or retire the row."),
   tele("'This shoot' script list sheet (tap a script to roll it)",
-    "No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. The This shoot button (b-lib) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it, so it is not a retired control (not nothing to judge). Needs a product change, or Chris retires the row."),
+    "No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. The This shoot button (b-lib) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it. Commit 483670419 the same afternoon gave the file-name chip a different list (Still to film, #qmenu, scripts not yet marked Got it), which the 'Tiny file-name chip' row proves, so the likely intent is that the chip list replaced this sheet; but nothing written down says the owner retired it, so it is not nothing to judge. Needs Chris: retire the row (and the dead #lib markup and drawList), or give the sheet a button."),
 ]);
 
 export const FIN_B21_PRACTICE_KEYS = Object.freeze(FIN_B21_DISPLAY_PROOF_CASES.map((entry) => entry.key));
