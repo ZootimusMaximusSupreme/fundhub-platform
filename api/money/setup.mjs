@@ -17,7 +17,9 @@
 //     createPaymentLink (src/payment-links/index.mjs). A link is an invitation,
 //     not a payment. With no fee set (FINANCE_OS_SETUP_FEE_CENTS unset) it
 //     answers 409 price_not_set and writes nothing. An unpaid setup link already
-//     on file is handed back instead of minting a second one.
+//     on file is handed back instead of minting a second one. A client who
+//     already has Finance OS (a Capital Blueprint purchase opens 12 months of
+//     it) answers 409 already_entitled: no setup fee is due, nothing is minted.
 //   * request_soft_pull hands back the signed approval form — the same link the
 //     closer deck and the consent desk send. That form is the existing gate:
 //     consent, identity, then the $32 soft-pull checkout. The pull itself runs
@@ -31,6 +33,7 @@ import {
   readSetupStatus, readSetupLinks, readSetupFeeCents,
   SETUP_PURPOSE, SETUP_DESCRIPTION, SETUP_COMMAS_TITLE
 } from "../../src/finance/money-setup.mjs";
+import { financeOsEntitlement } from "../../src/finance/finance-os-entitlement.mjs";
 import { createPaymentLink } from "../../src/payment-links/index.mjs";
 import { signSoftPullApproveUrl } from "../../src/consent/approve-token.mjs";
 import { secretFromEnv } from "../../src/documents/signed-url.mjs";
@@ -65,7 +68,23 @@ async function resolveScope(req, res, { database, gate }) {
   return { orgId: staff.org_id, clientId, staffId: staff.id || principal.staffId || null, staffRole: staff.role || null };
 }
 
-async function startCheckout(res, scope, { database, env, mint }) {
+async function startCheckout(res, scope, { database, env, mint, now }) {
+  const links = await readSetupLinks(database, scope);
+  /* A client who already has Finance OS — a Capital Blueprint purchase opens 12
+     months of it — owes no setup fee. No checkout is minted, and an old unpaid
+     setup link is not handed back. A PAID link keeps its own answer below. */
+  if (!links.paid) {
+    const ent = await financeOsEntitlement(database, {
+      orgId: scope.orgId, clientId: scope.clientId, asOf: now()
+    });
+    if (ent.entitled) {
+      return res.status(409).json({
+        ok: false,
+        error: "already_entitled",
+        message: "You already have Finance OS, so there is no setup fee to pay. Nothing was charged and no checkout was made."
+      });
+    }
+  }
   const fee = readSetupFeeCents(env);
   if (fee === null) {
     return res.status(409).json({
@@ -74,7 +93,6 @@ async function startCheckout(res, scope, { database, env, mint }) {
       message: "The setup price is not set yet. Nothing was charged and no checkout was made."
     });
   }
-  const links = await readSetupLinks(database, scope);
   if (links.paid) {
     return res.status(200).json({ ok: true, already_paid: true, checkout_url: null });
   }
@@ -148,7 +166,7 @@ export default async function handler(req, res, deps = {}) {
   if (!scope) return;
 
   try {
-    if (action === "start_checkout") return await startCheckout(res, scope, { database, env, mint });
+    if (action === "start_checkout") return await startCheckout(res, scope, { database, env, mint, now: clock });
     if (action === "request_soft_pull") return requestSoftPull(res, scope, { env, sign });
     const payload = await readSetupStatus(database, { ...scope, env, asOf: clock() });
     if (!payload) return res.status(404).json({ ok: false, error: "not_found" });

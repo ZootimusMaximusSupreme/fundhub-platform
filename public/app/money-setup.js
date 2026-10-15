@@ -55,9 +55,19 @@
 
   function list(v) { return Array.isArray(v) ? v : []; }
 
+  /* A client who already has Finance OS (a Capital Blueprint purchase opens 12
+     months of it) owes no setup fee, so their Pay step is done. The read marks
+     it done; this holds the screen to the same rule, so a payload that says
+     entitled can never paint a Pay button. */
   function stepOf(d, key) {
     var s = list(d && d.steps);
-    for (var i = 0; i < s.length; i++) if (s[i].key === key) return s[i];
+    for (var i = 0; i < s.length; i++) {
+      if (s[i].key !== key) continue;
+      if (key === "pay" && !s[i].done && d && d.entitled === true) {
+        return { key: key, label: s[i].label, done: true };
+      }
+      return s[i];
+    }
     return { key: key, done: false };
   }
 
@@ -168,7 +178,7 @@
   }
 
   function doneCount(d) {
-    return list(d.steps).filter(function (s) { return s.done; }).length;
+    return list(d.steps).filter(function (s) { return stepOf(d, s.key).done; }).length;
   }
 
   function renderHead(d) {
@@ -311,6 +321,8 @@
       Promise.resolve(post(PATH + qs, body)).then(function (res) {
         var url = res.body && (res.body.checkout_url || res.body.approve_url);
         if (res.status === 200 && res.body && res.body.ok === true && res.body.already_paid) { load(); return; }
+        /* The plan went on after this page was drawn: repaint, say nothing wrong. */
+        if (res.status === 409 && res.body && res.body.error === "already_entitled") { load(); return; }
         if (res.status === 200 && url) { root.location.href = url; return; }
         btn.disabled = false;
         btn.textContent = label;
