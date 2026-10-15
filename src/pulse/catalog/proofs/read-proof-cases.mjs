@@ -6,6 +6,7 @@ import { DISPLAY_CONTRACTS_AB } from "./display-contracts-ab.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
 import { DOOR_FLOW_READ_READ_CONTRACTS } from "./door-flow-read-contracts-2.mjs";
+import { FIN_B23_READ_PROVED } from "./fin-b23-read-contracts.mjs";
 import { FLOW_READ_CONTRACTS } from "./flow-read-contracts.mjs";
 import { S3_READ_PROVED } from "./s3-read-contracts.mjs";
 
@@ -23,6 +24,7 @@ function group(sourceFile, surface, tests, controls) {
 
 const PROVED = [
   ...S3_READ_PROVED,
+  ...FIN_B23_READ_PROVED,
   ...group("desks-a.json", "client-control-panel.html", ["src/pulse/catalog/proofs/read-reviewed-e2e.test.mjs"], [
     "Waiting count headline (bank yes with no amount)",
   ]),
@@ -215,6 +217,8 @@ const PLUGIN_READ_PROOF_CASES = [
 
 const BY_KEY = new Map(BASE_READ_PROOF_CASES.map((entry) => [proofKey(entry), entry]));
 for (const entry of PLUGIN_READ_PROOF_CASES) BY_KEY.set(proofKey(entry), entry);
+// fin-b23: a rendered test of the exact control outranks an older partial proof of the same row.
+for (const entry of FIN_B23_READ_PROVED) BY_KEY.set(proofKey(entry), entry);
 
 export const READ_PROOF_CASES = Object.freeze([...BY_KEY.values()]);
 

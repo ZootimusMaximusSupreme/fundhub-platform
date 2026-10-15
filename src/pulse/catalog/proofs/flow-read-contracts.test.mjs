@@ -103,17 +103,17 @@ function proofById(id) {
   return proof;
 }
 
-test("the shard exports exact proof metadata and an honest freshly compiled 38-row partition", () => {
+test("the shard exports exact proof metadata and an honest freshly compiled 25-row partition", () => {
   assert.deepEqual(FLOW_READ_CURRENT_RED_COUNTS, {
     flow: 23,
-    read: 15,
-    total: 38,
+    read: 2,
+    total: 25,
     proved: 12,
-    unproved: 37,
+    unproved: 25,
   });
   assert.equal(FLOW_READ_CONTRACT_ROW_KEYS.length, 12);
   assert.equal(new Set(FLOW_READ_CONTRACT_ROW_KEYS).size, 12);
-  assert.equal(FLOW_READ_UNPROVED.length, 37);
+  assert.equal(FLOW_READ_UNPROVED.length, 25);
 
   const unprovedKeys = new Set(FLOW_READ_UNPROVED.map((row) => (
     flowReadContractRowKey(row.sourceFile, row)

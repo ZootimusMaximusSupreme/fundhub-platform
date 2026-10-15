@@ -113,7 +113,9 @@ test("Door, Flow, and Read contracts are exact and proved only by final fake-dat
   const read = DOOR_FLOW_READ_READ_CONTRACTS[0];
   const readRow = desksA.find((row) => row.surface === read.surface && row.control === read.control);
   assert.ok(readRow, "campaign fatigue row is present in the current read map");
-  assert.ok(READ_GAPS.some((row) => row.surface === read.surface && row.control === read.control));
+  // The older proof here only judged the fatigue values, so the label control stayed on the red list.
+  // The rendered Label button now has its own test (fin-b23-campaign-fatigue-label.test.mjs) and left it.
+  assert.equal(READ_GAPS.some((row) => row.surface === read.surface && row.control === read.control), false);
   assert.equal(doorFlowReadReadProof(read.sourceFile, readRow), read.proof);
 
   const get = await invokeEntity(req("GET", { query: { client_id: CLIENT_ID } }));
