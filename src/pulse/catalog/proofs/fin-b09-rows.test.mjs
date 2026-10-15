@@ -1,5 +1,5 @@
 // Guards for the batch 09 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the three
+// plain runnable test that opens no live site, every attached row has a proof case, and the two
 // rows left out stay out only while the reason in fin-b09-not-attachable.mjs is still true.
 
 import assert from "node:assert/strict";
@@ -8,7 +8,6 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { SHIPPED_OUTSIDE_GIT } from "../../registry.mjs";
 import { FIN_B09_DISPLAY_PROOF_CASES } from "./fin-b09-display-proofs.mjs";
 import { FIN_B09_NOT_ATTACHABLE } from "./fin-b09-not-attachable.mjs";
 import ROWS from "./fin-b09-rows.json" with { type: "json" };
@@ -49,16 +48,12 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   for (const row of FIN_B09_NOT_ATTACHABLE) assert.equal(left.has(row.control), false, row.control);
 });
 
-test("the three left-out rows are real map rows, each with a reason that is still true", () => {
-  assert.equal(FIN_B09_NOT_ATTACHABLE.length, 3);
+test("the two left-out rows are real map rows, each with a reason that is still true", () => {
+  assert.equal(FIN_B09_NOT_ATTACHABLE.length, 2);
   for (const row of FIN_B09_NOT_ATTACHABLE) {
     assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
     assert.ok(row.why.length > 80, "the reason is written out");
   }
-
-  // Leads page: still shipped from outside git, so there is no file here to open.
-  assert.ok(Object.keys(SHIPPED_OUTSIDE_GIT).some((key) => key.startsWith("leads/")),
-    "the lead list is no longer listed as shipped outside git: it can be tested now, attach 'Reset my edits'");
 
   // Climate: the shipped bundle still has no plain sentence under a clicked state.
   const climate = path.join(ROOT, "public/climate");

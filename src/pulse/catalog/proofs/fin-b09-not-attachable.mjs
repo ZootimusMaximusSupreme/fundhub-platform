@@ -1,6 +1,8 @@
-// The three batch 09 display rows that cannot honestly be attached today, and exactly why.
+// The two batch 09 display rows that cannot honestly be attached today, and exactly why.
 // Each is a finding, not a failure. fin-b09-rows.test.mjs holds each reason to the repo: the moment the
 // reason stops being true, that test goes red and says the row can now be attached.
+// (The third row, the private lead list's "Reset my edits" button, is no longer here: it is attached as a live
+// check, the lane reads the page the server hands out. See src/pulse/coverage/fin-b09-leads-reset.mjs.)
 
 export const FIN_B09_NOT_ATTACHABLE = Object.freeze([
   Object.freeze({
@@ -22,16 +24,5 @@ export const FIN_B09_NOT_ATTACHABLE = Object.freeze([
       + "band and trend, but no plain sentence about the wider picture; the lead-magnet page the journey describes "
       + "(headline, state card with that sentence, four questions) is not what ships. Generation 2 re-ran it in Chromium "
       + "(fin-b09-g2-findings.test.mjs): the panel has the score, the band word and four numbers, and no line of words.",
-  }),
-  Object.freeze({
-    id: "catalog-display:public-pages.json:button:leads/<32-hex>/index.html#reset:Button 'Reset my edits'",
-    sourceFile: "public-pages.json",
-    surface: "button:leads/<32-hex>/index.html#reset",
-    control: "Button 'Reset my edits'",
-    why: "The page is the private lead call list. It holds real names and phone numbers, so it is git-excluded "
-      + "(SHIPPED_OUTSIDE_GIT in src/pulse/registry.mjs) and is not in this repo to open. A test would need that private file. "
-      + "Generation 2 searched src, scripts, db, docs and public for the page's words and for any builder of it: the page is one "
-      + "inline file with its data in it, and nothing in git generates it. A test that skips when the file is absent would be a "
-      + "skipped test on every fresh checkout.",
   }),
 ]);

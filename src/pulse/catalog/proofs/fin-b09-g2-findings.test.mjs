@@ -7,13 +7,14 @@
 // 2. climate/index.html, "Click a state: shows its score and a plain sentence": the shipped dashboard
 //    shows a score and a band word but no sentence.
 //
-// The third row (the private lead list, "Reset my edits") has no page in the repo to run; that reason is
-// held by fin-b09-rows.test.mjs (SHIPPED_OUTSIDE_GIT). Fake /api answers only. No live data.
+// The third row of this batch (the private lead list, "Reset my edits") has no page in the repo to run. It is
+// no longer a finding: the display lane reads the live page (src/pulse/coverage/fin-b09-leads-reset.mjs).
+// Fake /api answers only. No live data.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { json, sharedScreens } from "./fin-b09-kit.mjs";
+import { bodyOf, json, sharedScreens } from "./fin-b09-kit.mjs";
 
 const screens = sharedScreens();
 
@@ -76,6 +77,48 @@ test("finding 1 still true: Yes on 'Discard them?' keeps the typed words and dro
   assert.equal(shown, "Lead Follow-up v2",
     "the page now shows the saved name after a discard: the discard works, attach the 'Agent list row' row");
   assert.equal(await page.locator("#saveNote").innerText(), "", "and it shows the typed words with no unsaved mark");
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test("finding 1, what it costs: after 'Discard' the next Save sends the words that were meant to be dropped", async () => {
+  const holder = {};
+  const writes = [];
+  const { page, errors } = await screens.open("/app/agent-editor.html", {
+    handlers: {
+      "/api/read/staff": { ok: true, count: STAFF.length, limit: 200, offset: 0, hasMore: false, items: STAFF },
+      "/api/read/agent-shadow-log": { ok: true, log: [], rows: [] },
+      "/api/read/agents": async (route) => {
+        await holder.page.waitForFunction(() => document.querySelectorAll("#a_owner option").length > 1);
+        return json(route, { ok: true, count: AGENTS.length, limit: 200, offset: 0, hasMore: false, items: AGENTS });
+      },
+      "/api/agents": async (route) => {
+        const body = bodyOf(route);
+        writes.push(body);
+        const old = AGENTS.find((a) => a.code === body.code);
+        return json(route, { ok: true, action: "save", agent: { ...old, name: body.name } });
+      },
+    },
+    before: async (p) => { holder.page = p; },
+  });
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Lead Follow-up");
+
+  await page.locator("details.card > summary").nth(0).click();
+  await page.locator("#a_name").fill("Typed then discarded");
+  await page.locator('.aitem[data-a="AG-03"]').click();
+  await page.waitForFunction(() => document.querySelector("#a_name")?.value === "Review Chaser");
+  await page.locator('.aitem[data-a="AG-01"]').click();
+  await page.waitForFunction(() => document.querySelector("#a_code")?.value === "AG-01");
+  await page.locator("#saveBtn").click();
+  const end = Date.now() + 10000;
+  while (!writes.length && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 25));
+
+  assert.equal(writes.length, 1, "Save sent one request");
+  assert.equal(writes[0].code, "AG-01");
+  assert.notEqual(writes[0].name, "Lead Follow-up",
+    "Save now sends the saved name: the discard works, attach the 'Agent list row' row");
+  assert.equal(writes[0].name, "Typed then discarded", "the words the person chose to discard are what Save sends");
   assert.deepEqual(errors, []);
   await page.close();
 });

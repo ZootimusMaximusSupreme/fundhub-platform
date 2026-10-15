@@ -2,6 +2,7 @@
 // prove the click. This lane proves the named durable result, or says it is not proved.
 
 import catalog from "../catalog/generated.json" with { type: "json" };
+import { leadsResetResults } from "./fin-b09-leads-reset.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -107,10 +108,35 @@ async function retiredPageState(ctx = {}) {
   }
 }
 
+// One GET of a live page for fin-b09-leads-reset.mjs: no body, redirects not followed, 5 second limit.
+// Never throws. Answers { status, html } or { error }.
+function livePageReader(ctx = {}) {
+  const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
+  return async (path) => {
+    if (typeof fetchImpl !== "function") return { error: "this run has no GET client" };
+    let origin;
+    try {
+      origin = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
+    } catch {
+      return { error: "the base address is not a web address" };
+    }
+    try {
+      const response = await fetchImpl(`${origin}${path}`, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
+      const status = Number(response?.status);
+      return { status, html: status === 200 ? await response.text() : "" };
+    } catch (error) {
+      return { error: String(error?.message || error).replace(/\s+/g, " ").slice(0, 120) };
+    }
+  };
+}
+
 export async function gapChecks(ctx = {}) {
   // One live read for all controls on this retired page, even without a DB.
   const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
+  const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
   const judge = (entry, stats) => {
+    if (leadsReset.has(entry.id)) return leadsReset.get(entry.id);
     if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
