@@ -266,6 +266,15 @@ describe("GET /api/social/oauth, who may call", () => {
       assert.equal(res.statusCode, allowed ? 200 : 403, role);
       if (!allowed) assert.equal(sqlOf(fake, /FROM partners/).length, 0, role);
     }
+    // "Partner" in the row's caller list is the staff role of that name (migration 036): such a login is admitted.
+    const partnerRole = await call(asRole("partner"), { action: "start", channel: "facebook", partner_id: PARTNER });
+    assert.equal(partnerRole.res.statusCode, 200);
+    for (const role of ["affiliate", "viewer"]) {
+      const { res, fake } = await call(asRole(role), { action: "start", channel: "facebook", partner_id: PARTNER });
+      assert.equal(res.statusCode, 403, role);
+      assert.equal(sqlOf(fake, /FROM partners/).length, 0, role);
+    }
+    // A white-label partner's own account login is a different kind of person and is refused here.
     for (const who of [asPartner(PARTNER), asClient(), asAffiliate()]) {
       const { res, fake } = await call(who, { action: "start", channel: "facebook", partner_id: PARTNER });
       assert.equal(res.statusCode, 403);
