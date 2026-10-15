@@ -202,6 +202,15 @@ describe("POST /api/contracts: send", () => {
     assert.equal(fake.tables.contracts[0].status, "draft");
     assert.equal(fake.tables.documents.length, 0);
 
+    const placeholder = newFile();
+    placeholder.tables.contract_templates.find((t) => t.id === IDS.template).body = "THIS IS NOT THE REAL AGREEMENT TEXT. DO NOT SEND THIS. {{field.service}}";
+    const p = await draft(placeholder);
+    const sendPlaceholder = await call({ action: "send", id: p.id }, placeholder);
+    assert.equal(sendPlaceholder.res.statusCode, 409);
+    assert.equal(sendPlaceholder.res.body.error, "placeholder_text");
+    assert.equal(placeholder.tables.contracts[0].status, "draft");
+    assert.equal(placeholder.tables.documents.length, 0);
+
     const voided = newFile();
     const v = await draft(voided);
     await call({ action: "void", id: v.id, reason: "wrong client" }, voided, owner);
