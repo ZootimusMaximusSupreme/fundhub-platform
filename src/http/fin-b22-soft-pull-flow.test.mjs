@@ -16,9 +16,16 @@ import crypto from "node:crypto";
 
 import handler from "../../api/soft-pull-approve.mjs";
 import { signSoftPullApproveUrl } from "../consent/approve-token.mjs";
+import { CURRENT_SOFT_PULL_VERSION, SOFT_PULL_DISCLOSURES } from "../consent/disclosures.mjs";
 import { fakeDb, makeRes, ORG_ID } from "../testing/handler-harness.mjs";
 
 const CLIENT = "c1000000-0000-4000-8000-000000000001";
+const OTHER_CLIENT = "c2000000-0000-4000-8000-000000000002";
+const ACCOUNT = "a1000000-0000-4000-8000-000000000001";
+const PRODUCT = "pr100000-0000-4000-8000-000000000001";
+// The words the server holds for the version it serves. Taken from the product's own list, not typed here, so a
+// reworded approved text is a change to that list; what must hold is that the right words go in the record.
+const SERVER_WORDS = SOFT_PULL_DISCLOSURES[CURRENT_SOFT_PULL_VERSION].text.trim();
 // Keys and the link secret are made at run time so nothing secret-shaped sits in the source.
 const SECRET = crypto.randomBytes(24).toString("hex");
 const ENV = { PII_ENC_KEY: crypto.randomBytes(32).toString("base64"), DOCUMENT_URL_SECRET: SECRET };
@@ -49,34 +56,52 @@ function company(n, over = {}) {
  * The stand-in database. `openLinks` are payment links already open for this client.
  * `failOn` is a statement pattern that answers with an error.
  */
+const ownedBy = (link, org, client) => (link.org_id ?? ORG_ID) === org && (link.client_id ?? CLIENT) === client
+  && (link.purpose ?? "diagnostic") === "diagnostic";
+
 function standIn({ openLinks = [], failOn = null } = {}) {
   const minted = [];
   const expired = [];
+  const marked = [];
   const rules = [
     ...(failOn ? [[failOn, new Error("the database refused this write")]] : []),
     [/FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@fundhub-client.test.io" }]],
     [/FROM client_consents\s+WHERE org_id = \$1 AND client_id = \$2 AND kind = \$3/, []],
-    [/FROM accounts\s+WHERE client_id = \$1/, [{ id: "a1000000-0000-4000-8000-000000000001" }]],
+    [/FROM accounts\s+WHERE client_id = \$1/, [{ id: ACCOUNT }]],
     [/INSERT INTO pii_identity/, [{ id: "pii-1" }]],
     [/INSERT INTO client_consents/, (_s, p) => [{ id: "cc-1", org_id: p[0], client_id: p[1], kind: p[2], consent_text: p[3], consent_version: p[4], granted_name: p[9] }]],
+    // The read the handler makes honours what the database would: the company, the client, the purpose, and the
+    // list of statuses the handler passes ($3). A link in a status that is not on that list is not returned.
     [/FROM payment_links\s+WHERE org_id = \$1 AND client_id = \$2 AND purpose = 'diagnostic'\s+AND status = ANY\(\$3\) AND amount_cents = \$4/,
-      (_s, p) => openLinks.filter((l) => l.amount_cents === p[3])],
+      (_s, p) => openLinks.filter((l) => ownedBy(l, p[0], p[1]) && p[2].includes(l.status) && l.amount_cents === p[3])],
     [/SELECT id FROM payment_links\s+WHERE org_id = \$1 AND client_id = \$2 AND purpose = 'diagnostic'\s+AND status = ANY\(\$3\) AND amount_cents <> \$4/,
-      (_s, p) => openLinks.filter((l) => l.amount_cents !== p[3]).map((l) => ({ id: l.id }))],
-    [/UPDATE payment_links\s+SET status = 'expired'/, (_s, p) => { expired.push(p[0]); return [{ id: p[0], status: "expired" }]; }],
-    [/FROM products\s+WHERE org_id = \$1/, [{ id: "pr100000-0000-4000-8000-000000000001", code: "diagnostic" }]],
+      (_s, p) => openLinks.filter((l) => ownedBy(l, p[0], p[1]) && p[2].includes(l.status) && l.amount_cents !== p[3]).map((l) => ({ id: l.id }))],
+    // markExpired is "WHERE id = $1 AND org_id = $2 AND status = ANY($4)": only an open link expires.
+    [/UPDATE payment_links\s+SET status = 'expired'/, (_s, p) => {
+      const row = openLinks.find((l) => l.id === p[0]);
+      if (!row || !p[3].includes(row.status)) return [];
+      expired.push(p[0]);
+      return [{ id: p[0], status: "expired" }];
+    }],
+    // The product is found by its CODE ($3), the way the real read does, so a wrong product code finds nothing.
+    [/FROM products\s+WHERE org_id = \$1/, (_s, p) => (String(p[2] || "").toLowerCase() === "diagnostic" ? [{ id: PRODUCT, code: "diagnostic" }] : [])],
     [/INSERT INTO payment_links/, (_s, p) => {
-      const row = { id: `link-${minted.length + 1}`, status: "created", purpose: p[2], description: p[3], amount_cents: p[4], checkout_url: p[7] };
+      const row = {
+        id: `link-${minted.length + 1}`, org_id: p[0], client_id: p[1], status: "created", purpose: p[2], description: p[3],
+        amount_cents: p[4], checkout_url: p[7], product_id: p[10],
+      };
       minted.push(row);
       return [row];
     }],
     [/UPDATE payment_links\s+SET status = 'sent'/, (_s, p) => {
       const row = [...minted, ...openLinks].find((l) => l.id === p[0]);
-      return row ? [{ ...row, status: "sent" }] : [];
+      if (!row || row.status !== "created") return [];
+      marked.push(p[0]);
+      return [{ ...row, status: "sent" }];
     }],
   ];
   const fake = fakeDb(rules);
-  return { fake, minted, expired };
+  return { fake, minted, expired, marked };
 }
 
 async function post(body, { db = standIn(), token = link(), deps = {} } = {}) {
@@ -109,16 +134,49 @@ describe("authorize first, then pay", () => {
     assert.equal(minted.length, 1);
   });
 
-  test("the consent record holds the typed name, the kind, the server's own words, and where it was typed from", async () => {
-    const { fake } = await post({ ...person(), businesses: [], consent_text: "words the browser invented" });
+  test("the consent record holds the typed name, the kind, the server's own words and version, and where it was typed from", async () => {
+    const { fake, res } = await post({
+      ...person(), businesses: [], consent_text: "words the browser invented", consent_version: "v0-from-the-browser",
+      capture_method: "checkbox",
+    });
     const [write] = ran(fake, /INSERT INTO client_consents/);
     assert.equal(write.params[0], ORG_ID);
     assert.equal(write.params[1], CLIENT);
     assert.equal(write.params[2], "soft_pull_consent");
     assert.notEqual(write.params[3], "words the browser invented", "the words come from the server, never the body");
-    assert.ok(String(write.params[3]).length > 40);
+    // EXACTLY the words the server holds for the version it serves, and that version's key
+    assert.equal(write.params[3], SERVER_WORDS, "the recorded words are the server's own words for the current version");
+    assert.equal(write.params[4], CURRENT_SOFT_PULL_VERSION, "the recorded version is the current one, not the browser's");
+    assert.equal(res.body.consent.version, CURRENT_SOFT_PULL_VERSION);
+    // how it was captured, and by whom: a typed name by the client's own account, from this browser
+    assert.equal(write.params[8], "typed", "the method is a typed name, whatever the browser says");
+    assert.equal(write.params[5], "client");
+    assert.equal(write.params[6], ACCOUNT);
     assert.equal(write.params[9], "Dana Whitfield");
     assert.equal(write.params[10], "203.0.113.5");
+    assert.equal(write.params[11], "test-browser");
+  });
+
+  test("the words the page is shown (GET) are the words that are recorded (POST), under the same version", async () => {
+    const res = makeRes();
+    const token = link();
+    await handler({ method: "GET", query: token, headers: {} }, res, { db: standIn().fake, env: ENV, secret: SECRET, now: NOW });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.disclosure.text, SERVER_WORDS);
+    assert.equal(res.body.disclosure.version, CURRENT_SOFT_PULL_VERSION);
+    assert.equal(res.body.version, CURRENT_SOFT_PULL_VERSION);
+    const { fake } = await post({ ...person(), businesses: [] });
+    const [write] = ran(fake, /INSERT INTO client_consents/);
+    assert.equal(write.params[3], res.body.disclosure.text);
+    assert.equal(write.params[4], res.body.disclosure.version);
+  });
+
+  test("a typed name that is blank or one letter stores no consent even when the rest of the form is good", async () => {
+    for (const granted_name of ["", " ", "D"]) {
+      const out = await post({ ...person(), granted_name, businesses: [] });
+      assert.equal(out.res.statusCode, 400, JSON.stringify(granted_name));
+      assert.equal(ran(out.fake, /INSERT INTO client_consents/).length, 0);
+    }
   });
 
   test("a failed consent write mints no payment link and the client is never told the consent is saved", async () => {
@@ -217,9 +275,14 @@ describe("the same page then shows Pay for that total", () => {
   test("the total is $32 plus $10 for each company, one by one up to 20", async () => {
     for (const n of [1, 3, 6, 20]) {
       const rows = Array.from({ length: n }, (_, i) => company(i % 10, { ein: `55-00000${String(i).padStart(2, "0")}` }));
-      const { res } = await post({ ...person(), businesses: rows });
+      const { res, minted } = await post({ ...person(), businesses: rows });
       assert.equal(res.body.checkout.amount_cents, 3200 + 1000 * n, `${n} companies`);
       assert.equal(res.body.businesses.count, n);
+      // the label the page shows and the amount the link charges are one number
+      assert.equal(res.body.pricing.total_cents, res.body.checkout.amount_cents, `${n}: the label total is the link's amount`);
+      assert.equal(res.body.pricing.total_display, res.body.checkout.amount_display, `${n}: the label text is the link's amount text`);
+      assert.equal(minted[0].amount_cents, res.body.checkout.amount_cents, `${n}: the saved link holds that amount`);
+      assert.equal(minted[0].product_id, PRODUCT, "the link is for the soft-pull product (code diagnostic)");
     }
   });
 
@@ -240,6 +303,58 @@ describe("the same page then shows Pay for that total", () => {
     assert.equal(minted.length, 1);
     assert.equal(res.body.checkout.amount_cents, 5200);
     assert.notEqual(res.body.checkout.id, "link-stale");
+  });
+
+  test("a link that is created but not yet sent at the same total is reused and is marked sent", async () => {
+    const created = { id: "link-created", status: "created", amount_cents: 3200, checkout_url: "https://pay.example.test/checkout/created" };
+    const db = standIn({ openLinks: [created] });
+    const { res, minted, marked } = await post({ ...person(), businesses: [] }, { db });
+    assert.equal(res.body.checkout.id, "link-created");
+    assert.equal(minted.length, 0, "no second link");
+    assert.deepEqual(marked, ["link-created"], "the reused link is marked sent");
+  });
+
+  test("only open links count: a paid, expired or cancelled link at the same total is not reused, and a new one is minted", async () => {
+    for (const status of ["paid", "expired", "cancelled", "failed", "refunded"]) {
+      const old = { id: `link-${status}`, status, amount_cents: 3200, checkout_url: `https://pay.example.test/checkout/${status}` };
+      const db = standIn({ openLinks: [old] });
+      const { res, minted, expired } = await post({ ...person(), businesses: [] }, { db });
+      assert.notEqual(res.body.checkout.id, old.id, `${status}: not reused`);
+      assert.equal(minted.length, 1, `${status}: a new link was minted`);
+      assert.deepEqual(expired, [], `${status}: nothing was expired`);
+    }
+  });
+
+  test("a paid link at another total is left alone: only open links are expired", async () => {
+    const paid = { id: "link-paid", status: "paid", amount_cents: 3200, checkout_url: "https://pay.example.test/checkout/paid" };
+    const sent = { id: "link-sent-old", status: "sent", amount_cents: 4200, checkout_url: "https://pay.example.test/checkout/sent" };
+    const db = standIn({ openLinks: [paid, sent] });
+    const { res, minted, expired } = await post({ ...person(), businesses: [company(1), company(2)] }, { db });
+    assert.deepEqual(expired, ["link-sent-old"], "the open one expired, the paid one did not");
+    assert.equal(minted.length, 1);
+    assert.equal(res.body.checkout.amount_cents, 5200);
+  });
+
+  test("another client's open link, and another purpose's open link, are never reused or expired", async () => {
+    const theirs = { id: "link-theirs", status: "sent", amount_cents: 3200, client_id: OTHER_CLIENT, checkout_url: "https://pay.example.test/checkout/theirs" };
+    const deposit = { id: "link-deposit", status: "sent", amount_cents: 3200, purpose: "deposit", checkout_url: "https://pay.example.test/checkout/deposit" };
+    const farAway = { id: "link-theirs-far", status: "sent", amount_cents: 9900, client_id: OTHER_CLIENT, checkout_url: "https://pay.example.test/checkout/far" };
+    const db = standIn({ openLinks: [theirs, deposit, farAway] });
+    const { res, minted, expired } = await post({ ...person(), businesses: [] }, { db });
+    assert.notEqual(res.body.checkout.id, "link-theirs");
+    assert.notEqual(res.body.checkout.id, "link-deposit");
+    assert.equal(minted.length, 1);
+    assert.deepEqual(expired, [], "nobody else's link was touched");
+  });
+
+  test("the link is made for the soft-pull product (code diagnostic) and the diagnostic purpose", async () => {
+    // the stand-in finds a product only by the code the handler asks for, so another code finds nothing and no
+    // link is made at all
+    const { res, minted } = await post({ ...person(), businesses: [] });
+    assert.equal(minted.length, 1, "a link was made, which it is only when the product code found the product");
+    assert.equal(minted[0].product_id, PRODUCT);
+    assert.equal(minted[0].purpose, "diagnostic");
+    assert.equal(res.body.checkout.amount_cents, 3200);
   });
 
   test("when no checkout can be made the consent still stands and the answer says to ask for the link, with the total", async () => {

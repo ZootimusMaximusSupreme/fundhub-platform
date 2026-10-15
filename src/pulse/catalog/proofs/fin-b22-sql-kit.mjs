@@ -121,6 +121,7 @@ const ISO = "'%Y-%m-%dT%H:%M:%fZ'";
  *   $1 becomes ?1; casts and BTRIM are plain; "X - interval 'N minutes|hours|days'" becomes strftime on X
  *   (every stand-in timestamp is an ISO string, so string order is time order); "A ~* $n" and "A !~* $n"
  *   (case-blind regex match, what the product uses to leave test addresses out) call a JS regex function.
+ *   regexp_replace(x, pattern, with, 'g') and right(x, n), which SQLite has no spelling for, call JS twins.
  */
 export function portableSql(sql) {
   return sql
@@ -130,6 +131,8 @@ export function portableSql(sql) {
     .replace(/(COALESCE\([^()]*\)|[A-Za-z_][\w.]*)\s*(!?)~\*\s*(\$\d+)/g,
       (_, left, not, param) => `${not ? "NOT " : ""}fh_re_i(${left}, ${param})`)
     .replace(/\$(\d+)/g, "?$1")
+    .replace(/\bregexp_replace\s*\(/gi, "fh_regexp_replace(")
+    .replace(/\bright\s*\(/gi, "fh_right(")
     .replace(/\bBTRIM\s*\(/gi, "TRIM(");
 }
 
@@ -151,6 +154,17 @@ export function makeStandIn(tableNames) {
   db.function("fh_re_i", { deterministic: true }, (value, pattern) => {
     if (value === null || value === undefined) return 0;
     return new RegExp(String(pattern), "i").test(String(value)) ? 1 : 0;
+  });
+  // regexp_replace(value, pattern, replacement, flags): only the 'g' flag is used by the checks.
+  db.function("fh_regexp_replace", { deterministic: true }, (value, pattern, replacement, flags) => {
+    if (value === null || value === undefined) return null;
+    return String(value).replace(new RegExp(String(pattern), String(flags || "").includes("g") ? "g" : ""), String(replacement ?? ""));
+  });
+  // right(value, n): the last n characters.
+  db.function("fh_right", { deterministic: true }, (value, n) => {
+    if (value === null || value === undefined) return null;
+    const text = String(value);
+    return Number(n) <= 0 ? "" : text.slice(-Number(n));
   });
   const known = new Map();
   for (const name of tableNames) {
@@ -198,12 +212,15 @@ export function makeStandIn(tableNames) {
   };
 }
 
+/** The names a check gives its own WITH steps. They are read after FROM or JOIN but are not tables. */
+export const CTE_NAMES = Object.freeze(["sms", "per", "repeats", "candidates", "sends", "last_ok", "rungs", "waiting"]);
+
 /** Every table name a SQL text reads: the word after FROM or JOIN. */
 export function tablesIn(sql) {
   const names = new Set();
   for (const m of stripComments(sql).matchAll(/(?<!distinct\s)\b(?:from|join)\s+([a-z_][a-z0-9_]*)\b/gi)) {
     const word = m[1].toLowerCase();
-    if (!["select", "jsonb_array_elements", "json_each", "sms", "per", "repeats", "candidates"].includes(word)) names.add(word);
+    if (!["select", "jsonb_array_elements", "json_each", ...CTE_NAMES].includes(word)) names.add(word);
   }
   return [...names];
 }

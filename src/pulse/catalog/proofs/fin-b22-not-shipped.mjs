@@ -35,6 +35,13 @@
 //     audit asks this file again before it lets "na" stand.
 //   - A marker found: the page carries the step now. The claim is false and the row goes back to NOT_PROVED,
 //     where it was; a person attaches a real check for what the step saves.
+//   - A claim may also name the page's OWN IDENTITY (`identity`): the words its <title> must carry, and, with
+//     `noControls`, that its page document holds no <form>, <input>, <textarea> or <select>. The four climate
+//     steps are "nothing to judge" because the page that ships is the lending-climate DASHBOARD, which has a
+//     title and no form. Words alone cannot say that: a rebuilt visitor page that words its headline, button or
+//     gate a little differently carries none of the markers and would stay "na". So if the page that answers is
+//     no longer that dashboard (a new title, or a form on it) the claim was written for a different page: the
+//     row goes back to NOT_PROVED and the audit's question is false, whatever words the new page uses.
 //   - Anything not read (no GET client, bad address, non-200, a file that failed, more files than the cap) or an
 //     anchor missing: "skip" with the reason. Absence is never claimed from a partial read.
 //
@@ -59,6 +66,8 @@ const VERIFY_CACHE_MS = 30000;
 
 const CLIMATE_PAGES = Object.freeze(["/climate/", "/climate/lender-climate/"]);
 const CLIMATE_ANCHORS = Object.freeze(["/api/climate"]);
+// What the page at /climate/ IS today (the owner's dashboard): its title, and no form of any kind on its document.
+const CLIMATE_IDENTITY = Object.freeze({ title: "Lending Climate Dashboard", noControls: true });
 
 /**
  * Every claim. `family` and `surface` are the Flow row's own (the row id is flow:<family>:<surface>).
@@ -71,6 +80,7 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the headline \"See how many banks in our book fit your state\" and its button",
     pages: CLIMATE_PAGES,
     anchors: CLIMATE_ANCHORS,
+    identity: CLIMATE_IDENTITY,
     markers: Object.freeze(["See how many banks in our book fit your state", "Get your number"]),
     reason: "the visitor page was reverted by the owner on 2026-09-18; /climate/ is the lending-climate dashboard",
   }),
@@ -80,6 +90,7 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the state card with its name and its plain sentence (\"not a decision about you\")",
     pages: CLIMATE_PAGES,
     anchors: CLIMATE_ANCHORS,
+    identity: CLIMATE_IDENTITY,
     markers: Object.freeze(["not a decision about you", "wider picture", "Pick a state"]),
     reason: "the visitor page was reverted by the owner on 2026-09-18; /climate/ is the lending-climate dashboard",
   }),
@@ -89,6 +100,7 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the four answers and contact form, and the lead door it posts to",
     pages: CLIMATE_PAGES,
     anchors: CLIMATE_ANCHORS,
+    identity: CLIMATE_IDENTITY,
     markers: Object.freeze(["climate-match", "climate_match", "Show my number", "website:climate"]),
     reason: "the visitor page was reverted by the owner on 2026-09-18; no page calls the lead door",
   }),
@@ -98,6 +110,7 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the $32 Business Financial Assessment gate and its button",
     pages: CLIMATE_PAGES,
     anchors: CLIMATE_ANCHORS,
+    identity: CLIMATE_IDENTITY,
     markers: Object.freeze([
       "Business Financial Assessment", "Get the full list", "more names are in the full list", "/api/public/optimize",
     ]),
@@ -307,8 +320,8 @@ function pickFetch(ctx) {
 
 /**
  * Read the live page(s) and what they lead to, once.
- * Returns { state: "read", reads, perPage, files } or { state: "unread", reason }. `files` counts the files the pages led to
- * that answered (the pages themselves are not counted).
+ * Returns { state: "read", reads, perPage, docs, files } or { state: "unread", reason }. `files` counts the files the
+ * pages led to that answered (the pages themselves are not counted). `docs` is the page document of each named page.
  * `fetchImpl` is a GET client; `origin` is the site address. With `speculative: false` the read follows only the
  * files the page really loads (script tags, preloads, imports, frames), never a path that was only named in a
  * string. A staff page's shell script names every app page that way, and those are other pages: a word on one of
@@ -338,6 +351,7 @@ export async function readSite(paths, { fetchImpl, origin, speculative = true })
     // What each file said, and which files each top-level page leads to (a file two pages share counts for both),
     // so a claim can ask that EVERY page it names is the page it knows, not only one of them.
     const byHref = new Map();
+    const docs = pages.map(() => null);
     const filesOf = pages.map(() => new Set());
     let fetched = 0;
     let own = 0;
@@ -375,6 +389,7 @@ export async function readSite(paths, { fetchImpl, origin, speculative = true })
       for (const answer of answers) {
         if (!answer) continue;
         if (!answer.item.page) own += 1;
+        else docs[answer.item.root] = String(answer.body);
         const said = readings(answer.body);
         reads.push(...said);
         byHref.set(answer.item.url.href, said);
@@ -390,15 +405,41 @@ export async function readSite(paths, { fetchImpl, origin, speculative = true })
       level = next;
     }
     const perPage = filesOf.map((files) => [...files].flatMap((href) => byHref.get(href) || []));
-    return { state: "read", reads, perPage, files: own };
+    return { state: "read", reads, perPage, docs, files: own };
   } catch (error) {
     return unread(String(error?.message || error).replace(/\s+/g, " ").slice(0, 120));
   }
 }
 
+const TITLE = /<title\b[^>]*>([\s\S]*?)<\/title>/i;
+const CONTROLS = /<(?:form|input|textarea|select)\b/i;
+
+/** Why the page that answered is not the page this claim was written against, or null when it is. */
+function identityProblem(claim, site) {
+  const identity = claim.identity;
+  if (!identity) return null;
+  const docs = Array.isArray(site.docs) ? site.docs : [];
+  for (let i = 0; i < claim.pages.length; i += 1) {
+    const doc = docs[i];
+    if (typeof doc !== "string") return `${claim.pages[i]} was not read as a page`;
+    if (identity.title) {
+      const title = TITLE.exec(doc);
+      const text = title ? squash(decodeEntities(stripTags(title[1], ""))) : "";
+      if (!text.includes(squash(identity.title))) {
+        return `${claim.pages[i]} is no longer titled ${JSON.stringify(identity.title)} (it says ${JSON.stringify(text.slice(0, 80))})`;
+      }
+    }
+    if (identity.noControls && CONTROLS.test(doc)) {
+      return `${claim.pages[i]} now holds a form or an input, and the page this step was written against had none`;
+    }
+  }
+  return null;
+}
+
 /**
  * Judge one claim against one site read.
- * Returns { state: "absent" | "present" | "unread", found, reason? }.
+ * Returns { state: "absent" | "present" | "changed" | "unread", found, reason? }. "changed" is a page that is no
+ * longer the page the claim was written against (its identity), so "absent" cannot be said of it.
  */
 export function judgeClaim(claim, site) {
   if (!site || site.state !== "read") return { state: "unread", found: [], reason: site?.reason || "the page was not read" };
@@ -414,7 +455,10 @@ export function judgeClaim(claim, site) {
     };
   }
   const found = claim.markers.filter((marker) => carries(site.reads, marker));
-  return { state: found.length ? "present" : "absent", found };
+  if (found.length) return { state: "present", found };
+  const moved = identityProblem(claim, site);
+  if (moved) return { state: "changed", found: [], reason: moved };
+  return { state: "absent", found: [] };
 }
 
 function rowFor(claim, verdict, site) {
@@ -438,6 +482,15 @@ function rowFor(claim, verdict, site) {
       detail: `${claim.surface}: the live page carries this step now (found ${verdict.found.map((m) => JSON.stringify(m)).join(", ")}). `
         + `No check yet judges what it saves or where it leads.`,
       suggestedFix: `Take the not-shipped claim for ${claim.surface} off and attach a check on the saved result it leads to. Do not auto-fix. Chris fixes reds.`,
+    };
+  }
+  if (verdict.state === "changed") {
+    return {
+      id,
+      status: "NOT_PROVED",
+      detail: `${claim.surface}: the live page is not the page this step was judged against: ${verdict.reason}. `
+        + `The step may be on it now under other words. No check yet judges what it saves or where it leads.`,
+      suggestedFix: `Read the page that ships now. If it carries ${claim.noun}, attach a check on the saved result it leads to; if it does not, update the claim's identity. Do not auto-fix. Chris fixes reds.`,
     };
   }
   return {
@@ -529,5 +582,10 @@ export function claimProblem(claim) {
   if (!Array.isArray(claim.pages) || !claim.pages.length || !claim.pages.every((p) => isText(p) && p.startsWith("/"))) return "pages are not site paths";
   if (!Array.isArray(claim.anchors) || !claim.anchors.length || !claim.anchors.every(isText)) return "no anchor";
   if (!Array.isArray(claim.markers) || !claim.markers.length || !claim.markers.every(isText)) return "no marker";
+  if (claim.identity !== undefined) {
+    const id = claim.identity;
+    if (!id || typeof id !== "object" || (!isText(id.title) && id.noControls !== true)) return "no identity";
+    if (id.title !== undefined && !isText(id.title)) return "no identity";
+  }
   return null;
 }

@@ -39,7 +39,7 @@ export const STAFF_LOOKBACK_DAYS = 7;
 export const OWNER_QUEUE_LOOKBACK_DAYS = 90;
 export const OWNER_QUEUE_GRACE_HOURS = 1;
 export const RECEIPT_LOOKBACK_DAYS = 14;
-export const TEMPLATE_PATH_LOOKBACK_DAYS = 30;
+export const TEMPLATE_PATH_LOOKBACK_DAYS = 14;
 /** A template needs this many aged rows to be judged: one bounce to one bad address is not a dead path. */
 export const TEMPLATE_PATH_MIN_ROWS = 2;
 export const NUDGE_LOOKBACK_DAYS = 14;
@@ -52,6 +52,14 @@ export const PUSH_FAILURE_LIMIT = 3;
 /** What the nudge runner writes (src/nudge/run.mjs SOURCE_WORKFLOW and STAFF_TASK_ROLE). A test pins both. */
 export const NUDGE_SOURCE_WORKFLOW = "waypoint-nudge";
 export const NUDGE_STAFF_TASK_ROLE = "csm";
+/** A chaseable waypoint left with nobody chasing it past this many days is a client the sweeper never reached.
+    The ladder's own first two rungs land by day 2 (src/nudge/ladder.mjs); one more day is the grace. */
+export const NUDGE_WAITING_DAYS = 3;
+/** What the planner calls a chaseable state and a bought service (src/nudge/exits.mjs). A test pins both. */
+export const NUDGE_CHASEABLE_STATES = Object.freeze(["not_started", "in_progress"]);
+export const NUDGE_BOUGHT_STATUSES = Object.freeze(["paid", "staged", "fulfilled"]);
+/** A live payment link holds a waypoint for this long (src/paid-services/link-ttl.mjs). A test pins it. */
+export const NUDGE_CHECKOUT_LINK_DAYS = 7;
 
 const sqlList = (items) => items.map((s) => `'${String(s).replace(/'/g, "''")}'`).join(", ");
 
@@ -71,17 +79,38 @@ export function realMessage(m, re) {
                 OR COALESCE(cl.email, '') ~* ${re}::text))`;
 }
 
+/**
+ * A client that is not demo, synthetic or on a test address. `c` is the expression that holds the client id and
+ * `re` the parameter that holds TEST_ADDRESS_RE. Same test as realMessage, for a read that starts at the client.
+ */
+export function realClient(c, re) {
+  return `NOT EXISTS (
+           SELECT 1 FROM clients cl
+            WHERE cl.id = ${c}
+              AND (COALESCE(cl.is_demo, false) = true
+                OR COALESCE(cl.custom_fields ->> 'synthetic', '') = 'true'
+                OR COALESCE(cl.email, '') ~* ${re}::text))`;
+}
+
 // ── the queries ──────────────────────────────────────────────────────────────
 
 /**
  * $1 org, $2 since, $3 test-address pattern. The later send of a pair the duplicate guard would have refused:
  * the same phone, an earlier send inside the guard window, and the same template (or the same words when
- * there is no template). A hash join on the phone, so the read stays small however many texts left. A row is
- * never its own earlier send, because it cannot be sent before itself.
+ * there is no template). A hash join on the phone, so the read stays small however many texts left.
+ *
+ * THE PHONE IS ITS LAST TEN DIGITS, not the raw string, so "(602) 555-0101" and "+16025550101" are one phone
+ * (the older msg:brakes check in gap-msg.mjs reads a phone the same way).
+ *
+ * TWO TEXTS AT ONE INSTANT ARE STILL A PAIR. dispatch.mjs claimDue and claimOne stamp last_attempt_at with now()
+ * for every row of a batch, so the likeliest duplicate (two identical texts claimed in one pass) carries the SAME
+ * time. A strict "earlier" test would never see it. The message id breaks the tie, so a pair at one instant
+ * counts one later send and n copies at one instant count n - 1. A row is never its own earlier send.
  */
 export const SMS_DUPLICATE_SQL = `
 WITH sms AS (
-  SELECT m.id, m.template_key, m.rendered_body, m.to_address,
+  SELECT m.id, m.template_key, m.rendered_body,
+         right(regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g'), 10) AS phone,
          COALESCE(m.last_attempt_at, m.created_at) AS sent_at
     FROM messages m
    WHERE m.org_id = $1::uuid
@@ -89,15 +118,15 @@ WITH sms AS (
      AND m.channel = 'sms'
      AND m.status IN ('sent', 'delivered')
      AND m.sender_staff_id IS NULL
-     AND NULLIF(BTRIM(COALESCE(m.to_address, '')), '') IS NOT NULL
+     AND NULLIF(regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g'), '') IS NOT NULL
      AND COALESCE(m.last_attempt_at, m.created_at) >= $2::timestamptz
      AND ${realMessage("m", "$3")}
 ),
 repeats AS (
   SELECT DISTINCT a.id
     FROM sms a
-    JOIN sms p ON p.to_address = a.to_address
-   WHERE p.sent_at < a.sent_at
+    JOIN sms p ON p.phone = a.phone
+   WHERE (p.sent_at < a.sent_at OR (p.sent_at = a.sent_at AND p.id < a.id))
      AND p.sent_at >= a.sent_at - interval '${DUPLICATE_WINDOW_MINUTES} minutes'
      AND ((a.template_key IS NOT NULL AND p.template_key = a.template_key)
        OR (a.template_key IS NULL AND p.template_key IS NULL AND p.rendered_body = a.rendered_body))
@@ -105,11 +134,18 @@ repeats AS (
 SELECT (SELECT count(*)::int FROM sms) AS sample_count,
        (SELECT count(*)::int FROM repeats) AS bad_count`.trim();
 
-/** $1 org, $2 since, $3 stuck-before, $4 receipt-before. A staff-typed reply that never reached a provider receipt. */
+/**
+ * $1 org, $2 since, $3 stuck-before, $4 receipt-before. A staff-typed reply that never reached the customer:
+ * still queued past due, stuck on sending, said it left with no provider id, sat on sent a day with no receipt,
+ * OR ended failed or bounced (the provider turned it down, the sender gave up after its attempts, or the
+ * address bounced). A failed or bounced reply is a final answer and stays red for the whole lookback: the
+ * customer never got what the person typed.
+ */
 export const STAFF_REPLY_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE
-            (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $3::timestamptz)
+            m.status IN ('failed', 'bounced')
+         OR (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $3::timestamptz)
          OR (m.status = 'sending' AND COALESCE(m.last_attempt_at, m.created_at) < $3::timestamptz)
          OR (m.status IN ('sent', 'delivered') AND NULLIF(BTRIM(COALESCE(m.provider_message_id, '')), '') IS NULL)
          OR (m.status = 'sent' AND m.channel IN ('sms', 'email')
@@ -145,12 +181,16 @@ SELECT count(*)::int AS sample_count,
    AND COALESCE(m.last_attempt_at, m.created_at) >= $2::timestamptz
    AND ${realMessage("m", "$4")}`.trim();
 
-/** $1 org, $2 since, $3 aged-before, $4 test-address pattern. A template that was sent and never once delivered. */
+/**
+ * $1 org, $2 since, $3 aged-before, $4 test-address pattern. A template that stopped delivering: two or more of
+ * its sends are older than the receipt grace and none was delivered AFTER the last delivery it ever had in the
+ * window (a template with no delivery in the window counts every aged send). One delivery long ago therefore
+ * cannot shield a template that fails every send since. One bounce to one bad address is still not a dead path
+ * (the two-row floor).
+ */
 export const TEMPLATE_DELIVERY_SQL = `
-WITH per AS (
-  SELECT m.template_key, m.channel,
-         count(*) FILTER (WHERE m.created_at < $3::timestamptz) AS aged_n,
-         count(*) FILTER (WHERE m.status IN ('delivered', 'complained')) AS delivered_n
+WITH sends AS (
+  SELECT m.template_key, m.channel, m.status, m.created_at
     FROM messages m
    WHERE m.org_id = $1::uuid
      AND m.direction = 'outbound'
@@ -159,42 +199,97 @@ WITH per AS (
      AND m.status IN ('queued', 'sending', 'sent', 'delivered', 'complained', 'failed', 'bounced')
      AND m.created_at >= $2::timestamptz
      AND ${realMessage("m", "$4")}
-   GROUP BY m.template_key, m.channel
+),
+last_ok AS (
+  SELECT s.template_key, s.channel, max(s.created_at) AS ok_at
+    FROM sends s
+   WHERE s.status IN ('delivered', 'complained')
+   GROUP BY s.template_key, s.channel
+),
+per AS (
+  SELECT s.template_key, s.channel,
+         count(*) FILTER (WHERE s.created_at < $3::timestamptz
+                            AND (o.ok_at IS NULL OR s.created_at > o.ok_at)) AS dead_n
+    FROM sends s
+    LEFT JOIN last_ok o ON o.template_key = s.template_key AND o.channel = s.channel
+   GROUP BY s.template_key, s.channel
 )
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE aged_n >= ${TEMPLATE_PATH_MIN_ROWS} AND delivered_n = 0)::int AS bad_count
+       count(*) FILTER (WHERE dead_n >= ${TEMPLATE_PATH_MIN_ROWS})::int AS bad_count
   FROM per`.trim();
 
 /**
- * $1 org, $2 since, $3 claimed-before, $4 stuck-before. One row per rung the waypoint ladder spent.
+ * $1 org, $2 since, $3 claimed-before, $4 stuck-before, $5 test-address pattern, $6 waiting-before,
+ * $7 payment-link-since. Two things are judged and their counts are added.
+ *
+ * RUNGS: one row per rung the waypoint ladder spent for a real client. Wrong when the rung was claimed and died,
+ * waited on an unapproved template, was REFUSED for any reason but the client's own opt-out (src/nudge/run.mjs
+ * writes "refused" with the reason in detail: draft_template, error:...), ended in a message that is missing,
+ * is the wrong one, is stuck, FAILED, BOUNCED or was BLOCKED for anything but an opt-out, or (step 4) in no task.
  * A queued rung whose message is missing (no id, gone, or another company's) reads as direction NULL, which
  * is DISTINCT FROM 'outbound', so the direction test is the one that catches it. The same goes for a step 4
  * rung with no task: its source workflow reads NULL, which is DISTINCT FROM the runner's own name.
+ *
+ * WAITING: a client-owned, chaseable waypoint that has been overdue past the grace, that the ladder has NEVER
+ * touched, for a client the ladder has not written one row for since it came due, and that no permanent stop
+ * explains (opt-out, escalation, program complete or cancelled, a bought or live-checkout paid alternative).
+ * Each is a client nobody is chasing: a sweeper that runs and spends no rung at all lands here.
  */
 export const WAYPOINT_NUDGE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE
-            (n.outcome = 'claimed' AND n.created_at < $3::timestamptz)
-         OR n.outcome = 'template_pending'
-         OR (n.kind = 'client_message' AND n.outcome = 'queued' AND (
-                  n.template_key IS NULL
-               OR n.template_key NOT IN (${sqlList(WAYPOINT_TEMPLATE_KEYS)})
-               OR m.direction IS DISTINCT FROM 'outbound'
-               OR m.template_key IS DISTINCT FROM n.template_key
-               OR m.channel IS DISTINCT FROM n.channel
-               OR m.client_id IS DISTINCT FROM n.client_id
-               OR (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $4::timestamptz)
-               OR (m.status = 'sending' AND COALESCE(m.last_attempt_at, m.created_at) < $4::timestamptz)))
-         OR (n.kind = 'staff_task' AND n.outcome = 'staff_task' AND (
-                  t.source_workflow IS DISTINCT FROM '${NUDGE_SOURCE_WORKFLOW}'
-               OR t.client_id IS DISTINCT FROM n.client_id
-               OR t.assignee_role IS DISTINCT FROM '${NUDGE_STAFF_TASK_ROLE}'))
-       )::int AS bad_count
-  FROM waypoint_nudges n
-  LEFT JOIN messages m ON m.id = n.message_id AND m.org_id = n.org_id
-  LEFT JOIN tasks t ON t.id = n.task_id AND t.org_id = n.org_id
- WHERE n.org_id = $1::uuid
-   AND n.created_at >= $2::timestamptz`.trim();
+WITH rungs AS (
+  SELECT count(*)::int AS sample_count,
+         count(*) FILTER (WHERE
+              (n.outcome = 'claimed' AND n.created_at < $3::timestamptz)
+           OR n.outcome = 'template_pending'
+           OR (n.outcome = 'refused' AND COALESCE(n.detail, '') <> 'opted_out')
+           OR (n.kind = 'client_message' AND n.outcome = 'queued' AND (
+                    n.template_key IS NULL
+                 OR n.template_key NOT IN (${sqlList(WAYPOINT_TEMPLATE_KEYS)})
+                 OR m.direction IS DISTINCT FROM 'outbound'
+                 OR m.template_key IS DISTINCT FROM n.template_key
+                 OR m.channel IS DISTINCT FROM n.channel
+                 OR m.client_id IS DISTINCT FROM n.client_id
+                 OR m.status IN ('failed', 'bounced')
+                 OR (m.status = 'blocked' AND COALESCE(m.blocked_reason, '') NOT LIKE '%opted_out%')
+                 OR (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $4::timestamptz)
+                 OR (m.status = 'sending' AND COALESCE(m.last_attempt_at, m.created_at) < $4::timestamptz)))
+           OR (n.kind = 'staff_task' AND n.outcome = 'staff_task' AND (
+                    t.source_workflow IS DISTINCT FROM '${NUDGE_SOURCE_WORKFLOW}'
+                 OR t.client_id IS DISTINCT FROM n.client_id
+                 OR t.assignee_role IS DISTINCT FROM '${NUDGE_STAFF_TASK_ROLE}'))
+         )::int AS bad_count
+    FROM waypoint_nudges n
+    LEFT JOIN messages m ON m.id = n.message_id AND m.org_id = n.org_id
+    LEFT JOIN tasks t ON t.id = n.task_id AND t.org_id = n.org_id
+   WHERE n.org_id = $1::uuid
+     AND n.created_at >= $2::timestamptz
+     AND ${realClient("n.client_id", "$5")}
+),
+waiting AS (
+  SELECT w.client_id, w.due_at
+    FROM client_waypoints w
+   WHERE w.org_id = $1::uuid
+     AND w.owner_kind = 'client'
+     AND w.state IN (${sqlList(NUDGE_CHASEABLE_STATES)})
+     AND w.completed_at IS NULL
+     AND w.due_at < $6::timestamptz
+     AND NOT EXISTS (SELECT 1 FROM waypoint_nudges y WHERE y.waypoint_id = w.id)
+     AND NOT EXISTS (SELECT 1 FROM opt_outs o
+                      WHERE o.client_id = w.client_id AND o.channel IN ('sms', 'email') AND o.opted_in_at IS NULL)
+     AND NOT EXISTS (SELECT 1 FROM client_escalations e WHERE e.client_id = w.client_id)
+     AND NOT EXISTS (SELECT 1 FROM repair_programs rp
+                      WHERE rp.client_id = w.client_id AND rp.status IN ('complete', 'cancelled'))
+     AND NOT EXISTS (SELECT 1 FROM paid_service_requests p
+                      WHERE p.waypoint_id = w.id
+                        AND (p.status IN (${sqlList(NUDGE_BOUGHT_STATUSES)})
+                          OR (p.status = 'awaiting_payment' AND p.requested_at >= $7::timestamptz)))
+     AND ${realClient("w.client_id", "$5")}
+)
+SELECT r.sample_count + (SELECT count(*) FROM waiting)::int AS sample_count,
+       r.bad_count + (SELECT count(*) FROM waiting g
+                       WHERE NOT EXISTS (SELECT 1 FROM waypoint_nudges x
+                                          WHERE x.client_id = g.client_id AND x.created_at >= g.due_at))::int AS bad_count
+  FROM rungs r`.trim();
 
 /** $1 org, $2 EIN pattern. A company a client saved on the soft-pull form, as the staff screen needs it. */
 export const SOFT_PULL_BUSINESS_SQL = `
@@ -296,7 +391,7 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "dispatch:sms-duplicate-guard-NOT-WIRED",
     family: "message",
     emptyAs: "quiet",
-    requirement: `No customer text went to the same phone twice with the same words inside ${DUPLICATE_WINDOW_MINUTES} minutes (the duplicate guard in src/messaging/sms-dedup.mjs is not wired into the sender, so this reads what customers actually got).`,
+    requirement: `No customer text went to the same phone twice with the same words inside ${DUPLICATE_WINDOW_MINUTES} minutes, even when both were claimed in one dispatch pass at the same instant and even when the phone was typed two ways (the duplicate guard in src/messaging/sms-dedup.mjs is not wired into the sender, so this reads what customers actually got).`,
     sql: SMS_DUPLICATE_SQL,
     params: (ctx) => [ctx.orgId, when(ctx, DUPLICATE_LOOKBACK_DAYS * DAY), TEST_ADDRESS_RE],
   }),
@@ -304,7 +399,7 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "job:staff-message-sweeper",
     family: "message",
     emptyAs: "quiet",
-    requirement: `Every reply a staff member typed in the last ${STAFF_LOOKBACK_DAYS} days left the queue, carries a provider id, and is not stuck on sent with no receipt after ${RECEIPT_AFTER_HOURS} hours.`,
+    requirement: `Every reply a staff member typed in the last ${STAFF_LOOKBACK_DAYS} days left the queue, carries a provider id, did not end failed or bounced, and is not stuck on sent with no receipt after ${RECEIPT_AFTER_HOURS} hours.`,
     sql: STAFF_REPLY_SQL,
     params: (ctx) => [ctx.orgId, when(ctx, STAFF_LOOKBACK_DAYS * DAY), when(ctx, STUCK_MINUTES * MIN), when(ctx, RECEIPT_AFTER_HOURS * HOUR)],
   }),
@@ -328,7 +423,7 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "manual-proof:comms-map-2026-09-19 (template delivery proof)",
     family: "message",
     emptyAs: "quiet",
-    requirement: `Every client template sent in the last ${TEMPLATE_PATH_LOOKBACK_DAYS} days with ${TEMPLATE_PATH_MIN_ROWS} or more old rows was delivered at least once (the hand-run delivery proof, read from the messages the company really sent).`,
+    requirement: `Every client template sent in the last ${TEMPLATE_PATH_LOOKBACK_DAYS} days is still delivering: no template has ${TEMPLATE_PATH_MIN_ROWS} or more sends older than ${RECEIPT_AFTER_HOURS} hours that came after its last delivery (the hand-run delivery proof, read again from the messages the company really sent).`,
     sql: TEMPLATE_DELIVERY_SQL,
     params: (ctx) => [ctx.orgId, when(ctx, TEMPLATE_PATH_LOOKBACK_DAYS * DAY), when(ctx, RECEIPT_AFTER_HOURS * HOUR), TEST_ADDRESS_RE],
   }),
@@ -336,9 +431,12 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "workflow:waypoint-nudge-sweeper",
     family: "message",
     emptyAs: "quiet",
-    requirement: `Every waypoint rung spent in the last ${NUDGE_LOOKBACK_DAYS} days ended in its own message (one of ${WAYPOINT_TEMPLATE_KEYS.join(", ")}) that left the queue, or in the staff task for step 4. None is stuck on claimed or waiting on an unapproved template.`,
+    requirement: `Every waypoint rung spent in the last ${NUDGE_LOOKBACK_DAYS} days ended in its own message (one of ${WAYPOINT_TEMPLATE_KEYS.join(", ")}) that left the queue and did not fail, bounce or get blocked, or in the staff task for step 4 (a client who opted out is the one refusal that is right). None is stuck on claimed, refused for another reason, or waiting on an unapproved template. And no client-owned item has sat ${NUDGE_WAITING_DAYS} days overdue with the ladder never having written a row for that client.`,
     sql: WAYPOINT_NUDGE_SQL,
-    params: (ctx) => [ctx.orgId, when(ctx, NUDGE_LOOKBACK_DAYS * DAY), when(ctx, NUDGE_CLAIM_GRACE_MINUTES * MIN), when(ctx, STUCK_MINUTES * MIN)],
+    params: (ctx) => [
+      ctx.orgId, when(ctx, NUDGE_LOOKBACK_DAYS * DAY), when(ctx, NUDGE_CLAIM_GRACE_MINUTES * MIN), when(ctx, STUCK_MINUTES * MIN),
+      TEST_ADDRESS_RE, when(ctx, NUDGE_WAITING_DAYS * DAY), when(ctx, NUDGE_CHECKOUT_LINK_DAYS * DAY),
+    ],
   }),
   Object.freeze({
     surface: "template-copy:seed-vs-live-drift",

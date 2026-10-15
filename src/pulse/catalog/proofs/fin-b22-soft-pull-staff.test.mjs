@@ -13,7 +13,9 @@ import assert from "node:assert/strict";
 
 import { parseSoftPullBusinesses, replaceSoftPullBusinesses } from "../../../../api/soft-pull-approve.mjs";
 import { businessCredit } from "../../../http/client-detail.mjs";
+import { readClientStepRows } from "../../../fulfillment/client-step.mjs";
 import { CLIENT_ID, json, startScreens } from "./s4-screen-harness.mjs";
+import { makeStandIn, NOW } from "./fin-b22-sql-kit.mjs";
 
 const FORM_ROWS = [
   {
@@ -39,6 +41,108 @@ async function savedAndRead() {
   await replaceSoftPullBusinesses(writer, { orgId: "org-1", clientId: CLIENT_ID, businesses: parsed });
   return { saved, credit: businessCredit({ businesses: saved }) };
 }
+
+// ── the staff read itself ────────────────────────────────────────────────────
+// The control panel's own read is CLIENT_BUSINESSES_SQL in src/fulfillment/client-step.mjs, called through
+// readClientStepRows. Here the REAL function runs, and the businesses statement it sends runs as written over a
+// stand-in table of what the soft-pull writer saved, so a read that drops the company's details, the company
+// filter, or all but one company is a red test and not a screen nobody opened.
+
+const ORG = "11111111-1111-4111-8111-111111111111";
+const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
+const OTHER_CLIENT = "33333333-3333-4333-8333-333333333333";
+
+/** What the writer saves for one form, as rows of a stand-in `businesses` table. */
+async function writerRows(orgId, clientId, rows, kit, stamp) {
+  const parsed = parseSoftPullBusinesses(rows);
+  const writer = {
+    async query(sql, params) {
+      if (/INSERT INTO businesses/i.test(sql)) {
+        kit.insert("businesses", {
+          id: `${orgId.slice(0, 4)}-${clientId.slice(0, 4)}-${kit.counter += 1}`,
+          org_id: params[0], client_id: params[1], name: params[2], age_months: params[3], entity_data: params[4],
+          updated_at: new Date(NOW.getTime() - (stamp -= 1000)).toISOString(),
+        });
+      }
+      return { rows: [] };
+    },
+  };
+  await replaceSoftPullBusinesses(writer, { orgId, clientId, businesses: parsed });
+}
+
+/** A db handle: the businesses statement runs over the stand-in table, every other read answers empty. */
+function staffDb(kit) {
+  return {
+    sent: [],
+    async query(sql, params) {
+      this.sent.push(sql);
+      if (/FROM\s+businesses/i.test(sql)) {
+        // jsonb comes back as an object in the real driver
+        return { rows: kit.all(sql, params).map((row) => ({ ...row, entity_data: row.entity_data ? JSON.parse(row.entity_data) : null })) };
+      }
+      return { rows: [] };
+    },
+  };
+}
+
+async function staffRead({ extra = () => {} } = {}) {
+  const kit = makeStandIn(["businesses"]);
+  kit.counter = 0;
+  try {
+    await writerRows(ORG, CLIENT_ID, FORM_ROWS, kit, 0);
+    extra(kit);
+    const db = staffDb(kit);
+    const rows = await readClientStepRows(db, { orgId: ORG, clientId: CLIENT_ID });
+    return { rows, credit: businessCredit({ client: rows.client || {}, businesses: rows.businesses }), db };
+  } finally {
+    kit.close();
+  }
+}
+
+test("the control panel's own read hands the screen every saved company with name, state, EIN, address and the extra-owner flag", async () => {
+  const { credit, rows } = await staffRead();
+  assert.equal(rows.businesses.length, 2);
+  const byName = Object.fromEntries(credit.businesses.map((b) => [b.name, b]));
+  assert.deepEqual(Object.keys(byName).sort(), ["Acme Holdings LLC", "Beta Partners Inc"]);
+  assert.deepEqual(
+    { state: byName["Acme Holdings LLC"].state, ein: byName["Acme Holdings LLC"].ein, address: byName["Acme Holdings LLC"].address, extra: byName["Acme Holdings LLC"].extra_owners_warning },
+    { state: "AZ", ein: "12-3456789", address: "500 Commerce Way Tempe, AZ 85281", extra: false },
+  );
+  assert.deepEqual(
+    { state: byName["Beta Partners Inc"].state, ein: byName["Beta Partners Inc"].ein, address: byName["Beta Partners Inc"].address, extra: byName["Beta Partners Inc"].extra_owners_warning, owner: byName["Beta Partners Inc"].extra_owner_name },
+    { state: "NV", ein: "98-7654321", address: "9 Main St Reno, NV 89501", extra: true, owner: "Pat Lee" },
+  );
+  assert.ok(byName["Acme Holdings LLC"].age_months > 0 || Number.isInteger(byName["Acme Holdings LLC"].age_months));
+});
+
+test("the control panel's own read lists only this client's companies in this company, and not every company at once", async () => {
+  const { credit } = await staffRead({
+    extra: (kit) => {
+      const stamp = (n) => new Date(NOW.getTime() - n).toISOString();
+      // another client of the same company, the same client in another company
+      kit.insert("businesses", { id: "decoy-1", org_id: ORG, client_id: OTHER_CLIENT, name: "Someone Else LLC", age_months: 12, entity_data: JSON.stringify({ source: "soft_pull_approve", state: "TX", ein: "55-5555555" }), updated_at: stamp(1) });
+      kit.insert("businesses", { id: "decoy-2", org_id: OTHER_ORG, client_id: CLIENT_ID, name: "Other Company Same Client LLC", age_months: 12, entity_data: JSON.stringify({ source: "soft_pull_approve", state: "CA", ein: "66-6666666" }), updated_at: stamp(2) });
+    },
+  });
+  assert.deepEqual(credit.businesses.map((b) => b.name).sort(), ["Acme Holdings LLC", "Beta Partners Inc"]);
+});
+
+test("the control panel's own read shows all of a client's companies, up to the twenty the form allows", async () => {
+  const kit = makeStandIn(["businesses"]);
+  kit.counter = 0;
+  try {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      name: `Company ${i + 1} LLC`, address_line1: `${i + 1} Main St`, city: "Tempe", state: "az", postal_code: "85281",
+      ein: `12-34567${String(i).padStart(2, "0")}`, incorporated_date: "2021-03", extra_owner_name: "",
+    }));
+    await writerRows(ORG, CLIENT_ID, many, kit, 0);
+    const rows = await readClientStepRows(staffDb(kit), { orgId: ORG, clientId: CLIENT_ID });
+    assert.equal(rows.businesses.length, 20, "all twenty reach the screen");
+    assert.equal(businessCredit({ client: {}, businesses: rows.businesses }).businesses.length, 20);
+  } finally {
+    kit.close();
+  }
+});
 
 const DETAIL = (credit) => ({
   ok: true,

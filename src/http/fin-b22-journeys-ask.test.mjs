@@ -17,6 +17,8 @@ const OWNER_ADMIN = ["owner", "admin"];
 // A stand-in key, built from parts so no key-shaped string sits in the source.
 const SERVER_KEY = ["key", "held", "by", "the", "server", "only"].join("-");
 const UPSTREAM = "https://api.anthropic.com/v1/messages";
+// The model the proxy names, pinned on purpose: moving to another model is a decision, so it changes here with it.
+const MODEL = "claude-sonnet-4-5";
 
 let realFetch;
 let realKey;
@@ -68,11 +70,14 @@ describe("POST /api/journeys/ask", () => {
     assert.equal(init.method, "POST");
     assert.equal(init.headers["x-api-key"], SERVER_KEY, "the server's own key goes upstream");
     assert.equal(init.headers["anthropic-version"], "2023-06-01");
+    // The body is a JSON string, so without this header fetch would label it text/plain and the vendor refuses it.
+    assert.equal(init.headers["Content-Type"], "application/json", "the body is JSON and says so");
+    assert.equal(typeof init.body, "string");
     const sent = JSON.parse(init.body);
     assert.equal(sent.system, EDITOR.system);
     assert.deepEqual(sent.messages, [{ role: "user", content: EDITOR.user }]);
     assert.equal(sent.max_tokens, 1000);
-    assert.ok(sent.model, "a model is named");
+    assert.equal(sent.model, MODEL, "the proxy names the model the editor was built for");
     // The key is the server's secret: it never travels back to the browser.
     assert.equal(JSON.stringify(res.body).includes(SERVER_KEY), false);
     // A browser-supplied key is never used.

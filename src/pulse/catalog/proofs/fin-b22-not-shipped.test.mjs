@@ -79,6 +79,8 @@ async function rows(over = {}) {
 }
 
 const statusOf = (map, needle) => map.get(idFor(needle)).status;
+const site_ = site;
+const squashed = (text) => String(text).toLowerCase().replace(/\s+/g, " ");
 
 // ── the list itself ──────────────────────────────────────────────────────────
 
@@ -105,6 +107,15 @@ test("an incomplete claim is refused", () => {
   assert.equal(claimProblem({ ...good, markers: [] }), "no marker");
   assert.equal(claimProblem({ ...good, pages: ["climate"] }), "pages are not site paths");
   assert.equal(claimProblem({ ...good, surface: "" }), "no family or surface");
+  assert.equal(claimProblem({ ...good, identity: {} }), "no identity");
+  assert.equal(claimProblem({ ...good, identity: { title: "" } }), "no identity");
+  assert.equal(claimProblem({ ...good, identity: null }), "no identity");
+});
+
+test("the four climate steps each hold the dashboard's identity: its title, and no form on the page", () => {
+  for (const needle of ["#1-headline", "#3-state-click", "#4-form", "#6-gate"]) {
+    assert.deepEqual({ ...claimFor(needle).identity }, { title: "Lending Climate Dashboard", noControls: true }, needle);
+  }
 });
 
 // ── the real pages ───────────────────────────────────────────────────────────
@@ -207,6 +218,114 @@ test("a script the ops-admin page loads by a bare relative name is read (data.js
   assert.ok(real, "the real data.js is there");
   const map = await rows({ "/app/data.js": `${real}\nvar leak = { alert_email: "" };` });
   assert.equal(statusOf(map, "ops-admin outbound mail panel"), "NOT_PROVED");
+});
+
+// ── a rebuilt page: the words may all be different, the page is not the dashboard ───────────────────────────
+//
+// The four climate steps are "nothing to judge" because the page that ships is the owner's lending-climate
+// dashboard. They name a headline, a button, a state sentence, a form and a gate. A person who builds that
+// visitor page again can word every one of them a little differently, so the words alone would call the new page
+// "nothing to judge". The page's identity (its title, and no form on it) cannot be reworded away.
+
+const CLIMATE_STEPS = Object.freeze(["#1-headline", "#3-state-click", "#4-form", "#6-gate"]);
+const OTHER_STEPS = Object.freeze(["#2-education-only", "#3-three-prices", "ops-admin outbound mail panel"]);
+
+// A visitor page as it might be built again: its own title, the data door wired in, and not one of the
+// markers above in it (headline, button, state sentence, form button and gate all worded another way).
+const REWORDED_VISITOR_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>fundhub | Lending Climate: which banks fit your state</title></head><body>
+<h1>Find out which banks lend in your state</h1><button id="go">Show me banks</button>
+<section id="card"><p>Here is how lending looks where you live.</p><p>This is not a verdict on you.</p></section>
+<form id="lead"><input name="state"><input name="revenue"><input name="email"><button>Send my score</button></form>
+<a href="/checkout">Unlock the whole report</a>
+<script>fetch("/api/climate").then(r => r.json());</script></body></html>`;
+
+function assertAllFourNotProved(map, why) {
+  for (const needle of CLIMATE_STEPS) assert.equal(statusOf(map, needle), "NOT_PROVED", `${needle}: ${why}`);
+  for (const needle of OTHER_STEPS) assert.equal(statusOf(map, needle), "na", `${needle} is untouched: ${why}`);
+}
+
+test("the mock the manifest points a builder to, wired to the data door, turns all four climate steps back to not proved", async () => {
+  const mock = fs.readFileSync(path.join(REPO_ROOT, "marketing/landing-pages/climate-front-door-2026-09-18/climate-front-door-mock.html"), "utf8");
+  const built = mock.replace(/<\/body>/i, '<script>fetch("/api/climate");</script></body>');
+  assert.ok(!/Show my number|climate-match/.test(built), "the mock names none of the step's doors, which is the point");
+  // The mock links into the app, and the real app pages lead to more than the read's file cap, so on the full site
+  // this is a skip; with the rest of the site missing it is a NOT_PROVED. Either way it is never "na".
+  const onlyTheTwoPages = async (url) => {
+    const pathname = new URL(String(url)).pathname;
+    return [CLIMATE, "/climate/lender-climate/"].includes(pathname)
+      ? new Response(built, { status: 200 })
+      : new Response("not found", { status: 404 });
+  };
+  const withTheWholeSite = site({ [CLIMATE]: built, "/climate/lender-climate/": built });
+  for (const [label, fetchImpl, expected] of [
+    ["the rest of the site as it is", withTheWholeSite, ["NOT_PROVED", "skip"]],
+    ["only the two pages", onlyTheTwoPages, ["NOT_PROVED"]],
+  ]) {
+    const map = await runFinB22NotShipped({ fetchImpl });
+    for (const needle of CLIMATE_STEPS) {
+      assert.notEqual(statusOf(map, needle), "na", `${needle}: ${label}`);
+      assert.ok(expected.includes(statusOf(map, needle)), `${needle}: ${label}: ${statusOf(map, needle)}`);
+    }
+    for (const claim of NOT_SHIPPED_CLAIMS.filter((c) => c.surface.includes("climate-lead"))) {
+      assert.equal(await verifyNotShipped({ family: claim.family, surface: claim.surface }, { fetchImpl }), false, `${claim.surface}: ${label}`);
+    }
+  }
+});
+
+test("a visitor page rebuilt with every headline, button, sentence and gate worded another way is not nothing-to-judge", async () => {
+  for (const marker of EXPECTED.filter((e) => e.page === CLIMATE).flatMap((e) => e.markers)) {
+    assert.ok(!squashed(REWORDED_VISITOR_PAGE).includes(squashed(marker)), `the rebuilt page must not carry ${marker}`);
+  }
+  const map = await rows({ [CLIMATE]: REWORDED_VISITOR_PAGE, "/climate/lender-climate/": REWORDED_VISITOR_PAGE });
+  assertAllFourNotProved(map, "reworded rebuild");
+  const detail = map.get(idFor("#1-headline")).detail;
+  assert.match(detail, /not the page this step was judged against/);
+  assert.match(detail, /no longer titled "Lending Climate Dashboard"/);
+});
+
+test("the dashboard's own page with a form dropped on it is not nothing-to-judge", async () => {
+  const form = '<form><input name="email"><button>Go</button></form>';
+  const map = await rows(appended(CLIMATE, form));
+  assertAllFourNotProved(map, "a form on the dashboard");
+  assert.match(map.get(idFor("#4-form")).detail, /holds a form or an input/);
+});
+
+test("a lone input, textarea or select on the page is enough", async () => {
+  for (const tag of ["<input name=x>", "<textarea></textarea>", "<select></select>", "<FORM>"]) {
+    assertAllFourNotProved(await rows(appended(CLIMATE, tag)), tag);
+  }
+});
+
+test("a retitled dashboard is not nothing-to-judge, and the title is read on every page the step names", async () => {
+  const retitle = (html, title) => html.replace(/<title>[^<]*<\/title>/i, `<title>${title}</title>`);
+  assertAllFourNotProved(await rows(changed(CLIMATE, (html) => retitle(html, "Lending map for visitors"))), "retitled /climate/");
+  const second = "/climate/lender-climate/";
+  assertAllFourNotProved(await rows(changed(second, (html) => retitle(html, "Lending map for visitors"))), "retitled the second page");
+  // A title that only says it with other capital letters and spacing is the same title.
+  const same = await rows(changed(CLIMATE, (html) => retitle(html, "FundHub  LENDING climate   dashboard")));
+  for (const needle of CLIMATE_STEPS) assert.equal(statusOf(same, needle), "na", needle);
+});
+
+test("a title with no title tag at all is a change, not a pass", async () => {
+  const map = await rows(changed(CLIMATE, (html) => html.replace(/<title>[^<]*<\/title>/i, "")));
+  assertAllFourNotProved(map, "no title");
+});
+
+test("judgeClaim says changed for a page that is no longer the dashboard, with the reason", async () => {
+  const claim = claimFor("#6-gate");
+  const site = await readSite(claim.pages, {
+    fetchImpl: site_({ [CLIMATE]: REWORDED_VISITOR_PAGE, "/climate/lender-climate/": REWORDED_VISITOR_PAGE }), origin: ORIGIN,
+  });
+  const verdict = judgeClaim(claim, site);
+  assert.equal(verdict.state, "changed");
+  assert.match(verdict.reason, /no longer titled/);
+  assert.equal(await verifyNotShipped({ family: claim.family, surface: claim.surface },
+    { fetchImpl: site_({ [CLIMATE]: REWORDED_VISITOR_PAGE, "/climate/lender-climate/": REWORDED_VISITOR_PAGE }) }), false);
+});
+
+test("the consulting and ops-admin steps carry no identity rule (their own pages are judged by their words)", () => {
+  for (const needle of OTHER_STEPS) assert.equal(claimFor(needle).identity, undefined, needle);
 });
 
 // ── the easy ways to hide a word are undone ──────────────────────────────────

@@ -228,7 +228,11 @@ function liveSiteFetch(overrides = {}) {
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const html = read("public/climate/index.html");
   const routes = {
-    "/api/climate": JSON.stringify({ ok: true, national: { score: 54.3 }, states: STATE_CODES.map((state) => ({ state })) }),
+    // a good reading: every state has a score and a colour, and it is stamped now
+    "/api/climate": JSON.stringify({
+      ok: true, as_of: new Date().toISOString(), national: { score: 54.3 },
+      states: STATE_CODES.map((state) => ({ state, score: 50, color: "#F2E39B" })),
+    }),
     "/climate/": html,
     "/consulting/": read("public/consulting/index.html"),
     ...overrides,
@@ -247,12 +251,13 @@ test("the two page-read rows are judged by what the live public page holds, and 
   assert.equal(climate.status, "FAIL");
   assert.match(climate.detail, /draws 5 of 51 state outlines/);
   assert.equal(consulting.status, "PASS");
-  assert.match(consulting.detail, /opens an email to the support address/);
+  assert.match(consulting.detail, /opens an email to support@fhconsulting\.online, the support address the page lists/);
   for (const row of [climate, consulting]) assert.notEqual(row.status, "NOT_PROVED");
 });
 
 test("the climate row goes green when the page draws all 51, and the consulting row goes red when the form takes a card", async () => {
-  const full = JSON.stringify(Object.fromEntries(STATE_CODES.map((c) => [c, "M1,1 L9,1 L9,9 Z"])));
+  // a state's own shape for each state: five corners, a different set for each (a placeholder box would be red)
+  const full = JSON.stringify(Object.fromEntries(STATE_CODES.map((c, i) => [c, `M0,0 L${10 + i},${i % 7} L${20 + i * 2},${5 + (i % 9)} L${12 + i},${20 + (i % 5)} L3,${15 + (i % 3)} Z`])));
   const consulting = fs.readFileSync(path.join(REPO_ROOT, "public/consulting/index.html"), "utf8")
     .replace('<button class="btn" type="submit">', '<input name="cardnumber"><button class="btn" type="submit">');
   const rows = await gapChecks({

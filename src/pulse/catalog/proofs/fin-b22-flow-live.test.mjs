@@ -18,13 +18,14 @@ import path from "node:path";
 
 import {
   FIN_B22_LIVE, FIN_B22_LIVE_SURFACES, finB22LiveId, runFinB22Live, judgeLive,
-  copyHash, reduceSignOff, reduceSqlOnlyKeys, EIN_PATTERN,
+  copyHash, reduceSignOff, reduceSqlOnlyKeys, EIN_PATTERN, realClient,
   NUDGE_SOURCE_WORKFLOW, NUDGE_STAFF_TASK_ROLE,
+  NUDGE_CHASEABLE_STATES, NUDGE_BOUGHT_STATUSES, NUDGE_CHECKOUT_LINK_DAYS, NUDGE_WAITING_DAYS,
 } from "./fin-b22-flow-live.mjs";
 import { buildSqlTemplateSnapshot, SNAPSHOT_FILE } from "./fin-b22-sql-template-snapshot.mjs";
 import { templateStatements } from "./fin-b22-sql-template-keys.mjs";
 import snapshot from "./fin-b22-sql-template-keys.json" with { type: "json" };
-import { makeStandIn, schemaColumns, columnsUsed, tablesIn, NOW, REPO_ROOT } from "./fin-b22-sql-kit.mjs";
+import { makeStandIn, schemaColumns, columnsUsed, tablesIn, CTE_NAMES, NOW, REPO_ROOT } from "./fin-b22-sql-kit.mjs";
 import { TEST_ADDRESS_RE, RECEIPT_AFTER_HOURS } from "../../coverage/gap-sms.mjs";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
@@ -78,6 +79,30 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       "a delivered copy counts the same as a sent one": [
         ["second copy already delivered", (t) => t.messages.push(sms(u(5), { status: "delivered", last_attempt_at: ago(175) }))],
       ],
+      // dispatch.mjs claimDue and claimOne stamp last_attempt_at with now() for every row of one batch.
+      "two identical texts claimed in one dispatch pass carry the same instant": [
+        ["a pair at one instant (the likeliest duplicate)", (t) => {
+          t.messages.push(sms(u(5), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+          t.messages.push(sms(u(6), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+        }, { sample: 6 }],
+        ["three copies at one instant count two later sends", (t) => {
+          t.messages.push(sms(u(5), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+          t.messages.push(sms(u(6), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+          t.messages.push(sms(u(7), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+        }, { sample: 7, bad: 2 }],
+        ["no attempt time on either, the same created time", (t) => {
+          t.messages.push(sms(u(5), { to_address: "+16025550160", last_attempt_at: null, created_at: ago(90) }));
+          t.messages.push(sms(u(6), { to_address: "+16025550160", last_attempt_at: null, created_at: ago(90) }));
+        }, { sample: 6 }],
+        ["two untemplated texts with the same words at one instant", (t) => {
+          t.messages.push(sms(u(5), { template_key: null, rendered_body: "Your docs are in.", to_address: "+16025550160", last_attempt_at: ago(90) }));
+          t.messages.push(sms(u(6), { template_key: null, rendered_body: "Your docs are in.", to_address: "+16025550160", last_attempt_at: ago(90) }));
+        }, { sample: 6 }],
+      ],
+      "the same phone typed two ways": [
+        ["(602) 555-0101 against +16025550101", (t) => t.messages.push(sms(u(5), { to_address: "(602) 555-0101", last_attempt_at: ago(170) }))],
+        ["+1 602-555-0101 against +16025550101", (t) => t.messages.push(sms(u(5), { to_address: "+1 602-555-0101", last_attempt_at: ago(170) }))],
+      ],
     },
     ignored: [
       ["a person pressed Send twice (staff-typed)", (t) => t.messages.push(sms(u(5), { sender_staff_id: u(950), last_attempt_at: ago(170) })), { sample: 4 }],
@@ -87,9 +112,9 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         t.messages.push(sms(u(5), { to_address: "+16025550150", last_attempt_at: ago(260) }));
         t.messages.push(sms(u(6), { to_address: "+16025550150", last_attempt_at: ago(229) }));
       }, { sample: 6 }],
-      ["an email with the same template to the same address twice", (t) => {
-        t.messages.push(sms(u(5), { channel: "email", to_address: "dana@fundhub-client.test.io", last_attempt_at: ago(100) }));
-        t.messages.push(sms(u(6), { channel: "email", to_address: "dana@fundhub-client.test.io", last_attempt_at: ago(95) }));
+      ["an email with the same template to the same address twice (the address carries ten digits)", (t) => {
+        t.messages.push(sms(u(5), { channel: "email", to_address: "6025550101@fundhub-client.test.io", last_attempt_at: ago(100) }));
+        t.messages.push(sms(u(6), { channel: "email", to_address: "6025550101@fundhub-client.test.io", last_attempt_at: ago(95) }));
       }, { sample: 4 }],
       ["the same words to the same phone before the lookback window", (t) => {
         t.messages.push(sms(u(5), { last_attempt_at: ago(20 * DAY) }));
@@ -114,6 +139,18 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         t.messages.push(sms(u(5), { to_address: "  ", last_attempt_at: ago(100) }));
         t.messages.push(sms(u(6), { to_address: "  ", last_attempt_at: ago(95) }));
       }, { sample: 4 }],
+      ["two different phones at one instant", (t) => {
+        t.messages.push(sms(u(5), { to_address: "+16025550161", last_attempt_at: ago(90) }));
+        t.messages.push(sms(u(6), { to_address: "+16025550162", last_attempt_at: ago(90) }));
+      }, { sample: 6 }],
+      ["two different templates to one phone at one instant", (t) => {
+        t.messages.push(sms(u(5), { to_address: "+16025550160", last_attempt_at: ago(90) }));
+        t.messages.push(sms(u(6), { template_key: "SMS-S04-01-CONFIRM", to_address: "+16025550160", last_attempt_at: ago(90) }));
+      }, { sample: 6 }],
+      ["the same words 31 minutes apart at the same phone typed two ways", (t) => {
+        t.messages.push(sms(u(5), { to_address: "+16025550163", last_attempt_at: ago(260) }));
+        t.messages.push(sms(u(6), { to_address: "(602) 555-0163", last_attempt_at: ago(229) }));
+      }, { sample: 6 }],
     ],
     drops: [
       ["company scope", "m.org_id = $1::uuid", "1 = 1"],
@@ -121,15 +158,18 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ["texts only", "m.channel = 'sms'", "1 = 1"],
       ["left the building", "m.status IN ('sent', 'delivered')", "1 = 1"],
       ["not staff typed", "AND m.sender_staff_id IS NULL", ""],
-      ["has a phone", "AND NULLIF(BTRIM(COALESCE(m.to_address, '')), '') IS NOT NULL", ""],
       ["inside the lookback", "AND COALESCE(m.last_attempt_at, m.created_at) >= $2::timestamptz", ""],
       ["not demo", "COALESCE(m.is_demo, false) = false", "1 = 1"],
       ["not a test client", "AND NOT EXISTS (\n           SELECT 1 FROM clients cl", "AND NOT NOT EXISTS (\n           SELECT 1 FROM clients cl"],
-      ["earlier send", "WHERE p.sent_at < a.sent_at", "WHERE 1 = 1"],
+      ["earlier send", "WHERE (p.sent_at < a.sent_at OR (p.sent_at = a.sent_at AND p.id < a.id))", "WHERE 1 = 1"],
+      ["a tie is broken by the id, so a pair at one instant still counts", " OR (p.sent_at = a.sent_at AND p.id < a.id)", ""],
+      ["no phone digits at all is no phone", "AND NULLIF(regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g'), '') IS NOT NULL", ""],
+      ["the phone is its digits", "right(regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g'), 10) AS phone", "right(COALESCE(m.to_address, ''), 10) AS phone"],
+      ["the phone is its last ten digits", "right(regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g'), 10) AS phone", "regexp_replace(COALESCE(m.to_address, ''), '[^0-9]', '', 'g') AS phone"],
       ["inside the guard window", "AND p.sent_at >= a.sent_at - interval '30 minutes'", ""],
       ["same template", "(a.template_key IS NOT NULL AND p.template_key = a.template_key)", "1 = 0"],
       ["same words when untemplated", "OR (a.template_key IS NULL AND p.template_key IS NULL AND p.rendered_body = a.rendered_body)", ""],
-      ["same phone", "JOIN sms p ON p.to_address = a.to_address", "JOIN sms p ON 1 = 1"],
+      ["same phone", "JOIN sms p ON p.phone = a.phone", "JOIN sms p ON 1 = 1"],
     ],
   });
 }
@@ -166,6 +206,14 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         ["sent, no provider id", (t) => { find(t.messages, u(2)).provider_message_id = null; }],
         ["delivered, blank provider id", (t) => { find(t.messages, u(1)).provider_message_id = "  "; }],
       ],
+      "a reply ended failed or bounced and never reached the customer": [
+        ["the provider turned it down (failed)", (t) => { Object.assign(find(t.messages, u(1)), { status: "failed", provider_message_id: null }); }],
+        ["the sender gave up (failed, a provider id was kept)", (t) => { find(t.messages, u(1)).status = "failed"; }],
+        ["the address bounced (bounced)", (t) => { find(t.messages, u(2)).status = "bounced"; }],
+        ["an email that bounced a week after it was typed, inside the lookback", (t) => {
+          Object.assign(find(t.messages, u(2)), { status: "bounced", channel: "email", created_at: ago(6 * DAY), last_attempt_at: ago(6 * DAY) });
+        }],
+      ],
       "a reply left and got no receipt for a day": [
         ["sent 25 hours ago, still sent", (t) => { find(t.messages, u(2)).last_attempt_at = ago(25 * HOUR); }],
         ["an email, the same", (t) => { Object.assign(find(t.messages, u(2)), { channel: "email", last_attempt_at: ago(25 * HOUR) }); }],
@@ -185,6 +233,9 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
     drops: [
       ["company scope", "m.org_id = $1::uuid", "1 = 1"],
       ["outbound only", "m.direction = 'outbound'", "1 = 1"],
+      ["failed", "m.status IN ('failed', 'bounced')\n         OR ", "1 = 0\n         OR "],
+      ["failed alone", "m.status IN ('failed', 'bounced')", "m.status IN ('bounced')"],
+      ["bounced alone", "m.status IN ('failed', 'bounced')", "m.status IN ('failed')"],
       ["staff typed only", "AND m.sender_staff_id IS NOT NULL", ""],
       ["not demo", "AND COALESCE(m.is_demo, false) = false", ""],
       ["inside the lookback", "AND m.created_at >= $2::timestamptz", ""],
@@ -278,8 +329,10 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
     tables: {
       clients: [],
       messages: [
-        sent(u(1), "SMS-A"), sent(u(2), "SMS-A", { status: "sent" }),
-        sent(u(3), "EMAIL-B", { channel: "email", to_address: "a@fundhub-client.test.io" }), sent(u(4), "EMAIL-B", { channel: "email", status: "sent", to_address: "a@fundhub-client.test.io" }),
+        // SMS-A: one send before its delivery, one delivery. EMAIL-B: the same, by email.
+        sent(u(2), "SMS-A", { status: "sent", created_at: ago(4 * DAY) }), sent(u(1), "SMS-A"),
+        sent(u(4), "EMAIL-B", { channel: "email", status: "sent", to_address: "a@fundhub-client.test.io", created_at: ago(4 * DAY) }),
+        sent(u(3), "EMAIL-B", { channel: "email", to_address: "a@fundhub-client.test.io" }),
       ],
     },
     sample: 2,
@@ -294,12 +347,49 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
           t.messages.push(sent(u(6), "EMAIL-D", { channel: "email", status: "sent", to_address: "b@fundhub-client.test.io" }));
         }, { sample: 3 }],
       ],
+      // The old read was red only when a template had NO delivery in the whole window, so one delivered
+      // row shielded every later failure.
+      "a template that delivered once and has failed every send since": [
+        ["delivered 12 days ago, then a failure and a send with no receipt", (t) => {
+          t.messages.push(sent(u(5), "SMS-C", { created_at: ago(12 * DAY) }));
+          t.messages.push(sent(u(6), "SMS-C", { status: "failed", created_at: ago(3 * DAY) }));
+          t.messages.push(sent(u(7), "SMS-C", { status: "sent", created_at: ago(2 * DAY) }));
+        }, { sample: 3 }],
+        ["delivered 13 days ago, then thirty failures in the last two days", (t) => {
+          t.messages.push(sent(u(5), "SMS-C", { created_at: ago(13 * DAY) }));
+          for (let i = 0; i < 30; i += 1) t.messages.push(sent(u(100 + i), "SMS-C", { status: "failed", created_at: ago(2 * DAY - i) }));
+        }, { sample: 3 }],
+        ["delivered five days ago, then two bounces", (t) => {
+          t.messages.push(sent(u(5), "EMAIL-D", { channel: "email", created_at: ago(5 * DAY), to_address: "b@fundhub-client.test.io" }));
+          t.messages.push(sent(u(6), "EMAIL-D", { channel: "email", status: "bounced", created_at: ago(3 * DAY), to_address: "c@fundhub-client.test.io" }));
+          t.messages.push(sent(u(7), "EMAIL-D", { channel: "email", status: "bounced", created_at: ago(2 * DAY), to_address: "d@fundhub-client.test.io" }));
+        }, { sample: 3 }],
+      ],
     },
     ignored: [
       ["one old row is not enough to judge", (t) => t.messages.push(sent(u(5), "SMS-C", { status: "sent" })), { sample: 3 }],
+      ["one failure after the last delivery is not enough", (t) => {
+        t.messages.push(sent(u(5), "SMS-C", { created_at: ago(10 * DAY) }));
+        t.messages.push(sent(u(6), "SMS-C", { status: "failed", created_at: ago(3 * DAY) }));
+      }, { sample: 3 }],
+      ["failures before the last delivery are history", (t) => {
+        t.messages.push(sent(u(5), "SMS-C", { status: "failed", created_at: ago(9 * DAY) }));
+        t.messages.push(sent(u(6), "SMS-C", { status: "failed", created_at: ago(8 * DAY) }));
+        t.messages.push(sent(u(7), "SMS-C", { created_at: ago(3 * DAY) }));
+      }, { sample: 3 }],
+      ["a complaint is a delivery (the person got it)", (t) => {
+        t.messages.push(sent(u(5), "EMAIL-D", { channel: "email", status: "failed", created_at: ago(9 * DAY), to_address: "b@fundhub-client.test.io" }));
+        t.messages.push(sent(u(6), "EMAIL-D", { channel: "email", status: "failed", created_at: ago(8 * DAY), to_address: "b@fundhub-client.test.io" }));
+        t.messages.push(sent(u(7), "EMAIL-D", { channel: "email", status: "complained", created_at: ago(3 * DAY), to_address: "b@fundhub-client.test.io" }));
+      }, { sample: 3 }],
       ["two rows younger than a day", (t) => {
         t.messages.push(sent(u(5), "SMS-C", { status: "sent", created_at: ago(5 * HOUR) }));
         t.messages.push(sent(u(6), "SMS-C", { status: "sent", created_at: ago(4 * HOUR) }));
+      }, { sample: 3 }],
+      ["two failures younger than a day after a delivery", (t) => {
+        t.messages.push(sent(u(5), "SMS-C", { created_at: ago(3 * DAY) }));
+        t.messages.push(sent(u(6), "SMS-C", { status: "failed", created_at: ago(5 * HOUR) }));
+        t.messages.push(sent(u(7), "SMS-C", { status: "failed", created_at: ago(4 * HOUR) }));
       }, { sample: 3 }],
       ["a staff-typed text has no template", (t) => {
         t.messages.push(sent(u(5), null, { status: "sent" }));
@@ -313,9 +403,9 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         t.messages.push(sent(u(5), "SMS-C", { status: "sent", is_demo: true }));
         t.messages.push(sent(u(6), "SMS-C", { status: "sent", is_demo: true }));
       }, { sample: 2 }],
-      ["before the 30 day window", (t) => {
-        t.messages.push(sent(u(5), "SMS-C", { status: "sent", created_at: ago(45 * DAY) }));
-        t.messages.push(sent(u(6), "SMS-C", { status: "sent", created_at: ago(44 * DAY) }));
+      ["before the 14 day window", (t) => {
+        t.messages.push(sent(u(5), "SMS-C", { status: "sent", created_at: ago(20 * DAY) }));
+        t.messages.push(sent(u(6), "SMS-C", { status: "sent", created_at: ago(19 * DAY) }));
       }, { sample: 2 }],
       ["another company's template", (t) => {
         t.messages.push(sent(u(5), "SMS-C", { org_id: OTHER, status: "sent" }));
@@ -336,9 +426,12 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ["templated only", "AND m.template_key IS NOT NULL", ""],
       ["real statuses only", "AND m.status IN ('queued', 'sending', 'sent', 'delivered', 'complained', 'failed', 'bounced')", ""],
       ["inside the window", "AND m.created_at >= $2::timestamptz", ""],
-      ["old enough", "m.created_at < $3::timestamptz", "1 = 1"],
-      ["never delivered", "AND delivered_n = 0", ""],
-      ["enough rows", "aged_n >= 2", "aged_n >= 0"],
+      ["old enough", "s.created_at < $3::timestamptz", "1 = 1"],
+      ["after the last delivery", "AND (o.ok_at IS NULL OR s.created_at > o.ok_at)", "AND o.ok_at IS NULL"],
+      ["a template that never delivered counts every send", "o.ok_at IS NULL OR s.created_at > o.ok_at", "s.created_at > o.ok_at"],
+      ["a complaint is a delivery", "WHERE s.status IN ('delivered', 'complained')", "WHERE s.status IN ('delivered')"],
+      ["its own template's delivery", "o.template_key = s.template_key AND ", ""],
+      ["enough rows", "dead_n >= 2", "dead_n >= 0"],
       ["test traffic", "AND COALESCE(m.to_address, '') !~* $4::text", ""],
     ],
   });
@@ -358,15 +451,22 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
   const task = (id, over = {}) => ({
     id, org_id: ORG, client_id: u(900), source_workflow: NUDGE_SOURCE_WORKFLOW, assignee_role: NUDGE_STAFF_TASK_ROLE, title: "Client stalled", ...over,
   });
+  const client = (id, over = {}) => ({ id, org_id: ORG, email: "dana@fundhub-client.test.io", is_demo: false, custom_fields: {}, ...over });
+  // a client-owned item that came due `days` days ago
+  const waypoint = (id, over = {}) => ({
+    id, org_id: ORG, client_id: u(901), key: "upload-id", title: "Upload your ID", owner_kind: "client", state: "not_started",
+    due_at: ago(5 * DAY), completed_at: null, ...over,
+  });
   FIXTURES.set("workflow:waypoint-nudge-sweeper", {
     tables: {
+      clients: [client(u(900)), client(u(901), { email: "lee@fundhub-client.test.io" })],
       waypoint_nudges: [
         nudge(u(1)),
         nudge(u(2), { step: 2, channel: "email", template_key: "EMAIL-WAYPOINT-NUDGE-1", message_id: u(501) }),
         nudge(u(3), { step: 3, template_key: "SMS-WAYPOINT-NUDGE-2", message_id: u(502) }),
         nudge(u(4), { step: 4, kind: "staff_task", channel: null, template_key: null, outcome: "staff_task", message_id: null, task_id: u(700) }),
         nudge(u(5), { outcome: "no_contact", message_id: null, waypoint_id: u(801) }),
-        nudge(u(6), { outcome: "refused", message_id: null, waypoint_id: u(802) }),
+        nudge(u(6), { outcome: "refused", detail: "opted_out", message_id: null, waypoint_id: u(802) }),
       ],
       messages: [
         message(u(500)),
@@ -374,6 +474,16 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         message(u(502), { template_key: "SMS-WAYPOINT-NUDGE-2", status: "queued", scheduled_at: ago(-2 * HOUR), last_attempt_at: null }),
       ],
       tasks: [task(u(700))],
+      // the ladder has rows for these three items, so none of them is a client nobody chases
+      client_waypoints: [
+        waypoint(u(800), { client_id: u(900), due_at: ago(10 * DAY) }),
+        waypoint(u(801), { client_id: u(900), due_at: ago(10 * DAY) }),
+        waypoint(u(802), { client_id: u(900), due_at: ago(10 * DAY) }),
+      ],
+      opt_outs: [],
+      client_escalations: [],
+      repair_programs: [],
+      paid_service_requests: [],
     },
     sample: 6,
     breaks: {
@@ -382,6 +492,12 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ],
       "a rung was spent because the template is not approved": [
         ["template_pending", (t) => Object.assign(find(t.waypoint_nudges, u(5)), { outcome: "template_pending" })],
+      ],
+      // src/nudge/run.mjs writes "refused" with the reason in detail. Only the client's own opt-out is right.
+      "a rung was refused and the client got nothing": [
+        ["the template is still placeholder copy (draft_template)", (t) => Object.assign(find(t.waypoint_nudges, u(6)), { detail: "draft_template" })],
+        ["the send threw (error:...)", (t) => Object.assign(find(t.waypoint_nudges, u(6)), { detail: "error:connection reset" })],
+        ["refused with no reason saved", (t) => Object.assign(find(t.waypoint_nudges, u(6)), { detail: null })],
       ],
       "a queued rung has no message behind it": [
         ["no message id", (t) => { find(t.waypoint_nudges, u(1)).message_id = null; }],
@@ -400,6 +516,14 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         ["queued and due 45 minutes ago", (t) => Object.assign(find(t.messages, u(500)), { status: "queued", scheduled_at: null, created_at: ago(45), last_attempt_at: null })],
         ["sending for 45 minutes", (t) => Object.assign(find(t.messages, u(500)), { status: "sending", last_attempt_at: ago(45) })],
       ],
+      // dispatch.mjs finalise() writes failed (provider rejected, or gave up after its attempts), the status
+      // receipt writes bounced, the gate writes blocked. None of those is a delivered client message.
+      "a queued rung's message ended without reaching the client": [
+        ["failed (the provider rejected it)", (t) => { find(t.messages, u(500)).status = "failed"; }],
+        ["bounced", (t) => { find(t.messages, u(501)).status = "bounced"; }],
+        ["blocked by the gate for restricted wording", (t) => Object.assign(find(t.messages, u(500)), { status: "blocked", blocked_reason: "restricted_phrase" })],
+        ["blocked with no reason saved", (t) => Object.assign(find(t.messages, u(500)), { status: "blocked", blocked_reason: null })],
+      ],
       "step 4 did not make its staff task": [
         ["no task id", (t) => { find(t.waypoint_nudges, u(4)).task_id = null; }],
         ["task row gone", (t) => drop(t.tasks, u(700))],
@@ -408,24 +532,120 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
         ["task for the wrong role", (t) => { find(t.tasks, u(700)).assignee_role = "closer"; }],
         ["task in another company", (t) => { find(t.tasks, u(700)).org_id = OTHER; }],
       ],
+      // A sweeper that runs and spends no rung at all leaves no wrong row behind, so the rungs cannot see it.
+      "a client's overdue item has had nobody chasing it": [
+        ["due 5 days ago, the ladder never wrote a row for this client", (t) => t.client_waypoints.push(waypoint(u(810))), { sample: 7 }],
+        ["due 400 days ago", (t) => t.client_waypoints.push(waypoint(u(810), { due_at: ago(400 * DAY) })), { sample: 7 }],
+        ["an item already started is still chased (in_progress)", (t) => t.client_waypoints.push(waypoint(u(810), { state: "in_progress" })), { sample: 7 }],
+        ["the client was last chased on an older item before this one came due", (t) => {
+          t.client_waypoints.push(waypoint(u(810), { client_id: u(902), due_at: ago(5 * DAY) }));
+          t.clients.push(client(u(902), { email: "kim@fundhub-client.test.io" }));
+          t.waypoint_nudges.push(nudge(u(20), { client_id: u(902), waypoint_id: u(811), created_at: ago(20 * DAY) }));
+        }, { sample: 7 }],
+        ["the payment link they were sent expired a week ago", (t) => {
+          t.client_waypoints.push(waypoint(u(810)));
+          t.paid_service_requests.push({ id: u(830), org_id: ORG, client_id: u(901), waypoint_id: u(810), status: "awaiting_payment", requested_at: ago(8 * DAY) });
+        }, { sample: 7 }],
+        ["a client who opted out and back in is chased again", (t) => {
+          t.client_waypoints.push(waypoint(u(810)));
+          t.opt_outs.push({ id: u(840), org_id: ORG, client_id: u(901), channel: "sms", opted_out_at: ago(9 * DAY), opted_in_at: ago(8 * DAY) });
+        }, { sample: 7 }],
+        ["a purchase on a different item does not cover this one", (t) => {
+          t.client_waypoints.push(waypoint(u(810)));
+          t.paid_service_requests.push({ id: u(830), org_id: ORG, client_id: u(901), waypoint_id: u(811), status: "paid", requested_at: ago(8 * DAY) });
+        }, { sample: 7 }],
+        ["a refunded purchase is not a purchase", (t) => {
+          t.client_waypoints.push(waypoint(u(810)));
+          t.paid_service_requests.push({ id: u(830), org_id: ORG, client_id: u(901), waypoint_id: u(810), status: "refunded", requested_at: ago(8 * DAY) });
+        }, { sample: 7 }],
+      ],
     },
     ignored: [
       ["claimed 5 minutes ago may still be queueing", (t) => Object.assign(find(t.waypoint_nudges, u(1)), { outcome: "claimed", message_id: null, created_at: ago(5) }), { bad: 0 }],
       ["no usable address is a normal outcome", () => {}],
       ["a held message due in the future", () => {}],
+      ["a refusal because the client opted out is the system working", () => {}],
+      ["a message blocked because the client opted out after it was queued", (t) => Object.assign(find(t.messages, u(500)), { status: "blocked", blocked_reason: "opted_out" })],
       ["a rung older than the lookback", (t) => t.waypoint_nudges.push(nudge(u(9), { outcome: "template_pending", message_id: null, created_at: ago(20 * DAY), waypoint_id: u(803) })), { sample: 6 }],
       ["another company's stuck rung", (t) => t.waypoint_nudges.push(nudge(u(9), { org_id: OTHER, outcome: "template_pending", message_id: null, waypoint_id: u(803) })), { sample: 6 }],
+      ["a test client's stuck rung", (t) => {
+        t.clients.push(client(u(903), { email: "qa@example.com" }));
+        t.waypoint_nudges.push(nudge(u(9), { client_id: u(903), outcome: "refused", detail: "draft_template", message_id: null, waypoint_id: u(803) }));
+      }, { sample: 6 }],
+      ["a demo client's stuck rung", (t) => {
+        t.clients.push(client(u(904), { is_demo: true }));
+        t.waypoint_nudges.push(nudge(u(9), { client_id: u(904), outcome: "template_pending", message_id: null, waypoint_id: u(803) }));
+      }, { sample: 6 }],
+      ["a synthetic client's stuck rung", (t) => {
+        t.clients.push(client(u(905), { custom_fields: { synthetic: "true" } }));
+        t.waypoint_nudges.push(nudge(u(9), { client_id: u(905), outcome: "template_pending", message_id: null, waypoint_id: u(803) }));
+      }, { sample: 6 }],
+      // the waiting side: each one is a reason nobody should chase, so it is not a client left waiting
+      ["the ladder spoke to this client since the item came due (one message a day)", (t) => t.client_waypoints.push(waypoint(u(810), { client_id: u(900) })), { sample: 7 }],
+      ["overdue only 2 days, inside the grace", (t) => t.client_waypoints.push(waypoint(u(810), { due_at: ago(2 * DAY) })), { sample: 6 }],
+      ["no due date is not overdue", (t) => t.client_waypoints.push(waypoint(u(810), { due_at: null })), { sample: 6 }],
+      ["the item is Fundhub's to do", (t) => t.client_waypoints.push(waypoint(u(810), { owner_kind: "fundhub" })), { sample: 6 }],
+      ["the item is done", (t) => t.client_waypoints.push(waypoint(u(810), { state: "done" })), { sample: 6 }],
+      ["the item is blocked", (t) => t.client_waypoints.push(waypoint(u(810), { state: "blocked" })), { sample: 6 }],
+      ["the item has a completed date", (t) => t.client_waypoints.push(waypoint(u(810), { completed_at: ago(DAY) })), { sample: 6 }],
+      ["another company's overdue item", (t) => t.client_waypoints.push(waypoint(u(810), { org_id: OTHER })), { sample: 6 }],
+      ["the client opted out", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.opt_outs.push({ id: u(840), org_id: ORG, client_id: u(901), channel: "sms", opted_out_at: ago(9 * DAY), opted_in_at: null });
+      }, { sample: 6 }],
+      ["the client opted out by email only (either channel stops the ladder)", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.opt_outs.push({ id: u(840), org_id: ORG, client_id: u(901), channel: "email", opted_out_at: ago(9 * DAY), opted_in_at: null });
+      }, { sample: 6 }],
+      ["the client escalated (a lawyer, a threat)", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.client_escalations.push({ id: u(841), org_id: ORG, client_id: u(901), said_at: ago(9 * DAY), matched_pattern: "lawyer" });
+      }, { sample: 6 }],
+      ["the program is complete", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.repair_programs.push({ id: u(842), org_id: ORG, client_id: u(901), status: "complete" });
+      }, { sample: 6 }],
+      ["the program is cancelled", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.repair_programs.push({ id: u(842), org_id: ORG, client_id: u(901), status: "cancelled" });
+      }, { sample: 6 }],
+      ["the client bought the paid alternative", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.paid_service_requests.push({ id: u(830), org_id: ORG, client_id: u(901), waypoint_id: u(810), status: "paid", requested_at: ago(8 * DAY) });
+      }, { sample: 6 }],
+      ["a payment link is still live", (t) => {
+        t.client_waypoints.push(waypoint(u(810)));
+        t.paid_service_requests.push({ id: u(830), org_id: ORG, client_id: u(901), waypoint_id: u(810), status: "awaiting_payment", requested_at: ago(2 * DAY) });
+      }, { sample: 6 }],
+      ["a test client's overdue item", (t) => {
+        t.clients.push(client(u(903), { email: "qa@example.com" }));
+        t.client_waypoints.push(waypoint(u(810), { client_id: u(903) }));
+      }, { sample: 6 }],
+      ["a demo client's overdue item", (t) => {
+        t.clients.push(client(u(904), { is_demo: true }));
+        t.client_waypoints.push(waypoint(u(810), { client_id: u(904) }));
+      }, { sample: 6 }],
+      ["an item the ladder already has a row for", (t) => {
+        t.client_waypoints.push(waypoint(u(810), { client_id: u(901) }));
+        t.waypoint_nudges.push(nudge(u(21), { client_id: u(901), waypoint_id: u(810), created_at: ago(20 * DAY) }));
+      }, { sample: 6 }],
     ],
     drops: [
       ["company scope", "n.org_id = $1::uuid", "1 = 1"],
       ["inside the lookback", "AND n.created_at >= $2::timestamptz", ""],
       ["claimed too long", "(n.outcome = 'claimed' AND n.created_at < $3::timestamptz)", "1 = 0"],
       ["template pending", "OR n.outcome = 'template_pending'", ""],
-      ["named template", "n.template_key IS NULL\n               OR n.template_key NOT IN", "n.template_key IS NULL AND 1 = 0\n               OR n.template_key NOT IN"],
+      ["refused for another reason", "OR (n.outcome = 'refused' AND COALESCE(n.detail, '') <> 'opted_out')", ""],
+      ["a refusal with no reason is not the opt-out", "COALESCE(n.detail, '') <> 'opted_out'", "n.detail <> 'opted_out'"],
+      ["named template", "n.template_key IS NULL\n                 OR n.template_key NOT IN", "n.template_key IS NULL AND 1 = 0\n                 OR n.template_key NOT IN"],
       ["outbound message", "OR m.direction IS DISTINCT FROM 'outbound'", ""],
       ["same template", "OR m.template_key IS DISTINCT FROM n.template_key", ""],
       ["same channel", "OR m.channel IS DISTINCT FROM n.channel", ""],
-      ["same client", "OR m.client_id IS DISTINCT FROM n.client_id\n               OR (m.status", "OR (m.status"],
+      ["same client", "OR m.client_id IS DISTINCT FROM n.client_id\n                 OR m.status IN", "OR m.status IN"],
+      ["failed", "m.status IN ('failed', 'bounced')", "m.status IN ('bounced')"],
+      ["bounced", "m.status IN ('failed', 'bounced')", "m.status IN ('failed')"],
+      ["blocked", "OR (m.status = 'blocked' AND COALESCE(m.blocked_reason, '') NOT LIKE '%opted_out%')", ""],
+      ["blocked for a reason that is not the opt-out", "AND COALESCE(m.blocked_reason, '') NOT LIKE '%opted_out%'", ""],
       ["queued stuck", "OR (m.status = 'queued' AND COALESCE(m.scheduled_at, m.created_at) < $4::timestamptz)", ""],
       ["sending stuck", "OR (m.status = 'sending' AND COALESCE(m.last_attempt_at, m.created_at) < $4::timestamptz)", ""],
       ["task from this workflow", "t.source_workflow IS DISTINCT FROM", "1 = 0 AND t.source_workflow IS DISTINCT FROM"],
@@ -433,6 +653,25 @@ const drop = (rows, id) => rows.splice(rows.findIndex((r) => r.id === id), 1);
       ["task for the csm", "OR t.assignee_role IS DISTINCT FROM", "OR 1 = 0 AND t.assignee_role IS DISTINCT FROM"],
       ["message joined in this company", "LEFT JOIN messages m ON m.id = n.message_id AND m.org_id = n.org_id", "LEFT JOIN messages m ON m.id = n.message_id"],
       ["task joined in this company", "LEFT JOIN tasks t ON t.id = n.task_id AND t.org_id = n.org_id", "LEFT JOIN tasks t ON t.id = n.task_id"],
+      ["rungs for real clients only", realClient("n.client_id", "$5"), "1 = 1"],
+      ["waiting: company scope", "w.org_id = $1::uuid", "1 = 1"],
+      ["waiting: the client's own items only", "w.owner_kind = 'client'", "1 = 1"],
+      ["waiting: chaseable states only", "AND w.state IN ('not_started', 'in_progress')", ""],
+      ["waiting: not completed", "AND w.completed_at IS NULL", ""],
+      ["waiting: past the grace", "AND w.due_at < $6::timestamptz", ""],
+      ["waiting: never touched", "AND NOT EXISTS (SELECT 1 FROM waypoint_nudges y WHERE y.waypoint_id = w.id)", ""],
+      ["waiting: a client who opted out", "WHERE o.client_id = w.client_id AND o.channel IN ('sms', 'email') AND o.opted_in_at IS NULL", "WHERE 1 = 0"],
+      ["waiting: opted out and back in", "AND o.opted_in_at IS NULL", ""],
+      ["waiting: escalated", "WHERE e.client_id = w.client_id", "WHERE 1 = 0"],
+      ["waiting: program finished", "WHERE rp.client_id = w.client_id AND rp.status IN ('complete', 'cancelled')", "WHERE 1 = 0"],
+      ["waiting: bought", "p.status IN ('paid', 'staged', 'fulfilled')", "1 = 0"],
+      ["waiting: live payment link", "OR (p.status = 'awaiting_payment' AND p.requested_at >= $7::timestamptz)", ""],
+      ["waiting: a link that expired", "AND p.requested_at >= $7::timestamptz", ""],
+      ["waiting: payment is for this item", "WHERE p.waypoint_id = w.id", "WHERE 1 = 1"],
+      ["waiting: real clients only", realClient("w.client_id", "$5"), "1 = 1"],
+      ["waiting: spoken to since it came due", "WHERE x.client_id = g.client_id AND x.created_at >= g.due_at", "WHERE 1 = 0"],
+      ["waiting: spoken to AFTER it came due", "AND x.created_at >= g.due_at", ""],
+      ["waiting: the same client", "WHERE x.client_id = g.client_id", "WHERE 1 = 1"],
     ],
   });
 }
@@ -693,7 +932,7 @@ for (const entry of FIN_B22_LIVE) {
   test(`${entry.surface}: names only real tables and columns`, () => {
     const schema = schemaColumns();
     for (const table of tablesIn(entry.sql)) {
-      if (["sms", "per", "repeats"].includes(table)) continue;
+      if (CTE_NAMES.includes(table)) continue;
       assert.ok(schema.has(table), `no table ${table}`);
     }
     for (const { table, column, alias } of columnsUsed(entry.sql)) {
@@ -806,6 +1045,27 @@ test("the nudge check's workflow name, role and rung keys are the runner's own",
   assert.match(run, new RegExp(`export const STAFF_TASK_ROLE = "${NUDGE_STAFF_TASK_ROLE}"`));
   const sql = spec("workflow:waypoint-nudge-sweeper").sql;
   for (const key of ["SMS-WAYPOINT-DUE", "EMAIL-WAYPOINT-NUDGE-1", "SMS-WAYPOINT-NUDGE-2"]) assert.ok(sql.includes(`'${key}'`), key);
+});
+
+test("the nudge check's waiting lists are the planner's own (chaseable states, bought statuses, link life, grace)", async () => {
+  const exits = fs.readFileSync(path.join(REPO_ROOT, "src/nudge/exits.mjs"), "utf8");
+  const setOf = (name) => {
+    const m = new RegExp(`export const ${name} = Object\\.freeze\\(new Set\\(\\[([^\\]]*)\\]\\)\\)`).exec(exits);
+    assert.ok(m, `${name} is a frozen Set in src/nudge/exits.mjs`);
+    return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+  };
+  assert.deepEqual([...NUDGE_CHASEABLE_STATES].sort(), setOf("CHASEABLE_STATES").sort());
+  assert.deepEqual([...NUDGE_BOUGHT_STATUSES].sort(), setOf("BOUGHT_STATUSES").sort());
+  const ttl = fs.readFileSync(path.join(REPO_ROOT, "src/paid-services/link-ttl.mjs"), "utf8");
+  assert.match(ttl, new RegExp(`export const CHECKOUT_LINK_TTL_DAYS = ${NUDGE_CHECKOUT_LINK_DAYS};`));
+  // the grace is longer than the ladder's second rung, so a client with the sweeper working is never here
+  const { STEPS } = await import("../../../nudge/ladder.mjs");
+  assert.ok(NUDGE_WAITING_DAYS > STEPS[1].daysOverdue);
+  // the planner reads the same eligibility columns the waiting read does
+  const run = fs.readFileSync(path.join(REPO_ROOT, "src/nudge/run.mjs"), "utf8");
+  assert.match(run, /w\.owner_kind = 'client'/);
+  assert.match(run, /w\.completed_at IS NULL/);
+  assert.match(run, /w\.due_at IS NOT NULL/);
 });
 
 test("the EIN pattern accepts what the soft-pull form saves and refuses the rest", () => {
