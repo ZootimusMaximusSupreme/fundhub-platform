@@ -1,173 +1,188 @@
 # Batch 04 manifest: customer-message screen controls (gap-catalog-display, tier 2)
 
-Branch `fin/b04`, built from `fin/base` (2f4f574a0). Not pushed, not merged. Generation 1.
-Tests and checks only. No product code was changed.
+Branch `fin/b04`, built from `fin/base` (2f4f574a0). Not pushed, not merged.
+Generation 1 built the checks. **Repair cycle 1 (2026-10-15)** is described first, because an independent
+checker broke the product on purpose and found 22 of the 28 rows green when they should have been red.
+Tests and checks only. No product code was changed (every product break was made in a scratch edit and put back).
 
-## The count
+## The count (repair cycle 1)
 
-| | Rows |
+| | Rows of this batch |
 |---|---|
-| Rows in this batch | 28 |
-| Still NOT_PROVED before (`count-not-proved.mjs`) | 28 |
-| Still NOT_PROVED after, same script | 0 |
-| Live checks | 27 |
-| Practice tests | 1 |
-| Not attachable / N/A | 0 |
+| Open at the start of this cycle (`count-not-proved.mjs`) | 0 of 28 |
+| Open at the end of this cycle | 1 of 28 |
+| Live checks (a query over saved results) | 25 of 28 (7 of them also run a practice test for the half no saved result shows: rows 8, 11, 12, 13 to 16) |
+| Practice tests with no query | 2 of 28 (the cockpit script, the push button) |
+| Not attachable | 1 of 28 |
 
-Whole display lane: 680 open rows before, 652 after. All four lanes: 853 before, 825 after.
+Whole display lane open: 652 at the start of this cycle, 653 after. All four lanes: 825 at the start, 826 after (the one row went
+back). Numbers re-measured from this worktree with `node scripts/pulse/count-not-proved.mjs`.
 
-## What was built
+## What the checker found, and what each of the 22 rows is now
 
-Each live check is one read-only query, keyed to the control's exact words in the coverage map, run by the
-display lane for the company. It returns how many saved results exist and how many are wrong.
-Controls nobody has used yet are green with the words "no saved results yet, none are wrong" and go red on the first wrong
-result (`emptyAs: "quiet"`). The one exception is the send-contract panel: a company with no sendable wording is red.
-Every window is the last 30 days, so an old bad row ages out; state tables (push devices, vault reviews, queued posts) have none.
+Every row names what was added. "Break" means the checker's own break (or a nested one found while repairing) was turned into a
+fixture and goes red. Words like "live check" and "practice test" are used on purpose; nothing here is called deep.
 
-The tests run the real SQL text over fake saved rows with a small read-only stand-in (`fin-b04-sql-lite.mjs`).
-It reads only the SQL shapes these queries use, uses three-valued logic like Postgres, and refuses a table or column
-that `db/schema` and `db/migrations` do not define.
-Because there is no local Postgres here, I also ran every fixture (382 variants) through a real Postgres engine
-(PGlite, in a scratch folder outside the repo, loaded with this repo's own schema and migrations) and compared:
-0 differences. PGlite is not a repo dependency.
-
-## Every row
-
-| # | Row (map file / surface: control) | Outcome | Where | What it judges |
+| # | Row | Final outcome | Where | What was strengthened |
 |---|---|---|---|---|
-| 1 | desks-a.json / client-portal.html:Chat button (floating widget from shell.js: send message to staff) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (PORTAL_MESSAGE_SQL)` | Judges the saved inbound client note: on the client's own thread and channel, status received, compliance flag, words kept (api/chat/portal-message.mjs). |
-| 2 | desks-a.json / client-portal.html:Turn on / off notifications button (web push subscribe) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (PUSH_DEVICE_SQL)` | Judges saved devices: real client, three saved secrets, account kind (client or authorized rep), turned off or expired only after made, one live client per phone (src/push/store.mjs). |
-| 3 | desks-a.json / client-portal.html:Unlock modal: Ask an advisor / Talk to an advisor buttons (open chat with topic) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (PORTAL_CALL_REQUEST_SQL)` | Judges notes that start 'I would like a call about:' (the unlock modal's prefill): on the client's thread, topic not empty. |
-| 4 | desks-a.json / closer-dashboard.html:Contract panel: Send button | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (CONTRACT_SENT_SQL)` | Judges contracts sent in the last 30 days: client, wording and key, named sender, link expiry after send, a signer, and the signing email queued within an hour when an address exists (src/contracts/send.mjs, notify.mjs). |
-| 5 | desks-a.json / closer-dashboard.html:Contract panel: wording select and blank-field inputs | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (CONTRACT_BLANKS_SQL)` | Judges that every required blank the wording declares has a value in the contract's merge_values. |
-| 6 | desks-a.json / closer-dashboard.html:Send contract button (opens panel) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (CONTRACT_WORDINGS_SQL)` | Judges active wordings the panel lists: key, name, signature sentence, real words (not the placeholder send refuses). No empty-grace: no sendable wording is red. |
-| 7 | desks-b.json / financeos.html#vault:Staff only: 'Reject' with a reason the client reads, then 'Reject file' | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (VAULT_REJECT_SQL)` | Judges rejected vault files: the client's own upload, a named reviewer on staff, covers 1, no period, a written reason (src/finance/document-vault.mjs). |
-| 8 | desks-c.json / messaging.html:Blocked result: opt-out or restricted wording refused and a task raised for a human | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (MESSAGE_BLOCKED_SQL)` | Judges blocked staff texts and emails: reason kept, words kept, and for restricted wording a task with an owner (gate.mjs, dispatch.mjs). Browser spec e2e/messaging-inbox.spec.mjs also stays attached. |
-| 9 | desks-c.json / messaging.html:Held-for-quiet-hours result: text deferred to the next window and the words stay in the box | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (MESSAGE_HELD_SQL)` | Judges staff texts with a saved send time: sms only, outbound, time is the next 8:00 am Arizona after it was written. Replaces the always-red entry for this control. |
-| 10 | desks-c.json / messaging.html:Send button (staff reply to a client by text or email; shift clock-in required) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (STAFF_MESSAGE_SQL)` | Judges staff replies: named sender on staff, the client's own thread and channel, outbound, words kept, provider receipt once sent, and a text sent at once logged on that person's open shift (owner exempt). |
-| 11 | desks-f.json / present.html (+ present.js, contract-send.js):'Generate letters and email now' (offer allows letters, not education) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (DECK_LETTERS_SQL)` | Judges closer-deck letter files: real PDF with bytes, key and checksum, offer allows letters, letters email queued within an hour (src/sales/closer-deck.mjs). |
-| 12 | desks-f.json / present.html (+ present.js, contract-send.js):'Send contract': picks the agreement that matches the offer, creates the draft, sends it, returns the sign link | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (CONTRACT_SENT_SQL)` | Judges contracts sent in the last 30 days: client, wording and key, named sender, link expiry after send, a signer, and the signing email queued within an hour when an address exists (src/contracts/send.mjs, notify.mjs). |
-| 13 | desks-f.json / present.html (+ present.js, contract-send.js):'Send deliverables package now' (education route): saves the 5 UnderwriteIQ files to the portal and emails the client | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (DECK_DELIVERABLES_SQL)` | Judges clients with a deliverables package: the four core UnderwriteIQ pages saved as real files, offer allows letters, funding delivery email queued within an hour. |
-| 14 | desks-f.json / present.html (+ present.js, contract-send.js):Cockpit script ('Say this', 'Watch for'): lines filtered by funding / repair / education route, [First Name] filled in, close wrap keyed to the offer actually chosen | practice-test | `src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs` | Browser practice test of the cockpit line filter (FUND, REPAIR, EDU), [First Name] and the close wrap by offer. The script is drawn and written nowhere, so a live check has nothing to read. Six product breaks each turned it red. |
-| 15 | desks-e.json / public/app/chat-widget.js (mounted by shell.js on the same desks; skipped for partner and affiliate roles):Message > Client: paste a client id and send (goes through the compliance gate as a text) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (STAFF_MESSAGE_SQL)` | Judges staff replies: named sender on staff, the client's own thread and channel, outbound, words kept, provider receipt once sent, and a text sent at once logged on that person's open shift (owner exempt). |
-| 16 | desks-e.json / public/app/pipeline.html:Card: SMS and email lines (links to messaging.html?client_id=&channel=, red 1 badge when the client wrote last) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (THREAD_LINK_SQL)` | Judges inbound texts and emails from known clients sit on that client's own thread for the channel (what the red 1 badge reads). |
-| 17 | desks-e.json / public/app/pipeline.html:Funding: Card Stacking column 'Apply Now' (apply_now): shows count and funding est.; accepts a dropped card | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (ROUND_STARTED_SQL)` | Judges card-stacking round.started events: client, apply_now stage, round number and key, and an hour later the round row and the client text (round-started-client-notify). |
-| 18 | desks-e.json / public/app/pipeline.html:Funding: Card Stacking column 'Approved' (approved): shows count and funding est.; accepts a dropped card | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (ROUND_APPROVED_SQL)` | Judges card-stacking round.approved events: stage, round number and key, round row, and (when approvedAmount is above zero) the client text and email (f-04). |
-| 19 | desks-e.json / public/app/pipeline.html:Funding: Card Stacking column 'Closed' (closed): shows count and funding est.; accepts a dropped card | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (ROUND_CLOSEOUT_NOTIFY_SQL)` | Judges card-stacking round.closeout events: closed stage, round number and key, round row, client text and email (n-04). |
-| 20 | desks-e.json / public/app/pipeline.html:Funding: Card Stacking column 'Round Submitted' (round_submitted): shows count and funding est.; accepts a dropped card | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (ROUND_SUBMITTED_NOTIFY_SQL)` | Judges card-stacking round.submitted events: round_submitted stage, round number and key, round row, client text and email (f-03). |
-| 21 | desks-e.json / public/app/pipeline.html:MOVE menu: Card Stacking -> funding_card_stacking / apply_now (starts a funding round and texts the client) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (ROUND_STARTED_SQL)` | Judges card-stacking round.started events: client, apply_now stage, round number and key, and an hour later the round row and the client text (round-started-client-notify). |
-| 22 | desks-e.json / public/app/pipeline.html:New Client (button opens the modal: name, email, phone, product with 6 choices; Save / Cancel; same save as the apply form) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (PIPELINE_NEW_CLIENT_SQL)` | Judges pipeline entry.captured events: name, email, phone, listed product on the client file, key, and an hour later the board card and the welcome email and text (a client already welcomed counts). |
-| 23 | desks-e.json / public/app/pipeline.html:pipeline-clients (server): creates or finds the client through the funnel door and emits entry.captured, which sends the welcome email and text and places the Sales card | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (PIPELINE_NEW_CLIENT_SQL)` | Judges pipeline entry.captured events: name, email, phone, listed product on the client file, key, and an hour later the board card and the welcome email and text (a client already welcomed counts). |
-| 24 | desks-c.json / shell.js (shared chrome on every staff desk):Chat widget on every desk: Ask (AI answer), Knowledge, Message staff, Message a client | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (CHAT_WIDGET_SQL)` | Judges widget messages that leave a saved row: staff notes on internal threads and client texts or emails. Ask and Knowledge save nothing, so those two modes have no result to read. |
-| 25 | desks-b.json / shell.js shared chrome (on every desk here except financeos.html):Chat widget launcher and its modes (Ask, Knowledge, Message: a teammate, or an SMS to a client by id) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (CHAT_WIDGET_SQL)` | Judges widget messages that leave a saved row: staff notes on internal threads and client texts or emails. Ask and Knowledge save nothing, so those two modes have no result to read. |
-| 26 | desks-f.json / social-studio.html:Held row (owner and admin only): 'Approve it' (asks first; the post goes out at its time) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (SOCIAL_APPROVED_SQL)` | Judges approved posts: named approver on staff, on its way out or gone, queue row mirrored as scheduled (api/social/posts.mjs). |
-| 27 | desks-f.json / social-studio.html:Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (SOCIAL_FAILED_SQL)` | Judges failed posts: 3 tries, reason kept, real partner, a social_post_failed job opened. The page itself never lists them (product finding), so this reads the saved posts the tab should show. |
-| 28 | desks-f.json / social-studio.html:Waiting row: 'Queue it' with its own time box (sets or keeps the send time, no account needed) | live-check | `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (SOCIAL_QUEUED_SQL)` | Judges queued rows: words kept, real partner, not handed to a social account. Note: nothing sends a row queued this way (product finding in the map). |
+| 1 | present.html: Cockpit script ('Say this', 'Watch for') | practice-test | `fin-b04-present-cockpit.test.mjs` (17 tests) | Was 3 of 5 wraps and 2 of 4 routes. Now 12 routes (funding, funding plus repair, repair top / trial / DIY rung, descent to repair / trial / DIY, education Funding Mastery / deliverables, descent to either education rung). For each: the lines on The investment slide, the close logistics, the exact wrap words and the exact "Watch for" words. All 8 of the checker's product breaks go red; so does each of the 5 old tests' product. |
+| 2 | present.html: 'Send contract' | live-check | `CONTRACT_DECK_SEND_SQL` in `fin-b04-sql-flows.mjs` | Reads the company, not only the contracts: every wording the deck can pick must exist as an active, real (not placeholder) agreement, and every contract sent in 30 days must have a registered document, a signer, a wording its chosen offer sells (pay link product or the call's `closer_deck_disposition.offer_key`), a signing email addressed to the signer (or the live representative) and not failed or stuck. |
+| 3 | present.html: 'Send deliverables package now' | live-check | `DECK_DELIVERABLES_SQL` | The four core pages must each come from this button (`generated_by closer-deck`, `closer-deck-deliverables:` source), not from an earlier workflow. A client on the EDUCATION route who got the repair letter pack (F41) now enters the sample and goes red. The email must exist and not be failed or stuck. |
+| 4 | messaging.html: Held-for-quiet-hours | live-check | `MESSAGE_HELD_SQL` | A hold must be the next 8:00 am Arizona AND no more than 12 hours after the claim that held it (a day or a week too long is red while the text waits). A text sent between 8 pm and 8 am with nothing holding it is red (prove / sim files and a minute on each edge excepted). A text blocked for quiet hours (the permanent-loss bug) is red. |
+| 5 | messaging.html: Blocked result | live-check | `MESSAGE_BLOCKED_SQL` | Sample now includes sent and delivered staff messages. Red: sent to a client who had opted out on that channel (opt-out and opt-in times compared with the send), sent with words an active, unscoped, non-warning restricted-wording rule matches (phrase and regex). A task must be owned by a real staff role. |
+| 6 | messaging.html: Send button | live-check | `STAFF_MESSAGE_SQL` | Added: failed with nothing reaching the client after it, stuck queued or sending a day, sent to an opted-out client, a text sent at night, and the shift rule judged from the `shifts` table at the moment the message was written, on both channels (email logs no event, but the route's shift gate held). |
+| 7 | closer-dashboard.html: wording select and blank-field inputs | live-check | `CONTRACT_BLANKS_SQL` | Every blank the price list fills (`defaultContractValues`, read from the app config at load, 7 wordings, 21 blanks) must hold the price list's figure: a typed 1, abc, undefined or a lower fee is red. The wording must be one the chosen offer sells. |
+| 8 | client-portal.html: Unlock modal buttons | live-check + practice test | `PORTAL_CALL_REQUEST_SQL`; `fin-b04-portal-prefill.test.mjs` (8 tests) | Topic empty or undefined / null / NaN / [object Object] is red. The buttons save nothing, so the page code is also RUN: each button on the page opens the chat with `I would like a call about: <topic>`, falls back to a real topic, keeps what the client typed, and works with no chat on the page. 6 product breaks go red. |
+| 9 | client-portal.html: Turn on / off notifications | practice-test | `fin-b04-push-store.test.mjs` (10 tests) | Was a live check that could not see the 'off' half. The store's own functions are run against a stand-in for its one table (reads the real SQL text): saved sealed and tied to the login, same device refreshed not duplicated, a phone signed in as another client moves, a revoke turns off exactly that client's exactly that device, a revoke of someone else's device turns nothing off, twice is fine, everything off is that client's only. 8 product breaks go red. |
+| 10 | chat-widget.js: Message > Client | live-check | `STAFF_MESSAGE_SQL` | Same as row 6. |
+| 11 | shell.js (desks-c): Chat widget on every desk | live-check + practice test | `CHAT_WIDGET_SQL`; `fin-b04-chat-ask.test.mjs` (10 tests) | Message staff and Message a client are judged live (the note half judged as before, the client half is row 6's rule). Ask and Knowledge save nothing, so the route `api/chat/ask.mjs` is RUN with its model and retrieval handed in (the route takes them as deps): method, staff gate, company, question rules, mode to call, role and company passed to retrieval, answer and sources shown, failures shown. 12 product breaks go red. A real model's wording is not held by a test and is not claimed. |
+| 12 | shell.js (desks-b): Chat widget launcher | live-check + practice test | same | Same as row 11. |
+| 13 | pipeline.html: column 'Apply Now' | live-check + practice test | `ROUND_STARTED_SQL`; `fin-b04-pipeline-columns.test.mjs` | Starts from the CARDS in the column, not from events. A card dropped whose round event was lost (the move is kept when the emit fails) now goes red after an hour. The text and email must exist and not be failed or stuck (opted out of texts excepted). The count and funding est. are painted from the read (`stageAmount`), so the page is RUN too. |
+| 14 | pipeline.html: column 'Approved' | live-check + practice test | `ROUND_APPROVED_SQL`; same page test | Same shape, plus the approved amount rule (a text and email owed only when the amount is above zero). |
+| 15 | pipeline.html: column 'Closed' | live-check + practice test | `ROUND_CLOSEOUT_NOTIFY_SQL`; same page test | Same shape. |
+| 16 | pipeline.html: column 'Round Submitted' | live-check + practice test | `ROUND_SUBMITTED_NOTIFY_SQL`; same page test | Same shape. |
+| 17 | pipeline.html: MOVE menu | live-check | `ROUND_STARTED_SQL` | Same query as row 13 (the MOVE menu posts to the same route and the same `moveCardToStage`). |
+| 18 | pipeline.html: New Client | live-check | `PIPELINE_NEW_CLIENT_SQL` | The client file must hold the typed email, a first name, an E.164 phone, and a listed product; a client this save created holds the typed first name; a card on the SALES board (not any board); welcome email and text exist and are not failed or stuck. |
+| 19 | pipeline.html: pipeline-clients (server) | live-check | `PIPELINE_NEW_CLIENT_SQL` | Same query as row 18. |
+| 20 | social-studio.html: 'Approve it' | live-check | `SOCIAL_APPROVED_SQL` | The approver must be an owner or admin on staff (APPROVAL_ROLES). The post must have a send time, and one still queued an hour past its time on an active account is red. |
+| 21 | social-studio.html: Tab 'Could not be sent' | not-attachable | none | See below. |
+| 22 | social-studio.html: 'Queue it' | live-check | `SOCIAL_QUEUED_SQL` | The one column the control writes is read: an hour after it was queued the row must carry a send time, and one more than a day past is red (nothing hands a row queued without an account to the sender). |
 
-Not-attachable or N/A rows: none.
+### The one row that cannot be made honest
 
-Notes on three rows that judge less than their words:
+Row 21, tab 'Could not be sent'. The tab can never show a failed post: the page lists `GET /api/social/posts`, which reads
+`marketing_content_queue`, whose status check (migration 243) admits draft, queued, scheduled, awaiting_approval, discarded and
+blocked and never `failed`. Failed posts live in `social_posts`, which the page never reads. A check of `social_posts` judges a
+different table from the one the tab draws and would stay green while the tab says "Nothing has failed"; a practice test of the
+route would have to assert the bug and stay red. It needs a product change in `api/social/posts.mjs`. The row is back to NOT_PROVED.
 
-- Rows 24 and 25 (the two shell chat widget rows) name four modes. Only Message staff and Message a client leave a saved row.
-  Ask and Knowledge return an answer to the page and save nothing (`api/chat/ask.mjs`), so there is no result to read for them.
-  The live check judges the two modes that leave one and says so in its words.
-- Rows 17 to 20 (the four Card Stacking columns) also say "shows count and funding est.". The live check judges what a drop saves
-  (the round event, the round row, the client's text and email). The paint of the count and estimate is not judged here.
-- Row 27 (tab 'Could not be sent') judges the saved failed posts and the job opened for them. The page never lists them (product finding 3),
-  so a break in the page itself is not what this goes red on.
+### Rows whose limits are said out loud
 
-## Files added
+- **Rows 13 to 16 (count and funding est.).** The number is computed when the board is read (`count`, `stageAmount` in
+  `api/dashboard/pipeline.mjs`). No saved result holds it, so the page practice test holds it, not the live check.
+- **Row 17 (MOVE menu).** The same move deletes the old rail's card when `from_pipeline_key` is sent. A client can hold cards on two rails
+  legitimately (workflows advance rails without deleting), so a card left behind cannot be told from a legitimate one. Not judged.
+- **Row 5 (Blocked result).** The map words say an opt-out raises a task. `gate.mjs` raises a task only for restricted wording; an
+  opt-out clears on its own. The check judges what the code does (product finding 2, unchanged). A task that a person closed still
+  counts as raised: a person read it.
+- **Rows 3 (education route).** The route is read from `custom_fields.closer_deck_disposition.route = 'EDUCATION'`, which the deck
+  writes when the call is logged. A deck button pressed and the call never logged leaves no route to read.
+- **Row 5 and row 6.** Restricted-wording rules are read the way the gate reads them (`compliance_rules`, active, no platform scope,
+  not `warn`; phrase = case-insensitive substring, regex = case-insensitive, the patterns are written to read the same in both
+  engines per migration 047). A rule written after the message does not count against it.
+- **Texts are dead until Twilio is back (RESUME.md).** Every staff text and round text now reads red while texts fail, until a
+  later text reaches the client. That is the break, not a false alarm.
 
-- `src/pulse/catalog/proofs/fin-b04-sql-messages.mjs (queries: chat, texts, push, threads)
-- `src/pulse/catalog/proofs/fin-b04-sql-flows.mjs (queries: contracts, vault, letters, rounds, new clients, social)
-- `src/pulse/catalog/proofs/fin-b04-display-results.mjs (the 27 contracts, keyed by control; the practice row)
-- `src/pulse/catalog/proofs/fin-b04-sql-lite.mjs (read-only SQL stand-in for tests, column catalog from migrations)
-- `src/pulse/catalog/proofs/fin-b04-display-fixtures.mjs (healthy rows plus every single break, ok variant and ignored row)
-- `src/pulse/catalog/proofs/fin-b04-display-results.test.mjs (the query tests, the drop-one-condition sweep, writer guards)
-- `src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs (browser practice test, 5 tests)
+## Honest numbers: breaks put in on purpose and put back
+
+| Where the product (or the SQL) was broken | Count | Result |
+|---|---|---|
+| Nested SQL conditions, one at a time, in `fin-b04-sql-messages.mjs` and `fin-b04-sql-flows.mjs` (opt-out channel, opt-in after send, failed recovered by an earlier / other-client / failed later text, stuck threshold, owner shift exemption, other person's shift, quiet-hours edges, prove file, rule scope / warn / inactive / later / other company / regex / phrase, hold bound, task role, undefined topic, signing email address / signer id / representative removed or other client's, failed / stuck email, resend of another signer, any client's pay link, disposition, combined agreement, price list, deck wording presence / inactive / placeholder, any generator's file, education route, delivery email failed, lost round event, grace, failed text, email opt-out, opted-in, welcome failed, any board's card, phone shape, created name, approver role, active account, past time) | 55 | all 55 red after fixtures were added for 9 that first survived or did not match |
+| Every top-level condition dropped one at a time (the drop-one sweep inside `fin-b04-display-results.test.mjs`, now 21 queries) | all | a condition no fixture row can tell from its absence fails the test; none left |
+| `public/app/present.js`, cockpit | 8 | all red |
+| `public/app/client-portal.html`, prefill | 6 | all red |
+| `public/app/pipeline.html` and `api/dashboard/pipeline.mjs`, column paint and drop | 6 | all red |
+| `src/push/store.mjs` | 8 | all red |
+| `api/chat/ask.mjs` | 12 | all red |
+
+The product files were restored with a byte copy after each run; `git status` shows no product file changed.
+
+A real Postgres could not be run on this Mac (no local Postgres, no install). The queries are run by `fin-b04-sql-lite.mjs`,
+which reads the SQL text, uses three-valued logic like Postgres, and refuses a table or column the repo's migrations do not define.
+Two bugs it found in the new SQL (a `NULL = 'KEY'` that read as "not bad", and a dollar sign next to a digit in a query text) were
+fixed. Differences from Postgres that remain possible: regex dialect on rows I cannot see (the 047 trigger validates every stored
+regex in Postgres), `LIKE` with a literal `%` in a phrase (a phrase is read with `strpos`, so none), and plan time on a large
+`messages` table (every query is bounded by company and a 30 day window; the correlated reads run per bad-candidate row).
+
+## Files added or changed
+
+Added:
+
+- `src/pulse/catalog/proofs/fin-b04-portal-prefill.test.mjs` (8 tests, row 8)
+- `src/pulse/catalog/proofs/fin-b04-pipeline-columns.test.mjs` (2 tests, rows 13 to 16)
+- `src/pulse/catalog/proofs/fin-b04-push-store.test.mjs` (10 tests, row 9)
+- `src/pulse/catalog/proofs/fin-b04-chat-ask.test.mjs` (10 tests, rows 11 and 12)
+
+Changed (all of them mine from generation 1):
+
+- `fin-b04-sql-messages.mjs`, `fin-b04-sql-flows.mjs` (the queries), `fin-b04-sql-lite.mjs` (`strpos`)
+- `fin-b04-display-results.mjs` (rows, the practice rows, the one not-attachable row)
+- `fin-b04-display-fixtures.mjs` (every break and every "looks odd but is right" row, run by the 823 tests)
+- `fin-b04-display-results.test.mjs` (823 tests), `fin-b04-present-cockpit.test.mjs` (17 tests)
 - `ops/workflows/finish-853-2026-10-14/manifest-b04.md` (this file)
 
 ## Shared lines touched (the integrator must merge these)
 
 | File | Change |
 |---|---|
-| `src/pulse/catalog/proofs/display-saved-result.mjs` | +1 import line; `...FIN_B04_RESULT_CONTRACTS,` added at the end of `DISPLAY_RESULT_CONTRACTS`; the always-red `gap("Held-for-quiet-hours result...")` entry removed (the same control now has a query) |
-| `src/pulse/catalog/proofs/display-proof-cases.mjs` | +1 import line; `...FIN_B04_DISPLAY_PROOF_CASES,` added to the plug-in list |
-| `scripts/pulse/compile-catalog.mjs` | +1 import line; `staffProofCases: [...STAFF_UI_PROOF_CASES, ...FIN_B04_DISPLAY_PROOF_CASES]` (a live check only reaches the lane if its row is in that list; the four rows a browser spec already presses are left out of my list so they keep that evidence) |
-| `src/pulse/coverage/gap-catalog-display.test.mjs` | guard numbers: contracts and cases 40 to 66; pass-capable 27 to 54; always-red 13 to 12 (three places); unique queries 27 to 49 (two places); title 40 to 66 |
-| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 647 (23 contract rows, the held row and the cockpit row left red) |
+| `src/pulse/catalog/proofs/display-saved-result.mjs` | unchanged this cycle (generation 1 added the import and the spread; the always-red entry for the Held-for-quiet-hours control stays removed) |
+| `src/pulse/catalog/proofs/display-proof-cases.mjs` | unchanged this cycle |
+| `scripts/pulse/compile-catalog.mjs` | unchanged this cycle |
+| `src/pulse/coverage/gap-catalog-display.test.mjs` | guard numbers: contracts and cases 40 to 64; pass-capable 27 to 52; always-red 13 to 12 (three places); unique queries 27 to 48 (two places); title 40 to 64 |
+| `src/pulse/catalog/proofs/display-proof-cases.test.mjs` | red count 672 to 648 (the one not-attachable row stays red) |
 | `src/pulse/catalog/generated.json` | recompiled with `node scripts/pulse/compile-catalog.mjs`; expect a conflict, take the integrator's compile |
 
 Other display batches change the same guard numbers. Add the decreases together and use the number the tests print.
-My part: contracts +26 (27 new, 1 replaced), always-red -1, unique queries +22, red count -25.
+My part: contracts +24 (25 rows with a query, 1 always-red entry replaced), always-red -1, unique queries +21, red count -24.
 
 ## Product findings (not fixed)
 
-1. `api/closer-deck.mjs` has a role gate and no shift gate, and its pay-link and soft-pull texts call `composeAndSend` with no `shiftId`. A closer who has not clocked in can send them, and the `text_sent` event they leave has no shift. The staff-reply check leaves those two idempotency prefixes out on purpose.
-2. The coverage map text for the messaging "Blocked result" says an opt-out raises a task. `gate.mjs` raises a task only for restricted wording; an opt-out clears on its own. The check judges what the code does.
-3. The Social Studio 'Could not be sent' tab can never fill: the page reads `marketing_content_queue`, and failed posts live in `social_posts`. Confirmed again while reading `api/social/posts.mjs`.
-4. 'Queue it' without an account only marks the queue row `queued` with a time. Nothing hands that row to the sender, so it is never published. The check only judges that such a row is internally consistent.
-5. `netlify/functions/staff-message-sweeper.mjs` header says held texts go out at 11:00 Arizona. The dispatcher and gate use 08:00 (`QUIET_END_HOUR = 8`). The comment is stale, the code is right, and the check reads 08:00.
-6. The chat widget's Ask and Knowledge modes save nothing, so nothing can tell whether a staff question was answered.
-7. `s-00-welcome` welcomes a client once (a lock on the client file). A client created from the pipeline form who was welcomed earlier through another door gets no new welcome. That is by design; the check therefore asks whether the client was ever welcomed.
+1. `api/closer-deck.mjs` has a role gate and no shift gate, and its pay-link and soft-pull messages (texts and emails) call
+   `composeAndSend` with no `shiftId`. A closer who has not clocked in can send them. The staff-reply check leaves those two
+   idempotency prefixes out on purpose.
+2. The coverage map text for the messaging "Blocked result" says an opt-out raises a task. `gate.mjs` raises a task only for
+   restricted wording; an opt-out clears on its own. The check judges what the code does.
+3. The Social Studio 'Could not be sent' tab can never fill (reads `marketing_content_queue`; failed posts live in `social_posts`).
+4. 'Queue it' without an account only marks the queue row `queued` with a time. Nothing hands that row to the sender, so it is never
+   published. The page says "Past its time, it goes out on the next send". A row more than a day past its time now reads red.
+5. `netlify/functions/staff-message-sweeper.mjs` header says held texts go out at 11:00 Arizona. The dispatcher and gate use 08:00.
+   The comment is stale, the code is right, and the check reads 08:00.
+6. `revokeSubscription` (turning notifications off) writes no event and no log, so "off" leaves nothing a query can read.
+7. `s-00-welcome` welcomes a client once (a lock on the client file); a client created from the pipeline form who was welcomed earlier
+   through another door gets no new welcome. By design; the check asks whether the client was ever welcomed.
+8. A second save of the same email from the pipeline form with another product writes the new product to the client file, but the
+   event is deduped by its key and keeps the first product. The check only requires a LISTED product on the file, not this
+   event's product.
+9. `safeError` (`src/http/health.mjs`) scrubs database hosts but passes the rest of an error message through, so a model failure
+   message reaches the staff screen as written.
+10. The deck's "Send contract" says "No agreement is set up for this offer yet" and saves nothing when a wording is missing. A
+    missing wording is only visible from the wordings table; this batch reads it there (row 2).
 
-## Things I found while writing the queries (each one changed a query, so they are recorded)
-
-- An authorized rep's sign-in account has no client id of its own (`accounts_subject_ck`), so the push-device check accepts that account kind. Without this it would have gone red for every rep.
-- The closer deck's pay-link and soft-pull texts carry no shift (finding 1), so the shift rule skips them.
-- A text held overnight, or retried by the sweeper, is sent outside the request and leaves no `text_sent` event, so the shift rule only judges texts sent on the first try with no schedule.
-- The approvals workflow (f-04) says nothing unless `approvedAmount` is above zero, so the approved-column check only expects a text and email when the event carries an amount.
-- Opted-out clients get no text from `sendTemplated`, so a missing text is only judged when the client is not opted out.
-
-## Can each check fail? Done on purpose, then put back
-
-- Every condition in every query (WHERE and FILTER, one at a time, 289 conditions across 22 queries) is dropped in a test and some fixture row must change its answer.
-  The first run found about 90 conditions nothing proved; each was either removed as redundant or given a fixture. The sweep test now keeps it that way.
-- Fixtures: 212 single breaks, 50 "looks odd but right" rows, 76 ignored rows, and every break again inside a second company that must never be counted.
-- Cockpit test, product broken in `public/app/present.js` six ways (FUND line always shown, REPAIR shown to funding, EDU never shown, first name not filled, close wrap fixed to funding, line prefix not stripped): red each time, file restored with `git checkout`.
-- Writers broken on purpose (each turned `fin-b04-display-results.test.mjs` red, then restored): a second `scheduled_at` writer, the round key format, the portal note status, the quiet-end hour, a new gate clearing code, the owner shift exemption widened, the welcome template key renamed.
-
-## Commands run and results
-
-Measured on this Mac while other builders ran the same group (load average 11 to 68). Nothing was pushed.
+## Commands run and results (this Mac, repair cycle 1)
 
 | Command | Result |
 |---|---|
-| `node scripts/pulse/count-not-proved.mjs` (before, on `fin/base`) | total 853 (routes 135, display 680, flow 23, reads 15); this batch 28 of 28 open |
-| `node scripts/pulse/count-not-proved.mjs` (after) | total 825 (display 652); this batch 0 of 28 open |
+| `node --test src/pulse/catalog/proofs/fin-b04-display-results.test.mjs` | 823 of 823 pass |
+| `node --test src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs` | 17 of 17 pass (5 old, 12 new) |
+| `node --test src/pulse/catalog/proofs/fin-b04-portal-prefill.test.mjs` | 8 of 8 pass |
+| `node --test src/pulse/catalog/proofs/fin-b04-pipeline-columns.test.mjs` | 2 of 2 pass |
+| `node --test src/pulse/catalog/proofs/fin-b04-push-store.test.mjs` | 10 of 10 pass |
+| `node --test src/pulse/catalog/proofs/fin-b04-chat-ask.test.mjs` | 10 of 10 pass |
+| `node --test src/pulse/catalog/*.test.mjs` plus `gap-catalog-display`, `gap-catalog-flow`, `gap-catalog-reads`, `gap-door-batch-routes`, `modules`, `tripwires`, `na-conditions`, `self-audit`, `no-unfenced-transmit` | 234 of 234 pass |
+| `node --test display-proof-cases.test.mjs` (the two guard tests, then the focused every-named-test run) | 3 of 3 pass |
 | `node scripts/pulse/compile-catalog.mjs --check` | fresh (exit 0) |
-| `node --test src/pulse/catalog/proofs/fin-b04-display-results.test.mjs` | 415 of 415 pass |
-| `node --test src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs` | 5 of 5 pass, three runs in a row; red on each of 6 product breaks |
-| Differential run against real Postgres schema (scratch, PGlite) | 382 variants, 0 differences |
-| `node --test src/pulse/coverage/gap-catalog-display.test.mjs` | 11 of 11 pass (new guard numbers) |
-| `node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs` (all 3 tests, with the focused run of every named test) plus my two test files, `gap-catalog-display`, `compiler`, `display-recipes` | 454 of 454 pass |
-| Catalog and lane group: `src/pulse/catalog/*.test.mjs`, `src/pulse/catalog/proofs/*.test.mjs`, `gap-catalog*`, `gap-door-batch*` (started before the last two edits) | 2,090 of 2,091 pass. The one failure is `flow-result-proofs` "every test named by a flow proof passes": its child run of `src/sales/closer-deck.test.mjs` was cut by the 120 second limit under load. That file alone: 27 of 27 pass. Not a file of this batch; the same load flake is in the earlier slice manifests. |
-| `node --test src/pulse/na-conditions.test.mjs src/lib/no-unfenced-transmit.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/tripwires.test.mjs src/pulse/self-audit.test.mjs` | 164 of 164 pass |
-| `npm run lint` | 3,569 files parse clean |
+| `node scripts/pulse/count-not-proved.mjs` | 826 total, this batch 1 of 28 open |
+| `npm run lint` | 3,573 files parse clean |
 
-Nothing in this batch sends a text, an email or a vendor call, and nothing writes to a database. The queries are SELECT only.
+The third test in `display-proof-cases.test.mjs` ("the focused proof test runs every executable test named by every case") runs
+every named test of every batch, browser specs included. It passed in this cycle (1 of 1), on a Mac with other builders running.
+In generation 1 it failed on load flakes that were not this batch's files.
 
-## Re-verified after the resume (2026-10-14, about 22:30 Arizona)
+Nothing in this batch sends a text, an email or a vendor call, and nothing writes to a database. The queries are SELECT only, and
+the practice tests run against stand-ins held in memory.
 
-The branch was found intact after the Mac restart (HEAD `6a40e7328`, clean tree). Nothing in the product or the checks was changed.
-Re-measured from a clean export of `fin/base` and from this branch with `scripts/pulse/count-not-proved.mjs`:
+---
 
-| | Open rows of this batch |
-|---|---|
-| `fin/base` (all lanes 853, display 680) | 28 of 28 |
-| `fin/b04` (all lanes 825, display 652) | 0 of 28 |
+# Generation 1 (kept for the record)
 
-Also run again:
+Built 28 rows: 27 live checks and 1 practice test. Whole display lane 680 open before, 652 after; all lanes 853 before, 825
+after. The checker then found the weaknesses repaired above. What generation 1 built and still stands: the read-only SQL stand-in
+(`fin-b04-sql-lite.mjs`), the fixture scheme (healthy rows, single breaks, looks-odd-but-right rows, ignored rows, every break
+again inside a second company that must never be counted), the drop-one-condition sweep, and the writer pins in
+`fin-b04-display-results.test.mjs` (the dispatcher is the only writer of `messages.scheduled_at`, the shift exemption is the owner
+alone, the gate's clearing codes, the quiet window, the portal note and staff send shapes, the round, contract, letter, pipeline
+and social writers).
 
-- `node --test src/pulse/catalog/proofs/fin-b04-display-results.test.mjs`: 415 of 415 pass.
-- `node --test src/pulse/catalog/proofs/fin-b04-present-cockpit.test.mjs`: 5 of 5 pass.
-- `node --test src/pulse/coverage/gap-catalog-display.test.mjs`: 11 of 11 pass.
-- `node scripts/pulse/compile-catalog.mjs --check`: fresh (exit 0).
-- `display-proof-cases.test.mjs`, the two guard tests (every case names one exact row; red count 647): pass.
-- One more break on purpose: the `status IS DISTINCT FROM 'received'` condition dropped from `PORTAL_MESSAGE_SQL` turned
-  `portal-message: BAD when the status is not received` red (414 pass, 1 fail); restored with `git checkout`.
-- The focused run of every named test in `display-proof-cases.test.mjs` (the third test in that file) was run once on a Mac at
-  load average 60 to 100. All 415 query tests and all 5 cockpit tests of this batch passed inside it. The run as a whole
-  failed on browser specs that are not this batch: `agent-editor-promote-demote` (wait for the saved "Escalate to" person),
-  `display-contracts-ef-public` (browser closed after its 90 second limit), `bank-amount-suggestion` and `cc-tab-ideas`
-  (30 second limits), and the slice-2 wrapper. These are the same load failures the slice manifests name.
+The first run also found these while writing the queries (each one changed a query): an authorized rep's sign-in account has no
+client id of its own; a held text, or one retried by the sweeper, is sent outside the request and leaves no `text_sent` event; the
+approvals workflow (f-04) says nothing unless `approvedAmount` is above zero; opted-out clients get no text from `sendTemplated`.

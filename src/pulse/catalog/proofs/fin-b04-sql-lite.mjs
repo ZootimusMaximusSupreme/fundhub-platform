@@ -714,6 +714,10 @@ export function runParsed(tree, { tables = {}, params = [], now, catalog } = {})
       case "lower": return a[0] === null ? null : String(a[0]).toLowerCase();
       case "upper": return a[0] === null ? null : String(a[0]).toUpperCase();
       case "length": return a[0] === null ? null : String(a[0]).length;
+      case "strpos": {
+        if (a[0] === null || a[1] === null) return null;
+        return String(a[0]).indexOf(String(a[1])) + 1;
+      }
       case "now": return clock;
       case "split_part": {
         if (a[0] === null || a[1] === null || a[2] === null) return null;

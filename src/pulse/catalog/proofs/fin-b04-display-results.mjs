@@ -1,14 +1,22 @@
-// Batch 04 of "finish the 853": live checks for 27 customer-message screen
+// Batch 04 of "finish the 853": live checks for the customer-message screen
 // controls (client chat, texts, contracts, letters, funding rounds, new clients,
-// social posts). The 28th control in the batch, the closer's cockpit script,
-// leaves no saved result, so a browser practice test holds it instead (below).
+// social posts). The closer's cockpit script leaves no saved result, so a browser
+// practice test holds it instead (below).
 //
 // Each entry ties ONE control, by its exact words in the coverage map, to a
 // read-only query (fin-b04-sql-messages.mjs, fin-b04-sql-flows.mjs). The display
 // lane runs the query for the company and goes red on the first wrong saved
 // result. A control nobody has used yet has no results; those are green until the
-// first wrong one (emptyAs "quiet"). The send-panel row has no such grace: a
-// company with no sendable wording at all is red.
+// first wrong one (emptyAs "quiet"). Two rows have no such grace: the send-panel
+// row (a company with no sendable wording at all is red) and the deck's Send
+// contract row (it is judged from the company, and a missing wording is red).
+//
+// REPAIR CYCLE 1 (2026-10-15). An independent checker broke the product on
+// purpose against the first version and found checks that stayed green. Every
+// query was strengthened. Three controls had no saved result to read for part of
+// what they claim, so a practice test holds that part (the push button, the two
+// chat widget shell rows). One control cannot be judged at all without a product
+// change and was taken OFF the board again: FIN_B04_NOT_ATTACHABLE below.
 //
 // This file must not import display-saved-result.mjs (that file imports this one).
 
@@ -19,12 +27,12 @@ import {
   MESSAGE_HELD_SQL,
   PORTAL_CALL_REQUEST_SQL,
   PORTAL_MESSAGE_SQL,
-  PUSH_DEVICE_SQL,
   STAFF_MESSAGE_SQL,
   THREAD_LINK_SQL
 } from "./fin-b04-sql-messages.mjs";
 import {
   CONTRACT_BLANKS_SQL,
+  CONTRACT_DECK_SEND_SQL,
   CONTRACT_SENT_SQL,
   CONTRACT_WORDINGS_SQL,
   DECK_DELIVERABLES_SQL,
@@ -35,13 +43,22 @@ import {
   ROUND_STARTED_SQL,
   ROUND_SUBMITTED_NOTIFY_SQL,
   SOCIAL_APPROVED_SQL,
-  SOCIAL_FAILED_SQL,
   SOCIAL_QUEUED_SQL,
   VAULT_REJECT_SQL
 } from "./fin-b04-sql-flows.mjs";
 
 const LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 export const FIN_B04_TEST = "src/pulse/catalog/proofs/fin-b04-display-results.test.mjs";
+export const FIN_B04_PORTAL_PREFILL_TEST = "src/pulse/catalog/proofs/fin-b04-portal-prefill.test.mjs";
+export const FIN_B04_PIPELINE_COLUMNS_TEST = "src/pulse/catalog/proofs/fin-b04-pipeline-columns.test.mjs";
+export const FIN_B04_CHAT_ASK_TEST = "src/pulse/catalog/proofs/fin-b04-chat-ask.test.mjs";
+export const FIN_B04_PUSH_TEST = "src/pulse/catalog/proofs/fin-b04-push-store.test.mjs";
+
+// The four Card Stacking column rows also say "shows count and funding est.". The
+// number is worked out when the board is read, from the same cards, so no saved
+// result holds it; the page practice test holds what the column shows and what a
+// dropped card posts.
+const COLUMN_PAINT = Object.freeze([FIN_B04_PIPELINE_COLUMNS_TEST]);
 
 function result(row) {
   return Object.freeze({
@@ -66,18 +83,14 @@ export const FIN_B04_ROWS = Object.freeze([
   Object.freeze({
     sourceFile: "desks-a.json",
     surface: "client-portal.html",
-    control: "Turn on / off notifications button (web push subscribe)",
-    key: "push-device",
-    sql: PUSH_DEVICE_SQL,
-    requirement: "Every saved notification device must belong to a real client of this company, hold its three saved secrets, be turned off or expired only after it was made, and be live for one client only."
-  }),
-  Object.freeze({
-    sourceFile: "desks-a.json",
-    surface: "client-portal.html",
     control: "Unlock modal: Ask an advisor / Talk to an advisor buttons (open chat with topic)",
     key: "portal-call-request",
     sql: PORTAL_CALL_REQUEST_SQL,
-    requirement: "A call request sent from the unlock modal must land on the client's own thread with a real topic after the words 'I would like a call about:'."
+    // The buttons save nothing themselves: they open the chat with a sentence typed
+    // in for the client. The saved result is the note the client then sends, and the
+    // sentence they are handed is held by the page practice test named here too.
+    extraTests: Object.freeze([FIN_B04_PORTAL_PREFILL_TEST]),
+    requirement: "A call request sent from the unlock modal must land on the client's own thread with a real topic after the words 'I would like a call about:', never empty and never the word a broken variable prints."
   }),
   Object.freeze({
     sourceFile: "desks-a.json",
@@ -85,7 +98,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Contract panel: Send button",
     key: "contract-sent",
     sql: CONTRACT_SENT_SQL,
-    requirement: "Every contract sent in the last 30 days must have its client, its wording, a named sender, a link expiry after the send time and a signer, and the signing email must be queued within an hour when an address is on file."
+    requirement: "Every contract sent in the last 30 days must have its client, its wording, a registered document, a named sender, a link expiry after the send time and a signer, a wording its chosen offer sells, and the signing email addressed to the signer must be queued within an hour and not failed."
   }),
   Object.freeze({
     sourceFile: "desks-a.json",
@@ -93,7 +106,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Contract panel: wording select and blank-field inputs",
     key: "contract-blanks",
     sql: CONTRACT_BLANKS_SQL,
-    requirement: "Every sent contract must hold a value for each blank its wording marks as required, so no agreement goes out with a required blank empty."
+    requirement: "Every sent contract must hold a value for each blank its wording marks as required, each blank the price list fills must hold the price list's figure, and the wording must be one the chosen offer sells."
   }),
   Object.freeze({
     sourceFile: "desks-a.json",
@@ -119,7 +132,7 @@ export const FIN_B04_ROWS = Object.freeze([
     viaStaffUi: true,
     key: "message-blocked",
     sql: MESSAGE_BLOCKED_SQL,
-    requirement: "Every staff text or email that was blocked in the last 30 days must keep a reason and the words, and a block for restricted wording must have a task with an owner raised for a person."
+    requirement: "Every staff text or email blocked in the last 30 days must keep a reason and the words, and a block for restricted wording must have a task owned by a real staff role; and no staff text or email may have been sent while the client was opted out or with words a restricted-wording rule matches."
   }),
   Object.freeze({
     sourceFile: "desks-c.json",
@@ -128,7 +141,7 @@ export const FIN_B04_ROWS = Object.freeze([
     viaStaffUi: true,
     key: "message-held",
     sql: MESSAGE_HELD_SQL,
-    requirement: "Every staff text with a saved send time must be an outbound text whose time is the next 8:00 am Arizona after it was written, with its words kept; email is never held."
+    requirement: "Every staff text with a saved send time must be an outbound text held to the next 8:00 am Arizona (no more than 12 hours after the moment it was held) with its words kept; no staff text may have been sent between 8:00 pm and 8:00 am Arizona, and none may be blocked for quiet hours."
   }),
   Object.freeze({
     sourceFile: "desks-c.json",
@@ -136,7 +149,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Send button (staff reply to a client by text or email; shift clock-in required)",
     key: "staff-message",
     sql: STAFF_MESSAGE_SQL,
-    requirement: "Every staff reply must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, and a text sent at once must be logged on that person's open shift."
+    requirement: "Every staff reply must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, not be failed or stuck, not go to an opted-out client, not be a text sent at night, and be written on that person's open shift."
   }),
   Object.freeze({
     sourceFile: "desks-f.json",
@@ -150,9 +163,10 @@ export const FIN_B04_ROWS = Object.freeze([
     sourceFile: "desks-f.json",
     surface: "present.html (+ present.js, contract-send.js)",
     control: "'Send contract': picks the agreement that matches the offer, creates the draft, sends it, returns the sign link",
-    key: "contract-sent",
-    sql: CONTRACT_SENT_SQL,
-    requirement: "Every contract sent in the last 30 days must have its client, its wording, a named sender, a link expiry after the send time and a signer, and the signing email must be queued within an hour when an address is on file."
+    key: "contract-deck-send",
+    sql: CONTRACT_DECK_SEND_SQL,
+    requirement: "Every wording the deck can pick must exist as an active real agreement, and every contract sent in the last 30 days must be one a chosen offer sells, with a registered document, a signer, and the signing email addressed to the signer and not failed.",
+    strict: true
   }),
   Object.freeze({
     sourceFile: "desks-f.json",
@@ -160,7 +174,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "'Send deliverables package now' (education route): saves the 5 UnderwriteIQ files to the portal and emails the client",
     key: "deck-deliverables",
     sql: DECK_DELIVERABLES_SQL,
-    requirement: "Every client who got a deliverables package must have the four core UnderwriteIQ pages saved as real files on an offer that allows letters, and the funding delivery email queued within an hour."
+    requirement: "Every client the deck produced a pack for on the education route must have the four core UnderwriteIQ pages saved by this button as real files, and the funding delivery email queued within an hour and not failed."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
@@ -168,7 +182,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Message > Client: paste a client id and send (goes through the compliance gate as a text)",
     key: "staff-message",
     sql: STAFF_MESSAGE_SQL,
-    requirement: "Every staff text or email sent from the chat widget must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, and a text sent at once must be logged on that person's open shift."
+    requirement: "Every staff text or email sent from the chat widget must name the staff member, sit on the client's own thread and channel, keep its words, show a provider receipt once sent, not be failed or stuck, not go to an opted-out client, not be a text sent at night, and be written on that person's open shift."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
@@ -182,33 +196,37 @@ export const FIN_B04_ROWS = Object.freeze([
     sourceFile: "desks-e.json",
     surface: "public/app/pipeline.html",
     control: "Funding: Card Stacking column 'Apply Now' (apply_now): shows count and funding est.; accepts a dropped card",
+    extraTests: COLUMN_PAINT,
     key: "round-started",
     sql: ROUND_STARTED_SQL,
-    requirement: "Every card-stacking round.started event must carry the client, the apply_now stage, the round number and its key, and an hour later the round row and the client text must exist."
+    requirement: "Every card sitting in the Apply Now column for over an hour must have its round.started event with the stage, rail, product, round number and key, the round row, and a client text that was not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
     surface: "public/app/pipeline.html",
     control: "Funding: Card Stacking column 'Approved' (approved): shows count and funding est.; accepts a dropped card",
+    extraTests: COLUMN_PAINT,
     key: "round-approved",
     sql: ROUND_APPROVED_SQL,
-    requirement: "Every card-stacking round.approved event must carry the client, the approved stage, the round number and its key, and an hour later the round row and the client text and email must exist."
+    requirement: "Every card sitting in the Approved column for over an hour must have its round.approved event with the stage, rail, product, round number and key, the round row, and (when an approved amount is above zero) a client text and email that were not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
     surface: "public/app/pipeline.html",
     control: "Funding: Card Stacking column 'Closed' (closed): shows count and funding est.; accepts a dropped card",
+    extraTests: COLUMN_PAINT,
     key: "round-closeout",
     sql: ROUND_CLOSEOUT_NOTIFY_SQL,
-    requirement: "Every card-stacking round.closeout event must carry the client, the closed stage, the round number and its key, and an hour later the round row and the client text and email must exist."
+    requirement: "Every card sitting in the Closed column for over an hour must have its round.closeout event with the stage, rail, product, round number and key, the round row, and a client text and email that were not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
     surface: "public/app/pipeline.html",
     control: "Funding: Card Stacking column 'Round Submitted' (round_submitted): shows count and funding est.; accepts a dropped card",
+    extraTests: COLUMN_PAINT,
     key: "round-submitted",
     sql: ROUND_SUBMITTED_NOTIFY_SQL,
-    requirement: "Every card-stacking round.submitted event must carry the client, the round_submitted stage, the round number and its key, and an hour later the round row and the client text and email must exist."
+    requirement: "Every card sitting in the Round Submitted column for over an hour must have its round.submitted event with the stage, rail, product, round number and key, the round row, and a client text and email that were not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
@@ -216,7 +234,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "MOVE menu: Card Stacking -> funding_card_stacking / apply_now (starts a funding round and texts the client)",
     key: "round-started",
     sql: ROUND_STARTED_SQL,
-    requirement: "Every card-stacking round.started event must carry the client, the apply_now stage, the round number and its key, and an hour later the round row and the client text must exist."
+    requirement: "Every card sitting in the Apply Now column for over an hour must have its round.started event with the stage, rail, product, round number and key, the round row, and a client text that was not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
@@ -225,7 +243,7 @@ export const FIN_B04_ROWS = Object.freeze([
     viaStaffUi: true,
     key: "pipeline-new-client",
     sql: PIPELINE_NEW_CLIENT_SQL,
-    requirement: "Every client saved from the pipeline New Client form must keep the name, a real email, the phone and a listed product on the client file, and an hour later the board card and the welcome email and text must exist."
+    requirement: "Every client saved from the pipeline New Client form must have the typed email, a first name, a dialable phone and a listed product on the client file, and an hour later a card on the Sales board and the welcome email and text that were not lost."
   }),
   Object.freeze({
     sourceFile: "desks-e.json",
@@ -234,7 +252,7 @@ export const FIN_B04_ROWS = Object.freeze([
     viaStaffUi: true,
     key: "pipeline-new-client",
     sql: PIPELINE_NEW_CLIENT_SQL,
-    requirement: "Every entry.captured event the pipeline-clients route emits must carry the client and keep the name, email, phone and product, and an hour later the board card and the welcome email and text must exist."
+    requirement: "Every entry.captured event the pipeline-clients route emits must find or create a client file with the typed email, a first name and a dialable phone, and an hour later a card on the Sales board and the welcome email and text that were not lost."
   }),
   Object.freeze({
     sourceFile: "desks-c.json",
@@ -242,7 +260,10 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Chat widget on every desk: Ask (AI answer), Knowledge, Message staff, Message a client",
     key: "chat-widget",
     sql: CHAT_WIDGET_SQL,
-    requirement: "Every message sent from the chat widget by staff must be a delivered note on an internal thread the sender is on, or a client text or email that meets the staff reply rules; Ask and Knowledge save nothing."
+    // Ask and Knowledge save nothing; the route that answers them is run by this
+    // practice test with its model and retrieval handed in.
+    extraTests: Object.freeze([FIN_B04_CHAT_ASK_TEST]),
+    requirement: "Every message sent from the chat widget by staff must be a delivered note on an internal thread the sender is on, or a client text or email that meets the staff reply rules; the Ask and Knowledge answers are held by the route's practice test."
   }),
   Object.freeze({
     sourceFile: "desks-b.json",
@@ -250,7 +271,8 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Chat widget launcher and its modes (Ask, Knowledge, Message: a teammate, or an SMS to a client by id)",
     key: "chat-widget",
     sql: CHAT_WIDGET_SQL,
-    requirement: "Every message sent from the chat widget by staff must be a delivered note on an internal thread the sender is on, or a client text or email that meets the staff reply rules; Ask and Knowledge save nothing."
+    extraTests: Object.freeze([FIN_B04_CHAT_ASK_TEST]),
+    requirement: "Every message sent from the chat widget by staff must be a delivered note on an internal thread the sender is on, or a client text or email that meets the staff reply rules; the Ask and Knowledge answers are held by the route's practice test."
   }),
   Object.freeze({
     sourceFile: "desks-f.json",
@@ -258,15 +280,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Held row (owner and admin only): 'Approve it' (asks first; the post goes out at its time)",
     key: "social-approved",
     sql: SOCIAL_APPROVED_SQL,
-    requirement: "Every post a person approved in the last 30 days must name the staff member who approved it, be on its way out or already gone, and be mirrored as scheduled on that partner's queue."
-  }),
-  Object.freeze({
-    sourceFile: "desks-f.json",
-    surface: "social-studio.html",
-    control: "Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip)",
-    key: "social-failed",
-    sql: SOCIAL_FAILED_SQL,
-    requirement: "Every post that gave up must show at least 3 tries and the reason, belong to a real partner, and have a social_post_failed job opened for a person."
+    requirement: "Every post a person approved in the last 30 days must name an owner or admin as the approver, be on its way out with a send time (or already gone), not be left queued an hour past its time on an active account, and be mirrored as scheduled on that partner's queue."
   }),
   Object.freeze({
     sourceFile: "desks-f.json",
@@ -274,7 +288,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Waiting row: 'Queue it' with its own time box (sets or keeps the send time, no account needed)",
     key: "social-queued",
     sql: SOCIAL_QUEUED_SQL,
-    requirement: "Every post waiting in the queue must have its words and a real partner and must not be handed to a social account, because queue it picks no account."
+    requirement: "Every post waiting in the queue must have its words, a real partner, no social account, and an hour after it was queued a send time that is not more than a day past."
   }),
 ]);
 
@@ -285,14 +299,17 @@ export const FIN_B04_RESULT_CONTRACTS = Object.freeze(FIN_B04_ROWS.map(result));
 // Four rows already sit in display-batch-staff-ui.mjs (a browser spec presses
 // them, and that makes them deep rows). They get this query through the control
 // name alone, so they are left out here to keep their browser evidence.
-const CONTRACT_CASES = FIN_B04_ROWS.filter((row) => !row.viaStaffUi).map((row) => Object.freeze({
-  sourceFile: row.sourceFile,
-  surface: row.surface,
-  control: row.control,
-  depth: "deep",
-  evidence: `${FIN_B04_TEST}; ${LANE}`,
-  tests: Object.freeze([FIN_B04_TEST])
-}));
+const CONTRACT_CASES = FIN_B04_ROWS.filter((row) => !row.viaStaffUi).map((row) => {
+  const tests = [FIN_B04_TEST, ...(row.extraTests || [])];
+  return Object.freeze({
+    sourceFile: row.sourceFile,
+    surface: row.surface,
+    control: row.control,
+    depth: "deep",
+    evidence: `${tests.join("; ")}; ${LANE}`,
+    tests: Object.freeze(tests)
+  });
+});
 
 // One control leaves nothing saved: the closer's cockpit script is drawn on the
 // screen and written nowhere. It is held by a browser practice test instead of a
@@ -302,15 +319,38 @@ export const FIN_B04_PRACTICE_ROWS = Object.freeze([
   Object.freeze({
     sourceFile: "desks-f.json",
     surface: "present.html (+ present.js, contract-send.js)",
-    control: "Cockpit script ('Say this', 'Watch for'): lines filtered by funding / repair / education route, [First Name] filled in, close wrap keyed to the offer actually chosen"
+    control: "Cockpit script ('Say this', 'Watch for'): lines filtered by funding / repair / education route, [First Name] filled in, close wrap keyed to the offer actually chosen",
+    test: FIN_B04_COCKPIT_TEST
+  }),
+  // Turning notifications OFF writes only revoked_at: no event, no log. A revoke
+  // that does nothing is the same saved row as a button nobody pressed, so no
+  // query can judge it. The store's own functions are run against a stand-in for
+  // the one table they touch (fin-b04-push-store.test.mjs).
+  Object.freeze({
+    sourceFile: "desks-a.json",
+    surface: "client-portal.html",
+    control: "Turn on / off notifications button (web push subscribe)",
+    test: FIN_B04_PUSH_TEST
   })
 ]);
-const PRACTICE_CASES = FIN_B04_PRACTICE_ROWS.map((row) => Object.freeze({
+const PRACTICE_CASES = FIN_B04_PRACTICE_ROWS.map(({ test, ...row }) => Object.freeze({
   ...row,
   depth: "deep",
-  evidence: FIN_B04_COCKPIT_TEST,
-  tests: Object.freeze([FIN_B04_COCKPIT_TEST])
+  evidence: test,
+  tests: Object.freeze([test])
 }));
+
+// Controls this batch looked at and could NOT make honest, with the exact reason.
+// They carry no query and no case, so the coverage map keeps them NOT_PROVED.
+// A fresh reader is invited to challenge each reason.
+export const FIN_B04_NOT_ATTACHABLE = Object.freeze([
+  Object.freeze({
+    sourceFile: "desks-f.json",
+    surface: "social-studio.html",
+    control: "Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip)",
+    reason: "The tab cannot show a failed post at all: the page lists GET /api/social/posts, which reads marketing_content_queue, whose status check (db/migrations/243) admits draft, queued, scheduled, awaiting_approval, discarded and blocked and never 'failed'. Failed posts live in social_posts, which the page never reads. Any check of social_posts judges a different table from the one the tab draws, and would stay green while the tab says 'Nothing has failed'; a practice test of the route would have to assert the bug and stay red. The fix is a product change in api/social/posts.mjs."
+  })
+]);
 
 // The same rows as proof cases: compile-catalog reads the contract ones as deep
 // display rows, and display-proof-cases lists them all.

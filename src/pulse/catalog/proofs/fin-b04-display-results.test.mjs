@@ -14,7 +14,7 @@ import { dropOneCondition, parseContract, readColumnCatalog, runContractSql, run
 import { CASES, NOW, ORG, otherCompany, together } from "./fin-b04-display-fixtures.mjs";
 import {
   FIN_B04_RESULT_CONTRACTS, FIN_B04_ROWS, FIN_B04_DISPLAY_PROOF_CASES, FIN_B04_TEST,
-  FIN_B04_PRACTICE_ROWS, FIN_B04_COCKPIT_TEST
+  FIN_B04_PRACTICE_ROWS, FIN_B04_NOT_ATTACHABLE
 } from "./fin-b04-display-results.mjs";
 import { judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 import { STAFF_UI_PROOF_CASES } from "./display-batch-staff-ui.mjs";
@@ -148,9 +148,12 @@ test("every contract is a read-only, company-scoped query with the two counts", 
     assert.doesNotMatch(contract.sql, /\$2/);
   }
   const grace = FIN_B04_RESULT_CONTRACTS.filter((c) => c.emptyAs === "quiet").length;
-  assert.equal(grace, FIN_B04_RESULT_CONTRACTS.length - 1, "only the send panel row has no empty-grace");
-  const strict = FIN_B04_RESULT_CONTRACTS.find((c) => c.emptyAs === undefined);
-  assert.equal(strict.control, "Send contract button (opens panel)");
+  assert.equal(grace, FIN_B04_RESULT_CONTRACTS.length - 2, "only the send panel row and the deck's Send contract row have no empty-grace");
+  const strict = FIN_B04_RESULT_CONTRACTS.filter((c) => c.emptyAs === undefined).map((c) => c.control).sort();
+  assert.deepEqual(strict, [
+    "'Send contract': picks the agreement that matches the offer, creates the draft, sends it, returns the sign link",
+    "Send contract button (opens panel)"
+  ]);
 });
 
 test("every contract names its control exactly as the coverage map does", () => {
@@ -172,13 +175,15 @@ test("every contract names its control exactly as the coverage map does", () => 
   const practice = FIN_B04_PRACTICE_ROWS.length;
   assert.equal(FIN_B04_DISPLAY_PROOF_CASES.length, FIN_B04_ROWS.filter((r) => !r.viaStaffUi).length + practice);
   for (const entry of FIN_B04_DISPLAY_PROOF_CASES) {
-    const cockpit = FIN_B04_PRACTICE_ROWS.some((r) => r.control === entry.control);
-    if (cockpit) {
-      assert.deepEqual(entry.tests, [FIN_B04_COCKPIT_TEST]);
+    const practice = FIN_B04_PRACTICE_ROWS.find((r) => r.control === entry.control);
+    if (practice) {
+      assert.deepEqual(entry.tests, [practice.test]);
+      assert.ok(fs.existsSync(path.join(ROOT, practice.test)), practice.test);
       assert.equal(entry.evidence.includes("gap-catalog-display.mjs"), false, "a practice test row must not claim the live lane");
     } else {
-      assert.deepEqual(entry.tests, [FIN_B04_TEST]);
-      assert.ok(entry.evidence.includes(FIN_B04_TEST));
+      const row = FIN_B04_ROWS.find((r) => r.control === entry.control);
+      assert.deepEqual(entry.tests, [FIN_B04_TEST, ...(row.extraTests || [])]);
+      for (const name of entry.tests) assert.ok(entry.evidence.includes(name));
       assert.ok(entry.evidence.includes("src/pulse/coverage/gap-catalog-display.mjs"));
     }
   }
@@ -186,6 +191,18 @@ test("every contract names its control exactly as the coverage map does", () => 
     const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, row.sourceFile), "utf8"));
     assert.equal(map.filter((r) => r.surface === row.surface && r.control === row.control).length, 1);
     assert.equal(FIN_B04_RESULT_CONTRACTS.some((c) => c.control === row.control), false, "a practice row has no query");
+  }
+});
+
+test("a control this batch could not make honest carries no query and no case, and its map row still exists", () => {
+  assert.equal(FIN_B04_NOT_ATTACHABLE.length, 1);
+  for (const row of FIN_B04_NOT_ATTACHABLE) {
+    const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, row.sourceFile), "utf8"));
+    assert.equal(map.filter((r) => r.surface === row.surface && r.control === row.control).length, 1,
+      `${row.sourceFile} / ${row.surface} / ${row.control}`);
+    assert.ok(row.reason.length > 60, "a not-attachable row says exactly why");
+    assert.equal(FIN_B04_RESULT_CONTRACTS.some((c) => c.control === row.control), false, `${row.control} must have no query`);
+    assert.equal(FIN_B04_DISPLAY_PROOF_CASES.some((c) => c.control === row.control), false, `${row.control} must have no case`);
   }
 });
 
@@ -236,12 +253,61 @@ test("the shift exemption is the owner alone, and the gate's clearing codes are 
   assert.match(gate, /export const GATE_SOURCE = "messaging-gate"/);
 });
 
-test("the quiet window is 8 am Arizona, as the held-text query says", async () => {
+test("the quiet window is 8 pm to 8 am Arizona, as the held-text query says", async () => {
   const gate = await import("../../../messaging/gate.mjs");
+  const messages = await import("./fin-b04-sql-messages.mjs");
   assert.equal(gate.QUIET_END_HOUR, 8);
+  assert.equal(gate.QUIET_START_HOUR, 20);
+  assert.equal(messages.QUIET_END_HOUR, gate.QUIET_END_HOUR);
+  assert.equal(messages.QUIET_START_HOUR, gate.QUIET_START_HOUR);
   assert.equal(gate.QUIET_HOURS_TZ, "America/Phoenix");
   assert.deepEqual([...gate.QUIET_HOURS_CHANNELS], ["sms"]);
   assert.match(SQL_BY_KEY.get("message-held"), /'America\/Phoenix'.*'HH24:MI:SS'\) <> '08:00:00'/s);
+  // a hold is never longer than the window itself: 8 pm to 8 am is 12 hours
+  assert.equal(gate.QUIET_END_HOUR + 24 - gate.QUIET_START_HOUR, 12);
+  assert.match(SQL_BY_KEY.get("message-held"), /m\.last_attempt_at \+ interval '12 hours'/);
+});
+
+test("the product's own hold is the next 8 am Arizona and never more than 12 hours on (the bound the held query reads)", async () => {
+  const { nextQuietHoursEnd } = await import("../../../messaging/dispatch.mjs");
+  const phoenix = (d) => new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Phoenix", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+  }).format(d);
+  // every kind of moment inside the window, 8 pm through 7:59:59 am
+  for (const from of [
+    "2026-10-15T03:00:00.000Z", "2026-10-15T04:30:00.000Z", "2026-10-15T08:00:00.000Z",
+    "2026-10-15T14:59:59.000Z", "2026-10-14T07:00:00.000Z", "2026-12-31T06:00:00.000Z"
+  ]) {
+    const start = new Date(from);
+    const due = nextQuietHoursEnd(start);
+    assert.equal(phoenix(due), "08:00:00", `${from}: the hold is not 8:00 am Arizona`);
+    assert.ok(due > start, `${from}: the hold is not after the moment it was held`);
+    assert.ok(due - start <= 12 * 3600 * 1000, `${from}: the hold is longer than the 12 hours the query allows`);
+  }
+});
+
+test("the task roles the blocked query accepts are the roles a task can be given", async () => {
+  const messages = await import("./fin-b04-sql-messages.mjs");
+  const { TASK_ROLES } = await import("../../../lib/create-task.mjs");
+  assert.deepEqual([...messages.TASK_ASSIGNEE_ROLES].sort(), [...TASK_ROLES].sort());
+});
+
+test("the figures the contract queries compare to are the catalogue's own", async () => {
+  const flows = await import("./fin-b04-sql-flows.mjs");
+  const offers = await import("../../../config/offers.mjs");
+  for (const key of flows.SALE_CONTRACT_KEYS) {
+    assert.deepEqual(flows.CONTRACT_DEFAULTS[key], offers.defaultContractValues({ templateKey: key }), key);
+  }
+  // every offer that names a wording is a wording a sale may send, and the combined one is by tier
+  for (const o of Object.values(offers.OFFERS)) {
+    if (o.contractTemplateKey) assert.ok(flows.SALE_CONTRACT_KEYS.includes(o.contractTemplateKey), o.key);
+  }
+  assert.ok(flows.SALE_CONTRACT_KEYS.includes(offers.resolveContractTemplateKey({ offerKey: null, tier: "FUNDING_PLUS_REPAIR" })));
+  // the deck picks one wording per offer except the soft-pull consent, which has its own button
+  assert.ok(!flows.DECK_CONTRACT_KEYS.includes("SOFT-PULL-CONSENT"));
+  assert.equal(flows.DECK_CONTRACT_KEYS.length, flows.SALE_CONTRACT_KEYS.length - 1);
+  // no dollar sign next to a digit anywhere in a saved query: that shape reads as a bind parameter
+  for (const [key, sql] of SQL_BY_KEY) assert.doesNotMatch(sql, /\$[2-9]/, `${key} has a $N inside its text`);
 });
 
 test("the portal note and the staff send are written the way the queries read them", () => {
@@ -253,8 +319,12 @@ test("the portal note and the staff send are written the way the queries read th
   assert.match(compose, /'outbound',\$4,\$5,\$6,'queued',false,\$7,\$8,\$9,'staff',\$10/);
   assert.match(compose, /kind: "text_sent"/);
   assert.match(compose, /target\.channel === "sms" && result\.outcome === OUTCOME\.SENT/);
-  const internal = read("src/chat/internal.mjs");
-  assert.match(internal, /'outbound', 'internal',[\s\S]{0,80}'delivered', true,[\s\S]{0,60}'staff'/);
+  // the claim that sends a text stamps last_attempt_at; the deferral keeps it
+  const dispatch = read("src/messaging/dispatch.mjs");
+  assert.match(dispatch, /SET status = 'sending', last_attempt_at = now\(\), attempts = m\.attempts \+ 1/);
+  assert.match(dispatch, /SET status = 'queued', scheduled_at = \$2, attempts = GREATEST\(attempts - 1, 0\)/);
+  assert.doesNotMatch(dispatch.slice(dispatch.indexOf("SET status = 'queued', scheduled_at = $2"), dispatch.indexOf("SET status = 'queued', scheduled_at = $2") + 120),
+    /last_attempt_at/, "the deferral must not move the claim time the hold length is read from");
 });
 
 test("the round, contract, letter, pipeline and social writers match what the queries read", async () => {
@@ -311,6 +381,16 @@ test("the round, contract, letter, pipeline and social writers match what the qu
   const social = read("api/social/posts.mjs");
   assert.match(social, /SET approved_at = now\(\), approved_by = \$2, status = 'queued'/);
   assert.match(social, /SET status = 'scheduled', updated_at = now\(\)/);
-  assert.match(read("src/social/scheduler.mjs"), /taskKey: "social_post_failed"/);
-  assert.match(read("src/push/store.mjs"), /revoked_at = now\(\), updated_at = now\(\)/);
+  assert.match(social, /const APPROVAL_ROLES = new Set\(\["owner", "admin"\]\)/);
+  assert.match(social, /SET status = 'queued',\s*scheduled_for = COALESCE\(\$2::timestamptz, scheduled_for\),/);
+  assert.match(read("src/social/scheduler.mjs"), /AND p\.scheduled_for <= COALESCE\(\$2::timestamptz, now\(\)\)/);
+  // a card is moved first and a lost emit is kept (the round queries start from the cards)
+  const cards = read("src/workflows/cards.mjs");
+  assert.match(cards, /UPDATE cards SET stage_id = \$2 WHERE id = \$1/);
+  assert.match(cards, /never undo the move for an emit failure/);
+  // the shift gate is on every staff send route, owner exempt
+  assert.match(read("api/messages.mjs"), /requireActiveShift\(req, res, \{ db, principal, exempt: SUPER_ROLES \}\)/);
+  assert.match(read("api/chat/messages.mjs"), /requireActiveShift\(req, res, \{\s*db, principal, exempt: SUPER_ROLES\s*\}\)/);
+  // the unlock modal hands the client "I would like a call about: <topic>"
+  assert.match(read("src/handlers/client-lifecycle.mjs"), /return \{ firstName: parts\[0\], lastName: null \}/);
 });
