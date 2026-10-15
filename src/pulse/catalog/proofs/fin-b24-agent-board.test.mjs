@@ -39,7 +39,14 @@ after(() => {
     if (v === undefined) delete process.env[k]; else process.env[k] = v;
   }
 });
-beforeEach(() => { wire.length = 0; delete process.env.MESSAGING_DRY_RUN; process.env.BLAND_API_KEY = blandKey; clearRuleCache(); });
+/* THE SEND FENCE IS DOWN IN THESE TESTS, ON PURPOSE (repair cycle 1). With
+   MESSAGING_DRY_RUN unset the phone provider holds every call itself, so a check
+   path that really dialled would still put nothing on the trapped wire and the
+   test could not tell it from a path that only asked. With the fence off, a dial
+   that gets past the door reaches the trapped network and lands on `wire`, so
+   "dials nothing" is a thing this test can see. The network stays trapped: no
+   call can leave the building either way. */
+beforeEach(() => { wire.length = 0; process.env.MESSAGING_DRY_RUN = "0"; process.env.BLAND_API_KEY = blandKey; clearRuleCache(); });
 
 const agentRow = (over = {}) => ({
   code: AGENT, name: "Josh", status: "live", channel: "voice", agent_class: "client_facing",

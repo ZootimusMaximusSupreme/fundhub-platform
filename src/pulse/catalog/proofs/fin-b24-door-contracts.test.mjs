@@ -26,10 +26,10 @@ function rowsOf(sourceFile) {
   return maps.get(sourceFile);
 }
 
-test("batch 24 binds 38 exact staff route rows, each once, and holds 2 back on purpose", () => {
-  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 38);
-  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 38);
-  assert.equal(FIN_B24_HELD_ROWS.length, 2);
+test("batch 24 binds 37 exact staff route rows, each once, and holds 3 back on purpose", () => {
+  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 37);
+  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 37);
+  assert.equal(FIN_B24_HELD_ROWS.length, 3);
 });
 
 test("every bound row is one exact row of the coverage map, a staff or no-impact route, and its handler is routed", () => {
@@ -94,6 +94,9 @@ test("a row whose own words name a result its door never returns is held back: i
   assert.match(geocode.control, /state \/ county/);
   const costs = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:marketing/costs");
   assert.match(costs.control, /month and batch caps/);
+  const inquiry = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:inquiry");
+  assert.match(inquiry.control, /open inquiry-removal cases/);
+  assert.match(inquiry.proposedControl, /every inquiry-removal case/);
 });
 
 test("the hiring/apply rows are three different rows with the right test for each verb", () => {

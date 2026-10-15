@@ -18,6 +18,7 @@ import youtubeSync from "../../../../api/analytics/youtube-sync.mjs";
 import { ROUTES } from "../../../../netlify/functions/api.mjs";
 import { decryptToken, encryptToken } from "../../../adplatforms/tokens.mjs";
 import { ORG_ID, OTHER_ORG_ID, assertRoleGate, hit, sqlCalls } from "./s5-route-kit.mjs";
+import { returned } from "./fin-b24-repair-kit.mjs";
 
 const keyName = "AD_TOKEN_ENC_KEY";
 let savedKey;
@@ -64,10 +65,12 @@ function fakeClickFunnels({ stats = null, statsStatus = 200, fail = null } = {})
 test("clickfunnels-connect proves the key against ClickFunnels first, then saves it encrypted for this company's connection and returns only the id, the workspace and the state", async () => {
   assert.equal(ROUTES["analytics/clickfunnels-connect"], clickfunnelsConnect);
   const cf = fakeClickFunnels();
-  const insert = [/INSERT INTO analytics_connections/, (_sql, p) => [{ id: "cn-1", external_account_id: p[1], connection_state: "active", encrypted_credentials: p[2] }]];
+  // The stand-in answers only the columns the statement's own RETURNING list names (repair cycle 1): it used
+  // to hand back the ciphertext too, which let a leak of it through RETURNING * pass.
+  const insert = [/INSERT INTO analytics_connections/, (sql, p) => returned(sql, { id: "cn-1", org_id: p[0], external_account_id: p[1], connection_state: "active", encrypted_credentials: p[2], last_error: null })];
   const done = await hit(clickfunnelsConnect, { method: "POST", role: "closer", body: { api_key: ` ${GOOD_KEY} `, subdomain: " GoodShop " }, deps: { fetch: cf }, rules: [insert] });
   assert.equal(done.status, 200);
-  assert.deepEqual(Object.keys(done.body.connection).sort(), ["connection_state", "encrypted_credentials", "external_account_id", "id"].sort(), "the stand-in's row, shaped by the handler's RETURNING list");
+  assert.deepEqual(Object.keys(done.body.connection).sort(), ["connection_state", "external_account_id", "id"], "only what the handler's RETURNING list names, never the ciphertext");
   assert.equal(done.body.connection.external_account_id, "goodshop", "the workspace name is lowercased");
   const [call] = sqlCalls(done, /INSERT INTO analytics_connections/);
   assert.equal(call.params[0], ORG_ID, "one connection for the signed-in company");
@@ -292,7 +295,11 @@ test("youtube-sync saves one snapshot per video per day with the title, keeps un
   const g = fakeGoogle();
   const done = await hit(youtubeSync, { method: "POST", body: { days: 14 }, deps: { fetch: g }, rules: world.rules });
   assert.equal(done.status, 200);
-  assert.deepEqual(done.body, { ok: true, videos_synced: 3 });
+  // The count is NOT pinned here (repair cycle 1). This report carries a row with no video id, which is
+  // counted in `videos_synced` and never written: 3 told, 2 saved. That is a product finding, and a test
+  // that pinned 3 would turn red the day the count is corrected. The count is judged against the rows
+  // written in fin-b24-repair-analytics.test.mjs, on a report with no such row.
+  assert.equal(done.body.ok, true);
   const today = new Date().toISOString().slice(0, 10);
   assert.deepEqual(world.stats, [
     { org: ORG_ID, conn: "yt-1", video: "vid-1", title: "Welcome", date: today, views: 120, minutes: 300.5, avg: 150, pct: 62.5 },
