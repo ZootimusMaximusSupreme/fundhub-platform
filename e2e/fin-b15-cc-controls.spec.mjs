@@ -8,6 +8,8 @@
 //   Ideas tab     the "Go to step N" button after a spend read; "Hide the pages" and the three page
 //                 preview buttons
 //   Launch tab    "Open Settings" on an ad with no ad set; the 20 second load-state poll
+//   Numbers tab   the ad drawer's Day select (two days, two curves); Open Settings on an empty
+//                 funnel list
 //
 // Each test was broken on purpose in the page and went red (see ops/workflows/finish-853-2026-10-14/
 // manifest-b15.md).
@@ -17,6 +19,7 @@ import { exampleResponse } from "../src/marketing/api-contract.mjs";
 import { openTabHarness } from "./helpers/cc-tab-harness.mjs";
 import { mountIdeas, funnelDetail } from "./helpers/cc-tab-ideas-host.mjs";
 import { STUB_PATH, stubHtml } from "./helpers/cc-launch-stub.mjs";
+import { routeStub, STUB_PATH as NUMBERS_STUB_PATH } from "./helpers/cc-numbers-stub.mjs";
 
 test.use({ timezoneId: "America/Phoenix", locale: "en-US", viewport: { width: 390, height: 844 } });
 
@@ -255,6 +258,74 @@ test("Ideas: See the pages opens a sandboxed preview, the three page buttons swi
   await expect(row.locator("iframe.cci-frame")).toHaveCount(0);
   await expect(row.getByRole("button", { name: "See the pages" })).toHaveCount(1);
   expect(sent, "a preview never writes").toEqual([]);
+});
+
+/* ── Numbers tab: the ad drawer's Day select ──────────────────────────────────────────────── */
+
+test("Numbers: the ad drawer's Day select switches the watch curve to the day picked, and sends nothing", async ({ page }) => {
+  const ad = exampleResponse("GET marketing/ad");
+  const newer = [100, 64, 47, 39, 34, 31, 28, 26, 24, 22, 21, 20, 19, 18, 17, 15, 12, 10, 8, 6, 5, 4];
+  const older = [100, 80, 71, 65, 60, 55, 51, 48, 45, 42, 40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18];
+  ad.ad.curve = [{ date: "2026-10-10", video_play_curve: newer }, { date: "2026-10-09", video_play_curve: older }];
+  const calls = [];
+  await page.clock.setFixedTime(new Date("2026-10-06T15:00:00Z"));
+  await routeStub(page);
+  await page.route("**/api/**", async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const key = `${req.method()} ${url.pathname.replace(/^\/api\//, "")}`;
+    calls.push(key);
+    const map = {
+      "GET marketing/ads": exampleResponse("GET marketing/ads"),
+      "GET marketing/ad": ad
+    };
+    if (!map[key]) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(map[key]) });
+  });
+  await page.goto(NUMBERS_STUB_PATH + "#numbers/ads/91");
+  const drawer = page.locator("[data-test=drawer]");
+  await expect(drawer).toBeVisible();
+  const line = drawer.locator("polyline.ccn-line");
+  const day = drawer.locator("#ccn-day");
+  await expect(day.locator("option")).toHaveCount(2);
+  await expect(day).toHaveValue("0");
+  await expect(drawer).toContainText("At 2 seconds, 47% of plays were still watching (from the curve).");
+  const newerPoints = await line.getAttribute("points");
+
+  await day.selectOption("1");
+  await expect(day).toHaveValue("1");
+  await expect(drawer).toContainText("At 2 seconds, 71% of plays were still watching (from the curve).");
+  expect(await line.getAttribute("points")).not.toBe(newerPoints);
+
+  await day.selectOption("0");
+  await expect(drawer).toContainText("At 2 seconds, 47% of plays were still watching (from the curve).");
+  expect(await line.getAttribute("points")).toBe(newerPoints);
+  expect(calls.filter((c) => c.startsWith("POST")), "picking a day writes nothing").toEqual([]);
+});
+
+test("Numbers: with no funnel set up the Funnels view says so and Open Settings goes to Settings > funnels", async ({ page }) => {
+  const calls = [];
+  await page.clock.setFixedTime(new Date("2026-10-06T15:00:00Z"));
+  await routeStub(page);
+  await page.route("**/api/**", async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const key = `${req.method()} ${url.pathname.replace(/^\/api\//, "")}`;
+    calls.push(key);
+    const map = {
+      "GET marketing/funnels/stats": { rows: [], unmapped_spend_cents: 0, as_of: null },
+      "GET marketing/funnels": exampleResponse("GET marketing/funnels")
+    };
+    if (!map[key]) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(map[key]) });
+  });
+  await page.goto(NUMBERS_STUB_PATH + "#numbers/funnels");
+  const empty = page.locator("[data-test=funnels-empty]");
+  await expect(empty).toContainText("No funnel is set up yet.");
+  expect(await page.evaluate(() => window.__ccGo)).toEqual([]);
+  await empty.getByRole("button", { name: "Open Settings" }).click();
+  expect(await page.evaluate(() => window.__ccGo)).toEqual([["settings", "funnels"]]);
+  expect(calls.filter((c) => c.startsWith("POST"))).toEqual([]);
 });
 
 /* ── Launch tab: Open Settings and the 20 second poll ─────────────────────────────────────── */

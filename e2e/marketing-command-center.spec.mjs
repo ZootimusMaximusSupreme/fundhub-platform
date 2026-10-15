@@ -689,6 +689,29 @@ test("the footer clock, the 5-minute reload, the reload on focus, and a failed r
   ]);
 });
 
+test("the reload on focus: a focus after a minute away reads again, and a focus within half a minute reads nothing", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const counter = { today: 0 };
+  const second = today({ spend: { ...today().spend, windows: { ...today().spend.windows,
+    last_7_days: { ...today().spend.windows.last_7_days, spend_cents: 130000 } } } });
+  await open(page, handlers({ counter, todayAnswers: [[today(), 200], [second, 200]] }));
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:00 PM");
+  expect(counter.today).toBe(1);
+
+  // Back inside the first half minute: nothing is read.
+  await page.clock.runFor(20_000);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.waitForTimeout(300);
+  expect(counter.today).toBe(1);
+
+  // More than a minute since the last read: the window coming into focus reads again.
+  await page.clock.runFor(41_000);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => counter.today).toBe(2);
+  await expect(page.locator("#tileSpend7 .vl")).toHaveText("$1,300");
+  await expect(page.locator("#mccStamp")).toHaveText("Loaded 12:01 PM");
+});
+
 test("a read that never answers is given up on after 20 seconds, and the next 5-minute reload still runs", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const counter = { today: 0 };
