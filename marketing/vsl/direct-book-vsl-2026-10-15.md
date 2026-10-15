@@ -1,6 +1,6 @@
 # Direct Book VSL 1 — Watch page, shortened (draft 2026-10-15)
 
-Status: draft for Chris to review. Written with Chris in a Claude chat on 2026-10-15.
+Status: final, every edit from Chris on 2026-10-15 is in. Needs loading into the app. Written with Chris in a Claude chat on 2026-10-15.
 
 Source: the locked v3 in `marketing/ads/scripts/machine/on-demand/08-watch-vsl-book-a-call.md`
 (ad 103, 910 words). That file mirrors the app, and the app's copy wins, so this new version must be
