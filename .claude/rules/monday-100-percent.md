@@ -19,6 +19,8 @@
 3. **Then hardening.** Capacity, speed, retries, alerts that reach Chris, the false-alarm causes.
 4. **Then the refactor.** Not before the 48 clean hours.
 
+The sweep order (most to least important) is `ops/workflows/heartbeat-ranked-2026-10-14.md`. The refactor plan is `ops/workflows/company-refactor-plan-2026-10-12.md`: small proved slices, heartbeat live through every step, no change to a business result, route, job id, message, money rule or screen.
+
 Get as close to this as possible every day. Say in one line how far the sweep is.
 
 ## How agents work toward it
