@@ -85,13 +85,14 @@ export async function waitFor(predicate, label = "condition", ms = 8000) {
 /**
  * Answer the page's window.confirm / prompt / alert from a queue. Each answer is a string (accept, and
  * that text for a prompt), true (accept), or false (dismiss). Every dialog the page raises is logged
- * with its kind and words, in order. A dialog with nothing queued is dismissed and logged as such.
+ * with its kind, its words and the text a prompt opened with, in order. A dialog with nothing queued is
+ * dismissed and logged as such.
  */
 export function dialogs(page) {
   const seen = [];
   const answers = [];
   page.on("dialog", async (dialog) => {
-    seen.push({ type: dialog.type(), message: dialog.message() });
+    seen.push({ type: dialog.type(), message: dialog.message(), defaultValue: dialog.defaultValue() });
     const answer = answers.length ? answers.shift() : false;
     if (answer === false) await dialog.dismiss();
     else await dialog.accept(typeof answer === "string" ? answer : undefined);

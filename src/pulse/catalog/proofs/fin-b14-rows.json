@@ -4,10 +4,10 @@
    "sourceFile": "desks-c.json",
    "surface": "journeys.html",
    "controls": [
-    "Bottom bar: Discard (revert unsaved edits)",
     "Canvas: '+' between steps opens the add-step menu (10 types: text, email, wait, question, move card, assign, hand off, agent, take payment, save)",
     "Canvas: 'Keep it' / 'Throw it away' on an AI patch",
     "Canvas: click a step to select it (opens Step panel)",
+    "Header: Apply to code and bottom-bar Apply (saves every edited journey)",
     "Header: Save version",
     "Header: Undo (also Cmd/Ctrl+Z)",
     "History tab: 'Roll back to this' (saved version) and 'Put it back' (single change)",
@@ -20,8 +20,12 @@
     "Run report panel: Close button",
     "Simulate tab: 'At a question' select + Run the journey / Stop",
     "Step panel fields: text body and timing (text), subject/body/timing (email), wait length + unit, question field + test, stage + pipeline, role, agent + note, payment amount + product, note",
-    "Step panel: 'Run from here' (plays the journey in the browser from this step)",
     "Step panel: Move up / Move down / Delete"
+   ],
+   "notAttached": [
+    "Bottom bar: Discard (revert unsaved edits)",
+    "Step panel: 'Make the change' (AI rewrites one step) and canvas ask box 'Make the change' + example prompts",
+    "Step panel: 'Run from here' (plays the journey in the browser from this step)"
    ]
   },
   {
@@ -32,17 +36,8 @@
    ],
    "also": [
     "src/http/journeys-run-handler.test.mjs",
-    "src/pulse/catalog/proofs/fin-b14-journeys-handlers.test.mjs"
-   ]
-  },
-  {
-   "sourceFile": "desks-c.json",
-   "surface": "journeys.html",
-   "controls": [
-    "Step panel: 'Make the change' (AI rewrites one step) and canvas ask box 'Make the change' + example prompts"
-   ],
-   "also": [
-    "src/pulse/catalog/proofs/fin-b14-journeys-handlers.test.mjs"
+    "src/pulse/catalog/proofs/fin-b14-journeys-handlers.test.mjs",
+    "src/pulse/catalog/proofs/fin-b14-journeys-run.test.mjs"
    ]
   }
  ],
@@ -52,9 +47,16 @@
    "surface": "lenders.html",
    "controls": [
     "AI bureau config row: 7 fields (code, name, service number, IVR version, menu path, hold minutes, active)",
-    "AI bureau config: Add bureau row button (adds an empty editable row)",
     "Import CSV button (opens paste box) and Cancel button",
-    "Lender row inline cells: name, product table, bureaus, requirements, tier, status, eligible states (7 editable fields)"
+    "Lender row inline cells: name, product table, bureaus, requirements, tier, status, eligible states (7 editable fields)",
+    "Import now button (paste CSV, creates and updates lender rows)",
+    "Mismatch queue row: Confirm button",
+    "Mismatch queue row: Corrected button"
+   ],
+   "notAttached": [
+    "AI bureau config: Add bureau row button (adds an empty editable row)",
+    "Export CSV button (downloads lenders.csv for the current filters)",
+    "Lender row Save button (writes the 7 fields, stamps last_updated_by)"
    ]
   },
   {
@@ -62,8 +64,6 @@
    "surface": "lenders.html",
    "controls": [
     "Apply filters button",
-    "Export CSV button (downloads lenders.csv for the current filters)",
-    "Lender row Save button (writes the 7 fields, stamps last_updated_by)",
     "List filter: Bureau pulled input (EX / EQ / TU)",
     "List filter: Eligible state input",
     "List filter: Name search input",
@@ -72,7 +72,8 @@
     "List filter: Status select (Active / Inactive)"
    ],
    "also": [
-    "src/pulse/catalog/proofs/fin-b14-lenders-handlers.test.mjs"
+    "src/pulse/catalog/proofs/fin-b14-lenders-handlers.test.mjs",
+    "src/pulse/catalog/proofs/fin-b14-lenders-sql.test.mjs"
    ]
   }
  ],

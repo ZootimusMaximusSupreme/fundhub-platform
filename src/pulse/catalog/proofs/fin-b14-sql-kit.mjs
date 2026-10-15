@@ -7,8 +7,10 @@
 //      stand-in table can only hold columns the product really has. A typo in a contract ("no such
 //      column") fails the test.
 //   2. portableSql() spells the Postgres text for SQLite: $1 becomes ?1, casts and BTRIM are plain,
-//      jsonb_array_elements / jsonb_typeof / jsonb_array_length become their json_* twins, and the
-//      Postgres regular-expression operators (~ and !~) become a regexp() call.
+//      jsonb_array_elements becomes json_each, and the Postgres regular-expression operators (~ and !~)
+//      become a regexp() call. jsonb_typeof, jsonb_array_length and regexp_replace are registered as
+//      functions with the Postgres answers ('object', 'array', 'string', 'number', 'boolean', 'null'), so a
+//      JSON string, a number and a list are told apart the way Postgres tells them apart.
 //   3. makeStandIn() builds an in-memory database whose tables hold the real column names.
 //
 // SQLite does not enforce the product's CHECK constraints or foreign keys, so a stand-in row can hold a
@@ -138,7 +140,9 @@ function rewriteRegex(sql) {
     }
     const negated = ch === "!" && sql[i + 1] === "~";
     if (ch === "~" || negated) {
-      const opLen = negated ? 2 : 1;
+      // ~* is the case-insensitive match; !~* is its negation.
+      const insensitive = sql[i + (negated ? 2 : 1)] === "*";
+      const opLen = (negated ? 2 : 1) + (insensitive ? 1 : 0);
       // The right side: whitespace then a quoted literal.
       let r = i + opLen;
       while (/\s/.test(sql[r] || "")) r += 1;
@@ -164,7 +168,7 @@ function rewriteRegex(sql) {
       }
       const operand = out.slice(l, operandEnd);
       if (!operand) throw new Error(`regex operator without an operand near: ${sql.slice(Math.max(0, i - 40), i + 20)}`);
-      out = `${out.slice(0, l)}${negated ? "NOT " : ""}regexp(${pattern}, ${operand})`;
+      out = `${out.slice(0, l)}${negated ? "NOT " : ""}${insensitive ? "regexp_i" : "regexp"}(${pattern}, ${operand})`;
       i = rEnd + 1;
       continue;
     }
@@ -176,7 +180,8 @@ function rewriteRegex(sql) {
 
 /**
  * The Postgres text of a contract, spelled for SQLite.
- *   $1 becomes ?1; casts and BTRIM are plain; now() and "now() - interval 'N units'" become the fixed
+ *   $1 becomes ?1; casts and BTRIM are plain; ILIKE becomes LIKE (SQLite's LIKE ignores case for plain
+ *   letters, the same as ILIKE); ~* is a case-insensitive match; now() and "now() - interval 'N units'" become the fixed
  *   ISO instant (every stand-in timestamp is written in the same ISO shape, so string order is time
  *   order); the jsonb functions become their SQLite twins; ~ and !~ become regexp().
  */
@@ -186,12 +191,11 @@ export function portableSql(sql, { now = NOW } = {}) {
     .replace(/\bnow\(\)\s*-\s*interval\s*'(\d+)\s*(minute|hour|day)s?'/gi,
       (_, n, unit) => iso(now.getTime() - Number(n) * UNIT_MS[unit.toLowerCase()]))
     .replace(/\bnow\(\)/gi, iso(now.getTime()))
-    .replace(/::(?:uuid|int|integer|bigint|text|numeric|jsonb|json|boolean|date|timestamptz)\b/gi, "")
+    .replace(/::[a-z_]+\b(?:\[\])?/gi, "")
+    .replace(/\bILIKE\b/g, "LIKE")
     .replace(/\$(\d+)/g, "?$1")
     .replace(/\bBTRIM\s*\(/gi, "TRIM(")
-    .replace(/\bjsonb_array_elements\s*\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)\s+AS\s+(\w+)\s*\(\s*value\s*\)/gi, "json_each($1) AS $2")
-    .replace(/\bjsonb_typeof\s*\(/gi, "json_type(")
-    .replace(/\bjsonb_array_length\s*\(/gi, "json_array_length(");
+    .replace(/\bjsonb_array_elements\s*\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)\s+AS\s+(\w+)\s*\(\s*value\s*\)/gi, "json_each($1) AS $2");
   const rewritten = rewriteRegex(text);
   if (/[^!]~|!~/.test(rewritten.replace(/'(?:[^']|'')*'/g, "''"))) throw new Error("a regex operator was left in the SQL");
   return rewritten;
@@ -202,6 +206,39 @@ export function makeStandIn(tableNames, { now = NOW } = {}) {
   const schema = schemaColumns();
   const db = new DatabaseSync(":memory:");
   db.function("regexp", { deterministic: true }, (pattern, value) => (new RegExp(String(pattern)).test(String(value ?? "")) ? 1 : 0));
+  db.function("regexp_i", { deterministic: true }, (pattern, value) => (new RegExp(String(pattern), "i").test(String(value ?? "")) ? 1 : 0));
+  // regexp_replace(text, pattern, replacement[, flags]) with the Postgres flag letters g (all) and i.
+  db.function("regexp_replace", { deterministic: true }, (value, pattern, replacement, flags) => {
+    if (value === null || value === undefined) return null;
+    const letters = String(flags ?? "");
+    const js = `${letters.includes("g") ? "g" : ""}${letters.includes("i") ? "i" : ""}`;
+    return String(value).replace(new RegExp(String(pattern), js), String(replacement));
+  });
+  // jsonb_typeof: what Postgres answers for a JSON value. SQLite hands a function the JSON text of an object or a
+  // list, the quoted text of a string from "->", a bare number, or the raw text of a string element from
+  // json_each. A SQL NULL is a missing key and stays NULL.
+  db.function("jsonb_typeof", { deterministic: true }, (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" || typeof value === "bigint") return "number";
+    const text = String(value);
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed === null) return "null";
+      if (Array.isArray(parsed)) return "array";
+      return typeof parsed === "object" ? "object" : typeof parsed;
+    } catch {
+      return "string";
+    }
+  });
+  db.function("jsonb_array_length", { deterministic: true }, (value) => {
+    if (value === null || value === undefined) return null;
+    try {
+      const parsed = JSON.parse(String(value));
+      return Array.isArray(parsed) ? parsed.length : null;
+    } catch {
+      return null;
+    }
+  });
   const known = new Map();
   for (const name of tableNames) {
     const cols = schema.get(name);

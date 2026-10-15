@@ -16,11 +16,13 @@
 // reads the compiled copy in src/pulse/catalog/generated.json. It must not import display-saved-result.mjs
 // (that file imports this one).
 
+const DIR = "src/pulse/catalog/proofs";
 export const FIN_B14_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
-export const FIN_B14_LIVE_TEST = "src/pulse/catalog/proofs/fin-b14-live-contracts.test.mjs";
+export const FIN_B14_LIVE_TEST = `${DIR}/fin-b14-live-contracts.test.mjs`;
 export const FIN_B14_SOURCE_FILE = "desks-c.json";
 
-const BLANK = (expr) => `NULLIF(BTRIM(COALESCE(${expr}, '')), '') IS NULL`;
+// Blank means nothing but white space, the way the product's own trim() reads it (a tab or a new line counts).
+const BLANK = (expr) => `COALESCE(${expr}, '') ~ '^\\s*$'`;
 
 /** `names` kept out of the text, for the test that drops one condition at a time. */
 function orJoin(pairs, without, indent = "         ") {
@@ -34,8 +36,10 @@ function orJoin(pairs, without, indent = "         ") {
 const JOURNEY_KEYS = "('client', 'setter', 'closer', 'advisor', 'affiliate', 'partner')";
 const STEP_TYPES = "('sms', 'email', 'wait', 'condition', 'stage', 'assign', 'handoff', 'agent', 'payment', 'record')";
 
-// The same six checks api/journeys.mjs makes on save (header and every step, including the steps inside a
-// question's two paths), so a saved row that got in around the endpoint is caught.
+// What api/journeys.mjs refuses on save (findBadSteps and findSingleBraceTagsInNodes), written as named
+// conditions, for the header and for every step (also the steps inside a question's two paths), so a saved row
+// that got in around the endpoint is caught. fin-b14-live-contracts.test.mjs runs a corpus of crafted journeys
+// through the product's own two functions and through this text and asks for the same answer on every one.
 export const JOURNEY_HEADER_BAD = Object.freeze([
   ["a journey's steps are not a list", `jsonb_typeof(j.nodes) IS DISTINCT FROM 'array'`],
   ["a journey has no name", BLANK("j.name")],
@@ -44,27 +48,61 @@ export const JOURNEY_HEADER_BAD = Object.freeze([
   ["a journey has a key the editor does not own", `j.key NOT IN ${JOURNEY_KEYS}`],
 ]);
 
+const jsonAt = (obj, key) => `${obj} -> '${key}'`;
+const textAt = (obj, key) => `${obj} ->> '${key}'`;
+// The product's filled(): a string with something other than white space in it. A number, a list or a missing
+// value is not filled.
+const notFilled = (obj, key) => `CASE WHEN jsonb_typeof(${jsonAt(obj, key)}) = 'string' THEN ${BLANK(textAt(obj, key))} ELSE true END`;
+
+// A wait's length: the product's Number(amount) must be finite and above zero. A JSON number, true, or a string
+// the way JavaScript reads one: spaces around it, a leading +, .5, 5., 1e2, or a 0x / 0b / 0o number.
+const AMOUNT_JSON = "step -> 'cfg' -> 'amount'";
+const AMOUNT_TEXT = "step -> 'cfg' ->> 'amount'";
+const AMOUNT_TRIMMED = `regexp_replace(${AMOUNT_TEXT}, '^\\s+|\\s+$', '', 'g')`;
+const DECIMAL_NUMBER = `'^[+]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+-]?[0-9]+)?$'`;
+const RADIX_NUMBER = `'^0[xX][0-9a-fA-F]*[1-9a-fA-F][0-9a-fA-F]*$|^0[bB][01]*1[01]*$|^0[oO][0-7]*[1-7][0-7]*$'`;
+const WAIT_LENGTH_OK = `CASE jsonb_typeof(${AMOUNT_JSON})
+              WHEN 'number' THEN CAST(${AMOUNT_TEXT} AS numeric) > 0
+              WHEN 'boolean' THEN ${AMOUNT_JSON} = 'true'
+              WHEN 'string' THEN CASE
+                WHEN ${AMOUNT_TRIMMED} ~ ${DECIMAL_NUMBER}
+                  THEN CAST(${AMOUNT_TRIMMED} AS numeric) > 0 AND CAST(${AMOUNT_TRIMMED} AS numeric) < 1.7976931348623157e308
+                WHEN ${AMOUNT_TRIMMED} ~ ${RADIX_NUMBER} THEN true
+                ELSE false END
+              ELSE false END`;
+
+// The product strips every real {{token}} first and then looks for a {word} that is left, so a half-closed
+// {{first_name} is caught and a good {{first_name}} next to a bad {portal_link} is caught.
+const DOUBLE_BRACE = `'[{][{]\\s*[A-Za-z0-9_]+([.][A-Za-z0-9_]+)*\\s*[}][}]'`;
+const SINGLE_BRACE = `'[{][A-Za-z0-9_]+[}]'`;
+const strippedOf = (key) => `regexp_replace(COALESCE(${textAt("step -> 'cfg'", key)}, ''), ${DOUBLE_BRACE}, '', 'g')`;
+
 export const JOURNEY_STEP_BAD = Object.freeze([
   ["a step is not a step at all", `jsonb_typeof(step) IS DISTINCT FROM 'object'`],
-  ["a step has no type", `jsonb_typeof(step) = 'object' AND ${BLANK("step ->> 'type'")}`],
+  ["a step has no type", `jsonb_typeof(step) = 'object' AND ${notFilled("step", "type")}`],
   ["a step has a type nothing renders",
-    `NOT (${BLANK("step ->> 'type'")}) AND step ->> 'type' NOT IN ${STEP_TYPES}`],
+    `jsonb_typeof(${jsonAt("step", "type")}) = 'string' AND NOT (${BLANK(textAt("step", "type"))}) AND step ->> 'type' NOT IN ${STEP_TYPES}`],
+  ["a step's settings are stored as something other than a list of settings",
+    `${jsonAt("step", "cfg")} IS NOT NULL AND jsonb_typeof(${jsonAt("step", "cfg")}) NOT IN ('object', 'null')`],
   ["a wait has no minutes, hours or days",
-    `step ->> 'type' = 'wait' AND COALESCE(step -> 'cfg' ->> 'unit', '') NOT IN ('minutes', 'hours', 'days')`],
+    `step ->> 'type' = 'wait' AND COALESCE(${textAt("step -> 'cfg'", "unit")}, '') NOT IN ('minutes', 'hours', 'days')`],
   ["a wait has no length above zero",
-    `step ->> 'type' = 'wait' AND (BTRIM(COALESCE(step -> 'cfg' ->> 'amount', '')) !~ '^[0-9]+([.][0-9]+)?$'
-            OR BTRIM(COALESCE(step -> 'cfg' ->> 'amount', ''), '0.') = '')`],
+    `step ->> 'type' = 'wait' AND NOT COALESCE((${WAIT_LENGTH_OK}), false)`],
   ["a question has nothing to check",
-    `step ->> 'type' = 'condition' AND ${BLANK("step -> 'cfg' ->> 'field'")}`],
+    `step ->> 'type' = 'condition' AND ${notFilled("step -> 'cfg'", "field")}`],
   ["a question has no paths coming off it",
     `step ->> 'type' = 'condition' AND CASE WHEN jsonb_typeof(step -> 'branches') = 'array'
               THEN jsonb_array_length(step -> 'branches') = 0 ELSE true END`],
+  ["a question's paths are not stored properly",
+    `step ->> 'type' = 'condition' AND jsonb_typeof(step -> 'branches') = 'array' AND EXISTS (
+              SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(step -> 'branches') = 'array' THEN step -> 'branches' ELSE '[]'::jsonb END) AS pb(value)
+               WHERE jsonb_typeof(pb.value -> 'nodes') IS DISTINCT FROM 'array')`],
   ["a move-the-card step names no pipeline or no stage",
-    `step ->> 'type' = 'stage' AND (${BLANK("step -> 'cfg' ->> 'stage'")} OR ${BLANK("step -> 'cfg' ->> 'pipeline'")})`],
+    `step ->> 'type' = 'stage' AND (${notFilled("step -> 'cfg'", "stage")} OR ${notFilled("step -> 'cfg'", "pipeline")})`],
   ["a text or email body uses single braces",
-    `step ->> 'type' IN ('sms', 'email') AND COALESCE(step -> 'cfg' ->> 'body', '') ~ '(^|[^{])[{][A-Za-z0-9_]+[}]($|[^}])'`],
-  ["an email subject uses single braces",
-    `step ->> 'type' = 'email' AND COALESCE(step -> 'cfg' ->> 'subject', '') ~ '(^|[^{])[{][A-Za-z0-9_]+[}]($|[^}])'`],
+    `step ->> 'type' IN ('sms', 'email') AND ${strippedOf("body")} ~ ${SINGLE_BRACE}`],
+  ["a text or email subject uses single braces",
+    `step ->> 'type' IN ('sms', 'email') AND ${strippedOf("subject")} ~ ${SINGLE_BRACE}`],
 ]);
 
 /** Apply to code: every saved journey row, header and every step. */
@@ -118,7 +156,7 @@ SELECT count(*)::int AS sample_count,
 
 // A tip row is a note from the spreadsheet, not a bank (src/lenders/tips.mjs isTipRow). The import skips
 // them, so one that is saved as a lender got in some other way.
-const TIP_PREFIXES = ["apply ", "amex often", "if ", "when ", "note:", "same ", "use ", "do not", "must ", "can ", "should ", "wait ", "open ", "call ", "visit "];
+export const TIP_PREFIXES = Object.freeze(["apply ", "amex often", "if ", "when ", "note:", "same ", "use ", "do not", "must ", "can ", "should ", "wait ", "open ", "call ", "visit "]);
 const TIP_NAME = `(${TIP_PREFIXES.map((p) => `LOWER(BTRIM(l.name)) LIKE '${p}%'`).join(" OR ")} OR LENGTH(BTRIM(l.name)) > 72)`;
 
 export const LENDER_ADD_BAD = Object.freeze([
@@ -143,9 +181,13 @@ SELECT count(*)::int AS sample_count,
    AND l.created_at >= now() - interval '90 days'`;
 }
 
+// Every lender the import touched in the last 90 days. A paste that has no row id column (the page's own
+// example paste is lender_table,name,bureaus_pulled,priority_tier) lands with no row id, exactly like a lender
+// made by hand, so the population is every lender of the company touched in the window, with or without one.
 export const LENDER_IMPORT_BAD = Object.freeze([
   ["an imported lender has no name", BLANK("l.name")],
-  ["an imported lender has an empty row id, so a re-import cannot find it", BLANK("l.external_row_id")],
+  ["an imported lender has an empty row id, so a re-import cannot find it",
+    `l.external_row_id IS NOT NULL AND ${BLANK("l.external_row_id")}`],
   ["an imported lender has nobody's name on it", BLANK("l.last_updated_by")],
   ["an imported lender has no stamp date", "l.last_updated_date IS NULL"],
   ["a tip from the spreadsheet was saved as a bank", TIP_NAME],
@@ -160,7 +202,6 @@ SELECT count(*)::int AS sample_count,
   FROM lenders l
  WHERE l.org_id = $1::uuid
    AND COALESCE(l.is_demo, false) = false
-   AND l.external_row_id IS NOT NULL
    AND l.updated_at >= now() - interval '90 days'`;
 }
 
@@ -197,9 +238,12 @@ const CHECKS = [
   {
     surface: "journeys.html",
     control: "Header: Apply to code and bottom-bar Apply (saves every edited journey)",
-    requirement: "Every saved journey must have its steps as a list, a name, a start line and an end line, a key the editor owns, and every step (also the steps inside a question's paths) must be a known kind with what it cannot work without: a wait needs a length above zero and minutes, hours or days; a question needs something to check and its paths; a move needs a pipeline and a stage; no text or email may use single braces.",
+    requirement: "Every saved journey must have its steps as a list, a name, a start line and an end line, a key the editor owns, and every step (also the steps inside a question's paths) must be what api/journeys.mjs lets in on save: a known kind with its settings stored as a list of settings; a wait with a length above zero and minutes, hours or days; a question with something to check and two properly stored paths; a move with a pipeline and a stage; and no text or email body or subject with a single brace.",
     sql: journeysApplySql,
     names: [...JOURNEY_HEADER_BAD, ...JOURNEY_STEP_BAD].map(([name]) => name),
+    // The saved rows are judged by the SQL. What the button sends (one save for every edited journey, each with
+    // its own key and steps) and what the server refuses on save are judged by these two practice tests.
+    alsoTests: [`${DIR}/fin-b14-journeys.test.mjs`, `${DIR}/fin-b14-journeys-handlers.test.mjs`],
   },
   {
     surface: "journeys.html",
@@ -218,9 +262,12 @@ const CHECKS = [
   {
     surface: "lenders.html",
     control: "Import now button (paste CSV, creates and updates lender rows)",
-    requirement: "Every imported lender touched in the last 90 days must have a name, a row id, the name of who imported it and a stamp date, must not be a tip from the spreadsheet, and must not carry a dollar amount below zero.",
+    requirement: "Every lender touched in the last 90 days (made by an import, with or without a row id column) must have a name, the name of who imported it and a stamp date, must not be a tip from the spreadsheet, must not carry a dollar amount below zero, and a row id when it has one must not be blank.",
     sql: lendersImportSql,
     names: LENDER_IMPORT_BAD.map(([name]) => name),
+    // The saved lenders are judged by the SQL. The request the button sends and what the handler writes are
+    // judged by these two practice tests.
+    alsoTests: [`${DIR}/fin-b14-lenders.test.mjs`, `${DIR}/fin-b14-lenders-handlers.test.mjs`],
   },
   {
     surface: "lenders.html",
@@ -228,6 +275,9 @@ const CHECKS = [
     requirement: "Every confirmed bureau observation must have been a flagged mismatch, say which bureau was seen, name a lender of this company, and carry a person's name.",
     sql: mismatchConfirmSql,
     names: MISMATCH_CONFIRM_BAD.map(([name]) => name),
+    // A saved confirmed row cannot say which button wrote it. The button's word and the handler's write are
+    // judged by these two practice tests.
+    alsoTests: [`${DIR}/fin-b14-lenders.test.mjs`, `${DIR}/fin-b14-lenders-handlers.test.mjs`],
   },
   {
     surface: "lenders.html",
@@ -235,6 +285,7 @@ const CHECKS = [
     requirement: "Every corrected bureau observation must have been a flagged mismatch, say which bureau was seen, name a lender of this company, and carry a person's name.",
     sql: mismatchCorrectSql,
     names: MISMATCH_CORRECT_BAD.map(([name]) => name),
+    alsoTests: [`${DIR}/fin-b14-lenders.test.mjs`, `${DIR}/fin-b14-lenders-handlers.test.mjs`],
   },
 ];
 
@@ -252,12 +303,16 @@ export const FIN_B14_RESULT_CONTRACTS = Object.freeze(FIN_B14_CHECKS.map((check)
 /** The exact map rows (desks file, surface, control) each live check is attached to. */
 export const FIN_B14_LIVE_ROWS = Object.freeze(FIN_B14_CHECKS.map((check) => Object.freeze([FIN_B14_SOURCE_FILE, check.surface, check.control])));
 
-/** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. */
-export const FIN_B14_LIVE_CASES = Object.freeze(FIN_B14_LIVE_ROWS.map(([sourceFile, surface, control]) => Object.freeze({
-  sourceFile,
-  surface,
-  control,
-  depth: "deep",
-  evidence: `${FIN_B14_LIVE_TEST}; ${FIN_B14_LANE}`,
-  tests: Object.freeze([FIN_B14_LIVE_TEST]),
-})));
+/** Rows judged by the live lane. Also handed to the catalog compiler as deep cases. A live row names the lane
+ *  (so it stays in the lane), its SQL test, and any practice tests that judge the button's own request. */
+export const FIN_B14_LIVE_CASES = Object.freeze(FIN_B14_CHECKS.map((check) => {
+  const tests = [FIN_B14_LIVE_TEST, ...(check.alsoTests || [])];
+  return Object.freeze({
+    sourceFile: FIN_B14_SOURCE_FILE,
+    surface: check.surface,
+    control: check.control,
+    depth: "deep",
+    evidence: `${tests.join("; ")}; ${FIN_B14_LANE}`,
+    tests: Object.freeze(tests),
+  });
+}));

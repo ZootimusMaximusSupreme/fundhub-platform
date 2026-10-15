@@ -181,6 +181,15 @@ test("Save: text numbers and flags are made real, a blank name is refused in wor
   assert.equal(unchanged.res.body.error, "save_failed");
 });
 
+test("KNOWN BREAK (the reason the row Save button is left out, fin-b14-not-attachable.mjs): the page's emptied Name is null, and null passes the blank-name check", async () => {
+  // The page builds its patch with `patch[k] = v === "" ? null : v`, so a cleared Name box arrives as null. The
+  // handler refuses a blank name with String(patch.name).trim() === "", and String(null) is "null".
+  const { res, fake } = await call(lendersHandler, req("POST", { body: { action: "save", id: LENDER_ID, patch: { name: null } } }), [updateRule]);
+  assert.equal(res.statusCode, 200, "BREAK: it is not refused with Name is required.");
+  const update = fake.find(/UPDATE lenders SET/)[0];
+  assert.equal(update.params[2], null, "BREAK: the statement goes to the database with a null name, which the NOT NULL column refuses");
+});
+
 test("Save, Add blank row and Import now are for owner, admin and funding advisor only", async () => {
   const bodies = [
     { action: "save", id: LENDER_ID, patch: { name: "x" } },
@@ -252,6 +261,7 @@ test("Mismatch Confirm, Corrected and Dismiss: only a real review word is writte
     assert.deepEqual(update.params.slice(0, 3), [ORG_ID, OBS_ID, status]);
     assert.equal(update.params[3], "Olive Owner", "the reviewer's name goes on when nobody's was there");
     assert.match(update.sql, /created_by = COALESCE\(created_by, \$4\)/);
+    assert.match(update.sql, /SET review_status = \$3::lender_observation_review_status/, "the word that was sent is the word that is written");
     assert.equal(res.body.observation.review_status, status);
   }
   const bad = await call(observationsHandler, req("POST", { body: { action: "review", id: OBS_ID, review_status: "approved" } }), []);
