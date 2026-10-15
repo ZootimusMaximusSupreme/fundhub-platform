@@ -42,3 +42,17 @@ route or e2e file. `tests` is `cancelled` on every push to main too, so main giv
 
 Behavior is correct and holds under a 120 ms delay on every query plus a 10.5 s beat. Ready to merge once the
 finding-2 test is real. Nothing was merged, deployed or pushed.
+
+## Retest at `d5af94d46` (same day) — PASS
+
+Only `src/pulse/runner.test.mjs` (+33 lines, new case: three `threw: db:` reds with one healthy box must not say the
+database is not answering) and the manifest changed. Runner code is identical to the `87de6e597` code proved live above.
+
+| Check | Result |
+|---|---|
+| Unit tests (6 files), clean `npm ci` | 173 pass, 0 fail, 0 skipped |
+| M2 (`.every` to `.some`) | now RED (new test 2 fails). Finding 2 is guarded |
+| M1, M3, M4, M5, M7 | all RED |
+| M6 (redundant `phaseClosed` guard) | green: equivalent mutant, harmless |
+
+Verdict: PR #51 is ready to merge. Nothing merged, deployed or pushed by Claude.
