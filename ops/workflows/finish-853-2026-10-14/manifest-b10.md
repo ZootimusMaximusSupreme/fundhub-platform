@@ -196,20 +196,28 @@ Generation 1 (kept, still true):
 This run:
 
 - Break checks for the link-gate check: see the table above (9 of 9 red or flipped as expected, product file restored each time).
-- Tests are listed in the commands section with their results.
+- Test results are in the commands section below: 238 of 238 in the catalog group, 3 of 3 in display-proof-cases, lint clean, catalog fresh.
 
-## Commands
+## Commands and results (this run)
 
 ```
-node scripts/pulse/count-not-proved.mjs <out.json>                         # this branch: 815 open before this run, 813 after; batch rows 2 to 0
-node --test src/pulse/coverage/fin-b10-link-gate.test.mjs                 # 11 of 11
-node --test src/pulse/coverage/gap-catalog-display.test.mjs               # 10 of 10
-node --test src/pulse/catalog/proofs/fin-b10-rows.test.mjs src/pulse/catalog/proofs/fin-b10-live-contracts.test.mjs src/pulse/coverage/modules.test.mjs   # 57 of 57
-node --test src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs  # 12 of 12 in today's state, and 12 of 12 with present.html added to ALL
-npm run pulse:catalog
-node scripts/pulse/compile-catalog.mjs --check
-npm run lint
+node scripts/pulse/count-not-proved.mjs <out.json>      # 815 open before this run, 813 after; batch rows 2 to 0
+node --test src/pulse/coverage/fin-b10-link-gate.test.mjs                    # 11 of 11
+node --test src/pulse/coverage/gap-catalog-display.test.mjs                  # 10 of 10
+node --test src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs   # 12 of 12 today, and 12 of 12 with present.html added to ALL
+node --test src/pulse/catalog/*.test.mjs src/pulse/catalog/proofs/fin-b10-*.test.mjs src/pulse/coverage/gap-catalog*.test.mjs \
+  src/pulse/coverage/gap-door-batch*.test.mjs src/pulse/coverage/modules.test.mjs src/pulse/coverage/fin-b10-link-gate.test.mjs \
+  src/http/app-nav-reachability.test.mjs                                    # 238 tests, 238 pass, 0 fail, 0 skipped
+node --test src/pulse/catalog/proofs/display-proof-cases.test.mjs            # 3 of 3 (second run, see below)
+npm run pulse:catalog && node scripts/pulse/compile-catalog.mjs --check      # fresh, exit 0
+npm run lint                                                                 # 3,575 files parse clean
 ```
+
+`display-proof-cases.test.mjs`: 3 of 3 pass on the second full run. Its third test runs every executable test named by every display
+case (all batches, 740 tests, about 35 browser files). On the first full run, under a load average of 80 to 230 (other builders on the
+same Mac), one Playwright spec, `e2e/cc-tab-ideas.spec.mjs` (slice 1, not a batch 10 file), hit its 30 second timeout; alone at a low
+load it passes, and the whole test passed on the re-run. The red count is 632 (was 634 with the two rows unattached): re-derive after
+merging all batches.
 
 ## History
 
