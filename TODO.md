@@ -1,5 +1,13 @@
 # TODO — unfinished work
 
+## Today — 2026-10-16
+
+Owner has a batch of MCA and SBA deals open now and wants them pushed through. Set this up today.
+
+- [ ] Get a new MCA referral link from Crafty (the loan broker Fundhub sends MCA deals to). The email flow needs this link.
+- [ ] Set up the MCA email flow for the current MCA and SBA deals, using Crafty's new referral link.
+- [ ] Push the current MCA and SBA deals through.
+
 ## Today — 2026-10-13
 
 Afternoon update — owner reports it is about 2:30 PM Arizona/MST and plans to film in 15 minutes (about 2:45 PM). Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: filming now, then editing; outreach remains open. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
