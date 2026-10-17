@@ -17,16 +17,36 @@ test("native push beat passes only when signing, door, owners, and recent APNs r
 
 test("native push beat catches a recent APNs failure without claiming delivery", async () => {
   const failed = selfTest.pass();
-  failed.read[0].rows[0].recent_failed = 1;
+  failed.read[1].rows[0].recent_failed = 1;
   const result = await check(failed);
   assert.equal(result.ok, false);
   assert.equal(result.step, "recent-delivery-failure");
 
   const noReceiptCount = selfTest.pass();
-  delete noReceiptCount.read[0].rows[0].recent_failed;
+  delete noReceiptCount.read[1].rows[0].recent_failed;
   const noProof = await check(noReceiptCount);
   assert.equal(noProof.ok, false);
   assert.equal(noProof.step, "recent-delivery-failure");
+});
+
+test("push preference beat catches a missing route and malformed saved choices", async () => {
+  const noDoor = selfTest.pass();
+  noDoor.http["GET https://fundhub.ai/api/push/preferences"] = { status: 404, body: "Not found" };
+  const routeFail = await check(noDoor);
+  assert.equal(routeFail.ok, false);
+  assert.equal(routeFail.step, "preference-door");
+
+  const malformed = selfTest.pass();
+  malformed.read[0].rows[0].invalid_preferences = 1;
+  const shapeFail = await check(malformed);
+  assert.equal(shapeFail.ok, false);
+  assert.equal(shapeFail.step, "preference-shape");
+
+  const unreadable = selfTest.pass();
+  delete unreadable.read[0].rows[0].invalid_preferences;
+  const readFail = await check(unreadable);
+  assert.equal(readFail.ok, false);
+  assert.equal(readFail.step, "preference-shape");
 });
 
 test("native push beat catches a missing route and an unusable signing key", async () => {

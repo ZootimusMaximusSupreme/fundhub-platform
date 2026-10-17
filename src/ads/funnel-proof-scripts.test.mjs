@@ -28,6 +28,7 @@ import {
   FH_ATTRIBUTION_SRC,
   FH_EVENTS_SRC,
   CLARITY_SRC,
+  FUNDHUB_PROMPTER_DOWNLOAD_SRC,
   trackingFooterScripts,
   isClickFunnelsPageHtml,
   dedupeFooterScripts,
@@ -477,7 +478,7 @@ describe("the fragments and the push manifest load the scripts once", () => {
       [
         ["apply-watch", "25061160", [WATCH_PROOF_SRC, FH_EVENTS_SRC, CLARITY_SRC]],
         ["apply-book", "25062844", [FH_EVENTS_SRC, CLARITY_SRC]],
-        ["apply-thank-you", "25063539", [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC]],
+        ["apply-thank-you", "25063539", [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC, FUNDHUB_PROMPTER_DOWNLOAD_SRC]],
         ["apply-order", "25426768", [FH_EVENTS_SRC, CLARITY_SRC]],
       ],
     );

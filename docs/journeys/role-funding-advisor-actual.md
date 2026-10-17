@@ -46,7 +46,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 155 routes]
+    WHO -->|Yes| CANT[Blocked — 157 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 6 blocked]
@@ -66,7 +66,7 @@ flowchart TD
     CANT --> B_partner_marketing[partner-marketing — 5 blocked]
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
-    CANT --> B_push[push — 3 blocked]
+    CANT --> B_push[push — 5 blocked]
     CANT --> B_read[Reading data — 15 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
@@ -77,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**172 of 327 routes.**
+**172 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -98,7 +98,7 @@ flowchart TD
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/bookings` | GET | staff |
+| `/api/bookings` | GET, POST | staff, client |
 | `/api/campaigns/action-log` | GET | partner, staff |
 | `/api/campaigns/connections` | GET | partner, staff |
 | `/api/campaigns/detail` | GET | partner, staff |
@@ -263,7 +263,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**155 of 327 routes.**
+**157 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -391,6 +391,8 @@ flowchart TD
 | `/api/privacy/erasure` | GET, POST | owner, admin |
 | `/api/products` | POST | owner, admin, sales_manager |
 | `/api/push/key` | GET | client |
+| `/api/push/native-device` | DELETE, GET, POST | client |
+| `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |

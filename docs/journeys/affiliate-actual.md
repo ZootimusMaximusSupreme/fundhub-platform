@@ -29,7 +29,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 5 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 284 routes]
+    WHO -->|Yes| CANT[Blocked — 286 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
@@ -56,7 +56,7 @@ flowchart TD
     CANT --> B_partners[partners — 1 blocked]
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
-    CANT --> B_push[push — 3 blocked]
+    CANT --> B_push[push — 5 blocked]
     CANT --> B_read[Reading data — 65 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 2 blocked]
@@ -68,7 +68,7 @@ flowchart TD
 
 ## What they can reach
 
-**43 of 327 routes.**
+**43 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -123,7 +123,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**284 of 327 routes.**
+**286 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -155,7 +155,7 @@ flowchart TD
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/bookings` | GET | staff |
+| `/api/bookings` | GET, POST | staff, client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/campaigns/action-log` | GET | partner, staff |
@@ -319,6 +319,8 @@ flowchart TD
 | `/api/proxy/end` | POST | owner, funding_advisor |
 | `/api/proxy/launch` | POST | owner, funding_advisor |
 | `/api/push/key` | GET | client |
+| `/api/push/native-device` | DELETE, GET, POST | client |
+| `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/ad-attribution` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
