@@ -47,6 +47,20 @@
 - 2026-10-17: Company App Store upload failed because App Store Connect has no app record for `ai.fundhub.app`. The current browser login returned `authResult=FAILED`; no public listing or review submission is proven. The iPhone archive is iPhone-only.
 - 2026-10-17: A separate Fundhub Mac app was installed at `/Applications/Fundhub.app`. Its native welcome, live Team sign-in, and live Client sign-in were visually checked; authenticated use remains untested. Evidence: `ops/workflows/fundhub-mac-install.md`.
 - 2026-10-17: Production strict health returned 200 with database up and no pending migrations. A targeted pulse found five missing outbound message templates, so customer message delivery is not release-green. No new production ship was made.
+- 2026-10-17: App Store Connect now has **Fundhub Portal**, app ID `6823985032`, with iOS and macOS version 1.0 in Prepare for Submission. This is a created record, not an uploaded build or review submission.
+- 2026-10-17: Chris chose to keep Supabase Free. Egress is 7.591/5 GB for the current cycle; it is not safe to call production usage fixed yet. Climate lender reads were narrowed and tested on the release branch.
+- 2026-10-17: Ship run `39044005237` attempt 2 applied migration 481 and strict health showed 394 migrations, 0 pending, but the pre-deploy pulse timed out. Catalog display reads were batched without changing its budget or hiding reds; built-bundle proof finished that lane in 4.1 seconds. No new site deploy has been verified.
+
+## Push expansion (approved 2026-10-17)
+
+| Workflow | Owner | State | Evidence |
+| --- | --- | --- | --- |
+| Service email/SMS companion push | this session | SOURCE PROVEN | `docs/journeys/client-message-push-intended.md`; gated text to decrypted test-device proof; 321 focused tests passed |
+| BS marketing push preference | marketing workflow | SOURCE PROVEN | `docs/journeys/marketing-push-intended.md`; portal GET/PUT and UI tests; default off |
+| Safe native call-invite tap | call-invite workflow | SOURCE PROVEN | `docs/journeys/call-invite-push-intended.md`; 13/13 simulator tests; authenticated portal only, no auto-call |
+| Supabase Free egress and Ship proof | production workflow | SOURCE PROVEN | Narrowed climate query and batched catalog read; live deployment remains open |
+
+Push source work is isolated on `codex/push-mirror-marketing` while the owner's dirty `codex/two-ios-apps-launch` checkout is preserved. Next gate: full tests, GitHub PR, successful deploy, then real iPhone APNs receipt, visible alert, and portal tap. A Join Call button still needs a verified current meeting URL; ClickFunnels often supplies none. No push is claimed live yet.
 
 ## Leftovers outside this launch scope
 
