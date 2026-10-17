@@ -24,6 +24,14 @@ const PRACTICE = FIN_B21_DISPLAY_PROOF_CASES.map((c) => ({ surface: c.surface, c
 const NOT_ATTACHABLE = FIN_B21_NOT_ATTACHABLE.map((c) => ({ surface: c.surface, control: c.control }));
 const REMOVED = FIN_B21_OWNER_REMOVED_ROWS.map((c) => ({ surface: c.surface, control: c.control }));
 
+const groupedRows = (sql, badKey = null, sampleCount = 3) => {
+  const probes = [...sql.matchAll(/SELECT (\d+)::int AS probe_index, sample_count, bad_count FROM \(\/\* display-result:([^*\s]+) \*\//g)];
+  assert.ok(probes.length > 0, "the lane must request indexed saved-result checks");
+  return probes.map(([, index, key]) => ({
+    probe_index: Number(index), sample_count: sampleCount, bad_count: key === badKey ? 1 : 0,
+  }));
+};
+
 /* The live site, made of the shipped files, so the two owner-removed rows are read with no network. */
 const PUBLIC_DIR = path.join(REPO_ROOT, "public");
 const shippedSite = async (url, init) => {
@@ -91,7 +99,7 @@ test("the plug-in list holds the practice cases and none of the other rows", () 
 });
 
 test("the display lane judges the live rows, drops the practice rows, says nothing to judge for the owner-removed rows, and keeps the rest NOT_PROVED", async () => {
-  const db = { query: async () => ({ rows: [{ sample_count: 3, bad_count: 0 }] }) };
+  const db = { query: async (sql) => ({ rows: groupedRows(sql) }) };
   const rows = await gapChecks({ db, orgId: "00000000-0000-4000-8000-0000000000a1", fetchImpl: shippedSite });
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const r of LIVE) {
@@ -110,7 +118,7 @@ test("the display lane judges the live rows, drops the practice rows, says nothi
   }
   // A wrong saved result is red on exactly that row.
   const red = await gapChecks({
-    db: { query: async (sql) => ({ rows: [{ sample_count: 4, bad_count: /display-result:staff-revoke /.test(sql) ? 1 : 0 }] }) },
+    db: { query: async (sql) => ({ rows: groupedRows(sql, "staff-revoke", 4) }) },
     orgId: "00000000-0000-4000-8000-0000000000a1",
     fetchImpl: shippedSite
   });
@@ -126,7 +134,7 @@ test("with no database a live row is skipped, never green", async () => {
 });
 
 test("a control nobody has used yet is green with the first-result words, except the rule book", async () => {
-  const rows = await gapChecks({ db: { query: async () => ({ rows: [{ sample_count: 0, bad_count: 0 }] }) }, orgId: "x", fetchImpl: shippedSite });
+  const rows = await gapChecks({ db: { query: async (sql) => ({ rows: groupedRows(sql, null, 0) }) }, orgId: "x", fetchImpl: shippedSite });
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const r of LIVE) {
     const got = byId.get(idFor(r.surface, r.control));
