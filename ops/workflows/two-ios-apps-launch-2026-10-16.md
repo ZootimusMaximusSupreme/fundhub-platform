@@ -6,8 +6,8 @@ Owner call: two separate App Store apps. The public thank-you page advertises th
 
 | Track | Owner | State | Exit proof |
 | --- | --- | --- | --- |
-| Fundhub Prompter public App Store listing | Prompter agent | In progress | Native build, review assets, Apple submission receipt, public listing |
-| Fundhub company app for clients and staff | This session | In progress | Separate bundle, role-scoped sign-in and working screens, device build, Apple submission receipt, public listing |
+| Fundhub Prompter public App Store listing | Prompter agent | Build 2 prepared in draft [PR #55](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/55); not uploaded | Native build, review assets, Apple submission receipt, public listing |
+| Fundhub company app for clients and staff | This session | Native draft in [PR #56](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/56); not uploaded | Separate bundle, role-scoped sign-in and working screens, device build, Apple submission receipt, public listing |
 | Thank-you-page company download | Funnel agent, then this session after company listing | Prepared in draft [PR #54](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/54); hidden | Live card on `/thank-you`; button opens the exact installable Apple URL |
 
 Prompter and company app work can run at once. The funnel release waits for the **company** listing. No TestFlight or guessed App Store URL goes on the funnel.
@@ -33,6 +33,7 @@ The saved permission for `appstoreconnect.apple.com` denies agent access. Do not
 - Public `fundhub.ai` health, staff login, portal login, and client portal all returned 200 on 2026-10-16. This is door proof, not a signed-in journey test.
 - Live demo logins are disabled. No non-customer App Review account exists yet. Physical iPhones were listed as unavailable by Xcode; no real-iPhone sign-in or camera/document test has been claimed.
 - Apple App Store record, signing profile, review submission, approval, and public company link are still unverified. The company App Store card remains hidden.
+- Prompter build 2 fixes a simulator startup crash, removes a 4K option the code did not provide, and adds privacy links. Its agent reports 56 passing simulator tests and an unsigned Release build; real-device filming and App Review are still open. Do **not** submit TestFlight build 1 for public review.
 
 ## Parallel prompts
 
