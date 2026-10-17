@@ -133,6 +133,12 @@ export function morningOnlySlow(output) {
   );
 }
 
+/** DDL needs the migration owner, never the restricted live app connection. */
+export function migrationOwnerConnection(env = process.env) {
+  const value = String(env.MIGRATION_DATABASE_URL || "").trim();
+  return value && !value.includes("*") ? value : null;
+}
+
 /** The one line worth showing from a failed git or push run. */
 export function reasonLine(text, env = process.env) {
   const lines = redact(text, env).split("\n").map((l) => l.trim()).filter(Boolean);
@@ -325,12 +331,13 @@ async function main() {
   // The guards above still run before any database change; deploy stays last.
   say("\n→ database");
   let applied = 0;
-  const migrationConnection = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
-  if (migrationConnection && !migrationConnection.includes("*")) {
-    say("  database connection found in the environment — using db/migrate.mjs");
+  const migrationConnection = migrationOwnerConnection();
+  if (migrationConnection) {
+    say("  migration-owner connection found — using db/migrate.mjs");
     if (DRY) say("  (dry run: not running it)");
     else if (!run("node", ["db/migrate.mjs"]).ok) fail("db/migrate.mjs failed. Nothing was deployed.");
   } else {
+    say("  no migration-owner connection; using the Supabase Management API");
     // The key is set for Claude's shell by .claude/settings.local.json (gitignored),
     // not for Chris's own terminal. Read the same local copy when needed.
     function supabaseToken() {
@@ -355,7 +362,7 @@ async function main() {
       if (!res.ok) throw new Error(`Supabase answered ${res.status}: ${typeof body === "string" ? body.slice(0, 400) : body.message || JSON.stringify(body).slice(0, 400)}`);
       return body;
     }
-    if (!TOKEN) fail("no SUPABASE_ACCESS_TOKEN and no MIGRATION_DATABASE_URL, so the database changes cannot be applied.");
+    if (!TOKEN) fail("no migration-owner connection or Supabase admin token, so the database changes cannot be applied.");
     const done = new Set((await sql("SELECT key FROM schema_migrations")).map((r) => r.key));
     const pending = onDisk.filter((k) => !done.has(k));
     say(`  ${pending.length} pending${pending.length ? ": " + pending.join(", ") : ""}`);
