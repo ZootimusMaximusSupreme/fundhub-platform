@@ -101,10 +101,11 @@ test("route recipes use route methods and keep writes out of read-only mode", as
   assert.equal(readRecipe.proof.depth, "e2e");
   assert.match(readRecipe.proof.evidence, /src\/http\/demo-logins\.test\.mjs/);
   assert.equal(makeRecipe("routes-0.json", failedFocusedProof).mode, "read-only");
-  assert.match(
-    makeRecipe("routes-0.json", failedFocusedProof).proof.evidence,
-    /gap-door-batch-routes\.mjs/
-  );
+  const focusedProof = makeRecipe("routes-0.json", failedFocusedProof).proof;
+  assert.equal(focusedProof.depth, "e2e");
+  assert.equal(focusedProof.asserts, failedFocusedProof.control);
+  assert.match(focusedProof.evidence, /src\/http\/fin-b26-read-inbox-messages\.test\.mjs/);
+  assert.doesNotMatch(focusedProof.evidence, /gap-door-batch-routes\.mjs/);
   assert.equal(makeRecipe("routes-0.json", write).mode, "test");
   assert.equal(makeRecipe("routes-0.json", write).safe, true);
 });
