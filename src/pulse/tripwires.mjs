@@ -67,6 +67,7 @@ export const TRIPWIRES = Object.freeze({
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
   "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
   "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
+  "send:src/push/native-send.mjs": { impact: "customer", checks: ["native-push:recent-delivery-failure", "native-push:configured"] },
   "route:read/client-progress": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "page:progress.html": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },

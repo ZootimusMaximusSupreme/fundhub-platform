@@ -1,8 +1,8 @@
 import { sendAPNS } from "./apns.mjs";
 import { listNativeDevices, markNativeDevice } from "./native-store.mjs";
 
-// Transport only. No workflow imports this today; a named customer event must
-// be approved before an automatic notification is added.
+// Transport only. The guarded booking-confirmation SMS dispatcher calls this
+// after its successful send; other customer events need their own approved path.
 export async function sendNativeToClient(db, {
   orgId, clientId, notification, env = process.env, send = sendAPNS
 } = {}) {

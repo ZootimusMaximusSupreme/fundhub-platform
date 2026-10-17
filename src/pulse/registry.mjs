@@ -61,7 +61,7 @@ export const ALLOWED_UNMONITORED = {
 };
 
 /* Modules outside src/messaging/providers that call a provider send() for
-   SMS, email, paper mail, web push, or the phone buzz. watch is a registry
+   SMS, email, paper mail, web/native push, or the phone buzz. watch is a registry
    key or a JOBS id the morning pulse already checks. reason is 40+ characters
    when a ping would send or would look down. registry.test.mjs fails when a
    new file imports send and is not listed here. */
@@ -76,6 +76,7 @@ export const SEND_PATHS = {
   "src/pulse/instant-watch.mjs": { watch: "pulse-instant-watch" },
   "src/pulse/notify.mjs": { watch: "daily-pulse" },
   "src/push/send.mjs": { watch: "push/subscribe" },
+  "src/push/native-send.mjs": { watch: "push/native-device" },
   "src/staff/blake-lead-watch.mjs": { watch: "blake-lead-watch" },
   "src/staff/comp-alerts.mjs": {
     reason: "Fires on commission.paid, sale.closed, and deposit.paid. There is no schedule and no GET door. A morning ping cannot send a payout email. The commissions desk is the page a person opens for this."

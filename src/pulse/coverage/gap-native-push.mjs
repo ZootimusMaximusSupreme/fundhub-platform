@@ -7,7 +7,9 @@ SELECT count(*)::int AS active,
          OR (a.kind = 'client' AND a.client_id IS DISTINCT FROM d.client_id)
          OR (a.kind = 'authorized_rep' AND s.active_client_id IS DISTINCT FROM d.client_id)
          OR s.id IS NULL OR s.account_id IS DISTINCT FROM d.account_id
-         OR s.org_id IS DISTINCT FROM d.org_id)::int AS wrong_owner
+         OR s.org_id IS DISTINCT FROM d.org_id)::int AS wrong_owner,
+       count(*) FILTER (WHERE d.failure_count > 0
+         AND d.updated_at >= now() - interval '2 hours')::int AS recent_failed
   FROM client_apns_devices d
   LEFT JOIN accounts a ON a.id = d.account_id
   LEFT JOIN account_sessions s ON s.id = d.session_id
@@ -21,21 +23,37 @@ export async function gapChecks(ctx = {}) {
     detail: ready ? "Native push signing and encrypted storage are configured."
       : "The APNs signing key, IDs, or device storage key is missing or unusable.",
     suggestedFix: ready ? null : "Enable Push Notifications for ai.fundhub.app, add the APNs key to Netlify, then deliver a test to a real iPhone." };
-  if (!db) return [{ id: "native-push:device-owner", status: "skip",
-    detail: "No database read was available, so native device ownership was not checked." }, configured];
+  if (!db) return [
+    { id: "native-push:device-owner", status: "skip",
+      detail: "No database read was available, so native device ownership was not checked." },
+    { id: "native-push:recent-delivery-failure", status: "skip",
+      detail: "No database read was available, so recent APNs failures were not checked." },
+    configured
+  ];
   try {
     const result = await db.query(NATIVE_PUSH_OWNERS_SQL);
-    const active = Number(result.rows[0]?.active || 0);
-    const wrong = Number(result.rows[0]?.wrong_owner || 0);
+    const active = Number(result.rows[0]?.active);
+    const wrong = Number(result.rows[0]?.wrong_owner);
+    const recentFailed = result.rows[0]?.recent_failed == null ? NaN : Number(result.rows[0].recent_failed);
     return [
-      { id: "native-push:device-owner", status: wrong ? "FAIL" : "PASS",
-        detail: wrong ? `${wrong} live iPhone devices are attached to the wrong or inactive client account.`
-          : `${active} live iPhone devices are attached to active client accounts.`,
+      { id: "native-push:device-owner", status: !Number.isFinite(wrong) ? "skip" : wrong ? "FAIL" : "PASS",
+        detail: !Number.isFinite(wrong) ? "The native device ownership count was not returned."
+          : wrong ? `${wrong} live iPhone devices are attached to the wrong or inactive client account.`
+            : `${active} live iPhone devices are attached to active client accounts.`,
         suggestedFix: wrong ? "Revoke the mismatched device rows; do not send to them." : null },
+      { id: "native-push:recent-delivery-failure", status: !Number.isFinite(recentFailed) ? "skip" : recentFailed ? "FAIL" : "PASS",
+        detail: !Number.isFinite(recentFailed) ? "The recent APNs failure count was not returned."
+          : recentFailed ? `${recentFailed} active iPhone devices reported an APNs send failure in the last two hours.`
+            : "No recent APNs failure is recorded. This does not prove a booking alert reached an iPhone.",
+        suggestedFix: recentFailed ? "Check APNs rejection and the affected device without exposing its token." : null },
       configured
     ];
   } catch (error) {
-    return [{ id: "native-push:device-owner", status: "skip",
-      detail: `Could not read native push devices: ${String(error?.message || error).slice(0, 120)}` }, configured];
+    const detail = `Could not read native push devices: ${String(error?.message || error).slice(0, 120)}`;
+    return [
+      { id: "native-push:device-owner", status: "skip", detail },
+      { id: "native-push:recent-delivery-failure", status: "skip", detail },
+      configured
+    ];
   }
 }

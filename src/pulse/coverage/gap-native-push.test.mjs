@@ -12,19 +12,25 @@ const readyEnv = {
 };
 
 test("native push tripwire passes only when owner rows and signing are sound", async () => {
-  const db = { query: async () => ({ rows: [{ active: 2, wrong_owner: 0 }] }) };
+  const db = { query: async () => ({ rows: [{ active: 2, wrong_owner: 0, recent_failed: 0 }] }) };
   const rows = await gapChecks({ db, env: readyEnv });
-  assert.deepEqual(rows.map((row) => row.status), ["PASS", "PASS"]);
+  assert.deepEqual(rows.map((row) => row.status), ["PASS", "PASS", "PASS"]);
 });
 
 test("a mismatched device and missing Apple key stay red", async () => {
-  const db = { query: async () => ({ rows: [{ active: 2, wrong_owner: 1 }] }) };
+  const db = { query: async () => ({ rows: [{ active: 2, wrong_owner: 1, recent_failed: 1 }] }) };
   const rows = await gapChecks({ db, env: { PUSH_SUB_ENC_KEY: readyEnv.PUSH_SUB_ENC_KEY } });
-  assert.deepEqual(rows.map((row) => row.status), ["FAIL", "FAIL"]);
+  assert.deepEqual(rows.map((row) => row.status), ["FAIL", "FAIL", "FAIL"]);
 });
 
 test("a failed database read is a skip, never a pass", async () => {
   const db = { query: async () => { throw new Error("read failed"); } };
   const rows = await gapChecks({ db, env: readyEnv });
-  assert.deepEqual(rows.map((row) => row.status), ["skip", "PASS"]);
+  assert.deepEqual(rows.map((row) => row.status), ["skip", "skip", "PASS"]);
+});
+
+test("a missing APNs receipt count stays not checked", async () => {
+  const db = { query: async () => ({ rows: [{ active: 0, wrong_owner: 0 }] }) };
+  const rows = await gapChecks({ db, env: readyEnv });
+  assert.deepEqual(rows.map((row) => row.status), ["PASS", "skip", "PASS"]);
 });

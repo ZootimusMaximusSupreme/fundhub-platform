@@ -30,6 +30,11 @@ deferred, failed, test-provider or unrelated message sends no native alert.
 An APNs failure cannot retry or undo the successful text. No alert has been
 delivered on a real iPhone yet.
 
+The hourly `native-push` beat covers both device registration and the native send path.
+Its read-only check goes red for a failed APNs send on an active device in the last
+two hours; the morning `native-push:recent-delivery-failure` check reads the same
+device state. No failure recorded is not proof that a booking alert arrived.
+
 APNs needs the `ai.fundhub.app` App ID's Push Notifications capability, a matching provisioning
 profile, and `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY_BASE64` in the Netlify environment;
 it reuses `PUSH_SUB_ENC_KEY` for encrypted device storage. Debug uses the development APNs
