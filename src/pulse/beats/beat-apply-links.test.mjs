@@ -309,7 +309,7 @@ test("DAMP: a broken link stays red on the next run (it is read again), and goes
   assert.equal(rowFor(run3.rows, dead).lastClass, "OK");
 });
 
-test("CONFIRM TIMING: a known broken Apply page is confirmed while other bank reads finish, and stays red", async () => {
+test("CONFIRM TIMING: a once-good Apply page is confirmed while other bank reads finish, and stays red", async () => {
   const urls = banks(20);
   const broken = urls[0];
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -317,7 +317,7 @@ test("CONFIRM TIMING: a known broken Apply page is confirmed while other bank re
   const t0 = Date.now();
   const { result, log, rows } = await go({
     urls,
-    state: urls.map((url) => wasGood(url, url === broken ? { lastClass: "BAD_URL", lastStatus: 404 } : {})),
+    state: urls.map((url) => wasGood(url)),
     http: async (method, url) => {
       if (url === broken) {
         brokenReads += 1;

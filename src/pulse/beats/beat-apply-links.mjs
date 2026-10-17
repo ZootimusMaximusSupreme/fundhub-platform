@@ -166,10 +166,10 @@ export async function run(ctx) {
   const answers = await ctx.step("fetch", async () => {
     const out = await runPool(plan.picks, async (p) => {
       const answer = await readOnce(p.url);
-      // A known broken link is picked first. Start its second read while the other banks finish,
+      // A previously good link that now gives a real broken response can start its second read while the other banks finish,
       // but keep the same confirmation cap and start cutoff. A positive status also means the
       // pulse is not blind; an all-dead web connection must still fail without extra reads.
-      if (p.suspect && answer.status > 0 && isBroken(classifyRead(answer).cls) &&
+      if (p.prev && p.prev.lastGoodAt && answer.status > 0 && isBroken(classifyRead(answer).cls) &&
           elapsed() <= TIMING.confirmStartMs && earlyConfirms.size < CAPS.maxConfirms) {
         earlyConfirms.set(p.urlHash, readOnce(p.url));
       }
