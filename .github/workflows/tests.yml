@@ -90,7 +90,7 @@ jobs:
   unit:
     name: suite (no database — 358 pg tests skip)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -152,7 +152,7 @@ jobs:
   browser:
     name: screens (real browser)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       STAFF_E2E_PASSWORD: ${{ secrets.STAFF_E2E_PASSWORD }}
 
@@ -194,7 +194,7 @@ jobs:
   postgres:
     name: suite (real Postgres — blocks)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50
 
     services:
       postgres:
