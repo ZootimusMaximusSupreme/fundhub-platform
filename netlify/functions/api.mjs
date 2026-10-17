@@ -286,6 +286,7 @@ import pushKey from "../../api/push/key.mjs";
 import pushSubscribe from "../../api/push/subscribe.mjs";
 import pushUnsubscribe from "../../api/push/unsubscribe.mjs";
 import pushNativeDevice from "../../api/push/native-device.mjs";
+import pushPreferences from "../../api/push/preferences.mjs";
 import contracts from "../../api/contracts.mjs";
 import readContracts from "../../api/read/contracts.mjs";
 import readPortalContracts from "../../api/read/portal-contracts.mjs";
@@ -1265,7 +1266,7 @@ export const ROUTES = {
 
   /* ── Web push for the client portal (352_client_push_subscriptions.sql,
         src/push/) ───────────────────────────────────────────────────────────
-     All three are CLIENT-ONLY and pinned to the caller's own file: there is no
+     Every route below is CLIENT-ONLY and pinned to the caller's own file: there is no
      client_id parameter on any of them, so no call can register or retire a
      phone that is not the caller's own. Routed in the same commit as the
      handlers, the migration and the service worker — this map's header records
@@ -1274,6 +1275,7 @@ export const ROUTES = {
   "push/subscribe": pushSubscribe,
   "push/unsubscribe": pushUnsubscribe,
   "push/native-device": pushNativeDevice,
+  "push/preferences": pushPreferences,
 
   // ── The contract generator (124_contracts.sql, src/contracts/) ─────────────
   //

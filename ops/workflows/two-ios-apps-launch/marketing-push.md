@@ -8,7 +8,7 @@ Owner said go to customer marketing push alongside email/SMS. This board records
 - BS-01 triggers on booking create/reschedule. It queues one T-48h pre-call SMS (`SMS-BS01-02-PRECALL`) and can queue up to 18 funding/repair emails. Its booked/day-of SMS keys remain in source but are not sent; S-04B owns 24h/2h reminders. Source: `src/workflows/bs-01-precall-launcher.mjs`.
 - No-book (three pairs), no-show (four pairs), and SLO follow-ups use `sendTemplated`, so they enter the normal outbox. SLO infinite drip is email-only. Sources: `src/workflows/s-nobook-chase.mjs`, `s-05a-no-show-recovery.mjs`, `slo-*.mjs`.
 - Owner ad-video notifications bypass the client outbox and already try SMS plus ntfy (`src/ad-videos/notify-fanout.mjs`). Native APNs devices are tied to client/authorized-representative sessions, not staff. Keep owner alerts separate from client marketing.
-- No outbound marketing-push preference found in `src/`, `scripts/`, `db/`, or `docs/`. `marketing_use` consent covers reuse of a client's recording/likeness in ads, not outbound offers (`db/migrations/291_recording_and_marketing_consent.sql`). Existing `opt_outs` has SMS/email/voice channels.
+- Before this build, no outbound marketing-push preference existed in `src/`, `scripts/`, `db/`, or `docs/`. `marketing_use` consent covers reuse of a client's recording/likeness in ads, not outbound offers (`db/migrations/291_recording_and_marketing_consent.sql`). Existing `opt_outs` has SMS/email/voice channels.
 - Push payload currently allows only the client portal URL. It refuses campaign URLs and unlisted body text (`src/push/payload.mjs`). BS email cells can be draft/placeholder and the normal dispatcher blocks them.
 
 ## Handoff to workflow A (dispatcher/push owner)
@@ -20,3 +20,9 @@ Owner said go to customer marketing push alongside email/SMS. This board records
 5. Mark the new send path in heartbeat/tripwire coverage and prove one real iPhone receive/tap. An APNs failure must not retry the email/SMS.
 
 Detailed intended order, copy and source keys: `docs/journeys/marketing-push-intended.md`.
+
+## Preference build in this branch
+
+- `GET /api/push/preferences` returns `{ok:true, marketing_push_enabled:boolean}` for the signed-in client; missing and non-boolean JSON values read off. `PUT` accepts only a boolean under the same key and changes only that client's `clients.custom_fields` row. This does not register a phone or change email/SMS opt-outs.
+- The existing client notification card now has a Marketing updates choice with loading, off, error and on states. It is off by default, can retry a failed read/save, and says plainly that a phone must have Fundhub notifications turned on to receive it.
+- Six API tests and one Playwright walk (four states at 1440px and 390px, toggle on/off, failed-save retry) passed locally. Marked screenshots are in `ops/workflows/build-evidence/marketing-push-preference/`. The route is wired in `netlify/functions/api.mjs`. This is source proof only; no live send or real-device receipt has occurred.
