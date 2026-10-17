@@ -7,6 +7,6 @@ test("the Flow page specs exist and make no live writes", () => {
   assertSpecsAreSafe(S2_FLOW_SPECS);
 });
 
-test("the consulting pages are driven in a real browser", () => {
-  runSpecs(S2_FLOW_SPECS, "slice-2 flow page proofs");
+test("the consulting pages are driven in a real browser", async () => {
+  await runSpecs(S2_FLOW_SPECS, "slice-2 flow page proofs");
 });

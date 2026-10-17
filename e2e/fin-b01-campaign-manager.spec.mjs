@@ -252,6 +252,17 @@ test.describe("campaign manager: drawer controls that change Meta", () => {
     await expect.poll(() => page.evaluate(() => window.__cwSeen)).toContain("Meta has the new daily budget.");
   });
 
+  test("a drawer refresh keeps the typed daily budget until it is sent", async ({ page }) => {
+    const b = await openDrawer(page);
+    await page.locator("#cwBudget").fill("30000");
+    await page.locator('#dwMetrics button[data-m="impressions"]').click();
+    await expect(page.locator("#cwBudget")).toHaveValue("30000");
+    page.once("dialog", (d) => d.accept());
+    await page.locator('[data-cw="update_budget"]').click();
+    await expect.poll(() => b.calls.write.length).toBe(1);
+    expect(b.calls.write[0].budget_cents).toBe(30000);
+  });
+
   test("a daily budget under 100 cents is refused on the page: no question, nothing sent", async ({ page }) => {
     const b = await openDrawer(page);
     await page.locator("#cwBudget").fill("50");

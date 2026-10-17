@@ -337,6 +337,10 @@ a.btn-unlock{display:inline-block;text-decoration:none}
 .push-steps li{margin:4px 0}
 #push-status:empty{display:none}
 #push-status{margin-top:9px}
+.push-marketing{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.push-marketing .card-title{margin-bottom:8px}
+.push-marketing .btn-unlock{min-height:44px}
+.push-marketing-skeleton{display:inline-block;width:56%;height:12px;border-radius:6px;background:var(--paper-dim);vertical-align:middle}
 
 /* ── 6 · booking / 7 · advisor ──────────────────────────────────────────── */
 .book-card{border:1px solid var(--line);background:var(--surface)}
@@ -1131,6 +1135,15 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
         </ol>
         <button class="btn-unlock" type="button" id="push-btn" hidden>Turn on notifications</button>
         <div class="support-note" id="push-status" role="status" aria-live="polite"></div>
+        <div class="push-marketing" id="push-marketing" hidden>
+          <div class="card-title">Marketing updates</div>
+          <div id="push-marketing-loading" role="status" hidden>
+            <span class="push-marketing-skeleton" aria-hidden="true"></span>
+            Checking your choice…
+          </div>
+          <div id="push-marketing-copy" aria-live="polite" hidden></div>
+          <button class="btn-unlock" type="button" id="push-marketing-btn" hidden>Turn marketing updates on</button>
+        </div>
       </section>
 
     </div>
@@ -3765,6 +3778,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   var steps = document.getElementById("push-steps");
   var btn = document.getElementById("push-btn");
   var statusEl = document.getElementById("push-status");
+  var marketing = document.getElementById("push-marketing");
+  var marketingLoading = document.getElementById("push-marketing-loading");
+  var marketingCopy = document.getElementById("push-marketing-copy");
+  var marketingBtn = document.getElementById("push-marketing-btn");
   if (!card || !btn) return;
 
   function say(text) { if (statusEl) statusEl.textContent = text || ""; }
@@ -3791,6 +3808,66 @@ document.addEventListener("DOMContentLoaded", async function () {
         function () { return { status: r.status, body: null }; }
       );
     }, function () { return { status: 0, body: null }; });
+  }
+
+  var marketingDesired = null;
+  function paintMarketing(state, detail) {
+    show(marketing, true);
+    show(marketingLoading, state === "loading");
+    show(marketingCopy, state !== "loading");
+    show(marketingBtn, state !== "loading");
+    if (state === "empty") {
+      marketingCopy.textContent = "Marketing updates are off. Turn them on for a few useful offers and call-prep notes. Email and text settings do not change.";
+      marketingBtn.textContent = "Turn marketing updates on";
+      marketingBtn.setAttribute("data-mode", "on");
+    } else if (state === "full") {
+      marketingCopy.textContent = "Marketing updates are on for this account. They reach only phones where you turned on Fundhub notifications. Email and text settings do not change.";
+      marketingBtn.textContent = "Turn marketing updates off";
+      marketingBtn.setAttribute("data-mode", "off");
+    } else if (state === "error") {
+      marketingCopy.textContent = detail || "We could not check your marketing updates. Please try again.";
+      marketingBtn.textContent = "Try again";
+      marketingBtn.setAttribute("data-mode", marketingDesired === null ? "retry-load" : "retry-save");
+    }
+  }
+
+  function loadMarketingPreference() {
+    marketingDesired = null;
+    paintMarketing("loading");
+    return api("/api/push/preferences").then(function (res) {
+      if (res.status !== 200 || !res.body || res.body.ok !== true ||
+          typeof res.body.marketing_push_enabled !== "boolean") {
+        paintMarketing("error", (res.body && res.body.message) || null);
+        return;
+      }
+      paintMarketing(res.body.marketing_push_enabled ? "full" : "empty");
+    });
+  }
+
+  function saveMarketingPreference(enabled) {
+    marketingDesired = enabled;
+    paintMarketing("loading");
+    return api("/api/push/preferences", {
+      method: "PUT", body: { marketing_push_enabled: enabled }
+    }).then(function (res) {
+      if (res.status !== 200 || !res.body || res.body.ok !== true ||
+          res.body.marketing_push_enabled !== enabled) {
+        paintMarketing("error", (res.body && res.body.message) || "We could not save your choice. Please try again.");
+        return;
+      }
+      marketingDesired = null;
+      paintMarketing(enabled ? "full" : "empty");
+    });
+  }
+
+  if (marketingBtn) {
+    marketingBtn.addEventListener("click", function () {
+      var mode = marketingBtn.getAttribute("data-mode");
+      marketingBtn.disabled = true;
+      var job = mode === "retry-load" ? loadMarketingPreference()
+        : saveMarketingPreference(mode === "retry-save" ? marketingDesired : mode === "on");
+      Promise.resolve(job).then(function () { marketingBtn.disabled = false; });
+    });
   }
 
   /* ── what kind of machine is this ───────────────────────────────────────── */
@@ -4040,6 +4117,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Signed out: this card has nothing true to say, and registering a worker
     // for somebody who is not signed in gains nothing.
     if (!token()) return Promise.resolve();
+
+    // This account-wide choice is separate from the current device's push
+    // permission. It is off until the client deliberately turns it on.
+    loadMarketingPreference();
 
     /* Version first. An iPhone that cannot do this at any point must never be
        sent to do the three taps, and must not be left with a blank space after

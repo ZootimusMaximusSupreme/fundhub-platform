@@ -25,6 +25,8 @@ A person's setup step (for example "connect your calendar so booked calls land o
 
 The tripwire map (`src/pulse/tripwires.mjs`) is where every page, route, job and send is sorted: money or customer names its deep check, the rest says why it is not customer-facing. A new one fails the tests until it is sorted. That is what sews the tripwires into every build.
 
+The client marketing-push switch is watched in both clocks. The morning `marketing-push:preference-shape` tripwire and the hourly `native-push` beat read saved client choices and go red if a present choice is not a true or false value. The hourly beat also checks that the switch route requires sign-in, before it checks APNs setup. Neither check claims a notification reached a phone.
+
 ## Whole-company catalog
 
 Claude's 20 map files hold 3,975 rows. Thirty-three rows clearly name another row they repeat, leaving 3,942 unique company items. The compiler gives every item one stable id and one recipe. It links existing tests, deep lanes, hourly beats and pings. A money or customer item needs deep proof. A staff-only item needs an end-to-end test. A claim with no executable proof stays red.

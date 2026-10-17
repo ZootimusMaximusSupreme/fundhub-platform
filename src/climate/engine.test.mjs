@@ -99,8 +99,16 @@ test("climate: CRM pull uses default org lender query", async () => {
   };
   const pack = await pullCrmLenders(db);
   assert.match(lenderSql, /FROM lenders/);
+  assert.match(lenderSql, /active = \$2 AND COALESCE\(is_demo, false\) = false/);
+  const selected = lenderSql.match(/SELECT\s+([\s\S]*?)\s+FROM lenders/i)?.[1]
+    .split(",").map((column) => column.trim());
+  assert.deepEqual(selected, [
+    "id", "lender_table", "name", "product_name", "eligible_states",
+    "application_url", "logo_path", "priority_tier", "bureaus_pulled"
+  ]);
   assert.equal(pack.lenders.length, 1);
   assert.equal(pack.lenders[0].name, "Mock Lender");
+  assert.equal(pack.lenders[0].logo_path, "/assets/lenders/placeholder.svg");
   assert.equal(pack.lenders[0].approval_rate, undefined);
 });
 

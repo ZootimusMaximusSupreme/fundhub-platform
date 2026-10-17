@@ -1,4 +1,4 @@
-import { listLenders } from "../lenders/store.mjs";
+import { logoPathOrPlaceholder } from "../lenders/resolve-logo.mjs";
 import { defaultOrgId } from "../pulse/daily-pulse.mjs";
 import {
   STATE_CENTROIDS,
@@ -21,8 +21,8 @@ export function mapClimateLender(row) {
     lender_table: row.lender_table,
     eligible_states: row.eligible_states ?? null,
     application_url: row.application_url ?? null,
-    logo_path: row.logo_path ?? null,
-    priority_tier: row.priority_tier ?? null,
+    logo_path: logoPathOrPlaceholder(row.logo_path),
+    priority_tier: row.priority_tier == null ? null : Number(row.priority_tier),
     bureaus_pulled: row.bureaus_pulled ?? null,
     type: "lender"
   };
@@ -40,7 +40,15 @@ export async function pullCrmLenders(db) {
   try {
     const orgId = await defaultOrgId(db);
     if (!orgId) throw new Error("default org missing");
-    const rows = await listLenders(db, { orgId, active: true, includeDemo: false });
+    const { rows } = await db.query(
+      `SELECT id, lender_table, name, product_name, eligible_states,
+              application_url, logo_path, priority_tier, bureaus_pulled
+         FROM lenders
+        WHERE org_id = $1::uuid AND active = $2 AND COALESCE(is_demo, false) = false
+        ORDER BY priority_tier NULLS LAST, lower(name), id
+        LIMIT 5000`,
+      [orgId, true]
+    );
     const lenders = rows.map(mapClimateLender).filter(Boolean);
     const record = {
       updated_at: now,

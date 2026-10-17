@@ -298,6 +298,14 @@ const ALLOWED_RAW_FETCH = {
   "src/pulse/coverage/gap-staff.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-training.mjs": PULSE_GAP_READS,
   "src/pulse/coverage/gap-webhooks.mjs": PULSE_GAP_READS,
+  // ── Read-only deployed-site proof lanes. Each call below is GET-only and
+  // inspects Fundhub pages or same-origin files; none sends or writes. ───────
+  "src/pulse/catalog/proofs/fin-b22-not-shipped.mjs": PULSE_GAP_READS,
+  "src/pulse/catalog/proofs/fin-b22-page-reads.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/fin-b01-retired-controls.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/fin-b06-not-shipped.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/fin-b10-link-gate.mjs": PULSE_GAP_READS,
+  "src/pulse/coverage/fin-b19-hidden-head.mjs": PULSE_GAP_READS,
   // ── Added 2026-10-10 (coverage batch W2, money B). Read before it was listed. ──
   "src/pulse/coverage/money-reads.mjs":
     "The one place the six money-B coverage lanes (gap-checkout, gap-ads-meta and the rest) reach the network. " +

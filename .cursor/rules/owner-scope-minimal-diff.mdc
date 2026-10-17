@@ -23,11 +23,13 @@ Unless the request named it:
 
 ## When the fix needs a file he did not name
 
-Stop. Ask **one** question. Wait for his answer.
+For an approved launch, a failed required release check is in scope. Repair its code or test in the smallest safe diff and rerun it without asking again. See `approved-launch-release-blockers.mdc`.
+
+Otherwise stop. Ask **one** question. Wait for his answer.
 
 Do not ask and edit in the same turn. Do not touch the file and mention it after.
 
-Adding a route, field, or dependency he did not explicitly request is always a stop-and-ask.
+Adding a route, field, or dependency he did not explicitly request is a stop-and-ask unless it is required to repair a failed release check in an approved launch and preserves the intended behavior.
 
 ## Example
 

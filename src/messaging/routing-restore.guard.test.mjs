@@ -74,10 +74,14 @@ function stripComments(src) {
    copy (savedRouting), or a SECOND provider UPDATE that sits after a teardown
    (after(, afterEach( or finally {). One UPDATE alone never restores itself. */
 const PROVIDER_UPDATE = /UPDATE\s+message_channel_routing\s+SET\b[^`;'"]*?\bprovider\s*=/gi;
+// A proof can search its fake DB's recorded SQL with fake.find(/UPDATE .../).
+// Mask only that search expression; a real query elsewhere still trips this guard.
+const FAKE_DB_SEARCH = /\bfake\.find\(\s*\/UPDATE\s+message_channel_routing\s+SET\b[^/\n]*\/[gimsuy]*\s*\)/gi;
 const TEARDOWN = /\bafter(Each)?\s*\(|\bfinally\s*\{/g;
 
 export function routingOffence(src) {
-  const updates = [...src.matchAll(PROVIDER_UPDATE)].map((m) => m.index);
+  const inspected = src.replace(FAKE_DB_SEARCH, (match) => " ".repeat(match.length));
+  const updates = [...inspected.matchAll(PROVIDER_UPDATE)].map((m) => m.index);
   if (!updates.length) return false;
   if (/DELETE\s+FROM\s+message_channel_routing\s+WHERE\s+org_id/i.test(src) ||
       /destroyMemoryRoutedOrg\s*\(/.test(src) ||
@@ -99,6 +103,12 @@ test("the routing check itself: one UPDATE is never its own restore", () => {
     "deleting the suite org's rows is a restore");
   assert.equal(routingOffence("db.query(`UPDATE message_channel_routing SET enabled = false WHERE org_id = $1`)"), false,
     "an UPDATE that does not touch provider is not this offence");
+  assert.equal(routingOffence("fake.find(/UPDATE message_channel_routing SET provider = 'memory'/)"), false,
+    "searching a fake database's recorded calls is not a database UPDATE");
+  assert.equal(routingOffence("fake.find(/UPDATE message_channel_routing SET provider = 'memory'/); " + set), true,
+    "a real UPDATE beside a fake database search is still flagged");
+  assert.equal(routingOffence("/* note */UPDATE message_channel_routing SET provider = 'memory'"), true,
+    "a real UPDATE directly after a slash is still flagged");
 });
 
 test("no test UPDATEs message_channel_routing without restoring it", () => {

@@ -284,7 +284,7 @@ test("with no GET client the page-read rows are skips, never green and never not
 
 test("the web push row is judged from the devices a client turned on", async () => {
   const org = "00000000-0000-4000-8000-000000000001";
-  const kit = makeStandIn(["client_push_subscriptions", "clients"]);
+  const kit = makeStandIn(["client_push_subscriptions", "clients", "messages"]);
   try {
     const DAY = 86_400_000;
     const ago = (days) => new Date(KIT_NOW.getTime() - days * DAY).toISOString();
@@ -295,6 +295,12 @@ test("the web push row is judged from the devices a client turned on", async () 
       expired_at: null, revoked_at: null, ...over,
     });
     kit.insert("client_push_subscriptions", device(1));
+    kit.insert("messages", {
+      id: "00000000-0000-4000-8000-0000000000e1", org_id: org,
+      client_id: "00000000-0000-4000-8000-0000000000c1", direction: "outbound",
+      channel: "sms", status: "sent", template_key: "SMS-S04-01-CONFIRM",
+      created_at: ago(1), updated_at: ago(1),
+    });
     let row = (await gapChecks({ db: kit.handle(), orgId: org, now: KIT_NOW })).find((item) => item.id === "flow:message:provider:web-push-and-client-push");
     assert.equal(row.status, "PASS");
     assert.match(row.detail, /1 saved result passed/);

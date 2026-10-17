@@ -29,9 +29,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DISPLAY_PROOF_CASES } from "../src/pulse/catalog/proofs/display-proof-cases.mjs";
+import { UNIT_SHARD_COUNT, unitShardFor } from "./run-suite-shards.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -50,6 +53,34 @@ function walk(dir, out = []) {
 const all = [...walk(path.join(ROOT, "src")), ...walk(path.join(ROOT, "scripts"))];
 const pg = all.filter((f) => f.endsWith(".pg.test.mjs")).sort();
 const unit = all.filter((f) => !f.endsWith(".pg.test.mjs")).sort();
+
+// Plain `npm test` keeps both halves. CI runs every unit file in each context
+// across six independent jobs, then runs every pg file serially with Postgres.
+const part = process.env.FUNDHUB_SUITE_PART || "all";
+assert.ok(["all", "unit", "pg"].includes(part), `unknown suite part: ${part}`);
+const shardText = process.env.FUNDHUB_SUITE_SHARD_INDEX;
+if (part === "unit") {
+  assert.match(shardText || "", /^[0-5]$/, "unit shard index must be 0–5");
+} else {
+  assert.equal(shardText, undefined, "shard index is only valid for the unit part");
+}
+if (part === "pg") assert.ok(process.env.DATABASE_URL, "pg-only suite requires DATABASE_URL");
+const selectedUnit = part === "unit"
+  ? unit.filter((file) => unitShardFor(path.relative(ROOT, file).split(path.sep).join("/")) === Number(shardText))
+  : unit;
+if (part === "unit") {
+  assert.ok(selectedUnit.length > 0, `unit shard ${shardText} is empty`);
+  process.stderr.write(`[run-suite] unit shard ${Number(shardText) + 1}/${UNIT_SHARD_COUNT}: ${selectedUnit.length}/${unit.length} files\n`);
+}
+
+// The focused display proof runs its mapped files itself. The full suite runs
+// each of those files already, so assert coverage before avoiding that duplicate run.
+const discovered = new Set(all.map((file) => path.relative(ROOT, file).split(path.sep).join("/")));
+const mapped = [...new Set(DISPLAY_PROOF_CASES.flatMap((proofCase) => proofCase.tests))];
+for (const file of mapped) {
+  assert.ok(discovered.has(file), `display proof test missing from full suite: ${file}`);
+}
+process.stderr.write(`[run-suite] display proof files covered: ${mapped.length}/${mapped.length}\n`);
 
 function run(label, files, concurrency) {
   if (!files.length) return 0;
@@ -70,7 +101,11 @@ function run(label, files, concurrency) {
   args.push(...files);
   process.stderr.write(`\n[run-suite] ${label}: ${files.length} files` +
     (concurrency != null ? ` (concurrency=${concurrency})` : "") + "\n");
-  const r = spawnSync(process.execPath, args, { stdio: "inherit", cwd: ROOT });
+  const r = spawnSync(process.execPath, args, {
+    stdio: "inherit",
+    cwd: ROOT,
+    env: { ...process.env, FUNDHUB_FULL_SUITE_COVERS_DISPLAY_PROOFS: "1" },
+  });
   if (r.error) {
     console.error(r.error);
     return 1;
@@ -82,11 +117,11 @@ function run(label, files, concurrency) {
    pg file ran, so in CI one stale unit test hid every database result behind
    it (measured 2026-10-05, GitHub run 37406614118: 23 unit failures, 0 pg
    files run). Run the unit half, run the pg half, then fail if either did. */
-const unitCode = run("unit", unit, undefined);
+const unitCode = part === "pg" ? 0 : run("unit", selectedUnit, undefined);
 
 // With a database: one pg file at a time. Without: parallel skip is cheap.
 const pgConcurrency = process.env.DATABASE_URL ? 1 : undefined;
-const pgCode = run("pg", pg, pgConcurrency);
+const pgCode = part === "unit" ? 0 : run("pg", pg, pgConcurrency);
 
 process.stderr.write(`\n[run-suite] unit exit ${unitCode}, pg exit ${pgCode}\n`);
 process.exit(unitCode !== 0 ? unitCode : pgCode);

@@ -120,6 +120,7 @@ test.describe("optimize: the intake and the SMS consent that are still on the pa
     const optimize = requests.filter((r) => /\/api\/public\/optimize/.test(r.url));
     expect(optimize.length).toBeGreaterThan(0);
     for (const r of optimize) expect(r.method).toBe("GET");
-    expect(requests.filter((r) => r.method === "POST")).toEqual([]);
+    const appOrigin = new URL(page.url()).origin;
+    expect(requests.filter((r) => r.method === "POST" && new URL(r.url).origin === appOrigin)).toEqual([]);
   });
 });

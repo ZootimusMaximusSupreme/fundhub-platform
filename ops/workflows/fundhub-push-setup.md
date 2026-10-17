@@ -14,7 +14,7 @@
 
 - Existing browser push: built, not wired to an automatic send; no real-phone delivery proof.
 - Native APNs: client opt-in, session-bound encrypted device rows, APNs transport, and manual test command built in source. No automatic send is connected because the booking message dispatcher gates do not yet cover APNs; no real iPhone alert has been observed.
-- Apple App Store Connect: `ai.fundhub.app` record missing; this task has a saved account permission denial, so account setup must be done by the owner.
+- Apple App Store Connect update (2026-10-17): `ai.fundhub.app` has the Fundhub Portal record `6823985032`, and Chris superseded the prior account-access denial. Apple reports Push Notifications enabled on the App ID; a genuine APNs server key is still unverified.
 - GitHub: commit `d6acfd1cc` pushed to [PR #56](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/56). Not merged or live.
 
 ## Proof and handoff
@@ -28,7 +28,7 @@
 
 ## Owner/Apple steps before a real alert
 
-1. In Apple Developer Certificates, Identifiers & Profiles, enable Push Notifications for `ai.fundhub.app`; create an APNs Auth Key and regenerate the Development and App Store provisioning profiles. The current account permission denial prevents this task from doing it.
+1. Push Notifications is enabled for `ai.fundhub.app` and the current signed Release build has the production entitlement. Create a genuine APNs Auth Key in Apple Developer; the earlier account-access denial no longer applies. Follow any Apple sign-in or tool-enforced confirmation when it appears.
 2. Put `APNS_KEY_ID`, `APNS_TEAM_ID`, and the complete `.p8` file base64-encoded as `APNS_PRIVATE_KEY_BASE64` into the deployed Netlify environment; retain `PUSH_SUB_ENC_KEY`. Apply migration 481 and include it in the expected-migrations manifest.
 3. Make a signed Debug iPhone build and signed Release archive, inspect each app's `aps-environment` (`development`/`production`), opt in from a real client iPhone, then run `scripts/push/send-test-native.mjs --client <uuid> --send` from an authorized environment. A visible banner, not just Apple's HTTP 200, is delivery proof.
 

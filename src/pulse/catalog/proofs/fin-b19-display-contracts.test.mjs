@@ -49,9 +49,22 @@ function stand() {
     const keys = Object.keys(row);
     db.prepare(`INSERT INTO ${table} (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`).run(...keys.map((k) => row[k]));
   };
-  // What the lane calls: query(sql, [orgId]) -> { rows: [{ sample_count, bad_count }] }.
+  const ownSql = new Map(FIN_B19_DISPLAY_CONTRACTS.filter((entry) => entry.mode === "query")
+    .map((entry) => [/display-result:([^*\s]+)/.exec(entry.sql)[1], entry.sql]));
+  // The lane groups saved-result reads. Run these eleven exact contracts on SQLite;
+  // unrelated catalog contracts are outside this stand-in's tables.
   const adapter = {
     async query(sql, params) {
+      if (sql.includes(" AS probe_index")) {
+        const probes = [...sql.matchAll(/SELECT (\d+)::int AS probe_index, sample_count, bad_count FROM \(\/\* display-result:([^*\s]+) \*\//g)];
+        assert.ok(probes.length > 0, "the lane must request indexed saved-result checks");
+        return { rows: probes.map(([, index, key]) => {
+          const own = ownSql.get(key);
+          if (!own) return { probe_index: Number(index), error: new Error("outside this stand-in's tables") };
+          const row = db.prepare(own.replace(/::(uuid|int|text)\b/g, "")).get({ $1: params[0] });
+          return { probe_index: Number(index), sample_count: Number(row.sample_count), bad_count: Number(row.bad_count) };
+        }) };
+      }
       const text = sql.replace(/::(uuid|int|text)\b/g, "");
       const row = db.prepare(text).get({ $1: params[0] });
       return { rows: [{ sample_count: Number(row.sample_count), bad_count: Number(row.bad_count) }] };
