@@ -309,6 +309,35 @@ test("DAMP: a broken link stays red on the next run (it is read again), and goes
   assert.equal(rowFor(run3.rows, dead).lastClass, "OK");
 });
 
+test("CONFIRM TIMING: a known broken Apply page is confirmed while other bank reads finish, and stays red", async () => {
+  const urls = banks(20);
+  const broken = urls[0];
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let brokenReads = 0;
+  const t0 = Date.now();
+  const { result, log, rows } = await go({
+    urls,
+    state: urls.map((url) => wasGood(url, url === broken ? { lastClass: "BAD_URL", lastStatus: 404 } : {})),
+    http: async (method, url) => {
+      if (url === broken) {
+        brokenReads += 1;
+        await sleep(brokenReads === 1 ? 100 : 2500);
+        return notFound();
+      }
+      await sleep(4200);
+      return page();
+    }
+  });
+  const took = Date.now() - t0;
+  assert.ok(took < 6000, `the real broken-link alert took ${took} ms`);
+  assert.equal(result.ok, false);
+  assert.equal(result.step, "confirm");
+  assert.match(result.detail, /BAD_URL 404/);
+  assert.equal(brokenReads, 2, "a previously good broken link still gets exactly two reads");
+  assert.equal(log.http.length, 21, "all 20 banks are read, plus one confirmation");
+  assert.equal(rowFor(rows, broken).lastClass, "BAD_URL");
+});
+
 /* ---------------- picking ---------------- */
 
 test("PICK: 40 per run, oldest last_checked_at first, never-checked first", async () => {
