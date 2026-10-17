@@ -1,5 +1,18 @@
 # TODO — unfinished work
 
+## Tomorrow — 2026-10-17: SBA lender partners
+
+Contacts, public facts, and the call questions: `ops/workflows/lender-partners-2026-10-16.md`.
+
+- [ ] Email Newtek at klowy@newtekone.com: who Fundhub is, SBA-ready deal flow, ask for a referral partner call.
+- [ ] Email Live Oak at andrew.kennedy@liveoak.bank with the same ask.
+- [ ] Call Live Oak at 866-438-9393 and ask for the SBA referral partner team.
+- [ ] Fill out the Live Oak contact form at liveoakbank.com/sba-loan-experts as a backup.
+- [ ] Have ready: Fundhub LLC name, address, website, rough monthly count of SBA-ready clients.
+- [ ] On each call, run the 11 questions in the lender file.
+- [ ] Get the MCA contact's terms with the same 11 questions.
+- [ ] Compare the 11 questions with the CRM lender sheet and merge.
+
 ## Today — 2026-10-13
 
 Afternoon update — owner reports it is about 2:30 PM Arizona/MST and plans to film in 15 minutes (about 2:45 PM). Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: filming now, then editing; outreach remains open. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
