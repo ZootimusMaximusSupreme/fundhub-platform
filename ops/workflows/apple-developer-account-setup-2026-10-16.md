@@ -8,8 +8,8 @@ Chris approved account setup work on 2026-10-16.
 
 | Workflow | Owner | Status | Next action |
 | --- | --- | --- | --- |
-| Apple account | This session | Waiting for Xcode system setup | Apple account, upload key, bundle ID, and TestFlight app are active. The unsigned iPhone release build passes. Xcode is installing its required system components before it can create the signing profile and upload build 1. |
-| App prep | Available parallel session | Ready | Inspect `tools/teleprompter-ios/` and prepare the first TestFlight build. |
+| Apple account | This session | Complete | Build 1 was signed and accepted by Apple TestFlight. Apple must finish its normal processing before it can be installed. |
+| App prep | This session | Complete | Added the Fundhub favicon as the complete iPhone and iPad app icon set Apple requires. |
 
 ## Parallel prompt
 
@@ -25,3 +25,6 @@ Chris approved account setup work on 2026-10-16.
 - Apple app identifier registered: `ai.fundhub.prompter` (Fundhub Prompter).
 - App Store Connect app created: Fundhub Prompter (Apple app ID `6823825669`), iOS, English (U.S.), SKU `fundhub-prompter-ios`.
 - Project signing config now uses Team ID `8VDXL37RR6`. An unsigned iPhone Release build passed on 2026-10-16.
+- Connected iPhone registered with Apple Developer as `Chris iPhone` on 2026-10-16.
+- Added `Assets.xcassets/AppIcon.appiconset` using Fundhub's existing `f.` favicon and configured `CFBundleIconName = AppIcon`.
+- Signed archive export passed. Apple TestFlight upload succeeded on 2026-10-16 (delivery UUID `0d484085-a93d-4c1c-9e01-ae8e310842b9`).
