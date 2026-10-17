@@ -24,7 +24,7 @@ Prompter and company app work can run at once. The funnel release waits for the 
 
 ## Account and release boundary
 
-The saved permission for `appstoreconnect.apple.com` denies agent access. Do not use another browser, API, CLI, or raw connection to achieve the same account action. Apple registration, review submission, and publication remain unverified until the owner completes that account step or the permission changes. The website ship is also red on the production pulse bundle proof. Keep the funnel card hidden until the actual company app URL and a clean release exist.
+At the time of this 2026-10-16 plan, a saved permission denied agent access to `appstoreconnect.apple.com`. **Superseded 2026-10-17:** Chris explicitly authorized Apple Developer and App Store Connect access for this launch. The registered app and signed iOS build 2 upload are now verified; review submission and publication remain unverified. Keep the funnel card hidden until the actual public company app URL and a clean release exist.
 
 ## Evidence so far
 
@@ -57,15 +57,15 @@ Owner call: get the company app into Apple review as soon as it is genuinely sub
 | Track | Owner | Output | Dependency |
 | --- | --- | --- | --- |
 | Face ID for company app | This session | Tested native change in company app PR | None |
-| Apple submission checklist | Read-only agent | Only true submission blockers vs later polish | No App Store Connect access via this task |
+| Apple submission checklist | Read-only agent | Only true submission blockers vs later polish | Historical 2026-10-16 access boundary; superseded 2026-10-17 |
 | CRM phone to-do list | Read-only agent | Prioritized 390px fixes with screen/file names | Work starts after company app submission |
 
-The App Store Connect permission remains denied. Do not route around it. If that state remains, prepare the exact submission handoff and report the remaining account action; do not claim a submission receipt.
+Historical 2026-10-16 permission denial: superseded by Chris on 2026-10-17. Agents may use Apple account access for this launch. Do not claim a submission receipt until Apple confirms submission.
 
 ### Company app submission queue
 
 1. Face ID quick sign-in: Keychain entry now requires device-owner presence, with manual sign-in fallback. Final iPhone 17 simulator run: 8 tests passed, 0 failed (`/tmp/fundhub-faceid-final-tests-20261016.xcresult`). Unsigned iPhone Release build, repository lint, and TypeScript check passed. The Face ID system prompt has **not** been proved on a real iPhone.
-2. Apple account step: verify/register the separate `ai.fundhub.app` App ID and App Store record, sign and upload the company build. The saved App Store Connect permission denies this task account access, and the unsigned build is not an upload.
+2. Apple account step: `ai.fundhub.app` and App Store record are registered; signed iOS build 2 was uploaded on 2026-10-17. The former access denial is superseded. Processing and review submission still need proof.
 3. Review access: provision non-customer client and staff accounts, use a real iPhone to complete both sign-in journeys, then capture signed-in screenshots. Do not use real customer data as a reviewer sample.
 4. In App Store Connect, finish the company listing, privacy answers, age rating, review access, and screenshots; select the processed build and submit it. Record Apple's receipt before calling the app submitted.
 5. After submission, work through the CRM 390px to-do list. The funnel download card still waits for a **public company App Store URL**, not submission or TestFlight.
@@ -79,7 +79,7 @@ Read-only local demo check at 390×844: 33 employee CRM/Present pages had no pag
 3. **Check Messaging with a populated inbox.** Its phone list, thread, and client context can each occupy up to 60vh, pushing the composer far below the list. Start with `public/app/messaging.html`.
 4. **Test actual phone tasks.** Add 390px click-path checks for Pipeline, Closer Dashboard, Messaging, and Calendar; `ops/workflows/mobile-check.mjs` currently checks overflow and rail position, not populated work.
 
-**Prompter:** In `fundhub-platform`, finish the separate `ai.fundhub.prompter` App Store readiness track. Build and test, prepare screenshots and truthful store copy. Do not edit the company app or funnel. Do not access App Store Connect by any workaround. Report exactly what Apple account action remains.
+**Prompter:** In `fundhub-platform`, finish the separate `ai.fundhub.prompter` App Store readiness track. Build and test, prepare screenshots and truthful store copy. Do not edit the company app or funnel. The 2026-10-16 account-access prohibition was superseded on 2026-10-17; report Apple's actual submission state with proof.
 
 **Company app (this session):** In `fundhub-platform`, build a separate native Fundhub iOS app for clients and employees. Reuse the existing sign-in, client summary, and role-based web workspace; keep client and staff data apart. Test on simulator and real iPhone where available. Prepare the company app for App Store submission, but do not claim Apple acceptance without proof.
 

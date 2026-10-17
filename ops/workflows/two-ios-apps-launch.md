@@ -82,6 +82,23 @@ The three repairs run together. Final CI, ship, and live verification wait for t
 - Teleprompter: desktop Chromium entered fullscreen on first tap, then rejected the test's simulated phone resize. The test now exits fullscreen and checks that it ended before resizing. Full spec passed 60/60 and the focused check passed 10/10 repeats. No app camera or recording code changed; real-iPhone acceptance is not claimed.
 - Company Brain: the current live read API returned `embed_http_429` with `insufficient_quota` / `credit_balance_exhausted` from the AI provider. The test still requires a successful answer; its failure message now includes the API error. Unit checks passed 39/39, but the two live browser checks stay red. Netlify's displayed key is a mask, not a key to test or replace. The production account behind the existing key needs API credits before these checks can pass. No credential or customer data changed.
 - The combined source still needs GitHub CI and live proof. Do not describe this release as live or in Apple review from these local results.
+- 2026-10-17: Chris directed a fresh agent split and said **no API credit purchase**. The current Company Brain live error remains red while a real no-credit path is checked; no payment, fake provider, or skipped test is authorized.
+
+## Final launch follow-through (approved 2026-10-17)
+
+| Workflow | Owner | State | Copy-paste prompt |
+| --- | --- | --- | --- |
+| Current PR checks and real no-credit Company Brain path | release-ci-no-credit worker | DONE: no existing provider fallback; two live checks red | “Check PR #63 and the current Company Brain live failure. Find a real no-credit path using existing configuration if one exists; do not weaken checks, buy credits, or change live customer data.” |
+| Apple iOS/macOS release and APNs readiness | apple-release-apns worker | IN PROGRESS: signed iOS build 2 uploaded | “Verify App Store build/submission state and genuine APNs signing readiness. Carry out safe release prep under Chris's standing account authorization; never claim review or push delivery without proof.” |
+| Board, integration, final release gate | this session | IN PROGRESS | “Combine agent findings, verify the live path, and publish only after the approved checks and account gates are genuinely clear.” |
+
+The first two workflows run together. Publishing waits for their proof and the final release gate.
+
+- Latest PR #63 browser runs `39061260132` and `39061263499`: 1,343 passed / 2 failed. Campaign budget, optimize intake, and teleprompter checks are now green on GitHub. Both remaining failures are Company Brain's real OpenAI embedding path: chat reports `credit_balance_exhausted`; upload returns `embed_failed`. No check was skipped or weakened.
+- Chris says no API credit purchase. The no-credit worker found no configured alternate embedding provider: Company Brain embeds every question and expects 1536-dimensional vectors. Its two checks run against existing live production, not PR #63 code, and stay red; no credit purchase, weaker test, or speculative search rewrite was made.
+- Chris explicitly authorized available account access for assigned work, including Apple Developer and App Store Connect for this launch, superseding the saved denial. The standing rule is in the paired Cursor/Claude rules and shared instructions. No money or unrelated app changes were authorized.
+- Apple validated and uploaded a fresh signed Fundhub iOS 1.0 build 2 to App Store Connect on 2026-10-17 (delivery UUID `e58759b7-dbcf-4a8c-a953-38aaedead2e9`). This build fixes Apple's missing Release launch screen and carries `aps-environment=production`. Processing, review submission, and public availability are **not yet proved**. The macOS version is still Prepare for Submission; the locally installed Mac app is ad-hoc signed and does not match the App Store Mac bundle.
+- Apple reports Push Notifications enabled for `ai.fundhub.app`, but no genuine APNs server `.p8` key is available locally or configured for the deployed sender. A real iPhone alert is still unproved. App Review contact fields are blank; the populated test-login fields have not been verified end to end.
 
 ## Leftovers outside this launch scope
 

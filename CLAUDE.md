@@ -114,6 +114,10 @@ If you trip over something broken that I did not ask about, do not fix it and do
 
 When Chris approves a launch or says to ship after checks pass, failures in the required release checks are part of that named work, even in adjacent files. Fix and rerun them without asking for repeat permission. This is an exception to the stop-and-ask wording in §2 and the no-extra-holes rule, not permission for unrelated cleanup, weaker tests, live customer or money changes, credential changes, or new product decisions. Same law: `.cursor/rules/approved-launch-release-blockers.mdc` · `.claude/rules/approved-launch-release-blockers.md`.
 
+### Standing account authorization (owner-set 2026-10-17)
+
+Chris authorizes routine use of available accounts and tools for assigned work, including Apple Developer and App Store Connect for this launch. Do not ask again for in-scope account access, upload, submission, or deployment; the earlier App Store Connect denial is superseded. Keep money, deletion, unrelated account changes, and tool-enforced confirmations separate. Same law: `.cursor/rules/owner-authorized-account-ops.mdc` · `.claude/rules/owner-authorized-account-ops.md`.
+
 ### Commit locally, every session (owner-set 2026-09-08)
 
 A laptop died on 2026-09-07 holding uncommitted work. Four marketing skills and 83 ad scripts were never in git and are gone.

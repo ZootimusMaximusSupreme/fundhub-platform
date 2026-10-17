@@ -5,7 +5,7 @@
 - Reproduce the failure, make the smallest real fix, and rerun the check. Preserve failing evidence until the check genuinely passes.
 - A new file, route, field, or test fixture needed for that repair is included in the approval if it preserves the approved behavior. Do not weaken, skip, or delete checks to make them green.
 - Keep unrelated warnings, optional improvements, and backlog work out of the launch. Put those on the shared board as leftovers.
-- This rule does not approve changes to live customer data, money, credentials, account permissions, or a new product decision. Ask only for the specific missing authority or information when truly needed.
+- This rule does not approve changes to live customer data, money, credentials, or a new product decision. Routine in-scope account access follows the standing owner authorization in `owner-authorized-account-ops.md`; ask only for truly missing authority or information.
 - Once the checks pass and go-live was approved, continue through the release and verify the live result. Never call an unverified release live.
 
 Example: a browser check for the approved app fails in another screen. Repair that failure and rerun the check; do not send Chris “May I fix this other test?”
