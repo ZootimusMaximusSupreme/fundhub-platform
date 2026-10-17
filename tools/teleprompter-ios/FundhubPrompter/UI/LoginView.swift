@@ -52,6 +52,8 @@ struct LoginView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(busy || email.trimmed.isEmpty || password.isEmpty)
                 .accessibilityIdentifier("login.submit")
+                Link("Privacy Policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
+                    .font(.footnote)
                 if let note = model.loadNote {
                     Text(note).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }

@@ -207,6 +207,7 @@ struct ScrollTrack: Equatable {
     }
 
     private static func readingPace(_ keys: [Key]) -> Double {
+        guard keys.count >= 2 else { return 0 }
         var dySum = 0.0
         var dtSum = 0.0
         for i in 1..<keys.count {
