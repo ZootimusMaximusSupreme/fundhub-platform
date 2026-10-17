@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { S5_DISPLAY_ROWS } from "./s5-display-contracts.mjs";
+import { freeBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -24,12 +25,13 @@ test("the browser specs behind the registry exist and make no live writes", () =
   }
 });
 
-test("every case a registry row names ran in a real browser and passed", { timeout: 600_000 }, () => {
+test("every case a registry row names ran in a real browser and passed", { timeout: 600_000 }, async () => {
   assert.ok(fs.existsSync(CLI), "Playwright CLI is not installed");
+  const port = await freeBrowserPort();
   const result = spawnSync(process.execPath, [CLI, "test", ...specs, "--workers=1", "--reporter=list"], {
     cwd: ROOT,
     encoding: "utf8",
-    env: { ...process.env, CI: "1", E2E_PORT: String(46_000 + (process.pid % 10_000)) },
+    env: { ...process.env, CI: "1", E2E_PORT: String(port) },
     maxBuffer: 64 * 1024 * 1024,
   });
   const output = `${result.stdout || ""}\n${result.stderr || ""}`;

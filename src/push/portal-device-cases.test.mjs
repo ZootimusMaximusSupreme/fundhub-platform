@@ -14,7 +14,7 @@
 // A regular expression over the HTML cannot catch that: the strings were all
 // there, it was the branch that picked between them that was wrong. So the
 // page's push script is pulled out of the file and run inside a fake browser —
-// a fake navigator, a fake window, five fake elements — once per device, and
+// a fake navigator, a fake window, and the real card's elements — once per device, and
 // what the client would SEE is read back off those elements afterwards.
 //
 // Every case below is a device shape a client of this product actually holds.
@@ -33,6 +33,9 @@ const ORIGIN = "https://portal.test";
 /** The page's push script, taken out of the page rather than copied. */
 function pushScriptSource() {
   const html = fs.readFileSync(PORTAL_FILE, "utf8");
+  for (const id of ["push-marketing", "push-marketing-loading", "push-marketing-copy", "push-marketing-btn"]) {
+    assert.ok(html.includes(`id="${id}"`), `client portal is missing ${id}`);
+  }
   const blocks = html.split(/<script(?:\s[^>]*)?>/).slice(1)
     .map((chunk) => chunk.split("</script>")[0]);
   const found = blocks.filter((b) => b.includes('var SW_URL = "/app/client-portal-sw.js"'));
@@ -77,7 +80,11 @@ async function runCase(device) {
     "push-copy": fakeElement("push-copy"),
     "push-steps": fakeElement("push-steps"),
     "push-btn": fakeElement("push-btn"),
-    "push-status": fakeElement("push-status")
+    "push-status": fakeElement("push-status"),
+    "push-marketing": fakeElement("push-marketing"),
+    "push-marketing-loading": fakeElement("push-marketing-loading"),
+    "push-marketing-copy": fakeElement("push-marketing-copy"),
+    "push-marketing-btn": fakeElement("push-marketing-btn")
   };
   const calls = { permissionAsked: 0, subscribed: 0, registered: 0, fetches: [] };
 
@@ -126,7 +133,9 @@ async function runCase(device) {
       calls.fetches.push(String(url));
       return {
         status: 200,
-        json: async () => ({ ok: true, configured: true, public_key: "BPk" })
+        json: async () => (url === "/api/push/preferences"
+          ? { ok: true, marketing_push_enabled: false }
+          : { ok: true, configured: true, public_key: "BPk" })
       };
     },
     caches: undefined
@@ -158,6 +167,8 @@ async function runCase(device) {
     buttonShown: els["push-btn"].hidden === false,
     buttonText: els["push-btn"].textContent,
     status: els["push-status"].textContent,
+    marketingShown: els["push-marketing"].hidden === false,
+    marketingCopy: els["push-marketing-copy"].textContent,
     calls
   };
 }
@@ -250,6 +261,8 @@ describe("the notifications card, per device — the page's own code in a fake b
       if (seen.cardShown) {
         assert.ok(seen.copy.trim().length > 0, "the card is showing with nothing written in it");
       }
+      assert.equal(seen.marketingShown, true, "signed-in client cannot see marketing choice");
+      assert.match(seen.marketingCopy, /Marketing updates are off/);
     });
   }
 
@@ -282,6 +295,8 @@ describe("the notifications card, per device — the page's own code in a fake b
   test("a signed-out client is shown nothing — the card has nothing true to say", async () => {
     const seen = await runCase({ ua: UA.ios175, standalone: true, displayMode: "standalone", token: "" });
     assert.equal(seen.cardShown, false);
+    assert.equal(seen.marketingShown, false);
+    assert.deepEqual(seen.calls.fetches, []);
   });
 
   test("the version is never guessed from a Mac user agent", async () => {
