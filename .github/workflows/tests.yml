@@ -114,6 +114,11 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
+      # Some unit proofs launch Playwright themselves; they need the same browser
+      # and system libraries as the dedicated screens job.
+      - name: Install Chromium for nested browser proofs
+        run: npx playwright install --with-deps chromium
+
       # CLAUDE.md §6 gate 1. Landed after this file was written; see the header.
       - name: Lint
         if: matrix.shard == 0
@@ -242,6 +247,10 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      # Unit proofs that launch Playwright also run against the scratch database.
+      - name: Install Chromium for nested browser proofs
+        run: npx playwright install --with-deps chromium
 
       - name: Apply every migration to an empty database
         run: node db/migrate.mjs
