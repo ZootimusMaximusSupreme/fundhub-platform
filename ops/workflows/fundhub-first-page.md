@@ -45,3 +45,10 @@ The iPhone was active in Messages during the initial device capture. Its install
 - A device screenshot after launch showed the owner's other active app, not Fundhub. That temporary capture was removed. Physical visual review remains open until Fundhub is left in front on the phone.
 - The iPhone archive cannot be opened directly on the Mac (`incorrect executable format`). A separate native Mac WebKit app is now installed at `/Applications/Fundhub.app`; see `ops/workflows/fundhub-mac-install.md`. It opens the existing live Team and Client sign-in pages, but a signed-in workspace was not tested.
 - Commit `b3aedfe67` is on the open PR above; merge commit `fb3fd6c9e` reconciles the remote branch without overwriting unrelated working-tree edits. GitHub checks were queued when last checked.
+
+## Contrast repair, 2026-10-17
+
+- Owner reported that grey text on the iPhone app was hard to read. The prior draft is marked at `ops/workflows/fundhub-first-page-low-contrast-marked.svg`; the corrected simulator image is `ops/workflows/fundhub-first-page-contrast.png`.
+- In `SignInView` only, supporting copy and form hints now use explicit dark grey (`#484848` on `#FCFCFC`, about 7.9:1 contrast). The small all-caps access label became a larger sentence-case label, and footer links became larger. Sign-in behavior did not change.
+- The iPhone 17 simulator test result had 8 passed, 0 failed; a new signed Release archive built and installed on the paired iPhone. `npm run lint` and `npx tsc --noEmit` passed.
+- A physical screenshot still showed the iPhone lock screen, not Fundhub; that private temporary capture was deleted. Physical visual proof remains open until the phone is unlocked with Fundhub in front.

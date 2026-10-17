@@ -195,6 +195,7 @@ private struct SignInView: View {
     private enum Field { case email, password }
 
     private var ink: Color { Color(red: 10 / 255, green: 10 / 255, blue: 10 / 255) }
+    private var mutedInk: Color { Color(red: 72 / 255, green: 72 / 255, blue: 72 / 255) }
     private var paper: Color { Color(red: 252 / 255, green: 252 / 255, blue: 252 / 255) }
 
     var body: some View {
@@ -211,7 +212,7 @@ private struct SignInView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text("See where things stand and what comes next.")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(mutedInk)
                 }
                 .padding(.top, 48)
 
@@ -228,18 +229,18 @@ private struct SignInView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(showingTeamSignIn ? "TEAM ACCESS" : "CLIENT ACCESS")
-                        .font(.caption.weight(.bold))
-                        .tracking(1.5)
-                        .foregroundStyle(.secondary)
+                    Text(showingTeamSignIn ? "Team access" : "Client access")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(mutedInk)
 
-                    TextField("Email address", text: $email)
+                    TextField("Email address", text: $email, prompt: Text("Email address").foregroundColor(mutedInk))
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: .email)
                         .font(.body)
+                        .foregroundStyle(ink)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 52)
                         .background(.white, in: RoundedRectangle(cornerRadius: 16))
@@ -248,10 +249,11 @@ private struct SignInView: View {
                         .onChange(of: email) { _, _ in localMessage = nil }
 
                     if showingTeamSignIn {
-                        SecureField("Password", text: $password)
+                        SecureField("Password", text: $password, prompt: Text("Password").foregroundColor(mutedInk))
                             .textContentType(.password)
                             .focused($focusedField, equals: .password)
                             .font(.body)
+                            .foregroundStyle(ink)
                             .padding(.horizontal, 16)
                             .frame(minHeight: 52)
                             .background(.white, in: RoundedRectangle(cornerRadius: 16))
@@ -310,7 +312,7 @@ private struct SignInView: View {
                 } label: {
                     HStack {
                         Text(showingTeamSignIn ? "Signing in as a client?" : "Fundhub team?")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(mutedInk)
                         Text(showingTeamSignIn ? "Use an email link" : "Use your password")
                             .fontWeight(.semibold)
                         Image(systemName: "arrow.right").font(.caption.weight(.semibold))
@@ -338,8 +340,8 @@ private struct SignInView: View {
                     Link("Privacy policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
                     Link("Need help?", destination: URL(string: "mailto:support@fundhub.ai")!)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.subheadline)
+                .foregroundStyle(mutedInk)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
             .frame(maxWidth: 520, alignment: .leading)
