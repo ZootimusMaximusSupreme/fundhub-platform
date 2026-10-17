@@ -94,7 +94,7 @@ async function runPortal({ search = "", session = NOBODY, store = {} } = {}) {
       });
     },
     wire() {}, banner() {},
-    portalContracts: () => ({}), portalSummary: () => ({}), entitlements: () => ({})
+    portalContracts: () => ({}), portalSummary: () => Promise.resolve({ ok: true, data: { upcoming_call: null } }), entitlements: () => ({})
   };
 
   const sandbox = {

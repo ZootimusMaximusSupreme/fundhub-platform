@@ -125,7 +125,7 @@ async function startPortal({ search = "", session = STAFF_CHRIS, store = { fh_ro
     param: (k) => new URLSearchParams(search).get(k),
     client: () => new Promise((resolve) => { answer = resolve; }),
     wire() {}, banner() {},
-    portalContracts: () => ({}), portalSummary: () => ({}), entitlements: () => ({})
+    portalContracts: () => ({}), portalSummary: () => Promise.resolve({ ok: true, data: { upcoming_call: null } }), entitlements: () => ({})
   };
 
   const sandbox = {
