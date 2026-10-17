@@ -6,6 +6,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { DISPLAY_RESULT_CONTRACTS } from "../catalog/proofs/display-saved-result.mjs";
+import { assertReadOnlySql } from "../beats/readbox.mjs";
 import { retiredControlFor } from "./fin-b01-retired-controls.mjs";
 import { ownerRemovedFor } from "./fin-b21-owner-removed.mjs";
 import {
@@ -47,24 +48,25 @@ function fakeDb(overrides = {}, failOn = null) {
   return {
     calls: [],
     async query(sql, params) {
-      const key = marker(sql);
-      this.calls.push({ key, sql, params });
-      if (key === failOn) throw new Error(`read failed for ${key}`);
-      return { rows: [{ sample_count: 1, bad_count: 0, ...(overrides[key] || {}) }] };
+      const keys = [...sql.matchAll(/\/\* display-result:([^*\s]+) \*\//g)].map((match) => match[1]);
+      this.calls.push({ keys, sql, params });
+      if (keys.includes(failOn)) throw new Error(`read failed for ${failOn}`);
+      return { rows: keys.map((key, probe_index) => ({ probe_index, sample_count: 1, bad_count: 0, ...(overrides[key] || {}) })) };
     },
   };
 }
 
-test("all 224 deep display controls own one exact contract", () => {
+test("all deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 224);
-  assert.equal(DISPLAY_RESULT_CASES.length, 224);
-  assert.equal(PASS_CAPABLE_COUNT, 200);
-  assert.equal(UNMEASURED_CONTRACT_COUNT, 21);
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 285);
+  assert.equal(DISPLAY_RESULT_CASES.length, 286);
+  assert.equal(PASS_CAPABLE_COUNT, 272);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 11);
   assert.equal(LIVE_PAGE_CONTRACT_COUNT, 1);
   assert.equal(linkGates, 2);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 224);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 224);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 286);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 285);
+  assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 285);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -79,7 +81,7 @@ test("all 224 deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 194);
+  assert.equal(SQL_BATCHES.length, 261);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -127,7 +129,7 @@ test("missing contracts are not proved while measured breaks stay broken", () =>
 
 test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
-  assert.equal(entries.length, 21);
+  assert.equal(entries.length, 11);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED", entry.control);
@@ -150,19 +152,22 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   const focused = rows.filter((row) => resultIds.has(row.id));
   const unproved = rows.filter((row) => unprovedIds.has(row.id));
 
-  assert.equal(db.calls.length, 194);
+  assert.equal(db.calls.length, 14);
+  assert.equal(db.calls.flatMap((call) => call.keys).length, SQL_BATCHES.length);
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
-  // 194 saved-result checks plus the one live-page read of the private leads list.
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 201);
-  // The three sidebar heads that no role is shown are read from the live shared chrome (fin-b19-hidden-head.mjs).
-  // This stub answers every address but the retired page with the menu page, which is not the shared chrome,
-  // so those three are "skip" here, never "na" and never a guess.
-  assert.equal(focused.filter((row) => row.status === "skip").length, 3);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 18);
+  for (const call of db.calls) assert.doesNotThrow(() => assertReadOnlySql(call.sql));
+  // Every saved-result check plus the live-page reads.
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 273);
+  // This stub returns the offer menu for unrelated pages. Two link gates, three sidebar heads,
+  // and one climate-page control must stay unchecked, never be guessed green.
+  const skippedControls = focused.filter((row) => row.status === "skip");
+  assert.equal(skippedControls.length, 6);
+  assert.equal(skippedControls.filter((row) => /Sidebar group/.test(row.id)).length, 3);
+  assert.equal(skippedControls.filter((row) => /climate\/index\.html/.test(row.id)).length, 1);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 7);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
-  // The two link-gate rows read the deployed shell by GET. This stand-in GET answers a different page, so
-  // they say "skip" (could not read), never PASS and never NOT_PROVED. fin-b10-link-gate.test.mjs holds them.
-  assert.equal(focused.filter((row) => row.status === "skip").length, 2);
+  // The link-gate rows read the deployed shell by GET and also remain unchecked with this stub.
+  assert.equal(skippedControls.filter((row) => /Quick launch links|More menu/.test(row.id)).length, 2);
   assert.equal(unproved.length, unprovedIds.size);
   assert.ok(unproved.every((row) => row.status === "NOT_PROVED"));
 });
@@ -172,9 +177,26 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const rows = await gapChecks({ db: fakeDb({}, failedKey), orgId: ORG, fetchImpl: liveRedirect() });
   const resultIds = new Set(DISPLAY_RESULT_CASES.map((entry) => entry.id));
   const focused = rows.filter((row) => resultIds.has(row.id));
-  assert.ok(focused.some((row) => row.status === "skip"));
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 18);
+  const affected = DISPLAY_RESULT_CASES.find((entry) => entry.contract.sql === SQL_BATCHES[0]);
+  const unaffected = DISPLAY_RESULT_CASES.find((entry) => entry.contract.sql === SQL_BATCHES[20]);
+  assert.equal(focused.find((row) => row.id === affected.id).status, "skip");
+  assert.equal(focused.find((row) => row.id === unaffected.id).status, "PASS");
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 7);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
+});
+
+test("a broken saved result stays red inside a grouped read", async () => {
+  const brokenSql = SQL_BATCHES[21];
+  const broken = DISPLAY_RESULT_CASES.find((entry) => entry.contract.sql === brokenSql);
+  const clean = DISPLAY_RESULT_CASES.find((entry) => entry.contract.sql === SQL_BATCHES[20]);
+  const rows = await gapChecks({
+    db: fakeDb({ [marker(brokenSql)]: { sample_count: 3, bad_count: 1 } }),
+    orgId: ORG,
+    fetchImpl: liveRedirect(),
+  });
+  assert.equal(rows.find((row) => row.id === broken.id).status, "FAIL");
+  assert.match(rows.find((row) => row.id === broken.id).detail, /1 of 3/);
+  assert.equal(rows.find((row) => row.id === clean.id).status, "PASS");
 });
 
 test("only the exact retired redirect can be nothing-to-judge", async () => {
@@ -217,7 +239,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 224);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 286);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
