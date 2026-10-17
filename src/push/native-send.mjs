@@ -1,8 +1,8 @@
 import { sendAPNS } from "./apns.mjs";
 import { listNativeDevices, markNativeDevice } from "./native-store.mjs";
 
-// Transport only. The guarded booking-confirmation SMS dispatcher calls this
-// after its successful send; other customer events need their own approved path.
+// Transport only. The guarded email/SMS dispatcher calls this after a
+// successful send; the message policy selects the approved alert kind.
 export async function sendNativeToClient(db, {
   orgId, clientId, notification, env = process.env, send = sendAPNS
 } = {}) {
