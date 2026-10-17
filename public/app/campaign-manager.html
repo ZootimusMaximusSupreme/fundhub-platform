@@ -1755,7 +1755,7 @@ function renderLog(){
    series and the campaign's own action history are shown as empty rather than
    guessed at, and CM-01's detail row says what happened.
    ════════════════════════════════════════════════════════════════════════ */
-var DW = { id:null, days:30, metric:'spend_cents', detail:null, seq:0 };
+var DW = { id:null, days:30, metric:'spend_cents', detail:null, seq:0, budgetDraft:null };
 
 /* metrics_daily comes back with `date` as a full timestamp once it has been
    through JSON, and every sum()/avg() as a numeric STRING. The formatters all
@@ -1957,7 +1957,7 @@ function renderDrawerBody(){
           '<button type="button" class="btn mono" data-cw="resume"'+(canWrite?'':' disabled')+'>Start spending again</button>' +
           '<div class="selwrap"><label for="cwBudget">New daily budget, in cents</label>' +
             '<input id="cwBudget" class="inp mono" type="number" min="100" step="100" value="' +
-              esc(c.budget_cents != null ? c.budget_cents : '') + '" style="width:140px"'+(canWrite?'':' disabled')+'></div>' +
+              esc(DW.budgetDraft != null ? DW.budgetDraft : c.budget_cents != null ? c.budget_cents : '') + '" style="width:140px"'+(canWrite?'':' disabled')+'></div>' +
           '<button type="button" class="btn dark mono" data-cw="update_budget"'+(canWrite?'':' disabled')+'>Change daily budget</button>' +
         '</div>' +
         '<div class="hint mono" id="cwMsg" style="margin-top:8px;font-size:var(--fs-caption);color:var(--gray2)">' + esc(cwHint) + '</div>' +
@@ -2020,6 +2020,8 @@ function renderDrawerBody(){
     '</div>';
 
   var ds = document.getElementById('dwDays');
+  var budgetInput = document.getElementById('cwBudget');
+  if(budgetInput) budgetInput.addEventListener('input', function(){ DW.budgetDraft = budgetInput.value; });
   /* days= is a SERVER parameter — the window is applied by the endpoint's
      `m.date > CURRENT_DATE - $2 days`, so it has to be re-read. There is no
      client-side series to narrow instead: until /detail answers there are no
@@ -2177,7 +2179,7 @@ function loadDetail(id){
 }
 
 function openDrawer(id){
-  DW.id = id; DW.days = 30; DW.metric = 'spend_cents'; DW.detail = null;
+  DW.id = id; DW.days = 30; DW.metric = 'spend_cents'; DW.detail = null; DW.budgetDraft = null;
   var c = CAMP_BY_ID[id];
   document.getElementById('dwTitle').textContent = c ? c.name : 'not_found';
   renderDrawerBody();

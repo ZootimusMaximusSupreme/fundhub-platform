@@ -72,11 +72,16 @@ Push source work is isolated on `codex/push-mirror-marketing` while the owner's 
 | Workflow | Owner | State | Copy-paste prompt |
 | --- | --- | --- | --- |
 | Release rule and final integration | this session | IN PROGRESS | “Codify that failed required checks are included in an approved launch; combine the repairs, rerun the release gate, and verify live before saying live.” |
-| Company Brain chat (2 checks) | company-brain worker | IN PROGRESS | “Diagnose the two `embed_failed` Company Brain browser failures; make the smallest real fix and rerun them without weakening checks.” |
-| Campaign budget and optimize intake (2 checks) | campaign-checks worker | IN PROGRESS | “Repair the budget-value and analytics-request browser failures without touching live money or customer data; rerun both checks.” |
-| Teleprompter viewport (1 check) | teleprompter-check worker | IN PROGRESS | “Diagnose the Chromium viewport failure, fix the test harness or app behavior without weakening proof, and rerun that check.” |
+| Company Brain chat (2 checks) | company-brain worker | OPEN — API CREDITS | “Diagnose the two `embed_failed` Company Brain browser failures; make the smallest real fix and rerun them without weakening checks.” |
+| Campaign budget and optimize intake (2 checks) | campaign-checks worker | LOCAL PASS — CI PENDING | “Repair the budget-value and analytics-request browser failures without touching live money or customer data; rerun both checks.” |
+| Teleprompter viewport (1 check) | teleprompter-check worker | LOCAL PASS — CI PENDING | “Diagnose the Chromium viewport failure, fix the test harness or app behavior without weakening proof, and rerun that check.” |
 
 The three repairs run together. Final CI, ship, and live verification wait for the combined result.
+
+- Campaign drawer: a re-render discarded the typed daily budget and sent the old value. The draft now survives a re-render; the existing confirmation and server checks remain. Campaign and intake browser specs passed 62/62, including 24 repeated budget checks. The intake test now rejects first-party POSTs, not unrelated Clarity telemetry.
+- Teleprompter: desktop Chromium entered fullscreen on first tap, then rejected the test's simulated phone resize. The test now exits fullscreen and checks that it ended before resizing. Full spec passed 60/60 and the focused check passed 10/10 repeats. No app camera or recording code changed; real-iPhone acceptance is not claimed.
+- Company Brain: the current live read API returned `embed_http_429` with `insufficient_quota` / `credit_balance_exhausted` from the AI provider. The test still requires a successful answer; its failure message now includes the API error. Unit checks passed 39/39, but the two live browser checks stay red. Netlify's displayed key is a mask, not a key to test or replace. The production account behind the existing key needs API credits before these checks can pass. No credential or customer data changed.
+- The combined source still needs GitHub CI and live proof. Do not describe this release as live or in Apple review from these local results.
 
 ## Leftovers outside this launch scope
 

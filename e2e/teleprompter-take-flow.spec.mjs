@@ -1127,6 +1127,12 @@ test("live camera stays unrotated while saved video follows the phone turn", asy
   }
   const upright = await recordShape(0);
   await page.evaluate(() => { window.__phoneAngle = 90; });
+  // The first tap can put desktop Chromium in full screen. Leave that browser
+  // window state before Playwright resizes the simulated phone for its turn.
+  await page.evaluate(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+  });
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBe(null);
   await page.setViewportSize({ width: 844, height: 390 });
   const sideways = await recordShape(90);
   expect(upright[1]).toBeGreaterThan(upright[0]);
