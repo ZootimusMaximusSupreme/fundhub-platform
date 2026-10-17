@@ -314,6 +314,7 @@ const API_KEYS = [
      only — see ALLOWED_UNMONITORED. */
   "push/key",
   "push/native-device",
+  "push/preferences",
   "push/subscribe",
   "read/ad-attribution",
   "read/ad-books",

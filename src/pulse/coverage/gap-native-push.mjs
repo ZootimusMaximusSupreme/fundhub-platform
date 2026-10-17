@@ -16,6 +16,13 @@ SELECT count(*)::int AS active,
  WHERE d.expired_at IS NULL AND d.revoked_at IS NULL
 `.trim();
 
+export const MARKETING_PUSH_PREFERENCE_SQL = `
+SELECT count(*)::int AS invalid_preferences
+  FROM clients
+ WHERE custom_fields ? 'marketing_push_enabled'
+   AND jsonb_typeof(custom_fields -> 'marketing_push_enabled') <> 'boolean'
+`.trim();
+
 export async function gapChecks(ctx = {}) {
   const db = ctx.db;
   const ready = nativePushConfigured(ctx.env || process.env);
@@ -28,6 +35,8 @@ export async function gapChecks(ctx = {}) {
       detail: "No database read was available, so native device ownership was not checked." },
     { id: "native-push:recent-delivery-failure", status: "skip",
       detail: "No database read was available, so recent APNs failures were not checked." },
+    { id: "marketing-push:preference-shape", status: "skip",
+      detail: "No database read was available, so saved marketing push choices were not checked." },
     configured
   ];
   try {
@@ -35,6 +44,19 @@ export async function gapChecks(ctx = {}) {
     const active = Number(result.rows[0]?.active);
     const wrong = Number(result.rows[0]?.wrong_owner);
     const recentFailed = result.rows[0]?.recent_failed == null ? NaN : Number(result.rows[0].recent_failed);
+    let preference;
+    try {
+      const prefs = await db.query(MARKETING_PUSH_PREFERENCE_SQL);
+      const invalid = prefs.rows[0]?.invalid_preferences == null ? NaN : Number(prefs.rows[0].invalid_preferences);
+      preference = { id: "marketing-push:preference-shape", status: !Number.isFinite(invalid) ? "skip" : invalid ? "FAIL" : "PASS",
+        detail: !Number.isFinite(invalid) ? "The saved preference count was not returned."
+          : invalid ? `${invalid} client marketing push choices are not saved as a true or false value.`
+            : "Saved client marketing push choices are boolean; missing choices stay off.",
+        suggestedFix: invalid ? "Inspect malformed choices; do not turn marketing alerts on for them by guesswork." : null };
+    } catch {
+      preference = { id: "marketing-push:preference-shape", status: "skip",
+        detail: "Could not read saved marketing push choices." };
+    }
     return [
       { id: "native-push:device-owner", status: !Number.isFinite(wrong) ? "skip" : wrong ? "FAIL" : "PASS",
         detail: !Number.isFinite(wrong) ? "The native device ownership count was not returned."
@@ -46,6 +68,7 @@ export async function gapChecks(ctx = {}) {
           : recentFailed ? `${recentFailed} active iPhone devices reported an APNs send failure in the last two hours.`
             : "No recent APNs failure is recorded. This does not prove a booking alert reached an iPhone.",
         suggestedFix: recentFailed ? "Check APNs rejection and the affected device without exposing its token." : null },
+      preference,
       configured
     ];
   } catch (error) {
@@ -53,6 +76,7 @@ export async function gapChecks(ctx = {}) {
     return [
       { id: "native-push:device-owner", status: "skip", detail },
       { id: "native-push:recent-delivery-failure", status: "skip", detail },
+      { id: "marketing-push:preference-shape", status: "skip", detail },
       configured
     ];
   }
