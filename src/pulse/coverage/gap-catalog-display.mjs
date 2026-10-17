@@ -151,27 +151,14 @@ async function retiredControlResults(ctx) {
 
 // A live-page contract: GET the page once (no body, redirects not followed, 5 second limit) and hand what
 // came back to its judge. A read that cannot be made is skip with the reason, never PASS.
-async function livePageRow(entry, ctx = {}) {
+async function livePageRow(entry, ctx = {}, readPage = livePageReader(ctx)) {
   const judge = LIVE_PAGE_JUDGES[entry.contract.page];
   if (!judge) return skipped(entry, "no judge is named for this live page");
-  const fetchImpl = Object.hasOwn(ctx, "fetchImpl") ? ctx.fetchImpl : globalThis.fetch;
-  if (typeof fetchImpl !== "function") return skipped(entry, "this run has no GET client");
   const path = judge.path(ctx.registry);
   if (!path) return skipped(entry, "the registry does not name exactly one page for it");
-  let origin;
-  try {
-    origin = new URL(ctx.baseUrl || "https://fundhub.ai").origin;
-  } catch {
-    return skipped(entry, "the base address is not a web address");
-  }
-  try {
-    const response = await fetchImpl(`${origin}${path}`, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
-    const status = Number(response?.status);
-    const html = status === 200 ? await response.text() : "";
-    return judge.judge(entry, { status, html, robotsHeader: response.headers?.get?.("x-robots-tag") || "" });
-  } catch (error) {
-    return skipped(entry, error);
-  }
+  const read = await readPage(path);
+  if (read.error) return skipped(entry, read.error);
+  return judge.judge(entry, { status: read.status, html: read.html, robotsHeader: read.robotsHeader || "" });
 }
 
 // One GET of a live page for fin-b09-leads-reset.mjs: no body, redirects not followed, 5 second limit.
@@ -189,7 +176,7 @@ function livePageReader(ctx = {}) {
     try {
       const response = await fetchImpl(`${origin}${path}`, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
       const status = Number(response?.status);
-      return { status, html: status === 200 ? await response.text() : "" };
+      return { status, html: status === 200 ? await response.text() : "", robotsHeader: response.headers?.get?.("x-robots-tag") || "" };
     } catch (error) {
       return { error: String(error?.message || error).replace(/\s+/g, " ").slice(0, 120) };
     }
@@ -217,6 +204,14 @@ function liveFileReader(ctx = {}) {
 }
 
 export async function gapChecks(ctx = {}) {
+  // The reset control and the live-page contract inspect the same private page.
+  // Share the result within this one run so both judge the same response after one GET.
+  const fetchLivePage = livePageReader(ctx);
+  const livePageReads = new Map();
+  const readLivePage = (path) => {
+    if (!livePageReads.has(path)) livePageReads.set(path, fetchLivePage(path));
+    return livePageReads.get(path);
+  };
   // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
   // shell is RUN against the page's own links, once per staff role, because the live file is what decides
   // what a person sees. Started first so it overlaps the retired-page reads below; linkGateState never throws.
@@ -227,7 +222,7 @@ export async function gapChecks(ctx = {}) {
   // A control the live page does not carry is read from the live page, not from a table (fin-b06-not-shipped.mjs).
   const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
   // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
-  const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
+  const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, readLivePage, ctx.registry);
   // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
   const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);
   // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
@@ -247,7 +242,7 @@ export async function gapChecks(ctx = {}) {
   // One GET per live-page contract, with or without a database (the page is read over the web).
   const pages = new Map();
   for (const entry of DISPLAY_TRACKING_CASES) {
-    if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx));
+    if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx, readLivePage));
   }
   const run = reader(ctx);
   if (!run) {
