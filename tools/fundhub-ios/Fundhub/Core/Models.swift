@@ -75,6 +75,16 @@ struct PortalSummary: Decodable {
     }
 }
 
+struct NativePushStatusReply: Decodable {
+    let ok: Bool
+    let configured: Bool
+    let registered: Bool
+}
+
+struct NativePushWriteReply: Decodable {
+    let ok: Bool
+}
+
 enum FundhubRole {
     static func workspacePath(principal: String, role: String?) -> String {
         guard principal == "staff" else { return "/app/client-portal.html" }

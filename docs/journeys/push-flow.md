@@ -10,6 +10,31 @@ What this is **not**: any message. Nothing sends a notification today. No nudge,
 payment alert, no reminder. The pipe is built and the taps are not connected — see
 **Wiring it to something** at the bottom.
 
+## Native Fundhub iPhone app (built in source; not live)
+
+The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`
+before asking iOS for permission, then registers the iPhone's APNs token under the signed-in
+client's account session. Tokens are encrypted in `client_apns_devices`; the server refuses to
+send to a revoked, expired, or wrong-client session. Turning the card off sends an idempotent
+DELETE. Native sign-out tries the same DELETE and server logout, then clears local sign-in even
+if the phone is offline. If both server requests fail, the old server session may remain live
+until expiry; the app says so. A later sign-in on the same installation retires the old row.
+
+`src/push/apns.mjs` can transmit the existing approved lock-screen payloads through Apple;
+`src/push/native-send.mjs` fans out to eligible devices. **No workflow calls it yet.** Booking
+messages pass through opt-out, quiet-hour, company-pause, cap, and compliance gates in the
+message dispatcher. Adding a push beside those sends without the same gates would be a new
+outbound path and is not done here. No alert has been delivered on a real iPhone.
+
+APNs needs the `ai.fundhub.app` App ID's Push Notifications capability, a matching provisioning
+profile, and `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY_BASE64` in the Netlify environment;
+it reuses `PUSH_SUB_ENC_KEY` for encrypted device storage. Debug uses the development APNs
+entitlement and sandbox host; Release uses a separate production entitlement and production host.
+The signed archive's `aps-environment` still needs to be checked before TestFlight distribution.
+Once those pieces are in place and a client opts in on a real iPhone,
+`node scripts/push/send-test-native.mjs --client <uuid>` reports eligible devices without
+sending. Adding `--send` deliberately transmits only the approved generic test body.
+
 ---
 
 ## The state a device moves through

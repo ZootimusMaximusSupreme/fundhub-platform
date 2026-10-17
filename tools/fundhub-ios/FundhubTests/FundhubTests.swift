@@ -54,6 +54,58 @@ final class FundhubTests: XCTestCase {
         try await api.logout(token: "test-session")
     }
 
+    func testNativePushEnvironmentOnlyAcceptsAppleEnvironments() {
+        XCTAssertEqual(NativePushEnvironment.current(), "development")
+        XCTAssertEqual(NativePushEnvironment.valid("development"), "development")
+        XCTAssertEqual(NativePushEnvironment.valid("production"), "production")
+        XCTAssertNil(NativePushEnvironment.valid("sandbox"))
+        XCTAssertNil(NativePushEnvironment.valid(nil))
+        XCTAssertNotNil(UUID(uuidString: NativePushInstallation.id))
+    }
+
+    func testNativePushStatusUsesThisInstallationAndBearerSession() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = FundhubAPI(session: URLSession(configuration: config))
+        let installationId = "56a40391-e541-4a89-873b-37eab9d6d953"
+        StubURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/push/native-device")
+            XCTAssertEqual(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "installation_id" })?.value, installationId)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-session")
+            return (200, Data(#"{"ok":true,"configured":true,"registered":false}"#.utf8))
+        }
+        defer { StubURLProtocol.handler = nil }
+        let status = try await api.nativePushStatus(token: "test-session", installationId: installationId)
+        XCTAssertTrue(status.configured)
+        XCTAssertFalse(status.registered)
+    }
+
+    func testNativePushRegisterAndUnregisterUseTheSameInstallation() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = FundhubAPI(session: URLSession(configuration: config))
+        let installationId = "56a40391-e541-4a89-873b-37eab9d6d953"
+        var methods: [String] = []
+        StubURLProtocol.handler = { request in
+            methods.append(request.httpMethod ?? "")
+            XCTAssertEqual(request.url?.path, "/api/push/native-device")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-session")
+            let body = (try? JSONSerialization.jsonObject(with: request.bodyData())) as? [String: String]
+            XCTAssertEqual(body?["installation_id"], installationId)
+            if request.httpMethod == "POST" {
+                XCTAssertEqual(body?["token"], String(repeating: "ab", count: 32))
+                XCTAssertEqual(body?["environment"], "development")
+            }
+            return (200, Data(#"{"ok":true}"#.utf8))
+        }
+        defer { StubURLProtocol.handler = nil }
+        try await api.registerNativePush(token: "test-session", deviceToken: String(repeating: "ab", count: 32),
+                                         environment: "development", installationId: installationId)
+        try await api.unregisterNativePush(token: "test-session", installationId: installationId)
+        XCTAssertEqual(methods, ["POST", "DELETE"])
+    }
+
     func testServerErrorDoesNotInvalidateSession() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubURLProtocol.self]
@@ -94,4 +146,21 @@ private final class StubURLProtocol: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private extension URLRequest {
+    func bodyData() -> Data {
+        if let httpBody { return httpBody }
+        guard let httpBodyStream else { return Data() }
+        httpBodyStream.open()
+        defer { httpBodyStream.close() }
+        var result = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while httpBodyStream.hasBytesAvailable {
+            let count = httpBodyStream.read(&buffer, maxLength: buffer.count)
+            if count <= 0 { break }
+            result.append(contentsOf: buffer[..<count])
+        }
+        return result
+    }
 }

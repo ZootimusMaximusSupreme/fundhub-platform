@@ -3,6 +3,7 @@ import WebKit
 
 @main
 struct FundhubApp: App {
+    @UIApplicationDelegateAdaptor(FundhubPushDelegate.self) private var pushDelegate
     @StateObject private var store = FundhubSessionStore()
 
     var body: some Scene {
@@ -16,7 +17,7 @@ struct FundhubApp: App {
 
 @MainActor
 final class FundhubSessionStore: ObservableObject {
-    enum Phase { case checking, signedOut, signedIn, error }
+    enum Phase: Equatable { case checking, signedOut, signedIn, error }
 
     @Published var phase: Phase = .checking
     @Published var identity: SessionReply?
@@ -104,7 +105,11 @@ final class FundhubSessionStore: ObservableObject {
             identity = result
             phase = .signedIn
             message = nil
-            if result.principal == "client" { await loadSummary() }
+            if result.principal == "client" {
+                await loadSummary()
+                guard self.token == token, phase == .signedIn else { return }
+                await NativePushCenter.shared.attach(bearer: token)
+            }
         } catch {
             guard self.token == token else { return }
             // A network outage does not destroy a valid session.
@@ -140,9 +145,19 @@ final class FundhubSessionStore: ObservableObject {
 
     func signOut(revoke: Bool = true) async {
         phase = .checking
+        var pushRevokeFailed = false
+        if identity?.principal == "client" && revoke {
+            do { try await NativePushCenter.shared.revokeBeforeSignOut() }
+            catch FundhubAPIError.invalidSession { /* Web sign-out already revoked this bearer. */ }
+            catch { pushRevokeFailed = true }
+            NativePushCenter.shared.resetAfterInvalidSession()
+        } else {
+            NativePushCenter.shared.resetAfterInvalidSession()
+        }
         var revokeFailed = false
         if revoke, let token {
             do { try await api.logout(token: token) }
+            catch FundhubAPIError.invalidSession { /* Already revoked by the web portal. */ }
             catch { revokeFailed = true }
         }
         SessionKeychain.clear()
@@ -150,8 +165,8 @@ final class FundhubSessionStore: ObservableObject {
         identity = nil
         summary = nil
         message = revokeFailed
-            ? "Signed out on this iPhone, but Fundhub could not close the server session. Try again when connected."
-            : nil
+            ? "Signed out here. Fundhub could not close the server session while offline. Notifications may still arrive until the session expires."
+            : pushRevokeFailed ? "Signed out. The server session was closed, which also stops notifications." : nil
         await WKWebsiteDataStore.default().removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
             modifiedSince: .distantPast
@@ -423,7 +438,7 @@ private struct HomeView: View {
                             ),
                             onWebSignOut: {
                                 showingWorkspace = false
-                                Task { await store.signOut(revoke: false) }
+                                Task { await store.signOut() }
                             }
                         )
                         .navigationTitle(identity.principal == "client" ? "Client portal" : "My workspace")
@@ -465,6 +480,7 @@ private struct HomeView: View {
             }
             Button("Open full portal") { showingWorkspace = true }
                 .buttonStyle(.borderedProminent).controlSize(.large)
+            NativePushCard()
         }
         .refreshable { await store.loadSummary() }
     }

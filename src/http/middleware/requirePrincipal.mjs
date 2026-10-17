@@ -46,7 +46,7 @@ export async function resolvePrincipal(req, { db = defaultDb, env = process.env 
   if (!token) return null;
   try {
     const acct = await verifyAccountSession(db, token, { env });
-    return acct ? acct.principal : null;
+    return acct ? { ...acct.principal, sessionId: acct.session.id } : null;
   } catch {
     // Same distinction requireAuth makes: could-not-check is not not-signed-in.
     return AUTH_UNAVAILABLE;

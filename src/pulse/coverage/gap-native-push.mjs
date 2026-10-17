@@ -1,0 +1,41 @@
+import { nativePushConfigured } from "../../push/native-store.mjs";
+
+export const NATIVE_PUSH_OWNERS_SQL = `
+SELECT count(*)::int AS active,
+       count(*) FILTER (WHERE a.id IS NULL OR a.kind NOT IN ('client', 'authorized_rep')
+         OR a.status <> 'active' OR a.org_id IS DISTINCT FROM d.org_id
+         OR (a.kind = 'client' AND a.client_id IS DISTINCT FROM d.client_id)
+         OR (a.kind = 'authorized_rep' AND s.active_client_id IS DISTINCT FROM d.client_id)
+         OR s.id IS NULL OR s.account_id IS DISTINCT FROM d.account_id
+         OR s.org_id IS DISTINCT FROM d.org_id)::int AS wrong_owner
+  FROM client_apns_devices d
+  LEFT JOIN accounts a ON a.id = d.account_id
+  LEFT JOIN account_sessions s ON s.id = d.session_id
+ WHERE d.expired_at IS NULL AND d.revoked_at IS NULL
+`.trim();
+
+export async function gapChecks(ctx = {}) {
+  const db = ctx.db;
+  const ready = nativePushConfigured(ctx.env || process.env);
+  const configured = { id: "native-push:configured", status: ready ? "PASS" : "FAIL",
+    detail: ready ? "Native push signing and encrypted storage are configured."
+      : "The APNs signing key, IDs, or device storage key is missing or unusable.",
+    suggestedFix: ready ? null : "Enable Push Notifications for ai.fundhub.app, add the APNs key to Netlify, then deliver a test to a real iPhone." };
+  if (!db) return [{ id: "native-push:device-owner", status: "skip",
+    detail: "No database read was available, so native device ownership was not checked." }, configured];
+  try {
+    const result = await db.query(NATIVE_PUSH_OWNERS_SQL);
+    const active = Number(result.rows[0]?.active || 0);
+    const wrong = Number(result.rows[0]?.wrong_owner || 0);
+    return [
+      { id: "native-push:device-owner", status: wrong ? "FAIL" : "PASS",
+        detail: wrong ? `${wrong} live iPhone devices are attached to the wrong or inactive client account.`
+          : `${active} live iPhone devices are attached to active client accounts.`,
+        suggestedFix: wrong ? "Revoke the mismatched device rows; do not send to them." : null },
+      configured
+    ];
+  } catch (error) {
+    return [{ id: "native-push:device-owner", status: "skip",
+      detail: `Could not read native push devices: ${String(error?.message || error).slice(0, 120)}` }, configured];
+  }
+}

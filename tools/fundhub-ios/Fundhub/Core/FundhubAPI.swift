@@ -49,13 +49,38 @@ struct FundhubAPI {
         try await send("/api/read/portal-summary", bearer: token)
     }
 
+    func nativePushStatus(token: String, installationId: String) async throws -> NativePushStatusReply {
+        guard let id = installationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            throw FundhubAPIError.invalidResponse
+        }
+        return try await send("/api/push/native-device?installation_id=\(id)", bearer: token)
+    }
+
+    func registerNativePush(token: String, deviceToken: String, environment: String,
+                            installationId: String) async throws {
+        let reply: NativePushWriteReply = try await send("/api/push/native-device", method: "POST", body: [
+            "token": deviceToken, "environment": environment, "installation_id": installationId
+        ], bearer: token)
+        guard reply.ok else { throw FundhubAPIError.unavailable }
+    }
+
+    func unregisterNativePush(token: String, installationId: String) async throws {
+        let reply: NativePushWriteReply = try await send("/api/push/native-device", method: "DELETE", body: [
+            "installation_id": installationId
+        ], bearer: token)
+        guard reply.ok else { throw FundhubAPIError.unavailable }
+    }
+
     func logout(token: String) async throws {
         let reply: LogoutReply = try await send("/api/auth/logout", method: "POST", bearer: token)
         guard reply.ok else { throw FundhubAPIError.unavailable }
     }
 
     private func send<T: Decodable>(_ path: String, method: String = "GET", body: [String: String]? = nil, bearer: String? = nil) async throws -> T {
-        var request = URLRequest(url: Self.base.appendingPathComponent(String(path.dropFirst())))
+        guard let url = URL(string: path, relativeTo: Self.base)?.absoluteURL else {
+            throw FundhubAPIError.invalidResponse
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = path == "/api/auth/logout" ? 5 : 20

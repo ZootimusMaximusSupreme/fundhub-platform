@@ -25,3 +25,25 @@ An unsigned device build proves compilation only. It cannot be uploaded or insta
 - Screenshots: the logged-out iPhone screen is captured under `ops/workflows/build-evidence/fundhub-ios/`. Logged-in client and staff screenshots require non-customer review accounts.
 
 The App Store Connect origin is denied by a saved permission for this task. Do not try another UI, API or CLI to perform the same account action. Neither this project nor its source build proves Apple review or a public listing.
+
+## Native iPhone notifications
+
+Client Home can ask for Apple notification permission only after the server reports APNs ready.
+Its device token is encrypted and tied to the current client account session. Staff get no client
+push card. The APNs transport is built, but **no automatic alert is connected to it yet**; the
+card says only that this iPhone is ready. No real-device notification has been delivered.
+
+Apple-side setup still needed: in Certificates, Identifiers & Profiles, enable **Push
+Notifications** on App ID `ai.fundhub.app`, create an APNs Auth Key, then regenerate the
+Development and App Store provisioning profiles. Set `APNS_KEY_ID`, `APNS_TEAM_ID`, and
+`APNS_PRIVATE_KEY_BASE64` (base64 of the complete `.p8` file) in Netlify; keep the existing
+`PUSH_SUB_ENC_KEY`. Do not commit the `.p8` file. Debug signs with
+`Fundhub/Fundhub.entitlements` (`development`); Release signs with
+`Fundhub/Fundhub.Release.entitlements` (`production`). Before TestFlight, inspect the signed
+archive's `aps-environment` with `codesign -d --entitlements :- Fundhub.app` and confirm it
+says `production`. A source build or unsigned archive does not prove this. The App Store
+record/key capability cannot be completed from this task's saved Apple account permission.
+After the server migration and Apple setup, sign a client in on a real iPhone, turn on the
+card, and use `node scripts/push/send-test-native.mjs --client <uuid> --send` from an
+authorized environment with the database and APNs variables. The command sends only the
+approved test sentence; Apple acceptance and a visible iPhone banner must both be checked.

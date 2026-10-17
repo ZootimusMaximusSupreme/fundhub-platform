@@ -312,6 +312,7 @@ const API_KEYS = [
      button that silently does nothing. The write half, push/unsubscribe, is POST
      only — see ALLOWED_UNMONITORED. */
   "push/key",
+  "push/native-device",
   "push/subscribe",
   "read/ad-attribution",
   "read/ad-books",
