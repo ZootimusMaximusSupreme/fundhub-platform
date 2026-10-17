@@ -153,6 +153,42 @@ function errLine(label, err) {
 
 /* ---------- systems (MB2 scorecard, src/pulse/scorecard.mjs) ---------- */
 
+/* The whole-company number (owner 2026-10-16: "that's not the whole suite").
+   The scorecard lists only the rows a check still has to answer. An item that links to a test or a live
+   check leaves the list and is counted once, inside the catalog:proof-linked row written by
+   src/pulse/coverage/gap-catalog.mjs. So "N of M checks green" is not the whole company: on 10-15 the
+   list fell from 2,622 rows to 1,922 and the 700 proved rows were counted nowhere in the brief.
+   This reads that one stored row and says the company number. It adds nothing when the row is missing
+   or its words no longer match, and it never guesses. */
+const COMPANY_ALL = /^All (\d[\d,]*) unique company items link to executable proof/;
+const COMPANY_PART = /^(\d[\d,]*) of (\d[\d,]*) unique company items link to executable proof at the required level; \d[\d,]* remain/;
+const toCount = (s) => Number(String(s).replace(/,/g, ""));
+const fmtCount = (n) => Number(n).toLocaleString("en-US");
+
+export function catalogCoverage(checks) {
+  const row = (Array.isArray(checks) ? checks : []).find((c) => c && c.id === "catalog:proof-linked" && typeof c.proof === "string");
+  if (!row) return null;
+  let linked;
+  let total;
+  const all = row.proof.match(COMPANY_ALL);
+  const part = row.proof.match(COMPANY_PART);
+  if (all) {
+    total = toCount(all[1]);
+    linked = total;
+  } else if (part) {
+    linked = toCount(part[1]);
+    total = toCount(part[2]);
+  } else {
+    return null;
+  }
+  if (!(total > 0) || !(linked >= 0) || linked > total) return null;
+  const open = total - linked;
+  const line = open === 0
+    ? `Whole company: all ${fmtCount(total)} items have a test or live check behind them.`
+    : `Whole company: ${fmtCount(linked)} of ${fmtCount(total)} items have a test or live check behind them. ${fmtCount(open)} do not yet.`;
+  return { linked, total, open, line };
+}
+
 /* The systems section reads MB2's scorecard — the board contract: every check
    green / red / na (nothing to judge today) / not_checked, and each red with
    customer_sees, since, day_count and fix. The morning takes the one runDailyPulse just built (pulse.scorecard,
@@ -182,6 +218,8 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
   if (notProved) line += ` ${notProved} not proved yet.`;
   if (notChecked) line += ` ${notChecked} not checked.`;
   if (na) line += ` ${na} had nothing to judge today.`;
+  const company = catalogCoverage(checks);
+  if (company) line += ` ${company.line}`;
   // Never "nothing needs you" while anything is broken, not proved, or not checked.
   if (!reds.length && !notProved && !notChecked) line += " Nothing needs you.";
   return {
@@ -193,6 +231,7 @@ export function summarizeSystems(scorecard, { prefix = "Systems:", missingLine =
     not_proved: notProved,
     na,
     not_checked: notChecked,
+    company,
     reds,
     line,
     scorecard

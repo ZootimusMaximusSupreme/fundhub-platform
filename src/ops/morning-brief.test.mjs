@@ -5,6 +5,8 @@ import {
   EVENING_BRIEF_CRON,
   formatMorningText,
   summarizeSystems,
+  summarizeStoredSystems,
+  catalogCoverage,
   reportUrl,
   buildMorningBrief,
   runMorningBrief
@@ -12,6 +14,8 @@ import {
 import { textMorningBrief } from "../pulse/notify.mjs";
 import { verifyBriefToken } from "./brief-link.mjs";
 import { TRIPWIRES } from "../pulse/tripwires.mjs";
+import { judgeCatalog } from "../pulse/coverage/gap-catalog.mjs";
+import { toContractCheck } from "../pulse/scorecard.mjs";
 
 const LINK_ENV = { APP_BASE_URL: "https://fundhub.ai", BRIEF_LINK_SECRET: "c3".repeat(32) };
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
@@ -280,6 +284,48 @@ test("'Nothing needs you' is never said while a row is red or not checked", () =
   assert.doesNotMatch(nc.line, /Nothing needs you/);
   const clean = summarizeSystems({ checks: [greenRow(1), greenRow(2)] });
   assert.equal(clean.line, "Systems: 2 of 2 checks green. Nothing needs you.");
+});
+
+/* The catalog row as the real code writes it, stored the way the scorecard stores it. */
+function storedCatalogRow({ unique, wired, red }) {
+  const items = Array.from({ length: unique }, (_, i) => ({ id: `item-${i}` }));
+  const rows = judgeCatalog({ rows: 3975, repeats: 33, unique, counts: { wired, red }, items, hourlyUncoveredSurfaces: [] });
+  return toContractCheck(rows[1]);
+}
+
+test("the systems line says the whole-company number, read from the real catalog row", () => {
+  const checks = [...manyRows(5, greenRow), storedCatalogRow({ unique: 3942, wired: 3919, red: 23 })];
+  const s = summarizeSystems({ checks });
+  assert.equal(
+    s.line,
+    "Systems: 5 of 6 checks green. 1 broken: catalog:proof-linked. Whole company: 3,919 of 3,942 items have a test or live check behind them. 23 do not yet."
+  );
+  assert.deepEqual([s.company.linked, s.company.total, s.company.open], [3919, 3942, 23]);
+});
+
+test("when every company item is linked the line says all of them, and still says nothing needs you", () => {
+  const checks = [...manyRows(5, greenRow), storedCatalogRow({ unique: 3942, wired: 3942, red: 0 })];
+  const s = summarizeSystems({ checks });
+  assert.equal(s.line, "Systems: 6 of 6 checks green. Whole company: all 3,942 items have a test or live check behind them. Nothing needs you.");
+  assert.equal(s.company.open, 0);
+});
+
+test("the whole-company number is added only when the catalog row is there and its words still match", () => {
+  assert.equal(summarizeSystems({ checks: [greenRow(1), greenRow(2)] }).company, null);
+  const reworded = { id: "catalog:proof-linked", group: "backend", status: "green", proof: "Everything in the company is covered." };
+  const s = summarizeSystems({ checks: [greenRow(1), reworded] });
+  assert.equal(s.company, null);
+  assert.doesNotMatch(s.line, /Whole company/);
+  assert.equal(catalogCoverage([{ ...reworded, proof: "4000 of 3942 unique company items link to executable proof at the required level; 0 remain red or unproved." }]), null);
+  assert.equal(catalogCoverage(undefined), null);
+});
+
+test("the evening line, read from the stored morning check, carries the whole-company number too", () => {
+  const checks = [...manyRows(5, greenRow), storedCatalogRow({ unique: 3942, wired: 3919, red: 23 })];
+  const s = summarizeStoredSystems({ ran_at: "2026-10-16T13:02:00.000Z", checks });
+  assert.match(s.line, /^Systems, from this morning's check at .*: 5 of 6 checks green\./);
+  assert.match(s.line, /Whole company: 3,919 of 3,942 items have a test or live check behind them\. 23 do not yet\.$/);
+  assert.equal(s.company.total, 3942);
 });
 
 test("the systems line separates broken from not proved, and a marked real break stays broken", () => {
