@@ -49,6 +49,7 @@ function fakeDb({
   due = [],
   marketingCounts = { last_day: 0, last_week: 0 },
   upcomingBooking = true,
+  handoffBooking = null,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
   customFields = null
@@ -70,7 +71,10 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
-      if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
+      if (sql.includes("FROM bookings")) {
+        if (sql.includes("starts_at = $3::timestamptz")) return { rows: handoffBooking ? [handoffBooking] : [] };
+        return { rows: upcomingBooking ? [{ one: 1 }] : [] };
+      }
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
@@ -160,6 +164,31 @@ describe("native alert after a gated booking confirmation", () => {
     assert.deepEqual(calls[0].notification, { kind: "call_confirmation" });
     assert.equal(calls[0].clientId, CLIENT);
     assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+  });
+
+  test("a sent 15-minute handoff invites native only, after the text is saved", async () => {
+    const start = "2026-08-01T16:10:00.000Z";
+    const db = bookingDb({ handoffBooking: {
+      id: "booking-1", starts_at: start, ends_at: "2026-08-01T16:30:00.000Z",
+      meeting_url: "https://meet.google.com/room"
+    } });
+    const calls = [];
+    const result = await dispatchOne(db, claimed({
+      channel: "sms", template_key: "SMS-AISET04-HANDOFF",
+      provider_ref: `workflow:SMS-AISET04-HANDOFF:booking-start:${CLIENT}:${start}`
+    }), {
+      fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+      sendNative: async (_db, target) => {
+        assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+        calls.push(["native", target.notification]);
+        return { sent: 1 };
+      },
+      sendWeb: async () => { calls.push(["web"]); return { sent: 1 }; }
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.deepEqual(calls, [["native", {
+      kind: "call_invite", expiresAt: "2026-08-01T16:30:00.000Z"
+    }]]);
   });
 
   test("an opted-out or quiet-hours text cannot unlock native send", async () => {

@@ -36,6 +36,21 @@ import { onRepairPath } from "../../src/repair/on-repair-path.mjs";
 import { mayAuthorizeDisputes } from "../../src/consent/dispute-consent.mjs";
 import { invoiceDisplayNumber } from "../../src/invoices/index.mjs";
 import { formatAmount, invoiceKindLabel } from "../../src/invoices/notify.mjs";
+import { meetingDestination } from "../../src/bookings/meeting-link.mjs";
+
+function callForPortal(booking, confirmed) {
+  if (!booking) return null;
+  const startMs = new Date(booking.starts_at).getTime();
+  const endMs = booking.ends_at == null ? Infinity : new Date(booking.ends_at).getTime();
+  const nowMs = Date.now();
+  const destination = meetingDestination(booking.meeting_url);
+  const join = destination && Number.isFinite(startMs) &&
+    (Number.isFinite(endMs) || endMs === Infinity) &&
+    nowMs >= startMs - 15 * 60_000 &&
+    nowMs < Math.min(endMs, startMs + 30 * 60_000)
+    ? destination : null;
+  return { id: booking.id, when: booking.starts_at, confirmed, join };
+}
 
 export default async function handler(req, res) {
   if (req.method && req.method !== "GET") {
@@ -189,7 +204,7 @@ export default async function handler(req, res) {
        screen has always needed. These are additions, so a table that will not
        answer must cost the caller the fact it could not read and nothing else —
        the same reasoning as the signing block near the top of this file. */
-    const [callHeld, signedAt, paid, advisor, invoiceDue, payments, sloPaid, upcomingCall] = await Promise.all([
+    const [callHeld, signedAt, paid, advisor, invoiceDue, payments, sloPaid, upcomingCall, currentCall] = await Promise.all([
       readCallHeld(orgId, clientId),
       readAgreementSignedAt(orgId, clientId),
       readPaymentPosted(orgId, clientId),
@@ -199,14 +214,26 @@ export default async function handler(req, res) {
       readSloPaid(orgId, clientId),
       safeRead("upcoming call", { unavailable: true }, async () => {
         const r = await db.query(
-          `SELECT id, starts_at FROM bookings
+          `SELECT id, starts_at, ends_at, meeting_url FROM bookings
             WHERE org_id = $1 AND client_id = $2
               AND starts_at > now() AND status IN ('booked', 'rescheduled')
             ORDER BY starts_at ASC LIMIT 1`,
           [orgId, clientId]
         );
-        const booking = r.rows[0];
-        return booking ? { id: booking.id, when: booking.starts_at, confirmed: cf.call_confirmed === true } : null;
+        return callForPortal(r.rows[0], cf.call_confirmed === true);
+      }),
+      safeRead("current call", { unavailable: true }, async () => {
+        const r = await db.query(
+          `SELECT id, starts_at, ends_at, meeting_url FROM bookings
+            WHERE org_id = $1 AND client_id = $2
+              AND status IN ('booked', 'rescheduled')
+              AND starts_at <= now()
+              AND starts_at + interval '30 minutes' > now()
+              AND (ends_at IS NULL OR ends_at > now())
+            ORDER BY starts_at DESC LIMIT 1`,
+          [orgId, clientId]
+        );
+        return callForPortal(r.rows[0], cf.call_confirmed === true);
       })
     ]);
 
@@ -275,6 +302,7 @@ export default async function handler(req, res) {
       slo_paid: sloPaid,
       advisor,
       upcoming_call: upcomingCall,
+      current_call: currentCall,
       stage: portalStage({
         softPullComplete,
         callHeld,

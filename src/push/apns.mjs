@@ -73,7 +73,7 @@ async function postHttp2(url, headers, payload, { timeoutMs = 10_000 } = {}) {
   });
 }
 
-export async function sendAPNS({ token, environment, notification, ttlSeconds = 3600 } = {}, {
+export async function sendAPNS({ token, environment, notification, ttlSeconds = 3600, expiresAt = null } = {}, {
   env = process.env, now = Date.now(), post = postHttp2
 } = {}) {
   if (!HOST[environment]) throw new APNSError("Unknown APNs environment.");
@@ -83,7 +83,15 @@ export async function sendAPNS({ token, environment, notification, ttlSeconds = 
   const approved = JSON.parse(buildPushPayload(notification));
   const path = `/3/device/${token}`;
   const url = new URL(path, HOST[environment]);
-  const expiration = Math.floor(now / 1000) + Math.max(0, Math.min(86_400, Number(ttlSeconds) || 0));
+  let expiration = Math.floor(now / 1000) + Math.max(0, Math.min(86_400, Number(ttlSeconds) || 0));
+  if (expiresAt != null) {
+    const expiresMs = Date.parse(expiresAt);
+    if (!Number.isFinite(expiresMs)) throw new APNSError("Invalid APNs expiry.");
+    expiration = Math.min(expiration, Math.floor(expiresMs / 1000));
+    if (expiration <= Math.floor(now / 1000)) {
+      return { status: "failed", gone: false, reason: "invite_expired" };
+    }
+  }
   const headers = {
     authorization: `bearer ${apnsProviderToken(env, now)}`,
     "apns-topic": TOPIC,

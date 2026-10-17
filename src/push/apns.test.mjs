@@ -53,4 +53,27 @@ describe("native APNs transport", () => {
     assert.equal(retry.gone, false);
     assert.equal(retry.status, "failed");
   });
+
+  test("a call invite never survives its booking end or a delayed send", async () => {
+    const now = 1_700_000_000_000;
+    const calls = [];
+    const post = async (_url, headers, body) => {
+      calls.push({ headers, body: JSON.parse(body) });
+      return { status: 200, body: "" };
+    };
+    const expiresAt = new Date(now + 8 * 60_000).toISOString();
+    const sent = await sendAPNS({
+      token, environment: "production", notification: { kind: "call_invite" }, expiresAt
+    }, { env, now, post });
+    assert.equal(sent.status, "sent");
+    assert.equal(calls[0].headers["apns-expiration"], String(Math.floor((now + 8 * 60_000) / 1000)));
+    assert.equal(calls[0].body.aps.alert.body, "Your call starts soon. Open Fundhub to join.");
+    assert.equal(calls[0].body.path, "/app/client-portal.html");
+    const expired = await sendAPNS({
+      token, environment: "production", notification: { kind: "call_invite" },
+      expiresAt: new Date(now - 1000).toISOString()
+    }, { env, now, post });
+    assert.equal(expired.reason, "invite_expired");
+    assert.equal(calls.length, 1);
+  });
 });

@@ -24,6 +24,71 @@ function fakeDb({ enabled = false, optedOut = false, upcomingBooking = true, las
   };
 }
 
+const CALL_START = "2026-10-17T16:15:00.000Z";
+const HANDOFF_NOW = new Date("2026-10-17T16:05:00.000Z");
+const handoffMessage = (over = {}) => message({
+  template_key: "SMS-AISET04-HANDOFF",
+  provider_ref: `workflow:SMS-AISET04-HANDOFF:booking-start:client-1:${CALL_START}`,
+  ...over
+});
+function handoffDb(rows) {
+  const queries = [];
+  return { queries, async query(sql, params) {
+    queries.push({ sql, params });
+    assert.match(sql, /FROM bookings/);
+    return { rows };
+  } };
+}
+const callRow = (over = {}) => ({
+  id: "booking-1", starts_at: CALL_START, ends_at: "2026-10-17T17:00:00.000Z",
+  meeting_url: "https://meet.google.com/abc-defg-hij", ...over
+});
+
+test("a real sent handoff gets one short-lived native call invite", async () => {
+  const db = handoffDb([callRow()]);
+  assert.deepEqual(await notificationForSentMessage(db, handoffMessage(), { now: HANDOFF_NOW }), {
+    kind: "call_invite", expiresAt: "2026-10-17T16:45:00.000Z"
+  });
+  assert.deepEqual(db.queries[0].params, ["org-1", "client-1", CALL_START]);
+  assert.match(db.queries[0].sql, /status IN \('booked', 'rescheduled'\)/);
+  assert.match(db.queries[0].sql, /LIMIT 2/);
+});
+
+test("a shorter booked end is the hard APNs expiry", async () => {
+  const db = handoffDb([callRow({ ends_at: "2026-10-17T16:20:00.000Z" })]);
+  assert.deepEqual(await notificationForSentMessage(db, handoffMessage(), { now: HANDOFF_NOW }), {
+    kind: "call_invite", expiresAt: "2026-10-17T16:20:00.000Z"
+  });
+});
+
+test("late, early, wrong-client, non-SMS, and unkeyed texts cannot invite", async () => {
+  for (const [candidate, now] of [
+    [handoffMessage(), new Date("2026-10-17T15:59:59.000Z")],
+    [handoffMessage(), new Date(CALL_START)],
+    [handoffMessage({ provider_ref: "workflow:SMS-AISET04-HANDOFF:booking-start:other:" + CALL_START }), HANDOFF_NOW],
+    [handoffMessage({ channel: "email" }), HANDOFF_NOW],
+    [handoffMessage({ provider_ref: "workflow:SMS-AISET04-HANDOFF:other" }), HANDOFF_NOW]
+  ]) {
+    const db = handoffDb([callRow()]);
+    assert.equal(await notificationForSentMessage(db, candidate, { now }), null);
+    assert.equal(db.queries.length, 0);
+  }
+});
+
+test("moved, cancelled, duplicate, no-link and sign-in fallback bookings cannot invite", async () => {
+  for (const rows of [
+    [], [callRow({ starts_at: "2026-10-17T16:30:00.000Z" })],
+    [callRow(), callRow({ id: "booking-2" })],
+    [callRow({ meeting_url: null })],
+    [callRow({ meeting_url: "https://fundhub.ai/portal-login.html" })],
+    [callRow({ ends_at: "2026-10-17T16:00:00.000Z" })]
+  ]) {
+    const db = handoffDb(rows);
+    assert.equal(await notificationForSentMessage(db, handoffMessage(), { now: HANDOFF_NOW }), null);
+    assert.equal(db.queries.length, 1);
+  }
+});
+
 test("service email and SMS use a generic alert; booking confirmation keeps its approved alert", async () => {
   const db = fakeDb();
   assert.deepEqual(await notificationForSentMessage(db, message({ channel: "email", template_key: "EMAIL-S04-01-CONFIRM" })), { kind: "update" });
