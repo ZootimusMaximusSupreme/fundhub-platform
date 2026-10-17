@@ -21,3 +21,4 @@
 - Created the live credit-repair client record through the standard client resolver.
 - Created the live $1,000 checkout link for the repair bundle.
 - Sent the onboarding and checkout email from the connected Fundhub Gmail account.
+- Minted a 15-minute portal sign-in link and sent it from the connected Fundhub Gmail account after the app mail sender rejected the queued invite.
