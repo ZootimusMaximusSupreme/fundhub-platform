@@ -2,6 +2,8 @@
 
 This is the **company app**, separate from `tools/teleprompter-ios/`. Its bundle ID is `ai.fundhub.app` (a proposed ID until Apple registers it). Staff sign in with a password; clients request and paste a one-time email link. Client Home reads the server-scoped file summary in native SwiftUI. Staff Home opens the role's existing work screen. The full client portal or staff workspace stays in an in-app web view for detailed actions.
 
+After the first normal sign-in, the session token is saved in this iPhone's Keychain behind Face ID or device passcode. A returning user unlocks that saved sign-in before the app verifies the session with Fundhub. Canceling the prompt stays at sign-in; the saved-session button retries, and regular sign-in remains available. Signing out removes the saved token. This flow still needs a real Face ID iPhone test; a simulator build alone does not prove the system prompt.
+
 ## Build and tests
 
 ```sh
