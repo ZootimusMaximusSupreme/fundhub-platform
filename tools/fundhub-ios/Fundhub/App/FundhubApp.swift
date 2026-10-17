@@ -22,6 +22,7 @@ final class FundhubSessionStore: ObservableObject {
     @Published var identity: SessionReply?
     @Published var summary: PortalSummary?
     @Published var summaryLoading = false
+    @Published var signingIn = false
     @Published var message: String?
 
     private let api = FundhubAPI()
@@ -46,7 +47,8 @@ final class FundhubSessionStore: ObservableObject {
     }
 
     func signIn(email: String, password: String) async {
-        phase = .checking
+        signingIn = true
+        defer { signingIn = false }
         message = nil
         do {
             let reply = try await api.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
@@ -61,7 +63,7 @@ final class FundhubSessionStore: ObservableObject {
         message = nil
         do {
             try await api.requestLink(email: email.trimmingCharacters(in: .whitespacesAndNewlines))
-            message = "Check your email. Copy the Fundhub sign-in link, then tap Paste link here."
+            message = "Check your email. Copy the Fundhub sign-in link, then tap Paste a sign-in link."
         } catch { message = error.localizedDescription }
     }
 
@@ -185,59 +187,194 @@ private struct SignInView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @State private var email = ""
     @State private var password = ""
+    @State private var showingTeamSignIn = false
+    @State private var sendingLink = false
+    @State private var localMessage: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case email, password }
+
+    private var ink: Color { Color(red: 10 / 255, green: 10 / 255, blue: 10 / 255) }
+    private var paper: Color { Color(red: 252 / 255, green: 252 / 255, blue: 252 / 255) }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 0) {
                 BrandMark()
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your Fundhub app").font(.largeTitle.bold())
-                    Text("For clients and the Fundhub team.").foregroundStyle(.secondary)
+                    .padding(.top, 16)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Your file,\nin focus.")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .tracking(-1.5)
+                        .foregroundStyle(ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("See where things stand and what comes next.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                 }
+                .padding(.top, 48)
+
                 if store.hasSavedSession {
-                    Button(store.savedSessionUnlockLabel) { Task { await store.restore() } }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
+                    Button { Task { await store.restore() } } label: {
+                        Label(store.savedSessionUnlockLabel, systemImage: "faceid")
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .background(ink, in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.top, 32)
                 }
-                Text("Team sign-in").font(.headline)
-                VStack(spacing: 16) {
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(showingTeamSignIn ? "TEAM ACCESS" : "CLIENT ACCESS")
+                        .font(.caption.weight(.bold))
+                        .tracking(1.5)
+                        .foregroundStyle(.secondary)
+
                     TextField("Email address", text: $email)
-                        .textContentType(.emailAddress).keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    SecureField("Password", text: $password).textContentType(.password)
-                }
-                .textFieldStyle(.roundedBorder)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .email)
+                        .font(.body)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 52)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                        .accessibilityIdentifier("signInEmail")
+                        .onChange(of: email) { _, _ in localMessage = nil }
 
-                if store.hasSavedSession {
-                    Button("Sign in another way") { Task { await store.signIn(email: email, password: password) } }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .disabled(email.isEmpty || password.isEmpty)
-                } else {
-                    Button("Sign in") { Task { await store.signIn(email: email, password: password) } }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(email.isEmpty || password.isEmpty)
+                    if showingTeamSignIn {
+                        SecureField("Password", text: $password)
+                            .textContentType(.password)
+                            .focused($focusedField, equals: .password)
+                            .font(.body)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 52)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                            .accessibilityIdentifier("signInPassword")
+
+                        Button(action: signInTeam) {
+                            HStack(spacing: 8) {
+                                if store.signingIn { ProgressView().tint(store.hasSavedSession ? ink : .white) }
+                                Text(store.signingIn ? "Signing in…" : "Sign in to workspace")
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(store.hasSavedSession ? ink : .white)
+                        .background(store.hasSavedSession ? .white : ink, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.hasSavedSession ? Color(.separator) : .clear, lineWidth: 1))
+                        .disabled(store.signingIn)
+                    } else {
+                        Button(action: requestClientLink) {
+                            HStack(spacing: 8) {
+                                if sendingLink { ProgressView().tint(store.hasSavedSession ? ink : .white) }
+                                Text(sendingLink ? "Sending your link…" : "Email me a sign-in link")
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(store.hasSavedSession ? ink : .white)
+                        .background(store.hasSavedSession ? .white : ink, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.hasSavedSession ? Color(.separator) : .clear, lineWidth: 1))
+                        .disabled(sendingLink)
+                    }
+                }
+                .padding(.top, store.hasSavedSession ? 24 : 32)
+
+                Button {
+                    localMessage = nil
+                    Task { await store.pasteLink(UIPasteboard.general.string) }
+                } label: {
+                    Label("Paste a sign-in link", systemImage: "doc.on.clipboard")
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.plain)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(ink)
+                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(.separator), lineWidth: 1))
+                .padding(.top, 16)
+
+                Button {
+                    showingTeamSignIn.toggle()
+                    localMessage = nil
+                    store.message = nil
+                } label: {
+                    HStack {
+                        Text(showingTeamSignIn ? "Signing in as a client?" : "Fundhub team?")
+                            .foregroundStyle(.secondary)
+                        Text(showingTeamSignIn ? "Use an email link" : "Use your password")
+                            .fontWeight(.semibold)
+                        Image(systemName: "arrow.right").font(.caption.weight(.semibold))
+                    }
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ink)
+                .padding(.top, 16)
+
+                if let message = localMessage ?? store.message {
+                    Label(message, systemImage: "info.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color(red: 196 / 255, green: 179 / 255, blue: 229 / 255).opacity(0.22), in: RoundedRectangle(cornerRadius: 16))
+                        .accessibilityIdentifier("signInMessage")
+                        .padding(.top, 16)
                 }
 
-                Divider()
-                Text("Client sign-in link").font(.headline)
-                Text("No password? We can email a one-time link to the address on your file.")
-                    .foregroundStyle(.secondary)
-                Button("Email me a sign-in link") { Task { await store.requestLink(email: email) } }
-                    .disabled(email.isEmpty)
-                Button("Paste link here") { Task { await store.pasteLink(UIPasteboard.general.string) } }
-
-                if let message = store.message {
-                    Text(message).foregroundStyle(.secondary).accessibilityIdentifier("signInMessage")
+                Spacer(minLength: 48)
+                HStack(spacing: 24) {
+                    Link("Privacy policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
+                    Link("Need help?", destination: URL(string: "mailto:support@fundhub.ai")!)
                 }
-                Link("Privacy policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
-                Link("Help: support@fundhub.ai", destination: URL(string: "mailto:support@fundhub.ai")!)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
             .frame(maxWidth: 520, alignment: .leading)
             .padding(24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(paper)
+    }
+
+    private func requestClientLink() {
+        guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            localMessage = "Enter the email address on your file to get a sign-in link."
+            focusedField = .email
+            return
+        }
+        localMessage = nil
+        sendingLink = true
+        Task {
+            await store.requestLink(email: email)
+            sendingLink = false
+        }
+    }
+
+    private func signInTeam() {
+        guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            localMessage = "Enter your work email address."
+            focusedField = .email
+            return
+        }
+        guard !password.isEmpty else {
+            localMessage = "Enter your password to open your workspace."
+            focusedField = .password
+            return
+        }
+        localMessage = nil
+        Task { await store.signIn(email: email, password: password) }
     }
 }
 
@@ -361,12 +498,32 @@ private struct HomeView: View {
 
 private struct BrandMark: View {
     var body: some View {
-        Text("f.")
-            .font(.system(size: 46, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
-            .frame(width: 72, height: 72)
-            .background(.black, in: RoundedRectangle(cornerRadius: 16))
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text("f.")
+                    .font(.system(size: 26, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(.black, in: RoundedRectangle(cornerRadius: 10))
+                Text("fundhub")
+                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .tracking(-0.5)
+            }
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Fundhub")
+
+            RoundedRectangle(cornerRadius: 2)
+                .fill(LinearGradient(colors: [
+                    Color(red: 242 / 255, green: 166 / 255, blue: 155 / 255),
+                    Color(red: 245 / 255, green: 206 / 255, blue: 143 / 255),
+                    Color(red: 242 / 255, green: 227 / 255, blue: 155 / 255),
+                    Color(red: 168 / 255, green: 216 / 255, blue: 176 / 255),
+                    Color(red: 169 / 255, green: 198 / 255, blue: 232 / 255),
+                    Color(red: 196 / 255, green: 179 / 255, blue: 229 / 255)
+                ], startPoint: .leading, endPoint: .trailing))
+                .frame(height: 3)
+                .accessibilityHidden(true)
+        }
     }
 }
 
