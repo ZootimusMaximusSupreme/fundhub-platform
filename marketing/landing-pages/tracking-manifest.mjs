@@ -101,8 +101,10 @@ export const CLARITY_SRC = "https://fundhub.ai/js/clarity.js";
 export const DEFER_FOOTER_SRCS = new Set([FUNDING_PATHS_SRC, CLARITY_SRC]);
 /** /thank-you booking check + "What the call decides" + real approvals and texts (public/funnel/thankyou-sort.js). */
 export const THANKYOU_SORT_SRC = "https://fundhub.ai/funnel/thankyou-sort.js";
-/** Fundhub Prompter TestFlight card on /thank-you; hidden until its public invite setting is ready. */
+/** Former /thank-you download footer script; remove it when the company app card is released. */
 export const FUNDHUB_PROMPTER_DOWNLOAD_SRC = "https://fundhub.ai/funnel/fundhub-prompter-download.js";
+/** Company Fundhub app card on /thank-you; hidden until its verified public Apple listing is set. */
+export const FUNDHUB_APP_DOWNLOAD_SRC = "https://fundhub.ai/funnel/fundhub-app-download.js";
 
 export function footerScriptTag(src, { defer = false } = {}) {
   return `<script src="${src}"${defer ? " defer" : ""}></script>`;
@@ -555,7 +557,8 @@ export const PUSH_MANIFEST = [
     pageId: "25063539",
     fragment: "marketing/landing-pages/05-thank-you.html",
     vslBeacon: false,
-    extraFooterScripts: [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC, FUNDHUB_PROMPTER_DOWNLOAD_SRC],
+    extraFooterScripts: [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC, FUNDHUB_APP_DOWNLOAD_SRC],
+    dropFooterScripts: [FUNDHUB_PROMPTER_DOWNLOAD_SRC],
     strategy: "custom_html_or_head_append",
     note: "Builder page — the body cannot be replaced by API; new sections ride in on footer scripts",
   },
