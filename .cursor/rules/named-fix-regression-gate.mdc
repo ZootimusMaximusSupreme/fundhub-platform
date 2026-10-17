@@ -7,6 +7,8 @@ alwaysApply: true
 
 **Owner law (2026-09-18):** AI must not make shit up. AI must not ship a fix that is not real. This gate wins on **done** over `three-step-repair.mdc` FINISH. Board: `ops/workflows/live-prove-2026-09-17-notes.md`.
 
+This gate covers named live-site hole tickets. A failed required CI or release check in an approved launch follows `approved-launch-release-blockers.mdc`: reproduce and repair the check, then verify the release. Do not require a live-site defect before repairing a CI-only failure.
+
 ## Law
 
 1. **VERIFY on the live site first.** Recreate the named hole. If you cannot see it, write **NOT A PROBLEM** and **STOP**. Do not “fix” a story.

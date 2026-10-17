@@ -20,6 +20,7 @@ Before reading code or planning a new task, propose the parallel workflows, what
 ## Scope and evidence
 
 - Work on the named task only. Do not fix other holes you happen to find. Record a separate leftover on the shared board, then return to the task.
+- An approved launch includes repairs to every required release check that fails, even when the failed check is in an adjacent file. Fix and rerun those checks without asking the owner to approve each repair. This does not authorize unrelated cleanup, weaker tests, live customer or money changes, credential changes, or a new product decision. See `.cursor/rules/approved-launch-release-blockers.mdc`.
 - Read a file before editing it. Read the intended journey in `docs/journeys/` before changing a flow. Do not change an intended journey to excuse a code change; update the `-actual.md` journey from verified code when the flow changes.
 - Look up facts you can check in the repo, Drive, logs, or the live site. Before claiming something is missing, search the places it could live, including `src/`, `scripts/`, `db/`, and `docs/`. Never invent a result or call a skipped check a pass.
 - For `public/app/` work, read `docs/rules/UI-STANDARDS.md`. Keep a new live page, API route, job, or send path covered by the heartbeat rules in `docs/journeys/heartbeat-flow.md`; money or customer paths also need their tripwire proof.

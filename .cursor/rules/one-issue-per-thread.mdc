@@ -7,6 +7,8 @@ alwaysApply: true
 
 **Owner law (2026-08-26):** An agent never verifies, fixes, or proves more than one named hole in the same chat. Chris copies each issue into its own thread.
 
+An approved launch is one named task. Its required release-check failures may be repaired in parallel within that task under `approved-launch-release-blockers.mdc`; they are not separate hole tickets that need new owner prompts.
+
 ## Never
 
 - Batch two board holes in one chat
