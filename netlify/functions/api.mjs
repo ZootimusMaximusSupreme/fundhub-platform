@@ -285,6 +285,7 @@ import waypointTick from "../../api/waypoint-tick.mjs";
 import pushKey from "../../api/push/key.mjs";
 import pushSubscribe from "../../api/push/subscribe.mjs";
 import pushUnsubscribe from "../../api/push/unsubscribe.mjs";
+import pushNativeDevice from "../../api/push/native-device.mjs";
 import contracts from "../../api/contracts.mjs";
 import readContracts from "../../api/read/contracts.mjs";
 import readPortalContracts from "../../api/read/portal-contracts.mjs";
@@ -1272,6 +1273,7 @@ export const ROUTES = {
   "push/key": pushKey,
   "push/subscribe": pushSubscribe,
   "push/unsubscribe": pushUnsubscribe,
+  "push/native-device": pushNativeDevice,
 
   // ── The contract generator (124_contracts.sql, src/contracts/) ─────────────
   //

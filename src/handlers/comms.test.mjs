@@ -338,6 +338,17 @@ test("booking.created: stores meetingUrl on the task", async () => {
   assert.equal(db.tasks[0].meeting_url, "https://meet.example.com/abc");
 });
 
+test("a new call clears an old confirmation; a replay does not", async () => {
+  const db = pgFake();
+  db.clients.push({ id: "cl-new", org_id: "org-1", email: "new@x.com", tags: [], custom_fields: { call_confirmed: true } });
+  const e = ev("booking.created", { clientId: "cl-new", bookingUid: "bk-new", startTime: "2026-08-01T15:00:00Z", source: "clickfunnels" }, { clientId: "cl-new" });
+  await onBookingCreated(e, db);
+  assert.equal(db.clients[0].custom_fields.call_confirmed, false);
+  db.clients[0].custom_fields.call_confirmed = true;
+  await onBookingCreated(e, db);
+  assert.equal(db.clients[0].custom_fields.call_confirmed, true);
+});
+
 // booking.rescheduled — updates the existing task in place (no second task).
 test("booking.rescheduled: updates the existing open task's due_at + meeting_url in place", async () => {
   const db = pgFake();
@@ -353,6 +364,7 @@ test("booking.rescheduled: updates the existing open task's due_at + meeting_url
   assert.equal(db.tasks[0].meeting_url, "https://meet.example.com/new");
   assert.equal(db.tasks[0].title, "Strategy session rescheduled");
   assert.equal(db.clients[0].custom_fields.call_outcome, "rescheduled");
+  assert.equal(db.clients[0].custom_fields.call_confirmed, false, "a moved call needs a fresh confirmation");
 });
 
 test("booking.rescheduled: no open task found → creates one (rescheduled before created seen)", async () => {

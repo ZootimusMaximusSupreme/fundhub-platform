@@ -66,6 +66,7 @@ export const TRIPWIRES = Object.freeze({
   "page:portal-login.html": { impact: "customer", checks: ["gap:auth-magic-link-dead", "portal:paid-client-never-signed-in"] },
   "desk:client-portal.html": { impact: "customer", checks: ["portal:page-scripts-load", "portal:paid-entitlement", "portal:next-step"] },
   "route:read/portal-summary": { impact: "customer", checks: ["portal:summary"] },
+  "route:push/native-device": { impact: "customer", checks: ["native-push:device-owner", "native-push:configured"] },
   "route:read/client-progress": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "page:progress.html": { impact: "customer", checks: ["portal:progress-read-real-client"] },
   "route:read/entitlements": { impact: "customer", checks: ["payments:paid-no-entitlement", "portal:paid-entitlement"] },
@@ -215,5 +216,5 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
   "send:src/workflows/ad-video-sweeper.mjs":
     "Owner-only: the sweeper's ready-ad buzz goes to Chris through notify-fanout. It never reaches a customer. Its heartbeat is job ad-video-sweeper.",
   "send:src/push/send.mjs":
-    "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added."
+    "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added.",
 });
