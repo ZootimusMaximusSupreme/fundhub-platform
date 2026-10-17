@@ -118,6 +118,14 @@ before(async () => {
 });
 
 describe("the probe and the written gates", () => {
+  test("only a signed-in client with a file reaches the marketing push switch", () => {
+    assert.equal(state.verdicts.client["push/preferences"], "reach");
+    for (const journey of JOURNEYS) {
+      if (journey.name === "client") continue;
+      assert.equal(state.verdicts[journey.name]["push/preferences"], "blocked", journey.name);
+    }
+  });
+
   test("agree on every route except the ones named here, and no stale name is left", () => {
     for (const journey of JOURNEYS) {
       assert.deepEqual(
