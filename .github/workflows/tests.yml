@@ -88,9 +88,16 @@ jobs:
   # is broken — no interpretation required.
   # ---------------------------------------------------------------------------
   unit:
-    name: suite (no database — 358 pg tests skip)
+    name: suite (no database — unit shard ${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    env:
+      FUNDHUB_SUITE_PART: unit
+      FUNDHUB_SUITE_SHARD_INDEX: ${{ matrix.shard }}
 
     steps:
       - uses: actions/checkout@v4
@@ -109,9 +116,11 @@ jobs:
 
       # CLAUDE.md §6 gate 1. Landed after this file was written; see the header.
       - name: Lint
+        if: matrix.shard == 0
         run: npm run lint
 
-      # DATABASE_URL is deliberately NOT set. See the header: this is the fast green.
+      # DATABASE_URL is deliberately NOT set. Every unit file runs in exactly one
+      # of the six shards; the pg files run with a real database below.
       #
       # Note that src/security/superuser-guard.test.mjs runs HERE too (it is a plain
       # .test.mjs, not .pg.test.mjs, precisely so it cannot skip itself unnoticed).
@@ -127,7 +136,7 @@ jobs:
       # "a test failed". All of these already ran inside `npm test` above; this step
       # exists for the failure message, and it is cheap.
       - name: Named guards (routing, auth shape, org scoping, nav reachability)
-        if: always()
+        if: always() && matrix.shard == 0
         run: |
           node --test \
             src/http/routes.test.mjs \
@@ -191,6 +200,69 @@ jobs:
   # Postgres built from zero by db/migrate.mjs. IT BLOCKS (spec M0 step 6,
   # 2026-10-05): no `continue-on-error` here, ever again. See the header.
   # ---------------------------------------------------------------------------
+  postgres-unit:
+    name: suite (real Postgres — unit shard ${{ matrix.shard }}/6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ci
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_ci
+      ALLOW_SUPERUSER_DB: "1"
+      FUNDHUB_SUITE_PART: unit
+      FUNDHUB_SUITE_SHARD_INDEX: ${{ matrix.shard }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Apply every migration to an empty database
+        run: node db/migrate.mjs
+
+      - name: Migration manifest is not stale
+        run: |
+          npm run migrations:manifest
+          if ! git diff --quiet -- db/expected-migrations.mjs; then
+            echo "::error::db/expected-migrations.mjs is stale. Run 'npm run migrations:manifest' and commit the result."
+            git --no-pager diff -- db/expected-migrations.mjs
+            exit 1
+          fi
+
+      - name: Give fundhub_app a login for this run only
+        run: |
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+
+      - name: Run the unit shard against Postgres
+        run: npm test
+
   postgres:
     name: suite (real Postgres — blocks)
     runs-on: ubuntu-latest
@@ -285,7 +357,9 @@ jobs:
       - name: Prove Call and Present context chain
         run: node --test src/http/launch-proof-chain.pg.test.mjs
 
-      - name: Run the suite against Postgres
+      - name: Run every pg test serially against Postgres
+        env:
+          FUNDHUB_SUITE_PART: pg
         run: npm test
 
       # ── As the app role, the way production connects ──────────────────────
