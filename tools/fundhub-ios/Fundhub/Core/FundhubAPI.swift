@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 enum FundhubAPIError: LocalizedError {
@@ -90,34 +91,63 @@ private struct LogoutReply: Decodable {
 enum SessionKeychain {
     private static let service = "ai.fundhub.app.session"
     private static let account = "fundhub"
+    private static let savedSessionKey = "ai.fundhub.app.hasSavedSession"
+
+    static var hasSavedSession: Bool {
+        UserDefaults.standard.bool(forKey: savedSessionKey)
+    }
+
+    static var unlockLabel: String {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error),
+              context.biometryType == .faceID else { return "Unlock saved sign-in" }
+        return "Continue with Face ID"
+    }
 
     static func read() -> String? {
+        guard hasSavedSession else { return nil }
+        let context = LAContext()
+        context.localizedReason = "Unlock your Fundhub sign-in"
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseAuthenticationContext as String: context
         ]
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecItemNotFound { UserDefaults.standard.removeObject(forKey: savedSessionKey) }
+        guard status == errSecSuccess, let data = item as? Data else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
-    static func save(_ token: String) {
+    @discardableResult
+    static func save(_ token: String) -> Bool {
         clear()
+        var accessError: Unmanaged<CFError>?
+        guard let access = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .userPresence,
+            &accessError
+        ) else { return false }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: Data(token.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            kSecAttrAccessControl as String: access
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        let saved = SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+        if saved { UserDefaults.standard.set(true, forKey: savedSessionKey) }
+        return saved
     }
 
     static func clear() {
+        UserDefaults.standard.removeObject(forKey: savedSessionKey)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

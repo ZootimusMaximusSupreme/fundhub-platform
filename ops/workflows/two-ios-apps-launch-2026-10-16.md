@@ -38,6 +38,47 @@ The saved permission for `appstoreconnect.apple.com` denies agent access. Do not
 
 ## Parallel prompts
 
+## 2026-10-16 add-on — submit the company app first
+
+Owner call: get the company app into Apple review as soon as it is genuinely submit-ready. CRM phone polish follows submission; it does not hold up the first upload. Face ID is part of the company app's first build.
+
+### Face ID plan gate (owner already said go)
+
+1. **Role:** Returning client or employee, both using the same local unlock before their role-scoped Home.
+2. **One job:** Unlock a saved Fundhub sign-in on this iPhone with Face ID or device passcode.
+3. **First question:** “Can I get into my Fundhub account quickly?”
+4. **Reuse:** Existing `SessionKeychain`, `FundhubSessionStore.restore()`, server session check, and manual sign-in paths. No new auth service.
+5. **Data:** Existing bearer token. No new server route or database data.
+6. **Files:** `tools/fundhub-ios/Fundhub/App/FundhubApp.swift`, `tools/fundhub-ios/Fundhub/Core/FundhubAPI.swift`, `tools/fundhub-ios/Fundhub.xcodeproj/project.pbxproj`, `tools/fundhub-ios/FundhubTests/FundhubTests.swift`, `tools/fundhub-ios/README.md`, `docs/journeys/fundhub-ios-intended.md`, and this board.
+7. **Risk and proof:** Canceling Face ID must not open the app, and sign-out must remove the saved session. Prove simulator tests, unsigned iPhone Release build, and later a real-iPhone Face ID sign-in before claiming device proof.
+
+### Parallel work now
+
+| Track | Owner | Output | Dependency |
+| --- | --- | --- | --- |
+| Face ID for company app | This session | Tested native change in company app PR | None |
+| Apple submission checklist | Read-only agent | Only true submission blockers vs later polish | No App Store Connect access via this task |
+| CRM phone to-do list | Read-only agent | Prioritized 390px fixes with screen/file names | Work starts after company app submission |
+
+The App Store Connect permission remains denied. Do not route around it. If that state remains, prepare the exact submission handoff and report the remaining account action; do not claim a submission receipt.
+
+### Company app submission queue
+
+1. Face ID quick sign-in: Keychain entry now requires device-owner presence, with manual sign-in fallback. Final iPhone 17 simulator run: 8 tests passed, 0 failed (`/tmp/fundhub-faceid-final-tests-20261016.xcresult`). Unsigned iPhone Release build, repository lint, and TypeScript check passed. The Face ID system prompt has **not** been proved on a real iPhone.
+2. Apple account step: verify/register the separate `ai.fundhub.app` App ID and App Store record, sign and upload the company build. The saved App Store Connect permission denies this task account access, and the unsigned build is not an upload.
+3. Review access: provision non-customer client and staff accounts, use a real iPhone to complete both sign-in journeys, then capture signed-in screenshots. Do not use real customer data as a reviewer sample.
+4. In App Store Connect, finish the company listing, privacy answers, age rating, review access, and screenshots; select the processed build and submit it. Record Apple's receipt before calling the app submitted.
+5. After submission, work through the CRM 390px to-do list. The funnel download card still waits for a **public company App Store URL**, not submission or TestFlight.
+
+### CRM phone to-do list — after company submission
+
+Read-only local demo check at 390×844: 33 employee CRM/Present pages had no page-wide sideways scroll and the shared rail started off-screen. Populated real-client workflows were not proved, and this pass did not save the marked screenshots required for a formal UI audit.
+
+1. **Compact the shared phone header.** It consumed about 200px on Pipeline, 209px on Closer Dashboard, and 261px on Staff & Teams. Start with `public/app/shell.js` and `public/app/crm-sidebar.css`.
+2. **Fix small touch targets.** Present's “Back to Closer Dashboard” link measured 13px high in `public/app/present.js`; the Client Success fallback link measured 36px high in `public/app/csm-queue.html`. The phone standard is 40px minimum.
+3. **Check Messaging with a populated inbox.** Its phone list, thread, and client context can each occupy up to 60vh, pushing the composer far below the list. Start with `public/app/messaging.html`.
+4. **Test actual phone tasks.** Add 390px click-path checks for Pipeline, Closer Dashboard, Messaging, and Calendar; `ops/workflows/mobile-check.mjs` currently checks overflow and rail position, not populated work.
+
 **Prompter:** In `fundhub-platform`, finish the separate `ai.fundhub.prompter` App Store readiness track. Build and test, prepare screenshots and truthful store copy. Do not edit the company app or funnel. Do not access App Store Connect by any workaround. Report exactly what Apple account action remains.
 
 **Company app (this session):** In `fundhub-platform`, build a separate native Fundhub iOS app for clients and employees. Reuse the existing sign-in, client summary, and role-based web workspace; keep client and staff data apart. Test on simulator and real iPhone where available. Prepare the company app for App Store submission, but do not claim Apple acceptance without proof.

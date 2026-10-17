@@ -2,6 +2,11 @@ import XCTest
 @testable import Fundhub
 
 final class FundhubTests: XCTestCase {
+    func testFaceIDPurposeIsPresentForTheApp() {
+        let purpose = Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String
+        XCTAssertEqual(purpose, "Use Face ID to unlock your saved Fundhub sign-in.")
+    }
+
     func testRoleHomesAreSeparate() {
         XCTAssertEqual(FundhubRole.workspacePath(principal: "client", role: "owner"), "/app/client-portal.html")
         XCTAssertEqual(FundhubRole.workspacePath(principal: "staff", role: "closer"), "/app/closer-dashboard.html")

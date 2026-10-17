@@ -26,11 +26,21 @@ final class FundhubSessionStore: ObservableObject {
 
     private let api = FundhubAPI()
     private(set) var token: String?
+    var hasSavedSession: Bool { SessionKeychain.hasSavedSession }
+    var savedSessionUnlockLabel: String { SessionKeychain.unlockLabel }
 
     init() { Task { await restore() } }
 
     func restore() async {
-        guard let stored = SessionKeychain.read() else { phase = .signedOut; return }
+        let hadSavedSession = SessionKeychain.hasSavedSession
+        guard hadSavedSession else { phase = .signedOut; return }
+        phase = .checking
+        let stored = await Task.detached(priority: .userInitiated) { SessionKeychain.read() }.value
+        guard let stored else {
+            phase = .signedOut
+            message = "Could not unlock your saved sign-in. Try again or sign in another way."
+            return
+        }
         token = stored
         await refreshSession()
     }
@@ -73,9 +83,12 @@ final class FundhubSessionStore: ObservableObject {
         guard reply.ok, let newToken = reply.token, !newToken.isEmpty else {
             throw FundhubAPIError.refused(reply.message ?? "That sign-in did not work.")
         }
-        SessionKeychain.save(newToken)
+        let savedForQuickSignIn = SessionKeychain.save(newToken)
         token = newToken
         await refreshSession()
+        if phase == .signedIn && !savedForQuickSignIn {
+            message = "Signed in, but this iPhone could not save Face ID sign-in. You can still use Fundhub now."
+        }
     }
 
     func refreshSession() async {
@@ -181,6 +194,11 @@ private struct SignInView: View {
                     Text("Your Fundhub app").font(.largeTitle.bold())
                     Text("For clients and the Fundhub team.").foregroundStyle(.secondary)
                 }
+                if store.hasSavedSession {
+                    Button(store.savedSessionUnlockLabel) { Task { await store.restore() } }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                }
                 Text("Team sign-in").font(.headline)
                 VStack(spacing: 16) {
                     TextField("Email address", text: $email)
@@ -190,10 +208,17 @@ private struct SignInView: View {
                 }
                 .textFieldStyle(.roundedBorder)
 
-                Button("Sign in") { Task { await store.signIn(email: email, password: password) } }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(email.isEmpty || password.isEmpty)
+                if store.hasSavedSession {
+                    Button("Sign in another way") { Task { await store.signIn(email: email, password: password) } }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .disabled(email.isEmpty || password.isEmpty)
+                } else {
+                    Button("Sign in") { Task { await store.signIn(email: email, password: password) } }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .disabled(email.isEmpty || password.isEmpty)
+                }
 
                 Divider()
                 Text("Client sign-in link").font(.headline)
@@ -226,6 +251,10 @@ private struct HomeView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     if store.identity?.principal == "client" { clientHome }
                     else { staffHome }
+                    if let message = store.message,
+                       store.identity?.principal != "client" || store.summary != nil {
+                        Text(message).foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: 660, alignment: .leading)
                 .padding(24)
