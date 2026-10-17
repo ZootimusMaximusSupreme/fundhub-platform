@@ -21,8 +21,8 @@ An unsigned device build proves compilation only. It cannot be uploaded or insta
 - Privacy policy: `https://fundhub.ai/privacy/` (also linked inside the app)
 - Support: `https://fundhub.ai/` (links to `support@fundhub.ai`)
 - Description draft: **Fundhub keeps your file and your work close. Clients can see their current file stage, advisor, documents and amount due, then open the full portal for their next steps. Fundhub team members can sign in to their role's workspace.**
-- Review account: App Store Connect has populated demo-login fields, but that login has not been verified end to end. Do not submit as if review access were proved.
-- Screenshots: the logged-out iPhone screen is captured under `ops/workflows/build-evidence/fundhub-ios/`. Logged-in client and staff screenshots require non-customer review accounts.
+- Review account: App Store Connect's demo credentials match `client@fundhub.ai`. The password path was verified in the iPhone 17 simulator: tap **Fundhub team? Use your password**, sign in, then open native client Home and the full test portal. This is not yet a real-iPhone sign-in or push test.
+- Screenshots: App Store Connect has a current build 2 high-contrast iPhone 17 sign-in screenshot (`APP_IPHONE_61`, `COMPLETE`). The older image under `ops/workflows/build-evidence/fundhub-ios/` is stale and must not be used for the listing. The `client@fundhub.ai` test account reaches native client Home and the full portal in the simulator, but a signed-in marketing screenshot has not been approved.
 
 **Account access update (2026-10-17):** Chris explicitly authorized App Store Connect use for this Fundhub launch; the earlier saved denial is superseded. The signed iOS build 2 upload has an Apple delivery receipt, but neither the upload nor this source tree proves review submission or a public listing.
 

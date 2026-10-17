@@ -29,9 +29,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DISPLAY_PROOF_CASES } from "../src/pulse/catalog/proofs/display-proof-cases.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -50,6 +52,15 @@ function walk(dir, out = []) {
 const all = [...walk(path.join(ROOT, "src")), ...walk(path.join(ROOT, "scripts"))];
 const pg = all.filter((f) => f.endsWith(".pg.test.mjs")).sort();
 const unit = all.filter((f) => !f.endsWith(".pg.test.mjs")).sort();
+
+// The focused display proof runs its mapped files itself. The full suite runs
+// each of those files already, so assert coverage before avoiding that duplicate run.
+const discovered = new Set(all.map((file) => path.relative(ROOT, file).split(path.sep).join("/")));
+const mapped = [...new Set(DISPLAY_PROOF_CASES.flatMap((proofCase) => proofCase.tests))];
+for (const file of mapped) {
+  assert.ok(discovered.has(file), `display proof test missing from full suite: ${file}`);
+}
+process.stderr.write(`[run-suite] display proof files covered: ${mapped.length}/${mapped.length}\n`);
 
 function run(label, files, concurrency) {
   if (!files.length) return 0;
@@ -70,7 +81,11 @@ function run(label, files, concurrency) {
   args.push(...files);
   process.stderr.write(`\n[run-suite] ${label}: ${files.length} files` +
     (concurrency != null ? ` (concurrency=${concurrency})` : "") + "\n");
-  const r = spawnSync(process.execPath, args, { stdio: "inherit", cwd: ROOT });
+  const r = spawnSync(process.execPath, args, {
+    stdio: "inherit",
+    cwd: ROOT,
+    env: { ...process.env, FUNDHUB_FULL_SUITE_COVERS_DISPLAY_PROOFS: "1" },
+  });
   if (r.error) {
     console.error(r.error);
     return 1;
