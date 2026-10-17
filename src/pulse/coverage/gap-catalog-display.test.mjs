@@ -237,3 +237,80 @@ test("emptyAs quiet: a control with no saved results yet is green, and red on th
   const strict = { ...entry, contract: { ...entry.contract, emptyAs: undefined } };
   assert.equal(judgeDisplayResult(strict, { sample_count: 0, bad_count: 0 }).status, "FAIL");
 });
+
+/* Lane time (2026-10-16). The live runner opens a transaction for every scope call (src/partners/rls.mjs), so one
+   call per query was about 1,300 round trips and 61 s from the Mac against a 20 s limit. These tests hold the fix
+   and use no hard-coded totals: every number comes from the module. */
+function scopeSpy(db) {
+  const spy = { calls: 0, run: async (fn) => { spy.calls += 1; return fn(db); } };
+  return spy;
+}
+
+test("every saved-result query runs inside one scope call, each exactly once", async () => {
+  const db = fakeDb();
+  const scope = scopeSpy(db);
+  await gapChecks({ db, scope: scope.run, orgId: ORG, fetchImpl: liveRedirect() });
+  assert.equal(scope.calls, 1);
+  assert.equal(db.calls.length, SQL_BATCHES.length);
+  assert.equal(new Set(db.calls.map((call) => call.sql)).size, SQL_BATCHES.length);
+  assert.ok(db.calls.every((call) => call.params[0] === ORG));
+});
+
+test("a failed query leaves the scope, skips that one control, and the rest are still answered", async () => {
+  const failAt = 5;
+  const failedKey = marker(SQL_BATCHES[failAt]);
+  const db = fakeDb({}, failedKey);
+  const scope = scopeSpy(db);
+  const rows = await gapChecks({ db, scope: scope.run, orgId: ORG, fetchImpl: liveRedirect() });
+  // The scope stops at the failure (a failed statement aborts a transaction) and a second one answers the rest.
+  assert.equal(scope.calls, 2);
+  assert.equal(db.calls.length, SQL_BATCHES.length);
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const owners = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query" && entry.contract.sql === SQL_BATCHES[failAt]);
+  assert.ok(owners.length >= 1);
+  for (const entry of owners) {
+    assert.equal(byId.get(entry.id).status, "skip");
+    assert.match(byId.get(entry.id).detail, /read failed/);
+  }
+  const others = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query" && entry.contract.sql !== SQL_BATCHES[failAt]);
+  assert.ok(others.length > 0);
+  assert.ok(others.every((entry) => byId.get(entry.id).status !== "skip"), "no other control may be skipped by one failure");
+});
+
+test("when the scope cannot be opened every query shares that failure, the lane still answers, and it does not loop", async () => {
+  const db = fakeDb();
+  let calls = 0;
+  const scope = async () => { calls += 1; throw new Error("pool is down"); };
+  const rows = await gapChecks({ db, scope, orgId: ORG, fetchImpl: liveRedirect() });
+  assert.equal(calls, 1);
+  assert.equal(db.calls.length, 0);
+  const queryRows = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").map((entry) => rows.find((row) => row.id === entry.id));
+  assert.ok(queryRows.length > 0);
+  for (const row of queryRows) {
+    assert.equal(row.status, "skip");
+    assert.match(row.detail, /pool is down/);
+  }
+});
+
+test("the web reads and the queries start together, so the lane takes the slowest and not the sum", async () => {
+  let openReads = 0;
+  let queryStartedWhileAReadWasOpen = false;
+  const db = {
+    async query() {
+      if (openReads > 0) queryStartedWhileAReadWasOpen = true;
+      return { rows: [{ sample_count: 1, bad_count: 0 }] };
+    }
+  };
+  const slow = liveRedirect();
+  const fetchImpl = async (...args) => {
+    openReads += 1;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return await slow(...args);
+    } finally {
+      openReads -= 1;
+    }
+  };
+  await gapChecks({ db, orgId: ORG, fetchImpl });
+  assert.equal(queryStartedWhileAReadWasOpen, true);
+});

@@ -215,23 +215,72 @@ function liveFileReader(ctx = {}) {
   return { get, base };
 }
 
+/* Every saved-result query, in as few scope calls as it takes. The live runner (asStaff, src/partners/rls.mjs)
+   opens a transaction for each scope call: connect, begin, two settings, the query, commit. One call per query
+   was 261 of those, about 1,300 round trips, and took 61 s from the Mac against a 20 s limit (Netlify cuts a
+   step at 26 s). One scope call holds one transaction for all of them. A failed statement aborts a transaction,
+   so on a failure the scope is left and a new one is opened for the rest. The failure is recorded for that one
+   query only, as before. */
+const SCOPE_STOP = Symbol("leave-the-scope");
+
+async function readAllSql(run, orgId) {
+  const bySql = new Map();
+  let next = 0;
+  while (next < SQL_BATCHES.length) {
+    try {
+      await run(async (db) => {
+        while (next < SQL_BATCHES.length) {
+          const sql = SQL_BATCHES[next++];
+          try {
+            const answer = await db.query(sql, [orgId || null]);
+            bySql.set(sql, answer?.rows?.[0] || { sample_count: 0, bad_count: 0 });
+          } catch (error) {
+            bySql.set(sql, { error });
+            throw SCOPE_STOP;
+          }
+        }
+      });
+    } catch (error) {
+      if (error === SCOPE_STOP) continue;
+      // The scope itself could not be opened or closed: every query it had not answered shares that failure.
+      for (; next < SQL_BATCHES.length; next++) bySql.set(SQL_BATCHES[next], { error });
+    }
+  }
+  return bySql;
+}
+
+// One GET per live-page contract, with or without a database (the page is read over the web).
+async function readLivePages(ctx) {
+  const pages = new Map();
+  for (const entry of DISPLAY_TRACKING_CASES) {
+    if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx));
+  }
+  return pages;
+}
+
 export async function gapChecks(ctx = {}) {
-  // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
-  // shell is RUN against the page's own links, once per staff role, because the live file is what decides
-  // what a person sees. Started first so it overlaps the retired-page reads below; linkGateState never throws.
-  const gateRead = DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
-  // One live read for all controls on this retired page, even without a DB.
-  const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
-  const retiredControls = await retiredControlResults(ctx);
-  // A control the live page does not carry is read from the live page, not from a table (fin-b06-not-shipped.mjs).
-  const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
-  // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
-  const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
-  // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
-  const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);
-  // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
-  const removed = await ownerRemovedResults(DISPLAY_TRACKING_CASES, liveFileReader(ctx));
-  const gate = gateRead ? await gateRead : null;
+  // Every web read and the query pass start together, so the lane takes as long as the slowest of them and not
+  // the sum (61 s one after another from the Mac; limit 20 s). Each is a GET or a read-only SELECT, and none
+  // needs another's answer. Two GETs (the deployed shell and the deployed Client Control Panel) serve every
+  // link-gate contract: the shell is RUN against the page's own links, once per staff role, because the live
+  // file is what decides what a person sees; linkGateState never throws.
+  const run = reader(ctx);
+  const [retired, retiredControls, notShipped, leadsReset, hiddenHeads, removed, gate, pages, bySql] = await Promise.all([
+    // One live read for all controls on this retired page, even without a DB.
+    DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? retiredPageState(ctx) : null,
+    retiredControlResults(ctx),
+    // A control the live page does not carry is read from the live page, not from a table (fin-b06-not-shipped.mjs).
+    judgeNotShipped(DISPLAY_TRACKING_CASES, ctx),
+    // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
+    leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry),
+    // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
+    judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx),
+    // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
+    ownerRemovedResults(DISPLAY_TRACKING_CASES, liveFileReader(ctx)),
+    DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null,
+    readLivePages(ctx),
+    run ? readAllSql(run, ctx.orgId) : null
+  ]);
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (notShipped.has(entry.id)) return notShipped.get(entry.id);
@@ -243,27 +292,11 @@ export async function gapChecks(ctx = {}) {
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
   };
-  // One GET per live-page contract, with or without a database (the page is read over the web).
-  const pages = new Map();
-  for (const entry of DISPLAY_TRACKING_CASES) {
-    if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx));
-  }
-  const run = reader(ctx);
   if (!run) {
     return DISPLAY_TRACKING_CASES.map((entry) => {
       if (pages.has(entry.id)) return pages.get(entry.id);
       return entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judge(entry);
     });
-  }
-
-  const bySql = new Map();
-  for (const sql of SQL_BATCHES) {
-    try {
-      const answer = await run((db) => db.query(sql, [ctx.orgId || null]));
-      bySql.set(sql, answer?.rows?.[0] || { sample_count: 0, bad_count: 0 });
-    } catch (error) {
-      bySql.set(sql, { error });
-    }
   }
 
   return DISPLAY_TRACKING_CASES.map((entry) => {
