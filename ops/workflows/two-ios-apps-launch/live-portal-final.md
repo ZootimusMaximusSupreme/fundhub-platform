@@ -23,6 +23,9 @@
 
 ## Release gate still open
 
-- Commit and push the repair, merge it to `main`, then verify the new GitHub Ship run.
+- The beat repair merged in [PR 57](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/57). Its [Ship run 39042208135](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39042208135) stopped before deploy because the morning proof read migration 481's table before it existed.
+- The full morning bundle proof, run before migration 481, found `client_apns_devices` absent. It also found a separate slow catalog-display check (39.7 seconds versus the 20-second lane limit). The schema error is the release-order repair in `scripts/ship.mjs`: after lint and safety guards, apply the checked migrations before either schema-reading pulse proof. The slow lane stays red and is not changed here.
+- [PR 58](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/58) moved migrations before pulse, but its [Ship run 39043208756](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39043208756) stopped before deploy: migration 481 tried the restricted `fundhub_app` connection and PostgreSQL denied `CREATE` in `public`. The app role and grants stay unchanged. The follow-up repair uses `MIGRATION_DATABASE_URL` only when a real owner connection is set; otherwise it uses the existing Supabase Management API admin-token path with its transaction probe. The local admin token returned HTTP 401 in a read-only check, so the GitHub secret still needs a Ship-run proof.
+- The failed morning proof also reported catalog-display at 55.9 seconds and crm-links at 36.1 seconds (both over 20 seconds). They stay red; this repair does not loosen their limits.
 - Read the shipped client-portal HTML and test the call-confirmation card on the live page before calling it live.
 - A real iPhone push delivery is still unproved. The hourly beat checks readiness and ownership, not a delivered banner.
