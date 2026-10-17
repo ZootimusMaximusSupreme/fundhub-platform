@@ -30,8 +30,9 @@ The App Store Connect origin is denied by a saved permission for this task. Do n
 
 Client Home can ask for Apple notification permission only after the server reports APNs ready.
 Its device token is encrypted and tied to the current client account session. Staff get no client
-push card. The APNs transport is built, but **no automatic alert is connected to it yet**; the
-card says only that this iPhone is ready. No real-device notification has been delivered.
+push card. The dispatcher can send a generic companion alert after an eligible email or SMS
+is saved as sent by a real provider. The card's ready state only checks device registration;
+no production alert or real-device notification has been verified.
 
 Apple-side setup still needed: in Certificates, Identifiers & Profiles, enable **Push
 Notifications** on App ID `ai.fundhub.app`, create an APNs Auth Key, then regenerate the
