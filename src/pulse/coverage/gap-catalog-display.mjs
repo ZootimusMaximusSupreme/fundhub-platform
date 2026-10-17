@@ -25,6 +25,7 @@ export const SQL_BATCHES = Object.freeze([
     .filter((entry) => entry.contract.mode === "query")
     .map((entry) => entry.contract.sql)),
 ]);
+const SQL_READ_BATCH_SIZE = 20;
 
 function result(id, status, detail, suggestedFix = null, na = undefined) {
   return { id, status, detail, suggestedFix, ...(na ? { na } : {}) };
@@ -257,12 +258,20 @@ export async function gapChecks(ctx = {}) {
   }
 
   const bySql = new Map();
-  for (const sql of SQL_BATCHES) {
+  for (let start = 0; start < SQL_BATCHES.length; start += SQL_READ_BATCH_SIZE) {
+    const batch = SQL_BATCHES.slice(start, start + SQL_READ_BATCH_SIZE);
+    const query = batch.map((sql, index) =>
+      `SELECT ${index}::int AS probe_index, sample_count, bad_count FROM (${sql}) AS result`
+    ).join("\nUNION ALL\n");
     try {
-      const answer = await run((db) => db.query(sql, [ctx.orgId || null]));
-      bySql.set(sql, answer?.rows?.[0] || { sample_count: 0, bad_count: 0 });
+      const answer = await run((db) => db.query(query, [ctx.orgId || null]));
+      const indexed = new Map((answer?.rows || []).map((row) => [Number(row.probe_index), row]));
+      if (indexed.size !== batch.length || batch.some((_, index) => !indexed.has(index))) {
+        throw new Error("a grouped display read returned fewer results than requested");
+      }
+      batch.forEach((sql, index) => bySql.set(sql, indexed.get(index)));
     } catch (error) {
-      bySql.set(sql, { error });
+      batch.forEach((sql) => bySql.set(sql, { error }));
     }
   }
 
