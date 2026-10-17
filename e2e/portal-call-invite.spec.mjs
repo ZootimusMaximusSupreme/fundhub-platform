@@ -10,7 +10,7 @@ const session = { ok: true, staff: {
   role: "client", org_id: "org-1", status: "active"
 } };
 const when = () => new Date(Date.now() + 5 * 60_000).toISOString();
-const joined = (link = "https://meet.google.com/current-room") => ({
+const joined = (link = "https://meet.google.com/abc-defg-hij") => ({
   id: BOOKING_ID, when: when(), confirmed: true,
   join: { url: link, host: new URL(link).host }
 });
@@ -73,7 +73,7 @@ test("Join Call shows the host and opens a freshly checked room on desktop and p
     await page.evaluate(() => document.getElementById("call-review-mark")?.remove());
     const before = reads();
     await page.locator("#call-join-btn").click();
-    await expect(page).toHaveURL("https://meet.google.com/current-room");
+    await expect(page).toHaveURL("https://meet.google.com/abc-defg-hij");
     expect(reads()).toBeGreaterThan(before, "the click must make a fresh signed-in read");
   }
 });
@@ -92,7 +92,7 @@ test("an old notification never opens a cancelled or moved call", async ({ page 
 test("a call already under way can be joined, not confirmed again", async ({ page }) => {
   const current = {
     id: BOOKING_ID, when: new Date(Date.now() - 5 * 60_000).toISOString(),
-    confirmed: true, join: { url: "https://zoom.us/j/current-room", host: "zoom.us" }
+    confirmed: true, join: { url: "https://zoom.us/j/9920117744", host: "zoom.us" }
   };
   await setup(page, () => ({ current_call: current, upcoming_call: null }));
   await page.route("https://zoom.us/**", async (route) =>
@@ -102,11 +102,11 @@ test("a call already under way can be joined, not confirmed again", async ({ pag
   await expect(page.locator("#call-confirm-btn")).toBeHidden();
   await expect(page.locator("#call-join-btn")).toBeVisible();
   await page.locator("#call-join-btn").click();
-  await expect(page).toHaveURL("https://zoom.us/j/current-room");
+  await expect(page).toHaveURL("https://zoom.us/j/9920117744");
 });
 
 test("a changed destination is shown before a second tap can open it", async ({ page }) => {
-  await setup(page, (n) => n === 1 ? joined() : joined("https://zoom.us/j/current-room"));
+  await setup(page, (n) => n === 1 ? joined() : joined("https://zoom.us/j/9920117744"));
   await page.route("https://zoom.us/**", async (route) =>
     route.fulfill({ status: 200, contentType: "text/html", body: "Current room" }));
   await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
@@ -115,7 +115,7 @@ test("a changed destination is shown before a second tap can open it", async ({ 
   await expect(page.locator("#call-join-host")).toContainText("Call link changed. Opens zoom.us");
   await expect(page).toHaveURL(/client-portal\.html/);
   await page.locator("#call-join-btn").click();
-  await expect(page).toHaveURL("https://zoom.us/j/current-room");
+  await expect(page).toHaveURL("https://zoom.us/j/9920117744");
 });
 
 test("a signed-out fresh check reveals no call link", async ({ page }) => {

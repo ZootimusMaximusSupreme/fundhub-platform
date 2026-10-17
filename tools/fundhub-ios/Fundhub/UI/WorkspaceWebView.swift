@@ -1,6 +1,18 @@
 import SwiftUI
 import WebKit
 
+struct WorkspacePresentationState {
+    var isOpen = false
+    var reloadId = 0
+
+    mutating func openAfterVerifiedNotification() {
+        // Changing the web view identity reloads the portal even when its
+        // sheet is already open. A fresh page reads the current call again.
+        reloadId &+= 1
+        isOpen = true
+    }
+}
+
 struct WorkspaceWebView: UIViewRepresentable {
     let token: String
     let principal: String

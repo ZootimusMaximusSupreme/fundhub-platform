@@ -50,6 +50,8 @@ test("portal exposes only this client's currently joinable HTTPS room", async ()
 test("portal leaves the Join Call door closed for a fallback or expired call", async () => {
   for (const [when, link] of [
     [new Date(Date.now() + 5 * 60_000).toISOString(), "https://fundhub.ai/portal-login.html"],
+    [new Date(Date.now() + 5 * 60_000).toISOString(), "https://calendly.com/advisor/book-a-call"],
+    [new Date(Date.now() + 5 * 60_000).toISOString(), "https://zoom.us/signin"],
     [new Date(Date.now() - 40 * 60_000).toISOString(), "https://meet.google.com/old-room"]
   ]) {
     const { res } = await callShared(portalSummary, req("GET"), [
@@ -73,13 +75,13 @@ test("a call already under way has a Join door without changing upcoming-call co
     [/starts_at > now\(\) AND status IN/, []],
     [/starts_at <= now\(\)/, [{
       id: BOOKING, starts_at: when, ends_at: new Date(Date.now() + 25 * 60_000).toISOString(),
-      meeting_url: "https://zoom.us/j/current-room"
+      meeting_url: "https://zoom.us/j/9920117744"
     }]]
   ]);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.upcoming_call, null);
   assert.deepEqual(res.body.current_call.join, {
-    url: "https://zoom.us/j/current-room", host: "zoom.us"
+    url: "https://zoom.us/j/9920117744", host: "zoom.us"
   });
 });
 

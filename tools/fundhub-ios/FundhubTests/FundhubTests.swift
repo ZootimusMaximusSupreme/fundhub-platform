@@ -119,6 +119,24 @@ final class FundhubTests: XCTestCase {
         XCTAssertFalse(NativePushTap.opensClientPortal(["path": 123]))
     }
 
+    func testVerifiedNotificationTapReloadsPortalEvenWhenSheetIsAlreadyOpen() {
+        var presentation = WorkspacePresentationState()
+        presentation.openAfterVerifiedNotification()
+        XCTAssertTrue(presentation.isOpen)
+        XCTAssertEqual(presentation.reloadId, 1)
+
+        // A second tap must replace the web view, not merely set an already
+        // true sheet binding to true again and leave a stale call on screen.
+        presentation.openAfterVerifiedNotification()
+        XCTAssertTrue(presentation.isOpen)
+        XCTAssertEqual(presentation.reloadId, 2)
+
+        presentation.isOpen = false
+        presentation.openAfterVerifiedNotification()
+        XCTAssertTrue(presentation.isOpen)
+        XCTAssertEqual(presentation.reloadId, 3)
+    }
+
     @MainActor
     func testNotificationTapRequestIsOneUseAndExpires() {
         let push = NativePushCenter.shared

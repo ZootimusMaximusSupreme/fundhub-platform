@@ -75,12 +75,14 @@ test("late, early, wrong-client, non-SMS, and unkeyed texts cannot invite", asyn
   }
 });
 
-test("moved, cancelled, duplicate, no-link and sign-in fallback bookings cannot invite", async () => {
+test("moved, cancelled, duplicate, no-link and non-room bookings cannot invite", async () => {
   for (const rows of [
     [], [callRow({ starts_at: "2026-10-17T16:30:00.000Z" })],
     [callRow(), callRow({ id: "booking-2" })],
     [callRow({ meeting_url: null })],
     [callRow({ meeting_url: "https://fundhub.ai/portal-login.html" })],
+    [callRow({ meeting_url: "https://calendly.com/advisor/book-a-call" })],
+    [callRow({ meeting_url: "https://zoom.us/signin" })],
     [callRow({ ends_at: "2026-10-17T16:00:00.000Z" })]
   ]) {
     const db = handoffDb(rows);

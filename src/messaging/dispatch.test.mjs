@@ -170,7 +170,7 @@ describe("native alert after a gated booking confirmation", () => {
     const start = "2026-08-01T16:10:00.000Z";
     const db = bookingDb({ handoffBooking: {
       id: "booking-1", starts_at: start, ends_at: "2026-08-01T16:30:00.000Z",
-      meeting_url: "https://meet.google.com/room"
+      meeting_url: "https://meet.google.com/abc-defg-hij"
     } });
     const calls = [];
     const result = await dispatchOne(db, claimed({

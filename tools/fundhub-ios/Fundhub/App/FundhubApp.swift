@@ -398,7 +398,7 @@ private struct SignInView: View {
 private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
     @ObservedObject private var push = NativePushCenter.shared
-    @State private var showingWorkspace = false
+    @State private var workspacePresentation = WorkspacePresentationState()
 
     var body: some View {
         NavigationStack {
@@ -426,7 +426,7 @@ private struct HomeView: View {
                     .font(.caption)
                     .padding(8)
             }
-            .sheet(isPresented: $showingWorkspace) {
+            .sheet(isPresented: $workspacePresentation.isOpen) {
                 if let token = store.token, let identity = store.identity {
                     NavigationStack {
                         WorkspaceWebView(
@@ -438,15 +438,16 @@ private struct HomeView: View {
                                 role: identity.staff.role
                             ),
                             onWebSignOut: {
-                                showingWorkspace = false
+                                workspacePresentation.isOpen = false
                                 Task { await store.signOut() }
                             }
                         )
+                        .id(workspacePresentation.reloadId)
                         .navigationTitle(identity.principal == "client" ? "Client portal" : "My workspace")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") { showingWorkspace = false }
+                                Button("Done") { workspacePresentation.isOpen = false }
                             }
                         }
                     }
@@ -460,7 +461,7 @@ private struct HomeView: View {
                 // portal read the client's current call under that session.
                 await store.refreshSession()
                 guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
-                showingWorkspace = true
+                workspacePresentation.openAfterVerifiedNotification()
             }
         }
     }
@@ -489,7 +490,7 @@ private struct HomeView: View {
             } else {
                 ContentUnavailableView("File unavailable", systemImage: "arrow.clockwise", description: Text(store.message ?? "Pull down to try again."))
             }
-            Button("Open full portal") { showingWorkspace = true }
+            Button("Open full portal") { workspacePresentation.isOpen = true }
                 .buttonStyle(.borderedProminent).controlSize(.large)
             NativePushCard()
         }
@@ -507,7 +508,7 @@ private struct HomeView: View {
             .fundhubCard()
             Text("Open your Fundhub workspace to see your current work and take action.")
                 .foregroundStyle(.secondary)
-            Button("Open my work") { showingWorkspace = true }
+            Button("Open my work") { workspacePresentation.isOpen = true }
                 .buttonStyle(.borderedProminent).controlSize(.large)
         }
     }

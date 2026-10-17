@@ -16,8 +16,9 @@ seen as a banner on a real iPhone yet.
    client-and-call-time key, requires the current time to be in the 15-minute
    pre-call window, and reads a single matching booked/rescheduled row for the
    same company and client. A missing, moved, duplicate, or ended booking
-   produces no invite. `src/bookings/meeting-link.mjs` refuses non-HTTPS,
-   sign-in, booking, phone, local, and credential-bearing links.
+   produces no invite. `src/bookings/meeting-link.mjs` accepts only HTTPS
+   Google Meet room codes and the numeric Zoom room links used in Fundhub;
+   sign-in, booking, phone, local, and credential-bearing links stay closed.
 4. The native sender only offers enabled devices the fixed `call_invite`
    wording. The APNs payload carries the portal path, not a meeting URL or
    client data. APNs expiry is the earlier of the booked end or 30 minutes after
@@ -33,7 +34,9 @@ seen as a banner on a real iPhone yet.
    missing or changed call reveals no old link. If the host changed, the new
    host is shown and another tap is needed. With the same host, it opens the
    fresh HTTPS URL. The native web view hands external HTTPS navigation to
-   iOS; it does not dial or auto-answer.
+   iOS; it does not dial or auto-answer. Each verified notification tap also
+   recreates the portal web view if its sheet was already open, so the page
+   re-reads the current call rather than showing a stale one.
 
 Local proof on 2026-10-17: 91 focused Node tests passed; TypeScript and lint
 passed; six Playwright tests passed at 1440px and 390px, including fresh-link,
