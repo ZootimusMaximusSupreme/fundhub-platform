@@ -1,0 +1,21 @@
+# Mac and Prompter release proof — 2026-10-17
+
+## Fundhub Prompter
+
+- App Store Connect app `6823825669` is `ai.fundhub.prompter`. iOS version 1.0 remains `PREPARE_FOR_SUBMISSION`; no public App Store submission or listing is proven.
+- Build 1 is `VALID` but contains the script-opening crash recorded in [PR #55](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/55). It is in the internal `Fundhub Team` TestFlight group. The external `Fundhub Customers` group has no builds; build 1 has no Beta App Review submission.
+- Built the exact PR #55 commit `ea9e92c83` in an isolated worktree. iPhone 17 Pro Max simulator tests: **56 passed, 0 failed, 0 skipped** (`/tmp/fundhub-prompter-release-build2.xcresult`). The signed archive `/tmp/fundhub-prompter-build2.xcarchive` is `ai.fundhub.prompter` version **1.0 (2)**. The exported IPA `/tmp/fundhub-prompter-build2-export/FundhubPrompter.ipa` uses the Cloud Managed Apple Distribution certificate and App Store provisioning profile, with `get-task-allow=false`.
+- Apple upload succeeded, delivery `40f63851-6281-4367-903b-4bdac41597be`. Apple processing then reported **VALID**, `APP_STORE_ELIGIBLE`, and the build appears in App Store Connect. This is an upload, **not** Beta App Review or public App Review submission.
+- Tried to update the paired iPhone from development build 1 to development build 2 without deleting the app. `devicectl device install app` failed before installation with CoreDeviceError 4016 (trusted connectivity and power assertion unavailable). No app or device data was changed. Real-camera, audio, Photos, and saved-frame-rate proof therefore remains **UNVERIFIED**.
+- Apple's Beta App Review record has no demo login, contact details, or notes. A limited, non-customer staff review account with an approved sample shoot is needed; the owner account should not be used as a reviewer login. Build 2 is not yet in the external TestFlight group. PR #55 is still draft and unmerged, so its source must be brought to `main` before a public release.
+- The prepared truthful store copy and six simulator screenshots are in PR #55 under `tools/teleprompter-ios/AppStore/` and `ops/workflows/build-evidence/fundhub-prompter-appstore/`. They do not prove camera capture. No App Store product-page metadata was changed in this lane.
+
+## Fundhub for Mac
+
+- `/Applications/Fundhub.app` exists, opens both live sign-in pages per `ops/workflows/fundhub-mac-install.md`, and passes `codesign --verify --deep --strict`. It is an **ad-hoc local install**, not a notarized or Mac App Store release; signed-in use remains unverified.
+- Installed Mac bundle ID is `ai.fundhub.mac`. App Store Connect record `6823985032` is `ai.fundhub.app` and contains iOS and macOS 1.0 versions, both `PREPARE_FOR_SUBMISSION`. [Apple's platform rule](https://developer.apple.com/help/app-store-connect/create-an-app-record/add-platforms/) requires the same bundle ID for the macOS build in that record. **Do not upload the current Mac binary to it or silently change either bundle ID.**
+- Safe immediate path: keep the working local Mac app installed and submit the company iOS app on its own. For a future Mac App Store release, either build/sign a macOS target using `ai.fundhub.app` for this shared record, or create a separate macOS app record for the existing `ai.fundhub.mac` bundle. Apple's [distribution guide](https://developer.apple.com/documentation/xcode/preparing-your-app-for-distribution) confirms separate platform records use distinct bundle IDs.
+
+## One next step
+
+Unlock/connect the paired iPhone, then update Prompter to build 2 and prove one real saved take. Do not submit Prompter for public review until the reviewer account and that phone proof exist.
