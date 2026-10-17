@@ -44,6 +44,14 @@ final class PromptClockTests: XCTestCase {
         XCTAssertEqual(track.t(at: 30), line2 / 2, accuracy: 1e-9)
     }
 
+    func testEmptyScrollTrackDoesNotCrashBeforeWordsAreLaidOut() {
+        let empty = PromptClock(paragraphs: [], wpm: 150, pauseSeconds: 0.8)
+        let track = ScrollTrack(clock: empty, wordY: [])
+        XCTAssertEqual(track.pace, 0)
+        XCTAssertEqual(track.y(at: 0), 0)
+        XCTAssertEqual(track.t(at: 0), 0)
+    }
+
     func testAFastParagraphGapDoesNotRace() {
         // 120 words a minute is half a second a word. The first line moves
         // 20px in 1s (20 px/s). The next step is 40px in 1.4s, which would race.
