@@ -48,6 +48,7 @@ function fakeDb({
   subject = "Your file",
   due = [],
   marketingCounts = { last_day: 0, last_week: 0 },
+  upcomingBooking = true,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
   customFields = null
@@ -69,6 +70,7 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
@@ -233,6 +235,7 @@ describe("native alert after a gated booking confirmation", () => {
       [{ customFields: { marketing_push_enabled: true } }, 1],
       [{ customFields: { marketing_push_enabled: false } }, 0],
       [{ customFields: { marketing_push_enabled: true }, marketingCounts: { last_day: 1, last_week: 1 } }, 0],
+      [{ customFields: { marketing_push_enabled: true }, upcomingBooking: false }, 0],
       [{ customFields: { marketing_push_enabled: true }, optedOut: new Set([`${CLIENT}:email`]) }, 0]
     ]) {
       const db = bookingDb(dbOptions);

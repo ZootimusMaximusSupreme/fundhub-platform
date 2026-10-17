@@ -6,10 +6,12 @@
 What this is: a client can add the portal to their phone's home screen, turn on
 notifications, and a message we send arrives on that phone and opens the portal.
 
-What this is **not**: any message. The browser push pipe still has no automatic
-sender. Native iPhone source now has one narrow tap: after the booking-confirmation
-text is actually sent, it may send a fixed call-confirmation alert. No live APNs
-delivery has been proved.
+What this is **not**: a copy of any email or text on a locked screen. Source now
+calls both browser push and native iPhone push after a gated client email or SMS
+is saved as sent by a transmitting provider. The booking-confirmation text uses
+its specific approved alert; other service messages use a generic update.
+Promotional sequences are held except the opted-in, capped BS pre-call text.
+No live APNs delivery has been proved.
 
 ## Native Fundhub iPhone app (built in source; delivery not proved)
 
@@ -23,12 +25,18 @@ until expiry; the app says so. A later sign-in on the same installation retires 
 
 `src/push/apns.mjs` can transmit approved lock-screen payloads through Apple;
 `src/push/native-send.mjs` fans out to eligible devices. `src/messaging/dispatch.mjs`
-now attempts a fixed `call_confirmation` alert only after `SMS-S04-01-CONFIRM`
-has passed opt-out, quiet-hour, company-pause, cap, compliance, dry-run and
-provider checks and its successful text result has been saved. A blocked,
-deferred, failed, test-provider or unrelated message sends no native alert.
-An APNs failure cannot retry or undo the successful text. No alert has been
-delivered on a real iPhone yet.
+attempts companion alerts only after a client email or SMS has passed the
+ordinary send checks and its successful provider result has been saved.
+`src/push/message-policy.mjs` chooses the fixed alert kind, suppresses most
+promotional series, and requires a saved marketing preference plus either-channel
+opt-out and recent-send checks for the BS pre-call exception. Missing devices
+are normal. Native and browser sends are independent; either failure cannot
+retry or undo the original email or text. No alert has been delivered on a real
+iPhone yet.
+
+An approved native notification tap opens the signed-in client portal only. It
+does not follow a pushed URL, place a phone call, or open a meeting link. A real
+Join Call action still needs a current, validated booking link in the portal.
 
 The hourly `native-push` beat covers both device registration and the native send path.
 Its read-only check goes red for a failed APNs send on an active device in the last
@@ -124,11 +132,12 @@ flowchart TD
 | What a notification may say | `src/push/payload.mjs` |
 | The one place that transmits | `src/messaging/providers/web-push.mjs` |
 | Fan-out and retire-the-dead | `src/push/send.mjs` |
-| Routes | `api/push/key.mjs`, `api/push/subscribe.mjs`, `api/push/unsubscribe.mjs` |
+| Routes | `api/push/key.mjs`, `api/push/subscribe.mjs`, `api/push/unsubscribe.mjs`, `api/push/preferences.mjs`, `api/push/native-device.mjs` |
 | Service worker | `public/app/client-portal-sw.js` |
 | Install manifest | `public/manifest.webmanifest`, icons in `public/app/icons/` |
 | The card and the ask | `public/app/client-portal.html` |
-| Prove one arrives | `scripts/push/send-test-push.mjs` |
+| Automatic trigger and policy | `src/messaging/dispatch.mjs`, `src/push/message-policy.mjs` |
+| Prove one arrives | `scripts/push/send-test-push.mjs`, `scripts/push/send-test-native.mjs` |
 
 ## Configuration
 

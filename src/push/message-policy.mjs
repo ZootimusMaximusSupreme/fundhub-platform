@@ -34,6 +34,20 @@ export async function notificationForSentMessage(db, message, { now = new Date()
   );
   if (optOuts.length > 0) return null;
 
+  // The alert opens the portal's call card, so it is only useful while that
+  // card can show a current call. A moved or cancelled booking cannot leave
+  // an old pre-call text as a reason to buzz the phone.
+  const { rows: bookings } = await db.query(
+    `SELECT 1 FROM bookings
+      WHERE org_id = $1 AND client_id = $2
+        AND status IN ('booked', 'rescheduled')
+        AND starts_at > $3::timestamptz
+        AND starts_at <= $3::timestamptz + interval '72 hours'
+      ORDER BY starts_at ASC LIMIT 1`,
+    [message.org_id, message.client_id, now.toISOString()]
+  );
+  if (!bookings.length) return null;
+
   // A conservative cap based on already-sent source texts: one in 24 hours,
   // three in seven days. No new push table or hot-path query for service mail.
   const { rows: counts } = await db.query(
