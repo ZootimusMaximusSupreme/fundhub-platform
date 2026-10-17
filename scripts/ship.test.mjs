@@ -28,6 +28,7 @@ import {
   redact,
   reasonLine,
   morningOnlySlow,
+  migrationOwnerConnection,
   GIT_NO_PROMPT,
   PULSE_SHIP_GUARDS,
   PULL_TIMEOUT_MS,
@@ -38,6 +39,15 @@ import { MACHINE_ONLY_PATHS, isMachineOnlyChange, isMachinePath, skipDiffPathspe
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SHIP = path.join(HERE, "ship.mjs");
 const SRC = fs.readFileSync(SHIP, "utf8");
+
+test("ship never uses the restricted app connection for migrations", () => {
+  const appOnly = { DATABASE_URL: "postgres://fundhub_app:secret@db.example/postgres" };
+  assert.equal(migrationOwnerConnection(appOnly), null);
+  assert.equal(migrationOwnerConnection({ ...appOnly, MIGRATION_DATABASE_URL: "postgres://owner:secret@db.example/postgres" }),
+    "postgres://owner:secret@db.example/postgres");
+  assert.equal(migrationOwnerConnection({ ...appOnly, MIGRATION_DATABASE_URL: "postgres://owner:****@db.example/postgres" }), null);
+  assert.match(SRC, /const migrationConnection = migrationOwnerConnection\(\)/);
+});
 
 // ── a real throwaway git repo, isolated from the Mac's own git settings ─────────
 
