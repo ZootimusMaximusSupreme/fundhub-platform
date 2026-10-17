@@ -8,7 +8,7 @@ Owner approved the split and redesign. This work stays on `codex/two-ios-apps-la
 | --- | --- | --- | --- |
 | Review current first screen and propose one focused visual direction | design agent | DONE | `ops/workflows/fundhub-first-page-design.md` |
 | Capture present phone state and plan a repeatable real-device check | phone agent | DONE | `ops/workflows/fundhub-first-page-phone.md` |
-| Build, test, install, review, and commit the redesign | this session | IN PROGRESS | This board |
+| Build, test, install, review, and commit the redesign | this session | DONE, pending physical visual review | This board |
 
 ## Prompts
 
@@ -22,7 +22,7 @@ Owner approved the split and redesign. This work stays on `codex/two-ios-apps-la
 - [x] Simulator build and relevant tests pass.
 - [x] New build installs and opens on the paired iPhone.
 - [ ] Real-device screen is reviewed; any untested signed-in state stays open.
-- [ ] Scoped change reaches GitHub with a direct link.
+- [x] Scoped change reaches GitHub with a direct link: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/56
 
 ## Build gate, approved scope
 
@@ -44,3 +44,4 @@ The iPhone was active in Messages during the initial device capture. Its install
 - A Release archive succeeded with development signing and the revised `ai.fundhub.app` installed and launched on the paired iPhone 17 Pro Max on 2026-10-17. This does not prove the app is public or that a real sign-in works.
 - A device screenshot after launch showed the owner's other active app, not Fundhub. That temporary capture was removed. Physical visual review remains open until Fundhub is left in front on the phone.
 - The iPhone archive cannot be opened directly on the Mac (`incorrect executable format`). The current Xcode scheme has no Mac Catalyst destination, so the Mac install remains a separate release task.
+- Commit `b3aedfe67` is on the open PR above; merge commit `fb3fd6c9e` reconciles the remote branch without overwriting unrelated working-tree edits. GitHub checks were queued when last checked.
