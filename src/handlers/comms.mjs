@@ -494,7 +494,10 @@ export async function onBookingCreated(event, db) {
   // Mirror s-04 sync so Pipeline shows "booked" without waiting on Inngest.
   // advance only — never demote a later sales stage.
   await addTags(db, clientId, ["call:booked"]);
-  await mergeCustomFields(db, clientId, { call_outcome: "booked" });
+  await mergeCustomFields(db, clientId, {
+    call_outcome: "booked",
+    ...(uid && dup.rows[0] ? {} : { call_confirmed: false })
+  });
   if (event.orgId) {
     await advanceCardToStage(db, {
       orgId: event.orgId,
@@ -539,7 +542,7 @@ export async function onBookingRescheduled(event, db) {
     );
     if (upd.rows[0]) {
       await recordBooking(db, event, p, clientId, BOOKING_STATUS.RESCHEDULED);
-      await mergeCustomFields(db, clientId, { call_outcome: "rescheduled" });
+      await mergeCustomFields(db, clientId, { call_outcome: "rescheduled", call_confirmed: false });
       return;
     }
   }
@@ -554,7 +557,7 @@ export async function onBookingRescheduled(event, db) {
     meetingUrl: p.meetingUrl || null
   });
   await recordBooking(db, event, p, clientId, BOOKING_STATUS.RESCHEDULED);
-  await mergeCustomFields(db, clientId, { call_outcome: "rescheduled" });
+  await mergeCustomFields(db, clientId, { call_outcome: "rescheduled", call_confirmed: false });
 }
 
 // booking.cancelled — close out the open booking task and drop the "booked"

@@ -88,6 +88,14 @@ main::-webkit-scrollbar-thumb{background:#D4D4D8;border-radius:5px}
    file's app-wide shadow rule never reaches it — it names the token itself. */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:16px;box-shadow:var(--panel-shadow)}
 .card-title{font-size:var(--fs-caption);font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px}
+.call-confirm[hidden]{display:none}
+.call-confirm{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.call-confirm .card-title{margin-bottom:8px}
+.call-confirm-copy{color:var(--text-dim)}
+.call-confirm-btn{background:transparent;color:var(--ink);border:1px solid var(--ink);border-radius:8px;padding:12px 16px;font-weight:700;min-height:44px}
+.call-confirm-btn:hover{background:var(--soft)}
+.call-confirm-btn:disabled{opacity:.6;cursor:wait}
+.call-confirm-skeleton{height:16px;width:240px;max-width:100%;border-radius:8px;background:var(--soft)}
 .sec-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .sec-hd .card-title{margin-bottom:0}
 .sec-note{font-size:var(--fs-caption);color:var(--text-faint);margin-left:auto}
@@ -524,6 +532,15 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
             <span class="vtime" id="vnow">—</span>
           </div>
         </div>
+      </section>
+
+      <section class="card call-confirm" id="call-confirm-card" aria-labelledby="call-confirm-title" aria-live="polite">
+        <div>
+          <div class="card-title" id="call-confirm-title">Your call</div>
+          <div class="call-confirm-skeleton" id="call-confirm-skeleton"></div>
+          <p class="call-confirm-copy" id="call-confirm-copy" hidden></p>
+        </div>
+        <button class="call-confirm-btn" id="call-confirm-btn" type="button" hidden>Confirm my call</button>
       </section>
 
       <!-- ══ SIGN TO AUTHORIZE DISPUTE LETTERS ═══════════════════════
@@ -2502,6 +2519,47 @@ document.addEventListener("DOMContentLoaded", async function () {
       status: booking.status || ""
     };
   }
+  var callConfirmId = null;
+  function paintCallConfirm(call) {
+    var card = document.getElementById("call-confirm-card");
+    var copy = document.getElementById("call-confirm-copy");
+    var button = document.getElementById("call-confirm-btn");
+    document.getElementById("call-confirm-skeleton").hidden = true;
+    callConfirmId = null;
+    if (STAFF_ROLES[roleHint()] || !call) { card.hidden = true; return; }
+    card.hidden = false;
+    copy.hidden = false;
+    button.hidden = true;
+    if (call.unavailable) {
+      copy.textContent = "We could not check your call. Reload this page to try again.";
+    } else if (call.confirmed === true) {
+      copy.textContent = "Your call is confirmed for " + fmtWhen(call.when) + ".";
+    } else {
+      callConfirmId = call.id;
+      copy.textContent = "Your call is booked for " + fmtWhen(call.when) + ". Please confirm you can make it.";
+      button.hidden = false;
+      button.disabled = false;
+      button.textContent = "Confirm my call";
+    }
+  }
+  document.getElementById("call-confirm-btn").addEventListener("click", function () {
+    if (!callConfirmId) return;
+    var button = this;
+    var copy = document.getElementById("call-confirm-copy");
+    button.disabled = true;
+    button.textContent = "Confirming…";
+    FHData.write("/api/bookings", { booking_id: callConfirmId }).then(function (res) {
+      if (res.ok && res.data.confirmed === true) {
+        copy.textContent = "Your call is confirmed. We will see you then.";
+        button.hidden = true;
+        callConfirmId = null;
+        return;
+      }
+      copy.textContent = "We could not confirm your call. Reload the page and try again.";
+      button.disabled = false;
+      button.textContent = "Confirm my call";
+    });
+  });
   function paintAgreements(items) {
     var card = document.getElementById("agreements-card");
     var pane = document.getElementById("tp-agree");
@@ -3117,8 +3175,13 @@ document.addEventListener("DOMContentLoaded", async function () {
       return "live agreements · " + items.length + " on file" + (pending ? " · " + pending + " to sign" : "");
     });
 
-  FHData.wire(FHData.portalSummary(clientId ? { client_id: clientId } : {}),
+  var callSummary = FHData.portalSummary(clientId ? { client_id: clientId } : {});
+  callSummary.then(function (res) {
+    if (!res || !res.ok) paintCallConfirm({ unavailable: true });
+  }).catch(function () { paintCallConfirm({ unavailable: true }); });
+  FHData.wire(callSummary,
     "portal-summary", function (data) {
+      paintCallConfirm(data.upcoming_call);
       docsOnFile = Array.isArray(data.documents) ? data.documents : [];
       softPullDone = data.soft_pull_complete === true;
       sloPaid = data.slo_paid === true;

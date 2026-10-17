@@ -6,12 +6,8 @@
 //   GET /api/bookings?status=booked                     → one status
 //   GET /api/bookings?limit=50                          → page size (max 500)
 //
-// GET ONLY. Bookings are created by providers, through the webhook adapters and
-// the event bus (src/handlers/comms.mjs), never by a browser posting here. An
-// endpoint that let a signed-in employee type a booking into existence would be
-// a second, unverified source of truth for the same table, and the first thing
-// it would do is disagree with the provider. Any other method gets a 405 with
-// an `allow` header, not a silent 404.
+// Bookings are created by providers, never by a browser. A client POST can
+// confirm only their own next upcoming booking; it cannot create or move one.
 //
 // *** WHICH COMPANY'S BOOKINGS COME BACK IS NOT A REQUEST PARAMETER. ***
 // org_id is read off the session principal. There is no ?org_id=, and one
@@ -33,17 +29,42 @@
 // parameter shape, status codes.
 import { db } from "../src/db.mjs";
 import { requirePrincipal } from "../src/http/middleware/requirePrincipal.mjs";
-import { CLIENT_DATA_ERRORS } from "../src/http/read-api.mjs";
+import { CLIENT_DATA_ERRORS, isUuid } from "../src/http/read-api.mjs";
 import { listBookings, BookingError } from "../src/bookings/store.mjs";
 
 export default async function handler(req, res) {
-  // ["staff"] — a client, affiliate or partner session gets a 403 here, not a
-  // list of everyone else's calls.
-  const principal = await requirePrincipal(req, res, ["staff"], { db });
+  const principal = await requirePrincipal(req, res, ["staff", "client"], { db });
   if (!principal) return;
 
+  if (req.method === "POST" && principal.kind === "client") {
+    const orgId = principal.orgId;
+    const clientId = principal.clientId;
+    const bookingId = req.body?.booking_id;
+    if (!orgId || !clientId) return res.status(403).json({ ok: false, error: "forbidden" });
+    if (!isUuid(bookingId)) return res.status(400).json({ ok: false, error: "invalid_booking_id" });
+    const confirmed = await db.query(
+      `UPDATE clients c
+          SET custom_fields = COALESCE(c.custom_fields, '{}'::jsonb)
+            || jsonb_build_object('call_confirmed', true, 'last_progress_timestamp', now())
+        WHERE c.id = $2 AND c.org_id = $1
+          AND $3::uuid = (
+            SELECT b.id FROM bookings b
+             WHERE b.org_id = $1 AND b.client_id = $2
+               AND b.starts_at > now() AND b.status IN ('booked', 'rescheduled')
+             ORDER BY b.starts_at ASC LIMIT 1
+          )
+        RETURNING c.id`,
+      [orgId, clientId, bookingId]
+    );
+    if (!confirmed.rows[0]) return res.status(409).json({ ok: false, error: "call_changed", message: "Your call changed. Reload this page to check it." });
+    return res.status(200).json({ ok: true, confirmed: true });
+  }
+
+  if (req.method === "GET" && principal.kind === "client") {
+    return res.status(403).json({ ok: false, error: "forbidden" });
+  }
   if (req.method !== "GET") {
-    res.setHeader("allow", "GET");
+    res.setHeader("allow", principal.kind === "client" ? "POST" : "GET");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 

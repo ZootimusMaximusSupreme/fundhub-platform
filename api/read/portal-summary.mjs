@@ -189,14 +189,25 @@ export default async function handler(req, res) {
        screen has always needed. These are additions, so a table that will not
        answer must cost the caller the fact it could not read and nothing else —
        the same reasoning as the signing block near the top of this file. */
-    const [callHeld, signedAt, paid, advisor, invoiceDue, payments, sloPaid] = await Promise.all([
+    const [callHeld, signedAt, paid, advisor, invoiceDue, payments, sloPaid, upcomingCall] = await Promise.all([
       readCallHeld(orgId, clientId),
       readAgreementSignedAt(orgId, clientId),
       readPaymentPosted(orgId, clientId),
       readAdvisor(orgId, clientId, cf),
       readInvoiceDue(orgId, clientId),
       readPayments(orgId, clientId),
-      readSloPaid(orgId, clientId)
+      readSloPaid(orgId, clientId),
+      safeRead("upcoming call", { unavailable: true }, async () => {
+        const r = await db.query(
+          `SELECT id, starts_at FROM bookings
+            WHERE org_id = $1 AND client_id = $2
+              AND starts_at > now() AND status IN ('booked', 'rescheduled')
+            ORDER BY starts_at ASC LIMIT 1`,
+          [orgId, clientId]
+        );
+        const booking = r.rows[0];
+        return booking ? { id: booking.id, when: booking.starts_at, confirmed: cf.call_confirmed === true } : null;
+      })
     ]);
 
     /* SOFT PULL IS TRUE ON EITHER SIGNAL. The custom-field flags are set by the
@@ -263,6 +274,7 @@ export default async function handler(req, res) {
          on this — see readSloPaid. */
       slo_paid: sloPaid,
       advisor,
+      upcoming_call: upcomingCall,
       stage: portalStage({
         softPullComplete,
         callHeld,
