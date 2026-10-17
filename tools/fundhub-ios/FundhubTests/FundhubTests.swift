@@ -106,6 +106,35 @@ final class FundhubTests: XCTestCase {
         XCTAssertEqual(methods, ["POST", "DELETE"])
     }
 
+    func testNotificationTapAcceptsOnlyTheClientPortalPath() {
+        XCTAssertTrue(NativePushTap.opensClientPortal(["path": "/app/client-portal.html"]))
+        for path in [
+            "https://evil.example/join", "//evil.example/join",
+            "/app/closer-dashboard.html", "/app/client-portal.html?client_id=other",
+            "/app/client-portal.html#old-call", "tel:+15551234567"
+        ] {
+            XCTAssertFalse(NativePushTap.opensClientPortal(["path": path]), path)
+        }
+        XCTAssertFalse(NativePushTap.opensClientPortal([:]))
+        XCTAssertFalse(NativePushTap.opensClientPortal(["path": 123]))
+    }
+
+    @MainActor
+    func testNotificationTapRequestIsOneUseAndExpires() {
+        let push = NativePushCenter.shared
+        let tappedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        _ = push.takePortalOpenRequest(now: tappedAt)
+        XCTAssertFalse(push.recordNotificationTap(userInfo: ["path": "https://evil.example/join"], now: tappedAt))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt))
+
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
+        XCTAssertTrue(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(60)))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(61)))
+
+        XCTAssertTrue(push.recordNotificationTap(userInfo: ["path": NativePushTap.portalPath], now: tappedAt))
+        XCTAssertFalse(push.takePortalOpenRequest(now: tappedAt.addingTimeInterval(NativePushTap.requestLifetime + 1)))
+    }
+
     func testServerErrorDoesNotInvalidateSession() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubURLProtocol.self]

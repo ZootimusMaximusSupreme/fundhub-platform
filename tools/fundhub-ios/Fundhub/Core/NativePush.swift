@@ -32,6 +32,17 @@ enum NativePushInstallation {
     }
 }
 
+enum NativePushTap {
+    static let portalPath = "/app/client-portal.html"
+    static let requestLifetime: TimeInterval = 5 * 60
+
+    static func opensClientPortal(_ userInfo: [AnyHashable: Any]) -> Bool {
+        // APNs supplies this path from our server's approved payload. Never
+        // navigate to a URL, query string, or client ID supplied by a push.
+        (userInfo["path"] as? String) == portalPath
+    }
+}
+
 @MainActor
 final class NativePushCenter: ObservableObject {
     static let shared = NativePushCenter()
@@ -41,11 +52,28 @@ final class NativePushCenter: ObservableObject {
     }
 
     @Published private(set) var state: State = .checking
+    @Published private(set) var portalOpenRequestId = 0
     private var bearer: String?
+    private var pendingPortalOpenAt: Date?
     private let api = FundhubAPI()
     private let registeredKey = "fundhub.nativePush.registered"
 
     private init() {}
+
+    @discardableResult
+    func recordNotificationTap(userInfo: [AnyHashable: Any], now: Date = Date()) -> Bool {
+        guard NativePushTap.opensClientPortal(userInfo) else { return false }
+        pendingPortalOpenAt = now
+        portalOpenRequestId &+= 1
+        return true
+    }
+
+    func takePortalOpenRequest(now: Date = Date()) -> Bool {
+        guard let receivedAt = pendingPortalOpenAt else { return false }
+        pendingPortalOpenAt = nil
+        let age = now.timeIntervalSince(receivedAt)
+        return age >= 0 && age <= NativePushTap.requestLifetime
+    }
 
     func attach(bearer: String) async {
         self.bearer = bearer
@@ -212,5 +240,17 @@ final class FundhubPushDelegate: NSObject, UIApplicationDelegate, UNUserNotifica
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
+            completionHandler()
+            return
+        }
+        Task { @MainActor in
+            NativePushCenter.shared.recordNotificationTap(userInfo: response.notification.request.content.userInfo)
+            completionHandler()
+        }
     }
 }
