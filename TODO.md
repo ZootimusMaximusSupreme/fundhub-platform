@@ -1,5 +1,24 @@
 # TODO — unfinished work
 
+## App improvements (sales process) — added 2026-10-17
+
+- [ ] Backend: lead_app_status table (installed, logged_in, notif_status, last_seen_at)
+- [ ] Backend: endpoint the app posts status to
+- [ ] App: post install + login status on first login
+- [ ] App: post notification status (allowed/denied/not_asked) on open and on return to app
+- [ ] Setter dashboard: per-lead checklist auto-filled from lead_app_status
+- [ ] Setter dashboard: timer since booking
+- [ ] Setter dashboard: call attempt counter
+- [ ] Setter dashboard: flag booked-but-not-installed leads
+- [ ] Setter dashboard: hide app status once lead exits sales process (keep collecting)
+- [ ] App: custom pre-permission screen before iOS notification popup
+- [ ] Decide deferred deep link approach (Branch or similar) for not-yet-installed leads
+- [ ] Post-booking link: one-time login token that opens the app logged in
+
+## Affiliate dashboard — added 2026-10-17
+
+- [ ] Affiliate dashboard: send client + affiliate a notice when the file goes to the ISO (trigger: email sent to ISO)
+
 ## Tomorrow — 2026-10-17: SBA lender partners
 
 Contacts, public facts, and the call questions: `ops/workflows/lender-partners-2026-10-16.md`.
