@@ -13,6 +13,21 @@ Contacts, public facts, and the call questions: `ops/workflows/lender-partners-2
 - [ ] Get the MCA contact's terms with the same 11 questions.
 - [ ] Compare the 11 questions with the CRM lender sheet and merge.
 
+## Credit optimization onboarding — one workflow (added 2026-10-16)
+
+Merge Blake's separate LLC funnel into the main credit optimization onboarding so every client goes through one path. SmartCredit is a required step, signed up through your co-branded link, so every client pays you recurring.
+
+- [ ] Put the two current paths side by side (main onboarding and Blake's LLC funnel) and list anything Blake's has that the main one is missing.
+- [ ] One entry point: every credit optimization client lands on the same onboarding page, whether they came from a closer, an affiliate or Blake. Tag the source on the client record so attribution still works.
+- [ ] First step after payment: SmartCredit signup through the co-branded link, opened right from the portal.
+- [ ] Gate the portal: document upload unlocks only once SmartCredit is connected.
+- [ ] If the co-brand account gives report access, pull the credit report into the portal automatically so the client never uploads one by hand.
+- [ ] Add SmartCredit to the day 1, 3 and 5 reminder texts: chase the SmartCredit signup first, then documents.
+- [ ] Track SmartCredit status per client (not started, signed up, active, cancelled) and flag cancellations, since a cancel means lost recurring revenue and a stale report.
+- [ ] Monthly: match the co-brand commission report against your active client list.
+- [ ] Walk one test client through the merged flow end to end yourself.
+- [ ] Retire Blake's funnel page and redirect its link to the new entry point.
+
 ## Today — 2026-10-13
 
 Afternoon update — owner reports it is about 2:30 PM Arizona/MST and plans to film in 15 minutes (about 2:45 PM). Open work only. With each owner update, return the full organized remaining list and omit completed items. Focus: filming now, then editing; outreach remains open. Use AI wait time for independent tasks; keep the editing block uninterrupted. Remaining engineering scope: finish heartbeat, end-to-end testing, fix issues found, then refactor. Refine the offers alongside revenue work; no new feature expansion.
