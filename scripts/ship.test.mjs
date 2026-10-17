@@ -387,11 +387,12 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort â
     const main = SRC.slice(SRC.indexOf("async function main()"));
     const guard = main.indexOf('run("node", ["--test", ...PULSE_SHIP_GUARDS]');
     const catalog = main.indexOf('run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]');
+    const migrations = main.indexOf('run("node", ["db/migrate.mjs"]');
     const hourly = main.indexOf('run("node", ["scripts/pulse/prove.mjs", "--beats"]');
     const morning = main.indexOf('run("node", ["scripts/pulse/prove.mjs"]');
     const deploy = main.indexOf('run("netlify", ["deploy", "--prod"');
-    assert.ok(guard > 0 && catalog > guard && hourly > catalog && morning > hourly && deploy > morning,
-      "pulse checks and both audit commands must run before release");
+    assert.ok(guard > 0 && catalog > guard && migrations > catalog && hourly > migrations && morning > hourly && deploy > morning,
+      "checked migrations must run before the schema-reading pulse proofs; both proofs must run before release");
     assert.match(main, /if \(!morningOnlySlow\(morningAudit\.out\)\) \{/);
     assert.match(main, /fail\("morning pulse bundle proof failed/);
     assert.match(main, /hourly pulse bundle proof failed/);

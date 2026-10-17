@@ -23,6 +23,7 @@
 
 ## Release gate still open
 
-- Commit and push the repair, merge it to `main`, then verify the new GitHub Ship run.
+- The beat repair merged in [PR 57](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/57). GitHub Ship run [39042208135](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39042208135) is being watched; it has not proved a live deploy yet.
+- The full morning bundle proof, run before migration 481, found `client_apns_devices` absent. It also found a separate slow catalog-display check (39.7 seconds versus the 20-second lane limit). The schema error is the release-order repair in `scripts/ship.mjs`: after lint and safety guards, apply the checked migrations before either schema-reading pulse proof. The slow lane stays red and is not changed here.
 - Read the shipped client-portal HTML and test the call-confirmation card on the live page before calling it live.
 - A real iPhone push delivery is still unproved. The hourly beat checks readiness and ownership, not a delivered banner.
