@@ -73,7 +73,9 @@ function stripComments(src) {
    A restore is a DELETE of the org's rows, destroyMemoryRoutedOrg(), a saved
    copy (savedRouting), or a SECOND provider UPDATE that sits after a teardown
    (after(, afterEach( or finally {). One UPDATE alone never restores itself. */
-const PROVIDER_UPDATE = /UPDATE\s+message_channel_routing\s+SET\b[^`;'"]*?\bprovider\s*=/gi;
+// A test may search fake-DB calls with /UPDATE .../; that regex is not SQL sent
+// to a database. A real SQL UPDATE begins in a string, not immediately after /.
+const PROVIDER_UPDATE = /(?<!\/)UPDATE\s+message_channel_routing\s+SET\b[^`;'"]*?\bprovider\s*=/gi;
 const TEARDOWN = /\bafter(Each)?\s*\(|\bfinally\s*\{/g;
 
 export function routingOffence(src) {
@@ -99,6 +101,8 @@ test("the routing check itself: one UPDATE is never its own restore", () => {
     "deleting the suite org's rows is a restore");
   assert.equal(routingOffence("db.query(`UPDATE message_channel_routing SET enabled = false WHERE org_id = $1`)"), false,
     "an UPDATE that does not touch provider is not this offence");
+  assert.equal(routingOffence("fake.find(/UPDATE message_channel_routing SET provider = 'memory'/)"), false,
+    "searching a fake database's recorded calls is not a database UPDATE");
 });
 
 test("no test UPDATEs message_channel_routing without restoring it", () => {
