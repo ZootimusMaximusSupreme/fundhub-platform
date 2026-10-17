@@ -28,23 +28,58 @@ final class FundhubTests: XCTestCase {
         StubURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.absoluteString, "https://fundhub.ai/api/read/portal-summary")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-session")
-            return Data(#"{"ok":true,"stage":{"key":"booked"},"advisor":null,"documents":[],"invoice_due":{"count":0,"total_display":"$0.00"}}"#.utf8)
+            return (200, Data(#"{"ok":true,"stage":{"key":"booked"},"advisor":null,"documents":[],"invoice_due":{"count":0,"total_display":"$0.00"}}"#.utf8))
         }
         defer { StubURLProtocol.handler = nil }
         let summary = try await api.portalSummary(token: "test-session")
         XCTAssertEqual(summary.stage.title, "Getting started")
     }
+
+    func testNativeLogoutRevokesTheBearerSession() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = FundhubAPI(session: URLSession(configuration: config))
+        StubURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/auth/logout")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-session")
+            return (200, Data(#"{"ok":true}"#.utf8))
+        }
+        defer { StubURLProtocol.handler = nil }
+        try await api.logout(token: "test-session")
+    }
+
+    func testServerErrorDoesNotInvalidateSession() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = FundhubAPI(session: URLSession(configuration: config))
+        StubURLProtocol.handler = { _ in (500, Data(#"{"ok":false}"#.utf8)) }
+        defer { StubURLProtocol.handler = nil }
+        do {
+            _ = try await api.identity(token: "test-session")
+            XCTFail("A 500 is not a valid session reply")
+        } catch FundhubAPIError.unavailable {
+            // Keep the Keychain token and allow a retry.
+        }
+    }
+
+    func testWebSignOutDestinationIsExact() {
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/portal-login.html")!))
+        XCTAssertTrue(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/login.html")!))
+        XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://fundhub.ai/app/client-portal.html")!))
+        XCTAssertFalse(WorkspaceNavigation.isSignOutDestination(URL(string: "https://evil.example/login.html")!))
+    }
 }
 
 private final class StubURLProtocol: URLProtocol {
-    static var handler: ((URLRequest) -> Data)?
+    static var handler: ((URLRequest) -> (Int, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        guard let data = Self.handler?(request), let url = request.url,
-              let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil) else {
+        guard let (status, data) = Self.handler?(request), let url = request.url,
+              let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil) else {
             client?.urlProtocol(self, didFailWithError: FundhubAPIError.invalidResponse)
             return
         }

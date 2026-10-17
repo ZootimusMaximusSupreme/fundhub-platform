@@ -6,8 +6,9 @@ struct WorkspaceWebView: UIViewRepresentable {
     let principal: String
     let identity: FundhubIdentity
     let path: String
+    let onWebSignOut: () -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(onWebSignOut: onWebSignOut) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -44,10 +45,21 @@ struct WorkspaceWebView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+        let onWebSignOut: () -> Void
+
+        init(onWebSignOut: @escaping () -> Void) {
+            self.onWebSignOut = onWebSignOut
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
             if url.scheme == "https", url.host == "fundhub.ai" {
+                if WorkspaceNavigation.isSignOutDestination(url) {
+                    onWebSignOut()
+                    decisionHandler(.cancel)
+                    return
+                }
                 decisionHandler(.allow)
             } else {
                 if ["https", "mailto", "tel"].contains(url.scheme ?? "") { UIApplication.shared.open(url) }
@@ -63,5 +75,12 @@ struct WorkspaceWebView: UIViewRepresentable {
             }
             return nil
         }
+    }
+}
+
+enum WorkspaceNavigation {
+    static func isSignOutDestination(_ url: URL) -> Bool {
+        url.scheme == "https" && url.host == "fundhub.ai"
+            && (url.path == "/login.html" || url.path == "/portal-login.html")
     }
 }

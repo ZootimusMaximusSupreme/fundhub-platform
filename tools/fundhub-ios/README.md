@@ -1,6 +1,6 @@
 # Fundhub iPhone app
 
-This is the **company app**, separate from `tools/teleprompter-ios/`. Its bundle ID is `ai.fundhub.app` (a proposed ID until Apple registers it). The app signs in clients and staff with the existing Fundhub API. Client Home reads the server-scoped file summary in native SwiftUI. Staff Home opens the role's existing work screen. The full client portal or staff workspace stays in an in-app web view for detailed actions.
+This is the **company app**, separate from `tools/teleprompter-ios/`. Its bundle ID is `ai.fundhub.app` (a proposed ID until Apple registers it). Staff sign in with a password; clients request and paste a one-time email link. Client Home reads the server-scoped file summary in native SwiftUI. Staff Home opens the role's existing work screen. The full client portal or staff workspace stays in an in-app web view for detailed actions.
 
 ## Build and tests
 

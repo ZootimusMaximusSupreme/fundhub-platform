@@ -91,7 +91,10 @@ final class FundhubSessionStore: ObservableObject {
             if result.principal == "client" { await loadSummary() }
         } catch {
             // A network outage does not destroy a valid session.
-            if case FundhubAPIError.refused = error { signOut(); return }
+            if case FundhubAPIError.invalidSession = error {
+                await signOut(revoke: false)
+                return
+            }
             phase = .error
             message = error.localizedDescription
         }
@@ -107,23 +110,34 @@ final class FundhubSessionStore: ObservableObject {
             summary = result
             message = nil
         } catch {
+            if case FundhubAPIError.invalidSession = error {
+                await signOut(revoke: false)
+                return
+            }
             summary = nil
             message = "We could not load your file. Pull down to try again."
         }
     }
 
-    func signOut() {
+    func signOut(revoke: Bool = true) async {
+        phase = .checking
+        var revokeFailed = false
+        if revoke, let token {
+            do { try await api.logout(token: token) }
+            catch { revokeFailed = true }
+        }
         SessionKeychain.clear()
         token = nil
         identity = nil
         summary = nil
-        message = nil
-        phase = .signedOut
-        WKWebsiteDataStore.default().removeData(
+        message = revokeFailed
+            ? "Signed out on this iPhone, but Fundhub could not close the server session. Try again when connected."
+            : nil
+        await WKWebsiteDataStore.default().removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-            modifiedSince: .distantPast,
-            completionHandler: {}
+            modifiedSince: .distantPast
         )
+        phase = .signedOut
     }
 }
 
@@ -143,7 +157,7 @@ private struct RootView: View {
                     Text(store.message ?? "Check your connection and try again.")
                 } actions: {
                     Button("Try again") { Task { await store.refreshSession() } }
-                    Button("Sign out") { store.signOut() }
+                    Button("Sign out") { Task { await store.signOut() } }
                 }
             }
         }
@@ -163,6 +177,7 @@ private struct SignInView: View {
                     Text("Your Fundhub app").font(.largeTitle.bold())
                     Text("For clients and the Fundhub team.").foregroundStyle(.secondary)
                 }
+                Text("Team sign-in").font(.headline)
                 VStack(spacing: 16) {
                     TextField("Email address", text: $email)
                         .textContentType(.emailAddress).keyboardType(.emailAddress)
@@ -215,7 +230,7 @@ private struct HomeView: View {
             .navigationTitle("Fundhub")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign out") { store.signOut() }
+                    Button("Sign out") { Task { await store.signOut() } }
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -233,7 +248,11 @@ private struct HomeView: View {
                             path: FundhubRole.workspacePath(
                                 principal: identity.principal,
                                 role: identity.staff.role
-                            )
+                            ),
+                            onWebSignOut: {
+                                showingWorkspace = false
+                                Task { await store.signOut(revoke: false) }
+                            }
                         )
                         .navigationTitle(identity.principal == "client" ? "Client portal" : "My workspace")
                         .navigationBarTitleDisplayMode(.inline)

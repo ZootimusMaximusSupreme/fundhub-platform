@@ -29,11 +29,12 @@ The saved permission for `appstoreconnect.apple.com` denies agent access. Do not
 ## Evidence so far
 
 - Company app project: `tools/fundhub-ios/Fundhub.xcodeproj`, bundle `ai.fundhub.app`, distinct from Prompter. Debug simulator build and unsigned Release iPhone build pass.
-- Simulator iPhone 17 XCTest: **4 passed, 0 failed** in `/tmp/fundhub-company-ios-tests-4.xcresult`, including a bearer-token API contract check. Login screen captured at `ops/workflows/build-evidence/fundhub-ios/sign-in-iphone17.png`.
+- Simulator iPhone 17 XCTest: **7 passed, 0 failed** in `/tmp/fundhub-company-ios-tests-6.xcresult`, including bearer-token reads, native logout, server-error retry, and web sign-out routing. Login screen captured at `ops/workflows/build-evidence/fundhub-ios/sign-in-iphone17.png`.
 - Public `fundhub.ai` health, staff login, portal login, and client portal all returned 200 on 2026-10-16. This is door proof, not a signed-in journey test.
 - Live demo logins are disabled. No non-customer App Review account exists yet. Physical iPhones were listed as unavailable by Xcode; no real-iPhone sign-in or camera/document test has been claimed.
 - Apple App Store record, signing profile, review submission, approval, and public company link are still unverified. The company App Store card remains hidden.
 - Prompter build 2 fixes a simulator startup crash, removes a 4K option the code did not provide, and adds privacy links. Its agent reports 56 passing simulator tests and an unsigned Release build; real-device filming and App Review are still open. Do **not** submit TestFlight build 1 for public review.
+- A separate native-app review found logout, retry, and photo-permission gaps. These are patched and covered by the seven passing tests. The unsigned Release build includes the camera and photo-library purpose strings.
 
 ## Parallel prompts
 

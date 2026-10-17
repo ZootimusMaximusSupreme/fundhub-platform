@@ -3,12 +3,14 @@ import Security
 
 enum FundhubAPIError: LocalizedError {
     case unavailable
+    case invalidSession
     case refused(String)
     case invalidResponse
 
     var errorDescription: String? {
         switch self {
         case .unavailable: return "We could not reach Fundhub. Check your connection and try again."
+        case .invalidSession: return "That sign-in did not work. Check your details and try again."
         case .refused(let message): return message
         case .invalidResponse: return "Fundhub did not send a usable reply. Please try again."
         }
@@ -46,11 +48,16 @@ struct FundhubAPI {
         try await send("/api/read/portal-summary", bearer: token)
     }
 
+    func logout(token: String) async throws {
+        let reply: LogoutReply = try await send("/api/auth/logout", method: "POST", bearer: token)
+        guard reply.ok else { throw FundhubAPIError.unavailable }
+    }
+
     private func send<T: Decodable>(_ path: String, method: String = "GET", body: [String: String]? = nil, bearer: String? = nil) async throws -> T {
         var request = URLRequest(url: Self.base.appendingPathComponent(String(path.dropFirst())))
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 20
+        request.timeoutInterval = path == "/api/auth/logout" ? 5 : 20
         if let bearer { request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -62,8 +69,8 @@ struct FundhubAPI {
         catch { throw FundhubAPIError.unavailable }
         guard let http = response as? HTTPURLResponse else { throw FundhubAPIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            if http.statusCode == 401 { throw FundhubAPIError.refused("That sign-in did not work. Check your details and try again.") }
-            if http.statusCode == 503 { throw FundhubAPIError.unavailable }
+            if http.statusCode == 401 { throw FundhubAPIError.invalidSession }
+            if http.statusCode >= 500 { throw FundhubAPIError.unavailable }
             throw FundhubAPIError.refused("Fundhub could not complete this request. Please try again.")
         }
         do { return try JSONDecoder().decode(T.self, from: data) }
@@ -74,6 +81,10 @@ struct FundhubAPI {
 private struct LinkReply: Decodable {
     let ok: Bool
     let message: String?
+}
+
+private struct LogoutReply: Decodable {
+    let ok: Bool
 }
 
 enum SessionKeychain {
