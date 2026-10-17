@@ -62,6 +62,10 @@
 
 Push source work is isolated on `codex/push-mirror-marketing` while the owner's dirty `codex/two-ios-apps-launch` checkout is preserved. Next gate: full tests, GitHub PR, successful deploy, then real iPhone APNs receipt, visible alert, and portal tap. A Join Call button still needs a verified current meeting URL; ClickFunnels often supplies none. No push is claimed live yet.
 
+- 2026-10-17: Chris chose **Go live** for the marked marketing-switch draft after release checks pass. Review PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/63. The combined focused push/API checks passed 95/95 and the marketing-switch browser test passed 1/1 on the release branch.
+- 2026-10-17: The fresh PR browser run `39058655368` finished 1,339 passed / 5 failed in Company Brain (2), campaign manager, optimize intake, and teleprompter. These are not the changed portal-push spec; the release gate stays open rather than treating a failed proof as green. The no-database and Postgres jobs were still running when this row was written.
+- 2026-10-17: Live strict health returned `up` with 394 migrations and 0 pending. Both new push routes still returned 404, so no production push release is verified. The only local `.p8` found is the existing App Store Connect API key `F8CX6NNF2D`; no APNs Auth Key was found and Netlify's APNs signing variable names were absent at the last check. An iPhone alert and tap remain unproved.
+
 ## Leftovers outside this launch scope
 
 - `api/finance/lnr-business-report.mjs` is untracked and is not routed by `netlify/functions/api.mjs`. It is not part of the two-iOS-app launch, so this session will not test or repair it.
