@@ -16,7 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  dispatchOne, dispatchDue, claimDue, OUTCOME, MAX_ATTEMPTS, nextQuietHoursEnd,
+  dispatchOne, dispatchMessage, dispatchDue, claimDue, OUTCOME, MAX_ATTEMPTS, nextQuietHoursEnd,
   isPlaceholderCopy
 } from "./dispatch.mjs";
 import { clearRuleCache } from "../compliance/screen.mjs";
@@ -47,6 +47,8 @@ function fakeDb({
   rules = [],
   subject = "Your file",
   due = [],
+  marketingCounts = { last_day: 0, last_week: 0 },
+  upcomingBooking = true,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
   customFields = null
@@ -57,6 +59,9 @@ function fakeDb({
     query: async (sql, params) => {
       if (sql.includes("client_authorized_reps")) return { rows: [] };
       if (sql.includes("FROM opt_outs")) {
+        if (sql.includes("channel IN ('sms', 'email')")) {
+          return { rows: ["sms", "email"].some((channel) => optedOut.has(`${params[0]}:${channel}`)) ? [{ x: 1 }] : [] };
+        }
         return { rows: optedOut.has(`${params[0]}:${params[1]}`) ? [{ x: 1 }] : [] };
       }
       if (sql.includes("FROM compliance_rules")) return { rows: rules };
@@ -65,6 +70,8 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
+      if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
       }
@@ -113,6 +120,170 @@ const ENV = {
   UNSUBSCRIBE_TOKEN_SECRET: "test-unsubscribe-secret-0123456789abcdef0123456789abcdef",
   APP_BASE_URL: "https://fundhub.test"
 };
+
+const APNS_ENV = {
+  ...ENV,
+  TWILIO_SEND_ACCOUNT_SID: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  TWILIO_SEND_AUTH_TOKEN: "twilio-auth-token-value",
+  TWILIO_SEND_FROM: "+15550001111",
+  APNS_KEY_ID: "AAAAAAAAAA",
+  APNS_TEAM_ID: "BBBBBBBBBB",
+  APNS_PRIVATE_KEY_BASE64: "test-key-never-used-by-spy",
+  PUSH_SUB_ENC_KEY: "test-storage-key-never-used-by-spy"
+};
+
+const BOTH_PUSH_ENV = {
+  ...APNS_ENV,
+  VAPID_PUBLIC_KEY: "test-public-key-never-used-by-spy",
+  VAPID_PRIVATE_KEY: "test-private-key-never-used-by-spy",
+  VAPID_SUBJECT: "mailto:ops@fundhub.test"
+};
+
+describe("native alert after a gated booking confirmation", () => {
+  const bookingText = () => claimed({ channel: "sms", template_key: "SMS-S04-01-CONFIRM" });
+  const bookingDb = (options = {}) => fakeDb({
+    ...options,
+    routing: { sms: { provider: "twilio", enabled: true } }
+  });
+
+  test("a sent booking text triggers exactly one detail-free native alert", async () => {
+    const calls = [];
+    const db = bookingDb();
+    const sms = spy();
+    const result = await dispatchOne(db, bookingText(), {
+      fetchImpl: sms, env: APNS_ENV, now: MIDDAY,
+      sendNative: async (_db, args) => { calls.push(args); return { sent: 1 }; }
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sms.calls.length, 1);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].notification, { kind: "call_confirmation" });
+    assert.equal(calls[0].clientId, CLIENT);
+    assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+  });
+
+  test("an opted-out or quiet-hours text cannot unlock native send", async () => {
+    for (const [db, now, expected] of [
+      [bookingDb({ optedOut: new Set([`${CLIENT}:sms`]) }), MIDDAY, OUTCOME.BLOCKED],
+      [bookingDb(), () => new Date("2026-08-01T07:00:00Z"), OUTCOME.DEFERRED]
+    ]) {
+      const calls = [];
+      const sms = spy();
+      const result = await dispatchOne(db, bookingText(), {
+        fetchImpl: sms, env: APNS_ENV, now,
+        sendNative: async () => { calls.push(1); }
+      });
+      assert.equal(result.outcome, expected);
+      assert.equal(sms.calls.length, 0);
+      assert.equal(calls.length, 0);
+    }
+  });
+
+  test("dry run and missing APNs keys do not trigger native send; other sent service texts do", async () => {
+    for (const [env, message, expected, expectedPushes] of [
+      [{ ...APNS_ENV, MESSAGING_DRY_RUN: "1" }, bookingText(), OUTCOME.DRY_RUN, 0],
+      [{ ...APNS_ENV, APNS_KEY_ID: "" }, bookingText(), OUTCOME.SENT, 0],
+      [APNS_ENV, claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" }), OUTCOME.SENT, 1]
+    ]) {
+      const calls = [];
+      const result = await dispatchOne(bookingDb(), message, {
+        fetchImpl: spy(), env, now: MIDDAY,
+        sendNative: async () => { calls.push(1); }
+      });
+      assert.equal(result.outcome, expected);
+      assert.equal(calls.length, expectedPushes);
+    }
+  });
+
+  test("a sent client email and SMS try both web and native phones with generic copy", async () => {
+    for (const message of [
+      claimed({ channel: "email", template_key: "E-01" }),
+      claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" })
+    ]) {
+      const calls = [];
+      const db = fakeDb({ routing: {
+        email: { provider: "mailgun", enabled: true },
+        sms: { provider: "twilio", enabled: true }
+      } });
+      const result = await dispatchOne(db, message, {
+        fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+        sendNative: async (_db, target) => { calls.push(["native", target.notification]); return { sent: 1 }; },
+        sendWeb: async (_db, target) => { calls.push(["web", target.notification]); return { sent: 1 }; }
+      });
+      assert.equal(result.outcome, OUTCOME.SENT);
+      assert.deepEqual(calls, [["native", { kind: "update" }], ["web", { kind: "update" }]]);
+    }
+  });
+
+  test("one push pipe failing cannot suppress the other or retry the sent message", async () => {
+    const db = bookingDb();
+    const calls = [];
+    const result = await dispatchOne(db, bookingText(), {
+      fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+      sendNative: async () => { throw new Error("test APNs outage"); },
+      sendWeb: async (_db, target) => { calls.push(target.notification); return { sent: 1 }; }
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.deepEqual(calls, [{ kind: "call_confirmation" }]);
+    assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+    assert.ok(!db.updates.some(({ sql }) => /SET status = 'queued'/.test(sql)));
+  });
+
+  test("BS pre-call text adds one marketing alert only with explicit opt-in and room under the cap", async () => {
+    const preCall = claimed({ channel: "sms", template_key: "SMS-BS01-02-PRECALL" });
+    for (const [dbOptions, expected] of [
+      [{ customFields: { marketing_push_enabled: true } }, 1],
+      [{ customFields: { marketing_push_enabled: false } }, 0],
+      [{ customFields: { marketing_push_enabled: true }, marketingCounts: { last_day: 1, last_week: 1 } }, 0],
+      [{ customFields: { marketing_push_enabled: true }, upcomingBooking: false }, 0],
+      [{ customFields: { marketing_push_enabled: true }, optedOut: new Set([`${CLIENT}:email`]) }, 0]
+    ]) {
+      const db = bookingDb(dbOptions);
+      const sent = [];
+      const result = await dispatchOne(db, preCall, {
+        fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+        sendNative: async (_db, target) => { sent.push(["native", target.notification]); return { sent: 1 }; },
+        sendWeb: async (_db, target) => { sent.push(["web", target.notification]); return { sent: 1 }; }
+      });
+      assert.equal(result.outcome, OUTCOME.SENT);
+      assert.equal(sent.length, expected * 2);
+      if (expected) assert.deepEqual(sent, [["native", { kind: "check_in" }], ["web", { kind: "check_in" }]]);
+    }
+  });
+
+  test("an APNs failure cannot turn the sent text into a retry", async () => {
+    const db = bookingDb();
+    const result = await dispatchOne(db, bookingText(), {
+      fetchImpl: spy(), env: APNS_ENV, now: MIDDAY,
+      sendNative: async () => { throw new Error("test APNs outage"); }
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+    assert.ok(!db.updates.some(({ sql }) => /SET status = 'queued'/.test(sql)));
+  });
+
+  test("a second dispatch cannot claim the same text and duplicate its native alert", async () => {
+    const db = bookingDb();
+    const originalQuery = db.query;
+    let claimedOnce = false;
+    db.query = async (sql, params) => {
+      if (sql.includes("SET status = 'sending'")) {
+        if (claimedOnce) return { rows: [] };
+        claimedOnce = true;
+        return { rows: [bookingText()] };
+      }
+      return originalQuery(sql, params);
+    };
+    const calls = [];
+    const options = {
+      fetchImpl: spy(), env: APNS_ENV, now: MIDDAY,
+      sendNative: async () => { calls.push(1); return { sent: 1 }; }
+    };
+    assert.equal((await dispatchMessage(db, MSG, options)).outcome, OUTCOME.SENT);
+    assert.equal((await dispatchMessage(db, MSG, options)).outcome, "not_claimable");
+    assert.equal(calls.length, 1);
+  });
+});
 
 beforeEach(() => clearRuleCache());
 

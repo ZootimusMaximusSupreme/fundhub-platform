@@ -12,10 +12,9 @@
 // The sibling test src/http/push-endpoints.pg.test.mjs runs the same sender against a real Postgres and
 // skips with no DATABASE_URL, so it proves nothing on a laptop. This one always runs.
 //
-// What this test does NOT prove: that anything calls sendToClient. Nothing in src/, api/ or netlify/ does
-// (only scripts/push/send-test-push.mjs, by hand). The last test in this file pins that, so the day a caller
-// appears this file goes red and the new caller has to get its own trigger-to-device proof. The Flow lane's
-// live check (PUSH_DEVICE_SQL in fin-b22-flow-live.mjs) reads what a customer's device is left with.
+// The trigger-to-device case below starts with a gated SMS, lets the real
+// dispatcher send it, and decrypts the companion push delivered by the real
+// web sender. The Flow lane's live check reads the device's delivery record.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -24,6 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { sendToClient } from "./send.mjs";
+import { dispatchOne, OUTCOME } from "../messaging/dispatch.mjs";
 import { saveSubscription, revokeSubscription, endpointHash } from "./store.mjs";
 import { b64u, generateVapidKeys, decryptPayload } from "./crypto.mjs";
 import { APPROVED_BODIES } from "./payload.mjs";
@@ -89,7 +89,7 @@ function world(answers = {}) {
   const send = (over = {}) => sendToClient(db, {
     orgId: ORG, clientId: CLIENT, notification: { kind: "check_in" }, env: ENV, fetchImpl, ...over,
   });
-  return { kit, db, calls, rows, rowFor, register, send, close: () => kit.close() };
+  return { kit, db, calls, rows, rowFor, register, send, fetchImpl, close: () => kit.close() };
 }
 
 const header = (call, name) => {
@@ -352,6 +352,60 @@ describe("storage", () => {
   });
 });
 
+describe("a real gated message reaches a device", () => {
+  test("successful booking SMS sends a private companion alert through the real web sender", async () => {
+    const w = world();
+    const phone = browser("booking-sms");
+    await w.register(phone);
+    const writes = [];
+    const db = {
+      async query(sql, params = []) {
+        if (sql.includes("client_push_subscriptions")) return w.db.query(sql, params);
+        if (sql.includes("client_authorized_reps")) return { rows: [] };
+        if (sql.includes("FROM opt_outs")) return { rows: [] };
+        if (sql.includes("FROM compliance_rules")) return { rows: [] };
+        if (sql.includes("FROM message_templates")) return { rows: [{ subject: "" }] };
+        if (sql.includes("FROM message_channel_routing")) return { rows: [{ provider: "twilio", enabled: true }] };
+        if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: {} }] };
+        if (sql.includes("FROM tasks")) return { rows: [] };
+        if (sql.includes("INSERT INTO tasks")) return { rows: [{ id: "task-1" }] };
+        if (sql.includes("UPDATE messages")) { writes.push({ sql, params }); return { rows: [] }; }
+        throw new Error(`unexpected dispatch query: ${sql}`);
+      }
+    };
+    const sentSms = [];
+    const message = {
+      id: "55555555-5555-4555-8555-555555555555", org_id: ORG, client_id: CLIENT,
+      channel: "sms", template_key: "SMS-S04-01-CONFIRM", to_address: "+15551234567",
+      rendered_body: "Please confirm your Fundhub call in the client portal.",
+      provider_ref: "test:booking-confirm", attempts: 1
+    };
+    const env = {
+      ...ENV,
+      TWILIO_SEND_ACCOUNT_SID: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      TWILIO_SEND_AUTH_TOKEN: "test-auth-token",
+      TWILIO_SEND_FROM: "+15550001111",
+      UNSUBSCRIBE_TOKEN_SECRET: "test-secret-0123456789abcdef0123456789abcdef"
+    };
+    const result = await dispatchOne(db, message, {
+      env, now: () => new Date("2026-10-17T16:00:00Z"),
+      fetchImpl: async (url, init) => {
+        sentSms.push({ url, init });
+        return { ok: true, status: 201, text: async () => JSON.stringify({ sid: "SMbooking" }) };
+      },
+      sendWeb: (pushDb, target) => sendToClient(pushDb, { ...target, fetchImpl: w.fetchImpl })
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.equal(sentSms.length, 1, "the SMS really went through the provider stub");
+    assert.ok(writes.some(({ sql }) => /status = 'sent'/.test(sql)), "the SMS was recorded as sent first");
+    assert.equal(w.calls.length, 1, "one encrypted push went to the registered device");
+    assert.equal(shown(w.calls[0], phone).kind, "call_confirmation");
+    assert.equal(w.rowFor(phone).failure_count, 0);
+    assert.ok(w.rowFor(phone).last_success_at);
+    w.close();
+  });
+});
+
 // ── the caller guard ─────────────────────────────────────────────────────────
 
 const SKIP_DIRS = new Set(["node_modules", ".git", "_next", ".claude", "docs", "ops", "marketing", "assets"]);
@@ -386,10 +440,9 @@ function importersOf(target) {
 }
 
 describe("who calls the sender", () => {
-  test("only the hand-run test script calls sendToClient, and only the sender calls the provider (when this changes, the new caller needs its own trigger-to-device proof)", () => {
-    assert.deepEqual(importersOf("src/push/send.mjs"), ["scripts/push/send-test-push.mjs"],
-      "sendToClient has a new caller. Give it a trigger-to-device proof, replace the waiting-device rule in "
-      + "src/pulse/catalog/proofs/fin-b22-flow-live.mjs (PUSH_WAITING_DAYS), then update this list.");
+  test("the dispatcher and the hand-run script call sendToClient; only the sender calls the provider", () => {
+    assert.deepEqual(importersOf("src/push/send.mjs"), ["scripts/push/send-test-push.mjs", "src/messaging/dispatch.mjs"],
+      "A new sender caller needs its own trigger-to-device proof and a live-device rule update.");
     // api/push/key.mjs only reads the public VAPID key (vapidConfig); it never calls send().
     assert.deepEqual(importersOf("src/messaging/providers/web-push.mjs"),
       ["api/push/key.mjs", "scripts/push/send-test-push.mjs", "src/push/send.mjs"],

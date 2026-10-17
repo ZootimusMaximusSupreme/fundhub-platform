@@ -397,6 +397,7 @@ private struct SignInView: View {
 
 private struct HomeView: View {
     @EnvironmentObject private var store: FundhubSessionStore
+    @ObservedObject private var push = NativePushCenter.shared
     @State private var showingWorkspace = false
 
     var body: some View {
@@ -450,6 +451,16 @@ private struct HomeView: View {
                         }
                     }
                 }
+            }
+            .task(id: push.portalOpenRequestId) {
+                guard push.takePortalOpenRequest() else { return }
+                guard store.identity?.principal == "client" else { return }
+                // A tapped alert is never a navigation URL or an assertion that
+                // a call still exists. Verify this session again, then let the
+                // portal read the client's current call under that session.
+                await store.refreshSession()
+                guard store.phase == .signedIn, store.identity?.principal == "client" else { return }
+                showingWorkspace = true
             }
         }
     }

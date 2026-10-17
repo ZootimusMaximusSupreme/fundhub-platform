@@ -21,6 +21,7 @@ import { createHash } from "node:crypto";
 
 import { TEST_ADDRESS_RE, RECEIPT_AFTER_HOURS } from "../../coverage/gap-sms.mjs";
 import { TEMPLATE_KEYS as WAYPOINT_TEMPLATE_KEYS } from "../../../nudge/ladder.mjs";
+import { PROMOTIONAL_KEY } from "../../../push/message-policy.mjs";
 import snapshot from "./fin-b22-sql-template-keys.json" with { type: "json" };
 
 export const FIN_B22_LIVE_LANE = "src/pulse/coverage/gap-catalog-flow.mjs";
@@ -47,6 +48,7 @@ export const NUDGE_CLAIM_GRACE_MINUTES = 15;
 export const SOFT_PULL_BUSINESS_SOURCE = "soft_pull_approve";
 /** A device a client turned on is waiting if this many days passed and no push was ever tried for it. */
 export const PUSH_WAITING_DAYS = 7;
+const PUSH_PROMO_KEY_RE = PROMOTIONAL_KEY.source;
 /** The push service failed this many times in a row and the device is still on file (only a 404 or 410 retires one). */
 export const PUSH_FAILURE_LIMIT = 3;
 /** What the nudge runner writes (src/nudge/run.mjs SOURCE_WORKFLOW and STAFF_TASK_ROLE). A test pins both. */
@@ -308,16 +310,24 @@ SELECT count(*)::int AS sample_count,
    AND b.entity_data ->> 'source' = '${SOFT_PULL_BUSINESS_SOURCE}'`.trim();
 
 /**
- * $1 org, $2 waited-before, $3 test-address pattern. A notification device a client turned on, as the sender
+ * $1 org, $2 waited-before, $3 test-address pattern, $4 promo template pattern. A notification device a client turned on, as the sender
  * left it: src/push/store.mjs markSuccess stamps last_success_at and clears failure_count, markFailure adds one,
  * markExpired (a 404 or 410) retires the row. Two states are wrong. WAITING: the device is older than the grace
- * and nothing was ever tried (no success, no failure), which is what a customer lives through while nothing calls
- * sendToClient. FAILING: the push service failed it three times or more and it is still on file.
+ * and nothing was ever tried (no success, no failure) after an eligible email or text was sent to that client.
+ * A client who only registered a device but has received no eligible message is not falsely flagged.
+ * FAILING: the push service failed it three times or more and it is still on file.
  */
 export const PUSH_DEVICE_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE
-            (s.last_success_at IS NULL AND s.failure_count = 0 AND s.created_at < $2::timestamptz)
+            (s.last_success_at IS NULL AND s.failure_count = 0 AND s.created_at < $2::timestamptz
+             AND EXISTS (
+               SELECT 1 FROM messages m
+                WHERE m.org_id = s.org_id AND m.client_id = s.client_id
+                  AND m.direction = 'outbound' AND m.status = 'sent'
+                  AND m.channel IN ('email', 'sms') AND m.updated_at >= s.created_at
+                  AND (m.template_key IS NULL OR m.template_key !~* $4::text)
+             ))
          OR s.failure_count >= ${PUSH_FAILURE_LIMIT}
        )::int AS bad_count
   FROM client_push_subscriptions s
@@ -459,9 +469,9 @@ export const FIN_B22_LIVE = Object.freeze([
     surface: "provider:web-push-and-client-push",
     family: "message",
     emptyAs: "quiet",
-    requirement: `Every notification device a client turned on is being reached or is still new: none has waited more than ${PUSH_WAITING_DAYS} days with no push ever tried, and none has failed ${PUSH_FAILURE_LIMIT} times or more without being retired. Nothing in the app calls sendToClient today, so a device waits until someone wires a caller.`,
+    requirement: `Every notification device for a client with a sent service email or text after registration is being reached: none has waited more than ${PUSH_WAITING_DAYS} days with no push ever tried, and none has failed ${PUSH_FAILURE_LIMIT} times or more without being retired. A device with no eligible message is not a failure.`,
     sql: PUSH_DEVICE_SQL,
-    params: (ctx) => [ctx.orgId, when(ctx, PUSH_WAITING_DAYS * DAY), TEST_ADDRESS_RE],
+    params: (ctx) => [ctx.orgId, when(ctx, PUSH_WAITING_DAYS * DAY), TEST_ADDRESS_RE, PUSH_PROMO_KEY_RE],
   }),
   Object.freeze({
     surface: "journey:soft-pull-multi-biz-intended-draft#6-staff-sees-files",
