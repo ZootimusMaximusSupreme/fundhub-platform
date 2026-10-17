@@ -6,11 +6,12 @@
 What this is: a client can add the portal to their phone's home screen, turn on
 notifications, and a message we send arrives on that phone and opens the portal.
 
-What this is **not**: any message. Nothing sends a notification today. No nudge, no
-payment alert, no reminder. The pipe is built and the taps are not connected — see
-**Wiring it to something** at the bottom.
+What this is **not**: any message. The browser push pipe still has no automatic
+sender. Native iPhone source now has one narrow tap: after the booking-confirmation
+text is actually sent, it may send a fixed call-confirmation alert. No live APNs
+delivery has been proved.
 
-## Native Fundhub iPhone app (built in source; not live)
+## Native Fundhub iPhone app (built in source; delivery not proved)
 
 The native app has a separate APNs pipe. Its client Home card checks `/api/push/native-device`
 before asking iOS for permission, then registers the iPhone's APNs token under the signed-in
@@ -20,17 +21,26 @@ DELETE. Native sign-out tries the same DELETE and server logout, then clears loc
 if the phone is offline. If both server requests fail, the old server session may remain live
 until expiry; the app says so. A later sign-in on the same installation retires the old row.
 
-`src/push/apns.mjs` can transmit the existing approved lock-screen payloads through Apple;
-`src/push/native-send.mjs` fans out to eligible devices. **No workflow calls it yet.** Booking
-messages pass through opt-out, quiet-hour, company-pause, cap, and compliance gates in the
-message dispatcher. Adding a push beside those sends without the same gates would be a new
-outbound path and is not done here. No alert has been delivered on a real iPhone.
+`src/push/apns.mjs` can transmit approved lock-screen payloads through Apple;
+`src/push/native-send.mjs` fans out to eligible devices. `src/messaging/dispatch.mjs`
+now attempts a fixed `call_confirmation` alert only after `SMS-S04-01-CONFIRM`
+has passed opt-out, quiet-hour, company-pause, cap, compliance, dry-run and
+provider checks and its successful text result has been saved. A blocked,
+deferred, failed, test-provider or unrelated message sends no native alert.
+An APNs failure cannot retry or undo the successful text. No alert has been
+delivered on a real iPhone yet.
+
+The hourly `native-push` beat covers both device registration and the native send path.
+Its read-only check goes red for a failed APNs send on an active device in the last
+two hours; the morning `native-push:recent-delivery-failure` check reads the same
+device state. No failure recorded is not proof that a booking alert arrived.
 
 APNs needs the `ai.fundhub.app` App ID's Push Notifications capability, a matching provisioning
 profile, and `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY_BASE64` in the Netlify environment;
 it reuses `PUSH_SUB_ENC_KEY` for encrypted device storage. Debug uses the development APNs
 entitlement and sandbox host; Release uses a separate production entitlement and production host.
-The signed archive's `aps-environment` still needs to be checked before TestFlight distribution.
+The exported App Store IPA was checked on 2026-10-17: bundle `ai.fundhub.app`,
+`aps-environment=production`, and `get-task-allow=false`.
 Once those pieces are in place and a client opts in on a real iPhone,
 `node scripts/push/send-test-native.mjs --client <uuid>` reports eligible devices without
 sending. Adding `--send` deliberately transmits only the approved generic test body.
@@ -159,9 +169,9 @@ staff CRM screen lives, and not `/`. Two consequences, both deliberate:
 `src/push/service-worker.test.mjs` runs the worker in a fake browser and fails if an
 `/api/` URL ever lands in the cache.
 
-## Wiring it to something (NOT DONE — this is the follow-up)
+## Wiring browser push to something (NOT DONE — this is the follow-up)
 
-Nothing sends a notification today. To connect the nudge engine:
+No workflow calls browser `sendToClient` today. To connect the nudge engine:
 
 1. Import `sendToClient` from `src/push/send.mjs`.
 2. Call it beside the existing text-message send, not instead of it:

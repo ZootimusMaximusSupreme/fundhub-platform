@@ -197,6 +197,15 @@ by id, through the same sender. The company pause switch, the daily cap, quiet
 hours, opt-out and the compliance screen all still run; the sweep is unchanged
 and remains the backstop for these two rows and for everything else.
 
+In current source, after the confirmation **text** is marked sent, the sender
+also tries one native iPhone alert with fixed, detail-free wording: “Please
+confirm your upcoming call in FundHub.” It only tries when APNs and encrypted
+device storage are configured, and only for an opted-in, eligible native device.
+A blocked or deferred text cannot trigger the alert; a deferred text may trigger
+it later when the normal sweep actually sends it. APNs failure leaves the text
+sent and does not queue a second text. This native alert has not been proved on
+a real phone or shipped as live delivery.
+
 ## 5. The fifteen-minute handoff
 
 `src/workflows/ai-set-04-3way-handoff.mjs`
@@ -299,7 +308,8 @@ workflow → sendTemplated (src/workflows/messaging.mjs)
           → src/messaging/dispatch.mjs — the only thing that hands a row to a provider
              driven by the sweep every 5 minutes (message-dispatch-sweeper)
              or, for the two booking confirmations only, immediately by id
-          → src/messaging/providers/* — the only place anything leaves the building
+          → src/messaging/providers/* — text and email leave here
+          → only after a sent booking-confirmation text, optional native APNs alert
 ```
 
 ## 7. Known gaps, not fixed here
