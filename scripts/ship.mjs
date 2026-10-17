@@ -310,23 +310,6 @@ async function main() {
     if (!valid.ok) fail("the regenerated coverage catalog does not match current sources.");
     say("  regenerated and verified coverage catalog from current proof recipes");
   }
-  if (!run("node", ["scripts/pulse/prove.mjs", "--beats"]).ok) {
-    fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
-  }
-  const morningAudit = run("node", ["scripts/pulse/prove.mjs"], { quiet: true });
-  if (!morningAudit.ok) {
-    if (!morningOnlySlow(morningAudit.out)) {
-      console.error("Morning proof failure:\n" + redact(morningAudit.out.slice(-7000)));
-      fail("morning pulse bundle proof failed: run npm run pulse:prove");
-    }
-    // Owner launch decision, 2026-10-12: a heavy read-only catalog scan is
-    // still RED and must be fixed, but may not stop the teleprompter release.
-    // Real security/pulse guards, heartbeat checks, hourly beat bundle proof,
-    // SQL and refused-write failures remain blocking.
-    const tail = morningAudit.out.slice(morningAudit.out.lastIndexOf("\nPROBLEMS (")).trim();
-    console.warn("  WARNING: Morning heartbeat audit is too slow (still RED):\n" + redact(tail.slice(0, 3000)));
-    say("  Deployment continues because ONLY runtime duration failed.");
-  }
   const { EXPECTED_MIGRATIONS } = await import(pathToFileURL(path.join(ROOT, "db/expected-migrations.mjs")).href);
   const onDisk = [];
   for (const d of ["schema", "migrations", "seed"]) {
@@ -336,34 +319,10 @@ async function main() {
   }
   const unlisted = onDisk.filter((k) => !EXPECTED_MIGRATIONS.includes(k));
   if (unlisted.length) fail(`db files missing from db/expected-migrations.mjs (run npm run migrations:manifest): ${unlisted.join(", ")}`);
-  say("  lint, route guards, catalog, pulse guards and hourly proof pass; morning audit reported above");
 
-  // ── 5. database changes ─────────────────────────────────────────────────────
-  // The key is set for Claude's shell by .claude/settings.local.json (gitignored), not for
-  // Chris's own terminal — so read it from the same file when the shell does not have it.
-  function supabaseToken() {
-    if (process.env.SUPABASE_ACCESS_TOKEN) return process.env.SUPABASE_ACCESS_TOKEN;
-    try {
-      const local = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude/settings.local.json"), "utf8"));
-      return String(local?.env?.SUPABASE_ACCESS_TOKEN || "");
-    } catch {
-      return "";
-    }
-  }
-  const TOKEN = supabaseToken();
-  async function sql(query) {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query })
-    });
-    const text = await res.text();
-    let body;
-    try { body = JSON.parse(text); } catch { body = text; }
-    if (!res.ok) throw new Error(`Supabase answered ${res.status}: ${typeof body === "string" ? body.slice(0, 400) : body.message || JSON.stringify(body).slice(0, 400)}`);
-    return body;
-  }
-
+  // The pulse reads new tables in this release. Apply checked migrations before
+  // the built-bundle pulse proofs so a pre-release read cannot fail on the old schema.
+  // The guards above still run before any database change; deploy stays last.
   say("\n→ database");
   let applied = 0;
   const migrationConnection = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
@@ -372,6 +331,30 @@ async function main() {
     if (DRY) say("  (dry run: not running it)");
     else if (!run("node", ["db/migrate.mjs"]).ok) fail("db/migrate.mjs failed. Nothing was deployed.");
   } else {
+    // The key is set for Claude's shell by .claude/settings.local.json (gitignored),
+    // not for Chris's own terminal. Read the same local copy when needed.
+    function supabaseToken() {
+      if (process.env.SUPABASE_ACCESS_TOKEN) return process.env.SUPABASE_ACCESS_TOKEN;
+      try {
+        const local = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude/settings.local.json"), "utf8"));
+        return String(local?.env?.SUPABASE_ACCESS_TOKEN || "");
+      } catch {
+        return "";
+      }
+    }
+    const TOKEN = supabaseToken();
+    async function sql(query) {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const text = await res.text();
+      let body;
+      try { body = JSON.parse(text); } catch { body = text; }
+      if (!res.ok) throw new Error(`Supabase answered ${res.status}: ${typeof body === "string" ? body.slice(0, 400) : body.message || JSON.stringify(body).slice(0, 400)}`);
+      return body;
+    }
     if (!TOKEN) fail("no SUPABASE_ACCESS_TOKEN and no MIGRATION_DATABASE_URL, so the database changes cannot be applied.");
     const done = new Set((await sql("SELECT key FROM schema_migrations")).map((r) => r.key));
     const pending = onDisk.filter((k) => !done.has(k));
@@ -397,6 +380,26 @@ async function main() {
       }
     }
   }
+  say("  lint, route guards, catalog, and pulse guards pass; database changes are ready for bundle proof");
+
+  if (!run("node", ["scripts/pulse/prove.mjs", "--beats"]).ok) {
+    fail("hourly pulse bundle proof failed: run npm run pulse:prove -- --beats");
+  }
+  const morningAudit = run("node", ["scripts/pulse/prove.mjs"], { quiet: true });
+  if (!morningAudit.ok) {
+    if (!morningOnlySlow(morningAudit.out)) {
+      console.error("Morning proof failure:\n" + redact(morningAudit.out.slice(-7000)));
+      fail("morning pulse bundle proof failed: run npm run pulse:prove");
+    }
+    // Owner launch decision, 2026-10-12: a heavy read-only catalog scan is
+    // still RED and must be fixed, but may not stop the teleprompter release.
+    // Real security/pulse guards, heartbeat checks, hourly beat bundle proof,
+    // SQL and refused-write failures remain blocking.
+    const tail = morningAudit.out.slice(morningAudit.out.lastIndexOf("\nPROBLEMS (")).trim();
+    console.warn("  WARNING: Morning heartbeat audit is too slow (still RED):\n" + redact(tail.slice(0, 3000)));
+    say("  Deployment continues because ONLY runtime duration failed.");
+  }
+  say("  hourly proof passes; morning audit reported above");
 
   // ── 6. deploy ───────────────────────────────────────────────────────────────
   say("\n→ deploy");
