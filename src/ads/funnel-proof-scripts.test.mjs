@@ -16,6 +16,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -28,6 +29,8 @@ import {
   FH_ATTRIBUTION_SRC,
   FH_EVENTS_SRC,
   CLARITY_SRC,
+  FUNDHUB_APP_DOWNLOAD_SRC,
+  FUNDHUB_PROMPTER_DOWNLOAD_SRC,
   trackingFooterScripts,
   isClickFunnelsPageHtml,
   dedupeFooterScripts,
@@ -78,6 +81,101 @@ describe("proof cards are the template, not a copy that drifted", () => {
         assert.ok(src.includes(`data-slot="${slot}"`), `slot ${slot} kept`);
       }
     }
+  });
+});
+
+describe("company Fundhub app download on /thank-you", () => {
+  const script = read("public/funnel/fundhub-app-download.js");
+  const setting = JSON.parse(read("public/funnel/fundhub-app-download.json"));
+  const fixtureUrl = "https://apps.apple.com/us/app/example/id1234567890";
+
+  async function runCard(config, { ok = true, reject = false, heroExists = true } = {}) {
+    const elements = new Map();
+    const inserted = [];
+    const parent = {
+      insertBefore(node) {
+        inserted.push(node);
+        elements.set(node.id, node);
+      },
+    };
+    const hero = heroExists ? { parentNode: parent, nextSibling: null } : null;
+    const document = {
+      readyState: "complete",
+      head: { appendChild(node) { elements.set(node.id, node); } },
+      getElementById(id) { return elements.get(id) || null; },
+      querySelector(selector) {
+        return selector === ".fh-root" ? { querySelector: (s) => s === ".hero" ? hero : null } : null;
+      },
+      createElement(tag) {
+        return {
+          tag,
+          setAttribute(name, value) { this[name] = value; },
+          querySelector(selector) {
+            if (selector !== ".fh-app-download__button") return null;
+            this.button ||= {};
+            return this.button;
+          },
+        };
+      },
+    };
+    const calls = [];
+    const window = {
+      fetch(url, opts) {
+        calls.push({ url, opts });
+        if (reject) return Promise.reject(new Error("offline"));
+        return Promise.resolve({ ok, json: () => Promise.resolve(config) });
+      },
+    };
+    vm.runInNewContext(script, { document, window });
+    await new Promise(setImmediate);
+    return { card: inserted[0], inserted, elements, calls };
+  }
+
+  test("empty, unverified, failed, and unsafe settings keep the card hidden", async () => {
+    assert.deepEqual(setting, { app_store_url: "", listing_verified: false });
+    const unsafe = [
+      setting,
+      { app_store_url: fixtureUrl, listing_verified: false },
+      { app_store_url: "https://testflight.apple.com/join/example", listing_verified: true },
+      { app_store_url: "https://apps.apple.com.evil.example/us/app/example/id1234567890", listing_verified: true },
+      { app_store_url: "https://apps.apple.com/us/app/fundhub-prompter/id6823825669", listing_verified: true },
+      { app_store_url: fixtureUrl + '?next=" onclick="bad', listing_verified: true },
+    ];
+    for (const config of unsafe) {
+      const result = await runCard(config);
+      assert.equal(result.card, undefined, JSON.stringify(config));
+      assert.equal(result.elements.size, 0, "no empty or error UI is injected");
+    }
+    for (const options of [{ ok: false }, { reject: true }, { heroExists: false }]) {
+      const result = await runCard({ app_store_url: fixtureUrl, listing_verified: true }, options);
+      assert.equal(result.card, undefined);
+    }
+  });
+
+  test("verified company listing renders one accessible card and an Apple-only button", async () => {
+    const result = await runCard({ app_store_url: fixtureUrl, listing_verified: true });
+    assert.equal(result.calls[0].url, "https://fundhub.ai/funnel/fundhub-app-download.json");
+    assert.equal(result.calls[0].opts.credentials, "omit");
+    assert.equal(result.card.id, "fh-app-download");
+    assert.equal(result.card["aria-label"], "Fundhub app for iPhone");
+    assert.equal(result.card.button.href, fixtureUrl);
+    assert.match(result.card.innerHTML, /The Fundhub app/);
+    assert.match(result.card.innerHTML, /View Fundhub on the App Store/);
+    assert.doesNotMatch(result.card.innerHTML, /Prompter|TestFlight/);
+    assert.ok(result.elements.has("fh-app-download-css"));
+    assert.equal(result.inserted.length, 1);
+  });
+
+  test("the later footer update removes Prompter and keeps one company script", () => {
+    const row = PUSH_MANIFEST.find((r) => r.key === "apply-thank-you");
+    const live = [FH_ATTRIBUTION_SRC, THANKYOU_SORT_SRC, FUNDHUB_PROMPTER_DOWNLOAD_SRC, FUNDHUB_APP_DOWNLOAD_SRC, FUNDHUB_APP_DOWNLOAD_SRC]
+      .map((src) => footerScriptTag(src)).join("\n");
+    const options = { extraSrcs: row.extraFooterScripts, dropSrcs: row.dropFooterScripts };
+    const first = nextFooterCode(live, options);
+    assert.equal(hasScriptSrc(first.next, FUNDHUB_PROMPTER_DOWNLOAD_SRC), false);
+    assert.equal(first.next.split(FUNDHUB_APP_DOWNLOAD_SRC).length - 1, 1);
+    assert.equal(hasScriptSrc(first.next, THANKYOU_SORT_SRC), true);
+    assert.equal(nextFooterCode(first.next, options).changed, false);
   });
 });
 
@@ -477,11 +575,12 @@ describe("the fragments and the push manifest load the scripts once", () => {
       [
         ["apply-watch", "25061160", [WATCH_PROOF_SRC, FH_EVENTS_SRC, CLARITY_SRC]],
         ["apply-book", "25062844", [FH_EVENTS_SRC, CLARITY_SRC]],
-        ["apply-thank-you", "25063539", [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC]],
+        ["apply-thank-you", "25063539", [THANKYOU_SORT_SRC, FUNDING_PATHS_SRC, FH_EVENTS_SRC, CLARITY_SRC, FUNDHUB_APP_DOWNLOAD_SRC]],
         ["apply-order", "25426768", [FH_EVENTS_SRC, CLARITY_SRC]],
       ],
     );
     assert.deepEqual(PUSH_MANIFEST.find((r) => r.key === "apply-watch").dropFooterScripts, [FUNDING_PATHS_SRC]);
+    assert.deepEqual(PUSH_MANIFEST.find((r) => r.key === "apply-thank-you").dropFooterScripts, [FUNDHUB_PROMPTER_DOWNLOAD_SRC]);
   });
 
   test("nextFooterCode drops a script the step no longer loads", () => {
