@@ -15,6 +15,7 @@
 - Existing browser push: built, not wired to an automatic send; no real-phone delivery proof.
 - Native APNs: client opt-in, session-bound encrypted device rows, APNs transport, and manual test command built in source. No automatic send is connected because the booking message dispatcher gates do not yet cover APNs; no real iPhone alert has been observed.
 - Apple App Store Connect: `ai.fundhub.app` record missing; this task has a saved account permission denial, so account setup must be done by the owner.
+- GitHub: commit `d6acfd1cc` pushed to [PR #56](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/56). Not merged or live.
 
 ## Proof and handoff
 
