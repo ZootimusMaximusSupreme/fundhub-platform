@@ -82,6 +82,7 @@ final class FundhubSessionStore: ObservableObject {
         guard let token else { phase = .signedOut; return }
         do {
             let result = try await api.identity(token: token)
+            guard self.token == token else { return }
             guard result.ok, result.principal == "client" || result.principal == "staff" else {
                 throw FundhubAPIError.invalidResponse
             }
@@ -90,6 +91,7 @@ final class FundhubSessionStore: ObservableObject {
             message = nil
             if result.principal == "client" { await loadSummary() }
         } catch {
+            guard self.token == token else { return }
             // A network outage does not destroy a valid session.
             if case FundhubAPIError.invalidSession = error {
                 await signOut(revoke: false)
@@ -106,10 +108,12 @@ final class FundhubSessionStore: ObservableObject {
         defer { summaryLoading = false }
         do {
             let result = try await api.portalSummary(token: token)
+            guard self.token == token else { return }
             guard result.ok else { throw FundhubAPIError.invalidResponse }
             summary = result
             message = nil
         } catch {
+            guard self.token == token else { return }
             if case FundhubAPIError.invalidSession = error {
                 await signOut(revoke: false)
                 return

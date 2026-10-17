@@ -29,7 +29,7 @@ The saved permission for `appstoreconnect.apple.com` denies agent access. Do not
 ## Evidence so far
 
 - Company app project: `tools/fundhub-ios/Fundhub.xcodeproj`, bundle `ai.fundhub.app`, distinct from Prompter. Debug simulator build and unsigned Release iPhone build pass.
-- Simulator iPhone 17 XCTest: **7 passed, 0 failed** in `/tmp/fundhub-company-ios-tests-6.xcresult`, including bearer-token reads, native logout, server-error retry, and web sign-out routing. Login screen captured at `ops/workflows/build-evidence/fundhub-ios/sign-in-iphone17.png`.
+- Simulator iPhone 17 XCTest: **7 passed, 0 failed** in `/tmp/fundhub-company-ios-tests-7.xcresult`, including bearer-token reads, native logout, server-error retry, and web sign-out routing. Login screen captured at `ops/workflows/build-evidence/fundhub-ios/sign-in-iphone17.png`.
 - Public `fundhub.ai` health, staff login, portal login, and client portal all returned 200 on 2026-10-16. This is door proof, not a signed-in journey test.
 - Live demo logins are disabled. No non-customer App Review account exists yet. Physical iPhones were listed as unavailable by Xcode; no real-iPhone sign-in or camera/document test has been claimed.
 - Apple App Store record, signing profile, review submission, approval, and public company link are still unverified. The company App Store card remains hidden.
