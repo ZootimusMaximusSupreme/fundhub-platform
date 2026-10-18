@@ -54,7 +54,7 @@ jobs:
           if(!url || !/^https:\/\//.test(url)) throw new Error('No verified branch deployment URL returned');
           let direct=url;
           const deployId=result.deploy_id || result.id;
-          const match=new URL(url).hostname.match(/(?:^|--)(transcendent-wisp-888771)\\.netlify\\.app$/);
+          const match=new URL(url).hostname.match(/(?:^|--)(transcendent-wisp-888771)\.netlify\.app$/);
           if(deployId && /^[a-f0-9]+$/.test(String(deployId)) && match) {
             direct='https://'+deployId+'--'+match[1]+'.netlify.app';
           }
@@ -65,5 +65,5 @@ jobs:
           if(stylesheet.status!==200 || !(await stylesheet.text()).includes('client-ios-header')) throw new Error('Hosted workspace stylesheet is missing');
           console.log('WORKING_PORTAL_URL='+login);
           console.log('WORKING_PORTAL_HOME='+direct+'/app/client-portal.html');
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+login+'\\n\\nHome: '+direct+'/app/client-portal.html\\n\\nSource: '+process.env.GITHUB_SHA+'\\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+login+'\n\nHome: '+direct+'/app/client-portal.html\n\nSource: '+process.env.GITHUB_SHA+'\n');
           JS
