@@ -22,7 +22,7 @@
   var BETA_PAGES = [];
 
   /* ==SIDEBAR_HTML_START== */
-  var SIDEBAR_HTML = "<aside class=\"side\" id=\"side\">\n  <div class=\"side-top\"><a class=\"logo inv\" href=\"pipeline.html\" aria-label=\"fundhub\"></a><button class=\"burger\" id=\"burger\" type=\"button\" title=\"Collapse sidebar\">‹‹</button></div>\n  <nav class=\"side-scroll\" id=\"fh-side-nav\">\n\n<div class=\"navgroup\" data-fh-section=\"home\"><button class=\"navhead\" type=\"button\">Home<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"partner-galaxy.html\"><span class=\"ico\">⌂</span><span class=\"lbl\">Home</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"sales\"><button class=\"navhead\" type=\"button\">Sales<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"pipeline.html\"><span class=\"ico\">▤</span><span class=\"lbl\">Pipeline</span></a>\n        <a class=\"navitem\" href=\"closer-dashboard.html\"><span class=\"ico\">★</span><span class=\"lbl\">Closer Dashboard</span></a>\n        <a class=\"navitem\" href=\"my-numbers.html\"><span class=\"ico\">＃</span><span class=\"lbl\">My numbers</span></a>\n        <a class=\"navitem\" href=\"sales-floor.html\"><span class=\"ico\">▣</span><span class=\"lbl\">Sales floor</span></a>\n        <a class=\"navitem\" href=\"calendar.html\"><span class=\"ico\">▦</span><span class=\"lbl\">Calendar</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"funding\"><button class=\"navhead\" type=\"button\">Funding<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"lenders.html\"><span class=\"ico\">⬡</span><span class=\"lbl\">Lenders</span></a>\n        <a class=\"navitem\" href=\"client-control-panel.html\"><span class=\"ico\">◎</span><span class=\"lbl\">Client Control Panel</span></a>\n        <a class=\"navitem\" href=\"finance-os.html\"><span class=\"ico\">▩</span><span class=\"lbl\">Finance OS</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"client-ops\"><button class=\"navhead\" type=\"button\">Client ops<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"csm-queue.html\"><span class=\"ico\">☎</span><span class=\"lbl\">Client Success</span></a>\n        <a class=\"navitem\" href=\"consent-capture.html\"><span class=\"ico\">☑</span><span class=\"lbl\">Consent</span></a>\n        <a class=\"navitem\" href=\"messaging.html\"><span class=\"ico\">✉</span><span class=\"lbl\">Messaging</span></a>\n        <a class=\"navitem\" href=\"documents.html\"><span class=\"ico\">▧</span><span class=\"lbl\">Documents</span></a>\n        <a class=\"navitem\" href=\"inquiry-remover.html\"><span class=\"ico\">⊘</span><span class=\"lbl\">Specialist</span></a>\n        <a class=\"navitem\" href=\"company-brain.html\"><span class=\"ico\">◎</span><span class=\"lbl\">Company Brain</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"watch\"><button class=\"navhead\" type=\"button\">Watch<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"galaxy.html\"><span class=\"ico\">✷</span><span class=\"lbl\">Galaxy</span></a>\n        <a class=\"navitem\" href=\"ops-admin.html\"><span class=\"ico\">⚙</span><span class=\"lbl\">Ops &amp; Admin</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"automation\"><button class=\"navhead\" type=\"button\">Automation<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"agent-editor.html\"><span class=\"ico\">◈</span><span class=\"lbl\">Agent Editor</span></a>\n        <a class=\"navitem\" href=\"automations.html\"><span class=\"ico\">⇄</span><span class=\"lbl\">Workflows</span></a>\n        <a class=\"navitem\" href=\"journeys.html\"><span class=\"ico\">⇝</span><span class=\"lbl\">Journeys</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"marketing\"><button class=\"navhead\" type=\"button\">Marketing<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"marketing-command-center.html\"><span class=\"ico\">⚑</span><span class=\"lbl\">Command Center</span></a>\n        <a class=\"navitem\" href=\"campaign-manager.html\"><span class=\"ico\">◇</span><span class=\"lbl\">Campaigns</span></a>\n        <a class=\"navitem\" href=\"social-studio.html\"><span class=\"ico\">◉</span><span class=\"lbl\">Social Studio</span></a>\n        <a class=\"navitem\" href=\"creative-factory.html\"><span class=\"ico\">✳</span><span class=\"lbl\">Creative Factory</span></a>\n        <a class=\"navitem\" href=\"content-admin.html\"><span class=\"ico\">▭</span><span class=\"lbl\">Content</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"admin\"><button class=\"navhead\" type=\"button\">Admin<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"staff-teams.html\"><span class=\"ico\">⚇</span><span class=\"lbl\">Staff &amp; Teams</span></a>\n        <a class=\"navitem\" href=\"hiring.html\"><span class=\"ico\">⊕</span><span class=\"lbl\">Hiring</span></a>\n        <a class=\"navitem\" href=\"products-commissions.html\"><span class=\"ico\">⛁</span><span class=\"lbl\">Products &amp; Commissions</span></a>\n        <a class=\"navitem\" href=\"contracts.html\"><span class=\"ico\">✒</span><span class=\"lbl\">Contract templates</span></a>\n        <a class=\"navitem\" href=\"brand-studio.html\"><span class=\"ico\">◆</span><span class=\"lbl\">Brand Studio</span></a>\n</div></div>\n\n<div class=\"navgroup\" data-fh-section=\"portals\"><button class=\"navhead\" type=\"button\">Portals<span class=\"chev\">▾</span></button><div class=\"navlist\">\n        <a class=\"navitem\" href=\"client-portal.html\"><span class=\"ico\">◐</span><span class=\"lbl\">Client Portal</span></a>\n        <a class=\"navitem\" href=\"affiliate.html\"><span class=\"ico\">⇗</span><span class=\"lbl\">Affiliate</span></a>\n</div></div>\n\n  </nav>\n  <div class=\"side-foot\"><span class=\"pulse\"></span><span class=\"who\">fundhub</span></div>\n</aside>";
+  var SIDEBAR_HTML = "<aside class=\"side\" id=\"side\" aria-label=\"Workspace navigation\">\n  <div class=\"side-top\"><a class=\"logo\" href=\"pipeline.html\" aria-label=\"Fundhub home\"></a><button class=\"burger\" id=\"burger\" type=\"button\" aria-label=\"Collapse sidebar\" title=\"Collapse sidebar\">‹</button></div>\n  <nav class=\"side-scroll\" id=\"fh-side-nav\" aria-label=\"Main\">\n    <div class=\"navgroup\" data-fh-section=\"work\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-work\">Your work<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-work\">\n      <a class=\"navitem\" href=\"pipeline.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"3\"/><path d=\"M9 4v16m6-16v16\"/></svg></span><span class=\"lbl\">Pipeline</span></a>\n      <a class=\"navitem\" href=\"closer-dashboard.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 20v-5m7 5V9m7 11V4\"/></svg></span><span class=\"lbl\">Sales workspace</span></a>\n      <a class=\"navitem\" href=\"calendar.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"3\"/><path d=\"M7 3v4m10-4v4M3 10h18\"/></svg></span><span class=\"lbl\">Calendar</span></a>\n      <a class=\"navitem\" href=\"messaging.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z\"/><path d=\"M7 10h10m-10 4h6\"/></svg></span><span class=\"lbl\">Messaging</span></a>\n    </div></div>\n    <div class=\"navgroup\" data-fh-section=\"clients\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-clients\">Clients<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-clients\">\n      <a class=\"navitem\" href=\"client-control-panel.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21v-2a8 8 0 0 1 16 0v2\"/></svg></span><span class=\"lbl\">Client files</span></a>\n      <a class=\"navitem\" href=\"csm-queue.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4\"/></svg></span><span class=\"lbl\">Client Success</span></a>\n      <a class=\"navitem\" href=\"lenders.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18\"/></svg></span><span class=\"lbl\">Lenders</span></a>\n      <a class=\"navitem\" href=\"documents.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6\"/></svg></span><span class=\"lbl\">Documents</span></a>\n      <a class=\"navitem\" href=\"inquiry-remover.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m8 12 3 3 5-6\"/></svg></span><span class=\"lbl\">Inquiry specialist</span></a>\n      <a class=\"navitem\" href=\"consent-capture.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Consent</span></a>\n      <a class=\"navitem\" href=\"finance-os.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Finance OS</span></a>\n    </div></div>\n    <div class=\"navgroup\" data-fh-section=\"insights\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-insights\">Insights<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-insights\">\n      <a class=\"navitem\" href=\"my-numbers.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 20V10m8 10V4m8 16v-7\"/></svg></span><span class=\"lbl\">My numbers</span></a>\n      <a class=\"navitem\" href=\"sales-floor.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg></span><span class=\"lbl\">Sales floor</span></a>\n      <a class=\"navitem\" href=\"company-brain.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z\"/></svg></span><span class=\"lbl\">Knowledge base</span></a>\n      <a class=\"navitem\" href=\"galaxy.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Galaxy</span></a>\n      <a class=\"navitem\" href=\"partner-galaxy.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Home</span></a>\n      <a class=\"navitem\" href=\"ops-admin.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Operations</span></a>\n    </div></div>\n    <div class=\"navgroup\" data-fh-section=\"marketing\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-marketing\">Marketing<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-marketing\">\n      <a class=\"navitem\" href=\"marketing-command-center.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2\"/></svg></span><span class=\"lbl\">Marketing overview</span></a>\n      <a class=\"navitem\" href=\"campaign-manager.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4\"/></svg></span><span class=\"lbl\">Campaigns</span></a>\n      <a class=\"navitem\" href=\"social-studio.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M17 7h.01\"/></svg></span><span class=\"lbl\">Social Studio</span></a>\n      <a class=\"navitem\" href=\"creative-factory.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z\"/></svg></span><span class=\"lbl\">Creative Factory</span></a>\n      <a class=\"navitem\" href=\"content-admin.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"/><path d=\"M7 8h10m-10 4h10m-10 4h6\"/></svg></span><span class=\"lbl\">Content</span></a>\n    </div></div>\n    <div class=\"navgroup\" data-fh-section=\"automation\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-automation\">Automation<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-automation\">\n      <a class=\"navitem\" href=\"agent-editor.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Agent Editor</span></a>\n      <a class=\"navitem\" href=\"automations.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Workflows</span></a>\n      <a class=\"navitem\" href=\"journeys.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Journeys</span></a>\n    </div></div>\n    <div class=\"navgroup\" data-fh-section=\"settings\"><button class=\"navhead\" type=\"button\" aria-expanded=\"true\" aria-controls=\"fh-nav-settings\">Manage<span class=\"chev\" aria-hidden=\"true\">⌄</span></button><div class=\"navlist\" id=\"fh-nav-settings\">\n      <a class=\"navitem\" href=\"staff-teams.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3\"/><path d=\"M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2\"/></svg></span><span class=\"lbl\">Team & access</span></a>\n      <a class=\"navitem\" href=\"hiring.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Hiring</span></a>\n      <a class=\"navitem\" href=\"products-commissions.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5\"/></svg></span><span class=\"lbl\">Products & commissions</span></a>\n      <a class=\"navitem\" href=\"contracts.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4\"/></svg></span><span class=\"lbl\">Contract templates</span></a>\n      <a class=\"navitem\" href=\"brand-studio.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Brand Studio</span></a>\n      <a class=\"navitem\" href=\"client-portal.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Client Portal</span></a>\n      <a class=\"navitem\" href=\"affiliate.html\"><span class=\"ico\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"4\"/><path d=\"M8 12h8m-4-4v8\"/></svg></span><span class=\"lbl\">Affiliate</span></a>\n    </div></div>\n  </nav>\n  <div class=\"side-foot\"><span class=\"who\">Private workspace</span></div>\n</aside>";
   /* ==SIDEBAR_HTML_END== */
 
   var ALL = [
@@ -898,55 +898,37 @@
 
   /* ---- sidebar: one markup, one geometry, owned here ---- */
   function ensureSidebarCss() {
-    if (document.getElementById("fh-crm-sidebar-css")) return;
-    var link = document.createElement("link");
-    link.id = "fh-crm-sidebar-css";
-    link.rel = "stylesheet";
-    link.href = (location.pathname.indexOf("/app/") === 0 ? "" : "/app/") + "crm-sidebar.css";
-    if (location.pathname.indexOf("/app/") === 0) link.href = "crm-sidebar.css";
-    (document.head || document.documentElement).appendChild(link);
+    var existing = document.getElementById("fh-crm-sidebar-css");
+    if (!existing && document.querySelector) existing = document.querySelector('link[href$="crm-sidebar.css"]');
+    if (existing) existing.id = "fh-crm-sidebar-css";
+    if (!existing) {
+      var link = document.createElement("link");
+      link.id = "fh-crm-sidebar-css";
+      link.rel = "stylesheet";
+      link.href = "/app/crm-sidebar.css";
+      (document.head || document.documentElement).appendChild(link);
+    }
+    if (!document.getElementById("fh-workspace-css")) {
+      var workspace = document.createElement("link");
+      workspace.id = "fh-workspace-css";
+      workspace.rel = "stylesheet";
+      workspace.href = "/app/workspace-ui.css";
+      (document.head || document.documentElement).appendChild(workspace);
+    }
+    if (document.getElementById("fh-side-lock")) return;
     var lock = document.createElement("style");
     lock.id = "fh-side-lock";
     lock.textContent =
       "aside.side,.side{position:fixed!important;top:0!important;left:0!important;" +
-      "bottom:0!important;width:var(--fh-side-w,228px)!important;flex:none!important;" +
+      "bottom:0!important;width:var(--fh-side-w,224px)!important;flex:none!important;" +
       "margin:0!important;max-height:none!important;z-index:400!important}" +
-      ".side.mini{width:var(--fh-side-w-mini,60px)!important}" +
-      ".app,.app-shell{padding-left:var(--fh-side-w,228px)!important;box-sizing:border-box}" +
-      "html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w-mini,60px)!important}" +
-      /* MOBILE. This block has to live here, not in crm-sidebar.css.
-         This stylesheet is injected at runtime and appended to <head>, so it
-         comes after the linked crm-sidebar.css. Both sides use !important at
-         the same specificity, so source order decides and this one wins. The
-         mobile rules were first written in crm-sidebar.css and silently lost:
-         every screen kept 228px of left padding on a 390px phone, leaving
-         162px of usable width. Measured, not guessed — the layout check reports
-         it. Keep the mobile override in the same sheet as the rule it beats. */
-      "@media (max-width:860px){" +
-        "aside.side,.side{width:var(--fh-side-w,228px)!important;" +
-          "transform:translateX(-100%);transition:transform .22s ease}" +
+      ".side.mini{width:var(--fh-side-w-mini,72px)!important}" +
+      ".app,.app-shell{padding-left:var(--fh-side-w,224px)!important;box-sizing:border-box}" +
+      "html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w-mini,72px)!important}" +
+      "@media(max-width:860px){" +
+        "aside.side,.side,.side.mini{width:min(292px,calc(100vw - 36px))!important;transform:translateX(-100%)}" +
         "aside.side.open,.side.open{transform:translateX(0)}" +
-        ".side.mini{width:var(--fh-side-w,228px)!important}" +
-        ".app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{" +
-          "padding-left:0!important}" +
-        /* see setDrawer() — floating chrome outranks the rail on z-index */
-        "html.fh-drawer-open #fh-shell-chip," +
-        "html.fh-drawer-open #fh-shell-chip-show," +
-        "html.fh-drawer-open #fh-shell-search-btn{display:none!important}" +
-        /* The menu button is fixed at top-left, which is exactly where a page
-           title sits. Without this the ☰ lands on top of "Hiring", "Pipeline"
-           and so on. 58px = 10 left + 40 button + 8 gap. */
-        ".topbar,.top,.page-hd,body>header,.app>header,.app-shell>header{" +
-          "padding-left:58px!important;flex-wrap:wrap!important}" +
-        /* The 58px above is real width taken out of a 390px row, which pushed
-           the right-hand action group (.topbar-right) off the edge on
-           inquiry-remover and ops-admin. Wrapping lets that group drop to a
-           second line instead of overflowing. Harmless on a topbar that is not
-           a flex row. */
-        /* The session chip is NOT positioned from here. It owns its own
-           breakpoints in CHIP_BREAKPOINT_CSS — see the note there about why
-           setting bottom from a second stylesheet stretches it instead of
-           moving it. */
+        ".app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:0!important}" +
       "}";
     (document.head || document.documentElement).appendChild(lock);
   }
@@ -1025,47 +1007,68 @@
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
       var href = (a.getAttribute("href") || "").split("?")[0];
-      if (href === page) a.classList.add("on");
+      if (href === page) { a.classList.add("on"); a.setAttribute("aria-current", "page"); }
       else a.classList.remove("on");
+      a.title = a.textContent.trim();
     }
     setGroupDefault(fresh);
     wireSidebarChrome(fresh);
   }
 
-  /* UI-STANDARDS §4 — max 7 top-level nav items, two levels deep.
-     The rail is already two levels: the group headers are the first, their rows
-     the second. But every group shipped open, so what a role actually faced was
-     one flat list — 21 rows for a staff role, 31 for the owner, all at once.
-     Start with only the group you are standing in open. The headers still
-     toggle (wireSidebarChrome), so every other group is one click away (§9),
-     and the group you are in stays open so "where am I" is still answered on
-     sight (§4). Deliberately not remembered between pages: a stored open set
-     would drift back to "everything open" one click at a time. */
-  function setGroupDefault(side) {
+  /* Keep the user's navigation arrangement across screens. The current
+     destination is always revealed; other groups retain their chosen state. */
+  var SIDE_GROUP_KEY = "fh_sidebar_groups";
+  var SIDE_MINI_KEY = "fh_sidebar_mini";
+
+  function sidebarGroupState() {
+    try { return JSON.parse(localStorage.getItem(SIDE_GROUP_KEY) || "null"); }
+    catch (e) { return null; }
+  }
+
+  function syncGroupAria(side) {
     var groups = side.querySelectorAll(".navgroup");
-    /* Some pages carry the rail without being a row on it — partner-galaxy,
-       plus anything opened from outside /app/. (consent-capture used to be on
-       this list; it has had a Consent row under Client ops since 2026-08-18.)
-       Closing every group there would leave a rail of headings and nothing else, and
-       for a partner the single row they may open (Brand Studio) would be the
-       thing hidden. No active row means no group to keep open, so open them
-       all: this default narrows a long rail, it never empties one. */
-    if (!side.querySelector("a.navitem.on")) return openAllGroups(side);
     for (var i = 0; i < groups.length; i++) {
-      if (groups[i].querySelector("a.navitem.on")) groups[i].classList.remove("closed");
-      else groups[i].classList.add("closed");
+      var head = groups[i].querySelector(".navhead");
+      if (head) head.setAttribute("aria-expanded", groups[i].classList.contains("closed") ? "false" : "true");
     }
+  }
+
+  function rememberGroups(side) {
+    var state = {};
+    var groups = side.querySelectorAll(".navgroup");
+    for (var i = 0; i < groups.length; i++) {
+      state[groups[i].getAttribute("data-fh-section")] = !groups[i].classList.contains("closed");
+    }
+    try { localStorage.setItem(SIDE_GROUP_KEY, JSON.stringify(state)); } catch (e) {}
+    syncGroupAria(side);
+  }
+
+  function setGroupDefault(side) {
+    var state = sidebarGroupState();
+    var groups = side.querySelectorAll(".navgroup");
+    for (var i = 0; i < groups.length; i++) {
+      var key = groups[i].getAttribute("data-fh-section");
+      var open = state && typeof state[key] === "boolean" ? state[key] : (key === "work" || key === "clients");
+      if (groups[i].querySelector("a.navitem.on")) open = true;
+      groups[i].classList.toggle("closed", !open);
+    }
+    syncGroupAria(side);
   }
 
   function openAllGroups(side) {
     var groups = side.querySelectorAll(".navgroup");
     for (var i = 0; i < groups.length; i++) groups[i].classList.remove("closed");
+    syncGroupAria(side);
   }
 
   function wireSidebarChrome(side) {
     if (!side || side.getAttribute("data-fh-wired") === "1") return;
     side.setAttribute("data-fh-wired", "1");
     var burger = side.querySelector("#burger") || document.getElementById("burger");
+    var restoreMini = false;
+    try { restoreMini = localStorage.getItem(SIDE_MINI_KEY) === "1"; } catch (e) {}
+    if (restoreMini) side.classList.add("mini");
+    var beforeDrawerFocus = null;
 
     function isMobile() {
       return !!(window.matchMedia && window.matchMedia("(max-width:860px)").matches);
@@ -1120,10 +1123,21 @@
        are chrome for the screen underneath, which you cannot interact with
        anyway while the scrim is up. */
     function setDrawer(open) {
+      var wasOpen = side.classList.contains("open");
+      if (open && !wasOpen) beforeDrawerFocus = document.activeElement;
       side.classList.toggle("open", open);
       getScrim().classList.toggle("show", open);
       getMenuBtn().setAttribute("aria-expanded", open ? "true" : "false");
       document.documentElement.classList.toggle("fh-drawer-open", open);
+      if (isMobile()) {
+        side.setAttribute("aria-hidden", open ? "false" : "true");
+        side.inert = !open;
+      } else {
+        side.removeAttribute("aria-hidden");
+        side.inert = false;
+      }
+      if (open && !wasOpen && burger) burger.focus();
+      if (!open && wasOpen && beforeDrawerFocus && beforeDrawerFocus.focus) beforeDrawerFocus.focus();
     }
     function openMobile() { setDrawer(true); }
     function closeMobile() { setDrawer(false); }
@@ -1137,7 +1151,12 @@
          not. */
       if (mini && !isMobile()) openAllGroups(side);
       else setGroupDefault(side);
-      if (burger) burger.textContent = isMobile() ? "✕" : (mini ? "››" : "‹‹");
+      if (burger) {
+        burger.textContent = isMobile() ? "×" : (mini ? "›" : "‹");
+        burger.setAttribute("aria-label", isMobile() ? "Close menu" : (mini ? "Expand sidebar" : "Collapse sidebar"));
+        burger.title = burger.getAttribute("aria-label");
+        burger.setAttribute("aria-expanded", mini && !isMobile() ? "false" : "true");
+      }
       getMenuBtn();
       if (!isMobile()) closeMobile();
     }
@@ -1148,6 +1167,7 @@
            collapses the rail to the icon strip. */
         if (isMobile()) { closeMobile(); return; }
         side.classList.toggle("mini");
+        try { localStorage.setItem(SIDE_MINI_KEY, side.classList.contains("mini") ? "1" : "0"); } catch (e) {}
         syncMini();
       });
     }
@@ -1159,12 +1179,18 @@
 
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape" && side.classList.contains("open")) closeMobile();
+      if (ev.key === "Tab" && side.classList.contains("open") && isMobile()) {
+        var focusable = Array.prototype.filter.call(side.querySelectorAll('a[href],button:not([disabled])'), function (item) { return item.getClientRects().length > 0; });
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+        else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+      }
     });
     var heads = side.querySelectorAll(".navhead");
     for (var h = 0; h < heads.length; h++) {
       heads[h].addEventListener("click", function (ev) {
         var g = ev.currentTarget.closest(".navgroup");
-        if (g) g.classList.toggle("closed");
+        if (g) { g.classList.toggle("closed"); rememberGroups(side); }
       });
     }
     if (window.matchMedia) {
@@ -1180,6 +1206,8 @@
           side.classList.remove("mini");
           document.documentElement.classList.remove("fh-side-mini");
           closeMobile();
+        } else {
+          try { side.classList.toggle("mini", localStorage.getItem(SIDE_MINI_KEY) === "1"); } catch (e) {}
         }
         syncMini();
       }
@@ -1764,7 +1792,7 @@
     btn.id = "fh-shell-search-btn";
     btn.type = "button";
     btn.setAttribute("aria-label", "Search the CRM");
-    btn.innerHTML = "<span>Search</span><span class=\"fh-k\">" + esc(chord) + "</span>";
+    btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span class="fh-search-label">Search</span><span class="fh-k">' + esc(chord) + '</span>';
     if (!placeInHeader(btn)) document.body.appendChild(btn);
 
     var overlay = document.createElement("div");
@@ -1772,12 +1800,14 @@
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Search");
+    overlay.setAttribute("aria-hidden", "true");
     overlay.innerHTML =
       '<div id="fh-shell-search-panel">' +
         '<div class="fh-search-bar">' +
           '<span aria-hidden="true">\u2315</span>' +
           '<input id="fh-shell-search-input" type="search" autocomplete="off" ' +
             'spellcheck="false" placeholder="Search clients, contracts, messages\u2026">' +
+          '<button id="fh-shell-search-close" type="button" aria-label="Close search">×</button>' +
         "</div>" +
         '<div class="fh-search-body" id="fh-shell-search-results">' +
           '<div class="fh-search-empty">' + esc(searchEmptyCopy("")) + "</div>" +
@@ -1789,15 +1819,23 @@
     var results = document.getElementById("fh-shell-search-results");
     var timer = null;
     var seq = 0;
+    var beforeSearchFocus = null;
 
     function openSearch() {
+      beforeSearchFocus = document.activeElement;
       overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
       if (input && input.focus) input.focus();
       if (input && input.select) input.select();
     }
     function closeSearch() {
       overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      var back = beforeSearchFocus && beforeSearchFocus.isConnected ? beforeSearchFocus : btn;
+      if (back && back.focus) back.focus();
     }
+    var searchClose = document.getElementById("fh-shell-search-close");
+    if (searchClose) searchClose.addEventListener("click", closeSearch);
 
     function paintEmpty(q, note) {
       results.innerHTML = '<div class="fh-search-empty">' +
@@ -1875,6 +1913,12 @@
 
     document.addEventListener("keydown", function (e) {
       var key = e.key || "";
+      if (key === "Tab" && overlay.classList.contains("open")) {
+        var controls = Array.prototype.filter.call(overlay.querySelectorAll('input,button,a[href]'), function (item) { return item.getClientRects().length > 0; });
+        var first = controls[0], last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
       if ((e.metaKey || e.ctrlKey) && (key === "k" || key === "K")) {
         e.preventDefault();
         if (overlay.classList.contains("open")) closeSearch();
@@ -1888,7 +1932,200 @@
     });
   }
 
+  /* Shared staff identity and context are normal layout, rather than floating
+     session furniture. A remembered client only changes navigation; the scope
+     label describes the page's own URL so it never implies a filter that is not
+     active. External principals retain their existing portal chrome. */
+  function mountWorkspaceHeader(staff, demo) {
+    var role = normRole(staff && staff.role);
+    if (SEARCH_SKIP_ROLES[role]) return null;
+    var side = document.getElementById("side");
+    if (!side || side.nodeType !== 1) return null;
+    var already = document.getElementById("fh-workspace-header");
+    if (already) return already;
+    document.documentElement.classList.add("fh-staff-workspace");
+    var titles = {
+      "pipeline.html": "Pipeline", "closer-dashboard.html": "Sales workspace",
+      "client-control-panel.html": "Client workspace", "csm-queue.html": "Client success",
+      "my-numbers.html": "My numbers", "sales-floor.html": "Sales floor",
+      "company-brain.html": "Knowledge base", "inquiry-remover.html": "Inquiry specialist",
+      "staff-teams.html": "Team & access", "products-commissions.html": "Products & commissions",
+      "marketing-command-center.html": "Marketing overview"
+    };
+    var active = side.querySelector(".navitem.on .lbl");
+    var title = titles[PAGE] || (active && active.textContent.trim()) || String(document.title || "Workspace").replace(/Fundhub\s*[—·-]?\s*|\s*[—·-]\s*Fundhub/ig, "").trim();
+    var legacy = document.querySelector(".topbar, .top, .page-hd, .app > header, .app-shell > header");
+    if (legacy && legacy.closest("aside.side")) legacy = null;
+    var host = legacy && legacy.parentNode;
+    if (!host) {
+      var hosts = [".app > .shell", ".app > .main", ".app-shell > .main", ".app > main", ".app-shell", ".app"];
+      for (var i = 0; i < hosts.length && !host; i++) host = document.querySelector(hosts[i]);
+    }
+    if (!host) return null;
+    var header = document.createElement("header");
+    header.id = "fh-workspace-header";
+    header.className = "fh-workspace-header";
+    header.setAttribute("aria-label", "Workspace");
+    header.innerHTML = '<div class="fh-workspace-identity"><div class="fh-workspace-labels">' +
+      '<h1>' + esc(title) + '</h1><details id="fh-workspace-scope"><summary aria-label="View client context">' +
+      '<span id="fh-workspace-scope-label">All clients</span></summary><div class="fh-context-panel">' +
+      '<strong id="fh-workspace-scope-title">View context</strong><p id="fh-workspace-scope-copy"></p>' +
+      '<div id="fh-workspace-recent"></div></div></details></div></div><div class="fh-workspace-tools"></div>';
+    host.insertBefore(header, legacy || host.firstChild);
+    var menu = document.getElementById("fh-menu-btn");
+    if (menu) header.querySelector(".fh-workspace-identity").insertBefore(menu, header.querySelector(".fh-workspace-labels"));
+    if (legacy) {
+      legacy.classList.add("fh-page-toolbar");
+      /* A pure brand/status bar has nothing left to contribute once the shared
+         header exists. Page actions remain in their own toolbar. */
+      var actions = legacy.querySelectorAll('button,a:not(.logo),input,select,textarea');
+      if (legacy.querySelector("#shiftChip")) legacy.classList.add("fh-status-toolbar");
+      if (!actions.length && !legacy.querySelector("#shiftChip")) legacy.classList.add("fh-empty-toolbar");
+    }
+    var cid = urlClient();
+    /* Documents has an explicit URL filter, including its own legacy ?id=
+       alias. This affects the visible scope only; the navigation carry map is
+       intentionally unchanged. Without the filter it is an all-client list. */
+    if (PAGE === "documents.html") {
+      try {
+        var docsQuery = new URLSearchParams(location.search);
+        var docsClient = String(docsQuery.get("client_id") || docsQuery.get("id") || "").trim();
+        cid = UUID_RE.test(docsClient) ? docsClient : "";
+      } catch (e) { cid = ""; }
+    }
+    var remembered = cid || currentClient();
+    var single = !!CLIENT_SCREENS[PAGE] || (PAGE === "documents.html" && !!cid);
+    var label = document.getElementById("fh-workspace-scope-label");
+    var copy = document.getElementById("fh-workspace-scope-copy");
+    var recent = document.getElementById("fh-workspace-recent");
+    header.setAttribute("data-fh-scope", single ? (cid ? "selected-client" : "no-client") : "all-clients");
+    function scopeText(text) { return text + (demo ? " · Sample view" : ""); }
+    label.textContent = scopeText(single ? (cid ? "Selected client" : "No client selected") : "All clients");
+    copy.textContent = demo ? "Fictional data for exploring the workspace." : (single ? (cid ? "This page is open on one client file." : "Open a client file from the pipeline or Search.") : "This page shows its full workspace view. Opening a recent client file does not filter this page.");
+    if (PAGE === "my-numbers.html") {
+      header.setAttribute("data-fh-scope", "session-staff");
+      label.textContent = scopeText("Your performance");
+      copy.textContent = demo ? "Fictional data for exploring this staff account." : "This view is your own signed-in performance.";
+      remembered = "";
+    }
+    if (remembered) {
+      var recentLink = document.createElement("a");
+      recentLink.href = "client-control-panel.html?id=" + encodeURIComponent(remembered);
+      recentLink.textContent = single && cid ? "Open client file" : "Open recent client file";
+      recent.appendChild(recentLink);
+      var clear = document.createElement("button");
+      clear.type = "button";
+      clear.textContent = "Clear recent client";
+      clear.addEventListener("click", function () {
+        /* Do not change a record currently named in the URL. Only an explicit
+           action clears navigation memory, matching the old carry contract. */
+        try { localStorage.removeItem(CLIENT_KEY); localStorage.removeItem(ENTITY_KEY); } catch (e) {}
+        if (cid) {
+          clear.textContent = "Current file stays open";
+          clear.disabled = true;
+        } else {
+          remembered = "";
+          recent.innerHTML = "";
+          gateLinks(allowedFor(role), role);
+        }
+      });
+      if (!cid) recent.appendChild(clear);
+      if (!demo && window.FHData && typeof window.FHData.client === "function") {
+        window.FHData.client(remembered).then(function (res) {
+          var client = res && res.ok && res.data && res.data.client;
+          if (!client || String(client.id) !== String(remembered)) return;
+          var name = [client.first_name, client.last_name].filter(Boolean).join(" ").trim() || client.name;
+          if (!name) return;
+          recentLink.textContent = "Open " + name + "’s file";
+          if (single && cid === remembered) label.textContent = scopeText(name);
+        }).catch(function () { /* Keep the honest generic context label. */ });
+      }
+    }
+    /* Pages that resolve a current call after shell boot can report the client
+       already on screen. This is presentation only: no record, URL, remembered
+       selection, or role/navigation permission is changed here. */
+    window.FHWorkspaceScope = {
+      setClient: function (client) {
+        if (!single || !client || !UUID_RE.test(String(client.id || ""))) return false;
+        var name = String(client.name || "").trim();
+        header.setAttribute("data-fh-scope", "selected-client");
+        label.textContent = scopeText(name || "Selected client");
+        copy.textContent = demo ? "Fictional data for exploring the workspace." : "This page is open on one client file.";
+        recent.innerHTML = "";
+        var file = document.createElement("a");
+        file.href = "client-control-panel.html?id=" + encodeURIComponent(client.id);
+        file.textContent = name ? "Open " + name + "’s file" : "Open client file";
+        recent.appendChild(file);
+        return true;
+      }
+    };
+    wireWorkspaceDisclosure(header.querySelector("#fh-workspace-scope"));
+    document.dispatchEvent(new CustomEvent("fh:workspace-ready"));
+    return header;
+  }
+
+  function wireWorkspaceDisclosure(details) {
+    if (!details) return;
+    document.addEventListener("click", function (event) {
+      if (details.open && !details.contains(event.target)) details.open = false;
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && details.open) {
+        details.open = false;
+        var summary = details.querySelector("summary");
+        if (summary) summary.focus();
+      }
+    });
+  }
+
+  function mountWorkspaceAccount(staff, demo) {
+    var el = document.createElement("details");
+    el.id = "fh-shell-chip";
+    el.className = "fh-workspace-account";
+    var role = normRole(staff.role);
+    var name = staff.name || staff.email || "Your account";
+    var initials = name.split(/\s+/).slice(0, 2).map(function (part) { return part.charAt(0); }).join("").toUpperCase();
+    var roleLabel = role.replace(/_/g, " ");
+    el.innerHTML = '<summary id="fh-shell-chip-show" aria-label="Open account menu" title="Your account">' +
+      '<span class="fh-account-initials" aria-hidden="true">' + esc(initials) + '</span>' +
+      '<span class="fh-account-shortname">' + esc(name.split(/\s+/)[0]) + '</span></summary>' +
+      '<div class="fh-account-menu"><div class="fh-account-person">' + avatarChipHtml(staff.avatarUrl) +
+      '<div><strong>' + esc(name) + '</strong><span class="fh-account-role">' + esc(roleLabel) + '</span></div></div>' +
+      '<button id="fh-shell-out" type="button">Sign out</button>' +
+      '<details class="fh-account-technical" id="fh-shell-account-diagnostics"><summary>Technical details</summary>' +
+      '<p>' + esc(staff.email || "") + '</p><p>Arizona time · <span id="fh-workspace-clock"></span></p>' +
+      '<p id="fh-shell-status-hint">Checking connection…</p><span id="fh-shell-src"></span></details></div>';
+    placeInHeader(el);
+    document.getElementById("fh-shell-out").addEventListener("click", signOut);
+    wireAvatarUpload(el, demo);
+    wireWorkspaceDisclosure(el);
+    var clock = document.getElementById("fh-workspace-clock");
+    function tick() { clock.textContent = clockFace(new Date(), true); }
+    tick();
+    setInterval(tick, 1000);
+    /* Page-owned clock IDs keep their existing writers and remain inspectable. */
+    var oldClocks = document.querySelectorAll('.fh-page-toolbar .clock,.fh-page-toolbar #clock');
+    var diagnostics = document.getElementById("fh-shell-account-diagnostics");
+    for (var i = 0; i < oldClocks.length; i++) diagnostics.appendChild(oldClocks[i]);
+    backendState().then(function (state) {
+      var source = document.getElementById("fh-shell-src");
+      var hint = document.getElementById("fh-shell-status-hint");
+      if (!source || !hint) return;
+      source.textContent = demo ? "DEMO" : state.label;
+      source.style.background = demo ? "#F5CE8F" : (state.code === "live" ? "#A8D8B0" : "#F5CE8F");
+      source.style.color = "#0D1113";
+      hint.textContent = (demo ? "Sample session. " : "") + state.hint;
+      source.title = hint.textContent;
+    });
+  }
+
   function placeInHeader(el) {
+    var tools = document.querySelector("#fh-workspace-header .fh-workspace-tools");
+    if (tools && tools.nodeType === 1) {
+      tools.appendChild(el);
+      el.setAttribute("data-fh-in-header", "1");
+      return true;
+    }
     var right = document.querySelector(".topbar-right");
     var bar = document.querySelector(
       ".topbar, .top, .page-hd, body > header, .app > header, .app-shell > header"
@@ -2257,6 +2494,8 @@
   }
 
   function mountChip(staff, demo) {
+    var workspace = document.getElementById("fh-workspace-header");
+    if (workspace && workspace.nodeType === 1) return mountWorkspaceAccount(staff, demo);
     var el = document.createElement("div");
     el.id = "fh-shell-chip";
     /* pointer-events:none — the chip is a label, not a control surface. It is
@@ -2482,13 +2721,20 @@
          src/ui/status-tokens-are-semantic.test.mjs fails if they come back. */
     }
     var FACE = /^[A-Za-z0-9 \-]{1,60}$/;
-    if (FACE.test(String(b.display_face || ""))) {
+    /* v_org_brand_effective binds slug to orgs.slug. Only the canonical
+       Fundhub org's legacy Inter seed adopts the owner's rounded system face.
+       Partner brands and every explicit custom face still paint as supplied. */
+    var legacyFundhubFace = b.slug === "fundhub" && b.entity_name === "Fundhub" &&
+      b.display_face === "Inter" && (!staff || String(staff.role || "").trim().toLowerCase() !== "partner");
+    if (legacyFundhubFace) {
+      root.style.setProperty("--sans", "ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif");
+    } else if (FACE.test(String(b.display_face || ""))) {
       root.style.setProperty("--sans", "'" + b.display_face + "', system-ui, -apple-system, sans-serif");
     }
     if (FACE.test(String(b.mono_face || ""))) {
       root.style.setProperty("--mono", "'" + b.mono_face + "', ui-monospace, SFMono-Regular, monospace");
     }
-    injectFonts(b.display_face, b.mono_face);
+    injectFonts(legacyFundhubFace ? null : b.display_face, b.mono_face);
     var wm = safeWordmark(b.wordmark_url);
     if (wm) root.style.setProperty("--logo", "url(\"" + wm.replace(/"/g, "") + "\")");
     var chip = document.getElementById("fh-shell-chip");
@@ -2531,6 +2777,31 @@
           hadCall: hadCall,
           autoOpenPrecall: isPortal && !hadCall
         });
+        /* Reuse the actual launcher and its handlers in the shared header.
+           Staff content never has a floating button over its actions. */
+        var launcher = document.getElementById("fh-chat-fab");
+        var tools = document.querySelector("#fh-workspace-header .fh-workspace-tools");
+        var account = document.getElementById("fh-shell-chip");
+        if (!isPortal && launcher && tools && account) {
+          tools.insertBefore(launcher, account);
+          launcher.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H7l-5 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg><span class="fh-chat-launch-label">Chat</span>';
+          launcher.setAttribute("aria-label", "Open chat");
+          launcher.addEventListener("click", function () {
+            var account = document.getElementById("fh-shell-chip");
+            if (account) account.open = false;
+          });
+          var closeChat = document.getElementById("fh-chat-close");
+          if (closeChat) closeChat.addEventListener("click", function () {
+            launcher.focus();
+          });
+          document.addEventListener("keydown", function (event) {
+            var panel = document.getElementById("fh-chat-panel");
+            if (event.key === "Escape" && panel && panel.classList.contains("open") && closeChat) {
+              event.preventDefault();
+              closeChat.click();
+            }
+          });
+        }
       }
     }
     if (window.FHChat) { go(); return; }
@@ -2664,7 +2935,8 @@
     settleClicks(ok);
     onReady(function () {
       gateLinks(ok, role);
-      mountClock(role);
+      var workspace = mountWorkspaceHeader(sess.staff, sess.demo);
+      if (!workspace) mountClock(role);
       mountSearch(sess.staff, sess.demo);
       mountChip(sess.staff, sess.demo);
       mountBetaBanner(role);

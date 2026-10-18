@@ -17,238 +17,104 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--butter:#F2E39B}
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-.logo{width:118px;height:24px;flex:0 0 118px}
-.eyebrow{display:block}
-.eyebrow .sep{color:var(--line);margin:0 6px}
-.app{display:flex;min-height:100vh}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{min-height:57px;flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:8px 24px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:20;flex-wrap:wrap}
-.topbar h1{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-.topbar .crumb{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em;text-transform:uppercase}
-.spacer{flex:1}
-.content{padding:24px 24px 40px;flex:1}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.card+.card{margin-top:14px}
-.card-hd{padding:13px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.card-bd{padding:16px}
-.hair{height:2px;background:var(--spectrum);border-radius:1px}
-.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:var(--fs-body);font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--soft);border-color:var(--gray2)}
-.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.dark:hover{background:var(--ink2)}
-.btn.sm{padding:5px 10px;font-size:var(--fs-caption)}
-.btn.mono{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase}
-.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 16px;background:#fff;overflow-x:auto}
-.tab{background:transparent;border:0;border-bottom:2px solid transparent;cursor:pointer;padding:11px 13px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;color:var(--gray2);margin-bottom:-1px;white-space:nowrap}
-.tab:hover{color:var(--ink)}.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:5px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
-.b-ok{background:rgba(168,216,176,.24);border-color:var(--ok);color:#2C5138}
-.b-warn{background:rgba(245,206,143,.26);border-color:var(--warn);color:#6B4A12}
-.b-alert{background:rgba(242,166,155,.26);border-color:var(--alert);color:#6E2A22}
-.b-info{background:rgba(169,198,232,.26);border-color:var(--info);color:#22415F}
-.b-accent{background:rgba(196,179,229,.26);border-color:var(--accent);color:#3F2F63}
-.b-butter{background:rgba(242,227,155,.32);border-color:var(--butter);color:#5E5310}
-.b-gray{background:var(--soft);border-color:var(--line);color:var(--gray)}
-table.grid{width:100%;border-collapse:collapse}
-table.grid th{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;color:var(--gray);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:500;background:var(--soft);cursor:pointer;user-select:none}
-table.grid th:hover{color:var(--ink)}
-table.grid td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:var(--fs-body);vertical-align:middle}
-table.grid tr:last-child td{border-bottom:0}
-table.grid tbody tr:hover{background:var(--soft)}
-table.grid tr.stale td{background:rgba(242,166,155,.09)}
-table.grid tr.stale:hover td{background:rgba(242,166,155,.15)}
-.age{font-family:var(--mono);font-size:var(--fs-caption);font-variant-numeric:tabular-nums;text-align:right;display:block}
-th[data-s="age"]{text-align:right}
-.age.hot{color:#6E2A22;font-weight:600}
-.age.warm{color:#6B4A12}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
-.stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum)}
-.stat .sv{font-family:var(--mono);font-size:var(--fs-metric);font-variant-numeric:tabular-nums;font-weight:600;margin-top:8px;letter-spacing:-.02em}
-.stat .sd{font-size:var(--fs-caption);color:var(--gray);margin-top:2px}
-.classbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
-.classcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color .12s;position:relative;overflow:hidden}
-.classcard:hover{border-color:var(--ink)}
-.classcard::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum);opacity:0;transition:opacity .12s}
-.classcard:hover::before,.classcard.on::before{opacity:1}
-.classcard.on{border-color:var(--ink)}
-.classcard .cn{font-size:var(--fs-body);font-weight:600;margin-top:7px;letter-spacing:-.01em}
-.classcard .cc{font-family:var(--mono);font-size:var(--fs-metric);font-variant-numeric:tabular-nums;font-weight:600;margin-top:6px}
-.classcard .cs{font-size:var(--fs-caption);color:var(--gray);margin-top:2px}
-.bar{height:5px;border-radius:3px;background:var(--soft);overflow:hidden;display:flex;margin-top:9px}
-.bar i{display:block;height:100%}
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
-.foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.09em;text-transform:lowercase}
-.empty{padding:26px 16px;text-align:center;color:var(--gray2);font-size:var(--fs-body)}
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--fs-caption);color:var(--gray);padding:12px 16px;border-top:1px solid var(--line);background:var(--soft)}
-.card-hd .spacer{display:none}
-@media(max-width:1000px){.stats,.classbar{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){
-  .stats,.classbar{grid-template-columns:1fr}
-  .tabs{display:grid;grid-template-columns:1fr;padding:0;overflow:visible}
-  .tab{width:100%;margin:0;text-align:left;border-bottom:1px solid var(--line)}
-  .card-hd{align-items:stretch}
-  .card-hd select,.card-hd input{width:100%!important;min-height:40px}
-}
-</style>
+<link rel="stylesheet" href="documents-workspace.css">
 <script defer src="shell.js"></script>
 <script src="demo-client-bootstrap.js"></script>
 </head>
-<body>
+<body class="documents-page">
 <div class="app">
-  <aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem on" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem on" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 
   <div class="main">
-    <div class="topbar">
-      <span class="crumb">Work</span><h1>Documents</h1>
-      <div class="spacer"></div>
-      <span class="chip bad" id="staleChip"><span class="cd"></span><span id="staleTxt">— aging</span></span>
-      <button class="btn mono" id="pendingBtn">Pending only</button>
-    </div>
+    <main class="content fh-maxw" id="documentsMain">
+      <header class="documents-intro">
+        <div><h2>Files &amp; signatures</h2><p>Track client documents from generation to the final signature.</p></div>
+        <span class="chip" id="staleChip"><span class="cd"></span><span id="staleTxt">Loading status</span></span>
+      </header>
 
-    <div class="content fh-maxw">
-      <div class="stats">
-        <div class="stat"><div class="eyebrow">DC-00 <span class="sep">/</span> TOTAL</div><div class="sv" id="kTotal">0</div><div class="sd">across five classes</div></div>
-        <div class="stat"><div class="eyebrow">DC-00 <span class="sep">/</span> AWAITING SIGNATURE</div><div class="sv" id="kSign">0</div><div class="sd">sent, not signed</div></div>
-        <div class="stat"><div class="eyebrow">DC-00 <span class="sep">/</span> UNDELIVERED</div><div class="sv" id="kUndel">0</div><div class="sd">generated, never sent</div></div>
-      </div>
+      <section class="documents-stats" aria-label="Document overview">
+        <div class="stat"><div class="stat-label">Documents on file</div><div class="sv" id="kTotal">—</div><div class="sd">Across five document classes</div></div>
+        <div class="stat"><div class="stat-label">Awaiting signature</div><div class="sv" id="kSign">—</div><div class="sd">Sent and ready for follow-up</div></div>
+        <div class="stat"><div class="stat-label">Not delivered</div><div class="sv" id="kUndel">—</div><div class="sd">Generated and not yet sent</div></div>
+      </section>
 
-      <div class="classbar" id="classbar"></div>
-
-      <div class="card" style="margin-top:14px">
-        <div class="tabs" id="tabs"></div>
-        <div class="card-hd">
-          <div class="eyebrow" id="listCode">DC-01 <span class="sep">/</span> ALL DOCUMENTS</div>
-          <div class="spacer"></div>
-          <select id="statusFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
-            <option value="">Any status</option>
-            <option value="gen-pending">Not generated</option>
-            <option value="gen-failed">Generation failed</option>
-            <option value="del-pending">Not delivered</option>
-            <option value="del-bounced">Bounced</option>
-            <option value="sig-pending">Awaiting signature</option>
-            <option value="sig-expired">Signature expired</option>
-          </select>
-          <input id="q" placeholder="Filter client or document…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:200px">
+      <section class="card document-library" id="documentLibrary" aria-labelledby="listCode" aria-busy="true">
+        <div class="library-heading"><div><h3 id="listCode">Document library</h3><p id="resultCount" role="status">Loading documents…</p></div><button class="btn" id="pendingBtn" type="button" aria-pressed="false">Pending only</button></div>
+        <nav class="tabs" id="tabs" aria-label="Document class"></nav>
+        <div class="library-controls">
+          <label class="document-search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="q" type="search" aria-label="Search documents" placeholder="Search by client or document"></label>
+          <label class="status-filter"><span class="visually-hidden">Document status</span><select id="statusFilter" aria-label="Document status">
+            <option value="">Any status</option><option value="gen-pending">Not generated</option><option value="gen-failed">Generation failed</option><option value="del-pending">Not delivered</option><option value="del-bounced">Bounced</option><option value="sig-pending">Awaiting signature</option><option value="sig-expired">Signature expired</option>
+          </select></label>
+          <label class="mobile-sort"><span class="visually-hidden">Sort documents</span><select id="mobileSort" aria-label="Sort documents">
+            <option value="age:-1">Age: oldest first</option><option value="age:1">Age: newest first</option><option value="doc:1">Document: A–Z</option><option value="doc:-1">Document: Z–A</option><option value="client:1">Client: A–Z</option><option value="client:-1">Client: Z–A</option><option value="cls:1">Class: A–Z</option><option value="cls:-1">Class: Z–A</option><option value="gen:1">Generated: A–Z</option><option value="gen:-1">Generated: Z–A</option><option value="del:1">Delivered: A–Z</option><option value="del:-1">Delivered: Z–A</option><option value="sig:1">Signature: A–Z</option><option value="sig:-1">Signature: Z–A</option>
+          </select></label>
         </div>
-        <div style="overflow-x:auto">
-          <table class="grid" id="tbl">
+        <div class="document-table-wrap">
+          <table class="grid" id="tbl"><caption class="visually-hidden">Client documents and contract actions. Sort by a column heading.</caption>
             <thead><tr>
-              <th data-s="doc">Document</th><th data-s="client">Client</th><th data-s="cls">Class</th>
-              <th data-s="gen">Generated</th><th data-s="del">Delivered</th><th data-s="sig">Signature</th>
-              <th data-s="age">Age pending</th>
-              <!-- Not sortable on purpose: no data-s, so the sort-arrow loop skips it.
-                   Only a row that IS a contract fills this in. -->
-              <th>Contract</th>
-            </tr></thead>
-            <tbody id="body"></tbody>
+              <th data-s="doc" scope="col"><button type="button" aria-label="Sort by document"><span class="sort-label">Document</span></button></th><th data-s="client" scope="col"><button type="button" aria-label="Sort by client"><span class="sort-label">Client</span></button></th><th data-s="cls" scope="col"><button type="button" aria-label="Sort by class"><span class="sort-label">Class</span></button></th>
+              <th data-s="gen" scope="col"><button type="button" aria-label="Sort by generated"><span class="sort-label">Generated</span></button></th><th data-s="del" scope="col"><button type="button" aria-label="Sort by delivered"><span class="sort-label">Delivered</span></button></th><th data-s="sig" scope="col"><button type="button" aria-label="Sort by signature"><span class="sort-label">Signature</span></button></th>
+              <th data-s="age" scope="col"><button type="button" aria-label="Sort by age pending"><span class="sort-label">Age pending</span></button></th><th scope="col">Contract</th>
+            </tr></thead><tbody id="body"></tbody>
           </table>
         </div>
-        <!-- Whatever the contract endpoint said, in its own words. Lives OUTSIDE
-             #body so a re-sort or a search keystroke does not wipe the answer. -->
-        <div id="ctMsg" style="display:none;padding:11px 16px;border-top:1px solid var(--line);font-size:var(--fs-body)"></div>
-        <div class="legend">
-          <span><span class="dot" style="background:var(--ok)"></span>complete</span>
-          <span><span class="dot" style="background:var(--warn)"></span>in progress · awaiting a counterparty</span>
-          <span><span class="dot" style="background:var(--alert)"></span>failed, bounced, expired, or aged past its window</span>
-          <span><span class="dot" style="background:var(--info)"></span>not applicable to this class</span>
-          <span class="mono" style="letter-spacing:.08em">AGE COUNTS FROM THE LAST STATE CHANGE, NOT FROM CREATION</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="foot"><span class="pulse"></span><span>systems nominal · fundhub.ai</span></div>
+        <div id="ctMsg" role="status" aria-live="polite" style="display:none"></div>
+        <details class="document-guide"><summary>Document classes &amp; status guide</summary>
+          <div class="classbar" id="classbar"></div>
+          <div class="legend"><span><i class="status-dot complete"></i>Complete</span><span><i class="status-dot progress"></i>In progress or awaiting a counterparty</span><span><i class="status-dot issue"></i>Failed, bounced, expired, or overdue</span><span><i class="status-dot na"></i>Not applicable to this class</span><p>Age starts at the last state change, rather than the date a document was created.</p></div>
+        </details>
+      </section>
+    </main>
   </div>
 </div>
 
@@ -276,6 +142,7 @@ var CLASSES=[
    sig: na|awaiting|signed|declined|expired
    age: days in the current pending state (0 when nothing is pending) */
 var DOCS=[];
+var documentsLoadState='loading', documentsLoadError='';
 
 var GEN={queued:['b-butter','Queued'],generating:['b-warn','Generating'],generated:['b-ok','Generated'],failed:['b-alert','Failed']};
 var DEL={na:['b-info','N/A'],not_sent:['b-butter','Not sent'],sent:['b-warn','Sent'],opened:['b-ok','Opened'],bounced:['b-alert','Bounced']};
@@ -327,33 +194,38 @@ function renderClassbar(){
   document.getElementById('classbar').innerHTML=CLASSES.map(function(c){
     var set=DOCS.filter(function(d){return d.cls===c.k});
     var pend=set.filter(pending).length, done=set.length-pend;
-    var pctDone=set.length?Math.round(done/set.length*100):0;
-    return '<div class="classcard '+(curCls===c.k?'on':'')+'" data-c="'+c.k+'">'+
-      '<div class="eyebrow">'+c.code+' <span class="sep">/</span> CLASS</div>'+
-      '<div class="cn">'+esc(c.n)+'</div>'+
-      '<div class="cc">'+set.length+'</div>'+
-      '<div class="cs">'+pend+' pending · '+done+' settled</div>'+
-      '<div class="bar"><i style="width:'+pctDone+'%;background:var(--ok)"></i><i style="width:'+(100-pctDone)+'%;background:var(--warn)"></i></div>'+
-      '<div class="cs" style="margin-top:7px">'+esc(c.d)+'</div></div>';
+    return '<button type="button" class="classcard '+(curCls===c.k?'on':'')+'" data-c="'+c.k+'" aria-pressed="'+(curCls===c.k)+'">'+
+      '<span class="cn">'+esc(c.n)+'</span><span class="class-count">'+(documentsLoadState==='ready'?set.length:'—')+'</span>'+
+      '<span class="cs">'+(documentsLoadState==='ready'?pend+' pending · '+done+' settled':'Counts unavailable')+'</span>'+
+      '<span class="cs">'+esc(c.d)+'</span></button>';
   }).join('');
   document.querySelectorAll('.classcard').forEach(function(el){
     el.addEventListener('click',function(){setClass(curCls===el.dataset.c?'':el.dataset.c)});
   });
 }
 function renderTabs(){
-  var all=[{k:'',code:'DC-01',n:'All'}].concat(CLASSES.map(function(c){return {k:c.k,code:c.code,n:c.n}}));
+  var all=[{k:'',n:'All documents',short:'All'}].concat(CLASSES.map(function(c){return {k:c.k,n:c.n,short:({auth:'Authorizations',contract:'Contracts',invoice:'Invoices',deliverable:'Deliverables',upload:'Uploads'})[c.k]}}));
   document.getElementById('tabs').innerHTML=all.map(function(t){
-    return '<button class="tab '+(curCls===t.k?'on':'')+'" data-c="'+t.k+'"'+(curCls===t.k?' disabled aria-current="true"':'')+'>'+esc(t.n)+'</button>';
+    var count=t.k?DOCS.filter(function(d){return d.cls===t.k}).length:DOCS.length;
+    return '<button type="button" class="tab '+(curCls===t.k?'on':'')+'" data-c="'+t.k+'" aria-label="'+esc(t.n)+'" aria-pressed="'+(curCls===t.k)+'">'+esc(t.short)+'<span class="tab-count">'+(documentsLoadState==='ready'?count:'—')+'</span></button>';
   }).join('');
-  document.querySelectorAll('.tab').forEach(function(b){
-    if (b.disabled) return;
-    b.addEventListener('click',function(){setClass(b.dataset.c)});
-  });
+  document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){setClass(b.dataset.c)})});
 }
 function setClass(k){
   curCls=k; renderTabs(); renderClassbar(); render();
   var c=CLASSES.filter(function(x){return x.k===k})[0];
-  document.getElementById('listCode').innerHTML=(c?c.code:'DC-01')+' <span class="sep">/</span> '+(c?c.n.toUpperCase():'ALL DOCUMENTS');
+  document.getElementById('listCode').textContent=c?c.n:'Document library';
+  // Rebuilding the filter strip must keep keyboard focus on the selected class.
+  var active=document.querySelector('#tabs [data-c="'+k+'"]');
+  if(active) active.focus({preventScroll:true});
+}
+function clearDocumentFilters(){
+  curCls=''; pendingOnly=false;
+  document.getElementById('q').value=''; document.getElementById('statusFilter').value='';
+  document.getElementById('pendingBtn').classList.remove('dark');
+  document.getElementById('pendingBtn').textContent='Pending only';
+  document.getElementById('pendingBtn').setAttribute('aria-pressed','false');
+  setClass(''); document.getElementById('q').focus();
 }
 
 function rows(){
@@ -380,34 +252,43 @@ function rows(){
 function render(){
   var list=rows();
   var CN={auth:'Soft-pull auth',contract:'Contract',invoice:'Invoice',deliverable:'Deliverable',upload:'Upload'};
-  document.getElementById('body').innerHTML=list.map(function(d){
+  var state='';
+  if(documentsLoadState==='loading') state='<div class="state-icon" aria-hidden="true">…</div><strong>Loading documents</strong><p>Your document library will appear here.</p>';
+  else if(documentsLoadState==='error') state='<div class="state-icon" aria-hidden="true">!</div><strong>Documents could not be loaded</strong><p>'+esc(documentsLoadError||'Please try again in a moment.')+'</p><button type="button" class="btn dark" data-retry>Try again</button>';
+  else if(!list.length) state=DOCS.length?'<div class="state-icon" aria-hidden="true">⌕</div><strong>No matching documents</strong><p>Try another name, class, or status.</p><button type="button" class="btn" data-clear-filters>Clear filters</button>':'<div class="state-icon" aria-hidden="true">▤</div><strong>No documents on file yet</strong><p>Client uploads, agreements, invoices, and reports will appear here when they are on file.</p>';
+  document.getElementById('body').innerHTML=state?'<tr class="state-row"><td colspan="8" class="empty"><div role="status">'+state+'</div></td></tr>':list.map(function(d){
     var g=GEN[d.gen],dl=DEL[d.del],s=SIG[d.sig];
     var isP=pending(d);
     return '<tr class="'+(isP&&d.age>=14?'stale':'')+'">'+
-      '<td><div style="font-weight:600">'+esc(d.doc)+'</div><div class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.08em">'+esc(d.sub)+'</div>'+dlCell(d)+'</td>'+
-      '<td>'+esc(d.client)+'</td>'+
-      '<td><span class="badge b-gray">'+CN[d.cls]+'</span></td>'+
-      '<td><span class="badge '+g[0]+'">'+g[1]+'</span></td>'+
-      '<td><span class="badge '+dl[0]+'">'+dl[1]+'</span></td>'+
-      '<td><span class="badge '+s[0]+'">'+s[1]+'</span></td>'+
-      '<td>'+(isP?'<span class="age '+ageCls(d.age)+'">'+d.age+'d</span>':'<span class="age" style="color:var(--gray2)">—</span>')+'</td>'+
-      '<td>'+ctCell(d)+'</td></tr>';
-  }).join('')||'<tr><td colspan="8" class="empty">'+(DOCS.length?'Nothing matches that filter.':'No documents on file yet.')+'</td></tr>';
-
+      '<td class="document-name" data-label="Document"><div class="document-title">'+esc(d.doc)+'</div><div class="document-meta">'+esc(d.sub)+'</div>'+dlCell(d)+'</td>'+
+      '<td class="document-client" data-label="Client">'+esc(d.client)+'</td>'+
+      '<td class="document-class" data-label="Class"><span class="badge b-gray">'+CN[d.cls]+'</span></td>'+
+      '<td class="document-status" data-label="Generated"><span class="badge '+g[0]+'">'+g[1]+'</span></td>'+
+      '<td class="document-status" data-label="Delivered"><span class="badge '+dl[0]+'">'+dl[1]+'</span></td>'+
+      '<td class="document-status" data-label="Signature"><span class="badge '+s[0]+'">'+s[1]+'</span></td>'+
+      '<td class="document-age" data-label="Age pending">'+(isP?'<span class="age '+ageCls(d.age)+'">'+d.age+'d</span>':'<span class="age">—</span>')+'</td>'+
+      '<td class="document-contract'+(d.contract?' has-contract':'')+'" data-label="Contract">'+ctCell(d)+'</td></tr>';
+  }).join('');
+  document.getElementById('documentLibrary').setAttribute('aria-busy',documentsLoadState==='loading'?'true':'false');
+  document.getElementById('resultCount').textContent=documentsLoadState==='loading'?'Loading documents…':documentsLoadState==='error'?'Document count unavailable':list.length+' of '+DOCS.length+' documents';
   document.querySelectorAll('#tbl th[data-s]').forEach(function(th){
     var arrow=sortKey===th.dataset.s?(sortDir===1?' ↑':' ↓'):'';
-    th.textContent=th.textContent.replace(/[ ↑↓]+$/,'')+arrow;
+    var label=th.querySelector('.sort-label');
+    label.textContent=label.textContent.replace(/[ ↑↓]+$/,'')+arrow;
+    th.setAttribute('aria-sort',sortKey===th.dataset.s?(sortDir===1?'ascending':'descending'):'none');
   });
+  document.getElementById('mobileSort').value=sortKey+':'+sortDir;
   renderStats();
 }
 
 function renderStats(){
-  document.getElementById('kTotal').textContent=DOCS.length;
-  document.getElementById('kSign').textContent=DOCS.filter(function(d){return d.sig==='awaiting'}).length;
-  document.getElementById('kUndel').textContent=DOCS.filter(function(d){return d.gen==='generated'&&d.del==='not_sent'}).length;
+  var ready=documentsLoadState==='ready';
+  document.getElementById('kTotal').textContent=ready?DOCS.length:'—';
+  document.getElementById('kSign').textContent=ready?DOCS.filter(function(d){return d.sig==='awaiting'}).length:'—';
+  document.getElementById('kUndel').textContent=ready?DOCS.filter(function(d){return d.gen==='generated'&&d.del==='not_sent'}).length:'—';
   var stale=DOCS.filter(function(d){return pending(d)&&d.age>=14}).length;
-  document.getElementById('staleTxt').textContent=stale+' past 14 days';
-  document.getElementById('staleChip').className='chip '+(stale?'bad':'on');
+  document.getElementById('staleTxt').textContent=ready?(stale?stale+' overdue · 14+ days':'No documents overdue'):(documentsLoadState==='loading'?'Loading status':'Status unavailable');
+  document.getElementById('staleChip').className='chip '+(ready?(stale?'bad':'on'):'');
 }
 
 document.querySelectorAll('#tbl th[data-s]').forEach(function(th){
@@ -422,17 +303,20 @@ document.getElementById('q').addEventListener('input',render);
 document.getElementById('pendingBtn').addEventListener('click',function(){
   pendingOnly=!pendingOnly;
   this.classList.toggle('dark',pendingOnly);
+  this.setAttribute('aria-pressed',String(pendingOnly));
   this.textContent=pendingOnly?'Showing pending':'Pending only';
   render();
 });
 
+document.getElementById('mobileSort').addEventListener('change',function(){var parts=this.value.split(':');sortKey=parts[0];sortDir=Number(parts[1]);render();});
+document.getElementById('body').addEventListener('click',function(ev){if(ev.target.closest('[data-clear-filters]'))clearDocumentFilters();if(ev.target.closest('[data-retry]'))location.reload();});
 renderTabs(); renderClassbar(); render();
 </script>
 <script defer src="data.js"></script>
 <script>
 
-/* Documents — real metadata from /api/read/documents. Layout untouched: this
-   replaces the four KPI numbers and the table body, nothing else. storage_key
+/* Documents — real metadata from /api/read/documents. The list, overview,
+   filters and class counts share one model. storage_key
    is stripped server-side and is never in the payload. */
 (function () {
   "use strict";
@@ -451,6 +335,7 @@ renderTabs(); renderClassbar(); render();
      screen, two different answers to the same question. Redraw both together. */
   var redraw = function () {
     if (typeof renderClassbar === "function") renderClassbar();
+    if (typeof renderTabs === "function") renderTabs();
     if (typeof render === "function") render();
   };
 
@@ -677,7 +562,21 @@ renderTabs(); renderClassbar(); render();
         docParams.client_id = cid;
       }
     } catch (e) {}
-    FHData.wire(FHData.documents(docParams), "documents", function (data) {
+    var documentsRequest = FHData.documents(docParams).then(function (res) {
+      if (!res || !res.ok) {
+        documentsLoadState = "error";
+        documentsLoadError = (res && res.error) || "Check your connection and try again.";
+        redraw();
+      }
+      return res;
+    }).catch(function (err) {
+      documentsLoadState = "error";
+      documentsLoadError = "Check your connection and try again.";
+      redraw();
+      throw err;
+    });
+    FHData.wire(documentsRequest, "documents", function (data) {
+      documentsLoadState = "ready";
       var rows = data.items || [];
       if (!rows.length) {
         if (typeof DOCS !== "undefined") {

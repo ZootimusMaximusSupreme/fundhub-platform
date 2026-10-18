@@ -310,33 +310,39 @@ const consent = (body, status = 200) => ({
   })
 });
 
+async function openCredit(page, extra) {
+  const result = await open(page, extra);
+  await page.getByRole("tab", { name: "Credit & inquiries", exact: true }).click();
+  return result;
+}
+
 test.describe("client control panel — a consent link that can be hidden", () => {
 
   test("consent already valid — no link, because there is nothing to collect", async ({ page }) => {
-    await open(page, Object.assign({}, applications([]), consent({ ok: true, status: { valid: true } })));
+    await openCredit(page, Object.assign({}, applications([]), consent({ ok: true, status: { valid: true } })));
     await expect(page.locator("#ccp-consent-link")).toBeHidden();
   });
 
   test("REVOKED — the screen does not offer a shortcut to re-collect it", async ({ page }) => {
-    await open(page, Object.assign({}, applications([]),
+    await openCredit(page, Object.assign({}, applications([]),
       consent({ ok: true, status: { valid: false, reason: "revoked" } })));
     await expect(page.locator("#ccp-consent-state")).toContainText("took their permission back");
     await expect(page.locator("#ccp-consent-link")).toBeHidden();
   });
 
   test("the consent read FAILED — unknown is not a reason to offer a link", async ({ page }) => {
-    await open(page, Object.assign({}, applications([]), consent({ ok: false, error: "boom" }, 500)));
+    await openCredit(page, Object.assign({}, applications([]), consent({ ok: false, error: "boom" }, 500)));
     await expect(page.locator("#ccp-consent-state")).toContainText("Could not check consent");
     await expect(page.locator("#ccp-consent-link")).toBeHidden();
   });
 
   test("an answer with no status at all is treated the same way", async ({ page }) => {
-    await open(page, Object.assign({}, applications([]), consent({ ok: true, capture: {} })));
+    await openCredit(page, Object.assign({}, applications([]), consent({ ok: true, capture: {} })));
     await expect(page.locator("#ccp-consent-link")).toBeHidden();
   });
 
   test("EXPIRED — the one state that needs the link still shows it", async ({ page }) => {
-    await open(page, Object.assign({}, applications([]),
+    await openCredit(page, Object.assign({}, applications([]),
       consent({ ok: true, status: { valid: false, reason: "expired" } })));
     await expect(page.locator("#ccp-consent-state")).toContainText("run out");
     const link = page.locator("#ccp-consent-link");
@@ -371,7 +377,7 @@ test.describe("client control panel — a consent link that can be hidden", () =
 
   for (const [state, routes] of Object.entries(SWEEP_STATES)) {
     test(`NOTHING ON THE SCREEN LEAKS THROUGH [hidden] — ${state}`, async ({ page }) => {
-      await open(page, routes);
+      await openCredit(page, routes);
       const leaking = await page.evaluate(() =>
         Array.from(document.querySelectorAll("[hidden]"))
           .filter((el) => getComputedStyle(el).display !== "none")
@@ -383,7 +389,7 @@ test.describe("client control panel — a consent link that can be hidden", () =
   test("the copy control goes away and the reason takes its place", async ({ page }) => {
     /* Not the sweep's job. The sweep proves nothing is laid out; this proves
        the screen still says WHY, so the row is replaced rather than deleted. */
-    await open(page, Object.assign({}, applications([]),
+    await openCredit(page, Object.assign({}, applications([]),
       consent({ ok: true, status: { valid: false, reason: "expired" },
                 approval_link: { url: null, unavailable_reason: "No signing key on this environment." } })));
     await expect(page.locator("#ccp-approve-nolink")).toHaveText("No signing key on this environment.");
@@ -392,7 +398,7 @@ test.describe("client control panel — a consent link that can be hidden", () =
 
   test("with a real link the copy row is still a laid-out box", async ({ page }) => {
     /* A rule that painted nothing would pass every sweep above and be wrong. */
-    await open(page, Object.assign({}, applications([]),
+    await openCredit(page, Object.assign({}, applications([]),
       consent({ ok: true, status: { valid: false, reason: "expired" },
                 approval_link: { url: "https://approve.example/abc", expires_at: "2026-09-01T17:00:00Z" } })));
     const row = page.locator("#ccp-approve-row");

@@ -18,344 +18,55 @@
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
 <style>
-  /* ──────────────────────────────────────────────────────────────────────────
-     Palette, logo, eyebrow, pulse and ghost mark come from fundhub-brand.css.
-     Local aliases only below — note --surface, not --card: the brand --card
-     is the DARK card colour.
-     ────────────────────────────────────────────────────────────────────────── */
-  :root{
-    --surface:#FFFFFF;
-    --paper-dim:var(--soft);
-    --text:var(--ink);--text-dim:var(--gray);--text-faint:var(--gray2);
-    --dark-text:var(--paper);--dark-text-dim:var(--gray2);--dark-line:var(--cardline);
-    --ok-bg:color-mix(in srgb,var(--ok) 28%,#fff);
-    --warn-bg:color-mix(in srgb,var(--warn) 28%,#fff);
-    --alert-bg:color-mix(in srgb,var(--alert) 28%,#fff);
-    --info-bg:color-mix(in srgb,var(--info) 28%,#fff);
-    --accent-bg:color-mix(in srgb,var(--accent) 28%,#fff);
-    --ok-line:color-mix(in srgb,var(--ok) 62%,#fff);
-    --warn-line:color-mix(in srgb,var(--warn) 62%,#fff);
-    --alert-line:color-mix(in srgb,var(--alert) 62%,#fff);
-    --info-line:color-mix(in srgb,var(--info) 62%,#fff);
-    --accent-line:color-mix(in srgb,var(--accent) 62%,#fff);
+  :root{--surface:#fff;--paper-dim:#f1f2ee;--text:var(--ink,#101416);--text-dim:#626965;--text-faint:#777e79;--inbox-line:#e3e6df;--inbox-alert:#9b342c;--inbox-hold:#74531d;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:var(--paper,#f8f8f6);font-family:var(--sans);color:var(--text);overflow:hidden}
+  button,input,textarea{font:inherit}button,a,input,textarea,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:default}
+  button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  [hidden]{display:none!important}
+  .app{height:100dvh;display:flex;overflow:hidden}.shell{height:100dvh;min-height:0;flex:1;min-width:0;display:flex;flex-direction:column}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .messaging-workspace{flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr) 246px;gap:0;padding:20px 24px 24px;background:var(--paper,#f8f8f6);position:relative;isolation:isolate}
+  .convo-col,.thread-col,.ctx-col{min-width:0;min-height:0;background:var(--surface);border:1px solid var(--inbox-line)}
+  .convo-col{display:flex;flex-direction:column;border-right:0;border-radius:18px 0 0 18px;overflow:hidden}
+  .convo-head{flex:none;padding:20px 16px 16px;border-bottom:1px solid var(--inbox-line)}
+  .inbox-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.inbox-heading h2{font-size:20px;line-height:1.2;font-weight:650;letter-spacing:-.025em;margin:0}
+  .icon-btn,.context-btn{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:40px;min-height:40px;padding:9px;border:1px solid var(--inbox-line);border-radius:10px;background:#fff;color:var(--text-dim);font-size:13px;font-weight:600;line-height:1.2}
+  .icon-btn:hover,.context-btn:hover{background:var(--paper-dim);color:var(--text)}.icon-btn svg{width:18px;height:18px}.icon-btn[aria-busy=true] svg{animation:refresh-spin 1.2s linear infinite}.icon-btn:disabled{opacity:.55}
+  .search{display:flex;align-items:center;gap:8px;background:var(--paper,#f8f8f6);border:1px solid var(--inbox-line);border-radius:11px;min-height:44px;padding:10px 11px;color:var(--text-faint)}.search:focus-within{border-color:var(--ink);outline:2px solid var(--ink);outline-offset:2px}.search svg{width:17px;height:17px;flex:none}.search input{border:0;outline:none;background:transparent;min-width:0;width:100%;font-size:13px;line-height:1.4;color:var(--text)}.search input:focus-visible{outline:none}
+  .convo-tabs{display:flex;gap:4px;margin-top:14px;padding:4px;border-radius:11px;background:var(--paper-dim)}.ctab{flex:1;min-height:40px;border:0;border-radius:8px;color:var(--text-dim);background:transparent;padding:8px;font-size:13px;font-weight:600;white-space:nowrap}.ctab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px #1014160d}.ctab .n{display:inline-block;min-width:17px;font-size:12px;font-variant-numeric:tabular-nums;margin-left:4px;color:var(--text-faint)}
+  .convo-list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d4d9d0 transparent;padding:8px}
+  .convo{display:flex;gap:10px;position:relative;min-height:115px;padding:15px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;margin-bottom:4px}.convo:hover{background:#f8f9f6}.convo.active{background:#f1f3ed;border-color:#e0e5db}.convo:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+  .messaging-workspace .av{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:650;line-height:1;letter-spacing:0;background:var(--paper-dim);border:1px solid var(--inbox-line);color:var(--text-dim)}.messaging-workspace .av.human{background:var(--ink);border-color:var(--ink);color:#fff}.messaging-workspace .av.agent{background:#fff;border:1px dashed #969e94;color:var(--text-dim)}
+  .cv-body{flex:1;min-width:0}.cv-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.cv-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;line-height:1.4}.convo.unread .cv-name{font-weight:700}.cv-time{font-size:11px;white-space:nowrap;color:var(--text-faint);font-variant-numeric:tabular-nums}.cv-prev{font-size:13px;line-height:1.5;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}.cv-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;font-size:11px;line-height:1.2}.ch-tag{font-size:10px;font-weight:650;letter-spacing:.04em;color:var(--text-dim)}.who-tag{font-size:11px;color:var(--text-dim)}.who-tag::before{content:'·';margin-right:7px;color:#a1a69f}.unread-dot{position:absolute;right:9px;bottom:18px;background:var(--ink);width:5px;height:5px;border-radius:50%}
+  .search-scope{font-size:12px;color:var(--text-dim);padding:8px 10px 12px;line-height:1.5}.empty-box{margin:16px 12px!important;padding:22px 12px;border:0;border-radius:12px;color:var(--text-dim);font-size:14px;line-height:1.65;background:var(--paper,#f8f8f6);text-align:left;overflow-wrap:anywhere}.empty-box strong{display:block;color:var(--text);font-weight:600;margin-bottom:5px}.empty-box .retry-link{margin-top:14px}
+  .loading-state{margin:12px;padding:8px 0;color:var(--text-dim);font-size:13px;line-height:1.6}.loading-state .skeleton{display:block;height:10px;background:#edf0e8;border-radius:5px;margin:18px 0;width:85%;animation:loading-pulse 1.5s ease-in-out infinite}.loading-state .skeleton:nth-of-type(2n){width:58%;margin-bottom:30px}
+  .thread-col{display:flex;flex-direction:column;overflow:hidden;background:#fff}.thread-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;min-height:90px;border-bottom:1px solid var(--inbox-line);background:#fff}.th-left{display:flex;align-items:center;gap:12px;min-width:0}.th-person{min-width:0}.th-name{font-size:19px;line-height:1.35;font-weight:650;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}.th-name:focus-visible{outline:none}.th-sub{font-size:12px;line-height:1.5;color:var(--text-dim);margin-top:3px}.messaging-workspace .thread-head .av{width:40px;height:40px;font-size:12px}.back-btn{display:none}.context-btn{display:none;padding-inline:12px;min-height:44px}.context-btn:disabled{opacity:.4}
+  .thread{flex:1;min-height:0;overflow-y:auto;padding:28px 24px 12px;background:#fcfcfa;scrollbar-width:thin;scrollbar-color:#d4d9d0 transparent;overscroll-behavior:contain}.thread>.empty-box{margin:24px 0!important;background:transparent;max-width:360px}.thread>.empty-box::before{content:'Conversation';display:block;color:var(--text);font-size:20px;line-height:1.4;font-weight:600;letter-spacing:-.025em;margin-bottom:8px}
+  .messaging-workspace .msg{display:flex;align-items:flex-start;gap:10px;margin-bottom:24px}.messaging-workspace .msg.out{flex-direction:row-reverse}.messaging-workspace .msg .av{width:28px;height:28px;font-size:10px;margin-top:23px}.msg-col{max-width:min(82%,680px);min-width:0;display:flex;flex-direction:column;align-items:flex-start}.messaging-workspace .msg.out .msg-col{align-items:flex-end}.msg-sender{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;line-height:1.4;color:var(--text-dim);margin-bottom:7px}.msg-sender .nm{font-weight:600;color:var(--text-dim)}.msg-sender .ch-pill{font-size:10px;color:var(--text-faint)}.agent-tag{font-size:10px;font-weight:600;background:#eef0ea;padding:1px 5px;border-radius:4px;color:var(--text-dim)}
+  .bubble{max-width:100%;padding:13px 16px;border-radius:15px;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.in{background:#fff;border:1px solid var(--inbox-line);border-bottom-left-radius:4px;color:var(--text)}.bubble.out-human{background:#202622;color:#fff;border:1px solid #202622;border-bottom-right-radius:4px}.bubble.out-agent{background:#f0f3ec;border:1px solid #e0e5db;border-bottom-right-radius:4px;color:var(--text)}.email-subj{font-size:15px;font-weight:650;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #d9dfd5}.bubble.out-human .email-subj{border-color:#ffffff40}.msg-time{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text-faint);margin-top:6px}.msg-error{max-width:100%;padding:9px 11px;margin-top:8px;border:1px solid #e7bdb7;border-radius:9px;background:#fff5f3;color:#8d342c;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+  .compose{flex:none;border:0;border-top:1px solid var(--inbox-line);border-radius:0;box-shadow:none!important;background:#fff;padding:17px 22px 18px}.compose-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.ch-toggle{display:flex;gap:4px;padding:3px;border-radius:10px;background:var(--paper-dim);flex:none}.ch-btn{min-width:62px;min-height:38px;padding:8px 12px;border:0;border-radius:7px;background:transparent;color:var(--text-dim);font-size:12px;font-weight:600}.ch-btn.active{background:#fff;color:var(--text);box-shadow:0 1px 3px #1014160d}.ch-btn:disabled{opacity:.45}.compose-note{font-size:11px;line-height:1.5;color:var(--text-faint);max-width:190px;text-align:right}.quiet-note{padding:0 0 0 10px;margin-bottom:12px;border-left:2px solid #dfe4d9;color:var(--text-dim);font-size:12px;line-height:1.6}.quiet-note.closed{background:#fcf8ec;border-left-color:#d7b16a;border-radius:0 8px 8px 0;padding:9px 11px;color:var(--inbox-hold)}
+  .compose-to{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-bottom:11px}.compose-to label{font-size:12px;font-weight:600;color:var(--text-dim)}.compose-input{min-width:0;border:1px solid var(--inbox-line);border-radius:11px;background:#fff;color:var(--text);padding:11px 12px;font-size:14px;line-height:1.5}.compose-to input{flex:1;min-width:100px;min-height:40px;font-size:13px;padding:9px 11px}.to-note{flex-basis:100%;font-size:12px;color:var(--text-dim);line-height:1.5}.to-note.bad{color:var(--inbox-alert)}.compose-box{display:flex;align-items:flex-end;gap:10px}.compose-box textarea{flex:1;min-height:95px;max-height:180px;resize:vertical}.compose-input:focus{border-color:var(--ink)}.compose-input:disabled{color:var(--text-faint);background:var(--paper-dim)}.compose-actions{display:flex;flex-direction:column;gap:8px}.send-btn{min-height:44px;padding:12px 19px;background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:11px;font-size:13px;font-weight:600}.send-btn:disabled{opacity:.4}.sending-as{font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:11px}.sending-as[data-tone=stop]{color:var(--inbox-alert)!important}.sending-as[data-tone=hold]{color:var(--inbox-hold)!important}.sending-as[data-tone=stop]::before{content:'!';display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:50%;width:14px;height:14px;font-size:10px;font-weight:700;margin-right:6px}.messaging-workspace:not(.has-thread) .compose{display:none}
+  .ctx-col{border-left:0;border-radius:0 18px 18px 0;overflow-y:auto;padding:22px 18px;background:#fff;scrollbar-width:thin;scrollbar-color:#d4d9d0 transparent}.ctx-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:23px}.ctx-heading h2{margin:0;font-size:14px;font-weight:650;line-height:1.4}.ctx-close{display:none}.ctx-person-name{font-size:19px;line-height:1.4;font-weight:600;letter-spacing:-.02em;margin:0 0 5px;overflow-wrap:anywhere}.ctx-card{background:transparent;border:0;border-radius:0;box-shadow:none!important;padding:0}.ctx-role{font-size:12px;line-height:1.6;color:var(--text-dim)}.ctx-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:13px 0;border-bottom:1px solid var(--inbox-line);font-size:12px;line-height:1.6}.ctx-row:last-child{border:0}.ctx-row .k{color:var(--text-dim);flex:none}.ctx-row .v{color:var(--text);text-align:right;overflow-wrap:anywhere;min-width:0;font-variant-numeric:tabular-nums}
+  .ctx-sec{border-top:1px solid var(--inbox-line);margin-top:20px}.ctx-sec>summary{display:flex;align-items:center;justify-content:space-between;min-height:48px;gap:10px;list-style:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)}.ctx-sec>summary::-webkit-details-marker{display:none}.ctx-sec>summary::after{content:'+';color:var(--text-faint);font-size:17px;font-weight:400}.ctx-sec[open]>summary::after{content:'−'}.sec-body{padding-bottom:4px}.ctx-col .empty-box{font-size:12px;line-height:1.7;margin:0!important;padding:14px;border-radius:10px}.link-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:11px 12px;border:1px solid var(--inbox-line);border-radius:10px;color:var(--text);background:#fff;text-decoration:none;font-size:13px;font-weight:500}.link-btn:hover{background:var(--paper-dim)}.link-btn .ar{color:var(--text-faint)}
+  .demozone{border-top:1px solid var(--inbox-line);margin-top:20px}.demo-div{display:flex;align-items:center;gap:8px;min-height:48px;padding:12px 0;border:0;background:transparent;color:var(--text-dim);font-size:12px;font-weight:500;text-align:left;width:100%;cursor:pointer}.dd-chev{margin-left:auto;font-size:15px}.demozone.open .dd-chev{transform:rotate(180deg)}.demo-body{padding:2px 0 8px}.demo-cap{font-size:12px;line-height:1.6;color:var(--text-dim);margin-bottom:14px}.legend{display:flex;flex-direction:column;gap:12px;font-size:11px;line-height:1.6;color:var(--text-dim)}.li{display:flex;align-items:flex-start;gap:8px}.sw{margin-top:4px;width:12px;height:10px;border-radius:3px;flex:none}.sw.human{background:var(--ink)}.sw.agent{background:#eff3ea;border:1px dashed #969e94}.sw.client{background:#fff;border:1px solid #cbd1c5}
+  .retry-link{display:inline-flex;align-items:center;min-height:40px;border:1px solid var(--inbox-line);border-radius:9px;padding:8px 12px;background:#fff;color:var(--text);font-size:13px;font-weight:600}
+  @media(max-width:1180px){.messaging-workspace{grid-template-columns:270px minmax(0,1fr);padding:16px}.thread-col{border-radius:0 18px 18px 0}.context-btn{display:inline-flex}.ctx-col{display:none}.context-open .ctx-col{display:block;position:absolute;z-index:4;right:16px;top:16px;bottom:16px;width:300px;max-width:calc(100% - 32px);border:1px solid var(--inbox-line);border-radius:16px;box-shadow:0 12px 40px #10141620}.ctx-close{display:inline-flex}.context-open .thread-col::before{content:'';position:absolute;inset:16px;background:#10141610;z-index:3;pointer-events:none;border-radius:18px}.thread-head{padding-inline:18px}.compose{padding-inline:18px}.thread{padding-inline:18px}.compose-note{max-width:165px}}
+  @media(max-width:860px){
+    .messaging-workspace{display:flex;padding:12px;overflow:hidden}.convo-col,.thread-col{width:100%;border:1px solid var(--inbox-line);border-radius:16px;max-height:none;overflow:hidden}.convo-col{flex:1}.thread-col{display:none;flex:1;min-height:0}.thread-open .convo-col{display:none}.thread-open .thread-col{display:flex}.back-btn{display:inline-flex;min-width:40px;min-height:44px;padding:8px;border:0;margin-left:-7px}.thread-head{min-height:86px;padding:15px 14px;gap:8px}.th-left{gap:8px;flex:1}.th-name{font-size:17px}.th-sub{font-size:11px}.messaging-workspace .thread-head .av{display:none}.context-btn{font-size:12px;padding:10px;min-width:58px}.thread{padding:23px 16px 8px}.messaging-workspace .msg{gap:8px;margin-bottom:22px}.messaging-workspace .msg .av{display:none}.msg-col{max-width:91%}.bubble{font-size:14px;line-height:1.65;padding:12px 14px}.compose{padding:12px 14px 14px}.compose-top{gap:10px;margin-bottom:11px}.ch-btn{min-height:38px;padding:8px 11px;min-width:58px}.compose-note{font-size:10px;max-width:125px}.quiet-note{font-size:11px;line-height:1.55;margin-bottom:10px}.compose-to{gap:7px 9px;margin-bottom:9px}.compose-to label{font-size:11px}.compose-to input{min-height:40px;padding:9px;font-size:12px}.to-note{font-size:11px}.compose-box{gap:8px}.compose-box textarea{font-size:14px;min-height:78px;max-height:150px;padding:10px}.send-btn{padding:12px 14px;min-width:65px}.sending-as{font-size:10px;line-height:1.6;margin-top:9px}.context-open .ctx-col{inset:12px;width:auto;max-width:none;border-radius:16px;padding:18px 20px}.context-open .thread-col::before{inset:12px}.ctx-heading{margin-bottom:20px}.ctx-heading h2{font-size:18px}.ctx-close{border:0}.ctx-person-name{font-size:23px}.ctx-role,.ctx-row{font-size:13px}.ctx-row{padding-block:15px}.ctx-sec>summary{min-height:52px;font-size:14px}.ctx-col .empty-box{font-size:13px}.inbox-heading h2{font-size:24px}.convo-head{padding:18px 16px 16px}.search input{font-size:14px}.ctab{font-size:13px}.convo{padding:16px 12px;min-height:118px}.cv-name{font-size:15px}.cv-prev{font-size:13px}.cv-time{font-size:12px}.cv-meta{margin-top:10px}.cv-meta .ch-tag{font-size:10px}.cv-meta .who-tag{font-size:11px}.messaging-workspace .convo .av{width:36px;height:36px;font-size:12px}
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;background:var(--ink);font-family:var(--sans);color:var(--text);overflow:hidden;}
-  .shell{height:100vh;display:flex;flex-direction:column;}
-
-  /* ---------- chrome ---------- */
-  header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;flex-shrink:0;border-bottom:1px solid var(--dark-line);}
-  /* ══════════════════════════════════════════════════════════════════════════
-     SHARED CHROME — collapsible grouped sidebar. Identical across every file.
-     ══════════════════════════════════════════════════════════════════════════ */
-  .app{display:flex;height:100vh;overflow:hidden;}
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  @media (max-width:480px){
-    /* .topbar-right ran past the right edge of a phone screen and clipped
-       the LIVE pill off entirely — same fix as pipeline.html: the clock is
-       the least useful of the three on a phone, dropping it buys back the
-       room org + LIVE status need. */
-    .clock{display:none;}
-    .topbar-right{gap:8px;}
+  @media(max-width:350px){.messaging-workspace{padding:8px}.convo-head{padding:16px 12px}.convo-list{padding:6px}.convo{padding-inline:9px;gap:8px}.messaging-workspace .convo .av{width:30px;height:30px;font-size:10px}.cv-name{font-size:14px}.cv-time{font-size:10px}.thread-head{padding:13px 11px}.th-name{font-size:16px}.th-sub{font-size:10px}.thread{padding-inline:13px}.compose{padding-inline:11px}.compose-note{max-width:108px}.compose-to label{flex-basis:100%}.compose-box{flex-wrap:wrap}.compose-box textarea{flex-basis:100%;min-height:74px}.compose-actions{margin-left:auto}.send-btn{min-height:44px}.sending-as{font-size:10px}.context-open .ctx-col{inset:8px;padding:16px}.context-open .thread-col::before{inset:8px}}
+  /* The shared phone .client width rule is for page panels; a client avatar
+     and the waiting-on-us text keep their own geometry inside this inbox. */
+  @media(max-width:390px){
+    .messaging-workspace .convo .av.client{flex:0 0 36px!important;width:36px!important;max-width:36px!important;min-width:36px!important}
+    .messaging-workspace .who-tag.client{width:auto!important;max-width:none!important;min-width:0!important;flex:0 0 auto!important}
   }
-  .shell{flex:1;min-width:0;display:flex;flex-direction:column;}
-  .ctab{cursor:pointer;}
-  .convo{cursor:pointer;}
-  .convo.hidden,.msg.hidden,.call-card.hidden,.handoff.hidden,.daydiv.hidden{display:none;}
-  .brand{display:flex;align-items:center;gap:9px;}
-  .brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0;}
-  .brand .sep{color:var(--dark-text-dim);font-weight:400;}
-  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);}
-  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);}
-  .live-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--dark-text);background:var(--card);border:1px solid var(--dark-line);padding:4px 9px 4px 7px;border-radius:20px;}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:livepulse 1.8s infinite;}
-  @keyframes livepulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent);}70%{box-shadow:0 0 0 6px color-mix(in srgb,var(--ok) 0%,transparent);}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 0%,transparent);}}
-  .clock{font-family:var(--mono);font-size:var(--fs-caption);color:var(--dark-text);}
-
-  /* width:100% is what keeps .fh-maxw (UI-STANDARDS §1) honest here: main is a
-     flex item, and giving it auto inline margins to centre it switches off the
-     cross-axis stretch that used to set its width. Without an explicit width it
-     would shrink to fit its contents instead of filling up to the 1280px cap. */
-  main{flex:1;width:100%;display:grid;grid-template-columns:288px 1fr 300px;min-height:0;background:var(--line);gap:1px;}
-  @media (max-width:820px){
-    /* The three columns (conversation list / thread / client context) run
-       288+300=588px of fixed width alone, before the thread column gets
-       anything — no room on a phone. Stacked instead of side-by-side, each
-       still scrolls its own content, same as it already did in its column. */
-    main{display:flex;flex-direction:column;height:auto;overflow-y:auto;}
-    .convo-col,.thread-col,.ctx-col{max-height:60vh;overflow-y:auto;flex:none;}
-    .ctx-col{padding-bottom:80px;}
-  }
-  @media (max-width:480px){
-    /* No padding above .convo-list here on purpose. It used to carry
-       padding-top:56px to duck the shell's role/sign-out chip when that chip
-       hung at the top of a phone screen. shell.js now docks the chip to the
-       BOTTOM below 480px (CHIP_BREAKPOINT_CSS), so the 56px cleared nothing —
-       it was just an empty band above the first conversation, and it cost
-       roughly a whole row out of the short list a phone can show. */
-    /* .app clips horizontal overflow everywhere (its own overflow:hidden),
-       and the fourth filter chip ("Calls") ran past that clip — reachable
-       nowhere, not just tight. Same fix as every table/tab-bar elsewhere in
-       this pass: let it scroll instead of assuming four chips fit 390px. */
-    .th-right{overflow-x:auto;}
-  }
-
-  /* ---------- LEFT: conversation list ---------- */
-  .convo-col{background:var(--paper);display:flex;flex-direction:column;min-height:0;}
-  .convo-head{padding:8px 12px;border-bottom:1px solid var(--line);flex-shrink:0;background:var(--surface);}
-  .search{display:flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 9px;color:var(--text-faint);font-size:var(--fs-body);}
-  .search input{border:none;background:transparent;outline:none;font-family:var(--sans);font-size:var(--fs-body);width:100%;color:var(--text);}
-  .convo-tabs{display:flex;gap:4px;margin-top:7px;}
-  .ctab{font-size:var(--fs-caption);font-weight:600;padding:3px 8px;border-radius:11px;color:var(--text-dim);background:var(--paper);border:1px solid var(--line);}
-  .ctab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  .ctab .n{font-family:var(--mono);opacity:.75;margin-left:3px;}
-
-  .convo-list{overflow-y:auto;flex:1;}
-  .convo-list::-webkit-scrollbar{width:8px;}
-  .convo-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
-
-  .convo{display:flex;gap:9px;padding:8px 12px;border-bottom:1px solid var(--paper-dim);cursor:default;position:relative;}
-  .convo:hover{background:var(--paper-dim);}
-  .convo.active{background:var(--surface);box-shadow:inset 3px 0 0 var(--ink);}
-  .convo.unread .cv-name{font-weight:800;}
-  .av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:800;letter-spacing:-.2px;}
-  .av.human{background:var(--ink);color:#fff;}
-  .av.agent{background:#fff;color:var(--accent);border:1.5px solid var(--accent);}
-  .av.client{background:var(--paper-dim);color:var(--text-dim);border:1px solid var(--line);}
-  .av.sm{width:17px;height:17px;font-size:var(--fs-caption);}
-
-  .cv-body{flex:1;min-width:0;}
-  .cv-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
-  .cv-name{font-size:var(--fs-body);font-weight:700;color:var(--text);}
-  .cv-time{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);white-space:nowrap;}
-  .cv-prev{font-size:var(--fs-caption);color:var(--text-dim);margin-top:2px;line-height:1.3;overflow:hidden;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-  .cv-meta{display:flex;align-items:center;gap:5px;margin-top:4px;}
-  .who-tag{display:flex;align-items:center;gap:4px;font-size:var(--fs-caption);font-weight:700;letter-spacing:.2px;
-    padding:1px 6px 1px 4px;border-radius:8px;text-transform:uppercase;}
-  .who-tag.agent{background:var(--accent-bg);color:var(--ink2);border:1px solid var(--accent-line);}
-  .who-tag.human{background:var(--paper-dim);color:var(--text-dim);border:1px solid var(--line);}
-  .who-tag.client{background:var(--info-bg);color:var(--ink2);border:1px solid var(--info-line);}
-  .ch-tag{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);
-    border:1px solid var(--line);border-radius:4px;padding:0 4px;}
-  .unread-dot{width:7px;height:7px;border-radius:50%;background:var(--info);flex-shrink:0;margin-top:8px;}
-  .unread-dot.urgent{background:var(--alert);}
-  .live-tag{display:flex;align-items:center;gap:4px;font-size:var(--fs-caption);font-weight:800;letter-spacing:.3px;
-    color:var(--ink2);background:var(--ok-bg);border:1px solid var(--ok-line);padding:1px 6px 1px 4px;border-radius:8px;}
-  .live-tag .d{width:5px;height:5px;border-radius:50%;background:var(--ok);animation:livepulse 1.8s infinite;}
-
-  /* ---------- CENTER: thread ---------- */
-  .thread-col{background:var(--paper);display:flex;flex-direction:column;min-height:60vh;}
-  .thread-head{background:var(--surface);border-bottom:1px solid var(--line);padding:8px 16px;flex-shrink:0;
-    display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .th-left{display:flex;align-items:center;gap:10px;}
-  .th-name{font-size:var(--fs-title);font-weight:800;}
-  .th-sub{font-size:var(--fs-caption);color:var(--text-dim);margin-top:1px;}
-  .th-right{display:flex;align-items:center;gap:6px;}
-  .fchip{font-size:var(--fs-caption);font-weight:600;padding:4px 9px;border-radius:6px;border:1px solid var(--line);
-    background:var(--surface);color:var(--text-dim);cursor:pointer;}
-  .fchip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-
-  /* The legend no longer sits over the thread. Sender is already stated three
-     ways on every message — avatar, bubble treatment, and tag — so the strip
-     was restating a convention the thread teaches on its own. It lives in the
-     reference drawer at the bottom of the page instead. */
-  .legend{display:flex;align-items:center;gap:12px;font-size:var(--fs-caption);color:var(--text-faint);flex-wrap:wrap;}
-  .legend b{color:var(--text-dim);font-weight:700;}
-  .legend .li{display:flex;align-items:center;gap:5px;}
-  .sw{width:16px;height:11px;border-radius:3px;flex-shrink:0;}
-  .sw.human{background:var(--ink);}
-  .sw.agent{background:#fff;border:1.5px solid var(--accent);}
-  .sw.client{background:var(--surface);border:1px solid var(--line);}
-
-  .thread{flex:1;overflow-y:auto;padding:14px 16px 16px;}
-  .thread::-webkit-scrollbar{width:9px;}
-  .thread::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px;}
-
-  .daydiv{display:flex;align-items:center;gap:10px;margin:12px 0 10px;}
-  .daydiv:first-child{margin-top:0;}
-  .daydiv .ln{flex:1;height:1px;background:var(--line);}
-  .daydiv .lbl{font-size:var(--fs-caption);font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint);}
-
-  .msg{display:flex;gap:9px;margin-bottom:11px;align-items:flex-start;}
-  .msg.out{flex-direction:row-reverse;}
-  .msg-col{max-width:74%;display:flex;flex-direction:column;}
-  .msg.out .msg-col{align-items:flex-end;}
-  .msg-sender{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:var(--fs-caption);color:var(--text-dim);}
-  .msg-sender .nm{font-weight:700;color:var(--text);}
-  .agent-tag{font-size:var(--fs-caption);font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-    background:var(--accent-bg);color:var(--ink2);border:1px solid var(--accent-line);border-radius:4px;padding:0 4px;}
-  .human-tag{font-size:var(--fs-caption);font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-    background:var(--paper-dim);color:var(--text-dim);border:1px solid var(--line);border-radius:4px;padding:0 4px;}
-  .ch-pill{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);
-    border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--surface);}
-
-  .bubble{padding:8px 11px;border-radius:10px;font-size:var(--fs-body);line-height:1.45;}
-  .bubble.in{background:var(--surface);border:1px solid var(--line);border-top-left-radius:3px;color:var(--text);}
-  .bubble.out-human{background:var(--ink);color:var(--paper);border-top-right-radius:3px;}
-  .bubble.out-agent{background:#fff;border:1.5px solid var(--accent-line);border-top-right-radius:3px;color:var(--text);}
-  .bubble.email{border-radius:8px;}
-  .email-subj{font-weight:700;font-size:var(--fs-body);margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid rgba(0,0,0,.10);}
-  .bubble.out-human .email-subj{border-bottom-color:rgba(255,255,255,.18);}
-  .attach{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:var(--fs-caption);
-    border:1px solid rgba(255,255,255,.22);border-radius:5px;padding:3px 7px;}
-  .bubble.in .attach{border-color:var(--line);color:var(--text-dim);}
-  .msg-time{font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);margin-top:3px;}
-
-  /* failed send */
-  .msg-error{display:flex;align-items:center;gap:7px;margin-top:4px;background:var(--alert-bg);
-    border:1px solid var(--alert-line);border-radius:6px;padding:4px 8px;font-size:var(--fs-caption);color:var(--ink2);}
-  .msg-error b{font-weight:700;}
-  .retry-btn{font-size:var(--fs-caption);font-weight:700;background:var(--surface);border:1px solid var(--alert-line);color:var(--ink2);
-    border-radius:4px;padding:2px 7px;}
-
-  /* call block */
-  .call-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:11px;}
-  .call-head{display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--paper-dim);border-bottom:1px solid var(--line);}
-  .call-title{font-size:var(--fs-body);font-weight:700;}
-  .call-meta{margin-left:auto;font-family:var(--mono);font-size:var(--fs-caption);color:var(--text-faint);}
-  .call-body{padding:9px 12px;}
-  .tr-line{font-size:var(--fs-body);line-height:1.5;color:var(--text);margin-bottom:3px;}
-  .tr-line .spk{font-weight:700;color:var(--text-dim);}
-  .call-out{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);font-size:var(--fs-caption);color:var(--text-dim);}
-  .call-out b{color:var(--text);}
-
-  .call-card.live{border-color:var(--ok-line);}
-  .call-card.live .call-head{background:var(--ok-bg);border-bottom-color:var(--ok-line);
-    border-top:2px solid transparent;border-image:var(--spectrum) 1;}
-
-  /* handoff event */
-  .handoff{display:flex;align-items:center;gap:9px;margin:13px 0;}
-  .handoff .ln{flex:1;height:1px;background:var(--accent-line);}
-  .handoff .box{display:flex;align-items:center;gap:7px;background:var(--accent-bg);border:1px solid var(--accent-line);
-    border-radius:14px;padding:4px 11px;font-size:var(--fs-caption);color:var(--ink2);}
-  .handoff .box b{font-weight:800;}
-
-  /* compose */
-  .compose{background:var(--surface);border-top:1px solid var(--line);padding:9px 16px 10px;flex-shrink:0;}
-  .compose-top{display:flex;align-items:center;gap:6px;margin-bottom:7px;}
-  .ch-toggle{display:flex;align-items:center;gap:4px;}
-  .ch-btn{font-size:var(--fs-caption);font-weight:700;padding:4px 11px;border-radius:6px;border:1px solid var(--line);
-    background:var(--surface);color:var(--text-dim);cursor:pointer;font-family:inherit;}
-  .ch-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  .ch-btn:disabled{opacity:.45;cursor:default;}
-  .compose-note{margin-left:auto;font-size:var(--fs-caption);color:var(--text-faint);display:flex;align-items:center;gap:6px;}
-  .compose-note .pausetag{background:var(--accent-bg);color:var(--ink2);border:1px solid var(--accent-line);
-    border-radius:4px;padding:1px 6px;font-size:var(--fs-caption);font-weight:700;}
-  .compose-box{display:flex;gap:9px;align-items:flex-end;}
-  /* The destination row. One line, above the box, so a person reads where it
-     is going before they read what they are writing. */
-  .compose-to{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
-  .compose-to label{font-size:var(--fs-caption);color:var(--text-dim);white-space:nowrap;}
-  .compose-to input.compose-input{min-height:32px;padding:5px 9px;}
-  .compose-to input.compose-input:disabled{opacity:.55;}
-  .to-note{font-size:var(--fs-caption);color:var(--text-dim);white-space:nowrap;}
-  .to-note.bad{color:var(--danger,#C2453D);}
-  .compose-input{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-height:54px;
-    font-size:var(--fs-body);color:var(--text-faint);background:var(--paper);}
-  .compose-actions{display:flex;flex-direction:column;gap:6px;}
-  .send-btn{background:var(--ink);color:#fff;border:none;border-radius:7px;padding:9px 20px;min-height:44px;font-weight:700;font-size:var(--fs-body);}
-  .tmpl-btn{background:var(--surface);color:var(--text-dim);border:1px solid var(--line);border-radius:7px;
-    padding:5px 12px;font-weight:600;font-size:var(--fs-body);}
-  .sending-as{display:flex;align-items:center;gap:6px;font-size:var(--fs-caption);color:var(--text-dim);margin-top:7px;}
-
-  /* ---------- RIGHT: client context ---------- */
-  .ctx-col{background:var(--paper);overflow-y:auto;padding:11px 13px 16px;}
-  .ctx-col::-webkit-scrollbar{width:8px;}
-  .ctx-col::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
-  .ctx-title{font-size:var(--fs-caption);font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);margin:12px 0 6px;}
-  .ctx-title:first-child{margin-top:0;}
-  .ctx-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
-  .ctx-name{font-size:var(--fs-body);font-weight:800;}
-  .ctx-role{font-size:var(--fs-caption);color:var(--text-dim);margin-top:1px;}
-  .ctx-row{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--paper-dim);font-size:var(--fs-caption);}
-  .ctx-row:last-child{border-bottom:none;}
-  .ctx-row .k{color:var(--text-dim);}
-  .ctx-row .v{font-family:var(--mono);font-weight:600;color:var(--text);text-align:right;}
-  .pill{display:inline-block;font-size:var(--fs-caption);font-weight:700;padding:2px 7px;border-radius:9px;}
-  .pill.blue{background:var(--info-bg);color:var(--ink2);}
-  .pill.green{background:var(--ok-bg);color:var(--ink2);}
-  .pill.amber{background:var(--warn-bg);color:var(--ink2);}
-  .consent-row{display:flex;gap:5px;flex-wrap:wrap;}
-  .consent{font-size:var(--fs-caption);font-weight:700;padding:2px 7px;border-radius:9px;background:var(--ok-bg);color:var(--ink2);border:1px solid var(--ok-line);}
-  .consent.off{background:var(--paper-dim);color:var(--text-faint);border-color:var(--line);}
-  .link-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--surface);
-    color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 10px;margin-bottom:5px;
-    font-size:var(--fs-body);font-weight:600;}
-  .link-btn .ar{color:var(--text-faint);}
-  .empty-box{border:1px dashed var(--line);border-radius:7px;padding:12px;text-align:center;
-    color:var(--text-faint);font-size:var(--fs-body);background:var(--surface);}
-
-  /* ---- right rail: four facts stay up, everything else is one click away ---- */
-  .ctx-sec{border-top:1px solid var(--line);}
-  .ctx-sec > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
-    padding:9px 2px 8px;font-size:var(--fs-caption);font-weight:700;letter-spacing:1px;
-    text-transform:uppercase;color:var(--text-dim);}
-  .ctx-sec > summary::-webkit-details-marker{display:none;}
-  .ctx-sec > summary::after{content:"▾";margin-left:auto;font-size:var(--fs-caption);color:var(--text-faint);
-    transition:transform .16s;}
-  .ctx-sec[open] > summary::after{transform:rotate(180deg);}
-  .ctx-sec > summary:hover{color:var(--text);}
-  .ctx-sec .sec-body{padding-bottom:11px;}
-
-  /* ---- reference drawer — collapsed, costs one divider row ---- */
-  .demozone{flex-shrink:0;background:var(--surface);border-top:1px solid var(--line);}
-  .demo-div{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:0;cursor:pointer;
-    padding:6px 14px;text-align:left;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
-    text-transform:uppercase;color:var(--text-faint);}
-  .demo-div:hover{color:var(--text-dim);background:var(--paper);}
-  .demo-div .dd-sub{letter-spacing:.06em;text-transform:none;font-size:var(--fs-caption);}
-  .demo-div .dd-chev{margin-left:auto;font-size:var(--fs-caption);transition:transform .16s;}
-  .demozone.open .demo-div .dd-chev{transform:rotate(180deg);}
-  .demo-body{border-top:1px dashed var(--line);background:var(--paper);padding:11px 14px 13px;
-    display:flex;flex-direction:column;gap:12px;max-height:34vh;overflow:auto;}
-  .demo-body[hidden]{display:none;}
-  .demo-cap{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;
-    color:var(--text-faint);margin-bottom:6px;}
-
-  footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;align-items:center;
-    padding:0 14px;gap:16px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.06em;
-    text-transform:lowercase;color:var(--gray);position:relative;overflow:hidden;}
-  footer.statusbar > *{position:relative;z-index:1;}
-  footer.statusbar .ghost{position:absolute;left:2vw;right:2vw;top:50%;transform:translateY(-50%);
-    aspect-ratio:2698/543;background:var(--logo) no-repeat center/contain;
-    filter:invert(1);opacity:.05;pointer-events:none;z-index:0;}
-  .nominal{display:flex;align-items:center;gap:7px;margin-left:auto;}
-  /* The compose box is a real <textarea> now, not a placeholder div, and the
-     tabs are real <button>s. Both inherit browser defaults that fight the rest
-     of the page unless they are told not to. */
-  /* The texting-hours line. Two looks: a quiet statement of the rule while the
-     window is open, and a real warning while it is shut. */
-  /* What the search box is really searching, when that is not everything. */
-  .search-scope{font-size:var(--fs-caption);color:var(--text-faint);padding:7px 12px 0;line-height:1.4;}
-  .quiet-note{font-size:var(--fs-caption);line-height:1.45;color:var(--text-dim);margin-bottom:7px;
-    border-left:2px solid var(--line);padding:3px 0 3px 8px;}
-  .quiet-note.closed{color:var(--ink2);border-left-color:var(--warn-line);
-    background:var(--warn-bg);border-radius:0 5px 5px 0;padding:5px 8px;font-weight:600;}
-  .quiet-note[hidden]{display:none;}
-  textarea.compose-input{font-family:var(--sans);color:var(--text);resize:vertical;outline:none;}
-  textarea.compose-input:focus{border-color:var(--ink);}
-  textarea.compose-input:disabled{color:var(--text-faint);background:var(--paper-dim);}
-  .ctab{font-family:var(--sans);cursor:pointer;}
-  .send-btn:disabled{opacity:.42;cursor:default;}
-  .convo:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;}
-  .thread-note{margin-top:14px;padding-top:10px;border-top:1px dashed var(--line);
-    font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.06em;color:var(--text-faint);line-height:1.6;}
+  @media(max-width:350px){.messaging-workspace .convo .av.client{flex-basis:30px!important;width:30px!important;max-width:30px!important;min-width:30px!important}}
+  /* 16px prevents automatic input zoom when a phone keyboard opens. */
+  @media(max-width:860px){.search input,.compose-to input,.compose-box textarea{font-size:16px}.compose-note{font-size:11px}}
+  @keyframes loading-pulse{50%{opacity:.5}}@keyframes refresh-spin{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.loading-state .skeleton,.icon-btn[aria-busy=true] svg{animation:none}}
 </style>
 <script defer src="shell.js"></script>
 </head>
@@ -363,136 +74,110 @@
 <div class="app">
 
   <!-- ══ SIDEBAR — identical across every wireframe ══ -->
-  <aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem on" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem on" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
   <div class="shell">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
-      <div class="sep">/</div>
-      <div class="sub">Messaging</div>
-    </div>
-    <div class="topbar-right">
-      <div class="clock">—</div>
-      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-    </div>
-  </header>
-
-
-  <main class="fh-maxw">
+  <main class="fh-maxw messaging-workspace" id="messagingWorkspace" aria-label="Messaging workspace">
 
     <!-- ============ LEFT: CONVERSATIONS ============
          Every row here is a `conversations` row from GET /api/read/inbox,
          newest activity first. There is no sample markup left in this column:
          if the read fails the list says so, and if it succeeds with nothing it
          says that instead. Those are different sentences on purpose. -->
-    <section class="convo-col">
+    <section class="convo-col" aria-labelledby="inboxTitle">
       <div class="convo-head">
-        <div class="search"><span>&#8981;</span><input id="q" placeholder="Search people and messages" autocomplete="off"></div>
-        <div class="convo-tabs">
-          <button class="ctab" data-filter="all">All <span class="n" id="nAll">&mdash;</span></button>
+        <div class="inbox-heading"><h2 id="inboxTitle">Inbox</h2><button class="icon-btn" id="refreshInbox" type="button" aria-label="Refresh inbox" title="Refresh inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 18 17"/></svg></button></div>
+        <label class="search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span class="sr-only">Search people and messages</span><input id="q" placeholder="Search people and messages" autocomplete="off"></label>
+        <div class="convo-tabs" aria-label="Conversation filter">
+          <button type="button" class="ctab" data-filter="all" aria-pressed="false">All <span class="n" id="nAll">&mdash;</span></button>
           <!-- "Needs reply", not "Unread". Nothing in this system records who
                has READ a thread, so the count is "the client spoke last and
                nobody has answered". See the header of api/read/inbox.mjs.
                Default is the advisor's queue. -->
-          <button class="ctab active" data-filter="reply">Needs reply <span class="n" id="nReply">&mdash;</span></button>
+          <button type="button" class="ctab active" data-filter="reply" aria-pressed="true">Needs reply <span class="n" id="nReply">&mdash;</span></button>
         </div>
       </div>
 
-      <div class="convo-list" id="convoList">
-        <div class="empty-box" id="convoEmpty" style="margin:14px 12px;">Loading conversations&hellip;</div>
+      <div class="convo-list" id="convoList" role="listbox" aria-label="Conversations" aria-busy="true">
+        <div class="loading-state" id="convoEmpty" role="status">Loading conversations&hellip;<span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>
       </div>
     </section>
 
     <!-- ============ CENTER: THREAD ============ -->
-    <section class="thread-col">
+    <section class="thread-col" aria-label="Conversation">
 
       <div class="thread-head">
         <div class="th-left">
-          <div class="av client" id="thAv" style="width:32px;height:32px;font-size:var(--fs-caption);">&mdash;</div>
-          <div>
-            <div class="th-name" id="thName">No conversation open</div>
+          <button class="icon-btn back-btn" id="backToInbox" type="button" aria-label="Back to inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+          <div class="av client" id="thAv" aria-hidden="true">&mdash;</div>
+          <div class="th-person">
+            <h2 class="th-name" id="thName" tabindex="-1">No conversation open</h2>
             <div class="th-sub" id="thSub">Pick one on the left to read it.</div>
           </div>
         </div>
+        <button class="context-btn" id="openClientContext" type="button" aria-controls="clientContext" aria-expanded="false" disabled>Details</button>
       </div>
 
-      <div class="thread" id="thread">
+      <div class="thread" id="thread" role="region" aria-label="Messages" aria-busy="false" tabindex="0">
         <div class="empty-box" id="threadEmpty">Pick a conversation on the left to read it.</div>
       </div>
 
-      <div class="compose">
+      <div class="compose" role="region" aria-label="Reply">
         <div class="compose-top">
           <div class="ch-toggle" id="composeChannelToggle" hidden>
             <button type="button" class="ch-btn" data-channel="email" id="chEmail">Email</button>
             <button type="button" class="ch-btn" data-channel="sms" id="chText">Text</button>
           </div>
-          <span class="compose-note" id="composeNote">Switch Email or Text to open that conversation.</span>
+          <span class="compose-note" id="composeNote">One conversation per channel.</span>
         </div>
         <!-- The texting-hours rule, stated BEFORE anything is typed. Hidden on
              email threads, where it does not apply. -->
@@ -510,16 +195,16 @@
           <div class="to-note" id="composeToNote" hidden></div>
         </div>
         <div class="compose-box">
-          <textarea class="compose-input" id="composeBody" rows="3" maxlength="4000"
+          <textarea class="compose-input" id="composeBody" aria-label="Write a reply" rows="3" maxlength="4000"
                     placeholder="Pick a conversation first" disabled></textarea>
           <div class="compose-actions">
-            <button class="send-btn" id="sendBtn" disabled>Send</button>
+            <button class="send-btn" id="sendBtn" type="button" disabled>Send</button>
           </div>
         </div>
         <!-- Two facts a person needs before they press Send, and both are true:
              their name is stored on the message, and the message is checked
              before it leaves. Neither is decoration. -->
-        <div class="sending-as" id="sendStatus">
+        <div class="sending-as" id="sendStatus" role="status" aria-live="polite" aria-atomic="true">
           Your name is saved on anything you send from here. Every message is checked before it goes out.
         </div>
       </div>
@@ -532,9 +217,10 @@
          that used to sit here were sample values with no endpoint behind them;
          printing a made-up funding number next to a live thread is the kind of
          thing somebody reads aloud on a call. -->
-    <section class="ctx-col">
-
+    <section class="ctx-col" id="clientContext" aria-labelledby="contextTitle">
+      <div class="ctx-heading"><h2 id="contextTitle" tabindex="-1">Client details</h2><button class="icon-btn ctx-close" id="closeClientContext" type="button" aria-label="Back to conversation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
       <div class="ctx-card">
+        <div class="ctx-person-name" id="ctxName"></div>
         <div class="ctx-role" id="ctxRole">Pick a conversation to see who it is with.</div>
         <div style="margin-top:8px;" id="ctxRows"></div>
       </div>
@@ -546,44 +232,30 @@
         </div>
       </details>
 
-      <details class="ctx-sec">
-        <summary>Open elsewhere</summary>
+      <details class="ctx-sec" open>
+        <summary>Client file</summary>
         <div class="sec-body" id="ctxLinks">
           <div class="empty-box">Pick a conversation first.</div>
         </div>
       </details>
 
+      <section class="demozone" id="demozone">
+        <button class="demo-div" id="demoToggle" type="button" aria-expanded="false" aria-controls="demoBody"><span>Message guide</span><span class="dd-chev" aria-hidden="true">⌄</span></button>
+        <div class="demo-body" id="demoBody" hidden>
+          <div class="demo-cap">Every message names its sender.</div>
+          <div class="legend">
+            <span class="li"><span class="sw human"></span>Your team — dark bubble, their name above it</span>
+            <span class="li"><span class="sw agent"></span>The system — “Automatic” beside the message</span>
+            <span class="li"><span class="sw client"></span>The client — plain bubble, their name above it</span>
+          </div>
+        </div>
+      </section>
+      <span class="sr-only" id="footName">none open</span>
     </section>
 
   </main>
 
-  <!-- ══ REFERENCE — collapsed by default, costs one divider row ══ -->
-  <section class="demozone" id="demozone">
-    <button class="demo-div" id="demoToggle" aria-expanded="false">
-      <span>Reference</span>
-      <span class="dd-sub">who-sent-it colour key</span>
-      <span class="dd-chev">▾</span>
-    </button>
-    <div class="demo-body" id="demoBody" hidden>
 
-      <div>
-        <div class="demo-cap">MS-01 / Who sent it — every message already states this three ways at once</div>
-        <div class="legend">
-          <span class="li"><span class="sw human"></span>someone on your team — dark avatar, dark bubble, their name on it</span>
-          <span class="li"><span class="sw agent"></span>sent automatically by the system — outlined avatar, “Automatic” tag</span>
-          <span class="li"><span class="sw client"></span>the client — plain avatar, plain bubble, no tag</span>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <footer class="statusbar">
-    <span class="ghost"></span>
-    <span>fundhub-messaging · v1</span>
-    <span>thread: <span id="footName">none open</span></span>
-    <span class="nominal"><span class="pulse"></span>systems nominal · fundhub.ai</span>
-  </footer>
 
   </div>
 </div>
@@ -818,7 +490,7 @@
       '" data-id="' + esc(row.id) + '" tabindex="0">' +
       '<div class="av client">' + esc(initials(row)) + "</div>" +
       '<div class="cv-body">' +
-        '<div class="cv-top"><span class="cv-name">' + esc(displayName(row)) + "</span>" +
+        '<div class="cv-top"><span class="cv-name" title="' + esc(displayName(row)) + '">' + esc(displayName(row)) + "</span>" +
         '<span class="cv-time">' + esc(shortWhen(row.last_at || row.last_pulse_at, o.now)) + "</span></div>" +
         '<div class="cv-prev">' + esc(previewOf(row)) + "</div>" +
         '<div class="cv-meta">' +
@@ -1065,6 +737,40 @@
      appearing. */
   var REFRESH_MS = 30000;
 
+  /* Phone uses one working pane at a time. Selection, draft and APIs remain
+     the same; these controls only change which pane can be seen and focused. */
+  function showConversation() {
+    var workspace = $("messagingWorkspace");
+    var wasOpen = workspace.classList.contains("thread-open");
+    workspace.classList.add("has-thread", "thread-open");
+    $("openClientContext").disabled = false;
+    if (!wasOpen && window.matchMedia("(max-width:860px)").matches) $("thName").focus();
+  }
+  function setContextOpen(open) {
+    $("messagingWorkspace").classList.toggle("context-open", open);
+    $("openClientContext").setAttribute("aria-expanded", open ? "true" : "false");
+    document.querySelector(".convo-col").inert = open;
+    document.querySelector(".thread-col").inert = open;
+    if (open) {
+      $("clientContext").setAttribute("role", "dialog");
+      $("clientContext").setAttribute("aria-modal", "true");
+    } else {
+      $("clientContext").removeAttribute("role");
+      $("clientContext").removeAttribute("aria-modal");
+    }
+  }
+  function closeContext() {
+    setContextOpen(false);
+    $("openClientContext").focus();
+  }
+  function backToInbox() {
+    setContextOpen(false);
+    $("messagingWorkspace").classList.remove("thread-open", "context-open");
+    $("openClientContext").setAttribute("aria-expanded", "false");
+    var active = $("convoList").querySelector('.convo[aria-selected="true"]');
+    (active || $("q")).focus();
+  }
+
   /* ---------------------------------------------------------- the list ---- */
 
   function paintList() {
@@ -1099,6 +805,9 @@
 
   function loadList(opts) {
     var quiet = opts && opts.quiet;
+    $("refreshInbox").disabled = true;
+    $("refreshInbox").setAttribute("aria-busy", "true");
+    if (!quiet) $("convoList").setAttribute("aria-busy", "true");
     /* The tab is a SERVER-SIDE filter now. See searchScopeNote and the header of
        api/read/inbox.mjs for why it stopped being a browser-side one. */
     var params = { limit: 200 };
@@ -1108,6 +817,9 @@
     if (state.filter === "reply" && !String(state.q || "").trim()) params.needs_reply = 1;
 
     return FHData.inbox(params).then(function (res) {
+      $("refreshInbox").disabled = false;
+      $("refreshInbox").setAttribute("aria-busy", "false");
+      $("convoList").setAttribute("aria-busy", "false");
       if (!res.ok) {
         /* A FAILED BACKGROUND REFRESH LEAVES THE SCREEN ALONE. Blanking a
            working inbox because one poll missed would take the thread somebody
@@ -1115,7 +827,8 @@
         if (quiet) { FHData.explain(res, "conversations"); return; }
         state.rows = [];
         $("convoList").innerHTML = '<div class="empty-box" style="margin:14px 12px;">' +
-          "We could not load your conversations. See the message at the bottom of the screen." + "</div>";
+          "We could not load your conversations. Refresh the inbox to try again." +
+          '<br><button type="button" class="retry-link" data-retry="inbox">Try again</button></div>';
         FHData.explain(res, "conversations");
         return;
       }
@@ -1137,6 +850,11 @@
 
   function clearThread() {
     state.selected = null;
+    setContextOpen(false);
+    $("messagingWorkspace").classList.remove("has-thread", "thread-open", "context-open");
+    $("openClientContext").disabled = true;
+    $("openClientContext").setAttribute("aria-expanded", "false");
+    $("thread").setAttribute("aria-busy", "false");
     $("thName").textContent = "No conversation open";
     $("thSub").textContent = "Pick one on the left to read it.";
     $("thAv").textContent = "—";
@@ -1203,6 +921,8 @@
       wrap.hidden = true;
       $("chEmail").classList.remove("active");
       $("chText").classList.remove("active");
+      $("chEmail").setAttribute("aria-pressed", "false");
+      $("chText").setAttribute("aria-pressed", "false");
       $("chEmail").disabled = true;
       $("chText").disabled = true;
       return;
@@ -1212,10 +932,13 @@
     $("chText").disabled = false;
     $("chEmail").classList.toggle("active", channel === "email");
     $("chText").classList.toggle("active", channel === "sms");
+    $("chEmail").setAttribute("aria-pressed", channel === "email" ? "true" : "false");
+    $("chText").setAttribute("aria-pressed", channel === "sms" ? "true" : "false");
   }
 
   function openEmptyChannel(row) {
     state.selected = row;
+    showConversation();
     paintList();
     $("thName").textContent = V.displayName(row);
     $("thSub").textContent = (row.channel === "email" ? "EMAIL" : "SMS") + " · no thread yet";
@@ -1231,6 +954,7 @@
     $("composeTo").placeholder = row.channel === "email"
       ? "name@example.com" : "+15551234567";
     paintTo();
+    $("thread").setAttribute("aria-busy", "false");
     $("thread").innerHTML = row.channel === "email"
       ? '<div class="empty-box">No emails with them yet. Your reply below would be the first.</div>'
       : '<div class="empty-box">No texts with them yet. Your reply below would be the first.</div>';
@@ -1247,6 +971,7 @@
     }
     if (state.sending) return;
 
+    $("thread").setAttribute("aria-busy", "true");
     $("thread").innerHTML = '<div class="empty-box">Opening ' +
       (channel === "email" ? "email" : "text") + " conversation…</div>";
     paintChannelToggle(channel);
@@ -1283,6 +1008,7 @@
 
   function openThread(row) {
     state.selected = row;
+    showConversation();
     paintList();
 
     $("thName").textContent = V.displayName(row);
@@ -1303,11 +1029,13 @@
     $("composeTo").placeholder = row.channel === "email"
       ? "name@example.com" : "+15551234567";
     paintTo();
-    $("thread").innerHTML = '<div class="empty-box">Loading this conversation…</div>';
+    $("thread").setAttribute("aria-busy", "true");
+    $("thread").innerHTML = '<div class="loading-state" role="status">Loading this conversation…<span class="skeleton"></span><span class="skeleton"></span></div>';
 
     paintContext(row);
 
     if (!row.id) {
+      $("thread").setAttribute("aria-busy", "false");
       $("thread").innerHTML = row.channel === "email"
         ? '<div class="empty-box">No emails with them yet. Your reply below would be the first.</div>'
         : '<div class="empty-box">No texts with them yet. Your reply below would be the first.</div>';
@@ -1316,12 +1044,14 @@
 
     return FHData.thread(row.id, 200).then(function (res) {
       if (state.selected !== row) return; // they moved on while this was in flight
+      $("thread").setAttribute("aria-busy", "false");
       if (!res.ok) {
-        $("thread").innerHTML = '<div class="empty-box">We could not load this conversation.</div>';
+        $("thread").innerHTML = '<div class="empty-box">We could not load this conversation.<br><button type="button" class="retry-link" data-retry="thread">Try again</button></div>';
         if (!(row.last_at || row.last_pulse_at) && $("ctxLast")) $("ctxLast").textContent = "Not known";
         FHData.explain(res, "this conversation");
         return;
       }
+      FHData.banner("real", "conversation loaded", "this conversation");
       paintThread(res.data.items || []);
     });
   }
@@ -1352,12 +1082,14 @@
 
   function paintContext(row) {
     if (!row) {
+      $("ctxName").textContent = "";
       $("ctxRole").textContent = "Pick a conversation to see who it is with.";
       $("ctxRows").innerHTML = "";
       $("ctxThreads").innerHTML = '<div class="empty-box">Pick a conversation first.</div>';
       $("ctxLinks").innerHTML = '<div class="empty-box">Pick a conversation first.</div>';
       return;
     }
+    $("ctxName").textContent = V.displayName(row);
     $("ctxRole").textContent = "Talking to us on " + String(row.channel || "").toLowerCase() + ".";
     /* A thread opened with no time on it (a ?conversation_id= link older than
        the loaded list) says "Loading…" until paintThread reads its newest
@@ -1413,13 +1145,16 @@
   function say(text, tone) {
     var el = $("sendStatus");
     el.textContent = text;
+    el.setAttribute("data-tone", tone || "");
+    $("sendBtn").textContent = state.sending ? "Sending…" : "Send";
+    $("sendBtn").setAttribute("aria-busy", state.sending ? "true" : "false");
     el.style.color = tone === "stop" ? "var(--alert)" : (tone === "hold" ? "var(--warn)" : "var(--text-dim)");
   }
 
   function send() {
     var row = state.selected;
     var body = $("composeBody").value;
-    if (!row || state.sending || !String(body).trim()) return;
+    if (!row || state.sending || $("sendBtn").disabled || !String(body).trim()) return;
 
     state.sending = true;
     $("sendBtn").disabled = true;
@@ -1472,10 +1207,45 @@
   /* ------------------------------------------------------------ wiring ---- */
 
   $("convoList").addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest('[data-retry="inbox"]')) { loadList(); return; }
     var el = e.target.closest ? e.target.closest(".convo") : null;
     if (!el) return;
     var row = state.rows.filter(function (r) { return r.id === el.getAttribute("data-id"); })[0];
     if (row) openThread(row);
+  });
+
+  $("refreshInbox").addEventListener("click", function () { loadList(); });
+  $("backToInbox").addEventListener("click", backToInbox);
+  $("openClientContext").addEventListener("click", function () {
+    setContextOpen(true);
+    $("contextTitle").focus();
+  });
+  $("closeClientContext").addEventListener("click", closeContext);
+  $("clientContext").addEventListener("keydown", function (e) {
+    if (!$("messagingWorkspace").classList.contains("context-open")) return;
+    if (e.key === "Escape") { e.preventDefault(); closeContext(); }
+    if (e.key === "Tab") {
+      var controls = [].slice.call($("clientContext").querySelectorAll('button, summary, a[href]')).filter(function (el) { return el.getClientRects().length > 0; });
+      var first = controls[0], last = controls[controls.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === $("contextTitle"))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  window.matchMedia("(min-width:1181px)").addEventListener("change", function (e) {
+    if (e.matches) setContextOpen(false);
+  });
+  $("thread").addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest('[data-retry="thread"]') && state.selected) openThread(state.selected);
+  });
+  $("convoList").addEventListener("keydown", function (e) {
+    var row = e.target.closest ? e.target.closest(".convo") : null;
+    if (!row) return;
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); row.click(); }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      var next = e.key === "ArrowDown" ? row.nextElementSibling : row.previousElementSibling;
+      if (next && next.classList.contains("convo")) next.focus();
+    }
   });
 
   $("q").addEventListener("input", function (e) {
@@ -1490,8 +1260,9 @@
 
   [].slice.call(document.querySelectorAll(".ctab")).forEach(function (tab) {
     tab.addEventListener("click", function () {
-      [].slice.call(document.querySelectorAll(".ctab")).forEach(function (t) { t.classList.remove("active"); });
+      [].slice.call(document.querySelectorAll(".ctab")).forEach(function (t) { t.classList.remove("active"); t.setAttribute("aria-pressed", "false"); });
       tab.classList.add("active");
+      tab.setAttribute("aria-pressed", "true");
       state.filter = tab.getAttribute("data-filter");
       // Refetch: the tab is a server-side filter, so switching it is a new
       // question, not a different view of the same answer.
@@ -1600,18 +1371,6 @@
   });
 })();
 </script>
-<script>
-function tickClock() {
-  var el = document.querySelector(".clock");
-  if (!el) return;
-  el.textContent = new Date().toLocaleString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit", second: "2-digit",
-    timeZone: "America/Phoenix", timeZoneName: "short"
-  });
-}
-tickClock();
-setInterval(tickClock, 1000);
-</script>
+
 </body>
 </html>

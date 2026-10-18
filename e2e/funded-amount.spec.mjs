@@ -110,7 +110,7 @@ function applicationsBackend(writes, saved) {
 test.describe("client control panel — Bank yes records an amount", () => {
 
   async function open(page, writes, saved = []) {
-    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
+    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
       "/api/read/lender-matches": MATCHES,
       ...applicationsBackend(writes, saved)
     });
@@ -212,7 +212,7 @@ test.describe("client control panel — an approval waiting on its amount", () =
   }];
 
   async function open(page, writes, saved) {
-    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
+    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
       "/api/read/lender-matches": MATCHES,
       ...applicationsBackend(writes, saved)
     });
@@ -263,7 +263,7 @@ test.describe("client control panel — an approval waiting on its amount", () =
     /* The rot case. A client whose lender list has gone empty has no rows to
        chip, and that is exactly the file where a waiting approval would never
        be seen again. The sentence has to be painted on that path too. */
-    await openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
+    await openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
       "/api/read/lender-matches": { ok: true, match_count: 0, summary: { lender_count: 0 }, matches: [] },
       ...applicationsBackend([], waiting())
     });
@@ -484,7 +484,7 @@ test.describe("pipeline board — a move onto Funded carries the money", () => {
 test.describe("client control panel — an approval that does not count", () => {
 
   async function open(page, writes, saved = []) {
-    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
+    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
       "/api/read/lender-matches": MATCHES,
       ...applicationsBackend(writes, saved)
     });

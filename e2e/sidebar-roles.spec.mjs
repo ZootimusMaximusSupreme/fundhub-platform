@@ -150,7 +150,11 @@ test.describe("sidebar fixed geometry", () => {
     const b = await sideBox(page);
     expect(b).toEqual(a);
 
-    await page.locator('aside.side a.navitem[href="sales-floor.html"]').click();
+    const insights = page.locator('aside.side [data-fh-section="insights"]');
+    if (!(await insights.locator('a[href="sales-floor.html"]').isVisible())) {
+      await insights.getByRole('button', { name: 'Insights' }).click();
+    }
+    await insights.locator('a[href="sales-floor.html"]').click();
     await page.waitForURL(/sales-floor\.html/);
     await waitForGate(page);
     const c = await sideBox(page);
@@ -169,7 +173,7 @@ test.describe("sidebar fixed geometry", () => {
     await openScreen(page, "/app/pipeline.html", OWNER);
     await waitForGate(page);
     const heads = await page.locator("aside.side .navhead").allTextContents();
-    const labels = heads.map((h) => h.replace("▾", "").trim());
-    expect(labels.slice(0, 4)).toEqual(["Home", "Sales", "Funding", "Client ops"]);
+    const labels = heads.map((h) => h.replace(/[▾⌄]/g, "").trim());
+    expect(labels).toEqual(["Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
   });
 });
