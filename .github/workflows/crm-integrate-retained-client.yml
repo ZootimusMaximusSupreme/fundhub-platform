@@ -1,0 +1,51 @@
+name: Integrate retained original client page results
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths:
+      - .github/workflows/crm-integrate-retained-client.yml
+      - scripts/integrate-retained-client.mjs
+concurrency:
+  group: crm-retained-client-integration
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/crm-live-font-reconcile
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reconcile the original page builders retained client source
+        env:
+          RECOVERY_PAGES: payment-success,reset-password
+        id: merge
+        continue-on-error: true
+        run: node scripts/integrate-retained-client.mjs
+      - name: Preserve source or explicit conflict report
+        if: always()
+        run: |
+          node --input-type=module <<'JS'
+          import fs from'node:fs';import{execFileSync}from'node:child_process';
+          const file='ops/workflows/build-evidence/crm-client-retained/integration.json';
+          const report=JSON.parse(fs.readFileSync(file,'utf8'));
+          execFileSync('git',['config','user.name','Fundhub UI integration']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
+          if(report.complete)execFileSync('git',['add','-f','--',...report.files.map(r=>r.path)]);
+          execFileSync('git',['add','-f','--',file]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
+            execFileSync('git',['commit','-m',report.complete?'Integrate retained original client page results with current chrome retained':'Record supporting client asset conflicts without changing app files'],{stdio:'inherit'});
+            execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
+            execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
+          }
+          JS
+      - name: Require safe complete merge
+        if: always()
+        env:
+          MERGE: ${{ steps.merge.outcome }}
+        run: test "$MERGE" = success
