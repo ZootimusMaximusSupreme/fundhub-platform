@@ -30,6 +30,18 @@ test("no screen types the company name where the logo goes", () => {
 test("the seven screens draw the --logo wordmark in the brand block, sized", () => {
   for (const f of SEVEN) {
     const src = strip(read(f));
+    if (!/<div class="brand">/.test(src)) {
+      // The redesigned shell has one tenant-aware mark in navigation.
+      assert.match(src, /shell\.js/, f + ": shared identity renderer missing");
+      const nav = strip(read("sidebar.fragment.html"));
+      const sidebar = strip(read("crm-sidebar.css"));
+      const shell = strip(read("shell.js"));
+      assert.match(nav, /class="logo"[^>]*aria-label="Fundhub home"/);
+      assert.match(sidebar, /\.side-top[^}]*\.logo|\.side-top\s+\.logo/);
+      assert.match(shell, /fh-workspace-header/);
+      assert.match(shell, /var\(--logo\)|setProperty\(["']--logo/);
+      continue;
+    }
     assert.match(src, /<div class="brand">\s*<div class="logo( inv)?" role="img" aria-label="Fundhub"><\/div>/, `${f}: brand block has no logo`);
     assert.match(src, /\.brand \.logo\{height:15px;aspect-ratio:2698\/543;flex-shrink:0/, `${f}: logo has no size`);
   }

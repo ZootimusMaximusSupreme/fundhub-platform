@@ -88,7 +88,9 @@ jobs:
           fs.mkdirSync(out,{recursive:true});
           fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,noProductionDeploy:true,noCustomerWrites:true,proofScope:process.env.PROOF_SCOPE,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
           const prepared=fs.existsSync(out+'/font-preparation.json')?JSON.parse(fs.readFileSync(out+'/font-preparation.json','utf8')).changed:[];
-          const stagedUI=execFileSync('git',['diff','--name-only','--','public/app','e2e','src/ui','src/http','src/pulse/catalog/proofs'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+          const trackedUI=execFileSync('git',['diff','--name-only','--','public/app','e2e','src/ui','src/http','src/pulse/catalog/proofs'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+          const mergedUI=fs.existsSync(out+'/staff-integration.json')?JSON.parse(fs.readFileSync(out+'/staff-integration.json','utf8')).files.map(row=>row.path):[];
+          const stagedUI=[...new Set([...trackedUI,...mergedUI])];
           const files=[...stagedUI,...prepared,'scripts/integrate-reviewed-staff.mjs','public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];
           execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
           execFileSync('git',['add','--',...files.filter(f=>fs.existsSync(f))]);

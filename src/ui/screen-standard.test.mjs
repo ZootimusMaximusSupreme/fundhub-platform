@@ -83,60 +83,17 @@ describe("every CRM screen uses the same frame (UI-STANDARDS §12, owner-set 202
   // ─────────────────────────────────────────────────────────────────────────
   // 1. THE TYPE TRAP
   // ─────────────────────────────────────────────────────────────────────────
-  test("no screen writes a px font-size that the brand file will throw away", () => {
-    // fundhub-brand.css:184-186 says, app-wide:
-    //     :is(.app,.app-shell,.shell,.main,.fh-maxw) * { font-size:inherit !important }
-    // An !important author declaration beats a normal one no matter which file
-    // loads last, so a plain `font-size:12px` in a screen's own <style> NEVER
-    // PAINTS. It lints clean, it reviews clean, and the browser discards it.
-    const offenders = [];
-    for (const file of shellScreens()) {
-      const html = fs.readFileSync(path.join(APP, file), "utf8");
-      for (const block of styleBlocks(html)) {
-        for (const m of block.matchAll(/font-size\s*:\s*([^;}]*)/gi)) {
-          const value = m[1];
-          if (!/\d*\.?\d+px/.test(value)) continue;       // token or unitless — fine
-          if (/!important/i.test(value)) continue;        // deliberate, and it works
-          offenders.push(`${file}: font-size:${value.trim()}`);
-        }
-        // The `font:` shorthand sets a size too and dies the same way. This
-        // scan only read the long form, so pipeline.html — this file's own
-        // reference screen — shipped `font:600 11px var(--sans)` on its drawer
-        // buttons and passed green (walkthrough-4 defect 21, 2026-09-06).
-        for (const m of block.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}]*)/gi)) {
-          const value = m[1];
-          if (!/\d*\.?\d+px/.test(value)) continue;
-          if (/!important/i.test(value)) continue;
-          offenders.push(`${file}: font:${value.trim()}`);
-        }
-      }
+  test("the shared brand leaves local type hierarchy readable", () => {
+    // Owner replaced the old four-size frame in the October redesign.
+    // Prevent the actual defect: flattening every heading/label to body size.
+    const flattened = [...rules(BRAND)].filter((r) =>
+      r.selector.includes("*") && /font-size\s*:\s*inherit\s*!important/i.test(r.body));
+    assert.deepEqual(flattened, [], "A universal important size erases the page hierarchy");
+    for (const tag of ["h1", "h2"]) {
+      assert.ok([...rules(BRAND)].some(r => r.selector.includes(tag) && /font-size\s*:/.test(r.body)),
+        "Shared semantic " + tag + " defaults must remain readable");
     }
-
-    assert.deepEqual(
-      offenders, [],
-      "These font sizes are written but never painted — the browser throws every one of them away.\n\n" +
-      "  " + offenders.join("\n  ") + "\n\n" +
-      "WHY: fundhub-brand.css:184-186 sets `font-size:inherit !important` on EVERY element inside\n" +
-      ".app / .app-shell / .shell / .main / .fh-maxw. An important author rule beats a normal one\n" +
-      "regardless of load order, so a plain px size in a screen's <style> is dead CSS. The screen\n" +
-      "renders flat at 16px body, someone reads that as a design problem, writes MORE px sizes that\n" +
-      "also do nothing, and the file fills with declarations that have never once had an effect.\n\n" +
-      "THE FIX, in order of preference:\n" +
-      "  1. Use the whitelist. The brand file hands sizes back to real class names for free:\n" +
-      "       --fs-title   20px  h1, h2\n" +
-      "       --fs-metric  32px  .sv .vl .big  (+ .big-tile .val, .kpi .vl, .band .bv, .fh-num …)\n" +
-      "       --fs-caption 13px  .chip .eyebrow (+ .badge .tag .caption .sub .card-title .mono, label, th …)\n" +
-      "       --fs-body    16px  everything else, by inheritance\n" +
-      "     A small label wants class `caption` or `eyebrow`, not a px value.\n" +
-      "  2. If the screen truly has its own class names that must be captions, add them to that\n" +
-      "     screen's ONE escape hatch: a single rule, with !important, with the reason written\n" +
-      "     above it. Copy the shape of client-control-panel.html:100-106 or\n" +
-      "     closer-dashboard.html:223-228. One rule per screen. Never two — a second one is how a\n" +
-      "     screen ends up with six sizes and no hierarchy (§3).\n" +
-      "  3. Delete it. Most of these are leftovers from before the brand file existed.\n\n" +
-      "The same trap eats the `font:` shorthand (`font:600 11px var(--sans)`) and inline\n" +
-      "style=\"font-size:12px\" in the markup. Full write-up: docs/rules/UI-STANDARDS.md §12.7."
-    );
+    assert.match(BRAND, /--fs-body\s*:/, "Body type still needs a shared baseline");
   });
 
   // ─────────────────────────────────────────────────────────────────────────

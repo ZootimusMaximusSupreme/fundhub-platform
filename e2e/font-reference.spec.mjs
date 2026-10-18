@@ -35,6 +35,9 @@ for(const width of [1440,390,320])for(const screen of ['my-numbers','pipeline','
   await page.screenshot({path:out+'/rounded-reference-specimen.png',fullPage:false});
  }
  await page.locator('#fh-font-reference-probe').evaluate(e=>e.remove());
+ fs.mkdirSync(out,{recursive:true});
+ const overflow=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,items:[...document.querySelectorAll('body *')].map(e=>({tag:e.tagName,id:e.id,cls:typeof e.className==='string'?e.className:'',rect:e.getBoundingClientRect().toJSON(),scroll:e.scrollWidth,client:e.clientWidth,position:getComputedStyle(e).position})).filter(e=>e.rect.width&&e.position!=='fixed'&&(e.rect.right>innerWidth+1||e.rect.left< -1)).slice(0,40)}));
+ fs.writeFileSync(out+'/'+screen+'-'+width+'-overflow.json',JSON.stringify(overflow,null,2));
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
  expect(errors).toEqual([]);
  fs.mkdirSync(out,{recursive:true});

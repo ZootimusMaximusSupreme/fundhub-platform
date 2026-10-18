@@ -233,6 +233,10 @@ test("closer-dashboard without a client is honest empty", async ({ page }) => {
   await expect(page.locator("body")).not.toContainText("No closer-day pipeline endpoint");
   await expect(page.locator("body")).not.toContainText("Jordan Blake");
   await expect(page.locator("body")).not.toContainText("Priya Nair");
-  await expect(page.locator(".clock")).not.toContainText("Jul 26");
+  await expect(page.locator("#fh-workspace-header")).toBeVisible();
+  await page.locator("#fh-shell-chip > summary").click();
+  await page.locator(".fh-account-technical > summary").click();
+  await expect(page.locator("#fh-workspace-clock")).toBeVisible();
+  await expect(page.locator(".fh-account-technical")).not.toContainText("Jul 26");
 });
 
