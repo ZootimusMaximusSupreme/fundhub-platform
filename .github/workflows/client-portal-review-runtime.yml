@@ -1,0 +1,51 @@
+name: Client portal working review link
+on:
+  push:
+    branches: [codex/client-portal-ios-redo]
+    paths:
+      - .github/workflows/client-portal-review-runtime.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: client-portal-review-runtime
+  cancel-in-progress: false
+jobs:
+  branch-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      CONTEXT: deploy-preview
+    steps:
+      - name: Check the existing hosting connection without printing credentials
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo 'Missing GitHub Actions secret NETLIFY_AUTH_TOKEN'; exit 1; }
+          test -n "$NETLIFY_SITE_ID" || { echo 'Missing GitHub Actions secret NETLIFY_SITE_ID'; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install the existing app and deployment CLI
+        run: |
+          npm ci --ignore-scripts
+          npm install --global netlify-cli
+      - name: Build and deploy a branch runtime, never production
+        run: |
+          # The existing deploy-preview build runs guard:db. It never migrates.
+          # No --prod, production ship script, private customer page, or main merge.
+          netlify deploy --build --context deploy-preview \
+            --alias client-portal-ios-review \
+            --message "Client portal review $GITHUB_SHA" --json > /tmp/portal-review-deploy.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const text=fs.readFileSync('/tmp/portal-review-deploy.json','utf8');
+          let result;
+          try { result=JSON.parse(text); } catch { throw new Error('Netlify did not return deployment JSON; inspect the build step.'); }
+          const url=result.deploy_url || result.deploy_ssl_url;
+          if(!url || !/^https:\/\//.test(url)) throw new Error('No verified branch deployment URL returned');
+          console.log('WORKING_PORTAL_URL='+url+'/portal-login.html');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+url+'/portal-login.html\n\nSource: '+process.env.GITHUB_SHA+'\n');
+          JS
