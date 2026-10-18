@@ -1329,7 +1329,7 @@ function applyFilters(){
   var wait=fWait?fWait.value:'';
   cards().forEach(function(c){
     var hit=true;
-    if(term && nameOf(c).toLowerCase().indexOf(term)<0) hit=false;
+    if(term && String(c.dataset.search||nameOf(c)).toLowerCase().indexOf(term)<0) hit=false;
     if(hit&&owner){ var b=c.querySelector('.c-act b'); if(!b||b.textContent.trim()!==owner) hit=false; }
     if(hit&&age && ageMins(c)<age) hit=false;
     if(hit&&!waitHit(c,wait)) hit=false;
@@ -1342,11 +1342,12 @@ function applyFilters(){
 }
 window.fhApplyFilters=applyFilters;
 function applySort(){
-  var mode=fSort.value; if(!mode) return;
+  var mode=fSort.value;
   cols().forEach(function(col){
     var body=col.querySelector('.col-body');
     var list=[].slice.call(body.querySelectorAll(':scope > .card'));
     list.sort(function(a,b){
+      if(!mode) return Number(a.dataset.manualOrder||0)-Number(b.dataset.manualOrder||0);
       if(mode==='name') return nameOf(a).localeCompare(nameOf(b));
       if(mode==='amt')  return amountOf(b)-amountOf(a);
       if(mode==='age')  return ageMins(b)-ageMins(a);
@@ -1874,6 +1875,7 @@ restore();
     card.dataset.wait = fhWaitingOn(c, stageKey);
     if (c.approval_amount_missing === true) card.dataset.needsAmount = "1";
     if (c.entered_at) card.dataset.enteredAt = c.entered_at;
+    card.dataset.search = [c.name, c.phone, c.email].filter(Boolean).join(" ");
 
     var top = div("c-top");
     top.appendChild(div("av agent", initials(c.name)));
@@ -2607,7 +2609,11 @@ restore();
     }
     var body = document.createElement("div");
     body.className = "col-body";
-    (stage.cards || []).forEach(function (c) { body.appendChild(cardEl(c, stage.key)); });
+    (stage.cards || []).forEach(function (c, index) {
+      var card = cardEl(c, stage.key);
+      card.dataset.manualOrder = String(index);
+      body.appendChild(card);
+    });
     col.appendChild(head); col.appendChild(body);
     return col;
   }
