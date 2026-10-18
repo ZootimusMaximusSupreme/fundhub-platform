@@ -391,8 +391,8 @@ test("Display AB 2 proves every exported result in real rendered Chromium pages"
   await csm.waitForFunction(() => document.querySelectorAll("#qList .card[data-row]").length === 1);
 
   await prove(t, exercised, "4d92dce676f2ef993d12", async () => {
-    assert.equal(await csm.locator("h1").textContent(), "My queue");
-    assert.equal(await csm.locator(".crumb").textContent(), "Client success");
+    assert.equal(await csm.locator("h1").textContent(), "Client success");
+    assert.equal(await csm.locator("#qTitle").textContent(), "Calls to make");
   });
   await prove(t, exercised, "003ed51f8fa7b5b11f91", async () => {
     const card = csm.locator('[data-row="csm-task-1"]');
@@ -433,7 +433,9 @@ test("Display AB 2 proves every exported result in real rendered Chromium pages"
     assert.equal(await card.locator('label[for="qa-wins"]').textContent(), "What changed?");
     assert.equal(await card.locator("[data-open]").textContent(), "Hide answers");
     await card.locator("[data-open]").click();
-    assert.equal(await card.locator(".q-form").count(), 0);
+    assert.equal(await card.locator(".q-form").count(), 1);
+    assert.equal(await card.locator(".q-form").isVisible(), false);
+    assert.equal(await card.locator("[data-open]").getAttribute("aria-expanded"), "false");
     assert.equal(await card.locator("[data-open]").textContent(), "Write down their answers");
   });
   await prove(t, exercised, "0f2ec7314a4b905f1a1d", async () => {

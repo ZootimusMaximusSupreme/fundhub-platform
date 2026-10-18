@@ -138,7 +138,7 @@ test("the Waiting on filter keeps only the cards whose next move is that party, 
       assert.equal(await page.locator("#fWait").inputValue(), value, `${label} is the ${value} choice`);
       assert.deepEqual(await shown(page), names, `Waiting on = ${label}`);
       assert.equal(await page.locator("#filterN").innerText(), "1", "the Filter control counts one active filter");
-      assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")),
+      assert.equal(await page.locator("#filterChips .fchip > span").first().innerText(),
         `Waiting on: ${label}`, "and its chip says the same words");
     }
     await page.locator("#fWait").selectOption({ label: "Anyone" });
@@ -182,7 +182,8 @@ test("the Owner filter is hidden until a card has an owner, then keeps only that
 test("the search box finds cards by name, phone, or email", { timeout: 120_000 }, async () => {
   await proof.check(/^Search box/, async () => {
     const { page, errors } = await openBoard();
-    assert.equal(await page.locator("#q").getAttribute("placeholder"), "Search name, phone, or email");
+    assert.equal(await page.locator("#q").getAttribute("placeholder"), "Search clients");
+    assert.equal(await page.locator("#q").getAttribute("aria-label"), "Search clients by name");
     await page.locator("#q").fill("ali");
     assert.deepEqual(await shown(page), ["Alice Adams"]);
     await page.locator("#q").fill("  EVE ");
@@ -287,7 +288,7 @@ test("the headline counts agree with the filter and its buttons are the same fil
     assert.equal(await page.locator("#fWait").inputValue(), "us", "the button writes the select");
     assert.equal(await button.getAttribute("aria-pressed"), "true");
     assert.deepEqual(await shown(page), ["Alice Adams", "Eve East", "Finn Fox"], "only the cards someone here must move");
-    assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")), "Waiting on: Us \u2014 someone here");
+    assert.equal(await page.locator("#filterChips .fchip > span").first().innerText(), "Waiting on: Us \u2014 someone here");
     await button.click();
     assert.equal(await page.locator("#fWait").inputValue(), "", "pressing it again clears the filter");
     assert.deepEqual(await shown(page), ALL_NAMES);
@@ -314,7 +315,7 @@ test("the headline counts agree with the filter and its buttons are the same fil
       assert.equal(await page.locator("#fWait").inputValue(), value, `${selector} writes the select`);
       assert.deepEqual(await shown(page), names, `${selector} shows its cards`);
       assert.equal(await button.getAttribute("aria-pressed"), "true");
-      assert.equal(await page.locator("#filterChips .fchip").first().innerText().then((t) => t.replace(/\s*\u2715$/, "")), chip,
+      assert.equal(await page.locator("#filterChips .fchip > span").first().innerText(), chip,
         `${selector} says the same words as the select`);
       await button.click();
       assert.equal(await page.locator("#fWait").inputValue(), "", `${selector} pressed again clears the filter`);
@@ -496,9 +497,10 @@ test("each rail tab asks for its own pipeline once and paints that rail's own co
   for (const [control, code, key, label] of RAILS) {
     await proof.check(control, async () => {
       const tab = page.locator(`.rail-tab[data-rail="${code}"]`);
-      // The tab is named by its words: the rail's code, then its name, exactly.
-      assert.equal(await tab.locator(".rt-code").innerText(), code, `${label}: the rail code on the tab`);
-      assert.equal((await tab.textContent()).replace(code, "").trim(), label, `${label}: the tab says the rail's name`);
+      // Current main keeps the rail code as machine state and gives people the exact rail name.
+      assert.equal(await tab.getAttribute("data-rail"), code, `${label}: the tab owns the right rail code`);
+      assert.equal((await tab.textContent()).trim(), label, `${label}: the tab says the rail's name`);
+      assert.equal(await tab.getAttribute("title"), label, `${label}: the full name is also its title`);
       assert.deepEqual(
         await page.$$eval(".rail-tab", (els) => els.map((e) => e.dataset.rail)),
         RAILS.map(([, rail]) => rail),
@@ -550,11 +552,14 @@ test("the Sales rail says a payment does not move a card, and no other rail says
     const boards = { sales: SALES };
     for (const [, , key, rail] of RAILS.slice(1)) boards[key] = railBoard(key, rail);
     const { page, reads, errors } = await openBoard({ boards });
+    const details = page.locator(".pipeline-details");
+    assert.equal((await details.locator("summary").innerText()).trim(), "Board details");
+    await details.locator("summary").click();
     const note = page.locator("#railNote");
     assert.equal(await note.isVisible(), true);
     assert.equal(
       (await note.innerText()).trim(),
-      "A payment does not move a card. When a deposit is paid, somebody has to move the card to Closed Won (deposit) — drag it, or use MOVE on the card. Nothing moves it for you.",
+      "Payments do not change sales stages. After a deposit, move the card to Closed Won (deposit).",
     );
     for (const [, code, key] of RAILS.slice(1)) {
       await page.locator(`.rail-tab[data-rail="${code}"]`).click();

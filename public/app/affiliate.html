@@ -637,6 +637,20 @@ document.getElementById('copyCode').addEventListener('click',function(){
   if(!code||code==='No code yet') return;
   copy(code,this,'Copy code');
 });
+/* The shared staff workspace replaces this page's legacy top bar. Keep the
+   page-owned identity and unsigned-license chips in that real header instead
+   of leaving them inside the hidden legacy toolbar. External affiliate views
+   keep the original top bar and do not enter this branch. */
+function placeAffiliateHeaderChips(){
+  var tools=document.querySelector('#fh-workspace-header .fh-workspace-tools');
+  if(!tools) return;
+  ['affLicenseChip','affWhoChip'].forEach(function(id){
+    var chip=document.getElementById(id);
+    if(chip&&chip.parentNode!==tools) tools.insertBefore(chip,tools.firstChild);
+  });
+}
+document.addEventListener('fh:workspace-ready',placeAffiliateHeaderChips);
+placeAffiliateHeaderChips();
 /* There is no "Sign license" button. There is no e-signature path for the
    partner license on this screen, so the old button changed nothing but the
    browser: it hid the hold banner, rewrote the topbar chip to "License signed"

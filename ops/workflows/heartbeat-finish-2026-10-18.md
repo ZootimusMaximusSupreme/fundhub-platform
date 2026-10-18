@@ -133,3 +133,12 @@ Focused results: handler/auth/display batch command `851/851`; Social Studio Chr
 - Final live read-only proof: all `73` gap lanes and `100` workflows loaded; no step threw, no SQL error occurred, and nothing tried to write or POST. The folded report has `1,354` rows: `957` green, `106` broken, `0` not proved, `283` nothing-to-judge, and `8` not checked. Those 106 are live data/config/provider/owner-policy findings, not missing catalog wiring.
 - The scratch-database verifier was not run: the isolated worktree has no `DATABASE_URL`, and the only existing URL belongs to the live Supabase database. It was used only by the read-only proof and was deliberately not passed to the destructive scratch verifier.
 
+### Isolated CRM/staff current-main proof repair
+
+- Branch `codex/heartbeat-crm-staff-display-2026-10-18`, based exactly on merge commit `4e6e8eb15`; the dirty owner checkout remains untouched.
+- Baseline named proof run: `69/92` passed and `23` failed. The merge kept the intentional current-main workspace labels and layouts, exposing stale exact wording assertions plus two real click defects: the Products editor sat under the workspace account control, and Pipeline rendered two `sales / lost` route targets.
+- Repair is limited to the named CRM/staff pages and their exact proof files. Shared shell/sidebar files, money pages, catalog registries, Galaxy/Teams, and public landing pages remain untouched.
+- Final named proof run passes `92/92`. The focused CCP/Pipeline regression set passes `46/46`; the expanded 23-file owned-page/UI-guard aggregate exits clean.
+- `npm run lint` parses `4,005` files and inline scripts clean; `npx tsc --noEmit` passes. No catalog regeneration, production write, send, charge, push, or deploy occurred.
+- Separate leftover, outside this lane's allowed Sales Floor scope: `fin-b19-sales-floor.test.mjs` still expects the old recordings-scroll signal and omits the current `Try again` control from the forbidden state; its all-rows assertion cascades from those two failures.
+

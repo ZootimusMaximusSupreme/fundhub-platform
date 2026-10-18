@@ -65,7 +65,7 @@ test("hero: a busy day paints deposits, booked, held, the funded rate and 70% of
     today: { deposits: 7, booked: 11, held: 9, target_deposits: 10, target_reason: null },
     hero: { deposit_to_funded: 3 / 7, deposit_to_funded_n: { deposits: 7, funded: 3, rate: 3 / 7 } },
   }));
-  assert.deepEqual(hero.labels, ["Today", "Funded, not just sold"]);
+  assert.deepEqual(hero.labels, ["Deposits today", "Deposit-to-funded rate"]);
   assert.deepEqual(hero.bigs, ["7", "43%"]);
   assert.equal(hero.subs[0], "Booked 11 · Held 9 · Target 10 deposits");
   assert.equal(hero.subs[1], "3 of 7 deposits funded");
