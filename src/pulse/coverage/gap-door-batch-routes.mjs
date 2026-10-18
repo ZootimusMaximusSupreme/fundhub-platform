@@ -22,7 +22,7 @@ import {
 
 export const EXPECTED_ROUTE_GAP_COUNTS = Object.freeze({
   "routes-0.json": 2,
-  "routes-1.json": 5,
+  "routes-1.json": 3,
   "routes-2.json": 2,
   "routes-3.json": 1,
 });

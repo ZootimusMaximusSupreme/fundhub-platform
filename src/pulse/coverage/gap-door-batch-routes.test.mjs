@@ -11,20 +11,20 @@ import {
 } from "./gap-door-batch-routes.mjs";
 import { retiredRouteEntry } from "./fin-b03-route-retired.mjs";
 
-test("the route gap monitor owns the exact 10 rows", () => {
+test("the route gap monitor owns the exact 8 rows", () => {
   const counts = ROUTE_GAP_ROWS.reduce((out, row) => {
     out[row.sourceFile] = (out[row.sourceFile] || 0) + 1;
     return out;
   }, {});
   assert.deepEqual(counts, EXPECTED_ROUTE_GAP_COUNTS);
-  assert.equal(ROUTE_GAP_ROWS.length, 10);
-  assert.equal(CHECK_IDS.length, 10);
-  assert.equal(new Set(CHECK_IDS).size, 10);
+  assert.equal(ROUTE_GAP_ROWS.length, 8);
+  assert.equal(CHECK_IDS.length, 8);
+  assert.equal(new Set(CHECK_IDS).size, 8);
 });
 
 test("every missing route result emits one exact not-proved row", async () => {
   const results = await gapChecks();
-  assert.equal(results.length, 10);
+  assert.equal(results.length, 8);
   for (let index = 0; index < ROUTE_GAP_ROWS.length; index += 1) {
     const source = ROUTE_GAP_ROWS[index];
     const result = results[index];
