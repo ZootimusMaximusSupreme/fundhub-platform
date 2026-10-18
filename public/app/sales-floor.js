@@ -214,20 +214,28 @@
       bigs[0].textContent = today.deposits != null ? String(today.deposits) : "—";
     }
     if (bigs[1]) bigs[1].textContent = pct(hero.deposit_to_funded);
+    var dailyTarget = Number(today.target_deposits);
+    var hasDailyTarget = Number.isFinite(dailyTarget) && dailyTarget > 0;
+    var targetLabel = hasDailyTarget
+      ? "Target " + dailyTarget + " deposit" + (dailyTarget === 1 ? "" : "s")
+      : (today.target_reason || "No daily target");
     var subs = document.querySelectorAll(".hero .sub");
     if (subs[0]) {
       subs[0].textContent = "Booked " + (today.booked != null ? today.booked : "—") +
         " · Held " + (today.held != null ? today.held : "—") +
-        " · " + (today.target_reason || "No daily target");
+        " · " + targetLabel;
     }
     if (subs[1]) {
       var n = hero.deposit_to_funded_n || {};
       subs[1].textContent = (n.funded != null ? n.funded + " of " + n.deposits + " deposits funded" : "Of deposits taken this period");
     }
     var bar = $(".hero .bar i");
-    if (bar) bar.style.width = "0%";
+    var targetProgress = hasDailyTarget && today.deposits != null
+      ? Math.max(0, Math.min(100, Number(today.deposits) / dailyTarget * 100))
+      : 0;
+    if (bar) bar.style.width = Math.round(targetProgress) + "%";
     var marks = document.querySelectorAll(".hero .marks span");
-    if (marks[1]) marks[1].textContent = today.target_reason || "No daily target";
+    if (marks[1]) marks[1].textContent = targetLabel;
 
     var funnel = d.funnel || {};
     var fs = document.querySelectorAll(".funnel .f");

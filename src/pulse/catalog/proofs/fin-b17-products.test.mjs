@@ -31,11 +31,11 @@ const PRODUCTS = {
 const LEDGER = {
   ok: true, count: 5, limit: 200, offset: 0, hasMore: false,
   items: [
-    { id: "1c000000-0000-4000-8000-000000000001", status: "earned", staff_name: "Casey Reed", amount: "300.00", basis: "3000.00", split_percent: "10", product_name_at_earning: "Funding Bundle", earned_at: "2026-10-02T12:00:00Z" },
-    { id: "1c000000-0000-4000-8000-000000000002", status: "approved", staff_name: "Casey Reed", amount: "150.00", basis: "1500.00", split_percent: "10", product_name_at_earning: "Repair DFY", earned_at: "2026-09-28T12:00:00Z" },
-    { id: "1c000000-0000-4000-8000-000000000003", status: "paid", staff_name: "Jordan Blake", amount: "90.00", basis: "900.00", split_percent: "10", product_name_at_earning: "Repair trial", earned_at: "2026-10-01T12:00:00Z", paid_at: "2026-10-03T12:00:00Z" },
-    { id: "1c000000-0000-4000-8000-000000000004", status: "paid", staff_name: "Jordan Blake", amount: "70.00", basis: "700.00", split_percent: "10", product_name_at_earning: "Repair trial", earned_at: "2026-09-02T12:00:00Z", paid_at: "2026-09-05T12:00:00Z" },
-    { id: "1c000000-0000-4000-8000-000000000005", status: "earned", staff_name: "Jordan Blake", amount: "40.00", basis: "400.00", split_percent: "10", product_name_at_earning: "Repair DFY", earned_at: "2026-10-04T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000001", status: "earned", staff_name: "Casey Reed", client_name: "Dana Whitfield", client_code: "FH-000042", amount: "300.00", basis: "front_end", base_amount: "3000.00", split_percent: "50", rule_id: "77777777-7777-4777-8777-777777777772", rule_snapshot: { name: "Closer front-end", calc_method: "percent", percent: "10.00" }, product_name_at_earning: "Funding Bundle", earned_at: "2026-10-02T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000002", status: "approved", staff_name: "Casey Reed", client_name: null, client_code: "FH-000043", amount: "150.00", basis: "front_end", base_amount: "1500.00", split_percent: "100", rule_id: "77777777-7777-4777-8777-777777777771", rule_snapshot: { name: "Closer front-end", calc_method: "percent", percent: "8.00" }, product_name_at_earning: "Repair DFY", earned_at: "2026-09-28T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000003", status: "paid", staff_name: "Jordan Blake", client_name: "Morgan Lee", amount: "90.00", basis: "front_end", base_amount: "900.00", split_percent: "100", rule_id: "77777777-7777-4777-8777-777777777773", rule_snapshot: { name: "Manager override", calc_method: "percent", percent: "2.00" }, product_name_at_earning: "Repair trial", earned_at: "2026-10-01T12:00:00Z", paid_at: "2026-10-03T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000004", status: "paid", staff_name: "Jordan Blake", client_name: "Morgan Lee", amount: "70.00", basis: "front_end", base_amount: "700.00", split_percent: "100", rule_id: "77777777-7777-4777-8777-777777777773", rule_snapshot: { name: "Manager override", calc_method: "percent", percent: "2.00" }, product_name_at_earning: "Repair trial", earned_at: "2026-09-02T12:00:00Z", paid_at: "2026-09-05T12:00:00Z" },
+    { id: "1c000000-0000-4000-8000-000000000005", status: "earned", staff_name: "Jordan Blake", client_name: "Morgan Lee", amount: "40.00", basis: "front_end", base_amount: "400.00", split_percent: "100", rule_id: "77777777-7777-4777-8777-777777777773", rule_snapshot: { name: "Manager override", calc_method: "percent", percent: "2.00" }, product_name_at_earning: "Repair DFY", earned_at: "2026-10-04T12:00:00Z" },
   ],
 };
 
@@ -98,7 +98,11 @@ const editorOpen = (page) => page.evaluate(() => ({
   scrim: document.getElementById("scrim").classList.contains("on"),
 }));
 const ledgerRows = (page) => page.evaluate(() => [...document.querySelectorAll("#ledgerBody tr[data-id]")].map((tr) => ({
-  who: tr.children[2].textContent.trim(), status: tr.children[9].textContent.trim(), amount: tr.children[8].textContent.trim(),
+  date: tr.children[1].textContent.trim(), who: tr.children[2].textContent.trim(),
+  client: tr.children[3].textContent.trim(), product: tr.children[4].textContent.trim(),
+  rule: tr.children[5].textContent.trim(), basis: tr.children[6].textContent.trim(),
+  rate: tr.children[7].textContent.trim(), amount: tr.children[8].textContent.trim(),
+  status: tr.children[9].textContent.trim(),
 })));
 const fields = (page) => page.evaluate(() => ({
   mode: document.getElementById("edMode").textContent,
@@ -296,15 +300,8 @@ test("View payout ledger opens the ledger pane and Back to rules returns to the 
   });
 });
 
-// NOT ATTACHED TO A ROW (repair cycle 1). The row says the button "opens the ledger filtered to the people
-// the rule pays". On live data it cannot: api/read/commissions.mjs does not select commission_ledger.rule_id
-// (src/commissions/sql.mjs saves it) and the page's ledgerFromApiLive and ledgerFromApi both hard-code
-// rule: "—", so impactOf() never finds a person and the button always opens the ledger on Everyone.
-// This test keeps the page's own narrowing logic judged (it is the code that will matter once a payout
-// names its rule), by putting the rule id on the page's own ledger rows. It is not proof that the control
-// does what its row says, so it claims no row.
-test("a rule's See these payouts opens the ledger on the people that rule pays, or on everyone when no payout names it (page logic only)", { timeout: 90_000 }, async () => {
-  {
+test("a rule's See these payouts opens the live ledger on the person that rule paid", { timeout: 90_000 }, async () => {
+  await proof.check(/^Commission rule 'See these payouts ->'/, async () => {
     const { page, errors } = await openPage();
     // press the first rule's See these payouts, opening the rule first when it is folded
     const seePayouts = async () => {
@@ -313,41 +310,56 @@ test("a rule's See these payouts opens the ledger on the people that rule pays, 
       if (!(await first.evaluate((el) => el.classList.contains("open")))) await first.locator(".rule-hd").click();
       await first.locator("[data-led]").click();
     };
-    // the live ledger rows carry no rule id (the Rule version column is a dash), so no rule names a person
+    // Both v1 and v2 belong to this rule. Either version narrows to the person it paid.
     await seePayouts();
     assert.equal(await visible(page, "#tab-ledger"), true);
-    assert.equal(await page.locator("#perFilter").inputValue(), "", "no payout names the rule, so the ledger opens on Everyone");
+    assert.equal(await page.locator("#perFilter").inputValue(), "Casey Reed");
     assert.equal(await page.locator("#statFilter").inputValue(), "");
-    assert.equal((await ledgerRows(page)).length, 5);
+    assert.deepEqual((await ledgerRows(page)).map((r) => r.who), ["Casey Reed", "Casey Reed"]);
+    assert.equal((await page.locator("#ledgerTotal").innerText()).trim(), "$450");
 
     // a status left in the filter from before is reset by the button
     await page.locator("#statFilter").selectOption("Paid");
-    assert.equal((await ledgerRows(page)).length, 2);
+    assert.equal((await ledgerRows(page)).length, 0);
     await page.locator("#ledgerBack").click();
     await seePayouts();
     assert.equal(await page.locator("#statFilter").inputValue(), "", "the status filter is cleared");
-    assert.equal((await ledgerRows(page)).length, 5);
+    assert.equal((await ledgerRows(page)).length, 2);
 
-    // when payouts do name the rule (the page's own LEDGER rows), the ledger opens on the one person it pays
-    const ruleId = await page.evaluate(() => RULES[0].id);
-    await page.evaluate((id) => {
-      LEDGER.filter((l) => l.who === "Casey Reed").forEach((l) => { l.rule = id; });
+    // A rule with no payout yet stays honest: nobody is singled out.
+    await page.evaluate(() => {
+      LEDGER.forEach((l) => { l.ruleId = ""; });
       fillPersonFilter();
-    }, ruleId);
-    await page.locator("#ledgerBack").click();
-    await seePayouts();
-    assert.equal(await page.locator("#perFilter").inputValue(), "Casey Reed");
-    assert.deepEqual((await ledgerRows(page)).map((r) => r.who), ["Casey Reed", "Casey Reed"]);
-    assert.equal((await page.locator("#ledgerTotal").innerText()).trim(), "$450");
-    // two people on one rule: nobody is singled out
-    await page.evaluate((id) => { LEDGER.forEach((l) => { l.rule = id; }); }, ruleId);
+    });
     await page.locator("#ledgerBack").click();
     await seePayouts();
     assert.equal(await page.locator("#perFilter").inputValue(), "");
     assert.equal((await ledgerRows(page)).length, 5);
     assert.deepEqual(errors, []);
     await page.close();
-  }
+  });
+});
+
+test("the ledger paints the client, frozen rule version, money basis and rule rate", { timeout: 90_000 }, async () => {
+  await proof.check(/^Ledger table \(date, person, client, product, rule version, basis, rate, payout, status\)$/, async () => {
+    const { page, errors } = await openPage();
+    await page.locator("#ledgerLink").click();
+    const first = (await ledgerRows(page))[0];
+    assert.deepEqual(first, {
+      date: "2026-10-02",
+      who: "Casey Reed",
+      client: "Dana Whitfield",
+      product: "Funding Bundle",
+      rule: "Closer front-end v2",
+      basis: "$3,000",
+      rate: "10%",
+      amount: "$300",
+      status: "Accrued",
+    });
+    assert.notEqual(first.rate, "50%", "the staff split is not the commission rule rate");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
 
 test("the person and status filters narrow the payout rows and the total, together and apart", { timeout: 90_000 }, async () => {
@@ -532,6 +544,6 @@ test("SLO connections Cancel closes the form and sends nothing, for a new connec
 });
 
 test("every listed row was exercised", () => {
-  assert.equal(proof.rows.length, 10);
+  assert.equal(proof.rows.length, 12);
   proof.assertAllClaimed();
 });

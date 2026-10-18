@@ -1,8 +1,7 @@
 // Guards for the batch 17 row table: every listed row is one exact map row, every named test file is a plain
 // runnable test that opens no live site, every attached row has exactly one proof case (a live check or a
-// practice test), and the thirty-nine attached rows are all accounted for. (Forty rows were attached at
-// first. "Commission rule 'See these payouts ->'" was taken back off in repair cycle 1: no live ledger row
-// names its rule, so the button cannot narrow the ledger on live data and no test can prove it does.)
+// practice test), and the forty-one attached rows are all accounted for. The commission rule link and
+// ledger table were restored after the read began returning their real rule, client, basis and rate fields.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -40,23 +39,25 @@ test("every listed row is one exact map row, and its test file is a plain test t
     }
   }
   // a row two files press (the Present deck's, by a vm and by the real page) is listed under both and counted once
-  assert.equal(unique.size, 39);
+  assert.equal(unique.size, 41);
 });
 
-test("the row taken back off is on no list and has no proof case", () => {
-  const taken = "Commission rule 'See these payouts ->' (opens the ledger filtered to the people the rule pays)";
-  for (const groups of Object.values(ROWS)) for (const g of groups) assert.ok(!g.controls.includes(taken));
-  assert.ok(!FIN_B17_DISPLAY_PROOF_CASES.some((c) => c.control === taken));
-  // it is still a real map row: it goes back to the not proved list, with the reason in the manifest
-  assert.equal(oneRow("desks-f.json", "products-commissions.html", taken).length, 1);
+test("the repaired commission link and ledger table each have one exact proof case", () => {
+  for (const control of [
+    "Commission rule 'See these payouts ->' (opens the ledger filtered to the people the rule pays)",
+    "Ledger table (date, person, client, product, rule version, basis, rate, payout, status)",
+  ]) {
+    assert.equal(FIN_B17_DISPLAY_PROOF_CASES.filter((c) => c.control === control).length, 1, control);
+    assert.equal(oneRow("desks-f.json", "products-commissions.html", control).length, 1, control);
+  }
 });
 
-test("39 attached rows have one proof case each: 4 live checks, 35 practice tests", () => {
+test("41 attached rows have one proof case each: 4 live checks, 37 practice tests", () => {
   assert.equal(FIN_B17_LIVE_PROOF_CASES.length, 4);
-  assert.equal(FIN_B17_PRACTICE_CASES.length, 35);
-  assert.equal(FIN_B17_DISPLAY_PROOF_CASES.length, 39);
+  assert.equal(FIN_B17_PRACTICE_CASES.length, 37);
+  assert.equal(FIN_B17_DISPLAY_PROOF_CASES.length, 41);
   const caseKeys = FIN_B17_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 39, "no row has two outcomes");
+  assert.equal(new Set(caseKeys).size, 41, "no row has two outcomes");
   // a live row names the lane (so it stays in the lane) and also runs the practice test that presses the same control
   for (const c of FIN_B17_LIVE_PROOF_CASES) {
     assert.match(c.evidence, /gap-catalog-display\.mjs/);
@@ -92,11 +93,11 @@ test("the two script rows also name the closer desk lane's own test, which reads
   for (const needle of ['path: "/app/present.js"', 'path: "/app/contract-send.js"', 'path: "/app/data.js"']) assert.ok(lane.includes(needle), needle);
 });
 
-test("the table counts by page: 24 Present (12 of them also judged on the real page), 10 Products & Commissions, 4 chat widget, 1 money connections", () => {
+test("the table counts by page: 24 Present (12 of them also judged on the real page), 12 Products & Commissions, 4 chat widget, 1 money connections", () => {
   const by = (name) => ROWS[name].flatMap((g) => g.controls).length;
   assert.equal(by("fin-b17-present.test.mjs"), 24);
   assert.equal(by("fin-b17-present-page.test.mjs"), 12);
-  assert.equal(by("fin-b17-products.test.mjs"), 10);
+  assert.equal(by("fin-b17-products.test.mjs"), 12);
   assert.equal(by("fin-b17-chat.test.mjs"), 4);
   assert.equal(by("fin-b17-money-connections.test.mjs"), 1);
 });
