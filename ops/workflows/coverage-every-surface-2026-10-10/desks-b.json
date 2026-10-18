@@ -1448,7 +1448,7 @@
   },
   {
     "surface": "documents.html",
-    "control": "Status filter select (not generated, generation failed, not delivered, bounced, awaiting signature, signature expired)",
+    "control": "Status filter select (not delivered, bounced, awaiting signature, signature expired)",
     "kind": "select",
     "calls": [],
     "tables": [],
@@ -1819,6 +1819,8 @@
       "shifts",
       "staff",
       "agents",
+      "agent_runs",
+      "agent_shadow_log",
       "clients",
       "call_outcomes"
     ],

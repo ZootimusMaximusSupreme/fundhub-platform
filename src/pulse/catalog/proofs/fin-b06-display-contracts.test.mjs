@@ -16,13 +16,14 @@ import { FIN_B06_CHECKS, FIN_B06_GAPS, FIN_B06_DISPLAY_CONTRACTS } from "./fin-b
 import { c as column, judgeCheck, realDay } from "./fin-b06-sql-kit.mjs";
 import { loadSchema, schemaProblems } from "./fin-b06-schema.mjs";
 import { runPrintedSql } from "./fin-b06-sqlite.mjs";
-import { displaySavedResultContract } from "./display-saved-result.mjs";
+import { compileDisplayRuntimeData } from "../compiler.mjs";
+import { displaySavedResultContract, isTrackedDisplayControl } from "./display-saved-result.mjs";
 import {
   FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS, FIN_B06_DISPLAY_PRACTICE_CONTROLS, FIN_B06_DISPLAY_PROOF_CASES
 } from "./fin-b06-display-practice.mjs";
 import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
 import { disclosureFor } from "../../../consent/disclosures.mjs";
-import { DISPLAY_RESULT_CASES, DISPLAY_TRACKING_CASES, gapChecks, judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
+import { gapChecks, judgeDisplayResult } from "../../coverage/gap-catalog-display.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
@@ -1242,8 +1243,8 @@ test("a wrong column in a check would be caught before it ships", () => {
   assert.ok(schemaProblems(broken, schema).some((line) => /exit_address/.test(line)));
 });
 
-test("the not-attachable controls say exactly what is missing and stay not proved without the live page", () => {
-  assert.equal(FIN_B06_GAPS.length, 2);
+test("the one not-attachable control says exactly what is missing and stays not proved without the live page", () => {
+  assert.equal(FIN_B06_GAPS.length, 1);
   for (const entry of FIN_B06_GAPS) {
     assert.equal(entry.mode, "always-red");
     assert.equal(entry.sql, null);
@@ -1252,15 +1253,10 @@ test("the not-attachable controls say exactly what is missing and stay not prove
     const out = judgeDisplayResult({ id: "x", surface: "s", control: entry.control, contract: entry }, { sample_count: 9, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED");
   }
-  const climate = FIN_B06_GAPS.find((entry) => entry.notShipped);
+  const climate = FIN_B06_GAPS[0];
   assert.equal(climate.notShipped.path, "/climate/");
   assert.deepEqual([...climate.notShipped.paths], ["/climate/lender-climate/"]);
   for (const marker of ["climate-match", "climate_match", "website:climate"]) assert.ok(climate.notShipped.markers.includes(marker), marker);
-  // The dead Save month/year button: not attachable, and it names the function that is missing.
-  const stamp = FIN_B06_GAPS.find((entry) => !entry.notShipped);
-  assert.equal(stamp.control, "Businesses cards: Save month/year button (stamp incorporation)");
-  assert.match(stamp.requirement, /stampIncorporatedAsStaff/);
-  assert.match(stamp.requirement, /ReferenceError/);
 });
 
 // ── the words the checks read are the words the product writes ──────────────────────────────────────────
@@ -1332,7 +1328,7 @@ test("the answer confirm check reads the record the confirm writes", () => {
 
 function mapRows() {
   const out = [];
-  for (const file of ["desks-a.json", "desks-b.json", "desks-c.json", "public-pages.json"]) {
+  for (const file of MAP_FILES) {
     for (const row of JSON.parse(fs.readFileSync(path.join(MAP_DIR, file), "utf8"))) {
       if (!row.repeats_row_in) out.push({ ...row, sourceFile: file });
     }
@@ -1340,9 +1336,24 @@ function mapRows() {
   return out;
 }
 
+const MAP_FILES = ["desks-a.json", "desks-b.json", "desks-c.json", "desks-d.json", "desks-e.json", "desks-f.json", "public-pages.json"];
+
+function freshDisplayRuntime() {
+  const sources = MAP_FILES.map((sourceFile) => ({
+    sourceFile,
+    rows: JSON.parse(fs.readFileSync(path.join(MAP_DIR, sourceFile), "utf8")),
+  }));
+  return compileDisplayRuntimeData(sources, {
+    proofCases: DISPLAY_PROOF_CASES,
+    staffProofCases: [],
+    contractFor: displaySavedResultContract,
+    isTracked: isTrackedDisplayControl,
+  });
+}
+
 test("each control text matches exactly one screen row, and the registry hands back its contract", () => {
   const rows = mapRows();
-  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 35);
+  assert.equal(FIN_B06_DISPLAY_CONTRACTS.length, 34);
   for (const entry of FIN_B06_DISPLAY_CONTRACTS) {
     const hits = rows.filter((row) => row.control === entry.control);
     assert.equal(hits.length, 1, `${entry.control.slice(0, 60)}: matched ${hits.length} rows`);
@@ -1351,11 +1362,12 @@ test("each control text matches exactly one screen row, and the registry hands b
   }
 });
 
-test("the lane judges every check from the saved catalog: green, red on a wrong result, and not proved for the gaps", async () => {
+test("the lane judges every check from a fresh catalog: green, red on a wrong result, and not proved for the gaps", async () => {
   const mine = new Map(FIN_B06_DISPLAY_CONTRACTS.map((entry) => [entry.control, entry]));
-  const cases = DISPLAY_TRACKING_CASES.filter((entry) => mine.has(entry.control));
+  const runtime = freshDisplayRuntime();
+  const cases = runtime.displayTrackingCases.filter((entry) => mine.has(entry.control));
   assert.equal(cases.length, FIN_B06_DISPLAY_CONTRACTS.length);
-  assert.equal(DISPLAY_RESULT_CASES.filter((entry) => mine.has(entry.control)).length, FIN_B06_DISPLAY_CONTRACTS.length);
+  assert.equal(runtime.displayResultCases.filter((entry) => mine.has(entry.control)).length, FIN_B06_DISPLAY_CONTRACTS.length);
 
   const redKeys = new Set(["blueprint-credit-partner"]);
   const db = {
@@ -1381,7 +1393,7 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
       ? new Response(fs.readFileSync(file, "utf8"), { status: 200 })
       : new Response("not found", { status: 404 });
   };
-  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveSite });
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveSite }, runtime);
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const entry of cases) {
     const row = byId.get(entry.id);
@@ -1399,8 +1411,9 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
 });
 
 test("the practice-tested controls are direct proofs; the rows that also keep a live check keep it", () => {
-  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 16);
+  assert.equal(FIN_B06_DISPLAY_PROOF_CASES.length, 17);
   const rows = mapRows();
+  const runtime = freshDisplayRuntime();
   const TEST_1 = "src/pulse/catalog/proofs/fin-b06-display-browser.test.mjs";
   const TEST_2 = "src/pulse/catalog/proofs/fin-b06-display-browser-2.test.mjs";
   for (const entry of FIN_B06_DISPLAY_PROOF_CASES) {
@@ -1413,10 +1426,10 @@ test("the practice-tested controls are direct proofs; the rows that also keep a 
     if (FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS.includes(entry.control)) {
       // The saved half is judged on saved rows, and the lane still judges it.
       assert.ok(displaySavedResultContract(hits[0]), `${entry.control}: the live check is kept`);
-      assert.ok(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), `${entry.control}: still judged by the live lane`);
+      assert.ok(runtime.displayTrackingCases.some((item) => item.control === entry.control), `${entry.control}: still judged by the live lane`);
     } else {
       assert.equal(displaySavedResultContract(hits[0]), null, `${entry.control}: also has a saved-result contract`);
-      assert.equal(DISPLAY_TRACKING_CASES.some((item) => item.control === entry.control), false, `${entry.control}: still judged by the live lane`);
+      assert.equal(runtime.displayTrackingCases.some((item) => item.control === entry.control), false, `${entry.control}: still judged by the live lane`);
     }
   }
   assert.deepEqual([...FIN_B06_DISPLAY_PRACTICE_ALSO_LIVE_CONTROLS].sort(), [
@@ -1432,5 +1445,5 @@ test("the practice-tested controls are direct proofs; the rows that also keep a 
     "'Needs a human read' list: low-confidence bureau answers and stuck clients; 'Mark as checked' button",
     "Case drawer: 'Call bureau' button (AI voice call to the bureau, uses DOB/SSN; disabled once fired)"
   ].sort());
-  assert.equal(FIN_B06_DISPLAY_PRACTICE_CONTROLS.length, 5);
+  assert.equal(FIN_B06_DISPLAY_PRACTICE_CONTROLS.length, 6);
 });

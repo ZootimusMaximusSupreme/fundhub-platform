@@ -1,7 +1,7 @@
 // Guards for the batch 10 row table: every listed row is one exact map row, every named test file is a
 // plain runnable test that opens no live site, and every row ends in exactly one place: a live check (seven:
 // five saved results, two link gates, each also carrying its browser test), a practice test (thirty-two), or
-// held open in the lane with its exact reason (one).
+// and no row is held open.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -39,22 +39,20 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "all 40 batch rows are exercised (39 attached, 1 held open)");
+  assert.equal(listed, 40, "all 40 batch rows are exercised and attached");
 });
 
-test("every row ends in one place: 7 live, 32 practice, 1 held open; none is left out", () => {
+test("every row ends in one place: 7 live and 33 practice; none is left out", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls.map((control) => ({ sourceFile: g.sourceFile, surface: g.surface, control }))));
   const open = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => (g.notAttached || []).map((control) => ({ sourceFile: g.sourceFile, surface: g.surface, control }))));
-  assert.equal(attached.length, 39);
-  assert.equal(open.length, 1, "exactly one row is held open");
+  assert.equal(attached.length, 40);
+  assert.equal(open.length, 0, "no row is held open");
   assert.equal(FIN_B10_LIVE_CASES.length, 7);
-  assert.equal(FIN_B10_PRACTICE_CASES.length, 32);
-  assert.equal(FIN_B10_DISPLAY_PROOF_CASES.length, 39);
+  assert.equal(FIN_B10_PRACTICE_CASES.length, 33);
+  assert.equal(FIN_B10_DISPLAY_PROOF_CASES.length, 40);
   const caseKeys = FIN_B10_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 39);
+  assert.equal(new Set(caseKeys).size, 40);
   assert.deepEqual([...caseKeys].sort(), attached.map(keyOf).sort());
-  // The held-open row is in no proof case: it stays in the lane, and the lane says why.
-  assert.ok(!caseKeys.includes(keyOf(open[0])), "the held-open row is not handed to the catalog as proved");
   assert.deepEqual(FIN_B10_OPEN_ROWS.map(([sourceFile, surface, control]) => keyOf({ sourceFile, surface, control })), open.map(keyOf));
   // A live row names the lane (so it stays in the lane) and BOTH its contract test and its browser test; a
   // practice row never names the lane.
@@ -66,7 +64,7 @@ test("every row ends in one place: 7 live, 32 practice, 1 held open; none is lef
   }
   for (const c of FIN_B10_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
   assert.equal(FIN_B10_LIVE_ROWS.length, 7);
-  assert.equal(FIN_B10_RESULT_CONTRACTS.length, 8, "five saved-result checks, two link gates, one held-open row");
+  assert.equal(FIN_B10_RESULT_CONTRACTS.length, 7, "five saved-result checks and two link gates");
   // The picker's live check re-derives the door's rule, so the door's own test is listed with it.
   const picker = FIN_B10_DISPLAY_PROOF_CASES.find((c) => c.control.startsWith("Client picker select"));
   assert.ok(picker.tests.some((t) => t.endsWith("fin-b10-clients-handler.test.mjs")));
@@ -74,26 +72,17 @@ test("every row ends in one place: 7 live, 32 practice, 1 held open; none is lef
   assert.ok(picker.tests.some((t) => t.endsWith("fin-b10-live-contracts.test.mjs")));
 });
 
-test("the held-open row is served by the lane as NOT_PROVED with its exact reason, and the reason is still true of the page", () => {
-  const [sourceFile, surface, control] = FIN_B10_OPEN_ROWS[0];
-  assert.equal(oneRow(sourceFile, surface, control).length, 1);
-  const contract = displaySavedResultContract({ control });
-  assert.equal(contract.mode, "always-red");
-  assert.ok(FIN_B10_COMPILE_CASES.some((c) => c.control === control && c.depth === "deep"), "the compiler builds a lane case for it");
-  assert.match(contract.requirement, /data-fh-href/);
-  assert.match(contract.requirement, /Not attachable today/);
-  // The reason names a line of the page. The moment paintCombined() also sets the shell's copy of the
-  // address (data-fh-href) on the two partner links, this goes red and says the row can be attached.
+test("the credit-partner proof is attached and the page keeps the shell's URL copy in step", () => {
+  const control = "Credit partner links: Open the partner's file, Record the partner's own consent";
+  assert.equal(FIN_B10_OPEN_ROWS.length, 0);
+  assert.ok(FIN_B10_DISPLAY_PROOF_CASES.some((c) => c.control === control));
   const panel = fs.readFileSync(path.join(ROOT, "public/app/client-control-panel.html"), "utf8");
   const start = panel.indexOf("function paintCombined(");
   const end = panel.indexOf("function loadCombined(", start);
   assert.ok(start > 0 && end > start, "paintCombined() is still in the page");
   const body = panel.slice(start, end);
-  assert.match(body, /el\.partnerOpen\.href\s*=/);
-  assert.match(body, /el\.partnerConsent\.href\s*=/);
-  assert.doesNotMatch(body, /data-fh-href/,
-    "paintCombined() now sets data-fh-href: the held-open reason no longer holds. Attach the row (add a late-session case to the browser test) and remove OPEN_GAP.");
-  // And the shell's second pass still rebuilds every link from that copy, which is why the late answer wins.
+  assert.match(body, /el\.partnerOpen\.setAttribute\("data-fh-href", partnerOpenUrl\)/);
+  assert.match(body, /el\.partnerConsent\.setAttribute\("data-fh-href", partnerConsentUrl\)/);
   const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
   assert.match(shell, /var h = a\.getAttribute\("data-fh-href"\)\.replace/);
 });

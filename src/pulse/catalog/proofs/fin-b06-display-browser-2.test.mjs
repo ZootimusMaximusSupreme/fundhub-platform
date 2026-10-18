@@ -172,6 +172,53 @@ async function openBlueprint(lab, { custom = {}, respond = null } = {}) {
   return { page, sent, actions: (name) => sent.filter((body) => body.action === name) };
 }
 
+test("Save month/year posts the exact business and refreshes the saved incorporation month", { timeout: 120_000 }, async (t) => {
+  const lab = await openLab();
+  t.after(() => lab.close());
+  const sent = [];
+  let incorporated = null;
+  let reads = 0;
+  const page = await newStaffPage(lab, {
+    role: "owner",
+    api: async (request, url) => {
+      if (url.pathname === "/api/dashboard/client") {
+        reads += 1;
+        return {
+          ok: true,
+          client: { id: CLIENT, first_name: "Pat", last_name: "Lee", email: "pat@example.test", custom_fields: {} },
+          transactions: [], tasks: [], messages: [], crs_results: [], open_blockers: [],
+          business_credit: { businesses: [{
+            name: "Fund Horse Logistics", state: "AZ", ein: "12-3456789",
+            incorporated_date: incorporated, age_months: incorporated ? 77 : null,
+            address: "1 Main St, Phoenix, AZ 85001", extra_owner_name: null
+          }] }
+        };
+      }
+      if (url.pathname === "/api/soft-pull-approve" && request.method() === "POST") {
+        const body = post(request);
+        sent.push(body);
+        incorporated = body.incorporated_date;
+        return { ok: true, business: { name: body.business_name, incorporated_date: incorporated, age_months: 77 } };
+      }
+      return undefined;
+    }
+  });
+  await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-inc-0").waitFor({ state: "visible", timeout: 30_000 });
+
+  await page.locator("#ccp-inc-0").fill("2020-05");
+  await page.locator("#ccp-inc-0 + button").click();
+  await page.locator("#ccp-inc-0 + button + p", { hasText: "Saved." }).waitFor({ timeout: 10_000 });
+  assert.deepEqual(sent, [{
+    action: "stamp_incorporated",
+    client_id: CLIENT,
+    business_name: "Fund Horse Logistics",
+    incorporated_date: "2020-05"
+  }]);
+  assert.ok(reads >= 2, "the accepted save reads the file again");
+  await page.waitForFunction(() => document.querySelector("#ccp-biz-list")?.innerText.includes("2020-05"));
+});
+
 test("Save ready date posts the day typed in the box, says what was saved, and refuses an empty box", { timeout: 120_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
