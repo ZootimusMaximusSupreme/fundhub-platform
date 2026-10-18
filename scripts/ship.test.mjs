@@ -521,12 +521,12 @@ describe("push after the ship-log commit, through github-push-whole-repo.mjs —
     assert.match(r2.line, /no answer within 10 minutes/);
   });
 
-  test("GitHub has commits this Mac lacks -> no push (the push script would overwrite them)", () => {
+  test("GitHub has commits this Mac lacks -> no push until this Mac pulls", () => {
     const f = fakePush({ inside: "no" });
     const r = pushToGitHub({ git: f.git, runCmd: f.runCmd });
     assert.equal(r.pushed, false);
     assert.equal(f.calls.some((c) => c.kind === "run"), false, "github-push-whole-repo.mjs is not run");
-    assert.match(r.line, /would overwrite them/);
+    assert.match(r.line, /must pull them first/);
   });
 
   test("cannot read or compare GitHub's main -> no push, one line", () => {
@@ -674,7 +674,7 @@ describe("real git: the pull order and the push check do what the fakes say", ()
       const before = pushToGitHub({ git: gh.macGit, runCmd, env: gh.env });
       assert.equal(before.pushed, false);
       assert.deepEqual(ran, []);
-      assert.match(before.line, /would overwrite them/);
+      assert.match(before.line, /must pull them first/);
       assert.equal(pullMain({ git: gh.macGit, env: gh.env }).ok, true);
       const after = pushToGitHub({ git: gh.macGit, runCmd, env: gh.env });
       assert.equal(after.pushed, true, after.line);

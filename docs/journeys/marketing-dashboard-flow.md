@@ -578,8 +578,8 @@ flowchart TD
   LOG --> F[git fetch origin main<br/>no prompt, 90 s limit]
   F -->|fails| Q1[one line: did not push]
   F -->|works| I{GitHub's main inside this Mac's main?}
-  I -->|no| Q2[one line: did not push,<br/>it would overwrite GitHub's newer commits]
-  I -->|yes| PUSH[node scripts/github-push-whole-repo.mjs<br/>main, every local branch, every tag; 10 min limit]
+  I -->|no| Q2[one line: did not push,<br/>this Mac must pull GitHub's newer commits]
+  I -->|yes| PUSH[node scripts/github-push-whole-repo.mjs<br/>main, unmerged local branches, every tag; 10 min limit]
   PUSH -->|works| OK[one line: pushed]
   PUSH -->|fails| Q3[one line with the reason, token hidden]
   Q1 & Q2 & Q3 & OK --> E[ship ends; the deploy stands]
@@ -589,10 +589,10 @@ flowchart TD
   half way through a pull, because deploying it would ship a broken tree.
 - The push runs only after the ship-log commit. Nothing after it can stop the ship or
   undo the deploy.
-- Why the push is checked first: `github-push-whole-repo.mjs` leases `main` on the copy
-  it fetches a moment before, so on its own it would overwrite GitHub commits this Mac
-  does not have (the outbox's saves). Ship pushes only when GitHub's main is already
-  inside this Mac's main; the next ship pulls first.
+- The push script also checks the fetched GitHub `main` itself and uses a fast-forward
+  push. It cannot overwrite newer GitHub commits, even when run outside Ship. Branches
+  already merged into GitHub `main` are skipped so deleted branch refs stay deleted;
+  unmerged branches and all tags are still pushed.
 - A rebase copies this Mac's local commits, including the commits of branches merged
   locally since the last push. The merge commits stay merges, but the old branch tips
   are no longer inside `main` afterwards.

@@ -16,7 +16,7 @@ From repo root:
 node scripts/github-push-whole-repo.mjs
 ```
 
-The script adds or updates remote **`origin`**, pushes **`main`** (`--force-with-lease`), all other local branches, and all tags. It removes remote **`gitlab`** if present. It never removes GitHub remotes.
+The script adds or updates remote **`origin`**, pushes **`main`** only when it can fast-forward, every local branch not yet merged into GitHub `main`, and all tags. Merged branch refs stay deleted. It removes remote **`gitlab`** if present. It never removes GitHub remotes.
 
 ## Credentials (names only — values in gitignored `.env`)
 

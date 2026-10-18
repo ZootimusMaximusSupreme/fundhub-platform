@@ -129,7 +129,7 @@ So: commit to the local repository in the same session the work is done, every t
 The full repo on GitHub: **ZootimusMaximusSupreme/fundhub-platform**.
 https://github.com/ZootimusMaximusSupreme/fundhub-platform
 
-Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — every local branch and tag, then drop remote **`gitlab`** if it still exists. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
+Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — `main`, every unmerged local branch, and every tag, then drop remote **`gitlab`** if it still exists. Merged branch refs stay deleted. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
 
 * Compare against **`origin/main`**, not GitLab.
 * Still commit locally every session. Then push that commit to GitHub when auth allows.
