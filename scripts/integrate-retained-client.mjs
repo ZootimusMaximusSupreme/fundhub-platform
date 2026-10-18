@@ -1,6 +1,6 @@
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {execFileSync,spawnSync} from 'node:child_process';
 const base='0998ff49969c6e2663a6e1851b4634ab5896113d';
-const pages=(process.env.RECOVERY_PAGES||'payment-success,reset-password').split(',');
+const pages=(process.env.RECOVERY_PAGES||'payment-success,reset-password,consent-capture,automations').split(',');
 const read=(ref,p)=>{const r=spawnSync('git',['show',ref+':'+p]);return r.status===0?r.stdout:null;};
 const aside=/<aside\b[^>]*class=["'][^"']*\b(?:sidebar|side)\b[^"']*["'][^>]*>[\s\S]*?<\/aside>/i;
 const font=/<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected\. -->\s*<link rel="preload" href="\/assets\/fonts\/nunito-latin-variable\.woff2"[^>]*>\s*<link rel="stylesheet" href="\/app\/fundhub-font\.css">\s*<script defer src="\/app\/fundhub-font\.js"><\/script>\s*/;

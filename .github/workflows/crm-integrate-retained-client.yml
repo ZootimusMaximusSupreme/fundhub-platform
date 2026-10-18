@@ -24,7 +24,7 @@ jobs:
           node-version: '22'
       - name: Reconcile the original page builders retained client source
         env:
-          RECOVERY_PAGES: payment-success,reset-password
+          RECOVERY_PAGES: payment-success,reset-password,consent-capture,automations
         id: merge
         continue-on-error: true
         run: node scripts/integrate-retained-client.mjs
