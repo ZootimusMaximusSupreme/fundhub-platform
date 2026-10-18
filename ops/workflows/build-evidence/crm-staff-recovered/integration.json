@@ -1,6 +1,6 @@
 {
   "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
-  "checkedHead": "4e33177cce5a8b71bd508bfb4d01f7d0462140e8",
+  "checkedHead": "1a09f741e95e245bcebd9b5ef41e6440723af5f6",
   "complete": true,
   "inventory": [
     {
@@ -13,32 +13,74 @@
         "public/app/csm-queue.css",
         "public/app/csm-queue.html"
       ]
+    },
+    {
+      "page": "lenders",
+      "branch": "origin/codex/recover-lenders",
+      "source": "23eeb1041cf89a167d0816b8bed21b51d889c1cd",
+      "files": [
+        "e2e/lenders-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
+        "public/app/lenders.css",
+        "public/app/lenders.html",
+        "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs"
+      ]
     }
   ],
   "files": [
     {
       "page": "csm-queue",
       "path": "e2e/csm-queue-layout.spec.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 12074
     },
     {
       "page": "csm-queue",
       "path": "ops/workflows/crm-portal-layout-recovery-csm-queue.md",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 4604
     },
     {
       "page": "csm-queue",
       "path": "public/app/csm-queue.css",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 10514
     },
     {
       "page": "csm-queue",
       "path": "public/app/csm-queue.html",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 41009
+    },
+    {
+      "page": "lenders",
+      "path": "e2e/lenders-layout.spec.mjs",
+      "state": "clean merge",
+      "bytes": 14542
+    },
+    {
+      "page": "lenders",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
+      "state": "clean merge",
+      "bytes": 5208
+    },
+    {
+      "page": "lenders",
+      "path": "public/app/lenders.css",
+      "state": "clean merge",
+      "bytes": 13896
+    },
+    {
+      "page": "lenders",
+      "path": "public/app/lenders.html",
+      "state": "clean merge",
+      "bytes": 43889
+    },
+    {
+      "page": "lenders",
+      "path": "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs",
+      "state": "clean merge",
+      "bytes": 43005
     }
   ],
   "noProductionDeploy": true,

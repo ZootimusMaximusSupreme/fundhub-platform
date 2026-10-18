@@ -231,7 +231,10 @@ test("Apply filters: one read with every box, the table is drawn again from the 
     // A read that never arrives says so in the same place.
     await page.locator("#fQ").fill("Dropped");
     await page.locator("#btnFilter").click();
-    await waitFor(async () => (await page.locator("#listMeta").textContent()) === "Could not load (sign in?)", "the could-not-load words");
+    await waitFor(async () => (await page.locator("#listMeta").textContent()) === "Could not load", "the could-not-load words");
+    assert.equal(await page.locator("#listState.error").isVisible(), true, "failure has its own state");
+    assert.equal(await page.locator("#btnListRetry").isVisible(), true, "the failed read can be retried");
+    assert.equal(await page.locator("#lenderEmpty").isVisible(), false, "a failure is not an empty directory");
     assert.equal(await page.locator("#lenderBody tr").count(), 0);
   });
   assert.deepEqual(errors.filter((e) => !/Failed to fetch|NetworkError|net::/i.test(e)), []);
@@ -379,7 +382,7 @@ test("a lender row: seven cells that mark themselves changed, and Save sends exa
 
   await proof.check(/^Lender row inline cells/, async () => {
     const present = await row.locator("[data-f]").evaluateAll((list) => list.map((el) => el.getAttribute("data-f")));
-    assert.deepEqual(present, fields, "the seven editable cells, in this order");
+    assert.deepEqual([...present].sort(), [...fields].sort(), "every editable field remains once, with state grouped under eligibility");
     assert.equal(await row.locator('[data-f="name"]').inputValue(), "Mesa Community Bank");
     assert.equal(await row.locator('[data-f="lender_table"]').inputValue(), "OnlineBizCC");
     assert.equal(await row.locator('[data-f="bureaus_pulled"]').inputValue(), "EX");
@@ -396,7 +399,7 @@ test("a lender row: seven cells that mark themselves changed, and Save sends exa
     await row.locator('[data-f="active"]').selectOption("false");
     await row.locator('[data-f="eligible_states"]').fill("AZ, NV");
     const dirty = await row.locator("[data-f].dirty").evaluateAll((list) => list.map((el) => el.getAttribute("data-f")));
-    assert.deepEqual(dirty, fields, "all seven cells show as changed");
+    assert.deepEqual([...dirty].sort(), [...fields].sort(), "all seven fields show as changed");
     assert.equal(seen.posts.length, 0, "typing in a cell sends nothing until Save");
   });
 
@@ -415,7 +418,7 @@ test("a lender row: seven cells that mark themselves changed, and Save sends exa
     // The row is drawn again from the saved row the server sent back, with who and when.
     const updated = page.locator("#lenderBody tr").first();
     await waitFor(async () => (await updated.locator('[data-f="name"]').inputValue()) === "Mesa Community Bank 2", "the saved name");
-    assert.match(await updated.locator("td").nth(8).innerText(), /Jordan Blake\s+2026-10-14/);
+    assert.match(await updated.locator(".updated-cell").innerText(), /Jordan Blake\s+2026-10-14/);
     assert.equal(await updated.locator("[data-f].dirty").count(), 0, "a saved row is no longer marked changed");
   });
   assert.deepEqual(errors, []);
@@ -442,7 +445,7 @@ test("lender cells with nothing in them stay empty, are never the word null, and
     assert.equal(await row.locator('[data-f="priority_tier"]').inputValue(), "", "no tier is no tier, not tier 1");
     assert.equal(await row.locator('[data-f="priority_tier"] option:checked').textContent(), "—");
     assert.equal(await row.locator('[data-f="active"]').inputValue(), "true", "a lender with no status is shown Active");
-    assert.equal(await row.locator("td").nth(8).innerText().then((t) => t.replace(/\s+/g, " ").trim()), "—", "no updater and no date show a dash");
+    assert.equal(await row.locator(".updated-cell").innerText().then((t) => t.replace(/\s+/g, " ").trim()), "—", "no updater and no date show a dash");
     await row.locator(".save-btn").click();
     await waitFor(() => seen.posts.length === 1, "the save request");
     assert.deepEqual(seen.posts[0].patch, {
