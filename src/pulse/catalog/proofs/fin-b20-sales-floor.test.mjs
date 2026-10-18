@@ -68,10 +68,12 @@ const text = (scope, selector) => scope.locator(selector).first().evaluate((el) 
 });
 const panel = (page, heading) => page.locator(".panel").filter({ has: page.locator("h3", { hasText: heading }) }).first();
 
-test("header chips: the closers on shift are counted from the read and the name is the signed-in person's", { timeout: 60_000 }, async () => {
+test("floor shift chip is counted from the read and the shared account names the signed-in person", { timeout: 60_000 }, async () => {
   const page = await openFloor();
   assert.equal(await text(page, "header .hl .chip"), "2 closers on shift");
-  await until(async () => (await text(page, "header .hr .chip")) === "Casey Proof", { message: "the signed-in name" });
+  await page.locator("#fh-shell-chip-show").click();
+  assert.equal(await text(page, ".fh-account-person strong"), "Casey Proof", "the shared account retains the signed-in identity");
+  assert.equal(await page.locator("header .hr .chip").count(), 0, "there is no duplicate page account");
   await page.close();
 
   const none = await openFloor({ closers: FLOOR.closers.map((c) => ({ ...c, on_shift: false })) });
@@ -80,7 +82,8 @@ test("header chips: the closers on shift are counted from the read and the name 
   await none.close();
 
   const unnamed = await openFloor({}, { staff: { name: "" } });
-  await until(async () => (await text(unnamed, "header .hr .chip")) === "—", { message: "a dash when the session has no name" });
+  await unnamed.locator("#fh-shell-chip-show").click();
+  assert.equal(await text(unnamed, ".fh-account-person strong"), "Your account", "an unnamed session gets the shared account fallback");
   await unnamed.close();
 });
 
@@ -138,7 +141,7 @@ test("belief panel: this period against last, bars against the biggest, hot only
   await page.close();
 
   const empty = await openFloor({ beliefs: { beliefs: [], sources: [], period: {}, prior: {} } });
-  assert.equal(await panel(empty, "belief failed").locator("p.note", { hasText: "No belief_failed values logged yet" }).count(), 1);
+  assert.equal(await panel(empty, "belief failed").locator("p.note", { hasText: "No objections logged this month" }).count(), 1);
   assert.equal(await panel(empty, "belief failed").locator(".ob").count(), 0);
   await empty.close();
 });
@@ -162,7 +165,7 @@ test("lead-source panel: held, close and desire per source and setter, at most e
   await capped.close();
 
   const none = await openFloor({ beliefs: { beliefs: [], sources: [], period: {}, prior: {} } });
-  assert.match(await text(panel(none, "coming from"), "p.note"), /^No source cuts yet/);
+  assert.match(await text(panel(none, "coming from"), "p.note"), /^No source activity yet/);
   assert.equal(await none.locator("#fh-flag-mkt").count(), 0, "with no belief counts there is nothing to flag");
   await none.close();
 });

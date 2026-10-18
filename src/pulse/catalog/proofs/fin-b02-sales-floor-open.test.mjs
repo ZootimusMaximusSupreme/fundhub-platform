@@ -200,8 +200,8 @@ test("Page open: an empty month says so in words on every panel and never invent
   });
   await until(async () => (await page.locator(".funnel .f .vl").first().innerText()) === "12");
   const text = (h) => page.locator(".panel", { has: page.getByRole("heading", { name: h }) }).innerText();
-  assert.match(await text("Which belief failed"), /No belief_failed values logged yet/);
-  assert.match(await text("Where it is coming from"), /No source cuts yet/);
+  assert.match(await text("Which belief failed"), /No objections logged this month/);
+  assert.match(await text("Where it is coming from"), /No source activity yet/);
   assert.match(await text("Today's recordings"), /Google Drive is not connected yet\./);
   assert.match(await text("Deals going cold"), /No cold deposits \(7\+ days quiet, not funded\)\./);
   assert.equal(await page.locator("#fh-flag-mkt").count(), 0, "no flag button with no belief to flag");
