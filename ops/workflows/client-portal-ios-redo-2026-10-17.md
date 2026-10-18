@@ -11,6 +11,7 @@ On 2026-10-17, Chris approved the revised design sample and said: "make the whol
 - Sample images: `ops/workflows/company-ux-refresh-2026-10-18/client-portal-home-desktop.png` and `client-portal-home-mobile-fold.png`.
 - Scope: the complete client-facing portal experience, its existing linked client pages and existing features, plus the requested referral-to-Affiliate-Dashboard behavior. Preserve staff and other roles on shared pages.
 - Use real server values. The sample's stages, step count, and copy are design examples, not a new data contract.
+- Owner also requested sample data for the existing client demo account, remembering it as either `chris@fundhub.ai` or `client@fundhub.ai`. Discover the actual designated client login from existing fixtures/demo logic or an authorized account lookup; do not ask him to remember. Keep the sample dataset coherent and account-scoped. Preserve real roles, credentials, records, and history.
 - Build, verify, commit, push, and leave a reviewable PR with desktop/phone evidence. Present the full implemented portal for the final production-release choice.
 
 ## Work split and order
@@ -62,4 +63,4 @@ This local chat owns the cloud handoff only. Cloud execution owns the implementa
 
 ## Cloud task and progress
 
-Cloud task: awaiting creation from this chat. Record the task URL and page-agent manifest when available.
+Cloud task queued on 2026-10-17: **Client portal iOS redesign — one agent per page**. App creation reference: `local-chatgpt:74bbe01f-2369-4986-a170-62d1faf8903f`. The full prompt includes the demo-account request and referral/Affiliate Dashboard requirement. Record the resolved task URL, confirmed cloud runtime/access, and actual page-agent manifest when available; queued task creation is not proof that page agents have started.
