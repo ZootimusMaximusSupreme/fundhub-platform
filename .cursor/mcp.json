@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "ClickFunnels": {
-      "type": "http",
-      "url": "https://agents.myclickfunnels.com/mcp"
-    }
-  }
-}

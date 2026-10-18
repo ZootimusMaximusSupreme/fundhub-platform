@@ -1,5 +1,0 @@
-# Importing fundhub_gen.py to recapture the test fixtures
-# (recapture-fixtures.py) makes Python write bytecode here. It is build output,
-# not source, and must never be committed.
-__pycache__/
-*.pyc

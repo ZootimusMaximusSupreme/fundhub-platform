@@ -1,3 +1,0 @@
-Owner law 2026-08-15: Inquiry phone remover is ON HOLD. Do not update Bland/phone scripts, do not rebuild the inquiry-remover agent prompts, do not treat the Haitian CEO letter prompt as a rewrite of the phone path. Reason: scripts need an update first; Chris will say when to resume.
-
-Repair letters + education MAY use the Haitian CEO prompt (docs/metro2/AI-CREDIT-REPAIR-LETTER-GENERATION-PROMPT.md) after compliance review. Inquiry LETTERS / personal-info cleanup may pull matching pieces. Phone inquiry removal stays frozen.
