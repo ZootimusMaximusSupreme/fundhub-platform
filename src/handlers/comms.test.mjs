@@ -42,7 +42,7 @@ async function withSloPostPurchase(value, fn) {
   }
 }
 
-function pgFake() {
+function pgFake({ failBookingWrite = false } = {}) {
   const clients = [], messages = [], bank = [], tasks = [], optOuts = [], bookings = [];
   let n = 0;
   return {
@@ -173,6 +173,7 @@ function pgFake() {
       }
       // --- bookings: upsert, honouring BOTH partial unique indexes ---
       if (/INSERT INTO bookings/.test(sql)) {
+        if (failBookingWrite) throw new Error("fake booking write failed");
         const [org_id, client_id, source, provider_uid, starts_at, ends_at, status,
           meeting_url, attendee_email, attendee_name, event_type_slug, rawJson] = params;
         const raw = rawJson == null ? null : JSON.parse(rawJson);
@@ -326,6 +327,18 @@ test("booking.created: creates a task once (dedup by booking uid), creates clien
   assert.equal(db.tasks.length, 1);
   assert.equal(db.tasks[0].body, "bk_1");
   assert.equal(db.clients.length, 1, "resolved+created the client from the booking email");
+});
+
+test("booking.created: a failed booking write rejects so the event can be retried", async () => {
+  const db = pgFake({ failBookingWrite: true });
+  const event = ev("booking.created", {
+    bookingUid: "bk-write-failure",
+    email: "retry@example.com",
+    source: "calcom",
+    startTime: "2026-10-19T18:00:00.000Z"
+  });
+  await assert.rejects(() => onBookingCreated(event, db), /fake booking write failed/);
+  assert.equal(db.bookings.length, 0);
 });
 
 test("booking.created: stores meetingUrl on the task", async () => {

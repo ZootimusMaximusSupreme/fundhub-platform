@@ -411,7 +411,10 @@ async function recordBooking(db, event, p, clientId, status) {
       `[comms] bookings write failed for ${event.name} ` +
       `(uid=${bookingUid(p) || "none"}): ${err && err.message}`
     );
-    return null;
+    // The event bus only records and retries failed work when the handler
+    // rejects. Swallowing this error made a booking webhook look accepted even
+    // though no bookings row existed, leaving the customer journey stranded.
+    throw err;
   }
 }
 
