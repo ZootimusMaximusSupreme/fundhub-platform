@@ -1,5 +1,9 @@
 # TODO — unfinished work
 
+## Tomorrow — 2026-10-18: company-wide UX refresh
+
+- [ ] Start a new-agent-led refresh of Fundhub's full experience across the website, funnels, client and team portals, CRM, Finance OS, and Mac/iPhone apps. Use `ops/workflows/company-ux-refresh-2026-10-18-reference.png` (the Mac welcome screen) as the visual reference: generous space, bold and clear type, simple navigation, restrained black-and-white controls, and a polished Apple-like feel. First map the screens and agree on shared design rules; then split the upgrade among agents while preserving each working journey.
+
 ## Tomorrow — 2026-10-17: SBA lender partners
 
 Contacts, public facts, and the call questions: `ops/workflows/lender-partners-2026-10-16.md`.
