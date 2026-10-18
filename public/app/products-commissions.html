@@ -291,12 +291,8 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
               Nothing is destroyed. A payout that already accrued keeps pointing at the version that was open the day it
               was earned, so re-running last quarter's ledger produces last quarter's numbers.
             </div>
-            <!-- §5/§6: dropped two false lines here. One claimed every payout row names
-                 the rule version it came from — the ledger's Rule column is "—" on every
-                 row because no rule id comes back with a payout. The other said rate and
-                 product edits "are not saved to the server yet", which is coming-soon
-                 wording and was wrong about products besides: product edits DO save
-                 through /api/products. -->
+            <!-- Product edits save through /api/products. Payout rows keep the frozen
+                 rule snapshot and point to the exact effective-dated rule row. -->
           </div>
         </div>
 
@@ -484,11 +480,38 @@ function ruleGroups(rows){
   });
 }
 
+function ruleVersionFor(ruleId){
+  if(!ruleId) return null;
+  for(var i=0;i<RULES.length;i++){
+    for(var j=0;j<RULES[i].versions.length;j++){
+      if(RULES[i].versions[j].rowId===ruleId) return {rule:RULES[i],version:RULES[i].versions[j]};
+    }
+  }
+  return null;
+}
+
+function snapshotOf(value){
+  if(value&&typeof value==='object') return value;
+  try{return value?JSON.parse(value):{}}catch(e){return {}}
+}
+
+function rateFromSnapshot(value){
+  var snap=snapshotOf(value);
+  if(snap.calc_method==='percent'&&snap.percent!=null) return Number(snap.percent)+'%';
+  if(snap.calc_method==='flat'&&snap.flat_amount!=null) return money(Number(snap.flat_amount));
+  if(snap.calc_method==='flat_per_unit'&&snap.flat_amount!=null&&snap.per_unit_amount!=null){
+    return money(Number(snap.flat_amount))+' / '+money(Number(snap.per_unit_amount));
+  }
+  if(snap.calc_method==='tiered') return 'Tiered';
+  return '—';
+}
+
 /* ══ WHO A RULE AFFECTS ═══════════════════════════════════════════════════
    Read straight off the ledger rows that name this rule, so the header
    answers "if I change this, who does it affect?" without opening anything.  */
 function impactOf(r){
-  var rows=LEDGER.filter(function(l){return l.rule===r.id});
+  var versionIds=r.versions.map(function(v){return v.rowId});
+  var rows=LEDGER.filter(function(l){return versionIds.indexOf(l.ruleId)>=0});
   var people=[]; rows.forEach(function(l){ if(people.indexOf(l.who)<0) people.push(l.who); });
   var unpaid=rows.filter(function(l){return l.st!=='Paid'});
   return {rows:rows,people:people,
@@ -675,6 +698,7 @@ function loadCommissionRules(reopenId){
     RULES.length=0;
     Array.prototype.push.apply(RULES,mapped);
     renderRules();
+    renderLedger();
     if(reopenId){
       var el=document.querySelector('.rule[data-r="'+reopenId+'"]');
       if(el) el.classList.add('open');
@@ -686,7 +710,12 @@ function renderLedger(){
   var pf=document.getElementById('perFilter').value, sf=document.getElementById('statFilter').value;
   var rows=LEDGER.filter(function(l){return (!pf||l.who===pf)&&(!sf||l.st===sf)});
   document.getElementById('ledgerBody').innerHTML=rows.map(function(l){
-    var ruleCell=(l.rule&&l.rule!=='—')?'<span class="badge b-gray">'+esc(l.rule)+(l.ver?(' v'+l.ver):'')+'</span>':'—';
+    var known=ruleVersionFor(l.ruleId);
+    var ruleName=known?known.rule.name:l.ruleName;
+    var version=known?known.version.v:'';
+    var ruleCell=ruleName&&ruleName!=='—'
+      ?'<span class="badge b-gray">'+esc(ruleName)+(version?(' v'+version):'')+'</span>'
+      :'—';
     var canPick=l.st==='Accrued'||l.st==='Approved';
     var check=canPick
       ?'<input type="checkbox" class="ledger-pick" data-id="'+esc(l.id)+'" data-st="'+esc(l.st)+'">'
@@ -697,7 +726,7 @@ function renderLedger(){
       '<td>'+esc(l.client)+'</td>'+
       '<td style="font-size:var(--fs-body)">'+esc(l.prod)+'</td>'+
       '<td>'+ruleCell+'</td>'+
-      '<td class="money">'+money(l.basis)+'</td>'+
+      '<td class="money">'+(l.basis==null?'—':money(l.basis))+'</td>'+
       '<td class="mono" style="font-size:var(--fs-body)">'+esc(l.rate)+'</td>'+
       '<td class="money" style="text-align:right">'+money(l.amt)+'</td>'+
       '<td><span class="badge '+(ST_CLS[l.st]||'b-gray')+'">'+esc(l.st)+'</span></td></tr>';
@@ -751,17 +780,17 @@ function ledgerFromApiLive(r) {
     : (st === "earned" || st === "accrued") ? "Accrued"
     : (r.status || "Accrued");
   var when = r.earned_at || r.created_at || "";
-  var rate = r.split_percent != null && r.split_percent !== "" ? (Number(r.split_percent) + "%") : "—";
+  var snap = snapshotOf(r.rule_snapshot);
   return {
     id: r.id || "",
     d: when ? String(when).slice(0, 10) : "—",
     who: r.staff_name || r.employee_code || "—",
-    client: "—",
+    client: r.client_name || r.client_code || "—",
     prod: r.product_name_at_earning || "—",
-    rule: "—",
-    ver: "",
-    basis: Number(r.basis) || 0,
-    rate: rate,
+    ruleId: r.rule_id || "",
+    ruleName: snap.name || "—",
+    basis: r.base_amount == null || r.base_amount === "" ? null : Number(r.base_amount),
+    rate: rateFromSnapshot(snap),
     amt: Number(r.amount) || 0,
     st: stLabel,
     paid_at: r.paid_at || null
@@ -1029,35 +1058,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   loadCommissionRules();
 
-  function ledgerFromApi(r) {
-    var st = String(r.status || "").toLowerCase();
-    var stLabel = st === "paid" ? "Paid"
-      : st === "approved" ? "Approved"
-      : (st === "earned" || st === "accrued") ? "Accrued"
-      : (r.status || "Accrued");
-    var when = r.earned_at || r.created_at || "";
-    var rate = r.split_percent != null && r.split_percent !== "" ? (Number(r.split_percent) + "%") : "—";
-    return {
-      id: r.id || "",
-      d: when ? String(when).slice(0, 10) : "—",
-      who: r.staff_name || r.employee_code || "—",
-      client: "—",
-      prod: r.product_name_at_earning || "—",
-      rule: "—",
-      ver: "",
-      basis: Number(r.basis) || 0,
-      rate: rate,
-      amt: Number(r.amount) || 0,
-      st: stLabel,
-      paid_at: r.paid_at || null
-    };
-  }
-
   FHData.wire(FHData.commissions({ limit: 200 }), "commission ledger", function (data) {
     var rows = data.items || [];
     if (typeof LEDGER !== "undefined") {
       LEDGER.length = 0;
-      Array.prototype.push.apply(LEDGER, rows.map(ledgerFromApi));
+      Array.prototype.push.apply(LEDGER, rows.map(ledgerFromApiLive));
     }
     if (typeof fillPersonFilter === "function") fillPersonFilter();
     if (typeof renderLedger === "function") try { renderLedger(); } catch (e) {}

@@ -485,15 +485,31 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
   }));
 
   const cashCents = Number(cash.rows[0]?.cents || 0);
-  const target = await db.query(
-    `SELECT target_value FROM staff_targets
-      WHERE org_id = $1 AND period = 'monthly' AND metric = 'deposits'
-        AND staff_id IS NULL AND role = 'sales_manager'
-      LIMIT 1`,
-    [orgId]
-  );
+  const [target, dailyTarget] = await Promise.all([
+    db.query(
+      `SELECT target_value FROM staff_targets
+        WHERE org_id = $1 AND period = 'monthly' AND metric = 'deposits'
+          AND staff_id IS NULL AND role = 'sales_manager'
+        LIMIT 1`,
+      [orgId]
+    ),
+    db.query(
+      `SELECT target_value FROM staff_targets
+        WHERE org_id = $1 AND period = 'daily' AND metric = 'deposits'
+          AND staff_id IS NULL AND role = 'sales_manager'
+        LIMIT 1`,
+      [orgId]
+    )
+  ]);
   const targetCents = target.rows[0]
     ? Math.round(Number(target.rows[0].target_value) * 100)
+    : null;
+  const dailyTargetValue = dailyTarget.rows[0]?.target_value;
+  const dailyTargetDeposits = dailyTargetValue == null
+    ? null
+    : Math.round(Number(dailyTargetValue));
+  const validDailyTarget = Number.isFinite(dailyTargetDeposits) && dailyTargetDeposits > 0
+    ? dailyTargetDeposits
     : null;
 
   return {
@@ -515,8 +531,10 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
       booked: todayFunnel.booked,
       held: todayFunnel.held,
       deposits: todayFunnel.deposits,
-      target_cents: null,
-      target_reason: "No daily deposit target has been set for the sales team yet."
+      target_deposits: validDailyTarget,
+      target_reason: validDailyTarget == null
+        ? "No daily deposit target has been set for the sales team yet."
+        : null
     },
     offer_stack: offer.stack,
     offer_stack_unattributed: offer.unattributed,

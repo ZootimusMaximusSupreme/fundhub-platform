@@ -20,11 +20,14 @@ const run = readHandler({
   roles: ROLE_SETS.FINANCE,
   fetch: (db, { limit, offset, query, staff }) =>
     db.query(`SELECT l.id, l.staff_id, s.name AS staff_name, l.employee_code, l.client_id,
-           l.role, l.basis, l.amount, l.currency, l.status, l.split_percent,
+           l.client_code, NULLIF(BTRIM(CONCAT_WS(' ', c.first_name, c.last_name)), '') AS client_name,
+           l.role, l.basis, l.base_amount, l.amount, l.currency, l.status, l.split_percent,
+           l.rule_id, l.rule_snapshot,
            l.product_name_at_earning, l.earned_at, l.approved_at, l.paid_at,
            l.void_reason, l.created_at
       FROM commission_ledger l
       LEFT JOIN staff s ON s.id = l.staff_id
+      LEFT JOIN clients c ON c.id = l.client_id AND c.org_id = l.org_id
      WHERE l.org_id = $5::uuid
        AND ($3::uuid IS NULL OR l.client_id = $3)
        AND ($4::text IS NULL OR l.status = $4)

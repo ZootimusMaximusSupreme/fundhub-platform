@@ -165,16 +165,32 @@ test("floor discipline: calls not recorded are held calls with no recording and 
 // ---------------------------------------------------------------------------------------------
 // salesFloor(): the compliance sentence. A canned database: every statement answers empty except the
 // recordings reads, so the sentence is judged from the recordings it is built from.
-function floorDb({ files = [], outcomes = [] } = {}) {
+function floorDb({ files = [], outcomes = [], dailyTarget = null, monthlyTarget = null } = {}) {
   return {
     async query(sql) {
       const s = String(sql);
       if (/FROM brain_files bf/.test(s) && /needs_transcription/.test(s)) return { rows: files };
       if (/o\.recording_url IS NOT NULL/.test(s) && /o\.transcript/.test(s)) return { rows: outcomes };
+      if (/FROM staff_targets/.test(s) && /period = 'daily'/.test(s)) {
+        return { rows: dailyTarget == null ? [] : [{ target_value: dailyTarget }] };
+      }
+      if (/FROM staff_targets/.test(s) && /period = 'monthly'/.test(s)) {
+        return { rows: monthlyTarget == null ? [] : [{ target_value: monthlyTarget }] };
+      }
       return { rows: [] };
     },
   };
 }
+
+test("sales floor read returns the saved daily team deposit target", async () => {
+  const withTarget = await salesFloor(floorDb({ dailyTarget: "10" }), { orgId: ORG, now: NOW, env: {} });
+  assert.equal(withTarget.today.target_deposits, 10);
+  assert.equal(withTarget.today.target_reason, null);
+
+  const withoutTarget = await salesFloor(floorDb(), { orgId: ORG, now: NOW, env: {} });
+  assert.equal(withoutTarget.today.target_deposits, null);
+  assert.equal(withoutTarget.today.target_reason, "No daily deposit target has been set for the sales team yet.");
+});
 
 test("compliance panel: the reason says words are on file, recordings wait for words, or there are none", async () => {
   const withWords = await salesFloor(floorDb({ outcomes: [{ id: "o1", recording_url: "https://drive.google.com/file/d/x/view", logged_at: day(0, 30), client_id: "c1", transcript: "words here", first_name: "A", last_name: "B" }] }), { orgId: ORG, now: NOW, env: {} });

@@ -300,10 +300,10 @@ SELECT count(*)::int AS sample_count,
  WHERE l.org_id = $1::uuid AND l.action = 'task_assigned'`;
 
 const HERO_CONTROL = "Hero: 'Today' deposits, booked and held, 'Funded, not just sold' rate and target bar";
-const HERO_GAP_REQUIREMENT =
-  "The target bar is set to 0% on every paint (public/app/sales-floor.js) and the read hard-codes today.target_cents to null, " +
-  "while the same read carries hero.target_cents and hero.cash_cents that the page never paints, so no saved-result read or " +
-  "screen test can prove the bar follows a target until the page draws it. (Booked and held are counted fresh on every read and leave no saved result.)";
+const HERO_REQUIREMENT =
+  "Every deposit call the hero counts must have cash copied from one paid payment of the same client that no other deposit uses, " +
+  "the funded flag must agree with the funded rounds in both directions, and the screen test must show today's deposits against " +
+  "the saved daily team target without letting the bar exceed 100%.";
 
 export const FIN_B02_RESULT_CONTRACTS = Object.freeze([
   contract(
@@ -348,24 +348,16 @@ export const FIN_B02_RESULT_CONTRACTS = Object.freeze([
     "do-task-person-leg",
     DO_TASK_SQL,
   ),
-  // The hero row is NOT attached. See HERO_GAP_REQUIREMENT. The live SQL for its deposit legs is kept
-  // beside it (FIN_B02_HERO_READY_CONTRACT) and is tested, so the day the bar follows a target the
-  // row can take it back with one line.
-  Object.freeze({
-    control: HERO_CONTROL,
-    mode: "always-red",
-    requirement: HERO_GAP_REQUIREMENT,
-    sql: null,
-  }),
+  contract(
+    HERO_CONTROL,
+    HERO_REQUIREMENT,
+    "sales-floor-hero-deposits",
+    HERO_DEPOSITS_SQL,
+  ),
 ]);
 
-/** The hero's deposit legs, tested, kept off the row until the bar is built (see the manifest). */
-export const FIN_B02_HERO_READY_CONTRACT = contract(
-  HERO_CONTROL,
-  "Every deposit call the hero counts must have cash copied from one paid payment of the same client that no other deposit uses, and the funded flag must agree with the funded rounds in both directions so the rate neither misses nor invents a funded deposit.",
-  "sales-floor-hero-deposits",
-  HERO_DEPOSITS_SQL,
-);
+/** The hero's live saved-result contract, also imported directly by its focused SQL tests. */
+export const FIN_B02_HERO_READY_CONTRACT = FIN_B02_RESULT_CONTRACTS[7];
 
 /** The exact map rows (desks file, surface) each live check is attached to. */
 export const FIN_B02_LIVE_ROWS = Object.freeze([
@@ -382,7 +374,7 @@ export const FIN_B02_LIVE_ROWS = Object.freeze([
   ["desks-d.json", "public/app/money-next.html", FIN_B02_RESULT_CONTRACTS[6].control],
 ]);
 
-/** The hero row. Not attached: see HERO_GAP_REQUIREMENT. It keeps a case so the lane prints the exact words. */
+/** The hero row. Its live contract and browser test are joined by this exact display case. */
 export const FIN_B02_HERO_ROW = Object.freeze(["desks-f.json", "sales-floor.html (+ sales-floor.js)", HERO_CONTROL]);
 
 function liveCase([sourceFile, surface, control], tests) {
@@ -421,8 +413,7 @@ export const FIN_B02_LIVE_CASES = Object.freeze([
   ...FIN_B02_LIVE_ROWS
     .filter(([, , control]) => !ALREADY_IN_STAFF_GROUPS.has(control))
     .map((row) => liveCase(row, [FIN_B02_LIVE_TEST, ...(SCREEN_HALF.get(row[2]) || [])])),
-  // The hero keeps a case (deep, names the lane) so its always-red words reach the morning report;
-  // the screen test is the practice half for what the page paints (numbers, dashes, empty bar).
+  // The hero's live deposit check and its screen half run together for the exact row.
   liveCase(FIN_B02_HERO_ROW, [FIN_B02_HERO_TEST, FIN_B02_HERO_LIVE_TEST]),
 ]);
 
