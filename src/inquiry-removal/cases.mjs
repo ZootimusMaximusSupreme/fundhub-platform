@@ -110,7 +110,21 @@ async function resolveOrgClient(db, { orgId, clientId }) {
   return { clientId: row.id, orgId: row.org_id };
 }
 
-async function refreshOpenCount(db, caseId) {
+async function refreshOpenCount(db, caseId, orgId = null) {
+  if (orgId) {
+    const res = await db.query(
+      `UPDATE inquiry_removal_cases c
+          SET open_inquiry_count = (
+                SELECT COUNT(*)::int FROM inquiry_log i
+                 WHERE i.case_id = c.id AND i.org_id = c.org_id AND i.is_open = true
+              ),
+              updated_at = now()
+        WHERE c.id = $1 AND c.org_id = $2::uuid
+        RETURNING *`,
+      [caseId, orgId]
+    );
+    return res.rows[0] || null;
+  }
   const res = await db.query(
     `UPDATE inquiry_removal_cases c
         SET open_inquiry_count = (
@@ -405,19 +419,28 @@ export async function clearInquiry(db, input = {}) {
   const inquiryId = input.inquiryId || input.inquiry_id;
   const externalInquiryId = input.externalInquiryId || input.external_inquiry_id;
   const staffId = input.staffId || input.staff_id || null;
+  const requestedOrgId = input.orgId || input.org_id || null;
 
   let inquiry;
   if (inquiryId) {
-    const r = await db.query(`SELECT * FROM inquiry_log WHERE id = $1`, [inquiryId]);
+    const r = requestedOrgId
+      ? await db.query(`SELECT * FROM inquiry_log WHERE id = $1 AND org_id = $2::uuid`, [inquiryId, requestedOrgId])
+      : await db.query(`SELECT * FROM inquiry_log WHERE id = $1`, [inquiryId]);
     inquiry = r.rows[0];
   } else if (externalInquiryId) {
-    const r = await db.query(
-      `SELECT * FROM inquiry_log WHERE external_inquiry_id = $1 ORDER BY updated_at DESC LIMIT 1`,
-      [externalInquiryId]
-    );
+    const r = requestedOrgId
+      ? await db.query(
+        `SELECT * FROM inquiry_log WHERE external_inquiry_id = $1 AND org_id = $2::uuid ORDER BY updated_at DESC LIMIT 1`,
+        [externalInquiryId, requestedOrgId]
+      )
+      : await db.query(
+        `SELECT * FROM inquiry_log WHERE external_inquiry_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+        [externalInquiryId]
+      );
     inquiry = r.rows[0];
   }
   if (!inquiry) throw new InquiryCaseError("inquiry not found", { status: 404 });
+  const orgId = inquiry.org_id;
 
   const res = await db.query(
     `UPDATE inquiry_log SET
@@ -429,16 +452,16 @@ export async function clearInquiry(db, input = {}) {
         worked_at = CASE WHEN $2::uuid IS NOT NULL THEN now() ELSE worked_at END,
         call_state = 'completed'::inquiry_call_state,
         updated_at = now()
-      WHERE id = $1
+      WHERE id = $1 AND org_id = $3::uuid
       RETURNING *`,
-    [inquiry.id, staffId]
+    [inquiry.id, staffId, orgId]
   );
   inquiry = res.rows[0];
 
   let caseRow = null;
   let caseCleared = false;
   if (inquiry.case_id) {
-    caseRow = await refreshOpenCount(db, inquiry.case_id);
+    caseRow = await refreshOpenCount(db, inquiry.case_id, orgId);
     if (caseRow && caseRow.open_inquiry_count === 0 && isActiveCaseStatus(caseRow.case_status)) {
       const cleared = await db.query(
         `UPDATE inquiry_removal_cases SET
@@ -447,9 +470,9 @@ export async function clearInquiry(db, input = {}) {
             completed_at = COALESCE(completed_at, now()),
             master_call_state = 'completed',
             updated_at = now()
-          WHERE id = $1
+          WHERE id = $1 AND org_id = $2::uuid
           RETURNING *`,
-        [caseRow.id]
+        [caseRow.id, orgId]
       );
       caseRow = cleared.rows[0];
       caseCleared = true;

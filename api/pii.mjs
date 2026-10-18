@@ -23,8 +23,10 @@ import { readIdentity, revealSsn, storeIdentity, accessHistory, PiiError } from 
 
 const IDENTITY_ROLES = new Set(["owner", "admin", "inquiry_specialist", "funding_advisor"]);
 
-export default async function handler(req, res) {
-  const principal = await requirePrincipal(req, res, ["staff"], { db });
+export default async function handler(req, res, deps = {}) {
+  const database = deps.db ?? db;
+  const auth = deps.requirePrincipal ?? requirePrincipal;
+  const principal = await auth(req, res, ["staff"], { db: database });
   if (!principal) return;
 
   if (!IDENTITY_ROLES.has(String(principal.role || "").toLowerCase())) {
@@ -33,21 +35,39 @@ export default async function handler(req, res) {
     // who has to explain why the button did nothing.
     return res.status(403).json({ ok: false, error: "forbidden" });
   }
+  const orgId = principal.orgId;
+  if (!isUuid(orgId)) {
+    return res.status(403).json({ ok: false, error: "no_org_on_session" });
+  }
+
+  const clientBelongsToSession = async (clientId) => {
+    const found = await database.query(
+      `SELECT 1 FROM clients WHERE id = $1 AND org_id = $2`,
+      [clientId, orgId]
+    );
+    if (!found.rows[0]) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return false;
+    }
+    return true;
+  };
 
   try {
     if (req.method === "GET") {
       const q = req.query || {};
       if (!isUuid(q.client_id)) return res.status(400).json({ ok: false, error: "client_id must be a uuid" });
+      if (!await clientBelongsToSession(q.client_id)) return;
       if (q.history === "1" || q.history === "true") {
-        return res.status(200).json({ ok: true, access: await accessHistory(db, { clientId: q.client_id }) });
+        return res.status(200).json({ ok: true, access: await accessHistory(database, { orgId, clientId: q.client_id }) });
       }
-      const identity = await readIdentity(db, { clientId: q.client_id });
+      const identity = await readIdentity(database, { orgId, clientId: q.client_id });
       return res.status(200).json({ ok: true, identity });
     }
 
     if (req.method === "POST") {
       const body = req.body || {};
       if (!isUuid(body.client_id)) return res.status(400).json({ ok: false, error: "client_id must be a uuid" });
+      if (!await clientBelongsToSession(body.client_id)) return;
 
       if (body.action === "reveal") {
         // RULE 4 OF src/pii/index.mjs IS ENFORCED HERE, NOT IN THE BROWSER.
@@ -62,7 +82,8 @@ export default async function handler(req, res) {
         if (!reason) {
           return res.status(400).json({ ok: false, error: "reason is required — every reveal is written to pii_access_log" });
         }
-        const { ssn } = await revealSsn(db, {
+        const { ssn } = await revealSsn(database, {
+          orgId,
           clientId: body.client_id,
           // The session's staff id, never a name from the request body: an
           // attributable log entry cannot let the caller choose its own
@@ -74,11 +95,8 @@ export default async function handler(req, res) {
       }
 
       if (body.action === "store") {
-        if (!isUuid(body.org_id) && !principal.orgId) {
-          return res.status(400).json({ ok: false, error: "org_id is required" });
-        }
-        const identity = await storeIdentity(db, {
-          orgId: principal.orgId || body.org_id,
+        const identity = await storeIdentity(database, {
+          orgId,
           clientId: body.client_id,
           ssn: body.ssn ?? null,
           dob: body.dob ?? null,

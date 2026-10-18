@@ -152,9 +152,9 @@ describe("POST /api/inquiry-cases action=gate_override", () => {
 });
 
 describe("POST /api/inquiry-cases action=clear_inquiry", () => {
-  const inquiryRow = { id: INQ, case_id: CASE, org_id: ORG_ID, status: "Open" };
+  const inquiryRow = { id: INQ, case_id: CASE, org_id: ORG_ID, client_id: CLIENT, status: "Open" };
   const rules = (openLeft) => [
-    [/SELECT \* FROM inquiry_log WHERE id = \$1/, [inquiryRow]],
+    [/SELECT \* FROM inquiry_log WHERE id = \$1 AND org_id = \$2::uuid/, [inquiryRow]],
     [/UPDATE inquiry_log SET\s+status = 'Cleared'/, [{ ...inquiryRow, status: "Cleared", is_open: false }]],
     [/UPDATE inquiry_removal_cases c\s+SET open_inquiry_count/, [caseRow({ case_status: "In Progress", open_inquiry_count: openLeft })]],
     [/UPDATE inquiry_removal_cases SET\s+case_status = 'Completed'/, [caseRow({ case_status: "Completed", open_inquiry_count: 0 })]]
@@ -166,16 +166,16 @@ describe("POST /api/inquiry-cases action=clear_inquiry", () => {
     assert.equal(res.body.case_cleared, true);
     assert.equal(res.body.case.case_status, "Completed");
     assert.equal(res.body.inquiry.status, "Cleared");
-    assert.deepEqual(fake.find(/UPDATE inquiry_log SET\s+status = 'Cleared'/)[0].params, [INQ, STAFF_ID]);
+    assert.deepEqual(fake.find(/UPDATE inquiry_log SET\s+status = 'Cleared'/)[0].params, [INQ, STAFF_ID, ORG_ID]);
     assertSqlHas(fake.find(/UPDATE inquiry_log SET\s+status = 'Cleared'/)[0].sql, {
       "the inquiry is closed and cleared once": "status = 'Cleared', is_open = false, cleared_at = COALESCE(cleared_at, now())",
       "who worked it, only when a staff id is known": "worked_by = COALESCE($2::uuid, worked_by), worked_at = CASE WHEN $2::uuid IS NOT NULL THEN now() ELSE worked_at END",
       "its call is marked completed": "call_state = 'completed'::inquiry_call_state",
-      "only that inquiry": "WHERE id = $1 RETURNING *"
+      "only that inquiry in the signed-in company": "WHERE id = $1 AND org_id = $3::uuid RETURNING *"
     });
     assertSqlHas(fake.find(/UPDATE inquiry_removal_cases SET\s+case_status = 'Completed'/)[0].sql, {
       "the case is completed, stamped once, with its call done": "case_status = 'Completed'::inquiry_case_status, cleared_at = COALESCE(cleared_at, now()), completed_at = COALESCE(completed_at, now()), master_call_state = 'completed'",
-      "only that case": "WHERE id = $1 RETURNING *"
+      "only that case in the signed-in company": "WHERE id = $1 AND org_id = $2::uuid RETURNING *"
     });
     assert.equal(events.length, 1);
     assert.equal(events[0].name, "inquiry.removed");
@@ -197,6 +197,19 @@ describe("POST /api/inquiry-cases action=clear_inquiry", () => {
     assert.equal(res.statusCode, 400);
     assert.equal(res.body.error, "inquiry_id_required");
     assert.equal(fake.find(/UPDATE inquiry_log/).length, 0);
+  });
+
+  test("another company's inquiry is a 404 and no inquiry, case or event is touched", async () => {
+    const { res, fake, events } = await call(
+      { action: "clear_inquiry", inquiry_id: INQ },
+      [[/SELECT \* FROM inquiry_log WHERE id = \$1 AND org_id = \$2::uuid/, []]],
+    );
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.error, "not_found");
+    assert.equal(res.body.message, "inquiry not found");
+    assert.deepEqual(fake.find(/SELECT \* FROM inquiry_log/)[0].params, [INQ, ORG_ID]);
+    assert.equal(fake.find(/^\s*UPDATE/).length, 0);
+    assert.deepEqual(events, []);
   });
 });
 

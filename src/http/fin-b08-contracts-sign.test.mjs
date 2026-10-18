@@ -49,8 +49,8 @@ async function viaStaff(body, fake) {
   return res;
 }
 /** A sent contract, and the link(s) its signer(s) were given. */
-async function sentContract({ signers = null, order = "sequential" } = {}) {
-  const fake = contractsDb(book());
+async function sentContract({ signers = null, order = "sequential", extraRules = [] } = {}) {
+  const fake = contractsDb({ ...book(), extraRules });
   const created = await viaStaff({ action: "create_draft", client_id: IDS.client, template_id: IDS.template, values: { service: "Credit review" }, signers, signing_order: order }, fake);
   assert.equal(created.statusCode, 200, JSON.stringify(created.body));
   const sent = await viaStaff({ action: "send", id: created.body.contract.id }, fake);
@@ -253,8 +253,14 @@ describe("POST /api/contracts/sign", () => {
     assert.equal(fake.tables.contracts.find((c) => c.id === id).status, "signed");
   });
 
-  test("a decline is recorded on the signer with the reason and the time; it needs a reason and cannot undo a signature", async () => {
-    const { fake, id, links } = await sentContract();
+  test("a decline is recorded and makes one task for the staff sender with the reason; it needs a reason and cannot undo a signature", async () => {
+    const tasks = [];
+    const taskRules = [
+      [/SELECT id, org_id, client_id, title, sent_by\s+FROM contracts\s+WHERE id = \$1::uuid AND org_id = \$2::uuid/, (_sql, p) => [{ id: p[0], org_id: p[1], client_id: IDS.client, title: "Service Agreement", sent_by: STAFF_ID }]],
+      [/SELECT id FROM tasks\s+WHERE client_id = \$1 AND source_workflow = \$2 AND body = \$3/, []],
+      [/INSERT INTO tasks/, (_sql, p) => { tasks.push(p); return [{ id: "task-decline-1" }]; }],
+    ];
+    const { fake, id, links } = await sentContract({ extraRules: taskRules });
     const q = links[0].query;
     const none = await post(q, { action: "decline", reason: "  " }, fake);
     assert.equal(none.statusCode, 400);
@@ -265,6 +271,15 @@ describe("POST /api/contracts/sign", () => {
     const signer = fake.tables.contract_signers[0];
     assert.deepEqual([signer.status, signer.decline_reason], ["declined", "I did not ask for this."]);
     assert.ok(signer.declined_at);
+    assert.equal(tasks.length, 1, "the sender gets one task");
+    assert.equal(tasks[0][0], ORG_ID);
+    assert.equal(tasks[0][1], IDS.client);
+    assert.match(tasks[0][2], /Contract declined: Service Agreement/);
+    assert.match(tasks[0][3], new RegExp(`^contract\\.declined:${id}:${signer.id}$`), "the task dedupes this signer decline");
+    assert.equal(tasks[0][5], "contract-sign-decline");
+    assert.equal(tasks[0][6], "closer");
+    assert.equal(tasks[0][7], STAFF_ID, "the original sender owns the task");
+    assert.match(tasks[0][9], /Reason: I did not ask for this\./);
     const after = await post(q, { signer_name: "Dana Whitfield", agreed: true }, fake);
     assert.equal(after.statusCode, 409);
     assert.equal(after.body.error, "declined");

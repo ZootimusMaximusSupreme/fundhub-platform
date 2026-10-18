@@ -64,6 +64,35 @@ export const FIRST_CHASE_DAYS = 3;
 export const CHASE_EVERY_DAYS = 3;
 export const MAX_CHASES = 4;
 
+/**
+ * Put a declined agreement in front of the person who sent it.
+ * The task is company-scoped, assigned to the original sender when known, and
+ * idempotent for this signer so a retried decline cannot make duplicate work.
+ */
+export async function notifyContractDecline(db, { signer, reason } = {}) {
+  const { rows } = await db.query(
+    `SELECT id, org_id, client_id, title, sent_by
+       FROM contracts
+      WHERE id = $1::uuid AND org_id = $2::uuid
+      LIMIT 1`,
+    [signer?.contract_id, signer?.org_id]
+  );
+  const contract = rows[0];
+  if (!contract) throw new Error("The declined contract could not be found in its company.");
+
+  const why = String(reason || signer?.decline_reason || "No reason given").trim();
+  return createTask(db, {
+    orgId: contract.org_id,
+    clientId: contract.client_id || signer.client_id,
+    title: `Contract declined: ${contract.title} — ${signer.name} did not sign`,
+    detail: `${signer.name} declined the agreement. Reason: ${why}`,
+    sourceWorkflow: "contract-sign-decline",
+    assigneeRole: "closer",
+    assigneeStaffId: contract.sent_by || null,
+    eventId: `contract.declined:${contract.id}:${signer.id}`,
+  });
+}
+
 /* The merge context a contract message renders against. Deliberately small and
    deliberately NOT the client record: a signer may be a counterparty who is not
    a client at all, and rendering somebody else's details into their email is
