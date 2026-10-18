@@ -112,7 +112,7 @@ flowchart TD
 | `/api/public/unsubscribe` | — | **not a sign-in** — signed link |
 | `/api/public/vsl-watch` | OPTIONS, POST | anyone |
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
-| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |
+| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |
 | `/api/soft-pull-approve` | GET, POST | **not a sign-in** — signed link |
 | `/api/trials/eligibility` | POST | anyone |

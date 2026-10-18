@@ -340,7 +340,7 @@ flowchart TD
 | `/api/read/ad-books` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ad-spine` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
-| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |
+| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/agent-context` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/agent-shadow-log` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/agents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |

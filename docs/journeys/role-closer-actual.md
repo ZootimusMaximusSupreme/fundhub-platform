@@ -394,7 +394,7 @@ flowchart TD
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
-| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |
+| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/commissions` | GET | owner, admin, sales_manager |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |

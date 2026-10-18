@@ -395,7 +395,7 @@ flowchart TD
 | `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
-| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |
+| `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/closer-deck` | GET | closer, sales_manager, owner, admin |
 | `/api/read/commissions` | GET | owner, admin, sales_manager |

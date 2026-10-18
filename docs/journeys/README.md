@@ -39,7 +39,7 @@ have no automation tree at all. See `src/journeys/seed-journeys.mjs`'s header.
 
 | Journey | Who that is in the code | Reach |
 |---|---|---|
-| [client](./client-actual.md) ([intended](./client-intended.md)) | `client` | reaches 78 of 329 routes |
+| [client](./client-actual.md) ([intended](./client-intended.md)) | `client` | reaches 79 of 329 routes |
 | [role-owner](./role-owner-actual.md) ([intended](./role-owner-intended.md)) | `owner` | reaches 319 of 329 routes |
 | [role-sales-manager](./role-sales-manager-actual.md) ([intended](./role-sales-manager-intended.md)) | `sales_manager` | reaches 204 of 329 routes |
 | [role-closer](./role-closer-actual.md) ([intended](./role-closer-intended.md)) | `closer` | reaches 190 of 329 routes |
