@@ -1,0 +1,109 @@
+{
+  "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "checkedHead": "fb8d4371e659591428d1e2a434aac273df84d205",
+  "complete": true,
+  "inventory": [
+    {
+      "page": "payment-success",
+      "branch": "origin/codex/recover-payment-success",
+      "source": "38c26e16aa7f6e45e2ae2ebbaeb76376a4ddf80d",
+      "files": [
+        "e2e/payment-success-layout.spec.mjs",
+        "ops/workflows/payment-success-recovery-2026-10-18.md",
+        "public/app/payment-success.html"
+      ]
+    },
+    {
+      "page": "reset-password",
+      "branch": "origin/codex/recover-reset-password",
+      "source": "ca23893a1716d98fbcd4910588478442cf60edba",
+      "files": [
+        "e2e/page-reset-password.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-reset-password.md",
+        "public/reset-password.css",
+        "public/reset-password.html"
+      ]
+    },
+    {
+      "page": "consent-capture",
+      "branch": "origin/codex/recover-consent-capture",
+      "source": "2d50f98414bd9b472e02904999ba8ecd820eee0d",
+      "files": [
+        "public/app/consent-capture-workspace.css",
+        "public/app/consent-capture.html"
+      ]
+    },
+    {
+      "page": "automations",
+      "branch": "origin/codex/recover-automations",
+      "source": "f05455d345adf8953ac1bea2a693ea8ede7664a7",
+      "files": [
+        "public/app/automations.html"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "page": "payment-success",
+      "path": "e2e/payment-success-layout.spec.mjs",
+      "state": "clean merge",
+      "bytes": 11182
+    },
+    {
+      "page": "payment-success",
+      "path": "ops/workflows/payment-success-recovery-2026-10-18.md",
+      "state": "clean merge",
+      "bytes": 4068
+    },
+    {
+      "page": "payment-success",
+      "path": "public/app/payment-success.html",
+      "state": "identical",
+      "bytes": 17578
+    },
+    {
+      "page": "reset-password",
+      "path": "e2e/page-reset-password.spec.mjs",
+      "state": "clean merge",
+      "bytes": 9613
+    },
+    {
+      "page": "reset-password",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-reset-password.md",
+      "state": "clean merge",
+      "bytes": 4666
+    },
+    {
+      "page": "reset-password",
+      "path": "public/reset-password.css",
+      "state": "identical",
+      "bytes": 4548
+    },
+    {
+      "page": "reset-password",
+      "path": "public/reset-password.html",
+      "state": "identical",
+      "bytes": 5016
+    },
+    {
+      "page": "consent-capture",
+      "path": "public/app/consent-capture-workspace.css",
+      "state": "clean merge",
+      "bytes": 5648
+    },
+    {
+      "page": "consent-capture",
+      "path": "public/app/consent-capture.html",
+      "state": "clean merge",
+      "bytes": 48844
+    },
+    {
+      "page": "automations",
+      "path": "public/app/automations.html",
+      "state": "clean merge",
+      "bytes": 42577
+    }
+  ],
+  "noProductionDeploy": true,
+  "noCustomerWrites": true
+}

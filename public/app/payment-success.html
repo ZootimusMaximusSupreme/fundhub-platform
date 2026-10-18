@@ -13,43 +13,99 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="fundhub-brand.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink);font-family:var(--sans);
-  display:flex;align-items:center;justify-content:center;padding:28px 18px}
-.card{max-width:420px;width:100%;border:1px solid var(--line);border-radius:14px;padding:28px 24px;background:var(--soft)}
-.mono{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;text-transform:uppercase;color:var(--gray2)}
-h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0 8px;line-height:1.15}
-.lede,.ok,.pend,.warn,.err,.fine,.back{font-size:var(--fs-body);line-height:1.45}
-.lede{color:var(--gray);margin:0 0 18px}
-.ok{border:1px solid #2C5138;background:rgba(168,216,176,.26);color:#2C5138;padding:12px 14px;border-radius:10px}
-.pend{border:1px solid var(--line);background:var(--paper);color:var(--gray);padding:12px 14px;border-radius:10px}
-.warn{border:1px solid #7A5A18;background:rgba(245,206,143,.26);color:#5C441A;padding:12px 14px;border-radius:10px}
-.err{border:1px solid #C4553F;background:rgba(242,166,155,.24);color:#6E2A22;padding:12px 14px;border-radius:10px}
-.ok b,.pend b,.warn b,.err b{display:block;font-weight:700;margin-bottom:4px}
-.ok p,.warn p,.err p{margin:6px 0 0}
-.ok ul,.warn ul{margin:8px 0 0;padding-left:20px}
-.ok li,.warn li{margin:3px 0}
-.fine{color:var(--gray2);margin-top:16px}
-.refline{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);margin-top:14px;word-break:break-all}
-.back{display:inline-block;margin-top:18px;font-weight:600;color:var(--ink)}
-.btn{margin-top:12px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--paper);
-  color:var(--ink);font-family:var(--sans);font-size:var(--fs-caption);font-weight:600;cursor:pointer}
+body{margin:0;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;background:var(--paper,#f8f8f6);color:var(--ink,#101416);font:400 15px/1.55 var(--sans,system-ui);-webkit-font-smoothing:antialiased}
+.return-header{width:100%;padding:32px 48px;display:flex;align-items:center;gap:20px}
+.return-header .logo{width:120px;height:28px;flex:none}
+.return-context{font-size:13px;color:#626968;border-left:1px solid var(--line,#e3e5e0);padding-left:20px}
+.return-main{width:min(100%,1032px);margin:auto;padding:56px 48px 80px}
+.return-intro{max-width:650px;margin-bottom:32px}
+.return-eyebrow{margin:0 0 12px;color:#626968;font-size:13px;font-weight:550}
+h1{font-size:32px;font-weight:650;letter-spacing:-.04em;line-height:1.15;margin:0 0 16px;text-wrap:balance}
+.lede{font-size:15px;line-height:1.65;color:#626968;margin:0;max-width:580px}
+.return-grid{display:grid;grid-template-columns:minmax(0,1fr) 244px;align-items:start;gap:40px}
+.card{min-width:0;background:#fff;border:1px solid var(--line,#e3e5e0);border-radius:20px;padding:28px}
+.status-label{display:flex;align-items:center;gap:8px;margin:0 0 20px;font-size:13px;color:#626968;font-weight:550}
+.status-label::before{content:"";width:6px;height:6px;border-radius:50%;background:#626968}
+#state{min-width:0;overflow-wrap:anywhere}
+.ok,.pend,.warn,.err{font-size:15px;line-height:1.6;color:#353c3a}
+.ok b,.warn b,.err b{display:block;color:var(--ink,#101416);font-size:19px;line-height:1.3;letter-spacing:-.025em;font-weight:650;margin:0 0 12px}
+.pend{display:flex;align-items:center;gap:12px;min-height:58px;color:#626968}
+.pend::before{content:"";flex:none;width:18px;height:18px;border:2px solid #e3e5e0;border-top-color:#353c3a;border-radius:50%;animation:checking 1s linear infinite}
+@keyframes checking{to{transform:rotate(360deg)}}
+.ok p,.warn p,.err p{margin:10px 0 0}
+.ok ul,.warn ul{list-style:none;margin:16px 0 0;padding:0}
+.ok li,.warn li{padding:12px 0;border-top:1px solid #edf0ea;color:#353c3a}
+.ok li:last-child,.warn li:last-child{padding-bottom:0}
+.ok li::before,.warn li::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#626968;margin:0 10px 3px 0}
+.fine{font-size:13px;line-height:1.65;color:#626968;margin:20px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:20px 0 0;padding:10px 16px;border:1px solid #d8dcd5;border-radius:12px;background:#fff;color:var(--ink,#101416);font:600 14px/1.4 var(--sans,system-ui);cursor:pointer}
+.btn:hover{background:#f5f6f2;border-color:#b8beb5}
+.return-actions{border-top:1px solid var(--line,#e3e5e0);padding-top:24px;margin-top:24px}
+.back{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:48px;width:100%;padding:12px 16px;border-radius:12px;background:var(--ink,#101416);color:#fff;font-size:15px;line-height:1.45;font-weight:600;text-decoration:none}
+.back::after{content:"↗";font-size:19px;line-height:1}
+.back:hover{background:#2e3436}
+.back:focus-visible,.btn:focus-visible{outline:2px solid var(--ink,#101416);outline-offset:4px}
+.refline{font-size:12px;line-height:1.6;color:#626968;margin:16px 0 0;overflow-wrap:anywhere}
+.return-note{padding:8px 0 0}
+.return-note h2{font-size:17px;line-height:1.35;letter-spacing:-.02em;font-weight:600;margin:0 0 12px}
+.return-note p{font-size:13px;line-height:1.7;color:#626968;margin:0}
+.return-note .note-divider{border-top:1px solid var(--line,#e3e5e0);padding-top:20px;margin-top:20px}
+.return-footer{position:relative;padding:20px 48px;color:#626968;font-size:12px;line-height:1.5}
+.return-footer::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--spectrum)}
+@media(max-width:680px){
+  .return-header{padding:24px;gap:16px}
+  .return-header .logo{width:108px;height:25px}
+  .return-context{padding-left:16px;font-size:12px}
+  .return-main{margin:20px auto auto;padding:24px 24px 48px}
+  .return-intro{margin-bottom:24px}
+  h1{font-size:30px;line-height:1.17}
+  .return-grid{grid-template-columns:minmax(0,1fr);gap:28px}
+  .card{padding:24px}
+  .return-note{padding:0 4px}
+  .return-note .note-divider{padding-top:16px;margin-top:16px}
+  .return-footer{padding:20px 28px}
+}
+@media(max-width:360px){
+  .return-header{padding:20px;gap:12px}
+  .return-context{padding-left:12px}
+  .return-main{padding:20px 20px 40px;margin-top:12px}
+  h1{font-size:28px}
+  .card{padding:20px}
+  .return-footer{padding:20px 24px}
+}
+@media(prefers-reduced-motion:reduce){.pend::before{animation:none}}
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="mono">Fundhub · payment</div>
-    <h1>Thanks — you are back from checkout</h1>
-    <p class="lede">We are checking your account to see what has opened up. Stay on the call with your advisor.</p>
-    <div id="state" aria-live="polite"><div class="pend">Checking your account…</div></div>
-    <p class="refline" id="refline" hidden></p>
-    <p class="fine">This page does not take payments and it cannot confirm one. It only shows what your account says.</p>
-    <a class="back" id="back" href="client-portal.html">Back to your portal</a>
-  </div>
+  <header class="return-header">
+    <span class="logo" role="img" aria-label="Fundhub"></span>
+    <span class="return-context">After checkout</span>
+  </header>
+  <main class="return-main">
+    <div class="return-intro">
+      <p class="return-eyebrow">Your account</p>
+      <h1>Thanks — you are back from checkout</h1>
+      <p class="lede">We are checking your account to see what has opened up. Stay on the call with your advisor.</p>
+    </div>
+    <div class="return-grid">
+      <section class="card" aria-labelledby="access-label">
+        <h2 class="status-label" id="access-label">Account access</h2>
+        <div id="state" role="status" aria-live="polite" aria-atomic="true" aria-busy="true"><div class="pend">Checking your account…</div></div>
+        <div class="return-actions">
+          <a class="back" id="back" href="client-portal.html">Back to your portal</a>
+          <p class="refline" id="refline" hidden></p>
+        </div>
+      </section>
+      <aside class="return-note" aria-labelledby="note-title">
+        <h2 id="note-title">Keep your advisor in the loop.</h2>
+        <p>If you completed a payment, tell your advisor and stay on the call. Do not pay again while you wait.</p>
+        <p class="note-divider">This page does not take payments and it cannot confirm one. It only shows what your account says.</p>
+      </aside>
+    </div>
+  </main>
+  <footer class="return-footer">Fundhub · Your client workspace</footer>
 <script>
 /* WHAT THIS PAGE MAY AND MAY NOT SAY.
  *
@@ -148,7 +204,11 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
     return u;
   }
 
-  function setState(html) { stateEl.innerHTML = html; wireAgain(); }
+  function setState(html, checking) {
+    stateEl.setAttribute("aria-busy", checking ? "true" : "false");
+    stateEl.innerHTML = html;
+    wireAgain();
+  }
 
   function wireAgain() {
     var b = document.getElementById("again");
@@ -180,7 +240,7 @@ h1{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em;margin:12px 0
   /* ── the states this page is allowed to be in ─────────────────────────── */
 
   function showChecking(n) {
-    setState('<div class="pend">Checking your account… (' + n + " of " + MAX_TRIES + ")</div>");
+    setState('<div class="pend">Checking your account… (' + n + " of " + MAX_TRIES + ")</div>", true);
   }
 
   function showOpened(fresh) {
