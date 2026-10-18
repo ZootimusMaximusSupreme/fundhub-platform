@@ -535,7 +535,7 @@
        full width (a half-width card cut the last two columns off at 1440). */
     return '<div class="grid tiles">' + tileDebtFree(plan) + tileInterest(plan) + tileCardUse(plan) + tileCash(plan) + '</div>' +
       renderDebtsCard(data, plan) + renderChartCard(plan, opts.chartWidth) +
-      renderMonths(plan, opts.shown) + renderCashDetail(data, plan) + renderHow(data, !!opts.staff) +
+      renderMonths(plan, opts.shown) + '<section class="assumptions" aria-label="Plan assumptions"><h2>Assumptions &amp; cash checks</h2>' + renderCashDetail(data, plan) + renderHow(data, !!opts.staff) + '</section>' +
       (data && data.tip ? '<p class="tip"><span class="eyebrow">UnderwriteIQ</span>' + esc(data.tip) + '</p>' : "");
   }
 

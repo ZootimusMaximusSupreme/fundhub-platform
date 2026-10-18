@@ -593,103 +593,77 @@
     .lr-round{text-align:left;}
   }
 </style>
+<link rel="stylesheet" href="pipeline-workspace.css">
 <script defer src="shell.js"></script>
 </head>
 <body>
 <div class="app">
 
   <!-- ══ SIDEBAR — identical across every wireframe ══ -->
-  <aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem on" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem on" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
   <div class="shell fh-maxw">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
-      <div class="sep">/</div>
-      <div class="sub">Pipeline</div>
-    </div>
-    <div class="topbar-right">
-      <div class="clock">—</div>
-      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-    </div>
-  </header>
 
 
   <!-- RAIL SWITCHER -->
-  <nav class="railbar">
-    <div class="rail-tab active" data-rail="R-01"><span class="rt-code">R-01</span>Sales</div>
-    <div class="rail-tab" data-rail="R-02"><span class="rt-code">R-02</span>Funding: Card Stacking</div>
+  <nav class="railbar" aria-label="Pipelines">
+    <button type="button" class="rail-tab active" data-rail="R-01" aria-pressed="true" title="Sales">Sales</button>
+    <button type="button" class="rail-tab" data-rail="R-02" aria-pressed="false" title="Funding: Card Stacking">Funding: Card Stacking</button>
     <!-- R-03 Alt-Fin (Lendflow) parked 2026-08-25 — adapter + webhook stay. -->
-    <div class="rail-tab" data-rail="R-04"><span class="rt-code">R-04</span>Optimization (Repair) Rounds</div>
-    <div class="rail-tab" data-rail="R-05"><span class="rt-code">R-05</span>Inquiry Removal</div>
-    <div class="rail-tab" data-rail="R-06"><span class="rt-code">R-06</span>AR / Collections</div>
-    <div class="rail-tab" data-rail="R-08"><span class="rt-code">R-08</span>Affiliates + White Label</div>
-    <div class="rail-tab" data-rail="R-09"><span class="rt-code">R-09</span>Hiring</div>
+    <button type="button" class="rail-tab" data-rail="R-04" aria-pressed="false" title="Optimization (Repair) Rounds">Optimization (Repair) Rounds</button>
+    <button type="button" class="rail-tab" data-rail="R-05" aria-pressed="false" title="Inquiry Removal">Inquiry Removal</button>
+    <button type="button" class="rail-tab" data-rail="R-06" aria-pressed="false" title="AR / Collections">AR / Collections</button>
+    <button type="button" class="rail-tab" data-rail="R-08" aria-pressed="false" title="Affiliates + White Label">Affiliates + White Label</button>
+    <button type="button" class="rail-tab" data-rail="R-09" aria-pressed="false" title="Hiring">Hiring</button>
   </nav>
 
   <!-- ══ HEADLINE ══════════════════════════════════════════════════════════
@@ -715,30 +689,23 @@
         <span class="hl-note" id="hlNextNote">Loading the board&hellip;</span>
       </div>
     </div>
-    <div class="hl-ref">
-      <button type="button" class="hl-count" id="hlBank" data-wait="bank"
-              title="Sitting in Round Submitted — the round is with the lenders and the next move is theirs."><b>—</b> on a bank</button>
-      <button type="button" class="hl-count" id="hlClient" data-wait="client"
-              title="Sitting in Action Required — a lender has come back needing something from the file."><b>—</b> on the client</button>
-      <button type="button" class="hl-count" id="hlNone" data-wait="none"
-              title="Nothing on the card says whose move it is. Not a claim that there is nothing to do."><b>—</b> nothing recorded</button>
-      <div class="hl-sep"></div>
-      <div class="board-summary">
-        <span><b id="sumCount">—</b> cards</span>
-        <!-- The board total is FUNDING money and is drawn on the funding rails
-             only. On Inquiry Removal, Repair, AR, Affiliates and Hiring this
-             span is hidden rather than printing a funding figure those boards
-             have nothing to do with. See railHasMoney(). -->
-        <span id="sumMoneyWrap"><b id="sumMoney">—</b> funding est.</span>
-        <!-- NO "— held" HERE (walkthrough-4 defect 24, 2026-09-06). It could
-             never be a number: /api/dashboard/pipeline returns no hold field,
-             so it was a bold dash forever. UI-STANDARDS §5: if it does nothing
-             today it does not render today — the same rule that hid the Owner
-             filter and removed the Hold filter below. Put it back beside the
-             code that reads a real hold field, not before. -->
-
-      </div>
+    <div class="board-summary">
+      <span><b id="sumCount">—</b> <span id="sumCountUnit">cards</span></span>
     </div>
+    <details class="pipeline-breakdown" id="waitingDetails" open>
+      <summary aria-label="Waiting details">Details</summary>
+      <div class="hl-ref">
+        <button type="button" class="hl-count" id="hlBank" data-wait="bank"
+                title="Sitting in Round Submitted — the round is with the lenders and the next move is theirs."><b>—</b> <span>on a bank</span></button>
+        <button type="button" class="hl-count" id="hlClient" data-wait="client"
+                title="Sitting in Action Required — a lender has come back needing something from the file."><b>—</b> <span>on the client</span></button>
+        <button type="button" class="hl-count" id="hlNone" data-wait="none"
+                title="Nothing on the card says whose move it is. Not a claim that there is nothing to do."><b>—</b> <span>nothing recorded</span></button>
+        <!-- Funding totals belong only on funding-related boards. -->
+        <span id="sumMoneyWrap"><b id="sumMoney">—</b> funding est.</span>
+        <div id="hlDetailNote"></div>
+      </div>
+    </details>
   </div>
 
   <!-- FILTERS — one control; active filters surface as chips -->
@@ -749,16 +716,16 @@
       <button type="button" id="lensBoard" class="on" aria-pressed="true">Board</button>
       <button type="button" id="lensFulfillment" aria-pressed="false">Fulfillment</button>
     </div>
-    <div class="search"><span>⌕</span><input id="q" value="" placeholder="Search name, phone, or email"></div>
-    <button class="filter-btn" id="filterBtn" aria-expanded="false">⚟ Filter<span class="fb-n" id="filterN" hidden>0</span></button>
-    <button type="button" class="filter-btn" id="fhNewClient">New Client</button>
+    <label class="search" for="q"><span aria-hidden="true">⌕</span><input id="q" value="" placeholder="Search clients" aria-label="Search clients by name"></label>
+    <button type="button" class="filter-btn" id="filterBtn" aria-expanded="false" aria-controls="filterPanel">Filters<span class="fb-n" id="filterN" hidden>0</span></button>
+    <button type="button" class="filter-btn pipeline-primary" id="fhNewClient">New Client</button>
     <div class="filter-chips" id="filterChips"></div>
   </div>
   <div class="filterpanel" id="filterPanel" hidden>
     <!-- WAITING ON — the triage control. Every value is read off facts the
          board already carries; see fhWaitingOn() below for the precedence and
          for why a card can only ever land in one of them. -->
-    <div class="select"><span class="sl-k">Waiting on:</span><select id="fWait">
+    <div class="select"><span class="sl-k">Waiting on:</span><select id="fWait" aria-label="Waiting on">
       <option value="">Anyone</option>
       <option value="us">Us — someone here</option>
       <option value="us_amount">Us — an approval amount</option>
@@ -771,7 +738,7 @@
          filtered nothing. UI-STANDARDS §5: a control that cannot do anything
          today does not render today. rebuildOwnerOptions() shows it again the
          moment a card comes back with an owner, so nothing is lost. -->
-    <div class="select" id="fOwnerWrap" hidden><span class="sl-k">Owner:</span><select id="fOwner"><option value="">Anyone</option></select></div>
+    <div class="select" id="fOwnerWrap" hidden><span class="sl-k">Owner:</span><select id="fOwner" aria-label="Owner"><option value="">Anyone</option></select></div>
     <!-- HOLD IS GONE FROM HERE ON PURPOSE (2026-09-06). "Held only" emptied
          every board every time it was chosen: no card ever carries the `held`
          class, because /api/dashboard/pipeline returns no hold field for a card
@@ -779,10 +746,10 @@
          A filter that can only ever hide everything is worse than no
          filter. When the API starts returning hold status, put the select back
          beside the code that paints the class — not before. -->
-    <div class="select"><span class="sl-k">Age:</span><select id="fAge">
+    <div class="select"><span class="sl-k">Age:</span><select id="fAge" aria-label="Time in stage">
       <option value="">Any</option><option value="60">Over 1h in stage</option>
       <option value="1440">Over 1d in stage</option><option value="4320">Over 3d in stage</option></select></div>
-    <div class="select"><span class="sl-k">Sort:</span><select id="fSort">
+    <div class="select"><span class="sl-k">Sort:</span><select id="fSort" aria-label="Sort cards">
       <option value="">Manual</option><option value="name">Name A–Z</option>
       <option value="amt">Amount, high first</option><option value="age">Longest in stage</option>
       <option value="needs">Amount needed first</option></select></div>
@@ -795,7 +762,6 @@
        paid client on it reads as a broken board rather than as work nobody has
        done yet. Written on the screen because the move genuinely is manual —
        no handler moves a sales card when a payment clears. See railNote(). -->
-  <div class="rail-note caption" id="railNote" hidden></div>
 
   <!-- BOARD
        Starts empty on purpose. Sample columns used to paint here, then the
@@ -804,67 +770,69 @@
        real columns, an honest empty message, or a named failure. Never fake
        rows that vanish. -->
   <div class="board-row">
-  <div class="board-wrap">
-    <div class="empty-rail-note" id="boardStatus">Loading the board&hellip;</div>
+  <div class="board-wrap" tabindex="0" role="region" aria-label="Pipeline board, scroll horizontally for more stages">
+    <div class="empty-rail-note" id="boardStatus" role="status" aria-live="polite">Loading the board&hellip;</div>
     <div class="board" id="board" hidden></div>
 
       <!-- FLOATING: CROSS-RAIL ROUTE MENU
            Lives under .board-wrap, NOT inside .board. Live paint() tears down
            every child of .board when a real pipeline loads — nesting the menu
            there deleted #routeMenu and left MOVE with nowhere to open. -->
-      <div class="route-menu" id="routeMenu" hidden>
+      <div class="route-menu" id="routeMenu" role="dialog" aria-label="Move client" hidden>
         <div class="rm-head">
           <div class="rm-title" id="rmName">Move</div>
-          <div class="rm-sub">Send this client to another pipeline stage. The move is saved.</div>
+          <div class="rm-sub">Choose a stage. Changes are saved.</div>
         </div>
 
-        <div class="rm-group">Funding routes</div>
-        <div class="rm-item" data-pipeline-key="funding_card_stacking" data-stage-key="apply_now">
+        <div class="rm-group">This pipeline</div>
+        <div id="rmCurrentStages"></div>
+        <div class="rm-group">Other pipelines</div>
+        <button type="button" class="rm-item" data-pipeline-key="funding_card_stacking" data-stage-key="apply_now">
           <span class="rm-dot"></span>
-          <div>
-            <div class="rm-label">Card Stacking</div>
-            <div class="rm-dest">Funding: Card Stacking · Apply Now</div>
-          </div>
-        </div>
+          <span class="rm-copy">
+            <span class="rm-label">Card Stacking</span>
+            <span class="rm-dest">Funding: Card Stacking · Apply Now</span>
+          </span>
+        </button>
         <!-- funding_altfin MOVE dest parked 2026-08-25 — do not send files to Lendflow from the desk. -->
-        <div class="rm-item" data-pipeline-key="optimization" data-stage-key="round_sent">
+        <button type="button" class="rm-item" data-pipeline-key="optimization" data-stage-key="round_sent">
           <span class="rm-dot"></span>
-          <div>
-            <div class="rm-label">Repair Rounds</div>
-            <div class="rm-dest">Optimization · Round Sent</div>
-          </div>
-        </div>
-        <div class="rm-item" data-pipeline-key="inquiry_removal" data-stage-key="requested">
+          <span class="rm-copy">
+            <span class="rm-label">Repair Rounds</span>
+            <span class="rm-dest">Optimization · Round Sent</span>
+          </span>
+        </button>
+        <button type="button" class="rm-item" data-pipeline-key="inquiry_removal" data-stage-key="requested">
           <span class="rm-dot warn"></span>
-          <div>
-            <div class="rm-label">Inquiry Removal</div>
-            <div class="rm-dest">Inquiry Removal · Requested</div>
-          </div>
-        </div>
+          <span class="rm-copy">
+            <span class="rm-label">Inquiry Removal</span>
+            <span class="rm-dest">Inquiry Removal · Requested</span>
+          </span>
+        </button>
 
         <div class="rm-div"></div>
         <div class="rm-group">Hold / close</div>
-        <div class="rm-item" data-pipeline-key="sales" data-stage-key="lost">
+        <button type="button" class="rm-item" data-pipeline-key="sales" data-stage-key="lost">
           <span class="rm-dot warn"></span>
-          <div>
-            <div class="rm-label">Mark Lost</div>
-            <div class="rm-dest">Sales · Lost</div>
-          </div>
-        </div>
-        <div class="rm-item" data-pipeline-key="ar_collections" data-stage-key="invoice_sent">
+          <span class="rm-copy">
+            <span class="rm-label">Mark Lost</span>
+            <span class="rm-dest">Sales · Lost</span>
+          </span>
+        </button>
+        <button type="button" class="rm-item" data-pipeline-key="ar_collections" data-stage-key="invoice_sent">
           <span class="rm-dot warn"></span>
-          <div>
-            <div class="rm-label">AR / Collections</div>
-            <div class="rm-dest">AR · Invoice Sent</div>
-          </div>
-        </div>
+          <span class="rm-copy">
+            <span class="rm-label">AR / Collections</span>
+            <span class="rm-dest">AR · Invoice Sent</span>
+          </span>
+        </button>
 
-        <div class="rm-foot">Or drag the card to any stage on this rail.</div>
+        <div class="rm-foot">You can also drag a card between stages.</div>
       </div>
 
   </div>
 
-  <aside class="fh-drawer" id="fhDrawer" aria-hidden="true">
+  <aside class="fh-drawer" id="fhDrawer" aria-hidden="true" aria-labelledby="fhDrawerName" inert>
     <div class="fh-drawer-head">
       <div>
         <h2 id="fhDrawerName">—</h2>
@@ -924,7 +892,7 @@
   <div class="fh-del-modal" id="fhNewModal" role="dialog" aria-modal="true" aria-labelledby="fhNewTitle">
     <div class="fh-del-card">
       <h3 id="fhNewTitle">New Client</h3>
-      <p>Same save as the apply form. They land on the Sales board.</p>
+      <p>Adds this client to the Sales pipeline.</p>
       <label for="fhNewName">Name</label>
       <input id="fhNewName" type="text" autocomplete="name" maxlength="120" placeholder="Full name">
       <label for="fhNewEmail">Email</label>
@@ -949,13 +917,15 @@
     </div>
   </div>
 
-  <footer class="statusbar">
-    <span class="ghost"></span>
-    <span>fundhub-pipeline · v1</span>
-    <span>rail: <span id="railLabel">Sales</span></span>
-    <span>drag a card to change stage · move to change rail</span>
-    <span class="nominal"><span class="pulse"></span>systems nominal · fundhub.ai</span>
-  </footer>
+  <details class="pipeline-details">
+    <summary>Board details</summary>
+    <div class="pipeline-details-body">
+      <p class="rail-note caption" id="railNote" hidden></p>
+      <span>Pipeline: <b id="railLabel">Sales</b></span>
+      <span>Drag between stages, or use Move on a card.</span>
+      <span>Technical reference: fundhub-pipeline · v1.</span>
+    </div>
+  </details>
 
   </div>
 </div>
@@ -1201,7 +1171,10 @@ function end(){
 }
 board.addEventListener('pointerdown',function(e){
   var card=e.target.closest('.card');
-  if(!card||e.target.closest('.c-btn.route')||e.target.closest('.c-msg')||e.button!==0) return;
+  var messageRow=e.target.closest('.c-msg');
+  // Preserve message links as controls; an empty contact dash is still card surface.
+  if(!card||e.target.closest('.c-btn')||(messageRow&&messageRow.querySelector('a'))||e.button!==0) return;
+  if(e.pointerType==='touch'&&!e.target.closest('.grip')) return;
   if(card.closest('.drag-card')) return;
   e.preventDefault();
   startDrag(card,e);
@@ -1212,22 +1185,39 @@ window.addEventListener('pointercancel',end);
 
 /* ---------- MOVE opens the cross-rail route menu for that card ---------- */
 var menu=document.getElementById('routeMenu'), rmName=document.getElementById('rmName');
-var moveCard=null;
+var moveCard=null, moveTrigger=null;
+function closeMoveMenu(restoreFocus){
+  menu.hidden=true; moveCard=null;
+  if(moveTrigger){ moveTrigger.setAttribute('aria-expanded','false'); if(restoreFocus) moveTrigger.focus(); }
+}
+function currentStageOptions(card){
+  var host=document.getElementById('rmCurrentStages');
+  host.textContent='';
+  cols().forEach(function(col){
+    if(col===card.closest('.col')) return;
+    var item=document.createElement('button'); item.type='button'; item.className='rm-item';
+    item.dataset.pipelineKey=col.dataset.pipelineKey || window.FHPipelineBoard.currentKey;
+    item.dataset.stageKey=col.dataset.stageKey;
+    item.textContent=col.querySelector('.col-name').textContent; host.appendChild(item);
+  });
+}
 document.addEventListener('click',function(e){
   var btn=e.target.closest('.c-btn.route');
   if(btn){
     var card=btn.closest('.card');
-    moveCard=card;
+    moveCard=card; moveTrigger=btn;
+    currentStageOptions(card); btn.setAttribute('aria-expanded','true');
     rmName.textContent='Move '+nameOf(card);
     menu.hidden=false;
     var r=btn.getBoundingClientRect(), w=274;
     menu.style.position='fixed';
-    menu.style.left=Math.min(r.left,window.innerWidth-w-12)+'px';
-    menu.style.top =Math.min(r.bottom+6,window.innerHeight-360)+'px';
+    menu.style.left=Math.max(12,Math.min(r.left,window.innerWidth-w-12))+'px';
+    menu.style.top =Math.max(12,Math.min(r.bottom+6,window.innerHeight-Math.min(menu.scrollHeight,window.innerHeight-24)-12))+'px';
+    var first=menu.querySelector('.rm-item'); if(first) first.focus();
     e.stopPropagation();
     return;
   }
-  if(!e.target.closest('.route-menu')){ menu.hidden=true; moveCard=null; }
+  if(!e.target.closest('.route-menu')) closeMoveMenu(false);
 });
 menu.addEventListener('click',function(e){
   var item=e.target.closest('.rm-item');
@@ -1241,7 +1231,7 @@ menu.addEventListener('click',function(e){
     return;
   }
   var card=moveCard;
-  menu.hidden=true; moveCard=null;
+  closeMoveMenu(true);
   persistCardMove(card, pipelineKey, stageKey, function(msg){
     alert('Could not save the move: ' + msg);
   }, function(){
@@ -1251,7 +1241,14 @@ menu.addEventListener('click',function(e){
     }
   });
 });
-document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ menu.hidden=true; moveCard=null; } });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!menu.hidden){ e.preventDefault(); closeMoveMenu(true); } });
+menu.addEventListener('keydown',function(e){
+  var items=[].slice.call(menu.querySelectorAll('.rm-item')), i=items.indexOf(document.activeElement), next;
+  if(e.key==='ArrowDown') next=(i+1)%items.length;
+  if(e.key==='ArrowUp') next=(i+items.length-1)%items.length;
+  if(e.key==='Home') next=0; if(e.key==='End') next=items.length-1;
+  if(typeof next==='number'&&items[next]){e.preventDefault();items[next].focus();}
+});
 
 /* ---------- filters, search, sort ---------- */
 var q=document.getElementById('q'), fOwner=document.getElementById('fOwner'),
@@ -1409,8 +1406,8 @@ function syncChips(){
     var chip=document.createElement('span');
     chip.className='fchip';
     chip.innerHTML='<span>'+c.k+': '+labelOf(c)+'</span>';
-    var x=document.createElement('span');
-    x.className='x'; x.textContent='✕'; x.title='Clear '+c.k;
+    var x=document.createElement('button'); x.type='button';
+    x.className='x'; x.textContent='×'; x.title='Clear '+c.k; x.setAttribute('aria-label','Clear '+c.k);
     x.addEventListener('click',function(){
       c.el.value=''; applyFilters(); if(c.el===fSort) applySort(); syncChips();
     });
@@ -1454,6 +1451,7 @@ syncChips();
     showErr('');
     goBtn.disabled=false;
     goBtn.textContent='Save';
+    openBtn.focus();
   }
   function openNew(){
     nameEl.value=''; emailEl.value=''; phoneEl.value=''; productEl.value='';
@@ -1472,6 +1470,9 @@ syncChips();
   }
   openBtn.addEventListener('click', openNew);
   cancelBtn.addEventListener('click', closeNew);
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'&&modal.classList.contains('open')) {e.preventDefault();e.stopImmediatePropagation();closeNew();}
+  });
   modal.addEventListener('click', function(e){ if(e.target===modal) closeNew(); });
   goBtn.addEventListener('click', function(){
     if(typeof FHData === 'undefined' || !FHData.write){
@@ -1552,8 +1553,8 @@ var tabs=[].slice.call(document.querySelectorAll('.rail-tab'));
 var railLabel=document.getElementById('railLabel');
 tabs.forEach(function(t){
   t.addEventListener('click',function(){
-    tabs.forEach(function(x){x.classList.remove('active')});
-    t.classList.add('active');
+    tabs.forEach(function(x){x.classList.remove('active');x.setAttribute('aria-pressed','false');});
+    t.classList.add('active');t.setAttribute('aria-pressed','true');
     /* the tab holds a code span, the name text node, then the count */
     var name=[].filter.call(t.childNodes,function(n){return n.nodeType===3;})
                 .map(function(n){return n.textContent;}).join('').trim();
@@ -1725,6 +1726,8 @@ restore();
   var sumMoneyWrap = document.getElementById("sumMoneyWrap");
   function setSummary(totals) {
     if (sumCountEl) sumCountEl.textContent = totals ? String(totals.count) : "—";
+    var unit = document.getElementById("sumCountUnit");
+    if (unit) unit.textContent = totals && totals.count === 1 ? "card" : "cards";
     if (sumMoneyEl) sumMoneyEl.textContent = totals && totals.money != null ? usd(totals.money) : "—";
     /* The money on a card is the client's FUNDING number, so a board total is
        only meaningful on the rails that are about funding. Everywhere else the
@@ -1749,6 +1752,30 @@ restore();
   };
   var hlNextLink = document.getElementById("hlNextLink");
   var hlNextNote = document.getElementById("hlNextNote");
+  var hlNextRow = document.querySelector(".hl-next");
+  var hlNextHome = hlNextRow && hlNextRow.parentElement;
+  var hlDetailNote = document.getElementById("hlDetailNote");
+  var waitingDetails = document.getElementById("waitingDetails");
+  var phoneSummary = window.matchMedia("(max-width:640px)");
+  var headlineIsZero = false;
+  function syncHeadlineLayout() {
+    var target = phoneSummary.matches && headlineIsZero ? hlDetailNote : hlNextHome;
+    if (target && hlNextRow && hlNextRow.parentElement !== target) target.appendChild(hlNextRow);
+  }
+  function syncBreakdown() {
+    if (waitingDetails) waitingDetails.open = !phoneSummary.matches;
+    syncHeadlineLayout();
+  }
+  if (phoneSummary.addEventListener) phoneSummary.addEventListener("change", syncBreakdown);
+  syncBreakdown();
+  if (waitingDetails) waitingDetails.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && phoneSummary.matches && waitingDetails.open) {
+      ev.preventDefault();waitingDetails.open = false;waitingDetails.querySelector("summary").focus();
+    }
+  });
+  document.addEventListener("click", function (ev) {
+    if (phoneSummary.matches && waitingDetails && waitingDetails.open && !waitingDetails.contains(ev.target)) waitingDetails.open = false;
+  });
   var hlNextTarget = null;
   var hlNextLabel = "";
 
@@ -1759,6 +1786,7 @@ restore();
   }
 
   function clearHeadline(note) {
+    headlineIsZero = false;syncHeadlineLayout();
     Object.keys(hlEls).forEach(function (k) {
       if (hlEls[k]) hlEls[k].textContent = "—";
     });
@@ -1770,6 +1798,7 @@ restore();
 
   function setHeadline(stages) {
     var t = fhPipelineWaiting(stages);
+    headlineIsZero = t.us === 0;syncHeadlineLayout();
     Object.keys(hlEls).forEach(function (k) {
       if (hlEls[k]) hlEls[k].textContent = String(t[k]);
     });
@@ -1789,6 +1818,7 @@ restore();
       (next.stage ? ", " + next.stage : "");
     if (hlNextLink) {
       hlNextLink.textContent = "Longest wait: " + hlNextLabel;
+      hlNextLink.title = hlNextLink.textContent;
       hlNextLink.setAttribute("href", "#" + cardAnchor(next.id));
     }
     hlSyncNext();
@@ -1879,10 +1909,13 @@ restore();
     top.appendChild(div("av agent", initials(c.name)));
     top.appendChild(div("c-name", c.name));
     var tools = div("c-tools");
-    var move = document.createElement("span");
-    move.className = "c-btn route"; move.textContent = "MOVE";
-    var delBtn = document.createElement("span");
-    delBtn.className = "c-btn del"; delBtn.textContent = "DEL";
+    var move = document.createElement("button"); move.type = "button";
+    move.className = "c-btn route"; move.textContent = "Move";
+    move.setAttribute("aria-label", "Move " + c.name); move.setAttribute("aria-haspopup", "dialog");
+    move.setAttribute("aria-expanded", "false"); move.setAttribute("aria-controls", "routeMenu");
+    var delBtn = document.createElement("button"); delBtn.type = "button";
+    delBtn.className = "c-btn del"; delBtn.textContent = "Archive";
+    delBtn.setAttribute("aria-label", "Archive " + c.name);
     delBtn.title = "Archive (type DELETE)";
     delBtn.addEventListener("click", function (ev) {
       ev.preventDefault();
@@ -1890,9 +1923,8 @@ restore();
       openDeleteConfirm(c);
     });
     var grip = document.createElement("span");
-    grip.className = "grip"; grip.textContent = "⠿";
+    grip.className = "grip"; grip.textContent = "⠿"; grip.setAttribute("aria-hidden", "true"); grip.title = "Drag to another stage";
     tools.appendChild(move); tools.appendChild(delBtn); tools.appendChild(grip);
-    top.appendChild(tools);
     card.appendChild(top);
     card.appendChild(div("c-scores", formatScores(c)));
     card.appendChild(msgLine("sms", c.phone, c.client_id, c.sms_needs_reply));
@@ -1950,10 +1982,16 @@ restore();
     foot.appendChild(act);
     foot.appendChild(div("c-when", c.funded ? "funded" : (c.outcome_tier || "")));
     card.appendChild(foot);
+    card.appendChild(tools);
 
     // Any rail: open right drawer with scores / survey / prequal / tier.
     // Card stacking also keeps the lender match panel as a deep link inside.
     if (c.client_id) {
+      card.tabIndex = 0; card.setAttribute("role", "group");
+      card.setAttribute("aria-label", c.name + ". Press Enter for client details.");
+      card.addEventListener("keydown", function (ev) {
+        if (ev.target === card && (ev.key === "Enter" || ev.key === " ")) {ev.preventDefault();openClientDrawer(c);}
+      });
       card.addEventListener("click", function (ev) {
         if (ev.target && (ev.target.closest && (ev.target.closest(".c-btn") || ev.target.closest(".grip") || ev.target.closest(".c-msg")))) return;
         openClientDrawer(c);
@@ -1962,7 +2000,7 @@ restore();
     return card;
   }
 
-  var drawerClient = null;
+  var drawerClient = null, drawerReturnFocus = null, archiveReturnFocus = null;
   var drawerEl = document.getElementById("fhDrawer");
   var drawerBody = document.getElementById("fhDrawerBody");
   var drawerName = document.getElementById("fhDrawerName");
@@ -1983,7 +2021,9 @@ restore();
     if (drawerEl) {
       drawerEl.classList.remove("open");
       drawerEl.setAttribute("aria-hidden", "true");
+      drawerEl.inert = true;
     }
+    if (drawerReturnFocus && drawerReturnFocus.isConnected) drawerReturnFocus.focus();
     drawerClient = null;
   }
 
@@ -2367,6 +2407,7 @@ restore();
   }
 
   function openClientDrawer(c) {
+    drawerReturnFocus = document.activeElement;
     drawerClient = c;
     if (drawerName) drawerName.textContent = c.name || "Contact";
     if (drawerBody) {
@@ -2375,6 +2416,11 @@ restore();
     if (drawerEl) {
       drawerEl.classList.add("open");
       drawerEl.setAttribute("aria-hidden", "false");
+      drawerEl.inert = false;
+      var overlay = window.matchMedia("(max-width:900px)").matches;
+      drawerEl.setAttribute("role", overlay ? "dialog" : "complementary");
+      if (overlay) drawerEl.setAttribute("aria-modal", "true"); else drawerEl.removeAttribute("aria-modal");
+      document.getElementById("fhDrawerClose").focus();
     }
     if (typeof FHData !== "undefined" && FHData.client) {
       FHData.client(c.client_id).then(function (res) {
@@ -2412,6 +2458,7 @@ restore();
   }
 
   function openDeleteConfirm(c) {
+    archiveReturnFocus = document.activeElement;
     pendingDelete = c;
     if (delInput) delInput.value = "";
     syncDelGo();
@@ -2422,6 +2469,7 @@ restore();
   function closeDeleteConfirm() {
     pendingDelete = null;
     if (delModal) delModal.classList.remove("open");
+    if (archiveReturnFocus && archiveReturnFocus.isConnected) archiveReturnFocus.focus();
   }
 
   function runArchive() {
@@ -2658,9 +2706,7 @@ restore();
      change to a handler, not to this screen. */
   var railNoteEl = document.getElementById("railNote");
   var RAIL_NOTES = {
-    sales: "A payment does not move a card. When a deposit is paid, somebody has to " +
-           "move the card to Closed Won (deposit) — drag it, or use MOVE on the card. " +
-           "Nothing moves it for you."
+    sales: "Payments do not change sales stages. After a deposit, move the card to Closed Won (deposit)."
   };
   function setRailNote(key) {
     if (!railNoteEl) return;
@@ -2750,8 +2796,8 @@ restore();
     delete cache[pipelineKey];
     var tab = document.querySelector('.rail-tab[data-rail="' + rail + '"]');
     var tabs = document.querySelectorAll('.rail-tab');
-    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
-    if (tab) tab.classList.add('active');
+    for (var i = 0; i < tabs.length; i++) {tabs[i].classList.remove('active');tabs[i].setAttribute('aria-pressed','false');}
+    if (tab) {tab.classList.add('active');tab.setAttribute('aria-pressed','true');}
     var name = tab
       ? [].filter.call(tab.childNodes, function (n) { return n.nodeType === 3; })
           .map(function (n) { return n.textContent; }).join('').trim()
@@ -3391,6 +3437,19 @@ restore();
 })();
 </script>
 <script>
+// Keep modal keyboard navigation with its visible controls. The docked desktop
+// preview remains nonmodal; on phones it overlays the board and follows dialog focus.
+document.addEventListener("keydown", function (ev) {
+  if (ev.key !== "Tab") return;
+  var modal = document.querySelector(".fh-del-modal.open") || document.querySelector('.fh-drawer.open[role="dialog"]');
+  if (!modal) return;
+  var items = [].slice.call(modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],[tabindex="0"]'))
+    .filter(function (el) { return el.getClientRects().length > 0; });
+  if (!items.length) return;
+  var first = items[0], last = items[items.length - 1];
+  if (ev.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {ev.preventDefault();last.focus();}
+  else if (!ev.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {ev.preventDefault();first.focus();}
+});
 function tickClock() {
   var el = document.querySelector(".clock");
   if (!el) return;

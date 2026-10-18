@@ -53,6 +53,7 @@ test('HTTP refusal cannot reveal the affiliate navigation or claim success',asyn
 test('shared sign out preserves retry on failure and clears account data on success',async({page})=>{
   const server={joined:false,posts:0,logouts:0,logoutFail:true};await mock(page,server);
   await page.goto('/app/money.html');
+  await page.locator('.client-ios-account>summary').click();
   await page.locator('.client-ios-signout').click();
   await expect(page.locator('.client-ios-session-error')).toContainText('could not confirm');
   expect(await page.evaluate(()=>localStorage.getItem('fh_token'))).toBe('client-session');

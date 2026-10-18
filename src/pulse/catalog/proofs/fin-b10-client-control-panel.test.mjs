@@ -109,10 +109,26 @@ async function openPanel({ session = OWNER, query = `?id=${CLIENT}`, overrides =
   return { page, errors, seen };
 }
 
+// Select the named workspace section before exercising the same existing control.
+async function selectGroupSection(page, bodyId) {
+  const name = bodyId === "bp-body" ? "Funding" : bodyId === "hold-body" ? "Credit & inquiries" : "Records";
+  await page.getByRole("tab", { name, exact: true }).click();
+}
+async function openGroup(page, bodyId) {
+  await selectGroupSection(page, bodyId);
+  await page.locator(`.group-title.tog[aria-controls="${bodyId}"]`).click();
+}
+async function openToolsPanel(options) {
+  const result = await openPanel(options);
+  await result.page.locator("#more-menu > summary").click();
+  return result;
+}
+
 const expanded = (page, selector) => page.locator(selector).getAttribute("aria-expanded");
 
 // One folding group: shut at first, opens on a press, shuts on a second press, and keeps its body hidden state in step.
 async function foldGroup(page, bodyId, { stateWord = false } = {}) {
+  await selectGroupSection(page, bodyId);
   const title = page.locator(`.group-title.tog[aria-controls="${bodyId}"]`);
   const body = page.locator(`#${bodyId}`);
   assert.equal(await title.getAttribute("aria-expanded"), "false", `${bodyId} starts shut`);
@@ -171,7 +187,7 @@ test("Credit & Hold Status toggle: starts shut and holds the credit status, both
 
     // Nothing recorded stays a dash; it is never painted as a zero.
     const bare = await openPanel({ overrides: { file: { ...FILE, client: { ...FILE.client, custom_fields: {} }, income_estimates: {} } } });
-    await bare.page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+    await openGroup(bare.page, "hold-body");
     for (const id of ["ccp-credit-status", "ccp-income-ex", "ccp-income-eq", "ccp-hold-reason"]) {
       assert.equal(await bare.page.locator(`#${id}`).textContent(), "—", id);
     }
@@ -180,7 +196,7 @@ test("Credit & Hold Status toggle: starts shut and holds the credit status, both
   await proof.check(/^Credit & Hold Status toggle/, async () => {
     // Each value sits under its OWN label. The four pairs, in the grid's order, read by position.
     const { page } = await openPanel();
-    await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+    await openGroup(page, "hold-body");
     const pairs = await page.$$eval("#hold-body .kv", (els) => els.map((el) => [el.querySelector(".kv-label").textContent.trim(), el.querySelector(".kv-value").textContent.trim()]));
     assert.deepEqual(pairs, [
       ["Credit Status", "Report pulled"],
@@ -202,7 +218,7 @@ test("Credit & Hold Status toggle: starts shut and holds the credit status, both
       client: { ...FILE.client, custom_fields: custom }, funding_rounds: rounds });
     const read = async (file) => {
       const { page } = await openPanel({ overrides: { file } });
-      await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+      await openGroup(page, "hold-body");
       const out = {
         status: await page.locator("#ccp-credit-status").textContent(),
         hold: await page.locator("#ccp-hold-reason").textContent(),
@@ -233,7 +249,7 @@ test("Credit & Hold Status toggle: starts shut and holds the credit status, both
       income_estimates: { asOf: AS_OF, ...income } });
     const read = async (file) => {
       const { page } = await openPanel({ overrides: { file } });
-      await page.locator('.group-title.tog[aria-controls="hold-body"]').click();
+      await openGroup(page, "hold-body");
       const out = [await page.locator("#ccp-income-ex").textContent(), await page.locator("#ccp-income-eq").textContent()];
       await page.close();
       return out;
@@ -279,7 +295,7 @@ test("System Facts toggle: starts shut, says collapsed or open, and holds last p
     // A file that is not funded says No, and a file with no round and no pull leaves dashes, not guesses.
     const open = await openPanel({ overrides: { file: { ...FILE, client: { ...FILE.client, funded: false, funded_amount: null },
       tri_merge: {}, funding_rounds: [], crs_results: [] } } });
-    await open.page.locator('.group-title.tog[aria-controls="facts-body"]').click();
+    await openGroup(open.page, "facts-body");
     assert.equal(await open.page.locator("#ccp-facts-funded").textContent(), "No");
     assert.equal(await open.page.locator("#ccp-facts-round").textContent(), "—");
     assert.equal(await open.page.locator("#ccp-last-pull").textContent(), "—");
@@ -315,7 +331,7 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
       const { page } = await openPanel({ overrides: { extra: {
         "/api/read/blueprint-combined-approval": async (route) => json(route, body, status),
       } } });
-      await page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+      await openGroup(page, "bp-body");
       await waitFor(async () => /did not load/.test(await page.locator("#bp-combined-note").textContent()), `the failure words for ${status}`);
       assert.equal(await page.locator("#bp-combined-note").textContent(), `The combined number did not load. ${words}`, String(status));
       assert.equal(await page.locator("#bp-combined").textContent(), "—", `${status}: a dash, never a figure`);
@@ -330,7 +346,7 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
     // No partner on the file: the partner row is put away, the note says the primary file stands alone, and the
     // partner line says one is included. A number that is not worked out says so in words, never as $0.
     const none = await openPanel({ overrides: { combined: NO_PARTNER } });
-    await none.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(none.page, "bp-body");
     await waitFor(async () => (await none.page.locator("#bp-combined").textContent()) === "$70,000", "the primary alone");
     assert.equal(await none.page.locator("#bp-partner-row").isHidden(), true, "no partner row without a partner");
     assert.equal(await none.page.locator("#bp-combined-note").textContent(), "No credit partner on this file, so this is the primary file alone.");
@@ -341,7 +357,7 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
     // A partner whose own number is not worked out: counted as the primary alone, said in words, never $0.
     const partial = await openPanel({ overrides: { combined: { ...COMBINED, partnerPrequal: null, partnerPrequalDisplay: null,
       combinedPrequal: 70000, combinedPrequalDisplay: "$70,000" } } });
-    await partial.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(partial.page, "bp-body");
     await waitFor(async () => (await partial.page.locator("#bp-combined").textContent()) === "$70,000", "the primary count");
     assert.equal(await partial.page.locator("#bp-partner-row").isVisible(), true);
     assert.equal(await partial.page.locator("#bp-partner").textContent(), "Not worked out yet");
@@ -352,7 +368,7 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
     const nothing = await openPanel({ overrides: { combined: { ok: true, combinedPrequal: null, combinedPrequalDisplay: null,
       primary: { name: "Dana Whitfield" }, primaryPrequal: null, primaryPrequalDisplay: null,
       partnerClientId: null, partner: null, partnerPrequal: null, partnerPrequalDisplay: null } } });
-    await nothing.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(nothing.page, "bp-body");
     await waitFor(async () => (await nothing.page.locator("#bp-primary-label").textContent()) === "Dana Whitfield (primary)", "the named primary");
     assert.equal(await nothing.page.locator("#bp-combined").textContent(), "—");
     assert.equal(await nothing.page.locator("#bp-primary").textContent(), "Not worked out yet");
@@ -364,7 +380,7 @@ test("Blueprint group toggle: starts shut, says collapsed or open, and holds the
 test("Credit partner links: both point at the partner's own file and consent, and neither shows with no partner", async () => {
   await proof.check(/^Credit partner links/, async () => {
     const { page, errors } = await openPanel();
-    await page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(page, "bp-body");
     await waitFor(async () => (await page.locator("#bp-partner-now").textContent()).includes("is on this file"), "the partner line");
     assert.equal(await page.locator("#bp-partner-now").textContent(), "Sam Whitfield is on this file. One partner is included.");
     const open = page.locator("#bp-partner-open");
@@ -396,7 +412,7 @@ test("Credit partner links: both point at the partner's own file and consent, an
         return json(route, { ok: true, todos: [] });
       } },
     } });
-    await none.page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(none.page, "bp-body");
     await waitFor(async () => /No credit partner yet/.test(await none.page.locator("#bp-partner-now").textContent()), "the no partner line");
     assert.equal(await none.page.locator("#bp-partner-open").isHidden(), true);
     assert.equal(await none.page.locator("#bp-partner-consent").isHidden(), true);
@@ -419,7 +435,7 @@ test("Credit partner links: both point at the partner's own file and consent, an
 test("Declines Use this email: copies that email's subject and preview into the letter box and moves the cursor there", async () => {
   await proof.check(/^Declines: Use this email button/, async () => {
     const { page, errors } = await openPanel();
-    await page.locator('.group-title.tog[aria-controls="bp-body"]').click();
+    await openGroup(page, "bp-body");
     await page.waitForSelector('[data-act="use-email"]');
     const buttons = page.locator('[data-act="use-email"]');
     assert.equal(await buttons.count(), 2);
@@ -511,7 +527,7 @@ test("Open FinanceOS link: opens FinanceOS on this client for the roles that may
     const shows = ["owner", "admin", "sales_manager", "closer"];
     const hides = ["funding_advisor", "csm", "setter", "inquiry_specialist"];
     for (const role of [...shows, ...hides]) {
-      const { page, errors } = await openPanel({ session: asRole(role) });
+      const { page, errors } = await openToolsPanel({ session: asRole(role) });
       const link = page.locator("#ccp-link-financeos");
       const visible = await link.isVisible();
       assert.equal(visible, shows.includes(role), `${role}: Open FinanceOS visible`);
@@ -523,11 +539,11 @@ test("Open FinanceOS link: opens FinanceOS on this client for the roles that may
       await page.close();
     }
     // No client open: hidden even for the owner.
-    const bare = await openPanel({ query: "" });
+    const bare = await openToolsPanel({ query: "" });
     assert.equal(await bare.page.locator("#ccp-link-financeos").isVisible(), false);
     await bare.page.close();
     // The press opens FinanceOS for that client.
-    const owner = await openPanel();
+    const owner = await openToolsPanel();
     await owner.page.locator("#ccp-link-financeos").click();
     await owner.page.waitForURL(new RegExp(`/app/financeos\\.html\\?client_id=${CLIENT}$`));
     await owner.page.close();
@@ -542,7 +558,7 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
       ["ccp-link-ir", "Open Inquiry Remover", /^inquiry-remover\.html$/, /\/app\/inquiry-remover\.html$/],
     ];
     for (const [id, label, hrefRe, urlRe] of wanted) {
-      const { page, errors } = await openPanel();
+      const { page, errors } = await openToolsPanel();
       const link = page.locator(`#${id}`);
       assert.equal(await link.isVisible(), true, `${label} is shown`);
       assert.match((await link.textContent()).trim(), new RegExp(`^${label}`));
@@ -563,7 +579,7 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
       ["ccp-link-ir", "inquiry-remover.html"],
     ];
     for (const role of ROLES) {
-      const { page } = await openPanel({ session: asRole(role) });
+      const { page } = await openToolsPanel({ session: asRole(role) });
       for (const [id, screen] of links) {
         assert.equal(await page.locator(`#${id}`).isVisible(), mayPress(role, id),
           `${role}: ${id} (${screen}) is shown only when the link gate lets this role press it`);
@@ -580,7 +596,7 @@ test("Quick launch links: Pipeline, Messaging and Inquiry Remover open the right
   await proof.check(/^Quick launch links/, async () => {
     // With no client open, wireLinks() puts nothing on the links, so what a person presses is the address the
     // page was written with. Each must be its own screen, and a visible one must open it.
-    const bare = await openPanel({ query: "" });
+    const bare = await openToolsPanel({ query: "" });
     for (const [id, file] of [["ccp-link-pipeline", "pipeline.html"], ["ccp-link-present", "present.html"],
       ["ccp-link-messaging", "messaging.html"], ["ccp-link-ir", "inquiry-remover.html"]]) {
       assert.equal(await bare.page.locator(`#${id}`).getAttribute("href"), file, `${id}: the address the page was written with`);

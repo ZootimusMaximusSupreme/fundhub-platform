@@ -1,41 +1,39 @@
-/* Client-only Setup presentation. Data, actions and staff chrome stay original. */
-body[data-client-ios] .app{min-width:0;max-width:1440px;margin:auto;background:transparent}
-body[data-client-ios] .mbar{min-height:78px;padding:20px clamp(20px,4vw,60px);background:transparent;color:var(--client-ink);border:0;border-image:none;gap:12px}
-body[data-client-ios] .mbar .logo{filter:none}
-body[data-client-ios] .mbar .sub{color:var(--client-muted)}
-body[data-client-ios] .mbar a{color:var(--client-ink);font-weight:600;text-decoration:none;border-radius:14px;padding:0 14px;background:rgba(255,255,255,.8)}
-body[data-client-ios] .mnav{margin:0 clamp(20px,4vw,60px);padding:5px;gap:4px;border:0;border-radius:18px;background:#e9eaf0}
-body[data-client-ios] .mnav a{flex:1 1 auto;justify-content:center;min-height:44px;padding:8px 12px;border:0;border-radius:14px;color:#626773}
-body[data-client-ios] .mnav a[aria-current=page]{background:#fff;color:var(--client-ink);box-shadow:0 3px 12px rgba(34,38,48,.06)}
-body[data-client-ios] main{padding:42px clamp(20px,4vw,60px) 64px}
-body[data-client-ios] .head{margin-bottom:28px}
-body[data-client-ios] .head h1{--fs-title:clamp(36px,4vw,56px);line-height:1.08;letter-spacing:-.065em;margin-bottom:12px}
-body[data-client-ios] .caption{color:var(--client-muted);line-height:1.55;overflow-wrap:anywhere}
-body[data-client-ios] .grid{grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr);gap:20px}
-body[data-client-ios] .grid>.steps-card,body[data-client-ios] .grid>.price-card{grid-column:auto}
-body[data-client-ios] .card{padding:28px;border:1px solid rgba(255,255,255,.85);border-radius:28px;box-shadow:0 10px 35px rgba(38,43,57,.055)}
-body[data-client-ios] .eyebrow{--fs-caption:12px;font-family:inherit;font-weight:700;letter-spacing:.1em;color:var(--client-muted);margin-bottom:18px}
-body[data-client-ios] .step{grid-template-columns:40px minmax(0,1fr);padding:22px 0;gap:16px;border-color:var(--client-line)}
-body[data-client-ios] .step:last-child{padding-bottom:0}
-body[data-client-ios] .mark{border:0;background:#f0f1f5;color:#737987;border-radius:14px;font-family:inherit}
-body[data-client-ios] .step.now .mark{color:#46405d;background:#e4dff9;box-shadow:0 0 0 4px #f6f3ff}
-body[data-client-ios] .step.done .mark{background:#d7eee2;color:#24513e}
-body[data-client-ios] .state{font-family:inherit;color:#717784}
-body[data-client-ios] .step-title{font-weight:650;line-height:1.4;overflow-wrap:anywhere}
-body[data-client-ios] .step-body{gap:8px}
-body[data-client-ios] .step-act{gap:12px;margin-top:6px}
-body[data-client-ios] :is(.btn-primary,.btn-line){border-radius:14px;min-height:48px;padding:11px 18px;max-width:100%;white-space:normal;text-align:center;overflow-wrap:anywhere;line-height:1.45}
-body[data-client-ios] .btn-primary{background:#202434;border:0;color:#fff;box-shadow:0 6px 18px rgba(34,37,55,.12)}
-body[data-client-ios] .btn-line{background:#f2f3f7;border:0;color:#303748}
-body[data-client-ios] :is(.btn-primary,.btn-line):hover{filter:brightness(.96)}
-body[data-client-ios] .price-card{background:linear-gradient(145deg,#eff3fa,#eeebf8)}
-body[data-client-ios] .price-list li{border-color:rgba(34,38,48,.08);padding:16px 0;flex-wrap:wrap;gap:6px 16px}
-body[data-client-ios] .price-list .num{margin-left:auto;font-family:inherit;white-space:nowrap;font-weight:650}
-body[data-client-ios] .price-line{margin:18px 0 12px}
-body[data-client-ios] .error{max-width:720px}
-body[data-client-ios] .error h2{letter-spacing:-.03em}
-body[data-client-ios] .skel{gap:16px}
-body[data-client-ios] .sk{border-radius:10px}
-@media(max-width:1100px){body[data-client-ios] .grid{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:760px){body[data-client-ios] .mbar{padding:18px 20px;min-height:72px}body[data-client-ios] .mnav{margin:0 20px;gap:3px}body[data-client-ios] .mnav a{flex:1 1 28%;padding:7px}body[data-client-ios] main{padding:30px 20px 32px}body[data-client-ios] .card{padding:22px;border-radius:24px}body[data-client-ios] .step{gap:12px;grid-template-columns:34px minmax(0,1fr)}body[data-client-ios] .mark{width:34px;height:34px;border-radius:12px}}
-@media(max-width:360px){body[data-client-ios] .mbar{padding:16px}body[data-client-ios] .mnav{margin:0 16px}body[data-client-ios] main{padding:28px 16px}body[data-client-ios] .card{padding:18px}body[data-client-ios] .step-act>*{width:100%}}
+/* Setup only: standalone client page and embedded FinanceOS section. */
+body[data-client-ios][data-client-page="money-setup"] .app{min-width:0;background:transparent}
+body[data-client-ios][data-client-page="money-setup"] main{max-width:1320px;margin:auto;padding:32px clamp(16px,3vw,44px) 56px}
+:is(body[data-client-ios][data-client-page="money-setup"] #setup-root,#fos-setup){color:#101416;font:15px/1.5 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-width:0}
+:is(#setup-root,#fos-setup) .head{margin-bottom:24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+:is(#setup-root,#fos-setup) .head h1{font-size:30px;font-weight:650;letter-spacing:-.045em;line-height:1.2;margin:0 0 8px}
+:is(#setup-root,#fos-setup) .caption{font-size:13px;color:#676d70;line-height:1.6;overflow-wrap:anywhere}
+:is(#setup-root,#fos-setup) .grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,1fr);align-items:start;gap:24px}
+:is(#setup-root,#fos-setup) .grid>.steps-card,:is(#setup-root,#fos-setup) .grid>.price-card{grid-column:auto}
+:is(#setup-root,#fos-setup) .card{min-width:0;background:#fff;border:1px solid #e5e6e2;border-radius:20px;padding:24px;box-shadow:0 2px 8px rgba(16,20,22,.025)}
+:is(#setup-root,#fos-setup) .eyebrow{letter-spacing:-.025em;text-transform:none;color:#101416;display:block;margin:0 0 8px;font-size:18px;font-weight:650;font-family:inherit}
+:is(#setup-root,#fos-setup) .step{display:grid;grid-template-columns:36px minmax(0,1fr);gap:14px;padding:24px 0;border-top:1px solid #e9eae6}
+:is(#setup-root,#fos-setup) .step:first-child{border-top:0}
+:is(#setup-root,#fos-setup) .step:last-child{padding-bottom:0}
+:is(#setup-root,#fos-setup) .mark{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#f4f4f1;border:1px solid #e4e5e0;border-radius:50%;font-size:14px;font-weight:600;color:#676d70}
+:is(#setup-root,#fos-setup) .step.now .mark,:is(#setup-root,#fos-setup) .step.done .mark{background:#101416;border-color:#101416;color:#fff}
+:is(#setup-root,#fos-setup) .step.now .step-body{border-left:2px solid #101416;padding-left:14px}
+:is(#setup-root,#fos-setup) .step-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+:is(#setup-root,#fos-setup) .step-title{font-size:15px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}
+:is(#setup-root,#fos-setup) .state{font-weight:500;line-height:1.4;color:#676d70;font-family:inherit;font-size:12px}
+:is(#setup-root,#fos-setup) .step-act{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;align-items:center}
+:is(#setup-root,#fos-setup) :is(.btn-primary,.btn-line){display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:11px;padding:10px 16px;max-width:100%;white-space:normal;text-align:center;overflow-wrap:anywhere;line-height:1.4;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;box-shadow:none}
+:is(#setup-root,#fos-setup) .btn-primary{background:#101416;border:1px solid #101416;color:#fff}
+:is(#setup-root,#fos-setup) .btn-line{background:#fff;border:1px solid #d9dbd6;color:#101416}
+:is(#setup-root,#fos-setup) :is(.btn-primary,.btn-line):hover{filter:brightness(.94)}
+:is(#setup-root,#fos-setup) :is(button,a):focus-visible{outline:2px solid #101416;outline-offset:4px}
+:is(#setup-root,#fos-setup) .price-card{background:#fdfdfb}
+:is(#setup-root,#fos-setup) .price-list{list-style:none;margin:16px 0 0;padding:0}
+:is(#setup-root,#fos-setup) .price-list li{display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;padding:14px 0;border-top:1px solid #e5e6e2;font-size:13px}
+:is(#setup-root,#fos-setup) .price-list .num{margin-left:auto;font-family:inherit;white-space:nowrap;font-weight:650;color:#101416}
+:is(#setup-root,#fos-setup) .price-line{margin:18px 0 12px}
+:is(#setup-root,#fos-setup) .error{display:flex;flex-direction:column;align-items:start;gap:16px;max-width:720px}
+:is(#setup-root,#fos-setup) .error h2{font-size:20px;letter-spacing:-.025em}
+:is(#setup-root,#fos-setup) .act-msg:empty{display:none}
+:is(#setup-root,#fos-setup) .skel{display:flex;flex-direction:column;gap:16px}
+:is(#setup-root,#fos-setup) .sk{border-radius:6px}
+@media(max-width:1000px){:is(#setup-root,#fos-setup) .grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){:is(#setup-root,#fos-setup) .card{padding:20px;border-radius:18px}:is(#setup-root,#fos-setup) .head h1{font-size:28px}:is(#setup-root,#fos-setup) .step{grid-template-columns:30px minmax(0,1fr);gap:12px}:is(#setup-root,#fos-setup) .mark{width:30px;height:30px}:is(#setup-root,#fos-setup) .step.now .step-body{padding-left:10px}}
+@media(max-width:360px){:is(#setup-root,#fos-setup) .card{padding:16px}:is(#setup-root,#fos-setup) .step-act>*{width:100%}}

@@ -13,38 +13,7 @@
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/login-ios.css">
 <script src="/app/client-ios.js" defer></script>
-<style>
-  /* Scoped to the demo switcher. Nothing here touches the sign-in form, so a
-     deploy with the switch off renders byte-for-byte the page it always did. */
-  #fh-demo { margin-top: 16px; border-top: 1px solid #26262B; padding-top: 14px; }
-  #fh-demo h2 {
-    margin: 0 0 2px; font: 700 11px/1.3 'JetBrains Mono', monospace;
-    letter-spacing: .10em; text-transform: uppercase; color: #F5CE8F;
-  }
-  #fh-demo-grid { display: grid; gap: 6px; margin: 10px 0 0; }
-  .fh-demo-btn {
-    display: block; width: 100%; text-align: left; cursor: pointer;
-    background: none; border: 1px solid #3F3F46; border-radius: 8px;
-    padding: 9px 11px; color: #E4E4E7; font: inherit;
-  }
-  .fh-demo-btn:hover:not(:disabled) { border-color: #A8D8B0; background: #101014; }
-  .fh-demo-btn:disabled { opacity: .55; cursor: progress; }
-  .fh-demo-btn b { display: block; font: 600 13px/1.4 Inter, sans-serif; color: #fff; }
-  .fh-demo-btn span {
-    display: block; font: 500 10px/1.5 'JetBrains Mono', monospace;
-    letter-spacing: .04em; color: #A1A1AA;
-  }
-  .fh-demo-btn[data-current="1"] { border-color: #A8D8B0; background: #0E1410; }
-  .fh-demo-btn[data-current="1"] b::after {
-    content: "YOU ARE HERE"; float: right;
-    font: 700 9px/1.6 'JetBrains Mono', monospace; letter-spacing: .10em; color: #A8D8B0;
-  }
-  #fh-demo-now {
-    margin: 0 0 10px; border: 1px solid #A8D8B0; border-radius: 8px;
-    padding: 8px 11px; background: #0E1410;
-    font: 500 11px/1.5 'JetBrains Mono', monospace; letter-spacing: .04em; color: #A8D8B0;
-  }
-</style>
+
 </head><body data-client-page="login">
 <script>
 // This shared sign-in page adopts client presentation only for the explicit
@@ -54,15 +23,16 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
 }
 </script>
 <div class="spectrum"></div>
-<div class="login-box">
+<main class="login-box" aria-labelledby="login-title">
+  <a class="login-brand" href="/" aria-label="Fundhub home"><span aria-hidden="true">f.</span>Fundhub</a>
   <div class="card">
-    <p class="client-login-eyebrow">Your client portal</p>
-    <h1>fundhub</h1>
-    <p class="sub" style="margin:0">Sign in to your account</p>
+    <p class="client-login-eyebrow"><span class="login-context-default">Your Fundhub account</span><span class="login-context-client">Client portal</span></p>
+    <h1 id="login-title">Welcome back.</h1>
+    <p class="sub" style="margin:0">Sign in with your email and password.</p>
     <div class="err" id="err" role="alert" aria-live="polite"></div>
     <form id="f">
       <label class="client-login-label" for="email">Email address</label>
-      <input id="email" type="email" placeholder="Email address" autocomplete="username" required>
+      <input id="email" type="email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
       <!-- PREFILL REMOVED. This field used to ship value="demo1234", and the
            note beneath it advertised that password as working. It cannot be:
            src/auth/hash.mjs:MIN_PASSWORD_LENGTH is 12, hashPassword() throws
@@ -76,7 +46,7 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
       <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
       <button class="btn primary" id="go" type="submit">Sign in</button>
     </form>
-    <p class="note" style="margin-top:14px">Need help? <a href="mailto:support@fundhub.ai">support@fundhub.ai</a></p>
+    <p class="login-link-choice"><a href="/portal-login.html">Client sign-in with an email link <span aria-hidden="true">↗</span></a></p>
 
     <p class="note" id="fh-forgot-note" style="margin-top:6px">
       <a href="#" id="fh-forgot-link" style="text-decoration:underline">Forgot your password?</a>
@@ -86,8 +56,10 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
       <label class="client-login-label" for="fh-forgot-email">Reset email address</label>
       <input id="fh-forgot-email" type="email" placeholder="Email address" autocomplete="username">
       <button class="btn" id="fh-forgot-go" type="button">Send reset link</button>
-      <p class="note" id="fh-forgot-msg"></p>
+      <p class="note" id="fh-forgot-msg" role="status" aria-live="polite"></p>
     </div>
+
+    <p class="note login-support" style="margin-top:14px">Need help? <a href="mailto:support@fundhub.ai">support@fundhub.ai</a></p>
 
     <!-- THE DEMO SWITCHER MOUNTS HERE, OR IT DOES NOT MOUNT AT ALL.
          ═══════════════════════════════════════════════════════════════════════
@@ -114,9 +86,9 @@ if (new URLSearchParams(location.search).get("next") === "/app/client-portal.htm
          ═══════════════════════════════════════════════════════════════════════ -->
     <div id="fh-demo-mount"></div>
 
-    <p class="note"><a href="/" style="text-decoration:underline">← Back to fundhub.ai</a></p>
+    <p class="note login-back"><a href="/" style="text-decoration:underline">← Back to fundhub.ai</a></p>
   </div>
-</div>
+</main>
 <script src="/fh.js"></script>
 <script>
 /* esc — the same helper every screen in this repo defines (public/app/shell.js

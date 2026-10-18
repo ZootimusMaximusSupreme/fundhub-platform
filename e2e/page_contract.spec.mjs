@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { PDFDocument } from 'pdf-lib';
 import fs from 'node:fs';
 const url = '/contract.html?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer';
-const evidence = 'ops/workflows/build-evidence/client-portal-ios-redo';
+const evidence = 'ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/contract';
 const contract = { title: 'Your funding agreement', body: 'Funding agreement\n\nReview the terms provided by your advisor.\n\nThis sample document is used only by the browser test.', source_kind:'text', can_sign:true, verified:true, status:'sent', signer:{ name:'Sample Client',status:'sent'}, signature_statement:'I have read this document and agree to sign electronically.', fields:[] };
 async function open(page, answer = {ok:true,contract}, status = 200) {
   const writes = [];
@@ -93,4 +93,28 @@ test('loading, empty-link and error layouts remain usable at all review widths',
   await page.goto('/contract.html');
   await expect(page.locator('#problemText')).toContainText('incomplete');
   await expect(page.locator('#documentLoading')).toBeHidden();
+  for(const width of [1440,390,320]) {
+    await page.setViewportSize({width,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+    await page.screenshot({path:`${evidence}/page_contract-empty-${width}.png`,fullPage:true});
+  }
+});
+
+test('print keeps document and hides consent/action chrome; touch sign uses existing endpoint', async({browser})=>{
+  const context=await browser.newContext({hasTouch:true});
+  const page=await context.newPage();
+  const writes=await open(page);
+  await page.emulateMedia({media:'print'});
+  await expect(page.locator('#body')).toBeVisible();
+  await expect(page.locator('#signPanel')).toBeHidden();
+  await expect(page.locator('#bar')).toBeHidden();
+  await page.screenshot({path:`${evidence}/page_contract-print.png`,fullPage:true});
+  await page.emulateMedia({media:'screen'});
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#name').fill('Sample Client');
+  await page.locator('#agree').check();
+  await page.locator('#barGo').tap();
+  await expect(page.locator('#donePanel')).toBeVisible();
+  expect(writes).toHaveLength(1);
+  await context.close();
 });

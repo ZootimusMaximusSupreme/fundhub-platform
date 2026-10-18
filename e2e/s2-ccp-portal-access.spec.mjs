@@ -27,6 +27,7 @@ async function open(page, { session = OWNER, portal = { ok: true, sent: true, ur
       return json(route, { ok: true, rep: null });
     },
   });
+  if (OFFERED_TO.includes(session.staff.role)) await page.getByRole("tab", { name: "Access", exact: true }).click();
   return { writes };
 }
 

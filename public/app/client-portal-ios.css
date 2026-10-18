@@ -1,117 +1,119 @@
-/* Approved portal composition. All behavior and data remain in client-portal.html.
-   This layer activates only for verified client sessions, never staff previews. */
-.cp-home-heading,.cp-file-title,.cp-progress-disclosure>summary{display:none}
-body[data-client-ios][data-client-page="client-portal"]{background:#f4f5f8;color:#222631;overflow:hidden}
+/* Professional client workspace. Existing staff presentation and all controls remain. */
+.cp-home-heading,.cp-file-title,.cp-progress-disclosure>summary,.cp-next-action{display:none}
+body[data-client-ios][data-client-page="client-portal"]{background:#f6f5f1;color:#181916;overflow:hidden;--panel-shadow:none;--cp-caption:#70716b}
 [data-client-ios] .shell{min-width:0}
-[data-client-ios] header.topbar{background:rgba(249,250,252,.92);color:#252936;border:0;border-image:none;min-height:72px;height:auto;padding:16px 34px;gap:12px}
+[data-client-ios] header.topbar{background:#f6f5f1;color:#191a17;border:0;border-image:none;height:auto;min-height:64px;padding:12px 32px;gap:12px}
 [data-client-ios] header.topbar .logo.inv{filter:none}
-[data-client-ios] header.topbar .sub,[data-client-ios] .who-pill{color:#737a87}
-[data-client-ios] .avatar{background:#e9eaf1;color:#343b4e;width:34px;height:34px}
-[data-client-ios] main{min-height:0;background:radial-gradient(ellipse at 80% 0%,#eaeaf6 0,transparent 43%),#f4f5f8;padding:28px 34px 64px;scroll-behavior:smooth;scroll-padding-top:24px}
-[data-client-ios] .page{max-width:none;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:20px;align-content:start;align-self:flex-start;min-width:0}
+[data-client-ios] header.topbar .sub,[data-client-ios] .who-pill{color:#686a63}
+[data-client-ios] .avatar{background:#e9e8e1;color:#36382f;width:32px;height:32px}
+[data-client-ios] main{min-height:0;background:#f6f5f1;padding:26px 32px 90px;scroll-behavior:smooth;scroll-padding-top:24px}
+[data-client-ios] .page{max-width:none;width:100%;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 24px;align-self:flex-start;align-content:start;min-width:0}
 [data-client-ios] .page>*{grid-column:1/-1;min-width:0}
-[data-client-ios] .cp-home-heading{display:block;order:-20;margin-bottom:18px}
-[data-client-ios] .cp-home-heading p{color:#777e8b;letter-spacing:.02em}
-[data-client-ios] .cp-home-heading h1{letter-spacing:-.065em;line-height:1.06;margin-top:7px}
-[data-client-ios] #greeting{order:-19;color:#343b4b;letter-spacing:-.035em;font-weight:650;margin-bottom:4px}
-[data-client-ios] .welcome-sub{order:-18;color:#777e8b;margin-bottom:24px}
-[data-client-ios] #rep-files{order:-17}
-[data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .acct,[data-client-ios] .promo{border-radius:26px;border:1px solid rgba(255,255,255,.9);box-shadow:var(--panel-shadow);padding:26px 28px;margin-bottom:20px;background:#fff}
-[data-client-ios] .prog-card{order:-15;grid-column:1/9;position:relative;overflow:hidden;min-height:350px;padding:30px;background:radial-gradient(ellipse at 90% 10%,rgba(137,130,206,.35),transparent 65%),linear-gradient(130deg,#252a40,#171b2a);color:#fff;display:flex;flex-direction:column;justify-content:center}
-[data-client-ios] .prog-card::before{content:'Funding file';position:absolute;top:25px;left:30px;color:#c4c8d5;font-weight:650;letter-spacing:.11em;text-transform:uppercase}
-[data-client-ios] .prog-card .status-line{background:none;color:inherit;padding:18px 0}
-[data-client-ios] .prog-card .sb-eyebrow{color:#c1c6d6;font-family:inherit;letter-spacing:.02em;text-transform:none}
-[data-client-ios] .prog-card .sb-main{font-weight:450;letter-spacing:-.015em;line-height:1.55;max-width:540px;--cp-display:17px}
-[data-client-ios] .cp-file-title{display:block;letter-spacing:-.065em;line-height:1.05;margin:24px 0 20px;--cp-display:clamp(40px,4.4vw,64px)}
-[data-client-ios] .cp-home-heading h1{--cp-display:48px}
-[data-client-ios] .prog-card .step .lbl{overflow-wrap:anywhere}
-[data-client-ios] .prog-card .sb-amount{color:#c3ecdc}
-[data-client-ios] .prog-card .stepper{padding:16px 0 0;gap:5px}
-[data-client-ios] .prog-card .step .lbl{color:#c1c6d6}
-[data-client-ios] .prog-card .step.current .lbl{color:#fff}
-[data-client-ios] .prog-card .step .dot{color:#252a40;background:#fff;border-color:#c9c5fa}
-[data-client-ios] .prog-card .step .line{background:#555a6e}
+[data-client-ios] #greeting{order:-30;font-weight:720;color:#171815;letter-spacing:-.055em;margin:0 0 6px;--cp-size:32px}
+[data-client-ios] .welcome-sub{order:-29;margin:0 0 26px;color:#71736b}
+[data-client-ios] #rep-files{order:-28}
+[data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .acct,[data-client-ios] .promo{background:#fff;border:1px solid #e7e7df;border-radius:22px;padding:24px;margin:0 0 20px;box-shadow:none}
+[data-client-ios] .prog-card{order:-25;grid-column:1/9;min-height:0;padding:28px;position:relative;overflow:hidden;background:#fff;color:#191a17}
+[data-client-ios] .prog-card::before{content:'Your file';display:block;margin-bottom:16px;color:#6c6e65;letter-spacing:.08em;text-transform:uppercase;font-weight:650}
+[data-client-ios] .prog-card::after{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--spectrum);opacity:.75}
+[data-client-ios] .prog-card .status-line{padding:0;background:none;color:inherit}
+[data-client-ios] .prog-card .sb-eyebrow{color:#74766f;font-family:inherit;letter-spacing:0;text-transform:none;margin-bottom:8px}
+[data-client-ios] .prog-card .sb-main{font-weight:620;letter-spacing:-.035em;line-height:1.32;max-width:850px;--cp-size:25px}
+[data-client-ios] .prog-card .sb-amount{font-weight:650;color:#34382e}
+[data-client-ios] .cp-next-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;grid-column:9/-1;order:-25;background:#eeeee7;border:0;border-radius:22px;padding:26px;margin-bottom:20px;gap:12px}
+[data-client-ios] .cp-next-action h2{font-weight:650;letter-spacing:-.04em;line-height:1.25;margin:0;--cp-size:23px}
+[data-client-ios] .cp-next-action p{color:#65685e;line-height:1.45;margin:0}
+[data-client-ios] .cp-next-action .card-title{margin:0}
+[data-client-ios] .cp-next-action a{margin-top:auto;display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;text-decoration:none;border:1px solid #bdbfb3;border-radius:12px;color:#23261e;font-weight:650;background:transparent}
+[data-client-ios] .prog-card #prog-link{margin:18px 0 0;padding:0}
+[data-client-ios] #prog-link a{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border-radius:12px;padding:10px 18px;background:#191b17;border:1px solid #191b17;color:#fff;font-weight:650;text-decoration:none}
+[data-client-ios] .cp-progress-disclosure{margin-top:20px;padding-top:8px;border-top:1px solid #e6e7df}
+[data-client-ios] .cp-progress-disclosure>summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;cursor:pointer;color:#666a5e;list-style:none}
+[data-client-ios] .cp-progress-disclosure>summary::after{content:'+';margin-left:auto;color:#34382f}
+[data-client-ios] .cp-progress-disclosure[open]>summary::after{content:'−'}
+[data-client-ios] .cp-current-stage{color:#292d22;font-weight:650}
+[data-client-ios] .cp-progress-disclosure .stepper{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:14px 0 5px}
+[data-client-ios] .cp-progress-disclosure .step{display:flex;flex-direction:row;align-items:center;text-align:left;gap:10px;min-width:0}
+[data-client-ios] .cp-progress-disclosure .step .line{display:none}
+[data-client-ios] .cp-progress-disclosure .step .dot{margin:0;flex:0 0 26px}
+[data-client-ios] .cp-progress-disclosure .step .lbl{max-width:none;overflow-wrap:normal;word-break:normal;color:#72766a}
+[data-client-ios] .cp-progress-disclosure .step.current .lbl{color:#24291c}
+[data-client-ios] #call-confirm-card{order:-24;background:#fff}
+[data-client-ios] #dispute-auth-card{order:-23}
+[data-client-ios] #action-card{order:-22;background:#f4f0e5;border-color:#e8dfc8}
+[data-client-ios] #agreements-card{order:-21}
+[data-client-ios] #acct{order:-20;padding:0;overflow:hidden}
+[data-client-ios] #portal-deliverables{order:-19}
+[data-client-ios] #sb-scores-card{order:-18}
 [data-client-ios] .rail{display:contents}
-[data-client-ios] .rail>.card:first-child{order:-15;grid-column:9/-1;background:linear-gradient(145deg,#eff4f7,#e8e9f6);padding:28px;display:flex;flex-direction:column;justify-content:center}
-[data-client-ios] .advisor-row{margin:20px 0 14px}
-[data-client-ios] .advisor-avatar{background:#fff;border-radius:16px;color:#48536b}
-[data-client-ios] .advisor-name{letter-spacing:-.035em}
-[data-client-ios] .support-note{color:#71798a;line-height:1.55}
-[data-client-ios] #prog-link{order:-14;margin:0 0 22px;padding:0}
-[data-client-ios] #prog-link a{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1px solid #dce0ea;border-radius:14px;background:white;color:#343c52;font-weight:650}
-[data-client-ios] #call-confirm-card{order:-13;background:#edf1f9}
-[data-client-ios] #dispute-auth-card{order:-12}
-[data-client-ios] #action-card{order:-11;background:#f5f0e7;border-color:#ebe0cd}
-[data-client-ios] #agreements-card{order:-10}
-[data-client-ios] #sb-scores-card{order:-9}
-[data-client-ios] .video-card{padding:0;overflow:hidden}
-[data-client-ios] .player{height:auto;aspect-ratio:16/9;max-height:420px}
-[data-client-ios] .player:has(.video-empty:not([hidden])){height:70px;aspect-ratio:auto}
-[data-client-ios] .video-meta{padding:25px 28px}
-[data-client-ios] .fb-wins{grid-column:span 6;gap:14px;padding:22px 24px}
-[data-client-ios] .fb-mark{border-radius:13px}
-[data-client-ios] .fb-go{white-space:normal}
-[data-client-ios] .card-title{font-family:inherit;letter-spacing:.07em;color:#737c8b;font-weight:700}
-[data-client-ios] .own,[data-client-ios] .doc-row,[data-client-ios] .pay-row{gap:16px;padding:18px 0}
+[data-client-ios] .rail>.card:first-child{order:-17;grid-column:1/-1;padding:20px 24px;background:transparent;border:0;border-top:1px solid #dedfd5;border-bottom:1px solid #dedfd5;border-radius:0}
+[data-client-ios] .advisor-row{display:flex;gap:12px;margin:10px 0}
+[data-client-ios] .advisor-avatar{background:#e8e9df;border-radius:14px;color:#414735;width:40px;height:40px}
+[data-client-ios] .advisor-name{font-weight:650}
+[data-client-ios] .support-note{color:#707467;line-height:1.5;max-width:850px}
+[data-client-ios] .card-title{font-family:inherit;font-weight:650;letter-spacing:.05em;color:#73766c}
+[data-client-ios] .acct>summary{padding:22px 24px}
+[data-client-ios] .acct .ac-t{color:#20241b}
+[data-client-ios] .acct-bd{padding:0 24px 24px;border-top:1px solid #e7e8df}
+[data-client-ios] .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:8px;padding:14px 0}
+[data-client-ios] .tab{flex-shrink:0;min-height:44px;border-radius:11px;background:none}
+[data-client-ios] .tab.on{background:#eeefe7;border-color:#cdd0c1;box-shadow:none;color:#202719}
+[data-client-ios] .own,[data-client-ios] .pay-row,[data-client-ios] .doc-row{padding:16px 0;gap:16px}
 [data-client-ios] .own-actions{flex-wrap:wrap;justify-content:flex-end}
-[data-client-ios] .acct{padding:0;overflow:hidden}
-[data-client-ios] .acct>summary{padding:24px 28px}
-[data-client-ios] .acct-bd{padding:0 28px 25px}
-[data-client-ios] .tabs{overflow-x:auto;max-width:100%;gap:6px;scrollbar-width:thin}
-[data-client-ios] .tab{flex-shrink:0;min-height:44px;border-radius:12px}
-[data-client-ios] .tab.on{background:#eaeaf5;color:#34364b}
-[data-client-ios] .upload-door,[data-client-ios] .tile{border-radius:18px;background:rgba(255,255,255,.75)}
-[data-client-ios] :is(button,.dl-btn,.contact-btn,.door-type,.btn-book,.btn-unlock){min-height:44px;border-radius:13px}
-[data-client-ios] :is(button,a,input,select,summary):focus-visible{outline:3px solid #7971b8;outline-offset:4px}
-[data-client-ios] .modal{border-radius:26px}
-[data-client-ios] .statusbar{background:#f4f5f8;color:#7a8190;flex-wrap:wrap;height:auto;min-height:35px;padding:8px 24px;border:0}
-/* One page type escape hatch: approved client hierarchy overrides the inherited
-   shell type reset; staff typography keeps its original sizes. */
-[data-client-ios][data-client-page="client-portal"] :is(.cp-home-heading h1,.cp-file-title,.prog-card .sb-main){font-size:var(--cp-display)!important}
-@media(max-width:900px){
- [data-client-ios] .prog-card{grid-column:1/-1;min-height:320px}
- [data-client-ios] .rail>.card:first-child{grid-column:1/-1;min-height:190px}
- [data-client-ios] .fb-wins{grid-column:1/-1}
-}
+[data-client-ios] .fb-wins{grid-column:span 6;padding:20px 24px;gap:14px}
+[data-client-ios] .fb-go{white-space:normal}
+[data-client-ios] .video-card{padding:0;overflow:hidden}
+[data-client-ios] .player{height:auto;aspect-ratio:16/9;max-height:400px}
+[data-client-ios] .player:has(.video-empty:not([hidden])){height:64px;aspect-ratio:auto}
+[data-client-ios] .video-meta{padding:22px 24px}
+[data-client-ios] .upload-door,[data-client-ios] .tile{border-radius:16px;background:#fff}
+[data-client-ios] :is(button,.dl-btn,.contact-btn,.door-type,.btn-book,.btn-unlock){min-height:44px;border-radius:11px}
+[data-client-ios] :is(button,a,input,select,summary):focus-visible{outline:3px solid #6c7657;outline-offset:4px}
+[data-client-ios] .modal{border-radius:24px}
+[data-client-ios] .statusbar{display:none}
+[data-client-ios][data-client-page="client-portal"] :is(#greeting,.prog-card .sb-main,.cp-next-action h2){font-size:var(--cp-size)!important}
+@media(min-width:761px){[data-client-ios] header.topbar .brand .logo{display:none}}
+@media(max-width:900px){[data-client-ios] .prog-card,[data-client-ios] .cp-next-action{grid-column:1/-1}[data-client-ios] .fb-wins{grid-column:1/-1}}
 @media(max-width:600px){
- [data-client-ios] header.topbar{padding:12px 17px;min-height:58px;flex-wrap:wrap}
+ [data-client-ios] header.topbar{padding:10px 18px;min-height:56px;flex-wrap:wrap}
  [data-client-ios] header.topbar .sub{display:none}
- [data-client-ios] main{padding:20px 17px 100px}
+ [data-client-ios] main{padding:22px 18px 100px}
  [data-client-ios] .page{display:flex;flex-direction:column;gap:0}
- [data-client-ios] .cp-home-heading{margin-bottom:15px}
- [data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .promo{padding:23px;border-radius:25px;margin-bottom:15px}
- [data-client-ios] .prog-card{padding:54px 23px 24px;min-height:330px}
- [data-client-ios] .prog-card::before{left:23px;top:23px}
- [data-client-ios] .stepper{overflow-x:auto;padding-bottom:10px!important}
- [data-client-ios] .step{flex:0 0 88px;min-width:88px}
- [data-client-ios] .rail>.card:first-child{padding:23px}
- [data-client-ios] .video-card{padding:0}
- [data-client-ios] .video-meta{padding:20px 23px}
- [data-client-ios] .own{align-items:flex-start;flex-wrap:wrap}
+ [data-client-ios] #greeting{--cp-size:28px;line-height:1.16;margin-bottom:9px}
+ [data-client-ios] .welcome-sub{margin-bottom:20px}
+ [data-client-ios] .card,[data-client-ios] .action-card,[data-client-ios] .promo{padding:21px;margin-bottom:16px;border-radius:19px}
+ [data-client-ios] .prog-card .sb-main{--cp-size:21px}
+ [data-client-ios] .prog-card::before{margin-bottom:10px}
+ [data-client-ios] .cp-next-action{padding:20px;margin-bottom:20px;border-radius:19px;gap:8px}
+ [data-client-ios] .cp-next-action h2{--cp-size:21px}
+ [data-client-ios] .cp-next-action a{margin-top:4px}
+ [data-client-ios] .cp-progress-disclosure{margin-top:13px}
+ [data-client-ios] .cp-progress-disclosure .stepper{grid-template-columns:1fr}
+ [data-client-ios] .own{flex-wrap:wrap;align-items:flex-start}
  [data-client-ios] .own-actions{justify-content:flex-start}
  [data-client-ios] .sec-note{margin-left:0}
- [data-client-ios] .acct>summary{padding:22px}
- [data-client-ios] .acct-bd{padding:0 20px 22px}
+ [data-client-ios] .acct>summary{padding:20px}
+ [data-client-ios] .acct-bd{padding:0 18px 20px}
  [data-client-ios] .ac-s{display:none}
+ [data-client-ios] .video-card{padding:0}
+ [data-client-ios] .video-meta{padding:20px}
  [data-client-ios] .ref-link{flex-wrap:wrap}
- [data-client-ios] .ref-url{overflow-wrap:anywhere;min-width:0}
- [data-client-ios] .statusbar{display:none}
+ [data-client-ios] .ref-url{min-width:0;overflow-wrap:anywhere}
  [data-client-ios] .modal{max-width:calc(100vw - 24px)}
 }
 @media(prefers-reduced-motion:reduce){[data-client-ios] main{scroll-behavior:auto}}
+/* The status card already carries this same welcome/stage sentence. */
+[data-client-ios] .page>.welcome-sub{display:none}
+[data-client-ios] #greeting{margin-bottom:24px}
+[data-client-ios] .prog-card{order:-26}
+[data-client-ios] .page>.welcome-sub{display:none!important}
+[data-client-ios] .cp-next-action{align-self:start}
+[data-client-ios] .cp-next-action p{--cp-size:15px}
+[data-client-ios] .cp-next-action .card-title{--cp-size:12px}
+[data-client-ios][data-client-page="client-portal"] .cp-next-action :is(p,.card-title){font-size:var(--cp-size)!important}
+@media(max-width:600px){[data-client-ios] .cp-next-action{padding:17px;gap:7px}[data-client-ios] .prog-card{padding:19px}[data-client-ios] .prog-card .sb-main{--cp-size:20px}}
 
-/* Full stage list is deliberate disclosure; never clip or abbreviate a stage. */
-[data-client-ios] .cp-progress-disclosure{margin-top:12px;border-top:1px solid #54596c;padding-top:8px}
-[data-client-ios] .cp-progress-disclosure>summary{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-height:44px;cursor:pointer;color:#e4e7f1;list-style:none}
-[data-client-ios] .cp-progress-disclosure>summary::after{content:'+';margin-left:auto}
-[data-client-ios] .cp-progress-disclosure[open]>summary::after{content:'−'}
-[data-client-ios] .cp-current-stage{color:#c5eadc}
-[data-client-ios] .cp-progress-disclosure .stepper{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;overflow:visible;padding:15px 0 5px!important}
-[data-client-ios] .cp-progress-disclosure .step{display:flex;flex-direction:row;align-items:center;text-align:left;gap:10px;min-width:0;flex:none}
-[data-client-ios] .cp-progress-disclosure .step .line{display:none}
-[data-client-ios] .cp-progress-disclosure .step .dot{margin:0;flex:0 0 26px}
-[data-client-ios] .cp-progress-disclosure .step .lbl{max-width:none;overflow-wrap:normal;word-break:normal}
-[data-client-ios] .prog-card #prog-link{margin:20px 0 0;padding:0}
-[data-client-ios] .prog-card #prog-link a{display:flex;justify-content:space-between;width:fit-content;min-width:190px;min-height:49px;color:#252a3c;background:#fff;border:1px solid #fff;text-decoration:none}
-@media(min-width:761px){[data-client-ios] header.topbar .brand .logo{display:none}}
-@media(max-width:600px){[data-client-ios] .prog-card #prog-link a{width:100%}[data-client-ios] .cp-progress-disclosure .stepper{grid-template-columns:1fr}}
+/* Task first, status second: the existing live task is the primary action. */
+[data-client-ios] .cp-next-action a{background:#191b17;color:#fff;border-color:#191b17}
+[data-client-ios] #prog-link a{background:transparent;color:#24281e;border-color:#bfc3b4}
+@media(max-width:900px){[data-client-ios] .cp-next-action{order:-27}}

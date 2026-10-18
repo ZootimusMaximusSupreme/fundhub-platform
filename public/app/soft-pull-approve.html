@@ -220,7 +220,7 @@ ol.next li:last-child{margin-bottom:0}
       '<p class="lede">Hi ' + esc(name) + ". Fill this out while you stay on the Google Meet. " +
       "It is a soft inquiry — it does not hurt your score. Authorize first, then pay the total shown below.</p>" +
       (already ? '<div class="ok">Consent is already on file. You can update your details below if needed, then pay.</div><br>' : "") +
-      '<div class="card"><h2>Soft pull authorization</h2>' +
+      '<div class="approval-layout"><aside class="approval-guidance" aria-label="Authorization details"><div class="card"><h2>Soft pull authorization</h2>' +
       '<div class="disc">' + esc((data.disclosure && data.disclosure.text) || "") + "</div>" +
       '<p class="fine">Version ' + esc((data.disclosure && data.disclosure.version) || "—") + "</p></div>" +
       '<div class="card"><h2>What happens next</h2><ol class="next">' +
@@ -228,8 +228,8 @@ ol.next li:last-child{margin-bottom:0}
       "<li>You pay the total shown — " + esc(pricing.base_display) + " soft pull plus " +
       esc(pricing.business_addon_display) + " per business.</li>" +
       "<li>Once that payment clears, we request the report. Nothing else is needed from you.</li>" +
-      "</ol></div>" +
-      '<form id="f">' +
+      "</ol></div></aside>" +
+      '<form id="f"><h2>Your details</h2><p class="form-intro">Enter your legal information to authorize the assessment.</p>' +
       '<label for="granted_name">Full legal name</label>' +
       '<input id="granted_name" name="granted_name" autocomplete="name" required>' +
       '<label for="ssn">Social Security number</label>' +
@@ -253,7 +253,7 @@ ol.next li:last-child{margin-bottom:0}
       '<button class="btn" type="submit" id="go">I agree — submit soft-pull approval</button>' +
       '<p class="fine">Your advisor cannot see this Social Security number on their screen. ' +
       "After you submit, pay the total from the Pay button (or the matching link in your email if you added no businesses).</p>" +
-      '<div id="msg" role="status" aria-live="polite"></div></form>';
+      '<div id="msg" role="status" aria-live="polite"></div></form></div>';
 
     document.getElementById("add_biz").addEventListener("click", function () {
       if (bizCount >= pricing.max_businesses) return;

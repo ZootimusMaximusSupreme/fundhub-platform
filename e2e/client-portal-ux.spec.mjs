@@ -80,7 +80,9 @@ test.describe("client portal go-live UX", () => {
     await expect(page.locator(".video-card")).toBeVisible();
     await expect(page.locator("#video-title")).toHaveText(/Welcome to the Fundhub portal/i);
     await expect(page.locator("#greeting-sub")).toBeHidden();
-    await expect(page.locator("#greeting-sub-pre")).toBeVisible();
+    // The same real status now leads the file panel; the redundant welcome
+    // sentence is suppressed only in the verified client presentation.
+    await expect(page.locator(".prog-card.precall-only .sb-main")).toBeVisible();
     await expect(page.locator(".promo")).toBeHidden();
     await expect(page.locator(".statesw")).toBeHidden();
     await expect(page.locator(".prog-card.funding-only .sb-main")).toBeHidden();

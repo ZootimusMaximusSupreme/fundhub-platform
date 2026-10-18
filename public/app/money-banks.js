@@ -162,8 +162,8 @@
       '<div><dt class="caption">Season it</dt><dd class="num">' +
       (isNum(b.seasoning_days) ? esc(b.seasoning_days + "+ days") : notSet("Not in the book")) + "</dd></div>" +
       '<div><dt class="caption">Serves</dt><dd>' + esc(b.serves_state || "—") + "</dd></div></dl>" +
-      '<div><h3 class="eyebrow">Steps</h3><ol class="steps">' + steps + "</ol></div>" +
-      '<div><h3 class="eyebrow">Why this bank</h3><ul class="why">' + why + "</ul></div>" +
+      '<details class="bank-detail"><summary>View account steps and bank criteria</summary><div><h3 class="eyebrow">Steps</h3><ol class="steps">' + steps + "</ol></div>" +
+      '<div><h3 class="eyebrow">Why this bank</h3><ul class="why">' + why + "</ul></div></details>" +
       planLine + "</article>";
   }
 

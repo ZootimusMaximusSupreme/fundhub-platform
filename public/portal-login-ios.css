@@ -1,23 +1,29 @@
-/* Dedicated client sign-in. The auth exchange remains in portal-login.html. */
+/* Dedicated public sign-in; authentication remains in portal-login.html. */
 #ok-box, #busy { display: none; }
-body[data-client-ios][data-client-page="portal-login"] { margin: 0; min-height: 100svh; color: #16171b; background: radial-gradient(ellipse at 90% 0%, #e8e9fa 0, transparent 50%), #f4f5f7; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; letter-spacing: -.025em; }
-[data-client-ios] .login-box { box-sizing: border-box; width: 100%; max-width: 528px; margin: 0 auto; padding: 64px 24px; }
-[data-client-ios] .portal-brand { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 48px; color: #16171b; font-size: 24px; font-weight: 750; text-decoration: none; letter-spacing: -.06em; }
-[data-client-ios] .portal-brand span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #191b23; color: #fff; }
-[data-client-ios] .login-box .card { margin: 0; padding: 32px; background: #fff; border: 1px solid rgba(34,38,48,.06); border-radius: 28px; box-shadow: 0 16px 48px rgba(38,43,57,.06); }
-[data-client-ios] .portal-eyebrow { margin: 0 0 8px; color: #777b85; font-size: 13px; font-weight: 650; }
-[data-client-ios] .login-box h1 { margin: 0 0 16px; color: #16171b; font: 740 40px/1.08 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; letter-spacing: -.06em; text-transform: none; }
-[data-client-ios] .login-box .sub, [data-client-ios] .note { margin: 0; color: #737883; font: inherit; font-size: 14px; line-height: 1.6; letter-spacing: -.015em; }
-[data-client-ios] .login-box form { display: flex; flex-direction: column; gap: 8px; margin: 32px 0 24px; }
-[data-client-ios] label { color: #444954; font-size: 14px; font-weight: 650; }
-[data-client-ios] #email { box-sizing: border-box; width: 100%; min-width: 0; min-height: 56px; padding: 16px; border: 1px solid #dcdfe6; border-radius: 14px; color: #16171b; background: #f8f9fb; font: inherit; }
-[data-client-ios] #go { justify-content: center; width: 100%; min-height: 56px; margin-top: 8px; padding: 16px; border: 0; border-radius: 14px; background: #202431; color: #fff; font: inherit; font-size: 14px; font-weight: 700; white-space: normal; cursor: pointer; }
+body[data-client-ios][data-client-page="portal-login"] { margin: 0; min-height: 100svh; color: #101416; background: #f8f8f6; font: 15px/1.5 ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; letter-spacing: -.015em; }
+body[data-client-ios][data-client-page="portal-login"]::after { content: ""; position: fixed; inset: auto 0 0; height: 3px; background: linear-gradient(90deg,#e57267 0 16.66%,#e8af69 16.66% 33.33%,#e1cf78 33.33% 50%,#8cb598 50% 66.66%,#8babbd 66.66% 83.33%,#a59ab9 83.33%); }
+[data-client-ios] .login-box { box-sizing: border-box; width: 100%; max-width: 488px; margin: 0 auto; padding: 56px 32px 32px; }
+[data-client-ios] .portal-brand { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-bottom: 56px; color: #101416; font-size: 22px; font-weight: 750; text-decoration: none; letter-spacing: -.04em; }
+[data-client-ios] .portal-brand span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 11px; background: #101416; color: #fff; font-weight: 850; }
+[data-client-ios] .login-box .card { margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+[data-client-ios] .portal-eyebrow { margin: 0 0 8px; color: #656b6c; font-size: 13px; font-weight: 600; }
+[data-client-ios] .login-box h1 { margin: 0 0 16px; color: #101416; font: 650 32px/1.16 ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; letter-spacing: -.04em; text-transform: none; }
+[data-client-ios] .login-box .sub, [data-client-ios] .note { margin: 0; color: #656b6c; font: inherit; font-size: 14px; line-height: 1.6; }
+[data-client-ios] .login-box form { display: flex; flex-direction: column; gap: 8px; margin: 32px 0 16px; }
+[data-client-ios] label { color: #303638; font-size: 14px; font-weight: 600; }
+[data-client-ios] #email { box-sizing: border-box; width: 100%; min-width: 0; min-height: 52px; padding: 12px 16px; border: 1px solid #cdd0cd; border-radius: 12px; color: #101416; background: #fff; font: inherit; font-size: 16px; }
+[data-client-ios] #go { display: flex; justify-content: center; align-items: center; width: 100%; min-height: 52px; margin-top: 8px; padding: 12px 16px; border: 1px solid #101416; border-radius: 12px; background: #101416; color: #fff; font: inherit; font-weight: 650; white-space: normal; cursor: pointer; box-shadow: none; }
 [data-client-ios] #go:disabled { opacity: .65; cursor: wait; }
-[data-client-ios] :is(input, button, a):focus-visible { outline: 3px solid #6c7dd9; outline-offset: 4px; }
-[data-client-ios] #err, [data-client-ios] #ok-box { margin: 24px 0; padding: 16px; border-radius: 16px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
-[data-client-ios] #err { color: #8c273b; background: #fff0f2; border: 1px solid #f1cdd5; }
-[data-client-ios] #ok-box { color: #245641; background: #eaf7f0; border: 1px solid #c9e6d7; }
-[data-client-ios] #busy { margin: 32px 0; color: #737883; font: inherit; }
-[data-client-ios] .portal-back { margin-top: 32px; }
-[data-client-ios] .portal-back a { display: inline-flex; align-items: center; min-height: 48px; color: #454d62; text-decoration: none; }
-@media (max-width: 480px) { [data-client-ios] .login-box { padding: 32px 16px; } [data-client-ios] .portal-brand { margin-bottom: 32px; } [data-client-ios] .login-box .card { padding: 24px; } [data-client-ios] .login-box h1 { font-size: 36px; } }
+[data-client-ios] :is(input, button, a):focus-visible { outline: 3px solid #565f62; outline-offset: 4px; }
+[data-client-ios] #err, [data-client-ios] #ok-box { margin: 24px 0; padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+[data-client-ios] #err { color: #8c273b; background: #fff0f2; border: 1px solid #e8cbd0; }
+[data-client-ios] #ok-box { color: #245641; background: #eef5ef; border: 1px solid #cadccc; }
+[data-client-ios] #busy { margin: 32px 0; color: #656b6c; font: inherit; }
+[data-client-ios] .portal-signin-choice { display: grid; gap: 12px; margin-top: 24px; padding-top: 24px; border-top: 1px solid #dedfda; }
+[data-client-ios] .portal-signin-choice > span { color: #656b6c; font-size: 13px; }
+[data-client-ios] .portal-password { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; box-sizing: border-box; padding: 12px 16px; border: 1px solid #cdd0cd; border-radius: 12px; color: #101416; background: #fff; font-size: 15px; font-weight: 650; text-decoration: none; }
+[data-client-ios] .portal-password:hover { border-color: #101416; }
+[data-client-ios] .portal-back { margin-top: 24px; }
+[data-client-ios] .portal-back a { display: inline-flex; align-items: center; min-height: 44px; color: #656b6c; text-decoration: none; font-size: 13px; }
+@media (max-width: 480px) { [data-client-ios] .login-box { padding: 32px 24px 24px; } [data-client-ios] .portal-brand { margin-bottom: 40px; } [data-client-ios] .login-box h1 { font-size: 30px; } }
+@media (max-width: 350px) { [data-client-ios] .login-box { padding-left: 20px; padding-right: 20px; } [data-client-ios] .login-box h1 { font-size: 28px; } }

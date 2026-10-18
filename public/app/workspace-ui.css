@@ -1,0 +1,124 @@
+/* Staff frame. Pages keep their own content and actions; the shell owns the
+   navigation, context, search and account slots. No universal descendant reset. */
+.fh-staff-workspace body{font-family:var(--sans);background:var(--paper,#F8F8F6);color:var(--ink,#0D1113);-webkit-font-smoothing:antialiased}
+#fh-workspace-header{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  width:100%;height:var(--fh-workspace-header-h,72px);min-height:var(--fh-workspace-header-h,72px);
+  flex:0 0 var(--fh-workspace-header-h,72px);padding:12px 30px;
+  margin:0;border:0;border-bottom:1px solid var(--line,#E3E5E0);
+  background:var(--paper,#F8F8F6);color:var(--ink,#0D1113);box-sizing:border-box;
+  position:relative;top:auto;z-index:80;font-family:var(--sans);line-height:1.3;
+}
+#fh-workspace-header .fh-workspace-identity{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto}
+#fh-workspace-header .fh-workspace-labels{min-width:0}
+#fh-workspace-header h1{margin:0;font:650 18px/1.25 var(--sans);letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+#fh-workspace-header .fh-workspace-tools{display:flex;align-items:center;gap:12px;flex:0 0 auto;min-width:0}
+#fh-workspace-scope{position:relative;margin-top:3px;color:var(--gray);font:400 12px/1.3 var(--sans)}
+#fh-workspace-scope>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;max-width:100%;min-height:20px;border-radius:4px}
+#fh-workspace-scope>summary::-webkit-details-marker{display:none}
+#fh-workspace-scope>summary::after{content:'⌄';opacity:.7}
+#fh-workspace-scope-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}
+#fh-workspace-scope .fh-context-panel{
+  position:absolute;top:calc(100% + 12px);left:0;width:280px;max-width:calc(100vw - 36px);
+  padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff;
+  color:var(--ink);box-shadow:0 10px 36px rgba(13,17,19,.1);z-index:100;
+}
+#fh-workspace-scope .fh-context-panel p{margin:0 0 12px;font:400 13px/1.5 var(--sans);color:var(--gray)}
+#fh-workspace-scope .fh-context-panel strong{font:650 14px/1.4 var(--sans)}
+#fh-workspace-scope .fh-context-panel a,#fh-workspace-scope .fh-context-panel button{
+  display:flex;align-items:center;min-height:40px;width:100%;padding:9px 10px;
+  font:500 13px/1.3 var(--sans);border:1px solid var(--line);border-radius:8px;
+  background:#fff;color:var(--ink);text-decoration:none;cursor:pointer;text-align:left;margin-top:8px;box-sizing:border-box;
+}
+#fh-workspace-scope .fh-context-panel button{border:0;background:var(--soft);color:var(--gray)}
+#fh-workspace-header #fh-shell-search-btn{
+  display:flex;align-items:center;gap:9px;position:static;margin:0;min-height:40px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  color:var(--gray);font:500 13px/1 var(--sans);flex:0 0 auto;
+}
+#fh-workspace-header #fh-shell-search-btn:hover{border-color:var(--gray2);color:var(--ink)}
+#fh-workspace-header #fh-shell-search-btn svg{width:17px;height:17px}
+#fh-workspace-header #fh-shell-search-btn .fh-k{font:500 11px/1 var(--sans);padding:3px 4px;border:0;background:var(--soft);color:var(--gray2);border-radius:4px}
+#fh-workspace-header #fh-shell-chip{
+  display:block;position:relative;margin:0;flex:0 0 auto;max-width:none;
+  color:var(--ink);font:400 13px/1.4 var(--sans);letter-spacing:0;
+}
+#fh-workspace-header #fh-shell-chip-show{
+  display:flex;align-items:center;justify-content:center;gap:9px;position:static;
+  list-style:none;min-height:40px;min-width:40px;margin:0;padding:0 2px;border:0;
+  border-radius:10px;color:var(--ink);background:transparent;font:500 13px/1 var(--sans);
+  cursor:pointer;letter-spacing:0;text-transform:none;
+}
+#fh-workspace-header #fh-shell-chip-show::-webkit-details-marker{display:none}
+#fh-workspace-header .fh-account-initials{display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;background:var(--ink);color:var(--paper);border-radius:50%;font:650 12px/1 var(--sans)}
+#fh-workspace-header .fh-account-shortname{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fh-workspace-header .fh-account-menu{
+  position:absolute;right:0;top:calc(100% + 14px);width:280px;max-width:calc(100vw - 24px);
+  padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff;
+  color:var(--ink);box-shadow:0 10px 36px rgba(13,17,19,.1);z-index:110;
+}
+#fh-workspace-header .fh-account-person{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:12px;min-width:0}
+#fh-workspace-header .fh-account-person strong{display:block;font:650 14px/1.4 var(--sans);overflow-wrap:anywhere}
+#fh-workspace-header .fh-account-role{display:block;margin-top:3px;color:var(--gray);font:400 12px/1.4 var(--sans);text-transform:capitalize;overflow-wrap:anywhere}
+#fh-workspace-header #fh-shell-avatar{min-width:40px;min-height:40px;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;background:var(--soft);color:var(--gray);font:500 18px/1 var(--sans);object-fit:cover}
+#fh-workspace-header #fh-shell-out{width:100%;min-height:40px;display:flex;align-items:center;padding:10px 12px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:8px;font:500 13px/1 var(--sans);cursor:pointer;text-align:left}
+#fh-workspace-header .fh-account-technical{margin-top:14px;color:var(--gray);font:400 12px/1.5 var(--sans)}
+#fh-workspace-header .fh-account-technical summary{cursor:pointer;min-height:28px}
+#fh-workspace-header .fh-account-technical p{margin:8px 0 0}
+#fh-workspace-header #fh-shell-src{display:inline-block;margin:5px 0 0;padding:3px 7px;border-radius:5px;font:600 11px/1.4 var(--sans)}
+.fh-staff-workspace .fh-page-toolbar{background:var(--paper);color:var(--ink);border-color:var(--line);height:auto;min-height:0;flex:0 0 auto}
+.fh-staff-workspace .fh-page-toolbar .brand{display:none}
+.fh-staff-workspace .fh-page-toolbar .live-pill,.fh-staff-workspace .fh-page-toolbar .org-pill,.fh-staff-workspace .fh-page-toolbar .org-badge,.fh-staff-workspace .fh-page-toolbar #org{display:none}
+.fh-staff-workspace .fh-page-toolbar.fh-empty-toolbar{display:none}
+.fh-staff-workspace .fh-page-toolbar .topbar-right{color:var(--gray);margin-left:auto}
+.fh-staff-workspace :is(.eyebrow,.chip){font-family:var(--sans);letter-spacing:0;text-transform:none}
+.fh-staff-workspace .eyebrow::before{display:none}
+#fh-shell-search-panel .fh-search-ghead{font-family:var(--sans);letter-spacing:0;text-transform:none}
+@media(max-width:860px){
+  #fh-workspace-header{gap:10px;padding:10px 14px}
+  #fh-workspace-header .fh-workspace-identity{gap:10px}
+  #fh-workspace-header h1{font-size:16px}
+  #fh-workspace-header .fh-workspace-tools{gap:7px}
+  #fh-workspace-header #fh-shell-search-btn{width:40px;height:40px;min-width:40px;justify-content:center;padding:0;border-color:transparent;background:transparent}
+  #fh-workspace-header #fh-shell-search-btn .fh-search-label,#fh-workspace-header #fh-shell-search-btn .fh-k,#fh-workspace-header .fh-account-shortname{display:none}
+  #fh-workspace-header #fh-shell-chip-show{width:40px;height:40px;padding:0}
+  #fh-workspace-header .fh-account-initials{width:34px;height:34px;flex-basis:34px}
+  #fh-workspace-header .fh-menu-btn{position:static;z-index:auto;width:40px;min-width:40px;height:44px;flex-basis:40px;border:0;background:transparent;margin-left:-5px}
+  #fh-workspace-header #fh-workspace-scope-label{max-width:calc(100vw - 180px)}
+  #fh-workspace-scope .fh-context-panel{position:fixed;left:14px;top:64px}
+  #fh-workspace-header .fh-account-menu{top:calc(100% + 10px)}
+  .fh-staff-workspace .fh-page-toolbar{flex-wrap:wrap;padding-left:16px}
+}
+@media(max-width:350px){
+  #fh-workspace-header{padding-inline:10px;gap:5px}
+  #fh-workspace-header .fh-workspace-identity{gap:4px}
+  #fh-workspace-header .fh-workspace-tools{gap:2px}
+  #fh-workspace-header h1{font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){#fh-workspace-header *{scroll-behavior:auto}}
+
+/* The small scope line has a full-height hit area spanning its page identity. */
+#fh-workspace-scope>summary::before{content:"";position:absolute;left:0;right:0;top:-23px;bottom:-3px;min-height:44px}
+@media(max-width:860px){
+  #fh-workspace-header #fh-shell-search-btn{width:44px;height:44px;min-width:44px;min-height:44px}
+  #fh-workspace-header #fh-shell-chip-show{width:44px;height:44px;min-width:44px;min-height:44px}
+}
+
+#fh-shell-search-panel input{min-width:0;font-family:var(--sans)}
+#fh-shell-search-close{display:flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;flex:0 0 40px;padding:0;background:transparent;border:0;border-radius:8px;color:var(--gray);font:400 24px/1 var(--sans);cursor:pointer}
+#fh-shell-search-close:hover{background:var(--soft);color:var(--ink)}
+#fh-shell-search-close:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.side .side-foot .who{font:inherit;color:inherit;margin:0;display:block}
+#fh-workspace-header .fh-account-technical .clock{display:block;color:var(--gray);font:400 12px/1.4 var(--sans);margin-top:8px}
+
+#fh-workspace-header #fh-chat-fab{position:static;right:auto;bottom:auto;z-index:auto;display:flex;align-items:center;justify-content:center;gap:8px;width:auto;height:40px;min-height:40px;min-width:44px;margin:0;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--gray);box-shadow:none;font:500 13px/1 var(--sans)}
+#fh-workspace-header #fh-chat-fab:hover{background:var(--soft);color:var(--ink)}
+#fh-workspace-header #fh-chat-fab:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+#fh-workspace-scope-label{min-width:0;flex:0 1 auto}
+.fh-staff-workspace #fh-chat-panel{top:calc(var(--fh-workspace-header-h,72px) + 12px);bottom:auto;max-height:calc(100dvh - var(--fh-workspace-header-h,72px) - 24px)}
+@media(max-width:860px){
+  #fh-workspace-header #fh-chat-fab{width:44px;height:44px;min-height:44px;min-width:44px;padding:0;border:0;background:transparent}
+  #fh-workspace-header .fh-chat-launch-label{display:none}
+  .fh-staff-workspace #fh-chat-panel{right:12px;top:calc(var(--fh-workspace-header-h,68px) + 8px);height:calc(100dvh - var(--fh-workspace-header-h,68px) - 20px);max-height:560px}
+}

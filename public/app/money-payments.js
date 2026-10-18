@@ -107,8 +107,8 @@
   function renderHead(d) {
     var who = d && d.client && d.client.name ? d.client.name : "";
     return '<div class="head"><div><h1>Payments</h1><p class="caption">' +
-      esc(who ? who + " · Money you owe Fundhub, what is coming up, and what your money helper did"
-        : "Money you owe Fundhub, what is coming up, and what your money helper did") + '</p></div></div>';
+      esc(who ? who + " · Your payment plans, balances and due dates"
+        : "Your payment plans, balances and due dates") + '</p></div></div>';
   }
 
   function renderTiles(d) {
@@ -130,7 +130,7 @@
         '<p class="caption">' + esc(money(next.left_cents) + " · " + cap(next.name)) + '</p></section>'
       : '<section class="card tile" aria-labelledby="t-next"><h2 class="eyebrow" id="t-next">Next payment</h2>' +
         '<span class="big">—</span><p class="caption">No payment coming up</p></section>';
-    return '<div class="grid tiles">' + owe + late + nx + '</div>';
+    return '<div class="grid tiles">' + owe + nx + late + '</div>';
   }
 
   function maxLate(plans) {
@@ -164,7 +164,7 @@
       '<div><dt class="caption">Paid so far</dt><dd class="num">' + esc(money(p.paid_cents)) + ' of ' + esc(money(p.original_cents)) + '</dd></div>' +
       '<div><dt class="caption">Next payment</dt><dd class="num">' + next + '</dd></div></dl>' +
       bar(p.paid_cents, p.original_cents) +
-      '<div class="scroll-x"><table><caption class="caption">Payment schedule</caption><thead><tr><th>#</th><th>Due</th><th class="r">Amount</th><th class="r">Paid</th><th>Status</th></tr></thead>' +
+      '<div class="scroll-x" tabindex="0" role="region" aria-label="Payment schedule for ' + esc(cap(p.name)) + '. Scroll horizontally for all columns."><table><caption class="caption">Payment schedule</caption><thead><tr><th>#</th><th>Due</th><th class="r">Amount</th><th class="r">Paid</th><th>Status</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>' + controls + '</article>';
   }
 
@@ -265,8 +265,8 @@
   }
 
   function renderHelp() {
-    return '<section class="card help" aria-labelledby="b-help"><h2 class="eyebrow" id="b-help">Need help?</h2>' +
-      '<p>Can\'t make a payment, or something looks wrong? A person on our team will reach out. The money helper stops texting while they do.</p>' +
+    return '<section class="card help" aria-labelledby="b-help"><div class="help-copy"><h2 class="eyebrow" id="b-help">Payment support</h2>' +
+      '<p>Can\'t make a payment, or something looks wrong? A person on our team will reach out. The money helper stops texting while they do.</p></div>' +
       '<button class="btn-primary" type="button" data-act="person">Talk to a person</button>' +
       '<p class="act-msg caption" aria-live="polite"></p></section>';
   }
@@ -275,8 +275,8 @@
 
   function render(d, opts) {
     var staff = !!(opts && opts.staff);
-    return renderHead(d) + (isEmpty(d) ? "" : renderTiles(d)) + renderOwed(d, staff) + (staff ? renderUnmatched(d) : "") +
-      '<div class="grid two">' + renderUpcoming(d) + renderLog(d) + '</div>' + renderHelp();
+    return renderHead(d) + (isEmpty(d) ? "" : renderTiles(d)) + renderHelp() + renderOwed(d, staff) + (staff ? renderUnmatched(d) : "") +
+      '<div class="grid two">' + renderUpcoming(d) + renderLog(d) + '</div>';
   }
 
   function renderLoading() {

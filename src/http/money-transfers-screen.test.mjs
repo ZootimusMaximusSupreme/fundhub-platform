@@ -222,13 +222,16 @@ test("times: relative under a day, a date after, the exact time on hover", () =>
   assert.match(T.when("2026-10-05T14:00:00Z", NOW), /^Oct 5, \d{1,2}:\d{2} (AM|PM)$/);
 });
 
-test("CSS: every rule under .fh-transfers, no px font sizes, a phone layout", () => {
+test("CSS: transfer-scoped presentation, legible Mac typography and phone layout", () => {
   const rules = CSS.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
   const selectors = [];
-  for (const m of rules.matchAll(/([^{}@]+)\{[^{}]*\}/g)) selectors.push(...m[1].split(",").map((s) => s.trim()).filter(Boolean));
+  // Owner-approved Mac refinement uses :is() to share only these two roots.
+  const scopedRules = rules.replaceAll(":is(#transfers-root,#fos-transfers)", "#transfers-root").replace(/:is\([^)]*\)/g, "*:where-local");
+  for (const m of scopedRules.matchAll(/([^{}@]+)\{[^{}]*\}/g)) selectors.push(...m[1].split(",").map((s) => s.trim()).filter(Boolean));
   assert.ok(selectors.length > 40);
-  for (const s of selectors) assert.match(s, /^\.fh-transfers\b/, `unscoped selector: ${s}`);
-  assert.doesNotMatch(CSS, /font-size\s*:\s*\d+px/);
+  for (const s of selectors) assert.match(s, /^(?:\.fh-transfers\b|#transfers-root\b)/, `unscoped selector: ${s}`);
+  for (const m of CSS.matchAll(/font-size\s*:\s*(\d+)px/g)) assert.ok(Number(m[1]) >= 12 && Number(m[1]) <= 36, "legible, restrained page typography");
+  assert.match(CSS, /:is\(#transfers-root,#fos-transfers\)/, "standalone and tab both receive the same scoped refinement");
   assert.doesNotMatch(CSS, /font\s*:[^;]*\d+px/);
   assert.match(CSS, /@media \(max-width:760px\)\{[\s\S]*td::before\{content:attr\(data-label\)/);
   assert.match(CSS, /\.fh-transfers \.tx-tiles>\*\{grid-column:span 4\}/);

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 
-const evidence = 'ops/workflows/build-evidence/client-portal-ios-redo';
+const evidence = 'ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18';
 const session = { ok: true, principal: 'client', staff: { id: 'test-client', role: 'client', kind: 'client', name: 'Sample Client', email: 'client@example.test' } };
 const empty = { ok: true, stage: null, scores: { personal: [], business: [] }, movement: {}, waypoints: [], nextStep: null, paidServices: [], deliverables: [], ownedNotReady: [], timeline: [], referral: {} };
 const full = { ...empty,
@@ -31,9 +31,14 @@ async function setup(page, state = full, status = 200, referralFails = false) {
 }
 for (const width of [1440, 390, 320]) {
   test(`progress full ${width}px retains controls and no horizontal overflow`, async ({ page }) => {
+    fs.mkdirSync(evidence, { recursive: true });
     await page.setViewportSize({ width, height: 960 });
     await setup(page);
     await expect(page.locator('body')).toHaveAttribute('data-client-ios', /.+|^$/);
+    await expect(page.locator('.client-ios-header')).toHaveCount(1);
+    await expect(page.locator('.client-ios-page-intro .brand')).toBeHidden();
+    await expect(page.locator('#hTitle')).toBeVisible();
+    expect(await page.locator('#hTitle').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(32);
     await expect(page.locator('#cStage')).toContainText('2 / 6 rounds');
     await expect(page.locator('#cDocs')).toContainText('Funding snapshot');
     await expect(page.getByRole('button', { name: 'Upload your mailing proof' })).toBeVisible();
@@ -79,4 +84,38 @@ test('progress keeps a loading layout while its real read waits', async ({ page 
   await expect(page.locator('#progressLoading')).toBeVisible();
   await page.screenshot({ path: `${evidence}/page_progress-loading.png` });
   await expect(page.locator('#progressLoading')).toBeHidden();
+});
+
+for (const width of [1440, 390, 320]) {
+  test(`progress loading empty error ${width}px uses the same shell`, async ({ page }) => {
+    fs.mkdirSync(evidence, { recursive: true });
+    await page.setViewportSize({ width, height: 960 });
+    await page.route('**/api/**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(session) }));
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/read/client-progress', async route => { await pending; await route.fulfill({ contentType: 'application/json', body: JSON.stringify(empty) }); });
+    await page.goto('/progress.html', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.client-ios-header')).toBeVisible();
+    await expect(page.locator('#progressLoading')).toBeVisible();
+    await page.screenshot({ path: `${evidence}/page_progress-${width}-loading.png` });
+    release();
+    await expect(page.locator('#progressLoading')).toBeHidden();
+    await expect(page.locator('#cStage')).toContainText('do not have a stage');
+    await page.screenshot({ path: `${evidence}/page_progress-${width}-empty.png`, fullPage: true });
+    await page.unroute('**/api/read/client-progress');
+    await page.route('**/api/read/client-progress', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
+    await page.reload();
+    await expect(page.locator('#fatal')).toBeVisible();
+    await page.screenshot({ path: `${evidence}/page_progress-${width}-error.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+test('touch can enroll referral without losing progress controls', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await context.newPage();
+  await setup(page);
+  await page.getByRole('button', { name: 'Refer a friend', exact: true }).tap();
+  await expect(page.locator('#refUrl')).toHaveValue('https://example.test/refer/SAFE-TEST');
+  await expect(page.locator('#cStage')).toContainText('Round 2 of 6');
+  await context.close();
 });

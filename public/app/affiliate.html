@@ -129,71 +129,55 @@ table.grid tbody tr:hover{background:var(--soft)}
 </head>
 <body data-client-page="affiliate">
 <div class="app">
-  <aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem on" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem on" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 
   <div class="main">
@@ -205,23 +189,20 @@ table.grid tbody tr:hover{background:var(--soft)}
     </div>
 
     <main class="content fh-maxw" id="affiliate-main">
-      <div class="affiliate-heading"><p>Your Fundhub network</p><h2>Good things grow<br>when shared.</h2><p>Your links, referrals and earnings — together in one place.</p></div>
+      <div class="affiliate-heading"><div><p class="affiliate-kicker">Your network</p><h2>Share a referral</h2><p>Choose an offer link to share. Track referrals and your own earnings below.</p></div><a class="btn affiliate-history-link" href="#affiliate-records">View activity <span aria-hidden="true">↓</span></a></div>
       <div class="affiliate-load" role="status" aria-live="polite"><span id="affiliateLoadStatus">Loading your referral dashboard…</span> <button class="btn sm" id="affiliateRetry" type="button" hidden>Try again</button></div>
       <div class="linkbox">
         <div class="lt"></div>
         <div class="lb">
-          <div class="eyebrow">YOUR REFERRAL LINKS — ONE PER OFFER</div>
+          <div class="affiliate-section-title">Your referral links</div><p class="affiliate-section-note">Each offer has its own link. Your referral code stays the same.</p>
           <!-- One row per offer (owner call 2026-10-06): same code, different page.
                Rows come from GET /api/read/affiliate-portal (offerLinks), built by
                src/affiliates/share-link.mjs. This page never assembles a link. -->
           <div id="offerLinks">
             <div class="linkrow"><input readonly value="" placeholder="No code yet" aria-label="Referral link"></div>
           </div>
-          <div class="linkrow">
-            <button class="btn mono" id="copyCode">Copy code</button>
-          </div>
-          <div style="display:flex;gap:26px;margin-top:15px;flex-wrap:wrap">
-            <div><div class="eyebrow" style="color:#71717A">CODE</div><div class="mono" id="affCode" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">No code yet</div></div>
+          <div class="affiliate-link-meta">
+            <div><div class="eyebrow" style="color:#71717A">CODE</div><div class="mono" id="affCode" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">No code yet</div><button class="btn sm" id="copyCode" type="button">Copy code</button></div>
             <div><div class="eyebrow" style="color:#71717A">CLICKS 30D</div><div class="mono" id="affClicks" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">—</div><div id="affClicksNote" style="font-size:var(--fs-caption);color:var(--gray2);margin-top:3px;max-width:150px;line-height:1.35">not recorded yet</div></div>
             <!-- RATE was the string "Per agreement" and COOKIE was the string "60d".
                  Neither was ever read from anything.
@@ -301,6 +282,105 @@ table.grid tbody tr:hover{background:var(--soft)}
         <span class="st">You only see people who used your link, and only your own payouts. You do not see their contact details or credit file.</span>
       </details>
 
+      <div class="card" id="affiliate-records">
+        <div class="tabs" role="tablist" aria-label="Affiliate records">
+          <button class="tab on" data-tab="leads" role="tab" id="switch-leads" aria-controls="tab-leads" aria-selected="true" tabindex="0">Referred leads</button>
+          <button class="tab" data-tab="payouts" role="tab" id="switch-payouts" aria-controls="tab-payouts" aria-selected="false" tabindex="-1">Payouts</button>
+          <button class="tab" data-tab="terms" role="tab" id="switch-terms" aria-controls="tab-terms" aria-selected="false" tabindex="-1">Terms</button>
+        </div>
+
+        <div class="tabpane on" id="tab-leads" role="tabpanel" aria-labelledby="switch-leads">
+          <div class="card-hd">
+            <select aria-label="Filter referrals by status" id="stFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
+              <!-- These are the four statuses affiliate_referrals.status can hold
+                   (033_affiliates.sql:340-343). The six that were here before —
+                   Clicked, Signed up, Assessment paid, Deposit paid, Funded,
+                   Lost — matched nothing in the database, so every one of them
+                   filtered the table down to nothing. -->
+              <option value="">All statuses</option>
+              <option>Referred</option><option>Converted</option>
+              <option>Paid</option><option>Void</option>
+            </select>
+            <input aria-label="Filter referrals by business" id="q" placeholder="Filter business…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:180px">
+            <div class="spacer"></div>
+            <div class="eyebrow">REFERRED LEADS</div>
+          </div>
+          <!-- THE "BUSINESS" COLUMN — where its value may come from, and where it may not.
+               The `clients` table has NO business-name column (checked: db/schema/001_init.sql
+               plus every later ALTER — first_name, last_name, email, phone, client_code, and
+               nothing else). The one business name in the schema is
+               `client_custom_fields.business_name`. That column, and only that column, may
+               fill this cell. Where it is empty the honest fill is `clients.client_code`.
+               A client's first and last name is NOT a business name and must never be
+               substituted for one here: the affiliate contract in the Terms tab below grants
+               the affiliate a business name, a referral date, a status and their own
+               commission. Contact details are outside the Affiliate role, so putting a
+               person's name in this column would hand an outside partner data the contract
+               says they do not get. Nothing fills this table yet. -->
+          <div class="affiliate-table-scroll" role="region" aria-label="Referral details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Referral activity">
+            <thead><tr><th>Referred</th><th>Business</th><th>Status</th><th>First paid product</th><th>Basis</th><th style="text-align:right">Commission</th><th>Payout</th></tr></thead>
+            <tbody id="leadBody"></tbody>
+            <tfoot><tr>
+              <td colspan="5" id="leadTotalLabel" style="border-top:2px solid var(--line);font-weight:600">Total shown</td>
+              <td class="money" id="leadTotal" style="border-top:2px solid var(--line);text-align:right;font-weight:600">—</td>
+              <td style="border-top:2px solid var(--line)"></td></tr></tfoot>
+          </table></div>
+          <div style="padding:12px 16px;border-top:1px solid var(--line);background:var(--soft);font-size:var(--fs-body);color:var(--gray);line-height:1.55">
+            Commission accrues on the <strong>first</strong> qualified paid outcome on a referred client:
+            <strong>Tier 1 = 20%</strong> (direct), <strong>Tier 2 = 5%</strong> override (downline, after unlock).
+            Funding pays on every payment on the funding sale — the deposit and the 10% success fee — counted on the partner's half (the whole payment on a Fundhub-direct client); repair pays on the enrollment fee.
+            Later purchases by the same client do not pay again. A lead that
+            never pays never accrues, which is why "Clicked" and "Signed up" rows show no commission.
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
+          <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
+            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
+          <div class="affiliate-table-scroll" role="region" aria-label="Payout details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Payout history">
+            <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+            <tbody id="payBody"></tbody>
+          </table></div>
+        </div>
+
+        <div class="tabpane" id="tab-terms" role="tabpanel" aria-labelledby="switch-terms">
+          <div class="card-bd">
+            <div class="eyebrow" style="margin-bottom:12px">PARTNER TERMS</div>
+            <dl class="terms" style="max-width:74ch">
+              <dt>Rate</dt><dd>Tier 1: 20% · Tier 2: 5% override. First qualified paid outcome on any client attributed to your code. Effective 2026-08-24. If the rate ever changes, the version open on the day of the outcome governs that payout.</dd>
+              <!-- Walkthrough-4 defects 3 and 13 (2026-09-06). This tab used to
+                   promise "60 days, last-touch" and say the success fee earns
+                   nothing. Both were false: attribution is first touch with no
+                   expiry (src/affiliates/economics.mjs, 033_affiliates.sql
+                   unique index), and since 272 the funding rate reads every
+                   payment on the sale, success fee included (W0 decision). -->
+              <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
+              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
+              <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
+              <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
+              <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
+              <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <!-- This card was missing the opening card-hd tag, so the unmatched
+           closing tag on the header line closed the card early and card-bd
+           became a sibling of the card instead of its body. The tell was 102
+           opening div tags in this file against 103 closing ones; they are
+           equal again. Restored to the same shape the PAYOUT HISTORY header
+           below uses.
+           The label reads CLICK TO CONVERTED, not CLICK TO FUNDED: a conversion
+           here is the first qualifying paid product, which is a funded
+           engagement OR a paid repair enrolment. "Funded" named only half. -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-hd"><div class="eyebrow">Referral overview</div>
+          <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">Lifetime · Clicks to conversions</span></div>
+        <div class="card-bd" id="funnelBody"><div class="empty" id="funnel">Nothing to show yet. Waiting for your referral figures.</div></div>
+      </div>
+
+      <div class="affiliate-resources-heading"><h2>Partner resources</h2><p>Approved answers and tools for your referral work.</p></div>
+      <div class="affiliate-resources">
       <div class="card" id="brainCard" style="margin:14px 0">
         <div class="hair"></div>
         <div class="card-hd">
@@ -350,102 +430,6 @@ table.grid tbody tr:hover{background:var(--soft)}
         </div>
       </div>
 
-      <!-- This card was missing the opening card-hd tag, so the unmatched
-           closing tag on the header line closed the card early and card-bd
-           became a sibling of the card instead of its body. The tell was 102
-           opening div tags in this file against 103 closing ones; they are
-           equal again. Restored to the same shape the PAYOUT HISTORY header
-           below uses.
-           The label reads CLICK TO CONVERTED, not CLICK TO FUNDED: a conversion
-           here is the first qualifying paid product, which is a funded
-           engagement OR a paid repair enrolment. "Funded" named only half. -->
-      <div class="card" style="margin-top:14px">
-        <div class="card-hd"><div class="eyebrow">REFERRAL FUNNEL</div>
-          <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">LIFETIME · CLICK TO CONVERTED</span></div>
-        <div class="card-bd" id="funnelBody"><div class="empty" id="funnel">Nothing to show yet. Waiting for your referral figures.</div></div>
-      </div>
-
-      <div class="card">
-        <div class="tabs" role="tablist" aria-label="Affiliate records">
-          <button class="tab on" data-tab="leads" role="tab" id="switch-leads" aria-controls="tab-leads" aria-selected="true" tabindex="0">Referred leads</button>
-          <button class="tab" data-tab="payouts" role="tab" id="switch-payouts" aria-controls="tab-payouts" aria-selected="false" tabindex="-1">Payouts</button>
-          <button class="tab" data-tab="terms" role="tab" id="switch-terms" aria-controls="tab-terms" aria-selected="false" tabindex="-1">Terms</button>
-        </div>
-
-        <div class="tabpane on" id="tab-leads" role="tabpanel" aria-labelledby="switch-leads">
-          <div class="card-hd">
-            <select aria-label="Filter referrals by status" id="stFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
-              <!-- These are the four statuses affiliate_referrals.status can hold
-                   (033_affiliates.sql:340-343). The six that were here before —
-                   Clicked, Signed up, Assessment paid, Deposit paid, Funded,
-                   Lost — matched nothing in the database, so every one of them
-                   filtered the table down to nothing. -->
-              <option value="">All statuses</option>
-              <option>Referred</option><option>Converted</option>
-              <option>Paid</option><option>Void</option>
-            </select>
-            <input aria-label="Filter referrals by business" id="q" placeholder="Filter business…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:180px">
-            <div class="spacer"></div>
-            <div class="eyebrow">REFERRED LEADS</div>
-          </div>
-          <!-- THE "BUSINESS" COLUMN — where its value may come from, and where it may not.
-               The `clients` table has NO business-name column (checked: db/schema/001_init.sql
-               plus every later ALTER — first_name, last_name, email, phone, client_code, and
-               nothing else). The one business name in the schema is
-               `client_custom_fields.business_name`. That column, and only that column, may
-               fill this cell. Where it is empty the honest fill is `clients.client_code`.
-               A client's first and last name is NOT a business name and must never be
-               substituted for one here: the affiliate contract in the Terms tab below grants
-               the affiliate a business name, a referral date, a status and their own
-               commission. Contact details are outside the Affiliate role, so putting a
-               person's name in this column would hand an outside partner data the contract
-               says they do not get. Nothing fills this table yet. -->
-          <div style="overflow-x:auto"><table class="grid">
-            <thead><tr><th>Referred</th><th>Business</th><th>Status</th><th>First paid product</th><th>Basis</th><th style="text-align:right">Commission</th><th>Payout</th></tr></thead>
-            <tbody id="leadBody"></tbody>
-            <tfoot><tr>
-              <td colspan="5" id="leadTotalLabel" style="border-top:2px solid var(--line);font-weight:600">Total shown</td>
-              <td class="money" id="leadTotal" style="border-top:2px solid var(--line);text-align:right;font-weight:600">—</td>
-              <td style="border-top:2px solid var(--line)"></td></tr></tfoot>
-          </table></div>
-          <div style="padding:12px 16px;border-top:1px solid var(--line);background:var(--soft);font-size:var(--fs-body);color:var(--gray);line-height:1.55">
-            Commission accrues on the <strong>first</strong> qualified paid outcome on a referred client:
-            <strong>Tier 1 = 20%</strong> (direct), <strong>Tier 2 = 5%</strong> override (downline, after unlock).
-            Funding pays on every payment on the funding sale — the deposit and the 10% success fee — counted on the partner's half (the whole payment on a Fundhub-direct client); repair pays on the enrollment fee.
-            Later purchases by the same client do not pay again. A lead that
-            never pays never accrues, which is why "Clicked" and "Signed up" rows show no commission.
-          </div>
-        </div>
-
-        <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
-          <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
-            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
-          <div style="overflow-x:auto"><table class="grid">
-            <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
-            <tbody id="payBody"></tbody>
-          </table></div>
-        </div>
-
-        <div class="tabpane" id="tab-terms" role="tabpanel" aria-labelledby="switch-terms">
-          <div class="card-bd">
-            <div class="eyebrow" style="margin-bottom:12px">PARTNER TERMS</div>
-            <dl class="terms" style="max-width:74ch">
-              <dt>Rate</dt><dd>Tier 1: 20% · Tier 2: 5% override. First qualified paid outcome on any client attributed to your code. Effective 2026-08-24. If the rate ever changes, the version open on the day of the outcome governs that payout.</dd>
-              <!-- Walkthrough-4 defects 3 and 13 (2026-09-06). This tab used to
-                   promise "60 days, last-touch" and say the success fee earns
-                   nothing. Both were false: attribution is first touch with no
-                   expiry (src/affiliates/economics.mjs, 033_affiliates.sql
-                   unique index), and since 272 the funding rate reads every
-                   payment on the sale, success fee included (W0 decision). -->
-              <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
-              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
-              <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
-              <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
-              <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
-              <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
-            </dl>
-          </div>
-        </div>
       </div>
     </main>
 
@@ -622,10 +606,11 @@ function renderPayouts(){
    states. Do not wire a KPI to them. */
 
 function copy(txt,btn,label){
-  function done(){var o=btn.textContent;btn.textContent='Copied ✓';setTimeout(function(){btn.textContent=label},1400)}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,done);}
-  else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
-       try{document.execCommand('copy')}catch(e){} document.body.removeChild(ta);done();}
+  function done(){btn.textContent='Copied ✓';setTimeout(function(){btn.textContent=label},1400)}
+  function failed(){var status=document.getElementById('affiliateLoadStatus');if(status)status.textContent='Copy was blocked. Select the link or code and copy it manually.';btn.textContent=label;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,failed);}
+  else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();var copied=false;
+       try{copied=document.execCommand('copy')}catch(e){} document.body.removeChild(ta);if(copied)done();else failed();}
 }
 /* paintOfferLinks — one row per offer: name, the link, Copy link. */
 function paintOfferLinks(links){

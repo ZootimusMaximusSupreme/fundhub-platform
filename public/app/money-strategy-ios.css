@@ -1,31 +1,51 @@
-/* Standalone payment strategy: presentation is gated by verified client session. */
-body[data-client-ios] .app{min-width:0;--surface:#fff;--mono:var(--sans)}
-body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px 32px 8px;gap:16px}
-body[data-client-ios] .mbar .brand{display:none}
-body[data-client-ios] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600}
-body[data-client-ios] .mnav{background:transparent;border:0;padding:16px 32px;gap:8px;max-width:100%}
-body[data-client-ios] .mnav a{background:#fff;border-color:var(--client-line);min-height:44px;font-weight:600}
-body[data-client-ios] .mnav a[aria-current=page]{background:var(--client-ink);color:#fff}
-body[data-client-ios] main{padding:24px 32px 64px;min-width:0}
-body[data-client-ios] .fh-strategy .head{margin-bottom:32px}
-body[data-client-ios] .fh-strategy .head h1{letter-spacing:-.065em;font-weight:750;line-height:1.1;margin-bottom:16px}
-body[data-client-ios] .fh-strategy .head .caption{line-height:1.65}
-body[data-client-ios] .fh-strategy .card{border-radius:28px;border-color:var(--client-line);padding:24px;box-shadow:var(--panel-shadow)}
-body[data-client-ios] .fh-strategy .controls{background:#fff}
-body[data-client-ios] .fh-strategy .tiles .card:nth-child(1){background:#eeeafb}
-body[data-client-ios] .fh-strategy .tiles .card:nth-child(2){background:#e7f2fc}
-body[data-client-ios] .fh-strategy .tiles .card:nth-child(3){background:#e2f3ea}
-body[data-client-ios] .fh-strategy .eyebrow{font-family:var(--sans);letter-spacing:.09em;font-weight:650}
-body[data-client-ios] .fh-strategy .big{letter-spacing:-.05em;font-weight:700}
-body[data-client-ios] .fh-strategy :is(.btn-primary,.btn-line,.amt-box,.goal-row select,.goal-row input){border-radius:16px}
-body[data-client-ios] .fh-strategy .btn-primary{color:#fff}
-body[data-client-ios] .fh-strategy .btn-line{border-color:var(--client-line);background:#f5f5f8}
-body[data-client-ios] .fh-strategy .seg-btn{background:#f3f3f7;border-color:transparent}
-body[data-client-ios] .fh-strategy .seg-btn[aria-pressed=true]{background:var(--client-ink);color:#fff}
-body[data-client-ios] .fh-strategy .tip{border-radius:20px;background:#eeeafb;padding:16px}
-body[data-client-ios] .fh-strategy :is(.caption,.facts-list li,.warnings li,.save-msg){overflow-wrap:anywhere}
-body[data-client-ios] .fh-strategy .goal-row>*{min-width:0;max-width:100%}
-body[data-client-ios] .sandbox{border-radius:16px}
-@media(max-width:760px){body[data-client-ios] .mbar{padding:16px 16px 0}body[data-client-ios] .mnav{padding:16px}body[data-client-ios] main{padding:16px 16px 32px}body[data-client-ios] .fh-strategy .card{padding:24px 16px;border-radius:24px}body[data-client-ios] .fh-strategy .head{margin-bottom:24px}}
-/* Approved client heading scale supersedes the staff shell's compact title. */
-body[data-client-ios] .fh-strategy .head h1{font-size:clamp(2.5rem,4vw,4rem)!important}
+/* Professional strategy workspace. Only this page and the mounted strategy panel. */
+body[data-client-ios][data-client-page="money-strategy"] .app{min-width:0;--surface:#fff;--mono:var(--sans)}
+body[data-client-ios][data-client-page="money-strategy"] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:18px 32px;gap:16px}
+body[data-client-ios][data-client-page="money-strategy"] .mbar .brand{display:none}
+body[data-client-ios][data-client-page="money-strategy"] .mbar a{color:var(--client-muted);font-size:13px;text-decoration:none;font-weight:550}
+body[data-client-ios][data-client-page="money-strategy"] main{padding:28px 32px 48px;min-width:0}
+body[data-client-ios][data-client-page="money-strategy"] .sandbox{border-radius:11px;font-size:13px;padding:12px 16px;margin-bottom:24px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy{--surface:#fff;--mono:var(--sans);color:var(--ink,#101416);font-size:15px;line-height:1.55;min-width:0}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .head{margin-bottom:24px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .head h1{font-size:32px;font-weight:750;letter-spacing:-.04em;line-height:1.2;margin-bottom:8px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .caption{font-size:13px;line-height:1.6;color:#687075}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .head .caption{max-width:80ch;font-size:15px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .card{border:1px solid #e1e4e2;border-radius:18px;padding:24px;background:#fff;box-shadow:0 2px 8px rgba(16,20,22,.025);margin-bottom:20px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .eyebrow{font-family:var(--sans);font-size:13px;letter-spacing:0;text-transform:none;font-weight:650;color:#596264;margin-bottom:12px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy h2.eyebrow{font-size:18px;color:#101416;letter-spacing:-.02em}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .controls{border-top:2px solid #101416}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .ctrl-grid{gap:24px 32px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .field>label{font-weight:600}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .label-like{font-size:15px;font-weight:600;color:#101416}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .seg-btn{border-radius:11px;background:#fff;border:1px solid #dce1dd;padding:12px;font-size:13px;font-weight:550;line-height:1.4;min-height:52px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .seg-btn[aria-pressed=true]{background:#101416;color:#fff;border-color:#101416;font-weight:650}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy :is(.btn-primary,.btn-line,.amt-box,.goal-row select,.goal-row input){border-radius:11px;min-height:44px;font-size:15px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .btn-primary{background:#101416;color:#fff;border-color:#101416;padding:10px 20px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .btn-line{background:#fff;border-color:#cfd6d1;color:#101416;padding:10px 16px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-box{padding:0 12px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-box input{font-size:18px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .f-goal{border-top:1px solid #e1e4e2;padding-top:20px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .goal-row>*{min-width:0;max-width:100%;padding:8px 12px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .save-row{margin-top:20px;padding-top:20px;gap:16px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .save-row .caption{flex:1;max-width:65ch}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .grid{gap:16px;margin-bottom:20px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tiles .card{padding:20px;box-shadow:none;background:#fff;margin:0}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .big{font-size:32px;line-height:1.2;font-weight:700;letter-spacing:-.04em}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tiles .caption{margin-top:auto}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy :is(.caption,.facts-list li,.warnings li,.save-msg){overflow-wrap:anywhere}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .num{font-family:var(--sans);font-variant-numeric:tabular-nums}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .scroll-x{margin-top:8px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy :is(td,th){padding:14px 12px;font-size:13px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy th{background:#f8f8f6}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tag{font-size:12px;background:#f6f7f4}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .warnings{border-top:1px solid #e1e4e2;padding-top:16px;font-size:13px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .assumptions{margin-top:28px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .assumptions>h2{font-size:18px;font-weight:650;margin-bottom:16px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy details>summary .eyebrow{font-size:15px;color:#101416;margin:0}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .facts-list{font-size:13px;gap:12px;margin-top:16px}
+:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tip{border-radius:11px;background:#f0f2ee;border-color:#e1e4e2;padding:16px;font-size:13px}
+@media(max-width:1100px){:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tiles>*{grid-column:span 6}}
+@media(max-width:760px){body[data-client-ios][data-client-page="money-strategy"] .mbar{padding:12px 18px}body[data-client-ios][data-client-page="money-strategy"] main{padding:24px 18px 32px}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .head h1{font-size:28px}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .card{padding:20px 16px}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .tiles>*{grid-column:span 12}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .seg{grid-template-columns:1fr}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .seg-btn{text-align:left;min-height:44px}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-row{flex-direction:row}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .save-row .caption{flex-basis:100%}}
+@media(max-width:480px){:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-row{flex-direction:column;align-items:stretch}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-row input[type=range]{width:100%;flex:none}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-box{align-self:stretch;justify-content:space-between}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .amt-box input{max-width:calc(100% - 24px)}}
+@media(max-width:760px){:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy .ctrl-grid{grid-template-columns:minmax(0,1fr);gap:24px}:is(body[data-client-ios] #strategy-root,#fos-strategy) .fh-strategy :is(.f-amt,.f-method,.f-goal){grid-column:1}}

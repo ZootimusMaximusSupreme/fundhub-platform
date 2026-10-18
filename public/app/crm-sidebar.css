@@ -1,306 +1,94 @@
-/* Shared CRM sidebar chrome — THE only place sidebar geometry is allowed.
-   Linked by every gated screen. Pages must not redefine .side / .navitem
-   widths or position; shell.js also injects a lock stylesheet that wins. */
-
-:root {
-  --fh-side-w: 228px;
-  --fh-side-w-mini: 60px;
-  --dark-text: var(--paper);
-  --dark-text-dim: var(--gray2);
-  --dark-line: var(--cardline);
+/* Shared staff workspace navigation. Geometry lives here; destinations and
+   role permissions live in shell.js. A light, stable frame for every desk. */
+:root{
+  --fh-side-w:224px;
+  --fh-side-w-mini:72px;
+  --fh-workspace-header-h:72px;
 }
-
-/* Layout shells: content always clears the fixed rail.
-
-   NO `display` DECLARATION HERE — ON PURPOSE. Do not put one back.
-   shell.js:599 guards its runtime <link> injection on id="fh-crm-sidebar-css",
-   but the copy each page links in its own <head> carries no id, so the guard
-   never matches and this file is fetched and applied a SECOND time, after the
-   page's own <style>. Six screens set `.app{display:flex}` inline
-   (pipeline:57, command-center:67, closer-dashboard:51, messaging:43,
-   staff-teams:24, finance-os:34). With a `display:block` here, that late second
-   copy overrode them and flipped the whole layout flex -> block about 9ms after
-   first paint — a measured 362px jump on staff-teams, on every load, on all six
-   screens.
-   Declaring no display at all makes the double load a no-op: `.app` is a div,
-   so it is block by default, and a page that wants flex keeps flex both before
-   and after the second copy lands. This fixes the jump from the stylesheet side
-   without touching shell.js, which three other batches are editing today.
-
-   padding-left transitions in step with the rail's own width transition
-   (.18s ease, line ~46). Before this the rail slid over 182ms while the content
-   snapped across in 7ms, so the rail visibly covered ~168px of content the
-   whole way. */
-.app,
-.app-shell {
-  min-height: 100vh;
-  margin: 0;
-  padding-left: var(--fh-side-w);
-  box-sizing: border-box;
-  background: var(--field, #F4F4F5);
-  transition: padding-left .18s ease;
+.app,.app-shell{
+  min-height:100vh;margin:0;padding-left:var(--fh-side-w);
+  box-sizing:border-box;background:var(--field,var(--paper,#F8F8F6));
+  transition:padding-left .18s ease;
 }
-.app-shell .stage,
-.app .stage,
-#fh-stage {
-  min-width: 0;
-}
-
-/* ── UI-STANDARDS §1: ONE WIDTH, ON EVERY SCREEN ──────────────────────────────
-   NOW: full width, no cap (owner-set 2026-08-27). The history below is kept
-   because it is what explains the SHAPE of this rule — why it lives on the
-   rail, why .main is in the selector, and why every declaration is !important.
-   All three reasons still hold; only the value changed. Read it before you
-   touch this.
-
-   WAS: "Max content width 1800px, centered." (owner-set 2026-08-17, --fh-maxw in
-   fundhub-brand.css). It was opt-in per screen — a hand-added .fh-maxw class —
-   and measured live on 2026-08-18 only 18 of 31 CRM screens had it. At a 2560px
-   monitor the other 13 painted 2332px full-bleed (Calendar, Closer Dashboard,
-   Company Brain, Contract templates, Finance OS, Galaxy, Lenders, Messaging,
-   Ops & Admin, Specialist, partner Home), while Sales Floor and
-   My Numbers hardcoded their own 1280px and 1240px and sat narrow in the middle
-   of the screen. Screens that should look like one product looked like five.
-
-   Making the cap a property of the RAIL rather than of each screen is what
-   stops it drifting again: every screen that links this file gets it, and a new
-   screen gets it for free.
-
-   .main IS IN THE SELECTOR ON PURPOSE. On Staff & Teams (and Documents, and
-   Campaigns) the cap sat on .content while the sticky top bar was a SIBLING
-   inside an uncapped .main — so the bar ran the full width and the screen read
-   full-bleed even though its content was capped. Capping .main puts the bar
-   inside the same box as everything under it.
-
-   !important IS ALSO ON PURPOSE, and it is the only thing that works from here.
-   Every screen's own <style> block sits AFTER this file's <link> in <head>, so
-   at equal specificity the page wins on source order — a normal declaration
-   here would lose to Sales Floor's 1280px. Importance is settled before
-   specificity and before order, which is why this reaches them. The cost: a
-   screen that later wants true full-bleed has to say so with its own
-   !important. That is the trade, stated rather than discovered.
-
-   2026-08-27 — THE CAP IS REMOVED, AND THAT IS WHY THIS RULE STAYS.
-   Deleting the rule would NOT give full width. It would hand two screens back
-   their own hardcoded caps, which are the very thing the paragraph above says
-   this rule exists to beat: sales-floor.html:40 `.shell{max-width:1280px;
-   margin:0 auto}` and my-numbers.html:40 `.shell{max-width:1240px;margin:0
-   auto}`. Both would sit narrow and centred on a 3440px monitor while every
-   other screen filled it. So the rule is kept and its value inverted — from
-   "cap everything at 1800" to "uncap everything" — and the !important is now
-   carrying MORE weight than before, not less.
-
-   margin-inline goes to 0, not away. Those same two screens set `margin:0
-   auto`, and an auto cross-axis margin on a flex item cancels the stretch
-   (the trap written up at length in fundhub-brand.css). Removing the cap
-   without also pinning the margin lets them shrink-wrap to their widest child
-   instead of filling the column.
-
-   The phone rule further down (@media max-width:860px) still pins these same
-   selectors to max-width:100%. That is UI-STANDARDS §11, no sideways scroll,
-   and it is untouched by this — 100% is not a cap, it is the viewport. */
-/* THE SESSION CHIP MUST BE ABLE TO SHRINK, AT EVERY WIDTH.
-   shell.js mountChip builds the chip with its geometry as an INLINE style,
-   including flex-shrink:0 and no max-width, and placeInHeader drops it into
-   whatever .topbar the screen already has. Measured 558px wide. On a screen
-   whose top bar is already full, a 558px unshrinkable child does not just
-   overflow the bar — it pushes the whole PAGE sideways, against UI-STANDARDS
-   §11 ("No sideways page scroll").
-   Measured live at 1440 on 2026-08-27: campaign-manager scrolled 381px and
-   social-studio 195px, and in both cases the element setting the page's
-   scrollWidth was this chip, sitting in .topbar with nothing clipping it.
-   These four declarations already existed for phones, inside the 860px block
-   below. Nothing about the problem is specific to a phone — it is specific to
-   a full top bar — so they are hoisted here and apply everywhere. The phone
-   block keeps only what is genuinely phone-shaped (its margin reset).
-   !important is required and not decorative: an inline style beats any
-   external sheet that is not important, and the width comes from one. */
-#fh-shell-chip {
-  flex-wrap: wrap !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  flex-shrink: 1 !important;
-}
-
-/* ...and the bar it landed in must be allowed to WRAP, so the chip can drop to
-   its own row instead of being squeezed to nothing.
-   Letting the chip shrink (above) fixes most screens outright, but shrinking
-   alone has a floor it cannot see: the chip's own children — the role span, the
-   source label, the Sign out button — keep their intrinsic widths. Measured at
-   1280 on campaign-manager 2026-08-27: the chip obediently shrank to 26px and
-   its 106px child then hung 101px off the side of the page, so the page still
-   scrolled AND the chip had become unreadable. Squeezing harder makes both
-   worse.
-   Wrapping fixes the cause instead. When the rest of the bar fills the row the
-   chip moves to the next one, at a readable width, and nothing overflows.
-   :has() keeps this to bars that ACTUALLY hold the chip — shell.js decides that
-   at runtime, differently per screen — so no other top bar's layout is touched.
-   .topbar-right is in the list because placeInHeader PREFERS it and 11 screens
-   have one (pipeline, lenders, messaging, closer-dashboard and the rest), so the
-   chip's parent is one of two different elements depending on the screen. Those
-   eleven measure clean today; covering only the container that happens to be
-   broken right now is the half-fix that leaves the other half as a landmine. */
-:is(.topbar, .top, .page-hd, header, .topbar-right):has(> #fh-shell-chip) {
-  flex-wrap: wrap;
-}
-
+.app-shell .stage,.app .stage,#fh-stage{min-width:0}
 :is(.app, .app-shell) :is(.shell, .content, .main),
-.app main,
-.app-shell main {
-  max-width: none !important;
-  margin-inline: 0 !important;
-  width: 100%;
+.app main,.app-shell main{
+  max-width:none !important;margin-inline:0 !important;width:100%;min-width:0;
 }
-
-/* Fixed rail — identical left edge on every page, scroll-independent. */
-aside.side,
-.side {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  bottom: 0 !important;
-  width: var(--fh-side-w) !important;
-  flex: none !important;
-  margin: 0 !important;
-  max-height: none !important;
-  height: auto !important;
-  background: var(--ink, #0A0A0A) !important;
-  color: var(--paper, #FCFCFC);
-  display: flex !important;
-  flex-direction: column !important;
-  z-index: 400 !important;
-  transition: width .18s ease;
-  box-sizing: border-box;
-  padding: 0 !important; /* page "aside{}" rules must not pad the rail */
+aside.side,.side{
+  position:fixed !important;top:0 !important;left:0 !important;bottom:0 !important;
+  width:var(--fh-side-w) !important;flex:none !important;margin:0 !important;
+  max-height:none !important;height:auto !important;padding:0 !important;
+  display:flex !important;flex-direction:column !important;
+  background:var(--paper,#F8F8F6) !important;color:var(--ink,#0D1113);
+  border-right:1px solid var(--line,#E3E5E0);z-index:400 !important;
+  box-sizing:border-box;transition:width .18s ease;font-family:var(--sans);line-height:1.25;
 }
-.side::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 2px;
-  height: 100%;
-  background: var(--spectrum);
-  opacity: .9;
-  pointer-events: none;
+.side::after{display:none}
+.side.mini{width:var(--fh-side-w-mini) !important}
+html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w-mini)}
+.side .side-top{
+  display:flex;align-items:center;gap:12px;height:72px;flex:0 0 72px;
+  padding:0 20px;position:relative;
 }
-.side.mini {
-  width: var(--fh-side-w-mini) !important;
+.side .side-top::after{
+  content:"";height:2px;background:var(--spectrum);position:absolute;
+  bottom:0;left:20px;right:20px;border-radius:2px;opacity:.85;
 }
-html.fh-side-mini .app,
-html.fh-side-mini .app-shell {
-  padding-left: var(--fh-side-w-mini);
+.side .side-top .logo{width:124px;height:28px;flex:0 1 124px;filter:none}
+.side .burger{
+  display:flex;align-items:center;justify-content:center;margin-left:auto;
+  width:32px;height:40px;min-width:32px;min-height:40px;flex:0 0 32px;
+  border:0;border-radius:8px;background:transparent;color:var(--gray);
+  font:400 24px/1 var(--sans);cursor:pointer;
 }
-
-/* Page CSS must not be able to change the rail's rhythm.
-   line-height was the one metric left unset here, so it inherited from each
-   page's own body rule. Screens that set line-height:1.5 (hiring, finance-os,
-   contracts, staff-teams and others) rendered every nav row 4px taller than
-   screens that did not, which pushed the bottom of the nav 150px further down
-   and made the sidebar visibly resettle when moving between tabs. Padding and
-   font-size were already pinned; this closes the gap.
-   An explicit declaration always beats an inherited one, so no !important and
-   no specificity games are needed — the value just has to exist. */
-.side,
-.side-top,
-.side-scroll,
-.navhead,
-.navitem,
-.side-foot {
-  line-height: 1.2;
+.side .burger:hover{background:var(--soft);color:var(--ink)}
+.side .side-scroll{flex:1;min-height:0;overflow-y:auto;padding:18px 12px 24px;scrollbar-width:thin;scrollbar-color:#D1D5CE transparent}
+.side .side-scroll::-webkit-scrollbar{width:5px}
+.side .side-scroll::-webkit-scrollbar-thumb{background:#D1D5CE;border-radius:4px}
+.side .navgroup{margin:0 0 14px}
+.side .navhead{
+  display:flex;align-items:center;gap:8px;width:100%;min-height:36px;
+  padding:7px 12px;border:0;border-radius:7px;background:transparent;
+  font:600 12px/1.25 var(--sans);letter-spacing:0;text-transform:none;
+  text-align:left;color:var(--gray,#626968);cursor:pointer;
 }
-
-.side-top {
-  height: 44px;
-  flex: 0 0 44px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--dark-line, #26262B);
+.side .navhead:hover{color:var(--ink);background:var(--soft)}
+.side .navhead .chev{margin-left:auto;font-size:15px;transition:transform .16s}
+.side .navgroup.closed .chev{transform:rotate(-90deg)}
+.side .navgroup.closed .navlist{display:none}
+.side .navlist{display:flex;flex-direction:column;gap:3px}
+.side .navitem{
+  display:flex;align-items:center;gap:11px;position:relative;
+  min-height:42px;padding:9px 12px;border-radius:9px;
+  text-decoration:none;font:500 13px/1.35 var(--sans);
+  color:var(--gray,#626968);transition:color .12s,background .12s;
 }
-.side-top .logo { width: 118px; height: 24px; flex: 0 0 118px; }
-.side.mini .side-top { padding: 0 12px; }
-.side.mini .side-top .logo { display: none; }
-.burger {
-  margin-left: auto;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  border: 1px solid var(--dark-line, #26262B);
-  background: transparent;
-  color: var(--gray2, #A1A1AA);
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: var(--fs-caption, 11px);
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.burger:hover { border-color: #3F3F46; color: var(--paper, #FCFCFC); }
-.side.mini .burger { margin: 0 auto; }
-
-.side-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0 8px;
-  min-height: 0;
-}
-.side-scroll::-webkit-scrollbar { width: 6px; }
-.side-scroll::-webkit-scrollbar-thumb { background: #27272A; border-radius: 3px; }
-
-.navgroup { margin-bottom: 3px; }
-.navhead {
-  width: 100%;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 18px 6px;
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: var(--fs-caption, 11px);
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: #71717A;
-}
-.navhead:hover { color: var(--gray2, #A1A1AA); }
-.navhead .chev { margin-left: auto; font-size: var(--fs-caption, 11px); transition: transform .16s; color: var(--gray, #52525B); }
-.navgroup.closed .chev { transform: rotate(-90deg); }
-.navgroup.closed .navlist { display: none; }
-.side.mini .navhead {
-  justify-content: center;
-  padding: 10px 0 6px;
-  font-size: 0;
-  letter-spacing: 0;
-}
-.side.mini .navhead::after {
-  content: "";
-  display: block;
-  width: 16px;
-  height: 2px;
-  background: var(--spectrum);
-  border-radius: 1px;
-  opacity: .5;
-}
-.side.mini .navhead .chev { display: none; }
-
-.navlist { display: flex; flex-direction: column; }
-
-/* Owner-set retired menu rows stay reachable by direct URL, but never paint in
-   the rail. This stylesheet loads before the deferred shell, so the rows are
-   hidden on the first frame instead of flashing while the session resolves.
-   Keep this list in lockstep with shell.js NAV_HIDDEN; the nav test checks it
-   BOTH ways as of 2026-08-27. It used to check one: every NAV_HIDDEN entry had
-   to appear here, but nothing checked that every entry here was still in
-   NAV_HIDDEN. So when company-brain.html was taken off NAV_HIDDEN the row
-   stayed invisible — this rule was still hiding it, the suite was green, and
-   the screen looked dead on a deploy that had "fixed" it. Do not add an href
-   here without adding it there. */
+.side .navitem:hover{background:var(--soft);color:var(--ink)}
+.side .navitem .ico{width:18px;height:18px;flex:0 0 18px;display:flex;align-items:center;justify-content:center;opacity:.8}
+.side .navitem .ico svg{width:18px;height:18px;display:block}
+.side .navitem .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side .navitem.on{background:var(--ink,#0D1113);color:var(--paper,#F8F8F6);font-weight:600}
+.side .navitem.on::before{display:none}
+.side .navitem.on .ico{opacity:1}
+.side .navitem .beta-badge{margin-left:auto;padding:2px 5px;border-radius:4px;font:600 10px var(--sans);color:#73521F;background:var(--warn)}
+.side .side-foot{flex:0 0 auto;min-height:52px;padding:16px 24px;border-top:1px solid var(--line);font:400 12px/1.3 var(--sans);letter-spacing:0;color:var(--gray2)}
+.side .side-foot .pulse{display:none}
+.side.mini .side-top{padding:0 16px}
+.side.mini .side-top .logo,.side.mini .side-foot .who{display:none}
+.side.mini .side-top::after{left:18px;right:18px}
+.side.mini .burger{margin:0 auto;width:40px;flex-basis:40px}
+.side.mini .side-scroll{padding-inline:12px}
+.side.mini .navgroup{margin-bottom:12px}
+.side.mini .navhead{display:none}
+.side.mini .navitem{justify-content:center;padding:11px 0;min-height:44px}
+.side.mini .navitem .lbl,.side.mini .navitem .beta-badge{display:none}
+.side.mini .side-foot{padding:16px 0}
+.side-scrim{display:none}
+.side-scrim.show{display:block;position:fixed;inset:0;background:rgba(13,17,19,.3);z-index:390}
+.fh-menu-btn{display:none}
+.fh-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+.fh-scroll-x > table{min-width:max-content}
 .navitem:is(
   [href="finance-os.html"],
   [href="consent-capture.html"],
@@ -327,294 +115,33 @@ html.fh-side-mini .app-shell {
   display: none !important;
 }
 
-/* THE MARKETING SECTION IS NOT HIDDEN HERE ANY MORE, AND THAT IS THE POINT.
-   A rule used to sit right here that said:
 
-     .navgroup[data-fh-section="marketing"] { display: none !important; }
-
-   It hid the whole Marketing box — the heading and all four rows inside it —
-   no matter what any other rule said. That made it the trap this note exists
-   to stop you falling into: someone would take a row off the hidden list in
-   shell.js, take the matching address off the list above, reload, see nothing
-   change, and assume they had got it wrong. They had not. The section around
-   the row was still gone.
-   Two reasons this rule beat everything else. It hid the PARENT, so the row
-   never had a chance to paint. And `!important` in a stylesheet beats the
-   plain `style="display:"` that shell.js gateLinks() writes on a group it has
-   decided to show, so the runtime could not put it back either.
-   Nothing needs to replace it. gateLinks() already hides any group whose rows
-   are all gated for the person looking, so a staff role sees no lonely
-   Marketing heading — it disappears with its rows, on its own. */
-
-.navitem {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 7px 18px;
-  font-size: var(--fs-caption, 11px);
-  color: var(--gray2, #A1A1AA);
-  text-decoration: none;
-  position: relative;
-  transition: color .12s, background .12s;
-}
-.navitem:hover { color: var(--paper, #FCFCFC); background: #161619; }
-.navitem .ico {
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: var(--fs-caption, 11px);
-  width: 16px;
-  flex: 0 0 16px;
-  text-align: center;
-  opacity: .75;
-}
-.navitem.on { color: var(--paper, #FCFCFC); background: #161619; font-weight: 500; }
-.navitem.on::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 5px;
-  bottom: 5px;
-  width: 2px;
-  background: var(--spectrum);
-  border-radius: 0 2px 2px 0;
-}
-.navitem.on .ico { opacity: 1; }
-.side.mini .navitem { justify-content: center; padding: 9px 0; }
-.side.mini .navitem .lbl { display: none; }
-
-/* Driven by BETA_PAGES in shell.js — do not add this markup by hand. */
-.navitem .beta-badge {
-  margin-left: auto;
-  flex: 0 0 auto;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: var(--fs-caption, 11px);
-  font-weight: 700;
-  letter-spacing: .04em;
-  color: #3A2A0A;
-  background: var(--warn, #F5CE8F);
-}
-.side.mini .navitem .beta-badge { display: none; }
-
-.side-foot {
-  padding: 10px 16px;
-  border-top: 1px solid var(--dark-line, #26262B);
-  font-family: var(--mono, ui-monospace, monospace);
-  font-size: var(--fs-caption, 11px);
-  color: var(--gray, #52525B);
-  letter-spacing: .08em;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: 0 0 auto;
-}
-.side.mini .side-foot { justify-content: center; padding: 10px 0; }
-.side.mini .side-foot .who { display: none; }
-
-.side-scrim { display: none; }
-.side-scrim.show {
-  display: block;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .45);
-  z-index: 390;
-}
-
-/* Shared account row for screens that do not have a named top bar. It stays
-   in normal page flow, so account and search controls never cover content. */
-.fh-shell-account-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-height: 57px;
-  padding: 8px 16px;
-  background: var(--paper, #FCFCFC);
-  border-bottom: 1px solid var(--line, #E4E4E7);
-  box-sizing: border-box;
-  flex-wrap: wrap;
-}
-.fh-shell-account-row #fh-shell-search-btn,
-.fh-shell-account-row #fh-shell-chip {
-  margin-left: 0 !important;
-}
-
-/* ---------------------------------------------------------------------------
-   MOBILE — added 2026-08-05, workflow 1 of the mobile-CRM batch.
-   See ops/workflows/mobile-crm.md.
-
-   Two breakpoints for the whole app. Do not invent others.
-     860px — sidebar goes off-canvas, content takes the full width
-     640px — phone: single column, tables become cards
-
-   The old rule here shrank the rail to a 60px icon strip below 860px and left
-   it there, permanently eating 60px of a 390px phone and showing nav as
-   unlabelled glyphs. Off-canvas instead: hidden until asked for, full width for
-   the content, which is what a phone needs.
-   --------------------------------------------------------------------------- */
-
-@media (max-width: 860px) {
-  /* NOTE ON WHERE THESE RULES REALLY LIVE.
-     The width and the content padding-left are set by the lock stylesheet that
-     shell.js injects, NOT here — that sheet is appended to <head> at runtime,
-     so at equal specificity it beats this file on source order. Declaring the
-     width here as well only produced a stylesheet that disagreed with the
-     rendered page. What stays here is everything the lock does not touch:
-     the transition, the shadow, and the label/padding restoration. */
-  aside.side,
-  .side {
-    transform: translateX(-100%);
-    transition: transform .22s ease;
-    box-shadow: none;
-    will-change: transform;
+@media(max-width:860px){
+  :root{--fh-workspace-header-h:68px}
+  aside.side,.side{transform:translateX(-100%);transition:transform .2s ease;width:min(292px,calc(100vw - 36px)) !important}
+  aside.side.open,.side.open{transform:translateX(0);box-shadow:16px 0 45px rgba(13,17,19,.12)}
+  .app,.app-shell,html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:0 !important}
+  :is(.app,.app-shell) :is(.shell,.content,.main),.app main,.app-shell main{max-width:100% !important}
+  .side .side-top{height:68px;flex-basis:68px}
+  .side .navitem{min-height:44px}
+  .side.mini .side-top .logo,.side.mini .side-foot .who{display:initial}
+  .side.mini .side-top .logo{display:inline-block}
+  .side.mini .navhead{display:flex}
+  .side.mini .navitem{justify-content:flex-start;padding:10px 12px}
+  .side.mini .navitem .lbl{display:initial}
+  .fh-menu-btn{
+    display:flex;align-items:center;justify-content:center;width:44px;height:44px;
+    min-width:44px;min-height:44px;flex:0 0 44px;border:1px solid var(--line);
+    background:var(--paper,#F8F8F6);color:var(--ink);border-radius:10px;
+    font:500 20px/1 var(--sans);cursor:pointer;
   }
-  aside.side.open,
-  .side.open {
-    transform: translateX(0);
-    box-shadow: 12px 0 34px rgba(0, 0, 0, .45);
-  }
-  /* Labels always show on mobile — a 60px glyph rail is not navigation. */
-  .side.mini .side-top .logo,
-  .side.mini .navitem .lbl,
-  .side.mini .side-foot .who { display: initial; }
-  .side.mini .side-top .logo { display: inline-block; }
-  .side.mini .navitem { justify-content: flex-start; padding: 7px 18px; }
-  .side.mini .navhead { justify-content: flex-start; padding: 9px 18px 6px; font-size: var(--fs-caption, 11px); letter-spacing: .18em; }
-  .side.mini .navhead::after { display: none; }
-  .side.mini .navhead .chev { display: initial; }
-  .side.mini .side-foot { justify-content: flex-start; padding: 10px 16px; }
-
-  /* Content owns the full width, mini state or not. */
-  .app,
-  .app-shell,
-  html.fh-side-mini .app,
-  html.fh-side-mini .app-shell {
-    padding-left: 0 !important;
-  }
-
-  /* Deliberately NOT setting overflow-x:hidden on html/body here.
-     It was tried and removed the same day: it stops the page scrolling
-     sideways, but it does that by CLIPPING whatever is too wide, so a 577px
-     table in a 390px viewport silently loses 187px and the layout check
-     reports the screen as passing. Hiding the symptom would have made the
-     remaining four workflows untestable. Overflow stays visible so
-     ops/workflows/mobile-check.mjs can fail on it and someone fixes the
-     element that is actually too wide. */
-
-  /* UI-STANDARDS §11: "No sideways page scroll." The cap above is a MAXIMUM,
-     not a width, so it is already harmless on a phone — but a screen that
-     carries its own `margin:0 auto` rather than .fh-maxw hits the same
-     cancelled-stretch trap described in fundhub-brand.css, and grows to its
-     widest child. Measured at 390px on 2026-08-18: Sales Floor painted 488px
-     and Lenders 765px that way. Pinning the wrapper to the viewport fixes it
-     without clipping anything — the note above about never using
-     overflow-x:hidden still stands, and this is the alternative it asks for. */
-  :is(.app, .app-shell) :is(.shell, .content, .main),
-  .app main,
-  .app-shell main {
-    max-width: 100% !important;
-  }
-
-  /* The session chip shell.js injects into the top bar carries its geometry as
-     an INLINE style (shell.js mountChip), including flex-shrink:0 and no
-     max-width. Measured 400px wide inside a 390px row, which pushed 14 screens
-     sideways on a phone all by itself. An inline style beats any external
-     sheet unless the external one is important, which is why these are.
-     Nothing is hidden: the chip is allowed to shrink and wrap onto a second
-     line, which shell.js's own lock sheet already permits for the bar. */
-  /* (the four chip declarations that were here now apply at every width —
-     see the #fh-shell-chip rule higher up in this file) */
-  .fh-shell-account-row #fh-shell-chip {
-    margin-left: 0 !important;
-  }
-  .topbar,
-  .topbar-right,
-  .top,
-  .page-hd {
-    flex-wrap: wrap !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-  /* Any named header that receives the shared account controls must own their
-     full height. Fixed-height bars used to let the chip paint over the page. */
-  :is(.topbar, .top, .page-hd, body > header, .app > header, .app-shell > header):has(#fh-shell-chip) {
-    height: auto !important;
-    min-height: 57px;
-    flex: 0 0 auto !important;
-    overflow: visible !important;
-    row-gap: 8px;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-  }
-  .topbar-right:has(#fh-shell-chip) {
-    width: 100%;
-    flex-basis: 100%;
-    flex-wrap: wrap !important;
-  }
-
-  /* Bigger touch targets for the nav itself. */
-  .navitem { padding-top: 11px; padding-bottom: 11px; }
+  .fh-menu-btn:not(.fh-workspace-header .fh-menu-btn){position:fixed;top:12px;left:12px;z-index:401}
+  html.fh-drawer-open{overflow:hidden}
+  .fh-tap{min-height:44px;min-width:44px}
 }
-
-/* Floating menu button — injected by shell.js, only exists below 860px. */
-.fh-menu-btn { display: none; }
-@media (max-width: 860px) {
-  .fh-menu-btn {
-    display: flex;
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 401;
-    width: 40px;
-    height: 40px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--line, #E4E4E7);
-    background: var(--paper, #FCFCFC);
-    color: var(--ink, #0A0A0A);
-    border-radius: 7px;
-    cursor: pointer;
-    font-family: var(--mono, ui-monospace, monospace);
-    font-size: var(--fs-body, 14px);
-    line-height: 1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-  }
-  .fh-menu-btn:active { background: var(--soft, #F4F4F5); }
-  /* Once the rail is open it carries its own close affordance. */
-  .side.open ~ .fh-menu-btn { display: none; }
+@media(max-width:640px){
+  .fh-stack{display:block !important;grid-template-columns:none !important}
+  .fh-stack > *{width:auto !important;max-width:100% !important}
+  .fh-hide-phone{display:none !important}
 }
-
-@media (prefers-reduced-motion: reduce) {
-  aside.side, .side { transition: none; }
-  .app, .app-shell { transition: none; }
-}
-
-/* ---------------------------------------------------------------------------
-   SHARED RESPONSIVE HELPERS
-   Available on every gated screen. Workflows 2-5 use these instead of rolling
-   their own. Documented in ops/workflows/mobile-crm.md section 2.
-   --------------------------------------------------------------------------- */
-
-/* Wrap a table that has to stay a table. It scrolls inside its own box so the
-   page body never does. */
-.fh-scroll-x {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-.fh-scroll-x > table { min-width: max-content; }
-
-/* Any multi-column row. Collapses to one column on a phone. */
-@media (max-width: 640px) {
-  .fh-stack {
-    display: block !important;
-    grid-template-columns: none !important;
-  }
-  .fh-stack > * { width: auto !important; max-width: 100% !important; }
-  .fh-hide-phone { display: none !important; }
-}
-
-/* Minimum comfortable touch target. */
-@media (max-width: 860px) {
-  .fh-tap { min-height: 44px; min-width: 44px; }
-}
+@media(prefers-reduced-motion:reduce){.side,.app,.app-shell,.side .navhead .chev{transition:none}}

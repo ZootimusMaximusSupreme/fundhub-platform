@@ -125,15 +125,29 @@ test("error and loading states say what is happening in words", () => {
   assert.equal(M.classify({ status: 200, body: { ok: true } }), "ok");
 });
 
-test("tip is printed verbatim, billing line says the count and '$X per container' until a price is set", () => {
+test("tip is printed verbatim and known billing retains per-container and monthly amounts", () => {
   const d = fixture();
   d.tip = "Engine words <b>here</b> & there.";
   const html = M.render(d);
   assert.match(html, /Engine words &lt;b&gt;here&lt;\/b&gt; &amp; there\./);
-  assert.match(text(html), /2 containers · \$X per container/);
-  assert.doesNotMatch(text(html), /price not set/);
+  assert.match(text(html), /2 containers · Pricing is not available/);
   d.billing.price_per_container_cents = 4900;
   assert.match(text(M.render(d)), /\$49\.00 per container · \$98\.00 a month/);
+});
+
+test("unknown pricing says it is unavailable without inventing an amount or calling it free", () => {
+  for (const missing of [null, undefined]) {
+    const d = fixture();
+    d.billing.price_per_container_cents = missing;
+    const billing = text(M.render(d).match(/<p class="billing caption">[\s\S]*?<\/p>/)[0]);
+    assert.match(billing, /Your plan: 2 containers · Pricing is not available/);
+    assert.doesNotMatch(billing, /\$|\bfree\b|\bzero\b/i);
+  }
+  const knownZero = fixture();
+  knownZero.billing.price_per_container_cents = 0;
+  const billing = text(M.render(knownZero).match(/<p class="billing caption">[\s\S]*?<\/p>/)[0]);
+  assert.match(billing, /\$0\.00 per container · \$0\.00 a month/);
+  assert.doesNotMatch(billing, /unavailable/);
 });
 
 test("containers list their own accounts with masks and card details", () => {

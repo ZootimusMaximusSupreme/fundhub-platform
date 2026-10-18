@@ -1,59 +1,81 @@
-/* Approved client-only iOS treatment. Staff and partner shells retain their styles. */
-.affiliate-heading{display:none}
-body[data-client-ios] .affiliate-heading{display:block;margin:24px 0 28px}
-body[data-client-ios] .affiliate-heading p{color:#777c87;margin:0 0 10px;max-width:480px}
-body[data-client-ios] .affiliate-heading h2{font-size:clamp(38px,4.3vw,62px)!important;line-height:1.05;letter-spacing:-.065em;font-weight:740;margin:0 0 16px}
-body[data-client-ios] .affiliate-load{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 20px;color:#6b7180;font-size:13px!important}
-body[data-client-ios] .linkbox{border:1px solid rgba(255,255,255,.2);border-radius:30px;color:#fff;background:radial-gradient(ellipse at 100% 0,rgba(151,164,225,.28),transparent 65%),linear-gradient(130deg,#1c1d28,#30384e);box-shadow:0 16px 38px rgba(34,37,55,.13)}
-body[data-client-ios] .linkbox .lt{display:none}
-body[data-client-ios] .linkbox .lb{padding:30px}
-body[data-client-ios] .linkbox .eyebrow,body[data-client-ios] .linkbox .sd{color:#c4c9da!important}
-body[data-client-ios] .linkrow input{min-width:0;min-height:48px;width:100%;flex:1 1 250px;border:1px solid #596276;background:rgba(255,255,255,.07);border-radius:13px;color:#fff;font-family:inherit}
-body[data-client-ios] .linkrow .btn{min-height:44px;border-radius:12px;background:#fff;color:#202435;border-color:#fff;font-family:inherit;letter-spacing:0;text-transform:none}
-body[data-client-ios] .offerrow .offername{color:#e2e6f3;font-size:14px!important}
-body[data-client-ios] .stats{gap:16px;margin-top:22px!important}
-body[data-client-ios] .stat{border:1px solid #e5e7ed;border-radius:24px;padding:24px;box-shadow:0 7px 22px rgba(42,47,59,.04);min-width:0}
-body[data-client-ios] .stat::before{display:none}
-body[data-client-ios] .stat:nth-child(2){background:#f0eefb}
-body[data-client-ios] .stat:nth-child(3){background:#edf5f9}
-body[data-client-ios] .stat:nth-child(4){background:#edf7f1}
-body[data-client-ios] .stat .sv{font-family:inherit;font-size:34px!important;letter-spacing:-.05em}
-body[data-client-ios] .stat .sd{line-height:1.5;overflow-wrap:anywhere}
-body[data-client-ios] .card{border:1px solid #e5e7ed;border-radius:25px;box-shadow:0 7px 24px rgba(42,47,59,.035);margin-top:20px!important}
-body[data-client-ios] .card-hd{padding:20px 24px;gap:12px}
-body[data-client-ios] .card-bd{padding:24px}
-body[data-client-ios] .hair{display:none}
-body[data-client-ios] .eyebrow{font-family:inherit;letter-spacing:.05em;font-weight:650}
-body[data-client-ios] .banner{border-radius:20px;padding:20px;min-width:0}
-body[data-client-ios] .banner>div{min-width:0!important}
-body[data-client-ios] .btn{min-height:44px;border-radius:12px;font-family:inherit;letter-spacing:0;text-transform:none}
-body[data-client-ios] input,body[data-client-ios] select{max-width:100%;min-height:44px;border-radius:12px!important}
-body[data-client-ios] #brainQ{min-width:0!important;flex-basis:220px}
-body[data-client-ios] .tabs{gap:4px;padding:10px;background:#f0f1f5;border-bottom:0}
-body[data-client-ios] .tab{flex:1;min-height:44px;border:0;border-radius:12px;font-family:inherit;font-weight:650;letter-spacing:0;text-transform:none;padding:10px 12px}
-body[data-client-ios] .tab.on{background:#fff;color:#171922;box-shadow:0 2px 7px #22252e0d}
-body[data-client-ios] .badge{font-family:inherit;letter-spacing:0;text-transform:none;border-radius:20px}
-body[data-client-ios] .terms dt{font-family:inherit;letter-spacing:0;font-weight:650;font-size:14px!important}
-body[data-client-ios] .terms dd{color:#666d7b}
-body[data-client-ios] table.grid{min-width:670px}
-body[data-client-ios] table.grid th{font-family:inherit;letter-spacing:.02em;font-size:12px!important;background:#f7f8fa}
-body[data-client-ios] .foot{letter-spacing:0;font-family:inherit}
-body[data-client-ios] :is(button,a,input,select):focus-visible{outline:3px solid #6c7dd9;outline-offset:3px}
-@media(max-width:700px){body[data-client-ios] .linkbox .lb,body[data-client-ios] .card-bd{padding:22px}body[data-client-ios] .card-hd{padding:18px}body[data-client-ios] .stat{padding:18px}body[data-client-ios] .stat .sv{font-size:28px!important}body[data-client-ios] .topbar{height:auto;min-height:57px;flex-wrap:wrap}body[data-client-ios] .topbar h1{font-size:17px!important}body[data-client-ios] .affiliate-heading{margin:22px 0}body[data-client-ios] .linkbox .lb>div:last-child{gap:22px!important}body[data-client-ios] #q{width:100%!important}body[data-client-ios] .stats{gap:10px}body[data-client-ios] .tab{padding:10px 8px}}
-@media(prefers-reduced-motion:reduce){body[data-client-ios] *{scroll-behavior:auto!important;transition:none!important}}
-/* The shared navigation replaces this page's CRM rail for clients only. */
-body[data-client-ios][data-client-nav] #side{display:none!important}
-body[data-client-ios] .app{display:block;min-width:0}
+/* Affiliate workspace presentation. Identity, financial values and role gates
+   remain in the existing authenticated page logic. Geometry is client-only. */
+body[data-client-page="affiliate"]{--affiliate-border:#e1e4de;--affiliate-muted:#687075;font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;background:#f8f8f6;color:#101416;font-size:15px;line-height:1.5;letter-spacing:-.015em}
+body[data-client-page="affiliate"] .content{padding:32px clamp(20px,3vw,48px) 56px}
+body[data-client-page="affiliate"] .affiliate-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 20px}
+body[data-client-page="affiliate"] .affiliate-kicker{font-size:12px;font-weight:600;color:var(--affiliate-muted);margin:0 0 5px}
+body[data-client-page="affiliate"] .affiliate-heading h2{font-size:32px;font-weight:700;line-height:1.16;letter-spacing:-.045em;margin:0 0 9px}
+body[data-client-page="affiliate"] .affiliate-heading p:not(.affiliate-kicker){font-size:15px;color:var(--affiliate-muted);margin:0;max-width:590px}
+body[data-client-page="affiliate"] .affiliate-history-link{white-space:nowrap;display:inline-flex;align-items:center;gap:18px}
+body[data-client-page="affiliate"] .affiliate-load{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px;color:var(--affiliate-muted);font-size:13px}
+body[data-client-page="affiliate"] .linkbox{border:1px solid var(--affiliate-border);border-radius:20px;background:#fff;color:#101416;box-shadow:0 2px 8px #10141604}
+body[data-client-page="affiliate"] .linkbox .lt{height:2px;opacity:.65}
+body[data-client-page="affiliate"] .linkbox .lb{padding:25px 28px}
+body[data-client-page="affiliate"] .affiliate-section-title{font-size:19px;font-weight:650;letter-spacing:-.03em}
+body[data-client-page="affiliate"] .affiliate-section-note{font-size:13px;color:var(--affiliate-muted);margin:4px 0 21px}
+body[data-client-page="affiliate"] .offerrow{margin-top:18px}
+body[data-client-page="affiliate"] .offerrow .offername{color:#101416;font-size:14px;font-weight:600}
+body[data-client-page="affiliate"] .linkrow{gap:10px;margin-top:8px;align-items:stretch}
+body[data-client-page="affiliate"] .linkrow input{min-width:0;flex:1 1 220px;width:100%;min-height:46px;padding:11px 14px;border:1px solid #dce0da;border-radius:11px;background:#f8f9f6;color:#35403d;font:14px ui-monospace,"SFMono-Regular",monospace;letter-spacing:-.02em}
+body[data-client-page="affiliate"] .linkrow .btn{background:#101416;border-color:#101416;color:#fff;min-width:115px}
+body[data-client-page="affiliate"] .linkrow .btn:hover{background:#303738;border-color:#303738}
+body[data-client-page="affiliate"] .affiliate-link-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;border-top:1px solid var(--affiliate-border);padding-top:20px;margin-top:24px}
+body[data-client-page="affiliate"] .affiliate-link-meta>div{min-width:0}
+body[data-client-page="affiliate"] .affiliate-link-meta .eyebrow{font-size:12px;color:var(--affiliate-muted)!important;font-weight:500}
+body[data-client-page="affiliate"] .affiliate-link-meta .mono{font:600 16px/1.4 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;overflow-wrap:anywhere;letter-spacing:-.02em}
+body[data-client-page="affiliate"] .affiliate-link-meta .btn{margin-top:10px;min-height:34px;padding:5px 10px;font-size:12px}
+body[data-client-page="affiliate"] .affiliate-link-meta [id$="Note"]{max-width:none!important;font-size:12px!important;color:var(--affiliate-muted)!important}
+body[data-client-page="affiliate"] .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0;border:1px solid var(--affiliate-border);background:#fff;border-radius:18px;overflow:hidden;margin-top:20px!important}
+body[data-client-page="affiliate"] .stat{min-width:0;padding:22px 24px;border:0;border-right:1px solid var(--affiliate-border);border-radius:0;background:transparent;box-shadow:none}
+body[data-client-page="affiliate"] .stat:last-child{border-right:0}
+body[data-client-page="affiliate"] .stat::before{display:none}
+body[data-client-page="affiliate"] .stat .sv{font:650 34px/1.2 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.045em;margin:12px 0 8px}
+body[data-client-page="affiliate"] .stat .sd{font-size:12px;line-height:1.5;color:var(--affiliate-muted)}
+body[data-client-page="affiliate"] .eyebrow{font:600 12px/1.4 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.015em;text-transform:none}
+body[data-client-page="affiliate"] .card{border:1px solid var(--affiliate-border);border-radius:18px;box-shadow:0 2px 8px #10141603;margin-top:20px!important}
+body[data-client-page="affiliate"] .card-hd{padding:18px 24px;border-bottom:1px solid var(--affiliate-border);gap:12px}
+body[data-client-page="affiliate"] .card-bd{padding:24px}
+body[data-client-page="affiliate"] .hair{display:none}
+body[data-client-page="affiliate"] .btn{min-height:44px;padding:10px 15px;border:1px solid #d9ded7;border-radius:11px;background:#fff;color:#101416;font:600 13px/1.4 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none;cursor:pointer}
+body[data-client-page="affiliate"] .btn.dark{background:#101416;border-color:#101416;color:#fff}
+body[data-client-page="affiliate"] .btn:hover{border-color:#a4aca4}
+body[data-client-page="affiliate"] .btn:disabled{opacity:.55;cursor:wait}
+body[data-client-page="affiliate"] :is(input,select){max-width:100%;min-height:44px;border-radius:11px!important;font-size:14px!important}
+body[data-client-page="affiliate"] .tabs{display:flex;gap:24px;padding:0 24px;background:#fff;border-bottom:1px solid var(--affiliate-border)}
+body[data-client-page="affiliate"] .tab{min-width:0;min-height:56px;padding:14px 0;margin:0;border-bottom:2px solid transparent;font:600 14px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none;color:var(--affiliate-muted);white-space:nowrap}
+body[data-client-page="affiliate"] .tab.on{color:#101416;border-bottom-color:#101416}
+body[data-client-page="affiliate"] .affiliate-table-scroll{overflow:auto;overscroll-behavior-inline:contain}
+body[data-client-page="affiliate"] table.grid{min-width:690px}
+body[data-client-page="affiliate"] table.grid th{padding:13px 20px;background:#f8f9f6;color:#64706b;font:500 12px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none}
+body[data-client-page="affiliate"] table.grid td{padding:15px 20px;font-size:14px}
+body[data-client-page="affiliate"] .badge{font:500 12px/1.4 ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none;border-radius:6px;padding:4px 8px}
+body[data-client-page="affiliate"] .scopebar{padding:13px 0;background:transparent;border:0;border-radius:0;margin-bottom:0}
+body[data-client-page="affiliate"] .scopebar summary{font-size:13px;color:#56625d;list-style:revert;display:list-item;margin-left:16px}
+body[data-client-page="affiliate"] .scopebar .st:not(summary){font-size:13px;max-width:75ch;margin-top:10px}
+body[data-client-page="affiliate"] .banner{border-radius:14px;background:#fff9f3;border-color:#ead6bf;padding:18px 22px;min-width:0}
+body[data-client-page="affiliate"] .banner>div{min-width:0!important}
+body[data-client-page="affiliate"] .funnel{gap:12px;margin:0}
+body[data-client-page="affiliate"] .fstep .fb{border-radius:8px;background:#f0f2ee!important;color:#101416!important;font-family:inherit;font-size:21px;font-weight:600;height:52px}
+body[data-client-page="affiliate"] .fstep .fl{font:600 13px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none}
+body[data-client-page="affiliate"] .fstep .fp{font-family:inherit;font-size:12px}
+body[data-client-page="affiliate"] .terms dt{font:600 14px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;text-transform:none}
+body[data-client-page="affiliate"] .terms dd{color:#56625d;font-size:14px;line-height:1.65}
+body[data-client-page="affiliate"] .affiliate-resources-heading{margin:34px 0 4px}
+body[data-client-page="affiliate"] .affiliate-resources-heading h2{font-size:20px;font-weight:650;letter-spacing:-.025em}
+body[data-client-page="affiliate"] .affiliate-resources-heading p{font-size:13px;color:var(--affiliate-muted);margin-top:4px}
+body[data-client-page="affiliate"] .affiliate-resources{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+body[data-client-page="affiliate"] .affiliate-resources>.card{margin:16px 0 0!important}
+body[data-client-page="affiliate"] #brainQ{min-width:0!important;flex-basis:220px}
+body[data-client-page="affiliate"] .foot{font:12px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0;border-top:1px solid var(--affiliate-border);color:#6b746e}
+body[data-client-page="affiliate"] :is(button,a,input,select,summary,[tabindex]):focus-visible{outline:2px solid #101416;outline-offset:4px}
+/* Client frame replaces only the client rail. External affiliate/staff rails remain. */
+body[data-client-ios][data-client-nav] :is(#side,#fh-menu-btn,#fh-side-scrim){display:none!important}
+body[data-client-ios] .app{display:block;min-width:0;padding-left:0!important;background:transparent}
 body[data-client-ios] .main{width:100%;min-width:0}
-body[data-client-ios] .content{max-width:1320px;width:100%;padding:28px clamp(18px,4vw,64px) 50px;margin:0 auto}
-body[data-client-ios] .topbar{padding-inline:clamp(18px,4vw,64px);background:transparent;border-bottom:1px solid var(--line)}
-@media(max-width:760px){body[data-client-ios] .content{padding-top:18px}body[data-client-ios] .topbar .crumb{display:none}}
-body[data-client-ios] .tab{min-width:0;white-space:normal}
-body[data-client-ios] .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-@media(max-width:1000px){body[data-client-ios] .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media(max-width:760px){body[data-client-ios] .topbar{position:relative;top:auto;gap:8px;padding-block:14px}body[data-client-ios] .topbar #fh-shell-chip{max-width:100%;flex-wrap:wrap!important}body[data-client-ios] .tab{font-size:12px!important}}
-body[data-client-ios] .app{padding-left:0!important;background:transparent}
-body[data-client-ios] .topbar{height:auto;min-height:72px;flex:0 0 auto;flex-wrap:wrap;position:relative;top:auto;padding-block:12px}
-body[data-client-ios] #fh-shell-chip{background:#e9eaf0!important;color:#555d70!important;border:1px solid #dfe2ea!important;border-radius:14px!important;letter-spacing:0!important;padding:7px 10px!important}
-body[data-client-ios] #fh-shell-chip button{color:#343c50!important;border-color:#c5cbd9!important;border-radius:8px!important}
-body[data-client-ios][data-client-nav] :is(#fh-menu-btn,#fh-side-scrim){display:none!important}
+body[data-client-ios] .topbar{height:auto;min-height:70px;flex:0 0 auto;flex-wrap:wrap;position:relative;top:auto;gap:10px;padding:16px clamp(20px,3vw,48px);background:transparent;border-bottom:1px solid var(--affiliate-border)}
+body[data-client-ios] .topbar h1{font-size:16px;font-weight:600;letter-spacing:-.025em}
+body[data-client-ios] .topbar .crumb{display:none}
+body[data-client-ios] #affWhoChip{font-size:12px;background:transparent;border:0;padding:0;color:#687075}
+@media(max-width:1000px){body[data-client-page="affiliate"] .affiliate-link-meta{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-client-page="affiliate"] .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}body[data-client-page="affiliate"] .stat:nth-child(2){border-right:0}body[data-client-page="affiliate"] .stat:nth-child(-n+2){border-bottom:1px solid var(--affiliate-border)}body[data-client-page="affiliate"] .affiliate-resources{grid-template-columns:1fr}}
+@media(max-width:600px){body[data-client-page="affiliate"] .content{padding:24px 16px 40px}body[data-client-page="affiliate"] .affiliate-heading{align-items:flex-start;gap:14px;flex-direction:column}body[data-client-page="affiliate"] .affiliate-heading h2{font-size:29px}body[data-client-page="affiliate"] .affiliate-heading p:not(.affiliate-kicker){font-size:14px}body[data-client-page="affiliate"] .affiliate-history-link{min-height:38px;padding:8px 12px}body[data-client-page="affiliate"] .linkbox .lb{padding:22px 18px}body[data-client-page="affiliate"] .linkrow{flex-wrap:nowrap}body[data-client-page="affiliate"] .linkrow input{font-size:12px!important;flex-basis:0;padding:10px}body[data-client-page="affiliate"] .linkrow .btn{min-width:84px;padding:10px;font-size:12px}body[data-client-page="affiliate"] .affiliate-link-meta{gap:22px 16px}body[data-client-page="affiliate"] .stat{padding:18px 16px}body[data-client-page="affiliate"] .stat .sv{font-size:32px}body[data-client-page="affiliate"] .card-hd,body[data-client-page="affiliate"] .card-bd{padding:18px}body[data-client-page="affiliate"] .tabs{gap:20px;padding:0 18px}body[data-client-page="affiliate"] .tab{font-size:13px}body[data-client-page="affiliate"] #q{width:100%!important}body[data-client-page="affiliate"] #affiliate-records .card-hd .eyebrow{display:none}body[data-client-page="affiliate"] .fstep{flex-basis:25%}}
+@media(prefers-reduced-motion:reduce){body[data-client-page="affiliate"] *{scroll-behavior:auto!important;transition:none!important}}

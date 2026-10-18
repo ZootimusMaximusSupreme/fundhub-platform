@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-const evidence = 'ops/workflows/build-evidence/client-portal-ios-redo';
+const evidence = 'ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18';
 const reply = (route, body) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
 for (const width of [1440, 390, 320]) {
   test(`page_portal_login ${width}: empty, loading, error, sent, keyboard`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 });
+    await page.setViewportSize({ width, height: 844 });
     let finish;
     const requests = [];
     await page.route('**/api/auth/magic-link', route => {
@@ -16,9 +16,18 @@ for (const width of [1440, 390, 320]) {
     await expect(page.locator('#email')).toHaveValue('');
     await expect(page.locator('#ok-box')).toBeHidden();
     await expect(page.locator('#busy')).toBeHidden();
+    const password = page.getByRole('link', { name: 'Sign in with password' });
+    await expect(password).toHaveAttribute('href', '/login.html?next=%2Fapp%2Fclient-portal.html');
+    await expect(password).toBeVisible();
+    expect((await password.boundingBox()).y + (await password.boundingBox()).height).toBeLessThan(844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     fs.mkdirSync(evidence, { recursive: true });
     await page.screenshot({ path: `${evidence}/page_portal_login-${width}-empty.png`, fullPage: true });
+    await password.evaluate(el => { el.style.outline = '2px solid #c42332'; el.style.outlineOffset = '4px'; });
+    await page.evaluate(() => { const caption = document.createElement('div'); caption.id = 'review-caption'; caption.textContent = 'Review: password sign-in restored'; caption.style.cssText = 'position:fixed;bottom:12px;left:12px;background:#fff;color:#a31624;border:1px solid #c42332;padding:8px;font:12px sans-serif;z-index:9999'; document.body.append(caption); });
+    await page.screenshot({ path: `${evidence}/page_portal_login-${width}-marked.png`, fullPage: true });
+    await password.evaluate(el => { el.style.outline = ''; el.style.outlineOffset = ''; });
+    await page.evaluate(() => document.getElementById('review-caption').remove());
     await page.getByLabel('Email address').fill('safe-fixture@example.test');
     await page.locator('#email').press('Tab');
     await expect(page.locator('#go')).toBeFocused();

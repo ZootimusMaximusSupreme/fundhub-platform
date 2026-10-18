@@ -182,8 +182,8 @@
   }
 
   function renderEmptyThread() {
-    return '<div class="empty"><h2>Ask your money helper anything about your money</h2>' +
-      '<p>It reads your accounts, cards, bills and plan, and answers with your real numbers. It can set a reminder, add a step to your plan, or get you a person.</p>' +
+    return '<div class="empty"><h2>Start a conversation</h2>' +
+      '<p>Ask about your connected accounts, bills or plan, or paste a decline letter. The helper can set reminders, add plan steps or ask a person to follow up.</p>' +
       '<div class="suggest">' + SUGGESTIONS.map(function (s) {
         return '<button type="button" class="btn" data-act="suggest" data-text="' + esc(s) + '">' + esc(s) + '</button>';
       }).join("") + '</div></div>';

@@ -143,9 +143,10 @@ describe("full — the month", () => {
     assert.match(P.render(nov, {}), /data-month="2026-10">Today<\/button>/);
   });
 
-  test("a client sees no staff control and no primary button in the month view", () => {
+  test("a client sees no staff control and one read-only next-step action", () => {
     assert.doesNotMatch(html, /data-act="mark"|Staff only/);
-    assert.equal((html.match(/class="btn-primary"/g) || []).length, 0);
+    assert.equal((html.match(/class="btn-primary next-step"/g) || []).length, 1);
+    assert.match(html, /data-pin="[^"]+">View next step<\/button>/);
   });
 });
 

@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-const root='ops/workflows/build-evidence/client-portal-ios-redo';
-test.beforeEach(async ({page}) => { await page.route('https://**/*', route => route.abort()); });
+const root='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18';
+test.beforeEach(async ({page}) => { await page.route('https://**/*', route => route.abort()); await page.route('**/api/**', route => route.fulfill({status:401,contentType:'application/json',body:'{"ok":false}'})); });
 const json=(r,b,status=200)=>r.fulfill({status,contentType:'application/json',body:JSON.stringify(b)});
 for(const width of [1440,390,320]) test(`page_login ${width}: empty loading error reset keyboard`,async({page})=>{
-  await page.setViewportSize({width,height:1000});
+  await page.setViewportSize({width,height:width === 1440 ? 800 : 568});
   let resolveLogin;
   await page.route('**/api/auth/session',r=>json(r,{ok:false},401));
   await page.route('**/api/auth/login',r=>r.request().method()==='GET'?json(r,{demo:{enabled:false}}):new Promise(resolve=>{resolveLogin=async()=>{await json(r,{ok:false},401);resolve();};}));
@@ -12,9 +12,13 @@ for(const width of [1440,390,320]) test(`page_login ${width}: empty loading erro
   await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
   await expect(page.locator('#email')).toBeEmpty();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  expect(await page.locator('#go').evaluate(el => el.getBoundingClientRect().bottom < innerHeight)).toBeTruthy();
+  await expect(page.locator('label[for=email]')).toBeVisible();
+  await expect(page.locator('label[for=pw]')).toBeVisible();
   await page.screenshot({path:`${root}/page_login-${width}-empty.png`,fullPage:true});
   await page.locator('#email').fill('safe@example.test');
   await page.locator('#pw').fill('safe-test-password');
+  await page.screenshot({path:`${root}/page_login-${width}-filled.png`,fullPage:true});
   await page.getByRole('button',{name:'Show password',exact:true}).click();
   await expect(page.locator('#pw')).toHaveAttribute('type','text');
   await page.locator('#go').focus();await page.keyboard.press('Enter');
@@ -30,12 +34,14 @@ for(const width of [1440,390,320]) test(`page_login ${width}: empty loading erro
   await page.locator('#fh-forgot-go').click();
   await expect(page.locator('#fh-forgot-msg')).toContainText('Nothing was sent');
 });
-test('page_login staff default remains unstyled and client success preserves session',async({page})=>{
+test('page_login all-role entry and client success preserve session',async({page})=>{
   await page.route('**/api/auth/session',r=>json(r,{ok:false},401));
   await page.route('**/api/auth/login',r=>json(r,{demo:{enabled:false}}));
   await page.goto('/login.html');
   await expect(page.locator('body')).not.toHaveAttribute('data-client-ios','');
-  await expect(page.locator('.client-login-label').first()).toBeHidden();
+  await expect(page.locator('.client-login-label').first()).toBeVisible();
+  await expect(page.locator('.login-context-default')).toBeVisible();
+  await expect(page.getByRole('link',{name:/Client sign-in with an email link/})).toHaveAttribute('href','/portal-login.html');
   await page.route('**/api/auth/login',r=>r.request().method()==='GET'?json(r,{demo:{enabled:false}}):json(r,{ok:true,token:'test-only',account:{kind:'client',clientId:'safe-client'}}));
   await page.route(url => url.pathname === '/app/client-portal.html',r=>r.fulfill({contentType:'text/html',body:'<h1>Safe destination</h1>'}));
   await page.goto('/login.html?next=/app/client-portal.html');
@@ -52,4 +58,16 @@ test('page_login full server-enabled demo roster and reset sent',async({page})=>
   await page.screenshot({path:`${root}/page_login-full.png`,fullPage:true});
   await page.locator('#fh-forgot-link').click();await page.locator('#fh-forgot-email').fill('safe@example.test');
   await page.locator('#fh-forgot-go').click();await expect(page.locator('#fh-forgot-msg')).toContainText('Check that inbox');
+});
+
+for (const [status,expected] of [[429,'Too many attempts'],[403,'Account not active'],[500,'Server error']]) test(`page_login honest ${status} feedback`,async({page})=>{
+  await page.route('**/api/auth/login',r=>r.request().method()==='GET'?json(r,{demo:{enabled:false}}):json(r,{ok:false},status));
+  await page.goto('/login.html');await page.locator('#email').fill('safe@example.test');await page.locator('#pw').fill('test-only-password');
+  await page.locator('#go').click();await expect(page.locator('#err')).toContainText(expected);await expect(page.locator('#go')).toBeEnabled();
+});
+test('page_login staff session uses existing default destination',async({page})=>{
+ await page.route('**/api/auth/login',r=>r.request().method()==='GET'?json(r,{demo:{enabled:false}}):json(r,{ok:true,token:'test-staff-token',staff:{role:'owner'}}));
+ await page.route(url=>url.pathname==='/app/',r=>r.fulfill({contentType:'text/html',body:'<h1>Safe staff destination</h1>'}));
+ await page.goto('/login.html');await page.locator('#email').fill('safe@example.test');await page.locator('#pw').fill('test-only-password');await page.locator('#go').click();
+ await page.waitForURL(url=>url.pathname==='/app/');expect(await page.evaluate(()=>localStorage.fh_role)).toBe('owner');
 });

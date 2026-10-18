@@ -1,43 +1,52 @@
-/* Standalone credit shell; verified client sessions only. */
+/* Credit presentation shared by the standalone root and FinanceOS credit mount.
+   No data, permission, score or action behavior belongs in this stylesheet. */
 body[data-client-ios][data-client-page="money-credit"] .app{min-width:0}
-body[data-client-ios][data-client-page="money-credit"] .mbar{background:transparent;color:var(--client-muted);border:0;border-image:none;padding:24px 32px 8px;min-height:64px}
+body[data-client-ios][data-client-page="money-credit"] .mbar{background:transparent;color:#656b6e;border:0;border-image:none;padding:20px 32px 8px;min-height:60px}
 body[data-client-ios][data-client-page="money-credit"] .mbar .brand{display:none}
-body[data-client-ios][data-client-page="money-credit"] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600}
+body[data-client-ios][data-client-page="money-credit"] .mbar a{color:#555d60;text-decoration:none;font-weight:600;font-size:13px}
 body[data-client-ios][data-client-page="money-credit"] .mbar a::before{content:"←";margin-right:8px}
-body[data-client-ios][data-client-page="money-credit"] .mnav{background:transparent;border:0;padding:8px 32px}
-body[data-client-ios][data-client-page="money-credit"] .mnav ul{gap:8px;padding:8px;border-radius:24px;background:#e9ebf1}
-body[data-client-ios][data-client-page="money-credit"] .mnav a{border:0;border-radius:16px;min-height:44px;color:#626875;font-weight:600;padding:0 16px}
-body[data-client-ios][data-client-page="money-credit"] .mnav a[aria-current="page"]{background:#fff;color:var(--client-ink);box-shadow:0 3px 12px #20283c0a}
-body[data-client-ios][data-client-page="money-credit"] main{padding:32px 32px 64px;min-width:0}
-body[data-client-ios][data-client-page="money-credit"] .head{margin-bottom:32px}
-body[data-client-ios][data-client-page="money-credit"] .head h1{font-size:clamp(40px,5vw,64px)!important;font-weight:740;letter-spacing:-.07em;line-height:1.1;margin-bottom:8px}
-body[data-client-ios][data-client-page="money-credit"] .caption{color:#646a76;overflow-wrap:anywhere}
-body[data-client-ios][data-client-page="money-credit"] .card{border:1px solid #ffffffeb;border-radius:28px;padding:24px;background:#fff;box-shadow:var(--panel-shadow)}
-body[data-client-ios][data-client-page="money-credit"] .eyebrow{font-family:var(--sans);font-size:12px!important;font-weight:700;letter-spacing:.08em;color:#69717f}
-body[data-client-ios][data-client-page="money-credit"] .big{font-family:var(--sans);font-size:48px!important;font-weight:720;letter-spacing:-.06em}
-body[data-client-ios][data-client-page="money-credit"] .num{font-family:var(--sans);font-variant-numeric:tabular-nums}
-body[data-client-ios][data-client-page="money-credit"] .grid.tiles:first-of-type>.tile{background:linear-gradient(145deg,#f0edf9,#fff)}
-body[data-client-ios][data-client-page="money-credit"] .grid.tiles>.tile:nth-child(2){background:linear-gradient(145deg,#eaf2fa,#fff)}
-body[data-client-ios][data-client-page="money-credit"] .grid.tiles>.tile:nth-child(3){background:linear-gradient(145deg,#eaf6ef,#fff)}
-body[data-client-ios][data-client-page="money-credit"] .gauge{max-width:176px;margin:8px 0}
-body[data-client-ios][data-client-page="money-credit"] .gauge-fill{stroke:#7773aa}
-body[data-client-ios][data-client-page="money-credit"] .gauge-track{stroke:#e5e4ed}
-body[data-client-ios][data-client-page="money-credit"] .sample{border:1px solid #e1d9f4;background:#eeebfa;color:#514b77;border-radius:16px;padding:16px}
-body[data-client-ios][data-client-page="money-credit"] .btn-primary{border-radius:16px;min-height:48px;background:#202432;color:#fff;border:0}
-body[data-client-ios][data-client-page="money-credit"] .scroll-x{max-width:100%;border-radius:16px;overscroll-behavior-x:contain}
-body[data-client-ios][data-client-page="money-credit"] th{background:#f4f5f8}
-body[data-client-ios][data-client-page="money-credit"] :is(th,td){padding:16px}
-body[data-client-ios][data-client-page="money-credit"] .empty,body[data-client-ios][data-client-page="money-credit"] .error{padding:32px}
-@media(max-width:760px){
- body[data-client-ios][data-client-page="money-credit"] :is(.mbar,.mnav){padding-left:16px;padding-right:16px}
- body[data-client-ios][data-client-page="money-credit"] main{padding:24px 16px 48px}
- body[data-client-ios][data-client-page="money-credit"] .mnav ul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
- body[data-client-ios][data-client-page="money-credit"] .mnav a{padding:0 8px;justify-content:center;font-size:13px!important;width:100%}
- body[data-client-ios][data-client-page="money-credit"] .card{padding:24px}
- body[data-client-ios][data-client-page="money-credit"] .tiles>*{grid-column:span 6}
- body[data-client-ios][data-client-page="money-credit"] .tiles .card{padding:16px}
- body[data-client-ios][data-client-page="money-credit"] .big{font-size:40px!important}
- body[data-client-ios][data-client-page="money-credit"] .eyebrow{letter-spacing:.03em;overflow-wrap:anywhere}
- body[data-client-ios][data-client-page="money-credit"] .grid{gap:16px}
-}
-@media(max-width:350px){body[data-client-ios][data-client-page="money-credit"] .tiles>*{grid-column:span 12}}
+body[data-client-ios][data-client-page="money-credit"] main{padding:24px 32px 56px;min-width:0}
+:is(#credit-root,#fos-credit){color:#101416;font:15px/1.5 var(--sans,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif);min-width:0}
+:is(#credit-root,#fos-credit) .head{margin:0 0 24px;display:flex;gap:16px;flex-wrap:wrap}
+:is(#credit-root,#fos-credit) .head h1{font-size:32px;font-weight:750;letter-spacing:-.045em;line-height:1.15;margin:0 0 8px;color:#101416}
+:is(#credit-root,#fos-credit) .caption{color:#646b6e;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+:is(#credit-root,#fos-credit) .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-bottom:24px}
+:is(#credit-root,#fos-credit) .tiles>*{grid-column:span 3}
+:is(#credit-root,#fos-credit) .two>*{grid-column:span 6}
+:is(#credit-root,#fos-credit) .card{min-width:0;border:1px solid #e5e7e5;border-radius:18px;padding:24px;background:#fff;box-shadow:0 2px 5px #10141603}
+:is(#credit-root,#fos-credit) .tile{display:flex;flex-direction:column;gap:6px}
+:is(#credit-root,#fos-credit) .eyebrow{display:block;font:600 13px/1.4 var(--sans,-apple-system,sans-serif);letter-spacing:0;text-transform:none;color:#5d666a;margin:0 0 8px}
+:is(#credit-root,#fos-credit) .eyebrow::before{display:none}
+:is(#credit-root,#fos-credit) .big{display:block;font:740 36px/1.15 var(--sans,-apple-system,sans-serif);font-variant-numeric:tabular-nums;letter-spacing:-.045em;color:#101416}
+:is(#credit-root,#fos-credit) .num{font-family:var(--sans,-apple-system,sans-serif);font-variant-numeric:tabular-nums}
+:is(#credit-root,#fos-credit) .gauge{display:block;width:100%;max-width:136px;height:auto;margin:8px 0}
+:is(#credit-root,#fos-credit) .gauge-fill{fill:none;stroke:#202b2a;stroke-width:8;stroke-linecap:round}
+:is(#credit-root,#fos-credit) .gauge-track{fill:none;stroke:#e9ece8;stroke-width:8;stroke-linecap:round}
+:is(#credit-root,#fos-credit) .band-word{font-size:15px;font-weight:650;color:#243b32}
+:is(#credit-root,#fos-credit) .credit-facts .card{padding:20px 24px;background:#f1f3ef;border-color:#e5e8e2}
+:is(#credit-root,#fos-credit) .credit-facts .big{font-size:32px}
+:is(#credit-root,#fos-credit) .sample{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;border:1px solid #e2e4df;background:#f0f1ec;color:#535b51;border-radius:11px;padding:12px 16px;margin-bottom:24px;font-size:13px}
+:is(#credit-root,#fos-credit) .two .eyebrow,:is(#credit-root,#fos-credit) #c-acct{font-size:18px;color:#101416;font-weight:700;margin-bottom:16px}
+:is(#credit-root,#fos-credit) .says{list-style:none;padding:0;margin:0 0 16px}
+:is(#credit-root,#fos-credit) .says li{padding:12px 0;border-top:1px solid #e8eae5}
+:is(#credit-root,#fos-credit) .says li:first-child{padding-top:0;border-top:0}
+:is(#credit-root,#fos-credit) .btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;border-radius:11px;background:#101416;color:#fff;border:1px solid #101416;font-size:14px;font-weight:650;text-decoration:none}
+:is(#credit-root,#fos-credit) .scroll-x{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:11px;border:1px solid #e7e9e5}
+:is(#credit-root,#fos-credit) table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+:is(#credit-root,#fos-credit) th{background:#f4f5f1;color:#60696b;font-size:12px;font-weight:600;text-align:left}
+:is(#credit-root,#fos-credit) :is(th,td){padding:14px 16px;border-bottom:1px solid #e9ebe7;white-space:nowrap}
+:is(#credit-root,#fos-credit) .r{text-align:right}
+:is(#credit-root,#fos-credit) tbody tr:last-child td{border-bottom:0}
+:is(#credit-root,#fos-credit) .used-bar{height:6px;display:block;width:100%;margin-top:6px}
+:is(#credit-root,#fos-credit) td .used-bar{width:64px;margin-left:auto}
+:is(#credit-root,#fos-credit) .used-track{fill:#e0e5dc}
+:is(#credit-root,#fos-credit) .used-fill{fill:#263c30}
+:is(#credit-root,#fos-credit) .empty,:is(#credit-root,#fos-credit) .error{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:32px}
+:is(#credit-root,#fos-credit) :is(.empty,.error) h2{font-size:20px;line-height:1.3}
+:is(#credit-root,#fos-credit) .chart{display:block;width:100%;height:auto;max-height:220px;margin:8px 0}
+:is(#credit-root,#fos-credit) .chart-label{fill:#646b6e}
+:is(#credit-root,#fos-credit) .legend{display:flex;gap:16px;flex-wrap:wrap}
+:is(#credit-root,#fos-credit) .skel{min-height:120px;gap:12px}
+@media(max-width:1100px){:is(#credit-root,#fos-credit) .tiles>*{grid-column:span 6}:is(#credit-root,#fos-credit) .two>*{grid-column:span 12}}
+@media(max-width:760px){body[data-client-ios][data-client-page="money-credit"] .mbar{padding:16px}body[data-client-ios][data-client-page="money-credit"] main{padding:20px 16px 40px}:is(#credit-root,#fos-credit) .card{padding:20px}:is(#credit-root,#fos-credit) .credit-facts .card{padding:16px}:is(#credit-root,#fos-credit) .grid{gap:12px}:is(#credit-root,#fos-credit) .head h1{font-size:28px}:is(#credit-root,#fos-credit) .big{font-size:32px}}
+@media(max-width:350px){:is(#credit-root,#fos-credit) .tiles>*{grid-column:span 12}}

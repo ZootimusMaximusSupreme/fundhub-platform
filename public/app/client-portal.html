@@ -515,8 +515,20 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
     if (caption && caption.textContent !== text) caption.textContent = text;
     var a = link && link.querySelector("a");
     if (a && a.textContent !== "View progress →") a.textContent = "View progress →";
+    var account = document.getElementById("acct"), offers = document.getElementById("unlock-t");
+    if (account && offers && offers.closest("section") && account.parentNode === offers.closest("section").parentNode && account.nextElementSibling !== offers.closest("section")) offers.closest("section").before(account);
+    var nextTitle = document.getElementById("cp-next-title"), nextCopy = document.getElementById("cp-next-copy"), nextLink = document.getElementById("cp-next-link");
+    var title = "Review your account.", copy = "Review your documents, agreements and payments.", href = "#acct", action = "Open your account →";
+    var sign = document.getElementById("dispute-auth-card"), call = document.getElementById("call-confirm-btn");
+    if (call && !call.hidden) { title = "Confirm your upcoming call."; copy = "Let your team know you can make it."; href = "#call-confirm-card"; action = "Review your call →"; }
+    if (!document.body.classList.contains("no-docs") && !document.body.classList.contains("no-upload-doors")) { title = "Send your documents."; copy = "Use the secure upload that matches your file."; href = "#action-card"; action = "Upload documents →"; }
+    if (sign && !document.body.classList.contains("no-dispute-consent") && !sign.classList.contains("is-signed")) { title = "Review your authorization."; copy = "Read and sign the request from your team."; href = "#dispute-auth-card"; action = "Review authorization →"; }
+    if (nextTitle && nextTitle.textContent !== title) nextTitle.textContent = title;
+    if (nextCopy && nextCopy.textContent !== copy) nextCopy.textContent = copy;
+    if (nextLink) { if (nextLink.getAttribute("href") !== href) nextLink.setAttribute("href", href); if (nextLink.textContent !== action) nextLink.textContent = action; }
+
   }
-  new MutationObserver(enhance).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ["class", "data-client-ios"] });
+  new MutationObserver(enhance).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ["class", "data-client-ios", "hidden"] });
   enhance();
 })();
 </script>
@@ -538,7 +550,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
   <main id="portal-home">
     <div class="page fh-maxw">
 
-      <div class="cp-home-heading"><p>Your Fundhub space</p><h1>Home.</h1></div>
+      <div class="cp-home-heading" aria-hidden="true"></div>
       <div class="welcome" id="greeting">Welcome to your Fundhub portal</div>
       <!-- Loading words until the file answers (hole N14, live 2026-09-18): this
            line used to START as the refusal, so every good load showed "We could
@@ -547,6 +559,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <div class="welcome-sub precall-only" id="greeting-sub-pre">Loading your file…</div>
       <div class="welcome-sub funding-only" id="greeting-sub">Here's where things stand on your funding.</div>
       <div class="rep-files" id="rep-files" hidden></div>
+      <section class="cp-next-action" aria-labelledby="cp-next-title"><div class="card-title">Next action</div><h2 id="cp-next-title">Review your account.</h2><p id="cp-next-copy">Review your documents, agreements and payments.</p><a id="cp-next-link" href="#acct">Open your account →</a></section>
 
       <!-- ══ 1 · WELCOME VIDEO (hero) ════════════════════════════════════ -->
       <section class="card video-card" aria-labelledby="video-title">
@@ -3291,7 +3304,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!amt) return "live pre-qual · none yet";
       var preMain = document.getElementById("sb-pre-main");
       if (preMain) {
-        preMain.textContent = "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
+        preMain.textContent = document.body.hasAttribute("data-client-ios")
+          ? "Your soft-pull assessment is in."
+          : "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
       }
       return "live pre-qual · " + amt;
     });
@@ -4410,5 +4425,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 })();
 </script>
 
+<script>
+(function () {
+  function openAccount() {
+    if (!document.body.hasAttribute("data-client-ios")) return;
+    var view = new URLSearchParams(location.search).get("view");
+    var tab = { documents: "docs", agreements: "agree", payments: "pay", messages: "msg", activity: "act" }[view];
+    if (!tab) return;
+    var account = document.getElementById("acct"), button = document.querySelector('#acct-tabs [data-tab="' + tab + '"]');
+    if (account && button) { account.open = true; button.click(); requestAnimationFrame(function () { account.scrollIntoView({ block: "start", behavior: "instant" }); }); }
+  }
+  new MutationObserver(openAccount).observe(document.body, { attributes: true, attributeFilter: ["data-client-ios"] });
+  document.addEventListener("DOMContentLoaded", openAccount);
+  window.addEventListener("hashchange", openAccount);
+  document.addEventListener("click", function (event) { var link = event.target.closest && event.target.closest("#cp-next-link"); if (link && link.getAttribute("href") === "#acct") { var account = document.getElementById("acct"); if (account) account.open = true; } });
+  if (document.readyState !== "loading") openAccount();
+})();
+</script>
 </body>
 </html>

@@ -8,7 +8,7 @@ for(const width of [1440,390,320])test(`Plan preserves client states and pin con
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
   const json=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
-  if(path==='/api/auth/session')return json({ok:true,principal:role});
+  if(path==='/api/auth/session')return json({ok:true,principal:role,staff:{role}});
   if(path==='/api/read/affiliate-portal')return json({ok:true,enrolled:false});
   if(path==='/api/money/plan'){
    if(route.request().method()!=='GET'){writes++;return json({ok:false},403);}
@@ -21,9 +21,15 @@ for(const width of [1440,390,320])test(`Plan preserves client states and pin con
  await page.goto('/app/money-plan.html');
  await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
  await expect(page.locator('.monthbar')).toContainText('October 2026');
- await expect(page.locator('.mnav a[aria-current=page]')).toHaveText('Plan');
+ await expect(page.getByRole('combobox',{name:'Money section'})).toHaveValue('/app/money-plan.html');
+ await expect(page.locator('.client-money-navigation option')).toHaveCount(16);
+ await page.getByRole('button',{name:'View next step'}).focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('dialog')).toContainText('Pay Business Amex');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await expect(page.getByRole('button',{name:'View next step'})).toBeFocused();
+ if(width===1440){await page.getByText('View month calendar',{exact:true}).click();await expect(page.locator('.cal-grid')).toBeVisible();await page.getByText('View month calendar',{exact:true}).click();}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_plan-${width}.png`,fullPage:true});
+ await page.screenshot({path:`ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/money-plan-${width}.png`,fullPage:true});
  await page.locator('.row[data-pin]').first().focus();await page.keyboard.press('Enter');
  await expect(page.getByRole('dialog')).toBeVisible();
  await expect(page.getByRole('button',{name:'Mark done'})).toHaveCount(0);
@@ -33,10 +39,11 @@ for(const width of [1440,390,320])test(`Plan preserves client states and pin con
  for(const next of ['empty','error','loading']){
   state=next;await page.goto('/app/money-plan.html');
   if(next==='empty')await expect(page.locator('.empty')).toBeVisible();
-  if(next==='error'){await expect(page.locator('.error')).toBeVisible();state='full';await page.getByRole('button',{name:'Try again'}).click();await expect(page.locator('.monthbar')).toBeVisible();}
+  if(next==='error')await expect(page.locator('.error')).toBeVisible();
   if(next==='loading')await expect(page.locator('.skel').first()).toBeVisible();
-  await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_plan-${width}-${next}.png`,fullPage:true});
+  await page.screenshot({path:`ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/money-plan-${width}-${next}.png`,fullPage:true});
   if(next==='loading')release();
+  if(next==='error'){state='full';await page.getByRole('button',{name:'Try again'}).click();await expect(page.locator('.monthbar')).toBeVisible();}
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }
  role='staff';state='full';await page.goto('/app/money-plan.html?client_id=safe-fixture');
@@ -44,4 +51,28 @@ for(const width of [1440,390,320])test(`Plan preserves client states and pin con
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios');
  await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-fixture');
  expect(writes).toBe(0);
+});
+test('Staff mark cancellation and server refusal never claim success',async({page})=>{
+ let writes=0;
+ const staffData={...sample,viewer:'staff',pins:sample.pins.map((pin,index)=>({...pin,can_mark:index===0?['done','missed']:[]}))};
+ await page.route('**/api/**',async route=>{
+  const path=new URL(route.request().url()).pathname;
+  const json=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
+  if(path==='/api/auth/session')return json({ok:true,principal:'staff',staff:{role:'owner'}});
+  if(path==='/api/money/plan'){
+   if(route.request().method()==='GET')return json(staffData);
+   writes++;return json({ok:false,message:'This step could not be updated. Your plan has not changed.'},403);
+  }
+  return json({ok:false},404);
+ });
+ await page.goto('/app/money-plan.html?client_id=safe-fixture');
+ await page.locator('.row[data-pin]').first().click();
+ page.once('dialog',dialog=>dialog.dismiss());
+ await page.getByRole('button',{name:'Mark done',exact:true}).click();
+ expect(writes).toBe(0);
+ page.once('dialog',dialog=>dialog.accept());
+ await page.getByRole('button',{name:'Mark done',exact:true}).click();
+ await expect(page.locator('.act-msg')).toHaveText('This step could not be updated. Your plan has not changed.');
+ await expect(page.getByRole('dialog')).not.toContainText('Marked done.');
+ expect(writes).toBe(1);
 });

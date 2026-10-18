@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { CLIENT_ID, json } from './harness.mjs';
 import fs from 'node:fs';
 import sampleBundle from '../src/demo/client-portal-sample-bundle.json' with {type:'json'};
-const out='ops/workflows/build-evidence/client-portal-ios-redo';
-async function open(page,{state='empty',enrolled=false,postStatus=201,summary}={}){
+const out='ops/workflows/build-evidence/crm-portal-layout-professional';
+async function open(page,{state='empty',enrolled=false,postStatus=201,summary,view}={}){
  await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','client');});
  let joined=enrolled;
  await page.route('**/api/**',async route=>{
@@ -18,9 +18,12 @@ async function open(page,{state='empty',enrolled=false,postStatus=201,summary}={
  return json(route,{ok:true,prequal_amount:null,prequal_display:null,soft_pull_complete:false,scores:state==='full'?{experian:720,equifax:715,transunion:725}: {},documents:state==='full'?[{id:'doc-safe',title:'Sample document',mime_type:'application/pdf',created_at:'2026-10-17T12:00:00Z'}]:[]});}
  return json(route,{ok:true,items:[]});
  });
- await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
+ await page.goto(`/app/client-portal.html?id=${CLIENT_ID}${view ? "&view="+view+"#acct" : ""}`);
  await expect(page.locator('body')).toHaveAttribute('data-client-ios',/.*/);
+ const accountMenu=page.locator('details').filter({has:page.locator('.client-ios-signout')});
+ if(await accountMenu.count()) await accountMenu.locator('summary').click();
  await expect(page.locator('.client-ios-signout')).toBeVisible();
+ if(await accountMenu.count()) await accountMenu.locator('summary').click();
 }
 for(const width of [1440,390,320])test(`client home at ${width}px preserves controls and width`,async({page})=>{
  await page.setViewportSize({width,height:1000});await open(page,{state:'full',enrolled:true});
@@ -58,4 +61,23 @@ test('canonical credit-pull summary controls hero current stage rather than lega
  await page.locator('.cp-progress-disclosure summary').click();
  await expect(page.locator('#stepper-pre .step')).toHaveCount(8);
  await expect(page.locator('.cp-current-stage')).not.toContainText('Booked');
+});
+
+for(const view of ['documents','agreements'])test(`shared navigation ${view} opens existing account tab`,async({page})=>{
+ await open(page,{view});
+ await expect(page.locator('#acct')).toHaveAttribute('open','');
+ const tab=view==='documents'?'docs':'agree';
+ await expect(page.locator(`#acct-tabs [data-tab="${tab}"]`)).toHaveAttribute('aria-selected','true');
+ await expect(page.locator(`#tp-${tab}`)).toBeVisible();
+});
+for(const width of [1440,390,320])test(`professional canonical status and next action ${width}`,async({page})=>{
+ const height=width===320?568:844;await page.setViewportSize({width,height});
+ await open(page,{summary:sampleBundle.reads['/api/read/portal-summary']});
+ await expect(page.locator('.cp-current-stage')).toHaveText('Current: Credit pull received');
+ await expect(page.locator('.cp-next-action')).toBeVisible();
+ const next=await page.locator('.cp-next-action').boundingBox();expect(next.y+next.height).toBeLessThan(height-(width<760?80:0));
+ for(const title of await page.locator('.cp-file-title').all()) await expect(title).toBeHidden();
+ await page.locator("main").evaluate(e=>e.scrollTo({top:0,behavior:"instant"}));
+ fs.mkdirSync(out,{recursive:true});await page.screenshot({path:`${out}/page_client_portal-canonical-${width}.png`,fullPage:true});
+ await page.locator("#cp-next-link").click();await expect(page.locator("#acct")).toHaveAttribute("open","");
 });

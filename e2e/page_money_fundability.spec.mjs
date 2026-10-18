@@ -22,7 +22,7 @@ for(const width of [1440,390,320])test(`Fundability client states and chart cont
  await page.goto('/app/money-fundability.html');
  await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
  await expect(page.locator('#fd-t-now')).toBeVisible();
- await expect(page.locator('.mnav a[aria-current=page]')).toHaveText('Fundability');
+ await expect(page.locator('.client-money-jump select')).toHaveValue('/app/money-fundability.html');
  const cols=page.locator('.fd-col');
  await cols.first().focus();await page.keyboard.press('Enter');
  await expect(cols.first()).toHaveAttribute('aria-pressed','true');
@@ -37,7 +37,7 @@ for(const width of [1440,390,320])test(`Fundability client states and chart cont
   if(next==='error')await expect(page.getByRole('alert')).toBeVisible();
   if(next==='loading')await expect(page.locator('[aria-busy=true]')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_fundability-${next}-${width}.png`,fullPage:true});
+  await page.screenshot({path:`ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-fundability-${next}-${width}.png`,fullPage:true});
   if(next==='error'){state='full';await page.getByRole('button',{name:'Try again'}).click();await expect(page.locator('#fd-t-now')).toBeVisible();}
   if(next==='loading')release();
  }

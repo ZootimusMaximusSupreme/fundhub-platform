@@ -1,0 +1,507 @@
+{
+  "branch": "codex/crm-portal-layout-professional",
+  "base_local_commit": "a4b84be",
+  "owner_authorized": true,
+  "pages": [
+    {
+      "page": "public/app/affiliate.html",
+      "client_facing": true,
+      "single_builder": "/root/page_affiliate",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/affiliate.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-affiliate.md"
+    },
+    {
+      "page": "public/app/agent-editor.html",
+      "client_facing": false,
+      "single_builder": "/root/page_agent_editor",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/agent-editor.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-agent-editor.md"
+    },
+    {
+      "page": "public/app/automations.html",
+      "client_facing": false,
+      "single_builder": "/root/page_automations",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/automations.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-automations.md"
+    },
+    {
+      "page": "public/app/brand-studio.html",
+      "client_facing": false,
+      "single_builder": "/root/page_brand_studio",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/brand-studio.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-brand-studio.md"
+    },
+    {
+      "page": "public/app/calendar.html",
+      "client_facing": false,
+      "single_builder": "/root/page_calendar",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/calendar.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-calendar.md"
+    },
+    {
+      "page": "public/app/campaign-manager.html",
+      "client_facing": false,
+      "single_builder": "/root/page_campaign_manager",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/campaign-manager.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-campaign-manager.md"
+    },
+    {
+      "page": "public/app/client-control-panel.html",
+      "client_facing": false,
+      "single_builder": "/root/page_client_control_panel",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/client-control-panel.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-control-panel.md"
+    },
+    {
+      "page": "public/app/client-portal.html",
+      "client_facing": true,
+      "single_builder": "/root/page_client_portal",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/client-portal.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-portal.md"
+    },
+    {
+      "page": "public/app/closer-dashboard.html",
+      "client_facing": false,
+      "single_builder": "/root/page_closer_dashboard",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/closer-dashboard.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-closer-dashboard.md"
+    },
+    {
+      "page": "public/app/company-brain.html",
+      "client_facing": false,
+      "single_builder": "/root/page_company_brain",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/company-brain.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-company-brain.md"
+    },
+    {
+      "page": "public/app/consent-capture.html",
+      "client_facing": false,
+      "single_builder": "/root/page_consent_capture",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/consent-capture.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-consent-capture.md"
+    },
+    {
+      "page": "public/app/content-admin.html",
+      "client_facing": false,
+      "single_builder": "/root/page_content_admin",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/content-admin.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-content-admin.md"
+    },
+    {
+      "page": "public/app/contracts.html",
+      "client_facing": false,
+      "single_builder": "/root/page_contracts",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/contracts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md"
+    },
+    {
+      "page": "public/app/creative-factory.html",
+      "client_facing": false,
+      "single_builder": "/root/page_creative_factory",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/creative-factory.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-creative-factory.md"
+    },
+    {
+      "page": "public/app/csm-queue.html",
+      "client_facing": false,
+      "single_builder": "/root/page_csm_queue",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/csm-queue.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-csm-queue.md"
+    },
+    {
+      "page": "public/app/documents.html",
+      "client_facing": false,
+      "single_builder": "/root/page_documents",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/documents.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-documents.md"
+    },
+    {
+      "page": "public/app/finance-os.html",
+      "client_facing": false,
+      "single_builder": "/root/page_finance_os",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/finance-os.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md"
+    },
+    {
+      "page": "public/app/financeos.html",
+      "client_facing": true,
+      "single_builder": "/root/page_financeos_frame",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/financeos.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-financeos.md"
+    },
+    {
+      "page": "public/app/galaxy.html",
+      "client_facing": false,
+      "single_builder": "/root/page_galaxy",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/galaxy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-galaxy.md"
+    },
+    {
+      "page": "public/app/hiring.html",
+      "client_facing": false,
+      "single_builder": "/root/page_hiring",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/hiring.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-hiring.md"
+    },
+    {
+      "page": "public/app/inquiry-remover.html",
+      "client_facing": false,
+      "single_builder": "/root/page_inquiry_remover",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/inquiry-remover.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-inquiry-remover.md"
+    },
+    {
+      "page": "public/app/journeys.html",
+      "client_facing": false,
+      "single_builder": "/root/page_journeys",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/journeys.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-journeys.md"
+    },
+    {
+      "page": "public/app/lenders.html",
+      "client_facing": false,
+      "single_builder": "/root/page_lenders",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/lenders.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md"
+    },
+    {
+      "page": "public/app/marketing-command-center.html",
+      "client_facing": false,
+      "single_builder": "/root/page_marketing_command_center",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/marketing-command-center.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-marketing-command-center.md"
+    },
+    {
+      "page": "public/app/messaging.html",
+      "client_facing": false,
+      "single_builder": "/root/page_messaging",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/messaging.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-messaging.md"
+    },
+    {
+      "page": "public/app/money-accounts.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_accounts",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-accounts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-accounts.md"
+    },
+    {
+      "page": "public/app/money-alerts.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_alerts",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-alerts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-alerts.md"
+    },
+    {
+      "page": "public/app/money-banks.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_banks",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-banks.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-banks.md"
+    },
+    {
+      "page": "public/app/money-connections.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_connections",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-connections.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-connections.md"
+    },
+    {
+      "page": "public/app/money-credit.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_credit",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-credit.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-credit.md"
+    },
+    {
+      "page": "public/app/money-declines.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_declines",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-declines.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-declines.md"
+    },
+    {
+      "page": "public/app/money-fundability.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_fundability",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-fundability.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-fundability.md"
+    },
+    {
+      "page": "public/app/money-helper.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_helper",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-helper.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-helper.md"
+    },
+    {
+      "page": "public/app/money-next.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_next",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-next.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-next.md"
+    },
+    {
+      "page": "public/app/money-payments.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_payments",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-payments.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-payments.md"
+    },
+    {
+      "page": "public/app/money-plan.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_plan",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-plan.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-plan.md"
+    },
+    {
+      "page": "public/app/money-setup.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_setup",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-setup.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-setup.md"
+    },
+    {
+      "page": "public/app/money-strategy.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_strategy",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-strategy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-strategy.md"
+    },
+    {
+      "page": "public/app/money-transfers.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_transfers",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-transfers.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-transfers.md"
+    },
+    {
+      "page": "public/app/money-vault.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_vault",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-vault.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-vault.md"
+    },
+    {
+      "page": "public/app/money.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_overview",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money.md"
+    },
+    {
+      "page": "public/app/morning-brief.html",
+      "client_facing": false,
+      "single_builder": "/root/page_morning_brief",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/morning-brief.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-morning-brief.md"
+    },
+    {
+      "page": "public/app/my-numbers.html",
+      "client_facing": false,
+      "single_builder": "/root/page_my_numbers",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/my-numbers.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md"
+    },
+    {
+      "page": "public/app/ops-admin.html",
+      "client_facing": false,
+      "single_builder": "/root/page_ops_admin",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/ops-admin.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-ops-admin.md"
+    },
+    {
+      "page": "public/app/partner-galaxy.html",
+      "client_facing": false,
+      "single_builder": "/root/page_partner_galaxy",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/partner-galaxy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-partner-galaxy.md"
+    },
+    {
+      "page": "public/app/partner-training.html",
+      "client_facing": false,
+      "single_builder": "/root/page_partner_training",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/partner-training.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-partner-training.md"
+    },
+    {
+      "page": "public/app/payment-success.html",
+      "client_facing": true,
+      "single_builder": "/root/page_payment_success",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/payment-success.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-payment-success.md"
+    },
+    {
+      "page": "public/app/pipeline.html",
+      "client_facing": false,
+      "single_builder": "/root/page_pipeline",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/pipeline.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-pipeline.md"
+    },
+    {
+      "page": "public/app/present.html",
+      "client_facing": false,
+      "single_builder": "/root/page_present",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/present.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-present.md"
+    },
+    {
+      "page": "public/app/products-commissions.html",
+      "client_facing": false,
+      "single_builder": "/root/page_products_commissions",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/products-commissions.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-products-commissions.md"
+    },
+    {
+      "page": "public/app/sales-floor.html",
+      "client_facing": false,
+      "single_builder": "/root/page_sales_floor",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/sales-floor.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md"
+    },
+    {
+      "page": "public/app/social-studio.html",
+      "client_facing": false,
+      "single_builder": "/root/page_social_studio",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/social-studio.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-social-studio.md"
+    },
+    {
+      "page": "public/app/soft-pull-approve.html",
+      "client_facing": true,
+      "single_builder": "/root/page_soft_pull_approve",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/soft-pull-approve.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-soft-pull-approve.md"
+    },
+    {
+      "page": "public/app/staff-teams.html",
+      "client_facing": false,
+      "single_builder": "/root/page_staff_teams",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/staff-teams.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-staff-teams.md"
+    },
+    {
+      "page": "public/app/teleprompter-remote.html",
+      "client_facing": false,
+      "single_builder": "/root/page_teleprompter_remote",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/teleprompter-remote.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-teleprompter-remote.md"
+    },
+    {
+      "page": "public/app/teleprompter.html",
+      "client_facing": false,
+      "single_builder": "/root/page_teleprompter",
+      "state": "planned; not started",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/teleprompter.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-teleprompter.md"
+    },
+    {
+      "page": "public/login.html",
+      "client_facing": true,
+      "single_builder": "/root/page_login",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/login.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-login.md"
+    },
+    {
+      "page": "public/portal-login.html",
+      "client_facing": true,
+      "single_builder": "/root/page_portal_login",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/portal-login.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-portal-login.md"
+    },
+    {
+      "page": "public/reset-password.html",
+      "client_facing": true,
+      "single_builder": "/root/page_reset_password",
+      "state": "active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/reset-password.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-reset-password.md"
+    },
+    {
+      "page": "public/contract.html",
+      "client_facing": true,
+      "single_builder": "/root/page_contract",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/contract.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contract.md"
+    },
+    {
+      "page": "public/progress.html",
+      "client_facing": true,
+      "single_builder": "/root/page_progress",
+      "state": "page checks passed; integrated review pending",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/progress.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-progress.md"
+    }
+  ],
+  "compatibility_and_shared_exclusions": {
+    "index.html": "role-aware app entry redirect",
+    "closer-call.html": "compatibility redirect to Closer Dashboard",
+    "sidebar.fragment.html": "shared navigation fragment, foundation-owned"
+  },
+  "checkpoint": {
+    "completed": 9,
+    "active_pages": 5,
+    "remaining": 52,
+    "shared_staff_foundation": "checks passed; integration pending",
+    "production_deployed": false
+  }
+}

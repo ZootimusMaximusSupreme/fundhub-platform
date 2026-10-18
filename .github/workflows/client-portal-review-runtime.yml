@@ -1,7 +1,7 @@
 name: Client portal working review link
 on:
   push:
-    branches: [codex/client-portal-ios-redo]
+    branches: [codex/client-portal-ios-redo, codex/crm-portal-layout-professional]
     paths:
       - .github/workflows/client-portal-review-runtime.yml
   workflow_dispatch:
@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   branch-runtime:
+    if: github.ref == 'refs/heads/codex/client-portal-ios-redo' || github.ref == 'refs/heads/codex/crm-portal-layout-professional'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -36,8 +37,13 @@ jobs:
         run: |
           # The existing deploy-preview build runs guard:db. It never migrates.
           # No --prod, production ship script, private customer page, or main merge.
+          case "$GITHUB_REF_NAME" in
+            codex/client-portal-ios-redo) review_alias=client-portal-ios-review ;;
+            codex/crm-portal-layout-professional) review_alias=client-portal-professional-review ;;
+            *) echo 'Refusing runtime deploy outside authorized review branches'; exit 1 ;;
+          esac
           netlify deploy --build --context deploy-preview \
-            --alias client-portal-ios-review \
+            --alias "$review_alias" \
             --message "Client portal review $GITHUB_SHA" --json > /tmp/portal-review-deploy.json
           node --input-type=module <<'JS'
           import fs from 'node:fs';
@@ -46,6 +52,6 @@ jobs:
           try { result=JSON.parse(text); } catch { throw new Error('Netlify did not return deployment JSON; inspect the build step.'); }
           const url=result.deploy_url || result.deploy_ssl_url;
           if(!url || !/^https:\/\//.test(url)) throw new Error('No verified branch deployment URL returned');
-          console.log('WORKING_PORTAL_URL='+url+'/portal-login.html');
+          console.log('WORKING_PORTAL_URL='+url+'/login.html?next=%2Fapp%2Fclient-portal.html');
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+url+'/portal-login.html\n\nSource: '+process.env.GITHUB_SHA+'\n');
           JS

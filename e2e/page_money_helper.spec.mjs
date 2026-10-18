@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const sample=JSON.parse(fs.readFileSync('src/http/fixtures/money-helper.sample.json','utf8'));
-const evidence='ops/workflows/build-evidence/client-portal-ios-redo';
+const evidence='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18';
+fs.mkdirSync(evidence,{recursive:true});
 for(const width of [1440,390,320]){
  test(`client helper states and message controls ${width}`,async({page})=>{
   await page.setViewportSize({width,height:1000});
@@ -22,6 +23,8 @@ for(const width of [1440,390,320]){
    await page.goto('/app/money-helper.html');
    await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
    if(state==='full'){
+    await expect(page.locator('.head h1')).toHaveCSS('font-size',width>760?'32px':'28px');
+    await expect(page.locator('.from-client .bubble').first()).toHaveCSS('background-color','rgb(16, 20, 22)');
     await expect(page.locator('.from-helper')).toHaveCount(4);
     await expect(page.getByText('Needs your approval',{exact:true})).toBeVisible();
     await page.locator('#mh-input').fill('What should I do next?');
@@ -36,7 +39,7 @@ for(const width of [1440,390,320]){
    }else if(state==='error')await expect(page.getByRole('button',{name:'Try again'})).toBeVisible();
    else await expect(page.locator('[aria-busy=true]')).toBeVisible();
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-   await page.screenshot({path:`${evidence}/page_money_helper-${state}-${width}.png`,fullPage:true});
+   await page.screenshot({path:`${evidence}/page-money-helper-${state}-${width}.png`,fullPage:true});
   }
  });
 }
@@ -46,4 +49,38 @@ test('staff keeps legacy view and client-scoped links',async({page})=>{
  await expect(page.locator('.from-helper')).toHaveCount(4);
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios','');
  await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-fixture');
+});
+
+test('stopped, off and forbidden states never expose a sending action',async({page})=>{
+ let state='stopped';let writes=0;
+ await page.route('**/api/**',route=>{
+  const url=route.request().url();let body={ok:true};let status=200;
+  if(url.includes('/auth/session'))body={ok:true,principal:'client'};
+  else if(url.includes('/affiliate-portal'))body={ok:true,enrolled:false};
+  else if(url.includes('/money/helper')){
+   if(route.request().method()==='POST')writes++;
+   if(state==='forbidden'){status=403;body={ok:false};}
+   else body={...sample,helper:{...sample.helper,on:state!=='off',halted:state==='stopped',halt_reason:'stop'}};
+  }
+  return route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+ });
+ for(state of ['stopped','off','forbidden']){
+  await page.goto('/app/money-helper.html');
+  if(state==='forbidden')await expect(page.getByRole('alert')).toContainText('not allowed');
+  else await expect(page.locator('.banner')).toContainText(state==='off'?'not switched on':'stopped here');
+  await expect(page.locator('#mh-input')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Send',exact:true})).toHaveCount(0);
+ }
+ expect(writes).toBe(0);
+});
+test('FinanceOS helper panel uses the same restrained module presentation',async({page})=>{
+ await page.route('**/api/**',route=>{
+  const url=route.request().url();const body=url.includes('/auth/session')?{ok:true,principal:'client'}:url.includes('/money/helper')?sample:{ok:true,enrolled:false};
+  return route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
+ });
+ await page.goto('/app/financeos.html#helper');
+ await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
+ await expect(page.locator('#fos-helper .from-helper')).toHaveCount(4);
+ await expect(page.locator('#fos-helper .head h1')).toHaveCSS('font-size','32px');
+ await expect(page.locator('#fos-helper .from-client .bubble').first()).toHaveCSS('background-color','rgb(16, 20, 22)');
 });

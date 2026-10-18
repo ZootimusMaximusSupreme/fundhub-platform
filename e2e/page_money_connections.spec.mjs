@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 const fixture=JSON.parse(fs.readFileSync('src/http/fixtures/money-connections.sample.json','utf8'));
-const evidence='ops/workflows/build-evidence/client-portal-ios-redo';
+const evidence='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18';
 for(const width of [1440,390,320]) for(const state of ['full','loading','empty','error']){
  test(`connections ${state} ${width}`,async({page})=>{
   await page.setViewportSize({width,height:950});
@@ -39,6 +39,7 @@ test('connections safe actions, retry, keyboard and staff exclusion',async({page
  await page.goto('/app/money-connections.html');
  await page.getByRole('button',{name:'Try again'}).focus();await page.keyboard.press('Enter');
  await expect(page.getByRole('heading',{name:'Month over month'})).toBeVisible();
+ await page.locator('[data-provider="commas"] summary').click();
  await page.locator('[data-provider="commas"] [data-ent]').selectOption(fixture.containers[0].id);
  await page.getByRole('button',{name:'Connect Commas',exact:true}).click();
  await expect.poll(()=>writes.length).toBe(1);expect(writes[0]).toMatchObject({action:'create',provider:'commas'});
@@ -55,7 +56,7 @@ test('connections safe actions, retry, keyboard and staff exclusion',async({page
  await expect(staff.locator('.mnav a').first()).toHaveAttribute('href',/client_id=safe-context/);await staff.close();
  const touch=await browser.newContext({viewport:{width:390,height:844},hasTouch:true});const phone=await touch.newPage();
  await phone.route('**/api/**',r=>r.fulfill({json:new URL(r.request().url()).pathname==='/api/auth/session'?{ok:true,principal:'client'}:fixture}));
- await phone.goto('/app/money-connections.html');await phone.locator('.mnav a[aria-current]').tap();await expect(phone).toHaveURL(/financeos.html#connections/);await touch.close();
+ await phone.goto('/app/money-connections.html');await expect(phone.getByRole('combobox',{name:'Money section'})).toHaveValue('/app/money-connections.html');await phone.getByRole('link',{name:'Open Money workspace'}).tap();await expect(phone).toHaveURL(/financeos.html#connections/);await touch.close();
 });
 test('connections pull credentials, sync, copy and disable are safe intercepted actions',async({page})=>{
  const data=structuredClone(fixture);data.connections[2].mode='pull';data.connections[2].has_api_key=true;data.connections[2].api_key_hint='TEST';const actions=[];
