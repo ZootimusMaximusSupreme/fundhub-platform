@@ -69,3 +69,16 @@
 # element fetches this file directly and needs the same content type.
 /assets/video/portal-welcome.mp4
   Content-Type: video/mp4
+
+# Unhashed CRM styles must revalidate just like their HTML and JavaScript.
+/app/*.css
+  Cache-Control: public, max-age=0, must-revalidate
+
+/portal-login.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/progress.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/reset-password.html
+  Cache-Control: public, max-age=0, must-revalidate

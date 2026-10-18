@@ -900,12 +900,17 @@
   function ensureSidebarCss() {
     var existing = document.getElementById("fh-crm-sidebar-css");
     if (!existing && document.querySelector) existing = document.querySelector('link[href$="crm-sidebar.css"]');
-    if (existing) existing.id = "fh-crm-sidebar-css";
+    if (existing) {
+      existing.id = "fh-crm-sidebar-css";
+      if (existing.getAttribute("href") !== "/app/crm-sidebar.css?v=workspace-20261018") existing.href = "/app/crm-sidebar.css?v=workspace-20261018";
+    }
+    var brandSheet = document.querySelector && document.querySelector('link[rel="stylesheet"][href*="fundhub-brand.css"]');
+    if (brandSheet && brandSheet.getAttribute("href") !== "/app/fundhub-brand.css?v=workspace-20261018") brandSheet.href = "/app/fundhub-brand.css?v=workspace-20261018";
     if (!existing) {
       var link = document.createElement("link");
       link.id = "fh-crm-sidebar-css";
       link.rel = "stylesheet";
-      link.href = "/app/crm-sidebar.css";
+      link.href = "/app/crm-sidebar.css?v=workspace-20261018";
       (document.head || document.documentElement).appendChild(link);
     }
     if (!document.getElementById("fh-workspace-css")) {
