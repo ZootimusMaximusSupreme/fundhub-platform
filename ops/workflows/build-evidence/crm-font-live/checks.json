@@ -1,8 +1,8 @@
 {
-  "source": "bc38ca8fdeb7c151607fd5905eabdaa6cf65c35a",
+  "source": "50ce45d7180dbfae783a9124bb9d181b399c2be2",
   "prepare": "success",
   "lint": "success",
-  "node": "failure",
+  "node": "success",
   "browser": "success",
   "noProductionDeploy": true,
   "noCustomerWrites": true,
