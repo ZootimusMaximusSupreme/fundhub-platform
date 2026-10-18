@@ -133,7 +133,7 @@ test("floor discipline: calls not logged are past-due closer booking tasks with 
   t({ id: "t-a" }); t({ id: "t-b", title: "Strategy session rescheduled" });
   t({ id: "t-logged" });
   db.insert("call_outcomes", { id: id("o"), org_id: ORG, task_id: "t-logged", client_id: "c1", staff_id: "s1", outcome: "deposit" });
-  t({ id: "t-future", due_at: new Date(NOW.getTime() + 86_400_000).toISOString() });
+  t({ id: "t-future", due_at: "2099-01-01T00:00:00.000Z" });
   t({ id: "t-setter", assignee_role: "setter" });
   t({ id: "t-other", org_id: OTHER });
   t({ id: "t-title", title: "Chase the contract" });
