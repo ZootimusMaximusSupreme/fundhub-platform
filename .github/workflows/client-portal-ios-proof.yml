@@ -62,3 +62,5 @@ jobs:
             -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
           DATABASE_URL=postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_portal_ci \
             ALLOW_SUPERUSER_DB= node --test src/security/superuser-guard.test.mjs src/security/rls-shape.test.mjs
+      - name: Generate one coherent fictional portal story
+        run: node scripts/client-portal-sample-bundle.mjs
