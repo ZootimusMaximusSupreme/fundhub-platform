@@ -145,7 +145,7 @@ test("the shard exports exact proof metadata and an honest freshly compiled zero
       assert.match(catalog.reason, /below required level/);
     }
   }
-  assert.deepEqual({ wired, stillRed }, { wired: 11, stillRed: 1 });
+  assert.deepEqual({ wired, stillRed }, { wired: 12, stillRed: 0 });
 });
 
 test("every exported proof key is exercised by its real rendered page", async (t) => {

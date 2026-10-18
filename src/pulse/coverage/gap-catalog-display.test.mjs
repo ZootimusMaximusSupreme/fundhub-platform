@@ -59,14 +59,14 @@ function fakeDb(overrides = {}, failOn = null) {
 test("all deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
   assert.equal(DISPLAY_RESULT_CONTRACTS.length, 281);
-  assert.equal(DISPLAY_RESULT_CASES.length, 286);
-  assert.equal(PASS_CAPABLE_COUNT, 272);
-  assert.equal(UNMEASURED_CONTRACT_COUNT, 11);
+  assert.equal(DISPLAY_RESULT_CASES.length, 282);
+  assert.equal(PASS_CAPABLE_COUNT, 275);
+  assert.equal(UNMEASURED_CONTRACT_COUNT, 4);
   assert.equal(LIVE_PAGE_CONTRACT_COUNT, 1);
   assert.equal(linkGates, 2);
-  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 286);
+  assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 282);
   assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 281);
-  assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 285);
+  assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 281);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);
 
@@ -81,7 +81,7 @@ test("all deep display controls own one exact contract", () => {
 });
 
 test("PASS-capable contracts use exact read-only links, never generic completeness", () => {
-  assert.equal(SQL_BATCHES.length, 261);
+  assert.equal(SQL_BATCHES.length, 264);
   for (const sql of SQL_BATCHES) {
     assert.match(sql, /\/\* display-result:[^*]+ \*\//);
     assert.match(sql, /sample_count/);
@@ -92,6 +92,11 @@ test("PASS-capable contracts use exact read-only links, never generic completene
   }
   const ready = SQL_BATCHES.find((sql) => marker(sql) === "ready-to-fund");
   assert.match(ready, /\|\| \(l\.detail->>'round'\)/);
+  const commissionTable = SQL_BATCHES.find((sql) => sql.includes("display-result:commission-ledger-table"));
+  assert.match(commissionTable, /l\.rule_snapshot/);
+  assert.match(commissionTable, /l\.base_amount/);
+  assert.match(commissionTable, /LEFT JOIN clients/);
+  assert.match(commissionTable, /LEFT JOIN commission_rules/);
 });
 
 test("query contracts pass only with a real exact sample and no broken links", () => {
@@ -129,7 +134,7 @@ test("missing contracts are not proved while measured breaks stay broken", () =>
 
 test("unmeasured contracts stay not proved and name the missing exact link", () => {
   const entries = DISPLAY_RESULT_CASES.filter((item) => item.contract.mode === "always-red");
-  assert.equal(entries.length, 11);
+  assert.equal(entries.length, 4);
   for (const entry of entries) {
     const out = judgeDisplayResult(entry, { sample_count: 99, bad_count: 0 });
     assert.equal(out.status, "NOT_PROVED", entry.control);
@@ -157,14 +162,14 @@ test("the lane keeps missing contracts not proved and measured gaps red", async 
   assert.ok(db.calls.every((call) => call.params[0] === ORG));
   for (const call of db.calls) assert.doesNotThrow(() => assertReadOnlySql(call.sql));
   // Every saved-result check plus the live-page reads.
-  assert.equal(focused.filter((row) => row.status === "PASS").length, 273);
+  assert.equal(focused.filter((row) => row.status === "PASS").length, 276);
   // This stub returns the offer menu for unrelated pages. Two link gates, three sidebar heads,
   // and one climate-page control must stay unchecked, never be guessed green.
   const skippedControls = focused.filter((row) => row.status === "skip");
   assert.equal(skippedControls.length, 6);
   assert.equal(skippedControls.filter((row) => /Sidebar group/.test(row.id)).length, 3);
   assert.equal(skippedControls.filter((row) => /climate\/index\.html/.test(row.id)).length, 1);
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 7);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 0);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
   // The link-gate rows read the deployed shell by GET and also remain unchecked with this stub.
   assert.equal(skippedControls.filter((row) => /Quick launch links|More menu/.test(row.id)).length, 2);
@@ -181,7 +186,7 @@ test("a failed exact read stays unchecked while unmeasured contracts stay not pr
   const unaffected = DISPLAY_RESULT_CASES.find((entry) => entry.contract.sql === SQL_BATCHES[20]);
   assert.equal(focused.find((row) => row.id === affected.id).status, "skip");
   assert.equal(focused.find((row) => row.id === unaffected.id).status, "PASS");
-  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 7);
+  assert.equal(focused.filter((row) => row.status === "NOT_PROVED").length, 0);
   assert.equal(focused.filter((row) => row.status === "FAIL").length, 0);
 });
 
@@ -239,7 +244,7 @@ test("display lane loads with shipped data and no ops folder or netlify config",
     assert.equal(fs.existsSync(path.join(root, "netlify.toml")), false);
     const mod = await import(pathToFileURL(path.join(root, "pulse/coverage/gap-catalog-display.mjs")));
     assert.deepEqual(mod.CHECK_IDS, CHECK_IDS);
-    assert.equal(mod.DISPLAY_RESULT_CASES.length, 286);
+    assert.equal(mod.DISPLAY_RESULT_CASES.length, 282);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -36,6 +36,7 @@ import { FIN_B18_DISPLAY_PROOF_CASES } from "./fin-b18-display-proofs.mjs";
 import { FIN_B19_DISPLAY_PROOF_CASES } from "./fin-b19-display-proofs.mjs";
 import { FIN_B20_DISPLAY_CASES } from "./fin-b20-display-contracts.mjs";
 import { FIN_B21_DISPLAY_PROOF_CASES } from "./fin-b21-display-practice.mjs";
+import { HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS } from "./heartbeat-catalog-red-four.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -436,6 +437,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...FIN_B19_DISPLAY_PROOF_CASES,
   ...FIN_B20_DISPLAY_CASES,
   ...FIN_B21_DISPLAY_PROOF_CASES,
+  ...HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));

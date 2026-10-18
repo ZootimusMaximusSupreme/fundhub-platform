@@ -52,7 +52,7 @@ test("the repaired commission link and ledger table each have one exact proof ca
   }
 });
 
-test("41 attached rows have one proof case each: 4 live checks, 37 practice tests", () => {
+test("41 attached rows have one proof case each: 4 dedicated live checks and 37 practice cases", () => {
   assert.equal(FIN_B17_LIVE_PROOF_CASES.length, 4);
   assert.equal(FIN_B17_PRACTICE_CASES.length, 37);
   assert.equal(FIN_B17_DISPLAY_PROOF_CASES.length, 41);
@@ -63,7 +63,14 @@ test("41 attached rows have one proof case each: 4 live checks, 37 practice test
     assert.match(c.evidence, /gap-catalog-display\.mjs/);
     assert.ok(c.tests.some((t) => /fin-b17-(present|chat|money-connections)\.test\.mjs$/.test(t)), c.control);
   }
-  for (const c of FIN_B17_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
+  for (const c of FIN_B17_PRACTICE_CASES) {
+    if (c.control === "Ledger table (date, person, client, product, rule version, basis, rate, payout, status)") {
+      assert.equal(c.depth, "deep");
+      assert.match(c.evidence, /gap-catalog-display\.mjs/);
+    } else {
+      assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
+    }
+  }
   assert.equal(FIN_B17_LIVE_ROWS.length, 4);
   for (const c of FIN_B17_DISPLAY_PROOF_CASES) {
     assert.ok(c.evidence.split("; ").every((p) => p === "src/pulse/coverage/gap-catalog-display.mjs" || fs.existsSync(path.join(ROOT, p))), c.control);

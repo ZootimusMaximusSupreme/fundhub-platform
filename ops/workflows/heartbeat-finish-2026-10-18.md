@@ -110,3 +110,18 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 
 Focused results: handler/auth/display batch command `851/851`; Social Studio Chromium `1/1`; teleprompter Chromium `15/15`; climate finding browser file `3/3`; auth/route guards `18/18`; exact proof-registry guard `1/1`; `npx tsc --noEmit` passed; `npm run lint` parsed 3,981 files/inline scripts clean. The broader `src/ui/teleprompter.test.mjs` still has its pre-existing file-name expectation failure (`null` expected while the current product returns the Direct Book name); it was left red because recording naming semantics are outside rows 43–44.
 
+### Isolated repair — four L3 catalog rows
+
+- Branch `codex/heartbeat-catalog-four`, based on `068a136aa`; scope is only IDs `09900ba878d3aff9b245`, `13120425dd5806539508`, `941299e8010b7c318b5d`, and `d00cbba31d2f71b4516c`.
+- Fresh exact-row compile: openBefore `4` (all L2 red), openAfter `0` (all L3 wired). `generated.json` was not changed; integration owns the one final regeneration.
+- My Numbers now returns the closer's own seven-day quiet deposits beside overdue calls. The other three rows needed exact deep proof, not product changes: partner writes are refused, checkout return scope/new entitlement is verified, and blank-form booking emits the exact GET while the external page is blocked.
+- Proof: focused browser/compiler `6/6`; registry/compiler/metrics `39/39`; lint `3984` files/scripts; `npx tsc --noEmit` green. Mutation check removed closer scope and failed on the missing quiet-deposit result, then the final proof passed after restoration.
+- No public page or `fin-b*` file changed. No external scheduling/payment page opened, no payment charged, no production data written, and no message sent.
+
+### Integrated catalog result
+
+- Integrated display rows 37–45, the 19 public-page link outcomes, and the final four L3 catalog proofs.
+- The final rebuild reports `3,975 mapped`, `3,942 unique`, `3,942 wired`, `0 red`.
+- The rebuild exposed one stale commission-ledger `always-red` marker. It now owns an exact read-only staff/client/rule/basis/rate query and the repaired rendered-table proof; the combined catalog, commission, flow/read, and display registry guards pass `28/28`.
+- This is the source-proof catalog result. Live provider, credential, historical-data, and owner-policy checks remain separate and must keep their real runtime status.
+
