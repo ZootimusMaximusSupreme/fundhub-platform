@@ -29,6 +29,21 @@ jobs:
         run: node scripts/ship-env-from-netlify.mjs
       - name: Verify the actual runtime database role
         run: npm run guard:db
+      - name: Diagnose existing public read latency and brand selection
+        run: |
+          node --input-type=module <<'JS'
+          const paths=['/portal-login.html','/app/morning-brief.html','/app/my-numbers.html','/api/health?strict=1','/api/org-brand'];
+          await Promise.all(paths.map(async path=>{
+            const started=Date.now();
+            try{
+              const res=await fetch('https://fundhub.ai'+path,{signal:AbortSignal.timeout(10000),headers:{'user-agent':'FundhubPulse/1.0 (+https://fundhub.ai)'}});
+              const text=await res.text();
+              const out={path,status:res.status,ms:Date.now()-started,bytes:Buffer.byteLength(text)};
+              if(path==='/api/org-brand'){try{const j=JSON.parse(text);const b=j.brand||j;out.brand={slug:b.slug,entity_name:b.entity_name,display_face:b.display_face};}catch{}}
+              console.log(JSON.stringify(out));
+            }catch(error){console.log(JSON.stringify({path,ms:Date.now()-started,error:error.name}));}
+          }));
+          JS
       - name: Run the existing read-only hourly release proof
         run: npm run pulse:prove -- --beats
       # pulse:prove uses read-only transactions and recording sinks, permits only
