@@ -22,7 +22,7 @@ Do this once. It takes about 10 minutes.
 5. At the top of Xcode, pick your iPhone as the place to run. Click **Run** (the ▶ button).
 6. The first time, the phone asks for **Developer Mode**: on the phone go to **Settings › Privacy & Security › Developer Mode**, turn it on, and let it restart. Then click **Run** again.
 7. The first time, the phone also says the developer is not trusted: on the phone go to **Settings › General › VPN & Device Management**, tap your Apple ID, tap **Trust**.
-8. Open **Fundhub Prompter** on the phone. Sign in with your Fundhub login.
+8. Open **Fundhub Prompter** on the phone. It opens straight to the built-in practice shoot. No account or sign-in is needed.
 
 **Every 7 days** the app stops opening (a free Apple ID signs apps for 7 days).
 Plug the phone in and click **Run** again. Your settings and waiting edits stay.
@@ -33,10 +33,10 @@ The iPad works the same way: plug it in, pick it at the top, click **Run**.
 
 ## How to test it
 
-1. Sign in. The list shows the open shoot's scripts in film order (or, with no shoot planned, every approved script).
+1. Open the app. The list shows the built-in practice scripts in film order.
 2. Tap a script. The camera box shows in the top corner, then fades to black. Tap the corner to bring it back.
 3. Tap **Record**. The words roll. One tap pauses. A tap again rolls on. A double tap is scroll mode (drag the words, tap to roll from there, double tap to leave).
-4. Hold a line (or tap **Edit**) to change its words. Tap **Done**. The pulse line says **Saved 12:04**. Open the dashboard's Scripts tab: the new version is there.
+4. Hold a line (or tap **Edit**) to change its words. Tap **Done**. The pulse line says **Saved 12:04**.
 5. Tap **Stop**, then **Got it** or **Another take**. Open Photos: the take is named like `SLO Ad 91 — Lenders read two files Take 3.mp4`.
 6. Turn on Airplane Mode, change a line: the pulse says **Offline — 1 edit waiting**. Turn it off: it saves by itself.
 
@@ -91,16 +91,11 @@ Audio uses the phone's default AAC sound. Meta asks for stereo AAC at
 - Keys (Bluetooth remote, keyboard, foot pedal) — v1's keys: Space, Enter, Page Down play/pause; arrows change speed; Page Up starts over. At the end: play = **Got it**, Page Up = **Another take**. R = record/stop. **Settings › Learn remote** maps any remote's buttons, per device.
 - The screen stays awake while rolling.
 
-### Sync with the dashboard
+### Built-in scripts
 
-- **Sign in**: `POST /api/auth/login` with the Fundhub staff login. The session token is kept in the iOS Keychain (this device only). Every call sends it as `Authorization: Bearer`.
-- **Scripts**: `GET /api/marketing/shoot` every 5 seconds while the app is open. It rolls `shoot.scripts` in the shoot's order, or `plan_candidates` (approved scripts in film order) when no shoot is planned. The last answer is kept on the phone, so it opens with no signal.
-- **Edits**: every change goes through `POST /api/marketing/scripts/edit` — the same route the dashboard uses. The server saves a new version and keeps the old one. There is no second store; the phone only holds what has not reached the server yet.
-- **Offline**: edits wait on the phone (they survive closing the app). A save cut off mid-way is sent again with the same `request_id`, so the server counts it once.
-- **Two versions**: if the dashboard changed the same script first (409), the app shows both texts. Pick **Keep mine** or **Keep the dashboard's**.
-- **Signed out**: the waiting list is kept and sent after you sign in again.
-- **Got it / Another take**: `POST /api/marketing/shoot/mark`, queued the same way. The next take name moves to the next number.
-- **The pulse** never hides: `Saved 12:04`, `Saving…`, `Offline — 2 edits waiting`, `Sign in again — 1 edit waiting`, `Two versions — pick one`.
+- **Scripts**: the app opens the bundled practice shoot every time. It does not ask for a Fundhub account or connect to the dashboard.
+- **Edits and takes**: changes affect the open practice shoot while the app is running. The camera, rolling controls, Photos save, and Bluetooth remote work without a network connection.
+- **The pulse** never hides: `Saved 12:04`, `Saving…`, or `Offline — 2 edits waiting`.
 
 ## Build and test (for agents)
 
@@ -117,10 +112,9 @@ scroll, the tap rules, the remote keys, the camera format pick, the waiting
 list (save, offline resend with the same request id, restart, sign-out, 409,
 refused saves, take marks) and the request shape.
 
-**Screenshot demo.** Launch with the argument `-FundhubDemo` to skip sign-in
-and show the made-up example shoot from `docs/specs/marketing-machine-api.md`
-§7.1. It never talks to a server. It is not used on Chris's phone. Extra
-demo-only arguments for screenshots: `-FundhubDemoOpen` (open script 1),
+**Screenshots.** The app always opens the made-up practice shoot from
+`docs/specs/marketing-machine-api.md` §7.1 and never talks to a server. Extra
+arguments for screenshots: `-FundhubDemoOpen` (open script 1),
 `-FundhubDemoRoll` (roll), `-FundhubDemoMirror` (flip), `-FundhubDemoEdit`
 (open the edit box), `-FundhubDemoSave` (change one line and save it),
 `-FundhubDemoSettings`.
