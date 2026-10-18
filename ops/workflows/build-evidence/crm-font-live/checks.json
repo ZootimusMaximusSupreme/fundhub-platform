@@ -1,8 +1,8 @@
 {
-  "source": "904715d9dab90d06ed216f4b20e226b8dc1f52b7",
-  "prepare": "failure",
-  "lint": "skipped",
-  "node": "skipped",
+  "source": "776b4a7e75074d43bba462371f42c9673bb44172",
+  "prepare": "success",
+  "lint": "success",
+  "node": "cancelled",
   "browser": "skipped",
   "noProductionDeploy": true,
   "noCustomerWrites": true,
