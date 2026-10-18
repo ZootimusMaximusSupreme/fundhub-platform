@@ -105,7 +105,8 @@ test("Money: a failed read shows Try again, and pressing it reads again and pain
     await page.waitForSelector("#money-root .big");
     assert.equal(await page.locator('[data-act="retry"]').count(), 0, "the error is gone once the read works");
     assert.deepEqual(read.state.reads, [`?client_id=${CLIENT_ID}`, `?client_id=${CLIENT_ID}`], "it asks for the same client again");
-    assert.match(await page.locator("#money-root").innerText(), /Personal Checking/);
+    await page.locator("#money-detail-accounts > summary").click();
+    assert.match(await page.locator("#money-detail-accounts").innerText(), /Personal Checking/);
     assert.deepEqual(errors, []);
     await page.close();
   }, "public/app/money.html");
