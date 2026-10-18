@@ -9,6 +9,8 @@ import { sweep as affiliatePayoutSweep } from "../../../workflows/affiliate-payo
 import { sweepAll as blueprintSequenceSweep } from "../../../workflows/blueprint-next-funding-sequence-sweeper.mjs";
 import { sweep as merchantSweep } from "../../../workflows/merchant-pull-sweeper.mjs";
 import { sweep as paidExpirySweep } from "../../../workflows/paid-checkout-expiry-sweeper.mjs";
+import { chaseContracts } from "../../../contracts/notify.mjs";
+import { runInstantWatch } from "../../instant-watch.mjs";
 import { sweepHubstaffPoll } from "../../../../netlify/functions/hubstaff-poll-sweeper.mjs";
 import { makeHandler as makeOfferHandler } from "../../../../netlify/functions/marketing-offer-background.mjs";
 import { encryptProcessorApiKey } from "../../../merchant/secrets.mjs";
@@ -46,7 +48,7 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
     makeRecipe("jobs.json", row).proof?.evidence.includes("door-batch-job-final.test.mjs") &&
     makeRecipe("jobs.json", row).proof?.verdict === "red"
   );
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, 4);
   assert.deepEqual(
     new Set(rows.map((row) => row.surface)),
     new Set(FINAL_JOB_GAP_ROWS.map((row) => row.surface))
@@ -65,12 +67,14 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
   }
 });
 
-test("six final jobs run non-empty fake work and judge the named result", async () => {
+test("eight final jobs run non-empty fake work and judge the named result", async () => {
   const proved = new Set([
     "workflow:affiliate-payout-run",
     "workflow:blueprint-next-funding-sequence-sweeper",
+    "workflow:contract-chaser",
     "workflow:merchant-pull-sweeper",
     "workflow:paid-checkout-expiry-sweeper",
+    "workflow:pulse-instant-watch",
     "function:hubstaff-poll-sweeper",
     "function:marketing-offer-background",
   ]);
@@ -187,6 +191,117 @@ test("six final jobs run non-empty fake work and judge the named result", async 
   assert.equal(blueprint.created, 1);
   assert.equal(blueprint.suggested.checked, 0);
   assert.deepEqual(taskWrites, ["closer-task"]);
+
+  const contractOrg = "44444444-4444-4444-8444-444444444444";
+  const contractId = "44444444-4444-4444-8444-444444444445";
+  const contractMessages = [];
+  const contractTasks = [];
+  const contractDb = {
+    async query(sql, params = []) {
+      const text = String(sql);
+      if (/FROM contracts c/.test(text)) {
+        return { rows: [{
+          id: contractId,
+          org_id: contractOrg,
+          client_id: "44444444-4444-4444-8444-444444444446",
+          title: "Funding agreement",
+          status: "sent",
+          sent_at: "2026-10-01T12:00:00.000Z",
+          link_expires_at: "2026-11-01T12:00:00.000Z",
+          signing_order: "sequential",
+          sent_by: null,
+          sent_by_name: "Fundhub"
+        }] };
+      }
+      if (/count\(\*\)::int AS n/.test(text) && /FROM messages/.test(text)) {
+        return { rows: [{ n: 0, last: null }] };
+      }
+      if (/FROM message_templates/.test(text)) {
+        return { rows: [{
+          template_key: "CONTRACT-REMIND-EMAIL",
+          channel: "email",
+          subject: "Please sign {{contract.title}}",
+          body: "Hi {{contact.first_name}}, sign here: {{contract.link}}",
+          compliance_passed: true
+        }] };
+      }
+      if (/INSERT INTO messages/.test(text)) {
+        contractMessages.push({ templateKey: params[2], body: params[3], providerRef: params[4] });
+        return { rows: [{ id: "44444444-4444-4444-8444-444444444448", created_at: "2026-10-12T18:00:00.000Z" }] };
+      }
+      if (/FROM messaging_settings/.test(text)) {
+        return { rows: [{ org_id: contractOrg, outbound_enabled: false, daily_send_cap: 500 }] };
+      }
+      if (/SELECT id FROM tasks/.test(text)) return { rows: [] };
+      if (/INSERT INTO tasks/.test(text)) {
+        contractTasks.push({ title: params[2], sourceWorkflow: params[5] });
+        return { rows: [{ id: "44444444-4444-4444-8444-444444444449" }] };
+      }
+      throw new Error(`unexpected contract proof query: ${text.slice(0, 80)}`);
+    },
+  };
+  const contract = await chaseContracts(contractDb, {
+    orgId: contractOrg,
+    now: "2026-10-12T18:00:00.000Z",
+    listSigners: async () => [{
+      id: "44444444-4444-4444-8444-444444444447",
+      client_id: null,
+      name: "Proof Signer",
+      email: "e2e+aff-contract@fundhub.ai",
+      role_label: "Buyer",
+      signer_index: 0,
+      status: "pending"
+    }],
+    mintLinks: async () => ({ links: [{
+      signer_id: "44444444-4444-4444-8444-444444444447",
+      url: "https://fundhub.test/contracts/sign?token=fake-proof"
+    }] })
+  });
+  assert.deepEqual(
+    { considered: contract.considered, reminded: contract.reminded, tasked: contract.tasked, errors: contract.errors },
+    { considered: 1, reminded: 1, tasked: 1, errors: [] }
+  );
+  assert.equal(contractMessages.length, 1);
+  assert.equal(contractMessages[0].templateKey, "CONTRACT-REMIND-EMAIL");
+  assert.match(contractMessages[0].body, /fake-proof/);
+  assert.match(contractMessages[0].providerRef, /:chase1$/);
+  assert.deepEqual(contractTasks.map((row) => row.sourceWorkflow), ["contract-chaser"]);
+
+  const instantAlerts = [];
+  const instantOrg = "55555555-5555-4555-8555-555555555554";
+  const instantNow = new Date("2026-10-12T19:00:00.000Z");
+  const instantDb = {
+    async query(sql, params = []) {
+      const text = String(sql);
+      if (/FROM orgs/.test(text)) return { rows: [{ id: instantOrg }] };
+      if (/FROM job_heartbeats/.test(text)) return { rows: [{ last_at: instantNow }] };
+      if (/FROM clients/.test(text)) return { rows: [] };
+      if (/FROM (cards|messages)/.test(text)) return { rows: [{ n: 0 }] };
+      if (/FROM agent_runs/.test(text)) return { rows: [] };
+      if (/INSERT INTO agent_runs/.test(text)) {
+        instantAlerts.push({ outcome: params[2], detail: params[3] });
+        return { rows: [] };
+      }
+      throw new Error(`unexpected instant-watch proof query: ${text.slice(0, 80)}`);
+    },
+  };
+  const sentAlerts = [];
+  const instant = await runInstantWatch({
+    db: instantDb,
+    now: instantNow,
+    env: { PULSE_SMS_TO: "+16025550199" },
+    fetchImpl: async () => ({ status: 503, text: async () => "down" }),
+    sendImpl: async (message) => {
+      sentAlerts.push(message.body);
+      return { ok: true, status: "sent" };
+    }
+  });
+  assert.ok(instant.failures.length > 0);
+  assert.equal(instant.sms.sent, true);
+  assert.equal(sentAlerts.length, 1);
+  assert.equal(instantAlerts.length, 1);
+  assert.equal(instantAlerts[0].outcome, "pass");
+  assert.match(instantAlerts[0].detail, /health/);
 
   const merchantEnv = {
     MERCHANT_SECRET_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
