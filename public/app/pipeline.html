@@ -1200,9 +1200,16 @@ function currentStageOptions(card){
   host.textContent='';
   cols().forEach(function(col){
     if(col===card.closest('.col')) return;
+    var pipelineKey=col.dataset.pipelineKey || window.FHPipelineBoard.currentKey;
+    var stageKey=col.dataset.stageKey;
+    var duplicate=[].slice.call(menu.children).some(function(child){
+      return child.classList && child.classList.contains('rm-item') &&
+        child.dataset.pipelineKey===pipelineKey && child.dataset.stageKey===stageKey;
+    });
+    if(duplicate) return;
     var item=document.createElement('button'); item.type='button'; item.className='rm-item';
-    item.dataset.pipelineKey=col.dataset.pipelineKey || window.FHPipelineBoard.currentKey;
-    item.dataset.stageKey=col.dataset.stageKey;
+    item.dataset.pipelineKey=pipelineKey;
+    item.dataset.stageKey=stageKey;
     item.textContent=col.querySelector('.col-name').textContent; host.appendChild(item);
   });
 }

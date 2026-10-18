@@ -308,16 +308,17 @@ test("every exported Display CD key drives the real page and asserts its exact r
   });
   prove(IDS.brand);
 
-  await shellPage.locator("#fh-shell-chip-hide").click();
-  assert.equal(await shellPage.locator("#fh-shell-chip").getAttribute("aria-hidden"), "true");
-  assert.equal(await shellPage.locator("#fh-shell-chip").evaluate((el) => el.style.display), "none");
-  assert.equal(await shellPage.locator("#fh-shell-chip-show").evaluate((el) => el.style.display), "flex");
-  assert.equal(await shellPage.evaluate(() => localStorage.getItem("fh_chip_hidden")), "1");
-  await shellPage.locator("#fh-shell-chip-show").click();
-  assert.equal(await shellPage.locator("#fh-shell-chip").getAttribute("aria-hidden"), "false");
-  assert.equal(await shellPage.locator("#fh-shell-chip").evaluate((el) => el.style.display), "flex");
-  assert.equal(await shellPage.locator("#fh-shell-chip-show").evaluate((el) => el.style.display), "none");
-  assert.equal(await shellPage.evaluate(() => localStorage.getItem("fh_chip_hidden")), null);
+  const account = shellPage.locator("#fh-shell-chip");
+  const accountButton = shellPage.locator("#fh-shell-chip-show");
+  assert.equal(await account.getAttribute("open"), null);
+  await accountButton.click();
+  assert.equal(await account.getAttribute("open"), "");
+  assert.equal(await shellPage.locator("#fh-shell-out").isVisible(), true);
+  await shellPage.keyboard.press("Escape");
+  assert.equal(await account.getAttribute("open"), null);
+  assert.equal(await accountButton.evaluate((el) => document.activeElement === el), true);
+  await accountButton.click();
+  assert.equal(await account.getAttribute("open"), "");
   prove(IDS.chipToggle);
 
   await Promise.all([

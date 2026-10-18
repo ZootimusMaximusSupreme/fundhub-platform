@@ -105,7 +105,7 @@ test("Filter button: it opens and shuts the panel and counts the filters that ar
     assert.deepEqual(await owned.page.locator("#fOwner option").evaluateAll((os) => os.map((o) => o.textContent)), ["Anyone", "Casey Reed", "Jordan Blake"]);
     await owned.page.locator("#fOwner").selectOption("Jordan Blake");
     assert.equal((await ownedCount.innerText()).trim(), "1", "the owner choice counts as a filter");
-    assert.equal((await owned.page.locator("#filterChips .fchip").innerText()).replace(/\s+/g, " ").trim(), "Owner: Jordan Blake ✕");
+    assert.equal((await owned.page.locator("#filterChips .fchip").innerText()).replace(/\s+/g, " ").trim(), "Owner: Jordan Blake ×");
     assert.deepEqual(await visibleNames(owned.page), ["Jordan Fresh"], "only that owner's card is left");
     await owned.page.locator("#fAge").selectOption("60");
     await owned.page.locator("#fWait").selectOption("none");
@@ -146,7 +146,7 @@ test("Filter: Age keeps a card only when it has sat in its stage longer than the
     }
     // the choice shows as a chip with its words
     await page.locator("#fAge").selectOption("1440");
-    assert.equal((await page.locator("#filterChips .fchip").innerText()).replace(/\s+/g, " ").trim(), "Age: Over 1d in stage ✕");
+    assert.equal((await page.locator("#filterChips .fchip").innerText()).replace(/\s+/g, " ").trim(), "Age: Over 1d in stage ×");
     // and the chip's cross takes the filter off again
     await page.locator("#filterChips .fchip .x").click();
     assert.equal(await page.locator("#fAge").inputValue(), "");
@@ -236,32 +236,40 @@ test("Card tooltip: hovering a card shows its last activity from the footer, and
 
 test("Clock and LIVE pill: the clock tells Arizona time on a wide screen, the LIVE pill is always there", { timeout: 120_000 }, async () => {
   await proof.check(/^Clock \(Arizona time\) and LIVE pill in the header/, async () => {
+    const openTechnicalDetails = async (page) => {
+      await page.locator("#fh-shell-chip-show").click();
+      await page.locator("#fh-shell-account-diagnostics > summary").click();
+      const clock = page.locator("#fh-workspace-clock");
+      const source = page.locator("#fh-shell-src");
+      await waitFor(() => clock.isVisible(), "the workspace account clock");
+      await waitFor(async () => (await source.innerText()).trim() === "LIVE", "the live workspace status");
+      return { clock, source };
+    };
+
     // 2023-11-14 22:13:21 UTC is 3:13:21 PM in Arizona (MST all year). The machine is set to New York on purpose.
     const wide = await openBoard([card(1, "Anyone")], { viewport: { width: 1700, height: 900 }, clock: true });
     const cdp = await wide.page.context().newCDPSession(wide.page);
     await cdp.send("Emulation.setTimezoneOverride", { timezoneId: "America/New_York" });
     await wide.page.clock.runFor(1000);
-    const clock = wide.page.locator(".topbar .clock");
-    assert.equal(await clock.isVisible(), true, "the clock shows on a wide screen");
-    assert.equal((await clock.innerText()).trim(), "Tue, Nov 14, 3:13:22 PM MST", "Arizona time, whatever the machine's clock says");
+    const wideAccount = await openTechnicalDetails(wide.page);
+    assert.equal((await wideAccount.clock.innerText()).trim(), "Tue, Nov 14, 3:13:22 PM MST", "Arizona time, whatever the machine's clock says");
     await wide.page.clock.runFor(3000);
-    assert.equal((await clock.innerText()).trim(), "Tue, Nov 14, 3:13:25 PM MST", "it ticks every second");
-    assert.equal((await wide.page.locator(".live-pill").innerText()).trim(), "LIVE");
-    assert.equal(await wide.page.locator(".live-pill .live-dot").count(), 1);
+    assert.equal((await wideAccount.clock.innerText()).trim(), "Tue, Nov 14, 3:13:25 PM MST", "it ticks every second");
+    assert.equal((await wideAccount.source.innerText()).trim(), "LIVE");
     assert.deepEqual(wide.errors, []);
     await wide.page.close();
 
-    // a laptop still shows it (the shell keeps it down to 1100px wide), a phone drops it; the pill stays
+    // Current-main keeps both facts in the account menu at every width, so the
+    // workspace stays uncluttered while Arizona time and live status remain one tap away.
     const laptop = await openBoard([card(1, "Anyone")], { viewport: { width: 1280, height: 800 } });
-    // innerText comes back even for an element that is not shown, so ask whether it is SHOWN first
-    assert.equal(await laptop.page.locator(".topbar .clock").isVisible(), true, "the clock is shown on a laptop");
-    assert.ok((await laptop.page.locator(".topbar .clock").boundingBox()).width > 40, "and it takes room on the page");
-    assert.match((await laptop.page.locator(".topbar .clock").innerText()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the laptop clock is Arizona time too");
-    assert.equal(await laptop.page.locator(".live-pill").isVisible(), true, "the LIVE pill stays");
+    const laptopAccount = await openTechnicalDetails(laptop.page);
+    assert.match((await laptopAccount.clock.innerText()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the laptop clock is Arizona time too");
+    assert.equal((await laptopAccount.source.innerText()).trim(), "LIVE");
     await laptop.page.close();
     const phone = await openBoard([card(1, "Anyone")], { viewport: { width: 400, height: 800 } });
-    assert.equal(await phone.page.locator(".topbar .clock").isVisible(), false, "no clock on a phone");
-    assert.equal(await phone.page.locator(".live-pill").isVisible(), true, "the LIVE pill fits on a phone");
+    const phoneAccount = await openTechnicalDetails(phone.page);
+    assert.equal(await phoneAccount.clock.isVisible(), true, "the clock remains available from the phone account menu");
+    assert.equal((await phoneAccount.source.innerText()).trim(), "LIVE");
     assert.equal(await phone.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, "nothing pushes the page sideways");
     await phone.page.close();
   }, SURFACE);

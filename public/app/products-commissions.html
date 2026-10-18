@@ -158,14 +158,14 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
 .stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum)}
 .stat .sv{font-family:var(--mono);font-size:var(--fs-metric);font-variant-numeric:tabular-nums;font-weight:600;margin-top:8px;letter-spacing:-.02em}
 .stat .sd{font-size:var(--fs-caption);color:var(--gray);margin-top:2px}
-.editor{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 40px rgba(0,0,0,.10);transform:translateX(102%);transition:transform .2s ease;z-index:60;display:flex;flex-direction:column;visibility:hidden;pointer-events:none}
+.editor{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 40px rgba(0,0,0,.10);transform:translateX(102%);transition:transform .2s ease;z-index:520;display:flex;flex-direction:column;visibility:hidden;pointer-events:none}
 .editor.open{transform:none;visibility:visible;pointer-events:auto}
 .editor-hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
 .editor-bd{padding:18px;overflow-y:auto;flex:1}
 .editor-ft{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:9px}
 .xbtn{margin-left:auto;border:1px solid var(--line);background:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:var(--fs-body);line-height:1}
 .xbtn:hover{background:var(--soft)}
-.scrim{position:fixed;inset:0;background:rgba(10,10,10,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+.scrim{position:fixed;inset:0;background:rgba(10,10,10,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:510}
 .scrim.on{opacity:1;pointer-events:auto}
 .foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.09em;text-transform:lowercase}
 .empty{padding:24px 16px;text-align:center;color:var(--gray2);font-size:var(--fs-body)}
