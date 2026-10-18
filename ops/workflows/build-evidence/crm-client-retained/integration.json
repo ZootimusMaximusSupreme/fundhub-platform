@@ -1,0 +1,46 @@
+{
+  "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "checkedHead": "23a83568dd8e4f6b42276c06ca3dfef7d337be42",
+  "complete": true,
+  "inventory": [
+    {
+      "page": "payment-success",
+      "branch": "origin/codex/recover-payment-success",
+      "source": "a4f92ac57ac4f045ead54f2f6e80f4a63702a0c9",
+      "files": [
+        "public/app/payment-success.html"
+      ]
+    },
+    {
+      "page": "reset-password",
+      "branch": "origin/codex/recover-reset-password",
+      "source": "a67abad2ab957dfc21fc2e734d9bbb5815844fe5",
+      "files": [
+        "public/reset-password.css",
+        "public/reset-password.html"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "page": "payment-success",
+      "path": "public/app/payment-success.html",
+      "state": "clean merge",
+      "bytes": 17578
+    },
+    {
+      "page": "reset-password",
+      "path": "public/reset-password.css",
+      "state": "clean merge",
+      "bytes": 4548
+    },
+    {
+      "page": "reset-password",
+      "path": "public/reset-password.html",
+      "state": "clean merge",
+      "bytes": 5016
+    }
+  ],
+  "noProductionDeploy": true,
+  "noCustomerWrites": true
+}
