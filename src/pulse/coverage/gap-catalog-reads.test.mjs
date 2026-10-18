@@ -10,6 +10,7 @@ import {
   gapChecks,
   sourceFileForReadSurface,
 } from "./gap-catalog-reads.mjs";
+import { FIN_B27_H_READ_PROVED } from "../catalog/proofs/fin-b27-h-read-contracts.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
@@ -19,37 +20,39 @@ function rowsFor(sourceFile) {
 }
 
 test("every known read gap owns one exact map row", () => {
-  assert.equal(READ_GAPS.length, 2);
+  assert.equal(READ_GAPS.length, 1);
   assert.equal(CHECK_IDS.length, 2);
   assert.equal(new Set(CHECK_IDS).size, 2);
 
-  for (const item of READ_GAPS) {
-    const sourceFile = sourceFileForReadSurface(item.surface);
+  for (const item of [...READ_GAPS, ...FIN_B27_H_READ_PROVED]) {
+    const sourceFile = item.sourceFile || sourceFileForReadSurface(item.surface);
     const matches = rowsFor(sourceFile).filter((row) => (
       row.surface === item.surface
       && row.control === item.control
       && ["read", "dependency", "effect", "external-dependency", "guard", "job", "poll", "read-panel", "system"].includes(row.kind)
     ));
     assert.equal(matches.length, 1, `${sourceFile}: ${item.surface}: ${item.control}`);
-    assert.ok(item.finding.length > 20, `${item.id} needs an exact finding`);
+    if (item.finding) assert.ok(item.finding.length > 20, `${item.id} needs an exact finding`);
+    else assert.match(item.evidence, /\.test\.mjs/);
   }
 });
 
-test("missing result probes stay not proved and name their exact control", async () => {
+test("the missing result stays not proved while the climate read can only skip on a failed GET", async () => {
   const rows = await gapChecks({
     db: { query: async () => { throw new Error("the catalog read gap lane must not query"); } },
-    fetchImpl: async () => { throw new Error("the catalog read gap lane must not fetch"); },
+    fetchImpl: async () => { throw new Error("safe read is offline in this test"); },
   });
 
-  assert.equal(rows.length, READ_GAPS.length);
-  for (const [index, row] of rows.entries()) {
-    const item = READ_GAPS[index];
-    assert.equal(row.id, item.id);
-    assert.equal(row.status, "NOT_PROVED");
-    assert.match(row.detail, new RegExp(item.surface.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.ok(row.suggestedFix.includes(item.control));
-    assert.match(row.suggestedFix, /Do not auto-fix\. Chris fixes reds\./);
-  }
+  assert.equal(rows.length, 2);
+  const open = rows.find((row) => row.id === "catalog-read:present-send-lock");
+  assert.equal(open.status, "NOT_PROVED");
+  assert.match(open.detail, /present\.html/);
+  assert.match(open.suggestedFix, /Double-press guard on every send button/);
+
+  const climate = rows.find((row) => row.id === "catalog-read:climate-map");
+  assert.equal(climate.status, "skip");
+  assert.match(climate.detail, /safe read is offline in this test/);
+  assert.notEqual(climate.status, "PASS");
 });
 
 test("the lane cannot send, write, or turn a missing result into pass", () => {
