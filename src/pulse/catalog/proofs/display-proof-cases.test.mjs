@@ -98,12 +98,14 @@ test("the focused proof test runs every executable test named by every case", ()
   }
   const env = { ...process.env, NODE_ENV: "test" };
   delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ["--test", ...files], {
+  const result = spawnSync(process.execPath, ["--test", "--test-force-exit", ...files], {
     cwd: ROOT,
     encoding: "utf8",
     env,
+    maxBuffer: 64 * 1024 * 1024,
   });
 
+  assert.ifError(result.error);
   assert.equal(
     result.status,
     0,
