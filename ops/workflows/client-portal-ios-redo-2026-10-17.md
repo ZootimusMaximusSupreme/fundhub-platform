@@ -239,3 +239,8 @@ GitHub connector confirms write permission. Direct `git push` lacks shell HTTPS 
 ## Resumed cloud checkpoint
 
 See [short current checkpoint](client-portal-ios-progress.md). All 24 page builders completed. Integrated review publication now takes priority over uploading exhaustive image evidence. Live demo samples, database persistence proof, Home performance budget, and baseline full-suite failures remain explicitly unresolved. Packaging stays pending final completion.
+
+
+### Integrated PR and database proof
+
+PR #67: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/67 at a7be403dd48c6065f7da2a00e39acfbe5a5e4872. Focused CI run39101843819 completed real scratch PostgreSQL referral checks:27passed,0skipped, including refresh/fresh login and forged identity isolation. Unprivileged fundhub_app RLS/role checks7passed,0skipped. This closes the missing database proof; it does not verify production client@ account existence or populate samples. Existing Home agent resumed for performance; same read-only reviewer investigating canonical single-file sample generator, no duplicate page builders.
