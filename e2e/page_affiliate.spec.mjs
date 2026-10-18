@@ -46,3 +46,16 @@ test('affiliate controls preserve gated downloads, approved answers and referral
  await page.locator('#stFilter').selectOption('Converted');await expect(page.locator('#leadBody')).toContainText('Preview Business');
  await page.locator('#stFilter').selectOption('Paid');await expect(page.locator('#leadBody')).toContainText('No referrals match');
 });
+
+test('late empty staff rollup cannot erase own affiliate code',async({page})=>{
+ let release;const hold=new Promise(r=>release=r);
+ await openScreen(page,'/app/affiliate.html',client,{
+ '/api/read/affiliate-portal':full,
+ '/api/read/affiliates':async route=>{await hold;await json(route,{ok:true,items:[]});}
+ });
+ await expect(page.locator('#affCode')).toHaveText('SAFE-PREVIEW');
+ release();
+ await page.waitForResponse(response=>response.url().includes('/api/read/affiliates'));
+ await expect(page.locator('#affCode')).toHaveText('SAFE-PREVIEW');
+ await expect(page.locator('#affiliateLoadStatus')).toContainText('up to date');
+});

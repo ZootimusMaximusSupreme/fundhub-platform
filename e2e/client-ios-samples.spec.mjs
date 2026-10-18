@@ -16,6 +16,7 @@ for(const width of [1440,390,320])test(`isolated canonical samples render across
     await page.goto('/app/'+name+'.html');
     await expect(page.locator('.client-ios-sample')).toContainText('Sample view');
     await expect(page.getByRole('button',{name:'View real account'})).toBeVisible();
+    if(name==='client-portal')expect(await page.locator('.page').evaluate(e=>e.getBoundingClientRect().width)).toBeGreaterThan(width>760?800:width-90);
     await page.waitForTimeout(80);
     if(name==='client-portal'&&width!==320){fs.mkdirSync('ops/workflows/build-evidence/client-portal-ios-redo',{recursive:true});await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/sample-home-${width}.png`,fullPage:true});}
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),name+' overflow').toBe(true);

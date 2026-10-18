@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { CLIENT_ID, json } from './harness.mjs';
 import fs from 'node:fs';
+import sampleBundle from '../src/demo/client-portal-sample-bundle.json' with {type:'json'};
 const out='ops/workflows/build-evidence/client-portal-ios-redo';
-async function open(page,{state='empty',enrolled=false,postStatus=201}={}){
+async function open(page,{state='empty',enrolled=false,postStatus=201,summary}={}){
  await page.addInitScript(()=>{localStorage.setItem('fh_token','safe-mock-token');localStorage.setItem('fh_role','client');});
  let joined=enrolled;
  await page.route('**/api/**',async route=>{
@@ -13,6 +14,7 @@ async function open(page,{state='empty',enrolled=false,postStatus=201}={}){
  if(u.includes('/api/read/portal-summary')){
  if(state==='loading') await new Promise(r=>setTimeout(r,1200));
  if(state==='error')return json(route,{ok:false},503);
+ if(summary)return json(route,summary);
  return json(route,{ok:true,prequal_amount:null,prequal_display:null,soft_pull_complete:false,scores:state==='full'?{experian:720,equifax:715,transunion:725}: {},documents:state==='full'?[{id:'doc-safe',title:'Sample document',mime_type:'application/pdf',created_at:'2026-10-17T12:00:00Z'}]:[]});}
  return json(route,{ok:true,items:[]});
  });
@@ -47,4 +49,13 @@ test('staff does not inherit client Home heading or client styling',async({page}
  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
  await expect(page.locator('.cp-home-heading')).toBeHidden();
  await expect(page.locator('body')).not.toHaveAttribute('data-client-ios',/.*/);
+});
+
+test('canonical credit-pull summary controls hero current stage rather than legacy booking tick',async({page})=>{
+ await open(page,{summary:sampleBundle.reads['/api/read/portal-summary']});
+ await expect(page.locator('.cp-current-stage')).toHaveText('Current: Credit pull received');
+ await expect(page.locator('#sb-pre-main')).toContainText('soft-pull assessment is in');
+ await page.locator('.cp-progress-disclosure summary').click();
+ await expect(page.locator('#stepper-pre .step')).toHaveCount(8);
+ await expect(page.locator('.cp-current-stage')).not.toContainText('Booked');
 });

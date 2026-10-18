@@ -31,3 +31,5 @@ body[data-client-ios] .client-ios-session-error{padding:8px 16px;color:#8b2525;b
 @media(prefers-reduced-motion:reduce){body[data-client-ios] *,body[data-client-ios] *::before,body[data-client-ios] *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 body[data-client-ios] .client-ios-sample{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin:12px 0;padding:12px 16px;border:1px solid #cbd8eb;border-radius:14px;background:#edf4ff;color:#24496d;font-size:12px;line-height:1.5}
 body[data-client-ios] .client-ios-sample button{min-height:44px;padding:8px 12px;border:1px solid #aac0dc;border-radius:10px;background:#fff;color:#153f6e;font:inherit;cursor:pointer}
+body[data-client-ios] .client-ios-sample-host{flex-wrap:wrap}
+body[data-client-ios] .client-ios-sample{grid-column:1/-1;order:-30;flex:0 0 100%;width:100%;min-width:0;max-width:100%;align-self:start}

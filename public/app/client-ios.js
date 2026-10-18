@@ -44,7 +44,8 @@
         location.reload();
       });
       sampleBar.appendChild(sampleText); sampleBar.appendChild(sampleSwitch);
-      var sampleHost = body.querySelector('main,.main,.money-main,.wrap') || body;
+      var sampleHost = body.querySelector('#portal-home .page') || body.querySelector('main,.main,.money-main,.wrap') || body;
+      sampleHost.classList.add('client-ios-sample-host');
       sampleHost.insertBefore(sampleBar,sampleHost.firstChild);
     }
     body.setAttribute("data-client-nav", "");

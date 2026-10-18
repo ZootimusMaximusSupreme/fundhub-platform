@@ -24,7 +24,7 @@ try {
   const token = (await createAccountSession(db,{accountId,orgId})).token;
   const {config,facts} = planMixedSandboxUser({today:now});
   const entities = {};
-  for (const kind of ['personal','business']) entities[kind]=(await db.query(`INSERT INTO entities (org_id,client_id,kind,name) VALUES ($1,$2,$3,$4) RETURNING id`,[orgId,clientId,kind,kind==='personal'?'Portal Sample (personal)':'Sample Consulting LLC'])).rows[0].id;
+  for (const kind of ['personal','business']) entities[kind]=(await db.query(`INSERT INTO entities (org_id,client_id,kind,name,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$5) RETURNING id`,[orgId,clientId,kind,kind==='personal'?'Portal Sample (personal)':'Sample Consulting LLC',now])).rows[0].id;
   for (const [i,f] of facts.accounts.entries()) {
     const kind=f.name.startsWith('Business')?'business':'personal';
     const bankId=(await db.query(`INSERT INTO bank_accounts (org_id,client_id,name,mask,account_type,account_subtype,entity_kind,entity_kind_source,entity_kind_set_at,entity_id,currency_code,current_balance_cents,credit_limit_cents,balance_as_of)

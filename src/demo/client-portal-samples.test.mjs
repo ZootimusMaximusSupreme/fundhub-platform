@@ -11,7 +11,7 @@ test('only exact active joined role account can get samples',async()=>{
   for(const patch of [{kind:'staff'},{kind:'affiliate'},{authorizedRep:true},{email:'chris@fundhub.ai'},{email:'ordinary@example.test'},{accountId:null},{orgId:null},{clientId:null}])assert.equal(await clientSampleAccount({query(){throw Error('must not query');}},{...p,...patch}),false);
   for(const patch of [{account_id:'other'},{org_id:'other'},{client_org_id:'other'},{client_id:'other'},{kind:'staff'},{status:'disabled'},{email:'other@example.test'},{client_master_key:'other'}])assert.equal(await clientSampleAccount(db({...row,...patch}),p),false);
   assert.equal(await clientSampleAccount(db(null),p),false);
-  assert.equal(await clientSampleAccount({query:async()=>{throw Error('offline');}},p),false);
+  assert.equal(await clientSampleAccount({query:async()=>{throw Error('offline');}},p),null);
 });
 test('successful reads decorated; errors and real account view stay original',async()=>{
   const data={notice:'Sample',reads:{'/api/money/overview':{ok:true,value:17}}};
@@ -24,6 +24,7 @@ test('sample money, banking, upload, signature and booking mutations refused; re
   const res=response();assert.equal(await installClientSamples({method:'POST',url:'/api/affiliates/refer',headers:{}},res,p,db()),true);
 });
 test('real referral state survives sample progress decoration',async()=>{const res=response();await installClientSamples({method:'GET',url:'/api/read/client-progress',headers:{}},res,p,db(),{data:{reads:{'/api/read/client-progress':{ok:true}}}});res.json({ok:true,referral:{enrolled:true,shareUrl:'own-real-url'}});assert.deepEqual(res.body.referral,{enrolled:true,shareUrl:'own-real-url'});});
+test('unknown sample identity fails closed before any mutation',async()=>{const res=response();assert.equal(await installClientSamples({method:'POST',url:'/api/documents-upload',headers:{}},res,p,{query:async()=>{throw Error('offline');}}),false);assert.equal(res.code,503);assert.equal(res.body.ok,false);});
 test('canonical bundle agrees across Home, progress, accounts and FinanceOS',()=>{
   const r=bundle.reads,home=r['/api/read/portal-summary'],credit=r['/api/money/credit'],overview=r['/api/money/overview'];
   assert.equal(Object.keys(r).length,20);

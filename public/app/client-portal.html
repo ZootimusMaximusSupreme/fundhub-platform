@@ -510,9 +510,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
     var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
     var link = document.getElementById("prog-link");
     if (hero && link && link.parentNode !== hero) hero.appendChild(link);
-    var current = document.querySelector("#stepper-pre .step.current .lbl");
     var caption = document.querySelector(".cp-current-stage");
-    var text = current ? "Current: " + current.textContent : "";
+    var text = caption ? caption.getAttribute("data-stage-label") || "Status updating" : "";
     if (caption && caption.textContent !== text) caption.textContent = text;
     var a = link && link.querySelector("a");
     if (a && a.textContent !== "View progress →") a.textContent = "View progress →";
@@ -2439,6 +2438,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function paintStage() {
     var c = stageCopy();
+    /* The eight legacy funding ticks prove only booking/payment. Summary status
+       must use the same actual stage as the hero copy, including credit pulls. */
+    var stageLabels = { booked: "Call booked", soft_pull: "Credit pull received", call_held: "Call completed", agreement_signed: "Agreement signed", paid: "Payment received" };
+    var stageCaption = document.querySelector(".cp-current-stage");
+    if (stageCaption) {
+      var stageLabel = stage && stageLabels[stage.key] ? "Current: " + stageLabels[stage.key] : "Status updating";
+      stageCaption.setAttribute("data-stage-label", stageLabel);
+      stageCaption.textContent = stageLabel;
+    }
     var subPre = document.getElementById("greeting-sub-pre");
     if (subPre) subPre.textContent = c ? c.sub : "Welcome to your Fundhub portal.";
     setText("sb-pre-eyebrow", c ? c.eyebrow : "Your file");

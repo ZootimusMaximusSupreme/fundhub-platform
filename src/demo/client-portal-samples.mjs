@@ -12,7 +12,7 @@ export async function clientSampleAccount(database, p) {
         AND c.client_master_key='FDH-TEST-CLIENT-ROLE-ACCOUNT'`,[p.accountId,p.orgId,p.clientId]);
     const a=r.rows[0];
     return !!(a&&a.account_id===p.accountId&&a.org_id===p.orgId&&a.client_org_id===p.orgId&&a.client_id===p.clientId&&a.kind==='client'&&a.status==='active'&&a.email.toLowerCase()==='client@fundhub.ai'&&a.client_master_key==='FDH-TEST-CLIENT-ROLE-ACCOUNT');
-  } catch {return false;}
+  } catch {return null;}
 }
 
 export function realPortalData(req) {
@@ -27,7 +27,12 @@ export async function installClientSamples(req,res,p,database,{data=bundle}={}) 
   const method=req.method||'GET';
   const realAction=path==='/api/affiliates/refer';
   if((method==='GET'&&!covered)||realAction)return true;
-  if(!(await clientSampleAccount(database,p)))return true;
+  const eligible=await clientSampleAccount(database,p);
+  if(eligible===null&&!realPortalData(req)){
+    res.status(503).json({ok:false,error:'sample_identity_unavailable',message:'We could not verify the account data view. Nothing was changed. Please try again.'});
+    return false;
+  }
+  if(!eligible)return true;
   res.setHeader('Cache-Control','private, no-store');
   if(realPortalData(req))return true;
   if(method!=='GET') {

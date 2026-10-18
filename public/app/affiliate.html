@@ -763,7 +763,9 @@ renderLeads(); renderPayouts();
     var mine = meId
       ? lastRows.filter(function (r) { return String(r.id) === String(meId); })[0]
       : null;
-    applyCode(mine && mine.tracking_id);
+    // A missing staff rollup row must not erase identity from the own-portal read.
+    // These reads complete independently; clients cannot read the staff rollup.
+    if (mine && mine.tracking_id) applyCode(mine.tracking_id);
     return mine;
   }
   var t;
