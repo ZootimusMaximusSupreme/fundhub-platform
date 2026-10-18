@@ -1,0 +1,44 @@
+name: Read actual published CRM checkpoint
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths: [.github/workflows/crm-published-assets.yml]
+permissions:
+  contents: read
+jobs:
+  published:
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read public pages and verify actual deployed bytes
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';import crypto from 'node:crypto';
+          const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
+          const paths=['/app/my-numbers.html','/app/client-portal.html','/app/fundhub-font.css'];
+          const results=await Promise.all(paths.map(async path=>{
+            try{
+              const res=await fetch('https://fundhub.ai'+path+'?ui-check='+process.env.GITHUB_RUN_ID,{signal:AbortSignal.timeout(20000),headers:{'cache-control':'no-cache'}});
+              const data=Buffer.from(await res.arrayBuffer());
+              const matches=res.ok&&hash(data)===hash(fs.readFileSync('public'+path));
+              return{path,status:res.status,bytes:data.length,matchesMain:matches,cacheControl:res.headers.get('cache-control')};
+            }catch(error){return{path,error:String(error.message),matchesMain:false};}
+          }));
+          const r=await fetch('https://fundhub.ai/api/health?strict=1',{signal:AbortSignal.timeout(20000)});
+          const health=await r.json();const proof={checkedAt:new Date().toISOString(),production:true,readOnly:true,results,health:{status:r.status,ok:health.ok,pending:health.pending}};
+          console.log(JSON.stringify(proof,null,2));fs.writeFileSync(process.env.RUNNER_TEMP+'/actual-crm-public.json',JSON.stringify(proof,null,2));
+          if(results.some(r=>!r.matchesMain)||health.ok!==true||health.pending!==0)process.exitCode=1;
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: actual-published-crm-http-proof
+          path: ${{ runner.temp }}/actual-crm-public.json
