@@ -2,14 +2,9 @@ import SwiftUI
 
 @main
 struct FundhubPrompterApp: App {
-    @StateObject private var model = AppModel()
-    @StateObject private var camera = CameraController()
-
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(model)
-                .environmentObject(camera)
                 .preferredColorScheme(.dark)
                 .tint(Brand.amber)
         }
@@ -25,21 +20,7 @@ enum Brand {
 }
 
 struct RootView: View {
-    @EnvironmentObject var model: AppModel
-    @Environment(\.scenePhase) private var phase
-
     var body: some View {
-        Group {
-            if model.signIn == nil {
-                LoginView()
-            } else {
-                ScriptListView()
-            }
-        }
-        .onChange(of: phase) { _, p in
-            if p == .active && model.signIn != nil { model.startPolling() } else if p != .active { model.stopPolling() }
-        }
-        .onAppear { if model.signIn != nil { model.startPolling() } }
-        .onChange(of: model.signIn) { _, s in if s != nil { model.startPolling() } else { model.stopPolling() } }
+        LivePrompterView()
     }
 }
