@@ -551,9 +551,9 @@ function galaxyWorld({ demoMode = false } = {}) {
     }],
     [/FROM staff_events e\s+WHERE e\.org_id = \$1 AND e\.staff_id = ANY/, []],
     [/FROM call_outcomes co\s+JOIN clients c ON c\.id = co\.client_id/, []],
-    [/FROM agents\s+WHERE org_id = \$1/, (sql, params) => {
+    [/FROM agents a\s+WHERE a\.org_id = \$1/, (sql, params) => {
       seen.agents = { sql, params };
-      return [{ code: "setter-1", name: "Setter Agent", agent_class: "cfa", channel: "sms_text", status: "live", runtime: "inngest", went_live_at: new Date(Date.now() - 3600e3).toISOString(), sort_order: 1 }];
+      return [{ code: "setter-1", name: "Setter Agent", agent_class: "cfa", channel: "sms_text", status: "live", runtime: "inngest", went_live_at: new Date(Date.now() - 3600e3).toISOString(), sort_order: 1, runs_today: 6, runs_15m: 2, blocked_15m: 1 }];
     }],
     [/^\s*SELECT trim\(both FROM concat_ws\(' ', first_name, last_name\)\) AS name, is_demo\s+FROM clients/, (sql, params) => {
       seen.clients = { sql, params };
@@ -587,7 +587,8 @@ test("GET read/company-activity answers who is on shift, the agents that are liv
   assert.equal(b.nodes[1].state, "idle");
   assert.equal(b.nodes[1].act, "Idle — no open shift");
   assert.equal(b.nodes[2].kind, "agent");
-  assert.equal(b.nodes[2].state, "active");
+  assert.equal(b.nodes[2].state, "blocked");
+  assert.equal(b.nodes[2].out, 6, "agent output is today's saved run count");
   assert.equal(b.nodes[2].c, "cfa");
   assert.deepEqual(b.clients, ["Alex Rivera"]);
   assert.deepEqual(b.kpis.map((k) => [k.id, k.v]), [["cash", 12345], ["fund", 75000], ["move", 4]], "cash is cents turned into dollars");
@@ -600,7 +601,13 @@ test("GET read/company-activity answers who is on shift, the agents that are liv
     demo: "AND ($2::boolean OR COALESCE(s.is_demo, false) = false)",
   });
   assert.deepEqual(world.seen.agents.params, [ORG_ID]);
-  assertSqlHas(world.seen.agents.sql, { liveOnly: "status IN ('live', 'shadow')", notRetired: "retired_at IS NULL" });
+  assertSqlHas(world.seen.agents.sql, {
+    liveOnly: "a.status IN ('live', 'shadow')",
+    notRetired: "a.retired_at IS NULL",
+    output: "FROM agent_runs r WHERE r.org_id = a.org_id AND r.agent_code = a.code AND r.created_at >= date_trunc('day', now())",
+    blocked: "FROM agent_shadow_log l",
+    blockedReasons: "l.reason IN ('guardrail_halt', 'guardrail_block')",
+  });
   assert.deepEqual(world.seen.money.params, [ORG_ID]);
   assertOnlySent(result, "org.demo_mode", "galaxy.staff", "galaxy.timeline", "galaxy.files", "galaxy.agents", "galaxy.clients", "galaxy.money");
   assertSqlHas(world.seen.money.sql, {

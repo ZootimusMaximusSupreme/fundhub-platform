@@ -1,12 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  parseSoftPullBusinesses,
-  parseIncorporatedDate,
+import handler, {
   ageMonthsFromIncorporated,
+  ensureSoftPullCheckout,
   normalizeSoftPullEin,
+  parseIncorporatedDate,
+  parseSoftPullBusinesses,
   replaceSoftPullBusinesses,
-  ensureSoftPullCheckout
+  stampBusinessIncorporated
 } from "../../api/soft-pull-approve.mjs";
 import { softPullTotalCents } from "../finance/soft-pull-pricing.mjs";
 import { ConsentError } from "../consent/index.mjs";
@@ -137,6 +138,97 @@ test("replaceSoftPullBusinesses writes ein, incorporated_date, and age_months", 
   assert.equal(inserts[0].entity.extra_owner_name, "Pat Lee");
   assert.equal(inserts[0].entity.address_line1, "1 Main St");
   assert.equal(inserts[0].entity.state, "AZ");
+});
+
+test("stampBusinessIncorporated writes month/year and age on one existing company", async () => {
+  const updates = [];
+  const db = {
+    async query(sql, params) {
+      if (/UPDATE businesses/i.test(sql)) {
+        updates.push(params);
+        return {
+          rows: [{
+            id: "b1",
+            name: params[2],
+            age_months: params[3],
+            incorporated_date: params[4]
+          }]
+        };
+      }
+      throw new Error("unexpected: " + String(sql).slice(0, 80));
+    }
+  };
+  const out = await stampBusinessIncorporated(db, {
+    orgId: "o",
+    clientId: "c",
+    businessName: "Fund Horse Logistics",
+    incorporatedDate: "2020-01",
+    now: new Date("2026-08-25T00:00:00Z")
+  });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0][2], "Fund Horse Logistics");
+  assert.equal(updates[0][3], 79);
+  assert.equal(updates[0][4], "2020-01");
+  assert.equal(out.age_months, 79);
+  assert.equal(out.incorporated_date, "2020-01");
+});
+
+test("stampBusinessIncorporated refuses a missing or future date without writing", async () => {
+  const db = { query() { throw new Error("should not write"); } };
+  await assert.rejects(
+    () => stampBusinessIncorporated(db, {
+      orgId: "o", clientId: "c", businessName: "Fund Horse Logistics", incorporatedDate: ""
+    }),
+    (e) => e instanceof ConsentError && e.code === "business_incorporated_required"
+  );
+  await assert.rejects(
+    () => stampBusinessIncorporated(db, {
+      orgId: "o", clientId: "c", businessName: "Fund Horse Logistics",
+      incorporatedDate: "2099-01", now: new Date("2026-08-25T00:00:00Z")
+    }),
+    (e) => e instanceof ConsentError && e.code === "business_incorporated_invalid"
+  );
+});
+
+test("POST stamp_incorporated reaches the staff handler and writes the named business", async () => {
+  const orgId = "11111111-1111-4111-8111-111111111111";
+  const clientId = "22222222-2222-4222-8222-222222222222";
+  const writes = [];
+  const database = {
+    async query(sql, params) {
+      if (/SELECT 1 FROM clients/.test(sql)) return { rows: [{ "?column?": 1 }] };
+      if (/UPDATE businesses/.test(sql)) {
+        writes.push(params);
+        return { rows: [{ name: params[2], age_months: params[3], incorporated_date: params[4] }] };
+      }
+      throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+    }
+  };
+  const response = {
+    statusCode: 0,
+    body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+
+  await handler({
+    method: "POST",
+    body: {
+      action: "stamp_incorporated",
+      client_id: clientId,
+      business_name: "Fund Horse Logistics",
+      incorporated_date: "2020-05"
+    }
+  }, response, {
+    db: database,
+    requireAuth: async () => ({ id: "staff-1", role: "owner", org_id: orgId })
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.business.incorporated_date, "2020-05");
+  assert.equal(writes.length, 1);
+  assert.deepEqual(writes[0].slice(0, 3), [orgId, clientId, "Fund Horse Logistics"]);
 });
 
 test("ensureSoftPullCheckout reuses matching open link", async () => {

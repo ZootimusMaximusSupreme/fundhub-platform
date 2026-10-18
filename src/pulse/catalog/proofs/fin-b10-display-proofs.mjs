@@ -9,8 +9,7 @@
 //   practice test   a real page in Chromium, fake /api answers, one action, a judgement of the exact request and
 //                   the words painted (the test file named beside the row in fin-b10-rows.json). It reads no
 //                   saved data. The row leaves the lane.
-// One row is in neither list (rows.json "notAttached"): it is held open in the lane with its exact reason
-// (see OPEN_GAP in fin-b10-display-contracts.mjs). The browser test still presses it and goes green.
+// Every batch row now belongs to one of those two lists.
 
 import ROWS from "./fin-b10-rows.json" with { type: "json" };
 import { FIN_B10_LANE, FIN_B10_LIVE_CASES, FIN_B10_LIVE_ROWS, FIN_B10_RESULT_CONTRACTS } from "./fin-b10-display-contracts.mjs";

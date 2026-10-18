@@ -208,8 +208,6 @@ th[data-s="age"]{text-align:right}
           <div class="spacer"></div>
           <select id="statusFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
             <option value="">Any status</option>
-            <option value="gen-pending">Not generated</option>
-            <option value="gen-failed">Generation failed</option>
             <option value="del-pending">Not delivered</option>
             <option value="del-bounced">Bounced</option>
             <option value="sig-pending">Awaiting signature</option>
@@ -358,8 +356,6 @@ function rows(){
     if(curCls && d.cls!==curCls) return false;
     if(pendingOnly && !pending(d)) return false;
     if(q && (d.doc+' '+d.client+' '+d.sub).toLowerCase().indexOf(q)<0) return false;
-    if(sf==='gen-pending' && d.gen==='generated') return false;
-    if(sf==='gen-failed' && d.gen!=='failed') return false;
     if(sf==='del-pending' && d.del!=='not_sent') return false;
     if(sf==='del-bounced' && d.del!=='bounced') return false;
     if(sf==='sig-pending' && d.sig!=='awaiting') return false;

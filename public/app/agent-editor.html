@@ -532,6 +532,17 @@ function agentFromRow(real){
 var cur=null, dirty=false, SAVED={};
 function cloneAgent(a){ return JSON.parse(JSON.stringify(a)); }
 function rememberSaved(a){ if(a && a.id) SAVED[a.id]=cloneAgent(a); }
+function restoreSavedAgent(){
+  if(!cur) return null;
+  var snap=SAVED[cur.id];
+  if(!snap) return cur;
+  var next=cloneAgent(snap);
+  for(var i=0;i<AGENTS.length;i++){
+    if(AGENTS[i].id===cur.id){ AGENTS[i]=next; break; }
+  }
+  cur=next;
+  return next;
+}
 
 /* ══ LIST ════════════════════════════════════════════════════════════════ */
 function modeDot(m){
@@ -563,7 +574,10 @@ function renderList(){
   }).join('');
   document.querySelectorAll('.aitem').forEach(function(el){
     el.addEventListener('click',function(){
-      if(dirty && !confirm('You have unsaved changes on '+cur.name+'. Discard them?')) return;
+      if(dirty){
+        if(!confirm('You have unsaved changes on '+cur.name+'. Discard them?')) return;
+        restoreSavedAgent();
+      }
       select(el.dataset.a);
     });
   });
@@ -962,14 +976,7 @@ document.getElementById('saveBtn').addEventListener('click',function(){
 });
 document.getElementById('revertBtn').addEventListener('click',function(){
   if(!cur) return;
-  var snap=SAVED[cur.id];
-  if(snap){
-    var next=cloneAgent(snap);
-    var idx=-1;
-    for(var i=0;i<AGENTS.length;i++){ if(AGENTS[i].id===cur.id){ idx=i; break; } }
-    if(idx>=0) AGENTS[idx]=next;
-    cur=next;
-  }
+  restoreSavedAgent();
   select(cur.id);
 });
 document.getElementById('drillSend').addEventListener('click', sendDrill);

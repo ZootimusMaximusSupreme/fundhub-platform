@@ -220,6 +220,88 @@ export async function replaceSoftPullBusinesses(database, { orgId, clientId, bus
   }
 }
 
+export async function stampBusinessIncorporated(database, {
+  orgId, clientId, businessName, incorporatedDate, now = new Date()
+} = {}) {
+  const name = String(businessName || "").trim();
+  if (!name) {
+    throw new ConsentError("Pick a business on this file.", {
+      status: 400,
+      code: "business_name_required"
+    });
+  }
+  const incorporated = parseIncorporatedDate(incorporatedDate);
+  if (!incorporated) {
+    throw new ConsentError("Enter when this business was incorporated (month and year).", {
+      status: 400,
+      code: "business_incorporated_required"
+    });
+  }
+  const ageMonths = ageMonthsFromIncorporated(incorporated, now);
+  if (ageMonths == null) {
+    throw new ConsentError("The incorporation date cannot be in the future.", {
+      status: 400,
+      code: "business_incorporated_invalid"
+    });
+  }
+  const result = await database.query(
+    `UPDATE businesses
+        SET age_months = $4,
+            entity_data = jsonb_set(
+              COALESCE(entity_data, '{}'::jsonb),
+              '{incorporated_date}',
+              to_jsonb($5::text),
+              true
+            ),
+            updated_at = now()
+      WHERE org_id = $1 AND client_id = $2 AND name = $3
+      RETURNING id, name, age_months, entity_data->>'incorporated_date' AS incorporated_date`,
+    [orgId, clientId, name, ageMonths, incorporated]
+  );
+  if (!result.rows[0]) {
+    throw new ConsentError("That business is not on this file.", {
+      status: 404,
+      code: "business_not_found"
+    });
+  }
+  return {
+    name: result.rows[0].name,
+    incorporated_date: result.rows[0].incorporated_date,
+    age_months: Number(result.rows[0].age_months)
+  };
+}
+
+async function stampIncorporatedAsStaff(req, res, { database, requireAuth: auth }) {
+  const staff = await auth(req, res, { db: database });
+  if (!staff) return;
+  if (!requireRole(res, staff, ROLE_SETS.STAFF)) return;
+  const orgId = requireSessionOrg(res, staff);
+  if (!orgId) return;
+  const clientId = String(req.body?.client_id || "").trim();
+  if (!isUuid(clientId)) {
+    return res.status(400).json({ ok: false, error: "client_id_required" });
+  }
+  if (!await requireClientInOrg(res, database, staff, clientId)) return;
+  try {
+    const business = await stampBusinessIncorporated(database, {
+      orgId,
+      clientId,
+      businessName: req.body?.business_name,
+      incorporatedDate: req.body?.incorporated_date
+    });
+    return res.status(200).json({ ok: true, business });
+  } catch (err) {
+    if (err instanceof ConsentError) {
+      return res.status(err.status || 400).json({
+        ok: false,
+        error: err.code || "invalid_business",
+        message: err.message
+      });
+    }
+    return dbDown(res, err);
+  }
+}
+
 /**
  * Reuse an open diagnostic link at the exact total, or expire wrong-amount
  * open diagnostic links and mint a new one.

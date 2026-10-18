@@ -546,16 +546,6 @@ check(
   })
 );
 
-// The "Save month/year" button posts { action: "stamp_incorporated" } to /api/soft-pull-approve, and that handler
-// calls stampIncorporatedAsStaff, which is defined nowhere in the repo (a later change removed it). A click throws a
-// ReferenceError and writes nothing. The businesses rows that DO carry an incorporation month are written by the
-// approval form and the SLO form, which are other controls, so a read of them says nothing about this button and
-// stays green while it is dead. It is not attachable until the handler is fixed (product finding 1).
-gap(
-  "Businesses cards: Save month/year button (stamp incorporation)",
-  "The button is broken today: POST /api/soft-pull-approve with action stamp_incorporated calls stampIncorporatedAsStaff (api/soft-pull-approve.mjs), which no file defines, so every click throws a ReferenceError and saves nothing. There is no result of this button to read: the businesses rows that carry an incorporation month are written by the approval form and the SLO form. Fix the handler first, then attach a practice test that calls it and a live check on the month it stamps."
-);
-
 // ───────────────────────── Contracts and wordings ─────────────────────────
 
 const STAFF_JOIN = (alias, left, right) => ({

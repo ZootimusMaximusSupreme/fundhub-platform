@@ -11,10 +11,8 @@
     "Identity: Agent name input",
     "Identity: Class select (Client-facing, Ops)",
     "Identity: Owner select",
+    "Agent list row (click to open an agent, confirm discard of unsaved edits)",
     "Revert button"
-   ],
-   "notAttached": [
-    "Agent list row (click to open an agent, confirm discard of unsaved edits)"
    ]
   }
  ],

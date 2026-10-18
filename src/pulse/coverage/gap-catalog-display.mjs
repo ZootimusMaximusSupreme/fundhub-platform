@@ -125,10 +125,10 @@ async function retiredPageState(ctx = {}) {
 
 // Controls the map lists that the product no longer has (fin-b01-retired-controls.mjs). Each is read
 // live, GET only. It is "nothing to judge" only while the live files still hold none of it.
-async function retiredControlResults(ctx) {
+async function retiredControlResults(ctx, trackingCases = DISPLAY_TRACKING_CASES) {
   const retiredCache = new Map();
   const out = new Map();
-  await Promise.all(DISPLAY_TRACKING_CASES.map(async (entry) => {
+  await Promise.all(trackingCases.map(async (entry) => {
     const control = retiredControlFor(entry);
     if (!control) return;
     const state = await retiredControlState(control, { ...ctx, retiredCache });
@@ -216,22 +216,29 @@ function liveFileReader(ctx = {}) {
   return { get, base };
 }
 
-export async function gapChecks(ctx = {}) {
+export async function gapChecks(ctx = {}, runtime = null) {
+  // Batch branches compile their changed proof registry in memory and exercise this exact lane without
+  // rewriting generated.json. Integration regenerates the shared catalog once after all batches merge.
+  const trackingCases = runtime?.displayTrackingCases || DISPLAY_TRACKING_CASES;
+  const resultCases = runtime?.displayResultCases || DISPLAY_RESULT_CASES;
+  const sqlBatches = runtime
+    ? [...new Set(resultCases.filter((entry) => entry.contract.mode === "query").map((entry) => entry.contract.sql))]
+    : SQL_BATCHES;
   // Two GETs (the deployed shell and the deployed Client Control Panel) serve every link-gate contract: the
   // shell is RUN against the page's own links, once per staff role, because the live file is what decides
   // what a person sees. Started first so it overlaps the retired-page reads below; linkGateState never throws.
-  const gateRead = DISPLAY_TRACKING_CASES.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
+  const gateRead = trackingCases.some((entry) => entry.contract?.mode === "link-gate") ? linkGateState(ctx) : null;
   // One live read for all controls on this retired page, even without a DB.
-  const retired = DISPLAY_TRACKING_CASES.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
-  const retiredControls = await retiredControlResults(ctx);
+  const retired = trackingCases.some((entry) => entry.retired) ? await retiredPageState(ctx) : null;
+  const retiredControls = await retiredControlResults(ctx, trackingCases);
   // A control the live page does not carry is read from the live page, not from a table (fin-b06-not-shipped.mjs).
-  const notShipped = await judgeNotShipped(DISPLAY_TRACKING_CASES, ctx);
+  const notShipped = await judgeNotShipped(trackingCases, ctx);
   // The Reset button on the private lead list is read from the live page (fin-b09-leads-reset.mjs).
-  const leadsReset = await leadsResetResults(DISPLAY_TRACKING_CASES, livePageReader(ctx), ctx.registry);
+  const leadsReset = await leadsResetResults(trackingCases, livePageReader(ctx), ctx.registry);
   // A sidebar head that no role is shown is read from the live shared chrome, not from a table (fin-b19-hidden-head.mjs).
-  const hiddenHeads = await judgeHiddenHeads(DISPLAY_TRACKING_CASES, ctx);
+  const hiddenHeads = await judgeHiddenHeads(trackingCases, ctx);
   // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
-  const removed = await ownerRemovedResults(DISPLAY_TRACKING_CASES, liveFileReader(ctx));
+  const removed = await ownerRemovedResults(trackingCases, liveFileReader(ctx));
   const gate = gateRead ? await gateRead : null;
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
@@ -246,20 +253,20 @@ export async function gapChecks(ctx = {}) {
   };
   // One GET per live-page contract, with or without a database (the page is read over the web).
   const pages = new Map();
-  for (const entry of DISPLAY_TRACKING_CASES) {
+  for (const entry of trackingCases) {
     if (entry.contract?.mode === "live-page") pages.set(entry.id, await livePageRow(entry, ctx));
   }
   const run = reader(ctx);
   if (!run) {
-    return DISPLAY_TRACKING_CASES.map((entry) => {
+    return trackingCases.map((entry) => {
       if (pages.has(entry.id)) return pages.get(entry.id);
       return entry.contract?.mode === "query" ? skipped(entry, "no database in this run") : judge(entry);
     });
   }
 
   const bySql = new Map();
-  for (let start = 0; start < SQL_BATCHES.length; start += SQL_READ_BATCH_SIZE) {
-    const batch = SQL_BATCHES.slice(start, start + SQL_READ_BATCH_SIZE);
+  for (let start = 0; start < sqlBatches.length; start += SQL_READ_BATCH_SIZE) {
+    const batch = sqlBatches.slice(start, start + SQL_READ_BATCH_SIZE);
     const query = batch.map((sql, index) =>
       `SELECT ${index}::int AS probe_index, sample_count, bad_count FROM (${sql}) AS result`
     ).join("\nUNION ALL\n");
@@ -275,7 +282,7 @@ export async function gapChecks(ctx = {}) {
     }
   }
 
-  return DISPLAY_TRACKING_CASES.map((entry) => {
+  return trackingCases.map((entry) => {
     if (pages.has(entry.id)) return pages.get(entry.id);
     if (entry.contract?.mode !== "query") return judge(entry);
     const stats = bySql.get(entry.contract.sql);

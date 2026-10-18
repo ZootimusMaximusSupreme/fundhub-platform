@@ -2628,6 +2628,7 @@ document.addEventListener("DOMContentLoaded", function () {
       card.appendChild(grid);
       var birth = document.createElement("div");
       birth.style.marginTop = "10px";
+      birth.setAttribute("data-business-name", row.name || "");
       var birthLab = document.createElement("label");
       birthLab.setAttribute("for", "ccp-inc-" + i);
       birthLab.textContent = "When was this business incorporated?";
@@ -2669,9 +2670,19 @@ document.addEventListener("DOMContentLoaded", function () {
             birthMsg.textContent = (res && (res.error || res.message)) || "Could not save.";
             return;
           }
-          birthMsg.textContent = "Saved.";
           FHData.client(id).then(function (again) {
-            if (again && again.ok) render(again.data);
+            if (again && again.ok) {
+              render(again.data);
+              var refreshed = Array.prototype.find.call(box.querySelectorAll("[data-business-name]"), function (item) {
+                return item.getAttribute("data-business-name") === String(row.name || "");
+              });
+              var refreshedMsg = refreshed && refreshed.querySelector("p");
+              if (refreshedMsg) refreshedMsg.textContent = "Saved.";
+              return;
+            }
+            birthMsg.textContent = "Saved. Reload to see it.";
+          }).catch(function () {
+            birthMsg.textContent = "Saved. Reload to see it.";
           });
         });
       });
@@ -3817,8 +3828,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (hasPartner) {
         say(el.partnerNow, (b.partner && b.partner.name ? b.partner.name : "A credit partner") +
           " is on this file. One partner is included.");
-        el.partnerOpen.href = "client-control-panel.html?id=" + encodeURIComponent(b.partnerClientId);
-        el.partnerConsent.href = "consent-capture.html?client_id=" + encodeURIComponent(b.partnerClientId);
+        var partnerOpenUrl = "client-control-panel.html?id=" + encodeURIComponent(b.partnerClientId);
+        var partnerConsentUrl = "consent-capture.html?client_id=" + encodeURIComponent(b.partnerClientId);
+        el.partnerOpen.setAttribute("href", partnerOpenUrl);
+        el.partnerOpen.setAttribute("data-fh-href", partnerOpenUrl);
+        el.partnerConsent.setAttribute("href", partnerConsentUrl);
+        el.partnerConsent.setAttribute("data-fh-href", partnerConsentUrl);
         el.partnerOpen.hidden = false;
         el.partnerConsent.hidden = false;
         el.partnerForm.hidden = true;

@@ -28,8 +28,11 @@ function proof(sourceFile, surface, control, assertion, files = [TEST_FILE]) {
   });
 }
 
-// Five controls whose click leaves nothing to read: the practice test is the only evidence.
+// Six controls whose exact page action cannot be attributed from a saved row: the practice test is the only evidence.
 const PRACTICE_ONLY = Object.freeze([
+  proof("desks-a.json", "client-control-panel.html", "Businesses cards: Save month/year button (stamp incorporation)",
+    "With a real-shaped business card, Save month/year posts stamp_incorporated with this client, that card's exact business name and the exact month typed; only an accepted save says Saved, then the page re-reads the file and paints the saved month.",
+    [TEST_FILE_2]),
   proof("desks-a.json", "client-control-panel.html", "Capital Blueprint: Bank list state buttons",
     "With two banks on the list, Done, Skipped and Put back on the list each post update_bank_todo_state with this client, the id of THEIR OWN row and the chosen state (the other row is left alone), the list is read again and shows the server's state, and a refused change leaves the buttons usable."),
   proof("desks-a.json", "client-control-panel.html", "Identity-on-file state line and client approval link box + Copy link",

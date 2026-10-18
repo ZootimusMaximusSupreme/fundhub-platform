@@ -56,7 +56,8 @@ test("companyActivity maps open-shift staff to active nodes and respects demo to
     {
       match: (sql) => /FROM agents/.test(sql),
       result: () => ({ rows: [
-        { code: "AG-04", name: "Setter Josh", agent_class: "client_facing", channel: "voice", status: "live", runtime: "bland", went_live_at: new Date(), sort_order: 1 }
+        { code: "AG-04", name: "Setter Josh", agent_class: "client_facing", channel: "voice", status: "live", runtime: "bland", went_live_at: new Date(), sort_order: 1, runs_today: 7, runs_15m: 2, blocked_15m: 1 },
+        { code: "OP-06", name: "Quiet Ops", agent_class: "ops", channel: "internal", status: "shadow", runtime: "internal", went_live_at: null, sort_order: 2, runs_today: 0, runs_15m: 0, blocked_15m: 0 }
       ] })
     },
     {
@@ -72,7 +73,7 @@ test("companyActivity maps open-shift staff to active nodes and respects demo to
   const on = await companyActivity(db, { orgId });
   assert.equal(on.demo_mode, true);
   assert.equal(on.simulated, false);
-  assert.equal(on.nodes.length, 2);
+  assert.equal(on.nodes.length, 3);
   assert.deepEqual(on.clients, ["DEMO · Avery Cobalt"]);
   const human = on.nodes.find((n) => n.kind === "human");
   assert.equal(human.state, "active");
@@ -81,11 +82,16 @@ test("companyActivity maps open-shift staff to active nodes and respects demo to
   assert.ok(human.ini);
   const agent = on.nodes.find((n) => n.kind === "agent");
   assert.equal(agent.c, "cfa");
-  assert.equal(agent.state, "active");
+  assert.equal(agent.state, "blocked");
+  assert.equal(agent.out, 7, "agent size comes from saved runs today");
+  assert.equal(agent.stats.at(-2)[1], "7");
+  const quiet = on.nodes.find((n) => n.id === "agent:OP-06");
+  assert.equal(quiet.state, "idle");
+  assert.equal(quiet.out, 0);
 
   demoMode = false;
   const off = await companyActivity(db, { orgId });
   assert.equal(off.demo_mode, false);
   assert.equal(off.nodes.filter((n) => n.kind === "human").length, 0);
-  assert.ok(off.nodes.some((n) => n.kind === "agent"));
+  assert.equal(off.nodes.filter((n) => n.kind === "agent").length, 2);
 });
