@@ -18,233 +18,125 @@
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
 <style>
-  /* Local aliases onto fundhub-brand.css — no brand token is redeclared here.
-     Two tiers per hue, because the real status colors are pastels: the pastel
-     itself fills and outlines, and a dark ink of the same hue carries text
-     (pastel-on-white text fails contrast).
-     --surface is the white card. The brand --card is the DARK card colour, so
-     this surface keeps its own name rather than shadowing the token. */
   :root{
-    --butter:#F2E39B;                       /* spectrum stop @40% */
-    --paper-dim:var(--soft);
-    --surface:#FFFFFF;
-    --text:var(--ink2);
-    --text-dim:var(--gray);
-    --text-faint:var(--gray2);
-    --dark-text:var(--paper);
-    --dark-text-dim:var(--gray2);
-    --dark-line:var(--cardline);
-    --amber:#6B4A12;                        /* peach  — ink   */
-    --amber-bg:rgba(245,206,143,.26);       /* peach  — fill  */
-    --amber-line:var(--warn);
-    --red:#6E2A22;                          /* coral  — ink   */
-    --red-bg:rgba(242,166,155,.24);         /* coral  — fill  */
-    --red-line:var(--alert);
-    --green:#2C5138;                        /* sage   — ink   */
-    --green-bg:rgba(168,216,176,.26);       /* sage   — fill  */
-    --green-line:var(--ok);
-    --blue:#22415F;                         /* powder — ink   */
-    --blue-bg:rgba(169,198,232,.26);        /* powder — fill  */
-    --blue-line:var(--info);
-    --purple:#3F2F63;                       /* lavender — ink */
-    --purple-bg:rgba(196,179,229,.26);
-    --purple-line:var(--accent);
+    --surface:#fff;--paper-dim:#f1f2ef;--text:#101416;--text-dim:#59605c;--text-faint:#656d67;
+    --red:#8b362b;--red-bg:#fcf3f1;--red-line:#e9c4bd;
+    --green:#345440;--green-bg:#eff5f0;--green-line:#c9dacf;
+    --blue-line:#687a70;--purple:#59605c;--purple-bg:#f1f2ef;--purple-line:#d9ddd7;
   }
-  /* ---------- worker avatars: filled = a person, purple outline = an agent ---------- */
-  .av{width:17px;height:17px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;
-    justify-content:center;font-size:var(--fs-caption);font-weight:800;letter-spacing:-.2px;vertical-align:middle;}
-  .av.human{background:var(--ink);color:#fff;}
-  .av.agent{background:#fff;color:var(--purple);border:1.5px solid var(--purple);}
-  .av.lg{width:20px;height:20px;font-size:var(--fs-caption);}
-  .av.xl{width:26px;height:26px;font-size:var(--fs-caption);}
-  .agent-tag{font-size:var(--fs-caption);font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-    background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-line);
-    border-radius:4px;padding:0 4px;}
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;background:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--text);overflow:hidden;}
-  .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;}
-  .shell{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;}
-
-  header.topbar{background:var(--ink);color:var(--dark-text);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;flex-shrink:0;border-bottom:1px solid var(--dark-line);}
-  .brand{display:flex;align-items:center;gap:9px;}
-  /* the real fundhub wordmark, from fundhub-brand.css (--logo).
-     .inv flips it for the dark topbar. */
-  .brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0;}
-  .brand .sep{color:var(--dark-text-dim);font-weight:400;}
-  .brand .sub{font-weight:600;font-size:var(--fs-body);color:var(--dark-text-dim);}
-  .topbar-right{display:flex;align-items:center;gap:16px;font-size:var(--fs-caption);color:var(--dark-text-dim);}
-  .clock{font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--dark-text);}
-  .live-pill{
-    display:flex;align-items:center;gap:6px;
-    font-family:'JetBrains Mono',monospace;
-    font-size:var(--fs-caption);
-    color:var(--dark-text);
-    background:#151517;
-    border:1px solid var(--dark-line);
-    padding:4px 9px 4px 7px;
-    border-radius:20px;
-  }
-  .live-dot{
-    width:6px;height:6px;border-radius:50%;
-    background:#A8D8B0;
-    box-shadow:0 0 0 0 rgba(168,216,176,.6);
-    animation:pulse 1.8s infinite;
-  }
-  @keyframes pulse{
-    0%{box-shadow:0 0 0 0 rgba(168,216,176,.55);}
-    70%{box-shadow:0 0 0 6px rgba(168,216,176,0);}
-    100%{box-shadow:0 0 0 0 rgba(168,216,176,0);}
-  }
-
-  .summary-bar{background:var(--surface);border-bottom:1px solid var(--line);padding:9px 18px;flex-shrink:0;display:flex;gap:10px;}
-  .sum-tile{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 12px;text-align:center;min-width:100px;}
-  .sum-label{font-size:var(--fs-caption);text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);margin-bottom:2px;}
-  /* UI-STANDARDS §7 — metric values use tabular figures so the three tiles line up. */
-  .sum-value{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:var(--fs-metric);font-variant-numeric:tabular-nums;}
-
-  main{flex:1;overflow-y:auto;padding:22px 24px 20px;background:var(--paper);}
-  main::-webkit-scrollbar{width:8px;}
-  main::-webkit-scrollbar-thumb{background:#D4D4D8;border-radius:4px;}
-
-  .rail-group{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden;}
-  .rail-group-head{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;background:var(--paper);border-bottom:1px solid var(--line);}
-  .rail-group-title{font-size:var(--fs-title);font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim);}
-  .rail-group-meta{font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--text-faint);}
-
-  table.wf{width:100%;border-collapse:collapse;}
-  table.wf th{text-align:left;font-size:var(--fs-caption);text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);padding:6px 14px;border-bottom:1px solid var(--line);}
-  table.wf td{padding:8px 14px;font-size:var(--fs-body);border-bottom:1px solid var(--paper-dim);vertical-align:middle;}
-  table.wf tr:last-child td{border-bottom:none;}
-  table.wf tr.failed td{background:var(--red-bg);}
-  .wf-name{font-weight:700;}
-  .wf-owner{display:flex;align-items:center;gap:5px;font-size:var(--fs-caption);font-weight:500;
-    color:var(--text-dim);margin-top:3px;}
-  .wf-trigger{color:var(--text-dim);font-size:var(--fs-caption);}
-  .wf-run-ok{font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--text-faint);}
-  .wf-run-fail{font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--red);font-weight:700;}
-  .wf-run-fail-detail{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:var(--fs-caption);color:var(--red);margin-top:1px;}
-
-  .toggle{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-caption);font-weight:700;letter-spacing:.3px;padding:4px 10px;border-radius:12px;}
-  .toggle .dot{width:7px;height:7px;border-radius:50%;}
-  .toggle.on{background:var(--green-bg);color:var(--green);}
-  .toggle.on .dot{background:var(--green);}
-  .toggle.off{background:var(--paper-dim);color:var(--text-dim);}
-  .toggle.off .dot{background:var(--text-faint);}
-  .toggle.paused{background:var(--red-bg);color:var(--red);}
-  .toggle.paused .dot{background:var(--red);}
-
-  .empty-row td{color:var(--text-faint);font-style:normal;padding:12px 14px;}
-
-  /* ---------- what needs attention, stated once at the top ---------- */
-  /* opaque base: --red-bg is translucent and this strip sits over the dark body */
-  .attn-bar{display:flex;align-items:center;gap:9px;padding:8px 18px;flex-shrink:0;
-    background:var(--surface);border-bottom:1px solid var(--line);font-size:var(--fs-body);}
-  .attn-bar.bad{background-image:linear-gradient(var(--red-bg),var(--red-bg));
-    border-bottom-color:var(--red-line);}
-  .attn-bar.good{color:var(--text-dim);}
-  .attn-bar .ab-ic{font-weight:800;}
-  .attn-bar.bad .ab-ic{color:var(--red);}
-  .attn-bar.good .ab-ic{color:var(--green);}
-  .attn-bar b{color:var(--red);}
-  .attn-bar .ab-jump{margin-left:auto;font:inherit;font-size:var(--fs-caption);font-weight:700;cursor:pointer;
-    background:var(--surface);border:1px solid var(--red-line);color:var(--red);border-radius:5px;padding:3px 10px;}
-  .attn-bar .ab-jump:hover{background:var(--paper);}
-
-  /* ---------- healthy rows compress ----------
-     A workflow that is on and ran clean needs one line. Its owner and the
-     "went out fine" wording move to the row's hover title; the row still
-     expands to its full step list on click, exactly like a failing one. */
-  tr[data-wf].ok td{padding-top:6px;padding-bottom:6px;}
-  tr[data-wf].ok .wf-owner{display:none;}
-  tr[data-wf].ok .ran-ok{display:none;}
-
-  .rail-group.attn{border-color:var(--red-line);}
-  .sum-tile.attn .sum-value{color:var(--red);}
-  .sum-tile.attn.clear .sum-value{color:var(--green);}
-  .sum-value .of{font-family:'Inter',sans-serif;font-size:var(--fs-caption);font-weight:500;color:var(--text-faint);}
-
-
-  /* ---------- rail filter ---------- */
-  .rail-filter{display:flex;align-items:center;gap:8px;margin-left:auto;}
-  .rail-filter label{font-size:var(--fs-caption);text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);}
-  .rail-filter select{
-    font:inherit;font-size:var(--fs-body);background:var(--surface);color:var(--text);
-    border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer;
-  }
-  .rail-filter select:focus-visible,.toggle:focus-visible,tr[data-wf]:focus-visible{
-    outline:2px solid var(--blue-line);outline-offset:2px;
-  }
-  .rail-group[hidden]{display:none;}
-
-  /* ---------- toggles that actually toggle ---------- */
-  button.toggle{font:inherit;font-size:var(--fs-caption);font-weight:700;letter-spacing:.3px;
-    border:1px solid transparent;cursor:pointer;transition:background .12s,color .12s;}
-  button.toggle:hover{filter:brightness(.97);}
-  button.toggle.on{border-color:var(--green-line);}
-  button.toggle.off{border-color:var(--line);}
-  button.toggle.paused{border-color:var(--red-line);}
-
-  /* ---------- workflow rows expand to their steps ---------- */
-  table.wf tr[data-wf]{cursor:pointer;}
-  table.wf tr[data-wf]:hover td{background:var(--paper);}
-  table.wf tr[data-wf].failed:hover td{background:rgba(242,166,155,.28);}
-  table.wf tr[data-wf][aria-expanded="true"] td{background:var(--paper-dim);}
-  .wfchev{display:inline-block;width:9px;color:var(--text-faint);font-size:var(--fs-caption);
-    transition:transform .16s ease;margin-right:5px;}
-  tr[data-wf][aria-expanded="true"] .wfchev{transform:rotate(90deg);}
-  tr.wf-steps > td{background:var(--paper-dim);padding:0 14px 12px !important;}
-  .steps{border-top:1px dashed var(--line);padding-top:10px;}
-  .steps-h{font-size:var(--fs-caption);text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);margin-bottom:7px;}
-  .step-line{display:flex;gap:10px;padding:3px 0;font-size:var(--fs-body);align-items:flex-start;}
-  .step-line .sn{
-    font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--text-faint);
-    flex:0 0 16px;border:1px solid var(--line);border-radius:50%;width:16px;height:16px;
-    display:flex;align-items:center;justify-content:center;background:var(--surface);margin-top:1px;
-  }
-  .step-line .sb{flex:1;min-width:0;color:var(--text-dim);}
-  .step-line .sb b{color:var(--text);font-weight:600;}
-  .step-line.halt .sn{border-color:var(--red-line);color:var(--red);}
-  .step-line.halt .sb{color:var(--red);}
-  .step-line.skipped{opacity:.5;}
-
-  footer.statusbar{flex-shrink:0;height:22px;background:var(--ink);display:flex;align-items:center;padding:0 14px;gap:16px;font-family:'JetBrains Mono',monospace;font-size:var(--fs-caption);color:var(--dark-text-dim);}
-  /* ---------- shared chrome: the 23-item sidebar, identical on every internal surface ---------- */
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:#f8f8f6;color:var(--text)}
+  body{font-family:var(--fh-font-rounded,ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif);font-size:15px}
+  button,select{font:inherit}
   .app{display:flex;min-height:100vh}
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-
-  @media (max-width:480px){
-    /* .topbar-right ran past the right edge of a phone screen and clipped
-       the LIVE pill off entirely — same fix as pipeline.html: the clock is
-       the least useful of the three on a phone, dropping it buys back the
-       room org + LIVE status need. */
-    .clock{display:none;}
-    .topbar-right{gap:8px;}
-    /* .summary-bar's three tiles plus the rail filter ran to 520px with no
-       wrap and no scroll on either — the filter dropdown was genuinely
-       unreachable on a phone, not just tight. Wrapping keeps everything
-       visible; the table gets its own horizontal scroll for the same reason
-       tables get one everywhere else in this fix, rather than trying to force
-       its columns into 390px. */
-    .summary-bar{flex-wrap:wrap;row-gap:8px;}
-    .rail-filter{margin-left:0;}
-    main{overflow-x:auto;}
+  .shell{flex:1;min-width:0;display:flex;flex-direction:column;background:#f8f8f6}
+  .page-intro{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:32px 32px 24px}
+  .page-intro h1{font-size:32px;letter-spacing:-1px;line-height:1.15;margin:0 0 8px;font-weight:750}
+  .page-intro p{margin:0;color:var(--text-dim);line-height:1.6}
+  .refresh{border:1px solid #101416;border-radius:12px;background:#101416;color:white;min-height:44px;padding:10px 20px;font-weight:650;cursor:pointer;flex-shrink:0}
+  .refresh:disabled{opacity:.55;cursor:wait}
+  .summary-bar{margin:0 32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid #e0e3dd;border-radius:18px;background:#fff}
+  .sum-tile{padding:20px 24px;min-width:0}
+  .sum-tile+.sum-tile{border-left:1px solid #e6e8e3}
+  .sum-label{color:var(--text-dim);font-size:13px;margin-bottom:8px}
+  .sum-value{font-size:34px;line-height:1.15;font-weight:720;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .sum-value .of{font-size:13px;letter-spacing:0;color:var(--text-dim);font-weight:400;margin-left:4px}
+  .sum-tile.attn .sum-value{color:var(--red)}
+  .sum-tile.attn.clear .sum-value{color:var(--text)}
+  .attn-bar{display:flex;align-items:flex-start;gap:10px;margin:20px 32px 0;padding:14px 16px;border-radius:12px;background:#eef0ec;color:var(--text-dim);font-size:13px;line-height:1.6}
+  .attn-bar:empty{display:none}
+  .attn-bar.bad{background:var(--red-bg);color:var(--red)}
+  .attn-bar .ab-ic{flex-shrink:0;font-weight:700}
+  .workflow-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:28px 32px 16px}
+  .workflow-toolbar h2{font-size:19px;letter-spacing:-.35px;margin:0}
+  .workflow-toolbar p{font-size:13px;color:var(--text-dim);margin:5px 0 0}
+  .rail-filter{display:flex;align-items:center;gap:10px}
+  .rail-filter label{font-size:13px;color:var(--text-dim)}
+  .rail-filter select{min-height:44px;border:1px solid #d8ddd5;border-radius:12px;background:#fff;color:var(--text);padding:8px 32px 8px 12px;max-width:240px}
+  main{flex:1;min-width:0;padding:0 32px 24px}
+  .rail-group{background:#fff;border:1px solid #e0e3dd;border-radius:18px;margin-bottom:20px;overflow:hidden}
+  .rail-group-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #e8ebe5}
+  .rail-group-title{font-size:17px;font-weight:700;letter-spacing:-.25px}
+  .rail-group-meta{font-size:13px;color:var(--text-dim);flex-shrink:0}
+  table.wf{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.wf th{text-align:left;padding:12px 20px;background:#fafbf8;color:var(--text-dim);font-size:12px;font-weight:550;line-height:1.5}
+  table.wf td{padding:20px;font-size:14px;border-top:1px solid #edf0e9;vertical-align:top;line-height:1.6;overflow-wrap:anywhere}
+  table.wf tr[data-wf]{cursor:pointer}
+  table.wf tr[data-wf]:hover td,table.wf tr[data-wf][aria-expanded="true"] td{background:#f7f8f4}
+  table.wf tr.failed td:first-child{box-shadow:inset 3px 0 var(--red-line)}
+  .wf-name{font-weight:650}
+  .wf-owner{font-size:12px;font-weight:400;color:var(--text-faint);margin-top:5px}
+  .wf-trigger{color:var(--text-dim)}
+  .mono{font-family:inherit}
+  .wf-run-ok{font-size:13px;color:var(--text-dim)}
+  .wf-run-fail-detail{display:block;font-size:13px;color:var(--red);margin-top:6px}
+  .toggle{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-size:11px;font-weight:650;line-height:1.4;letter-spacing:0}
+  .toggle .dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .toggle.on{background:var(--green-bg);color:var(--green)}
+  .toggle.off{background:var(--paper-dim);color:var(--text-dim)}
+  .toggle.paused{background:var(--red-bg);color:var(--red)}
+  .wfchev{display:inline-block;font-size:12px;width:15px;color:var(--text-faint);transition:transform .16s}
+  tr[aria-expanded="true"] .wfchev{transform:rotate(90deg)}
+  .wf-steps>td{background:#f7f8f4;padding:0 22px 24px!important}
+  .steps{padding-top:16px}
+  .steps-h{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)}
+  .step-line{display:flex;align-items:flex-start;gap:12px;padding:5px 0;font-size:14px}
+  .sn{display:flex;align-items:center;justify-content:center;flex:0 0 24px;height:24px;border:1px solid #dce1d7;border-radius:50%;font-size:12px;background:#fff}
+  .sb{min-width:0;overflow-wrap:anywhere;color:var(--text-dim)}
+  .sb b{color:var(--text);font-weight:600}
+  .halt .sb,.halt .sn{color:var(--red)}
+  .registry-details{margin-top:20px;border-top:1px solid #dfe4da;padding-top:12px}
+  .registry-details summary{cursor:pointer;min-height:40px;display:list-item;align-content:center;font-size:13px;color:var(--text-dim);font-weight:600}
+  .empty-row{padding:32px;border:1px solid #e0e3dd;border-radius:18px;background:#fff;color:var(--text-dim);line-height:1.6}
+  .empty-row h3{color:var(--text);font-size:18px;margin:0 0 8px}
+  .empty-row p{margin:0}
+  .loading-line{height:14px;border-radius:5px;background:#edf0e9;margin-top:20px;width:70%}
+  .loading-line:last-child{width:45%}
+  footer.statusbar{padding:0 32px 24px;color:var(--text-faint);font-size:12px}
+  :is(button,select,summary,tr[data-wf]):focus-visible{outline:2px solid #52695b;outline-offset:3px}
+  [hidden]{display:none!important}
+  @media(max-width:900px){
+    .page-intro{padding:24px 20px 20px}
+    .summary-bar{margin:0 20px}
+    .sum-tile{padding:18px 16px}
+    .attn-bar{margin:16px 20px 0}
+    .workflow-toolbar{padding:24px 20px 16px}
+    main{padding:0 20px 20px}
+    footer.statusbar{padding:0 20px 20px}
+    table.wf th,table.wf td{padding:16px 12px}
   }
+  @media(max-width:600px){
+    .page-intro{align-items:flex-start;gap:12px;padding:24px 16px 20px}
+    .page-intro h1{font-size:28px}
+    .page-intro p{font-size:13px}
+    .refresh{padding:10px 14px}
+    .summary-bar{margin:0 16px;grid-template-columns:1fr}
+    .sum-tile{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px}
+    .sum-tile+.sum-tile{border-left:0;border-top:1px solid #e6e8e3}
+    .sum-label{margin:0;font-size:13px}
+    .sum-value{font-size:25px;flex-shrink:0}
+    .attn-bar{margin:16px 16px 0}
+    .workflow-toolbar{padding:24px 16px 16px;display:block}
+    .rail-filter{margin-top:16px}
+    .rail-filter select{flex:1;min-width:0;max-width:none}
+    main{padding:0 16px 20px}
+    .rail-group-head{padding:18px 16px}
+    table.wf,table.wf tbody,table.wf tr,table.wf td{display:block;width:100%}
+    table.wf tr:has(th){display:none}
+    table.wf tr[data-wf]{padding:16px;border-top:1px solid #e6e8e3}
+    table.wf tr[data-wf] td{border:0;padding:4px 0;font-size:14px;background:transparent!important}
+    table.wf tr.failed td:first-child{box-shadow:none}
+    table.wf tr.failed{border-left:3px solid var(--red-line);padding-left:13px}
+    table.wf tr[data-wf]:hover,table.wf tr[data-wf][aria-expanded="true"]{background:#f7f8f4}
+    table.wf td[data-label]::before{content:attr(data-label);display:block;font-size:12px;color:var(--text-faint);font-weight:500;margin-bottom:2px}
+    table.wf tr[data-wf] td.wf-name{font-size:16px;margin-bottom:8px}
+    table.wf td[data-label="Status"]{padding-top:10px}
+    .wf-steps>td{padding:0 16px 20px!important}
+    .step-line{font-size:13px}
+    .empty-row{padding:24px 20px}
+    footer.statusbar{padding:0 16px 20px}
+  }
+  @media(prefers-reduced-motion:reduce){.wfchev{transition:none}}
 </style>
 <script defer src="shell.js"></script>
 </head>
@@ -303,17 +195,10 @@
 <!-- UI-STANDARDS §1: content column caps at 1280px and centres (.fh-maxw, fundhub-brand.css). The sidebar is outside it. -->
 <div class="shell fh-maxw">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
-      <div class="sep">/</div>
-      <div class="sub">Automations</div>
-    </div>
-    <div class="topbar-right">
-      <div class="clock">—</div>
-      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-    </div>
-  </header>
+  <div class="page-intro">
+    <div><h1>Workflows</h1><p>Review what starts each job and find the signals that need attention.</p></div>
+    <button class="refresh" id="wfRefresh" type="button">Refresh</button>
+  </div>
 
 
   <!-- Three tiles, and every one of them counts something this screen can
@@ -327,21 +212,19 @@
     <div class="sum-tile"><div class="sum-label">Workflows</div><div class="sum-value" data-sum="total">—</div></div>
     <div class="sum-tile attn"><div class="sum-label">Can't Start</div><div class="sum-value" data-sum="blocked">—</div></div>
     <div class="sum-tile"><div class="sum-label">Start Signal Seen</div><div class="sum-value" data-sum="live">—</div></div>
-    <div class="rail-filter">
-      <label for="rail-select">Rail</label>
-      <select id="rail-select"></select>
-    </div>
   </div>
 
   <div class="attn-bar" id="attnBar" role="status" aria-live="polite"></div>
 
-  <main id="wfMain">
-    <div class="empty-row" style="padding:14px 4px;color:var(--text-faint);" id="wfLoading">Loading workflows…</div>
+  <div class="workflow-toolbar">
+    <div><h2>Workflow registry</h2><p>Open a workflow to review its start conditions.</p></div>
+    <div class="rail-filter"><label for="rail-select">Rail</label><select id="rail-select" disabled><option>Loading rails…</option></select></div>
+  </div>
+  <main id="wfMain" aria-busy="true">
+    <div class="empty-row" id="wfLoading" role="status">Loading workflows…<div class="loading-line" aria-hidden="true"></div><div class="loading-line" aria-hidden="true"></div></div>
   </main>
 
   <footer class="statusbar">
-    <span>FUNDHUB-AUTOMATIONS · v1</span>
-    <span>ORG: fundhub</span>
     <span id="wfFooterCount">loading…</span>
   </footer>
 
@@ -376,7 +259,8 @@
   var main = document.getElementById('wfMain'),
       sel  = document.getElementById('rail-select'),
       attnBar = document.getElementById('attnBar'),
-      footerCount = document.getElementById('wfFooterCount');
+      footerCount = document.getElementById('wfFooterCount'),
+      refresh = document.getElementById('wfRefresh');
 
   function sum(k){ return document.querySelector('[data-sum="'+k+'"]'); }
   function esc(s){
@@ -450,6 +334,10 @@
 
   /* ── FETCH ──────────────────────────────────────────────────────────────── */
   function load(){
+    refresh.disabled = true;
+    refresh.textContent = 'Refreshing…';
+    main.setAttribute('aria-busy', 'true');
+    sel.disabled = true;
     var t = token();
     var headers = t ? { accept: 'application/json', authorization: 'Bearer ' + t }
                     : { accept: 'application/json' };
@@ -472,8 +360,21 @@
       });
   }
 
+  function ready(){
+    main.setAttribute('aria-busy', 'false');
+    refresh.disabled = false;
+    refresh.textContent = 'Refresh';
+  }
+
+  refresh.addEventListener('click', load);
+
   function renderError(msg){
-    main.innerHTML = '<div class="empty-row" style="padding:14px 4px;color:var(--red);">' + esc(msg) + '</div>';
+    ready();
+    sel.disabled = true;
+    sum('total').textContent = '—';
+    sum('blocked').textContent = '—';
+    sum('live').textContent = '—';
+    main.innerHTML = '<div class="empty-row"><h3>Workflows could not be loaded</h3><p>' + esc(msg) + ' Use Refresh to try again.</p></div>';
     footerCount.textContent = 'load failed';
     attnBar.className = 'attn-bar bad';
     attnBar.innerHTML = '<span class="ab-ic">⚠</span><span>' + esc(msg) + '</span>';
@@ -481,6 +382,7 @@
 
   /* ── RENDER ─────────────────────────────────────────────────────────────── */
   function render(items, hasMore){
+    ready();
     var seenCount    = items.filter(function(r){ return r.status === 'trigger_seen'; }).length;
     var blockedCount = items.filter(function(r){ return r.can_start_today === false; }).length;
 
@@ -497,7 +399,10 @@
        stopped being told a job worked by a screen that cannot know. */
     var LIMIT_LINE = 'This page shows what STARTS a job, not whether it finished.';
 
-    if(blockedCount){
+    if(!items.length){
+      attnBar.className = 'attn-bar good';
+      attnBar.textContent = 'No workflows are available in this registry. ' + LIMIT_LINE;
+    } else if(blockedCount){
       attnBar.className = 'attn-bar bad';
       attnBar.innerHTML = '<span class="ab-ic">⚠</span><span><b>' + blockedCount +
         ' of these ' + items.length + ' jobs cannot start at all right now.</b> ' +
@@ -522,7 +427,9 @@
 
     main.innerHTML = '';
     if(!items.length){
-      main.innerHTML = '<div class="empty-row" style="padding:14px 4px;">No workflows in the registry.</div>';
+      sel.innerHTML = '<option>All rails</option>';
+      sel.disabled = true;
+      main.innerHTML = '<div class="empty-row"><h3>No workflows in the registry</h3><p>Registered jobs will appear here. Use Refresh to check for updates.</p></div>';
       return;
     }
 
@@ -570,9 +477,9 @@
         tr.innerHTML =
           '<td class="wf-name"><span class="wfchev">▸</span>' + esc(row.name) +
             '<div class="wf-owner mono">' + esc(row.id) + '</div></td>' +
-          '<td class="wf-trigger mono">' + esc(triggerText) + blockedLine + '</td>' +
-          '<td>' + lastCell + '</td>' +
-          '<td>' + statusBadge(row) + '</td>';
+          '<td class="wf-trigger mono" data-label="What starts it">' + esc(triggerText) + blockedLine + '</td>' +
+          '<td data-label="Start signal last seen">' + lastCell + '</td>' +
+          '<td data-label="Status">' + statusBadge(row) + '</td>';
         if(row.can_start_today === false) tr.classList.add('failed');
 
         var steps = document.createElement('tr');
@@ -631,7 +538,7 @@
             '<div class="step-line"><span class="sb">' +
               esc(row.run_records_note || 'This page shows what starts a job, not whether it finished.') +
               '</span></div>' +
-            '<div class="steps-h" style="margin-top:10px;">Raw registry</div>' +
+            '<details class="registry-details"><summary>Registry details</summary>' +
             '<div class="step-line"><span class="sb"><b>id</b> — ' + esc(row.id) + '</span></div>' +
             '<div class="step-line"><span class="sb"><b>start signals it listens for</b> — ' +
               (row.events.length ? esc(row.events.join(', ')) : 'none') + '</span></div>' +
@@ -643,6 +550,7 @@
                 : esc(row.last_triggered_at || 'never')) + '</span></div>' +
             '<div class="step-line"><span class="sb"><b>ways in last checked by a person</b> — ' +
               esc(row.emitters_verified_on || 'unknown') + '</span></div>' +
+            '</details>' +
           '</div>';
         steps.appendChild(stepsTd);
 
@@ -672,6 +580,7 @@
       o.value = r; o.textContent = r;
       sel.appendChild(o);
     });
+    sel.disabled = false;
     sel.onchange = function(){
       var pick = sel.value;
       [].slice.call(main.querySelectorAll('.rail-group')).forEach(function(g){
@@ -682,19 +591,6 @@
 
   load();
 })();
-</script>
-<script>
-function tickClock() {
-  var el = document.querySelector(".clock");
-  if (!el) return;
-  el.textContent = new Date().toLocaleString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit", second: "2-digit",
-    timeZone: "America/Phoenix", timeZoneName: "short"
-  });
-}
-tickClock();
-setInterval(tickClock, 1000);
 </script>
 </body>
 </html>

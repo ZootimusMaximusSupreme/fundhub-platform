@@ -158,9 +158,10 @@ table.cc-hist{ width:100%; border-collapse:collapse; }
 
 @media (max-width:560px){ .cc-methods{ flex-direction:column; } }
 </style>
+<link rel="stylesheet" href="consent-capture-workspace.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="consent-workspace">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -290,24 +291,24 @@ table.cc-hist{ width:100%; border-collapse:collapse; }
             <button class="btn" id="ccSubmit" type="button">Record consent</button>
             <span class="cc-empty" id="ccSubmitHint">Nothing is sent to a credit bureau by this button.</span>
           </div>
-          <div class="cc-msg" id="ccMsg"></div>
+          <div class="cc-msg" id="ccMsg" role="status" aria-live="polite"></div>
         </div>
 
-        <div class="cc-card">
-          <h2>History</h2>
+        <div class="cc-card cc-history-card">
+          <h2>Consent history</h2>
           <p class="hint">
             Every consent this client has given, including any they took back. Withdrawn consents stay on the list on purpose.
           </p>
           <div id="ccHistory"><p class="cc-empty">Loading…</p></div>
         </div>
 
-        <p class="cc-note">
+        <details class="cc-note"><summary>Consent types &amp; direct links</summary><p>
           Open this screen with a client in the address bar — <code>consent-capture.html?client_id=&lt;id&gt;</code>.
           To authorize dispute letters, add <code>&amp;kind=dispute_authorization</code>.
           For a recorded client call, <code>&amp;kind=call_recording</code>, and to use what they
           said in an advert, <code>&amp;kind=marketing_use</code> — those two are asked separately
           on purpose, because agreeing to be recorded is not agreeing to be advertised.
-        </p>
+        </p></details>
       </div>
     </div>
 
@@ -714,6 +715,7 @@ table.cc-hist{ width:100%; border-collapse:collapse; }
     }
     Array.prototype.forEach.call(document.querySelectorAll(".cc-method"), function (o) {
       o.classList.toggle("on", o.getAttribute("data-method") === method);
+      o.setAttribute("aria-pressed", String(o.getAttribute("data-method") === method));
     });
   }
 
