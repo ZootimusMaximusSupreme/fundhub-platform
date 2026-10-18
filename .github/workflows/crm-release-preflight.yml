@@ -30,7 +30,11 @@ jobs:
       - name: Verify the actual runtime database role
         run: npm run guard:db
       - name: Diagnose existing public read latency and brand selection
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
         run: |
+          node --input-type=module -e "import dns from 'node:dns/promises';console.log(JSON.stringify(await dns.lookup('fundhub.ai',{all:true})))"
+          curl -4 --silent --show-error --max-time 12 --output /dev/null --write-out 'portal IPv4 status=%{http_code} connect=%{time_connect} first=%{time_starttransfer} total=%{time_total} ip=%{remote_ip}\\n' https://fundhub.ai/portal-login.html || true
           node --input-type=module <<'JS'
           const paths=['/portal-login.html','/app/morning-brief.html','/app/my-numbers.html','/api/health?strict=1','/api/org-brand'];
           await Promise.all(paths.map(async path=>{
@@ -45,6 +49,8 @@ jobs:
           }));
           JS
       - name: Run the existing read-only hourly release proof
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
         run: npm run pulse:prove -- --beats
       # pulse:prove uses read-only transactions and recording sinks, permits only
       # GET/HEAD, and refuses writes/sends. No migrations, deployment or main update.
