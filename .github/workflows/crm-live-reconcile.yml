@@ -34,25 +34,15 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Prepare the licensed web font and the shared type adapter
+      - name: Install and verify the committed UI assets
         id: prepare
         run: |
-          python -m pip install --user 'fonttools[woff]'
-          mkdir -p public/assets/fonts
-          curl --fail --silent --show-error https://api.github.com/repos/google/fonts/git/blobs/2ec1f4b0676c83ef33049db87b311171699e9192 > /tmp/nunito-source.json
-          curl --fail --silent --show-error https://api.github.com/repos/google/fonts/git/blobs/c8210f08ca3cece05b4f7baa428afe8e1abe3293 > /tmp/nunito-license.json
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import crypto from 'node:crypto';
-          const font=Buffer.from(JSON.parse(fs.readFileSync('/tmp/nunito-source.json','utf8')).content,'base64');
-          const hash=crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+font.length+'\0'),font])).digest('hex');
-          if(hash!=='2ec1f4b0676c83ef33049db87b311171699e9192')throw new Error('Font source hash changed');
-          fs.writeFileSync('/tmp/Nunito.ttf',font);
-          fs.writeFileSync('public/assets/fonts/Nunito-OFL.txt',Buffer.from(JSON.parse(fs.readFileSync('/tmp/nunito-license.json','utf8')).content,'base64'));
-          JS
-          python -m fontTools.subset /tmp/Nunito.ttf --output-file=public/assets/fonts/nunito-latin-variable.woff2 --flavor=woff2 --unicodes='U+0000-024F,U+1E00-1EFF,U+2000-206F,U+20A0-20CF,U+2100-214F,U+2190-21FF,U+25A0-25FF' --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-glyph --notdef-outline --recommended-glyphs
-          node scripts/prepare-rounded-type.mjs
-          node scripts/integrate-reviewed-staff.mjs
+          test -s public/assets/fonts/nunito-latin-variable.woff2
+          test -s public/assets/fonts/Nunito-OFL.txt
+          test -s public/app/workspace-ui.css
+          test -s public/app/pipeline-workspace.css
+          node --check public/app/fundhub-font.js
+          node --check public/app/shell.js
           npm ci --ignore-scripts
           test -x /usr/bin/google-chrome
           echo 'PLAYWRIGHT_CHROMIUM=/usr/bin/google-chrome' >> "$GITHUB_ENV"
