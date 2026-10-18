@@ -5,10 +5,15 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { makeRecipe } from "../door-recipes.mjs";
-import { evaluateKeyHealth } from "../../coverage/gap-door-batch-keys.mjs";
+import {
+  evaluateKeyHealth,
+  gapChecks,
+  keyNamesFromCatalog,
+} from "../../coverage/gap-door-batch-keys.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MAP = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10/keys.json");
+const GENERATED = JSON.parse(fs.readFileSync(path.join(ROOT, "src/pulse/catalog/generated.json"), "utf8"));
 const CODE_ROOTS = ["src", "api", "netlify", "scripts", "e2e", "vendor", "db", "public"];
 const CODE_EXTENSIONS = /\.(?:mjs|js|cjs|ts|tsx|html|sql)$/;
 
@@ -25,6 +30,7 @@ function exactName(name) {
 }
 
 function fakeValue(name) {
+  if (/(?:^|_)DATABASE_URL$/.test(name)) return "postgresql://door-proof.example.test/fundhub";
   if (/(?:^|_)(?:URL|URI|ORIGIN)$/.test(name)) return "https://door-proof.example.test/path";
   if (/(?:^|_)HOST$/.test(name)) return "door-proof.example.test";
   if (/(?:^|_)(?:CENTS|PORT|TIMEOUT_MS|LIMIT|MAX|DAYS|HOURS|MINUTES)$/.test(name)) return "30";
@@ -37,12 +43,14 @@ test("one key health pass checks every remaining sensitive key without printing 
     if (row.repeats_row_in) return false;
     return makeRecipe("keys.json", row).proof?.evidence.includes("door-batch-key-health.test.mjs");
   });
+  const liveKeyNames = keyNamesFromCatalog(GENERATED);
   const sources = CODE_ROOTS.flatMap((root) => codeFiles(path.join(ROOT, root))).map((file) => ({
     file: path.relative(ROOT, file),
     text: fs.readFileSync(file, "utf8"),
   }));
 
   assert.equal(rows.length, 114);
+  assert.deepEqual(liveKeyNames, rows.map((row) => row.env_name).sort());
   for (const row of rows) {
     const pattern = exactName(row.env_name);
     const references = sources.filter(({ text }) => pattern.test(text)).map(({ file }) => file);
@@ -56,6 +64,26 @@ test("one key health pass checks every remaining sensitive key without printing 
     assert.equal(recipe.proof.depth, "deep", row.surface);
     assert.equal(recipe.proof.asserts, row.control, row.surface);
   }
+});
+
+test("the live key lane reads every compiled key and never returns a value", async () => {
+  const liveKeyNames = keyNamesFromCatalog(GENERATED);
+  const env = Object.fromEntries(liveKeyNames.map((name) => [name, fakeValue(name)]));
+  const [pass] = await gapChecks({ env, catalog: GENERATED });
+  assert.equal(pass.status, "PASS");
+  assert.match(pass.detail, /^114\/114 sensitive live keys/);
+
+  env.AD_TOKEN_ENC_KEY = "live-secret-that-must-not-be-printed";
+  delete env.ANTHROPIC_API_KEY;
+  env.META_ACCESS_TOKEN = "****************";
+  env.PUBLIC_BASE_URL = "not a url";
+  const [fail] = await gapChecks({ env, catalog: GENERATED });
+  assert.equal(fail.status, "FAIL");
+  assert.match(fail.detail, /ANTHROPIC_API_KEY \(value is missing\)/);
+  assert.match(fail.detail, /META_ACCESS_TOKEN \(value is masked\)/);
+  assert.match(fail.detail, /PUBLIC_BASE_URL \(value is not a valid url\)/);
+  assert.doesNotMatch(fail.detail, /live-secret-that-must-not-be-printed/);
+  assert.equal(Object.hasOwn(fail, "value"), false);
 });
 
 test("key health rejects missing, masked, malformed, and unread keys without leaking them", () => {
@@ -72,4 +100,20 @@ test("key health rejects missing, masked, malformed, and unread keys without lea
   const missingReader = evaluateKeyHealth(row, { DOOR_SECRET: "fake-long-secret" }, []);
   assert.deepEqual(missingReader.problems, ["repo code has no reader"]);
   assert.equal(JSON.stringify(missingReader).includes("fake-long-secret"), false);
+
+  const database = {
+    env_name: "DATABASE_URL",
+    surface: "env:DATABASE_URL",
+    control: "DATABASE_URL: app database",
+    read_by_files: 1,
+    impact: "customerData",
+  };
+  assert.equal(
+    evaluateKeyHealth(database, { DATABASE_URL: "postgresql://example.test/fundhub" }, ["src/db.mjs"]).ok,
+    true
+  );
+  assert.deepEqual(
+    evaluateKeyHealth(database, { DATABASE_URL: "https://example.test/fundhub" }, ["src/db.mjs"]).problems,
+    ["url must use postgres or postgresql"]
+  );
 });
