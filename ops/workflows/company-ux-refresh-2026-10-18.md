@@ -4,7 +4,7 @@
 
 - Client portal home: [`client-portal-home-preview.html`](company-ux-refresh-2026-10-18/client-portal-home-preview.html)
 - Review images: [`desktop`](company-ux-refresh-2026-10-18/client-portal-home-desktop.png) · [`iPhone width`](company-ux-refresh-2026-10-18/client-portal-home-mobile-fold.png)
-- Visual direction: original iOS-inspired Fundhub design, based on the owner's Mac welcome reference. Use system type, generous space, soft grouped surfaces, restrained color, one black primary action, and a bottom tab bar on phone.
+- Revised visual direction after owner feedback: a mobile-first iOS-style client home, with a deep graphite funding-file card, soft grouped panels, native-feeling type and spacing, one white primary action, a slim iPad-style side rail on desktop, and a frosted bottom tab bar on phone. The file status and next step lead the screen.
 - This is a standalone design preview with labeled sample content. It is not connected to client data and does not change the live portal.
 
 ## Next implementation pass
@@ -16,6 +16,7 @@
 
 ## Preview checks
 
-- Chromium screenshots captured at 1440px desktop and 390px phone widths.
+- Chromium screenshots captured at 1440px desktop and 390px phone widths. The mobile fold now shows both the file status and the next step.
 - No horizontal scroll at 320px, 390px, or 1440px.
+- The primary progress link, all four mobile tabs, advisor help link, and all three grouped rows were clicked in Chromium. No page-script errors.
 - Live page and API routes unchanged.
