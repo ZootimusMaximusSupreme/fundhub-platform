@@ -12,12 +12,16 @@ import {
   DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_METADATA,
   DISPLAY_CONTRACTS_EF_PUBLIC_ROW_KEYS,
 } from "./display-contracts-ef-public.mjs";
+import { HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS } from "./heartbeat-catalog-red-four.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PUBLIC = path.join(ROOT, "public");
 const CATALOG = JSON.parse(fs.readFileSync(path.join(ROOT, "src/pulse/catalog/generated.json"), "utf8"));
 const CLIENT_ID = "11111111-2222-4333-8444-555555555555";
 const OTHER_CLIENT_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const DEEP_PROOF_BY_ID = new Map(
+  HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS.map((proof) => [proof.id, proof]),
+);
 
 const CONTENT_TYPES = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -155,7 +159,8 @@ test("Display EF/Public contracts prove each exported row in rendered Chromium",
     } else {
       assert.match(matches[0].reason, /Mapped to .* executable proof target/);
     }
-    assert.ok(matches[0].proof.tests.includes(proofCase.evidence), `${proofCase.id} lost its executable proof file`);
+    const selectedEvidence = DEEP_PROOF_BY_ID.get(proofCase.id)?.evidence || proofCase.evidence;
+    assert.ok(matches[0].proof.tests.includes(selectedEvidence), `${proofCase.id} lost its selected executable proof file`);
   }
 
   const exercised = new Set();
