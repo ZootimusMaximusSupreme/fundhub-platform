@@ -343,7 +343,10 @@ function inWorker(payload, timeoutMs, onWorker) {
     if (typeof onWorker === "function") onWorker(worker);
     timer = setTimeout(() => finish(reject, new Error("the deployed shell run took too long and was stopped")), timeoutMs);
     worker.once("message", (message) => finish(resolve, message));
-    worker.once("error", (error) => finish(reject, new Error(`the deployed shell run failed: ${String(error?.message || error).replace(/\s+/g, " ").slice(0, 120)}`)));
+    worker.once("error", (error) => {
+      const role = Array.isArray(payload.roles) && payload.roles.length ? payload.roles[0] : "requested role";
+      finish(reject, new Error(`the deployed shell could not be run for ${role}: ${String(error?.message || error).replace(/\s+/g, " ").slice(0, 120)}`));
+    });
     worker.once("exit", (code) => finish(reject, new Error(`the deployed shell run ended early (exit ${code})`)));
   });
 }
