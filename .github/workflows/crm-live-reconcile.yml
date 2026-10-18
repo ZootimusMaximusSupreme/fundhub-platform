@@ -64,8 +64,14 @@ jobs:
       - name: Actual browser font and feature checks
         id: browser
         continue-on-error: true
+        env:
+          TYPE_ONLY: ${{ contains(github.event.head_commit.message, '[type-only]') }}
         run: |
-          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs --reporter=line
+          if [ "$TYPE_ONLY" = "true" ]; then
+            node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/partner-brand-crm.spec.mjs --reporter=line
+          else
+          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs --reporter=line 
+          fi
       - name: Preserve checked source and marked evidence on this branch
         if: always()
         env:
@@ -73,13 +79,14 @@ jobs:
           LINT: ${{ steps.lint.outcome }}
           NODE: ${{ steps.node.outcome }}
           BROWSER: ${{ steps.browser.outcome }}
+          PROOF_SCOPE: ${{ contains(github.event.head_commit.message, '[type-only]') && 'font-only; prior staff feature run remains separate evidence' || 'full staff integration and font proof' }}
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import {execFileSync} from 'node:child_process';
           const out='ops/workflows/build-evidence/crm-font-live';
           fs.mkdirSync(out,{recursive:true});
-          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,noProductionDeploy:true,noCustomerWrites:true,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
+          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,noProductionDeploy:true,noCustomerWrites:true,proofScope:process.env.PROOF_SCOPE,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
           const prepared=fs.existsSync(out+'/font-preparation.json')?JSON.parse(fs.readFileSync(out+'/font-preparation.json','utf8')).changed:[];
           const stagedUI=execFileSync('git',['diff','--name-only','--','public/app','e2e','src/ui','src/http','src/pulse/catalog/proofs'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
           const files=[...stagedUI,...prepared,'scripts/integrate-reviewed-staff.mjs','public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];

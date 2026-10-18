@@ -17,10 +17,24 @@ for(const width of [1440,390,320])for(const screen of ['my-numbers','pipeline','
  expect((await woff.body()).byteLength).toBeLessThan(100000);
  const family=await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily);
  expect(family).toContain('Fundhub Rounded');
+ await page.evaluate(()=>{
+  const probe=document.createElement('div');probe.id='fh-font-reference-probe';
+  probe.textContent='Your work,\nin focus.';
+  probe.style.cssText='position:fixed;right:24px;top:90px;z-index:2147483645;padding:30px;width:440px;max-width:calc(100vw - 32px);background:#f8f8f6;color:#0c1012;font-size:58px;font-weight:600;line-height:1.16;letter-spacing:-2.5px;white-space:pre-line;border:1px solid #d4d8d4;border-radius:18px;box-sizing:border-box';
+  document.body.appendChild(probe);
+ });
+ await page.locator('#fh-font-reference-probe').boundingBox();
+ await page.evaluate(()=>document.fonts.ready);
  const cdp=await context.newCDPSession(page);await cdp.send('DOM.enable');await cdp.send('CSS.enable');
- const dom=await cdp.send('DOM.getDocument');const node=await cdp.send('DOM.querySelector',{nodeId:dom.root.nodeId,selector:'h1'});
+ const dom=await cdp.send('DOM.getDocument');const node=await cdp.send('DOM.querySelector',{nodeId:dom.root.nodeId,selector:'#fh-font-reference-probe'});
  let fonts=[];if(node.nodeId)fonts=(await cdp.send('CSS.getPlatformFontsForNode',{nodeId:node.nodeId})).fonts;
- if(fonts.length)expect(fonts.some(f=>/Nunito|SF Pro Rounded|SFProRounded/.test(f.familyName))).toBe(true);
+ expect(fonts.length).toBeGreaterThan(0);
+ expect(fonts.some(f=>/Nunito|SF Pro Rounded|SFProRounded|SFNSRounded/.test(f.familyName))).toBe(true);
+ if(width===1440&&screen==='my-numbers'){
+  fs.mkdirSync(out,{recursive:true});
+  await page.screenshot({path:out+'/rounded-reference-specimen.png',fullPage:false});
+ }
+ await page.locator('#fh-font-reference-probe').evaluate(e=>e.remove());
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
  expect(errors).toEqual([]);
  fs.mkdirSync(out,{recursive:true});
