@@ -5,25 +5,21 @@
   "files": [
     {
       "path": "public/app/fundhub-brand.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/crm-sidebar.css",
-      "state": "merged",
-      "removedCommentIds": [
-        "fh-crm-sidebar-css"
-      ]
+      "state": "conflict",
+      "detail": ""
     },
     {
       "path": "public/app/shell.js",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "conflict",
+      "detail": ""
     },
     {
       "path": "public/app/sidebar.fragment.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/workspace-ui.css",
@@ -127,68 +123,55 @@
     },
     {
       "path": "e2e/calendar.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/bank-amount-suggestion.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/ccp-headline.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/closer-call-rhythm.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/controls-persist.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/fin-b01-ccp-pulls-declines.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/funded-amount.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/pipeline-waiting-on.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/proxy-apply.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/s2-ccp-portal-access.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/sidebar-roles.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "src/http/client-panel-screen.test.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     }
   ]
 }
