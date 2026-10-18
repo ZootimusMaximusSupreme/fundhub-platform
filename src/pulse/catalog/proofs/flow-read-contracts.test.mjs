@@ -272,7 +272,7 @@ test("every exported proof key is exercised by its real rendered page", async (t
     assert.equal(await page.locator("#licenseBanner").isVisible(), true);
     assert.match(await page.locator("#licenseBannerBody").textContent(), /license-proof\.pdf/);
     assert.equal(await page.locator("#affLicenseChip").isVisible(), true);
-    assert.equal((await page.locator("#affLicenseChip").innerText()).trim(), "LICENSE UNSIGNED");
+    assert.equal((await page.locator("#affLicenseChip").innerText()).trim(), "License unsigned");
     proved("367dca0db64096fe33fd");
   });
 
