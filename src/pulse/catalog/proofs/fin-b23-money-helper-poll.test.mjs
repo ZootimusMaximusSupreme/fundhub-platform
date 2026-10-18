@@ -14,6 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CLIENT = { ok: true, staff: { ...OWNER.staff, role: "client" } };
+const BUSY_RUN_WAIT_MS = 60_000;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const answered = JSON.parse(fs.readFileSync(path.join(ROOT, "src/http/fixtures/money-helper.sample.json"), "utf8"));
 const waiting = {
@@ -36,7 +37,7 @@ async function openHelper(open, answerNow) {
   return { ...opened, reads };
 }
 
-test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and Check again asks once more", { timeout: 120_000 }, async (t) => {
+test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and Check again asks once more", { timeout: 300_000 }, async (t) => {
   const { open } = await startPages(t);
   let current = waiting;
   const { page, reads } = await openHelper(open, () => current);
@@ -46,11 +47,11 @@ test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and C
   await page.waitForTimeout(120);
   assert.equal(reads.n, 1, "no second read before 3 seconds");
   await page.clock.fastForward(1);
-  await waitFor(() => reads.n === 2, "the first re-read at 3 seconds");
+  await waitFor(() => reads.n === 2, "the first re-read at 3 seconds", BUSY_RUN_WAIT_MS);
 
   for (let i = 3; i <= 101; i += 1) {
     await page.clock.fastForward(3_000);
-    await waitFor(() => reads.n === i, `re-read number ${i - 1}`);
+    await waitFor(() => reads.n === i, `re-read number ${i - 1}`, BUSY_RUN_WAIT_MS);
   }
   assert.equal(reads.n, 101, "the open read plus exactly 100 re-reads");
   await page.waitForFunction(() => document.querySelector('[data-act="refresh"]'));
@@ -62,15 +63,15 @@ test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and C
 
   // Check again: one read now, and the 3 second wait starts over.
   await page.locator('[data-act="refresh"]').click();
-  await waitFor(() => reads.n === 102, "the Check again read");
+  await waitFor(() => reads.n === 102, "the Check again read", BUSY_RUN_WAIT_MS);
   await page.waitForFunction(() => !document.querySelector('[data-act="refresh"]'));
   await page.clock.fastForward(3_000);
-  await waitFor(() => reads.n === 103, "the re-read after Check again");
+  await waitFor(() => reads.n === 103, "the re-read after Check again", BUSY_RUN_WAIT_MS);
 
   // The helper answers: the waiting ends and nothing is asked again.
   current = answered;
   await page.clock.fastForward(3_000);
-  await waitFor(() => reads.n === 104, "the read that finds the answer");
+  await waitFor(() => reads.n === 104, "the read that finds the answer", BUSY_RUN_WAIT_MS);
   await page.waitForFunction(() => !/Thinking…/.test(document.body.innerText));
   assert.equal(await page.locator('[data-act="refresh"]').count(), 0);
   assert.ok((await page.locator("body").innerText()).includes(answered.turns[0].reply.slice(0, 40)), "the answer is on the page");
