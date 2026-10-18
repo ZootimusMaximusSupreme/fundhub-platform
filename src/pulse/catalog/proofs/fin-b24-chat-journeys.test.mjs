@@ -414,14 +414,15 @@ test("journeys/run walks all six seeded journeys when none is named, can answer 
   assert.equal(unknown.fake.released, 1);
 });
 
-test("journeys/run is for owner, admin and sales manager only, and refuses every other role before a connection is opened", async () => {
-  for (const role of ["owner", "admin", "sales_manager"]) {
+test("journeys/run is for owner and admin only, and blocks sales manager and every other role before a connection is opened", async () => {
+  for (const role of ["owner", "admin"]) {
     const out = await walk({ journey: "advisor" }, { role });
     assert.equal(out.res.statusCode, 200, role);
   }
-  for (const role of ["closer", "setter", "csm", "funding_advisor", "inquiry_specialist", "partner", "client"]) {
+  for (const role of ["sales_manager", "closer", "setter", "csm", "funding_advisor", "inquiry_specialist", "partner", "client"]) {
     const out = await walk({ journey: "advisor" }, { role });
     assert.equal(out.res.statusCode, 403, role);
+    assert.equal(out.res.body.error, "forbidden", role);
     assert.equal(out.fake.connected, 0, `${role} never opens a connection`);
   }
 });

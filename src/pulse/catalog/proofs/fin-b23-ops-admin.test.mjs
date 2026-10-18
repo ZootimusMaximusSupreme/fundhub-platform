@@ -39,7 +39,7 @@ async function openOps(open, handlers) {
   return { ...opened, seen };
 }
 
-test("AR + Collections prints exact rows, money, overdue words and the total, top 25 only", { timeout: 60_000 }, async (t) => {
+test("AR + Collections prints exact rows, money, overdue words and the total, top 25 only, with working sortable headers", { timeout: 60_000 }, async (t) => {
   const { open } = await startPages(t);
   const items = [
     { id: uuid(12345678), client_name: "Whitfield Freight", open_balance: "5000.00", days_overdue: 12, status: "sent" },
@@ -52,7 +52,23 @@ test("AR + Collections prints exact rows, money, overdue words and the total, to
   await page.waitForFunction(() => document.querySelectorAll("#ar-table tr").length > 2);
 
   const rows = await page.locator("#ar-table tr").evaluateAll((trs) => trs.map((tr) => [...tr.children].map((c) => c.textContent.trim())));
-  assert.deepEqual(rows[0], ["Client", "Invoice", "Amount owed", "Overdue", "Status"]);
+  const headers = await page.locator("#ar-table th").evaluateAll((ths) => ths.map((th) => {
+    const label = th.cloneNode(true);
+    label.querySelector(".sarrow")?.remove();
+    return {
+      label: label.textContent.trim(),
+      arrow: th.querySelector(".sarrow")?.textContent.trim(),
+      sort: th.getAttribute("aria-sort"),
+      tabIndex: th.tabIndex,
+    };
+  }));
+  assert.deepEqual(headers, [
+    { label: "Client", arrow: "▲", sort: "none", tabIndex: 0 },
+    { label: "Invoice", arrow: "▲", sort: "none", tabIndex: 0 },
+    { label: "Amount owed", arrow: "▲", sort: "none", tabIndex: 0 },
+    { label: "Overdue", arrow: "▲", sort: "descending", tabIndex: 0 },
+    { label: "Status", arrow: "▲", sort: "none", tabIndex: 0 },
+  ]);
   assert.deepEqual(rows[1], ["Whitfield Freight", "INV-12345678", "$5,000.00", "12 days", "Sent"]);
   assert.deepEqual(rows[2], ["Okafor Logistics", "INV-23456789", "$1,250.50", "1 day", "Partially paid"]);
   assert.deepEqual(rows[3], ["FH-000321", "INV-34567890", "$300.00", "Not due yet", "Sent"]);
@@ -62,6 +78,19 @@ test("AR + Collections prints exact rows, money, overdue words and the total, to
   // 5000 + 1250.50 + 300 + 23 x 100 = 8850.50 owed over 27 invoices, one without an amount.
   assert.equal(await page.locator("#ar-total").innerText(), "$8,850.50 owed · 27 invoices · 1 with no amount recorded");
   assert.deepEqual(seen.map((s) => s.search), ["?status=open&limit=50"]);
+
+  const amountHeader = page.locator("#ar-table th").nth(2);
+  await amountHeader.click();
+  assert.equal(await amountHeader.getAttribute("aria-sort"), "ascending");
+  let amounts = await page.locator("#ar-table tr[data-ar] td:nth-child(3)").allInnerTexts();
+  assert.equal(amounts.slice(0, 21).every((amount) => amount === "$100.00"), true);
+  assert.deepEqual(amounts.slice(-4), ["$300.00", "$1,250.50", "$5,000.00", "Amount not recorded"]);
+
+  await amountHeader.press("Enter");
+  assert.equal(await amountHeader.getAttribute("aria-sort"), "descending");
+  amounts = await page.locator("#ar-table tr[data-ar] td:nth-child(3)").allInnerTexts();
+  assert.deepEqual(amounts.slice(0, 3), ["$5,000.00", "$1,250.50", "$300.00"]);
+  assert.equal(amounts.at(-1), "Amount not recorded");
   await page.close();
 });
 
