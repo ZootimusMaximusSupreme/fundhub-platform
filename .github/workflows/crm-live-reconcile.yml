@@ -7,6 +7,7 @@ on:
       - public/app/fundhub-font.css
       - public/app/fundhub-font.js
       - scripts/prepare-rounded-type.mjs
+      - scripts/integrate-reviewed-staff.mjs
       - src/ui/rounded-reference-font.test.mjs
       - e2e/font-reference.spec.mjs
 permissions:
@@ -45,6 +46,7 @@ jobs:
           JS
           python -m fontTools.subset /tmp/Nunito.ttf --output-file=public/assets/fonts/nunito-latin-variable.woff2 --flavor=woff2 --unicodes='U+0000-024F,U+1E00-1EFF,U+2000-206F,U+20A0-20CF,U+2100-214F,U+2190-21FF,U+25A0-25FF' --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-glyph --notdef-outline --recommended-glyphs
           node scripts/prepare-rounded-type.mjs
+          node scripts/integrate-reviewed-staff.mjs
           npm ci --ignore-scripts
           test -x /usr/bin/google-chrome
           echo 'PLAYWRIGHT_CHROMIUM=/usr/bin/google-chrome' >> "$GITHUB_ENV"
@@ -58,12 +60,12 @@ jobs:
         id: node
         continue-on-error: true
         run: |
-          node --test src/ui/rounded-reference-font.test.mjs src/ui/status-tokens-are-semantic.test.mjs src/ui/shell-is-fluid.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/pulse/coverage/gap-portal.test.mjs
+          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs
       - name: Actual browser font and feature checks
         id: browser
         continue-on-error: true
         run: |
-          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs --reporter=line
+          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs --reporter=line
       - name: Preserve checked source and marked evidence on this branch
         if: always()
         env:
@@ -79,12 +81,15 @@ jobs:
           fs.mkdirSync(out,{recursive:true});
           fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,noProductionDeploy:true,noCustomerWrites:true,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
           const prepared=fs.existsSync(out+'/font-preparation.json')?JSON.parse(fs.readFileSync(out+'/font-preparation.json','utf8')).changed:[];
-          const files=[...prepared,'public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];
+          const stagedUI=execFileSync('git',['diff','--name-only','--','public/app','e2e','src/ui','src/http','src/pulse/catalog/proofs'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+          const files=[...stagedUI,...prepared,'scripts/integrate-reviewed-staff.mjs','public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];
           execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
           execFileSync('git',['add','--',...files.filter(f=>fs.existsSync(f))]);
           execFileSync('git',['add','-f','--',out]);
+          for(const note of ['workspace-foundation','page-pipeline','page-calendar','page-client-control-panel','page-closer-dashboard','page-documents','page-messaging']){const p='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/'+note+'.md';if(fs.existsSync(p))execFileSync('git',['add','-f','--',p]);}
           if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
             execFileSync('git',['commit','-m','Prepare rounded Fundhub typography from current production with browser evidence'],{stdio:'inherit'});
+            execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
             execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
           }
           JS
@@ -141,7 +146,7 @@ jobs:
           PY
           git config user.name 'Fundhub UI checks'
           git config user.email 'ui-checks@fundhub.ai'
-          git checkout -b codex/crm-reconcile-scan
+          git checkout -b "codex/crm-reconcile-scan-$GITHUB_RUN_ID"
           git add -f ops/workflows/build-evidence/crm-reconcile-scan
           git commit -m 'Record current-production UI integration scan without changing app files'
-          git push origin HEAD:codex/crm-reconcile-scan
+          git push origin "HEAD:codex/crm-reconcile-scan-$GITHUB_RUN_ID"
