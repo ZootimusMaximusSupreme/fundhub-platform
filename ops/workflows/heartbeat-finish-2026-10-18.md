@@ -21,8 +21,8 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 | --- | --- | --- | --- | --- |
 | A | this session | exact inventory, shared board, CI/ship gate, integration, final proof | first inventory, then integrates all lanes | active |
 | B | agent | 23 money/payment broken rows | none after inventory | active |
-| C | agent | 31 email/SMS broken rows | none after inventory | active |
-| D | agent | 38 customer record/journey broken rows | none after inventory | active |
+| C | Mill + integration | 31 email/SMS broken rows | none after inventory | complete: SMS duplicate guard repaired; 30 live/config/human rows remain honestly red until their named action |
+| D | Kepler + integration | 38 customer record/journey broken rows | none after inventory | complete: 4 shipped fixes and 2 exact workflow proofs; 32 live/human/external rows remain honestly red |
 | E | agent | 20 staff/plumbing broken rows | none after inventory | active |
 | F | Feynman | 45 display proof gaps | none after inventory | complete: 45 confirmed product defects |
 | G | Rawls | 9 route proof gaps | none after inventory | complete: 2 proved, 7 confirmed product defects |
@@ -80,4 +80,6 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: started staff/plumbing lane E plus product-repair batches for display rows 1–6 and the seven remaining route defects.
 - 2026-10-18: repaired Present's two incomplete send controls: delivered letter packs now read `FHData.data`, and soft-pull sends use the shared Sending / cooldown / Sent-at UI. The full rendered send-lock proof passes 8/8. Integrated proof backlog is now 53: 45 display, 7 route, 1 flow, 0 read.
 - 2026-10-18: repaired the three hand-run one-off sender scripts with one explicit `--send` fence and an append-only, script-tagged final receipt that stores counts and provider references without message copy or destination addresses. The focused sender proof passes 4/4, the complete flow monitor passes 24/24, the flow/read shard passes 2/2, and the integrated proof backlog is now 52: 45 display, 7 route, 0 flow, 0 read.
+- 2026-10-18: integrated customer/journey lane D. Added the missing private-leads page, restored real outlines for all 50 states plus DC, repaired two workflow final-result paths, and added exact tests. The integrated focused page/workflow command passes 5/5. No production customer row was changed; 32 rows still require the named live, human, provider, or owner action and remain red.
+- 2026-10-18: integrated messaging lane C. The SMS dispatcher now blocks same-batch and recent sent/delivered duplicate copy to the same normalized phone before Twilio. The integrated messaging, dedupe, and push command passes 84/84. No message was sent; 30 rows still require live data, configuration, templates, provider evidence, or human decisions and remain red.
 
