@@ -53,7 +53,7 @@
     var nav = document.createElement("nav");
     nav.className = "client-ios-nav";
     nav.setAttribute("aria-label", "Client portal");
-    nav.innerHTML = '<a class="client-ios-brand" href="/app/client-portal.html"><span class="client-ios-mark" aria-hidden="true">f.</span>fundhub</a><div class="client-ios-nav-label">Your workspace</div><div class="client-ios-links"></div><div class="client-ios-nav-foot">Your team. Your progress.<br>Always within reach.</div>';
+    nav.innerHTML = '<a class="client-ios-brand" href="/app/client-portal.html" aria-label="Client portal home"><span class="client-ios-brand-logo" aria-hidden="true"></span></a><div class="client-ios-nav-label">Your workspace</div><div class="client-ios-links"></div><div class="client-ios-nav-foot">Your team. Your progress.<br>Always within reach.</div>';
     var links = nav.querySelector(".client-ios-links");
     var routes = [
       ["/app/client-portal.html", "Home", "M3 10 12 3l9 7v11h-6v-7H9v7H3Z"],
