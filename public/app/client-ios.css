@@ -78,3 +78,8 @@ body[data-client-ios] .mnav.client-money-navigation{min-height:64px;padding-top:
 
 /* The verified tenant mark follows the same server-painted logo token as the staff workspace. */
 body[data-client-ios] .client-ios-brand-logo{display:block;width:140px;max-width:100%;height:32px;background-image:var(--logo);background-size:contain;background-repeat:no-repeat;background-position:left center}
+
+/* Keep the tenant's mark visible on phone, with one wordmark per breakpoint. */
+body[data-client-ios] .client-ios-mobile-brand{display:none;align-items:center;min-height:44px;flex-shrink:0;text-decoration:none}
+body[data-client-ios] .client-ios-mobile-logo{display:block;width:112px;height:28px;background-image:var(--logo);background-size:contain;background-repeat:no-repeat;background-position:left center}
+@media(max-width:760px){body[data-client-ios] .client-ios-mobile-brand{display:inline-flex}body[data-client-ios] .client-ios-header>.client-ios-location{display:none}}

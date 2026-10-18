@@ -5,6 +5,10 @@ on:
     branches: [codex/crm-live-font-reconcile]
     paths:
       - .github/workflows/crm-live-reconcile.yml
+      - public/app/shell.js
+      - public/app/client-ios.js
+      - public/app/client-ios.css
+      - public/_headers
       - public/app/fundhub-font.css
       - public/app/fundhub-font.js
       - scripts/prepare-rounded-type.mjs

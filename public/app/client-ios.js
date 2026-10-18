@@ -165,7 +165,15 @@
       if (license) accountPanel.appendChild(license);
       account.append(accountSummary, accountPanel);
       tools.appendChild(account);
-      header.append(locationLabel, tools);
+      var mobileBrand = document.createElement('a');
+      mobileBrand.className = 'client-ios-mobile-brand';
+      mobileBrand.href = '/app/client-portal.html';
+      mobileBrand.setAttribute('aria-label', 'Open portal home');
+      var mobileLogo = document.createElement('span');
+      mobileLogo.className = 'client-ios-mobile-logo';
+      mobileLogo.setAttribute('aria-hidden', 'true');
+      mobileBrand.appendChild(mobileLogo);
+      header.append(mobileBrand, locationLabel, tools);
       function dockChat() {
         var fab = document.getElementById('fh-chat-fab');
         if (fab && fab.parentElement !== tools) {
