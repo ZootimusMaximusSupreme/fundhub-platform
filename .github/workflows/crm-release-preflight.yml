@@ -1,0 +1,92 @@
+name: CRM read-only production release preflight
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths: [.github/workflows/crm-release-preflight.yml]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install existing release tooling
+        run: |
+          npm ci --ignore-scripts
+          npm install -g netlify-cli
+      - name: Load the existing production read connection
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: node scripts/ship-env-from-netlify.mjs
+      - name: Verify the actual runtime database role
+        run: npm run guard:db
+      - name: Verify exact existing production client demo linkage read only
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          import {clientSampleAccount} from './src/demo/client-portal-samples.mjs';
+          const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}});
+          const client=await pool.connect();
+          try{
+            await client.query('BEGIN READ ONLY');
+            const result=await client.query("SELECT id,org_id,client_id,email,kind,status FROM accounts WHERE lower(email)='client@fundhub.ai' AND kind='client' AND status='active'");
+            let eligible=0;
+            for(const account of result.rows){
+              const matches=await clientSampleAccount(client,{kind:account.kind,accountId:account.id,clientId:account.client_id,orgId:account.org_id,email:account.email});
+              if(matches===null)throw Error('Existing sample linkage could not be read');
+              if(matches===true)eligible++;
+            }
+            console.log(JSON.stringify({designatedLogin:'client@fundhub.ai',verifiedEligibleAccounts:eligible,readOnly:true,credentialsChanged:false,recordsChanged:false}));
+            if(eligible!==1)throw Error('Expected one existing account with exact designated fixture linkage; no records changed');
+          }finally{await client.query('ROLLBACK');client.release();await pool.end();}
+          JS
+      - name: Read only the canonical Fundhub typography selection
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}});
+          const client=await pool.connect();
+          try{
+            await client.query('BEGIN READ ONLY');
+            const result=await client.query("SELECT slug, entity_name, display_face FROM v_org_brand_effective WHERE slug = 'fundhub'");
+            console.log(JSON.stringify({canonicalFundhubTypography:result.rows}));
+          }finally{await client.query('ROLLBACK');client.release();await pool.end();}
+          JS
+      - name: Diagnose existing public read latency and brand selection
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          node --input-type=module -e "import dns from 'node:dns/promises';console.log(JSON.stringify(await dns.lookup('fundhub.ai',{all:true})))"
+          for probe_ip in 75.2.60.5 99.83.231.61; do
+            curl --silent --show-error --max-time 5 --resolve "fundhub.ai:443:$probe_ip" --output /dev/null --write-out "pinned $probe_ip status=%{http_code} tls=%{time_appconnect} first=%{time_starttransfer} total=%{time_total}\\n" https://fundhub.ai/portal-login.html &
+          done
+          wait
+          curl -4 --silent --show-error --max-time 12 --output /dev/null --write-out 'portal IPv4 status=%{http_code} connect=%{time_connect} first=%{time_starttransfer} total=%{time_total} ip=%{remote_ip}\\n' https://fundhub.ai/portal-login.html || true
+          node --input-type=module <<'JS'
+          const paths=['/portal-login.html','/app/morning-brief.html','/app/my-numbers.html','/api/health?strict=1','/api/org-brand'];
+          await Promise.all(paths.map(async path=>{
+            const started=Date.now();
+            try{
+              const res=await fetch('https://fundhub.ai'+path,{signal:AbortSignal.timeout(10000),headers:{'user-agent':'FundhubPulse/1.0 (+https://fundhub.ai)'}});
+              const text=await res.text();
+              const out={path,status:res.status,ms:Date.now()-started,bytes:Buffer.byteLength(text)};
+              if(path==='/api/org-brand'){try{const j=JSON.parse(text);const b=j.brand||j;out.brand={slug:b.slug,entity_name:b.entity_name,display_face:b.display_face};}catch{}}
+              console.log(JSON.stringify(out));
+            }catch(error){console.log(JSON.stringify({path,ms:Date.now()-started,error:error.name}));}
+          }));
+          JS
+      - name: Run the existing read-only hourly release proof
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: npm run pulse:prove -- --beats
+      # pulse:prove uses read-only transactions and recording sinks, permits only
+      # GET/HEAD, and refuses writes/sends. No migrations, deployment or main update.

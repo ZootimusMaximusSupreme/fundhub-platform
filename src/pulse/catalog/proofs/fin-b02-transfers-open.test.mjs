@@ -165,7 +165,7 @@ test("a 401 never paints the page's error card, and other refusals do not sign t
 test("the html loads its script and its stylesheet from files that exist, and the script is not left out", () => {
   assert.ok(ASSETS.length >= 3, "the html asks for brand css, page css and the script");
   for (const a of ASSETS) {
-    const file = path.join(APP, a.src);
+    const file = a.src.startsWith("/") ? path.join(REPO_ROOT, "public", a.src.slice(1)) : path.join(APP, a.src);
     assert.ok(fs.existsSync(file), `${a.src} is not a file under public/app`);
     assert.ok(fs.statSync(file).size > 0, `${a.src} is empty`);
   }

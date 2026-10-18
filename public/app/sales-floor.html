@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sales floor · Fundhub</title>
@@ -9,264 +14,105 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script defer src="shell.js"></script>
-<style>
-
-:root{
-  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
-  --paper:#FCFCFC; --ink:#0A0A0A; --ink2:#18181B;
-  --gray:#52525B; --gray2:#A1A1AA;
-  --line:#E4E4E7; --soft:#F4F4F5;
-  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
-  --sans:'Inter',system-ui,-apple-system,sans-serif;
-  --ok:#A8D8B0; --warn:#F5CE8F; --alert:#F2A69B; --info:#A9C6E8; --accent:#C4B3E5;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-/* THIS 14px IS ALIVE — DO NOT DELETE IT. The brand's `font-size:inherit
-   !important` (fundhub-brand.css:184-186) is a DESCENDANT selector: it only
-   reaches things inside .app / .app-shell / .shell / .main / .fh-maxw. <body>
-   is none of those, and neither is the chrome the shell hangs straight off it —
-   shell.js:1644 appends the ⌘K search overlay to document.body, and
-   chat-widget.js:77/89 append the chat button and panel. Those inherit from
-   <body> and nothing else. Deleting this line was MEASURED at 1440x900 on
-   2026-08-30: the ⌕ glyph in the search bar went 14px -> 16px, its box
-   8.44x21 -> 9.64x24, and the search bar row 50px -> 53px tall. */
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
-
-.eyebrow{font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gray)}
-.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
-.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border:1px solid var(--line);border-radius:20px;color:var(--gray);white-space:nowrap}
-.chip .cd{width:6px;height:6px;border-radius:50%}
-.chip.on .cd{background:var(--ok)} .chip.wip .cd{background:var(--warn)} .chip.bad .cd{background:var(--alert)}
-
-/* ---------- the ONE size escape hatch (UI-STANDARDS §12.7) ---------------
-   fundhub-brand.css:184-186 puts `font-size:inherit !important` on every
-   element INSIDE .app-shell, so a plain px size on an element in this
-   screen's own markup never painted. This file had 27 px sizes. 25 of them
-   were inside the shell and dead; the other TWO were not — `body` and the
-   `.row` the chat widget reuses both sit outside every wrapper, so they are
-   still written above with the measurement that proves it. Of the 25 dead
-   ones, the classes the brand file already sizes (.eyebrow .chip .note .sub
-   .big .vl) are simply gone, and the row, cell and button text that should
-   be body text is left at --fs-body, which is what it was already rendering
-   at. What is left below is this screen's OWN class names that are
-   captions: the mono caps label over each metric and each table column,
-   the muted sub-line under a name or a number, and the panel section
-   headings, which are h3 and so miss the brand's h1/h2 list. !important is
-   what beats the brand rule. ONE rule — a second one is how a screen ends
-   up with six sizes and no hierarchy (§3). */
-.app-shell :is(.say,.hl2,.marks,.f .lb,.f .cv,.rhead,.rrow .nm em,.panel h3,
-  .row .l em,.obt em,.unk,.pickwho em){
-  font-size:var(--fs-caption)!important;
-}
-.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);position:relative;flex:0 0 auto}
-.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
-@keyframes pulse{to{transform:scale(1.9);opacity:0}}
-
-header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;background:var(--paper);z-index:20}
-.hl,.hr{display:flex;align-items:center;gap:12px}
-
-/* 2026-08-27: the 1280px cap and the auto margin are gone (owner-set — every
-   screen is fluid). Already dead via crm-sidebar.css !important; removed so the
-   file says what it does. See src/ui/shell-is-fluid.test.mjs. */
-.shell{padding:24px}
-.sec{margin-bottom:24px}
-.sech{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.note{color:var(--gray2)}
-.say{color:var(--gray);margin-top:11px;padding-left:13px;border-left:2px solid var(--warn)}
-.say b{color:var(--ink);font-weight:500}
-
-/* today hero */
-.hero{background:var(--card);color:var(--cardtext);border-radius:12px;padding:22px 24px;position:relative;overflow:hidden}
-.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px}
-.herorow{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;position:relative}
-.hl2{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
-.big{font-weight:500;letter-spacing:-.035em;line-height:1;margin-top:7px;font-variant-numeric:tabular-nums}
-.sub{color:var(--gray2);margin-top:6px}
-.bar{height:7px;border-radius:4px;background:rgba(255,255,255,.09);margin-top:18px;position:relative;overflow:hidden}
-.bar i{display:block;height:100%;border-radius:4px;background:var(--spectrum)}
-.marks{display:flex;justify-content:space-between;font-family:var(--mono);letter-spacing:.08em;color:var(--gray2);margin-top:7px;position:relative}
-
-/* funnel */
-.funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:transparent;border:0;border-radius:10px;overflow:visible}
-.f{background:var(--paper);padding:16px;border:1px solid var(--line);border-radius:10px}
-.f .lb{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
-.f .vl{font-weight:500;letter-spacing:-.025em;margin-top:5px;font-variant-numeric:tabular-nums}
-.f .cv{margin-top:3px;color:var(--gray)}
-.dn{color:#C25B4E} .up{color:#4F8A5B}
-
-/* roster */
-.rost{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.rhead,.rrow{display:grid;grid-template-columns:1.5fr 68px 74px 86px 92px 1.4fr;gap:12px;align-items:center;padding:12px 16px}
-.rhead{background:var(--soft);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--gray)}
-.rrow{border-top:1px solid var(--line)}
-.rrow .nm b{font-weight:500;display:block}
-.rrow .nm em{font-style:normal;color:var(--gray2)}
-.num{text-align:right;font-variant-numeric:tabular-nums}
-.act{color:var(--gray)}
-.act b{color:var(--ink);font-weight:500}
-
-/* two col */
-.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.panel{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--paper)}
-.panel h3{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray);font-weight:500;margin-bottom:13px}
-
-/* This 13px is dead for THIS screen's own rows — they are inside .app-shell —
-   but chat-widget.js:154/160/161/173 renders <div class="row"> inside
-   #fh-chat-foot, which hangs off <body>, and its own rule
-   (chat-widget.js:32) sets no size. So this is the only thing sizing the chat
-   composer's rows. MEASURED 13px -> 16px when it was deleted. Keep it. */
-.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
-.row:first-of-type{border-top:none}
-.row .l b{font-weight:500;display:block}
-.row .l em{font-style:normal;color:var(--gray)}
-.row .r{flex:0 0 auto;font-variant-numeric:tabular-nums;text-align:right}
-
-/* objections bars */
-.ob{padding:8px 0;border-top:1px solid var(--line)}
-.ob:first-of-type{border-top:none}
-.obt{display:flex;justify-content:space-between;margin-bottom:5px}
-.obt em{font-style:normal;color:var(--gray2)}
-.obb{height:5px;border-radius:3px;background:var(--soft);overflow:hidden}
-.obb i{display:block;height:100%;border-radius:3px;background:var(--ink)}
-.obb.hot i{background:var(--alert)}
-
-.flagbox{background:rgba(242,166,155,.11);border-left:2px solid var(--alert);border-radius:7px;padding:11px 13px;margin-top:12px}
-.flagbox b{font-weight:500}
-
-@media(max-width:1080px){.funnel{grid-template-columns:repeat(3,1fr)}.rhead,.rrow{grid-template-columns:1.4fr 62px 70px 82px 1fr}.rhead .h5,.rrow .c5{display:none}}
-@media(max-width:860px){.two{grid-template-columns:1fr}}
-@media(max-width:640px){.funnel{grid-template-columns:1fr!important}.rhead,.rrow{grid-template-columns:1fr 70px 84px}.rhead .h2,.rrow .c2,.rhead .h4,.rrow .c4{display:none}}
-
-/* offer stack — its own container class so the roster stays the first .rost */
-.ostack{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.ostack .rhead,.ostack .rrow{grid-template-columns:1.6fr 64px 1fr 1fr}
-.ostack .rrow.tot{background:var(--soft)}
-.unk{font-style:normal;color:var(--gray)}
-
-/* one closer at a time */
-.rrow.pick{cursor:pointer}
-.rrow.pick.on{background:var(--soft)}
-.picks{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
-.pickb{font-family:var(--sans);min-height:40px;padding:8px 16px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:20px;cursor:pointer}
-.pickb.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
-.pickwho{font-weight:500}
-.pickwho em{font-style:normal;color:var(--gray2);display:block;margin-top:3px}
-@media(max-width:640px){.ostack .rhead,.ostack .rrow{grid-template-columns:1fr 44px .9fr .9fr;gap:8px}}
-
-
-</style>
+<link rel="stylesheet" href="sales-floor.css">
 </head>
 <body>
 
 <div class="app-shell">
-<aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem on" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+<aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem on" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 <div class="stage" id="fh-stage">
 
 
-<header>
-  <div class="hl">
-    <span class="eyebrow">M-01 / Sales floor</span>
-    <span class="chip on"><span class="cd"></span>— closers on shift</span>
+<header class="topbar sf-toolbar">
+  <div class="sf-intro">
+    <h2>Team performance</h2>
+    <p>Today's pace, closer priorities and deposit follow-through.</p>
   </div>
-  <div class="hr">
-    <span class="chip"><span class="cd" style="background:var(--info)"></span>—</span>
-    <span class="pulse"></span>
+  <div class="hl sf-toolbar-actions">
+    <span class="chip on" id="fh-floor-on-shift"><span class="cd"></span>— closers on shift</span>
+    <button type="button" class="sf-button" id="fh-floor-refresh">Refresh floor</button>
   </div>
 </header>
 
-<div class="shell">
+<main class="shell" id="fh-floor-main" aria-label="Sales floor performance" aria-busy="true">
+  <div class="sf-state" id="fh-floor-status" role="status" aria-live="polite">Loading sales floor…</div>
+  <nav class="sf-jumps" aria-label="Sales floor sections">
+    <a href="#fh-floor-team">Your closers <span aria-hidden="true">↗</span></a>
+    <a href="#fh-offer-stack">Offer sales <span aria-hidden="true">↗</span></a>
+    <a href="#fh-recordings">Recordings <span aria-hidden="true">↗</span></a>
+  </nav>
 
   <div class="sec">
     <div class="hero">
       <div class="herorow">
         <div>
-          <div class="hl2">Today</div>
+          <div class="hl2">Deposits today</div>
           <div class="big">—</div>
           <div class="sub">Booked — · Held —</div>
         </div>
-        <div style="text-align:right">
-          <div class="hl2">Funded, not just sold</div>
+        <div>
+          <div class="hl2">Deposit-to-funded rate</div>
           <div class="big">—</div>
-          <div class="sub">Of deposits taken this quarter</div>
+          <div class="sub">Of deposits taken this period</div>
         </div>
       </div>
-      <div class="bar"><i style="width:0%"></i></div>
-      <div class="marks"><span>0</span><span>Target —</span></div>
+      <div class="bar" hidden><i style="width:0%"></i></div>
+      <div class="marks sf-sr-only"><span>0</span><span>Target —</span></div>
     </div>
   </div>
 
   <div class="sec">
-    <div class="sech"><span class="eyebrow">Where the funnel leaks</span><span class="note">This month</span></div>
+    <div class="sech"><h2>Monthly funnel</h2><span class="note">This month</span></div>
     <div class="funnel">
       <div class="f"><div class="lb">Booked</div><div class="vl">—</div><div class="cv">&nbsp;</div></div>
       <div class="f"><div class="lb">Held</div><div class="vl">—</div><div class="cv">&nbsp;</div></div>
@@ -274,16 +120,11 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
       <div class="f"><div class="lb">Funded</div><div class="vl">—</div><div class="cv">&nbsp;</div></div>
       <div class="f"><div class="lb">Downsells</div><div class="vl">—</div><div class="cv">&nbsp;</div></div>
     </div>
-    <p class="say">Live funnel counts load here. Empty means none logged this month.</p>
+    <p class="say">Loading this month’s booked calls, deposits and funding outcomes.</p>
   </div>
 
-  <div class="sec" id="fh-offer-stack">
-    <div class="sech"><span class="eyebrow">Everything the floor sold</span><span class="note">Every offer · this month</span></div>
-    <div class="ostbody"><p class="note">The full offer stack loads here.</p></div>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">Your closers</span><span class="note">Cash · close rate · funded rate · what to do</span></div>
+  <section class="sec" id="fh-floor-team" aria-labelledby="fh-floor-team-title">
+    <div class="sech"><div><h2 id="fh-floor-team-title">Your closers</h2><p class="note">Select a closer to review their numbers and next action.</p></div><span class="note">This month</span></div>
     <div class="rost">
       <div class="rhead">
         <span>Closer</span>
@@ -294,12 +135,33 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
         <span>Do this</span>
       </div>
     </div>
+  </section>
+
+  <section class="sec" id="fh-closer-focus" aria-labelledby="fh-floor-focus-title">
+    <div class="sech"><h2 id="fh-floor-focus-title" tabindex="-1">One closer at a time</h2><span class="note">Individual performance</span></div>
+    <div class="focusbody"><p class="note">Loading individual performance…</p></div>
+  </section>
+
+  <div class="sec two">
+
+    <div class="panel">
+      <h3>Deals going cold</h3>
+      <p class="note">No cold deposits (7+ days quiet, not funded).</p>
+    </div>
+
+    <div class="panel">
+      <h3>Floor discipline</h3>
+      <p class="note">Live counts load here. Missing facts stay a dash.</p>
+    </div>
+
   </div>
 
-  <div class="sec" id="fh-closer-focus">
-    <div class="sech"><span class="eyebrow">One closer at a time</span><span class="note">Pick a name, click a row, or use the arrows</span></div>
-    <div class="focusbody"><p class="note">One closer's numbers load here once the floor list arrives.</p></div>
+
+  <div class="sec" id="fh-offer-stack">
+    <div class="sech"><h2>Everything the floor sold</h2><span class="note">Every offer · this month</span></div>
+    <div class="ostbody"><p class="note">The full offer stack loads here.</p></div>
   </div>
+
 
   <div class="sec two">
 
@@ -329,21 +191,8 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
 
   </div>
 
-  <div class="sec two">
 
-    <div class="panel">
-      <h3>Deals going cold</h3>
-      <p class="note">No cold deposits (7+ days quiet, not funded).</p>
-    </div>
-
-    <div class="panel">
-      <h3>Floor discipline</h3>
-      <p class="note">Live counts load here. Missing facts stay a dash.</p>
-    </div>
-
-  </div>
-
-</div>
+</main>
 
 </div>
 </div>

@@ -43,8 +43,14 @@ test("it loads no staff shell and nothing that redirects to the sign-in page", (
   for (const banned of ["shell.js", "data.js", "crm-sidebar", "chat-widget", "serviceWorker", "login", "/api/read/", "/api/auth"]) {
     assert.ok(!MARKUP.includes(banned), `morning-brief.html must not reference ${banned}`);
   }
-  // Only inline scripts: no src= script can sneak a gate in.
-  for (const block of SCRIPTS) assert.doesNotMatch(block, /^<script\b[^>]*\bsrc=/i, "no external <script src>");
+  // The shared typography adapter is presentation only. All other external
+  // scripts remain forbidden on this public, token-only page.
+  for (const block of SCRIPTS) {
+    const src = /^<script\b[^>]*\bsrc="([^"]+)"/i.exec(block);
+    if (src) assert.equal(src[1], "/app/fundhub-font.js", "public brief may load only the shared type adapter");
+  }
+  const type = fs.readFileSync(path.join(path.dirname(FILE), "fundhub-font.js"), "utf8");
+  assert.doesNotMatch(type, /fetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|location\s*[.=]|\/api\//, "type must not gain auth, routing, storage, or network behavior");
   // The only API it calls is the public brief route.
   const apis = [...JS.matchAll(/["'](\/api\/[^"'?]+)/g)].map((m) => m[1]);
   assert.deepEqual([...new Set(apis)], ["/api/public/morning-brief"]);

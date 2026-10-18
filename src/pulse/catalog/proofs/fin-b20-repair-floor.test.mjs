@@ -87,7 +87,7 @@ test("floor discipline: what the real read sends is what the page prints, dashes
   assert.equal(await text(rows.nth(1), ".l"), "Calls not recorded Logged sales calls with no recording and no transcript");
   assert.equal(await text(rows.nth(1), ".r"), "1");
   assert.equal(await rows.nth(1).locator(".chip").getAttribute("class"), "chip bad");
-  assert.equal(await text(rows.nth(2), ".l"), "Shifts started late Needs scheduled shift times — not on shifts table", "the page's own sentence, since the read sends no number and no reason here");
+  assert.equal(await text(rows.nth(2), ".l"), "Shifts started late Scheduled shift times are not available.", "the page's own sentence, since the read sends no number and no reason here");
   assert.equal(await text(rows.nth(2), ".r"), "—");
   assert.equal(await text(rows.nth(3), ".l"), `Follow-ups overdue ${data.discipline.followups_reason}`);
   assert.equal(await text(rows.nth(3), ".r"), "—");

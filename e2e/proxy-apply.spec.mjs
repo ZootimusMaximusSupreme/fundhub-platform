@@ -115,7 +115,7 @@ test("lenders.html client-scoped Apply shows no-extension fallback with verified
 });
 
 test("client-control-panel funding Apply list wires Apply control", async ({ page }) => {
-  await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}`, OWNER, {
+  await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
     "/api/dashboard/client": {
       ok: true,
       client: {

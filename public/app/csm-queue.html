@@ -1,254 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fundhub — Client Success</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<style>
-/* ══ SHARED CHROME — identical across every internal surface ══════════════ */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--butter:#F2E39B}
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-.logo{width:118px;height:24px;flex:0 0 118px}
-.app{display:flex;min-height:100vh}
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{height:57px;flex:0 0 57px;display:flex;align-items:center;gap:14px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:20}
-.topbar h1{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-.topbar .crumb{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em;text-transform:uppercase}
-.spacer{flex:1}
-.content{padding:22px 24px 40px;flex:1}
-.foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.09em;text-transform:lowercase}
-
-/* ══ SCREEN ══════════════════════════════════════════════════════════════ */
-/* NO PAGE CAP. UI-STANDARDS §1: content fills the window; only the 228px rail
-   is reserved. The one thing capped here is the notes box's reading measure,
-   which is a BLOCK, not the page. */
-:root{ --surface:#FFFFFF; --text:var(--ink2); --text-dim:var(--gray); --text-faint:var(--gray2);
-       --green:#2C5138; --green-bg:rgba(168,216,176,.26);
-       --red:#6E2A22;   --red-bg:rgba(242,166,155,.24);
-       --amber:#6B4A12; --amber-bg:rgba(245,206,143,.26); }
-
-/* THE HEADLINE. Top-left, largest, because the CSM's first question of the day
-   is "who am I calling next" (UI-STANDARDS §10). */
-.q-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:24px; }
-.q-count .vl{ font-weight:700; letter-spacing:-.02em; line-height:1.05; display:block; }
-.q-count .lb{ display:block; margin-top:4px; color:var(--text-dim); }
-.q-count .cmp{ display:block; margin-top:2px; color:var(--text-faint); }
-
-/* THE CLOCK. It lives here, on the CSM's own screen, because /api/tasks refuses
-   a claim from anybody who is not on a shift and the only clock button in the
-   app was on Staff & Teams — a finance screen a CSM is bounced off (live walk
-   2026-09-17, GAP 37). api/shifts.mjs takes the staff id off the session, so
-   every staff role is already allowed to press this. */
-.q-shift{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px;
-          min-width:260px; }
-.q-shift .state{ display:flex; align-items:center; gap:8px; }
-.q-shift .dot{ width:9px; height:9px; border-radius:50%; background:var(--text-faint); flex:0 0 9px; }
-.q-shift.on .dot{ background:var(--green); }
-.q-shift .who{ font-weight:600; color:var(--text); }
-.q-shift .when{ display:block; color:var(--text-dim); margin-top:2px; }
-.q-shift .cta{ margin-top:10px; }
-
-.q-banner{ border-radius:8px; padding:12px 14px; margin-bottom:16px; border:1px solid transparent; display:none; }
-.q-banner.show{ display:block; }
-.q-banner.err{ color:var(--red); background:var(--red-bg); border-color:rgba(110,42,34,.22); }
-.q-banner.ok{ color:var(--green); background:var(--green-bg); border-color:rgba(44,81,56,.22); }
-
-/* ONE ROW PER CALL. .card is on the brand file's shadow list, so it gets
-   --panel-shadow for free and this screen never writes a shadow value
-   (UI-STANDARDS §12.2). */
-.q-list{ display:flex; flex-direction:column; gap:12px; }
-.card{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px; }
-.q-row{ display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; }
-.q-who{ flex:1 1 260px; min-width:0; }
-.q-name{ font-weight:600; color:var(--text); display:inline-block; max-width:100%; overflow:hidden;
-         text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
-.q-name:hover{ text-decoration:underline; }
-.q-what{ color:var(--text-dim); margin-top:2px; }
-.q-facts{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; }
-.q-acts{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-
-/* STATUS IS NEVER COLOUR ALONE (UI-STANDARDS §12.6) — every chip says its word.
-   A white-label tenant with one hue paints --alert and --ok the same colour. */
-.chip{ border:1px solid var(--soft); border-radius:999px; padding:4px 10px; color:var(--text-dim);
-       background:var(--paper); white-space:nowrap; }
-.chip.late{ color:var(--red); background:var(--red-bg); border-color:rgba(110,42,34,.28); }
-.chip.owed{ color:var(--amber); background:var(--amber-bg); border-color:rgba(107,74,18,.28); }
-.chip.mine{ color:var(--green); background:var(--green-bg); border-color:rgba(44,81,56,.28); }
-.chip.num{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
-/* Capital Blueprint rows say so in words and carry a solid border, so the mark survives a one-hue brand. */
-.chip.bp{ color:var(--text); border-color:var(--ink2); font-weight:600; }
-
-.btn{ border:1px solid var(--ink2); background:var(--ink2); color:var(--paper); border-radius:7px;
-      padding:10px 16px; font-weight:600; cursor:pointer; min-height:40px; }
-.btn:hover{ opacity:.9; }
-.btn[disabled]{ opacity:.45; cursor:not-allowed; }
-.btn.ghost{ background:transparent; color:var(--text); border-color:var(--soft); }
-.btn.ghost:hover{ border-color:var(--gray2); }
-
-/* THE ANSWER FORM (GAP 38). Collapsed until the CSM opens the row —
-   UI-STANDARDS §9, the daily 20% is the list, the form is one click deeper. */
-.q-form{ border-top:1px solid var(--line); margin-top:14px; padding-top:14px; display:none; }
-.q-form.open{ display:block; }
-.q-field{ margin-top:12px; }
-.q-field label{ display:block; color:var(--text); font-weight:600; margin-bottom:5px; }
-.q-input, .q-area, .q-select{ width:100%; border:1px solid var(--soft); border-radius:6px; padding:9px 11px;
-                              background:var(--surface); }
-.q-area{ min-height:64px; resize:vertical; }
-.q-notes{ max-width:78ch; }
-.q-save{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
-.q-say{ display:none; border-radius:6px; padding:8px 11px; }
-.q-say.show{ display:inline-block; }
-.q-say.ok{ color:var(--green); background:var(--green-bg); }
-.q-say.err{ color:var(--red); background:var(--red-bg); }
-
-.q-empty{ color:var(--text-dim); }
-.q-foot-note{ margin-top:20px; }
-.q-link{ text-decoration:underline; }
-.q-empty .btn{ margin-top:12px; }
-
-/* LOADING — skeletons in the real layout, never a full-page spinner (§6.1). */
-.q-skel{ height:74px; border-radius:10px; border:1px solid var(--line); background:var(--paper);
-         opacity:.6; animation:qpulse 1.2s ease-in-out infinite; }
-@keyframes qpulse{ 0%,100%{opacity:.35} 50%{opacity:.7} }
-@media (prefers-reduced-motion: reduce){ .q-skel{ animation:none } }
-
-@media (max-width:860px){
-  .q-head{ gap:16px; }
-  .q-shift{ min-width:0; width:100%; }
-  .q-acts{ width:100%; }
-}
-</style>
+<link rel="stylesheet" href="csm-queue.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="csm-queue-page">
 <div class="app">
-<aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem on" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+<aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem on" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 
   <div class="main">
-    <div class="topbar">
-      <span class="crumb">Client success</span><h1>My queue</h1>
-      <div class="spacer"></div>
-    </div>
-
-    <div class="content">
-
+    <main class="content" aria-labelledby="qTitle">
       <div class="q-head">
-        <div class="q-count">
-          <span class="vl mono" id="qCount">—</span>
-          <span class="lb caption" id="qCountLabel">calls waiting</span>
-          <span class="cmp caption" id="qOverdue">&nbsp;</span>
+        <div class="q-intro">
+          <h2 id="qTitle">Calls to make</h2>
+          <p>Claim a conversation, check in with your client, and keep what matters.</p>
         </div>
-
-        <div class="q-shift" id="qShift">
-          <div class="state">
-            <span class="dot"></span>
-            <span>
-              <span class="who" id="qShiftWho">Checking your shift…</span>
-              <span class="when caption" id="qShiftWhen">&nbsp;</span>
-            </span>
-          </div>
-          <div class="cta">
-            <button class="btn" id="qClock" type="button" disabled>Start shift</button>
-          </div>
+        <div class="q-head-actions">
+          <button class="btn ghost" id="qRefresh" type="button" aria-label="Refresh queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg><span>Refresh<span class="q-refresh-detail"> queue</span></span></button>
+          <a class="btn ghost" href="client-control-panel.html">Client files</a>
         </div>
       </div>
 
-      <div class="q-banner err" id="qBanner"></div>
-
-      <div class="q-list" id="qList">
-        <!-- Loading state. Skeletons in the real row shape, replaced on first paint. -->
-        <div class="q-skel"></div>
-        <div class="q-skel"></div>
-        <div class="q-skel"></div>
+      <div class="q-shift" id="qShift">
+        <div class="state">
+          <span class="dot" aria-hidden="true"></span>
+          <span>
+            <span class="who" id="qShiftWho">Checking your shift…</span>
+            <span class="when" id="qShiftWhen">&nbsp;</span>
+          </span>
+        </div>
+        <div class="cta"><button class="btn" id="qClock" type="button" disabled>Start shift</button></div>
       </div>
 
-      <!-- THE WAY OUT, as a real href that works before any script runs. -->
-      <p class="q-empty caption q-foot-note" id="qFootNote">
-        Need one client instead of the whole queue?
-        <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>.
-      </p>
+      <div class="q-banner" id="qBanner" role="status" aria-live="polite"></div>
+      <div class="q-queue-head">
+        <div class="q-count" aria-live="polite" aria-atomic="true">
+          <span class="vl" id="qCount">—</span>
+          <span class="lb" id="qCountLabel">calls waiting</span>
+          <span class="cmp" id="qOverdue">Checking your queue…</span>
+        </div>
+        <span class="q-order">In due-date order</span>
+      </div>
+      <section class="q-list" id="qList" aria-label="Client calls" aria-busy="true">
+        <div class="q-skel" aria-hidden="true"></div>
+        <div class="q-skel" aria-hidden="true"></div>
+        <div class="q-skel" aria-hidden="true"></div>
+      </section>
 
-    </div>
-
-    <div class="foot"><span>fundhub</span><span class="spacer"></span><span id="qStamp">—</span></div>
+      <div class="q-foot">
+        <p class="q-foot-note" id="qFootNote">Looking for one client? <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>.</p>
+        <span id="qStamp">Waiting for your queue</span>
+      </div>
+    </main>
   </div>
 </div>
 
@@ -386,7 +251,9 @@ button,input,select,textarea{font:inherit;color:inherit}
     shift: null,          // the open shift row, or null
     myStaffId: null,      // read off the shift; it is the only id this screen gets
     questions: null,      // { mid: [...], post: [...] } from the read endpoint
-    open: null            // task_id whose answer form is showing
+    open: null,           // task_id whose answer form is showing
+    next: null,           // first available call in the API’s due-date order
+    queueReady: false     // never replace loading/failed reads with a false empty queue
   };
 
   /* ── the shift ─────────────────────────────────────────────────────────── */
@@ -414,6 +281,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   function loadShift() {
     return api("/api/shifts").then(function (res) {
       if (res.status !== 200 || !res.body || !res.body.ok) {
+        $("qShift").className = "q-shift";
         $("qShiftWho").textContent = "Cannot read your shift";
         $("qShiftWhen").textContent = problem(res);
         $("qClock").disabled = true;
@@ -422,6 +290,7 @@ button,input,select,textarea{font:inherit;color:inherit}
       state.shift = res.body.shift || null;
       state.myStaffId = state.shift ? (state.shift.staff_id || null) : state.myStaffId;
       paintShift();
+      if (state.queueReady) paintQueue();
     });
   }
 
@@ -442,6 +311,7 @@ button,input,select,textarea{font:inherit;color:inherit}
         state.shift = goingOn ? (res.body.shift || null) : null;
         if (state.shift && state.shift.staff_id) state.myStaffId = state.shift.staff_id;
         paintShift();
+        if (state.queueReady) paintQueue();
         banner("ok", goingOn ? "You are on shift. You can claim calls now." : "Shift ended.");
       });
   }
@@ -472,12 +342,21 @@ button,input,select,textarea{font:inherit;color:inherit}
       " · " + esc(n) + esc(billLate) + "</span>";
   }
 
+  function entitlementLabel(code) {
+    var known = { funding_bundle: "Funding bundle", capital_blueprint: "Capital Blueprint", capital_academy: "Capital Academy", funding_dfy: "Funding, done-for-you", credit_optimization: "Credit optimization" };
+    if (known[code]) return known[code];
+    var words = String(code).replace(/_/g, " ");
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
   function rowHtml(row) {
     var name = row.client_name || row.client_code || "Unnamed client";
     var when = whenText(row.due_at);
     var lateDays = callLateDays(row.due_at);
     var mine = state.myStaffId && row.assignee_staff_id === state.myStaffId;
     var taken = row.assignee_staff_id && !mine;
+    var next = !!state.shift && state.next === row.task_id;
+    var context = moneyChip(row);
 
     var chips = '<span class="chip" title="' + esc(when.title) + '">' + esc(when.text) + "</span>";
     if (lateDays !== null) {
@@ -486,9 +365,8 @@ button,input,select,textarea{font:inherit;color:inherit}
         (lateDays < 1 ? "late today" : esc(lateDays) + (lateDays === 1 ? " day late" : " days late")) +
         "</span>";
     }
-    chips += moneyChip(row);
     for (var i = 0; i < row.owned_codes.length; i++) {
-      chips += '<span class="chip">Has ' + esc(row.owned_codes[i]) + "</span>";
+      context += '<span class="chip" data-entitlement="' + esc(row.owned_codes[i]) + '">Has ' + esc(entitlementLabel(row.owned_codes[i])) + "</span>";
     }
     var bpKind = blueprintKind(row);
     if (bpKind) chips = '<span class="chip bp" title="' + esc(bpKind) + '">Capital Blueprint</span>' + chips;
@@ -509,27 +387,29 @@ button,input,select,textarea{font:inherit;color:inherit}
 
     var acts = "";
     if (!row.assignee_staff_id) {
-      acts += '<button class="btn ghost" type="button" data-claim="' + esc(row.task_id) + '">Claim this call</button>';
+      acts += '<button class="btn' + (next && !state.open ? "" : " ghost") + '" type="button" data-claim="' + esc(row.task_id) + '">Claim this call</button>';
     }
     if (stageOf(row)) {
-      acts += '<button class="btn ghost" type="button" data-open="' + esc(row.task_id) + '">' +
+      acts += '<button class="btn' + (next && mine && !state.open ? "" : " ghost") + '" type="button" aria-expanded="' + (state.open === row.task_id ? "true" : "false") + '" aria-controls="q-form-' + esc(row.task_id) + '" data-open="' + esc(row.task_id) + '">' +
               (state.open === row.task_id ? "Hide answers" : "Write down their answers") + "</button>";
     }
     if (row.meeting_url) {
       acts += '<a class="btn ghost" href="' + esc(row.meeting_url) + '" target="_blank" rel="noopener">Booking link</a>';
     }
 
-    return '<div class="card" data-row="' + esc(row.task_id) + '">' +
+    return '<article class="card' + (next ? " q-next" : "") + '" data-row="' + esc(row.task_id) + '" aria-label="' + esc(name) + '">' +
       '<div class="q-row">' +
         '<div class="q-who">' +
-          '<a class="q-name" href="client-control-panel.html?client_id=' + esc(row.client_id) + '">' + esc(name) + "</a>" +
+          '<div class="q-name-line"><a class="q-name" href="client-control-panel.html?client_id=' + esc(row.client_id) + '">' + esc(name) + "</a>" +
+          (next ? '<span class="q-up-next">Up next</span>' : "") + "</div>" +
           '<div class="q-what">' + esc(row.title) + "</div>" +
           '<div class="q-facts">' + chips + "</div>" +
+          '<div class="q-context" aria-label="Client context">' + context + "</div>" +
         "</div>" +
         '<div class="q-acts">' + acts + "</div>" +
       "</div>" +
-      (state.open === row.task_id ? formHtml(row) : "") +
-      "</div>";
+      (state.open === row.task_id ? formHtml(row) : (stageOf(row) ? '<div class="q-form" id="q-form-' + esc(row.task_id) + '" hidden></div>' : "")) +
+      "</article>";
   }
 
   /* THE ANSWER FORM (GAP 38). There were 0 rows in customer_insights because no
@@ -541,11 +421,13 @@ button,input,select,textarea{font:inherit;color:inherit}
     var stage = stageOf(row);
     var list = (state.questions && state.questions[stage]) || [];
     if (!list.length) {
-      return '<div class="q-form open"><p class="q-empty">The question list did not load. ' +
+      return '<div class="q-form open" id="q-form-' + esc(row.task_id) + '"><p class="q-empty">The question list did not load. ' +
              "Reload the page and open this row again.</p></div>";
     }
     var channel = stage === "post" ? "google_meet" : "call";
-    var h = '<div class="q-form open">' +
+    var h = '<div class="q-form open" id="q-form-' + esc(row.task_id) + '">' +
+      '<h3 class="q-form-heading">Conversation notes</h3>' +
+      '<p class="q-form-copy">Keep the client’s words. Add at least one answer to save this conversation.</p>' +
       '<div class="q-field">' +
         '<label for="qChan">How did you speak to them?</label>' +
         '<select class="q-select" id="qChan">' +
@@ -566,7 +448,7 @@ button,input,select,textarea{font:inherit;color:inherit}
          "</div>" +
          '<div class="q-save">' +
            '<button class="btn" type="button" data-save="' + esc(row.task_id) + '">Save these answers</button>' +
-           '<span class="q-say" id="qSay"></span>' +
+           '<span class="q-say" id="qSay" role="status" aria-live="polite"></span>' +
          "</div>" +
        "</div>";
     return h;
@@ -574,6 +456,22 @@ button,input,select,textarea{font:inherit;color:inherit}
 
   function paintQueue() {
     var list = $("qList");
+    // A shift read or a queue refresh can finish while notes are being typed.
+    // Preserve that open conversation when the same task is painted again.
+    var form = state.open && $("q-form-" + state.open);
+    var draft = [];
+    var focusId = form && form.contains(document.activeElement) ? document.activeElement.id : "";
+    if (form) {
+      var fields = form.querySelectorAll("textarea,select");
+      for (var f = 0; f < fields.length; f++) draft.push({ id: fields[f].id, value: fields[f].value });
+    }
+    state.next = null;
+    for (var n = 0; n < state.rows.length; n++) {
+      if (!state.rows[n].assignee_staff_id || state.rows[n].assignee_staff_id === state.myStaffId) {
+        state.next = state.rows[n].task_id;
+        break;
+      }
+    }
     if (!state.rows.length) {
       $("qCount").textContent = "0";
       $("qCountLabel").textContent = "calls waiting";
@@ -608,22 +506,34 @@ button,input,select,textarea{font:inherit;color:inherit}
     var html = "";
     for (var j = 0; j < state.rows.length; j++) html += rowHtml(state.rows[j]);
     list.innerHTML = html;
+    for (var d = 0; d < draft.length; d++) {
+      var field = $(draft[d].id);
+      if (field) field.value = draft[d].value;
+    }
+    if (focusId && $(focusId)) $(focusId).focus();
   }
 
   function loadQueue() {
+    state.queueReady = false;
+    $("qList").setAttribute("aria-busy", "true");
+    $("qRefresh").disabled = true;
     return api("/api/read/csm-queue").then(function (res) {
+      $("qList").setAttribute("aria-busy", "false");
+      $("qRefresh").disabled = false;
       if (res.status !== 200 || !res.body || !res.body.ok) {
         $("qCount").textContent = "—";
         $("qCountLabel").textContent = "queue did not load";
+        $("qStamp").textContent = "Queue unavailable";
         $("qOverdue").textContent = "";
         $("qList").innerHTML = '<div class="card q-empty">' + esc(problem(res)) +
           ' <a class="q-link" href="client-control-panel.html">Open the Client Control Panel</a>' +
           " while this is down.</div>";
         return;
       }
+      state.queueReady = true;
       state.rows = (res.body.items || []).slice();
       paintQueue();
-      $("qStamp").textContent = "read " + new Date().toLocaleTimeString("en-US", { timeZone: "America/Phoenix" });
+      $("qStamp").textContent = "Updated " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" }) + " Arizona";
     });
   }
 
@@ -701,6 +611,8 @@ button,input,select,textarea{font:inherit;color:inherit}
       state.open = null;
       banner("ok", "Answers saved for " + (row.client_name || row.client_code || "this client") + ".");
       paintQueue();
+      var again = document.querySelector('[data-open="' + taskId + '"]');
+      if (again) again.focus();
     });
   }
 
@@ -716,6 +628,9 @@ button,input,select,textarea{font:inherit;color:inherit}
           var id = t.getAttribute("data-open");
           state.open = state.open === id ? null : id;
           paintQueue();
+          var focus = state.open === id && $("qChan");
+          if (!focus) focus = document.querySelector('[data-open="' + id + '"]');
+          if (focus) focus.focus();
           return;
         }
       }
@@ -724,6 +639,12 @@ button,input,select,textarea{font:inherit;color:inherit}
   });
 
   $("qClock").addEventListener("click", toggleClock);
+  $("qRefresh").addEventListener("click", function () {
+    clearBanner();
+    loadQuestions();
+    loadShift();
+    loadQueue();
+  });
 
   loadQuestions();
   loadShift();

@@ -31,7 +31,14 @@ async function openHelper(open, answerNow) {
       return json(route, answerNow());
     },
   };
-  const opened = await open("/app/money-helper.html", { session: CLIENT, handlers, clock: true });
+  const opened = await open("/app/money-helper.html", { session: CLIENT, handlers, clock: true, init: () => {
+    const original = window.setTimeout;
+    window.__helperScheduledPolls = 0;
+    window.setTimeout = function(fn, delay, ...args) {
+      if (delay === 3000) window.__helperScheduledPolls += 1;
+      return original.call(window, fn, delay, ...args);
+    };
+  } });
   await opened.page.waitForFunction(() => /Thinking…/.test(document.body.innerText));
   return { ...opened, reads };
 }
@@ -42,6 +49,7 @@ test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and C
   const { page, reads } = await openHelper(open, () => current);
   assert.equal(reads.n, 1, "one read when the page opens");
 
+  await page.waitForFunction(() => window.__helperScheduledPolls >= 1);
   await page.clock.fastForward(2_999);
   await page.waitForTimeout(120);
   assert.equal(reads.n, 1, "no second read before 3 seconds");
@@ -49,6 +57,8 @@ test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and C
   await waitFor(() => reads.n === 2, "the first re-read at 3 seconds");
 
   for (let i = 3; i <= 101; i += 1) {
+    // A request starts before its response has scheduled the next timer.
+    await page.waitForFunction(n => window.__helperScheduledPolls >= n, i - 1);
     await page.clock.fastForward(3_000);
     await waitFor(() => reads.n === i, `re-read number ${i - 1}`);
   }
@@ -64,11 +74,13 @@ test("a waiting turn is re-read every 3 seconds, stops after 100 re-reads, and C
   await page.locator('[data-act="refresh"]').click();
   await waitFor(() => reads.n === 102, "the Check again read");
   await page.waitForFunction(() => !document.querySelector('[data-act="refresh"]'));
+  await page.waitForFunction(() => window.__helperScheduledPolls >= 101);
   await page.clock.fastForward(3_000);
   await waitFor(() => reads.n === 103, "the re-read after Check again");
 
   // The helper answers: the waiting ends and nothing is asked again.
   current = answered;
+  await page.waitForFunction(() => window.__helperScheduledPolls >= 102);
   await page.clock.fastForward(3_000);
   await waitFor(() => reads.n === 104, "the read that finds the answer");
   await page.waitForFunction(() => !/Thinking…/.test(document.body.innerText));

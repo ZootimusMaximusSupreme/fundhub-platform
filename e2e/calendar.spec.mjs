@@ -146,7 +146,7 @@ test.describe("Calendar is today's week, not July sample", () => {
     await expect(page.locator("#statDone")).toHaveText("1");
     await expect(page.locator("#statLeft")).toHaveText("1");
     await expect(page.locator(".day-wrap")).toContainText("Live Client");
-    await page.locator('#seg span[data-v="week"]').click();
+    await page.locator('#seg button[data-v="week"]').click();
     await expect(page.locator(".weekstrip")).toContainText("Live Client");
     await expect(page.locator(".weekstrip")).not.toContainText("Priya Nair");
   });
@@ -302,7 +302,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     expect(await bannerColour(page),
       "the mint 'these are real rows' banner must never sit over a failed read")
       .not.toBe(MINT_SUCCESS);
-    await expect(page.locator(".live-pill").first()).not.toContainText("LIVE");
+    await expect(page.locator(".live-pill").first()).not.toContainText("Schedule ready");
   });
 
   test("finished read fails — open work still shows, but no count is guessed", async ({ page }) => {
@@ -328,7 +328,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
       .toContainText("completed calls could not be loaded");
     expect(await bannerColour(page),
       "a partial read must not be reported with the success colour").not.toBe(MINT_SUCCESS);
-    await expect(page.locator(".live-pill").first()).toContainText("PARTIAL");
+    await expect(page.locator(".live-pill").first()).toContainText("Completed calls unavailable");
   });
 
   test("both reads fail — nothing is claimed at all", async ({ page }) => {
@@ -362,7 +362,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
        2026-10-05 this asserted the mint "live schedule" strip that no longer
        exists. */
     await expect(page.locator("#fh-data-banner")).toBeHidden();
-    await expect(page.locator(".live-pill").first()).toContainText("LIVE");
+    await expect(page.locator(".live-pill").first()).toContainText("Schedule ready");
   });
 
   test("both reads fine — real numbers, success banner, nothing dashed", async ({ page }) => {
@@ -379,7 +379,7 @@ test.describe("Calendar never paints a half-read schedule as a whole one", () =>
     await expect(page.locator(".weekstrip")).toContainText("5 booked");
     // A good read draws no strip at all (owner, 2026-08-28; see above).
     await expect(page.locator("#fh-data-banner")).toBeHidden();
-    await expect(page.locator(".live-pill").first()).toContainText("LIVE");
+    await expect(page.locator(".live-pill").first()).toContainText("Schedule ready");
   });
 
   test("an unreadable answer to the open read is a failure, not an empty day", async ({ page }) => {

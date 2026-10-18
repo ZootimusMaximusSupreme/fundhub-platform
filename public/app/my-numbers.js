@@ -77,9 +77,8 @@
         '<div class="st-msg">The offer details could not be loaded. Try again in a moment.</div>';
       return;
     }
-    if (periodNote && os.period && os.period.label) {
-      periodNote.textContent = "every product you sell · " + os.period.label;
-    }
+    if (periodNote) periodNote.textContent = "every product you sell" +
+      (os.period && os.period.label ? " · " + os.period.label : "");
     if (os.available === false || !Array.isArray(os.items) || !os.items.length) {
       body.innerHTML = head + '<div class="st-msg">' +
         esc(os.reason || "The offer stack could not be read.") + "</div>";
@@ -90,6 +89,14 @@
   }
 
   function paint(d) {
+    var period = document.getElementById("numbersPeriod");
+    if (period && d.period && d.period.start) {
+      var date = new Date(d.period.start);
+      if (Number.isFinite(date.getTime())) {
+        period.textContent = date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) +
+          " · Your sales, follow-ups and commissions";
+      }
+    }
     var shiftChip = $("#shiftChip") || $("header .hl .chip");
     if (shiftChip) {
       if (d.shift && d.shift.on_shift) {
@@ -105,8 +112,8 @@
     var bigs = document.querySelectorAll(".pace .big");
     if (bigs[0]) bigs[0].textContent = pace.cash_display || money(pace.cash_cents);
     if (bigs[1]) {
-      bigs[1].innerHTML = (pace.rank != null ? pace.rank : "—") +
-        '<span style="font-size:20px;color:var(--gray2)">/' + (pace.team_size || "—") + "</span>";
+      bigs[1].innerHTML = esc(pace.rank != null ? pace.rank : "—") +
+        (pace.team_size > 0 || pace.rank != null ? '<span>/' + esc(pace.team_size != null ? pace.team_size : "—") + "</span>" : "");
     }
     var subs = document.querySelectorAll(".pace .sub");
     if (subs[0]) {
@@ -114,15 +121,20 @@
         ? ("Target " + pace.target_display)
         : (pace.target_reason || "No monthly target set");
     }
+    if (subs[1]) subs[1].textContent = pace.team_size === 0 ? "0 closers this month" : "This month";
     var bar = $(".pace .bar i");
     if (bar && pace.target_deposits) {
       var pctFill = Math.min(100, Math.round((pace.deposits || 0) / pace.target_deposits * 100));
       bar.style.width = pctFill + "%";
+      bar.parentElement.setAttribute("aria-valuenow", String(pctFill));
+      bar.parentElement.setAttribute("aria-valuetext", (pace.deposits || 0) + " of " + pace.target_deposits + " deposits");
     } else if (bar) {
       bar.style.width = "0%";
+      bar.parentElement.removeAttribute("aria-valuenow");
+      bar.parentElement.setAttribute("aria-valuetext", pace.target_reason || "No monthly target set");
     }
     var markTarget = document.querySelector(".pace .marks span:nth-child(2)");
-    if (markTarget && pace.target_display) markTarget.textContent = "Target " + pace.target_display;
+    if (markTarget) markTarget.textContent = pace.target_display ? "Target " + pace.target_display : "Target —";
 
     paintOfferStack(d);
 
@@ -133,7 +145,7 @@
       var lb = el.querySelector(".lb"); var vl = el.querySelector(".vl"); var c = el.querySelector(".cmp");
       if (lb) lb.textContent = label;
       if (vl) vl.textContent = val;
-      if (c) c.innerHTML = cmp || "";
+      if (c) c.textContent = cmp || "";
     }
     var prior = month.prior || {};
     var depCmp = prior.deposits != null && Number.isFinite(Number(prior.deposits))
@@ -144,13 +156,13 @@
     mset(1, "Close rate", pct(month.close_rate), closeCmp);
     mset(2, "Show rate", pct(month.show_rate), "");
     mset(3, "Downsells", String(month.downsells != null ? month.downsells : "—"), "");
-    mset(4, "Deposit → funded", pct(month.deposit_to_funded), "First-class metric");
-    mset(5, "Avg funded", "—", month.avg_funded_reason || "");
+    mset(4, "Deposit → funded", pct(month.deposit_to_funded), "Deposits that reached funding");
+    mset(5, "Avg funded", money(month.avg_funded_cents), month.avg_funded_reason || "");
     mset(6, "Calls held", String(month.calls_held != null ? month.calls_held : "—"),
-      (month.no_shows || 0) + " no-shows");
+      (month.no_shows != null ? month.no_shows : "—") + " no-shows");
     mset(7, "Unlogged", String(month.unlogged != null ? month.unlogged : "—"),
-      month.unlogged > 0 ? '<span class="dn">Log before the next call</span>' : "");
-    if (cells[7] && month.unlogged > 0) cells[7].querySelector(".vl").style.color = "#C25B4E";
+      month.unlogged > 0 ? "Log before the next call" : "");
+    if (cells[7]) cells[7].classList.toggle("is-unlogged", month.unlogged > 0);
 
     var moneyBox = d.money || {};
     var mos = document.querySelectorAll(".money .mo");
@@ -160,8 +172,8 @@
       text(el.querySelector(".vl"), val);
       text(el.querySelector(".sb"), sb);
     }
-    mo(0, "Paid out", moneyBox.paid_display || money(moneyBox.paid_cents), "commission_ledger · paid");
-    mo(1, "Pending funding", moneyBox.pending_display || money(moneyBox.pending_cents), "earned/approved");
+    mo(0, "Paid out", moneyBox.paid_display || money(moneyBox.paid_cents), "Commission paid from the ledger");
+    mo(1, "Pending funding", moneyBox.pending_display || money(moneyBox.pending_cents), "Earned or approved commission");
     mo(2, "At risk", "—", moneyBox.at_risk_reason || "Not computed yet");
 
     var streakNote = document.querySelectorAll(".sec .note");
@@ -172,22 +184,21 @@
     });
     var days = document.querySelector(".days");
     if (days) {
-      days.innerHTML = '<div class="d" style="flex:2;justify-content:flex-start;padding:0 10px">' +
-        ((d.streak && d.streak.reason) || "Streak needs a working-day calendar — not built") + "</div>";
+      days.innerHTML = '<div class="d">' +
+        esc((d.streak && d.streak.reason) || "Streak needs a working-day calendar — not built") + "</div>";
     }
 
     var team = d.team || [];
-    var panel = document.querySelectorAll(".panel")[0];
+    var panel = document.getElementById("teamPanel");
     if (panel) {
       var rows = team.map(function (t, i) {
         var me = t.staff_id === d.staff_id;
         return '<div class="lb-row' + (me ? " me" : "") + '">' +
-          '<span class="rk' + (i === 0 ? " one" : "") + '">' + String(t.rank).padStart(2, "0") + "</span>" +
-          '<span class="nm"><b>' + (me ? "You" : (t.name || "—")) + "</b><em>" +
-          (t.deposits || 0) + " deposits</em></span>" +
-          '<span class="num">' + (t.cash_display || money(t.cash_cents)) + "</span>" +
-          '<span class="num hide">' + pct(t.close_rate) + "</span>" +
-          '<span class="num hide">—</span></div>';
+          '<span class="rk' + (i === 0 ? " one" : "") + '">' + esc(t.rank != null ? String(t.rank).padStart(2, "0") : "—") + "</span>" +
+          '<span class="nm"><b>' + esc(me ? "You" : (t.name || "—")) + "</b><em>" +
+          esc(t.deposits != null ? t.deposits : "—") + " deposits</em></span>" +
+          '<span class="num">' + esc(t.cash_display || money(t.cash_cents)) + "</span>" +
+          '<span class="num hide" aria-label="Close rate ' + pct(t.close_rate) + '">' + pct(t.close_rate) + "</span></div>";
       }).join("") || '<p class="note">No closer dispositions logged this month yet.</p>';
       panel.querySelectorAll(".lb-row").forEach(function (n) { n.remove(); });
       panel.querySelectorAll(".note").forEach(function (n) { n.remove(); });
@@ -195,24 +206,21 @@
       if (h) h.insertAdjacentHTML("afterend", rows);
     }
 
-    var qualPanel = document.querySelectorAll(".panel")[1];
+    var qualPanel = document.getElementById("qualityPanel");
     if (qualPanel) {
       var reason = (d.call_quality && d.call_quality.reason) ||
         "Call recording and transcription do not exist yet.";
-      qualPanel.innerHTML = "<h3>Call quality</h3><p class=\"note\">" + reason + "</p>" +
-        "<p class=\"note\">Compliance phrase counts use the same gate — schema call_compliance_flags is ready.</p>";
+      qualPanel.innerHTML = '<h3 id="qualityTitle">Call quality</h3><p class="note">' + esc(reason) + "</p>" +
+        '<p class="note">' + esc((d.compliance && d.compliance.reason) || "Compliance checks need call recordings before they can be measured.") + "</p>";
     }
 
     document.querySelectorAll(".todo").forEach(function (n) { n.remove(); });
     var owed = d.owed || [];
-    var owedHost = null;
-    document.querySelectorAll(".sech .eyebrow").forEach(function (e) {
-      if (/Owed/i.test(e.textContent || "")) owedHost = e.closest(".sec");
-    });
+    var owedHost = document.getElementById("owedSection");
     if (owedHost) {
       var html = owed.map(function (o) {
-        var body = '<span class="t">' + (o.urgency || "—") + "</span><div><b>" +
-          (o.title || "") + "</b><em>" + (o.detail || "") + "</em></div>";
+        var body = '<span class="t">' + esc(o.urgency || "—") + "</span><div><b>" +
+          esc(o.title || "") + "</b><em>" + esc(o.detail || "") + "</em></div>";
         if (o.client_id) {
           var href = "closer-dashboard.html?client_id=" + encodeURIComponent(o.client_id);
           if (o.task_id) href += "&task_id=" + encodeURIComponent(o.task_id);
@@ -242,27 +250,58 @@
         : { accept: "application/json" }
     }).then(function (r) { return r.json(); }).then(function (s) {
       var name = (s && s.staff && s.staff.name) || "";
-      nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + (name || "—");
+      nameChip.textContent = name || "—";
     }).catch(function () {
-      nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>—';
+      nameChip.textContent = "—";
     });
   }
 
-  async function boot() {
-    paintWho();
-    if (!window.FHData) return;
-    var r = await window.FHData.read("my-numbers");
-    if (!r.ok) {
-      var stage = document.querySelector(".shell") || document.body;
-      var note = document.createElement("p");
-      note.className = "note";
-      note.style.padding = "16px 22px";
-      note.textContent = (r.error && (r.error.message || r.error)) ||
-        ("Could not load my numbers (" + r.source + ")");
-      stage.prepend(note);
-      return;
+  var loading = false;
+  var hasLoaded = false;
+  async function load() {
+    if (loading) return;
+    loading = true;
+    var status = document.getElementById("numbersStatus");
+    var statusText = document.getElementById("numbersStatusText");
+    var content = document.getElementById("numbersContent");
+    var retry = document.getElementById("numbersRetry");
+    var refresh = document.getElementById("numbersRefresh");
+    if (status) { status.hidden = false; status.dataset.state = "loading"; }
+    if (statusText) statusText.textContent = hasLoaded ? "Refreshing your numbers…" : "Loading your numbers…";
+    if (content) content.setAttribute("aria-busy", "true");
+    if (retry) retry.hidden = true;
+    if (refresh) refresh.disabled = true;
+    try {
+      var r = window.FHData ? await window.FHData.read("my-numbers") : { ok: false };
+      if (!r.ok || !r.data) {
+        var reason = r.error && (r.error.message || r.error);
+        if (status) status.dataset.state = "error";
+        if (statusText) statusText.textContent = (typeof reason === "string" && /\s/.test(reason) ? reason : "Your numbers could not be loaded. Try again.") +
+          (hasLoaded ? " Last loaded values remain below." : "");
+        if (retry) retry.hidden = false;
+        return;
+      }
+      paint(r.data);
+      hasLoaded = true;
+      if (status) status.hidden = true;
+    } catch (e) {
+      if (status) status.dataset.state = "error";
+      if (statusText) statusText.textContent = "Your numbers could not be loaded. Try again.";
+      if (retry) retry.hidden = false;
+    } finally {
+      loading = false;
+      if (content) content.setAttribute("aria-busy", "false");
+      if (refresh) refresh.disabled = false;
     }
-    paint(r.data);
+  }
+
+  function boot() {
+    paintWho();
+    var retry = document.getElementById("numbersRetry");
+    var refresh = document.getElementById("numbersRefresh");
+    if (retry) retry.addEventListener("click", load);
+    if (refresh) refresh.addEventListener("click", load);
+    load();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

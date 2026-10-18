@@ -168,8 +168,14 @@ describe("the client signing page (public/contract.html)", () => {
       "the signing page must hold no credential but the link it was opened with");
   });
 
-  test("it references nothing under /app/", () => {
-    assert.equal(/\/app\//.test(CLIENT), false);
+  test("it loads no staff app code beyond the isolated type assets", () => {
+    const appRefs = [...CLIENT.matchAll(/(?:src|href)=["'](\/app\/[^"']+)["']/g)].map(m => m[1]);
+    assert.deepEqual(appRefs.sort(), ["/app/fundhub-font.css", "/app/fundhub-font.js"]);
+    assert.match(CLIENT, /<body[^>]*data-client-public/, "public signing must never acquire a session gate");
+    const isolated = CLIENT.replace(/\/app\/fundhub-font\.(?:css|js)/g, "");
+    assert.equal(/\/app\//.test(isolated), false);
+    const type = fs.readFileSync(path.join(PUBLIC, "app/fundhub-font.js"), "utf8");
+    assert.doesNotMatch(type, /fetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|location\s*[.=]|\/api\//);
   });
 
   test("it is not indexed — a contract link must not turn up in a search engine", () => {

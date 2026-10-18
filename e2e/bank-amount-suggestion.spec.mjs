@@ -79,7 +79,7 @@ function applicationsBackend(writes) {
 test.describe("client control panel — the bank email's amount is offered, never assumed", () => {
 
   async function open(page, rows, writes = []) {
-    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}`, OWNER, {
+    return openScreen(page, `/app/client-control-panel.html?client_id=${CLIENT_ID}#ccp-view-funding`, OWNER, {
       "/api/read/lender-matches": TWO_LENDERS,
       ...inbox(rows),
       ...applicationsBackend(writes)

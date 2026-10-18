@@ -18,7 +18,7 @@ import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
 import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
-import { createAccount, createAccountSession } from "../auth/account-session.mjs";
+import { createAccount, createAccountSession, loginAccount } from "../auth/account-session.mjs";
 import { createSession } from "../auth/session.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
@@ -223,6 +223,25 @@ describe("refer a friend", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     // The rate is never invented by the screen: every rule that produced it is
     // named, so a disagreement between products is visible rather than averaged.
     assert.ok(b.rates.direct.rules.every((r) => r.calcMethod === "percent"));
+  });
+
+  test("affiliate dashboard linkage survives refresh and a fresh password sign-in", async () => {
+    await post("/api/affiliates/refer", tokA);
+    const before = await json(await call("/api/read/affiliate-portal", tokA));
+    const refreshed = await json(await call("/api/read/affiliate-portal", tokA));
+    assert.equal(refreshed.affiliate.id, before.affiliate.id);
+    const signedIn = await loginAccount(db, {
+      orgId: org, email: `${MARK}.alpha@example.com`, password: "a-long-enough-password-1"
+    });
+    assert.equal(signedIn.ok, true);
+    assert.equal(signedIn.principal.kind, "client");
+    assert.equal(signedIn.principal.affiliateId, before.affiliate.id);
+    const fresh = await json(await call("/api/read/affiliate-portal?affiliate_id=" + otherAffiliate, signedIn.token));
+    assert.equal(fresh.affiliate.id, before.affiliate.id);
+    const stats = await json(await call("/api/read/affiliates?affiliate_id=" + otherAffiliate, signedIn.token));
+    assert.equal(stats.ok, true);
+    assert.equal(stats.items.length, 1);
+    assert.equal(stats.items[0].id, before.affiliate.id);
   });
 
   test("a client who has NOT pressed the button gets an honest empty answer, not a 403", async () => {

@@ -1,0 +1,31 @@
+/* Page-only signed approval presentation. Authorization stays with the signed API. */
+body[data-client-ios][data-client-page="soft-pull-approve"]{background:#f8f8f6;color:#101416;font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+body[data-client-ios][data-client-page="soft-pull-approve"] .wrap{max-width:none;width:100%;padding:48px clamp(20px,5vw,80px) 64px}
+body[data-client-ios] .wrap>h1{font-size:32px;font-weight:750;letter-spacing:-.04em;line-height:1.15;margin:16px 0;max-width:760px}
+body[data-client-ios] .mono{font:650 12px var(--sans);letter-spacing:.08em;color:#727570;text-transform:uppercase}
+body[data-client-ios] .lede{font-size:15px;line-height:1.65;color:#646963;margin:0 0 24px;max-width:760px}
+body[data-client-ios] .approval-layout{display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.45fr);gap:32px;margin-top:32px;align-items:start}
+body[data-client-ios] .card{border:1px solid #e5e6e1;border-radius:18px;background:#fff;padding:24px;margin-bottom:24px;box-shadow:none}
+body[data-client-ios] .card h2,body[data-client-ios] #f>h2{font-size:19px;letter-spacing:-.025em;margin:0 0 12px;line-height:1.3}
+body[data-client-ios] .disc,body[data-client-ios] ol.next{font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+body[data-client-ios] ol.next li{margin-bottom:12px;padding-left:4px}
+body[data-client-ios] #f{padding:32px;background:#fff;border:1px solid #e5e6e1;border-radius:20px;min-width:0}
+body[data-client-ios] .form-intro{font-size:13px;color:#727570;line-height:1.6;margin:0 0 24px}
+body[data-client-ios] label{font-size:13px;font-weight:600;margin:20px 0 8px;color:#434943}
+body[data-client-ios] input{width:100%;min-width:0;min-height:46px;border-radius:11px;padding:12px;background:#fbfbfa;font-size:16px;border:1px solid #dcdfd8;color:#101416}
+body[data-client-ios] .row2{gap:16px}
+body[data-client-ios] .row2>div{min-width:0}
+body[data-client-ios] .btn,body[data-client-ios] .btn-pay{min-height:48px;padding:14px 20px;border-radius:12px;background:#101416;color:#fff;font-size:14px;margin-top:24px;line-height:1.5}
+body[data-client-ios] .btn-sec{min-height:46px;border:1px solid #d7dad3;border-radius:11px;font-size:14px;background:#fff;padding:12px;color:#101416}
+body[data-client-ios] .biz{border:1px solid #e5e6e1;border-radius:12px;background:#f8f8f6;padding:20px;margin-top:16px}
+body[data-client-ios] .biz-head strong{font-size:15px}
+body[data-client-ios] .biz-rm{min-height:44px;padding:8px 12px;font-size:13px;color:#7b4239}
+body[data-client-ios] .fine{font-size:12px;color:#727570;line-height:1.6;margin-top:16px}
+body[data-client-ios] .total{padding:16px 0 0;border:0;border-top:1px solid #e5e6e1;border-radius:0;background:transparent;font-size:20px;line-height:1.5;margin-top:20px}
+body[data-client-ios] .total span{display:block;font-size:13px;color:#727570}
+body[data-client-ios] .err,body[data-client-ios] .ok{border-radius:12px;padding:16px;font-size:14px;line-height:1.6;margin:16px 0;overflow-wrap:anywhere}
+body[data-client-ios] .ok{background:#f0f4ef;border:1px solid #cfd9cc;color:#365333}
+body[data-client-ios] .approval-skeleton{padding:24px;border:1px solid #e5e6e1;border-radius:18px;background:#fff;min-height:240px}
+body[data-client-ios] .approval-skeleton span{display:block;background:#edeee9;height:24px;border-radius:8px;margin-bottom:24px}
+body[data-client-ios] .approval-skeleton span:last-child{width:65%}
+@media(max-width:760px){body[data-client-ios][data-client-page="soft-pull-approve"] .wrap{padding:32px 16px 48px}body[data-client-ios] .approval-layout{grid-template-columns:1fr;gap:0;margin-top:24px}body[data-client-ios] .card,body[data-client-ios] #f{padding:24px 20px;border-radius:18px}body[data-client-ios] .row2{grid-template-columns:1fr;gap:0}body[data-client-ios] .biz{padding:16px}body[data-client-ios] .wrap>h1{font-size:28px}body[data-client-ios] .btn{padding:14px;font-size:14px}}

@@ -119,53 +119,26 @@ test("the person on the call is the first thing on the page, with the time besid
   const h1 = page.locator("#ccp-who-name");
   await expect(h1).toHaveText("Dana Whitfield");
 
-  // ONE IDENTITY IN THE TOPBAR — which is not the same as one on the screen,
-  // and this spec used to claim the second thing. Counted in the browser on
-  // 2026-08-31 by walking every visible text node for the closer's name:
-  //   • span#whoName < span.who-chip < .topbar-right   — HIDDEN
-  //   • span < div#fh-shell-chip < .topbar-right       — visible
-  //   • span.chip[data-fh-call-staff] < .call-toolbar  — visible
-  // Two visible, not one. The bar is un-crowded and that is real; the pill in
-  // the call toolbar below it is a THIRD painter of the same name and predates
-  // this branch (public/app/closer-call.js on main, line 129). It is recorded
-  // here rather than removed, so the count cannot quietly grow again.
+  // Account identity lives once in the shared header; client identity stays
+  // in the call workspace. The account menu holds the full name and role.
   await expect(page.locator("#whoName")).toHaveText("Casey Reed");
-  const shellChip = page.locator("#fh-shell-chip");
-  const pageChip = page.locator(".who-chip");
-  const visible = (await shellChip.count()) ? shellChip : pageChip;
-  await expect(visible).toBeVisible();
-  if (await shellChip.count()) {
-    await expect(pageChip, "two identities in one bar is what crowded it").toBeHidden();
-  }
-  const named = await page.evaluate(() => {
-    const out = [];
-    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-      if (!/Casey Reed/.test(n.textContent || "")) continue;
-      const r = n.parentElement.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) out.push(n.parentElement.className || n.parentElement.tagName);
-    }
-    return out;
-  });
-  expect(
-    named.length,
-    "the signed-in closer is painted in a new place. Known and allowed: the shell's account " +
-    "chip in the topbar, and the pre-existing [data-fh-call-staff] pill in the call toolbar. " +
-    `Found ${named.length}: ${named.join(" / ")}`
-  ).toBe(2);
-  const staffBox = await visible.boundingBox();
+  await expect(page.locator("#whoName")).toBeHidden();
+  await expect(page.locator("[data-fh-call-staff]")).toBeHidden();
+  const header = page.locator("#fh-workspace-header");
+  await expect(header).toBeVisible();
+  await expect(header.locator("h1")).toHaveText("Sales workspace");
+  await expect(header.locator("#fh-workspace-scope-label")).toHaveText("Dana Whitfield");
+  const account = header.locator("#fh-shell-chip-show");
+  await expect(account).toHaveCount(1);
+  const staffBox = await account.boundingBox();
   const clientBox = await h1.boundingBox();
-  expect(staffBox.y, "the signed-in name belongs in the topbar, above the content")
-    .toBeLessThan(clientBox.y);
-  expect(staffBox.x, "the signed-in name must be on the RIGHT, not top-left")
-    .toBeGreaterThan(clientBox.x);
-
-  // The screen's own name is not squeezed out of the topbar by the client's.
-  await expect(page.locator(".topbar .sub")).toHaveText("Closer Dashboard");
-
-  // Metric size, per UI-STANDARDS §12.7's whitelist.
-  const size = await h1.evaluate((el) => getComputedStyle(el).fontSize);
-  expect(size).toBe("32px");
+  expect(staffBox.y).toBeLessThan(clientBox.y);
+  expect(staffBox.x).toBeGreaterThan(clientBox.x);
+  await account.click();
+  await expect(header.locator(".fh-account-person strong")).toHaveText("Casey Reed");
+  await page.keyboard.press("Escape");
+  const size = await h1.evaluate(el => getComputedStyle(el).fontSize);
+  expect(size).toBe("28px");
 
   // The time of THIS call, and how long until it.
   const when = page.locator("#ccp-call-when");

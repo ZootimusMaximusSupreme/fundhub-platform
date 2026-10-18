@@ -319,6 +319,10 @@ test.describe("pipeline — forty cards, not three", () => {
     ]));
     await expect(page.locator("#hlUsN")).toHaveText("1", { timeout: 10_000 });
 
+    // Phone breakdown is progressively disclosed; its filters remain keyboard reachable.
+    await expect(page.locator("#hlBank")).toBeHidden();
+    await page.locator("#waitingDetails > summary").focus();
+    await page.keyboard.press("Enter");
     const metric = await page.locator("#hlUsN").boundingBox();
     const counters = await page.locator("#hlBank").boundingBox();
     expect(metric.y).toBeLessThan(counters.y);              // headline first, counters under it

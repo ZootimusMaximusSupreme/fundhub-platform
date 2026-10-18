@@ -29,6 +29,7 @@ const WINDOW = 45; // lines above a write in which its sheet must be asked for
 
 // route, in file order. `sites` lists the guard of each place that route is posted, in file order.
 const WRITES = {
+  "public/app/fundhub-font.js": { posts: 0, transports: {}, rows: [] },
   "public/app/marketing-cc-today.js": {
     posts: 3, transports: { "fetch(": 1 },
     rows: [
@@ -143,7 +144,7 @@ const canonical = (route) => route.replace(/^\/api\//, "").replace(/^\//, "");
 
 test("the files listed are exactly the tab scripts the Command Center page loads", () => {
   const html = read("public/app/marketing-command-center.html");
-  const scripts = [...html.matchAll(/<script[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"/g)].map((m) => `public/app/${m[1]}`)
+  const scripts = [...html.matchAll(/<script[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"/g)].map((m) => m[1].startsWith("/") ? `public${m[1]}` : `public/app/${m[1]}`)
     .filter((rel) => !["public/app/shell.js", "public/app/marketing-command-center.js"].includes(rel));
   assert.deepEqual([...scripts].sort(), Object.keys(WRITES).sort(),
     "a script was added to or taken out of the Command Center page: sort its writes in this table");

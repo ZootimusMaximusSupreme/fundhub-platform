@@ -94,7 +94,7 @@ test.describe("Sales floor: the funnel columns this month", () => {
 
   test("the sentence under the funnel names the deposits that have not funded", async ({ page }) => {
     await open(page);
-    await expect(page.locator(".sec .say").first()).toContainText("1 deposits haven't funded");
+    await expect(page.locator(".sec .say").first()).toContainText("1 deposit still needs funding");
   });
 });
 

@@ -128,7 +128,7 @@ test.describe("client control panel open buttons", () => {
 
   test("Save notes writes the open client and the typed note", async ({ page }) => {
     const writes = [];
-    await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}`, OWNER, {
+    await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}#ccp-view-records`, OWNER, {
       "/api/client-notes": async (route) => {
         writes.push(JSON.parse(route.request().postData() || "{}"));
         return json(route, { ok: true, client: { id: CLIENT_ID, staff_notes: "Call Friday." } });

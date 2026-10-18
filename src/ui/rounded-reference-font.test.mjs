@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+function start(){const attrs=new Map();const html={setAttribute:(k,v)=>attrs.set(k,v),removeAttribute:k=>attrs.delete(k)};const window={document:{documentElement:html}};vm.runInNewContext(fs.readFileSync('public/app/fundhub-font.js','utf8'),{window});return{attrs,window};}
+test('native-reference type is the initial default and the original Fundhub Inter payload cannot undo it',()=>{const {attrs,window}=start();assert.ok(attrs.has('data-fh-rounded-default'));assert.equal(window.FHFundhubType.applyBrand({slug:'fundhub',entity_name:'Fundhub',display_face:'Inter'},{role:'owner'}),true);assert.ok(attrs.has('data-fh-rounded-default'));});
+test('custom tenant fonts including a tenant that chooses Inter remain custom',()=>{for(const display_face of ['Inter','Montserrat','Lora']){const {attrs,window}=start();assert.equal(window.FHFundhubType.applyBrand({slug:'custom',entity_name:'Custom',display_face},{role:'owner'}),false);assert.equal(attrs.has('data-fh-rounded-default'),false);}});
+test('partner type is not replaced by the Fundhub default',()=>{const {attrs,window}=start();window.FHFundhubType.applyBrand({slug:'fundhub',entity_name:'Fundhub',display_face:'Inter'},{role:'partner'});assert.equal(attrs.has('data-fh-rounded-default'),false);});
+test('every actual app page uses the shared sheet and no compatibility redirect is converted',()=>{for(const name of fs.readdirSync('public/app').filter(n=>n.endsWith('.html')&&!['index.html','closer-call.html','sidebar.fragment.html'].includes(n))){assert.match(fs.readFileSync('public/app/'+name,'utf8'),/\/app\/fundhub-font\.css/);assert.match(fs.readFileSync('public/app/'+name,'utf8'),/\/app\/fundhub-font\.js/);}const redirect=fs.readFileSync('public/app/closer-call.html','utf8');assert.doesNotMatch(redirect,/fundhub-font/);});

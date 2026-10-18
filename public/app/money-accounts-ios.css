@@ -1,0 +1,67 @@
+/* Accounts only: shared navigation and staff presentation remain lead-owned. */
+body[data-client-ios][data-client-page="money-accounts"] .app{background:none;min-width:0}
+body[data-client-ios][data-client-page="money-accounts"] .mbar{padding:18px 32px;min-height:72px;background:transparent;color:var(--client-ink);border:0;border-image:none}
+body[data-client-ios][data-client-page="money-accounts"] .mbar .brand .sub{color:var(--client-muted);font-size:13px}
+body[data-client-ios][data-client-page="money-accounts"] .mbar a{color:var(--client-ink);font-size:13px;font-weight:600;padding:8px 12px;border:1px solid var(--client-line);border-radius:11px;background:#fff;text-decoration:none}
+body[data-client-ios][data-client-page="money-accounts"] main{padding:28px 32px 64px;min-width:0}
+body[data-client-ios] :is(#accounts-root,#fos-accounts){font-size:15px;line-height:1.5;min-width:0;color:var(--client-ink)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .head{align-items:center;gap:20px;margin:0 0 28px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .head h2{font-size:32px;line-height:1.2;letter-spacing:-.04em;font-weight:730;margin-bottom:6px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .caption{font-size:13px;color:var(--client-muted);line-height:1.55}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .head .caption{max-width:62ch}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .head-act{gap:8px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) :is(.btn-primary,.btn){padding:9px 16px;min-height:44px;border-radius:11px;font-size:13px;font-weight:650;box-shadow:none;letter-spacing:0}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .btn-primary{background:#101416;border:1px solid #101416;color:#fff}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .btn-primary:hover{background:#303637}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .btn{background:#fff;border:1px solid var(--client-line);color:var(--client-ink)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .block{margin-bottom:32px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .block>h2{font-size:19px;font-weight:680;letter-spacing:-.025em;margin-bottom:4px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .block>.caption{margin-bottom:16px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .grid{gap:16px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .card{padding:22px 24px;background:#fff;border:1px solid var(--client-line);border-radius:18px;box-shadow:none;min-width:0}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .box-head{padding-bottom:16px;gap:12px;border-color:var(--client-line);align-items:center}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .box-name{font-size:17px;font-weight:680;letter-spacing:-.025em}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .tag{padding:3px 9px;background:#f2f3f0;border:0;font-size:12px;border-radius:6px;color:#626b67}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .eyebrow{font-family:var(--sans);font-size:12px;font-weight:550;letter-spacing:0;text-transform:none;margin-bottom:3px;color:var(--client-muted)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .info{gap:14px 20px;border-color:var(--client-line)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .info dd{font-size:13px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct{padding:20px 0;gap:8px 20px;border-color:var(--client-line)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-name{font-size:15px;font-weight:650}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .mask{font-size:12px;color:var(--client-muted)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-num .num{font-family:var(--sans);font-size:32px;font-weight:680;line-height:1.2;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-num .caption{font-size:12px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-move{margin-top:8px;gap:10px;min-width:0}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-move select{font-size:13px;min-height:44px;border-radius:11px;padding:8px 12px;border:1px solid var(--client-line);background:#fff;max-width:100%}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) details.form{margin-top:16px;padding:0;background:transparent;border:0;border-top:1px solid var(--client-line);border-radius:0;box-shadow:none}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) details.form>summary{font-size:13px;min-height:48px;font-weight:650;gap:10px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) details.form>summary::before{content:'+';font-size:18px;font-weight:400}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) details.form[open]>summary::before{content:'−'}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .fields{margin-top:12px;gap:16px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .f{gap:6px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .f label{font-size:13px;font-weight:550}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) :is(.f input,.f select){min-height:44px;padding:9px 12px;background:#fff;border:1px solid #d8ddda;border-radius:11px;font-size:15px;min-width:0;max-width:100%}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .form-act{padding-top:8px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) #add>.grid>.card{margin-top:16px;padding:18px 0;border:0;border-top:1px solid var(--client-line);border-radius:0;background:none}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) #add>.grid>.card .eyebrow{font-size:15px;font-weight:650;color:var(--client-ink)}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) #add>.grid>.card .head-act{margin-top:12px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .empty,body[data-client-ios] :is(#accounts-root,#fos-accounts) .error{background:#fff;padding:24px;border-radius:18px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) :is(.empty,.error) h2{font-size:19px;letter-spacing:-.025em}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .sk{border-radius:5px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .billing{padding-top:16px;border-top:1px solid var(--client-line);font-size:12px}
+body[data-client-ios] :is(#accounts-root,#fos-accounts) .act-msg{overflow-wrap:anywhere;font-size:13px}
+@media(max-width:760px){
+ body[data-client-ios][data-client-page="money-accounts"] .mbar{padding:14px 18px;gap:8px}
+ body[data-client-ios][data-client-page="money-accounts"] main{padding:24px 18px 48px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .head{gap:16px;margin-bottom:24px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .head h2{font-size:28px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .card{padding:18px 16px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .head-act{width:100%}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .head-act :is(.btn,.btn-primary){flex:1 1 auto}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct{grid-template-columns:minmax(0,1fr);gap:12px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-num{align-items:flex-start;text-align:left}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-num .num{font-size:30px}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .acct-move{align-items:stretch;flex-direction:column}
+ body[data-client-ios] :is(#accounts-root,#fos-accounts) .form-act button{width:100%}
+}
+
+body[data-client-ios] :is(#accounts-root,#fos-accounts) #businesses>.card{padding:8px 0 16px;background:none;border:0;border-radius:0}

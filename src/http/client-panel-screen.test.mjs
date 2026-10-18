@@ -936,15 +936,17 @@ describe("client-control-panel.html — the top-left is the number, said four wa
     assert.ok(tiles > action, "the eight reference tiles are back above the next action");
   });
 
-  test("the chase list is in the main column, not the 320px rail", () => {
+  test("the chase list is in the main funding workspace", () => {
     /* Roughly nine in ten of this screen's keystrokes land in the lender rows,
        and the rail is the column a narrow window pushes below everything else. */
     const main = PANEL_HTML.indexOf('class="main-col"');
-    const rail = PANEL_HTML.indexOf('class="side-col"');
+    const funding = PANEL_HTML.indexOf('id="ccp-view-funding"');
+    const credit = PANEL_HTML.indexOf('id="ccp-view-credit"');
     const list = PANEL_HTML.indexOf('id="fh-funding-apply"');
-    assert.ok(main !== -1 && rail !== -1 && list !== -1, "the screen's two columns changed shape");
-    assert.ok(list > main && list < rail,
-      "the lender list is back in the right rail, below the whole main column on a narrow window");
+    assert.ok(main !== -1 && funding !== -1 && credit !== -1 && list !== -1,
+      "the client or funding workspace is missing");
+    assert.ok(funding > main && list > funding && list < credit,
+      "the lender list must remain in the main Funding section");
   });
 });
 

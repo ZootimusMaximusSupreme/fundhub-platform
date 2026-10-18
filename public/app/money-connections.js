@@ -217,7 +217,9 @@
       return '<section class="card prov" data-provider="' + esc(p.id) + '">' +
         '<div class="prov-head"><div><h2 class="prov-name">' + esc(p.name) + '</h2><p class="caption">' + esc(p.blurb) + '</p></div>' +
         '<span class="state ' + stateCls + '">' + esc(word) + '</span></div>' +
-        body + mine.map(function (c) { return connectionBlock(d, c, reveal, flash); }).join("") + '</section>';
+        mine.map(function (c) { return connectionBlock(d, c, reveal, flash); }).join("") +
+        '<details class="connection-setup"' + (mine.length ? '' : ' open') + '><summary>' +
+        (mine.length ? 'Connect another business' : 'Set up connection') + '</summary><div class="connection-setup-fields">' + body + '</div></details></section>';
     }).join("");
     return '<div class="grid thirds">' + cards + '</div>';
   }

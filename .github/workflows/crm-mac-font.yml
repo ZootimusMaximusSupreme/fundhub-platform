@@ -1,0 +1,54 @@
+name: Mac rendered typography proof
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths:
+      - .github/workflows/crm-mac-font.yml
+      - public/app/fundhub-font.css
+      - public/app/fundhub-font.js
+      - e2e/mac-rounded-reference.spec.mjs
+permissions:
+  contents: write
+concurrency:
+  group: crm-mac-font
+  cancel-in-progress: true
+jobs:
+  native-font:
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install
+        run: |
+          npm ci --ignore-scripts
+          test -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      - name: Actual rounded face in Mac Chrome
+        id: browser
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_CHROMIUM: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+        run: node node_modules/@playwright/test/cli.js test e2e/mac-rounded-reference.spec.mjs --reporter=line
+      - name: Keep actual native font evidence
+        if: always()
+        env:
+          BROWSER: ${{ steps.browser.outcome }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';import{execFileSync}from'node:child_process';
+          const out='ops/workflows/build-evidence/crm-mac-font';
+          fs.mkdirSync(out,{recursive:true});fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,browser:process.env.BROWSER,runtime:'macos-latest; real Chrome',noCustomerWrites:true},null,2));
+          execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);execFileSync('git',['add','-f','--',out]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){execFileSync('git',['commit','-m','Record actual macOS rounded typography and native or fallback identity'],{stdio:'inherit'});execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});}
+          JS
+      - name: Require documented rounded glyph proof
+        if: always()
+        env:
+          BROWSER: ${{ steps.browser.outcome }}
+        run: test "$BROWSER" = success

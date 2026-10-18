@@ -1,0 +1,70 @@
+{
+  "source": "803d2b7e47f137d7773d4006445b971179cef835",
+  "base": "fa8ea1162fc6c3073cdb27096068f198589a7e02",
+  "checkedHead": "f032f1bae84e7fdd7b2623987d61fd23f93b9eaf",
+  "complete": true,
+  "noProductionDeploy": true,
+  "noCustomerWrites": true,
+  "files": [
+    {
+      "path": "public/app/financeos.js",
+      "state": "clean merge",
+      "bytes": 13906
+    },
+    {
+      "path": "public/app/money-banks.js",
+      "state": "clean merge",
+      "bytes": 34382
+    },
+    {
+      "path": "public/app/money-connections.js",
+      "state": "clean merge",
+      "bytes": 30152
+    },
+    {
+      "path": "public/app/money-credit.js",
+      "state": "clean merge",
+      "bytes": 24344
+    },
+    {
+      "path": "public/app/money-fundability.js",
+      "state": "clean merge",
+      "bytes": 32753
+    },
+    {
+      "path": "public/app/money-helper.js",
+      "state": "clean merge",
+      "bytes": 23932
+    },
+    {
+      "path": "public/app/money-payments.js",
+      "state": "clean merge",
+      "bytes": 27485
+    },
+    {
+      "path": "public/app/money-plan.js",
+      "state": "clean merge",
+      "bytes": 33616
+    },
+    {
+      "path": "public/app/money-strategy.js",
+      "state": "clean merge",
+      "bytes": 49400
+    },
+    {
+      "path": "public/app/money-transfers.css",
+      "state": "clean merge",
+      "bytes": 17044
+    },
+    {
+      "path": "public/app/money-workspace.css",
+      "state": "clean merge",
+      "bytes": 113602
+    },
+    {
+      "path": "public/app/money.js",
+      "state": "clean merge",
+      "bytes": 39040
+    }
+  ]
+}
