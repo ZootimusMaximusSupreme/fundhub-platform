@@ -5,6 +5,9 @@ on:
     paths:
       - .github/workflows/crm-integrate-recovered-staff.yml
       - scripts/integrate-recovered-staff.mjs
+concurrency:
+  group: crm-staff-recovery-integration
+  cancel-in-progress: false
 permissions:
   contents: write
 jobs:
@@ -21,7 +24,7 @@ jobs:
           node-version: '22'
       - name: Reconcile the original page builders recovered staff source
         env:
-          RECOVERY_PAGES: csm-queue
+          RECOVERY_PAGES: csm-queue,lenders
         id: merge
         continue-on-error: true
         run: node scripts/integrate-recovered-staff.mjs
