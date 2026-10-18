@@ -408,7 +408,7 @@ test("each owned item's Download link opens that item's own document, by type an
 
 // ── Client portal: an upload the server refuses says "Try again", and keeps the picked file ──────────
 
-test("a refused upload says Try again and keeps the picked file, and a second try can still be sent", { timeout: 180_000 }, async (t) => {
+test("an invalid upload asks for a replacement, while a server failure keeps that replacement for retry", { timeout: 180_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   let answer = { status: 400, body: { ok: false, error: "invalid_file_type", message: "only jpg, png and pdf are accepted" } };
@@ -434,18 +434,34 @@ test("a refused upload says Try again and keeps the picked file, and a second tr
     sent.length = 0;
     answer = { status: 400, body: { ok: false, error: "invalid_file_type", message: "only jpg, png and pdf are accepted" } };
     const door = page.locator(`.upload-door.${doorClass}`);
-    await door.locator("[data-file-input]").setInputFiles({ name: "paper.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 practice") });
+    const idleLabel = (await door.locator("[data-upload-btn]").textContent()).trim();
+    await door.locator("[data-file-input]").setInputFiles({ name: "refused.exe", mimeType: "application/octet-stream", buffer: Buffer.from("invalid practice file") });
     await door.locator("[data-upload-btn]", { hasText: /Send 1 file/ }).waitFor({ timeout: 10_000 });
     await door.locator("[data-upload-btn]").click();
-    // Refused: the button says Try again, never Sent.
-    await door.locator("[data-upload-btn]", { hasText: /^Try again$/ }).waitFor({ timeout: 10_000 });
-    assert.equal(sent.length, 1, `${doorClass}: one attempt was posted`);
-    // A server error is the same answer on the page.
+    // A validation refusal requires a different file. The server's explanation
+    // remains visible; the next press opens the picker instead of resending it.
+    await page.waitForFunction(({ selector, label }) => {
+      const button = document.querySelector(selector);
+      return button && button.textContent.trim() === label;
+    }, { selector: `.upload-door.${doorClass} [data-upload-btn]`, label: idleLabel }, { timeout: 10_000 });
+    const refusal = await door.locator("[data-door-msg]").innerText();
+    assert.match(refusal, /only jpg, png and pdf are accepted/);
+    assert.match(refusal, /Pick a different file/);
+    assert.equal(sent.length, 1, `${doorClass}: exactly one invalid attempt was posted`);
+    assert.notEqual((await door.locator("[data-upload-btn]").textContent()).trim(), "Sent");
+
     answer = { status: 500, body: { ok: false, error: "boom" } };
+    const [picker] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      door.locator("[data-upload-btn]").click()
+    ]);
+    assert.equal(sent.length, 1, `${doorClass}: choosing a replacement does not resend the invalid file`);
+    await picker.setFiles({ name: "replacement.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 replacement practice") });
+    await door.locator("[data-upload-btn]", { hasText: /^Send 1 file$/ }).waitFor({ timeout: 10_000 });
     await door.locator("[data-upload-btn]").click();
     await door.locator("[data-upload-btn]", { hasText: /^Try again$/ }).waitFor({ timeout: 10_000 });
-    assert.equal(sent.length, 2, `${doorClass}: the picked file was kept, so the second try sent it again`);
-    // And the file is still there for a real answer: now it is accepted and the button says Sent.
+    assert.equal(sent.length, 2, `${doorClass}: the replacement was posted once and the server refused it`);
+    // HTTP 500 retains the replacement. Retry needs no picker and a successful answer says Sent.
     answer = { status: 200, body: { ok: true, documents: [], docs_missing: null } };
     await door.locator("[data-upload-btn]").click();
     await door.locator("[data-upload-btn]", { hasText: /^Sent$/ }).waitFor({ timeout: 10_000 });
