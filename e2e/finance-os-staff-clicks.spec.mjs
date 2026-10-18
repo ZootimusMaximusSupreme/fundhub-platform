@@ -43,6 +43,7 @@ async function open(page, query, { simAnswer } = {}) {
 test.describe("finance OS: the client picker", () => {
   test("Find narrows the list; Open this client opens that client by id", async ({ page }) => {
     await open(page, `?client_id=${C1}`);
+    await page.locator("#fosClientTools summary").click();
     await expect(page.locator("#fosClient option")).toHaveCount(3);
     await page.locator("#fosFind").fill("riley");
     await expect(page.locator("#fosPickMsg")).toHaveText("1 of 2 clients match");
@@ -54,6 +55,7 @@ test.describe("finance OS: the client picker", () => {
 
   test("the open client reads Already open, and the button is off", async ({ page }) => {
     await open(page, `?client_id=${C1}`);
+    await page.locator("#fosClientTools summary").click();
     await expect(page.locator("#fosClient")).toHaveValue(C1);
     await expect(page.locator("#fosOpen")).toHaveText("Already open");
     await expect(page.locator("#fosOpen")).toBeDisabled();
@@ -61,6 +63,7 @@ test.describe("finance OS: the client picker", () => {
 
   test("Close this client forgets the client and reloads with none", async ({ page }) => {
     await open(page, `?client_id=${C1}`);
+    await page.locator("#fosClientTools summary").click();
     await page.evaluate((id) => localStorage.setItem("fh_client", id), C1);
     await page.locator("#fosClear").click();
     await expect(page).toHaveURL(/finance-os\.html$/);

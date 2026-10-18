@@ -86,7 +86,7 @@ test("the hero says the available credit and how many cards it comes from", { ti
     const hero = compact(await page.locator(".fos-hero").innerText());
     assert.match(hero, /Dana Whitfield · available credit/i);
     assert.match(hero, /\$22,500\.00/);
-    assert.match(hero, /Money still available to draw across 3 open credit cards\. This is the credit report only — it is not cash in the bank\./);
+    assert.match(hero, /Across 3 open credit cards\. Credit report only — not cash in the bank\./);
     assert.deepEqual(errors, []);
     await page.close();
     const none = await openDesk(open, { grid: { status: 200, body: { ok: true, lines: 0, rows: [] } } });

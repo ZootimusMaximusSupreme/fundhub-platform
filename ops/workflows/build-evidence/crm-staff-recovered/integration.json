@@ -1,6 +1,6 @@
 {
   "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
-  "checkedHead": "4ca05c9482a0bd3dbfdbed7e41941c4d0dcd9c26",
+  "checkedHead": "b0cf6c53796ca1e2682d5c1c003dc306867ae801",
   "complete": true,
   "inventory": [
     {
@@ -63,6 +63,19 @@
         "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs",
         "src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs",
         "src/pulse/catalog/proofs/fin-b20-sales-floor.test.mjs"
+      ]
+    },
+    {
+      "page": "finance-os",
+      "branch": "origin/codex/recover-finance-os",
+      "source": "ef5736aa1cd54ee6dfd8ec6c418158772b133d51",
+      "files": [
+        "e2e/finance-os-staff-clicks.spec.mjs",
+        "e2e/finance-os-workspace.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
+        "public/app/finance-os.html",
+        "src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs",
+        "src/pulse/catalog/proofs/s4-finance-os-panels.test.mjs"
       ]
     }
   ],
@@ -178,56 +191,92 @@
     {
       "page": "sales-floor",
       "path": "e2e/s1-sales-floor.spec.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 9757
     },
     {
       "page": "sales-floor",
       "path": "e2e/sales-floor-layout.spec.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 15761
     },
     {
       "page": "sales-floor",
       "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 5098
     },
     {
       "page": "sales-floor",
       "path": "public/app/sales-floor.css",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 11119
     },
     {
       "page": "sales-floor",
       "path": "public/app/sales-floor.html",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 18491
     },
     {
       "page": "sales-floor",
       "path": "public/app/sales-floor.js",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 28298
     },
     {
       "page": "sales-floor",
       "path": "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 33540
     },
     {
       "page": "sales-floor",
       "path": "src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 16689
     },
     {
       "page": "sales-floor",
       "path": "src/pulse/catalog/proofs/fin-b20-sales-floor.test.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 17143
+    },
+    {
+      "page": "finance-os",
+      "path": "e2e/finance-os-staff-clicks.spec.mjs",
+      "state": "clean merge",
+      "bytes": 5948
+    },
+    {
+      "page": "finance-os",
+      "path": "e2e/finance-os-workspace.spec.mjs",
+      "state": "clean merge",
+      "bytes": 11528
+    },
+    {
+      "page": "finance-os",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
+      "state": "clean merge",
+      "bytes": 4652
+    },
+    {
+      "page": "finance-os",
+      "path": "public/app/finance-os.html",
+      "state": "clean merge",
+      "bytes": 81883
+    },
+    {
+      "page": "finance-os",
+      "path": "src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs",
+      "state": "clean merge",
+      "bytes": 15357
+    },
+    {
+      "page": "finance-os",
+      "path": "src/pulse/catalog/proofs/s4-finance-os-panels.test.mjs",
+      "state": "clean merge",
+      "bytes": 9635
     }
   ],
   "noProductionDeploy": true,
