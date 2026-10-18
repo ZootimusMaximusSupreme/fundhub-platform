@@ -4,7 +4,7 @@ Owner approval remains in force. Chris approved the design and requested live pu
 
 The current implementation/release is tracked on `codex/crm-live-font-reconcile`, PR #71, reconciled onto main `0998ff49969c6e2663a6e1851b4634ab5896113d` to preserve newer production work. The older portal/professional branches remain historical source, not a replacement for current main.
 
-**Read the short current [release checkpoint](crm-live-font-reconcile-2026-10-18.md).** It records actual passing runs, exact remaining work and publication status. Production is not yet published.
+**LIVE CHECKPOINT:** the 36-page update is published on fundhub.ai. [Staff CRM](https://fundhub.ai/app/pipeline.html) · [Client portal](https://fundhub.ai/app/client-portal.html). Canonical Ship39169158721 succeeded;19live assets matched source, health oktrue/pending0. [Read the short current release checkpoint](crm-live-font-reconcile-2026-10-18.md) for exact evidence, remaining pages and limits. The full61-page redesign is still in progress.
 
 - 36 actual pages integrated: 24 client/shared entry pages and 12 staff workspaces. The complete integrated checkpoint passed in [39167073054](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39167073054). That run passed 877 source checks, 380 browser cases, lint, TypeScript, phone performance, Money controls and real disposable PostgreSQL referral/demo isolation.
 - [Page manifest](crm-portal-layout-manifest.json) retains exactly one original owner per actual page. The original self-contained prompts remain tracked on the manifest's explicit `prompt_ref`; no duplicate builders are authorized or active. Root owns shared styles/navigation/integration.
