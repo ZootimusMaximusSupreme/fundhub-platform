@@ -2444,7 +2444,7 @@
 
   function paintBrand(b, staff) {
     if (!b) return;
-    if (window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);
+    if (typeof window !== "undefined" && window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);
     var root = document.documentElement;
     var HEX = /^#[0-9a-fA-F]{6}$/;
     // Re-validated here even though the table has a CHECK: a custom property
