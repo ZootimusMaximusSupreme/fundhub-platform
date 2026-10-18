@@ -6,12 +6,9 @@
 //
 // The fake candidates, postings and decisions are made up for the test: no real person is named.
 //
-// Which tests are attached to a row is listed in fin-b13-display-practice.mjs. Two tests here are NOT
-// attached on purpose: "page load reads ..." and "the funnel re-reads ...; the decision log filters ...".
-// The page measures every "days" number from a fixed date in 2026 (hiring.html, var NOW), so the rows
-// Page load, Funnel and Decisions log read wrong against today's date and no honest test can be green on
-// them (manifest, finding 1). Those two tests build their dates from the page's own clock, so they pass
-// before and after the page starts using today's date.
+// Which tests are attached to a row is listed in fin-b13-display-practice.mjs. The page-load, funnel and
+// decision-log checks all assert that the page's shared clock is today's clock. That assertion is what
+// catches the old July 30, 2026 anchor before any date-window result can be called proved.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -161,6 +158,8 @@ after(async () => { await lab?.close(); });
 test("page load reads demo mode, candidates, postings, decisions and bench, then paints tiles, board and tables", { timeout: 120_000 }, async () => {
   const state = freshState();
   const page = await openHiring(lab, state);
+  const pageNow = await page.evaluate(() => NOW.getTime());
+  assert.ok(Math.abs(Date.now() - pageNow) < 60_000, "the desk clock must be the real page-load time, not the old July 30, 2026 fixture");
   const reads = page.apiCalls.map((call) => call.path).filter((p) => p.startsWith("/api/hiring/") || p === "/api/demo/mode");
   for (const path of ["/api/demo/mode", "/api/hiring/candidates", "/api/hiring/postings", "/api/hiring/decisions", "/api/hiring/bench"]) {
     assert.ok(reads.includes(path), `the page never read ${path}`);
@@ -674,13 +673,12 @@ test("the reports fold is closed until asked, and holds both the funnel and the 
   await page.close();
 });
 
-// The funnel and the decision log are measured from the page's own clock (a fixed date, see the manifest,
-// finding 1). The dates here are built from THAT clock, so this test judges the filters and does not pin the
-// date: it is the same test before and after the page starts using today's date. It is not attached to a row
-// because the fixed date itself is what makes those rows read wrong against today.
+// The funnel and decision log use one shared page-load clock. Build the fixture dates from that clock, but
+// first prove that it is today's clock so the old fixed-date bug cannot pass this test.
 test("the funnel re-reads for its role and days; the decision log filters by kind, role and window", { timeout: 120_000 }, async () => {
   const page0 = await openHiring(lab, freshState());
   const pageNow = await page0.evaluate(() => NOW.getTime());
+  assert.ok(Math.abs(Date.now() - pageNow) < 60_000, "the selected day windows must start from the real page-load time");
   await page0.close();
   const at = (daysAgo) => {
     const d = new Date(pageNow - daysAgo * 86_400_000);

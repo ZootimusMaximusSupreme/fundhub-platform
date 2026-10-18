@@ -4,9 +4,9 @@
 // the mismatch queue's Confirm and Corrected buttons.
 //
 // The expected requests and words are worked out in this file from the fake data, not copied from the
-// page. It reads no live data. Each row is claimed only inside the callback that asserts it. A test whose
-// name starts KNOWN BREAK pins what the page does today for a control that is left out of the catalog (see
-// fin-b14-not-attachable.mjs); it goes red the moment the page is fixed, and says to attach the row.
+// page. It reads no live data. Each row is claimed only inside the callback that asserts it. The export,
+// cleared-name and add-bureau regressions exercise the former broken result directly, so those rows can be
+// attached without turning an error body, a database failure or discarded typing green.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -298,14 +298,16 @@ test("Export CSV: asks for the csv of the boxes as they are now (no Apply needed
   await page.close();
 });
 
-test("KNOWN BREAK (the reason Export CSV is left out, fin-b14-not-attachable.mjs): a refused export is saved as lenders.csv", { timeout: 60_000 }, async () => {
-  const refusal = { status: 403, contentType: "application/json", body: { ok: false, error: "forbidden" } };
+test("Export CSV: a refused export shows why and downloads no file", { timeout: 60_000 }, async () => {
+  const refusal = { status: 403, contentType: "application/json", body: { ok: false, error: "forbidden", message: "Only the owner, an admin or a funding advisor can export lenders." } };
   const { page, errors } = await openLenders({ exportAnswer: () => refusal });
   await proof.check(/^Export CSV button/, async () => {
-    const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#btnExport").click()]);
-    assert.equal(download.suggestedFilename(), "lenders.csv", "BREAK: a file is saved even though the server said no");
-    assert.deepEqual(JSON.parse(fs.readFileSync(await download.path(), "utf8")), { ok: false, error: "forbidden" }, "BREAK: and what is in it is the error, not a list");
-    assert.equal(await toastOf(page), "", "BREAK: and no words are shown on the page");
+    let downloads = 0;
+    page.on("download", () => { downloads += 1; });
+    await page.locator("#btnExport").click();
+    await waitFor(async () => (await toastOf(page)) === "Only the owner, an admin or a funding advisor can export lenders.", "the export refusal words");
+    await page.waitForTimeout(100);
+    assert.equal(downloads, 0, "an error body must never be saved as lenders.csv");
   });
   assert.deepEqual(errors, []);
   await page.close();
@@ -480,14 +482,21 @@ test("with several lenders, Save sends the row that was pressed and redraws that
   await page.close();
 });
 
-test("KNOWN BREAK (the reason the row Save button is left out, fin-b14-not-attachable.mjs): an emptied Name box is sent as null", { timeout: 60_000 }, async () => {
-  const { page, seen, errors } = await openLenders();
+test("Lender row Save: an emptied Name is refused in words and the edit stays on screen", { timeout: 60_000 }, async () => {
+  const { page, seen, errors } = await openLenders({
+    saveAnswer: (body) => body.patch.name == null
+      ? { ok: false, error: "name_required", message: "Name is required." }
+      : { ok: true, lender: { ...LENDER, ...body.patch, id: body.id } },
+  });
   await proof.check(/^Lender row Save button/, async () => {
     const row = page.locator("#lenderBody tr").first();
     await row.locator('[data-f="name"]').fill("");
     await row.locator(".save-btn").click();
     await waitFor(() => seen.posts.length === 1, "the save request");
-    assert.equal(seen.posts[0].patch.name, null, "BREAK: the page sends null, which the handler's blank-name check does not read as blank");
+    assert.equal(seen.posts[0].patch.name, null, "a cleared box is sent as no name");
+    await waitFor(async () => (await toastOf(page)) === "Name is required.", "the required-name words");
+    assert.equal(await row.locator('[data-f="name"]').inputValue(), "", "the refused edit is not replaced with the old name");
+    assert.equal(await page.locator("#lenderBody tr").count(), 1);
   });
   assert.deepEqual(errors, []);
   await page.close();
@@ -609,16 +618,25 @@ test("AI bureau config: Add bureau row adds one empty editable row; its seven fi
   await page.close();
 });
 
-test("KNOWN BREAK (the reason Add bureau row is left out, fin-b14-not-attachable.mjs): adding a row throws away text typed in the other rows", { timeout: 60_000 }, async () => {
-  const { page, errors } = await openLenders({ bureau: [EXISTING] });
+test("Add bureau row keeps unsaved edits in every existing row", { timeout: 60_000 }, async () => {
+  const { page, seen, errors } = await openLenders({ bureau: [EXISTING] });
   await page.locator('[data-tab="bureau"]').click();
   await page.waitForSelector("#bureauBody tr");
   await proof.check(/^AI bureau config: Add bureau row button/, async () => {
     const first = page.locator("#bureauBody tr").first();
     await first.locator('[data-f="menu_path"]').fill("typed-by-hand 9,9");
+    await first.locator('[data-f="bureau_name"]').fill("Experian edited");
     await page.locator("#btnAddBureau").click();
     assert.equal(await page.locator("#bureauBody tr").count(), 2);
-    assert.equal(await page.locator("#bureauBody tr").first().locator('[data-f="menu_path"]').inputValue(), "1,3,2", "BREAK: the typed words are gone, the saved ones are back");
+    const kept = page.locator("#bureauBody tr").first();
+    assert.equal(await kept.locator('[data-f="menu_path"]').inputValue(), "typed-by-hand 9,9");
+    assert.equal(await kept.locator('[data-f="bureau_name"]').inputValue(), "Experian edited");
+    assert.equal(seen.bureauPosts.length, 0, "adding still sends nothing");
+    assert.equal(seen.bureauReads, 1, "adding still does not reload the saved rows");
+    await kept.locator(".save-bureau").click();
+    await waitFor(() => seen.bureauPosts.length === 1, "the kept edit can still be saved");
+    assert.equal(seen.bureauPosts[0].patch.menu_path, "typed-by-hand 9,9");
+    assert.equal(seen.bureauPosts[0].patch.bureau_name, "Experian edited");
   });
   assert.deepEqual(errors, []);
   await page.close();

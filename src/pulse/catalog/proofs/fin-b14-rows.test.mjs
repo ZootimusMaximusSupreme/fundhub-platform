@@ -42,7 +42,7 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 38, "31 attached rows (27 practice tests and 4 live checks that also name a practice test) and 7 left out");
+  assert.equal(listed, 38, "34 attached rows (30 practice tests and 4 live checks that also name a practice test) and 4 left out");
 });
 
 test("live rows are real map rows, each with one registry contract; practice rows have one proof case each", () => {
@@ -55,14 +55,14 @@ test("live rows are real map rows, each with one registry contract; practice row
 
   const liveKeys = new Set(FIN_B14_LIVE_ROWS.map(([sourceFile, surface, control]) => `${sourceFile}\0${surface}\0${control}`));
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls.map((control) => ({ sourceFile: g.sourceFile, surface: g.surface, control }))));
-  assert.equal(attached.length, 31);
+  assert.equal(attached.length, 34);
   const practice = attached.filter((row) => !liveKeys.has(keyOf(row)));
-  assert.equal(practice.length, 27, "four of the attached rows are live checks that also name a practice test");
+  assert.equal(practice.length, 30, "four of the attached rows are live checks that also name a practice test");
   assert.equal(FIN_B14_LIVE_CASES.length, 6);
-  assert.equal(FIN_B14_PRACTICE_CASES.length, 27);
-  assert.equal(FIN_B14_DISPLAY_PROOF_CASES.length, 33);
+  assert.equal(FIN_B14_PRACTICE_CASES.length, 30);
+  assert.equal(FIN_B14_DISPLAY_PROOF_CASES.length, 36);
   const caseKeys = FIN_B14_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 33, "no row has two proof cases");
+  assert.equal(new Set(caseKeys).size, 36, "no row has two proof cases");
   assert.deepEqual([...FIN_B14_PRACTICE_CASES.map(keyOf)].sort(), practice.map(keyOf).sort());
   for (const row of FIN_B14_NOT_ATTACHABLE) assert.equal(caseKeys.includes(keyOf(row)), false, row.control);
   // A live row names the lane (so it stays in the lane); a practice row never does.
@@ -84,7 +84,7 @@ test("live rows are real map rows, each with one registry contract; practice row
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 test("the left-out rows are real map rows, each with a written reason", () => {
-  assert.equal(FIN_B14_NOT_ATTACHABLE.length, 7);
+  assert.equal(FIN_B14_NOT_ATTACHABLE.length, 4);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => (g.notAttached || []).map((control) => `${g.sourceFile}\0${g.surface}\0${control}`)));
   assert.deepEqual(listedNotAttached.sort(), FIN_B14_NOT_ATTACHABLE.map(keyOf).sort(), "the table and the reasons list the same rows");
   for (const row of FIN_B14_NOT_ATTACHABLE) {
@@ -125,23 +125,4 @@ test("Run from here: the reason is still true while the plan is cut with findInd
   const page = read("public/app/journeys.html");
   assert.match(page, /let steps=plan\(J\[active\]\.nodes\);\s*if\(fromId\)\{ const at=steps\.findIndex\(s=>s\.node&&s\.node\.id===fromId\); if\(at>0\) steps=steps\.slice\(at\); \}/,
     "Run from here cuts the plan differently now: attach the Run from here row");
-});
-
-test("Add bureau row: the reason is still true while the table is drawn again from the stored list only", () => {
-  const page = read("public/app/lenders.html");
-  assert.match(page, /getElementById\("btnAddBureau"\)\.addEventListener\("click", function \(\) \{\s*bureauRows\.push\(\{[\s\S]*?\}\);\s*renderBureau\(\);\s*\}\);/,
-    "Add bureau row keeps typed text now: attach the Add bureau row row");
-  assert.doesNotMatch(page.slice(page.indexOf('getElementById("btnAddBureau")')), /querySelectorAll\("#bureauBody \[data-f\]"|collectBureau/);
-});
-
-test("Export CSV: the reason is still true while the page saves whatever the server answers", () => {
-  const page = read("public/app/lenders.html");
-  assert.match(page, /p\.set\("format", "csv"\);\s*fetch\("\/api\/read\/lenders\?" \+ p\.toString\(\), \{ headers: headers\(\) \}\)\s*\.then\(function \(r\) \{ return r\.text\(\); \}\)\s*\.then\(function \(csv\) \{/,
-    "Export CSV looks at the answer now: attach the Export CSV row");
-});
-
-test("Row Save: the reason is still true while an emptied Name is sent as null and null is not read as blank", () => {
-  assert.match(read("public/app/lenders.html"), /patch\[k\] = v === "" \? null : v;/);
-  assert.match(read("api/lenders.mjs"), /patch\.name !== undefined && String\(patch\.name\)\.trim\(\) === ""/,
-    "the handler reads null as blank now: attach the Lender row Save row");
 });

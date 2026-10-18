@@ -52,11 +52,24 @@
     "Import now button (paste CSV, creates and updates lender rows)",
     "Mismatch queue row: Confirm button",
     "Mismatch queue row: Corrected button"
-   ],
-   "notAttached": [
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
     "AI bureau config: Add bureau row button (adds an empty editable row)",
-    "Export CSV button (downloads lenders.csv for the current filters)",
+    "Export CSV button (downloads lenders.csv for the current filters)"
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
     "Lender row Save button (writes the 7 fields, stamps last_updated_by)"
+   ],
+   "also": [
+    "src/pulse/catalog/proofs/fin-b14-lenders-handlers.test.mjs"
    ]
   },
   {

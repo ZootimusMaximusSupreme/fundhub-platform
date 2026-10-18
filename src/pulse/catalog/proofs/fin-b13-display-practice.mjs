@@ -9,9 +9,9 @@
 //      chips and the send options). The live check judges the saved rows behind the control; the practice
 //      test judges what the page does with them. Both are attached, so a break on either side is red.
 //
-// Rows left NOT_PROVED on purpose (not attachable, see the manifest): Page load, Decisions log, Funnel (the
-// page measures them from a fixed date), Show more (its words are false for the page) and Stat tiles (its
-// Worked tile is bumped wrongly after a confirm) and the case row's Enter key (it has none).
+// Rows left NOT_PROVED on purpose (not attachable, see the manifest): Show more (its words are false for the
+// page), Stat tiles (its Worked tile is bumped wrongly after a confirm) and the case row's Enter key (it has
+// none). Hiring's Page load, Funnel and Decisions log are attached here after the fixed-date bug was removed.
 
 import { FIN_B13_CHECKS } from "./fin-b13-display-contracts.mjs";
 
@@ -43,6 +43,12 @@ const controlOf = (key) => {
 const desk = (control, assertion) => proof(DESK_TEST, "inquiry-remover.html", control, assertion);
 
 export const FIN_B13_DISPLAY_PROOF_CASES = Object.freeze([
+  hiring("Page load: fires demo/mode + candidates + postings + decisions + bench reads, paints tiles, board and tables",
+    "The page clock is the real page-load time; the five reads fire; and their tiles, board, bench, waiting and postings results are painted."),
+  hiring("Funnel: role select + days select (30, 90, 180, 365, 730) -> where applications come from",
+    "The page clock is the real page-load time; each role or day choice makes one matching funnel read; and the returned source counts are painted."),
+  hiring("Decisions log: role select, days select, decision-kind rail (advance, reject, offer, offer_accepted, offer_declined, withdraw, hold)",
+    "The page clock is the real page-load time; every kind, role and 30/90/180/365/730-day choice keeps exactly the decisions inside that window."),
   hiring("Board filter: 'flagged only' toggle",
     "The toggle turns aria-pressed and its pressed look on, keeps only people with a flag or no score, and the next press clears both."),
   hiring("Board filter: role select (all, closer, setter, sales_coordinator)",
