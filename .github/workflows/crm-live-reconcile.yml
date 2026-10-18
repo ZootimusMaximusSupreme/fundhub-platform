@@ -1,4 +1,5 @@
 name: Current production CRM type and layout checks
+# Verify the fully reconciled client supporting assets as well as the page HTML.
 on:
   push:
     branches: [codex/crm-live-font-reconcile]
