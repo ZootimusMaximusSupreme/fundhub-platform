@@ -23,3 +23,10 @@ for(const width of [1440,390,320]) test(`consent workspace ${width} states and c
  await page.locator('.cc-note summary').click();await expect(page.locator('.cc-note')).toHaveAttribute('open','');
  state='error';await page.reload();await expect(page.locator('#ccSubmit')).toBeDisabled();await expect(page.locator('#ccStatusLede')).toHaveText('Cannot check consent');await capture('error');
 });
+test('client keeps inline portal consent path instead of staff consent desk',async({page})=>{
+ const session={ok:true,principal:'client',staff:{id:'fixture-client',name:'Sample Client',role:'client',org_id:'fixture-org'}};
+ await withSession(page,session);await wireApi(page,{session});let writes=0;
+ await page.route('**/api/consent/capture**',async route=>{if(route.request().method()==='POST')writes++;await route.fulfill({json:{ok:false,error:'test-only'}});});
+ await page.goto('/app/consent-capture.html?client_id=aaaaaaaa-1111-4111-8111-111111111111');
+ await expect(page).toHaveURL(/\/app\/client-portal\.html/);expect(writes).toBe(0);
+});
