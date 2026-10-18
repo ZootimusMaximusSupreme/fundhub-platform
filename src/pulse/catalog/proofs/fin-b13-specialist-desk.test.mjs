@@ -5,12 +5,8 @@
 // test presses the control and judges exactly what the page then shows and what it sends. These are
 // practice tests with fake data, not live checks. The people and cases are made up for the test.
 //
-// Which tests are attached to a row is listed in fin-b13-display-practice.mjs. Two tests here are NOT
-// attached on purpose: "the case queue shows 25 rows and a button ..." (the row says 25 rows a time, the
-// page shows 25 and then all the rest at once) and "stat tiles and bureau chips count the open work ..."
-// (after a confirm the page bumps the Worked tile by one even for a row that was already worked). Both pass
-// today and are kept as cover; neither row can be called proved while its words are false (manifest,
-// findings 2 and 8).
+// Which tests are attached to a row is listed in fin-b13-display-practice.mjs. The page-size,
+// keyboard and server-count cases below are exact guards for the repaired catalog rows.
 
 import assert from "node:assert/strict";
 import test, { after, before } from "node:test";
@@ -185,6 +181,30 @@ test("stat tiles and bureau chips count the open work, and a confirm moves them 
   await page.close();
 });
 
+test("confirming a row that was already worked does not count it as worked twice", { timeout: 120_000 }, async () => {
+  const state = freshState({
+    writeAnswer: (b) => ({
+      ok: true,
+      inquiry: { id: b.inquiry_id, status: "Removed", outcome: null, call_attempts: 1, confirmed_at: "2026-10-14T12:00:00Z" }
+    })
+  });
+  const page = await openDesk(lab, state);
+  const row = page.locator(`#workQueueTable tr[data-id="${U(1)}"]`);
+  await row.waitFor();
+  assert.deepEqual(
+    [await stat(page, "worked"), await stat(page, "confirmed")],
+    ["4", "2"],
+  );
+  await row.click();
+  await row.locator("xpath=following-sibling::tr[1]").getByRole("button", { name: "Mark confirmed" }).click();
+  await page.waitForFunction(() => document.querySelector('[data-stat="confirmed"]').textContent === "3");
+  assert.deepEqual(
+    [await stat(page, "worked"), await stat(page, "confirmed")],
+    ["4", "3"],
+  );
+  await page.close();
+});
+
 
 test("a bureau chip filters the work queue to that bureau, says how many rows, and clears on the next press", { timeout: 120_000 }, async () => {
   const page = await openDesk(lab, freshState());
@@ -247,17 +267,23 @@ test("every spelling of a bureau lands in its own chip, the filter reaches each 
   await page.close();
 });
 
-test("the case queue shows 25 rows and a button, and the button brings in the rest", { timeout: 120_000 }, async () => {
-  const cases = Array.from({ length: 30 }, (_, i) => caseRow(i + 1));
+test("the case queue Show more button adds 25 rows at a time", { timeout: 120_000 }, async () => {
+  const cases = Array.from({ length: 80 }, (_, i) => caseRow(i + 1));
   const page = await openDesk(lab, freshState({ cases }));
   await page.locator("#caseQueueBody tr.case-main").first().waitFor();
   assert.equal(await page.locator("#caseQueueBody tr.case-main").count(), 25);
   const more = page.locator("#caseMoreBtn");
   assert.equal(await more.isVisible(), true);
-  assert.equal(await more.textContent(), "Show the other 5");
-  assert.equal(await page.locator("#caseMore").textContent(), "showing the oldest 25 of 30");
+  assert.equal(await more.textContent(), "Show 25 more");
+  assert.equal(await page.locator("#caseMore").textContent(), "showing the oldest 25 of 80");
   await more.click();
-  assert.equal(await page.locator("#caseQueueBody tr.case-main").count(), 30);
+  assert.equal(await page.locator("#caseQueueBody tr.case-main").count(), 50);
+  assert.equal(await more.textContent(), "Show 25 more");
+  await more.click();
+  assert.equal(await page.locator("#caseQueueBody tr.case-main").count(), 75);
+  assert.equal(await more.textContent(), "Show 5 more");
+  await more.click();
+  assert.equal(await page.locator("#caseQueueBody tr.case-main").count(), 80);
   assert.equal(await more.isHidden(), true);
   await page.close();
 
@@ -290,6 +316,31 @@ test("a case row expands its drawer on a click and folds it on the next", { time
   assert.equal(await drawer.count(), 1);
   await row(2).click();
   assert.equal(await drawer.count(), 0);
+  await page.close();
+});
+
+test("a case row expands its drawer on Enter and folds it on Enter again", { timeout: 120_000 }, async () => {
+  const page = await openDesk(lab, freshState({ cases: [caseRow(1)] }));
+  const row = page.locator(`#caseQueueBody tr[data-case-row="${U(201)}"]`);
+  await row.waitFor();
+  await row.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await row.getAttribute("aria-expanded"), "true");
+  assert.equal(await page.locator("#caseQueueBody tr.case-detail-row").count(), 1);
+  await page.keyboard.press("Enter");
+  assert.equal(await row.getAttribute("aria-expanded"), "false");
+  assert.equal(await page.locator("#caseQueueBody tr.case-detail-row").count(), 0);
+  await page.close();
+});
+
+test("an on_hold work item paints the Hold column and its hold state", { timeout: 120_000 }, async () => {
+  const item = inquiryRow(31, "EQ", "Filed", 1, { call_state: "on_hold" });
+  const page = await openDesk(lab, freshState({ inquiries: [item] }));
+  const row = page.locator(`#workQueueTable tr[data-id="${U(31)}"]`);
+  await row.waitFor();
+  assert.equal((await row.locator("td").nth(4).textContent()).trim(), "on hold");
+  assert.equal((await row.locator("td").nth(5).textContent()).trim(), "live");
+  assert.match(await row.locator("td").nth(4).locator(".call-state").getAttribute("class"), /holding/);
   await page.close();
 });
 

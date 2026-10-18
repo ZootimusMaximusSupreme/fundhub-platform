@@ -186,7 +186,7 @@ test("FinanceOS section: mount(el, ctx) paints into el through ctx.apiGet, with 
   assert.equal(typeof section.mount, "function");
   const el = { innerHTML: "", listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, removeEventListener(t) { delete this.listeners[t]; }, contains: () => true };
   const asked = [];
-  const handle = section.mount(el, { clientId: CLIENT, apiGet: async (p) => { asked.push(p); return fixture(); }, apiPost: async () => ({ ok: true }) });
+  const handle = section.mount(el, { clientId: CLIENT, staff: true, apiGet: async (p) => { asked.push(p); return fixture(); }, apiPost: async () => ({ ok: true }) });
   await handle.reload();
   assert.equal(asked[0], `/api/money/banks?client_id=${CLIENT}`);
   assert.match(el.innerHTML, /^<div class="fh-banks">/);
@@ -203,7 +203,7 @@ test("a client session's mount asks without a client_id and shows no controls", 
   const sandbox = load();
   const el = { innerHTML: "", addEventListener() {}, removeEventListener() {}, contains: () => true };
   const asked = [];
-  const handle = sandbox.window.FinanceOS.sections.banks.mount(el, { apiGet: async (p) => { asked.push(p); return { status: 200, body: fixture() }; } });
+  const handle = sandbox.window.FinanceOS.sections.banks.mount(el, { staff: false, apiGet: async (p) => { asked.push(p); return { status: 200, body: fixture() }; } });
   await handle.reload();
   assert.equal(asked[0], "/api/money/banks");
   assert.doesNotMatch(el.innerHTML, /data-form=/);

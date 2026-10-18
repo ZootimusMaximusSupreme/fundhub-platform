@@ -1684,7 +1684,7 @@ window.__fhQueueReady = (function () {
     return String(s).replace(/_/g, ' ');
   }
   function callStateClass(s) {
-    if (s === 'holding') return 'holding';
+    if (s === 'on_hold') return 'holding';
     if (s === 'live_agent_reached') return 'live';
     if (s === 'transferred_to_rep') return 'transferred';
     return '';
@@ -1753,7 +1753,7 @@ window.__fhQueueReady = (function () {
       tr.appendChild(cell('<span class="call-state ' + callStateClass(it.call_state) + '">' +
         esc(callStateLabel(it.call_state)) + '</span>'));
       var holdCell = '—';
-      if (it.call_state === 'holding') holdCell = '<span class="hold-time">live</span>';
+      if (it.call_state === 'on_hold') holdCell = '<span class="hold-time">live</span>';
       tr.appendChild(cell(holdCell));
       var att = cell(esc(it.call_attempts == null ? 0 : it.call_attempts));
       att.className = 'mono';
@@ -2136,6 +2136,7 @@ window.__fhInitQueue = function(){
       send(spec).then(function(res){
         var before = r._state.snapshot || r._state;
         var wasAttempts = before.attempts, wasDone = before.done;
+        var wasWorked = wasDone || Number(wasAttempts) > 0;
         var out = V.interpretWrite(res);
 
         if (!out.ok){
@@ -2148,6 +2149,7 @@ window.__fhInitQueue = function(){
 
         r._state = V.settleWrite(r._state, out.inquiry);
         paintRow();
+        var isWorked = r._state.done || Number(r._state.attempts) > 0;
 
         /* Tiles move by the difference between two server-known counts, not by
            a hardcoded +1: work.mjs RECOMPUTES call_attempts from the attempt
@@ -2156,12 +2158,13 @@ window.__fhInitQueue = function(){
         var d = V.attemptsDelta(wasAttempts, r._state.attempts);
         if (d) bump('calls', d);
         if (r._state.done && !wasDone){
-          bump('confirmed', 1); bump('worked', 1); bump('left', -1);
+          bump('confirmed', 1); bump('left', -1);
           bumpChip(bureau, -1);
         } else if (!r._state.done && wasDone){
           bump('confirmed', -1); bump('left', 1);
           bumpChip(bureau, 1);
         }
+        if (isWorked !== wasWorked) bump('worked', isWorked ? 1 : -1);
 
         note_(LABEL[action] + ' · ' + clock() +
           (r._state.stale ? ' (saved — the server sent no row, reload to see it)' : ''));
@@ -2845,13 +2848,20 @@ window.FHDeskHead = (function () {
       tr.setAttribute("aria-expanded", "false");
       tr.setAttribute("data-case-row", C.id || "");
       tr.innerHTML = rowHtml(C);
+      tr.tabIndex = 0;
       body.appendChild(tr);
       tr.addEventListener("click", function () { toggleCase(tr, C); });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          toggleCase(tr, C);
+        }
+      });
     });
     var hidden = allCases.length - page.length;
     if (moreBtn) {
       moreBtn.hidden = hidden <= 0;
-      moreBtn.textContent = "Show the other " + hidden;
+      moreBtn.textContent = "Show " + Math.min(PAGE_ROWS, hidden) + " more";
     }
     if (moreNote) {
       /* Two different sentences, because they mean different things: rows this
@@ -2985,7 +2995,7 @@ window.FHDeskHead = (function () {
   var moreBtnEl = document.getElementById("caseMoreBtn");
   if (moreBtnEl) {
     moreBtnEl.addEventListener("click", function () {
-      pageSize = allCases.length;
+      pageSize = Math.min(pageSize + PAGE_ROWS, allCases.length);
       renderCases();
     });
   }

@@ -23,7 +23,7 @@ import { readHandler, ROLE_SETS } from "../../src/http/read-api.mjs";
 const orgOf = (staff) => (staff && staff.org_id) || null;
 
 const run = readHandler({
-  roles: ROLE_SETS.STAFF,
+  roles: ROLE_SETS.SPECIALIST_DESK,
   fetch: (db, { limit, offset, query, staff }) =>
     db.query(
       `SELECT i.id, i.client_id, i.case_id, i.bureau, i.inquiry, i.inquiry_name,

@@ -58,14 +58,14 @@ function fakeDb(overrides = {}, failOn = null) {
 
 test("all deep display controls own one exact contract", () => {
   const linkGates = DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "link-gate").length;
-  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 280);
+  assert.equal(DISPLAY_RESULT_CONTRACTS.length, 281);
   assert.equal(DISPLAY_RESULT_CASES.length, 286);
   assert.equal(PASS_CAPABLE_COUNT, 272);
   assert.equal(UNMEASURED_CONTRACT_COUNT, 11);
   assert.equal(LIVE_PAGE_CONTRACT_COUNT, 1);
   assert.equal(linkGates, 2);
   assert.equal(PASS_CAPABLE_COUNT + UNMEASURED_CONTRACT_COUNT + LIVE_PAGE_CONTRACT_COUNT + linkGates, 286);
-  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 280);
+  assert.equal(new Set(DISPLAY_RESULT_CONTRACTS.map((entry) => entry.control)).size, 281);
   assert.equal(new Set(DISPLAY_RESULT_CASES.map((entry) => entry.control)).size, 285);
   assert.equal(CHECK_IDS.length, DISPLAY_TRACKING_CASES.length);
   assert.equal(new Set(CHECK_IDS).size, CHECK_IDS.length);

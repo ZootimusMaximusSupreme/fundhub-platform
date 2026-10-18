@@ -37,7 +37,7 @@ flowchart TD
     CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 57 routes]
+    CAN --> A_read[Reading data — 56 routes]
     CAN --> A_repair[repair — 1 route]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
@@ -45,7 +45,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 31 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 123 routes]
+    WHO -->|Yes| CANT[Blocked — 124 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 1 blocked]
@@ -67,7 +67,7 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 11 blocked]
+    CANT --> B_read[Reading data — 12 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 1 blocked]
@@ -78,7 +78,7 @@ flowchart TD
 
 ## What they can reach
 
-**205 of 329 routes.**
+**204 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -249,7 +249,6 @@ flowchart TD
 | `/api/read/funding-rounds` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/funnel-pages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/read/inquiries` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
 | `/api/read/lender-matches` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -297,7 +296,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**123 of 329 routes.**
+**124 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -403,6 +402,7 @@ flowchart TD
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |
 | `/api/read/eeo-aggregate` | GET | owner, admin |
 | `/api/read/failed-events` | GET | owner, admin |
+| `/api/read/inquiries` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/inquiry-cases` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |

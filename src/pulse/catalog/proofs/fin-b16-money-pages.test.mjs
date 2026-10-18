@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { json, proofRows, sharedScreens, waitFor } from "./fin-b16-kit.mjs";
+import { OWNER } from "./s4-screen-harness.mjs";
 import { CLIENT, CLIENT_ID, STAFF, sampleAnswer } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
@@ -346,7 +347,7 @@ test("Banks: a failed load shows Try again, and pressing it reads again and pain
   await proof.check(/^'Try again' button on a load error/, async () => {
     const read = flaky(sampleAnswer("money-banks.sample.json"));
     const { page, errors } = await screens.open(`/app/money-banks.html?client_id=${CLIENT_ID}`, {
-      session: STAFF, handlers: { "/api/money/banks": read.handler },
+      session: OWNER, handlers: { "/api/money/banks": read.handler },
     });
     await page.waitForSelector('[data-act="retry"]');
     assert.match(await page.locator("#banks-root").innerText(), /Something went wrong on our side while loading your bank plan/);
@@ -374,7 +375,7 @@ test("Banks: the Back link and the eight-link nav, for the client and for staff"
     assert.deepEqual(clientNav.map((l) => l.href), hash.map((h) => `${FRAME}#${h}`));
     assert.deepEqual(clientNav.filter((l) => l.current).map((l) => l.label), ["Banks"]);
     await asClient.page.close();
-    const asStaff = await screens.open(`/app/money-banks.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers: { "/api/money/banks": sampleAnswer("money-banks.sample.json") } });
+    const asStaff = await screens.open(`/app/money-banks.html?client_id=${CLIENT_ID}`, { session: OWNER, handlers: { "/api/money/banks": sampleAnswer("money-banks.sample.json") } });
     await asStaff.page.waitForSelector(".fh-banks .card");
     assert.deepEqual(await backOf(asStaff.page), ["Back to Finance OS", `finance-os.html?client_id=${CLIENT_ID}`]);
     const staffNav = await navOf(asStaff.page);

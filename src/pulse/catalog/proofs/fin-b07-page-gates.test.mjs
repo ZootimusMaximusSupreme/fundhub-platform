@@ -1,12 +1,8 @@
-// Practice test for the partner home page row, and for two of the Specialist desk's doors:
+// Practice test for the money Banks gate, the Specialist desk gate, and the partner home page row.
 //   1. the partner home (partner-galaxy.html) "Open the page" row: who stays, who is sent to their
 //      own home, and what the three tiles say. THIS is the row this file is attached to.
-//   2. the Specialist desk (inquiry-remover.html): who gets the case and repair queues and who is
-//      refused, on the real handlers and on the real page. These two doors are true statements and
-//      stay in this file, but they are NOT attached to the desk's "Page gate" row any more: the
-//      desk's Work queue door (api/read/inquiries.mjs) is open to every staff role, so the row's
-//      claim that setter and closer roles are bounced is false of the product (see the manifest,
-//      finding A, and FIN_B07_NOT_ATTACHABLE).
+//   2. the Specialist desk (inquiry-remover.html): who gets all three queues and who is refused,
+//      on the real handlers and on the real page.
 //
 // The role lists are written out here, by hand, from the row's own words. They are NOT read from
 // the product, so a role slipped into (or out of) a list turns the test red.
@@ -15,10 +11,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import inquiryCases from "../../../../api/read/inquiry-cases.mjs";
+import inquiryWork from "../../../../api/read/inquiries.mjs";
 import repairCases from "../../../../api/read/repair-cases.mjs";
 import { callShared } from "../../../testing/s3-handler-call.mjs";
 import { accountSession, req, staffSession } from "../../../testing/handler-harness.mjs";
 import { json, startScreens } from "./s4-screen-harness.mjs";
+import { CLIENT, CLIENT_ID, sampleAnswer } from "./s4-money-harness.mjs";
 
 const DESK_ROLES = ["owner", "admin", "inquiry_specialist", "funding_advisor"];
 const OTHER_ROLES = ["closer", "setter", "csm", "sales_manager"];
@@ -30,7 +28,7 @@ const sessionFor = (role) => ({
   staff: { id: "staff-1", name: `Test ${role}`, email: `${role}@fundhub.test`, role, org_id: "org-1", status: "active" },
 });
 
-for (const [name, handler] of [["read/inquiry-cases", inquiryCases], ["read/repair-cases", repairCases]]) {
+for (const [name, handler] of [["read/inquiry-cases", inquiryCases], ["read/repair-cases", repairCases], ["read/inquiries", inquiryWork]]) {
   test(`${name}: only the four desk roles are let in, every other staff role and a client are refused before any read`, async () => {
     for (const role of DESK_ROLES) {
       const { res } = await callShared(handler, req("GET", {}), [staffSession({ role })]);
@@ -49,13 +47,30 @@ for (const [name, handler] of [["read/inquiry-cases", inquiryCases], ["read/repa
   });
 }
 
+test("the Banks page trusts the signed-in role, not a client_id typed into the address", async (t) => {
+  const { open } = await startScreens(t);
+  const banks = sampleAnswer("money-banks.sample.json");
+  const path = "/app/money-banks.html?client_id=" + CLIENT_ID;
+
+  const asClient = await open(path, { session: CLIENT, handlers: { "/api/money/banks": banks } });
+  await asClient.page.waitForSelector(".fh-banks .card");
+  assert.equal(await asClient.page.locator(".fh-banks .staff").count(), 0);
+  assert.equal(await asClient.page.locator(".fh-banks [data-form]").count(), 0);
+  await asClient.page.close();
+
+  const asOwner = await open(path, { session: sessionFor("owner"), handlers: { "/api/money/banks": banks } });
+  await asOwner.page.waitForSelector(".fh-banks .staff");
+  assert.ok(await asOwner.page.locator(".fh-banks [data-form]").count() > 0);
+  await asOwner.page.close();
+});
+
 test("the Specialist page keeps a refused role on a plain refusal sentence, never the empty-queue words", async (t) => {
   const { open } = await startScreens(t);
   const refuse = (route) => json(route, { ok: false, error: "forbidden" }, 403);
   for (const role of OTHER_ROLES) {
     const { page } = await open("/app/inquiry-remover.html", {
       session: sessionFor(role),
-      handlers: { "/api/read/inquiry-cases": refuse, "/api/read/repair-cases": refuse },
+      handlers: { "/api/read/inquiry-cases": refuse, "/api/read/repair-cases": refuse, "/api/read/inquiries": refuse },
     });
     await page.waitForFunction((sentence) => document.body.innerText.includes(sentence), REFUSAL_SENTENCE, { timeout: 15000 });
     const text = await page.evaluate(() => document.body.innerText);
@@ -68,6 +83,7 @@ test("the Specialist page keeps a refused role on a plain refusal sentence, neve
       session: sessionFor(role),
       handlers: {
         "/api/read/inquiry-cases": { ok: true, count: 0, limit: 500, offset: 0, hasMore: false, items: [], cases: [], total: 0 },
+        "/api/read/inquiries": { ok: true, count: 0, limit: 200, offset: 0, hasMore: false, items: [] },
         "/api/read/repair-cases": { ok: true, files: [], total: 0, need_me: 0, ready: 0, waiting: 0, stalled: 0, trial_ending: 0 },
       },
     });
