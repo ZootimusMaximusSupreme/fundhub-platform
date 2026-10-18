@@ -1,0 +1,147 @@
+name: Current production CRM type and layout checks
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths:
+      - .github/workflows/crm-live-reconcile.yml
+      - public/app/fundhub-font.css
+      - public/app/fundhub-font.js
+      - scripts/prepare-rounded-type.mjs
+      - src/ui/rounded-reference-font.test.mjs
+      - e2e/font-reference.spec.mjs
+permissions:
+  contents: write
+concurrency:
+  group: crm-live-font-reconcile
+  cancel-in-progress: false
+jobs:
+  font-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/crm-live-font-reconcile
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Prepare the licensed web font and the shared type adapter
+        id: prepare
+        run: |
+          python -m pip install --user 'fonttools[woff]'
+          mkdir -p public/assets/fonts
+          curl --fail --silent --show-error https://api.github.com/repos/google/fonts/git/blobs/2ec1f4b0676c83ef33049db87b311171699e9192 > /tmp/nunito-source.json
+          curl --fail --silent --show-error https://api.github.com/repos/google/fonts/git/blobs/c8210f08ca3cece05b4f7baa428afe8e1abe3293 > /tmp/nunito-license.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const font=Buffer.from(JSON.parse(fs.readFileSync('/tmp/nunito-source.json','utf8')).content,'base64');
+          const hash=crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+font.length+'\0'),font])).digest('hex');
+          if(hash!=='2ec1f4b0676c83ef33049db87b311171699e9192')throw new Error('Font source hash changed');
+          fs.writeFileSync('/tmp/Nunito.ttf',font);
+          fs.writeFileSync('public/assets/fonts/Nunito-OFL.txt',Buffer.from(JSON.parse(fs.readFileSync('/tmp/nunito-license.json','utf8')).content,'base64'));
+          JS
+          python -m fontTools.subset /tmp/Nunito.ttf --output-file=public/assets/fonts/nunito-latin-variable.woff2 --flavor=woff2 --unicodes='U+0000-024F,U+1E00-1EFF,U+2000-206F,U+20A0-20CF,U+2100-214F,U+2190-21FF,U+25A0-25FF' --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-glyph --notdef-outline --recommended-glyphs
+          node scripts/prepare-rounded-type.mjs
+          npm ci --ignore-scripts
+          test -x /usr/bin/google-chrome
+          echo 'PLAYWRIGHT_CHROMIUM=/usr/bin/google-chrome' >> "$GITHUB_ENV"
+      - name: Lint and TypeScript
+        id: lint
+        continue-on-error: true
+        run: |
+          npm run lint
+          npx --yes --package typescript@5.9.3 tsc --noEmit
+      - name: Type, roles, page assets and existing client behavior checks
+        id: node
+        continue-on-error: true
+        run: |
+          node --test src/ui/rounded-reference-font.test.mjs src/ui/status-tokens-are-semantic.test.mjs src/ui/shell-is-fluid.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/pulse/coverage/gap-portal.test.mjs
+      - name: Actual browser font and feature checks
+        id: browser
+        continue-on-error: true
+        run: |
+          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs --reporter=line
+      - name: Preserve checked source and marked evidence on this branch
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          NODE: ${{ steps.node.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const out='ops/workflows/build-evidence/crm-font-live';
+          fs.mkdirSync(out,{recursive:true});
+          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,noProductionDeploy:true,noCustomerWrites:true,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
+          const prepared=fs.existsSync(out+'/font-preparation.json')?JSON.parse(fs.readFileSync(out+'/font-preparation.json','utf8')).changed:[];
+          const files=[...prepared,'public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];
+          execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
+          execFileSync('git',['add','--',...files.filter(f=>fs.existsSync(f))]);
+          execFileSync('git',['add','-f','--',out]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
+            execFileSync('git',['commit','-m','Prepare rounded Fundhub typography from current production with browser evidence'],{stdio:'inherit'});
+            execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
+          }
+          JS
+      - name: Require honest passing proof
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          NODE: ${{ steps.node.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+        run: |
+          test "$PREPARE" = success
+          test "$LINT" = success
+          test "$NODE" = success
+          test "$BROWSER" = success
+  layout-merge-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check existing reviewed UI against current main without changing production
+        run: |
+          git fetch origin main codex/crm-portal-layout-professional
+          python - <<'PY'
+          import json,pathlib,subprocess,tempfile,re
+          main='origin/main';incoming='803d2b7e47f137d7773d4006445b971179cef835'
+          base=subprocess.check_output(['git','merge-base',main,incoming],text=True).strip()
+          paths=subprocess.check_output(['git','diff','--name-only','79b609ee5bc656dc638856705899a1635ebed4ed',incoming,'--','public/app','public/login.html','public/portal-login.html','public/progress.html','public/contract.html','public/reset-password.html','public/login-ios.css','public/portal-login-ios.css','public/contract-ios.css','public/progress-ios.css'],text=True).splitlines()
+          def read(ref,p):
+           r=subprocess.run(['git','show',ref+':'+p],capture_output=True)
+           return None if r.returncode else r.stdout
+          report=[]
+          for p in paths:
+           a,b,c=read(main,p),read(base,p),read(incoming,p)
+           if c is None:report.append({'path':p,'state':'incoming deletion; inspect'});continue
+           if a is None:
+            report.append({'path':p,'state':'new reviewed asset' if b is None else 'absent on production; inspect','incoming_bytes':len(c)});continue
+           if a==c:report.append({'path':p,'state':'already identical'});continue
+           with tempfile.TemporaryDirectory() as d:
+            files=[pathlib.Path(d)/str(n) for n in range(3)]
+            for f,data in zip(files,[a,b or b'',c]):f.write_bytes(data)
+            r=subprocess.run(['git','merge-file','-p',*map(str,files)],capture_output=True)
+           text=r.stdout.decode('utf8','replace')
+           ids=lambda v:set(re.findall(r'\bid=["\']([^"\']+)',v.decode('utf8','replace')))
+           report.append({'path':p,'state':'clean three-way merge' if r.returncode==0 else 'conflict; manual integration required','removed_production_ids':sorted(ids(a)-ids(r.stdout)),'production_bytes':len(a),'incoming_bytes':len(c),'merged_bytes':len(r.stdout)})
+          out=pathlib.Path('ops/workflows/build-evidence/crm-reconcile-scan');out.mkdir(parents=True,exist_ok=True)
+          (out/'report.json').write_text(json.dumps({'base':base,'production':subprocess.check_output(['git','rev-parse',main],text=True).strip(),'incoming':incoming,'files':report,'not_deployed':True},indent=2)+'\n')
+          counts={}
+          for row in report:counts[row['state']]=counts.get(row['state'],0)+1
+          (out/'README.md').write_text('# Existing UI integration scan\n\nRead-only three-way scan; no production or customer changes.\n\n'+json.dumps(counts,indent=2)+'\n')
+          print(json.dumps(counts))
+          PY
+          git config user.name 'Fundhub UI checks'
+          git config user.email 'ui-checks@fundhub.ai'
+          git checkout -b codex/crm-reconcile-scan
+          git add -f ops/workflows/build-evidence/crm-reconcile-scan
+          git commit -m 'Record current-production UI integration scan without changing app files'
+          git push origin HEAD:codex/crm-reconcile-scan
