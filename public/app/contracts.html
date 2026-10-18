@@ -12,148 +12,15 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
-/* This whole screen is owner/admin-only. Keep it out of view until shell.js
-   confirms the current session may open it, so a direct visit cannot flash the
-   wording panel before the shell routes a closer away. */
+<link rel="stylesheet" href="contracts-layout.css">
+<style>/* Conceal the protected page until the resolved session permits access. */
 html:not(.fh-page-access-confirmed) body{visibility:hidden}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-.logo{width:118px;height:24px;flex:0 0 118px}
-.app{display:flex;min-height:100vh}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{height:57px;flex:0 0 57px;display:flex;align-items:center;gap:14px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:20}
-.topbar h1{font-weight:600;letter-spacing:-.01em}
-.topbar .crumb{font-family:var(--mono);color:var(--gray2);letter-spacing:.1em;text-transform:uppercase}
-.spacer{flex:1}
-.content{padding:22px 24px 60px;flex:1}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.card+.card{margin-top:14px}
-.card-hd{padding:13px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.card-hd h2{font-weight:600}
-.card-bd{padding:16px}
-.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--soft);border-color:var(--gray2)}
-.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.dark:hover{background:var(--ink2)}
-.btn.sm{padding:5px 10px}
-.btn.mono{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
-.btn:disabled{opacity:.42;cursor:not-allowed}
-.btn:disabled:hover{background:#fff;border-color:var(--line)}
-.btn.dark:disabled:hover{background:var(--ink)}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:5px;font-family:var(--mono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
-.b-ok{background:rgba(168,216,176,.24);border-color:var(--ok);color:#2C5138}
-.b-warn{background:rgba(245,206,143,.26);border-color:var(--warn);color:#6B4A12}
-.b-alert{background:rgba(242,166,155,.26);border-color:var(--alert);color:#6E2A22}
-.b-info{background:rgba(169,198,232,.26);border-color:var(--info);color:#22415F}
-.b-accent{background:rgba(196,179,229,.26);border-color:var(--accent);color:#3F2F63}
-.b-gray{background:var(--soft);border-color:var(--line);color:var(--gray)}
-.field{display:flex;flex-direction:column;gap:5px}
-.field+.field{margin-top:11px}
-.field label{font-family:var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--gray)}
-.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:7px;background:#fff;padding:8px 10px;width:100%}
-.field textarea{resize:vertical;line-height:1.65;font-family:var(--mono)}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gray2);box-shadow:0 0 0 3px rgba(169,198,232,.28)}
-.field .hint{font-family:var(--mono);color:var(--gray2);letter-spacing:.06em}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;font-family:var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--gray);padding:9px 12px;border-bottom:1px solid var(--line);background:var(--soft)}
-td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-tr:last-child td{border-bottom:0}
-tr.sel td{background:rgba(169,198,232,.13)}
-.rowlink{cursor:pointer}
-.rowlink:hover td{background:var(--soft)}
-.linkbox{display:flex;gap:8px;align-items:center;margin-top:10px}
-.linkbox input{flex:1;min-width:0;font-family:var(--mono);border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--soft)}
-.note{color:var(--gray);line-height:1.6}
-.msg{margin-top:10px;min-height:19px}
-.mfrow{display:grid;grid-template-columns:1fr 1fr 78px 34px;gap:8px;align-items:center;margin-bottom:7px}
-.mfrow input[type=text]{border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
-.srow{display:grid;grid-template-columns:120px 1fr 1fr 30px;gap:8px;align-items:center;margin-bottom:7px}
-.srow input,.srow select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
-/* ── the PDF field editor ──────────────────────────────────────────────── */
-.pdfwrap{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:14px;align-items:start}
-.pdfpages{max-height:640px;overflow:auto;background:var(--soft);border:1px solid var(--line);
-  border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:14px;align-items:center}
-.pg{position:relative;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);cursor:crosshair}
-.pg canvas{display:block}
-.pg .pn{position:absolute;top:-11px;left:0;font-family:var(--mono);letter-spacing:.12em;
-  text-transform:uppercase;color:var(--gray2)}
-.box{position:absolute;border:2px solid #22415F;background:rgba(169,198,232,.26);border-radius:3px;
-  cursor:move;overflow:hidden;display:flex;align-items:center;padding:0 3px}
-.box.s1{border-color:#C98A3E;background:rgba(245,206,143,.30)}
-.box.s2{border-color:#2C5138;background:rgba(168,216,176,.30)}
-.box.sel{outline:2px solid var(--ink);outline-offset:1px}
-.box .h{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;background:#fff;
-  border:2px solid var(--ink);border-radius:2px;cursor:nwse-resize}
-.box .bl{font-family:var(--mono);letter-spacing:.04em;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;pointer-events:none}
-.tools{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px;position:sticky;top:71px}
-.tools h3{font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
-  color:var(--gray);margin-bottom:8px}
-.tools .row{margin-bottom:9px}
-.tools label{display:block;font-family:var(--mono);letter-spacing:.12em;
-  text-transform:uppercase;color:var(--gray);margin-bottom:3px}
-.tools select,.tools input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;
-  padding:6px 8px}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
-.chip2{border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer;background:#fff}
-.chip2.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.mfrow .req{display:flex;align-items:center;gap:6px;color:var(--gray)}
-.foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);color:var(--gray2);letter-spacing:.09em}
-/* ── the one caption escape hatch (UI-STANDARDS §12.7) ──────────────────────
-   fundhub-brand.css:184-186 sets `font-size:inherit !important` on every
-   element inside .app, then hands sizes back to a fixed list of class names
-   (.badge, .note, .hint, .mono, label, th, .chip …). Every one of those is used
-   above and needs nothing here. These six are this screen's OWN names, and each
-   one is a caption by job:
-     .crumb / .foot  — the mono-caps eyebrow in the topbar and the meta strip in
-                       the footer. Same role as .eyebrow, one class name off.
-     .tools h3       — a section heading. §12.7: those are 13px caps-mono, and
-                       an h3 is not on the title whitelist, so it needs saying.
-     .chip2          — a chip. .chip is on the brand's caption list; this is the
-                       same control under a second name.
-     .pg .pn         — the page label, positioned at top:-11px. At body size it
-                       is taller than its own offset and rides over the page.
-     .box, .box .bl  — a field marker sized to a real PDF field rectangle, often
-                       under 20px tall. Body-size text does not fit inside it.
-   ONE rule. Never a second one — that is how a screen ends up with six sizes. */
-.app :is(.crumb,.foot,.tools h3,.chip2,.pg .pn,.box,.box .bl){
-  font-size:var(--fs-caption)!important;
-}
-@media(max-width:1180px){.layout{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
 </style>
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="contracts-page">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -207,102 +74,48 @@ tr.sel td{background:rgba(169,198,232,.13)}
 </aside>
 
   <div class="main">
-    <div class="topbar">
-      <span class="crumb">Setup</span><h1>Contract templates</h1>
-      <div class="spacer"></div>
-      <span class="chip on" id="liveChip"><span class="cd"></span><span id="liveTxt">— loading</span></span>
-    </div>
-
-    <div class="content">
-      <div class="card" id="explainCard">
-        <div class="card-hd"><span class="badge b-info">How this works</span></div>
-        <div class="card-bd note">
-          <p><strong>Build a contract once. Use it many times.</strong> Upload a PDF, or type the words here. Add the blanks people fill in. Say who has to sign.</p>
-          <p style="margin-top:8px"><strong>Staff pick it later.</strong> When they send a contract from a client’s screen, this one shows up in their list. They never have to write it again.</p>
-          <p style="margin-top:8px">To see contracts you already sent, and who has signed them, go to <a href="documents.html" style="text-decoration:underline">Documents</a>.</p>
-        </div>
+    <div class="topbar" aria-hidden="true" hidden><span id="liveChip"><span id="liveTxt">Loading templates</span></span></div>
+    <main class="content" id="contractsContent">
+      <div class="page-intro">
+        <div><p class="eyebrow">Agreement setup</p><h2>Template library</h2><p class="intro-copy">Create and maintain the wording staff use for new agreements.</p></div>
+        <div class="page-actions"><button class="btn" id="btnUpload" type="button"><span aria-hidden="true">↑</span> Upload a PDF</button><button class="btn dark" id="btnNewTpl" type="button"><span aria-hidden="true">+</span> New wording</button><input type="file" id="fileInput" accept="application/pdf,.pdf" hidden></div>
       </div>
-
-      <!-- ── the wording library: owner/admin only ──────────────────────── -->
-      <div class="card" id="tplCard" style="margin-top:14px">
-        <div class="card-hd"><h2>Contract wording</h2><span class="badge b-accent">owner &amp; admin</span>
-          <div class="spacer"></div>
-          <button class="btn sm" id="btnUpload">Upload a PDF</button>
-          <button class="btn sm" id="btnNewTpl">New wording</button>
-          <input type="file" id="fileInput" accept="application/pdf,.pdf" style="display:none">
+      <div class="workflow-note" id="explainCard"><span class="note-mark" aria-hidden="true">↗</span><p><strong>Staff pick it later.</strong> Saved templates are available when sending from a client’s screen. <a href="documents.html">View sent agreements in Documents <span aria-hidden="true">↗</span></a></p></div>
+      <section class="template-workspace" id="tplCard" aria-label="Contract wording">
+        <div class="layout">
+          <section class="card template-library" aria-labelledby="libraryTitle">
+            <div class="card-hd"><div><h3 id="libraryTitle">Your templates</h3><p id="libraryCount" class="section-caption">Loading library…</p></div><span class="badge b-gray">Owner &amp; admin</span></div>
+            <div class="library-scroll" id="libraryScroll" aria-busy="true"><table><thead><tr><th scope="col">Template</th><th scope="col">Status</th></tr></thead><tbody id="tplList"><tr><td colspan="2"><div class="list-state"><span class="loading-line"></span><span class="loading-line short"></span><p>Loading your templates…</p></div></td></tr></tbody></table></div>
+            <div class="library-foot"><span aria-hidden="true">⌁</span> Updates apply to new agreements. Sent copies stay locked.</div>
+          </section>
+          <section class="card template-detail" aria-labelledby="editorTitle">
+            <div class="card-hd editor-heading"><div><p class="editor-kicker" id="editorKicker">Wording &amp; signature fields</p><h3 id="editorTitle" tabindex="-1">Template workspace</h3></div><span class="badge b-gray" id="editorState">No selection</span></div>
+            <div class="card-bd">
+              <div class="editor-empty" id="editorEmpty"><div class="document-icon" aria-hidden="true"><svg viewBox="0 0 40 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M25 2H5a3 3 0 0 0-3 3v38a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V15L25 2Z"/><path d="M25 2v13h13M10 25h20M10 32h20M10 39h12"/></svg></div><h4>Choose a template to edit</h4><p>Open wording from your library, or start with a new wording or an existing PDF.</p><div class="empty-hint"><span aria-hidden="true">✓</span> Existing signed and sent agreements stay unchanged.</div></div>
+              <div id="tplEditor" style="display:none">
+                <div class="form-section"><h4>Template details</h4><div class="grid2">
+                  <div class="field"><label for="tName">Name</label><input id="tName" type="text" placeholder="Funding Agreement"></div>
+                  <div class="field"><label for="tKey">Short name</label><input id="tKey" type="text" placeholder="FUNDING-AGREEMENT" aria-describedby="tKeyHint"><span class="hint" id="tKeyHint">Letters, numbers and hyphens. Cannot be changed later.</span></div>
+                  <div class="field"><label for="tKind">Type</label><select id="tKind"><option value="contract">Contract</option><option value="authorization">Permission form</option></select></div>
+                  <div class="field"><label for="tSubtype">Filing label <span class="optional">Optional</span></label><input id="tSubtype" type="text" placeholder="funding_agreement"><span class="hint">How it is filed in Documents.</span></div>
+                </div></div>
+                <div class="form-section"><div class="field"><label for="tBody">The words</label><textarea id="tBody" rows="12" placeholder="Use {{contact.first_name}} for the client's details and {{field.your_blank}} for a blank you fill in when sending." aria-describedby="tTags"></textarea><span class="hint" id="tTags"></span></div></div>
+                <div class="form-section"><div class="field"><label id="manualFieldsLabel">Blanks you fill in when sending</label><p class="hint">Add the values staff enter each time this wording is used.</p><div id="tFields" aria-labelledby="manualFieldsLabel"></div><button class="btn sm add-field" id="btnAddField" type="button"><span aria-hidden="true">+</span> Add a blank</button></div></div>
+                <div class="form-section"><div class="field"><label for="tStatement">The sentence next to the signing box</label><textarea id="tStatement" rows="2"></textarea></div></div>
+                <div class="editor-actions"><button class="btn archive-action" id="btnArchive" type="button">Archive</button><div class="spacer"></div><button class="btn" id="btnCancelTpl" type="button">Cancel</button><button class="btn dark" id="btnSaveTpl" type="button">Save wording</button></div>
+              </div>
+              <div id="pdfEditor" style="display:none">
+                <div class="pdf-intro"><div><span class="pdf-file" id="pdfName">document.pdf</span><p class="note">Drag or tap the page to add a box. Select a box to edit it. Arrow keys move a selected box; Shift + arrow resizes it.</p></div><div class="pdf-actions"><button class="btn sm" id="btnAddSigner" type="button">Add a signer</button><button class="btn dark sm" id="btnSaveFields" type="button">Save boxes</button></div></div>
+                <div id="signerRoles" class="signer-roles"></div>
+                <div class="pdfwrap"><div class="pdfpages" id="pdfPages" aria-label="PDF pages"></div><div class="tools"><h4>New box</h4><div class="chips" id="typeChips" aria-label="Box type"></div><div class="row"><label for="newSigner">Belongs to</label><select id="newSigner"></select></div><div class="row"><label for="newSource">Filled from</label><select id="newSource"></select></div><hr><h4>Selected box</h4><div id="boxProps" class="note">Nothing selected.</div></div></div>
+                <div class="msg" id="fieldMsg" role="status" aria-live="polite"></div>
+              </div>
+              <div class="msg" id="tplMsg" role="status" aria-live="polite"></div>
+            </div>
+          </section>
         </div>
-        <div class="card-bd">
-          <p class="note" style="margin-bottom:12px">Changing the words here does <strong>not</strong> change any contract that has already been sent. Those are locked. New sends use the new words.</p>
-          <div class="layout">
-            <div>
-              <table>
-                <thead><tr><th>Short name</th><th>Name</th><th>State</th></tr></thead>
-                <tbody id="tplList"></tbody>
-              </table>
-            </div>
-            <div id="tplEditor" style="display:none">
-              <div class="grid2">
-                <div class="field"><label for="tKey">Short name</label>
-                  <input id="tKey" type="text" placeholder="FUNDING-AGREEMENT">
-                  <span class="hint" id="tKeyHint">Letters, numbers and hyphens. Cannot be changed later.</span></div>
-                <div class="field"><label for="tName">Name</label><input id="tName" type="text" placeholder="Funding Agreement"></div>
-              </div>
-              <div class="grid2" style="margin-top:11px">
-                <div class="field"><label for="tKind">Type</label>
-                  <select id="tKind"><option value="contract">Contract</option><option value="authorization">Permission form</option></select></div>
-                <div class="field"><label for="tSubtype">Filing label</label>
-                  <input id="tSubtype" type="text" placeholder="funding_agreement">
-                  <span class="hint">How it is filed in Documents. Optional.</span></div>
-              </div>
-              <div class="field"><label for="tBody">The words</label>
-                <textarea id="tBody" rows="16" placeholder="Use {{contact.first_name}} for the client's details and {{field.your_blank}} for a blank you fill in when sending."></textarea>
-                <span class="hint" id="tTags"></span></div>
-              <div class="field"><label>Blanks you fill in when sending</label>
-                <div id="tFields"></div>
-                <button class="btn sm" id="btnAddField" type="button">Add a blank</button></div>
-              <div class="field"><label for="tStatement">The sentence next to the signing box</label>
-                <input id="tStatement" type="text"></div>
-              <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-                <button class="btn dark" id="btnSaveTpl">Save</button>
-                <button class="btn" id="btnArchive">Archive</button>
-                <button class="btn" id="btnCancelTpl">Cancel</button>
-              </div>
-              <div class="msg" id="tplMsg"></div>
-            </div>
-
-            <!-- ── the uploaded-PDF editor ──────────────────────────────────
-                 Shown instead of the text fields above when the selected
-                 template is an uploaded document. Drag on a page to make a box;
-                 click a box to change what it is and who fills it in. -->
-            <div id="pdfEditor" style="display:none">
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-                <span class="badge b-info" id="pdfName">document.pdf</span>
-                <span class="note" style="margin:0">Drag on the page to add a box. Click a box to change it.</span>
-                <div class="spacer"></div>
-                <button class="btn sm" id="btnAddSigner" type="button">Add a signer</button>
-                <button class="btn dark sm" id="btnSaveFields" type="button">Save boxes</button>
-              </div>
-              <div id="signerRoles" style="margin-bottom:10px"></div>
-              <div class="pdfwrap">
-                <div class="pdfpages" id="pdfPages"></div>
-                <div class="tools">
-                  <h3>New box</h3>
-                  <div class="chips" id="typeChips"></div>
-                  <div class="row"><label>Belongs to</label><select id="newSigner"></select></div>
-                  <div class="row"><label>Filled from</label><select id="newSource"></select></div>
-                  <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
-                  <h3>Selected box</h3>
-                  <div id="boxProps" class="note" style="margin:0">Nothing selected.</div>
-                </div>
-              </div>
-              <div class="msg" id="fieldMsg"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="foot"><span>fundhub</span><span>·</span><span>contracts</span></div>
+      </section>
+    </main>
   </div>
 </div>
 
@@ -318,31 +131,13 @@ window.__pdfjs = pdfjsLib;
 window.dispatchEvent(new Event("pdfjs-ready"));
 </script>
 <script>
-/* Sidebar chrome — burger + nav group headers (same pattern as documents.html). */
-(function(){
-  var side=document.getElementById('side'),b=document.getElementById('burger');
-  if(b&&side){
-    b.addEventListener('click',function(){
-      side.classList.toggle('mini');
-      b.textContent=side.classList.contains('mini')?'››':'‹‹';
-    });
-  }
-  document.querySelectorAll('.navhead').forEach(function(h){
-    h.addEventListener('click',function(){
-      if(side&&side.classList.contains('mini'))return;
-      h.parentElement.classList.toggle('closed');
-    });
-  });
-})();
-</script>
-<script>
 (function () {
   "use strict";
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
-  var templates = [], editing = null;
+  var templates = [], editing = null, libraryStatus = "loading";
 
   /* The uploaded-PDF editor's own state. `boxes` is the working copy; nothing
      is written until Save boxes is pressed, so dragging things around cannot
@@ -376,28 +171,38 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   /* ── the wording library ───────────────────────────────────────────────── */
 
   function renderTplList() {
+    if (libraryStatus !== "loaded") return;
+    $("libraryScroll").setAttribute("aria-busy", "false");
+    $("libraryCount").textContent = templates.length + (templates.length === 1 ? " template" : " templates");
     $("tplList").innerHTML = templates.map(function (t) {
-      return '<tr class="rowlink' + (editing && editing.id === t.id ? " sel" : "") +
-        '" data-tid="' + esc(t.id) + '"><td class="mono">' +
-        esc(t.template_key) + "</td><td>" + esc(t.name) +
-        (t.source_kind === "pdf"
-          ? ' <span class="badge b-info" style="margin-left:6px">pdf · ' + (t.page_count || "?") + "p</span>"
-          : "") + "</td><td>" +
-        (t.active ? '<span class="badge b-ok">in use</span>' : '<span class="badge b-gray">archived</span>') +
-        "</td></tr>";
-    }).join("") || '<tr><td colspan="3" class="note">No wordings yet. Press “New wording”.</td></tr>';
+      var selected = !!(editing && editing.id === t.id);
+      return '<tr class="rowlink' + (selected ? " sel" : "") + '" data-tid="' + esc(t.id) + '"><td>' +
+        '<button class="template-select" type="button" aria-pressed="' + selected + '" title="' + esc(t.name) + '"><span class="template-name">' + esc(t.name) + '</span><span class="template-code">' + esc(t.template_key) +
+        (t.source_kind === "pdf" ? ' · PDF · ' + (t.page_count == null ? "?" : t.page_count) + 'p' : ' · Wording') + '</span></button></td><td>' +
+        (t.active ? '<span class="badge b-ok">in use</span>' : '<span class="badge b-gray">archived</span>') + '</td></tr>';
+    }).join("") || '<tr><td colspan="2"><div class="list-state empty-state"><h4>No templates yet</h4><p>Upload a PDF or choose New wording to add your first template.</p></div></td></tr>';
     Array.prototype.forEach.call($("tplList").querySelectorAll("tr[data-tid]"), function (tr) {
       tr.onclick = function () { editTemplate(tr.getAttribute("data-tid")); };
     });
   }
 
+  function editorHeading(mode, template, focus) {
+    $("editorEmpty").hidden = mode !== "idle";
+    $("editorTitle").textContent = mode === "idle" ? "Template workspace" : (template ? template.name : "New wording");
+    $("editorKicker").textContent = mode === "pdf" ? "PDF & signature fields" : "Wording & signature fields";
+    $("editorState").textContent = mode === "idle" ? "No selection" : (template ? (template.active ? "In use" : "Archived") : "Unsaved");
+    $("tplMsg").textContent = "";
+    if (focus) $(mode === "new" ? "tKey" : "editorTitle").focus({ preventScroll: true });
+    if (focus && window.matchMedia("(max-width: 1000px)").matches) $("editorTitle").scrollIntoView({ block: "start", behavior: "instant" });
+  }
+
   function renderFieldRows(fields) {
     $("tFields").innerHTML = (fields || []).map(function (f, i) {
       return '<div class="mfrow" data-i="' + i + '">' +
-        '<input type="text" data-k="key" value="' + esc(f.key) + '" placeholder="short_name">' +
-        '<input type="text" data-k="label" value="' + esc(f.label) + '" placeholder="What to call it">' +
+        '<input aria-label="Blank short name" type="text" data-k="key" value="' + esc(f.key) + '" placeholder="short_name">' +
+        '<input aria-label="Blank label" type="text" data-k="label" value="' + esc(f.label) + '" placeholder="What to call it">' +
         '<label class="req"><input type="checkbox" data-k="required"' + (f.required ? " checked" : "") + "> needed</label>" +
-        '<button class="btn sm" type="button" data-del="' + i + '">×</button></div>';
+        '<button class="btn sm" aria-label="Remove blank" type="button" data-del="' + i + '">×</button></div>';
     }).join("");
     Array.prototype.forEach.call($("tFields").querySelectorAll("[data-del]"), function (b) {
       b.onclick = function () {
@@ -429,6 +234,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     var isPdf = editing.source_kind === "pdf";
     $("tplEditor").style.display = isPdf ? "none" : "";
     $("pdfEditor").style.display = isPdf ? "" : "none";
+    editorHeading(isPdf ? "pdf" : "text", editing, true);
     if (isPdf) { openPdfEditor(editing); renderTplList(); return; }
     $("tKey").value = editing.template_key;
     $("tKey").disabled = true;
@@ -460,6 +266,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     $("tplMsg").textContent = "";
     renderTplList();
     showTags();
+    editorHeading("new", null, true);
   }
 
   var TOKEN_RE = /\{\{\s*(\w+(?:\.\w+)*)\s*\}\}/g;
@@ -483,6 +290,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       if (!res.ok) { say($("tplMsg"), "b-alert", res.error || "could not save"); return; }
       say($("tplMsg"), "b-ok", (res.data && res.data.message) || "Saved.");
       editing = res.data.template;
+      if (editing) { $("tKey").disabled = true; $("tKeyHint").textContent = "The short name cannot be changed — contracts already sent record it."; $("btnArchive").style.display = ""; }
       loadTemplates();
     });
   }
@@ -558,12 +366,22 @@ window.dispatchEvent(new Event("pdfjs-ready"));
 
   function drawPage(doc, n) {
     return doc.getPage(n).then(function (page) {
-      var vp = page.getViewport({ scale: 1.15 });
+      var base = page.getViewport({ scale: 1 });
+      var vp = page.getViewport({ scale: Math.min(1.15, Math.max(120, $("pdfPages").clientWidth - 36) / base.width) });
       var wrap = document.createElement("div");
       wrap.className = "pg";
       wrap.style.width = vp.width + "px";
-      wrap.style.height = vp.height + "px";
       wrap.setAttribute("data-page", n - 1);
+      wrap.tabIndex = 0;
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("aria-label", "Page " + n + ". Press Enter to add a box in the center.");
+      wrap.addEventListener("keydown", function (event) {
+        if (event.target !== wrap || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        var type = currentType();
+        addBox({ page: n - 1, x: 0.35, y: 0.45, w: type === "checkbox" ? 0.06 : 0.3, h: type === "checkbox" ? 0.04 : 0.04, type: type, signer: Number($("newSigner").value || 0), source: type === "signature" || type === "initials" ? "manual" : $("newSource").value });
+        var selected = wrap.querySelector(".box.sel"); if (selected) selected.focus();
+      });
       var pn = document.createElement("span");
       pn.className = "pn"; pn.textContent = "page " + n;
       wrap.appendChild(pn);
@@ -582,7 +400,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
      — otherwise a slightly-shaky click leaves an invisible one-pixel field on
      the contract. */
   function wireDrawing(wrap, pageIndex) {
-    wrap.addEventListener("mousedown", function (ev) {
+    wrap.addEventListener("pointerdown", function (ev) {
       if (ev.target !== wrap && ev.target.tagName !== "CANVAS") return;
       ev.preventDefault();
       var r = wrap.getBoundingClientRect();
@@ -600,8 +418,8 @@ window.dispatchEvent(new Event("pdfjs-ready"));
         ghost.style.height = (Math.abs(y1 - y0) * 100) + "%";
       }
       function up(e2) {
-        document.removeEventListener("mousemove", move);
-        document.removeEventListener("mouseup", up);
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
         ghost.remove();
         var x1 = (e2.clientX - r.left) / r.width, y1 = (e2.clientY - r.top) / r.height;
         var w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
@@ -615,8 +433,8 @@ window.dispatchEvent(new Event("pdfjs-ready"));
           source: type === "signature" || type === "initials" ? "manual" : $("newSource").value
         });
       }
-      document.addEventListener("mousemove", move);
-      document.addEventListener("mouseup", up);
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
     });
   }
 
@@ -659,6 +477,21 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       el.style.left = (b.x * 100) + "%"; el.style.top = (b.y * 100) + "%";
       el.style.width = (b.w * 100) + "%"; el.style.height = (b.h * 100) + "%";
       el.setAttribute("data-id", b.id);
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", b.label + ". Use arrow keys to move, Shift and arrow keys to resize, Delete to remove.");
+      el.addEventListener("keydown", function (event) {
+        var keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pdfState.selected = b.id; renderBoxes(); renderTools(); $("bpLabel").focus(); return; }
+        if (keys.indexOf(event.key) === -1 && event.key !== "Delete" && event.key !== "Backspace") return;
+        event.preventDefault(); pdfState.selected = b.id;
+        if (event.key === "Delete" || event.key === "Backspace") { pdfState.boxes = pdfState.boxes.filter(function (x) { return x.id !== b.id; }); pdfState.selected = null; renderBoxes(); renderTools(); wrap.focus(); return; }
+        var dx = event.key === "ArrowLeft" ? -0.005 : event.key === "ArrowRight" ? 0.005 : 0;
+        var dy = event.key === "ArrowUp" ? -0.005 : event.key === "ArrowDown" ? 0.005 : 0;
+        if (event.shiftKey) { b.w = Math.max(0.012, Math.min(1 - b.x, b.w + dx)); b.h = Math.max(0.008, Math.min(1 - b.h, b.h + dy)); }
+        else { b.x = Math.max(0, Math.min(1 - b.w, b.x + dx)); b.y = Math.max(0, Math.min(1 - b.h, b.y + dy)); }
+        renderBoxes(); renderTools(); wrap.querySelector('[data-id="' + b.id + '"]').focus();
+      });
       var lbl = document.createElement("span");
       lbl.className = "bl";
       lbl.textContent = b.label + (b.source !== "manual" ? " ⟨auto⟩" : "");
@@ -672,9 +505,10 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   }
 
   function wireBox(el, b, wrap, handle) {
-    el.addEventListener("mousedown", function (ev) {
+    el.addEventListener("pointerdown", function (ev) {
       ev.stopPropagation(); ev.preventDefault();
       pdfState.selected = b.id; renderBoxes(); renderTools();
+      el = wrap.querySelector('[data-id="' + b.id + '"]');
       var resizing = ev.target === handle;
       var r = wrap.getBoundingClientRect();
       var sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y, ow = b.w, oh = b.h;
@@ -691,25 +525,25 @@ window.dispatchEvent(new Event("pdfjs-ready"));
         el.style.width = (b.w * 100) + "%"; el.style.height = (b.h * 100) + "%";
       }
       function up() {
-        document.removeEventListener("mousemove", move);
-        document.removeEventListener("mouseup", up);
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
       }
-      document.addEventListener("mousemove", move);
-      document.addEventListener("mouseup", up);
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
     });
   }
 
   function renderTools() {
     $("typeChips").innerHTML = FIELD_TYPES.map(function (t, i) {
-      return '<button class="chip2' + (i === 0 ? " on" : "") + '" data-type="' + t.t + '">' +
+      return '<button type="button" class="chip2' + (i === 0 ? " on" : "") + '" aria-pressed="' + (i === 0) + '" data-type="' + t.t + '">' +
         esc(t.label) + "</button>";
     }).join("");
     Array.prototype.forEach.call($("typeChips").querySelectorAll(".chip2"), function (c) {
       c.onclick = function () {
         Array.prototype.forEach.call($("typeChips").querySelectorAll(".chip2"), function (x) {
-          x.className = "chip2";
+          x.className = "chip2"; x.setAttribute("aria-pressed", "false");
         });
-        c.className = "chip2 on";
+        c.className = "chip2 on"; c.setAttribute("aria-pressed", "true");
       };
     });
     $("newSigner").innerHTML = pdfState.roles.map(function (r, i) {
@@ -722,16 +556,16 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     var b = pdfState.boxes.filter(function (x) { return x.id === pdfState.selected; })[0];
     if (!b) { $("boxProps").innerHTML = "Nothing selected."; return; }
     $("boxProps").innerHTML =
-      '<div class="row"><label>Name on screen</label><input type="text" id="bpLabel" value="' + esc(b.label) + '"></div>' +
-      '<div class="row"><label>Kind</label><select id="bpType">' +
+      '<div class="row"><label for="bpLabel">Name on screen</label><input type="text" id="bpLabel" value="' + esc(b.label) + '"></div>' +
+      '<div class="row"><label for="bpType">Kind</label><select id="bpType">' +
         FIELD_TYPES.map(function (t) {
           return '<option value="' + t.t + '"' + (t.t === b.type ? " selected" : "") + ">" + esc(t.label) + "</option>";
         }).join("") + "</select></div>" +
-      '<div class="row"><label>Belongs to</label><select id="bpSigner">' +
+      '<div class="row"><label for="bpSigner">Belongs to</label><select id="bpSigner">' +
         pdfState.roles.map(function (r, i) {
           return '<option value="' + i + '"' + (i === Number(b.signer) ? " selected" : "") + ">" + esc(r.label) + "</option>";
         }).join("") + "</select></div>" +
-      '<div class="row"><label>Filled from</label><select id="bpSource">' +
+      '<div class="row"><label for="bpSource">Filled from</label><select id="bpSource">' +
         SOURCES.map(function (s2) {
           return '<option value="' + s2.v + '"' + (s2.v === b.source ? " selected" : "") + ">" + esc(s2.label) + "</option>";
         }).join("") + "</select></div>" +
@@ -807,14 +641,33 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   /* ── loading ───────────────────────────────────────────────────────────── */
 
   function loadTemplates() {
-    return FHData.wire(FHData.read("contracts", { view: "templates" }), "contract wordings", function (data) {
-      templates = (data && data.items) || [];
+    libraryStatus = "loading";
+    $("libraryScroll").setAttribute("aria-busy", "true");
+    return FHData.read("contracts", { view: "templates" }).then(function (res) {
+      $("libraryScroll").setAttribute("aria-busy", "false");
+      if (!res || !res.ok) {
+        libraryStatus = "error";
+        $("libraryCount").textContent = "Library unavailable";
+        $("tplList").innerHTML = '<tr><td colspan="2"><div class="list-state error-state" role="alert"><h4>Templates could not be loaded</h4><p>Try again to refresh the library. Any wording you are editing stays here.</p><button class="btn sm" id="btnRetryTemplates" type="button">Try again</button></div></td></tr>';
+        $("btnRetryTemplates").onclick = loadTemplates;
+        return;
+      }
+      libraryStatus = "loaded";
+      templates = (res.data && res.data.items) || [];
       renderTplList();
-      $("liveTxt").textContent = "— live";
+      $("liveTxt").textContent = "Templates loaded";
       if (editing) {
         for (var i = 0; i < templates.length; i++) if (templates[i].id === editing.id) editing = templates[i];
+        $("editorState").textContent = editing.active ? "In use" : "Archived";
+        $("editorTitle").textContent = editing.name;
+        $("btnArchive").textContent = editing.active ? "Archive" : "Turn back on";
       }
       return "live wordings · " + templates.length;
+    }).catch(function () {
+      libraryStatus = "error";
+      $("libraryScroll").setAttribute("aria-busy", "false");
+      $("libraryCount").textContent = "Library unavailable";
+      $("tplList").innerHTML = '<tr><td colspan="2"><div class="list-state error-state" role="alert"><h4>Templates could not be loaded</h4><p>Reload the page to try again.</p></div></td></tr>';
     });
   }
 
@@ -833,7 +686,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   $("btnNewTpl").onclick = newTemplate;
   $("btnSaveTpl").onclick = saveTemplate;
   $("btnArchive").onclick = archiveTemplate;
-  $("btnCancelTpl").onclick = function () { $("tplEditor").style.display = "none"; editing = null; renderTplList(); };
+  $("btnCancelTpl").onclick = function () { $("tplEditor").style.display = "none"; editing = null; renderTplList(); editorHeading("idle", null, false); $("btnNewTpl").focus({ preventScroll: true }); };
   $("btnAddField").onclick = function () {
     var f = readFieldRows();
     f.push({ key: "", label: "", required: false });

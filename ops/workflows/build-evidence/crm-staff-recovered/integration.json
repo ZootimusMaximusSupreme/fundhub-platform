@@ -1,6 +1,6 @@
 {
   "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
-  "checkedHead": "1a09f741e95e245bcebd9b5ef41e6440723af5f6",
+  "checkedHead": "cbe2a8cbad02b64817b27054cd6d08fd604d74e9",
   "complete": true,
   "inventory": [
     {
@@ -24,6 +24,29 @@
         "public/app/lenders.css",
         "public/app/lenders.html",
         "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs"
+      ]
+    },
+    {
+      "page": "my-numbers",
+      "branch": "origin/codex/recover-my-numbers",
+      "source": "edea97eb6c773a4eeb8f87c91348251c90ff1925",
+      "files": [
+        "e2e/my-numbers-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
+        "public/app/my-numbers.css",
+        "public/app/my-numbers.html",
+        "public/app/my-numbers.js"
+      ]
+    },
+    {
+      "page": "contracts",
+      "branch": "origin/codex/recover-contracts",
+      "source": "b2636b966ec86fb6250843a2d93a9f4c88521ebf",
+      "files": [
+        "e2e/contracts-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
+        "public/app/contracts-layout.css",
+        "public/app/contracts.html"
       ]
     }
   ],
@@ -55,32 +78,86 @@
     {
       "page": "lenders",
       "path": "e2e/lenders-layout.spec.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 14542
     },
     {
       "page": "lenders",
       "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 5208
     },
     {
       "page": "lenders",
       "path": "public/app/lenders.css",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 13896
     },
     {
       "page": "lenders",
       "path": "public/app/lenders.html",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 43889
     },
     {
       "page": "lenders",
       "path": "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs",
-      "state": "clean merge",
+      "state": "identical",
       "bytes": 43005
+    },
+    {
+      "page": "my-numbers",
+      "path": "e2e/my-numbers-layout.spec.mjs",
+      "state": "clean merge",
+      "bytes": 12035
+    },
+    {
+      "page": "my-numbers",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
+      "state": "clean merge",
+      "bytes": 3671
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.css",
+      "state": "clean merge",
+      "bytes": 12007
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.html",
+      "state": "clean merge",
+      "bytes": 19184
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.js",
+      "state": "clean merge",
+      "bytes": 14648
+    },
+    {
+      "page": "contracts",
+      "path": "e2e/contracts-layout.spec.mjs",
+      "state": "clean merge",
+      "bytes": 13854
+    },
+    {
+      "page": "contracts",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
+      "state": "clean merge",
+      "bytes": 4591
+    },
+    {
+      "page": "contracts",
+      "path": "public/app/contracts-layout.css",
+      "state": "clean merge",
+      "bytes": 16785
+    },
+    {
+      "page": "contracts",
+      "path": "public/app/contracts.html",
+      "state": "clean merge",
+      "bytes": 50385
     }
   ],
   "noProductionDeploy": true,
