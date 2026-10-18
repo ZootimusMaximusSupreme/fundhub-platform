@@ -151,6 +151,7 @@ test("rendered Connections actions send exact choices and show exact saved resul
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
   const whop = page.locator('[data-provider="whop"]');
+  await whop.locator("details.connection-setup > summary").click();
   await whop.locator('[data-ent="whop"]').selectOption(CONNECTION_FIXTURE.containers[1].id);
   await whop.locator('[data-mode="whop"]').selectOption("push");
   await whop.getByRole("button", { name: "Connect Whop" }).click();
@@ -163,6 +164,8 @@ test("rendered Connections actions send exact choices and show exact saved resul
   exercised.add("3bf7b97f2f42c2bfd144");
 
   const openApi = page.locator('[data-provider="api"]');
+  const apiSetup = openApi.locator("details.connection-setup");
+  if (!(await apiSetup.evaluate((node) => node.open))) await apiSetup.locator(":scope > summary").click();
   await openApi.getByRole("button", { name: "Connect Open API" }).click();
   await page.getByText("Your key — shown this one time", { exact: true }).waitFor();
   assert.equal(await page.getByText("fake-once-only-key", { exact: true }).count(), 1);
@@ -228,6 +231,8 @@ test("rendered Connections saves a webhook secret and retries a failed read", as
   const posts = [];
   const { context, page, url } = await newPage(browser, origin);
   await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== "/api/money/connections") return json(route, { ok: true });
     if (route.request().method() === "GET") {
       reads++;
       if (reads === 1) return json(route, { ok: false, error: "offline" }, 503);
@@ -318,6 +323,8 @@ test("rendered Plan retries partial and full read failures, and its drawer contr
   let data = structuredClone(PLAN_FIXTURE);
   const { context, page, url } = await newPage(browser, origin);
   await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== "/api/money/plan") return json(route, { ok: true });
     if (route.request().method() !== "GET") return json(route, { ok: true });
     reads++;
     if (reads === 1) return json(route, { ok: false, error: "offline" }, 503);
@@ -336,6 +343,7 @@ test("rendered Plan retries partial and full read failures, and its drawer contr
   await page.getByText("Part of your plan did not load:", { exact: false }).waitFor();
   await page.getByRole("button", { name: "Try again" }).click();
   await page.getByText("Part of your plan did not load:", { exact: false }).waitFor({ state: "detached" });
+  await page.locator("details.plan-calendar > summary").click();
 
   const pin = page.locator('[data-pin="due:6af70e59-db5c-4220-95b7-69f6a4a87ff8:2026-10-01"]').first();
   await pin.click();
@@ -350,6 +358,7 @@ test("rendered Plan retries partial and full read failures, and its drawer contr
   }));
   data = crowded;
   await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("details.plan-calendar > summary").click();
   const more = page.locator('.more[data-day="2026-10-01"]');
   await more.click();
   assert.equal(await page.locator('[data-day-row="2026-10-01"] .day-h').evaluate((node) => node === document.activeElement), true);

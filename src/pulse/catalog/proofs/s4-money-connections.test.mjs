@@ -43,20 +43,28 @@ async function openConnections(open, { session = STAFF } = {}) {
   return { ...opened, ...resource.log };
 }
 
+async function openProviderSetup(page, provider) {
+  const setup = page.locator(`[data-provider="${provider}"] details.connection-setup`);
+  if (!(await setup.evaluate((node) => node.open))) await setup.locator("summary").click();
+}
+
 const connection = (page, id) => page.locator(`.conn[data-conn="${id}"]`);
 
 test("Connect posts the provider, the business and how sales come in", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Connect Commas \/ Connect Whop \/ Connect open API/, async () => {
     const { page, posts } = await openConnections(open);
+    await openProviderSetup(page, "commas");
     await page.locator('[data-mode="commas"]').selectOption("push");
     await page.locator('[data-act="create"][data-provider="commas"]').click();
     await waitFor(() => posts.length === 1);
     assert.deepEqual(posts[0], { action: "create", provider: "commas", entity_id: BIZ, mode: "push", client_id: CLIENT_ID });
+    await openProviderSetup(page, "whop");
     await page.locator('[data-ent="whop"]').selectOption(BIZ);
     await page.locator('[data-act="create"][data-provider="whop"]').click();
     await waitFor(() => posts.length === 2);
     assert.deepEqual(posts[1], { action: "create", provider: "whop", entity_id: BIZ, mode: "pull", client_id: CLIENT_ID });
+    await openProviderSetup(page, "api");
     await page.locator('[data-act="create"][data-provider="api"]').click();
     await waitFor(() => posts.length === 3);
     assert.deepEqual(posts[2], { action: "create", provider: "api", entity_id: BIZ, client_id: CLIENT_ID });
