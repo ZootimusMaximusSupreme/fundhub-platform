@@ -52,6 +52,18 @@ jobs:
           try { result=JSON.parse(text); } catch { throw new Error('Netlify did not return deployment JSON; inspect the build step.'); }
           const url=result.deploy_url || result.deploy_ssl_url;
           if(!url || !/^https:\/\//.test(url)) throw new Error('No verified branch deployment URL returned');
-          console.log('WORKING_PORTAL_URL='+url+'/login.html?next=%2Fapp%2Fclient-portal.html');
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+url+'/portal-login.html\n\nSource: '+process.env.GITHUB_SHA+'\n');
+          let direct=url;
+          const deployId=result.deploy_id || result.id;
+          const match=new URL(url).hostname.match(/(?:^|--)(transcendent-wisp-888771)\\.netlify\\.app$/);
+          if(deployId && /^[a-f0-9]+$/.test(String(deployId)) && match) {
+            direct='https://'+deployId+'--'+match[1]+'.netlify.app';
+          }
+          const login=direct+'/login.html?next=%2Fapp%2Fclient-portal.html';
+          const response=await fetch(login,{signal:AbortSignal.timeout(20000)});
+          if(response.status!==200 || !/type=["']password["']/.test(await response.text())) throw new Error('Hosted sign-in failed the availability check');
+          const stylesheet=await fetch(direct+'/app/client-ios.css',{signal:AbortSignal.timeout(20000)});
+          if(stylesheet.status!==200 || !(await stylesheet.text()).includes('client-ios-header')) throw new Error('Hosted workspace stylesheet is missing');
+          console.log('WORKING_PORTAL_URL='+login);
+          console.log('WORKING_PORTAL_HOME='+direct+'/app/client-portal.html');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Working portal: '+login+'\\n\\nHome: '+direct+'/app/client-portal.html\\n\\nSource: '+process.env.GITHUB_SHA+'\\n');
           JS
