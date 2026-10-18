@@ -37,6 +37,7 @@ import { db } from "../../src/db.mjs";
 import { attachStaff, bearerToken } from "../../src/http/middleware/requireAuth.mjs";
 import { verifyAccountSession } from "../../src/auth/account-session.mjs";
 import { clientHadCall } from "../../src/auth/client-had-call.mjs";
+import { clientSampleAccount, realPortalData } from "../../src/demo/client-portal-samples.mjs";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -93,6 +94,10 @@ export default async function handler(req, res) {
   // call; had_call tells it to stop after a closer has logged one. Not a new
   // route — same GET /api/auth/session payload.
   if (p.kind === "client") {
+    if (await clientSampleAccount(db, p)) {
+      payload.portal_sample_available = true;
+      payload.portal_sample = !realPortalData(req);
+    }
     const call = await clientHadCall(db, { orgId: p.orgId, clientId: p.clientId });
     payload.had_call = call.had_call;
     payload.had_call_at = call.had_call_at;

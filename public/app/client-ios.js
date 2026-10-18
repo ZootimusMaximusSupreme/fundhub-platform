@@ -30,6 +30,23 @@
     if (!session || session.ok !== true || session.principal !== "client") return;
     client = true;
     activate();
+    if (session.portal_sample_available === true && !/\/affiliate\.html$/.test(location.pathname)) {
+      var sampleBar = document.createElement('aside');
+      sampleBar.className = 'client-ios-sample';
+      sampleBar.setAttribute('aria-label', 'Account data view');
+      var sampleText = document.createElement('span');
+      sampleText.textContent = session.portal_sample ? 'Sample view · Fictional data. Referral activity stays real.' : 'Your real account · Original records and actions';
+      var sampleSwitch = document.createElement('button');
+      sampleSwitch.type = 'button';
+      sampleSwitch.textContent = session.portal_sample ? 'View real account' : 'View samples';
+      sampleSwitch.addEventListener('click', function () {
+        document.cookie = 'fh_portal_data=' + (session.portal_sample ? 'real' : 'sample') + '; Path=/; SameSite=Lax';
+        location.reload();
+      });
+      sampleBar.appendChild(sampleText); sampleBar.appendChild(sampleSwitch);
+      var sampleHost = body.querySelector('main,.main,.money-main,.wrap') || body;
+      sampleHost.insertBefore(sampleBar,sampleHost.firstChild);
+    }
     body.setAttribute("data-client-nav", "");
     var nav = document.createElement("nav");
     nav.className = "client-ios-nav";

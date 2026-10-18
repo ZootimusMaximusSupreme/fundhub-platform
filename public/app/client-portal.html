@@ -493,10 +493,34 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 </script>
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/app/client-portal-ios.css">
+<!-- Fetch the independent client foundation early; execute only after body and header exist. -->
+<link rel="preload" href="/app/client-ios.js" as="script">
 <script defer src="shell.js"></script>
-<script defer src="/app/client-ios.js"></script>
 </head>
 <body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent" data-client-page="client-portal">
+<script>
+/* Client-only presentation: keep the original progress link and every stage.
+   Staff keeps the original open list, copy, link position and identity. */
+(function () {
+  var started = false;
+  function enhance() {
+    if (!document.body.hasAttribute("data-client-ios")) return;
+    var details = document.querySelector(".cp-progress-disclosure");
+    if (!started && details) { details.open = false; started = true; }
+    var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
+    var link = document.getElementById("prog-link");
+    if (hero && link && link.parentNode !== hero) hero.appendChild(link);
+    var current = document.querySelector("#stepper-pre .step.current .lbl");
+    var caption = document.querySelector(".cp-current-stage");
+    var text = current ? "Current: " + current.textContent : "";
+    if (caption && caption.textContent !== text) caption.textContent = text;
+    var a = link && link.querySelector("a");
+    if (a && a.textContent !== "View progress →") a.textContent = "View progress →";
+  }
+  new MutationObserver(enhance).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ["class", "data-client-ios"] });
+  enhance();
+})();
+</script>
 <div class="shell">
 
   <header class="topbar">
@@ -510,6 +534,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <span id="who-name">—</span>
     </div>
   </header>
+  <script async src="/app/client-ios.js"></script>
 
   <main id="portal-home">
     <div class="page fh-maxw">
@@ -4376,28 +4401,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 })();
 </script>
-<script>
-/* Client-only presentation: keep the original progress link and every stage.
-   Staff keeps the original open list, copy, link position and identity. */
-(function () {
-  var started = false;
-  function enhance() {
-    if (!document.body.hasAttribute("data-client-ios")) return;
-    var details = document.querySelector(".cp-progress-disclosure");
-    if (!started && details) { details.open = false; started = true; }
-    var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
-    var link = document.getElementById("prog-link");
-    if (hero && link && link.parentNode !== hero) hero.appendChild(link);
-    var current = document.querySelector("#stepper-pre .step.current .lbl");
-    var caption = document.querySelector(".cp-current-stage");
-    var text = current ? "Current: " + current.textContent : "";
-    if (caption && caption.textContent !== text) caption.textContent = text;
-    var a = link && link.querySelector("a");
-    if (a && a.textContent !== "View progress →") a.textContent = "View progress →";
-  }
-  new MutationObserver(enhance).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ["class", "data-client-ios"] });
-  enhance();
-})();
-</script>
+
 </body>
 </html>

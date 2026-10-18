@@ -18,6 +18,7 @@ async function open(page,{state='empty',enrolled=false,postStatus=201}={}){
  });
  await page.goto(`/app/client-portal.html?id=${CLIENT_ID}`);
  await expect(page.locator('body')).toHaveAttribute('data-client-ios',/.*/);
+ await expect(page.locator('.client-ios-signout')).toBeVisible();
 }
 for(const width of [1440,390,320])test(`client home at ${width}px preserves controls and width`,async({page})=>{
  await page.setViewportSize({width,height:1000});await open(page,{state:'full',enrolled:true});

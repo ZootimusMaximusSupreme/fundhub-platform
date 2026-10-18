@@ -55,7 +55,8 @@ jobs:
         run: |
           node --test --test-concurrency=1 \
             src/http/affiliate-referral.pg.test.mjs \
-            src/affiliates/two-tier-chain.pg.test.mjs
+            src/affiliates/two-tier-chain.pg.test.mjs \
+            src/demo/client-portal-samples.pg.test.mjs
       - name: Verify the unprivileged application role
         run: |
           psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 \
