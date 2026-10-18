@@ -1,0 +1,156 @@
+{
+  "base": "fa8ea1162fc6c3073cdb27096068f198589a7e02",
+  "production": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "source": "803d2b7e47f137d7773d4006445b971179cef835",
+  "files": [
+    {
+      "path": "public/app/fundhub-brand.css",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/crm-sidebar.css",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/shell.js",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/sidebar.fragment.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/workspace-ui.css",
+      "state": "conflict",
+      "detail": ""
+    },
+    {
+      "path": "public/app/calendar.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/calendar-workspace.css",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/client-control-panel.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/ccp-workspace.css",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/ccp-workspace.js",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/closer-dashboard.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/closer-dashboard.css",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/closer-dashboard-layout.js",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/documents.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/documents-workspace.css",
+      "state": "identical"
+    },
+    {
+      "path": "public/app/messaging.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/pipeline.html",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "public/app/pipeline-workspace.css",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/calendar-workspace.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/ccp-workspace-layout.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/closer-dashboard-layout.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/documents-workspace.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/messaging-layout-professional.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/pipeline-workspace.spec.mjs",
+      "state": "identical"
+    },
+    {
+      "path": "e2e/calendar.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/bank-amount-suggestion.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/ccp-headline.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/closer-call-rhythm.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/controls-persist.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/fin-b01-ccp-pulls-declines.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/funded-amount.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/pipeline-waiting-on.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/proxy-apply.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/s2-ccp-portal-access.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "e2e/sidebar-roles.spec.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "src/http/client-panel-screen.test.mjs",
+      "state": "previously integrated; current fixes preserved"
+    },
+    {
+      "path": "src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs",
+      "state": "previously integrated; current fixes preserved"
+    }
+  ]
+}
