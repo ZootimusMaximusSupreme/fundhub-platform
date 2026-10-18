@@ -1,0 +1,593 @@
+{
+  "base": "fa8ea1162fc6c3073cdb27096068f198589a7e02",
+  "production": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "incoming": "803d2b7e47f137d7773d4006445b971179cef835",
+  "files": [
+    {
+      "path": "public/app/affiliate-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 11890
+    },
+    {
+      "path": "public/app/affiliate.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 69609,
+      "incoming_bytes": 80324,
+      "merged_bytes": 80324
+    },
+    {
+      "path": "public/app/agent-editor.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 60962,
+      "incoming_bytes": 68169,
+      "merged_bytes": 68169
+    },
+    {
+      "path": "public/app/automations.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 38862,
+      "incoming_bytes": 46069,
+      "merged_bytes": 46069
+    },
+    {
+      "path": "public/app/brand-studio.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 80995,
+      "incoming_bytes": 88202,
+      "merged_bytes": 88202
+    },
+    {
+      "path": "public/app/calendar-workspace.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 22484
+    },
+    {
+      "path": "public/app/calendar.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 79252,
+      "incoming_bytes": 65883,
+      "merged_bytes": 65883
+    },
+    {
+      "path": "public/app/campaign-manager.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 173751,
+      "incoming_bytes": 180710,
+      "merged_bytes": 180958
+    },
+    {
+      "path": "public/app/ccp-workspace.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 15745
+    },
+    {
+      "path": "public/app/ccp-workspace.js",
+      "state": "new reviewed asset",
+      "incoming_bytes": 5940
+    },
+    {
+      "path": "public/app/client-control-panel.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 267488,
+      "incoming_bytes": 272388,
+      "merged_bytes": 272388
+    },
+    {
+      "path": "public/app/client-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 11322
+    },
+    {
+      "path": "public/app/client-ios.js",
+      "state": "new reviewed asset",
+      "incoming_bytes": 13740
+    },
+    {
+      "path": "public/app/client-portal-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 10145
+    },
+    {
+      "path": "public/app/client-portal.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 231338,
+      "incoming_bytes": 237953,
+      "merged_bytes": 237953
+    },
+    {
+      "path": "public/app/closer-dashboard-layout.js",
+      "state": "new reviewed asset",
+      "incoming_bytes": 1950
+    },
+    {
+      "path": "public/app/closer-dashboard.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 20561
+    },
+    {
+      "path": "public/app/closer-dashboard.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 84809,
+      "incoming_bytes": 64154,
+      "merged_bytes": 64154
+    },
+    {
+      "path": "public/app/company-brain.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 48064,
+      "incoming_bytes": 55271,
+      "merged_bytes": 55271
+    },
+    {
+      "path": "public/app/content-admin.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 46180,
+      "incoming_bytes": 53387,
+      "merged_bytes": 53387
+    },
+    {
+      "path": "public/app/contracts.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 46418,
+      "incoming_bytes": 53625,
+      "merged_bytes": 53625
+    },
+    {
+      "path": "public/app/creative-factory.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 170334,
+      "incoming_bytes": 177541,
+      "merged_bytes": 177541
+    },
+    {
+      "path": "public/app/crm-sidebar.css",
+      "state": "clean three-way merge",
+      "removed_production_ids": [
+        "fh-crm-sidebar-css"
+      ],
+      "production_bytes": 24562,
+      "incoming_bytes": 7459,
+      "merged_bytes": 7459
+    },
+    {
+      "path": "public/app/csm-queue.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 37119,
+      "incoming_bytes": 44326,
+      "merged_bytes": 44326
+    },
+    {
+      "path": "public/app/documents-workspace.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 13970
+    },
+    {
+      "path": "public/app/documents.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 43797,
+      "incoming_bytes": 49418,
+      "merged_bytes": 49418
+    },
+    {
+      "path": "public/app/financeos-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 8078
+    },
+    {
+      "path": "public/app/financeos.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 42560,
+      "incoming_bytes": 42384,
+      "merged_bytes": 42384
+    },
+    {
+      "path": "public/app/financeos.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 11611,
+      "incoming_bytes": 13906,
+      "merged_bytes": 13906
+    },
+    {
+      "path": "public/app/fundhub-brand.css",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 22587,
+      "incoming_bytes": 21438,
+      "merged_bytes": 21438
+    },
+    {
+      "path": "public/app/galaxy.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 76084,
+      "incoming_bytes": 83291,
+      "merged_bytes": 83291
+    },
+    {
+      "path": "public/app/hiring.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 167492,
+      "incoming_bytes": 174699,
+      "merged_bytes": 174699
+    },
+    {
+      "path": "public/app/inquiry-remover.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 199238,
+      "incoming_bytes": 206445,
+      "merged_bytes": 206445
+    },
+    {
+      "path": "public/app/journeys.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 92160,
+      "incoming_bytes": 99367,
+      "merged_bytes": 99367
+    },
+    {
+      "path": "public/app/lenders.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 34218,
+      "incoming_bytes": 41425,
+      "merged_bytes": 41425
+    },
+    {
+      "path": "public/app/marketing-command-center.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 22272,
+      "incoming_bytes": 29479,
+      "merged_bytes": 29479
+    },
+    {
+      "path": "public/app/messaging.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 86560,
+      "incoming_bytes": 95200,
+      "merged_bytes": 95200
+    },
+    {
+      "path": "public/app/money-accounts-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 7763
+    },
+    {
+      "path": "public/app/money-alerts-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 7450
+    },
+    {
+      "path": "public/app/money-banks-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 4502
+    },
+    {
+      "path": "public/app/money-banks.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 34288,
+      "incoming_bytes": 34382,
+      "merged_bytes": 34382
+    },
+    {
+      "path": "public/app/money-connections-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 5948
+    },
+    {
+      "path": "public/app/money-connections.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 29917,
+      "incoming_bytes": 30152,
+      "merged_bytes": 30152
+    },
+    {
+      "path": "public/app/money-credit-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 5850
+    },
+    {
+      "path": "public/app/money-credit.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 24317,
+      "incoming_bytes": 24344,
+      "merged_bytes": 24344
+    },
+    {
+      "path": "public/app/money-declines-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 6022
+    },
+    {
+      "path": "public/app/money-fundability-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 4220
+    },
+    {
+      "path": "public/app/money-fundability.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 32782,
+      "incoming_bytes": 32753,
+      "merged_bytes": 32753
+    },
+    {
+      "path": "public/app/money-helper-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 4829
+    },
+    {
+      "path": "public/app/money-helper.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 23959,
+      "incoming_bytes": 23932,
+      "merged_bytes": 23932
+    },
+    {
+      "path": "public/app/money-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 22086
+    },
+    {
+      "path": "public/app/money-next-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 5045
+    },
+    {
+      "path": "public/app/money-payments-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 10063
+    },
+    {
+      "path": "public/app/money-payments.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 27387,
+      "incoming_bytes": 27485,
+      "merged_bytes": 27485
+    },
+    {
+      "path": "public/app/money-plan-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 7147
+    },
+    {
+      "path": "public/app/money-plan.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 33339,
+      "incoming_bytes": 33616,
+      "merged_bytes": 33616
+    },
+    {
+      "path": "public/app/money-setup-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 4754
+    },
+    {
+      "path": "public/app/money-strategy-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 7907
+    },
+    {
+      "path": "public/app/money-strategy.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 5162,
+      "incoming_bytes": 5375,
+      "merged_bytes": 5375
+    },
+    {
+      "path": "public/app/money-strategy.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 49283,
+      "incoming_bytes": 49400,
+      "merged_bytes": 49400
+    },
+    {
+      "path": "public/app/money-transfers-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 265
+    },
+    {
+      "path": "public/app/money-transfers.css",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 9960,
+      "incoming_bytes": 17044,
+      "merged_bytes": 17044
+    },
+    {
+      "path": "public/app/money-vault-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 9198
+    },
+    {
+      "path": "public/app/money-workspace.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 113602
+    },
+    {
+      "path": "public/app/money.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 10518,
+      "incoming_bytes": 10742,
+      "merged_bytes": 10742
+    },
+    {
+      "path": "public/app/money.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 36322,
+      "incoming_bytes": 39040,
+      "merged_bytes": 39040
+    },
+    {
+      "path": "public/app/ops-admin.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 66745,
+      "incoming_bytes": 73952,
+      "merged_bytes": 73952
+    },
+    {
+      "path": "public/app/partner-galaxy.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 86199,
+      "incoming_bytes": 93406,
+      "merged_bytes": 93406
+    },
+    {
+      "path": "public/app/partner-training.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 15487,
+      "incoming_bytes": 22694,
+      "merged_bytes": 22694
+    },
+    {
+      "path": "public/app/pipeline-workspace.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 15057
+    },
+    {
+      "path": "public/app/pipeline.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 168739,
+      "incoming_bytes": 181932,
+      "merged_bytes": 181932
+    },
+    {
+      "path": "public/app/products-commissions.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 67706,
+      "incoming_bytes": 74913,
+      "merged_bytes": 74913
+    },
+    {
+      "path": "public/app/shell.js",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 140256,
+      "incoming_bytes": 163207,
+      "merged_bytes": 163207
+    },
+    {
+      "path": "public/app/sidebar.fragment.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 6031,
+      "incoming_bytes": 13113,
+      "merged_bytes": 13113
+    },
+    {
+      "path": "public/app/social-studio.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 161191,
+      "incoming_bytes": 168398,
+      "merged_bytes": 168398
+    },
+    {
+      "path": "public/app/soft-pull-approve-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 3914
+    },
+    {
+      "path": "public/app/soft-pull-approve.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 17927,
+      "incoming_bytes": 18566,
+      "merged_bytes": 18566
+    },
+    {
+      "path": "public/app/staff-teams.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 65154,
+      "incoming_bytes": 72361,
+      "merged_bytes": 72361
+    },
+    {
+      "path": "public/app/workspace-ui.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 10348
+    },
+    {
+      "path": "public/contract-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 6245
+    },
+    {
+      "path": "public/login-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 6903
+    },
+    {
+      "path": "public/login.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 23210,
+      "incoming_bytes": 23004,
+      "merged_bytes": 23004
+    },
+    {
+      "path": "public/portal-login-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 4320
+    },
+    {
+      "path": "public/portal-login.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 11914,
+      "incoming_bytes": 11565,
+      "merged_bytes": 11565
+    },
+    {
+      "path": "public/progress-ios.css",
+      "state": "new reviewed asset",
+      "incoming_bytes": 8091
+    },
+    {
+      "path": "public/progress.html",
+      "state": "clean three-way merge",
+      "removed_production_ids": [],
+      "production_bytes": 92019,
+      "incoming_bytes": 93236,
+      "merged_bytes": 93236
+    }
+  ],
+  "not_deployed": true
+}
