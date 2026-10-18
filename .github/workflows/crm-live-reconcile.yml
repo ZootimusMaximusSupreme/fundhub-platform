@@ -124,8 +124,11 @@ jobs:
             // Discard generated changes at the old shared evidence paths before rebasing.
             const generated=execFileSync('git',['ls-files','--',out,perf],{encoding:'utf8'}).trim().split('\n').filter(p=>p&&!p.startsWith(snapshot+'/'));
             if(generated.length)execFileSync('git',['restore','--worktree','--',...generated],{stdio:'inherit'});
-            execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
-            execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
+            for(let attempt=0;attempt<3;attempt++){
+              execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
+              try{execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});break;}
+              catch(error){if(attempt===2)throw error;console.log('Source advanced during evidence push; rebasing the isolated snapshot again.');}
+            }
           }
           JS
       - uses: actions/upload-artifact@v4
