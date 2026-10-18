@@ -11,7 +11,7 @@ for(const page of pages){
  const source=execFileSync('git',['rev-parse',ref],{encoding:'utf8'}).trim();
  if(source===base)throw Error(page+' original owner recovery has not been pushed');
  const files=execFileSync('git',['diff','--name-only',base,source],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
- const allowed=p=>(page==='sales-floor'&&p==='src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs')||p.startsWith('public/app/'+page)&&/\.(?:html|css|js)$/.test(p)||p.startsWith('e2e/')&&p.includes(page)&&p.endsWith('.mjs')||(p.startsWith('ops/workflows/build-evidence/')&&p.includes(page)||p==='ops/workflows/crm-portal-layout-recovery-'+page+'.md')&&p.endsWith('.md')||p.startsWith('src/')&&p.includes(page)&&p.endsWith('.test.mjs');
+ const allowed=p=>(page==='finance-os'&&p==='src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs')||(page==='sales-floor'&&p==='src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs')||p.startsWith('public/app/'+page)&&/\.(?:html|css|js)$/.test(p)||p.startsWith('e2e/')&&p.includes(page)&&p.endsWith('.mjs')||(p.startsWith('ops/workflows/build-evidence/')&&p.includes(page)||p==='ops/workflows/crm-portal-layout-recovery-'+page+'.md')&&p.endsWith('.md')||p.startsWith('src/')&&p.includes(page)&&p.endsWith('.test.mjs');
  if(files.some(p=>!allowed(p)))throw Error('Page ownership boundary failed: '+page+' '+files.filter(p=>!allowed(p)).join(', '));
  inventory.push({page,branch:ref,source,files});
  for(const file of files){
