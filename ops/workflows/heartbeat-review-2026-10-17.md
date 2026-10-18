@@ -4,6 +4,10 @@ Read-only review after Chris asked where the heartbeat stands. Ground truth: `do
 
 ## Current live state
 
+The **full built heartbeat catalog** is 3,975 mapped rows, 3,942 unique company checks, 3,919 wired checks, and 23 catalog-red rows. This is the whole system Chris means by “the 4,000 checks.”
+
+The table below is only the **1,922 rows returned by that morning's production scorecard**. It is not the size of the full built catalog.
+
 | State | Count | Evidence |
 | --- | ---: | --- |
 | Working | 725 | 6:02 a.m. Arizona production scorecard |
@@ -11,7 +15,7 @@ Read-only review after Chris asked where the heartbeat stands. Ground truth: `do
 | Not proved | 853 | 6:02 a.m. Arizona production scorecard |
 | Not checked | 1 | 6:02 a.m. Arizona production scorecard |
 | Nothing to judge | 265 | 6:02 a.m. Arizona production scorecard |
-| Total | 1,922 | 6:02 a.m. Arizona production scorecard |
+| Daily scorecard rows | 1,922 | 6:02 a.m. Arizona production scorecard |
 
 - The hourly run at 10:07 p.m. Arizona had 13 of 16 beats green. Apply links, email, and text were red.
 - The five-minute backup watch was green at 10:20 p.m., so the clock itself is running.
