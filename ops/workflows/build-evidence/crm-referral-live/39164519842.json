@@ -1,0 +1,9 @@
+{
+  "source": "f16aa0f318d150568aefbc7fad565672390f51e7",
+  "prepare": "success",
+  "referral": "success",
+  "isolation": "success",
+  "database": "disposable GitHub Postgres; never production",
+  "noCustomerWrites": true,
+  "noOutboundSends": true
+}
