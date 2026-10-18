@@ -339,7 +339,7 @@ const ENTRIES = [
     titles: [
       "journeys/run walks a journey's branches with a fresh pretend client for each path through the real event bus, routes messages to the memory provider, and never commits",
       "journeys/run walks all six seeded journeys when none is named, can answer in plain text, and still rolls back; an unknown journey is a 400 that lists the real ones",
-      "journeys/run is for owner, admin and sales manager only, and refuses every other role before a connection is opened",
+      "journeys/run is for owner and admin only, and blocks sales manager and every other role before a connection is opened",
       "journeys/run refuses a login that names no company and walks no journey",
       "journeys/run answers a read with 405 and walks no journey",
       "journeys/run hands nothing to the live job cloud, even with its key set, and every event it fires goes through the real event bus",
@@ -354,7 +354,7 @@ const ENTRIES = [
     titles: [
       "journeys/run walks a journey's branches with a fresh pretend client for each path through the real event bus, routes messages to the memory provider, and never commits",
       "journeys/run walks all six seeded journeys when none is named, can answer in plain text, and still rolls back; an unknown journey is a 400 that lists the real ones",
-      "journeys/run is for owner, admin and sales manager only, and refuses every other role before a connection is opened",
+      "journeys/run is for owner and admin only, and blocks sales manager and every other role before a connection is opened",
       "journeys/run refuses a login that names no company and walks no journey",
       "journeys/run answers a read with 405 and walks no journey",
       "journeys/run hands nothing to the live job cloud, even with its key set, and every event it fires goes through the real event bus",
