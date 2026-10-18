@@ -7,7 +7,7 @@
       "page": "public/app/affiliate.html",
       "client_facing": true,
       "single_builder": "/root/page_affiliate",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/affiliate.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-affiliate.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -43,7 +43,7 @@
       "page": "public/app/calendar.html",
       "client_facing": false,
       "single_builder": "/root/page_calendar",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/calendar.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-calendar.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -61,7 +61,7 @@
       "page": "public/app/client-control-panel.html",
       "client_facing": false,
       "single_builder": "/root/page_client_control_panel",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/client-control-panel.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-control-panel.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -70,7 +70,7 @@
       "page": "public/app/client-portal.html",
       "client_facing": true,
       "single_builder": "/root/page_client_portal",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/client-portal.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-portal.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -79,7 +79,7 @@
       "page": "public/app/closer-dashboard.html",
       "client_facing": false,
       "single_builder": "/root/page_closer_dashboard",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/closer-dashboard.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-closer-dashboard.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -115,7 +115,7 @@
       "page": "public/app/contracts.html",
       "client_facing": false,
       "single_builder": "/root/page_contracts",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/contracts.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -133,7 +133,7 @@
       "page": "public/app/csm-queue.html",
       "client_facing": false,
       "single_builder": "/root/page_csm_queue",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/csm-queue.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-csm-queue.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -142,7 +142,7 @@
       "page": "public/app/documents.html",
       "client_facing": false,
       "single_builder": "/root/page_documents",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/documents.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-documents.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -151,7 +151,7 @@
       "page": "public/app/finance-os.html",
       "client_facing": false,
       "single_builder": "/root/page_finance_os",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/finance-os.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -160,7 +160,7 @@
       "page": "public/app/financeos.html",
       "client_facing": true,
       "single_builder": "/root/page_financeos_frame",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/financeos.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-financeos.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -205,7 +205,7 @@
       "page": "public/app/lenders.html",
       "client_facing": false,
       "single_builder": "/root/page_lenders",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/lenders.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -223,7 +223,7 @@
       "page": "public/app/messaging.html",
       "client_facing": false,
       "single_builder": "/root/page_messaging",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/messaging.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-messaging.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -232,7 +232,7 @@
       "page": "public/app/money-accounts.html",
       "client_facing": true,
       "single_builder": "/root/page_money_accounts",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-accounts.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-accounts.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -241,7 +241,7 @@
       "page": "public/app/money-alerts.html",
       "client_facing": true,
       "single_builder": "/root/page_money_alerts",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-alerts.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-alerts.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -250,7 +250,7 @@
       "page": "public/app/money-banks.html",
       "client_facing": true,
       "single_builder": "/root/page_money_banks",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-banks.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-banks.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -259,7 +259,7 @@
       "page": "public/app/money-connections.html",
       "client_facing": true,
       "single_builder": "/root/page_money_connections",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-connections.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-connections.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -268,7 +268,7 @@
       "page": "public/app/money-credit.html",
       "client_facing": true,
       "single_builder": "/root/page_money_credit",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-credit.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-credit.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -277,7 +277,7 @@
       "page": "public/app/money-declines.html",
       "client_facing": true,
       "single_builder": "/root/page_money_declines",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-declines.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-declines.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -286,7 +286,7 @@
       "page": "public/app/money-fundability.html",
       "client_facing": true,
       "single_builder": "/root/page_money_fundability",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-fundability.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-fundability.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -295,7 +295,7 @@
       "page": "public/app/money-helper.html",
       "client_facing": true,
       "single_builder": "/root/page_money_helper",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-helper.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-helper.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -304,7 +304,7 @@
       "page": "public/app/money-next.html",
       "client_facing": true,
       "single_builder": "/root/page_money_next",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-next.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-next.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -313,7 +313,7 @@
       "page": "public/app/money-payments.html",
       "client_facing": true,
       "single_builder": "/root/page_money_payments",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-payments.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-payments.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -322,7 +322,7 @@
       "page": "public/app/money-plan.html",
       "client_facing": true,
       "single_builder": "/root/page_money_plan",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-plan.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-plan.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -331,7 +331,7 @@
       "page": "public/app/money-setup.html",
       "client_facing": true,
       "single_builder": "/root/page_money_setup",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-setup.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-setup.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -340,7 +340,7 @@
       "page": "public/app/money-strategy.html",
       "client_facing": true,
       "single_builder": "/root/page_money_strategy",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-strategy.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-strategy.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -349,7 +349,7 @@
       "page": "public/app/money-transfers.html",
       "client_facing": true,
       "single_builder": "/root/page_money_transfers",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-transfers.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-transfers.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -358,7 +358,7 @@
       "page": "public/app/money-vault.html",
       "client_facing": true,
       "single_builder": "/root/page_money_vault",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money-vault.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-vault.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -367,7 +367,7 @@
       "page": "public/app/money.html",
       "client_facing": true,
       "single_builder": "/root/page_money_overview",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/money.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -385,7 +385,7 @@
       "page": "public/app/my-numbers.html",
       "client_facing": false,
       "single_builder": "/root/page_my_numbers",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/my-numbers.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -430,7 +430,7 @@
       "page": "public/app/pipeline.html",
       "client_facing": false,
       "single_builder": "/root/page_pipeline",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/pipeline.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-pipeline.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -457,7 +457,7 @@
       "page": "public/app/sales-floor.html",
       "client_facing": false,
       "single_builder": "/root/page_sales_floor",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/sales-floor.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -475,7 +475,7 @@
       "page": "public/app/soft-pull-approve.html",
       "client_facing": true,
       "single_builder": "/root/page_soft_pull_approve",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/soft-pull-approve.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-soft-pull-approve.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -511,7 +511,7 @@
       "page": "public/login.html",
       "client_facing": true,
       "single_builder": "/root/page_login",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/login.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-login.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -520,7 +520,7 @@
       "page": "public/portal-login.html",
       "client_facing": true,
       "single_builder": "/root/page_portal_login",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/portal-login.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-portal-login.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -538,7 +538,7 @@
       "page": "public/contract.html",
       "client_facing": true,
       "single_builder": "/root/page_contract",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/contract.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contract.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -547,7 +547,7 @@
       "page": "public/progress.html",
       "client_facing": true,
       "single_builder": "/root/page_progress",
-      "state": "integrated; final combined release verification in progress",
+      "state": "integrated; combined release verification passed39167073054",
       "prompt": "ops/workflows/crm-portal-layout-prompts/progress.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-progress.md",
       "prompt_ref": "codex/crm-portal-layout-professional"
@@ -563,10 +563,9 @@
     "individual_results_completed": 39,
     "retained_completed_results_in_recovery": 3,
     "unfinished_individual_pages": 22,
-    "last_passing_combined_run": 39166186746,
-    "source_checks": 841,
-    "browser_checks": 330,
-    "final_36_page_run": 39167073054,
+    "last_passing_combined_run": 39167073054,
+    "source_checks": 877,
+    "browser_checks": 380,
     "production_published": false
   },
   "integration_state": "Current main reconciled; original owners only. Never use the old diverged layout branch as a production replacement."
