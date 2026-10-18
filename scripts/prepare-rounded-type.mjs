@@ -17,7 +17,7 @@ const shell='public/app/shell.js';let js=fs.readFileSync(shell,'utf8');
 if(!js.includes('FHFundhubType.applyBrand')){
  if(!js.includes('function paintBrand(b) {')||!js.includes('function applyBrand(/* staff */) {')||!js.includes('paintBrand(d.brand);'))throw new Error('Brand adapter changed; inspect before patching');
  js=js.replace('function paintBrand(b) {','function paintBrand(b, staff) {');
- js=js.replace('function paintBrand(b, staff) {\n    if (!b) return;','function paintBrand(b, staff) {\n    if (!b) return;\n    if (window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);');
+ js=js.replace('function paintBrand(b, staff) {\n    if (!b) return;','function paintBrand(b, staff) {\n    if (!b) return;\n    if (typeof window !== "undefined" && window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);');
  js=js.replace('function applyBrand(/* staff */) {','function applyBrand(staff) {').replace('paintBrand(d.brand);','paintBrand(d.brand, staff);');
  fs.writeFileSync(shell,js);changed.push(shell);
 }
