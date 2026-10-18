@@ -46,6 +46,10 @@ jobs:
           NODE_OPTIONS: --dns-result-order=ipv4first
         run: |
           node --input-type=module -e "import dns from 'node:dns/promises';console.log(JSON.stringify(await dns.lookup('fundhub.ai',{all:true})))"
+          for probe_ip in 75.2.60.5 99.83.231.61; do
+            curl --silent --show-error --max-time 5 --resolve "fundhub.ai:443:$probe_ip" --output /dev/null --write-out "pinned $probe_ip status=%{http_code} tls=%{time_appconnect} first=%{time_starttransfer} total=%{time_total}\\n" https://fundhub.ai/portal-login.html &
+          done
+          wait
           curl -4 --silent --show-error --max-time 12 --output /dev/null --write-out 'portal IPv4 status=%{http_code} connect=%{time_connect} first=%{time_starttransfer} total=%{time_total} ip=%{remote_ip}\\n' https://fundhub.ai/portal-login.html || true
           node --input-type=module <<'JS'
           const paths=['/portal-login.html','/app/morning-brief.html','/app/my-numbers.html','/api/health?strict=1','/api/org-brand'];
