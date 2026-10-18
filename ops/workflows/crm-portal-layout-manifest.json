@@ -23,7 +23,7 @@
       "page": "public/app/automations.html",
       "client_facing": false,
       "single_builder": "/root/page_automations",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/automations.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-automations.md"
     },
@@ -87,7 +87,7 @@
       "page": "public/app/consent-capture.html",
       "client_facing": false,
       "single_builder": "/root/page_consent_capture",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/consent-capture.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-consent-capture.md"
     },
@@ -103,7 +103,7 @@
       "page": "public/app/contracts.html",
       "client_facing": false,
       "single_builder": "/root/page_contracts",
-      "state": "planned; not started",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/contracts.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md"
     },
@@ -119,7 +119,7 @@
       "page": "public/app/csm-queue.html",
       "client_facing": false,
       "single_builder": "/root/page_csm_queue",
-      "state": "planned; not started",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/csm-queue.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-csm-queue.md"
     },
@@ -135,7 +135,7 @@
       "page": "public/app/finance-os.html",
       "client_facing": false,
       "single_builder": "/root/page_finance_os",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/finance-os.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md"
     },
@@ -167,7 +167,7 @@
       "page": "public/app/inquiry-remover.html",
       "client_facing": false,
       "single_builder": "/root/page_inquiry_remover",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/inquiry-remover.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-inquiry-remover.md"
     },
@@ -175,7 +175,7 @@
       "page": "public/app/journeys.html",
       "client_facing": false,
       "single_builder": "/root/page_journeys",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/journeys.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-journeys.md"
     },
@@ -183,7 +183,7 @@
       "page": "public/app/lenders.html",
       "client_facing": false,
       "single_builder": "/root/page_lenders",
-      "state": "planned; not started",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/lenders.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md"
     },
@@ -343,7 +343,7 @@
       "page": "public/app/my-numbers.html",
       "client_facing": false,
       "single_builder": "/root/page_my_numbers",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/my-numbers.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md"
     },
@@ -351,7 +351,7 @@
       "page": "public/app/ops-admin.html",
       "client_facing": false,
       "single_builder": "/root/page_ops_admin",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/ops-admin.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-ops-admin.md"
     },
@@ -375,7 +375,7 @@
       "page": "public/app/payment-success.html",
       "client_facing": true,
       "single_builder": "/root/page_payment_success",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/payment-success.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-payment-success.md"
     },
@@ -391,7 +391,7 @@
       "page": "public/app/present.html",
       "client_facing": false,
       "single_builder": "/root/page_present",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/present.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-present.md"
     },
@@ -407,7 +407,7 @@
       "page": "public/app/sales-floor.html",
       "client_facing": false,
       "single_builder": "/root/page_sales_floor",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/sales-floor.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md"
     },
@@ -431,7 +431,7 @@
       "page": "public/app/staff-teams.html",
       "client_facing": false,
       "single_builder": "/root/page_staff_teams",
-      "state": "planned; not started",
+      "state": "builder started; cloud runtime disconnected; no implementation completion claimed",
       "prompt": "ops/workflows/crm-portal-layout-prompts/staff-teams.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-staff-teams.md"
     },
@@ -471,7 +471,7 @@
       "page": "public/reset-password.html",
       "client_facing": true,
       "single_builder": "/root/page_reset_password",
-      "state": "active",
+      "state": "page checks passed; integrated review pending",
       "prompt": "ops/workflows/crm-portal-layout-prompts/reset-password.md",
       "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-reset-password.md"
     },
@@ -503,5 +503,8 @@
     "remaining": 52,
     "shared_staff_foundation": "checks passed; integration pending",
     "production_deployed": false
-  }
+  },
+  "last_confirmed_runtime": "409 environment_offline: Environment is not connected",
+  "pushed_code_checkpoint": "803d2b7e47f137d7773d4006445b971179cef835",
+  "integration_state": "39 pages passed page checks; first30 pushed/deployed;9 pending upload from disconnected cloud worktree; final22 incomplete"
 }

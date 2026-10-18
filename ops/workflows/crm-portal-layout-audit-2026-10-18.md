@@ -120,3 +120,29 @@ Root will update status from actual messages, never inferred activity. Independe
 One60px phone/64px desktop header now owns location, actual client chat and Account. Sign out and the retained Open Money workspace/back links live in Account; phone Money navigation is one complete section control. Legacy IDs and their updates remain, staff surfaces untouched. Dedicated Money/progress pages reuse the real portal chat rather than a new API. Existing pre-call Home auto-open stays unchanged.27 combined referral/sample/header-dependent Home/FinanceOS/Helper regressions pass; role/partner brand12checks pass. Header geometry across routes is under focused verification.
 
 Source-only pre-existing limitation noted during password page review: legacy next validation accepts a protocol-relative address because it tests startsWith('/'). No redirect/auth behavior was changed in this layout refinement; not live-verified or represented as newly fixed.
+
+### Runtime interruption and recoverable checkpoint
+
+39/61 actual pages passed page checks;22 remain. See the independently readable [short status](crm-portal-layout-progress.md). First30-page code checkpoint is pushed/deployed at803d2b7e47f137d7773d4006445b971179cef835, PR69. Runtime deploy job39130403055 succeeded. Both full-suite CI runs ended cancelled; they are not a pass.
+
+Nine completed pages remain in the disconnected worktree awaiting upload:
+
+|Page|Latest focused proof|
+|---|---|
+|Staff Finance OS|22 browser +41 financial/source/browser proofs|
+|Sales floor|31 browser +24 deep proofs +3 baseline captures|
+|Consent capture|20 browser|
+|Payment return|18 browser +24 payment API tests|
+|Reset password|10 browser +23 auth/toggle tests|
+|My numbers|13 browser; full Node run still had legacy Messaging clock assertion|
+|Client Success queue|25 browser|
+|Contract templates|27 browser +43 source/security|
+|Lenders|25 browser +47 deep/role/proxy proofs|
+
+Shared staff followup passed101Node+22browser+10targeted checks; fixed rail width transitions, generic phone-rule collisions and correct own-performance scope. FinanceOS frame lazy-loader followup passed9browser+13unit, all16sections, load refusal/retry/history/races/staffscope. Six coldmobile timing runs all<2.5seconds, initialJS113887bytes (~82% below639KB baseline). These final source/evidence changes are NOT yet in the pushed code checkpoint.
+
+Recovery: reconnect existing cloud environment; do not replace/reclone over the working tree. Read current agent reports/manifest, retain all uncommitted page results, fix root asset expectation from18eager scripts to2bootstrap scripts plus fixed loader dependency proof, and change legacy clock assertions to test unfrozen clocks only where still displayed. The existing page builders remain the sole owners; six next-wave builders have started but are runtime-blocked. Continue remaining waves, integrate/review, push, refresh non-production preview and regenerate final Fundhub-only package. Packaging must wait for final code; no funnels or other brands.
+
+Exact infrastructure failure: exec-server capability query =>409Conflict environment_offline, Environment is not connected. Cloud browser tab creation also timed out. GitHub connector remains available and this status is preserved remotely. No approval gate is pending.
+
+Pinned pre-existing Lenders limitations remain: a refused export response may download; Add bureau can lose other unsaved edits; blank lender name posts null. Login protocol-relative next validation was source-noted previously. Do not call these newly fixed.

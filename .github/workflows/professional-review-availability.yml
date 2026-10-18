@@ -1,0 +1,33 @@
+name: Professional review availability
+on:
+  push:
+    branches: [codex/crm-portal-layout-professional]
+    paths: [.github/workflows/professional-review-availability.yml]
+permissions:
+  contents: read
+jobs:
+  read-only-review-check:
+    if: github.ref == 'refs/heads/codex/crm-portal-layout-professional'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify the existing draft runtime with anonymous GET requests
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://client-portal-professional-review--transcendent-wisp-888771.netlify.app';
+          const checks=[
+            ['/login.html?next=%2Fapp%2Fclient-portal.html',text=>/type=["']password["']/.test(text)],
+            ['/app/client-portal.html',text=>text.includes('id="ref-go"')],
+            ['/app/client-ios.js',text=>text.includes('client-ios-account')],
+            ['/app/client-ios.css',text=>text.includes('client-ios-header')]
+          ];
+          for(const [path,valid] of checks){
+            const response=await fetch(base+path,{signal:AbortSignal.timeout(15000)});
+            assert.equal(response.status,200,path+' must return200');
+            assert.ok(valid(await response.text()),path+' must contain the integrated review source');
+            console.log('PASS anonymous GET '+path);
+          }
+          console.log('Review URL: '+base+'/login.html?next=%2Fapp%2Fclient-portal.html');
+          console.log('Static availability only; authenticated/visual acceptance is not implied. No deployment or writes performed.');
+          JS

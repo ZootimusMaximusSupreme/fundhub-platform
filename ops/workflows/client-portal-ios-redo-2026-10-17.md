@@ -276,3 +276,7 @@ Local handoff verified existing client@fundhub.ai test credential through the re
 ## Owner follow-on: professional CRM and portal layout rebuild
 
 Chris rejected the current layout and authorized a professional high-end refinement after the audit, using the clean Fundhub Mac entry theme and Ultra reasoning. This supersedes the prior visual direction for the new build, while preserving all behavior. New isolated branch `codex/crm-portal-layout-professional`; current board [CRM/portal audit + build](crm-portal-layout-audit-2026-10-18.md), [61-page manifest](crm-portal-layout-manifest.json).9individualpagespassed,52remaining;sharedfoundationverified. No production deployment or owner action required. Prior24-page completion, PR67 and ZIP refer to the earlier snapshot, not this unfinished refinement.
+
+### Professional follow-on interrupted checkpoint
+
+The subsequent owner-authorized CRM+portal refinement is **39/61 page checks complete,22remaining**. Only the first30-page professional checkpoint is pushed/deployed (PR69);9more completed page results await upload from a disconnected cloud runtime. See [current short status](crm-portal-layout-progress.md) and [follow-on board](crm-portal-layout-audit-2026-10-18.md). This supersedes any suggestion that the entire professional CRM follow-on is finished. Existing24-page portal/ZIP completion refers to the earlier snapshot. Cloud exec-server currently reports409environment_offline; no new owner approval is needed.
