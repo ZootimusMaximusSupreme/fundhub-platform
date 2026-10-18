@@ -24,7 +24,7 @@ jobs:
           node-version: '22'
       - name: Reconcile the original page builders recovered staff source
         env:
-          RECOVERY_PAGES: csm-queue,lenders
+          RECOVERY_PAGES: csm-queue,lenders,my-numbers,contracts
         id: merge
         continue-on-error: true
         run: node scripts/integrate-recovered-staff.mjs
