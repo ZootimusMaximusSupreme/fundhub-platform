@@ -133,3 +133,7 @@ body.jr-page{--paper:#f8f8f6;--ink:#101416;--ink2:#24282a;--gray:#626764;--gray2
  .jr-page .jr-rstats{gap:16px}
  .jr-page .jr-rstats span{flex:1 1 40%;font-size:12px}
 }
+
+.jr-page .jr-back-to-flow{display:none}
+@media(max-width:920px){.jr-page .jr-back-to-flow{display:block;text-align:left;margin:16px 16px 0;border:1px solid var(--line);border-radius:11px;padding:10px 14px;min-height:44px;font-size:13px;font-weight:600}}
+@media(max-width:480px){.jr-page .lane::before{content:attr(data-jr-path);display:block;font-size:13px;font-weight:600;color:var(--ink);margin:0 0 8px}.jr-page .fork .tag{display:none}}
