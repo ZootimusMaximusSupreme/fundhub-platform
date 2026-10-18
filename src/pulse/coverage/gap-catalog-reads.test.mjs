@@ -20,9 +20,9 @@ function rowsFor(sourceFile) {
 }
 
 test("every known read gap owns one exact map row", () => {
-  assert.equal(READ_GAPS.length, 1);
-  assert.equal(CHECK_IDS.length, 2);
-  assert.equal(new Set(CHECK_IDS).size, 2);
+  assert.equal(READ_GAPS.length, 0);
+  assert.equal(CHECK_IDS.length, 1);
+  assert.equal(new Set(CHECK_IDS).size, 1);
 
   for (const item of [...READ_GAPS, ...FIN_B27_H_READ_PROVED]) {
     const sourceFile = item.sourceFile || sourceFileForReadSurface(item.surface);
@@ -37,17 +37,14 @@ test("every known read gap owns one exact map row", () => {
   }
 });
 
-test("the missing result stays not proved while the climate read can only skip on a failed GET", async () => {
+test("the repaired Present row has no open gap while the climate read can only skip on a failed GET", async () => {
   const rows = await gapChecks({
     db: { query: async () => { throw new Error("the catalog read gap lane must not query"); } },
     fetchImpl: async () => { throw new Error("safe read is offline in this test"); },
   });
 
-  assert.equal(rows.length, 2);
-  const open = rows.find((row) => row.id === "catalog-read:present-send-lock");
-  assert.equal(open.status, "NOT_PROVED");
-  assert.match(open.detail, /present\.html/);
-  assert.match(open.suggestedFix, /Double-press guard on every send button/);
+  assert.equal(rows.length, 1);
+  assert.equal(rows.some((row) => row.id === "catalog-read:present-send-lock"), false);
 
   const climate = rows.find((row) => row.id === "catalog-read:climate-map");
   assert.equal(climate.status, "skip");
@@ -61,7 +58,8 @@ test("the lane cannot send, write, or turn a missing result into pass", () => {
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|POST|PUT|PATCH)\b/i);
   assert.doesNotMatch(source, /fetch\s*\(|\.query\s*\(/);
   assert.doesNotMatch(source, /status:\s*["']PASS["']/);
-  assert.match(source, /status:\s*["']NOT_PROVED["']/);
+  assert.match(source, /status:\s*["']NOT_PROVED["']/,
+    "a future read gap must stay explicitly not proved");
   assert.doesNotMatch(source, /status:\s*["']FAIL["']/);
   assert.doesNotMatch(source, /status:\s*["']na["']/);
 });

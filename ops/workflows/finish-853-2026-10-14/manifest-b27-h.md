@@ -51,3 +51,17 @@ Intentionally untouched:
 | `node scripts/pulse/count-not-proved.mjs /tmp/heartbeat-h-after-2026-10-18.json` | 56 total; flow 1, reads 1 |
 | `npm run lint` | 3,965 files and inline scripts parse clean |
 | `git diff --check` | clean |
+
+## Follow-up product repair — 2026-10-18
+
+The integration lane repaired `catalog-read:present-send-lock` after Workflow H
+identified its two exact product causes. `Generate letters and email now` now
+reads the delivered result from `FHData.write()`'s `data` wrapper, and `Send
+soft pull` now renders through the shared send button state. The rendered proof
+checks all six client-facing send controls for one in-flight request, visible
+`Sending…`, a four-second cooldown, persistent `Sent at`, repeat counts, and an
+immediate retry after failure.
+
+- `node --test src/pulse/catalog/proofs/fin-b23-present-send-lock.test.mjs`: 8 passed, 0 failed.
+- `node --test src/pulse/coverage/gap-catalog-reads.test.mjs`: 3 passed, 0 failed.
+- `node scripts/pulse/count-not-proved.mjs /tmp/heartbeat-integration-after-present.json`: 53 total; display 45, routes 7, flow 1, reads 0.

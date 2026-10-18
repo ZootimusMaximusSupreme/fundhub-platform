@@ -7,13 +7,7 @@ import {
   runFinB27HReadResults,
 } from "../catalog/proofs/fin-b27-h-read-contracts.mjs";
 
-function gap(id, surface, control, finding) {
-  return Object.freeze({ id, surface, control, finding });
-}
-
-export const READ_GAPS = Object.freeze([
-  gap("catalog-read:present-send-lock", "present.html (+ present.js, contract-send.js)", "Double-press guard on every send button ('Sending...', 4 second cooldown, 'Sent at' line, count of sends)", "The page has six send controls. Four are proved by a rendered test (fin-b23-present-send-lock.test.mjs): Send agreement + pay link, Invoice this client, Send contract and Send letters now lock while sending, hold for the 4 second cooldown, show Sent at and count repeats. Two do not meet the contract. (1) Generate letters and email now: present.js fire() reads `delivered` and `reason` off the object public/app/data.js write() returns, where the server answer sits under `data`, so a delivered pack is shown as \"Nothing was sent\", gets no Sent at line and no cooldown. (2) Send soft pull: it is drawn with ckBtn, not sendBtn, so it never shows Sending..., Sent at or a count (only the refusal of a repeat press works). Both need a present.js change before this row can be proved."),
-]);
+export const READ_GAPS = Object.freeze([]);
 
 export const CHECK_IDS = Object.freeze([
   ...READ_GAPS.map((item) => item.id),
