@@ -93,6 +93,24 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: node scripts/ship-env-from-netlify.mjs
 
+      - name: Verify existing designated client sample linkage without changing records
+        run: |
+          node --input-type=module <<'JS'
+          import {db,close} from './src/db.mjs';
+          import {clientSampleAccount} from './src/demo/client-portal-samples.mjs';
+          try{
+            const result=await db.query("SELECT id,org_id,client_id,email,kind,status FROM accounts WHERE lower(email)='client@fundhub.ai' AND kind='client' AND status='active'");
+            let eligible=0;
+            for(const account of result.rows){
+              const matches=await clientSampleAccount(db,{kind:account.kind,accountId:account.id,clientId:account.client_id,orgId:account.org_id,email:account.email});
+              if(matches===null)throw Error('Existing sample account linkage could not be verified');
+              if(matches===true)eligible++;
+            }
+            console.log(JSON.stringify({designatedLogin:'client@fundhub.ai',verifiedEligibleAccounts:eligible,readOnly:true,credentialsChanged:false,recordsChanged:false}));
+            if(eligible!==1)throw Error('Expected one existing account with the exact designated client fixture linkage; no records were changed');
+          }finally{await close();}
+          JS
+
       - name: Ship
         env:
           CI: "true"
