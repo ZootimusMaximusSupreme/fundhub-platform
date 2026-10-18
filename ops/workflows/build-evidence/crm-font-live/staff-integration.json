@@ -5,21 +5,19 @@
   "files": [
     {
       "path": "public/app/fundhub-brand.css",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/crm-sidebar.css",
-      "state": "conflict",
-      "detail": ""
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/shell.js",
-      "state": "conflict",
-      "detail": ""
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/sidebar.fragment.html",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/workspace-ui.css",
@@ -28,8 +26,7 @@
     },
     {
       "path": "public/app/calendar.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/calendar-workspace.css",
@@ -38,8 +35,7 @@
     },
     {
       "path": "public/app/client-control-panel.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/ccp-workspace.css",
@@ -53,8 +49,7 @@
     },
     {
       "path": "public/app/closer-dashboard.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/closer-dashboard.css",
@@ -68,8 +63,7 @@
     },
     {
       "path": "public/app/documents.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/documents-workspace.css",
@@ -78,13 +72,11 @@
     },
     {
       "path": "public/app/messaging.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/pipeline.html",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "public/app/pipeline-workspace.css",
@@ -123,55 +115,55 @@
     },
     {
       "path": "e2e/calendar.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/bank-amount-suggestion.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/ccp-headline.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/closer-call-rhythm.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/controls-persist.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/fin-b01-ccp-pulls-declines.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/funded-amount.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/pipeline-waiting-on.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/proxy-apply.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/s2-ccp-portal-access.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "e2e/sidebar-roles.spec.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "src/http/client-panel-screen.test.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     },
     {
       "path": "src/pulse/catalog/proofs/fin-b10-client-control-panel.test.mjs",
-      "state": "identical"
+      "state": "previously integrated; current fixes preserved"
     }
   ]
 }

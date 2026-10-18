@@ -1,0 +1,150 @@
+{
+  "viewport": 390,
+  "document": 390,
+  "items": [
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "step future",
+      "rect": {
+        "x": 372.359375,
+        "y": 1036.734375,
+        "width": 44.265625,
+        "height": 66.5,
+        "top": 1036.734375,
+        "right": 416.625,
+        "bottom": 1103.234375,
+        "left": 372.359375
+      },
+      "scroll": 44,
+      "client": 44,
+      "position": "relative"
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "cls": "line",
+      "rect": {
+        "x": 350.234375,
+        "y": 1049.734375,
+        "width": 44.265625,
+        "height": 2,
+        "top": 1049.734375,
+        "right": 394.5,
+        "bottom": 1051.734375,
+        "left": 350.234375
+      },
+      "scroll": 44,
+      "client": 44,
+      "position": "absolute"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "dot",
+      "rect": {
+        "x": 381.484375,
+        "y": 1036.734375,
+        "width": 26,
+        "height": 26,
+        "top": 1036.734375,
+        "right": 407.484375,
+        "bottom": 1062.734375,
+        "left": 381.484375
+      },
+      "scroll": 22,
+      "client": 22,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "lbl",
+      "rect": {
+        "x": 372.359375,
+        "y": 1070.734375,
+        "width": 44.265625,
+        "height": 32.5,
+        "top": 1070.734375,
+        "right": 416.625,
+        "bottom": 1103.234375,
+        "left": 372.359375
+      },
+      "scroll": 44,
+      "client": 44,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "step future",
+      "rect": {
+        "x": 416.625,
+        "y": 1036.734375,
+        "width": 52.953125,
+        "height": 66.5,
+        "top": 1036.734375,
+        "right": 469.578125,
+        "bottom": 1103.234375,
+        "left": 416.625
+      },
+      "scroll": 53,
+      "client": 53,
+      "position": "relative"
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "cls": "line",
+      "rect": {
+        "x": 390.15625,
+        "y": 1049.734375,
+        "width": 52.953125,
+        "height": 2,
+        "top": 1049.734375,
+        "right": 443.109375,
+        "bottom": 1051.734375,
+        "left": 390.15625
+      },
+      "scroll": 53,
+      "client": 53,
+      "position": "absolute"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "dot",
+      "rect": {
+        "x": 430.09375,
+        "y": 1036.734375,
+        "width": 26,
+        "height": 26,
+        "top": 1036.734375,
+        "right": 456.09375,
+        "bottom": 1062.734375,
+        "left": 430.09375
+      },
+      "scroll": 22,
+      "client": 22,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "lbl",
+      "rect": {
+        "x": 416.625,
+        "y": 1070.734375,
+        "width": 52.953125,
+        "height": 32.5,
+        "top": 1070.734375,
+        "right": 469.578125,
+        "bottom": 1103.234375,
+        "left": 416.625
+      },
+      "scroll": 53,
+      "client": 53,
+      "position": "static"
+    }
+  ]
+}

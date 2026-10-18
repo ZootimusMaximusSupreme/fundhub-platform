@@ -1,5 +1,12 @@
 {
   "family": "\"Fundhub Rounded Local\", \"Fundhub Rounded Web\", ui-rounded, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
-  "fonts": [],
+  "fonts": [
+    {
+      "familyName": "Nunito ExtraLight",
+      "postScriptName": "Nunito-ExtraLight",
+      "isCustomFont": true,
+      "glyphCount": 19
+    }
+  ],
   "width": 390
 }

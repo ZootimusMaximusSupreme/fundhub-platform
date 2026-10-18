@@ -1,12 +1,12 @@
 {
-  "source": "505c521d1cfad8d7eaa8713035a0e2435884de7a",
-  "prepare": "failure",
-  "lint": "skipped",
-  "node": "skipped",
-  "browser": "skipped",
+  "source": "f2b878fc08512be45bfe6d695b2f1a6f69158f49",
+  "prepare": "success",
+  "lint": "success",
+  "node": "success",
+  "browser": "failure",
   "noProductionDeploy": true,
   "noCustomerWrites": true,
-  "proofScope": "font-only; prior staff feature run remains separate evidence",
+  "proofScope": "full staff integration and font proof",
   "referenceFont": "SF Pro Rounded",
   "webFallback": "Nunito with SIL OFL1.1; Apple font files are not bundled"
 }
