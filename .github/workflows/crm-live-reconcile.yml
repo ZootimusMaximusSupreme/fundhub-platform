@@ -100,18 +100,24 @@ jobs:
           const out='ops/workflows/build-evidence/crm-font-live';
           fs.mkdirSync(out,{recursive:true});
           fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,money:process.env.MONEY,performance:process.env.PERFORMANCE,noProductionDeploy:true,noCustomerWrites:true,proofScope:process.env.PROOF_SCOPE,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
-          const prepared=fs.existsSync(out+'/font-preparation.json')?JSON.parse(fs.readFileSync(out+'/font-preparation.json','utf8')).changed:[];
-          const trackedUI=execFileSync('git',['diff','--name-only','--','public/app','e2e','src/ui','src/http','src/pulse/catalog/proofs'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
-          const mergedUI=fs.existsSync(out+'/staff-integration.json')?JSON.parse(fs.readFileSync(out+'/staff-integration.json','utf8')).files.map(row=>row.path):[];
-          const stagedUI=[...new Set([...trackedUI,...mergedUI])];
-          const files=[...stagedUI,...prepared,'scripts/integrate-reviewed-staff.mjs','public/app/fundhub-font.css','public/app/fundhub-font.js','public/assets/fonts','scripts/prepare-rounded-type.mjs','e2e/font-reference.spec.mjs','src/ui/rounded-reference-font.test.mjs'];
+          // Proofs write only a run-specific snapshot; source is already committed.
+          // Concurrent root/page integration must never conflict with a shared checks.json.
+          const snapshot=out+'/runs/'+process.env.GITHUB_RUN_ID;
+          fs.mkdirSync(snapshot,{recursive:true});
+          for(const entry of fs.readdirSync(out,{withFileTypes:true})){
+            if(entry.name==='runs'||!entry.isFile())continue;
+            fs.copyFileSync(out+'/'+entry.name,snapshot+'/'+entry.name);
+          }
+          const perf='ops/workflows/build-evidence/client-portal-ios-redo';
+          for(const name of ['performance-lab.json','sample-home-390.png','sample-home-1440.png']){
+            if(fs.existsSync(perf+'/'+name))fs.copyFileSync(perf+'/'+name,snapshot+'/'+name);
+          }
           execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
-          execFileSync('git',['add','--',...files.filter(f=>fs.existsSync(f))]);
-          execFileSync('git',['add','-f','--',out]);
-          for(const name of ['performance-lab.json','sample-home-390.png','sample-home-1440.png']){const p='ops/workflows/build-evidence/client-portal-ios-redo/'+name;if(fs.existsSync(p))execFileSync('git',['add','-f','--',p]);}
-          for(const note of ['workspace-foundation','page-pipeline','page-calendar','page-client-control-panel','page-closer-dashboard','page-documents','page-messaging']){const p='ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/'+note+'.md';if(fs.existsSync(p))execFileSync('git',['add','-f','--',p]);}
+          execFileSync('git',['add','-f','--',snapshot]);
           if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
-            execFileSync('git',['commit','-m','Prepare rounded Fundhub typography from current production with browser evidence'],{stdio:'inherit'});
+            execFileSync('git',['commit','-m','Record isolated client/staff browser evidence for run '+process.env.GITHUB_RUN_ID],{stdio:'inherit'});
+            // Discard generated changes at the old shared evidence paths before rebasing.
+            execFileSync('git',['restore','--worktree','--',out,perf],{stdio:'inherit'});
             execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
             execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
           }
