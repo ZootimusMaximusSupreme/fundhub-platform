@@ -9,7 +9,7 @@
 
 ## Next implementation pass
 
-- [ ] Owner reviews the preview before any live page edit.
+- [x] Owner approved the revised preview on 2026-10-17 and authorized the full client portal redo in cloud, one agent per page. Execution and the referral/Affiliate Dashboard requirement are tracked in `ops/workflows/client-portal-ios-redo-2026-10-17.md`.
 - [ ] Keep the current client journey and real portal data. Replace all sample status/next-step copy with values verified from the existing portal read; show honest loading, empty, and error states.
 - [ ] Keep Documents, Activity, and advisor actions wired to their existing destinations. Do not infer a funding step from entitlement alone.
 - [ ] Check the implemented page at 1440px and 390px with Playwright, plus a real iPhone before calling it ready.
