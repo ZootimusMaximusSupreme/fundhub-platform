@@ -83,11 +83,11 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     }
   }
 
-  // Current seven maps: 1,496 tracked controls, 1,412 mapped and 84 unmapped red.
+  // Current seven maps: 1,496 tracked controls, 1,421 mapped and 75 unmapped red.
   assert.equal(trackedCount, 1496, "Display map size changed; inspect the exact rows");
-  assert.equal(mappedCount, 1412, "Display proof coverage changed; inspect the exact cases");
+  assert.equal(mappedCount, 1421, "Display proof coverage changed; inspect the exact cases");
   assert.equal(mappedRedCount, 0, "Mapped display gaps changed; inspect their saved results");
-  assert.equal(redCount, 84, "Display red count changed; inspect every new exact proof");
+  assert.equal(redCount, 75, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {
