@@ -29,6 +29,26 @@ jobs:
         run: node scripts/ship-env-from-netlify.mjs
       - name: Verify the actual runtime database role
         run: npm run guard:db
+      - name: Verify exact existing production client demo linkage read only
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          import {clientSampleAccount} from './src/demo/client-portal-samples.mjs';
+          const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}});
+          const client=await pool.connect();
+          try{
+            await client.query('BEGIN READ ONLY');
+            const result=await client.query("SELECT id,org_id,client_id,email,kind,status FROM accounts WHERE lower(email)='client@fundhub.ai' AND kind='client' AND status='active'");
+            let eligible=0;
+            for(const account of result.rows){
+              const matches=await clientSampleAccount(client,{kind:account.kind,accountId:account.id,clientId:account.client_id,orgId:account.org_id,email:account.email});
+              if(matches===null)throw Error('Existing sample linkage could not be read');
+              if(matches===true)eligible++;
+            }
+            console.log(JSON.stringify({designatedLogin:'client@fundhub.ai',verifiedEligibleAccounts:eligible,readOnly:true,credentialsChanged:false,recordsChanged:false}));
+            if(eligible!==1)throw Error('Expected one existing account with exact designated fixture linkage; no records changed');
+          }finally{await client.query('ROLLBACK');client.release();await pool.end();}
+          JS
       - name: Read only the canonical Fundhub typography selection
         run: |
           node --input-type=module <<'JS'
