@@ -19,6 +19,7 @@ const EXPECTED_PROOF_COUNTS = Object.freeze({
 const MESSAGE_DELIVERY_BATCH = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
 const ACTIVE_MESSAGE_BATCH = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
 const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
+const ONE_OFF_SEND_RESULT_TEST = "src/ops/one-off-send-receipt.test.mjs";
 const execFileAsync = promisify(execFile);
 
 function loadRows(sourceFile) {
@@ -50,14 +51,12 @@ test("flow proofs name only real, runnable result tests", () => {
   assert.deepEqual(counts, EXPECTED_PROOF_COUNTS);
 });
 
-test("known flow gaps map to the exact executable red monitor", () => {
+test("no known flow gap remains on the generic red monitor", () => {
   // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
   // test), the web push devices (saved results), two journey steps (a live page read) and, in generation 3,
   // seven steps the live page does not carry (a verified nothing-to-judge) out of this list; the row below is
   // the one nothing can judge yet.
-  const cases = [
-    ["messages.json", "script:one-off senders in scripts/"],
-  ];
+  const cases = [];
 
   for (const [sourceFile, surface] of cases) {
     const row = loadRows(sourceFile).find((candidate) => candidate.surface === surface);
@@ -70,18 +69,25 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("the 1 outbound message leftover that nothing can judge stays red", () => {
+test("no outbound message row is left with only a generic red verdict", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 1);
-  assert.deepEqual(rows.map(({ row }) => row.surface).sort(), [
-    "script:one-off senders in scripts/",
-  ]);
+  assert.equal(rows.length, 0);
+  assert.deepEqual(rows.map(({ row }) => row.surface).sort(), []);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }
+});
+
+test("the one-off scripts are judged by the explicit fence and durable-receipt practice proof", () => {
+  const row = loadRows("messages.json").find((candidate) => candidate.surface === "script:one-off senders in scripts/");
+  const proof = proofForFlowRow("messages.json", row);
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "deep");
+  assert.deepEqual(proofTestFiles(proof), ["src/ops/one-off-send-receipt.test.mjs"]);
+  assert.equal(proof.asserts, row.control);
 });
 
 test("the 9 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
@@ -218,7 +224,7 @@ test("verified inactive templates use the exact monitor without a red verdict", 
   assert.equal(proof.verdict, undefined);
 });
 
-test("every deep message proof runs the gate and final dispatcher outcome", () => {
+test("every deep message proof runs its normal gate/dispatcher chain or the one-off fenced receipt chain", () => {
   for (const { row, proof } of allProofs().filter(({ sourceFile, proof }) => (
     sourceFile === "messages.json" && proof.depth === "deep"
   ))) {
@@ -228,7 +234,9 @@ test("every deep message proof runs the gate and final dispatcher outcome", () =
     const batchedChain = files.has(MESSAGE_DELIVERY_BATCH)
       || files.has(ACTIVE_MESSAGE_BATCH)
       || files.has(FLOW_GAP_TEST);
-    assert.equal(sharedChain || batchedChain, true, row.surface);
+    const oneOffChain = row.surface === "script:one-off senders in scripts/"
+      && files.has(ONE_OFF_SEND_RESULT_TEST);
+    assert.equal(sharedChain || batchedChain || oneOffChain, true, row.surface);
   }
 });
 

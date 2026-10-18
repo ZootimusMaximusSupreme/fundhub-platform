@@ -27,10 +27,14 @@ const TWILIO_TEST = "src/http/fin-b22-twilio-status.test.mjs";
 const PUSH_SEND_TEST = "src/push/fin-b22-send-to-client.test.mjs";
 const PAGE_TEST = "src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs";
 const SHIPPED_TEST = "src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs";
+const ONE_OFF_SEND_TEST = "src/ops/one-off-send-receipt.test.mjs";
 
 /** surface -> { file, tests }. A test with fake data judges the exact result. */
 export const FIN_B22_PRACTICE = Object.freeze({
   "ai-caller:api/journeys/ask.mjs": Object.freeze({ file: "agents.json", tests: Object.freeze([ASK_TEST]) }),
+  "script:one-off senders in scripts/": Object.freeze({
+    file: "messages.json", tests: Object.freeze([ONE_OFF_SEND_TEST]),
+  }),
   "journey:soft-pull-multi-biz-intended-draft#2-authorize-first": Object.freeze({
     file: "journeys.json", tests: Object.freeze([SOFT_PULL_SERVER, SOFT_PULL_PAGE]),
   }),

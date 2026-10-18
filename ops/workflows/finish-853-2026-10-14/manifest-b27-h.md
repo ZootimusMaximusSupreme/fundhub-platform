@@ -65,3 +65,18 @@ immediate retry after failure.
 - `node --test src/pulse/catalog/proofs/fin-b23-present-send-lock.test.mjs`: 8 passed, 0 failed.
 - `node --test src/pulse/coverage/gap-catalog-reads.test.mjs`: 3 passed, 0 failed.
 - `node scripts/pulse/count-not-proved.mjs /tmp/heartbeat-integration-after-present.json`: 53 total; display 45, routes 7, flow 1, reads 0.
+
+## Follow-up one-off sender repair — 2026-10-18
+
+The integration lane repaired `flow:message:script:one-off senders in scripts/`
+after Workflow H identified the missing shared final result. The three hand-run
+senders now require the same explicit `--send` flag and write one append-only
+`script.one_off_send` event after the provider answers. The receipt names the
+script, channel, attempted/sent/failed/blocked counts, and provider reference;
+it stores no message copy or destination address. The soft-pull proof also now
+checks the provider's real `status` field instead of the nonexistent `ok` field.
+
+- `node --test src/ops/one-off-send-receipt.test.mjs`: 4 passed, 0 failed.
+- `node --test src/pulse/coverage/gap-catalog-flow.test.mjs src/ops/one-off-send-receipt.test.mjs`: 24 passed, 0 failed.
+- `node --test src/pulse/catalog/proofs/flow-read-contracts.test.mjs`: 2 passed, 0 failed.
+- `node scripts/pulse/count-not-proved.mjs /tmp/heartbeat-integration-after-flow.json`: 52 total; display 45, routes 7, flow 0, reads 0.

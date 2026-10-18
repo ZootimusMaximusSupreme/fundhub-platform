@@ -6,10 +6,10 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 
 - Full built catalog: 3,975 mapped rows, 3,942 unique checks, 3,919 wired, 23 catalog-red.
 - Last stored production scorecard: 2026-10-17 6:02 a.m. Arizona, 1,922 rows: 725 working, 78 broken, 853 not proved, 1 unchecked, 265 nothing to judge.
-- Current integrated offline proof inventory: **53 not proved**, measured 2026-10-18 with `node scripts/pulse/count-not-proved.mjs` after the route, climate, and Present repairs:
+- Current integrated offline proof inventory: **52 not proved**, measured 2026-10-18 with `node scripts/pulse/count-not-proved.mjs` after the route, climate, Present, and one-off sender repairs:
   - routes: 7
   - display controls: 45
-  - flows: 1
+  - flows: 0
   - reads: 0
 - The old 853 number is a stale production scorecard. Claude's 26 merged batches removed 796 of those proof gaps in the current code.
 - Initial production-like read-only pulse, before today's proof repairs, with the workflow registry included: **1,409 rows = 948 green + 112 broken + 57 not proved + 281 nothing to judge + 68 not checked**.
@@ -26,7 +26,7 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 | E | agent | 20 staff/plumbing broken rows | none after inventory | active |
 | F | Feynman | 45 display proof gaps | none after inventory | complete: 45 confirmed product defects |
 | G | Rawls | 9 route proof gaps | none after inventory | complete: 2 proved, 7 confirmed product defects |
-| H | Ohm + this session | 1 flow and 2 read proof gaps | none after inventory | read lane complete: climate measured red; Present repaired and proved; 1 flow defect remains |
+| H | Ohm + this session | 1 flow and 2 read proof gaps | none after inventory | complete: climate measured red; Present and one-off sender controls repaired and proved; 0 proof gaps remain |
 
 B–H run together. A waits only for the exact current pulse result, then integrates, runs targeted tests, runs the full guard set, and verifies the ship gate. Each repair stays in its own worktree or agent branch. The dirty main checkout and unrelated iOS/auth files are off limits.
 
@@ -79,4 +79,5 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: F proved the 45 display gaps are 45 concrete shipped-control defects and left every one honestly red. G attached 2 exact route proofs and isolated 7 endpoint defects. H attached the climate read and isolated 2 remaining product gaps. Integrated total is now 54 not proved: 45 display, 7 route, 1 flow, 1 read.
 - 2026-10-18: started staff/plumbing lane E plus product-repair batches for display rows 1–6 and the seven remaining route defects.
 - 2026-10-18: repaired Present's two incomplete send controls: delivered letter packs now read `FHData.data`, and soft-pull sends use the shared Sending / cooldown / Sent-at UI. The full rendered send-lock proof passes 8/8. Integrated proof backlog is now 53: 45 display, 7 route, 1 flow, 0 read.
+- 2026-10-18: repaired the three hand-run one-off sender scripts with one explicit `--send` fence and an append-only, script-tagged final receipt that stores counts and provider references without message copy or destination addresses. The focused sender proof passes 4/4, the complete flow monitor passes 24/24, the flow/read shard passes 2/2, and the integrated proof backlog is now 52: 45 display, 7 route, 0 flow, 0 read.
 
