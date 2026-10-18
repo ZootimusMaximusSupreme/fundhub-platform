@@ -386,9 +386,10 @@ body.running .lane.notaken{opacity:.25}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
+<link rel="stylesheet" href="journeys-workspace.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="jr-page">
 <div class="app">
 
   <!-- ══ SIDEBAR — identical across every wireframe ══ -->
@@ -460,8 +461,8 @@ body.running .lane.notaken{opacity:.25}
 </aside>
   <div class="shell fh-maxw">
 
-  <header>
-    <div class="brand"><b>fundhub</b><span>journeys</span></div>
+  <header class="jr-toolbar" aria-label="Journey actions">
+    <div class="jr-heading"><b>Journey editor</b><p>Review each step, test the path, then apply your changes.</p></div>
     <div class="hactions">
       <span class="dirty" id="dirty"></span>
       <button class="hbtn" id="undo">Undo</button>
@@ -478,7 +479,7 @@ body.running .lane.notaken{opacity:.25}
 
   <div class="workspace">
     <aside id="jlist" role="tablist" aria-label="Journeys"></aside>
-    <div class="canvas" id="canvas"></div>
+    <main class="canvas" id="canvas" aria-label="Journey flow"></main>
     <div class="panel">
       <div class="ptabs" role="tablist" aria-label="Panel">
         <button class="ptab" data-tab="step" role="tab">Step</button>
