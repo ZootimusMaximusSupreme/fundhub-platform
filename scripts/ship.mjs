@@ -43,11 +43,11 @@
 //      list it was last handed, so a job added in a ship never runs without this
 //      (board N25, 2026-09-18). Then the ship is written to ops/ship-log.md and
 //      committed. A failed run writes nothing, so the next run tries again.
-//   9. push to GitHub with scripts/github-push-whole-repo.mjs (main, every local
-//      branch, every tag) — but only when GitHub's main is already inside this Mac's
-//      main. That script leases main on the copy it fetches a moment before, so on its
-//      own it would overwrite commits GitHub has and this Mac lacks. A push that is
-//      skipped or fails is one line; the site is already live and nothing is undone.
+//   9. push to GitHub with scripts/github-push-whole-repo.mjs (main, unmerged local
+//      branches, every tag) — but only when GitHub's main is already inside this Mac's
+//      main. The script checks this again and pushes main only by fast-forward, so it
+//      cannot overwrite newer GitHub commits. A push that is skipped or fails is one
+//      line; the site is already live and nothing is undone.
 
 import { loadEnv } from "./load-env.mjs";
 import { reregisterInngest } from "./inngest-register.mjs";
@@ -215,8 +215,7 @@ export function hasShippableChange(prev, head, { git }) {
  * Step 9: push to GitHub through scripts/github-push-whole-repo.mjs. Never throws and
  * never stops the ship: the deploy is live and logged before this runs.
  * It pushes only when GitHub's main (fetched just now) is already inside this Mac's
- * main, because the push script leases main on the copy it fetches itself and would
- * otherwise overwrite GitHub's newer commits.
+ * main. The push script checks again and refuses a non-fast-forward main push.
  */
 export function pushToGitHub({ git, runCmd, env = process.env, timeout = PUSH_TIMEOUT_MS, fetchTimeout = PULL_TIMEOUT_MS }) {
   const live = "The site is live and the ship is logged;";
@@ -229,7 +228,7 @@ export function pushToGitHub({ git, runCmd, env = process.env, timeout = PUSH_TI
   const inside = safeCall(git, ["merge-base", "--is-ancestor", "refs/remotes/origin/main", "refs/heads/main"]);
   if (!inside.ok) {
     const line = inside.status === 1
-      ? `Did not push to GitHub: GitHub's main has commits this Mac does not have, and the push would overwrite them. ${live} the next ship pulls them first.`
+      ? `Did not push to GitHub: GitHub's main has newer commits; this Mac must pull them first. ${live} the next ship pulls them first.`
       : `Did not push to GitHub: could not compare GitHub's main with this Mac's main (${reasonLine(inside.out, env)}). ${live} the next ship pushes.`;
     return { ok: false, pushed: false, line };
   }
@@ -239,7 +238,7 @@ export function pushToGitHub({ git, runCmd, env = process.env, timeout = PUSH_TI
   } catch (e) {
     r = { ok: false, out: String(e?.message || e) };
   }
-  if (r.ok) return { ok: true, pushed: true, line: "Pushed to GitHub: main, every local branch and every tag." };
+  if (r.ok) return { ok: true, pushed: true, line: "Pushed to GitHub: main, unmerged local branches, and every tag." };
   const why = r.timedOut ? `no answer within ${Math.round(timeout / 60_000)} minutes` : reasonLine(r.out, env);
   return { ok: false, pushed: false, line: `The push to GitHub failed (${why}). ${live} the next ship pushes again.` };
 }
