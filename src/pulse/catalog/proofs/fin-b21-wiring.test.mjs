@@ -1,7 +1,7 @@
 // Batch 21 wiring: every one of the 32 rows is one exact map row and ends in exactly one outcome
-// (live check, practice test, verified nothing to judge, or named as not attachable), and the display lane
-// agrees: live rows are judged by their saved result, practice rows leave the lane, the two owner-removed
-// rows are read live (GET) and say nothing to judge, and the rest stay NOT_PROVED.
+// (live check, practice test, or verified nothing to judge), and the display lane
+// agrees for the already-generated rows. This repair intentionally does not regenerate the catalog, so its seven
+// new source proof cases remain honestly red in the live lane until the integration batch runs that separate step.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -23,6 +23,15 @@ const LIVE = FIN_B21_CHECKS.map((c) => ({ surface: c.surface, control: c.control
 const PRACTICE = FIN_B21_DISPLAY_PROOF_CASES.map((c) => ({ surface: c.surface, control: c.control }));
 const NOT_ATTACHABLE = FIN_B21_NOT_ATTACHABLE.map((c) => ({ surface: c.surface, control: c.control }));
 const REMOVED = FIN_B21_OWNER_REMOVED_ROWS.map((c) => ({ surface: c.surface, control: c.control }));
+const SOURCE_ONLY_PRACTICE = new Set([
+  "Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
+  "Writer: 'Send at (optional) - times are UTC' box",
+  "Tab 'Sent' (posted, with the reference on the account)",
+  "Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
+  "Side drawer: close X, click outside, Escape",
+  "Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
+  "'This shoot' script list sheet (tap a script to roll it)",
+]);
 
 const groupedRows = (sql, badKey = null, sampleCount = 3) => {
   const probes = [...sql.matchAll(/SELECT (\d+)::int AS probe_index, sample_count, bad_count FROM \(\/\* display-result:([^*\s]+) \*\//g)];
@@ -42,11 +51,11 @@ const shippedSite = async (url, init) => {
   return new Response(fs.readFileSync(file, "utf8"), { status: 200 });
 };
 
-test("32 rows: 15 live checks, 8 practice tests, 2 nothing to judge, 7 named as not attachable, no row twice", () => {
+test("32 rows: 15 live checks, 15 practice tests, 2 nothing to judge, no row twice", () => {
   assert.equal(LIVE.length, 15);
-  assert.equal(PRACTICE.length, 8);
+  assert.equal(PRACTICE.length, 15);
   assert.equal(REMOVED.length, 2);
-  assert.equal(NOT_ATTACHABLE.length, 7);
+  assert.equal(NOT_ATTACHABLE.length, 0);
   const all = [...LIVE, ...PRACTICE, ...REMOVED, ...NOT_ATTACHABLE].map((r) => idFor(r.surface, r.control));
   assert.equal(all.length, 32);
   assert.equal(new Set(all).size, 32);
@@ -58,7 +67,8 @@ test("32 rows: 15 live checks, 8 practice tests, 2 nothing to judge, 7 named as 
     ["social-studio.html", "staff-teams.html", "teleprompter.html (+ teleprompter.js, teleprompter-edits.js)"]);
 });
 
-test("every not-attachable row carries an exact reason that names where to look", () => {
+test("no batch 21 row remains not attachable", () => {
+  assert.deepEqual(FIN_B21_NOT_ATTACHABLE, []);
   for (const entry of FIN_B21_NOT_ATTACHABLE) {
     assert.ok(entry.reason.length > 150, entry.control);
     assert.match(entry.reason, /Needs|needs/, entry.control);
@@ -98,7 +108,7 @@ test("the plug-in list holds the practice cases and none of the other rows", () 
   }
 });
 
-test("the display lane judges the live rows, drops the practice rows, says nothing to judge for the owner-removed rows, and keeps the rest NOT_PROVED", async () => {
+test("the display lane keeps the seven source-only additions red until the prohibited generated catalog refresh", async () => {
   const db = { query: async (sql) => ({ rows: groupedRows(sql) }) };
   const rows = await gapChecks({ db, orgId: "00000000-0000-4000-8000-0000000000a1", fetchImpl: shippedSite });
   const byId = new Map(rows.map((row) => [row.id, row]));
@@ -107,7 +117,13 @@ test("the display lane judges the live rows, drops the practice rows, says nothi
     assert.ok(got, `lane row: ${r.control}`);
     assert.equal(got.status, "PASS", r.control);
   }
-  for (const r of PRACTICE) assert.equal(byId.has(idFor(r.surface, r.control)), false, `${r.control} left the lane`);
+  for (const r of PRACTICE) {
+    if (SOURCE_ONLY_PRACTICE.has(r.control)) {
+      assert.equal(byId.get(idFor(r.surface, r.control))?.status, "NOT_PROVED", `${r.control} keeps honest red evidence`);
+    } else {
+      assert.equal(byId.has(idFor(r.surface, r.control)), false, `${r.control} left the lane`);
+    }
+  }
   for (const r of REMOVED) {
     const got = byId.get(idFor(r.surface, r.control));
     assert.equal(got?.status, "na", r.control);

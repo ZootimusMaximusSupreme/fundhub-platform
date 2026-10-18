@@ -868,10 +868,11 @@ var STATUS_BADGE={draft:'b-gray',queued:'b-info',scheduled:'b-info',awaiting_app
    an entry the details panel would print the system's own word at a reader. */
 var STATUS_LABEL={draft:'Draft',queued:'Waiting',scheduled:'Lined up',awaiting_approval:'Held for a person',posting:'Sending now',posted:'Sent',failed:'Could not be sent',blocked:'Needs a rewrite'};
 var CONN_LABEL={active:'ready to post',pending:'still being set up',expired:'the sign-in has run out',revoked:'the sign-in was taken away'};
-var CHECK_LABEL={passed:'Looks fine',needs_approval:'Someone must approve it',blocked:'Refused'};
+var CHECK_LABEL={passed:'Looks fine',needs_approval:'Someone must approve it',blocked:'Refused',not_checked:'Not checked yet'};
 var STATE_BADGE={active:'b-ok',pending:'b-info',expired:'b-alert',revoked:'b-alert'};
-var SCREEN_BADGE={passed:'b-ok',needs_approval:'b-accent',blocked:'b-alert'};
+var SCREEN_BADGE={passed:'b-ok',needs_approval:'b-accent',blocked:'b-alert',not_checked:'b-gray'};
 var RULESET_BADGE={croa:'b-alert',claims:'b-warn',disclosure:'b-info',platform:'b-gray',engine:'b-butter',approval:'b-accent'};
+var probeSocialConnectButtons=function(){};
 function statusBadge(s){return '<span class="badge '+(STATUS_BADGE[s]||'b-gray')+'">'+esc(STATUS_LABEL[s]||s)+'</span>';}
 function connLabel(s){return CONN_LABEL[s]||s;}
 
@@ -1571,8 +1572,7 @@ function renderFailed(){
     return;
   }
   if(!rows.length){
-    host.innerHTML = '<div class="empty">Nothing has failed. This screen cannot yet see posts that were actually sent, '+
-      'so this list stays empty.</div>';
+    host.innerHTML = '<div class="empty">Nothing has failed for this partner and filter.</div>';
   } else {
     host.innerHTML = '<table class="grid"><thead><tr>'+
       '<th>Account</th><th>Post</th><th>Tries</th><th>Why it stopped</th><th>Send at</th>'+
@@ -1621,7 +1621,7 @@ function renderPosted(){
   var rows = applyFilters(byStatus('posted')).sort(function(a,b){ return new Date(b.posted_at)-new Date(a.posted_at); });
   var host = document.getElementById('tblPosted');
   if(!hasPartner()){ host.innerHTML = noPartner('Posts that went out'); return; }
-  if(!rows.length){ host.innerHTML = '<div class="empty">This screen cannot yet see posts that went out. '+
+  if(!rows.length){ host.innerHTML = '<div class="empty">Nothing has gone out for this partner and filter. '+
     'There are no like, view or click figures anywhere in the system.</div>'; return; }
   host.innerHTML = '<table class="grid"><thead><tr>'+
     '<th>Account</th><th>Post</th><th>About</th><th>Went out</th><th>Reference</th>'+
@@ -1841,6 +1841,15 @@ function openDrawer(id){
   /* A held post gets the same line as a waiting one, so opening it says why it
      stopped rather than showing a state badge and nothing else. */
   var qs = (p.status === 'queued' || p.status === 'awaiting_approval') ? queueState(p) : null;
+  var screening = p.screening && p.screening.state
+    ? { state:p.screening.state, codes:Array.isArray(p.screening.codes)?p.screening.codes:[] }
+    : (p.status === 'blocked'
+      ? { state:'blocked', codes:(p.blocked_reasons||[]).map(function(r){ return r.code; }).filter(Boolean) }
+      : (p.status === 'awaiting_approval'
+        ? { state:'needs_approval', codes:[] }
+        : ((p.social_post_id || ['scheduled','posting','posted','failed'].indexOf(p.status) !== -1)
+          ? { state:'passed', codes:[] }
+          : { state:'not_checked', codes:[] })));
 
   var html = '<div class="dsec">post</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px">'+statusBadge(p.status)+
@@ -1863,13 +1872,13 @@ function openDrawer(id){
       p.caption.length.toLocaleString('en-US')+' letters · only the first 8,000 are checked</div>'+
 
     '<div class="dsec">copy check</div>'+
-    '<div style="margin-bottom:9px"><span class="badge '+(SCREEN_BADGE[p.screening.state]||'b-gray')+'">'+esc(String(p.screening.state).replace('_',' '))+'</span></div>'+
+    '<div style="margin-bottom:9px"><span class="badge '+(SCREEN_BADGE[screening.state]||'b-gray')+'">'+esc(CHECK_LABEL[screening.state]||String(screening.state).replace('_',' '))+'</span></div>'+
     kvline('What was checked', 'The words of this post')+
     kvline('Post reference', p.id)+
     kvline('Where it runs', 'An ordinary post on your own account, not a paid advert, so the rules that only apply to paid adverts were skipped.')+
-    (p.screening.codes.length
-      ? '<div class="jsonline"><b>Rules broken:</b> '+esc(p.screening.codes.join(', '))+'</div>'
-      : '<div class="jsonline"><b>Rules broken:</b> none — it passed.</div>')+
+    (screening.codes.length
+      ? '<div class="jsonline"><b>Rules broken:</b> '+esc(screening.codes.join(', '))+'</div>'
+      : '<div class="jsonline"><b>Rules broken:</b> '+(screening.state === 'passed' ? 'none — it passed.' : 'none recorded.')+'</div>')+
     '<div class="rcite" style="margin-top:7px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2)">check results are kept for good and cannot be deleted</div>'+
 
     (p.status === 'blocked'
@@ -2233,6 +2242,7 @@ document.getElementById('fOffer').addEventListener('change', function(){
     loadChannels();
     loadSettings();
     loadQueue();
+    probeSocialConnectButtons();
   }
   sel.addEventListener('change', function(){
     P = parseInt(sel.value,10) || 0;
@@ -2310,7 +2320,7 @@ document.getElementById('queueBtn').addEventListener('click', function(){
     caption: caption,
     offer_type: offer,
     asset_id: asset || null,
-    scheduled_for: when ? new Date(when).toISOString() : null
+    scheduled_for: utcFromBox(when)
   };
   fetch('/api/social/schedule', {
     method: 'POST',
@@ -2490,7 +2500,9 @@ document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDr
           if (res && res.error === 'not_configured') markMissing(channel, 'not_configured');
         });
     }
-    ['facebook', 'instagram', 'linkedin'].forEach(probe);
+    probeSocialConnectButtons = function () {
+      ['facebook', 'instagram', 'linkedin'].forEach(probe);
+    };
   }
 })();
 
@@ -2601,10 +2613,14 @@ function loadSettings(){
 function loadQueue(){
   var p = partner();
   POSTS = [];
+  TASKS = [];
   if(!p){ renderAll(); return; }
   apiGet('/api/social/posts?partner_id='+encodeURIComponent(p.id)).then(function(res){
     POSTS = res.ok ? ((res.data.items)||[]).map(function(row){
       return Object.assign({}, row, { partner: P, blocked_reasons: row.blocked_reasons || [] });
+    }) : [];
+    TASKS = res.ok ? ((res.data.tasks)||[]).map(function(row){
+      return Object.assign({}, row, { partner: P });
     }) : [];
     renderAll();
   });

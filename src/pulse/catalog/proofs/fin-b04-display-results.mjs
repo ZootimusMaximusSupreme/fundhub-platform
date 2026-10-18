@@ -53,6 +53,7 @@ export const FIN_B04_PORTAL_PREFILL_TEST = "src/pulse/catalog/proofs/fin-b04-por
 export const FIN_B04_PIPELINE_COLUMNS_TEST = "src/pulse/catalog/proofs/fin-b04-pipeline-columns.test.mjs";
 export const FIN_B04_CHAT_ASK_TEST = "src/pulse/catalog/proofs/fin-b04-chat-ask.test.mjs";
 export const FIN_B04_PUSH_TEST = "src/pulse/catalog/proofs/fin-b04-push-store.test.mjs";
+export const FIN_B04_SOCIAL_BROWSER_TEST = "src/pulse/catalog/proofs/display-contracts-teams-social-1.test.mjs";
 
 // The four Card Stacking column rows also say "shows count and funding est.". The
 // number is worked out when the board is read, from the same cards, so no saved
@@ -331,6 +332,12 @@ export const FIN_B04_PRACTICE_ROWS = Object.freeze([
     surface: "client-portal.html",
     control: "Turn on / off notifications button (web push subscribe)",
     test: FIN_B04_PUSH_TEST
+  }),
+  Object.freeze({
+    sourceFile: "desks-f.json",
+    surface: "social-studio.html",
+    control: "Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip)",
+    test: FIN_B04_SOCIAL_BROWSER_TEST
   })
 ]);
 const PRACTICE_CASES = FIN_B04_PRACTICE_ROWS.map(({ test, ...row }) => Object.freeze({
@@ -344,12 +351,6 @@ const PRACTICE_CASES = FIN_B04_PRACTICE_ROWS.map(({ test, ...row }) => Object.fr
 // They carry no query and no case, so the coverage map keeps them NOT_PROVED.
 // A fresh reader is invited to challenge each reason.
 export const FIN_B04_NOT_ATTACHABLE = Object.freeze([
-  Object.freeze({
-    sourceFile: "desks-f.json",
-    surface: "social-studio.html",
-    control: "Tab 'Could not be sent' (posts that gave up after 3 tries, plus the one open 'job to fix' strip)",
-    reason: "The tab cannot show a failed post at all: the page lists GET /api/social/posts, which reads marketing_content_queue, whose status check (db/migrations/243) admits draft, queued, scheduled, awaiting_approval, discarded and blocked and never 'failed'. Failed posts live in social_posts, which the page never reads. Any check of social_posts judges a different table from the one the tab draws, and would stay green while the tab says 'Nothing has failed'; a practice test of the route would have to assert the bug and stay red. The fix is a product change in api/social/posts.mjs."
-  })
 ]);
 
 // The same rows as proof cases: compile-catalog reads the contract ones as deep
