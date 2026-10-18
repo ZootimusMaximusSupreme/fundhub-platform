@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Private lead list | Fundhub</title>
+  <link rel="stylesheet" href="/app/fundhub-brand.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --lead-bg: #07111f;
+      --lead-panel: #0d1a2b;
+      --lead-line: #26364d;
+      --lead-text: #f5f8ff;
+      --lead-muted: #aab7ca;
+      --lead-accent: #58d7b8;
+      --lead-danger: #ff8796;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--lead-bg);
+      color: var(--lead-text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    h1 { margin: 6px 0 8px; font-size: clamp(2rem, 5vw, 3.75rem); line-height: 1; letter-spacing: -.04em; }
+    p { margin: 0; color: var(--lead-muted); line-height: 1.6; }
+    .eyebrow { color: var(--lead-accent); font-size: .75rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+    button {
+      min-height: 44px;
+      border: 1px solid var(--lead-line);
+      border-radius: 10px;
+      padding: 10px 16px;
+      background: #13233a;
+      color: var(--lead-text);
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--lead-accent); }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--lead-accent) 65%, transparent);
+      outline-offset: 2px;
+    }
+    #reset-edits { color: var(--lead-danger); }
+    .panel { overflow: hidden; border: 1px solid var(--lead-line); border-radius: 16px; background: var(--lead-panel); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; min-width: 900px; border-collapse: collapse; }
+    th, td { padding: 14px; border-bottom: 1px solid var(--lead-line); text-align: left; vertical-align: top; }
+    th { color: var(--lead-muted); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+    tbody tr:last-child td { border-bottom: 0; }
+    input, textarea, select {
+      width: 100%; min-height: 42px; border: 1px solid transparent; border-radius: 8px;
+      padding: 9px 10px; background: #091524; color: var(--lead-text); font: inherit;
+    }
+    textarea { min-height: 64px; resize: vertical; }
+    .empty { padding: 42px 18px; text-align: center; color: var(--lead-muted); }
+    .privacy { padding: 14px 16px; border-top: 1px solid var(--lead-line); font-size: .82rem; }
+    @media (max-width: 720px) {
+      main { width: min(100% - 20px, 1180px); padding-top: 28px; }
+      header { align-items: stretch; flex-direction: column; }
+      .actions { justify-content: stretch; }
+      .actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">Private workspace</div>
+        <h1>Lead follow-up list</h1>
+        <p>Use this page as a private scratchpad. Your edits stay in this browser.</p>
+      </div>
+      <div class="actions">
+        <button id="add-lead" type="button">Add blank lead</button>
+        <button id="reset-edits" type="button">Reset my edits</button>
+      </div>
+    </header>
+
+    <section class="panel" aria-label="Private lead list">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Number</th>
+              <th scope="col">Follow up date</th>
+              <th scope="col">Response</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="lead-rows"></tbody>
+        </table>
+        <p class="empty" id="empty-state">No saved leads in this browser. Add a blank lead to begin.</p>
+      </div>
+      <p class="privacy">Nothing on this page sends lead data to Fundhub or any other service.</p>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "fundhub-private-leads-c01cb7592c8bb994130158e897e99bf1";
+    let edits = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(edits)) edits = [];
+
+    const rows = document.getElementById("lead-rows");
+    const emptyState = document.getElementById("empty-state");
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(edits));
+    }
+
+    function field(tag, value, label, onChange) {
+      const control = document.createElement(tag);
+      control.value = value || "";
+      control.setAttribute("aria-label", label);
+      control.addEventListener("input", onChange);
+      control.addEventListener("change", onChange);
+      return control;
+    }
+
+    function render() {
+      rows.replaceChildren();
+      emptyState.hidden = edits.length > 0;
+      edits.forEach((lead, index) => {
+        const row = document.createElement("tr");
+        const specs = [
+          ["input", "name", "Name"],
+          ["input", "number", "Number"],
+          ["input", "followUpDate", "Follow up date"],
+          ["textarea", "response", "Response"],
+          ["select", "status", "Status"]
+        ];
+        specs.forEach(([tag, key, label]) => {
+          const cell = document.createElement("td");
+          const control = field(tag, lead[key], `${label} for lead ${index + 1}`, () => {
+            edits[index][key] = control.value;
+            persist();
+          });
+          if (key === "number") control.type = "tel";
+          if (key === "followUpDate") control.type = "date";
+          if (key === "status") {
+            ["New", "Contacted", "Follow up", "Closed"].forEach((status) => {
+              const option = document.createElement("option");
+              option.value = status;
+              option.textContent = status;
+              control.append(option);
+            });
+            control.value = lead.status || "New";
+          }
+          cell.append(control);
+          row.append(cell);
+        });
+        rows.append(row);
+      });
+    }
+
+    document.getElementById("add-lead").addEventListener("click", () => {
+      edits.push({ name: "", number: "", followUpDate: "", response: "", status: "New" });
+      persist();
+      render();
+    });
+
+    document.getElementById("reset-edits").addEventListener("click", () => {
+      if (!window.confirm("Reset every edit saved in this browser?")) return;
+      edits = [];
+      persist();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
