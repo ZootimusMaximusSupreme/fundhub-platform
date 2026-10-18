@@ -431,8 +431,8 @@ test.describe("teleprompter on an iPad: the rig", () => {
     await page.touchscreen.tap(512, 700);
     await expect.poll(async () => (await state(page)).playing).toBe(false);
     await page.evaluate(() => window.__fhtp.next());
-    await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
-    await expect(page.locator("#p-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("#s-ad")).toHaveText("Direct Book Ad 92 · Take 1 · 3 of 3");
+    await expect(page.locator("#p-file")).toHaveText("Direct Book Ad 92 — Inquiries off first Take 1.mp4");
     await expect(page.locator("body")).not.toContainText("file-name word");
   });
 });

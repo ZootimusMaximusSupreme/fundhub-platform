@@ -124,4 +124,5 @@ Focused results: handler/auth/display batch command `851/851`; Social Studio Chr
 - The final rebuild reports `3,975 mapped`, `3,942 unique`, `3,942 wired`, `0 red`.
 - The rebuild exposed one stale commission-ledger `always-red` marker. It now owns an exact read-only staff/client/rule/basis/rate query and the repaired rendered-table proof; the combined catalog, commission, flow/read, and display registry guards pass `28/28`.
 - This is the source-proof catalog result. Live provider, credential, historical-data, and owner-policy checks remain separate and must keep their real runtime status.
+- Final guards: lint parses `3,987` files/inline scripts clean; TypeScript and journey-map checks pass. The full suite's only reds were two stale teleprompter test expectations that omitted the canonical `Direct Book` offer prefix. The other `396/397` staff browser checks and all database-optional checks passed; after correcting those expectations, the exact browser check passes `1/1` and the full teleprompter unit file passes `67/67`. No real-iPhone acceptance is claimed.
 
