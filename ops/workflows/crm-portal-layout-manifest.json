@@ -1,0 +1,573 @@
+{
+  "branch": "codex/crm-live-font-reconcile",
+  "base_local_commit": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "owner_authorized": true,
+  "pages": [
+    {
+      "page": "public/app/affiliate.html",
+      "client_facing": true,
+      "single_builder": "/root/page_affiliate",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/affiliate.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-affiliate.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/agent-editor.html",
+      "client_facing": false,
+      "single_builder": "/root/page_agent_editor",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/agent-editor.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-agent-editor.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/automations.html",
+      "client_facing": false,
+      "single_builder": "/root/page_automations",
+      "state": "original owner implementation active; not integrated",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/automations.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-automations.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/brand-studio.html",
+      "client_facing": false,
+      "single_builder": "/root/page_brand_studio",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/brand-studio.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-brand-studio.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/calendar.html",
+      "client_facing": false,
+      "single_builder": "/root/page_calendar",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/calendar.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-calendar.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/campaign-manager.html",
+      "client_facing": false,
+      "single_builder": "/root/page_campaign_manager",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/campaign-manager.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-campaign-manager.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/client-control-panel.html",
+      "client_facing": false,
+      "single_builder": "/root/page_client_control_panel",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/client-control-panel.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-control-panel.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/client-portal.html",
+      "client_facing": true,
+      "single_builder": "/root/page_client_portal",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/client-portal.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-client-portal.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/closer-dashboard.html",
+      "client_facing": false,
+      "single_builder": "/root/page_closer_dashboard",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/closer-dashboard.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-closer-dashboard.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/company-brain.html",
+      "client_facing": false,
+      "single_builder": "/root/page_company_brain",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/company-brain.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-company-brain.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/consent-capture.html",
+      "client_facing": false,
+      "single_builder": "/root/page_consent_capture",
+      "state": "original owner recovering retained completed result; not integrated",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/consent-capture.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-consent-capture.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/content-admin.html",
+      "client_facing": false,
+      "single_builder": "/root/page_content_admin",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/content-admin.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-content-admin.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/contracts.html",
+      "client_facing": false,
+      "single_builder": "/root/page_contracts",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/contracts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/creative-factory.html",
+      "client_facing": false,
+      "single_builder": "/root/page_creative_factory",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/creative-factory.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-creative-factory.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/csm-queue.html",
+      "client_facing": false,
+      "single_builder": "/root/page_csm_queue",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/csm-queue.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-csm-queue.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/documents.html",
+      "client_facing": false,
+      "single_builder": "/root/page_documents",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/documents.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-documents.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/finance-os.html",
+      "client_facing": false,
+      "single_builder": "/root/page_finance_os",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/finance-os.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/financeos.html",
+      "client_facing": true,
+      "single_builder": "/root/page_financeos_frame",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/financeos.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-financeos.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/galaxy.html",
+      "client_facing": false,
+      "single_builder": "/root/page_galaxy",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/galaxy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-galaxy.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/hiring.html",
+      "client_facing": false,
+      "single_builder": "/root/page_hiring",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/hiring.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-hiring.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/inquiry-remover.html",
+      "client_facing": false,
+      "single_builder": "/root/page_inquiry_remover",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/inquiry-remover.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-inquiry-remover.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/journeys.html",
+      "client_facing": false,
+      "single_builder": "/root/page_journeys",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/journeys.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-journeys.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/lenders.html",
+      "client_facing": false,
+      "single_builder": "/root/page_lenders",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/lenders.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/marketing-command-center.html",
+      "client_facing": false,
+      "single_builder": "/root/page_marketing_command_center",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/marketing-command-center.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-marketing-command-center.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/messaging.html",
+      "client_facing": false,
+      "single_builder": "/root/page_messaging",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/messaging.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-messaging.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-accounts.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_accounts",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-accounts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-accounts.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-alerts.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_alerts",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-alerts.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-alerts.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-banks.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_banks",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-banks.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-banks.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-connections.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_connections",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-connections.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-connections.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-credit.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_credit",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-credit.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-credit.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-declines.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_declines",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-declines.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-declines.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-fundability.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_fundability",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-fundability.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-fundability.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-helper.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_helper",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-helper.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-helper.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-next.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_next",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-next.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-next.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-payments.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_payments",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-payments.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-payments.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-plan.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_plan",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-plan.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-plan.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-setup.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_setup",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-setup.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-setup.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-strategy.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_strategy",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-strategy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-strategy.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-transfers.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_transfers",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-transfers.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-transfers.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money-vault.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_vault",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money-vault.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money-vault.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/money.html",
+      "client_facing": true,
+      "single_builder": "/root/page_money_overview",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/money.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-money.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/morning-brief.html",
+      "client_facing": false,
+      "single_builder": "/root/page_morning_brief",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/morning-brief.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-morning-brief.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/my-numbers.html",
+      "client_facing": false,
+      "single_builder": "/root/page_my_numbers",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/my-numbers.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/ops-admin.html",
+      "client_facing": false,
+      "single_builder": "/root/page_ops_admin",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/ops-admin.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-ops-admin.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/partner-galaxy.html",
+      "client_facing": false,
+      "single_builder": "/root/page_partner_galaxy",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/partner-galaxy.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-partner-galaxy.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/partner-training.html",
+      "client_facing": false,
+      "single_builder": "/root/page_partner_training",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/partner-training.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-partner-training.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/payment-success.html",
+      "client_facing": true,
+      "single_builder": "/root/page_payment_success",
+      "state": "original owner recovering retained completed result; not integrated",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/payment-success.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-payment-success.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/pipeline.html",
+      "client_facing": false,
+      "single_builder": "/root/page_pipeline",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/pipeline.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-pipeline.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/present.html",
+      "client_facing": false,
+      "single_builder": "/root/page_present",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/present.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-present.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/products-commissions.html",
+      "client_facing": false,
+      "single_builder": "/root/page_products_commissions",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/products-commissions.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-products-commissions.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/sales-floor.html",
+      "client_facing": false,
+      "single_builder": "/root/page_sales_floor",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/sales-floor.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/social-studio.html",
+      "client_facing": false,
+      "single_builder": "/root/page_social_studio",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/social-studio.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-social-studio.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/soft-pull-approve.html",
+      "client_facing": true,
+      "single_builder": "/root/page_soft_pull_approve",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/soft-pull-approve.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-soft-pull-approve.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/staff-teams.html",
+      "client_facing": false,
+      "single_builder": "/root/page_staff_teams",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/staff-teams.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-staff-teams.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/teleprompter-remote.html",
+      "client_facing": false,
+      "single_builder": "/root/page_teleprompter_remote",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/teleprompter-remote.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-teleprompter-remote.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/app/teleprompter.html",
+      "client_facing": false,
+      "single_builder": "/root/page_teleprompter",
+      "state": "unfinished; original owner retained; not currently active",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/teleprompter.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-teleprompter.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/login.html",
+      "client_facing": true,
+      "single_builder": "/root/page_login",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/login.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-login.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/portal-login.html",
+      "client_facing": true,
+      "single_builder": "/root/page_portal_login",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/portal-login.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-portal-login.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/reset-password.html",
+      "client_facing": true,
+      "single_builder": "/root/page_reset_password",
+      "state": "original owner recovering retained completed result; not integrated",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/reset-password.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-reset-password.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/contract.html",
+      "client_facing": true,
+      "single_builder": "/root/page_contract",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/contract.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contract.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    },
+    {
+      "page": "public/progress.html",
+      "client_facing": true,
+      "single_builder": "/root/page_progress",
+      "state": "integrated; final combined release verification in progress",
+      "prompt": "ops/workflows/crm-portal-layout-prompts/progress.md",
+      "evidence": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-progress.md",
+      "prompt_ref": "codex/crm-portal-layout-professional"
+    }
+  ],
+  "compatibility_and_shared_exclusions": {
+    "index.html": "role-aware app entry redirect",
+    "closer-call.html": "compatibility redirect to Closer Dashboard",
+    "sidebar.fragment.html": "shared navigation fragment, foundation-owned"
+  },
+  "checkpoint": {
+    "integrated_pages": 36,
+    "individual_results_completed": 39,
+    "retained_completed_results_in_recovery": 3,
+    "unfinished_individual_pages": 22,
+    "last_passing_combined_run": 39166186746,
+    "source_checks": 841,
+    "browser_checks": 330,
+    "final_36_page_run": 39167073054,
+    "production_published": false
+  },
+  "integration_state": "Current main reconciled; original owners only. Never use the old diverged layout branch as a production replacement."
+}
