@@ -170,9 +170,9 @@ describe("the client signing page (public/contract.html)", () => {
 
   test("it loads no staff app code beyond the isolated type assets", () => {
     const appRefs = [...CLIENT.matchAll(/(?:src|href)=["'](\/app\/[^"']+)["']/g)].map(m => m[1]);
-    assert.deepEqual(appRefs.sort(), ["/app/client-ios.css", "/app/fundhub-font.css", "/app/fundhub-font.js"]);
+    assert.deepEqual(appRefs.sort(), ["/app/fundhub-font.css", "/app/fundhub-font.js"]);
     assert.match(CLIENT, /<body[^>]*data-client-public/, "public signing must never acquire a session gate");
-    const isolated = CLIENT.replace(/\/app\/fundhub-font\.(?:css|js)|\/app\/client-ios\.css/g, "");
+    const isolated = CLIENT.replace(/\/app\/fundhub-font\.(?:css|js)/g, "");
     assert.equal(/\/app\//.test(isolated), false);
     const type = fs.readFileSync(path.join(PUBLIC, "app/fundhub-font.js"), "utf8");
     assert.doesNotMatch(type, /fetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|location\s*[.=]|\/api\//);

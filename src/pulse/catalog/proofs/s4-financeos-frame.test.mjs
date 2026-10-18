@@ -9,8 +9,7 @@ import { json, proofRows, startScreens } from "./s4-screen-harness.mjs";
 import { CLIENT, CLIENT_ID, STAFF, sampleAnswer, waitFor } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
-const TABS = ["overview", "next", "helper", "transfers", "plan", "banks", "strategy", "fundability", "declines",
-  "alerts", "vault", "accounts", "credit", "connections", "payments", "setup"];
+const TABS = ["overview", "accounts", "payments", "transfers", "alerts", "next", "credit", "fundability", "strategy", "banks", "declines", "helper", "plan", "vault", "connections", "setup"];
 
 test("the frame lists every tab, names the client and shows the sandbox note", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);

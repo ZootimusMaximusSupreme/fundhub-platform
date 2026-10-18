@@ -41,7 +41,10 @@ jobs:
   ship:
     # The ship-log commit that a ship pushes back starts with "ship:". It never ships again.
     if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'ship:') }}
-    runs-on: ubuntu-latest
+    # The same unchanged read-only release proof passes here; the Ubuntu runner
+    # intermittently times out at TLS on the site's existing apex load balancers.
+    # This remains GitHub cloud execution, with the same guards and one deploy.
+    runs-on: macos-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +96,7 @@ jobs:
       - name: Ship
         env:
           CI: "true"
+          NODE_OPTIONS: "--dns-result-order=ipv4first"
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

@@ -117,7 +117,8 @@ jobs:
           if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
             execFileSync('git',['commit','-m','Record isolated client/staff browser evidence for run '+process.env.GITHUB_RUN_ID],{stdio:'inherit'});
             // Discard generated changes at the old shared evidence paths before rebasing.
-            execFileSync('git',['restore','--worktree','--',out,perf],{stdio:'inherit'});
+            const generated=execFileSync('git',['ls-files','--',out,perf],{encoding:'utf8'}).trim().split('\n').filter(p=>p&&!p.startsWith(snapshot+'/'));
+            if(generated.length)execFileSync('git',['restore','--worktree','--',...generated],{stdio:'inherit'});
             execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
             execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
           }
