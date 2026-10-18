@@ -45,10 +45,12 @@ async function railOf(role) {
 const OPS_FIVE = ["csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html"];
 const OPS_FOUR = ["csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html"];
 const MARKETING_FIVE = ["marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html"];
+const CURRENT_TITLES = { work: "Your work", clients: "Clients", insights: "Insights", marketing: "Marketing", settings: "Manage" };
 const SECTIONS = {
   funding: {
     title: "Funding",
     named: ["lenders.html", "client-control-panel.html", "finance-os.html"],
+    placement: { "lenders.html": "clients", "client-control-panel.html": "clients", "finance-os.html": "clients" },
     sees: {
       owner: ["lenders.html", "client-control-panel.html"], admin: ["lenders.html", "client-control-panel.html"],
       funding_advisor: ["lenders.html", "client-control-panel.html"],
@@ -59,6 +61,10 @@ const SECTIONS = {
   "client-ops": {
     title: "Client ops",
     named: ["csm-queue.html", "consent-capture.html", "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html"],
+    placement: {
+      "csm-queue.html": "clients", "consent-capture.html": "clients", "messaging.html": "work",
+      "documents.html": "clients", "inquiry-remover.html": "clients", "company-brain.html": "insights",
+    },
     sees: {
       owner: OPS_FIVE, admin: OPS_FIVE, sales_manager: OPS_FOUR, closer: OPS_FOUR, funding_advisor: OPS_FOUR,
       csm: OPS_FOUR, setter: OPS_FOUR, inquiry_specialist: OPS_FOUR,
@@ -67,11 +73,16 @@ const SECTIONS = {
   marketing: {
     title: "Marketing",
     named: MARKETING_FIVE,
+    placement: Object.fromEntries(MARKETING_FIVE.map((href) => [href, "marketing"])),
     sees: { owner: MARKETING_FIVE, admin: MARKETING_FIVE, partner: ["social-studio.html", "creative-factory.html"] },
   },
   admin: {
     title: "Admin",
     named: ["staff-teams.html", "hiring.html", "products-commissions.html", "contracts.html", "brand-studio.html"],
+    placement: {
+      "staff-teams.html": "settings", "hiring.html": "settings", "products-commissions.html": "settings",
+      "contracts.html": "settings", "brand-studio.html": "settings",
+    },
     sees: {
       owner: ["staff-teams.html", "products-commissions.html", "contracts.html"],
       admin: ["staff-teams.html", "products-commissions.html", "contracts.html"],
@@ -81,6 +92,7 @@ const SECTIONS = {
   portals: {
     title: "Portals",
     named: ["client-portal.html", "affiliate.html"],
+    placement: { "client-portal.html": "settings", "affiliate.html": "settings" },
     sees: { owner: ["client-portal.html"] },
   },
 };
@@ -94,73 +106,84 @@ const ROW = {
 };
 
 for (const [key, section] of Object.entries(SECTIONS)) {
-  test(`the ${section.title} head is drawn only for the roles that have a link under it, with exactly those links`, { timeout: 180_000 }, async () => {
+  test(`the former ${section.title} controls keep their exact role gates in the current sidebar groups`, { timeout: 180_000 }, async () => {
     await proof.check(ROW[key], async () => {
       for (const role of EVERY_ROLE) {
         const rail = await railOf(role);
-        const want = section.sees[role];
-        if (!want) {
-          assert.equal(rail[key], undefined, `${role}: no ${section.title} head when every link under it is off their rail`);
-          continue;
+        const want = section.sees[role] || [];
+        const shown = Object.values(rail).flatMap((group) => group.links).filter((href) => section.named.includes(href));
+        assert.deepEqual([...shown].sort(), [...want].sort(), `${role}: visible ${section.title} controls`);
+        for (const href of want) {
+          const group = rail[section.placement[href]];
+          assert.ok(group, `${role}: ${CURRENT_TITLES[section.placement[href]]} is drawn for ${href}`);
+          assert.ok(group.links.includes(href), `${role}: ${href} is in ${CURRENT_TITLES[section.placement[href]]}`);
         }
-        assert.ok(rail[key], `${role}: the ${section.title} head is drawn`);
-        assert.equal(rail[key].title, section.title);
-        assert.deepEqual(rail[key].links, want, `${role}: links under ${section.title}`);
-        // The rows the section names and this role cannot see are in the markup but never shown.
         for (const href of section.named) {
-          if (!want.includes(href)) assert.ok(!rail[key].links.includes(href), `${role}: ${href} stays off the rail`);
+          if (!want.includes(href)) assert.ok(!shown.includes(href), `${role}: ${href} stays off the rail`);
         }
       }
 
-      // The head folds its links away and brings them back. Owner has every head, so one page does it.
+      // Every current group holding one of these controls folds its visible links and brings them back.
       const page = await lab.open({ role: "owner" });
       await page.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
       await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
       await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
-      const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
-      const head = group.locator(".navhead");
-      const links = group.locator("a.navitem");
-      const closed = () => group.evaluate((node) => node.classList.contains("closed"));
-      assert.equal(await closed(), true, "a section you are not standing in starts folded");
-      assert.equal(await links.first().isVisible(), false, "and its links are out of sight");
-      await head.click();
-      assert.equal(await closed(), false, "one click opens it");
-      assert.equal(await links.first().isVisible(), true, "and the first link can be seen");
-      const shown = await links.evaluateAll((els) => els.filter((a) => a.getClientRects().length > 0).map((a) => a.getAttribute("href")));
-      assert.deepEqual(shown, section.sees.owner, "the links shown are exactly the owner's list");
-      await head.click();
-      assert.equal(await closed(), true, "a second click folds it again");
-      assert.equal(await links.first().isVisible(), false);
+      const ownerGroups = [...new Set((section.sees.owner || []).map((href) => section.placement[href]))];
+      for (const groupKey of ownerGroups) {
+        const group = page.locator(`#side .navgroup[data-fh-section="${groupKey}"]`);
+        const head = group.locator(".navhead");
+        const firstHref = section.sees.owner.find((href) => section.placement[href] === groupKey);
+        const first = group.locator(`a.navitem[href="${firstHref}"]`);
+        assert.equal((await head.evaluate((node) => node.firstChild.textContent)).trim(), CURRENT_TITLES[groupKey]);
+        const startedClosed = await group.evaluate((node) => node.classList.contains("closed"));
+        await head.click();
+        assert.equal(await group.evaluate((node) => node.classList.contains("closed")), !startedClosed, `${CURRENT_TITLES[groupKey]} flips`);
+        assert.equal(await first.isVisible(), startedClosed, `${firstHref} follows the fold`);
+        await head.click();
+        assert.equal(await group.evaluate((node) => node.classList.contains("closed")), startedClosed, `${CURRENT_TITLES[groupKey]} restores`);
+      }
       await page.close();
     });
   });
 }
 
-test("Home, Watch and Automation are drawn for no role, so their heads cannot be folded or unfolded", { timeout: 180_000 }, async () => {
+test("retired Home and Watch rows plus hidden Automation stay off every role's rail", { timeout: 180_000 }, async () => {
   const NEVER = {
-    home: ["partner-galaxy.html"],
-    watch: ["galaxy.html", "ops-admin.html"],
-    automation: ["agent-editor.html", "automations.html", "journeys.html"],
+    home: { links: ["partner-galaxy.html"], placement: "insights" },
+    watch: { links: ["galaxy.html", "ops-admin.html"], placement: "insights" },
+    automation: { links: ["agent-editor.html", "automations.html", "journeys.html"], placement: "automation" },
   };
   for (const role of EVERY_ROLE) {
     const rail = await railOf(role);
-    for (const [key, links] of Object.entries(NEVER)) {
-      assert.equal(rail[key], undefined, `${role} can now see the ${key} head: attach its row`);
-      for (const href of links) assert.ok(!Object.values(rail).some((h) => h.links.includes(href)), `${role} can now open ${href} from the rail`);
+    for (const [key, spec] of Object.entries(NEVER)) {
+      for (const href of spec.links) assert.ok(!Object.values(rail).some((h) => h.links.includes(href)), `${role} can now open ${href} from the rail`);
     }
   }
-  // Each of them does sit in the rail markup, so the reason is "hidden by name", not "not built".
-  const rail = await railOf("owner");
-  assert.ok(Object.keys(rail).length >= 5, "the owner's rail has its other heads");
+  // Each route still sits in the current rail markup and is hidden by the role gate.
+  const page = await lab.open({ role: "owner" });
+  await page.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
+  await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
+  for (const spec of Object.values(NEVER)) {
+    for (const href of spec.links) {
+      const link = page.locator(`#side a.navitem[href="${href}"]`);
+      assert.equal(await link.count(), 1, `${href} remains in the markup`);
+      assert.equal(await link.evaluate((node) => node.closest(".navgroup").dataset.fhSection), spec.placement, `${href}: current group`);
+      assert.equal(await link.evaluate((node) => node.hasAttribute("data-fh-gated") && node.style.display === "none"), true, `${href}: gated`);
+    }
+  }
   for (const row of proof.rows) {
     if (/^Sidebar group '(Home|Watch|Automation)'/.test(row.control)) {
       // Exercised here and never handed to the catalog: see notAttached in fin-b19-rows.json.
       await proof.check(row.control, async () => {
         const key = row.control.match(/^Sidebar group '(\w+)'/)[1].toLowerCase();
-        for (const role of EVERY_ROLE) assert.equal((await railOf(role))[key], undefined, `${role}: ${key}`);
+        for (const role of EVERY_ROLE) {
+          const visible = Object.values(await railOf(role)).flatMap((group) => group.links);
+          for (const href of NEVER[key].links) assert.equal(visible.includes(href), false, `${role}: ${href}`);
+        }
       });
     }
   }
+  await page.close();
 });
 
 test("every listed row was exercised", () => {

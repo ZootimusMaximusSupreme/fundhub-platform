@@ -18,15 +18,15 @@ const FRAGMENT = fs.readFileSync(path.join(ROOT, "public/app/sidebar.fragment.ht
 
 // The rows the registry names: group data attribute, label as printed, target.
 const GROUPS = [
-  ["home", "Home"], ["sales", "Sales"], ["funding", "Funding"], ["client-ops", "Client ops"], ["watch", "Watch"],
-  ["automation", "Automation"], ["marketing", "Marketing"], ["admin", "Admin"], ["portals", "Portals"],
+  ["work", "Your work"], ["clients", "Clients"], ["insights", "Insights"], ["marketing", "Marketing"],
+  ["automation", "Automation"], ["settings", "Manage"],
 ];
 const decode = (text) => text.replace(/&amp;/g, "&");
 const LINKS = [...FRAGMENT.matchAll(/<div class="navgroup" data-fh-section="([^"]+)">[\s\S]*?<\/div><\/div>/g)].flatMap((group) =>
   [...group[0].matchAll(/<a class="navitem" href="([^"]+)">[\s\S]*?<span class="lbl">([^<]+)<\/span>/g)]
     .map((link) => ({ section: group[1], href: link[1], label: decode(link[2]) })));
 
-test("the fragment carries the nine sections and the 32 links this proof clicks", () => {
+test("the fragment carries the six current sections and the 32 links this proof clicks", () => {
   assert.deepEqual([...FRAGMENT.matchAll(/data-fh-section="([^"]+)"/g)].map((m) => m[1]), GROUPS.map(([key]) => key));
   assert.equal(LINKS.length, 32);
   for (const link of LINKS) {
@@ -71,12 +71,12 @@ async function openAsOwner(lab) {
   return page;
 }
 
-test("the six sections a person sees each fold their links away and bring them back", { timeout: 120_000 }, async (t) => {
+test("the five sections an owner sees each fold their links away and bring them back", { timeout: 120_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   const page = await openAsOwner(lab);
   assert.equal(SHOWN_LINKS.length, 21);
-  assert.deepEqual(SHOWN_SECTIONS, ["sales", "funding", "client-ops", "marketing", "admin", "portals"]);
+  assert.deepEqual(SHOWN_SECTIONS, ["work", "clients", "insights", "marketing", "settings"]);
   for (const [key, title] of GROUPS.filter(([key]) => SHOWN_SECTIONS.includes(key))) {
     const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
     const head = group.locator(".navhead").first();

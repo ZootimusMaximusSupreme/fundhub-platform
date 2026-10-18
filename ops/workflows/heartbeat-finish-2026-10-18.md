@@ -27,6 +27,7 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 | F | Feynman + repair agents | 45 display proof gaps | none after inventory | repair active: rows 1–36 fixed and source-proved; final catalog regeneration waits for rows 37–45 |
 | G | Rawls + Ptolemy + integration | 9 route proof gaps | none after inventory | complete: all 9 proved; the 7 endpoint defects are repaired and 1,098/1,098 focused tests pass |
 | H | Ohm + this session | 1 flow and 2 read proof gaps | none after inventory | complete: climate measured red; Present and one-off sender controls repaired and proved; 0 proof gaps remain |
+| I | Codex shell/sidebar fork | current-main shell, sidebar, and account-control proof regressions | based on `4e6e8eb15`; lane A owns aggregate integration | complete: current menus/groups are proved, API/no-DB tones are distinct, and the focused suite passes 139/139 |
 
 B–H run together. A waits only for the exact current pulse result, then integrates, runs targeted tests, runs the full guard set, and verifies the ship gate. Each repair stays in its own worktree or agent branch. The dirty main checkout and unrelated iOS/auth files are off limits.
 
@@ -103,6 +104,7 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: scratch-Postgres CI exposed one real whole-index walk in the ad watch-diagnosis read. Migration `482` adds tenant-first diagnosis and daily-metric join indexes, and the query now pins all three joined tables to the requested company. The manifest is regenerated and its six local guards pass; the exact `EXPLAIN (ANALYZE)` proof remains for scratch-Postgres CI because no local scratch database is installed.
 - 2026-10-18: migration `482` and its exact scratch-Postgres `EXPLAIN (ANALYZE)` block are green. The same run exposed a static-export proof race: Next hydration could remove one of the climate 404 document's two server-rendered title rows while Chromium read them. That proof now blocks only the climate hydration chunks while checking the exported HTML; it passes once normally and four times concurrently.
 - 2026-10-18: repaired the current-main Galaxy, Teams/Social, and public-link regressions from fork base `4e6e8eb15`. Galaxy's neutral pace ring now matches the brand guide and its Arizona clock stays visible in the top bar instead of being moved into the closed account drawer. Exact proofs now follow the shipped lowercase shift/writing labels and the `Welcome back.` login heading. Owned browser proofs pass `50/50`; directly related clock/catalog guards pass `42/42`; TypeScript passes; lint parses `4,005` files and inline scripts clean.
+- 2026-10-18: completed lane I from `4e6e8eb15`. Shell/sidebar proofs now open the real account and Technical details menus, use the six current CRM groups, and exercise the current drawer/collapse controls. The one production correction restores distinct rose `NO API` and peach `NO DB` tones in the workspace account menu. The focused shell/sidebar command passes `139/139`; lane A owns the aggregate run.
 
 ## Lane F repair — manifest rows 37–45
 
