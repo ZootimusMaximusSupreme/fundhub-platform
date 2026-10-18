@@ -22,250 +22,80 @@
 <script defer src="shell.js"></script>
 <script src="demo-client-bootstrap.js"></script>
 <style>
-/* ══ SHARED CHROME — identical across every screen that carries the sidebar ══
-   Copied verbatim from products-commissions.html / subscriptions.html rather
-   than re-derived, so it cannot drift from what every other screen renders. */
+/* The staff desk shares its frame with shell.js; only the work surface lives here. */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--butter:#F2E39B;--gray3:#D4D4D8;--soft2:#FAFAFB;
-  --okd:#3F6B4C;--warnd:#8A6A1E;--alertd:#A8564B;--infod:#3D5D80;--accd:#5B4B8A}
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-.logo{width:118px;height:24px;flex:0 0 118px}
-.app{display:flex;min-height:100vh}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  .main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{min-height:57px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:20;flex-wrap:wrap}
-.topbar h1{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-.topbar .crumb{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em;text-transform:uppercase}
-.spacer{flex:1}
-.content{padding:22px 24px 44px;flex:1}
-.foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.09em;text-transform:lowercase}
-
-/* THE FIXED SESSION CHIP (mountChip() in shell.js: position:fixed, top:12px,
-   right:14px, z-index 2147483000) sits directly over a sticky topbar's
-   top-right corner on every screen that has one — it is drawn after every
-   page finishes loading and no page's CSS can push under it. A control row
-   crammed into the topbar's own right edge, the way products-commissions
-   .html's "+ Add product" button does it, would land right underneath it.
-   So the picks and the write buttons here are their own row, below the
-   sticky topbar and inside .content, clear of the chip's band entirely. */
-.fos-controlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px}
-.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:var(--fs-body);font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--soft);border-color:var(--gray2)}
-.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.dark:hover{background:var(--ink2)}
-.btn[disabled]{opacity:.5;cursor:default}
-.pick{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff}
-.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);position:relative;flex:0 0 auto}
-.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
-@keyframes pulse{to{transform:scale(1.9);opacity:0}}
-
-/* ══ FINANCE OS — content area only, everything below scoped to #fosWrap ═══ */
-/* 2026-08-27: the §1 cap is removed app-wide (owner-set). This one is an ID
-   selector, so the shell rule in crm-sidebar.css cannot reach it and Finance OS
-   would have been the one screen still stopping at 1800px on a wide monitor.
-   margin goes to 0 with it: `auto` here cancels the flex stretch if .content
-   ever becomes a flex container, which is the trap in fundhub-brand.css. */
-#fosWrap{margin:0;min-height:480px}
-#fosWrap .grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
-#fosWrap .col{display:flex;flex-direction:column;gap:14px;min-width:0}
-@media (max-width:1180px){#fosWrap .grid2{grid-template-columns:1fr}}
-
-#fosWrap .fos-panel{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-#fosWrap .fos-ph{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-#fosWrap .fos-ph h2{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-#fosWrap .fos-ph .sub{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--gray2);margin-left:auto}
-
-/* the note bar — "not real" / sample-data / gap notices, always visible, never silent */
-.fos-notes{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.fos-note{font-size:var(--fs-body);line-height:1.5;padding:9px 13px;border-radius:8px;border:1px solid var(--line);background:var(--soft2)}
-.fos-note.warn{background:#F5CE8F1F;border-color:#F5CE8F80;color:#6B4A12}
-.fos-note.info{background:#A9C6E81F;border-color:#A9C6E880;color:var(--infod)}
-
-/* hero */
-.fos-hero{background:var(--card);color:var(--cardtext);border-radius:14px;overflow:hidden;position:relative;margin-bottom:12px}
-.fos-hero::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum);z-index:2}
-.fos-hh{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 20px 4px;flex-wrap:wrap}
-.fos-hh .k{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;text-transform:uppercase;color:#8A8A93;margin-bottom:7px}
-.fos-hh .n{font-size:var(--fs-metric);font-weight:600;letter-spacing:-.04em;line-height:1;color:#fff}
-.fos-hh .s{font-size:var(--fs-body);color:#A1A1AA;margin-top:6px}
-.fos-hh .s b{color:var(--cardtext);font-weight:500}
-.fos-hseg{display:flex;gap:3px;background:#1A1A1E;border-radius:8px;padding:2px}
-.fos-hseg button{font-size:var(--fs-caption);padding:5px 11px;border-radius:6px;color:#8A8A93;background:none;border:none;cursor:pointer}
-.fos-hseg button[aria-pressed="true"]{background:#2A2A30;color:#fff;font-weight:500}
-.fos-hchart{padding:6px 12px 12px}
-.fos-hchart svg{display:block;width:100%;height:150px;overflow:visible}
-.fos-hleg{display:flex;gap:16px;padding:0 20px 14px;flex-wrap:wrap;font-size:var(--fs-caption);color:#8A8A93}
-.fos-hleg span{display:flex;align-items:center;gap:6px}
-.fos-hleg i{width:9px;height:3px;border-radius:2px;display:block}
-
-/* stat strip */
-.fos-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px}
-.fos-sv{background:#fff;padding:11px 13px}
-.fos-sv .k{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2);margin-bottom:5px}
-.fos-sv .v{font-size:var(--fs-title);font-weight:600;letter-spacing:-.03em;line-height:1.1}
-.fos-sv .v.dash{color:var(--gray3)}
-.fos-sv .d{font-size:var(--fs-caption);color:var(--gray2);margin-top:3px}
-@media (max-width:820px){.fos-strip{grid-template-columns:repeat(2,1fr)}}
-
-/* bureaus */
-.fos-bureaus{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-.fos-bu{text-align:center;padding:10px 4px;border:1px solid var(--line);border-radius:10px}
-.fos-bu .b{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.11em;text-transform:uppercase;color:var(--gray2);margin-bottom:5px}
-.fos-bu .s{font-size:var(--fs-metric);font-weight:600;letter-spacing:-.03em;line-height:1}
-.fos-bu .s.dash{color:var(--gray3);font-size:var(--fs-title)}
-.fos-bu.good{border-color:#A8D8B080;background:#A8D8B012}
-.fos-bu.mid{border-color:#F5CE8F80;background:#F5CE8F12}
-.fos-bu.low{border-color:#F2A69B80;background:#F2A69B12}
-
-/* generic row list (accounts / cards / bills / tx) */
-.fos-r{display:grid;align-items:center;gap:9px;padding:10px 15px;border-bottom:1px solid var(--line);font-size:var(--fs-body)}
-.fos-r:last-child{border-bottom:none}
-.fos-r.acct{grid-template-columns:minmax(0,1fr) 90px 90px}
-.fos-r.card{grid-template-columns:minmax(0,1.2fr) 90px 100px 90px}
-.fos-r.bill{grid-template-columns:minmax(0,1fr) 90px 96px}
-.fos-r.tx{grid-template-columns:64px minmax(0,1fr) 90px}
-.fos-r.cat{grid-template-columns:minmax(0,1fr) 1fr 74px}
-/* money in / invoiced — the two rows this screen gained when the sale, the
-   payments and the receivable finally landed on it. Same .fos-r frame as the
-   account and bill rows above so all four read as one list style. */
-.fos-r.pay{grid-template-columns:minmax(0,1fr) 120px 112px}
-.fos-r.inv{grid-template-columns:minmax(0,1fr) 116px 108px 108px}
-@media (max-width:560px){
-  #fosWrap .fos-r.pay,#fosWrap .fos-r.inv{grid-template-columns:minmax(0,1fr) 108px}
-}
-.fos-r .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.fos-r .nm em{font-style:normal;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);margin-left:6px}
-.fos-r .num{font-family:var(--mono);font-size:var(--fs-body);text-align:right}
-.fos-r .num.dash{color:var(--gray3)}
-.fos-r .muted{color:var(--gray2)}
-.fos-catbar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
-.fos-catbar i{display:block;height:100%;border-radius:3px}
-.fos-pill{display:inline-block;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.09em;text-transform:uppercase;padding:2px 6px;border-radius:8px;background:#F5CE8F33;color:var(--warnd)}
-/* Finance OS suggestions — severity pills. The word (high/medium/low) is
-   inside the pill's own text, so the colour is a second signal, never the
-   only one (UI-STANDARDS §12.6). Same three status tokens paintBrand()
-   overwrites per tenant, so a white-label brand's own ramp still applies. */
-.fos-pill.sev-high{background:#F2A69B33;color:var(--alertd)}
-.fos-pill.sev-medium{background:#F5CE8F33;color:var(--warnd)}
-.fos-pill.sev-low{background:#A9C6E833;color:var(--infod)}
-.fos-sug .hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-
-/* funding capacity — the dark card */
-.fos-pre{background:var(--card);color:var(--cardtext);border-radius:10px;overflow:hidden;position:relative}
-.fos-pre::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum)}
-.fos-prein{padding:16px 17px 15px}
-.fos-pre .k{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;text-transform:uppercase;color:#8A8A93;margin-bottom:8px}
-.fos-pre .n{font-size:var(--fs-metric);font-weight:600;letter-spacing:-.04em;line-height:1;color:#fff}
-.fos-pre .s{font-size:var(--fs-body);color:#A1A1AA;margin-top:8px;line-height:1.55}
-.fos-pre .s b{color:var(--cardtext);font-weight:500}
-.fos-pre .line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-top:1px solid #26262B}
-.fos-pre .line span{font-size:var(--fs-caption);color:#8A8A93}
-.fos-pre .line b{font-family:var(--mono);font-size:var(--fs-body);color:#fff}
-.fos-sug{padding:11px 15px;border-bottom:1px solid var(--line);font-size:var(--fs-body);line-height:1.5}
-.fos-sug:last-child{border-bottom:none}
-.fos-sug b{font-weight:600}
-.fos-sug .basis{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);margin-top:4px}
-
-/* alerts */
-.fos-al{padding:11px 15px;border-bottom:1px solid var(--line)}
-.fos-al:last-child{border-bottom:none}
-.fos-al .top{display:flex;align-items:flex-start;gap:10px;min-width:0}
-.fos-al .top > div{min-width:0;flex:1}
-.fos-sw{position:relative;width:33px;height:19px;border-radius:10px;background:var(--gray3);flex:0 0 auto;cursor:pointer;margin-top:1px;border:none}
-.fos-sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.fos-sw[aria-checked="true"]{background:var(--okd)}
-.fos-sw[aria-checked="true"]::after{transform:translateX(14px)}
-.fos-al .t{font-size:var(--fs-body);font-weight:500}
-.fos-al .b{font-size:var(--fs-caption);color:var(--gray2);line-height:1.4;margin-top:2px}
-.fos-al[disabled]{opacity:.55}
-
-/* ask */
-.fos-askrow{display:flex;align-items:center;gap:8px;padding:5px 5px 5px 15px}
-.fos-askrow input{flex:1 1 auto;border:none;outline:none;background:transparent;font-size:var(--fs-body);padding:10px 0}
-.fos-answer{border-top:1px solid var(--line);padding:13px 15px;font-size:var(--fs-body);line-height:1.6;background:var(--soft2)}
-
-/* deal calculator */
-.fos-calc{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 15px}
-.fos-calc .fld{display:flex;flex-direction:column;gap:4px}
-.fos-calc label{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase;color:var(--gray2)}
-.fos-calc input{border:1px solid var(--line);border-radius:6px;padding:8px 9px;font-size:var(--fs-body)}
-.fos-out{padding:0 15px 15px;display:flex;flex-direction:column;gap:6px}
-.fos-out .row{display:flex;justify-content:space-between;font-size:var(--fs-body);padding:4px 0;border-bottom:1px solid var(--soft)}
-.fos-out .row b{font-family:var(--mono)}
-
-/* paydown simulator — Blueprint. Reuses .fos-calc for the one-field form and
-   .fos-r rows for the card split; only the before/after pair and the split row
-   are new. Sizes come from the whitelist (.caption / .cmp / .fos-value), so
-   nothing here writes a font-size. */
-.fos-sim-form{grid-template-columns:minmax(0,1fr) auto;align-items:end}
-.fos-sim-form input{min-height:40px}
-.fos-sim-form .btn{min-height:40px}
-.fos-sim{margin-bottom:14px}
-.fos-ba{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 15px 8px}
-.fos-ba > div{min-width:0}
-.fos-ba .fos-value{line-height:1.1;white-space:nowrap}
-.fos-r.alloc{grid-template-columns:minmax(0,1fr) 96px 168px}
-@media (max-width:560px){
-  #fosWrap .fos-r.alloc{grid-template-columns:minmax(0,1fr) 96px}
-  #fosWrap .fos-r.alloc > :last-child{grid-column:1 / -1;text-align:left}
-  #fosWrap .fos-sim-form{grid-template-columns:1fr}
-  #fosWrap .fos-ba{grid-template-columns:1fr}
-}
-
-/* ══ THIS SCREEN'S ONE ESCAPE HATCH — UI-STANDARDS §12.7 ═══════════════════
-   There is exactly one rule here with !important and this is it. Do not add a
-   second; a second is how a screen ends up with six sizes and no hierarchy.
-
-   WHY IT IS NEEDED. .fh-num comes from finance-os.css and is on the brand
-   file's --fs-metric whitelist, so every figure wearing it paints at 32px with
-   an !important the screen cannot out-rank by ordinary means. That is right for
-   ONE number. This page now stacks seven credit rows, a paid-so-far row and
-   three invoice totals — twelve 32px figures in a column, which is not a
-   hierarchy, it is a wall. The hero keeps the metric size (.fos-value, also on
-   that whitelist) and stays the biggest thing on the page, as §1 and §3 want.
-   An id in the selector is what wins: #fosWrap .fh-num is (1,1,0) against the
-   brand rule's (0,2,0), and both are important. */
-#fosWrap .fh-num{font-size:var(--fs-body) !important}
-
-/* client picker — the row that made this screen reachable at all.
-   A <select> sizes itself to its WIDEST option, and an option here is a name
-   plus an email — 458px measured, against a 375px phone. Left alone it pushed
-   the whole page sideways, which UI-STANDARDS §11 forbids outright. Pinned and
-   allowed to shrink; the option text ellipsises inside it instead. */
-.fos-pick-msg{color:var(--gray2)}
-#fosFind{flex:1 1 150px;min-width:0;max-width:240px}
-#fosClient{flex:1 1 200px;min-width:0;max-width:min(100%,380px);text-overflow:ellipsis}
-#fosWrap .fh-empty p + p{margin-top:8px}
-#fosWrap .fh-basis{font-family:var(--mono);letter-spacing:.04em}
-
-/* drawer */
-.fos-scrim{position:fixed;inset:0;background:rgba(10,10,10,.3);z-index:60}
-.fos-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100%;background:#fff;z-index:61;display:flex;flex-direction:column}
-.fos-dh{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-.fos-db{flex:1;overflow-y:auto;padding:15px 18px}
-.fos-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:80;background:var(--card);color:var(--cardtext);border-radius:11px;padding:12px 16px;font-size:var(--fs-body)}
+html,body{min-height:100%}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}button,input,select{font:inherit;color:inherit}
+.app{display:flex;min-height:100vh}.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;gap:12px;align-items:center;padding:18px 30px;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:20px}.crumb{font-size:13px;color:var(--gray)}.spacer{flex:1}
+.content{padding:30px 32px 64px;min-width:0;flex:1}
+.fos-page-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:26px}
+.fos-page-heading h2{font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-.04em}
+.fos-page-heading p{margin-top:8px;color:var(--gray);font-size:15px;max-width:62ch}
+.fos-client-tools{position:relative;flex:0 0 auto;z-index:25}
+.fos-client-tools>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:24px;background:#fff;border:1px solid var(--line);border-radius:11px;min-height:44px;padding:10px 14px;font-weight:600;font-size:14px}
+.fos-client-tools>summary::-webkit-details-marker{display:none}
+.fos-client-tools[open]>summary{border-color:var(--ink)}
+.fos-controlbar{position:absolute;right:0;top:calc(100% + 10px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;width:430px;max-width:calc(100vw - 40px);background:#fff;padding:20px;border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 36px #10141614}
+.fos-controlbar label,.fos-controlbar #fosFind,.fos-controlbar #fosClient,.fos-pick-msg{grid-column:1/-1}
+.fos-controlbar label{font-size:13px;font-weight:600}.fos-pick-msg{font-size:13px;color:var(--gray);overflow-wrap:anywhere}
+.pick{width:100%;min-width:0;border:1px solid var(--line);border-radius:11px;min-height:44px;padding:10px 12px;background:#fff;text-overflow:ellipsis}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #cdd1cb;border-radius:11px;padding:10px 15px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--soft)}.btn.dark,#fosSimGo{color:#fff;background:var(--ink);border-color:var(--ink)}.btn.dark:hover,#fosSimGo:hover{background:#303537}.btn:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+[hidden]{display:none!important}
+#fosWrap{min-height:420px;min-width:0}
+.fos-hero{position:relative;display:flex;gap:28px;align-items:center;justify-content:space-between;padding:26px 28px;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:20px}
+.fos-hero::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:var(--spectrum)}
+.fos-hh{flex:1;min-width:0}.fos-hh .k{font-size:13px;font-weight:600;color:var(--gray);margin-bottom:9px}
+.fos-hh .n{font-size:38px;line-height:1.1;letter-spacing:-.045em;font-weight:700;font-variant-numeric:tabular-nums}
+.fos-hh .s{font-size:13px;line-height:1.55;color:var(--gray);max-width:76ch;margin-top:10px}
+.fos-summary-facts{display:grid;grid-template-columns:1fr 1fr;align-self:stretch;gap:30px;min-width:270px;padding-left:28px;border-left:1px solid var(--line)}
+.fos-summary-fact{display:flex;flex-direction:column;justify-content:center;gap:7px}.fos-summary-fact span{font-size:13px;color:var(--gray)}
+.fos-summary-fact small{font-size:12px;line-height:1.4;color:var(--gray)}
+#fosWrap .fos-summary-fact .fh-num{font-family:var(--sans);font-size:24px!important;text-align:left;letter-spacing:-.025em;font-weight:650}
+.fos-jumps{display:flex;gap:7px 24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 0 17px;margin-bottom:24px}
+.fos-jumps a{font-size:13px;font-weight:600;color:var(--gray);min-height:32px;display:flex;align-items:center}.fos-jumps a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:5px}
+.fos-workbench{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;margin-bottom:34px;align-items:start}
+#fosWrap .fos-panel{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;min-width:0;scroll-margin-top:90px}
+#fosWrap .fos-ph{display:flex;justify-content:space-between;gap:8px 14px;align-items:baseline;padding:20px 22px 15px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#fosWrap .fos-ph h2{font-size:19px;font-weight:650;letter-spacing:-.025em;line-height:1.3}
+#fosWrap .fos-ph .sub,.fos-sug .sub{font-size:12px;color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0}
+.fos-calc{display:grid;gap:10px;padding:20px 22px 14px}.fos-sim-form{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+.fld{display:flex;flex-direction:column;gap:7px;min-width:0}.fld label{font-size:13px;font-weight:550;color:var(--gray)}.fld input{width:100%;min-width:0;min-height:44px;border:1px solid #cdd1cb;border-radius:11px;padding:10px 12px;background:#fff}
+#fosWrap .fh-empty{padding:20px 22px;color:var(--gray);font:400 14px/1.6 var(--sans)}
+#fosSimOut>.fh-empty{padding-top:0}#fosWrap .fh-empty p+p{margin-top:10px}
+#fosWrap .fh-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:18px;align-items:baseline;padding:15px 22px;border-bottom:1px solid var(--line)}
+#fosWrap .fh-row:last-child{border-bottom:0}#fosWrap .fh-label{font:550 14px/1.45 var(--sans);color:var(--ink)}
+#fosWrap .fh-basis{font:400 12px/1.5 var(--sans);letter-spacing:0;color:var(--gray);margin-top:4px}
+#fosWrap .fh-num{font:600 15px/1.4 var(--sans);font-size:15px!important;letter-spacing:-.01em;white-space:normal;overflow:visible;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+#fosWrap .fh-num.is-unknown{color:var(--gray2);font-weight:400}#fosWrap .fh-row.is-partial .fh-basis{color:var(--gray)}
+#fosWrap .fh-msg{margin:0 22px 15px;font:400 14px/1.5 var(--sans)}#fosWrap .fh-msg.bad{color:#a1372b}
+.fos-ba{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:18px 22px 22px}.fos-ba>div{min-width:0}.fos-ba .caption{font-size:13px;color:var(--gray)}.fos-ba .fos-value{font-size:28px;font-weight:650;letter-spacing:-.035em;line-height:1.3}
+.fos-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}.fos-detail-grid>.fos-panel{margin-bottom:0}
+.fos-section{margin-top:32px;scroll-margin-top:92px}.fos-section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:18px;margin-bottom:14px}.fos-section-heading h2{font-size:20px;font-weight:650;letter-spacing:-.025em}.fos-section-heading p{font-size:13px;color:var(--gray)}
+.fos-accounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.fos-r{display:grid;align-items:baseline;gap:10px;padding:15px 22px;border-bottom:1px solid var(--line);font-size:14px}.fos-r:last-child{border-bottom:0}
+.fos-r.acct{grid-template-columns:minmax(0,1fr) 80px 90px}.fos-r.bill{grid-template-columns:minmax(0,1fr) 80px 116px}.fos-r.pay{grid-template-columns:minmax(0,1fr) 95px 90px}.fos-r.inv{grid-template-columns:minmax(0,1fr) 92px 88px 88px}.fos-r.alloc{grid-template-columns:minmax(0,1fr) 95px 160px}
+.fos-r .nm{min-width:0;font-weight:550;overflow-wrap:anywhere}.fos-r .nm em{display:block;font:400 12px/1.5 var(--sans);color:var(--gray);font-style:normal;margin-top:3px}
+.fos-r .num{text-align:right;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-width:0}.fos-r .muted{color:var(--gray);font-weight:400}.fos-r .dash{color:var(--gray2)}
+/* .inv is also the brand's inverted-logo helper; invoice rows must keep their normal contrast. */
+#fosWrap .fos-r.inv{filter:none}#credit,#charges{scroll-margin-top:92px}
+.fos-table-head{background:#fafbf8;font-size:12px}.fos-table-head .nm,.fos-table-head .num{font-size:12px;font-weight:400}
+.fos-sug{font-size:14px;padding:16px 22px;border-bottom:1px solid var(--line)}.fos-sug:last-child{border-bottom:0}.fos-sug .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.fos-sug b{font-weight:600}.fos-sug .basis{font:400 13px/1.55 var(--sans);color:var(--gray);margin-top:7px}
+.fos-pill{display:inline-block;flex-shrink:0;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--gray);font-size:11px;line-height:1.4;font-weight:550;text-transform:capitalize}
+.fos-pill.sev-high{color:#8c362a;background:#fff6f1;border-color:#efd7cc}.fos-pill.sev-medium{color:#785612}.fos-pill.sev-low{color:var(--gray)}
+.fos-notes{margin-bottom:18px}.fos-note{font-size:13px;color:#715421;border:1px solid #e8dcc4;border-radius:11px;padding:12px 16px;background:#fffdf8}
+.fos-method{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}.fos-method>summary{cursor:pointer;min-height:40px;font-size:13px;color:var(--gray)}.fos-method .fos-panel{margin-top:8px}
+.fos-no-client{padding:38px 28px;background:#fff;border:1px solid var(--line);border-radius:20px;max-width:760px}.fos-no-client h2{font-size:24px;line-height:1.25;letter-spacing:-.03em;margin-bottom:12px}.fos-no-client p{color:var(--gray);font-size:15px}.fos-no-client ul{padding-left:20px;display:grid;gap:10px;margin-top:24px;font-size:14px;color:var(--gray)}
+@media(max-width:1180px){.fos-hero{align-items:flex-start;flex-direction:column;gap:22px}.fos-summary-facts{border-left:0;border-top:1px solid var(--line);padding:18px 0 0;min-width:0;align-self:stretch}.fos-workbench,.fos-detail-grid{grid-template-columns:1fr 1fr}.fos-r.inv{grid-template-columns:minmax(0,1fr) 84px}.fos-r.inv .num[data-label]::before{content:attr(data-label);display:block;font-size:11px;color:var(--gray);font-weight:400}.fos-r.inv .nm{grid-row:span 3}.fos-r.inv.fos-table-head{display:none}.fos-r.acct{grid-template-columns:minmax(0,1fr) 90px}.fos-r.acct>.num.muted{grid-row:2;text-align:left}.fos-r.acct>.num:last-child{grid-column:2;grid-row:1/3;align-self:center}.fos-r.bill,.fos-r.pay{grid-template-columns:minmax(0,1fr) 90px}.fos-r.bill>:last-child{grid-column:1/-1;text-align:left}.fos-r.pay .num.muted{grid-column:1;grid-row:2;text-align:left}.fos-r.pay>.num:last-child{grid-column:2;grid-row:1/3;align-self:center}}
+@media(max-width:900px){.content{padding:26px 24px 48px}.fos-workbench,.fos-detail-grid{grid-template-columns:1fr}.fos-workbench{gap:18px}.fos-page-heading{gap:16px}.fos-page-heading p{max-width:42ch}}
+@media(max-width:600px){.content{padding:24px 16px 44px}.fos-page-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:22px}.fos-page-heading h2{font-size:28px}.fos-page-heading p{font-size:14px;line-height:1.5;margin-top:7px;max-width:34ch}.fos-client-tools{margin-top:0;display:inline-block}.fos-client-tools>summary{min-height:44px;font-size:13px;padding:10px 13px;gap:14px}.fos-controlbar{right:0;left:auto;width:calc(100vw - 32px);max-width:calc(100vw - 32px);padding:16px;gap:10px}.fos-hero{padding:23px 20px;margin-bottom:18px;gap:18px}.fos-hh .n{font-size:36px}.fos-hh .s{font-size:13px}.fos-summary-facts{gap:18px;padding-top:16px}#fosWrap .fos-summary-fact .fh-num{font-size:22px!important}.fos-jumps{gap:4px 16px;margin-bottom:20px;padding-bottom:12px}.fos-workbench{margin-bottom:26px}.fos-sim-form{grid-template-columns:1fr}.fos-calc{padding:18px 20px 14px}#fosWrap .fos-ph{padding:18px 20px 14px}#fosWrap .fos-ph h2{font-size:19px}#fosWrap .fos-ph .sub{font-size:12px}.fos-section{margin-top:26px}.fos-section-heading{display:block}.fos-section-heading p{margin-top:4px}.fos-accounts{grid-template-columns:1fr;gap:14px}.fos-r,#fosWrap .fh-row{padding:14px 20px}#fosWrap .fh-row{grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:12px}#fosWrap .fh-empty,.fos-sug{padding:18px 20px}.fos-r.alloc{grid-template-columns:minmax(0,1fr) 90px}.fos-r.alloc>:last-child{grid-column:1/-1;text-align:left}.fos-ba{gap:16px;padding:18px 20px}.fos-ba .fos-value{font-size:24px}.fos-no-client{padding:26px 22px}.fos-no-client h2{font-size:23px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.btn{transition:none}}
+@media(max-width:600px){.fos-jumps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.fos-jumps a{min-height:44px}}
+@media(max-width:360px){.fos-jumps a{font-size:12px}.fos-summary-facts{display:flex;flex-direction:column;gap:12px}.fos-summary-fact{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:14px}#fosWrap .fos-summary-fact .fh-num{text-align:right;font-size:20px!important;overflow-wrap:normal}.fos-summary-fact small{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -344,12 +174,12 @@ button,input,select,textarea{font:inherit;color:inherit}
     </div>
 
     <div class="content">
-      <!-- THE PICKER. This screen is about ONE client and until now nothing on
-           it could choose one: no list, no search, no dropdown, so opening it
-           from the sidebar always landed on an empty page and stayed there.
-           It sits below the sticky topbar, not inside it, because the fixed
-           session chip shell.js draws (top:12px, right:14px) covers the
-           topbar's own right edge on every screen. -->
+      <!-- The shared header names the active file; this disclosure changes it
+           through the existing URL-based client picker. -->
+      <div class="fos-page-heading">
+        <div><h2>Financial overview</h2></div>
+        <details class="fos-client-tools" id="fosClientTools" open>
+          <summary>Change client<span aria-hidden="true">⌄</span></summary>
       <div class="fos-controlbar">
         <label class="caption" for="fosFind">Find a client</label>
         <input class="pick" id="fosFind" type="search" placeholder="name or email" autocomplete="off">
@@ -368,10 +198,13 @@ button,input,select,textarea{font:inherit;color:inherit}
         <span class="caption fos-pick-msg" id="fosPickMsg"></span>
       </div>
 
-      <div id="fosWrap"></div>
+        </details>
+      </div>
+
+      <div id="fosWrap" aria-busy="false"></div>
     </div>
 
-    <div class="foot"><span class="pulse"></span><span>systems nominal · fundhub.ai</span></div>
+
   </div>
 </div>
 
@@ -485,11 +318,12 @@ button,input,select,textarea{font:inherit;color:inherit}
     if (neg) s = s.slice(1);
     return (neg ? "−$" : "$") + group(s);
   }
-  function money(display) {
+  function money(display, label) {
     var t = moneyText(display);
+    var attr = label ? ' data-label="' + esc(label) + '"' : "";
     return t === null
-      ? '<span class="num dash">—</span>'
-      : '<span class="num">' + esc(t) + "</span>";
+      ? '<span class="num dash"' + attr + '>—</span>'
+      : '<span class="num"' + attr + '>' + esc(t) + "</span>";
   }
 
   /* day — the calendar day the server wrote, never the reader's local one.
@@ -673,13 +507,20 @@ button,input,select,textarea{font:inherit;color:inherit}
     if (s === "offline") return "We could not reach the server to read " + thing + ". Check your connection and try again.";
     return "We could not read " + thing + " just now. Try again in a few minutes.";
   }
-  function explain(res, what) {
-    if (window.FHData && !(res && res.ok)) { try { FHData.explain(res, what); } catch (e) { /* banner only */ } }
-  }
-
   var rawClient = "";
   try { rawClient = new URLSearchParams(location.search).get("client_id") || ""; } catch (e) { rawClient = ""; }
   var clientId = UUID.test(String(rawClient).trim()) ? String(rawClient).trim() : "";
+  var resolvedClientName = "";
+
+  // Report only the client already named by this page's URL. This changes the
+  // shared context label, never selection, requests, storage or permissions.
+  function publishClientScope() {
+    if (clientId && resolvedClientName && $("fosWho")) $("fosWho").textContent = resolvedClientName;
+    if (clientId && window.FHWorkspaceScope) {
+      window.FHWorkspaceScope.setClient({ id: clientId, name: resolvedClientName });
+    }
+  }
+  document.addEventListener("fh:workspace-ready", publishClientScope);
 
   /* ═══ 1. THE CLIENT PICKER ════════════════════════════════════════════════
      /api/dashboard/clients is the client book every other screen already reads.
@@ -734,12 +575,16 @@ button,input,select,textarea{font:inherit;color:inherit}
       if (!res.ok) {
         if (sel) sel.innerHTML = '<option value="">Client list unavailable</option>';
         if (msg) msg.textContent = whyWords(res, "the client list");
-        explain(res, "the client list");
         return;
       }
       ALL = ((res.data && res.data.clients) || []).slice().sort(function (a, b) {
         return nameOf(a).toLowerCase() < nameOf(b).toLowerCase() ? -1 : 1;
       });
+      var current = ALL.filter(function (c) { return c.id === clientId; })[0];
+      if (current && !resolvedClientName) {
+        resolvedClientName = nameOf(current);
+        publishClientScope();
+      }
       if (!ALL.length) {
         if (sel) sel.innerHTML = '<option value="">No clients on file yet</option>';
         if (msg) msg.textContent = "There are no clients in this company yet.";
@@ -754,6 +599,11 @@ button,input,select,textarea{font:inherit;color:inherit}
     var sel = $("fosClient");
     var btn = $("fosOpen");
     var clear = $("fosClear");
+    var tools = $("fosClientTools");
+    if (tools) {
+      tools.open = !clientId;
+      tools.querySelector("summary").firstChild.textContent = clientId ? "Change client" : "Choose a client";
+    }
     if (find) find.addEventListener("input", function () { fillOptions(find.value); });
     if (sel) sel.addEventListener("change", syncOpen);
     if (btn) btn.addEventListener("click", function () {
@@ -796,15 +646,26 @@ button,input,select,textarea{font:inherit;color:inherit}
       sub = "No card on this file reports both a limit and a balance, so there is no figure to give. " +
         "That is not the same as zero.";
     } else {
-      sub = "Money still available to draw across " + lines + " open credit card" +
-        (lines === 1 ? "" : "s") + ". This is the credit report only — it is not cash in the bank." +
+      sub = "Across " + lines + " open credit card" +
+        (lines === 1 ? "" : "s") + ". Credit report only — not cash in the bank." +
         (partial ? " Some cards did not report a limit, so the real figure is higher than this." : "");
+    }
+    var facts = "";
+    if (gridRes.ok && grid && grid.rows) {
+      facts = ["balance", "utilization"].map(function (key) {
+        var item = grid.rows.filter(function (r) { return r.key === key; })[0];
+        if (!item) return "";
+        var known = item.display !== null && item.display !== undefined && item.display !== "";
+        return '<div class="fos-summary-fact"><span>' + (key === "balance" ? "Credit balance" : "Credit used") + '</span>' +
+          fhNum(item.display, key === "balance", key === "balance" && known && !!(item.basis && item.basis.partial)) +
+          (known && item.basis && item.basis.partial ? '<small>' + esc(basisWords(item.basis, "credit cards", key === "balance")) + '</small>' : "") + '</div>';
+      }).join("");
     }
     return '<div class="fos-hero"><div class="fos-hh"><div>' +
       '<div class="k caption">' + esc(name || "This client") + " · available credit</div>" +
       '<div class="n fos-value">' + (text === null ? "—" : esc(text)) + (partial ? "+" : "") + "</div>" +
       '<div class="s">' + esc(sub) + "</div>" +
-      "</div></div></div>";
+      "</div></div>" + (facts ? '<div class="fos-summary-facts">' + facts + '</div>' : "") + "</div>";
   }
 
   /* ═══ 3. THE CREDIT GRID — /api/read/finance-os ═══════════════════════════
@@ -896,9 +757,8 @@ button,input,select,textarea{font:inherit;color:inherit}
        detail read, not the invoice read. Saying "10%" here would be this page
        inventing a number about somebody's contract. The absence is the finding;
        it is written on the screen rather than filled in with a plausible guess. */
-    var feeNote = '<div class="fos-sug">The agreed success fee percent is not shown. ' +
-      "Nothing in the system hands it to this screen yet, and this page will not guess at it. " +
-      "A success fee appears under Invoiced below once it has been billed.</div>";
+    var feeNote = '<div class="fos-sug">The agreed success fee percent is not available in this view. ' +
+      "A success fee appears under Invoiced once it has been billed.</div>";
 
     return panel("Money in", "payments received",
       head + (rows || '<div class="fh-empty">No payment has been recorded against this client yet.</div>') + feeNote);
@@ -926,12 +786,12 @@ button,input,select,textarea{font:inherit;color:inherit}
     var rows = invs.map(function (v) {
       return '<div class="fos-r inv"><span class="nm">' + esc(statusWords(v.status)) +
         "<em>" + esc(v.due_at ? "due " + day(v.due_at) : "no due date") + "</em></span>" +
-        '<span class="num muted">' + esc(day(v.created_at)) + "</span>" +
-        money(fromCents(toCents(v.amount_due))) +
-        money(fromCents(toCents(v.balance_due))) + "</div>";
+        '<span class="num muted" data-label="Billed on">' + esc(day(v.created_at)) + "</span>" +
+        money(fromCents(toCents(v.amount_due)), "Amount") +
+        money(fromCents(toCents(v.balance_due)), "Still owed") + "</div>";
     }).join("");
 
-    var head = '<div class="fos-r inv"><span class="nm muted">status</span>' +
+    var head = '<div class="fos-r inv fos-table-head"><span class="nm muted">status</span>' +
       '<span class="num muted">billed on</span>' +
       '<span class="num muted">amount</span>' +
       '<span class="num muted">still owed</span></div>';
@@ -1262,24 +1122,18 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   function skeleton() {
-    return '<div class="fos-hero"><div class="fos-hh"><div>' +
+    return '<div class="fos-hero" role="status"><div class="fos-hh"><div>' +
       '<div class="k caption">Available credit</div><div class="n fos-value">—</div>' +
       '<div class="s">Reading this client’s file…</div></div></div></div>';
   }
 
   function pickFirst() {
     paint(
-      '<div class="fos-hero"><div class="fos-hh"><div>' +
-      '<div class="k caption">No client open</div>' +
-      '<div class="n fos-value">Pick a client</div>' +
-      '<div class="s">Finance OS shows one client at a time. Use the picker at the top of the page.</div>' +
-      "</div></div></div>" +
-      panel("What appears once a client is open", "",
-        '<div class="fh-empty">' +
-        "<p>What credit they have, what they owe on it, and what is left to draw.</p>" +
-        "<p>The money they have paid us, and anything still invoiced and unpaid.</p>" +
-        "<p>Their bank accounts, and the charges that repeat against those accounts.</p>" +
-        "</div>")
+      '<section class="fos-no-client"><h2>Open a client’s financial file</h2>' +
+      '<p>Finance OS shows one client at a time. Choose a name above to get started.</p>' +
+      '<ul><li>Credit available, balances and card paydown estimates</li>' +
+      '<li>Personal, business and investment accounts</li>' +
+      '<li>Payments received, outstanding invoices and repeating charges</li></ul></section>'
     );
   }
 
@@ -1297,6 +1151,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   }
 
   function loadAll() {
+    $("fosWrap").setAttribute("aria-busy", "true");
     paint(skeleton());
     var q = encodeURIComponent(clientId);
     Promise.all([
@@ -1308,40 +1163,36 @@ button,input,select,textarea{font:inherit;color:inherit}
     ]).then(function (r) {
       var gridRes = r[0], detailRes = r[1], bankRes = r[2], billRes = r[3], suggRes = r[4];
 
-      explain(gridRes, "this client's credit");
-      explain(detailRes, "this client's payments and invoices");
-      explain(bankRes, "this client's bank accounts");
-      explain(billRes, "the repeating charges");
-      // not_entitled is an expected business state (no subscription), not a
-      // technical failure — it gets its own honest panel below, not a
-      // page-wide error banner alongside a database outage or an auth bug.
-      if (suggRes.source !== "not_entitled") explain(suggRes, "this client's optimization suggestions");
+      // Each affected panel reports its own classified failure below. Repeating
+      // all five in the shared fixed banner would cover the page's controls.
 
       var c = detailRes.ok && detailRes.data ? detailRes.data.client : null;
-      /* A CLIENT IS OPEN EVEN WHEN THE READ THAT KNOWS HER NAME FAILED, and the
-         page must not then say "no client open" — that sends the reader back to
-         the picker to fix something that is not broken. Fall back to the start
-         of the id, which is at least true. */
+      /* A client is open even if detail fails. A resolved picker name is still
+         useful; otherwise keep an honest generic label without exposing IDs. */
       var name = c ? ((c.first_name || "") + " " + (c.last_name || "")).trim() || c.email : "";
-      if (!name) name = "client " + clientId.slice(0, 8);
+      if (!name) name = resolvedClientName || "Selected client";
+      if (name !== "Selected client") resolvedClientName = name;
+      publishClientScope();
       var who = $("fosWho");
       if (who) who.textContent = name;
 
       paint(
         heroFor(name, gridRes.ok ? gridRes.data : null, gridRes) +
-        notesFor(bankRes) +
-        '<div class="fos-sim">' + simulatorPanel() + "</div>" +
-        '<div class="grid2"><div class="col">' +
-        creditPanel(gridRes) +
-        moneyInPanel(detailRes) +
-        invoicedPanel(detailRes) +
-        bankPanels(bankRes) +
-        '</div><div class="col">' +
+        '<nav class="fos-jumps" aria-label="Financial sections"><a href="#credit">Credit</a>' +
+        '<a href="#banking">Accounts</a><a href="#payments">Payments</a><a href="#charges">Charges</a></nav>' +
+        '<div class="fos-workbench"><div class="fos-sim">' + simulatorPanel() + "</div>" +
         suggestionsPanel(suggRes) +
-        billsPanel(billRes) +
-        promoPanel() +
-        "</div></div>"
+        '</div><div class="fos-detail-grid"><section id="credit">' + creditPanel(gridRes) + '</section>' +
+        '<section id="charges">' + billsPanel(billRes) + '</section></div>' +
+        '<section class="fos-section" id="banking"><div class="fos-section-heading"><h2>Bank accounts</h2>' +
+        '<p>Balances stay separate by account type.</p></div>' + notesFor(bankRes) +
+        '<div class="fos-accounts">' + bankPanels(bankRes) + '</div></section>' +
+        '<section class="fos-section" id="payments"><div class="fos-section-heading"><h2>Payments &amp; invoices</h2>' +
+        '<p>What has been paid and what is still owed.</p></div><div class="fos-detail-grid">' +
+        moneyInPanel(detailRes) + invoicedPanel(detailRes) + '</div></section>' +
+        '<details class="fos-method"><summary>Promo tracking availability</summary>' + promoPanel() + '</details>'
       );
+      $("fosWrap").setAttribute("aria-busy", "false");
       wireSimulator();
     });
   }

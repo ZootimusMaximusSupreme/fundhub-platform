@@ -173,6 +173,7 @@ test("Finance OS: the picker asks for up to 500 clients and lists each one by na
     const fake = financeOsHandlers();
     const { page, errors } = await open(`/app/finance-os.html?client_id=${CLIENT_A}`, { session: OWNER, handlers: fake.handlers });
     await page.waitForFunction(() => document.querySelectorAll("#fosClient option").length > 1);
+    await page.locator("#fosClientTools summary").click();
     // It asks for the whole book, up to 500.
     assert.ok(fake.log.clientReads.length >= 1);
     assert.ok(fake.log.clientReads.every((q) => /(^|[?&])limit=500(&|$)/.test(q)), `every client read asks for 500: ${JSON.stringify(fake.log.clientReads)}`);
@@ -229,12 +230,13 @@ test("Finance OS: the header says the open client's name, and says no client ope
     assert.ok(emailOnly.log.detailReads.some((q) => q === `?id=${CLIENT_C}`), `the client read is for the open client: ${JSON.stringify(emailOnly.log.detailReads)}`);
     await b.page.close();
 
-    // The read that knows the name failed: a client is still open, so the header does NOT say "no client open";
-    // it says "client" and the first eight letters of that client's id.
+    // If detail fails, the resolved picker name still identifies the open file.
+    // Shared scope and the compatibility node agree; no UUID chrome.
     const failed = financeOsHandlers();
     failed.handlers["/api/dashboard/client"] = async (route) => json(route, { ok: false, error: "server_error" }, 500);
     const c = await open(`/app/finance-os.html?client_id=${CLIENT_A}`, { session: OWNER, handlers: failed.handlers });
-    await c.page.waitForFunction((want) => document.querySelector("#fosWho")?.textContent === want, `client ${CLIENT_A.slice(0, 8)}`);
+    await c.page.waitForFunction(() => document.querySelector("#fosWho")?.textContent === "Dana Whitfield");
+    await c.page.waitForFunction(() => document.querySelector("#fh-workspace-scope-label")?.textContent === "Dana Whitfield");
     await c.page.close();
 
     // No client open (and no Demo Mode): the header says so, and the client list is still offered.
