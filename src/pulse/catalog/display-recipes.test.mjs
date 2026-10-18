@@ -121,15 +121,21 @@ test("every named display control gets an exact executable tracking lane", () =>
   );
   const uncoveredPage = findRow("public-pages.json", (item) => item.kind === "page" && item.coverage === "none");
 
-  for (const row of [pingOnlyLink, uncoveredPage]) {
-    const recipe = makeRecipe("public-pages.json", row);
-    assert.equal(recipe.mode, row.kind === "page" ? "read-only" : "test");
-    assert.equal(recipe.safe, true);
-    assert.equal(recipe.proof.depth, "e2e");
-    assert.equal(recipe.proof.asserts, row.control);
-    assert.equal(recipe.proof.evidence, "src/pulse/catalog/proofs/display-contracts-ef-public.test.mjs");
-    assert.ok(fs.existsSync(path.resolve(HERE, "../../..", recipe.proof.evidence)));
-  }
+  const linkRecipe = makeRecipe("public-pages.json", pingOnlyLink);
+  assert.equal(linkRecipe.mode, "test");
+  assert.equal(linkRecipe.safe, true);
+  assert.equal(linkRecipe.proof.depth, "deep");
+  assert.equal(linkRecipe.proof.asserts, pingOnlyLink.control);
+  assert.match(linkRecipe.proof.evidence, /display-contracts-ef-public\.test\.mjs/);
+  assert.match(linkRecipe.proof.evidence, /public-page-link-outcomes\.test\.mjs/);
+
+  const pageRecipe = makeRecipe("public-pages.json", uncoveredPage);
+  assert.equal(pageRecipe.mode, "read-only");
+  assert.equal(pageRecipe.safe, true);
+  assert.equal(pageRecipe.proof.depth, "e2e");
+  assert.equal(pageRecipe.proof.asserts, uncoveredPage.control);
+  assert.equal(pageRecipe.proof.evidence, "src/pulse/catalog/proofs/display-contracts-ef-public.test.mjs");
+  assert.ok(fs.existsSync(path.resolve(HERE, "../../..", pageRecipe.proof.evidence)));
 });
 
 test("only exact display proof cases receive deep executable proof", () => {
