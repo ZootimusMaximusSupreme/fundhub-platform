@@ -858,6 +858,7 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   const names = (file, pagePath) =>
     pageAssets(read(file), `${BASE}${pagePath}`, BASE).map((a) => new URL(a.url).pathname);
 
+  const sharedTypeAssets = ["/app/fundhub-font.css", "/app/fundhub-font.js"];
   const portal = names("app/client-portal.html", "/app/client-portal.html");
   for (const must of ["/app/shell.js", "/app/data.js", "/app/fundhub-brand.css", "/app/client-portal-sw.js"]) {
     assert.ok(portal.includes(must), `client-portal.html no longer names ${must}`);
@@ -865,13 +866,13 @@ test("scripts: read against the real pages in public/, the lists are what the ma
   const money = names("app/financeos.html", "/app/financeos.html");
   assert.ok(money.filter((n) => n.endsWith(".js")).length >= 18, "financeos.html names its 18 scripts");
   assert.ok(money.includes("/app/financeos.js") && money.includes("/app/money-credit.js"));
-  assert.deepEqual(names("portal-login.html", "/portal-login.html"), ["/fh.css"]);
-  assert.deepEqual(names("reset-password.html", "/reset-password.html"), ["/fh.css", "/pw-toggle.js"]);
-  assert.deepEqual(names("progress.html", "/progress.html"), []);
-  assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), ["/app/fundhub-brand.css"]);
+  assert.deepEqual(names("portal-login.html", "/portal-login.html"), [...sharedTypeAssets, ...["/fh.css"]]);
+  assert.deepEqual(names("reset-password.html", "/reset-password.html"), [...sharedTypeAssets, ...["/fh.css", "/pw-toggle.js"]]);
+  assert.deepEqual(names("progress.html", "/progress.html"), [...sharedTypeAssets, ...[]]);
+  assert.deepEqual(names("app/payment-success.html", "/app/payment-success.html"), [...sharedTypeAssets, ...["/app/fundhub-brand.css"]]);
   // Every file the pages name is really in public/, so a rename shows up here
   // before it shows up on the live pages.
-  for (const name of [...portal, ...money, "/fh.css", "/pw-toggle.js"]) {
+  for (const name of [...portal, ...money, ...sharedTypeAssets, "/fh.css", "/pw-toggle.js"]) {
     assert.ok(fs.existsSync(path.join(PUBLIC, name)), `${name} is named by a page but is not in public/`);
   }
   // And each real page passes the page rules the check applies.

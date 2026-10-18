@@ -2442,8 +2442,9 @@
     link.href = "https://fonts.googleapis.com/css2?family=" + fams.join("&family=") + "&display=swap";
   }
 
-  function paintBrand(b) {
+  function paintBrand(b, staff) {
     if (!b) return;
+    if (window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);
     var root = document.documentElement;
     var HEX = /^#[0-9a-fA-F]{6}$/;
     // Re-validated here even though the table has a CHECK: a custom property
@@ -2494,7 +2495,7 @@
     if (chip && b.entity_name) chip.setAttribute("data-brand", b.entity_name);
   }
 
-  function applyBrand(/* staff */) {
+  function applyBrand(staff) {
     var t = "";
     try { t = localStorage.getItem("fh_token") || ""; } catch (e) { t = ""; }
     var headers = { accept: "application/json" };
@@ -2504,7 +2505,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !d.ok || !d.brand) return;
-        paintBrand(d.brand);
+        paintBrand(d.brand, staff);
       })
       .catch(function () { /* fundhub default stays — see the comment above */ });
   }
