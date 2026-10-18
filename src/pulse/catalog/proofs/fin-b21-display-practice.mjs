@@ -1,6 +1,6 @@
 // Finish-853 batch 21: the screen controls proved by a practice test (real Chromium or the real door, fake
 // data), the two rows that are verified "nothing to judge" (the owner took the control off the phone), and the
-// seven rows that cannot honestly be attached, each with its exact reason.
+// rows that cannot honestly be attached, each with its exact reason.
 //
 // A practice test is not a live check: it reads no live data. It is attached only when the control leaves
 // no saved result that could be wrong (a key, a swap, a card) or when its answer is the page's own.
@@ -12,13 +12,15 @@ import { OWNER_REMOVED } from "../../coverage/fin-b21-owner-removed.mjs";
 const TELEPROMPTER_TEST = "src/pulse/catalog/proofs/fin-b21-teleprompter.test.mjs";
 const FILM_KEY_TEST = "src/pulse/catalog/proofs/fin-b21-film-key.test.mjs";
 const WORDS_AREA_TEST = "src/pulse/catalog/proofs/fin-b21-words-area.test.mjs";
+const SOCIAL_BROWSER_TEST = "src/pulse/catalog/proofs/display-contracts-teams-social-1.test.mjs";
+const SOCIAL_HANDLER_TEST = "src/http/fin-b26-social-posts.test.mjs";
 const BROWSER_RUNNER = "real Chromium on the real teleprompter page with a fake API";
 
-function proof(control, assertion, { tests = [TELEPROMPTER_TEST], runner = BROWSER_RUNNER } = {}) {
+function proof(control, assertion, { tests = [TELEPROMPTER_TEST], runner = BROWSER_RUNNER, surface = TELEPROMPTER_SURFACE } = {}) {
   return Object.freeze({
-    key: `${FIN_B21_SOURCE_FILE}\0${TELEPROMPTER_SURFACE}\0${control}`,
+    key: `${FIN_B21_SOURCE_FILE}\0${surface}\0${control}`,
     sourceFile: FIN_B21_SOURCE_FILE,
-    surface: TELEPROMPTER_SURFACE,
+    surface,
     control,
     depth: "deep",
     // Every test file the case names must also be in the evidence text (display-proof-cases.test.mjs checks it).
@@ -49,11 +51,29 @@ export const FIN_B21_DISPLAY_PROOF_CASES = Object.freeze([
   // and a person gets today, and says so in its own words. The map's row text is stale, not the product.
   proof("Words area: one tap plays or pauses; double tap pauses and opens a cursor; hold a line edits that line; drag moves the words",
     "One tap on the words plays them and a second tap pauses them with no mark sent; a drag moves the words by hand (thumb up forward, thumb down back) and does not start them; a double tap, paused or rolling, stops the words and shows Copy script, Paste script and X with no cursor, no keyboard, no edit box and no Save; holding a line changes nothing, not even while the finger is still down. The row's words 'opens a cursor' and 'hold a line edits that line' were removed by owner call 2026-10-13, so this proves today's behaviour and goes red if a cursor or a hold-to-edit box comes back.",
-    { tests: [WORDS_AREA_TEST] })
+    { tests: [WORDS_AREA_TEST] }),
+  proof("Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
+    "In a Phoenix Chromium session, the page waits for its partner read, sends exactly one probe for Facebook, Instagram and LinkedIn with that partner id, and disables all three buttons when each app is not configured.",
+    { surface: SOCIAL_SURFACE, tests: [SOCIAL_BROWSER_TEST], runner: "real Chromium on Social Studio with controlled APIs" }),
+  proof("Writer: 'Send at (optional) - times are UTC' box",
+    "In a Phoenix Chromium session, typing 09:15 in the UTC send-time box posts 09:15Z exactly, rather than shifting it seven hours through the browser's local time zone.",
+    { surface: SOCIAL_SURFACE, tests: [SOCIAL_BROWSER_TEST], runner: "real Chromium on Social Studio with controlled APIs" }),
+  proof("Tab 'Sent' (posted, with the reference on the account)",
+    "The handler returns terminal posted rows from social_posts without the stale queue copy, and real Chromium paints the posted caption, time and provider reference in the Sent tab.",
+    { surface: SOCIAL_SURFACE, tests: [SOCIAL_HANDLER_TEST, SOCIAL_BROWSER_TEST], runner: "the real posts handler over stand-in tables and real Chromium on Social Studio" }),
+  proof("Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
+    "Enter expands a server-shaped queue row, See the details opens its drawer without a screening object or a page error, and the drawer honestly says that the copy has not been checked yet.",
+    { surface: SOCIAL_SURFACE, tests: [SOCIAL_BROWSER_TEST], runner: "real Chromium on Social Studio with controlled APIs" }),
+  proof("Side drawer: close X, click outside, Escape",
+    "After opening the drawer from a server-shaped row, real Chromium closes it through each reachable path: the close button, the outside scrim and the Escape key.",
+    { surface: SOCIAL_SURFACE, tests: [SOCIAL_BROWSER_TEST], runner: "real Chromium on Social Studio with controlled APIs" }),
+  proof("Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
+    "The on-screen Settings button opens the real sheet, where all five sliders, three toggles, both camera-quality buttons, all six remote slots and Clear learned buttons are visible.",
+    { tests: [TELEPROMPTER_TEST] }),
+  proof("'This shoot' script list sheet (tap a script to roll it)",
+    "The on-screen This shoot button opens the full ordered script list; tapping a script closes the sheet, loads that script into the teleprompter and sends no completion mark.",
+    { tests: [TELEPROMPTER_TEST] })
 ]);
-
-const social = (control, reason) => Object.freeze({ sourceFile: FIN_B21_SOURCE_FILE, surface: SOCIAL_SURFACE, control, reason });
-const tele = (control, reason) => Object.freeze({ sourceFile: FIN_B21_SOURCE_FILE, surface: TELEPROMPTER_SURFACE, control, reason });
 
 /**
  * The two rows that are "nothing to judge": the owner took the control off the phone on purpose, and the
@@ -66,20 +86,6 @@ export const FIN_B21_OWNER_REMOVED_ROWS = Object.freeze(OWNER_REMOVED.map((entry
 
 /** The rows no test or check can honestly be attached to without a product change or a new row text. */
 export const FIN_B21_NOT_ATTACHABLE = Object.freeze([
-  social("Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
-    "The probe never sends anything. It runs once while the script loads, before the partner list has come back; probe() reads the chosen partner's id, finds none and returns, and nothing runs it again (the connect block at the end of public/app/social-studio.html). Measured in Chromium on the real page: after load no GET to /api/social/oauth was sent, and Connect Facebook, Instagram and LinkedIn were all enabled although the server answered not_configured. A test of the row's words is red; a test of today's behaviour would pin a dead probe. Needs a product change: run the probe after the partner list loads."),
-  social("Writer: 'Send at (optional) - times are UTC' box",
-    "The label promises UTC but the writer's Queue post handler sends new Date(value).toISOString() (the cWhen box), which reads the box as the browser's own local time; a Phoenix browser is 7 hours off. The queue table's own time box does read UTC (utcFromBox). The saved scheduled_for is a bare instant with no record of what was typed or in which zone, so no saved result can be compared with the box. A test of the UTC promise is red on the shipped page, and a test of local time would pin the bug. Needs a product change."),
-  social("Tab 'Sent' (posted, with the reference on the account)",
-    "The tab can never fill. GET /api/social/posts reads marketing_content_queue only, whose status can never be posted (draft, queued, scheduled, awaiting_approval, discarded, blocked), so the Sent pane always prints its own note that it cannot yet see posts that went out. Posted posts live in social_posts, which this page never reads. The saved sent posts and their references are now judged by the live check on 'Post states legend' (a post that says Sent must have a time and a reference), but the tab itself cannot show them. Needs a product change: read social_posts for the Sent pane."),
-  social("Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
-    "Half of it is broken. The row expands on a click (measured) and on Enter (the code does), but 'See the details' throws: openDrawer reads p.screening.state and p.screening.codes and no read supplies a screening object (GET /api/social/posts selects id, caption, offer_type, scheduled_for, status, social_post_id, blocked_reasons, created_at, updated_at). Measured in Chromium with rows shaped exactly like that answer: TypeError 'Cannot read properties of undefined (reading state)', and the drawer never opens. Needs a product change."),
-  social("Side drawer: close X, click outside, Escape",
-    "There is no open drawer to close with real data: openDrawer throws on p.screening before it adds the open class (see 'Post row click / Enter'), measured in Chromium. A test that gives a post a screening object tests a path the server never produces. Needs a product change first."),
-  tele("Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
-    "No on-screen control opens the sheet. openSheet('set') is called only by the window.__fhtp test hook; teleprompter.html has no Settings button, so a person cannot reach the sliders, toggles, 4K and 1080p pills or Learn remote. The Settings button (b-set) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it, and the spec (docs/specs/marketing-machine-2026-10-04.md, Settings > Learn remote) and docs/journeys/shoot-flow.md still say the sheet exists. So it is not a retired control (not nothing to judge), and a practice test through the test hook would show a sheet nobody can open. Needs Chris: an on-screen way to open it, or retire the row."),
-  tele("'This shoot' script list sheet (tap a script to roll it)",
-    "No on-screen control opens the sheet. openSheet('lib') is called only by the window.__fhtp test hook; the Still to film chip menu is the path a person has. The This shoot button (b-lib) was dropped in commit 8eea9ca9e on 2026-10-07 with no owner call recorded for it. Commit 483670419 the same afternoon gave the file-name chip a different list (Still to film, #qmenu, scripts not yet marked Got it), which the 'Tiny file-name chip' row proves, so the likely intent is that the chip list replaced this sheet; but nothing written down says the owner retired it, so it is not nothing to judge. Needs Chris: retire the row (and the dead #lib markup and drawList), or give the sheet a button."),
 ]);
 
 export const FIN_B21_PRACTICE_KEYS = Object.freeze(FIN_B21_DISPLAY_PROOF_CASES.map((entry) => entry.key));

@@ -1,5 +1,5 @@
-// GET/POST /api/social/posts — list the marketing post queue; queue, discard,
-// approve or refuse.
+// GET/POST /api/social/posts — list the marketing queue plus failed/posted posts
+// and its one open failed-post task; queue, discard, approve or refuse.
 //
 // WHY approve AND reject LIVE HERE. 240 gave a post the guardrail engine held for
 // a person somewhere to sit (social_posts.status = 'awaiting_approval') and
@@ -164,8 +164,8 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const items = await withPartnerScope({ kind: "partner", partnerId }, async (tx) => {
-        const r = await tx.query(
+      const data = await withPartnerScope({ kind: "partner", partnerId }, async (tx) => {
+        const queue = await tx.query(
           `SELECT id, caption, offer_type, scheduled_for, status, social_post_id,
                   blocked_reasons, created_at, updated_at
              FROM marketing_content_queue
@@ -174,9 +174,35 @@ export default async function handler(req, res) {
             LIMIT 100`,
           [partnerId]
         );
-        return r.rows;
+        const terminal = await tx.query(
+          `SELECT id, id AS social_post_id, channel_id, asset_id, caption, offer_type,
+                  scheduled_for, status, blocked_reasons, attempt, posted_at,
+                  external_post_id, last_error, created_at, updated_at
+             FROM social_posts
+            WHERE partner_id = $1
+              AND status IN ('failed', 'posted')
+            ORDER BY created_at DESC
+            LIMIT 100`,
+          [partnerId]
+        );
+        const terminalIds = new Set(terminal.rows.map((row) => row.id));
+        const tasks = await tx.query(
+          `SELECT id, task_key, title, detail, severity, resolved_at, created_at, updated_at
+             FROM partner_onboarding_tasks
+            WHERE partner_id = $1
+              AND task_key = 'social_post_failed'
+              AND resolved_at IS NULL
+            ORDER BY updated_at DESC
+            LIMIT 1`,
+          [partnerId]
+        );
+        const items = terminal.rows
+          .concat(queue.rows.filter((row) => !row.social_post_id || !terminalIds.has(row.social_post_id)))
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 100);
+        return { items, tasks: tasks.rows };
       });
-      return res.status(200).json({ ok: true, items });
+      return res.status(200).json({ ok: true, items: data.items, tasks: data.tasks });
     }
 
     if (req.method === "POST") {

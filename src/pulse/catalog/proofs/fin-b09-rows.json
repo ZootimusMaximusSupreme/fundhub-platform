@@ -68,5 +68,14 @@
     "Drawer: close (\u2715, scrim click, Escape key)"
    ]
   }
+ ],
+ "fin-b09-g2-findings.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:climate/index.html#Click a state: shows its sco",
+   "controls": [
+    "Click a state: shows its score and a plain sentence (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)"
+   ]
+  }
  ]
 }

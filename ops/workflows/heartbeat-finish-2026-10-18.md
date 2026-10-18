@@ -96,4 +96,17 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: integrated display repair rows 20–25. The Banks screen trusts the signed-in role instead of the address, inquiry reads use the four specialist-desk roles, case paging advances 25 at a time, Enter opens case details, saved `on_hold` state is visible, and worked totals no longer double-count confirmation. The isolated exact suite passes 139/139; role maps are regenerated from the combined gates on integration.
 - 2026-10-18: re-ran the two old merge failures on integration. The upload retry proof passes 1/1 and the complete door registry passes 989/989.
 - 2026-10-18: integrated display repair rows 34–36. Commission reads now carry the client, frozen rule ID/snapshot, basis, and base amount; ledger cells paint the real client, rule version, basis, and rate; the sales-floor hero reads the daily team deposit target and paints a capped progress bar. The isolated browser, API/auth, display, TypeScript, and lint checks pass, including matching mutation failures; final global count waits for the one end-of-run catalog regeneration.
+- 2026-10-18: display repair rows 37–45 are fixed and source-proved on `codex/heartbeat-display-37-45` (`openBefore: 9`, `openAfter: 0`). Social connect probes now wait for partner scope, writer times stay UTC in Phoenix, failed/sent `social_posts` replace stale queue copies, and server-shaped rows open and close the drawer. Teleprompter now has on-screen This shoot and Settings buttons without recording changes; the climate state panel now carries its plain scope sentence. Focused API/auth/route, Chromium, per-batch display, TypeScript, and lint gates pass. No real-iPhone acceptance is claimed. The generated catalog and aggregate counts remain untouched, so these nine rows keep honest red evidence there until lane A performs the one planned final regeneration.
+
+## Lane F repair — manifest rows 37–45
+
+| Rows | Product result | Exact proof |
+| --- | --- | --- |
+| 37–38 | OAuth setup probes run once after the partner is known; the writer reads `datetime-local` as UTC. | `display-contracts-teams-social-1.test.mjs` in a Phoenix Chromium context |
+| 39–40 | Failed and posted terminal rows come from `social_posts`, include attempts/errors/provider references, and suppress stale queue copies. | `fin-b26-social-posts.test.mjs`; rendered failed/sent tabs in `display-contracts-teams-social-1.test.mjs` |
+| 41–42 | A row with no `screening` object opens honestly; X, outside scrim, and Escape all close it. | `display-contracts-teams-social-1.test.mjs` |
+| 43–44 | On-screen This shoot and Settings buttons open the existing sheets; selecting a script sends no mark. | `fin-b21-teleprompter.test.mjs` |
+| 45 | The clicked-state result says it is the wider state picture, not a decision about the person. | `fin-b09-g2-findings.test.mjs` |
+
+Focused results: handler/auth/display batch command `851/851`; Social Studio Chromium `1/1`; teleprompter Chromium `15/15`; climate finding browser file `3/3`; auth/route guards `18/18`; exact proof-registry guard `1/1`; `npx tsc --noEmit` passed; `npm run lint` parsed 3,981 files/inline scripts clean. The broader `src/ui/teleprompter.test.mjs` still has its pre-existing file-name expectation failure (`null` expected while the current product returns the Direct Book name); it was left red because recording naming semantics are outside rows 43–44.
 

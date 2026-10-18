@@ -132,7 +132,7 @@ const climate = {
   banks: [{ id: "b1", name: "Desert Credit Union", eligible_states: "AZ", priority_tier: 1, application_url: null, logo_path: null }],
 };
 
-test("finding 2 still true: clicking a state shows score, band and numbers but no plain sentence", async () => {
+test("clicking a state shows score, band, numbers and the plain-language scope sentence", async () => {
   const { page, errors } = await screens.open("/climate/", {
     session: null,
     handlers: { "/api/climate": climate },
@@ -151,13 +151,9 @@ test("finding 2 still true: clicking a state shows score, band and numbers but n
     assert.ok(text.includes(label), `the panel shows ${label}`);
   }
 
-  // What the row's words promise and the panel does not have: a plain sentence. A line with six or more
-  // real words (three letters or more) is a sentence; every line here is a label, a number or a name.
-  const words = (line) => (line.match(/[A-Za-z]{3,}/g) || []).length;
-  const sentences = text.split("\n").map((line) => line.trim()).filter((line) => words(line) >= 6);
-  assert.deepEqual(sentences, [],
-    "the state panel now carries a sentence: the page matches the row, attach 'Click a state' with a practice test");
-  assert.equal(await panel.locator("p").count(), 0, "and no paragraph");
+  const sentence = "This is the wider lending picture for your state, not a decision about you.";
+  assert.equal(await panel.locator("p").count(), 1);
+  assert.equal(await panel.locator("p").innerText(), sentence);
   assert.deepEqual(errors, []);
   await page.close();
 });

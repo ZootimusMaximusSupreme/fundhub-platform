@@ -1,6 +1,5 @@
 // Guards for the batch 09 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the two
-// row left out stays out only while the reason in fin-b09-not-attachable.mjs is still true.
+// plain runnable test that opens no live site, and every row has one proof case.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,36 +35,20 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 38, "all 38 listed rows");
+  assert.equal(listed, 39, "all 39 listed rows");
 });
 
-test("all 38 attached rows have one proof case each", () => {
+test("all 39 attached rows have one proof case each", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls));
-  assert.equal(attached.length, 38);
-  assert.equal(FIN_B09_DISPLAY_PROOF_CASES.length, 38);
-  assert.equal(new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 38);
+  assert.equal(attached.length, 39);
+  assert.equal(FIN_B09_DISPLAY_PROOF_CASES.length, 39);
+  assert.equal(new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 39);
   const left = new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => c.control));
   for (const row of FIN_B09_NOT_ATTACHABLE) assert.equal(left.has(row.control), false, row.control);
 });
 
-test("the one left-out row is a real map row with a reason that is still true", () => {
-  assert.equal(FIN_B09_NOT_ATTACHABLE.length, 1);
-  for (const row of FIN_B09_NOT_ATTACHABLE) {
-    assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
-    assert.ok(row.why.length > 80, "the reason is written out");
-  }
-
-  // Climate: the shipped bundle still has no plain sentence under a clicked state.
-  const climate = path.join(ROOT, "public/climate");
-  const files = [path.join(climate, "index.html")];
-  const chunks = path.join(climate, "_next/static/chunks");
-  for (const f of fs.readdirSync(chunks)) if (f.endsWith(".js")) files.push(path.join(chunks, f));
-  const app = path.join(chunks, "app");
-  for (const f of fs.readdirSync(app)) if (f.endsWith(".js")) files.push(path.join(app, f));
-  const text = files.map((f) => fs.readFileSync(f, "utf8")).join("\n");
-  assert.ok(!/wider picture|not a decision about/i.test(text),
-    "the climate page now carries the plain sentence: attach the Click a state row with a practice test");
-  assert.match(text, /Today's Score/, "the state panel still shows the score");
+test("no batch 09 row remains exercised but unattached", () => {
+  assert.deepEqual(FIN_B09_NOT_ATTACHABLE, []);
 });
 
 test("the agent list row restores its saved copy before switching", () => {
