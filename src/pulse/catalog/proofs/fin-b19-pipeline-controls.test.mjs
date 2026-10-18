@@ -33,7 +33,8 @@ const SALES = {
   stages: [
     { key: "new_lead", name: "New Lead", sort_order: 0, count: 4, amount: 15500, cards: [
       card("zed", "Zed Zane", { owner: "Casey Reed", entered_at: ago(3 * DAY), amount: 1000 }),
-      card("alice", "Alice Adams", { owner: "Jordan Blake", entered_at: ago(5 * DAY), amount: 4000, sms_needs_reply: true }),
+      card("alice", "Alice Adams", { owner: "Jordan Blake", entered_at: ago(5 * DAY), amount: 4000, sms_needs_reply: true,
+        phone: "+15551112222", email: "alice@example.com" }),
       card("finn", "Finn Fox", { entered_at: ago(30 * 60_000), amount: 9000, email_needs_reply: true }),
       card("dan", "Dan Dyer", { owner: "Jordan Blake", entered_at: ago(2 * HOUR), amount: 1500 }),
     ] },
@@ -178,7 +179,7 @@ test("the Owner filter is hidden until a card has an owner, then keeps only that
   });
 });
 
-test("the search box keeps the cards whose name has the typed words, and nothing else", { timeout: 120_000 }, async () => {
+test("the search box finds cards by name, phone, or email", { timeout: 120_000 }, async () => {
   await proof.check(/^Search box/, async () => {
     const { page, errors } = await openBoard();
     assert.equal(await page.locator("#q").getAttribute("placeholder"), "Search name, phone, or email");
@@ -190,16 +191,10 @@ test("the search box keeps the cards whose name has the typed words, and nothing
     assert.deepEqual(await shown(page), ["Alice Adams"], "a surname finds the card, not only the first letters of the name");
     await page.locator("#q").fill("e e");
     assert.deepEqual(await shown(page), ["Eve East"], "words from the middle of a name are matched as typed");
-    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: the
-    // placeholder promises phone and email, and the filter reads the name text only, so a phone or an email
-    // typed here matches nothing. Because a test that passes while the bug is there goes red on the fix, the
-    // row is exercised here and not attached (fin-b19-not-attachable.mjs).
     await page.locator("#q").fill("alice@example.com");
-    assert.deepEqual(await shown(page), [],
-      "an email typed here matches no card. If this fails the product was fixed: attach the Search row.");
-    await page.locator("#q").fill("+15550100");
-    assert.deepEqual(await shown(page), [],
-      "a phone typed here matches no card. If this fails the product was fixed: attach the Search row.");
+    assert.deepEqual(await shown(page), ["Alice Adams"], "an email finds its card");
+    await page.locator("#q").fill("+15551112222");
+    assert.deepEqual(await shown(page), ["Alice Adams"], "a phone finds its card");
     await page.locator("#q").fill("");
     assert.deepEqual(await shown(page), ALL_NAMES);
     assert.deepEqual(errors, []);
@@ -207,7 +202,7 @@ test("the search box keeps the cards whose name has the typed words, and nothing
   });
 });
 
-test("each Sort choice puts the cards of a column in its own order, and Manual does not give the first order back", { timeout: 120_000 }, async () => {
+test("each Sort choice works and Manual restores the read order", { timeout: 120_000 }, async () => {
   await proof.check(/^Sort: Manual/, async () => {
     const { page, errors } = await openBoard();
     await openFilters(page);
@@ -227,11 +222,8 @@ test("each Sort choice puts the cards of a column in its own order, and Manual d
     assert.deepEqual(await columnOrder(page, "round_submitted"), ["Eve East", "Bob Baker", "Gus Green"], "the approval with no amount first, then the longest wait");
     await pick(page, "#fSort", "name");
     assert.deepEqual(await columnOrder(page, "round_submitted"), ["Bob Baker", "Eve East", "Gus Green"]);
-    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: picking Manual
-    // after another choice leaves the cards in that other order. applySort() returns when the choice is empty.
     await pick(page, "#fSort", "");
-    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"],
-      "Manual keeps the last sorted order (the first order is not given back). If this fails the product was fixed: attach the Sort row.");
+    assert.deepEqual(await columnOrder(page, "new_lead"), first, "Manual gives back the order from the read");
     assert.deepEqual(errors, []);
     await page.close();
   });
@@ -262,15 +254,13 @@ test("an active filter shows as a chip, and its x clears only that filter", { ti
     assert.deepEqual(await chips(), ["Age: Over 1d in stage"]);
     assert.deepEqual(await shown(page), ["Alice Adams", "Bob Baker", "Cara Cole", "Eve East", "Gus Green", "Zed Zane"]);
 
-    // PRODUCT FINDING, pinned so the day it is fixed this goes red and says to attach the row: the x on the
-    // Sort chip clears the select and the chip, and leaves the cards in the sorted order.
     await pick(page, "#fSort", "name");
     assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"]);
     await page.locator("#filterChips .fchip", { hasText: "Sort:" }).locator(".x").click();
     assert.equal(await page.locator("#fSort").inputValue(), "", "the Sort select is cleared");
     assert.equal(await page.locator("#filterChips .fchip", { hasText: "Sort:" }).count(), 0, "and its chip is gone");
-    assert.deepEqual(await columnOrder(page, "new_lead"), ["Alice Adams", "Dan Dyer", "Finn Fox", "Zed Zane"],
-      "the order stays sorted. If this fails the product was fixed: attach the chip row.");
+    assert.deepEqual(await columnOrder(page, "new_lead"), ["Zed Zane", "Alice Adams", "Finn Fox", "Dan Dyer"],
+      "clearing the Sort chip restores Manual order");
     assert.deepEqual(errors, []);
     await page.close();
   });

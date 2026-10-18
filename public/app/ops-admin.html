@@ -804,11 +804,13 @@
     return hits > vals.length / 2;
   }
 
-  document.querySelectorAll('table.admin').forEach(function(table){
+  function wire(table){
     var header = table.rows[0];
     if(!header || !header.cells.length || header.cells[0].tagName !== 'TH') return;
 
     [].forEach.call(header.cells, function(th, col){
+      if(th.dataset.fhSortBound==='1') return;
+      th.dataset.fhSortBound='1';
       th.classList.add('sortable');
       th.tabIndex = 0;
       if(!th.hasAttribute('aria-sort')) th.setAttribute('aria-sort','none');
@@ -853,13 +855,13 @@
         if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sort(); }
       });
     });
-  });
+  }
+  window.FHWireAdminTable = wire;
+  document.querySelectorAll('table.admin').forEach(wire);
 })();
 
 /* ══ AR ROWS EXPAND ═══════════════════════════════════════════════════════ */
 (function(){
-  var table = document.getElementById('ar-table');
-  if(!table) return;
 
   function collapse(r){
     r.setAttribute('aria-expanded','false');
@@ -884,13 +886,18 @@
     col('Terms', r.dataset.terms || '—');
     col('Payment method', r.dataset.method || '—');
     col('Owner', r.dataset.owner || '—');
-    col('Outstanding', r.cells[1].textContent.trim(), true);
+    col('Outstanding', r.cells[2].textContent.trim(), true);
 
     var tl = document.createElement('div');
     tl.className = 'artimeline';
     var tk = document.createElement('div'); tk.className='ark'; tk.textContent='Collection history';
     tl.appendChild(tk);
-    (r.dataset.timeline || '').split(';').filter(Boolean).forEach(function(step){
+    var steps = (r.dataset.timeline || '').split(';').filter(Boolean);
+    if(!steps.length){
+      var empty = document.createElement('div'); empty.className='arstep';
+      empty.textContent = 'No collection activity recorded.'; tl.appendChild(empty);
+    }
+    steps.forEach(function(step){
       var parts = step.split('|');
       var s = document.createElement('div'); s.className='arstep';
       var d = document.createElement('span'); d.className='ard'; d.textContent = parts[0] || '';
@@ -905,7 +912,10 @@
     r.setAttribute('aria-expanded','true');
   }
 
-  table.querySelectorAll('tr[data-ar]').forEach(function(r){
+  function wire(table){
+    table.querySelectorAll('tr[data-ar]').forEach(function(r){
+      if(r.dataset.fhExpandBound==='1') return;
+      r.dataset.fhExpandBound='1';
     function toggle(){
       if(r.getAttribute('aria-expanded')==='true') collapse(r); else expand(r);
     }
@@ -913,7 +923,11 @@
     r.addEventListener('keydown', function(e){
       if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
     });
-  });
+    });
+  }
+  window.FHWireArRows = wire;
+  var table = document.getElementById('ar-table');
+  if(table) wire(table);
 })();
 </script>
 <script>
@@ -1104,6 +1118,28 @@ document.addEventListener("DOMContentLoaded", function () {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
+  function dateWords(value) {
+    if (!value) return null;
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function collectionTimeline(r) {
+    var steps = [];
+    function add(value, words) { var when = dateWords(value); if (when) steps.push(when + "|" + words); }
+    add(r.sent_at, "Invoice sent");
+    add(r.reminded_at, "Reminder sent" + (Number(r.reminder_count) > 1 ? " (" + r.reminder_count + ")" : ""));
+    add(r.escalated_at, "Moved to collections");
+    add(r.last_payment_at, "Payment recorded");
+    return steps.join(";");
+  }
+
+  function wireArTable(table) {
+    if (window.FHWireAdminTable) window.FHWireAdminTable(table);
+    if (window.FHWireArRows) window.FHWireArRows(table);
+  }
+
   var AR_HEAD = '<tr><th>Client</th><th>Invoice</th><th>Amount owed</th>' +
     '<th aria-sort="descending">Overdue</th><th>Status</th></tr>';
 
@@ -1119,6 +1155,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Could not read it. Say that, rather than leaving "Loading…" on the screen.
     if (!data) {
       table.innerHTML = AR_HEAD + arRow("We could not load unpaid invoices. Reload the page.");
+      wireArTable(table);
       if (total) total.textContent = "Could not load";
       return null;
     }
@@ -1128,6 +1165,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var rows = data.items || [];
     if (!rows.length) {
       table.innerHTML = AR_HEAD + arRow("No unpaid invoices. Bills that go out show here until they are paid.");
+      wireArTable(table);
       if (total) total.textContent = "Nothing outstanding";
       /* A truthful answer, so the footer says so. Returning null here would make
          wire() call this "sample" data and claim there is no AR table in the
@@ -1146,7 +1184,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var html = AR_HEAD;
     shown.forEach(function (r) {
       var amount = usd(r.open_balance);
-      html += "<tr><td>" + esc(r.client_name || r.client_code || "Name not on file") +
+      var terms = r.due_at ? "Due " + dateWords(r.due_at) : "No due date set";
+      html += '<tr data-ar tabindex="0" aria-expanded="false" data-terms="' + esc(terms) +
+        '" data-method="' + esc(r.payment_method || "No payment recorded") +
+        '" data-owner="' + esc(r.owner_name || "Unassigned") +
+        '" data-timeline="' + esc(collectionTimeline(r)) + '"><td>' + esc(r.client_name || r.client_code || "Name not on file") +
         '</td><td class="mono">' + esc(invoiceRef(r.id)) +
         "</td><td>" + esc(amount == null ? "Amount not recorded" : amount) +
         "</td><td>" + esc(overdueWords(r.days_overdue)) +
@@ -1156,6 +1198,7 @@ document.addEventListener("DOMContentLoaded", function () {
       html += arRow((rows.length - shown.length) + " more unpaid invoices are not shown here.");
     }
     table.innerHTML = html;
+    wireArTable(table);
 
     var totalWords = usd(owed) + " owed · " + rows.length +
       (rows.length === 1 ? " invoice" : " invoices");

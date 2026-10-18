@@ -19,15 +19,7 @@ const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10
 const mapRows = (file) => JSON.parse(fs.readFileSync(path.join(MAP_DIR, file), "utf8"));
 const keyOf = (sourceFile, surface, control) => `${sourceFile}\0${surface}\0${control}`;
 
-// Rows of this batch that are left red on purpose. Each one has its reason in manifest-b18.md.
-const NOT_ATTACHABLE = [
-  ["desks-e.json", "public/app/ops-admin.html", "AR column header sort (click or Enter on Client, Invoice, Amount owed, Overdue, Status)"],
-  ["desks-e.json", "public/app/ops-admin.html", "AR row expand (terms, payment method, owner, outstanding, collection history)"],
-  ["desks-e.json", "public/app/partner-galaxy.html", "Sky canvas: click a worker to open the detail panel (NODES, CLIENTS and ROUTES are empty arrays, so no worker exists to click)"],
-  // repair cycle 1: the checker found both of these stayed green on a real break; they are taken off again
-  ["desks-e.json", "public/app/partner-galaxy.html", "Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Agents, Ops Agents)"],
-  ["desks-e.json", "public/app/partner-galaxy.html", "Sky canvas: click empty space or press Escape to pull back; panel close button (esc)"],
-];
+const NOT_ATTACHABLE = [];
 
 const rowsOf = (table) => Object.entries(table).flatMap(([file, groups]) => groups.flatMap((group) => group.controls.map((control) => ({
   file, sourceFile: group.sourceFile, surface: group.surface, control,
@@ -51,7 +43,7 @@ test("every listed row is one exact map row and its test file exists and is a te
   // a row is pressed by a page test once; a server test may read the same control's server half
   const pageKeys = pageListed.map((r) => keyOf(r.sourceFile, r.surface, r.control));
   assert.equal(new Set(pageKeys).size, pageKeys.length, "no row is pressed by two page tests");
-  assert.equal(pageListed.length, 34, "34 rows are pressed by a practice test in a browser");
+  assert.equal(pageListed.length, 39, "39 rows are pressed by a practice test in a browser");
   assert.equal(serverListed.length, 5, "5 rows also have their server half read in Node");
   for (const row of serverListed) {
     assert.ok(pageKeys.includes(keyOf(row.sourceFile, row.surface, row.control)) || FIN_B18_LIVE_ROWS.some((r) => keyOf(...r) === keyOf(row.sourceFile, row.surface, row.control)),
@@ -63,7 +55,7 @@ test("the rows left red are not listed, not live, and have no proof case", () =>
   const exact = new Set(DISPLAY_PROOF_CASES.map((c) => keyOf(c.sourceFile, c.surface, c.control)));
   const live = new Set(FIN_B18_LIVE_ROWS.map((r) => keyOf(...r)));
   const listedKeys = new Set(listed.map((r) => keyOf(r.sourceFile, r.surface, r.control)));
-  assert.equal(NOT_ATTACHABLE.length, 5, "five rows of this batch are left red");
+  assert.equal(NOT_ATTACHABLE.length, 0, "the five repaired rows are attached now");
   for (const [sourceFile, surface, control] of NOT_ATTACHABLE) {
     assert.equal(mapRows(sourceFile).filter((m) => m.surface === surface && m.control === control).length, 1, `${control} is exactly one map row`);
     const key = keyOf(sourceFile, surface, control);
@@ -75,8 +67,8 @@ test("the rows left red are not listed, not live, and have no proof case", () =>
 
 test("a row is a live check or a practice test, and a live row also names the screen half when one presses it", () => {
   assert.equal(FIN_B18_LIVE_PROOF_CASES.length, 6);
-  assert.equal(FIN_B18_PRACTICE_CASES.length, 29);
-  assert.equal(FIN_B18_DISPLAY_PROOF_CASES.length, 35, "35 rows attached: 6 live and 29 practice only");
+  assert.equal(FIN_B18_PRACTICE_CASES.length, 34);
+  assert.equal(FIN_B18_DISPLAY_PROOF_CASES.length, 40, "40 rows attached: 6 live and 34 practice only");
   const practice = new Set(FIN_B18_PRACTICE_CASES.map((c) => keyOf(c.sourceFile, c.surface, c.control)));
   for (const live of FIN_B18_LIVE_PROOF_CASES) {
     assert.equal(practice.has(keyOf(live.sourceFile, live.surface, live.control)), false, "no row is both");
@@ -101,5 +93,7 @@ test("a row is a live check or a practice test, and a live row also names the sc
   assert.ok(FIN_B18_PRACTICE_CASES.find((c) => c.control.startsWith("Empty state ('You do not owe"))
     .tests.some((t) => t.endsWith("fin-b18-server-reads.test.mjs")), "the payments empty state also runs the server read");
   assert.ok(screen("Write today's C-suite tasks").some((t) => t.endsWith("fin-b18-ops-admin.test.mjs")));
+  assert.ok(FIN_B18_PRACTICE_CASES.find((c) => c.control.startsWith("AR row expand"))
+    .tests.some((t) => t === "src/http/read-invoices-handler.test.mjs"), "AR detail also runs its real read handler");
   assert.ok(screen("hire-closer (server)").some((t) => t.endsWith("fin-b18-live-writer.test.mjs")));
 });

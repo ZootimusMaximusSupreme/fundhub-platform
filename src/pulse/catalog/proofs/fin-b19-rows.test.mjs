@@ -36,14 +36,14 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "34 attached rows and 6 exercised-but-not-attached rows");
+  assert.equal(listed, 40, "37 attached rows and 3 hidden sidebar rows");
 });
 
 test("attached rows have one proof case each; the exercised-but-not-attached rows have none", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls));
-  assert.equal(attached.length, 34);
-  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 34);
-  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 34);
+  assert.equal(attached.length, 37);
+  assert.equal(FIN_B19_DISPLAY_PROOF_CASES.length, 37);
+  assert.equal(new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 37);
   const left = new Set(FIN_B19_DISPLAY_PROOF_CASES.map((c) => c.control));
   for (const row of [...FIN_B19_NOT_ATTACHABLE, ...FIN_B19_HIDDEN_HEADS]) assert.equal(left.has(row.control), false, row.control);
   for (const c of FIN_B19_DISPLAY_PROOF_CASES) {
@@ -51,8 +51,8 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   }
 });
 
-test("the six left-out rows are real map rows: three named not attachable, three sidebar heads judged by the live shared chrome", () => {
-  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 3);
+test("only the three hidden sidebar heads stay out, judged by the live shared chrome", () => {
+  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 0);
   assert.equal(FIN_B19_HIDDEN_HEADS.length, 3);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || []));
   assert.deepEqual(
@@ -65,17 +65,13 @@ test("the six left-out rows are real map rows: three named not attachable, three
   }
   for (const row of FIN_B19_HIDDEN_HEADS) assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
 
-  // The Sort and chip reason, held to the page: an empty choice still reorders nothing.
+  // The repaired controls stay wired to their exact behavior.
   const pipeline = fs.readFileSync(path.join(ROOT, "public/app/pipeline.html"), "utf8");
-  assert.match(pipeline, /function applySort\(\)\{\s*var mode=fSort\.value; if\(!mode\) return;/,
-    "applySort() now handles an empty choice: Manual and the Sort chip x may work, attach the Sort and chip rows");
+  assert.match(pipeline, /if\(!mode\) return Number\(a\.dataset\.manualOrder\|\|0\)-Number\(b\.dataset\.manualOrder\|\|0\);/);
   assert.match(pipeline, /c\.el\.value=''; applyFilters\(\); if\(c\.el===fSort\) applySort\(\); syncChips\(\);/,
-    "the chip x changed: re-check the chip row");
+    "the Sort chip x restores Manual order");
 
-  // The Search reason, held to the page: the filter still compares the card's name text only, and the box still
-  // promises phone and email. When either side changes, this row can be looked at again.
-  assert.match(pipeline, /if\(term && nameOf\(c\)\.toLowerCase\(\)\.indexOf\(term\)<0\) hit=false;/,
-    "the search filter changed: it may now read phone and email, attach the Search row");
+  assert.match(pipeline, /c\.dataset\.search\|\|nameOf\(c\)/, "search reads the card's name, phone and email index");
   assert.match(pipeline, /<input id="q" value="" placeholder="Search name, phone, or email">/,
     "the search box words changed: re-check the Search row");
 
