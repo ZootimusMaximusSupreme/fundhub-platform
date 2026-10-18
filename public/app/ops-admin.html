@@ -231,9 +231,10 @@
   
   
 </style>
+<link rel="stylesheet" href="ops-admin-workspace.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="ops-workspace">
 <div class="app">
   <aside class="side" id="side">
   <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
@@ -325,6 +326,7 @@
 
 
   <main>
+    <div class="ops-intro"><h1>Keep operations moving</h1><p>Review today’s priorities, collect what is owed, and check your team.</p></div>
 
     <div class="zonetabs fh-maxw" role="tablist" aria-label="Ops and admin zones">
       <button class="zonetab on" type="button" role="tab" aria-selected="true"  aria-controls="zone-money"  data-zone="money">Money<span class="zt-sub">KPIs · AR · compliance</span></button>
@@ -334,18 +336,6 @@
     <!-- ══ ZONE 1 · MONEY — the default. What came in, what is owed, what got
          stopped on the way out. ═══════════════════════════════════════════ -->
     <div class="zone on fh-maxw" id="zone-money" role="tabpanel" data-zone="money">
-
-    <div class="section">
-      <div class="section-title">Company KPIs<span class="section-meta" id="kpi-meta">week to date</span></div>
-      <div class="kpi-grid" id="kpi-grid">
-        <div class="kpi-tile"><div class="kpi-label">Cash Collected</div><div class="kpi-value" data-kpi="cash">—</div></div>
-        <div class="kpi-tile"><div class="kpi-label">Funded</div><div class="kpi-value" data-kpi="funded">—</div></div>
-        <div class="kpi-tile"><div class="kpi-label">Close Rate</div><div class="kpi-value" data-kpi="close">—</div>
-          <div class="kpi-sub"><span data-kpi="show">—</span> show rate</div></div>
-        <div class="kpi-tile"><div class="kpi-label">Cost / Funded</div><div class="kpi-value" data-kpi="cpf">—</div></div>
-        <div class="kpi-tile"><div class="kpi-label">New Clients</div><div class="kpi-value" data-kpi="clients">—</div></div>
-      </div>
-    </div>
 
     <div class="section" id="ops-pulse">
       <div class="section-title">Today’s briefs<span class="section-meta" id="ops-pulse-meta">loading</span></div>
@@ -366,6 +356,18 @@
       </div>
     </div>
 
+    <div class="section">
+      <div class="section-title">Company KPIs<span class="section-meta" id="kpi-meta">week to date</span></div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-tile"><div class="kpi-label">Cash Collected</div><div class="kpi-value" data-kpi="cash">—</div></div>
+        <div class="kpi-tile"><div class="kpi-label">Funded</div><div class="kpi-value" data-kpi="funded">—</div></div>
+        <div class="kpi-tile"><div class="kpi-label">Close Rate</div><div class="kpi-value" data-kpi="close">—</div>
+          <div class="kpi-sub"><span data-kpi="show">—</span> show rate</div></div>
+        <div class="kpi-tile"><div class="kpi-label">Cost / Funded</div><div class="kpi-value" data-kpi="cpf">—</div></div>
+        <div class="kpi-tile"><div class="kpi-label">New Clients</div><div class="kpi-value" data-kpi="clients">—</div></div>
+      </div>
+    </div>
+
     <div class="two-col">
       <div>
 
@@ -375,10 +377,10 @@
                Days Overdue / Status and no dollar figure anywhere on it, so the
                one question an AR table exists to answer — how much money is
                sitting out there — could not be read off it. -->
-          <table class="admin" id="ar-table">
+          <div class="ops-table-scroll" role="region" tabindex="0" aria-label="Unpaid invoices"><table class="admin" id="ar-table">
             <tr><th>Client</th><th>Invoice</th><th>Amount owed</th><th aria-sort="descending">Overdue</th><th>Status</th></tr>
             <tr><td colspan="5" class="empty-note" style="border-bottom:none">Loading unpaid invoices…</td></tr>
-          </table>
+          </table></div>
         </div>
 
       </div>
@@ -387,10 +389,10 @@
 
         <div class="section">
           <div class="section-title"><span><span class="av agent">CG</span> Compliance Gate — Messages It Stopped</span></div>
-          <table class="admin" id="compliance-blocked-table">
+          <div class="ops-table-scroll" role="region" tabindex="0" aria-label="Messages stopped by compliance"><table class="admin" id="compliance-blocked-table">
             <tr><th>Client</th><th>Channel</th><th>Reason</th><th>When</th></tr>
-            <tr><td colspan="4" class="empty-note" style="border-bottom:none">No messages stopped by the compliance gate</td></tr>
-          </table>
+            <tr><td colspan="4" class="empty-note" style="border-bottom:none">Loading stopped messages…</td></tr>
+          </table></div>
         </div>
 
       </div>
@@ -452,12 +454,12 @@
           <div class="section">
             <div class="section-title">Staff &amp; Comp<span class="section-meta">this week</span></div>
             <div class="section-meta" id="staffHiddenLine"></div>
-            <table class="admin" id="staff-comp-table">
+            <div class="ops-table-scroll" role="region" tabindex="0" aria-label="Staff compensation"><table class="admin" id="staff-comp-table">
               <thead><tr><th>Name</th><th>Role</th><th>Comp</th><th>This Week</th></tr></thead>
               <tbody id="staff-comp-body">
-                <tr><td colspan="4">No staff rows.</td></tr>
+                <tr><td colspan="4">Loading staff…</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
 
         </div>
@@ -466,12 +468,12 @@
 
           <div class="section">
             <div class="section-title">Staff Monitoring Consent<span class="section-meta">before names show on the Galaxy</span></div>
-            <table class="admin" id="staff-consent-table">
+            <div class="ops-table-scroll" role="region" tabindex="0" aria-label="Staff monitoring consent"><table class="admin" id="staff-consent-table">
               <thead><tr><th>Name</th><th>Consent</th></tr></thead>
               <tbody id="staff-consent-body">
-                <tr><td colspan="2">No staff rows.</td></tr>
+                <tr><td colspan="2">Loading staff consent…</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
 
         </div>
@@ -481,9 +483,9 @@
   </main>
 
   <footer class="statusbar">
-    <span>Fundhub admin · v1</span>
-    <span>ORG: fundhub</span>
-    <span>you're signed in as the owner</span>
+    
+    
+    
     <span id="foot-period">last 7 days</span>
   </footer>
 
