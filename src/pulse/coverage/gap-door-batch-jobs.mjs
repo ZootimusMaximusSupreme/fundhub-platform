@@ -18,13 +18,21 @@ export const FINAL_JOB_RESULT_TEST =
 export const CUSTOMER_FINAL_JOB_RESULT_TEST =
   "src/workflows/customer-final-results.test.mjs";
 
+export const CONTRACT_CHASER_FINAL_RESULT_TEST =
+  "src/workflows/contract-chaser-final.test.mjs";
+
+export const INSTANT_WATCH_FINAL_RESULT_TEST =
+  "src/pulse/instant-watch.test.mjs";
+
 const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:affiliate-payout-run",
   "workflow:blueprint-next-funding-sequence-sweeper",
+  "workflow:contract-chaser",
   "workflow:hiring-outreach-cadence",
   "workflow:merchant-pull-sweeper",
   "workflow:meet-transcript-sweeper",
   "workflow:paid-checkout-expiry-sweeper",
+  "workflow:pulse-instant-watch",
   "workflow:repair-bureau-response-reader",
   "function:hubstaff-poll-sweeper",
   "function:marketing-offer-background",
@@ -141,6 +149,12 @@ export function jobResultProof(row) {
     }
     if (["workflow:meet-transcript-sweeper", "workflow:repair-bureau-response-reader"].includes(row.surface)) {
       evidence = `${FINAL_JOB_RESULT_TEST} ${CUSTOMER_FINAL_JOB_RESULT_TEST}`;
+    }
+    if (row.surface === "workflow:contract-chaser") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${CONTRACT_CHASER_FINAL_RESULT_TEST}`;
+    }
+    if (row.surface === "workflow:pulse-instant-watch") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${INSTANT_WATCH_FINAL_RESULT_TEST}`;
     }
     return {
       depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
