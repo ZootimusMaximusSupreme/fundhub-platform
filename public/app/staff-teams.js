@@ -1,6 +1,25 @@
 /* Presentation and keyboard access only. Business handlers remain in the page. */
 (function () {
   "use strict";
+  var loadState = document.getElementById("teamLoadState");
+  document.body.classList.add("team-roster-loading");
+  function syncReadState() {
+    var part = window.FHData && window.FHData._parts && window.FHData._parts.roster;
+    if (!part || /loading roster/.test(part.text || "")) return false;
+    document.body.classList.remove("team-roster-loading");
+    if (part.tone === "error") {
+      loadState.textContent = "Team members could not be loaded. Reload the page to try again.";
+      document.body.classList.add("team-roster-error");
+    } else {
+      loadState.hidden = true;
+    }
+    return true;
+  }
+  if (!syncReadState()) {
+    var readTimer = setInterval(function () {
+      if (syncReadState()) clearInterval(readTimer);
+    }, 150);
+  }
   var editor = document.getElementById("editor");
   var returnFocus = null;
   var wasOpen = false;

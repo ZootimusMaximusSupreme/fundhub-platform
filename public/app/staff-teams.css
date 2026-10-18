@@ -1,5 +1,5 @@
 /* Staff Teams: page-only working surface; shared rail and header remain shared. */
-body.staff-teams{background:#f8f8f6;color:#101416;font-family:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.5}
+body.staff-teams{margin:0;background:#f8f8f6;color:#101416;font-family:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.5}
 .staff-teams *,.staff-teams *::before,.staff-teams *::after{box-sizing:border-box}
 .staff-teams .app{display:flex;min-height:100vh}
 .staff-teams .main{flex:1;min-width:0}
@@ -74,3 +74,10 @@ body.staff-teams{background:#f8f8f6;color:#101416;font-family:ui-rounded,"SF Pro
 @media(max-width:900px){.staff-teams .stat{padding:20px 18px}.staff-teams .telemetry-columns{grid-template-columns:1fr}.staff-teams .telemetry-columns>div{border-right:0!important}}
 @media(max-width:640px){.staff-teams .content{padding:24px 16px 36px}.staff-teams .team-intro{align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:22px}.staff-teams .team-intro h2{font-size:26px}.staff-teams .team-intro .btn{width:100%}.staff-teams .stats{grid-template-columns:repeat(2,minmax(0,1fr));border-radius:16px;margin-bottom:18px}.staff-teams .stat{padding:18px 16px}.staff-teams .stat:nth-child(3){border-left:0}.staff-teams .stat:nth-child(n+3){border-top:1px solid #e9e9e4}.staff-teams .stat .sv{font-size:30px}.staff-teams .card{border-radius:16px}.staff-teams .tabs{padding:10px;gap:4px}.staff-teams .tab{padding:10px 12px}.staff-teams .card-hd{padding:18px 16px;gap:10px}.staff-teams #qFilter,.staff-teams #roleFilter,.staff-teams #teleStaff{width:100%!important;min-width:0!important}.staff-teams .card-hd .spacer{display:none}.staff-teams #toAdvanced{margin-left:auto}.staff-teams .grid td,.staff-teams .grid th{padding:16px}.staff-teams #rosterTbl{min-width:680px}.staff-teams #tab-clock table{min-width:980px}.staff-teams .editor-hd,.staff-teams .editor-bd{padding:20px 16px}.staff-teams .editor-ft{padding:14px 16px}.staff-teams .grid2{grid-template-columns:1fr}.staff-teams .team-notice{padding:24px 16px}}
 @media(prefers-reduced-motion:reduce){.staff-teams .editor,.staff-teams .sw::after{transition:none}}
+
+.staff-teams .team-load-state{margin:0;padding:24px;color:#656965}
+.staff-teams .team-load-state[hidden]{display:none}
+.staff-teams.team-roster-loading #rosterBody,.staff-teams.team-roster-error #rosterBody{visibility:hidden}
+.staff-teams.team-roster-loading>.app>.main>.content>.stats .sv,.staff-teams.team-roster-error>.app>.main>.content>.stats .sv{visibility:hidden}
+.staff-teams #onShiftChip{border:0;background:transparent;padding:0;color:inherit;font:inherit}
+.staff-teams #onShiftChip .cd{display:none}
