@@ -21,8 +21,8 @@
     },
     {
       "path": "public/app/workspace-ui.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "conflict",
+      "detail": ""
     },
     {
       "path": "public/app/calendar.html",
@@ -30,8 +30,7 @@
     },
     {
       "path": "public/app/calendar-workspace.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/client-control-panel.html",
@@ -39,13 +38,11 @@
     },
     {
       "path": "public/app/ccp-workspace.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/ccp-workspace.js",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/closer-dashboard.html",
@@ -53,13 +50,11 @@
     },
     {
       "path": "public/app/closer-dashboard.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/closer-dashboard-layout.js",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/documents.html",
@@ -67,8 +62,7 @@
     },
     {
       "path": "public/app/documents-workspace.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "public/app/messaging.html",
@@ -80,38 +74,31 @@
     },
     {
       "path": "public/app/pipeline-workspace.css",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/calendar-workspace.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/ccp-workspace-layout.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/closer-dashboard-layout.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/documents-workspace.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/messaging-layout-professional.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/pipeline-workspace.spec.mjs",
-      "state": "merged",
-      "removedCommentIds": []
+      "state": "identical"
     },
     {
       "path": "e2e/calendar.spec.mjs",
