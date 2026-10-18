@@ -1,0 +1,60 @@
+{
+  "viewport": 320,
+  "document": 320,
+  "items": [
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "cls": "tab",
+      "rect": {
+        "x": 258.921875,
+        "y": 806.171875,
+        "width": 104.984375,
+        "height": 44,
+        "top": 806.171875,
+        "right": 363.90625,
+        "bottom": 850.171875,
+        "left": 258.921875
+      },
+      "scroll": 103,
+      "client": 103,
+      "position": "static"
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "cls": "tab",
+      "rect": {
+        "x": 371.90625,
+        "y": 806.171875,
+        "width": 79.484375,
+        "height": 44,
+        "top": 806.171875,
+        "right": 451.390625,
+        "bottom": 850.171875,
+        "left": 371.90625
+      },
+      "scroll": 77,
+      "client": 77,
+      "position": "static"
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "cls": "tab",
+      "rect": {
+        "x": 459.390625,
+        "y": 806.171875,
+        "width": 94.515625,
+        "height": 44,
+        "top": 806.171875,
+        "right": 553.90625,
+        "bottom": 850.171875,
+        "left": 459.390625
+      },
+      "scroll": 93,
+      "client": 93,
+      "position": "static"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "viewport": 1440,
+  "document": 1440,
+  "items": [
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "fh-drawer-head",
+      "rect": {
+        "x": 1440,
+        "y": 295,
+        "width": 32,
+        "height": 111.390625,
+        "top": 295,
+        "right": 1472,
+        "bottom": 406.390625,
+        "left": 1440
+      },
+      "scroll": 144,
+      "client": 32,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "",
+      "rect": {
+        "x": 1456,
+        "y": 311,
+        "width": 21.5625,
+        "height": 30.390625,
+        "top": 311,
+        "right": 1477.5625,
+        "bottom": 341.390625,
+        "left": 1456
+      },
+      "scroll": 22,
+      "client": 22,
+      "position": "static"
+    },
+    {
+      "tag": "H2",
+      "id": "fhDrawerName",
+      "cls": "",
+      "rect": {
+        "x": 1456,
+        "y": 315,
+        "width": 21.5625,
+        "height": 26.390625,
+        "top": 315,
+        "right": 1477.5625,
+        "bottom": 341.390625,
+        "left": 1456
+      },
+      "scroll": 22,
+      "client": 22,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "cls": "",
+      "rect": {
+        "x": 1456,
+        "y": 353.390625,
+        "width": 128.015625,
+        "height": 40,
+        "top": 353.390625,
+        "right": 1584.015625,
+        "bottom": 393.390625,
+        "left": 1456
+      },
+      "scroll": 128,
+      "client": 128,
+      "position": "static"
+    },
+    {
+      "tag": "BUTTON",
+      "id": "fhDrawerDel",
+      "cls": "fh-drawer-del caption",
+      "rect": {
+        "x": 1456,
+        "y": 353.390625,
+        "width": 66.6875,
+        "height": 40,
+        "top": 353.390625,
+        "right": 1522.6875,
+        "bottom": 393.390625,
+        "left": 1456
+      },
+      "scroll": 65,
+      "client": 65,
+      "position": "static"
+    },
+    {
+      "tag": "BUTTON",
+      "id": "fhDrawerClose",
+      "cls": "fh-drawer-x caption",
+      "rect": {
+        "x": 1528.6875,
+        "y": 353.390625,
+        "width": 55.328125,
+        "height": 40,
+        "top": 353.390625,
+        "right": 1584.015625,
+        "bottom": 393.390625,
+        "left": 1528.6875
+      },
+      "scroll": 53,
+      "client": 53,
+      "position": "static"
+    },
+    {
+      "tag": "DIV",
+      "id": "fhDrawerBody",
+      "cls": "fh-drawer-body",
+      "rect": {
+        "x": 1440,
+        "y": 406.390625,
+        "width": 32,
+        "height": 456.609375,
+        "top": 406.390625,
+        "right": 1472,
+        "bottom": 863,
+        "left": 1440
+      },
+      "scroll": 58,
+      "client": 32,
+      "position": "static"
+    }
+  ]
+}
