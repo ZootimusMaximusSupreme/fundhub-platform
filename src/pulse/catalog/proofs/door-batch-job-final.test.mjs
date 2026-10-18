@@ -46,7 +46,7 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
     makeRecipe("jobs.json", row).proof?.evidence.includes("door-batch-job-final.test.mjs") &&
     makeRecipe("jobs.json", row).proof?.verdict === "red"
   );
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 1);
   assert.deepEqual(
     new Set(rows.map((row) => row.surface)),
     new Set(FINAL_JOB_GAP_ROWS.map((row) => row.surface))
@@ -101,6 +101,17 @@ test("the contract chaser and instant watch use exact non-empty final-result pro
     assert.match(proof.evidence, /door-batch-job-final\.test\.mjs/, row.surface);
     assert.match(proof.evidence, new RegExp(expected.get(row.surface).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), row.surface);
   }
+});
+
+test("the ad-video background worker uses its exact non-empty final-result proof", () => {
+  const row = JSON.parse(fs.readFileSync(MAP, "utf8"))
+    .find((candidate) => candidate.surface === "function:ad-video-worker-background");
+  const proof = makeRecipe("jobs.json", row).proof;
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "e2e");
+  assert.equal(proof.asserts, row.control);
+  assert.match(proof.evidence, /door-batch-job-final\.test\.mjs/);
+  assert.match(proof.evidence, /src\/workflows\/ad-video-worker-final\.test\.mjs/);
 });
 
 test("six final jobs run non-empty fake work and judge the named result", async () => {

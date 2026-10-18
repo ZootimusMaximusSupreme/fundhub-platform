@@ -24,6 +24,9 @@ export const CONTRACT_CHASER_FINAL_RESULT_TEST =
 export const INSTANT_WATCH_FINAL_RESULT_TEST =
   "src/pulse/instant-watch.test.mjs";
 
+export const AD_VIDEO_WORKER_FINAL_RESULT_TEST =
+  "src/workflows/ad-video-worker-final.test.mjs";
+
 const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:affiliate-payout-run",
   "workflow:blueprint-next-funding-sequence-sweeper",
@@ -36,6 +39,7 @@ const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:repair-bureau-response-reader",
   "function:hubstaff-poll-sweeper",
   "function:marketing-offer-background",
+  "function:ad-video-worker-background",
 ]);
 
 const FINAL_JOB_SURFACES = new Set([
@@ -155,6 +159,9 @@ export function jobResultProof(row) {
     }
     if (row.surface === "workflow:pulse-instant-watch") {
       evidence = `${FINAL_JOB_RESULT_TEST} ${INSTANT_WATCH_FINAL_RESULT_TEST}`;
+    }
+    if (row.surface === "function:ad-video-worker-background") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${AD_VIDEO_WORKER_FINAL_RESULT_TEST}`;
     }
     return {
       depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
