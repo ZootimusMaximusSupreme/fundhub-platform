@@ -817,7 +817,7 @@ test("Discard puts the journey back to the saved one, not to the page's own exam
   await applied.page.close();
 });
 
-test("KNOWN BREAK (the reason Discard is left out, fin-b14-not-attachable.mjs): Discard on one journey clears the unsaved count of the others", { timeout: 60_000 }, async () => {
+test("Discard on one journey keeps every other journey's unsaved work counted and applyable", { timeout: 60_000 }, async () => {
   const { page, seen, errors } = await openJourneys();
   await proof.check(/^Bottom bar: Discard/, async () => {
     // A change on Client, then a change on Setter, then Discard on Setter.
@@ -828,14 +828,15 @@ test("KNOWN BREAK (the reason Discard is left out, fin-b14-not-attachable.mjs): 
     await page.locator('#pbody [data-k="title"]').fill("Setter renamed");
     assert.equal(await page.locator("#dirty").textContent(), "2 unsaved");
     await page.locator("#discard").click();
-    // Client still holds its deleted step, unapplied. The page says nothing is unsaved, and Apply sends nothing.
-    assert.equal(await page.locator("#dirty").textContent(), "", "BREAK: the header says nothing is unsaved");
+    // Client still holds its deleted step, unapplied, so it remains counted and can still be applied.
+    assert.equal(await page.locator("#dirty").textContent(), "1 unsaved", "only Setter's discarded change left the count");
     await page.locator("#jlist .jrow").nth(0).click();
     assert.equal((await rowIds(page)).includes("n6"), false, "Client's deleted step is still deleted");
-    assert.equal(await page.locator("#discard").count(), 0, "BREAK: no bar offers it");
+    assert.equal(await page.locator("#discard").count(), 1, "the remaining change still has a bottom bar");
     await page.locator("#apply").click();
-    assert.match(await toastText(page), /Nothing to apply/, "BREAK: Apply says there is nothing to apply");
-    assert.equal(seen.puts.length, 0, "BREAK: nothing is sent, so the Client change can never be saved");
+    await waitFor(() => seen.puts.length === 1, "the remaining Client save");
+    assert.equal(seen.puts[0].key, "client");
+    await waitFor(async () => (await page.locator("#dirty").textContent()) === "", "the applied count clears");
   });
   assert.deepEqual(errors, []);
   await page.close();
@@ -1034,7 +1035,7 @@ test("an AI answer's operations land where they say: the top, a path, a partial 
     assert.equal(await page.locator(`#canvas .nrow[data-id="${mainIds[0]}"] b`).textContent(), "Pause at the start", "after start puts the step first");
     assert.deepEqual(await lane(0), ["Text the booking link", "Yes path nudge"], "the path option puts the step in that path, after n3");
     assert.deepEqual(await lane(1), ["Email a nudge"]);
-    assert.match(await page.locator("#canvas .bar .what").innerText(), /^Reworked the survey follow-up\. 2 new steps, 1 changed — highlighted above\./);
+    assert.match(await page.locator("#canvas .bar .what").innerText(), /^Reworked the survey follow-up\. 2 new steps, 1 changed, 1 removed — highlighted above\./);
 
     // A rewrite that names only some settings keeps the others; an inserted step is filled with its defaults.
     await clickStep(page, "n1");
@@ -1057,7 +1058,7 @@ test("an AI answer's operations land where they say: the top, a path, a partial 
     await page.locator("#accept").waitFor();
     await page.locator("#accept").click();
     assert.deepEqual((await main()).slice(1), ["n1", "n2", "n5"]);
-    assert.match(await toastText(page), /Kept it\. 3 steps now part of this journey\./, "two added and one changed; the delete is not a step");
+    assert.match(await toastText(page), /Kept it\. 4 changes accepted for this journey\./, "two added, one changed and one removed");
     await page.locator('.ptab[data-tab="hist"]').click();
     assert.equal(await page.locator("#pbody .sect").nth(1).locator(".li").first().locator(".who").textContent(), "Claude · Client");
   });
@@ -1088,19 +1089,26 @@ test("a second press while an answer is on its way sends nothing more", { timeou
   await page.close();
 });
 
-test("KNOWN BREAK (the reason Make the change is left out, fin-b14-not-attachable.mjs): an answer that only removes a step removes it with no Keep it bar", { timeout: 60_000 }, async () => {
+test("an AI answer that only removes a step waits for Keep it and remains undoable", { timeout: 60_000 }, async () => {
   const onlyDelete = { summary: "Removed the last note.", ops: [{ op: "delete", id: "n6" }] };
   const { page, errors } = await openJourneys({ ask: () => ({ ok: true, text: JSON.stringify(onlyDelete) }) });
   await proof.check(/^Step panel: 'Make the change' \(AI rewrites one step\) and canvas ask box/, async () => {
     assert.equal((await rowIds(page)).includes("n6"), true);
     await page.locator("#askin").fill("Remove the last note");
     await page.locator("#asksend").click();
-    await waitFor(async () => (await page.locator("#canvas .askerr").count()) === 1, "the answer");
-    assert.equal(await page.locator("#canvas .askerr").innerText(), "That came back empty. Try saying it a different way.", "BREAK: it says the answer was empty");
-    assert.equal((await rowIds(page)).includes("n6"), false, "BREAK: the step is gone all the same");
-    assert.equal(await page.locator("#accept").count(), 0, "BREAK: nothing to keep or throw away");
-    assert.equal(await page.locator("#dirty").textContent(), "", "BREAK: not counted as a change");
-    assert.equal(await page.locator("#undo").isDisabled(), true, "BREAK: and nothing to undo");
+    await waitFor(async () => (await page.locator("#accept").count()) + (await page.locator("#canvas .askerr").count()) > 0, "the answer");
+    assert.equal(await page.locator("#canvas .askerr").count(), 0, "a valid removal is not called empty");
+    assert.equal((await rowIds(page)).includes("n6"), false, "the proposed removal is shown on the canvas");
+    assert.equal(await page.locator("#accept").count(), 1, "the removal can be kept");
+    assert.equal(await page.locator("#reject").count(), 1, "or thrown away");
+    assert.match(await page.locator("#canvas .bar .what").innerText(), /1 removed/);
+    assert.equal(await page.locator("#dirty").textContent(), "", "a proposal is not counted before it is kept");
+    await page.locator("#accept").click();
+    assert.equal(await page.locator("#dirty").textContent(), "1 unsaved");
+    assert.equal(await page.locator("#undo").isDisabled(), false);
+    await page.locator("#undo").click();
+    assert.equal((await rowIds(page)).includes("n6"), true, "Undo restores the removed step");
+    assert.equal(await page.locator("#dirty").textContent(), "");
   });
   assert.deepEqual(errors, []);
   await page.close();
@@ -1576,7 +1584,7 @@ test("Run from here plays the journey from the picked step, in the Simulate tab,
   await page.close();
 });
 
-test("KNOWN BREAK (the reason Run from here is left out, fin-b14-not-attachable.mjs): from a step on a path that is not taken, the whole journey plays from the top", { timeout: 60_000 }, async () => {
+test("Run from here starts at a picked step even when it sits on the other question path", { timeout: 60_000 }, async () => {
   const { page, errors } = await openJourneys({ trees: SIM_TREE, clock: true });
   await page.clock.runFor(100);
   await proof.check(/^Step panel: 'Run from here'/, async () => {
@@ -1584,10 +1592,13 @@ test("KNOWN BREAK (the reason Run from here is left out, fin-b14-not-attachable.
     await page.locator("#runhere").click();
     await runToEnd(page);
     const feed = await page.locator("#pbody .feed").innerText();
-    assert.match(feed, /here is the survey/, "BREAK: the step before the question plays, so it did not start from the picked step");
-    assert.match(feed, /Took the “Yes” path/);
+    assert.doesNotMatch(feed, /here is the survey/, "nothing before the picked step plays");
+    assert.doesNotMatch(feed, /Took the “Yes” path|Took the “No” path/, "the run starts inside the chosen path");
+    assert.match(feed, /Still there, Dana\?/);
+    assert.match(feed, /We still have your spot/);
     const rows = await page.locator("#pbody .report .rrow").allInnerTexts();
-    assert.match(rows[0], /Steps that fired\s+5/, "BREAK: the whole journey ran");
+    assert.match(rows[0], /Steps that fired\s+3/, "the picked email and the two outer steps after its question ran");
+    assert.match(rows[1], /Messages drafted \(not sent\)\s+1/);
   });
   assert.deepEqual(errors, []);
   await page.close();
