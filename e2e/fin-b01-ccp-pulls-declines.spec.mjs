@@ -29,6 +29,7 @@ async function openPulls(page, { consent = CONSENT_OK, consentStatus = 200, pull
       return pull ? pull(route, pulls.length) : json(route, { ok: true, stored: true });
     },
   });
+  await page.getByRole("tab", { name: "Credit & inquiries", exact: true }).click();
   return { pulls, consentReads: () => consentReads };
 }
 
@@ -145,6 +146,7 @@ async function openDeclines(page, { answer, loadAfter, declines = [DECLINE] } = 
       return json(route, { ok: true, staff: { eligible: true, declines: list, applications: [], bank_emails: [], next_sequence_notes: [] } });
     },
   });
+  await page.getByRole("tab", { name: "Funding", exact: true }).click();
   await page.locator("#bp-group .group-title.tog").click();
   await expect(page.locator(".dec-item")).toHaveCount(declines.length);
   await expect(page.locator(".dec-item").first()).toHaveAttribute("open", "");

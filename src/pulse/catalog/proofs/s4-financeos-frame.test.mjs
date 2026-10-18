@@ -9,8 +9,7 @@ import { json, proofRows, startScreens } from "./s4-screen-harness.mjs";
 import { CLIENT, CLIENT_ID, STAFF, sampleAnswer, waitFor } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
-const TABS = ["overview", "next", "helper", "transfers", "plan", "banks", "strategy", "fundability", "declines",
-  "alerts", "vault", "accounts", "credit", "connections", "payments", "setup"];
+const TABS = ["overview", "accounts", "payments", "transfers", "alerts", "next", "credit", "fundability", "strategy", "banks", "declines", "helper", "plan", "vault", "connections", "setup"];
 
 test("the frame lists every tab, names the client and shows the sandbox note", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
@@ -28,7 +27,9 @@ test("the frame lists every tab, names the client and shows the sandbox note", {
     assert.deepEqual(missing, [], "every tab has its section script loaded");
     // 17 section scripts (the sixteen tabs and the trends script), then the frame's own
     const scripts = await page.evaluate(() => [...document.scripts].map((el) => el.getAttribute("src")).filter(Boolean));
-    assert.equal(scripts.length, 18);
+    assert.equal(scripts[0], "/app/fundhub-font.js", "the shared presentation adapter loads first");
+    assert.ok(scripts.includes("/app/client-ios.js"), "client-only navigation is loaded");
+    assert.equal(scripts.filter(src => !["/app/fundhub-font.js", "/app/client-ios.js"].includes(src)).length, 18);
     assert.equal(scripts.at(-1), "financeos.js", "the frame script loads after every section");
     assert.deepEqual(refusedScripts, [], "every script answered");
     assert.equal(await page.evaluate(() => typeof window.FinanceOS.trends?.mount + "/" + typeof window.FinanceOS.extras?.connections?.mount), "function/function");

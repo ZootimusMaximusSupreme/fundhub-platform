@@ -85,7 +85,7 @@
       ? '<p class="say"><b>Why some numbers say Not recorded.</b> ' +
         unknowns.map(esc).join(" ") + "</p>"
       : "";
-    return '<div class="ostack"><div class="rhead">' +
+    return '<div class="ostack" role="region" aria-label="Offer sales and collections" tabindex="0"><div class="rhead">' +
       '<span>Offer</span><span class="num">Units</span><span class="num">Sold</span>' +
       '<span class="num">Collected</span></div>' + rows + "</div>" + why;
   }
@@ -111,7 +111,7 @@
     body.innerHTML = html;
   }
 
-  var state = { data: null, closer: 0 };
+  var state = { data: null, closer: 0, loading: false };
 
   /* One closer at a time. Everything here comes out of closers[i] on the floor
      response that is already loaded — picking a name makes no second request. */
@@ -129,7 +129,7 @@
 
     var picks = list.map(function (p, i) {
       return '<button type="button" class="pickb' + (i === state.closer ? " on" : "") +
-        '" data-fh-closer="' + i + '">' + esc(p.name || "Closer") + "</button>";
+        '" data-fh-closer="' + i + '" aria-pressed="' + (i === state.closer ? "true" : "false") + '">' + esc(p.name || "Closer") + "</button>";
     }).join("");
 
     var cash = c.cash_display
@@ -155,7 +155,7 @@
     body.innerHTML =
       '<div class="picks">' +
       '<button type="button" class="pickb" id="fh-closer-prev" aria-label="Previous closer">‹</button>' +
-      picks +
+      '<div class="closer-list" role="group" aria-label="Choose a closer">' + picks + '</div>' +
       '<button type="button" class="pickb" id="fh-closer-next" aria-label="Next closer">›</button>' +
       "</div>" +
       '<div class="picks" style="justify-content:space-between"><span class="pickwho">' +
@@ -180,20 +180,35 @@
     });
 
     document.querySelectorAll(".rost .rrow.pick").forEach(function (row) {
-      row.classList.toggle("on", Number(row.getAttribute("data-fh-closer")) === state.closer);
+      var selected = Number(row.getAttribute("data-fh-closer")) === state.closer;
+      row.classList.toggle("on", selected);
+      row.setAttribute("aria-pressed", String(selected));
     });
   }
 
   function selectCloser(i, scroll) {
     var list = (state.data && state.data.closers) || [];
     if (!list.length) return;
+    var focused = document.activeElement;
+    var focusId = focused && focused.id;
+    var focusIndex = focused && focused.getAttribute("data-fh-closer");
     state.closer = ((i % list.length) + list.length) % list.length;
     paintCloserFocus();
+    // Rebuilding the picker must retain keyboard position.
+    if (!scroll && focused && focused.classList.contains("pickb")) {
+      var replacement = focusId ? document.getElementById(focusId)
+        : $("#fh-closer-focus .pickb[data-fh-closer='" + focusIndex + "']");
+      if (replacement) replacement.focus({ preventScroll: true });
+    }
     // Picking from the roster answers back by moving to the panel it filled.
     // Picking inside the panel does not, or the page would jump under the click.
     if (!scroll) return;
     var sec = document.getElementById("fh-closer-focus");
-    if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (sec) {
+      sec.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      var title = document.getElementById("fh-floor-focus-title");
+      if (title) title.focus({ preventScroll: true });
+    }
   }
 
   function paint(d) {
@@ -208,7 +223,7 @@
     var hero = d.hero || {};
     var today = d.today || {};
     var hl2s = document.querySelectorAll(".hero .hl2");
-    if (hl2s[0]) hl2s[0].textContent = "Today";
+    if (hl2s[0]) hl2s[0].textContent = "Deposits today";
     var bigs = document.querySelectorAll(".hero .big");
     if (bigs[0]) {
       bigs[0].textContent = today.deposits != null ? String(today.deposits) : "—";
@@ -262,8 +277,8 @@
       if (funnel.deposits === 0) {
         say.innerHTML = "<b>No deposits this month.</b> The funnel above is the month so far.";
       } else if (gap > 0) {
-        say.innerHTML = "<b>The leak is after the sale, not before it.</b> " + gap +
-          " deposits haven't funded. Deposit-to-funded is the failure mode this screen exists to catch.";
+        say.innerHTML = "<b>Follow through on deposits.</b> " + gap +
+          (gap === 1 ? " deposit still needs funding." : " deposits still need funding.");
       } else {
         say.innerHTML = "<b>Deposits are funding.</b> Keep pressure on show rate and belief spikes below.";
       }
@@ -276,14 +291,14 @@
       var rows = (d.closers || []).map(function (c, i) {
         return '<div class="rrow pick" data-fh-closer="' + i + '" role="button" tabindex="0" ' +
           'title="Show this closer on their own">' +
-          '<span class="nm"><b>' + (c.name || "Closer") + "</b><em>" +
+          '<span class="nm"><b>' + esc(c.name || "Closer") + "</b><em>" +
           (c.on_shift ? ("On shift · " + elapsed(c.shift_elapsed_ms)) : "Off shift") +
           "</em></span>" +
-          '<span class="num c2">' + (c.calls != null ? c.calls : "—") + "</span>" +
-          '<span class="num">' + pct(c.close_rate) + "</span>" +
-          '<span class="num c4">' + pct(c.funded_rate) + "</span>" +
-          '<span class="num c5">' + (c.cash_display || money(c.cash_cents)) + "</span>" +
-          '<span class="act"><b>' + (c.action || "Nothing assigned") + "</b></span></div>";
+          '<span class="num c2" data-label="Calls">' + (c.calls != null ? c.calls : "—") + "</span>" +
+          '<span class="num" data-label="Close rate">' + pct(c.close_rate) + "</span>" +
+          '<span class="num c4" data-label="Funded rate">' + pct(c.funded_rate) + "</span>" +
+          '<span class="num c5" data-label="Cash">' + (c.cash_display || money(c.cash_cents)) + "</span>" +
+          '<span class="act"><b>' + esc(c.action || "Nothing assigned") + "</b></span></div>";
       }).join("") || '<div class="rrow"><span class="nm"><b>No closers on this board</b><em>Live staff only</em></span></div>';
       rost.querySelectorAll(".rrow").forEach(function (n) { n.remove(); });
       if (head) head.insertAdjacentHTML("afterend", rows);
@@ -321,8 +336,8 @@
         return '<div class="ob"><div class="obt"><span>' + (b.label || b.belief) +
           "</span><em>" + (b.this_count || 0) + " · was " + (b.last_count || 0) +
           '</em></div><div class="obb' + (hot ? " hot" : "") + '"><i style="width:' + w + '%"></i></div></div>';
-      }).join("") || '<p class="note">No belief_failed values logged yet — dispositions with a belief will fill this.</p>';
-      beliefPanel.querySelectorAll(".ob, .say").forEach(function (n) { n.remove(); });
+      }).join("") || '<p class="note">No objections logged this month. Objections recorded on calls will appear here.</p>';
+      beliefPanel.querySelectorAll(".ob, .say, p.note").forEach(function (n) { n.remove(); });
       beliefPanel.insertAdjacentHTML("beforeend", html);
       beliefPanel.insertAdjacentHTML("beforeend",
         '<p class="say"><b>This period vs last period.</b> A count alone is not a trend — the second number is last period.</p>');
@@ -335,16 +350,16 @@
     });
     if (sourcePanel) {
       var sources = (d.beliefs && d.beliefs.sources) || [];
-      var headHtml = '<div class="rhead" style="grid-template-columns:1.5fr 60px 60px 62px;border-radius:7px;margin-bottom:2px">' +
+      var headHtml = '<div class="rhead">' +
         "<span>Source</span><span class=\"num\">Held</span><span class=\"num\">Close</span><span class=\"num\">Desire</span></div>";
       var rowsHtml = sources.slice(0, 8).map(function (s) {
-        return '<div class="rrow" style="grid-template-columns:1.5fr 60px 60px 62px;padding:10px 0">' +
+        return '<div class="rrow">' +
           '<span class="nm"><b>' + (s.lead_source || "unknown") + "</b><em>setter " + (s.setter_key || "—") +
           "</em></span>" +
           '<span class="num">' + (s.held || 0) + "</span>" +
           '<span class="num">' + pct(s.close_rate) + "</span>" +
           '<span class="num">' + (s.desire || 0) + "</span></div>";
-      }).join("") || '<p class="note">No source cuts yet — need dispositions joined to utm_campaign / setter.</p>';
+      }).join("") || '<p class="note">No source activity yet. Calls linked to a lead source will appear here.</p>';
       // Clear dynamic bits but keep flag button area rebuilt
       sourcePanel.querySelectorAll(".rhead, .rrow, .flagbox, button, p.note, p.say").forEach(function (n) {
         if (n.tagName === "H3") return;
@@ -352,19 +367,19 @@
       });
       // Remove everything after h3
       while (sourcePanel.children.length > 1) sourcePanel.removeChild(sourcePanel.lastChild);
-      sourcePanel.insertAdjacentHTML("beforeend", headHtml + rowsHtml);
+      sourcePanel.insertAdjacentHTML("beforeend", '<div class="source-table" role="region" aria-label="Lead sources" tabindex="0">' + headHtml + rowsHtml + "</div>");
       var beliefs = (d.beliefs && d.beliefs.beliefs) || [];
       var top = beliefs[0];
       var canFlag = top && top.belief && ((top.this_count || 0) > 0 || (top.last_count || 0) > 0);
       var flagLabel = canFlag ? ("Flag " + String(top.label || top.belief)) : "";
       sourcePanel.insertAdjacentHTML("beforeend",
         '<div class="flagbox" style="background:rgba(245,206,143,.14);border-left-color:var(--warn)">' +
-        "<b>Flag a belief × source pattern to marketing.</b> Stores a row only — nothing is sent externally.</div>" +
+        "<b>Flag a belief × source pattern for marketing review.</b> Nothing is sent externally.</div>" +
         '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
         (canFlag
-          ? '<button type="button" id="fh-flag-mkt" style="font-family:var(--sans);font-size:var(--fs-body);padding:7px 13px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:7px;cursor:pointer"></button>'
+          ? '<button type="button" id="fh-flag-mkt" class="sf-primary"></button>'
           : "") +
-        '<button type="button" id="fh-recordings-jump" style="font-family:var(--sans);font-size:var(--fs-body);padding:7px 13px;border:1px solid var(--line);background:var(--paper);border-radius:7px;cursor:pointer">Today\'s recordings</button>' +
+        '<button type="button" id="fh-recordings-jump">Today\'s recordings</button>' +
         "</div>");
       var btn = $("#fh-flag-mkt");
       if (btn) {
@@ -407,8 +422,7 @@
         : '<p class="note">' + (rec.reason || "No Meet recordings in the last 7 days.") + "</p>";
       var refreshLabel = "Sync recordings from Drive";
       panel.innerHTML = "<h3>Today's recordings</h3>" + (rows || "") + note +
-        '<div style="margin-top:12px"><button type="button" id="fh-drive-refresh" ' +
-        'style="font-family:var(--sans);font-size:12.5px;padding:7px 13px;border:1px solid var(--line);background:var(--paper);border-radius:7px;cursor:pointer">' +
+        '<div style="margin-top:12px"><button type="button" id="fh-drive-refresh">' +
         refreshLabel + "</button></div>";
       var refresh = panel.querySelector("#fh-drive-refresh");
       if (refresh) refresh.addEventListener("click", refreshDrive);
@@ -446,12 +460,12 @@
         "</span></span></div>" +
         '<div class="row"><span class="l"><b>Calls not recorded</b><em>Logged sales calls with no recording and no transcript</em></span>' +
         '<span class="r"><span class="chip ' + ((disc.unrecorded_calls || 0) > 0 ? "bad" : "on") +
-        '"><span class="cd"></span>' + (disc.unrecorded_calls != null ? disc.unrecorded_calls : "0") +
+        '"><span class="cd"></span>' + (disc.unrecorded_calls != null ? disc.unrecorded_calls : "—") +
         "</span></span></div>" +
         '<div class="row"><span class="l"><b>Shifts started late</b><em>' +
         (disc.shifts_detail && disc.shifts_detail.reason ? disc.shifts_detail.reason :
           (typeof disc.shifts_started_late === "number" ? "" : (disc.shifts_started_late === null ?
-            "Needs scheduled shift times — not on shifts table" : ""))) +
+            "Scheduled shift times are not available." : ""))) +
         '</em></span><span class="r">—</span></div>' +
         '<div class="row"><span class="l"><b>Follow-ups overdue</b><em>' +
         (disc.followups_reason || "") + '</em></span><span class="r">—</span></div>' +
@@ -503,44 +517,67 @@
       alert("Google Drive is not connected yet. Recordings stay in Meet Recordings until Drive is turned on.");
     }
     await boot();
+    // A failed reload retains the current panel, so release its sync control.
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = "Sync recordings from Drive";
+    }
+  }
+
+  function loadState(kind, message) {
+    var main = document.getElementById("fh-floor-main");
+    var status = document.getElementById("fh-floor-status");
+    var refresh = document.getElementById("fh-floor-refresh");
+    if (main) {
+      main.setAttribute("aria-busy", String(kind === "loading"));
+      main.setAttribute("data-state", kind);
+      main.classList.toggle("sf-no-data", !state.data);
+    }
+    if (refresh) {
+      refresh.disabled = kind === "loading";
+      refresh.textContent = kind === "loading" ? "Refreshing…" : "Refresh floor";
+    }
+    if (!status) return;
+    status.hidden = kind === "ready";
+    status.setAttribute("data-state", kind);
+    status.removeAttribute("data-fh-gate");
+    status.textContent = message || "";
+    if (kind === "error") {
+      status.setAttribute("data-fh-gate", "sales-floor");
+      var retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "sf-button";
+      retry.textContent = "Try again";
+      retry.addEventListener("click", boot);
+      status.appendChild(retry);
+    }
   }
 
   async function boot() {
-    if (!window.FHData) return;
+    if (state.loading) return;
+    state.loading = true;
+    loadState("loading", state.data ? "Refreshing sales floor…" : "Loading sales floor…");
+    if (!window.FHData) {
+      state.loading = false;
+      loadState("error", "The sales floor could not start. Refresh the page to try again.");
+      return;
+    }
     var r = await window.FHData.read("sales-floor");
+    state.loading = false;
     if (!r.ok) {
-      var stage = document.querySelector(".shell") || document.body;
-      var note = document.createElement("p");
-      note.className = "note";
-      note.setAttribute("data-fh-gate", "sales-floor");
-      note.style.padding = "16px 22px";
-      note.textContent = r.source === "unauthorized"
+      var message = r.source === "unauthorized"
         ? "Forbidden — the sales floor is for sales managers and owners. Closers are refused."
-        : ((r.error && (r.error.message || r.error)) ||
-          ("Could not load sales floor (" + r.source + ")."));
-      stage.prepend(note);
+        : "Could not load the sales floor. " + ((r.error && (r.error.message || r.error)) || "Try again in a moment.");
+      if (state.data) message += " The last loaded numbers are still shown below.";
+      loadState("error", message);
       return;
     }
     paint(r.data);
-    paintWho();
+    loadState("ready");
   }
 
-  function paintWho() {
-    var nameChip = document.querySelector("header .hr .chip");
-    if (!nameChip) return;
-    var token = "";
-    try { token = localStorage.getItem("fh_token") || ""; } catch (e) {}
-    fetch("/api/auth/session", {
-      headers: token
-        ? { accept: "application/json", authorization: "Bearer " + token }
-        : { accept: "application/json" }
-    }).then(function (r) { return r.json(); }).then(function (s) {
-      var name = (s && s.staff && s.staff.name) || "";
-      nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>' + (name || "—");
-    }).catch(function () {
-      nameChip.innerHTML = '<span class="cd" style="background:var(--info)"></span>—';
-    });
-  }
+  var refreshFloor = document.getElementById("fh-floor-refresh");
+  if (refreshFloor) refreshFloor.addEventListener("click", boot);
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

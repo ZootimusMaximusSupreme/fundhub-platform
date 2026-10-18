@@ -1,0 +1,284 @@
+{
+  "base": "0998ff49969c6e2663a6e1851b4634ab5896113d",
+  "checkedHead": "b0cf6c53796ca1e2682d5c1c003dc306867ae801",
+  "complete": true,
+  "inventory": [
+    {
+      "page": "csm-queue",
+      "branch": "origin/codex/recover-csm-queue",
+      "source": "9c6363485460bc5ff17bb092fac9228f3c965dba",
+      "files": [
+        "e2e/csm-queue-layout.spec.mjs",
+        "ops/workflows/crm-portal-layout-recovery-csm-queue.md",
+        "public/app/csm-queue.css",
+        "public/app/csm-queue.html"
+      ]
+    },
+    {
+      "page": "lenders",
+      "branch": "origin/codex/recover-lenders",
+      "source": "23eeb1041cf89a167d0816b8bed21b51d889c1cd",
+      "files": [
+        "e2e/lenders-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
+        "public/app/lenders.css",
+        "public/app/lenders.html",
+        "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs"
+      ]
+    },
+    {
+      "page": "my-numbers",
+      "branch": "origin/codex/recover-my-numbers",
+      "source": "edea97eb6c773a4eeb8f87c91348251c90ff1925",
+      "files": [
+        "e2e/my-numbers-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
+        "public/app/my-numbers.css",
+        "public/app/my-numbers.html",
+        "public/app/my-numbers.js"
+      ]
+    },
+    {
+      "page": "contracts",
+      "branch": "origin/codex/recover-contracts",
+      "source": "b2636b966ec86fb6250843a2d93a9f4c88521ebf",
+      "files": [
+        "e2e/contracts-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
+        "public/app/contracts-layout.css",
+        "public/app/contracts.html"
+      ]
+    },
+    {
+      "page": "sales-floor",
+      "branch": "origin/codex/recover-sales-floor",
+      "source": "2fe9a5994c92c4240c9012fb6a3bb7f0dcf55562",
+      "files": [
+        "e2e/s1-sales-floor.spec.mjs",
+        "e2e/sales-floor-layout.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md",
+        "public/app/sales-floor.css",
+        "public/app/sales-floor.html",
+        "public/app/sales-floor.js",
+        "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs",
+        "src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs",
+        "src/pulse/catalog/proofs/fin-b20-sales-floor.test.mjs"
+      ]
+    },
+    {
+      "page": "finance-os",
+      "branch": "origin/codex/recover-finance-os",
+      "source": "ef5736aa1cd54ee6dfd8ec6c418158772b133d51",
+      "files": [
+        "e2e/finance-os-staff-clicks.spec.mjs",
+        "e2e/finance-os-workspace.spec.mjs",
+        "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
+        "public/app/finance-os.html",
+        "src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs",
+        "src/pulse/catalog/proofs/s4-finance-os-panels.test.mjs"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "page": "csm-queue",
+      "path": "e2e/csm-queue-layout.spec.mjs",
+      "state": "identical",
+      "bytes": 12074
+    },
+    {
+      "page": "csm-queue",
+      "path": "ops/workflows/crm-portal-layout-recovery-csm-queue.md",
+      "state": "identical",
+      "bytes": 4604
+    },
+    {
+      "page": "csm-queue",
+      "path": "public/app/csm-queue.css",
+      "state": "identical",
+      "bytes": 10514
+    },
+    {
+      "page": "csm-queue",
+      "path": "public/app/csm-queue.html",
+      "state": "identical",
+      "bytes": 41009
+    },
+    {
+      "page": "lenders",
+      "path": "e2e/lenders-layout.spec.mjs",
+      "state": "identical",
+      "bytes": 14542
+    },
+    {
+      "page": "lenders",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-lenders.md",
+      "state": "identical",
+      "bytes": 5208
+    },
+    {
+      "page": "lenders",
+      "path": "public/app/lenders.css",
+      "state": "identical",
+      "bytes": 13896
+    },
+    {
+      "page": "lenders",
+      "path": "public/app/lenders.html",
+      "state": "identical",
+      "bytes": 43889
+    },
+    {
+      "page": "lenders",
+      "path": "src/pulse/catalog/proofs/fin-b14-lenders.test.mjs",
+      "state": "identical",
+      "bytes": 43005
+    },
+    {
+      "page": "my-numbers",
+      "path": "e2e/my-numbers-layout.spec.mjs",
+      "state": "identical",
+      "bytes": 12035
+    },
+    {
+      "page": "my-numbers",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-my-numbers.md",
+      "state": "identical",
+      "bytes": 3671
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.css",
+      "state": "identical",
+      "bytes": 12007
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.html",
+      "state": "identical",
+      "bytes": 19184
+    },
+    {
+      "page": "my-numbers",
+      "path": "public/app/my-numbers.js",
+      "state": "identical",
+      "bytes": 14648
+    },
+    {
+      "page": "contracts",
+      "path": "e2e/contracts-layout.spec.mjs",
+      "state": "identical",
+      "bytes": 13854
+    },
+    {
+      "page": "contracts",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-contracts.md",
+      "state": "identical",
+      "bytes": 4591
+    },
+    {
+      "page": "contracts",
+      "path": "public/app/contracts-layout.css",
+      "state": "identical",
+      "bytes": 16785
+    },
+    {
+      "page": "contracts",
+      "path": "public/app/contracts.html",
+      "state": "identical",
+      "bytes": 50385
+    },
+    {
+      "page": "sales-floor",
+      "path": "e2e/s1-sales-floor.spec.mjs",
+      "state": "identical",
+      "bytes": 9757
+    },
+    {
+      "page": "sales-floor",
+      "path": "e2e/sales-floor-layout.spec.mjs",
+      "state": "identical",
+      "bytes": 15761
+    },
+    {
+      "page": "sales-floor",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-sales-floor.md",
+      "state": "identical",
+      "bytes": 5098
+    },
+    {
+      "page": "sales-floor",
+      "path": "public/app/sales-floor.css",
+      "state": "identical",
+      "bytes": 11119
+    },
+    {
+      "page": "sales-floor",
+      "path": "public/app/sales-floor.html",
+      "state": "identical",
+      "bytes": 18491
+    },
+    {
+      "page": "sales-floor",
+      "path": "public/app/sales-floor.js",
+      "state": "identical",
+      "bytes": 28298
+    },
+    {
+      "page": "sales-floor",
+      "path": "src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs",
+      "state": "identical",
+      "bytes": 33540
+    },
+    {
+      "page": "sales-floor",
+      "path": "src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs",
+      "state": "identical",
+      "bytes": 16689
+    },
+    {
+      "page": "sales-floor",
+      "path": "src/pulse/catalog/proofs/fin-b20-sales-floor.test.mjs",
+      "state": "identical",
+      "bytes": 17143
+    },
+    {
+      "page": "finance-os",
+      "path": "e2e/finance-os-staff-clicks.spec.mjs",
+      "state": "clean merge",
+      "bytes": 5948
+    },
+    {
+      "page": "finance-os",
+      "path": "e2e/finance-os-workspace.spec.mjs",
+      "state": "clean merge",
+      "bytes": 11528
+    },
+    {
+      "page": "finance-os",
+      "path": "ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page-finance-os.md",
+      "state": "clean merge",
+      "bytes": 4652
+    },
+    {
+      "page": "finance-os",
+      "path": "public/app/finance-os.html",
+      "state": "clean merge",
+      "bytes": 81883
+    },
+    {
+      "page": "finance-os",
+      "path": "src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs",
+      "state": "clean merge",
+      "bytes": 15357
+    },
+    {
+      "page": "finance-os",
+      "path": "src/pulse/catalog/proofs/s4-finance-os-panels.test.mjs",
+      "state": "clean merge",
+      "bytes": 9635
+    }
+  ],
+  "noProductionDeploy": true,
+  "noCustomerWrites": true
+}

@@ -1,0 +1,202 @@
+[
+  {
+    "page": "public/app/client-portal.html",
+    "original_ids": 112,
+    "missing_ids": [],
+    "original_controls": 58,
+    "current_controls": 59,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/affiliate.html",
+    "original_ids": 46,
+    "missing_ids": [],
+    "original_controls": 21,
+    "current_controls": 22,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/financeos.html",
+    "original_ids": 35,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/progress.html",
+    "original_ids": 27,
+    "missing_ids": [],
+    "original_controls": 11,
+    "current_controls": 11,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/portal-login.html",
+    "original_ids": 7,
+    "missing_ids": [],
+    "original_controls": 2,
+    "current_controls": 2,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/contract.html",
+    "original_ids": 24,
+    "missing_ids": [],
+    "original_controls": 5,
+    "current_controls": 5,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-accounts.html",
+    "original_ids": 2,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-alerts.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-banks.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-connections.html",
+    "original_ids": 2,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-credit.html",
+    "original_ids": 2,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-declines.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-fundability.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-helper.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-next.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-payments.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-plan.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-setup.html",
+    "original_ids": 2,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-strategy.html",
+    "original_ids": 4,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-transfers.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money-vault.html",
+    "original_ids": 3,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/money.html",
+    "original_ids": 2,
+    "missing_ids": [],
+    "original_controls": 0,
+    "current_controls": 0,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/app/consent-capture.html",
+    "original_ids": 25,
+    "missing_ids": [],
+    "original_controls": 18,
+    "current_controls": 18,
+    "status": "staff-only excluded"
+  },
+  {
+    "page": "public/app/soft-pull-approve.html",
+    "original_ids": 22,
+    "missing_ids": [],
+    "original_controls": 18,
+    "current_controls": 18,
+    "status": "implemented, see page matrix for states/actions"
+  },
+  {
+    "page": "public/login.html",
+    "original_ids": 15,
+    "missing_ids": [],
+    "original_controls": 5,
+    "current_controls": 5,
+    "status": "implemented, see page matrix for states/actions"
+  }
+]

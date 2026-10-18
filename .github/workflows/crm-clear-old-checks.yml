@@ -1,0 +1,32 @@
+name: Clear superseded CRM check runs
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths: [.github/workflows/crm-clear-old-checks.yml]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  clear:
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - name: Stop the superseded queued serial browser run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          const repo='ZootimusMaximusSupreme/fundhub-platform';
+          const headers={authorization:'Bearer '+process.env.GH_TOKEN,accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+          const keep=39162023133;
+          const result=await fetch('https://api.github.com/repos/'+repo+'/actions/runs?branch=codex/crm-live-font-reconcile&per_page=100',{headers});
+          if(!result.ok)throw Error('Cannot inspect own check runs: '+result.status);
+          const {workflow_runs:runs}=await result.json();
+          const obsolete=runs.filter(r=>r.name==='Current production CRM type and layout checks'&&r.id===39162429020&&['in_progress','queued','pending','waiting'].includes(r.status));
+          for(const run of obsolete){
+            const response=await fetch('https://api.github.com/repos/'+repo+'/actions/runs/'+run.id+'/cancel',{method:'POST',headers});
+            console.log('Superseded check '+run.id+': cancel status '+response.status+'; no passing result claimed');
+            if(![202,409].includes(response.status))throw Error('Could not stop superseded check '+run.id);
+          }
+          console.log('Preserved in-progress combined check run '+keep+'. Stopped '+obsolete.length+' superseded runs. No source or production changes.');
+          JS

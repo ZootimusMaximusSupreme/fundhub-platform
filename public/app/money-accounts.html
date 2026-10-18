@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub — Accounts</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -141,8 +146,10 @@ details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:cen
   .head-act .btn-primary,.head-act .btn{flex:1 1 auto}
 }
 </style>
+<link rel="stylesheet" href="client-ios.css">
+<link rel="stylesheet" href="money-accounts-ios.css">
 </head>
-<body>
+<body data-client-page="money-accounts">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -167,5 +174,6 @@ details.form>summary{cursor:pointer;min-height:40px;display:flex;align-items:cen
   </main>
 </div>
 <script defer src="money-accounts.js"></script>
+<script defer src="client-ios.js"></script>
 </body>
 </html>

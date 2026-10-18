@@ -1,0 +1,23 @@
+{
+  "browser": "155.0.8059.39",
+  "results": [
+    {
+      "path": "/portal-login.html",
+      "lcp_ms": 784,
+      "cls": 0.0002215894659909844,
+      "ttfb_ms": 9.900000000023283,
+      "resource_transfer_bytes": 103640,
+      "javascript_transfer_bytes": 15718,
+      "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+    },
+    {
+      "path": "/app/client-portal.html",
+      "lcp_ms": 1132,
+      "cls": 0.048059319384859585,
+      "ttfb_ms": 1.7999999999883585,
+      "resource_transfer_bytes": 375183,
+      "javascript_transfer_bytes": 204616,
+      "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+    }
+  ]
+}

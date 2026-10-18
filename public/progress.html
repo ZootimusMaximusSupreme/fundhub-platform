@@ -1,5 +1,10 @@
 <!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Fundhub — Your progress</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -196,8 +201,11 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
 .skel{color:var(--gray2);font-size:13px;padding:22px 0}
 @media (max-width:520px){.panels{grid-template-columns:repeat(2,1fr)}header h1{font-size:19px}}
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/progress-ios.css">
+<script defer src="/app/client-ios.js"></script>
 </head>
-<body>
+<body data-client-page="progress">
 <div class="spectrum"></div>
 <div class="wrap">
 
@@ -208,40 +216,59 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     <a class="back" href="/app/client-portal.html">← Back to your portal</a>
   </header>
 
-  <div id="fatal" class="err hidden"></div>
+  <div id="fatal" class="err hidden" role="alert"></div>
+  <section id="progressLoading" class="progress-loading" aria-label="Loading your progress" aria-busy="true"><div class="loading-hero"></div><div class="loading-line"></div><div class="loading-line"></div></section>
 
   <main id="main" class="hidden">
 
+    <div class="progress-block stage-block">
     <h2 class="sec">Where you are</h2>
     <section class="card" id="cStage"></section>
+    </div>
 
-    <h2 class="sec">Your scores</h2>
-    <section id="cScores"></section>
-
-    <h2 class="sec">What moved</h2>
-    <section class="card" id="cMove"></section>
-
+    <div class="progress-block next-block">
     <h2 class="sec">What happens next</h2>
     <section class="card next" id="cNext"></section>
+    </div>
 
+    <div class="progress-block scores-block">
+    <h2 class="sec">Your scores</h2>
+    <section id="cScores"></section>
+    </div>
+
+    <div class="progress-block movement-block">
+    <h2 class="sec">What moved</h2>
+    <section class="card" id="cMove"></section>
+    </div>
+
+
+
+    <div class="progress-block checklist-block">
     <h2 class="sec">Your checklist</h2>
     <section class="card" id="cWaypoints"></section>
+    </div>
 
-    <section id="cPaid"></section>
+    <section id="cPaid" class="progress-block paid-block"></section>
 
+    <div class="progress-block documents-block">
     <h2 class="sec">Your documents</h2>
     <section class="card docs" id="cDocs"></section>
+    </div>
 
+    <div class="progress-block timeline-block">
     <h2 class="sec">What has happened so far</h2>
     <section class="card" id="cTimeline"></section>
+    </div>
 
+    <div class="progress-block referral-block">
     <h2 class="sec">Refer a friend</h2>
     <section class="card" id="cReferral"></section>
+    </div>
 
   </main>
 </div>
 
-<dialog id="dlg"><div class="dlg">
+<dialog id="dlg" aria-labelledby="dlgT" aria-describedby="dlgS"><div class="dlg">
   <h3 id="dlgT"></h3>
   <div class="ds" id="dlgS"></div>
   <div id="dlgB"></div>
@@ -1629,7 +1656,8 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
       api(REFERRAL_PATH, { method: "POST", body: {} }).then(function (r) {
         if (r.status === 401) return toLogin();
         var b = r.body || {};
-        if (r.ok && (b.shareUrl || b.code)) {
+        if (r.ok && b.ok !== false && (b.shareUrl || b.code)) {
+          if (window.FHClientIOS && window.FHClientIOS.refreshAffiliate) window.FHClientIOS.refreshAffiliate();
           return paintReferralEnrolled({ enrolled: true, shareUrl: b.shareUrl, code: b.code });
         }
         go.disabled = false;
@@ -1652,7 +1680,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
     el.innerHTML = '<div class="stage-h">Your link is ready</div>'
       + '<div class="stage-l">Anyone who signs up through this link is counted as yours.</div>'
       + '<div class="share">'
-      + '<input id="refUrl" readonly value="' + esc(url) + '">'
+      + '<input id="refUrl" aria-label="Your referral link" readonly value="' + esc(url) + '">'
       + '<button class="btn ghost" type="button" id="refCopy">Copy</button>'
       + '</div>'
       + (ref.code ? '<div class="stage-l mono" style="margin-top:10px;font-size:12px">Your code: '
@@ -1718,6 +1746,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
   /* ── LOAD ─────────────────────────────────────────────────────────────── */
   function fatal(html) {
     $("hSub").textContent = "";
+    $("progressLoading").hidden = true;
     var f = $("fatal");
     f.innerHTML = html;
     f.classList.remove("hidden");
@@ -1766,6 +1795,7 @@ dialog .da{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wr
                    + "If it still will not open, say so in chat and we will look at it.");
       }
 
+      $("progressLoading").hidden = true;
       var d = r.body;
       var waypoints = Array.isArray(d.waypoints) ? d.waypoints : [];
 

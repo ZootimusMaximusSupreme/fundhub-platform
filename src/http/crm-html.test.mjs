@@ -221,7 +221,12 @@ test("app clocks are not frozen on Jul 26", () => {
   for (const file of files) {
     const html = fs.readFileSync(path.join(APP, file), "utf8");
     const clocks = html.match(CLOCK_MARKUP) || [];
-    assert.ok(clocks.length > 0, file + " has no .clock");
+    if (clocks.length === 0) {
+      const shell = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
+      assert.ok(html.includes("shell.js"), file + " lacks the shared workspace");
+      assert.match(shell, /fh-account-technical/, "clock diagnostics must remain in the account details");
+      continue;
+    }
     for (const clock of clocks) {
       assert.ok(!/Jul 26/.test(clock), file + " clock markup still says Jul 26: " + clock);
     }

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fundhub — What to do next</title>
@@ -76,8 +81,10 @@ main{padding:24px 24px 64px}
   .card{padding:16px}
 }
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/money-next-ios.css">
 </head>
-<body>
+<body data-client-page="money-next">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -101,5 +108,6 @@ main{padding:24px 24px 64px}
   </main>
 </div>
 <script defer src="money-next.js"></script>
+<script defer src="/app/client-ios.js"></script>
 </body>
 </html>

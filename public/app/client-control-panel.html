@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fundhub — Client Control Panel</title>
@@ -737,6 +742,8 @@
     .kv-grid,.details-grid{grid-template-columns:1fr;}
   }
 </style>
+<link rel="stylesheet" href="ccp-workspace.css">
+<script defer src="ccp-workspace.js"></script>
 <script>
 /* FH-CCP-OPENING. A client id in the address means a file is on its way, so
    the header shows the loading state, not "No client open" (hole 5). This runs
@@ -756,94 +763,68 @@
 <script defer src="shell.js"></script>
 <script src="demo-client-bootstrap.js"></script>
 </head>
-<body>
+<body class="ccp-workspace">
 <div class="app">
-  <aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem on" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem on" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 <div class="shell fh-maxw">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
-      <div class="sep">/</div>
-      <div class="sub">Client Control Panel</div>
-    </div>
-    <div class="topbar-right">
-      <div class="clock" id="ccp-clock">—</div>
-      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
-    </div>
-  </header>
+
 
 
   <div class="record-head is-empty" id="ccp-record-head">
     <div class="record-top">
       <div class="record-lead">
         <div class="record-id">
-          <div class="record-name" id="ccp-name">Loading…</div>
+          <h1 class="record-name" id="ccp-name">Loading…</h1>
           <!-- Two sets of words, and CSS picks one before the first paint:
                .ccp-idle with no client id in the address, .ccp-wait while a
                file is on its way (html.ccp-opening — see the note in <head>).
@@ -890,40 +871,47 @@
                (UI-STANDARDS §5: the answer appears where the user is looking).
                The Issue Inquiry Removal button already lives on this card. -->
           <div class="na-inq" id="ccp-next-inquiries" hidden></div>
+          <button type="button" id="ccp-task-open" class="workspace-primary" data-workspace-open="credit" hidden>Review credit &amp; inquiries <span aria-hidden="true">→</span></button>
+          <button type="button" id="ccp-file-retry" class="workspace-secondary" hidden>Try loading this file again</button>
         </div>
       </div>
+      <div class="workspace-record-tools">
+<details class="more workspace-tools" id="more-menu">
+          <summary>Related tools <span class="arrow">⌄</span></summary>
+          <div class="more-body">
+<p id="ccp-actions-note" class="fact-note">Open a related tool for the selected client.</p>
+<a class="link-btn" id="ccp-link-pipeline" href="pipeline.html">Open Pipeline <span class="arrow">↗</span></a>
+<a class="link-btn" id="ccp-link-present" href="present.html">Open Closer Deck <span class="arrow">↗</span></a>
+<a class="link-btn" id="ccp-link-messaging" href="messaging.html">Open Messaging <span class="arrow">↗</span></a>
+<a class="link-btn" id="ccp-link-ir" href="inquiry-remover.html">Open Inquiry Remover <span class="arrow">↗</span></a>
+<a class="link-btn" id="ccp-link-financeos" href="financeos.html" hidden>Open FinanceOS <span class="arrow">↗</span></a>
+            <a class="link-btn" id="ccp-link-lenders" href="lenders.html">Open Funding Matrix <span class="arrow">↗</span></a>
+            <a class="link-btn" id="ccp-link-present2" href="present.html">Open Credit Snapshot <span class="arrow">↗</span></a>
+            <button class="link-btn" id="ccp-bank-inbox-open" type="button">Open Bank Inbox <span class="arrow">↗</span></button>
+            <div id="ccp-bank-inbox" hidden></div>
+          </div>
+        </details>
       <div class="record-pick">
         <label for="ccp-pick">Client</label>
         <select id="ccp-pick" aria-label="Pick a client">
           <option value="">Choose a client</option>
         </select>
       </div>
+      </div>
     </div>
   </div>
 
-  <main>
-    <div class="main-col">
-
-      <!-- ── CONTROL PANEL ─────────────────────────────────────────────────
-           Chris's spreadsheet control panel, mirrored on the screen that already
-           exists. READ AND DISPLAY ONLY — no button, no form, no write.
-
-           Three facts, in his order: what to do next, what is stopping it,
-           and where the funding round stands with its finalized state.
-
-           Every value is worked out from the client's own records by
-           src/fulfillment/next-action.mjs and arrives on
-           GET /api/dashboard/client. When that read is not there, or could
-           not be worked out, the big line says so in plain words — never a
-           blank, and never a step nobody worked out.
-
-           ONE CARD, not two. The next action and the blocker list were each
-           painted twice on this screen — once in the older Blockers panel and
-           again here — so the reader met the same sentence and the same list
-           in two boxes, both saying the same thing. Both sets of slots are
-           still painted, because the compliance test names both; only one set
-           is shown. The mirror below is display:none and carries the rest. -->
-      <div class="group na-group is-empty" id="ccp-blockers-panel">
+  <nav class="workspace-tabs" aria-label="Client workspace sections" role="tablist">
+    <button type="button" role="tab" id="ccp-tab-overview" aria-controls="ccp-view-overview" aria-selected="true" tabindex="0" data-workspace-tab="overview">Overview</button>
+    <button type="button" role="tab" id="ccp-tab-funding" aria-controls="ccp-view-funding" aria-selected="false" tabindex="-1" data-workspace-tab="funding">Funding</button>
+    <button type="button" role="tab" id="ccp-tab-credit" aria-controls="ccp-view-credit" aria-selected="false" tabindex="-1" data-workspace-tab="credit">Credit & inquiries</button>
+    <button type="button" role="tab" id="ccp-tab-records" aria-controls="ccp-view-records" aria-selected="false" tabindex="-1" data-workspace-tab="records">Records</button>
+    <button type="button" role="tab" id="ccp-tab-access" aria-controls="ccp-view-access" aria-selected="false" tabindex="-1" data-workspace-tab="access">Access</button>
+  </nav>
+  <main class="workspace-main">
+  <div class="main-col">
+    <section class="workspace-view" id="ccp-view-overview" role="tabpanel" aria-labelledby="ccp-tab-overview" tabindex="0">
+<div class="workspace-overview-grid"><div><div class="group na-group is-empty" id="ccp-blockers-panel">
         <!-- The next step moved to the header, where the eye lands first. What
              is left in this card is the two things that support it: what is
              open on the file, and where the funding round stands. -->
@@ -995,21 +983,16 @@
           </div>
           <p class="round-note" id="ccp-round-note">Open a client file to move its round.</p>
         </div>
-      </div>
-
-      <!-- ── THE CHASE LIST ────────────────────────────────────────────────
-           Moved out of the 320px right rail on 2026-08-30. This is the work:
-           apply to each bank, then come back over the following days and record
-           what each one said and for how much. Every keystroke on this screen
-           except a note lands in here, and it was in the column a narrow window
-           pushes below everything else.
-
-           Nothing about it changed except where it sits and how much room it
-           gets. Same ids, same handlers, same wording — the bank-email
-           suggestion buttons and the "Doesn't count" button both merged into
-           this block earlier today and both are untouched. -->
-      <div class="group">
-        <div class="group-title card-title">Funding · Apply door</div>
+      </div></div><aside class="workspace-continue"><h3>Continue on this file</h3><div class="workspace-route-list" aria-label="Continue work on this file">
+<button type="button" data-workspace-open="funding"><span><strong>Funding</strong><span>Lender matches, applications and bank answers</span></span><span aria-hidden="true">→</span></button>
+<button type="button" data-workspace-open="credit"><span><strong>Credit &amp; inquiries</strong><span>Permission, bureau pulls and inquiry removal</span></span><span aria-hidden="true">→</span></button>
+<button type="button" data-workspace-open="records"><span><strong>Client records</strong><span>Facts, businesses, notes and documents</span></span><span aria-hidden="true">→</span></button>
+</div></aside></div>
+    </section>
+    <section class="workspace-view" id="ccp-view-funding" role="tabpanel" aria-labelledby="ccp-tab-funding" tabindex="0" hidden>
+      <div class="workspace-section-head"><h2>Funding</h2><p>Track lender applications, bank answers and Capital Blueprint work.</p></div>
+<div class="group">
+        <div class="group-title card-title">Applications &amp; bank answers</div>
         <!-- THE COUNT LIVES HERE NOW — owner-set 2026-09-06.
              How many bank answers on this file say yes and still carry no dollar
              amount, minus any somebody has recorded as not counting. Painted by
@@ -1067,335 +1050,7 @@
           <p id="fh-funding-apply-more" hidden style="margin:8px 0 0;font-size:var(--fs-caption);line-height:1.45;color:var(--text-dim)"></p>
           <p style="margin:10px 0 0;font-size:var(--fs-caption);line-height:1.45;color:var(--text-faint)">Apply opens the bank page when a URL is on file. Apply shows the client email, not a Fundhub address.</p>
         </div>
-      </div>
-
-      <div class="group">
-        <div class="group-title card-title">Actions</div>
-        <p id="ccp-actions-desk-note" style="font-size:var(--fs-body);line-height:1.45;color:var(--text);margin:0 0 10px;">Pull one bureau at a time. Each button answers underneath itself.</p>
-        <!-- All three pull buttons used to render identical and enabled whether
-             or not this client had agreed to a credit pull; the only thing that
-             ever said otherwise was the refusal that came back AFTER the tap.
-             This line is read from GET /api/consent/capture before any tap. -->
-        <p id="ccp-consent-state" class="consent-state">Open a client file to see whether a bureau pull is allowed.</p>
-        <a class="link-btn" id="ccp-consent-link" href="consent-capture.html" hidden>Record consent for this client <span class="arrow">↗</span></a>
-        <!-- THE SECOND LOCK. Consent is one gate; an identity on file is the
-             other, and the pull refuses on each with a different code. This
-             line reads GET /api/consent/capture the same way the one above it
-             does, so a closer sees BOTH before the tap instead of one. -->
-        <p id="ccp-identity-state" class="consent-state" hidden></p>
-        <!-- THE HANDOFF. The client fills their own details in on this link.
-             There is deliberately no Social Security number field anywhere on
-             this staff screen — owner decision, 2026-08-19. -->
-        <div class="approve" id="ccp-approve" hidden>
-          <p class="approve-what" id="ccp-approve-what"></p>
-          <p class="approve-nolink" id="ccp-approve-nolink" hidden></p>
-          <div class="approve-row" id="ccp-approve-row">
-            <input type="text" id="ccp-approve-url" class="approve-url" readonly aria-label="Client approval link">
-            <button type="button" class="approve-copy" id="ccp-approve-copy">Copy link</button>
-          </div>
-          <p class="approve-exp" id="ccp-approve-exp"></p>
-        </div>
-        <div class="pull-row">
-          <button type="button" class="action-btn" id="ccp-pull-tu" style="cursor:pointer;">Pull TransUnion <span class="arrow">→</span></button>
-          <button type="button" class="action-btn" id="ccp-pull-ex" style="cursor:pointer;">Pull Experian <span class="arrow">→</span></button>
-          <button type="button" class="action-btn" id="ccp-pull-eq" style="cursor:pointer;">Pull Equifax <span class="arrow">→</span></button>
-        </div>
-        <!-- EVERY BUTTON ANSWERS UNDER ITSELF — owner-set 2026-09-06.
-             All four desk buttons used to print into one line at the bottom of
-             this card, the one sitting under "Issue Inquiry Removal". So
-             pressing a bureau pull, or the old Generate Apps button, printed its
-             result under the removal button and looked like the removal had run.
-             UI-STANDARDS §5: the answer appears where the user is looking. -->
-        <p id="ccp-pull-status" style="font-size:var(--fs-body);color:var(--text-dim);margin:0 0 7px;"></p>
-        <!-- GENERATE APPS IS GONE — owner-set 2026-09-06, TODO §7.
-             Chris: "I don't think we're gonna need a Generate Apps button. That
-             doesn't make any fucking sense. Just delete that."
-             It created nothing. It re-read the lender match list, redrew the same
-             rows and printed "apps ready". An application row is only ever
-             created by Bank yes / Bank no on a single lender row
-             (logBankDecision, src/applications/status.mjs). The lender list
-             already loads when the page opens, so nothing was lost with it. -->
-        <button type="button" class="action-btn" id="ccp-issue-ir" style="cursor:pointer;">Issue Inquiry Removal <span class="arrow">→</span></button>
-        <p id="ccp-issue-ir-status" style="font-size:var(--fs-body);color:var(--text-dim);margin:8px 0 0;"></p>
-        <!-- THE PRESS THE RESET SCREEN HAS ALWAYS PROMISED. A client who pays
-             gets a portal account whose password nobody holds, and the reset
-             screen they land on tells them to ask an owner or admin for a link
-             — while no owner or admin control existed anywhere to send one
-             (walk finding F31, 2026-09-03). It goes here, in the group where
-             the desk already acts on this file, and not on a new screen.
-
-             HIDDEN, NOT DISABLED, for every other role: UI-STANDARDS §5 says a
-             role never sees a control it cannot use.
-             api/auth/send-portal-link.mjs is still the authority and still
-             refuses; this only stops the page offering a button whose answer is
-             already known to be no. -->
-        <div class="portal-link" id="ccp-portal-link-wrap" hidden>
-          <button type="button" class="action-btn" id="ccp-portal-link" style="cursor:pointer;"><span id="ccp-portal-link-label">Send portal sign-in link</span> <span class="arrow">→</span></button>
-          <p id="ccp-portal-link-status" class="portal-link-sent" role="status" aria-live="polite"></p>
-        </div>
-        <div class="portal-link" id="ccp-rep-wrap" hidden>
-          <p class="consent-state" id="ccp-rep-now">Nobody else can open this file.</p>
-          <label class="rep-label" for="ccp-rep-name">Name</label>
-          <input type="text" id="ccp-rep-name" class="rep-field" autocomplete="name">
-          <label class="rep-label" for="ccp-rep-email">Email</label>
-          <input type="email" id="ccp-rep-email" class="rep-field" autocomplete="email">
-          <label class="rep-label" for="ccp-rep-phone">Phone</label>
-          <input type="tel" id="ccp-rep-phone" class="rep-field" autocomplete="tel">
-          <button type="button" class="action-btn" id="ccp-rep-add" style="cursor:pointer;"><span id="ccp-rep-add-label">Add this person to the file</span></button>
-          <button type="button" class="action-btn" id="ccp-rep-remove" hidden>Take them off this file</button>
-          <p id="ccp-rep-status" class="portal-link-sent" role="status" aria-live="polite"></p>
-          <input type="text" id="ccp-rep-url" class="rep-field" readonly hidden aria-label="Sign-in link">
-        </div>
-      </div>
-
-      <!-- ── REFERENCE, AND BELOW THE ACTION ON PURPOSE (§12 rule 3) ────────
-           These eight used to sit in the header, and fundhub-brand.css paints
-           `.rf-value` at --fs-metric, so eight facts nobody is being asked to
-           act on shouted at 32px directly above the one sentence saying what to
-           do next. They are the same eight facts, the same ids, at reading
-           size, under the work they support. -->
-      <div class="group facts-group is-empty" id="ccp-facts-group">
-        <div class="group-title card-title">Client facts</div>
-        <div class="record-fields">
-          <div class="rf-tile"><div class="rf-label">Main Status</div><div><span class="status-badge-lg" id="ccp-status">—</span></div></div>
-          <!-- Sample note: shown only when this figure is the pre-approval a
-               sample report was given (live hole N12). See sampleDecision(). -->
-          <div class="rf-tile"><div class="rf-label">Prequal</div>
-            <div class="rf-num" id="ccp-prequal">—</div>
-            <p class="fact-note" id="ccp-prequal-sample" hidden></p></div>
-          <!-- WAS "Total Approved", AND WAS NEITHER. It printed the FUNDED
-               amount, and when that was missing it printed the analyzer's
-               PRE-APPROVAL GUESS — the number in the tile immediately to its
-               left — under a label saying Approved. It never once showed an
-               approved amount.
-               It now shows what the invoice is worked out from: bank yeses that
-               carry a recorded dollar amount and that nobody has marked as not
-               counting, which is the definition in
-               src/funding/success-fee.mjs (owner-set 2026-08-30,
-               docs/finance/CLOSEOUT-FEE-BASIS.md). The label says "confirmed" because
-               that is the only claim the number can support. Painted by the
-               funding block at the foot of this file, from the same read as the
-               headline — never from funded_amount, and never from the guess. -->
-          <div class="rf-tile"><div class="rf-label">Approved · confirmed</div><div class="rf-num" id="ccp-approved">—</div></div>
-          <!-- INQUIRIES ON THE CREDIT FILE, NOT INSIDE A REMOVAL CASE.
-               Owner-set 2026-09-06, TODO §8. This tile used to print
-               inquiry_removal_cases.open_inquiry_count, which is a count of rows
-               in inquiry_log for one case. inquiry_log is written by the removal
-               desk, so on a file nobody has worked it is empty and the tile read
-               0 or 1 — while the credit report itself listed four. Two screens,
-               one word, two different numbers.
-               It reads the stored credit report now, and names the banks
-               underneath. When the stored report carries no inquiry list at all
-               it says so; it never prints 0, because 0 would be a claim. -->
-          <!-- Sample note: shown only when the report these inquiries came off
-               is a walkthrough's sample (live hole N12). See paintInquiries(). -->
-          <div class="rf-tile"><div class="rf-label">Inquiries on the credit file</div>
-            <div class="rf-num" id="ccp-inquiries">—</div>
-            <p class="fact-note" id="ccp-inquiries-sample" hidden></p></div>
-          <div class="rf-tile"><div class="rf-label">Inquiry Removal</div><div class="rf-num" data-ir-case id="ccp-ir">—</div></div>
-          <!-- A SAMPLE REPORT SAYS IT IS A SAMPLE (live hole 23, 2026-09-18).
-               Shown only when the scores above came from a walkthrough's sample
-               report, never a bureau. See isSampleReport() in FH-CCP. -->
-          <div class="rf-tile"><div class="rf-label">Scores</div>
-            <div class="rf-num" id="ccp-scores">—</div>
-            <p class="fact-note" id="ccp-scores-sample" hidden></p></div>
-          <!-- Card Use is the utilisation figure the client endpoint has always
-               returned and this screen never showed (src/http/client-detail.mjs:310,
-               spelt the British way there). It reads "not measured" whenever the
-               stored report carried no figure — which for a real bureau pull is the
-               ordinary case today, not an error. Never 0%: see cardUse() below. -->
-          <!-- Sample note: shown only when the figure came off a sample report
-               (utilisation.asOf is that row's date) — live hole N12. -->
-          <div class="rf-tile"><div class="rf-label">Card Use</div>
-            <div class="rf-num" id="ccp-card-use">—</div>
-            <p class="fact-note" id="ccp-card-use-sample" hidden></p></div>
-          <div class="rf-tile"><div class="rf-label">Funding Round</div><div class="rf-num" id="ccp-round">—</div></div>
-        </div>
-        <!-- The banks that pulled this person's credit, by name, so nobody has
-             to open a second screen to find out which four they are. -->
-        <p class="fact-note" id="ccp-inquiry-names" hidden></p>
-        <!-- WHY A REMOVAL CASE IS BLOCKED, AND WHERE IT GETS UNBLOCKED.
-             "Blocked" was printed on its own with no reason and no route. It has
-             exactly one cause: the identity packet is not complete, so the send
-             gate refuses (src/inquiry-ops/send.mjs, checkDocPacket in
-             src/inquiry-ops/doc-gate.mjs). Say that, and link to the desk that
-             fixes it. -->
-        <p class="fact-note is-stop" id="ccp-ir-why" hidden></p>
-        <a class="link-btn" id="ccp-ir-unblock" href="inquiry-remover.html" hidden>Open the Inquiry Remover to add the missing documents <span class="arrow">↗</span></a>
-      </div>
-
-      <div class="group">
-        <div class="group-title card-title">Businesses</div>
-        <div id="ccp-biz-list"><p class="cp-empty">Loading businesses…</p></div>
-      </div>
-
-      <div class="group">
-        <div class="group-title card-title">Need action</div>
-        <p style="font-size:var(--fs-body);color:var(--text-dim);margin:0 0 10px;">Other clients with an open inquiry removal case. One row each. Pick one to open that file.</p>
-        <div id="ccp-need-action" style="font-size:var(--fs-body);color:var(--text-dim);">Loading…</div>
-      </div>
-
-
-      <!-- Agent context — exactly what the AI sees for this client. -->
-      <div class="group">
-        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="agent-context-body">
-          <span>Agent context</span>
-          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
-        </button>
-        <div class="group-body" id="agent-context-body" hidden>
-          <p style="font-size:var(--fs-caption);color:var(--muted,#666);margin:0 0 10px;">
-            Read-only. Same facts the agent runtime injects into every reply prompt.
-          </p>
-          <pre id="agent-context-pre" class="mono" style="white-space:pre-wrap;font-size:var(--fs-caption);line-height:1.45;background:var(--surface,#fff);border:1px solid var(--line,#ddd);border-radius:6px;padding:12px;margin:0;max-height:320px;overflow:auto;">Fills in when a client file is open. Pick a client on Pipeline to open one.</pre>
-        </div>
-      </div>
-
-      <!-- Credit & Hold Status restates the blocker card in four key/value
-           pairs. Same four facts, said twice, was the noise — it collapses so
-           the blocker above is the only place they read loud. -->
-      <div class="group">
-        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="hold-body">
-          <span>Credit &amp; Hold Status</span>
-          <span class="chev">collapsed <span class="cg">⌄</span></span>
-        </button>
-        <div class="group-body" id="hold-body" hidden>
-          <div class="kv-grid">
-            <div class="kv"><div class="kv-label">Credit Status</div><div class="kv-value" id="ccp-credit-status">—</div></div>
-            <!-- "Income (Experian)" READ AS A BUREAU FACT AND IS NOT ONE.
-                 Owner-set 2026-09-06, TODO §3 "Also found". The credit file holds
-                 no income the client reported. These two numbers come from two
-                 scoring models the bureaus sell — Experian "Income Insight" and
-                 Equifax "Income View" (src/http/client-detail.mjs:232-233). The
-                 model GUESSES a yearly income from how the person uses credit.
-                 The label says estimate now, and the sentence under the grid says
-                 who is doing the estimating. Nothing was removed. -->
-            <div class="kv"><div class="kv-label">Income estimate (Experian model)</div><div class="kv-value" id="ccp-income-ex">—</div></div>
-            <div class="kv"><div class="kv-label">On Hold Because</div><div class="kv-value" id="ccp-hold-reason">—</div></div>
-            <div class="kv"><div class="kv-label">Income estimate (Equifax model)</div><div class="kv-value" id="ccp-income-eq">—</div></div>
-          </div>
-          <p class="fact-note">Neither income figure was reported by this client and neither is on the credit report. Each one is a guess produced by a bureau scoring model from how the person uses credit. Do not quote either as their income.</p>
-        </div>
-      </div>
-
-      <div class="group">
-        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="details-body">
-          <span>Details</span>
-          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
-        </button>
-        <div class="group-body" id="details-body" hidden>
-          <div class="details-grid">
-            <div class="kv"><div class="kv-label">Email</div><div class="kv-value" id="ccp-email">—</div></div>
-            <div class="kv"><div class="kv-label">Phone</div><div class="kv-value mono" id="ccp-phone">—</div></div>
-            <div class="kv"><div class="kv-label">Tier</div><div class="kv-value" id="ccp-tier">—</div></div>
-            <div class="kv"><div class="kv-label">Path</div><div class="kv-value" id="ccp-path">—</div></div>
-          </div>
-          <!-- THE OLD STEP TYPED ONTO THE RECORD, KEPT BUT NOT SHOUTED.
-               Owner-set 2026-09-06, TODO §3 "Also found": the top of the screen
-               said "Apply for Funding" while a second line under it said the
-               record held "Collect Documents", and a paragraph under THAT
-               explained that the two disagreed. Chris: pick one and say it.
-               The worked-out step is the one that is said, at the top. The value
-               saved on the record is not thrown away — nobody has been told to
-               act on it, so it belongs here with the other reference facts.
-               Still painted by paintNextAction(), which is the only rule allowed
-               to touch it (GATE A). -->
-          <p class="na-saved" id="ccp-saved" hidden></p>
-          <div class="kv-label" style="margin-bottom:5px;">Notes (editable)</div>
-          <textarea class="notes-box" id="notes"
-            placeholder="No notes yet — add context for the next person who opens this file."></textarea>
-          <button class="link-btn" type="button" id="notes-save">Save notes</button>
-          <div class="notes-status is-idle" id="notes-status" role="status" aria-live="polite">
-            <span class="sd"></span><span class="stxt"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Upload on the client's behalf — e.g. a document collected on a call.
-           Wired below to POST /api/documents-upload with this screen's
-           client id; a staff session is what makes that request a "staff
-           upload", the same endpoint the client portal itself posts to. -->
-      <div class="group">
-        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="upload-body">
-          <span>Documents</span>
-          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
-        </button>
-        <div class="group-body" id="upload-body" hidden>
-          <div class="dropzone" id="staff-dropzone" tabindex="0" role="button"
-               aria-label="Upload a document for this client">
-            <div class="dz-label">Drop a file here, or click to choose</div>
-            <div class="dz-hint">jpg, png or pdf</div>
-          </div>
-          <input type="file" id="staff-file-input" multiple hidden accept=".pdf,.png,.jpg,.jpeg">
-          <div class="dz-filelist" id="staff-filelist"></div>
-          <div class="dz-status" id="staff-upload-status" role="status" aria-live="polite"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="side-col">
-
-      <!-- The rail's sections sit in the same card as everything else on
-           the screen now. They were bare titles with content floating on the
-           page next to bordered cards in the column beside them, which is why
-           the two halves of the screen did not look like one screen.
-
-           THE LENDER LIST IS NO LONGER IN HERE. It is where roughly nine in ten
-           of this screen's keystrokes land — a play name, a dollar amount, bank
-           yes, bank no — and it was in a 320px rail that a narrow window drops
-           below the entire main column. It is the work, so it sits in the main
-           column directly under the next action. What is left in this rail is
-           links out and a collapsed facts list: things you leave the screen
-           for, not things you do on it. -->
-      <div class="group">
-        <div class="group-title card-title">Quick launch</div>
-        <p id="ccp-actions-note" style="font-size:var(--fs-caption);line-height:1.45;color:var(--text-dim);margin:0 0 10px;">These open the live file. Bureau pulls stay on the closer deck.</p>
-        <a class="action-btn" id="ccp-link-pipeline" href="pipeline.html">Open Pipeline <span class="arrow">↗</span></a>
-        <!-- NEITHER OF THE TWO present.html ROWS IS VISIBLE TO ANYBODY TODAY,
-             OWNER INCLUDED — this one and "Open Credit Snapshot" under More.
-             Not a fault in this file. shell.js gates every <a href> on the page
-             against its own list of screens a role may open (`var ALL`, near the
-             top of public/app/shell.js), and "present.html" is not in that list
-             for any role, so gateLinks() sets display:none on both rows. Typing
-             the address opens the screen fine.
-             The fix is one line in shell.js, which this lane does not own. Do not
-             work around it here by turning these into buttons — that would put a
-             link in front of a role the gate has refused. Reported 2026-09-06. -->
-        <a class="action-btn" id="ccp-link-present" href="present.html">Open Closer Deck <span class="arrow">↗</span></a>
-        <a class="action-btn" id="ccp-link-messaging" href="messaging.html">Open Messaging <span class="arrow">↗</span></a>
-        <a class="action-btn" id="ccp-link-ir" href="inquiry-remover.html">Open Inquiry Remover <span class="arrow">↗</span></a>
-        <!-- OPEN FINANCEOS (wave 4, 2026-10-06). The client's money page,
-             /app/financeos.html, opened on THIS client. Owner, admin and
-             sales_manager only — ROLE_SETS.FINANCE, the gate on /api/money/*,
-             which already takes ?client_id= from those three. They cannot open
-             client-portal.html (PORTAL_ONLY in shell.js, an older rule kept on
-             purpose), so the portal's FinanceOS card gave staff no door at all.
-             HIDDEN by default and shown by wireFinanceOsLink() for those three
-             roles only (UI-STANDARDS §4: a role never sees a link it cannot
-             use). shell.js gateLinks() hides it again for any other role,
-             because only those three carry STAFF_MONEY. -->
-        <a class="action-btn" id="ccp-link-financeos" href="financeos.html" hidden>Open FinanceOS <span class="arrow">↗</span></a>
-
-        <details class="more" id="more-menu">
-          <summary>More <span class="arrow">⌄</span></summary>
-          <div class="more-body">
-            <a class="link-btn" id="ccp-link-lenders" href="lenders.html">Open Funding Matrix <span class="arrow">↗</span></a>
-            <a class="link-btn" id="ccp-link-present2" href="present.html">Open Credit Snapshot <span class="arrow">↗</span></a>
-            <button class="link-btn" id="ccp-bank-inbox-open" type="button">Open Bank Inbox <span class="arrow">↗</span></button>
-            <div id="ccp-bank-inbox" hidden></div>
-          </div>
-        </details>
-      </div>
-
-      <!-- CAPITAL BLUEPRINT. One place for the five things a closer does on a
-           Blueprint client's file: add the credit partner, set the next
-           sequence date, offer the bank tracker and list the banks, and read
-           the combined prequal. Every control posts to
-           POST /api/blueprint/staff-actions, which stays the authority: it
-           answers 403 not_blueprint_buyer for a client who did not buy, and
-           this block says so in words. Folded shut by default (UI-STANDARDS
-           section 9): it is used once per client, not every minute. -->
-      <div class="group bp-group" id="bp-group">
+      </div><div class="group bp-group" id="bp-group">
         <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="bp-body">
           <span>Capital Blueprint</span>
           <span class="chev"><span class="tog-state" data-open="open" data-shut="collapsed">collapsed</span> <span class="cg">⌄</span></span>
@@ -1480,8 +1135,214 @@
 
         </div>
       </div>
+    </section>
+    <section class="workspace-view" id="ccp-view-credit" role="tabpanel" aria-labelledby="ccp-tab-credit" tabindex="0" hidden>
+      <div class="workspace-section-head"><h2>Credit &amp; inquiries</h2><p>Check permission and identity before a bureau pull.</p></div>
+<div class="group">
+        <div class="group-title card-title">Bureau pulls &amp; inquiry removal</div>
+        <p id="ccp-actions-desk-note" style="font-size:var(--fs-body);line-height:1.45;color:var(--text);margin:0 0 10px;">Pull one bureau at a time. Each button answers underneath itself.</p>
+        <!-- All three pull buttons used to render identical and enabled whether
+             or not this client had agreed to a credit pull; the only thing that
+             ever said otherwise was the refusal that came back AFTER the tap.
+             This line is read from GET /api/consent/capture before any tap. -->
+        <p id="ccp-consent-state" class="consent-state">Open a client file to see whether a bureau pull is allowed.</p>
+        <a class="link-btn" id="ccp-consent-link" href="consent-capture.html" hidden>Record consent for this client <span class="arrow">↗</span></a>
+        <!-- THE SECOND LOCK. Consent is one gate; an identity on file is the
+             other, and the pull refuses on each with a different code. This
+             line reads GET /api/consent/capture the same way the one above it
+             does, so a closer sees BOTH before the tap instead of one. -->
+        <p id="ccp-identity-state" class="consent-state" hidden></p>
+        <!-- THE HANDOFF. The client fills their own details in on this link.
+             There is deliberately no Social Security number field anywhere on
+             this staff screen — owner decision, 2026-08-19. -->
+        <div class="approve" id="ccp-approve" hidden>
+          <p class="approve-what" id="ccp-approve-what"></p>
+          <p class="approve-nolink" id="ccp-approve-nolink" hidden></p>
+          <div class="approve-row" id="ccp-approve-row">
+            <input type="text" id="ccp-approve-url" class="approve-url" readonly aria-label="Client approval link">
+            <button type="button" class="approve-copy" id="ccp-approve-copy">Copy link</button>
+          </div>
+          <p class="approve-exp" id="ccp-approve-exp"></p>
+        </div>
+        <div class="pull-row">
+          <button type="button" class="action-btn" id="ccp-pull-tu" style="cursor:pointer;">Pull TransUnion <span class="arrow">→</span></button>
+          <button type="button" class="action-btn" id="ccp-pull-ex" style="cursor:pointer;">Pull Experian <span class="arrow">→</span></button>
+          <button type="button" class="action-btn" id="ccp-pull-eq" style="cursor:pointer;">Pull Equifax <span class="arrow">→</span></button>
+        </div>
+        <!-- EVERY BUTTON ANSWERS UNDER ITSELF — owner-set 2026-09-06.
+             All four desk buttons used to print into one line at the bottom of
+             this card, the one sitting under "Issue Inquiry Removal". So
+             pressing a bureau pull, or the old Generate Apps button, printed its
+             result under the removal button and looked like the removal had run.
+             UI-STANDARDS §5: the answer appears where the user is looking. -->
+        <p id="ccp-pull-status" style="font-size:var(--fs-body);color:var(--text-dim);margin:0 0 7px;"></p>
+        <!-- GENERATE APPS IS GONE — owner-set 2026-09-06, TODO §7.
+             Chris: "I don't think we're gonna need a Generate Apps button. That
+             doesn't make any fucking sense. Just delete that."
+             It created nothing. It re-read the lender match list, redrew the same
+             rows and printed "apps ready". An application row is only ever
+             created by Bank yes / Bank no on a single lender row
+             (logBankDecision, src/applications/status.mjs). The lender list
+             already loads when the page opens, so nothing was lost with it. -->
+        <button type="button" class="action-btn" id="ccp-issue-ir" style="cursor:pointer;">Issue Inquiry Removal <span class="arrow">→</span></button>
+        <p id="ccp-issue-ir-status" style="font-size:var(--fs-body);color:var(--text-dim);margin:8px 0 0;"></p>
+        <!-- THE PRESS THE RESET SCREEN HAS ALWAYS PROMISED. A client who pays
+             gets a portal account whose password nobody holds, and the reset
+             screen they land on tells them to ask an owner or admin for a link
+             — while no owner or admin control existed anywhere to send one
+             (walk finding F31, 2026-09-03). It goes here, in the group where
+             the desk already acts on this file, and not on a new screen.
 
-      <div class="group">
+             HIDDEN, NOT DISABLED, for every other role: UI-STANDARDS §5 says a
+             role never sees a control it cannot use.
+             api/auth/send-portal-link.mjs is still the authority and still
+             refuses; this only stops the page offering a button whose answer is
+             already known to be no. -->
+
+      </div><div class="group">
+        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="hold-body">
+          <span>Credit &amp; Hold Status</span>
+          <span class="chev">collapsed <span class="cg">⌄</span></span>
+        </button>
+        <div class="group-body" id="hold-body" hidden>
+          <div class="kv-grid">
+            <div class="kv"><div class="kv-label">Credit Status</div><div class="kv-value" id="ccp-credit-status">—</div></div>
+            <!-- "Income (Experian)" READ AS A BUREAU FACT AND IS NOT ONE.
+                 Owner-set 2026-09-06, TODO §3 "Also found". The credit file holds
+                 no income the client reported. These two numbers come from two
+                 scoring models the bureaus sell — Experian "Income Insight" and
+                 Equifax "Income View" (src/http/client-detail.mjs:232-233). The
+                 model GUESSES a yearly income from how the person uses credit.
+                 The label says estimate now, and the sentence under the grid says
+                 who is doing the estimating. Nothing was removed. -->
+            <div class="kv"><div class="kv-label">Income estimate (Experian model)</div><div class="kv-value" id="ccp-income-ex">—</div></div>
+            <div class="kv"><div class="kv-label">On Hold Because</div><div class="kv-value" id="ccp-hold-reason">—</div></div>
+            <div class="kv"><div class="kv-label">Income estimate (Equifax model)</div><div class="kv-value" id="ccp-income-eq">—</div></div>
+          </div>
+          <p class="fact-note">Neither income figure was reported by this client and neither is on the credit report. Each one is a guess produced by a bureau scoring model from how the person uses credit. Do not quote either as their income.</p>
+        </div>
+      </div>
+    </section>
+    <section class="workspace-view" id="ccp-view-records" role="tabpanel" aria-labelledby="ccp-tab-records" tabindex="0" hidden>
+      <div class="workspace-section-head"><h2>Client records</h2><p>The details and documents that support this file.</p></div>
+<div class="group facts-group is-empty" id="ccp-facts-group">
+        <div class="group-title card-title">Client facts</div>
+        <div class="record-fields">
+          <div class="rf-tile"><div class="rf-label">Main Status</div><div><span class="status-badge-lg" id="ccp-status">—</span></div></div>
+          <!-- Sample note: shown only when this figure is the pre-approval a
+               sample report was given (live hole N12). See sampleDecision(). -->
+          <div class="rf-tile"><div class="rf-label">Prequal</div>
+            <div class="rf-num" id="ccp-prequal">—</div>
+            <p class="fact-note" id="ccp-prequal-sample" hidden></p></div>
+          <!-- WAS "Total Approved", AND WAS NEITHER. It printed the FUNDED
+               amount, and when that was missing it printed the analyzer's
+               PRE-APPROVAL GUESS — the number in the tile immediately to its
+               left — under a label saying Approved. It never once showed an
+               approved amount.
+               It now shows what the invoice is worked out from: bank yeses that
+               carry a recorded dollar amount and that nobody has marked as not
+               counting, which is the definition in
+               src/funding/success-fee.mjs (owner-set 2026-08-30,
+               docs/finance/CLOSEOUT-FEE-BASIS.md). The label says "confirmed" because
+               that is the only claim the number can support. Painted by the
+               funding block at the foot of this file, from the same read as the
+               headline — never from funded_amount, and never from the guess. -->
+          <div class="rf-tile"><div class="rf-label">Approved · confirmed</div><div class="rf-num" id="ccp-approved">—</div></div>
+          <!-- INQUIRIES ON THE CREDIT FILE, NOT INSIDE A REMOVAL CASE.
+               Owner-set 2026-09-06, TODO §8. This tile used to print
+               inquiry_removal_cases.open_inquiry_count, which is a count of rows
+               in inquiry_log for one case. inquiry_log is written by the removal
+               desk, so on a file nobody has worked it is empty and the tile read
+               0 or 1 — while the credit report itself listed four. Two screens,
+               one word, two different numbers.
+               It reads the stored credit report now, and names the banks
+               underneath. When the stored report carries no inquiry list at all
+               it says so; it never prints 0, because 0 would be a claim. -->
+          <!-- Sample note: shown only when the report these inquiries came off
+               is a walkthrough's sample (live hole N12). See paintInquiries(). -->
+          <div class="rf-tile"><div class="rf-label">Inquiries on the credit file</div>
+            <div class="rf-num" id="ccp-inquiries">—</div>
+            <p class="fact-note" id="ccp-inquiries-sample" hidden></p></div>
+          <div class="rf-tile"><div class="rf-label">Inquiry Removal</div><div class="rf-num" data-ir-case id="ccp-ir">—</div></div>
+          <!-- A SAMPLE REPORT SAYS IT IS A SAMPLE (live hole 23, 2026-09-18).
+               Shown only when the scores above came from a walkthrough's sample
+               report, never a bureau. See isSampleReport() in FH-CCP. -->
+          <div class="rf-tile"><div class="rf-label">Scores</div>
+            <div class="rf-num" id="ccp-scores">—</div>
+            <p class="fact-note" id="ccp-scores-sample" hidden></p></div>
+          <!-- Card Use is the utilisation figure the client endpoint has always
+               returned and this screen never showed (src/http/client-detail.mjs:310,
+               spelt the British way there). It reads "not measured" whenever the
+               stored report carried no figure — which for a real bureau pull is the
+               ordinary case today, not an error. Never 0%: see cardUse() below. -->
+          <!-- Sample note: shown only when the figure came off a sample report
+               (utilisation.asOf is that row's date) — live hole N12. -->
+          <div class="rf-tile"><div class="rf-label">Card Use</div>
+            <div class="rf-num" id="ccp-card-use">—</div>
+            <p class="fact-note" id="ccp-card-use-sample" hidden></p></div>
+          <div class="rf-tile"><div class="rf-label">Funding Round</div><div class="rf-num" id="ccp-round">—</div></div>
+        </div>
+        <!-- The banks that pulled this person's credit, by name, so nobody has
+             to open a second screen to find out which four they are. -->
+        <p class="fact-note" id="ccp-inquiry-names" hidden></p>
+        <!-- WHY A REMOVAL CASE IS BLOCKED, AND WHERE IT GETS UNBLOCKED.
+             "Blocked" was printed on its own with no reason and no route. It has
+             exactly one cause: the identity packet is not complete, so the send
+             gate refuses (src/inquiry-ops/send.mjs, checkDocPacket in
+             src/inquiry-ops/doc-gate.mjs). Say that, and link to the desk that
+             fixes it. -->
+        <p class="fact-note is-stop" id="ccp-ir-why" hidden></p>
+        <a class="link-btn" id="ccp-ir-unblock" href="inquiry-remover.html" hidden>Open the Inquiry Remover to add the missing documents <span class="arrow">↗</span></a>
+      </div><div class="group">
+        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="details-body">
+          <span>Details</span>
+          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
+        </button>
+        <div class="group-body" id="details-body" hidden>
+          <div class="details-grid">
+            <div class="kv"><div class="kv-label">Email</div><div class="kv-value" id="ccp-email">—</div></div>
+            <div class="kv"><div class="kv-label">Phone</div><div class="kv-value mono" id="ccp-phone">—</div></div>
+            <div class="kv"><div class="kv-label">Tier</div><div class="kv-value" id="ccp-tier">—</div></div>
+            <div class="kv"><div class="kv-label">Path</div><div class="kv-value" id="ccp-path">—</div></div>
+          </div>
+          <!-- THE OLD STEP TYPED ONTO THE RECORD, KEPT BUT NOT SHOUTED.
+               Owner-set 2026-09-06, TODO §3 "Also found": the top of the screen
+               said "Apply for Funding" while a second line under it said the
+               record held "Collect Documents", and a paragraph under THAT
+               explained that the two disagreed. Chris: pick one and say it.
+               The worked-out step is the one that is said, at the top. The value
+               saved on the record is not thrown away — nobody has been told to
+               act on it, so it belongs here with the other reference facts.
+               Still painted by paintNextAction(), which is the only rule allowed
+               to touch it (GATE A). -->
+          <p class="na-saved" id="ccp-saved" hidden></p>
+          <div class="kv-label" style="margin-bottom:5px;">Notes (editable)</div>
+          <textarea class="notes-box" id="notes"
+            placeholder="No notes yet — add context for the next person who opens this file."></textarea>
+          <button class="link-btn" type="button" id="notes-save">Save notes</button>
+          <div class="notes-status is-idle" id="notes-status" role="status" aria-live="polite">
+            <span class="sd"></span><span class="stxt"></span>
+          </div>
+        </div>
+      </div><div class="group">
+        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="upload-body">
+          <span>Documents</span>
+          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
+        </button>
+        <div class="group-body" id="upload-body" hidden>
+          <div class="dropzone" id="staff-dropzone" tabindex="0" role="button"
+               aria-label="Upload a document for this client">
+            <div class="dz-label">Drop a file here, or click to choose</div>
+            <div class="dz-hint">jpg, png or pdf</div>
+          </div>
+          <input type="file" id="staff-file-input" multiple hidden accept=".pdf,.png,.jpg,.jpeg">
+          <div class="dz-filelist" id="staff-filelist"></div>
+          <div class="dz-status" id="staff-upload-status" role="status" aria-live="polite"></div>
+        </div>
+      </div><div class="group">
+        <div class="group-title card-title">Businesses</div>
+        <div id="ccp-biz-list"><p class="cp-empty">Loading businesses…</p></div>
+      </div><div class="group">
         <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="facts-body">
           <span>System Facts</span>
           <span class="chev"><span class="tog-state" data-open="open" data-shut="collapsed">collapsed</span> <span class="cg">⌄</span></span>
@@ -1494,18 +1355,51 @@
             <div class="fact-row"><span class="k">Funded</span><span class="v" id="ccp-facts-funded">—</span></div>
           </div>
         </div>
-      </div>
+      </div><div class="group">
+        <button class="group-title card-title tog" type="button" aria-expanded="false" aria-controls="agent-context-body">
+          <span>Agent context</span>
+          <span class="chev">collapsed by default <span class="cg">⌄</span></span>
+        </button>
+        <div class="group-body" id="agent-context-body" hidden>
+          <p style="font-size:var(--fs-caption);color:var(--muted,#666);margin:0 0 10px;">
+            Read-only. Same facts the agent runtime injects into every reply prompt.
+          </p>
+          <pre id="agent-context-pre" class="mono" style="white-space:pre-wrap;font-size:var(--fs-caption);line-height:1.45;background:var(--surface,#fff);border:1px solid var(--line,#ddd);border-radius:6px;padding:12px;margin:0;max-height:320px;overflow:auto;">Fills in when a client file is open. Pick a client on Pipeline to open one.</pre>
+        </div>
+      </div><div class="group">
+        <div class="group-title card-title">Other client files</div>
+        <p style="font-size:var(--fs-body);color:var(--text-dim);margin:0 0 10px;">Other clients with an open inquiry removal case. One row each. Pick one to open that file.</p>
+        <div id="ccp-need-action" style="font-size:var(--fs-body);color:var(--text-dim);">Loading…</div>
+      </div><details class="workspace-diagnostics"><summary>File diagnostics</summary>  <div class="workspace-diagnostic-values">
 
-    </div>
-  </main>
-
-  <footer class="statusbar">
-    <span>FUNDHUB-CCP · live</span>
     <span id="ccp-footer-org">ORG: —</span>
     <span id="ccp-footer-id">—</span>
-    <span>notes save to this client file</span>
+
     <span class="sb-source" id="ccp-source"></span>
-  </footer>
+  </div><div class="clock" id="ccp-clock">—</div></details>
+    </section>
+    <section class="workspace-view" id="ccp-view-access" role="tabpanel" aria-labelledby="ccp-tab-access" tabindex="0" hidden>
+      <div class="workspace-section-head"><h2>Portal access</h2><p>Manage sign-in and the person authorized to help this client.</p></div>
+<div class="group workspace-access"><div class="group-title card-title">Client sign-in</div><div class="portal-link" id="ccp-portal-link-wrap" hidden>
+          <button type="button" class="action-btn" id="ccp-portal-link" style="cursor:pointer;"><span id="ccp-portal-link-label">Send portal sign-in link</span> <span class="arrow">→</span></button>
+          <p id="ccp-portal-link-status" class="portal-link-sent" role="status" aria-live="polite"></p>
+        </div>
+<div class="portal-link" id="ccp-rep-wrap" hidden>
+          <p class="consent-state" id="ccp-rep-now">Nobody else can open this file.</p>
+          <label class="rep-label" for="ccp-rep-name">Name</label>
+          <input type="text" id="ccp-rep-name" class="rep-field" autocomplete="name">
+          <label class="rep-label" for="ccp-rep-email">Email</label>
+          <input type="email" id="ccp-rep-email" class="rep-field" autocomplete="email">
+          <label class="rep-label" for="ccp-rep-phone">Phone</label>
+          <input type="tel" id="ccp-rep-phone" class="rep-field" autocomplete="tel">
+          <button type="button" class="action-btn" id="ccp-rep-add" style="cursor:pointer;"><span id="ccp-rep-add-label">Add this person to the file</span></button>
+          <button type="button" class="action-btn" id="ccp-rep-remove" hidden>Take them off this file</button>
+          <p id="ccp-rep-status" class="portal-link-sent" role="status" aria-live="polite"></p>
+          <input type="text" id="ccp-rep-url" class="rep-field" readonly hidden aria-label="Sign-in link">
+        </div></div><p class="workspace-access-note" id="ccp-access-note">Portal access controls are available to owners and admins.</p>
+    </section>
+  </div>
+  </main>
 
 </div>
 </div>
@@ -2333,6 +2227,11 @@ document.addEventListener("DOMContentLoaded", function () {
       a = { main: FHCP.NOT_WORKED_OUT, saved: "" };
     }
     setText(mainId, a.main);
+    if (mainId === "ccp-next-action") {
+      try { document.dispatchEvent(new CustomEvent("ccp:next-action", {
+        detail: { key: fx && fx.degraded !== true && fx.next_action ? fx.next_action.key : "" }
+      })); } catch (e) { /* Navigation never changes the file's derived answer. */ }
+    }
     var el = $(savedId);
     if (el) {
       el.textContent = a.saved;
@@ -3301,6 +3200,7 @@ document.addEventListener("DOMContentLoaded", function () {
            the failure this whole screen keeps being fixed for. */
         function selectInstead() {
           if (!approveUrl) return;
+          document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: approveUrl }));
           approveUrl.focus();
           approveUrl.select();
           done("Press Ctrl+C", 3000);
@@ -3996,7 +3896,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     el.todoAdd.addEventListener("click", function () {
       if (el.todoAdd.disabled) return;
-      if (!el.bank.value.trim()) { say(el.todoStatus, "Type the bank's name."); el.bank.focus(); return; }
+      if (!el.bank.value.trim()) { say(el.todoStatus, "Type the bank's name."); document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: el.bank })); el.bank.focus(); return; }
       el.todoAdd.disabled = true;
       say(el.todoAddLabel, "Adding…");
       say(el.todoStatus, "");
@@ -4125,6 +4025,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fund.addEventListener("click", function () {
       box.hidden = false;
       say("Type the money that actually reached the account. This is not the approved amount, and empty is not zero.");
+      document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: amount }));
       amount.focus();
     });
     cancel.addEventListener("click", function () {
@@ -4143,6 +4044,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var parsed = window.FHMoneyInput.parseAmount(amount.value);
       if (!parsed.ok) {
         say(parsed.message, "is-bad");
+        document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: amount }));
         amount.focus();
         return;
       }
@@ -4592,6 +4494,7 @@ document.addEventListener("DOMContentLoaded", function () {
         + "border:1px dashed #A1A1AA;background:transparent;color:#3F3F46;cursor:pointer";
       b.addEventListener("click", function () {
         box.value = dollars;
+        document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: box }));
         box.focus();
       });
       slot.appendChild(b);
@@ -5021,6 +4924,7 @@ document.addEventListener("DOMContentLoaded", function () {
               var parsed = window.FHMoneyInput.parseAmount(typed);
               if (!parsed.ok) {
                 statusEl.textContent = parsed.message;
+                document.dispatchEvent(new CustomEvent("ccp:reveal", { detail: amt }));
                 amt.focus();
                 return Promise.resolve();
               }

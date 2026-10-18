@@ -1,0 +1,64 @@
+/* Funding-paper presentation: standalone client page and FinanceOS vault only.
+   No data/action module changes; all states remain server-owned. */
+body[data-client-ios][data-client-page="money-vault"] .app{max-width:1440px;margin:auto}
+body[data-client-ios][data-client-page="money-vault"] .mbar{background:transparent;color:#101416;border:0;padding:24px 40px;min-height:76px}
+body[data-client-ios][data-client-page="money-vault"] .mbar .logo{filter:none}
+body[data-client-ios][data-client-page="money-vault"] .mbar .sub{color:#666c6a}
+body[data-client-ios][data-client-page="money-vault"] .mbar a{background:#fff;color:#101416;border:1px solid #deded9;border-radius:12px;padding:0 16px;min-height:44px;text-decoration:none}
+body[data-client-ios][data-client-page="money-vault"] .mnav{margin:0 40px;padding:8px;background:#fff;border:1px solid #e2e3de;border-radius:14px}
+body[data-client-ios][data-client-page="money-vault"] .mnav a{border:0;border-radius:10px;min-height:44px}
+body[data-client-ios][data-client-page="money-vault"] .mnav a[aria-current="page"]{background:#101416;color:#fff}
+body[data-client-ios][data-client-page="money-vault"] main{padding:32px 40px 64px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault{--ink:#101416;--paper:#f8f8f6;--line:#e2e3de;--text-dim:#636b67;--soft:#f1f2ee;font-size:15px;line-height:1.55}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .vt-head{margin-bottom:24px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .vt-head h1{font-size:30px;--fs-title:30px;font-weight:700;letter-spacing:-.045em;line-height:1.15}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .vt-head .caption{margin-top:10px;color:#636b67;font-size:14px;max-width:56ch}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .card{background:#fff;border:1px solid #e2e3de;border-radius:20px;padding:24px;box-shadow:none}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-progress{position:relative;background:#f0f1ec;border-color:#e0e2d9;gap:12px;margin-bottom:28px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-progress::before{content:"";position:absolute;top:0;left:24px;right:24px;height:2px;background:var(--spectrum);opacity:.65}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .eyebrow{font-family:inherit;letter-spacing:.08em;font-size:12px;color:#636b67}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-count{gap:10px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-count .fh-num{font-family:inherit;font-size:34px;--fs-metric:34px;font-weight:700;letter-spacing:-.055em;color:#101416}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-bar{height:6px;border:0;background:#dcded6}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-bar-done{background:#222b25}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-bar-check{background:repeating-linear-gradient(135deg,#747d70 0 2px,#dcded6 2px 6px)}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-next{padding-top:8px;color:#101416;font-size:14px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-groups{gap:24px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-group-head{padding-bottom:16px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault h2{font-size:19px;--fs-title:19px;letter-spacing:-.03em}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault h3{font-size:15px;letter-spacing:-.015em}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .caption{font-size:13px;color:#636b67}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item{padding:24px 0;gap:12px 16px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item:last-child{padding-bottom:0}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-main{gap:6px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-mark{border-color:#cdd2c8;border-radius:10px;background:#f4f5f1}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item.is-done>.vt-mark{background:#eaf0e7;border-color:#cdd8c7;color:#263a2c}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-status{border-color:#d7dad2;background:#f5f6f2;padding:4px 10px;min-height:28px;font-size:12px;white-space:normal;text-align:left}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item.is-done .vt-status{background:#eaf0e7;border-color:#cdd8c7;color:#263a2c}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-side{max-width:240px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-btn,:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-btn-primary{border-radius:12px;min-height:44px;font-size:14px;border-color:#cbd0c7}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-btn-primary{background:#101416;border-color:#101416;color:#fff}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-docs{background:#f8f9f6;border-color:#e2e3de;border-radius:12px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc{padding:14px 16px;gap:8px 12px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc-mark{border-color:#aeb8a9}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc-name{font-size:13px;font-weight:600}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc-act{gap:8px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-link{min-height:44px;font-size:13px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-complete{background:#101416;color:#fff;border-color:#101416}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-complete h2{color:#fff}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-form{border-radius:12px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-field{border-radius:11px}
+@media(max-width:760px){
+body[data-client-ios][data-client-page="money-vault"] .mbar{padding:16px;gap:12px}
+body[data-client-ios][data-client-page="money-vault"] .mbar .sub{display:none}
+body[data-client-ios][data-client-page="money-vault"] .mnav{margin:0 16px}
+body[data-client-ios][data-client-page="money-vault"] main{padding:28px 16px 48px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .card{padding:20px 16px;border-radius:18px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .vt-head h1{font-size:28px;--fs-title:28px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item{grid-template-columns:28px minmax(0,1fr);gap:10px 12px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-mark{width:28px;height:28px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-side{max-width:none}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc{padding:12px 10px;grid-template-columns:20px minmax(0,1fr);gap:8px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-doc-mark{width:20px;height:20px}
+:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-msg,:is(body[data-client-ios][data-client-page="money-vault"],body[data-client-ios] #fos-vault) .fh-vault .vt-item>.vt-docs{grid-column:1 / -1}
+}

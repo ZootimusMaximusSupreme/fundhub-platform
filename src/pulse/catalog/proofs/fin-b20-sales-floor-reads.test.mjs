@@ -22,7 +22,7 @@ const id = (p) => `${p}-${String(++n).padStart(4, "0")}`;
 
 // ---------------------------------------------------------------------------------------------
 // A pg-shaped adapter over SQLite with the real column names.
-function standIn(tables) {
+function standIn(tables, clock = NOW) {
   const schema = schemaColumns();
   const sqlite = new DatabaseSync(":memory:");
   for (const t of tables) {
@@ -37,7 +37,7 @@ function standIn(tables) {
         .run(...keys.map((k) => (row[k] === true ? 1 : row[k] === false ? 0 : row[k])));
     },
     async query(sql, params = []) {
-      const stmt = sqlite.prepare(portableSql(sql));
+      const stmt = sqlite.prepare(portableSql(sql).replace(/'now'/g, "'" + clock.toISOString() + "'"));
       return { rows: stmt.all(...params).map((r) => ({ ...r })) };
     },
   };
@@ -227,7 +227,7 @@ test("floor discipline: the chip's number and the live check's rows are the same
   const now = new Date();
   const ago = (minutes) => new Date(now.getTime() - minutes * 60_000).toISOString();
   const build = (withSync) => {
-    const db = standIn(["call_outcomes", "clients", "brain_drive_sync", "tasks"]);
+    const db = standIn(["call_outcomes", "clients", "brain_drive_sync", "tasks"], now);
     const c = (over) => db.insert("call_outcomes", { id: id("o"), org_id: ORG, client_id: "c1", staff_id: "s1", outcome: "deposit", logged_at: ago(120), is_demo: false, ...over });
     c({ id: "u-plain" });
     c({ id: "u-words", transcript: "We talked about the deposit and agreed on the plan." });

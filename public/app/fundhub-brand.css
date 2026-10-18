@@ -1,16 +1,17 @@
-/* fundhub.ai — real brand tokens. Source: live site CSS, verified Jul 26 2026. */
+/* Fundhub workspace tokens — native welcome reference, October 2026.
+   Tenant branding still paints through shell.js; semantic status tokens stay fixed. */
 
 :root{
   /* THE spectrum. Pastel. Coral -> peach -> butter -> sage -> powder -> lavender. */
   --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
 
-  --paper:#FCFCFC; --ink:#0A0A0A; --ink2:#18181B;
-  --gray:#52525B; --gray2:#A1A1AA;
-  --line:#E4E4E7; --soft:#F4F4F5;
+  --paper:#F8F8F6; --ink:#0D1113; --ink2:#252A2D;
+  --gray:#626968; --gray2:#858C89;
+  --line:#E3E5E0; --soft:#F0F1ED;
   --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
 
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
-  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --sans:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 
   /* Status colors are spectrum stops. Do not invent others. */
   --ok:#A8D8B0;      /* sage    - active, on pace, success, healthy */
@@ -58,21 +59,14 @@
     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
   background-size:56px 56px}
 
-/* UI-STANDARDS.md §3 TYPE SCALE — the only four text sizes a screen may use.
-   Stated in rem, not px. Measured 2026-08-17: before this change the app held
-   zero rem, zero em, zero %, zero clamp and zero vw across all ten stylesheets
-   — every length was an absolute px, so the root size below was decorative and
-   nothing responded to the reader's browser text setting. rem makes the whole
-   scale move from one place.
-   Sizes raised one step: body 14px -> 16px, caption 11px -> 13px. The owner
-   works zoomed out; at 67% browser zoom the old 11px floor painted 6 real
-   pixels on his screen. */
-html{ font-size:100%; }        /* = the reader's browser default, normally 16px */
+/* Readable semantic defaults in rem. Screens can add a local type hierarchy;
+   these tokens no longer impose four sizes on every descendant. */
+html{font-size:100%}
 :root{
-  --fs-metric:2rem;      /* 32px - big number, the one thing the role came for */
-  --fs-title:1.25rem;    /* 20px - section title */
-  --fs-body:1rem;        /* 16px - body text - never smaller */
-  --fs-caption:.8125rem; /* 13px - caption / label / eyebrow - the floor */
+  --fs-metric:2rem;       /* 32px */
+  --fs-title:1.375rem;    /* 22px */
+  --fs-body:.9375rem;     /* 15px */
+  --fs-caption:.8125rem;  /* 13px */
 }
 
 /* UI-STANDARDS.md §1 CONTENT WIDTH — FULL WIDTH, no cap.
@@ -117,8 +111,8 @@ html{ font-size:100%; }        /* = the reader's browser default, normally 16px 
    sidebar uses it for text (crm-sidebar.css --dark-text), so moving it would
    tint the rail. */
 :root{
-  --field:var(--soft,#F4F4F5);        /* the page BEHIND the panels */
-  --panel-shadow:0 1px 2px rgba(10,10,10,.04), 0 2px 8px rgba(10,10,10,.06);
+  --field:var(--paper,#F8F8F6);        /* the page BEHIND the panels */
+  --panel-shadow:0 1px 2px rgba(13,17,19,.025);
 }
 /* Conservative on purpose, and MEASURED rather than guessed: each class below
    was found by rendering the screens and collecting every sizeable block that
@@ -163,44 +157,32 @@ html{ font-size:100%; }        /* = the reader's browser default, normally 16px 
    the stretch, which would shrink-wrap them right back down. */
 .fh-maxw{max-width:none;margin-inline:0;width:100%}
 
-/* ── UI-STANDARDS.md §3 TYPE SNAP ──────────────────────────────────────────
-   Screen CSS loads AFTER this file, so leftover 7.5–13px sizes win unless we
-   force the four tokens. Scoped to the CRM shells so a client-facing deck
-   (present.html) keeps its own type.
-
-   2026-08-17: `.app-shell` was missing from every selector below. It is a real
-   wrapper — my-numbers.html:122 roots on it — and CSS `.app` does NOT match
-   `class="app-shell"`. That screen therefore got no snap at all: its sidebar
-   text measured 11px against 14px everywhere else, its nav rows 27.19px against
-   30.8px, and its whole nav block 119px shorter. The rail is on every screen,
-   so it is the ruler the eye uses, and that mismatch is what read as the app
-   "zooming in and out" between screens.
-   Written with :is() so a wrapper can never again be added to one list and
-   forgotten in the other four. All arguments are single classes, so specificity
-   is unchanged from the long-hand form this replaces. */
+/* Semantic typography. Screens own their local hierarchy; descendants are
+   never forced to inherit a size. The shared shell provides readable defaults
+   without preventing a heading, a field label, or a dense table from differing. */
 :is(.app, .app-shell, .shell, .main, .fh-maxw){
   font-size:var(--fs-body);
+  font-family:var(--sans);
 }
-:is(.app, .app-shell, .shell, .main, .fh-maxw) *{
-  font-size:inherit !important;
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h1){
+  font-size:1.75rem;line-height:1.15;letter-spacing:-.035em;font-weight:650;
 }
-:is(.app, .app-shell, .shell, .main, .fh-maxw) :is(h1, h2){
-  font-size:var(--fs-title) !important;
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h2){
+  font-size:var(--fs-title);line-height:1.25;letter-spacing:-.025em;font-weight:650;
 }
-:is(.app, .app-shell, .shell, .main, .fh-maxw) :is(.sv, .vl, .big),
-:is(.app, .app-shell) :is(.big-tile .val, .kpi .vl, .band .bv,
-  .un-mins, .fh-num, .fos-value, .rf-value){
-  font-size:var(--fs-metric) !important;
-  font-variant-numeric:tabular-nums;
+:where(.app, .app-shell, .shell, .main, .fh-maxw) :where(h3,h4){
+  font-size:1.0625rem;line-height:1.35;letter-spacing:-.015em;font-weight:650;
 }
-:is(.app, .app-shell, .shell, .main, .fh-maxw) :is(.chip, .eyebrow),
-:is(.app, .app-shell) :is(.badge, .tag, .av, .stat-label,
-  .kpi .lb, .kpi .sb, .band .bl,
-  .sd, .cmp, .note, .hint,
-  .statusline, .statusbar, .mono,
-  label, th, .caption, .sub,
-  .card-title, .rail-code){
-  font-size:var(--fs-caption) !important;
+:where(.app, .app-shell) :where(.sv,.vl,.big,.big-tile .val,.kpi .vl,
+  .band .bv,.un-mins,.fh-num,.fos-value,.rf-value){
+  font-size:var(--fs-metric);font-variant-numeric:tabular-nums;
+}
+:where(.app, .app-shell) :where(.chip,.eyebrow,.badge,.tag,.stat-label,
+  .kpi .lb,.kpi .sb,.band .bl,.sd,.cmp,.note,.hint,.statusline,.statusbar,
+  label,th,.caption,.sub,.rail-code){font-size:var(--fs-caption)}
+:where(button,input,select,textarea){font-family:inherit}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:2px solid var(--ink);outline-offset:3px;
 }
 
 /* ── UI-STANDARDS.md §5 TAP TARGETS — 40px floor ───────────────────────────

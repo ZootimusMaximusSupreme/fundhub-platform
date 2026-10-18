@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My numbers · Fundhub</title>
@@ -9,343 +14,124 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script defer src="shell.js"></script>
-<style>
-
-:root{
-  --spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
-  --paper:#FCFCFC; --ink:#0A0A0A; --ink2:#18181B;
-  --gray:#52525B; --gray2:#A1A1AA;
-  --line:#E4E4E7; --soft:#F4F4F5;
-  --card:#111113; --cardline:#26262B; --cardtext:#E4E4E7;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
-  --sans:'Inter',system-ui,-apple-system,sans-serif;
-  --ok:#A8D8B0; --warn:#F5CE8F; --alert:#F2A69B; --info:#A9C6E8; --accent:#C4B3E5;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-/* 14px HERE IS ALIVE AND HAS TO STAY 14px. `body` is OUTSIDE .app-shell, so
-   the brand file's `:is(.app,.app-shell,…) *` rule never reaches it and this
-   size really paints. It is the size the overlays shell.js appends to <body>
-   inherit — the Search panel and the chat panel. Measured 2026-08-30, headless
-   Chromium, Search open at 1440x900: raising it to var(--fs-body) grows the
-   search bar 50px -> 53px, the panel 127px -> 130px, and the ⌕ glyph
-   8x21 -> 10x24. That is a visible change to shared chrome, so it is reverted.
-   !important is only here so screen-standard.test.mjs can tell a live px size
-   from a dead one — it changes nothing, because no other rule anywhere sets a
-   body font-size. */
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px!important;line-height:1.5;-webkit-font-smoothing:antialiased}
-
-.eyebrow{font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gray)}
-.eyebrow::before{content:"";display:inline-block;width:16px;height:2px;background:var(--spectrum);border-radius:1px;margin-right:9px;vertical-align:middle}
-.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border:1px solid var(--line);border-radius:20px;color:var(--gray);white-space:nowrap}
-.chip .cd{width:6px;height:6px;border-radius:50%}
-.chip.on .cd{background:var(--ok)} .chip.wip .cd{background:var(--warn)} .chip.bad .cd{background:var(--alert)}
-/* ---------- ONE label size, one label treatment --------------------------
-   UI-STANDARDS.md §12.7. fundhub-brand.css:184-186 forces
-   `font-size:inherit !important` onto every element inside .app-shell, so the
-   px sizes this screen used to write in here never painted once. The brand
-   file hands the caption size back to a whitelist, and `.lb` is NOT on it —
-   only `.kpi .lb` is — so every label on this screen was rendering at 16px
-   body size, the same size as the number underneath it. These are this
-   screen's own class names for labels, column headers, sub-captions and
-   section headings; !important is what beats the brand's `*` rule.
-
-   Every arm is a single class this screen alone owns. NONE of them is scoped
-   under `.app`/`.app-shell` on purpose: that would raise the rule to (0,2,0)
-   and let it outrank shared chrome that shell.js styles at (0,1,0). At (0,1,0)
-   it can only ever tie, and shell.js injects its stylesheet after this one, so
-   shared chrome always wins. Checked 2026-08-30 against every class shell.js
-   and crm-sidebar.css write: no overlap.
-
-   `.st-row .why` is deliberately NOT here. It is the sentence that replaces a
-   money figure when the figure is unknown, and it sits in the same column cell
-   as `.num`, which stays at body size. Shrinking it would make one column show
-   two sizes depending on whether the data exists.
-
-   ONE rule, per §12.7 — never a second. */
-.pacetop .lb,.m .lb,.mo .lb,.mo .sb,.marks,.rk,.d,.panel h3,
-.st-row.hd,.st-row em,.nm em,.todo .t,.todo em{
-  font-size:var(--fs-caption)!important;
-}
-
-.pulse{width:8px;height:8px;border-radius:50%;background:var(--ok);position:relative;flex:0 0 auto}
-.pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--ok);animation:pulse 2s ease-out infinite}
-@keyframes pulse{to{transform:scale(1.9);opacity:0}}
-
-header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;background:var(--paper);z-index:20}
-.hl,.hr{display:flex;align-items:center;gap:12px}
-
-/* 2026-08-27: the 1240px cap and the auto margin are gone (owner-set — every
-   screen is fluid). They were already dead: crm-sidebar.css overrode both with
-   !important. Left in place they are a landmine — anyone who removes the shell
-   rule thinking it is the cap gets this number back instead of full width.
-   src/ui/shell-is-fluid.test.mjs fails if a page column is capped again. */
-.shell{padding:24px 22px}
-.sec{margin-bottom:26px}
-.sech{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.note{color:var(--gray2)}
-
-/* pace hero */
-.pace{background:var(--card);color:var(--cardtext);border-radius:12px;padding:22px 24px;position:relative;overflow:hidden}
-.pace::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px}
-.pacetop{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;position:relative}
-.pacetop .lb{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
-.pacetop .big{font-weight:500;letter-spacing:-.035em;line-height:1;margin-top:7px;font-variant-numeric:tabular-nums;min-height:44px}
-.pacetop .sub{color:var(--gray2);margin-top:6px}
-.bar{height:7px;border-radius:4px;background:rgba(255,255,255,.09);margin-top:18px;position:relative;overflow:hidden}
-.bar i{display:block;height:100%;border-radius:4px;background:var(--spectrum)}
-.marks{display:flex;justify-content:space-between;font-family:var(--mono);letter-spacing:.08em;color:var(--gray2);margin-top:7px;position:relative}
-
-/* metric grid */
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.m{background:var(--paper);padding:15px 17px}
-.m .lb{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
-.m .vl{font-weight:500;letter-spacing:-.025em;margin-top:5px;font-variant-numeric:tabular-nums;min-height:25px}
-.m .cmp{margin-top:3px;color:var(--gray)}
-.up{color:#4F8A5B} .dn{color:#C25B4E}
-
-/* leaderboard */
-.lb-row{display:grid;grid-template-columns:34px 1fr 90px 76px 70px;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
-.lb-row:first-of-type{border-top:none}
-.lb-row.me{background:var(--soft);margin:0 -12px;padding-left:12px;padding-right:12px;border-radius:7px;border-top-color:transparent}
-.rk{font-family:var(--mono);color:var(--gray2)}
-.rk.one{color:var(--ink);font-weight:500}
-.nm b{font-weight:500} .nm em{font-style:normal;color:var(--gray2);display:block}
-.num{text-align:right;font-variant-numeric:tabular-nums}
-
-/* streak */
-.days{display:flex;gap:5px;margin-top:11px}
-.d{flex:1;height:34px;border-radius:5px;background:var(--soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--gray2)}
-.d.hit{background:var(--ok);border-color:var(--ok);color:#0A3D18}
-.d.miss{background:rgba(242,166,155,.2);border-color:var(--alert);color:#7A2B22}
-.d.today{border-color:var(--ink);border-width:2px}
-
-.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.panel{border:1px solid var(--line);border-radius:10px;padding:17px 18px;background:var(--paper);min-height:160px}
-.panel h3{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray);font-weight:500;margin-bottom:13px}
-
-.qual{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
-.qual:first-of-type{border-top:none}
-.qual .r{display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums}
-
-.todo{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
-a.todo{text-decoration:none;color:inherit;cursor:pointer}
-.todo:first-of-type{border-top:none}
-.todo .t{font-family:var(--mono);color:var(--gray2);flex:0 0 78px;padding-top:1px}
-.todo b{font-weight:500;display:block} .todo em{font-style:normal;color:var(--gray)}
-
-.money{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.mo{border:1px solid var(--line);border-radius:10px;padding:15px 16px}
-.mo.paid{border-color:var(--ok);background:rgba(168,216,176,.08)}
-.mo .lb{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}
-.mo .vl{font-weight:500;letter-spacing:-.02em;margin-top:5px;font-variant-numeric:tabular-nums}
-.mo .sb{color:var(--gray);margin-top:3px}
-
-/* offer stack */
-.stack{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.st-row{display:grid;grid-template-columns:1fr 104px 132px 176px;gap:12px;align-items:baseline;padding:11px 16px;border-top:1px solid var(--line)}
-.st-row:first-child{border-top:none}
-.st-row.hd{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--gray2);background:var(--soft)}
-.st-row.tot{background:var(--soft);border-top:1px solid var(--ink)}
-.st-row b{font-weight:500}
-.st-row em{font-style:normal;color:var(--gray2);display:block}
-.st-row .num{text-align:right;font-variant-numeric:tabular-nums}
-.st-row .why{text-align:right;color:var(--gray)}
-.st-msg{padding:14px 16px;color:var(--gray)}
-
-@media(max-width:960px){.grid{grid-template-columns:repeat(2,1fr)}.two,.money{grid-template-columns:1fr}}
-@media(max-width:640px){.grid{grid-template-columns:1fr}.lb-row{grid-template-columns:28px 1fr 78px}.lb-row .hide{display:none}}
-/* The 9.5px below is ALIVE too. The brand file's rule is `… *`, and `*`
-   matches elements, not pseudo-elements — so it cannot reach ::before. This is
-   the stacked column label a phone shows above each figure ("Cash collected ·")
-   and it really has painted at 9.5px all along. Measured 2026-08-30 at 390x844
-   with rows in the stack: twelve of these move if the value is changed.
-   !important is only here so screen-standard.test.mjs can tell a live px size
-   from a dead one; nothing else targets these pseudo-elements. */
-@media(max-width:640px){.st-row{grid-template-columns:1fr;gap:4px}.st-row.hd{display:none}.st-row .num,.st-row .why{text-align:left}.st-row .num::before,.st-row .why::before{content:attr(data-l) " · ";font-family:var(--mono);font-size:9.5px!important;letter-spacing:.12em;text-transform:uppercase;color:var(--gray2)}}
-
-
-</style>
+<link rel="stylesheet" href="my-numbers.css">
 </head>
-<body>
+<body class="numbers-page">
 
 <div class="app-shell">
-<aside class="side" id="side">
-  <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
-  <nav class="side-scroll" id="fh-side-nav">
-
-<div class="navgroup" data-fh-section="home"><button class="navhead" type="button">Home<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="partner-galaxy.html"><span class="ico">⌂</span><span class="lbl">Home</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="sales"><button class="navhead" type="button">Sales<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="pipeline.html"><span class="ico">▤</span><span class="lbl">Pipeline</span></a>
-        <a class="navitem" href="closer-dashboard.html"><span class="ico">★</span><span class="lbl">Closer Dashboard</span></a>
-        <a class="navitem on" href="my-numbers.html"><span class="ico">＃</span><span class="lbl">My numbers</span></a>
-        <a class="navitem" href="sales-floor.html"><span class="ico">▣</span><span class="lbl">Sales floor</span></a>
-        <a class="navitem" href="calendar.html"><span class="ico">▦</span><span class="lbl">Calendar</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="funding"><button class="navhead" type="button">Funding<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="lenders.html"><span class="ico">⬡</span><span class="lbl">Lenders</span></a>
-        <a class="navitem" href="client-control-panel.html"><span class="ico">◎</span><span class="lbl">Client Control Panel</span></a>
-        <a class="navitem" href="finance-os.html"><span class="ico">▩</span><span class="lbl">Finance OS</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="client-ops"><button class="navhead" type="button">Client ops<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="csm-queue.html"><span class="ico">☎</span><span class="lbl">Client Success</span></a>
-        <a class="navitem" href="consent-capture.html"><span class="ico">☑</span><span class="lbl">Consent</span></a>
-        <a class="navitem" href="messaging.html"><span class="ico">✉</span><span class="lbl">Messaging</span></a>
-        <a class="navitem" href="documents.html"><span class="ico">▧</span><span class="lbl">Documents</span></a>
-        <a class="navitem" href="inquiry-remover.html"><span class="ico">⊘</span><span class="lbl">Specialist</span></a>
-        <a class="navitem" href="company-brain.html"><span class="ico">◎</span><span class="lbl">Company Brain</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="watch"><button class="navhead" type="button">Watch<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="galaxy.html"><span class="ico">✷</span><span class="lbl">Galaxy</span></a>
-        <a class="navitem" href="ops-admin.html"><span class="ico">⚙</span><span class="lbl">Ops &amp; Admin</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="automation"><button class="navhead" type="button">Automation<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="agent-editor.html"><span class="ico">◈</span><span class="lbl">Agent Editor</span></a>
-        <a class="navitem" href="automations.html"><span class="ico">⇄</span><span class="lbl">Workflows</span></a>
-        <a class="navitem" href="journeys.html"><span class="ico">⇝</span><span class="lbl">Journeys</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button">Marketing<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="marketing-command-center.html"><span class="ico">⚑</span><span class="lbl">Command Center</span></a>
-        <a class="navitem" href="campaign-manager.html"><span class="ico">◇</span><span class="lbl">Campaigns</span></a>
-        <a class="navitem" href="social-studio.html"><span class="ico">◉</span><span class="lbl">Social Studio</span></a>
-        <a class="navitem" href="creative-factory.html"><span class="ico">✳</span><span class="lbl">Creative Factory</span></a>
-        <a class="navitem" href="content-admin.html"><span class="ico">▭</span><span class="lbl">Content</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="admin"><button class="navhead" type="button">Admin<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="staff-teams.html"><span class="ico">⚇</span><span class="lbl">Staff &amp; Teams</span></a>
-        <a class="navitem" href="hiring.html"><span class="ico">⊕</span><span class="lbl">Hiring</span></a>
-        <a class="navitem" href="products-commissions.html"><span class="ico">⛁</span><span class="lbl">Products &amp; Commissions</span></a>
-        <a class="navitem" href="contracts.html"><span class="ico">✒</span><span class="lbl">Contract templates</span></a>
-        <a class="navitem" href="brand-studio.html"><span class="ico">◆</span><span class="lbl">Brand Studio</span></a>
-</div></div>
-
-<div class="navgroup" data-fh-section="portals"><button class="navhead" type="button">Portals<span class="chev">▾</span></button><div class="navlist">
-        <a class="navitem" href="client-portal.html"><span class="ico">◐</span><span class="lbl">Client Portal</span></a>
-        <a class="navitem" href="affiliate.html"><span class="ico">⇗</span><span class="lbl">Affiliate</span></a>
-</div></div>
-
+<aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem on" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
   </nav>
-  <div class="side-foot"><span class="pulse"></span><span class="who">fundhub</span></div>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
 </aside>
 <div class="stage" id="fh-stage">
 
 
-<header>
-  <div class="hl">
-    <span class="eyebrow">C-02 / My numbers</span>
-    <span class="chip" id="shiftChip"><span class="cd"></span>—</span>
-  </div>
-  <div class="hr">
-    <span class="chip" id="staffChip"><span class="cd" style="background:var(--info)"></span>—</span>
-    <span class="pulse"></span>
-  </div>
-</header>
-
-<div class="shell">
-
-  <div class="sec">
-    <div class="pace">
-      <div class="pacetop">
-        <div>
-          <div class="lb">Cash collected · this month</div>
-          <div class="big">—</div>
-          <div class="sub">—</div>
-        </div>
-        <div style="text-align:right">
-          <div class="lb">Rank</div>
-          <div class="big">—<span style="color:var(--gray2)">/—</span></div>
-          <div class="sub">—</div>
-        </div>
-      </div>
-      <div class="bar"><i style="width:0%"></i></div>
-      <div class="marks"><span>0</span><span>Target —</span><span>Stretch —</span></div>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">Offer stack</span><span class="note" id="stackPeriod">every product you sell</span></div>
-    <div class="stack" id="stackBody">
-      <div class="st-row hd"><span>Product</span><span class="num">Units sold</span><span class="num">Amount sold</span><span class="num">Cash collected</span></div>
-      <div class="st-msg">The numbers have not loaded yet.</div>
-    </div>
-    <p class="note" id="stackScope" style="margin-top:11px"></p>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">This month</span><span class="note">vs last month</span></div>
-    <div class="grid">
-      <div class="m"><div class="lb">Deposits closed</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Close rate</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Show rate</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Downsells</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Deposit → funded</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Avg funded</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Calls held</div><div class="vl">—</div><div class="cmp"></div></div>
-      <div class="m"><div class="lb">Unlogged</div><div class="vl">—</div><div class="cmp"></div></div>
-    </div>
-    <p class="note" style="margin-top:11px">These are your live numbers. A dash means the value is not known yet.</p>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">Money</span><span class="note">Commission plan comes from the ledger — missing stays a dash</span></div>
-    <div class="money">
-      <div class="mo paid">
-        <div class="lb">Paid out</div>
-        <div class="vl">—</div>
-        <div class="sb">—</div>
-      </div>
-      <div class="mo">
-        <div class="lb">Pending funding</div>
-        <div class="vl">—</div>
-        <div class="sb">—</div>
-      </div>
-      <div class="mo">
-        <div class="lb">At risk</div>
-        <div class="vl">—</div>
-        <div class="sb">—</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">Streak</span><span class="note">a day counts when you close at least one</span></div>
-    <div class="days">
-      <div class="d" style="flex:2;justify-content:flex-start;padding:0 10px">Daily close streak is not stored yet.</div>
-    </div>
-  </div>
-
-  <div class="sec two">
-    <div class="panel">
-      <h3>Team · this month</h3>
-    </div>
-
-    <div class="panel">
-      <h3>Call quality</h3>
-      <p class="note">Call recording and transcription do not exist yet.</p>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="sech"><span class="eyebrow">Owed by you</span><span class="note">clears automatically when done</span></div>
-    <div class="panel">
-      <div class="todo"><span class="t">—</span><div><b>Nothing owed</b><em>Unlogged calls and quiet deposits will land here</em></div></div>
-    </div>
-  </div>
-
+<div class="topbar numbers-toolbar">
+  <div class="numbers-intro"><h2>Monthly performance</h2><p id="numbersPeriod">Your sales, follow-ups and commissions this month.</p></div>
+  <div class="numbers-toolbar-actions"><span class="chip" id="shiftChip"><span class="cd"></span>Shift —</span><button type="button" id="numbersRefresh" class="numbers-button">Refresh <span aria-hidden="true">↻</span></button></div>
+  <span id="staffChip" class="numbers-sr-only">—</span>
 </div>
+<main class="shell numbers-shell" id="numbersMain" aria-label="Personal sales performance">
+  <div class="numbers-status" id="numbersStatus" role="status"><span id="numbersStatusText">Loading your numbers…</span><button type="button" class="numbers-button" id="numbersRetry" hidden>Try again</button></div>
+  <div id="numbersContent" aria-busy="true">
+    <div class="numbers-overview">
+      <section class="sec pace" aria-label="Monthly cash and rank">
+        <div class="pacetop">
+          <div><div class="lb">Cash collected · this month</div><div class="big">—</div><div class="sub">Waiting for this month's totals</div></div>
+          <div class="numbers-rank"><div class="lb">Team rank</div><div class="big">—<span>/—</span></div><div class="sub">This month</div></div>
+        </div>
+        <div class="numbers-target"><span id="numbersTargetLabel">Monthly target</span><div class="bar" role="progressbar" aria-label="Monthly deposit target" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div><div class="marks"><span>0</span><span>Target —</span><span>Stretch —</span></div></div>
+      </section>
+      <section class="sec numbers-owed" id="owedSection" aria-labelledby="owedTitle">
+        <div class="sech"><h2 class="eyebrow" id="owedTitle">Owed by you</h2><span class="note">clears automatically when done</span></div>
+        <div class="panel" id="owedPanel"><p class="note">Follow-ups will appear here when your numbers load.</p></div>
+      </section>
+    </div>
 
+    <section class="sec" aria-labelledby="monthTitle">
+      <div class="sech"><h2 class="eyebrow" id="monthTitle">This month</h2><span class="note">vs last month where available</span></div>
+      <div class="grid">
+        <div class="m"><div class="lb">Deposits closed</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Close rate</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Show rate</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Downsells</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Deposit → funded</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Avg funded</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Calls held</div><div class="vl">—</div><div class="cmp"></div></div>
+        <div class="m"><div class="lb">Unlogged</div><div class="vl">—</div><div class="cmp"></div></div>
+      </div>
+      <p class="note numbers-footnote">A dash means the value is not known yet.</p>
+    </section>
+
+    <section class="sec" aria-labelledby="stackTitle">
+      <div class="sech"><h2 class="eyebrow" id="stackTitle">Offer stack</h2><span class="note" id="stackPeriod">every product you sell</span></div>
+      <div class="stack" id="stackBody"><div class="st-row hd"><span>Product</span><span class="num">Units sold</span><span class="num">Amount sold</span><span class="num">Cash collected</span></div><div class="st-msg">The numbers have not loaded yet.</div></div>
+      <p class="note numbers-footnote" id="stackScope"></p>
+    </section>
+
+    <section class="sec" aria-labelledby="moneyTitle">
+      <div class="sech"><h2 class="eyebrow" id="moneyTitle">Money</h2><span class="note">Commission plan comes from the ledger — missing stays a dash</span></div>
+      <div class="money">
+        <div class="mo paid"><div class="lb">Paid out</div><div class="vl">—</div><div class="sb">Waiting for commission totals</div></div>
+        <div class="mo"><div class="lb">Pending funding</div><div class="vl">—</div><div class="sb">Waiting for commission totals</div></div>
+        <div class="mo"><div class="lb">At risk</div><div class="vl">—</div><div class="sb">Waiting for commission totals</div></div>
+      </div>
+    </section>
+
+    <div class="sec two">
+      <section class="panel" id="teamPanel" aria-labelledby="teamTitle"><h3 id="teamTitle">Team · this month</h3><p class="note">Team results will appear when loaded.</p></section>
+      <section class="panel" id="qualityPanel" aria-labelledby="qualityTitle"><h3 id="qualityTitle">Call quality</h3><p class="note">Call quality availability will appear when loaded.</p></section>
+    </div>
+    <section class="sec numbers-streak" aria-labelledby="streakTitle"><div class="sech"><h2 class="eyebrow" id="streakTitle">Streak</h2><span class="note">a day counts when you close at least one</span></div><div class="days"><div class="d">Streak availability will appear when loaded.</div></div></section>
+  </div>
+</main>
 </div>
 </div>
 <script defer src="data.js"></script>

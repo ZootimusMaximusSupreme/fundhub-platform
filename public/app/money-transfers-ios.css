@@ -1,0 +1,3 @@
+/* Standalone page spacing; shared workspace header and money navigation own chrome. */
+body[data-client-page="money-transfers"] main{padding:28px 36px 56px;min-width:0}
+@media(max-width:760px){body[data-client-page="money-transfers"] main{padding:24px 18px 48px}}

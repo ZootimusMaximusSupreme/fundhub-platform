@@ -1,0 +1,13 @@
+/* Fundhub's rounded interface type. Apple fonts are never redistributed. */
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Regular"),local("SFProRounded-Regular"),local(".SFNSRounded-Regular");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Medium"),local("SFProRounded-Medium"),local(".SFNSRounded-Medium");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Semibold"),local("SFProRounded-Semibold"),local(".SFNSRounded-Semibold");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Local";src:local("SF Pro Rounded Bold"),local("SFProRounded-Bold"),local(".SFNSRounded-Bold");font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:"Fundhub Rounded Web";src:url("/assets/fonts/nunito-latin-variable.woff2") format("woff2");font-style:normal;font-weight:200 900;font-display:swap}
+:root{--fh-rounded-font:"Fundhub Rounded Local","Fundhub Rounded Web",ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+@supports(font:-apple-system-body){:root{--fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Fundhub Rounded Web",system-ui,sans-serif}}
+/* Apple browsers use the native system rounded design before the licensed fallback. */
+:root[data-fh-apple-rounded]{--fh-rounded-font:ui-rounded,"Fundhub Rounded Local","Fundhub Rounded Web",system-ui,sans-serif}
+html[data-fh-rounded-default]{--sans:var(--fh-rounded-font)!important}
+html[data-fh-rounded-default] :where(body,body *):not(svg):not(svg *):not(code):not(code *):not(pre):not(pre *):not(kbd):not(samp):not(.ico):not(.icon):not(.fa):not(.material-icons):not(.material-symbols-outlined){font-family:var(--fh-rounded-font)!important}
+html[data-fh-rounded-default] :is(code,pre,kbd,samp){font-family:ui-monospace,SFMono-Regular,Consolas,monospace!important}

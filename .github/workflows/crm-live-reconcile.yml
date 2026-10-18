@@ -1,0 +1,298 @@
+name: Current production CRM type and layout checks
+# Verify all twelve integrated staff workspaces and twenty-four client pages.
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths:
+      - .github/workflows/crm-live-reconcile.yml
+      - public/app/shell.js
+      - public/app/client-ios.js
+      - public/app/client-ios.css
+      - public/_headers
+      - public/app/fundhub-font.css
+      - public/app/fundhub-font.js
+      - scripts/prepare-rounded-type.mjs
+      - scripts/integrate-reviewed-staff.mjs
+      - src/ui/rounded-reference-font.test.mjs
+      - e2e/font-reference.spec.mjs
+      - src/demo/**
+      - api/auth/session.mjs
+      - api/read/affiliates.mjs
+      - api/banking/link-token.mjs
+      - api/banking/link-exchange.mjs
+      - src/http/middleware/requirePrincipal.mjs
+permissions:
+  contents: write
+concurrency:
+  group: crm-live-font-reconcile
+  cancel-in-progress: false
+jobs:
+  font-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install and verify the committed UI assets
+        id: prepare
+        run: |
+          test -s public/assets/fonts/nunito-latin-variable.woff2
+          test -s public/assets/fonts/Nunito-OFL.txt
+          test -s public/app/workspace-ui.css
+          test -s public/app/pipeline-workspace.css
+          node --check public/app/fundhub-font.js
+          node --check public/app/shell.js
+          npm ci --ignore-scripts
+          npx playwright install chromium
+          test -x /usr/bin/google-chrome
+          echo 'PLAYWRIGHT_CHROMIUM=/usr/bin/google-chrome' >> "$GITHUB_ENV"
+      - name: Lint and TypeScript
+        id: lint
+        continue-on-error: true
+        run: |
+          npm run lint
+          npx --yes --package typescript@5.9.3 tsc --noEmit
+      - name: Type, roles, page assets and existing client behavior checks
+        id: node
+        continue-on-error: true
+        run: |
+          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs src/http/affiliates-self-read.test.mjs src/demo/client-portal-samples.test.mjs src/http/morning-brief-page.test.mjs src/http/contracts-screen.test.mjs src/http/financeos-screen.test.mjs src/push/service-worker.test.mjs src/pulse/catalog/proofs/fin-b14-lenders.test.mjs src/pulse/catalog/proofs/fin-b12-repair-pages.test.mjs src/pulse/catalog/proofs/s4-finance-os-panels.test.mjs src/pulse/catalog/proofs/fin-b02-sales-floor-open.test.mjs src/pulse/catalog/proofs/fin-b20-repair-floor.test.mjs src/pulse/catalog/proofs/fin-b20-sales-floor.test.mjs src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs src/pulse/catalog/proofs/fin-b16-present.test.mjs src/pulse/catalog/proofs/s4-financeos-frame.test.mjs src/pulse/catalog/proofs/fin-b20-sales-floor-reads.test.mjs src/pulse/catalog/proofs/fin-b23-money-helper-poll.test.mjs
+      - name: Actual browser font and feature checks
+        timeout-minutes: 15
+        id: browser
+        continue-on-error: true
+        env:
+          TYPE_ONLY: ${{ contains(github.event.head_commit.message, '[type-only]') }}
+        run: |
+          if [ "$TYPE_ONLY" = "true" ]; then
+            node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/partner-brand-crm.spec.mjs --workers=4 --max-failures=8 --reporter=line
+          else
+          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sales-floor-layout.spec.mjs e2e/s1-sales-floor.spec.mjs e2e/finance-os-workspace.spec.mjs e2e/finance-os-staff-clicks.spec.mjs e2e/csm-queue-layout.spec.mjs e2e/csm-queue-clicks.spec.mjs e2e/my-numbers-layout.spec.mjs e2e/contracts-layout.spec.mjs e2e/contracts-wording-clicks.spec.mjs e2e/lenders-layout.spec.mjs e2e/lenders.spec.mjs e2e/lenders-inquiry-ops.spec.mjs e2e/fin-b15-lenders-dismiss.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs e2e/page_*.spec.mjs e2e/client-ios-integration.spec.mjs e2e/client-ios-samples.spec.mjs e2e/client-brand-preservation.spec.mjs --workers=4 --max-failures=8 --reporter=line 
+          fi
+      - name: Money account, decline and transfer page controls
+        id: money
+        continue-on-error: true
+        run: |
+          node scripts/page_money_accounts-browser.mjs
+          node scripts/page_money_declines-browser.mjs
+          node scripts/page_money_transfers-browser.mjs
+      - name: Phone presentation performance
+        id: performance
+        continue-on-error: true
+        run: |
+          mkdir -p ops/workflows/build-evidence/client-portal-ios-redo
+          node scripts/client-ios-performance.mjs
+      - name: Preserve checked source and marked evidence on this branch
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          NODE: ${{ steps.node.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+          MONEY: ${{ steps.money.outcome }}
+          PERFORMANCE: ${{ steps.performance.outcome }}
+          PROOF_SCOPE: ${{ contains(github.event.head_commit.message, '[type-only]') && 'font-only; prior staff feature run remains separate evidence' || 'full staff integration and font proof' }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const out='ops/workflows/build-evidence/crm-font-live';
+          fs.mkdirSync(out,{recursive:true});
+          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,lint:process.env.LINT,node:process.env.NODE,browser:process.env.BROWSER,money:process.env.MONEY,performance:process.env.PERFORMANCE,noProductionDeploy:true,noCustomerWrites:true,proofScope:process.env.PROOF_SCOPE,referenceFont:'SF Pro Rounded',webFallback:'Nunito with SIL OFL1.1; Apple font files are not bundled'},null,2));
+          // Proofs write only a run-specific snapshot; source is already committed.
+          // Concurrent root/page integration must never conflict with a shared checks.json.
+          const snapshot=out+'/runs/'+process.env.GITHUB_RUN_ID;
+          fs.mkdirSync(snapshot,{recursive:true});
+          for(const entry of fs.readdirSync(out,{withFileTypes:true})){
+            if(entry.name==='runs'||!entry.isFile())continue;
+            fs.copyFileSync(out+'/'+entry.name,snapshot+'/'+entry.name);
+          }
+          const perf='ops/workflows/build-evidence/client-portal-ios-redo';
+          for(const name of ['performance-lab.json','sample-home-390.png','sample-home-1440.png']){
+            if(fs.existsSync(perf+'/'+name))fs.copyFileSync(perf+'/'+name,snapshot+'/'+name);
+          }
+          execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
+          execFileSync('git',['add','-f','--',snapshot]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
+            execFileSync('git',['commit','-m','Record isolated client/staff browser evidence for run '+process.env.GITHUB_RUN_ID],{stdio:'inherit'});
+            // Discard generated changes at the old shared evidence paths before rebasing.
+            const generated=execFileSync('git',['ls-files','--',out,perf],{encoding:'utf8'}).trim().split('\n').filter(p=>p&&!p.startsWith(snapshot+'/'));
+            if(generated.length)execFileSync('git',['restore','--worktree','--',...generated],{stdio:'inherit'});
+            for(let attempt=0;attempt<3;attempt++){
+              execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
+              try{execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});break;}
+              catch(error){if(attempt===2)throw error;console.log('Source advanced during evidence push; rebasing the isolated snapshot again.');}
+            }
+          }
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crm-client-controls-and-phone-evidence
+          path: |
+            test-results/
+            ops/workflows/build-evidence/client-portal-ios-redo/
+            ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/
+          retention-days: 14
+      - name: Require honest passing proof
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          NODE: ${{ steps.node.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+          MONEY: ${{ steps.money.outcome }}
+          PERFORMANCE: ${{ steps.performance.outcome }}
+        run: |
+          test "$PREPARE" = success
+          test "$LINT" = success
+          test "$NODE" = success
+          test "$BROWSER" = success
+          test "$MONEY" = success
+          test "$PERFORMANCE" = success
+  layout-merge-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check existing reviewed UI against current main without changing production
+        run: |
+          git fetch origin main codex/crm-portal-layout-professional
+          python - <<'PY'
+          import json,pathlib,subprocess,tempfile,re
+          main='origin/main';incoming='803d2b7e47f137d7773d4006445b971179cef835'
+          base=subprocess.check_output(['git','merge-base',main,incoming],text=True).strip()
+          paths=subprocess.check_output(['git','diff','--name-only','79b609ee5bc656dc638856705899a1635ebed4ed',incoming,'--','public/app','public/login.html','public/portal-login.html','public/progress.html','public/contract.html','public/reset-password.html','public/login-ios.css','public/portal-login-ios.css','public/contract-ios.css','public/progress-ios.css'],text=True).splitlines()
+          def read(ref,p):
+           r=subprocess.run(['git','show',ref+':'+p],capture_output=True)
+           return None if r.returncode else r.stdout
+          report=[]
+          for p in paths:
+           a,b,c=read(main,p),read(base,p),read(incoming,p)
+           if c is None:report.append({'path':p,'state':'incoming deletion; inspect'});continue
+           if a is None:
+            report.append({'path':p,'state':'new reviewed asset' if b is None else 'absent on production; inspect','incoming_bytes':len(c)});continue
+           if a==c:report.append({'path':p,'state':'already identical'});continue
+           with tempfile.TemporaryDirectory() as d:
+            files=[pathlib.Path(d)/str(n) for n in range(3)]
+            for f,data in zip(files,[a,b or b'',c]):f.write_bytes(data)
+            r=subprocess.run(['git','merge-file','-p',*map(str,files)],capture_output=True)
+           text=r.stdout.decode('utf8','replace')
+           ids=lambda v:set(re.findall(r'\bid=["\']([^"\']+)',v.decode('utf8','replace')))
+           report.append({'path':p,'state':'clean three-way merge' if r.returncode==0 else 'conflict; manual integration required','removed_production_ids':sorted(ids(a)-ids(r.stdout)),'production_bytes':len(a),'incoming_bytes':len(c),'merged_bytes':len(r.stdout)})
+          out=pathlib.Path('ops/workflows/build-evidence/crm-reconcile-scan');out.mkdir(parents=True,exist_ok=True)
+          (out/'report.json').write_text(json.dumps({'base':base,'production':subprocess.check_output(['git','rev-parse',main],text=True).strip(),'incoming':incoming,'files':report,'not_deployed':True},indent=2)+'\n')
+          counts={}
+          for row in report:counts[row['state']]=counts.get(row['state'],0)+1
+          (out/'README.md').write_text('# Existing UI integration scan\n\nRead-only three-way scan; no production or customer changes.\n\n'+json.dumps(counts,indent=2)+'\n')
+          print(json.dumps(counts))
+          PY
+          git config user.name 'Fundhub UI checks'
+          git config user.email 'ui-checks@fundhub.ai'
+          report_dir=$(mktemp -d)
+          cp ops/workflows/build-evidence/crm-reconcile-scan/report.json "$report_dir/report.json"
+          cp ops/workflows/build-evidence/crm-reconcile-scan/README.md "$report_dir/README.md"
+          git checkout -b "codex/crm-reconcile-scan-$GITHUB_RUN_ID" origin/main
+          mkdir -p ops/workflows/build-evidence/crm-reconcile-scan
+          cp "$report_dir/report.json" "$report_dir/README.md" ops/workflows/build-evidence/crm-reconcile-scan/
+          git add -f ops/workflows/build-evidence/crm-reconcile-scan
+          git commit -m 'Record current-production UI integration scan without changing app files'
+          git push origin "HEAD:codex/crm-reconcile-scan-$GITHUB_RUN_ID"
+
+  referral-demo-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_ui_review
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ui_review
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ui_review
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_ui_review
+      ALLOW_SUPERUSER_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Prepare disposable database
+        id: prepare
+        run: |
+          npm ci --ignore-scripts
+          node db/migrate.mjs
+          node --input-type=module <<'JS'
+          import {db,close} from './src/db.mjs';
+          import {resolveDefaultOrg} from './src/auth/org.mjs';
+          const org=await resolveDefaultOrg(db);
+          await db.query("INSERT INTO staff (org_id,email,name,role,status) VALUES ($1,'portal-ci-owner@example.test','Portal CI owner','owner','active') ON CONFLICT DO NOTHING",[org]);
+          await close();
+          JS
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+      - name: Actual referral persistence and exact sample account linkage
+        id: referral
+        continue-on-error: true
+        run: |
+          node --test --test-concurrency=1 src/http/affiliate-referral.pg.test.mjs src/affiliates/two-tier-chain.pg.test.mjs src/demo/client-portal-samples.pg.test.mjs
+      - name: App role privileges and tenant isolation
+        id: isolation
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+          ALLOW_SUPERUSER_DB: ""
+        run: |
+          npm run guard:db
+          node --test --test-concurrency=1 src/compliance/rls-bypass.pg.test.mjs src/compliance/invariants.pg.test.mjs src/security/superuser-guard.test.mjs src/security/rls-shape.test.mjs
+      - name: Preserve honest database checkpoint
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          REFERRAL: ${{ steps.referral.outcome }}
+          ISOLATION: ${{ steps.isolation.outcome }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const out='ops/workflows/build-evidence/crm-referral-live';
+          fs.mkdirSync(out,{recursive:true});
+          fs.writeFileSync(out+'/'+process.env.GITHUB_RUN_ID+'.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,referral:process.env.REFERRAL,isolation:process.env.ISOLATION,database:'disposable GitHub Postgres; never production',noCustomerWrites:true,noOutboundSends:true},null,2));
+          execFileSync('git',['config','user.name','Fundhub UI checks']);
+          execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
+          execFileSync('git',['add','-f','--',out]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
+            execFileSync('git',['commit','-m','Record scratch database referral and client sample proof'],{stdio:'inherit'});
+            execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
+            execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
+          }
+          JS
+      - name: Require actual passing database proof
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          REFERRAL: ${{ steps.referral.outcome }}
+          ISOLATION: ${{ steps.isolation.outcome }}
+        run: |
+          test "$PREPARE" = success
+          test "$REFERRAL" = success
+          test "$ISOLATION" = success

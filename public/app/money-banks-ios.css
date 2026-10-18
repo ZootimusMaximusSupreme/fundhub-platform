@@ -1,0 +1,43 @@
+/* Professional Banks workspace. Shared FinanceOS host uses the same section rules. */
+body[data-client-ios] .mbar{padding:20px 32px 12px;background:transparent;color:var(--client-ink);border:0;border-image:none;min-height:56px}
+body[data-client-ios] .mbar .brand{display:none}
+body[data-client-ios] .mbar a{color:var(--client-ink);font-size:13px;font-weight:600;text-decoration:none;min-height:44px}
+body[data-client-ios] main{padding:24px 32px 64px;min-width:0}
+body[data-client-ios] .app{min-width:0;background:transparent}
+body[data-client-ios] :is(#banks-root,#fos-banks) .fh-banks{--bk-surface:#fff;--bk-dim:#656b6c;color:#101416;font-family:var(--sans);font-size:15px;line-height:1.55}
+body[data-client-ios] :is(#banks-root,#fos-banks) .head{margin-bottom:24px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .head h1{font-size:32px;line-height:1.16;letter-spacing:-.045em;font-weight:750;margin-bottom:8px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .caption{font-size:13px;line-height:1.55;color:#656b6c}
+body[data-client-ios] :is(#banks-root,#fos-banks) .card{padding:24px;border:1px solid #e4e6e3;border-radius:18px;background:#fff;box-shadow:none;min-width:0}
+body[data-client-ios] :is(#banks-root,#fos-banks) .tile{gap:8px;padding:20px 24px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .eyebrow{font-family:var(--sans);font-size:12px;font-weight:650;letter-spacing:.035em;color:#656b6c}
+body[data-client-ios] :is(#banks-root,#fos-banks) .big{font-family:var(--sans);font-size:32px;font-weight:720;letter-spacing:-.04em;line-height:1.15;color:#101416}
+body[data-client-ios] :is(#banks-root,#fos-banks) .num{font-family:var(--sans);font-weight:650;font-variant-numeric:tabular-nums}
+body[data-client-ios] :is(#banks-root,#fos-banks) .block{margin-bottom:32px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .block>h2{font-size:20px;letter-spacing:-.025em;margin-bottom:8px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .banks{gap:16px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .bank-name{font-size:18px;font-weight:700;letter-spacing:-.025em}
+body[data-client-ios] :is(#banks-root,#fos-banks) .facts{padding:16px 0;border-top:1px solid #eceeeb;border-bottom:1px solid #eceeeb;gap:16px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .bank-detail summary{min-height:44px;display:list-item;cursor:pointer;font-weight:600;font-size:13px;padding:10px 0}
+body[data-client-ios] :is(#banks-root,#fos-banks) .bank-detail[open]>div{margin-top:16px}
+body[data-client-ios] :is(#banks-root,#fos-banks) :is(.tag,.status){font-size:12px;border:1px solid #e4e6e3;background:#f5f6f3;padding:3px 8px;color:#464d4d;white-space:normal}
+body[data-client-ios] :is(#banks-root,#fos-banks) .st-seasoned{background:#eef2ec;color:#344b38}
+body[data-client-ios] :is(#banks-root,#fos-banks) :is(.btn-primary,.btn-line){border-radius:11px;min-height:44px;padding:8px 16px;font-weight:600;font-size:13px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .btn-primary{background:#101416;color:#fff;border-color:#101416}
+body[data-client-ios] :is(#banks-root,#fos-banks) .btn-line{background:#fff;border-color:#d7dbd6;color:#101416}
+body[data-client-ios] :is(#banks-root,#fos-banks) .steps li::before{border:1px solid #dde1da;background:#f6f7f4;color:#353b38;font-family:var(--sans)}
+body[data-client-ios] :is(#banks-root,#fos-banks) .stack-row{border-radius:14px;padding:20px;gap:16px}
+body[data-client-ios] :is(#banks-root,#fos-banks) .stack-n{background:#101416;color:#fff}
+body[data-client-ios] :is(#banks-root,#fos-banks) .why li{border-color:#e3e6e0}
+body[data-client-ios] :is(#banks-root,#fos-banks) .scroll-x{max-width:100%;overscroll-behavior-inline:contain}
+body[data-client-ios] :is(#banks-root,#fos-banks) :is(.bank-head,.facts,.stack-main,.stack-side,.notset){overflow-wrap:anywhere}
+body[data-client-ios] :is(#banks-root,#fos-banks) .field :is(input,select){border:1px solid #d7dbd6;border-radius:11px;background:#fff;min-height:44px;max-width:100%}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:12px 20px 0}
+ body[data-client-ios] main{padding:20px 20px 48px}
+ body[data-client-ios] :is(#banks-root,#fos-banks) .head h1{font-size:28px}
+ body[data-client-ios] :is(#banks-root,#fos-banks) .card{padding:20px}
+ body[data-client-ios] :is(#banks-root,#fos-banks) .facts{grid-template-columns:minmax(0,1fr)}
+ body[data-client-ios] :is(#banks-root,#fos-banks) .bank-head{flex-wrap:wrap}
+ body[data-client-ios] :is(#banks-root,#fos-banks) .big{font-size:30px}
+}

@@ -37,6 +37,7 @@ async function openHandoff(lab, answer, { clipboard = null } = {}) {
   if (clipboard) await page.addInitScript(clipboard);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: lab.origin });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-credit").click();
   await page.locator("#ccp-consent-state", { hasText: /Consent is on file|No consent|took their permission|run out|later date/ }).waitFor({ timeout: 30_000 });
   return page;
 }
@@ -167,6 +168,7 @@ async function openBlueprint(lab, { custom = {}, respond = null } = {}) {
     }
   });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-funding").click();
   await page.locator("#bp-group .group-title").click();
   await page.locator("#bp-body").waitFor({ state: "visible", timeout: 30_000 });
   return { page, sent, actions: (name) => sent.filter((body) => body.action === name) };
@@ -204,6 +206,7 @@ test("Save month/year posts the exact business and refreshes the saved incorpora
     }
   });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-records").click();
   await page.locator("#ccp-inc-0").waitFor({ state: "visible", timeout: 30_000 });
 
   await page.locator("#ccp-inc-0").fill("2020-05");

@@ -250,7 +250,7 @@ test("a staff session still gets the org brand", async ({ page }) => {
 
   expect(t.ink.toUpperCase()).toBe("#0A0A0A");
   expect(t.paper.toUpperCase()).toBe("#FCFCFC");
-  expect(t.sans).toContain("Inter");
+  expect(t.sans).toContain("Fundhub Rounded");
   for (const [name, want] of Object.entries(FUNDHUB_STATUS)) {
     expect(t[name.replace("--", "")].toUpperCase(),
       `${name} moved on a staff screen`).toBe(want);

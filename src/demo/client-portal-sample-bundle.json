@@ -1,0 +1,4369 @@
+{
+  "version": 1,
+  "as_of": "2026-10-17T12:00:00.000Z",
+  "notice": "Sample view \u2014 fictional data. No credit bureau or bank was contacted.",
+  "facts": {
+    "windowStart": "2026-07-18",
+    "windowEnd": "2026-10-16",
+    "accounts": [
+      {
+        "name": "Personal Checking",
+        "mask": "1101",
+        "type": "depository",
+        "openingCents": 235000,
+        "activityCents": 1103500,
+        "currentCents": 1338500,
+        "minEodCents": 195000,
+        "maxEodCents": 1338500,
+        "firstPostedOn": "2026-07-22",
+        "lastPostedOn": "2026-10-16"
+      },
+      {
+        "name": "Business Checking",
+        "mask": "2202",
+        "type": "depository",
+        "openingCents": 980000,
+        "activityCents": 998000,
+        "currentCents": 1978000,
+        "minEodCents": 980000,
+        "maxEodCents": 2150000,
+        "firstPostedOn": "2026-07-25",
+        "lastPostedOn": "2026-10-11"
+      },
+      {
+        "name": "Personal Visa",
+        "mask": "3303",
+        "type": "credit",
+        "limitCents": 800000,
+        "purchaseApr": 24.99,
+        "openingCents": 284010,
+        "activityCents": 28690,
+        "currentCents": 312700,
+        "minEodCents": 254210,
+        "maxEodCents": 316935,
+        "firstPostedOn": "2026-07-19",
+        "lastPostedOn": "2026-10-14",
+        "statementDay": 25,
+        "paymentDay": 21,
+        "statements": [
+          {
+            "date": "2026-07-25",
+            "balanceCents": 259975,
+            "interestCents": 5765
+          },
+          {
+            "date": "2026-08-25",
+            "balanceCents": 272626,
+            "interestCents": 5982
+          },
+          {
+            "date": "2026-09-25",
+            "balanceCents": 278091,
+            "interestCents": 6156
+          }
+        ],
+        "lastStatement": {
+          "date": "2026-09-25",
+          "balanceCents": 278091,
+          "interestCents": 6156
+        },
+        "minimumPaymentCents": 9000,
+        "lastPayment": {
+          "date": "2026-09-21",
+          "amountCents": 45000
+        },
+        "payments": [
+          {
+            "date": "2026-07-21",
+            "amountCents": 40000
+          },
+          {
+            "date": "2026-08-21",
+            "amountCents": 47500
+          },
+          {
+            "date": "2026-09-21",
+            "amountCents": 45000
+          }
+        ]
+      },
+      {
+        "name": "Business Amex",
+        "mask": "4404",
+        "type": "credit",
+        "limitCents": 2500000,
+        "purchaseApr": 18.24,
+        "openingCents": 565000,
+        "activityCents": -67599,
+        "currentCents": 497401,
+        "minEodCents": 489080,
+        "maxEodCents": 658558,
+        "firstPostedOn": "2026-07-21",
+        "lastPostedOn": "2026-10-15",
+        "statementDay": 15,
+        "paymentDay": 10,
+        "statements": [
+          {
+            "date": "2026-08-15",
+            "balanceCents": 533758,
+            "interestCents": 8958
+          },
+          {
+            "date": "2026-09-15",
+            "balanceCents": 542280,
+            "interestCents": 8722
+          },
+          {
+            "date": "2026-10-15",
+            "balanceCents": 497401,
+            "interestCents": 8321
+          }
+        ],
+        "lastStatement": {
+          "date": "2026-10-15",
+          "balanceCents": 497401,
+          "interestCents": 8321
+        },
+        "minimumPaymentCents": 13300,
+        "lastPayment": {
+          "date": "2026-10-10",
+          "amountCents": 115000
+        },
+        "payments": [
+          {
+            "date": "2026-08-10",
+            "amountCents": 100000
+          },
+          {
+            "date": "2026-09-10",
+            "amountCents": 125000
+          },
+          {
+            "date": "2026-10-10",
+            "amountCents": 115000
+          }
+        ]
+      }
+    ]
+  },
+  "engine": {
+    "tier": "FUNDING_PLUS_REPAIR",
+    "funding_estimate": 19799
+  },
+  "reads": {
+    "/api/read/portal-summary": {
+      "ok": true,
+      "prequal_amount": 19799,
+      "prequal_display": "$19,799",
+      "scores": {
+        "experian": 702,
+        "equifax": 709,
+        "transunion": 706,
+        "experian_business": null,
+        "sample": true
+      },
+      "soft_pull_complete": true,
+      "doc_agent_message": null,
+      "inquiry_open": false,
+      "documents": [],
+      "repair_path": false,
+      "dispute_consent": false,
+      "invoice_due": {
+        "count": 0,
+        "currency": "USD",
+        "total": 0,
+        "total_display": "$0.00",
+        "items": []
+      },
+      "payments": [],
+      "slo_paid": false,
+      "advisor": null,
+      "upcoming_call": null,
+      "stage": {
+        "key": "soft_pull",
+        "before_call": false,
+        "contract_signed_at": null,
+        "soft_pull_complete": true,
+        "call_held": false,
+        "agreement_signed": false,
+        "payment_posted": false
+      }
+    },
+    "/api/read/client-progress": {
+      "ok": true,
+      "stage": {
+        "key": null,
+        "roundCurrent": null,
+        "roundCap": null,
+        "enteredAt": null,
+        "expectedResponseBy": null,
+        "waitingOn": null,
+        "roundLabel": null
+      },
+      "scores": {
+        "personal": [
+          {
+            "bureau": "experian",
+            "score": 702,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          },
+          {
+            "bureau": "equifax",
+            "score": 709,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          },
+          {
+            "bureau": "transunion",
+            "score": 706,
+            "pulledAt": "2026-10-17T12:00:00.000Z",
+            "reportDocumentId": null,
+            "sample": true
+          }
+        ],
+        "business": []
+      },
+      "movement": {
+        "middleScoreNow": 706,
+        "middleScoreBaseline": 706,
+        "baselineAt": "2026-10-17T12:00:00.000Z",
+        "itemsRemoved": 0,
+        "itemsDisputed": 0,
+        "series": [
+          {
+            "at": "2026-10-17T12:00:00.000Z",
+            "experian": 702,
+            "equifax": 709,
+            "transunion": 706
+          }
+        ]
+      },
+      "waypoints": [],
+      "nextStep": null,
+      "escalations": [],
+      "timeline": [],
+      "deliverables": [],
+      "ownedNotReady": [],
+      "paidServices": [
+        {
+          "serviceKey": "paid_round",
+          "available": false,
+          "components": [
+            {
+              "key": "base",
+              "label": "Three bureaus",
+              "priceCents": 10000,
+              "required": true
+            },
+            {
+              "key": "creditor",
+              "label": "Creditor letter",
+              "priceCents": 1000,
+              "required": false
+            },
+            {
+              "key": "cfpb_and_ag",
+              "label": "CFPB and state attorney general",
+              "priceCents": 2000,
+              "required": false
+            }
+          ],
+          "inFlight": false
+        }
+      ]
+    },
+    "/api/read/entitlements": {
+      "ok": true,
+      "count": 0,
+      "limit": 50,
+      "offset": 0,
+      "hasMore": false,
+      "items": []
+    },
+    "/api/money/overview": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "sandbox": false,
+      "containers": [
+        {
+          "id": "sample-2",
+          "kind": "business",
+          "name": "Sample Consulting LLC",
+          "accounts": 2
+        },
+        {
+          "id": "sample-3",
+          "kind": "personal",
+          "name": "Portal Sample (personal)",
+          "accounts": 2
+        }
+      ],
+      "cash": {
+        "personal": {
+          "cents": 1338500,
+          "is_floor": false,
+          "accounts": 1
+        },
+        "business": {
+          "cents": 1978000,
+          "is_floor": false,
+          "accounts": 1
+        },
+        "unknown": {
+          "cents": null,
+          "is_floor": false,
+          "accounts": 0
+        }
+      },
+      "debt": {
+        "total_cents": 810101,
+        "is_floor": false,
+        "by_kind": {
+          "personal": 312700,
+          "business": 497401,
+          "unknown": null
+        },
+        "by_container": [
+          {
+            "container_id": "sample-2",
+            "name": "Sample Consulting LLC",
+            "kind": "business",
+            "owed_cents": 497401,
+            "is_floor": false
+          },
+          {
+            "container_id": "sample-3",
+            "name": "Portal Sample (personal)",
+            "kind": "personal",
+            "owed_cents": 312700,
+            "is_floor": false
+          }
+        ],
+        "cards": [
+          {
+            "account_id": "sample-4",
+            "name": "Business Amex",
+            "mask": "4404",
+            "container_id": "sample-2",
+            "kind": "business",
+            "balance_cents": 497401,
+            "limit_cents": 2500000,
+            "room_cents": 2002599,
+            "used_pct": 19.9,
+            "due_on": "2026-11-10",
+            "min_due_cents": 13300,
+            "past_due_cents": null
+          },
+          {
+            "account_id": "sample-5",
+            "name": "Personal Visa",
+            "mask": "3303",
+            "container_id": "sample-3",
+            "kind": "personal",
+            "balance_cents": 312700,
+            "limit_cents": 800000,
+            "room_cents": 487300,
+            "used_pct": 39.1,
+            "due_on": "2026-11-21",
+            "min_due_cents": 9000,
+            "past_due_cents": null
+          }
+        ],
+        "loans": []
+      },
+      "accounts": [
+        {
+          "id": "sample-6",
+          "name": "Business Checking",
+          "mask": "2202",
+          "type": "depository",
+          "subtype": "checking",
+          "kind": "business",
+          "container_id": "sample-2",
+          "institution": null,
+          "current_cents": 1978000,
+          "available_cents": null,
+          "limit_cents": null,
+          "provider": "manual"
+        },
+        {
+          "id": "sample-7",
+          "name": "Personal Checking",
+          "mask": "1101",
+          "type": "depository",
+          "subtype": "checking",
+          "kind": "personal",
+          "container_id": "sample-3",
+          "institution": null,
+          "current_cents": 1338500,
+          "available_cents": null,
+          "limit_cents": null,
+          "provider": "manual"
+        },
+        {
+          "id": "sample-4",
+          "name": "Business Amex",
+          "mask": "4404",
+          "type": "credit",
+          "subtype": "credit card",
+          "kind": "business",
+          "container_id": "sample-2",
+          "institution": null,
+          "current_cents": 497401,
+          "available_cents": null,
+          "limit_cents": 2500000,
+          "provider": "manual"
+        },
+        {
+          "id": "sample-5",
+          "name": "Personal Visa",
+          "mask": "3303",
+          "type": "credit",
+          "subtype": "credit card",
+          "kind": "personal",
+          "container_id": "sample-3",
+          "institution": null,
+          "current_cents": 312700,
+          "available_cents": null,
+          "limit_cents": 800000,
+          "provider": "manual"
+        }
+      ],
+      "cashflow": {
+        "has_transactions": true,
+        "months": [
+          {
+            "month": "2026-07",
+            "personal": {
+              "in_cents": null,
+              "out_cents": 40000
+            },
+            "business": {
+              "in_cents": 153000,
+              "out_cents": null
+            },
+            "unknown": {
+              "in_cents": null,
+              "out_cents": null
+            }
+          },
+          {
+            "month": "2026-08",
+            "personal": {
+              "in_cents": 680000,
+              "out_cents": 315500
+            },
+            "business": {
+              "in_cents": 829800,
+              "out_cents": 310000
+            },
+            "unknown": {
+              "in_cents": null,
+              "out_cents": null
+            }
+          },
+          {
+            "month": "2026-09",
+            "personal": {
+              "in_cents": 680000,
+              "out_cents": 313000
+            },
+            "business": {
+              "in_cents": 662400,
+              "out_cents": 335000
+            },
+            "unknown": {
+              "in_cents": null,
+              "out_cents": null
+            }
+          },
+          {
+            "month": "2026-10",
+            "personal": {
+              "in_cents": 680000,
+              "out_cents": 268000
+            },
+            "business": {
+              "in_cents": 322800,
+              "out_cents": 325000
+            },
+            "unknown": {
+              "in_cents": null,
+              "out_cents": null
+            }
+          }
+        ]
+      },
+      "bills": [],
+      "upcoming": [
+        {
+          "type": "card_due",
+          "name": "Business Amex",
+          "on": "2026-11-10",
+          "amount_cents": 13300
+        }
+      ],
+      "billing": {
+        "containers": 2,
+        "price_per_container_cents": null
+      },
+      "tip": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments."
+    },
+    "/api/money/accounts": {
+      "ok": true,
+      "client_id": "sample-1",
+      "containers": [
+        {
+          "id": "sample-3",
+          "kind": "personal",
+          "name": "Portal Sample (personal)",
+          "archived_at": null,
+          "created_at": "2026-10-17T12:00:00.000Z",
+          "accounts": [
+            {
+              "id": "sample-7",
+              "source": "bank_account",
+              "name": "Personal Checking",
+              "mask": "1101",
+              "type": "depository",
+              "subtype": "checking",
+              "kind": "personal",
+              "kind_source": "staff_reviewed",
+              "container_id": "sample-3",
+              "current_cents": 1338500,
+              "available_cents": null,
+              "limit_cents": null,
+              "provider": "manual",
+              "closed_at": null,
+              "due_day": null,
+              "min_due_cents": null
+            }
+          ],
+          "cards": [
+            {
+              "id": "sample-5",
+              "source": "bank_account",
+              "name": "Personal Visa",
+              "mask": "3303",
+              "type": "credit",
+              "subtype": "credit card",
+              "kind": "personal",
+              "kind_source": "staff_reviewed",
+              "container_id": "sample-3",
+              "current_cents": 312700,
+              "available_cents": null,
+              "limit_cents": 800000,
+              "provider": "manual",
+              "closed_at": null,
+              "due_day": 21,
+              "min_due_cents": 9000
+            }
+          ],
+          "loans": [],
+          "bills": [],
+          "business": null
+        },
+        {
+          "id": "sample-2",
+          "kind": "business",
+          "name": "Sample Consulting LLC",
+          "archived_at": null,
+          "created_at": "2026-10-17T12:00:00.000Z",
+          "accounts": [
+            {
+              "id": "sample-6",
+              "source": "bank_account",
+              "name": "Business Checking",
+              "mask": "2202",
+              "type": "depository",
+              "subtype": "checking",
+              "kind": "business",
+              "kind_source": "staff_reviewed",
+              "container_id": "sample-2",
+              "current_cents": 1978000,
+              "available_cents": null,
+              "limit_cents": null,
+              "provider": "manual",
+              "closed_at": null,
+              "due_day": null,
+              "min_due_cents": null
+            }
+          ],
+          "cards": [
+            {
+              "id": "sample-4",
+              "source": "bank_account",
+              "name": "Business Amex",
+              "mask": "4404",
+              "type": "credit",
+              "subtype": "credit card",
+              "kind": "business",
+              "kind_source": "staff_reviewed",
+              "container_id": "sample-2",
+              "current_cents": 497401,
+              "available_cents": null,
+              "limit_cents": 2500000,
+              "provider": "manual",
+              "closed_at": null,
+              "due_day": 10,
+              "min_due_cents": 13300
+            }
+          ],
+          "loans": [],
+          "bills": [],
+          "business": null
+        }
+      ],
+      "unassigned": {
+        "accounts": [],
+        "cards": [
+          {
+            "id": "sample-8",
+            "source": "tradeline",
+            "name": "FIRST PLATYPUS BANK",
+            "mask": null,
+            "type": "revolving",
+            "container_id": null,
+            "current_cents": 312700,
+            "limit_cents": 800000
+          }
+        ],
+        "loans": [
+          {
+            "id": "sample-9",
+            "source": "tradeline",
+            "name": "TOYOTA MOTOR CREDIT",
+            "mask": null,
+            "type": "installment",
+            "container_id": null,
+            "current_cents": 0,
+            "limit_cents": 2150000
+          }
+        ],
+        "bills": []
+      },
+      "billing": {
+        "containers": 2,
+        "price_per_container_cents": null,
+        "monthly_cents": null
+      }
+    },
+    "/api/money/alerts": {
+      "ok": true,
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "enrolled": {
+        "blueprint": false,
+        "finance_os": false,
+        "any": false
+      },
+      "settings": {
+        "kinds": {
+          "payment_timing": {
+            "enabled": true,
+            "label": "Pay before the statement closes"
+          },
+          "promo_end": {
+            "enabled": true,
+            "label": "Promo rate ending"
+          },
+          "cash_reserve": {
+            "enabled": true,
+            "label": "Cash cushion"
+          },
+          "new_credit": {
+            "enabled": true,
+            "label": "New credit"
+          }
+        },
+        "saved": false,
+        "pay_before_close_days": 3,
+        "promo_thresholds_days": [
+          60,
+          30,
+          7
+        ],
+        "reserve_months": 6,
+        "texts_blocked": false
+      },
+      "cards": [
+        {
+          "account_id": "sample-4",
+          "name": "Business Amex",
+          "mask": "4404",
+          "kind": "business",
+          "balance_cents": 497401,
+          "limit_cents": 2500000,
+          "used_pct": 19.9,
+          "statement_close_day": 15,
+          "close_day_source": "manual",
+          "pay_before": {
+            "next_close_on": "2026-11-15",
+            "days_to_close": 29,
+            "unknown_reason": null,
+            "text_on": "2026-11-12",
+            "texted": false,
+            "texted_at": null
+          },
+          "promo": null
+        },
+        {
+          "account_id": "sample-5",
+          "name": "Personal Visa",
+          "mask": "3303",
+          "kind": "personal",
+          "balance_cents": 312700,
+          "limit_cents": 800000,
+          "used_pct": 39.1,
+          "statement_close_day": 25,
+          "close_day_source": "manual",
+          "pay_before": {
+            "next_close_on": "2026-10-25",
+            "days_to_close": 8,
+            "unknown_reason": null,
+            "text_on": "2026-10-22",
+            "texted": false,
+            "texted_at": null
+          },
+          "promo": null
+        }
+      ],
+      "reserve": {
+        "months": 6,
+        "personal": {
+          "state": "ok",
+          "reason": "covered",
+          "months": 6,
+          "cash_cents": 1338500,
+          "cash_is_floor": false,
+          "cash_accounts": 1,
+          "minimums_cents": 9000,
+          "minimums_is_floor": false,
+          "clarity_cents": null,
+          "need_cents": 54000,
+          "short_cents": null,
+          "open_alert_id": null
+        },
+        "business": {
+          "state": "ok",
+          "reason": "covered",
+          "months": 6,
+          "cash_cents": 1978000,
+          "cash_is_floor": false,
+          "cash_accounts": 1,
+          "minimums_cents": 13300,
+          "minimums_is_floor": false,
+          "clarity_cents": null,
+          "need_cents": 79800,
+          "short_cents": null,
+          "open_alert_id": null
+        },
+        "not_counted": {
+          "debts": 0,
+          "minimums_cents": null
+        }
+      },
+      "alerts": []
+    },
+    "/api/money/banks": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "location": {
+        "states": [],
+        "home_state": null,
+        "business_state": null,
+        "businesses": [],
+        "text": null,
+        "source": null,
+        "match_source": {
+          "label": "Fundhub bank match",
+          "ref": "src/lenders/match.mjs"
+        }
+      },
+      "containers": [
+        {
+          "id": "sample-2",
+          "kind": "business",
+          "name": "Sample Consulting LLC"
+        },
+        {
+          "id": "sample-3",
+          "kind": "personal",
+          "name": "Portal Sample (personal)"
+        }
+      ],
+      "recommended_banks": [],
+      "banks_left_out": [],
+      "card_stacking": {
+        "order_rule": {
+          "text": "Personal cards first, then business cards. Inside each: bank book tier, then spread the pulls across the three bureaus.",
+          "sources": [
+            {
+              "label": "Fundhub application order (UnderwriteIQ report)",
+              "ref": "src/underwrite/black-report-node.mjs \u00b7 Application Order Warning; src/deliverables/lender-list.mjs"
+            },
+            {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            },
+            {
+              "label": "Fundhub bank match",
+              "ref": "src/lenders/match.mjs"
+            }
+          ]
+        },
+        "spacing": {
+          "text": "One at a time: wait for the decision before you send the next one. Never shotgun applications.",
+          "source": {
+            "label": "Fundhub application order (UnderwriteIQ report)",
+            "ref": "src/underwrite/black-report-node.mjs \u00b7 Application Order Warning; src/deliverables/lender-list.mjs"
+          },
+          "days_between": null,
+          "days_text": "Days between two banks: not set. No Fundhub rule names a number; staff decide it."
+        },
+        "items": [],
+        "shown": 0,
+        "personal_banks": 0,
+        "business_banks": 0,
+        "total_cards": 0,
+        "held": {
+          "for_bureau_protection": {
+            "count": 0,
+            "bureaus": [],
+            "bureau_names": [],
+            "by_bureau": {},
+            "message": null
+          },
+          "for_no_business": {
+            "business_on_file": false,
+            "count": 0,
+            "message": null
+          }
+        },
+        "engine": {
+          "can_card_stack": true,
+          "card_funding_cents": 13200000,
+          "rule": "UnderwriteIQ can card stack when your highest card limit is at least $5,000.",
+          "source": {
+            "label": "UnderwriteIQ",
+            "ref": "src/underwrite/vendor/underwriter.cjs (canCardStack, cardFunding)"
+          }
+        },
+        "inquiries": {
+          "total": 3,
+          "by_bureau": {
+            "experian": 1,
+            "equifax": 1,
+            "transunion": 1
+          },
+          "text": "You have 3 inquiries now. Each new card adds a hard pull.",
+          "source": {
+            "label": "Your credit file",
+            "ref": "inquiriesSummary (src/finance/credit-overview.mjs)"
+          },
+          "rule": {
+            "text": "Inquiries cost fundability. Any more than zero should come off.",
+            "source": {
+              "label": "Owner rule, 2026-09-29",
+              "ref": "marketing/landing-pages/slo/preview/reorg-draft-build.mjs \u00b7 OWNER-SET 2026-09-29: inquiries cost fundability"
+            }
+          },
+          "needs_cleanup": true,
+          "needs_cleanup_source": {
+            "label": "UnderwriteIQ",
+            "ref": "src/underwrite/vendor/underwriter.cjs \u00b7 optimization.needs_inquiry_cleanup (any inquiry)"
+          }
+        }
+      },
+      "next_sequence": {
+        "date": null,
+        "date_source": null,
+        "can_set_date": false,
+        "estimated_amount_cents": 1979900,
+        "amount_source": {
+          "label": "UnderwriteIQ funding estimate on your file",
+          "ref": "clients.custom_fields.total_funding_estimate"
+        },
+        "step": {
+          "id": "prime_personal",
+          "title": "Prime the personal credit file",
+          "source": {
+            "label": "Fundhub funding order (owner law 2026-09-26)",
+            "ref": "src/underwrite/funding-sequence.mjs"
+          }
+        },
+        "readiness_gaps": [
+          {
+            "id": "personal_not_prime",
+            "text": "Your personal credit file is not ready yet (UnderwriteIQ: not fundable). Personal comes first.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          }
+        ],
+        "ready": false,
+        "suggested_date": "2021-03-18",
+        "effective_date": null,
+        "effective_source": null,
+        "suggestion": {
+          "ok": true,
+          "as_of": "2026-10-17",
+          "suggested_date": "2021-03-18",
+          "not_before": "2021-03-18",
+          "reasons": [
+            {
+              "factor": "inquiries",
+              "title": "Hard inquiries",
+              "status": "ready",
+              "ready_on": null,
+              "not_before": null,
+              "text": "Every bureau is under both limits now: fewer than 3 inquiries in 6 months and fewer than 6 in 12.",
+              "source": {
+                "label": "Fundhub bureau-stacking rule: under 3 inquiries in 6 months and under 6 in 12 months, per bureau",
+                "ref": "Legacy Strong page \"Hard inquiries - Bureau stacking\" (folder hard-inquiries-bureau-stacking--f3a39877)"
+              },
+              "also": {
+                "label": "Fundhub inquiry ages: they matter most inside 6 months, stop mattering after 12, and drop off at 24",
+                "ref": "Legacy Strong page \"Live Bootcamp (FUNDING) - July 2026\" (folder live-bootcamp-funding-july-2026--395c3aa7); Legacy Strong page \"Factors Of Credit Score\" (folder factors-of-credit-score--ff7e0bb0); Legacy Strong page \"Inquiry Training\" (folder inquiry-training--ab7693a7)"
+              },
+              "detail": {
+                "rule": {
+                  "recent": {
+                    "months": 6,
+                    "under": 3
+                  },
+                  "year": {
+                    "months": 12,
+                    "under": 6
+                  }
+                },
+                "pull_on": "2026-10-17",
+                "from_applications": 0,
+                "application_bureau_unknown": 0,
+                "bureaus": [
+                  {
+                    "bureau": "EX",
+                    "name": "Experian",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 0,
+                    "in_12_months": 0,
+                    "room": 3,
+                    "newest_on": "2025-08-17",
+                    "stops_mattering_on": "2026-08-18",
+                    "drops_off_on": "2027-08-18"
+                  },
+                  {
+                    "bureau": "EQ",
+                    "name": "Equifax",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 1,
+                    "in_12_months": 1,
+                    "room": 2,
+                    "newest_on": "2026-05-17",
+                    "stops_mattering_on": "2027-05-18",
+                    "drops_off_on": "2028-05-18"
+                  },
+                  {
+                    "bureau": "TU",
+                    "name": "TransUnion",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 0,
+                    "in_12_months": 1,
+                    "room": 3,
+                    "newest_on": "2026-01-17",
+                    "stops_mattering_on": "2027-01-18",
+                    "drops_off_on": "2028-01-18"
+                  }
+                ]
+              }
+            },
+            {
+              "factor": "new_credit",
+              "title": "New credit",
+              "status": "ready",
+              "ready_on": "2021-03-18",
+              "not_before": null,
+              "text": "Your newest new credit was on 2020-09-17. That is more than 6 months ago.",
+              "source": {
+                "label": "Fundhub new-credit spacing: about 6 months between new credit",
+                "ref": "Legacy Strong page \"Factors Of Credit Score\" (folder factors-of-credit-score--ff7e0bb0): \"Apply for new credit products every 6 months\""
+              },
+              "also": {
+                "label": "UnderwriteIQ counts a card toward your funding once it is 24 months old",
+                "ref": "src/underwrite/vendor/underwriter.cjs (seasoned = 24 months or more)"
+              },
+              "detail": {
+                "newest_on": "2020-09-17",
+                "newest": [
+                  {
+                    "kind": "account_opened",
+                    "what": "TOYOTA MOTOR CREDIT"
+                  }
+                ],
+                "spacing_months": 6,
+                "open_accounts_without_date": 0,
+                "estimate_counts_new_cards": []
+              }
+            },
+            {
+              "factor": "utilization",
+              "title": "Card use",
+              "source": {
+                "label": "UnderwriteIQ: card use of 30% or less",
+                "ref": "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)"
+              },
+              "also": {
+                "label": "Your linked cards, the same card-use number as the Strategy tab",
+                "ref": "bank_accounts credit accounts (src/finance/plan-sources/payoff.mjs overall card use)"
+              },
+              "status": "ready",
+              "ready_on": null,
+              "not_before": null,
+              "text": "Card use is 24.5%. The target is 30% or less.",
+              "detail": {
+                "target_pct": 30,
+                "basis": "linked_cards",
+                "use_pct": 24.5,
+                "as_of": "2026-10-17",
+                "reason": null
+              }
+            }
+          ],
+          "blockers": [
+            {
+              "id": "not_fundable",
+              "text": "UnderwriteIQ does not call the file fundable yet. There is 1 negative item on the file.",
+              "source": {
+                "label": "UnderwriteIQ: fundable needs a score of 700 or more and no negative items",
+                "ref": "src/underwrite/vendor/underwriter.cjs (fundable)"
+              }
+            },
+            {
+              "id": "no_funding_yet",
+              "text": "No funding round has funded yet. The next funding sequence starts after a first one.",
+              "source": {
+                "label": "The applications on your funding rounds",
+                "ref": "applications + funding_rounds (db/schema/001_init.sql, db/migrations/138_lenders.sql)"
+              }
+            }
+          ],
+          "confidence": "computed",
+          "ready": false,
+          "staff_date": null,
+          "effective_date": null,
+          "effective_source": null,
+          "flags": [],
+          "declines": {
+            "tracked": true,
+            "open": 0,
+            "notes": []
+          },
+          "after_funding": {
+            "funded_rounds": 0,
+            "last_funded_round": null,
+            "last_funded_on": null,
+            "last_activity_on": null,
+            "credit_file_on": "2026-10-17",
+            "credit_file_age_days": 0,
+            "credit_file_stale": false,
+            "alert_key": null
+          },
+          "blueprint_buyer": false
+        }
+      },
+      "next_round": {
+        "date": null,
+        "date_source": null,
+        "can_set_date": false,
+        "estimated_amount_cents": 1979900,
+        "amount_source": {
+          "label": "UnderwriteIQ funding estimate on your file",
+          "ref": "clients.custom_fields.total_funding_estimate"
+        },
+        "step": {
+          "id": "prime_personal",
+          "title": "Prime the personal credit file",
+          "source": {
+            "label": "Fundhub funding order (owner law 2026-09-26)",
+            "ref": "src/underwrite/funding-sequence.mjs"
+          }
+        },
+        "readiness_gaps": [
+          {
+            "id": "personal_not_prime",
+            "text": "Your personal credit file is not ready yet (UnderwriteIQ: not fundable). Personal comes first.",
+            "source": {
+              "label": "Fundhub funding order (owner law 2026-09-26)",
+              "ref": "src/underwrite/funding-sequence.mjs"
+            }
+          }
+        ],
+        "ready": false,
+        "suggested_date": "2021-03-18",
+        "effective_date": null,
+        "effective_source": null,
+        "suggestion": {
+          "ok": true,
+          "as_of": "2026-10-17",
+          "suggested_date": "2021-03-18",
+          "not_before": "2021-03-18",
+          "reasons": [
+            {
+              "factor": "inquiries",
+              "title": "Hard inquiries",
+              "status": "ready",
+              "ready_on": null,
+              "not_before": null,
+              "text": "Every bureau is under both limits now: fewer than 3 inquiries in 6 months and fewer than 6 in 12.",
+              "source": {
+                "label": "Fundhub bureau-stacking rule: under 3 inquiries in 6 months and under 6 in 12 months, per bureau",
+                "ref": "Legacy Strong page \"Hard inquiries - Bureau stacking\" (folder hard-inquiries-bureau-stacking--f3a39877)"
+              },
+              "also": {
+                "label": "Fundhub inquiry ages: they matter most inside 6 months, stop mattering after 12, and drop off at 24",
+                "ref": "Legacy Strong page \"Live Bootcamp (FUNDING) - July 2026\" (folder live-bootcamp-funding-july-2026--395c3aa7); Legacy Strong page \"Factors Of Credit Score\" (folder factors-of-credit-score--ff7e0bb0); Legacy Strong page \"Inquiry Training\" (folder inquiry-training--ab7693a7)"
+              },
+              "detail": {
+                "rule": {
+                  "recent": {
+                    "months": 6,
+                    "under": 3
+                  },
+                  "year": {
+                    "months": 12,
+                    "under": 6
+                  }
+                },
+                "pull_on": "2026-10-17",
+                "from_applications": 0,
+                "application_bureau_unknown": 0,
+                "bureaus": [
+                  {
+                    "bureau": "EX",
+                    "name": "Experian",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 0,
+                    "in_12_months": 0,
+                    "room": 3,
+                    "newest_on": "2025-08-17",
+                    "stops_mattering_on": "2026-08-18",
+                    "drops_off_on": "2027-08-18"
+                  },
+                  {
+                    "bureau": "EQ",
+                    "name": "Equifax",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 1,
+                    "in_12_months": 1,
+                    "room": 2,
+                    "newest_on": "2026-05-17",
+                    "stops_mattering_on": "2027-05-18",
+                    "drops_off_on": "2028-05-18"
+                  },
+                  {
+                    "bureau": "TU",
+                    "name": "TransUnion",
+                    "basis": "dates",
+                    "undated": 0,
+                    "status": "ready",
+                    "open_now": true,
+                    "ready_on": null,
+                    "in_6_months": 0,
+                    "in_12_months": 1,
+                    "room": 3,
+                    "newest_on": "2026-01-17",
+                    "stops_mattering_on": "2027-01-18",
+                    "drops_off_on": "2028-01-18"
+                  }
+                ]
+              }
+            },
+            {
+              "factor": "new_credit",
+              "title": "New credit",
+              "status": "ready",
+              "ready_on": "2021-03-18",
+              "not_before": null,
+              "text": "Your newest new credit was on 2020-09-17. That is more than 6 months ago.",
+              "source": {
+                "label": "Fundhub new-credit spacing: about 6 months between new credit",
+                "ref": "Legacy Strong page \"Factors Of Credit Score\" (folder factors-of-credit-score--ff7e0bb0): \"Apply for new credit products every 6 months\""
+              },
+              "also": {
+                "label": "UnderwriteIQ counts a card toward your funding once it is 24 months old",
+                "ref": "src/underwrite/vendor/underwriter.cjs (seasoned = 24 months or more)"
+              },
+              "detail": {
+                "newest_on": "2020-09-17",
+                "newest": [
+                  {
+                    "kind": "account_opened",
+                    "what": "TOYOTA MOTOR CREDIT"
+                  }
+                ],
+                "spacing_months": 6,
+                "open_accounts_without_date": 0,
+                "estimate_counts_new_cards": []
+              }
+            },
+            {
+              "factor": "utilization",
+              "title": "Card use",
+              "source": {
+                "label": "UnderwriteIQ: card use of 30% or less",
+                "ref": "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)"
+              },
+              "also": {
+                "label": "Your linked cards, the same card-use number as the Strategy tab",
+                "ref": "bank_accounts credit accounts (src/finance/plan-sources/payoff.mjs overall card use)"
+              },
+              "status": "ready",
+              "ready_on": null,
+              "not_before": null,
+              "text": "Card use is 24.5%. The target is 30% or less.",
+              "detail": {
+                "target_pct": 30,
+                "basis": "linked_cards",
+                "use_pct": 24.5,
+                "as_of": "2026-10-17",
+                "reason": null
+              }
+            }
+          ],
+          "blockers": [
+            {
+              "id": "not_fundable",
+              "text": "UnderwriteIQ does not call the file fundable yet. There is 1 negative item on the file.",
+              "source": {
+                "label": "UnderwriteIQ: fundable needs a score of 700 or more and no negative items",
+                "ref": "src/underwrite/vendor/underwriter.cjs (fundable)"
+              }
+            },
+            {
+              "id": "no_funding_yet",
+              "text": "No funding round has funded yet. The next funding sequence starts after a first one.",
+              "source": {
+                "label": "The applications on your funding rounds",
+                "ref": "applications + funding_rounds (db/schema/001_init.sql, db/migrations/138_lenders.sql)"
+              }
+            }
+          ],
+          "confidence": "computed",
+          "ready": false,
+          "staff_date": null,
+          "effective_date": null,
+          "effective_source": null,
+          "flags": [],
+          "declines": {
+            "tracked": true,
+            "open": 0,
+            "notes": []
+          },
+          "after_funding": {
+            "funded_rounds": 0,
+            "last_funded_round": null,
+            "last_funded_on": null,
+            "last_activity_on": null,
+            "credit_file_on": "2026-10-17",
+            "credit_file_age_days": 0,
+            "credit_file_stale": false,
+            "alert_key": null
+          },
+          "blueprint_buyer": false
+        }
+      },
+      "relationships": [],
+      "not_set": [
+        {
+          "key": "next_round_date",
+          "text": "Next funding sequence date"
+        },
+        {
+          "key": "stacking_days_between",
+          "text": "Days between card applications at two banks"
+        }
+      ]
+    },
+    "/api/money/connections": {
+      "ok": true,
+      "client_id": "sample-1",
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "connections": [],
+      "containers": [
+        {
+          "id": "sample-2",
+          "kind": "business",
+          "name": "Sample Consulting LLC"
+        },
+        {
+          "id": "sample-3",
+          "kind": "personal",
+          "name": "Portal Sample (personal)"
+        }
+      ],
+      "summary": {
+        "currency": "usd",
+        "months": [
+          "2026-05",
+          "2026-06",
+          "2026-07",
+          "2026-08",
+          "2026-09",
+          "2026-10"
+        ],
+        "containers": [],
+        "totals": [
+          {
+            "month": "2026-05",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          },
+          {
+            "month": "2026-06",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          },
+          {
+            "month": "2026-07",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          },
+          {
+            "month": "2026-08",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          },
+          {
+            "month": "2026-09",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          },
+          {
+            "month": "2026-10",
+            "sales_cents": 0,
+            "refunds_cents": 0,
+            "fees_cents": 0,
+            "payouts_cents": 0,
+            "net_cents": 0,
+            "sale_count": 0
+          }
+        ],
+        "other_currency_events": 0,
+        "last_event_at": null
+      },
+      "open_api_url": null
+    },
+    "/api/money/credit": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "has_pull": true,
+      "sample": true,
+      "personal": {
+        "experian": {
+          "score": 702,
+          "pulled_at": "2026-10-17T12:00:00.000Z",
+          "sample": true
+        },
+        "equifax": {
+          "score": 709,
+          "pulled_at": "2026-10-17T12:00:00.000Z",
+          "sample": true
+        },
+        "transunion": {
+          "score": 706,
+          "pulled_at": "2026-10-17T12:00:00.000Z",
+          "sample": true
+        }
+      },
+      "business": {
+        "name": null,
+        "intelliscore": null,
+        "fsr": null
+      },
+      "utilization": {
+        "percent": 39.1,
+        "band": "high",
+        "partial": false,
+        "source": "accounts"
+      },
+      "accounts": {
+        "open": 1,
+        "revolving": 1,
+        "installment": 0,
+        "source": "tradelines",
+        "list": [
+          {
+            "lender": "TOYOTA MOTOR CREDIT",
+            "kind": "installment",
+            "last4": null,
+            "limit_cents": 2150000,
+            "balance_cents": 0,
+            "opened_on": "2020-09-17",
+            "open": false
+          },
+          {
+            "lender": "FIRST PLATYPUS BANK",
+            "kind": "revolving",
+            "last4": null,
+            "limit_cents": 800000,
+            "balance_cents": 312700,
+            "opened_on": "2020-06-17",
+            "open": true
+          }
+        ]
+      },
+      "inquiries": {
+        "total": 3,
+        "by_bureau": {
+          "experian": 1,
+          "equifax": 1,
+          "transunion": 1
+        },
+        "source": "custom_fields"
+      },
+      "negative_items": {
+        "count": 1
+      },
+      "late_payments": {
+        "count": 1
+      },
+      "history": [],
+      "suggestions": [
+        {
+          "text": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+          "topic": "utilization"
+        },
+        {
+          "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+          "topic": "inquiries"
+        },
+        {
+          "text": "You have some negative accounts. Targeted disputes and settlement strategy will help remove them from your reports.",
+          "topic": "negatives"
+        },
+        {
+          "text": "Add a couple of additional positive tradelines to strengthen your profile and unlock higher funding tiers.",
+          "topic": "file_buildout"
+        }
+      ],
+      "missing": [
+        "business_score"
+      ]
+    },
+    "/api/money/fundability": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "has_pull": true,
+      "sample": true,
+      "engine": {
+        "name": "underwrite_iq_lite",
+        "upstream_commit": "71656f0fe1083429f52eeb0aa095cce076a6b33c",
+        "accounts_from": "tradelines"
+      },
+      "now": {
+        "score": 2,
+        "score_max": 6,
+        "unknown": 0,
+        "tier": "not_fundable",
+        "funding_estimate_cents": null,
+        "factors": [
+          {
+            "key": "score_700",
+            "label": "Credit score 700 or higher",
+            "target": "700 or higher",
+            "passed": true,
+            "value": 709,
+            "unit": "score",
+            "note": "UnderwriteIQ reads your Equifax score \u2014 the highest one on file."
+          },
+          {
+            "key": "utilization_30",
+            "label": "Cards used 30% or less",
+            "target": "30% or less",
+            "passed": false,
+            "value": 39.1,
+            "unit": "percent",
+            "note": null
+          },
+          {
+            "key": "no_negatives",
+            "label": "No negative items",
+            "target": "0",
+            "passed": false,
+            "value": 1,
+            "unit": "count",
+            "note": null
+          },
+          {
+            "key": "anchor_card",
+            "label": "A card 2+ years old with a $5,000+ limit",
+            "target": "$5,000 or more",
+            "passed": true,
+            "value": 800000,
+            "unit": "cents",
+            "note": null
+          },
+          {
+            "key": "no_inquiries",
+            "label": "No hard inquiries",
+            "target": "0",
+            "passed": false,
+            "value": 3,
+            "unit": "count",
+            "note": null
+          },
+          {
+            "key": "file_depth",
+            "label": "3 or more accounts in good standing",
+            "target": "3 or more",
+            "passed": false,
+            "value": 2,
+            "unit": "count",
+            "note": null
+          }
+        ],
+        "missing": [],
+        "sentences": [
+          {
+            "text": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+            "topic": "utilization",
+            "check": "utilization_30"
+          },
+          {
+            "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+            "topic": "inquiries",
+            "check": "no_inquiries"
+          },
+          {
+            "text": "You have some negative accounts. Targeted disputes and settlement strategy will help remove them from your reports.",
+            "topic": "negatives",
+            "check": "no_negatives"
+          },
+          {
+            "text": "Add a couple of additional positive tradelines to strengthen your profile and unlock higher funding tiers.",
+            "topic": "file_buildout",
+            "check": "file_depth"
+          }
+        ]
+      },
+      "projections": [
+        {
+          "date": "2027-01-17",
+          "months": 3,
+          "scenario": "plan",
+          "score": 2,
+          "score_max": 6,
+          "unknown": 0,
+          "tier": "not_fundable",
+          "funding_estimate_cents": null,
+          "assumptions": [
+            "3 months go by. Your open accounts stay open."
+          ],
+          "checks": {
+            "score_700": true,
+            "utilization_30": false,
+            "no_negatives": false,
+            "anchor_card": true,
+            "no_inquiries": false,
+            "file_depth": false
+          },
+          "sentences": [
+            {
+              "text": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+              "topic": "utilization",
+              "check": "utilization_30"
+            },
+            {
+              "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+              "topic": "inquiries",
+              "check": "no_inquiries"
+            },
+            {
+              "text": "You have some negative accounts. Targeted disputes and settlement strategy will help remove them from your reports.",
+              "topic": "negatives",
+              "check": "no_negatives"
+            },
+            {
+              "text": "Add a couple of additional positive tradelines to strengthen your profile and unlock higher funding tiers.",
+              "topic": "file_buildout",
+              "check": "file_depth"
+            }
+          ]
+        },
+        {
+          "date": "2027-04-17",
+          "months": 6,
+          "scenario": "plan",
+          "score": 2,
+          "score_max": 6,
+          "unknown": 0,
+          "tier": "not_fundable",
+          "funding_estimate_cents": null,
+          "assumptions": [
+            "6 months go by. Your open accounts stay open."
+          ],
+          "checks": {
+            "score_700": true,
+            "utilization_30": false,
+            "no_negatives": false,
+            "anchor_card": true,
+            "no_inquiries": false,
+            "file_depth": false
+          },
+          "sentences": [
+            {
+              "text": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+              "topic": "utilization",
+              "check": "utilization_30"
+            },
+            {
+              "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+              "topic": "inquiries",
+              "check": "no_inquiries"
+            },
+            {
+              "text": "You have some negative accounts. Targeted disputes and settlement strategy will help remove them from your reports.",
+              "topic": "negatives",
+              "check": "no_negatives"
+            },
+            {
+              "text": "Add a couple of additional positive tradelines to strengthen your profile and unlock higher funding tiers.",
+              "topic": "file_buildout",
+              "check": "file_depth"
+            }
+          ]
+        },
+        {
+          "date": "2027-10-17",
+          "months": 12,
+          "scenario": "plan",
+          "score": 2,
+          "score_max": 6,
+          "unknown": 0,
+          "tier": "not_fundable",
+          "funding_estimate_cents": null,
+          "assumptions": [
+            "12 months go by. Your open accounts stay open."
+          ],
+          "checks": {
+            "score_700": true,
+            "utilization_30": false,
+            "no_negatives": false,
+            "anchor_card": true,
+            "no_inquiries": false,
+            "file_depth": false
+          },
+          "sentences": [
+            {
+              "text": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+              "topic": "utilization",
+              "check": "utilization_30"
+            },
+            {
+              "text": "Removing unnecessary or duplicate hard inquiries will improve automated underwriting scores and limit increases.",
+              "topic": "inquiries",
+              "check": "no_inquiries"
+            },
+            {
+              "text": "You have some negative accounts. Targeted disputes and settlement strategy will help remove them from your reports.",
+              "topic": "negatives",
+              "check": "no_negatives"
+            },
+            {
+              "text": "Add a couple of additional positive tradelines to strengthen your profile and unlock higher funding tiers.",
+              "topic": "file_buildout",
+              "check": "file_depth"
+            }
+          ]
+        }
+      ],
+      "businesses": [
+        {
+          "container_id": "sample-2",
+          "business_id": null,
+          "name": "Sample Consulting LLC",
+          "source": null,
+          "has_info": false,
+          "age_months": null,
+          "credit": null,
+          "now": null,
+          "projections": []
+        }
+      ],
+      "plan": {
+        "paydowns": [],
+        "dispute_accounts": 0,
+        "if_removed": false
+      },
+      "cannot_project": [
+        "Credit scores. UnderwriteIQ reads your scores from a pull. It never guesses a new one, so every point uses today's scores.",
+        "Hard inquiries and late payments. UnderwriteIQ counts them but has no age window, so they stay as they are.",
+        "Banking history. UnderwriteIQ does not read bank deposits or how long you have banked somewhere.",
+        "New accounts, new businesses, or a new pull. Only what is on file today, plus your own plan.",
+        "Whether a dispute works. An \"if removed\" line shows what UnderwriteIQ would say. It is not a promise."
+      ]
+    },
+    "/api/money/helper": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "viewer": "client",
+      "today": "2026-10-17",
+      "helper": {
+        "code": "FOS-01",
+        "name": "FinanceOS Money Helper",
+        "status": "shadow",
+        "on": true,
+        "sends_texts": false,
+        "brain": "mac",
+        "bridge_on": false,
+        "halted": false,
+        "halt_reason": null
+      },
+      "turns": [],
+      "pending": 0
+    },
+    "/api/money/payments": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "owed": {
+        "open_count": 0,
+        "left_cents": 0,
+        "late_cents": 0,
+        "late_count": 0
+      },
+      "plans": [],
+      "upcoming": [
+        {
+          "type": "card_due",
+          "name": "Business Amex",
+          "on": "2026-11-10",
+          "amount_cents": 13300
+        }
+      ],
+      "agent_log": [],
+      "agent": {
+        "brain": "rules"
+      }
+    },
+    "/api/money/plan": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "viewer": "client",
+      "today": "2026-10-17",
+      "month": "2026-10",
+      "from": "2026-10-01",
+      "to": "2026-10-31",
+      "days": [
+        {
+          "date": "2026-10-01",
+          "weekday": 4,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-02",
+          "weekday": 5,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-03",
+          "weekday": 6,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-04",
+          "weekday": 7,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-05",
+          "weekday": 1,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-06",
+          "weekday": 2,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-07",
+          "weekday": 3,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-08",
+          "weekday": 4,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-09",
+          "weekday": 5,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-10",
+          "weekday": 6,
+          "is_today": false,
+          "pin_count": 1
+        },
+        {
+          "date": "2026-10-11",
+          "weekday": 7,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-12",
+          "weekday": 1,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-13",
+          "weekday": 2,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-14",
+          "weekday": 3,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-15",
+          "weekday": 4,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-16",
+          "weekday": 5,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-17",
+          "weekday": 6,
+          "is_today": true,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-18",
+          "weekday": 7,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-19",
+          "weekday": 1,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 2,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 3,
+          "is_today": false,
+          "pin_count": 1
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 4,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 5,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 6,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 7,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-26",
+          "weekday": 1,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-27",
+          "weekday": 2,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-28",
+          "weekday": 3,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-29",
+          "weekday": 4,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-30",
+          "weekday": 5,
+          "is_today": false,
+          "pin_count": 0
+        },
+        {
+          "date": "2026-10-31",
+          "weekday": 6,
+          "is_today": false,
+          "pin_count": 0
+        }
+      ],
+      "pins": [
+        {
+          "id": "due:sample-4:2026-10-10",
+          "date": "2026-10-10",
+          "kind": "due",
+          "title": "Pay Business Amex",
+          "detail": "Worked out from the due day on file (the 10th). The amount shows once that statement is out.",
+          "amount_cents": null,
+          "bank": null,
+          "container_id": "sample-2",
+          "status": "planned",
+          "source": "dues",
+          "can_mark": []
+        },
+        {
+          "id": "due:sample-5:2026-10-21",
+          "date": "2026-10-21",
+          "kind": "due",
+          "title": "Pay Personal Visa",
+          "detail": "Worked out from the due day on file (the 21st). The amount shows once that statement is out.",
+          "amount_cents": null,
+          "bank": null,
+          "container_id": "sample-3",
+          "status": "planned",
+          "source": "dues",
+          "can_mark": []
+        }
+      ],
+      "sources": [
+        {
+          "name": "waypoints",
+          "ok": true,
+          "count": 0
+        },
+        {
+          "name": "dues",
+          "ok": true,
+          "count": 2
+        },
+        {
+          "name": "clarity",
+          "ok": true,
+          "count": 0
+        },
+        {
+          "name": "bank-strategy",
+          "ok": true,
+          "count": 0
+        },
+        {
+          "name": "funding-rounds",
+          "ok": true,
+          "count": 0
+        },
+        {
+          "name": "payoff",
+          "ok": true,
+          "count": 0
+        },
+        {
+          "name": "agent",
+          "ok": true,
+          "count": 0
+        }
+      ],
+      "containers": [
+        {
+          "id": "sample-2",
+          "name": "Sample Consulting LLC",
+          "kind": "business"
+        },
+        {
+          "id": "sample-3",
+          "name": "Portal Sample (personal)",
+          "kind": "personal"
+        }
+      ]
+    },
+    "/api/money/ready-to-fund": {
+      "ok": true,
+      "status": "none",
+      "round": 0,
+      "task_id": null,
+      "requested_at": null,
+      "done_at": null,
+      "process": "blueprint-csm-prep",
+      "offers": {
+        "blueprint": {
+          "owned": false,
+          "name": "Capital Blueprint",
+          "sell": {
+            "how": "call",
+            "url": null
+          }
+        },
+        "financeos": {
+          "entitled": false,
+          "setup_url": "/app/financeos.html#setup"
+        }
+      }
+    },
+    "/api/money/setup": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "paid": false,
+      "paid_at": null,
+      "setup_fee_cents": null,
+      "price_per_container_cents": null,
+      "containers": 2,
+      "monthly_cents": null,
+      "open_checkout": null,
+      "soft_pull": {
+        "requested": true,
+        "completed": true,
+        "last_pulled_at": "2026-10-17T12:00:00.000Z",
+        "price": {
+          "base_cents": 3200,
+          "business_addon_cents": 1000
+        }
+      },
+      "entitled": false,
+      "steps": [
+        {
+          "key": "pay",
+          "label": "Pay setup fee",
+          "done": false
+        },
+        {
+          "key": "soft_pull",
+          "label": "Run your soft pull",
+          "done": true
+        },
+        {
+          "key": "accounts",
+          "label": "Add your businesses and accounts",
+          "done": true
+        },
+        {
+          "key": "live",
+          "label": "You're live",
+          "done": false
+        }
+      ],
+      "current_step": "pay"
+    },
+    "/api/money/strategy": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17",
+      "sandbox": false,
+      "tip": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+      "inputs": {
+        "as_of": "2026-10-17",
+        "debts": [
+          {
+            "id": "sample-4",
+            "name": "Business Amex",
+            "type": "card",
+            "kind": "business",
+            "container_id": "sample-2",
+            "balance_cents": 497401,
+            "limit_cents": 2500000,
+            "apr_pct": 18.24,
+            "apr_source": "statement",
+            "min_cents": 13300,
+            "due_on": "2026-11-10"
+          },
+          {
+            "id": "sample-5",
+            "name": "Personal Visa",
+            "type": "card",
+            "kind": "personal",
+            "container_id": "sample-3",
+            "balance_cents": 312700,
+            "limit_cents": 800000,
+            "apr_pct": 24.99,
+            "apr_source": "statement",
+            "min_cents": 9000,
+            "due_on": "2026-11-21"
+          }
+        ],
+        "cash": {
+          "window": {
+            "from": "2026-10-17",
+            "to": "2026-11-16"
+          },
+          "by_kind": {
+            "business": {
+              "ok": true,
+              "safe_cents": 1978000,
+              "short_cents": 0,
+              "opening_cents": 1978000,
+              "bills_cents": 0,
+              "floor_cents": 0,
+              "floor_source": "buffer-supplied",
+              "accounts": [
+                {
+                  "name": "Business Checking",
+                  "balance_cents": 1978000
+                }
+              ],
+              "bills": [],
+              "bills_left_out": 0,
+              "threshold_gaps": []
+            },
+            "personal": {
+              "ok": true,
+              "safe_cents": 1338500,
+              "short_cents": 0,
+              "opening_cents": 1338500,
+              "bills_cents": 0,
+              "floor_cents": 0,
+              "floor_source": "buffer-supplied",
+              "accounts": [
+                {
+                  "name": "Personal Checking",
+                  "balance_cents": 1338500
+                }
+              ],
+              "bills": [],
+              "bills_left_out": 0,
+              "threshold_gaps": []
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "pct": 30,
+          "key": "util30",
+          "label": "30%",
+          "meaning": "UnderwriteIQ counts a file fundable only when card use is 30% or less.",
+          "source": "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)"
+        },
+        {
+          "pct": 10,
+          "key": "util10",
+          "label": "10%",
+          "meaning": "UnderwriteIQ's target for every card and for the whole file: under 10%.",
+          "source": "vendor/underwriteiq-full/api/lite/crs/optimization-findings.js (\"Utilization target is always under 10%\"); src/deliverables/derive.mjs targetBal"
+        }
+      ],
+      "methods": {
+        "avalanche": {
+          "label": "Highest rate first",
+          "short": "Avalanche",
+          "detail": "Extra money goes to the debt with the highest APR. Saves the most interest.",
+          "source": "Owner direction 2026-10-06: avalanche = highest APR first"
+        },
+        "utilization": {
+          "label": "Card use first",
+          "short": "Utilization",
+          "detail": "Each card goes down to 10% of its limit, highest card use first. Then highest APR first.",
+          "source": "src/blueprint/paydown-simulator.mjs allocateCashToCards (highest utilization first, each card to its 10% target)"
+        },
+        "snowball": {
+          "label": "Smallest balance first",
+          "short": "Snowball",
+          "detail": "Extra money goes to the smallest balance. Closes debts sooner.",
+          "source": "Owner direction 2026-10-06: snowball = smallest balance first"
+        }
+      },
+      "sources": {
+        "debts": "src/finance/money-overview.mjs (the Overview tab's cards and loans); APR from account_statement_cycles",
+        "cash": "src/banking/cashflow.mjs project() + paymentWindow(), first month only, no money in modelled",
+        "targets": [
+          "src/underwrite/vendor/underwriter.cjs (fundable needs utilization 30 or less; target_util_pct 30)",
+          "vendor/underwriteiq-full/api/lite/crs/optimization-findings.js (\"Utilization target is always under 10%\"); src/deliverables/derive.mjs targetBal"
+        ],
+        "methods": {
+          "avalanche": "Owner direction 2026-10-06: avalanche = highest APR first",
+          "utilization": "src/blueprint/paydown-simulator.mjs allocateCashToCards (highest utilization first, each card to its 10% target)",
+          "snowball": "Owner direction 2026-10-06: snowball = smallest balance first"
+        }
+      },
+      "defaults": {
+        "method": "avalanche",
+        "monthly_cents": 22300,
+        "goal": null
+      },
+      "plan": {
+        "ok": true,
+        "reason": null,
+        "as_of": "2026-10-17",
+        "method": "avalanche",
+        "monthly_cents": 22300,
+        "debts": [
+          {
+            "id": "sample-4",
+            "name": "Business Amex",
+            "type": "card",
+            "kind": "business",
+            "container_id": "sample-2",
+            "balance_cents": 497401,
+            "limit_cents": 2500000,
+            "limit_state": "known",
+            "apr_pct": 18.24,
+            "apr_bps": 1824,
+            "apr_source": "statement",
+            "min_cents": 13300,
+            "due_on": "2026-11-10"
+          },
+          {
+            "id": "sample-5",
+            "name": "Personal Visa",
+            "type": "card",
+            "kind": "personal",
+            "container_id": "sample-3",
+            "balance_cents": 312700,
+            "limit_cents": 800000,
+            "limit_state": "known",
+            "apr_pct": 24.99,
+            "apr_bps": 2499,
+            "apr_source": "statement",
+            "min_cents": 9000,
+            "due_on": "2026-11-21"
+          }
+        ],
+        "excluded": [],
+        "minimums_cents": 22300,
+        "payoff_all_cents": 824173,
+        "warnings": [],
+        "order": [
+          {
+            "id": "sample-5",
+            "floor_cents": 0,
+            "phase": "rate"
+          },
+          {
+            "id": "sample-4",
+            "floor_cents": 0,
+            "phase": "rate"
+          }
+        ],
+        "debt_free": {
+          "month": 59,
+          "on": "2031-09-17",
+          "earliest": false
+        },
+        "never_paid_off": false,
+        "interest_cents": 489838,
+        "interest_known_cents": 489838,
+        "apr_unknown_ids": [],
+        "baseline": {
+          "ok": true,
+          "reason": null,
+          "debt_free_month": 63,
+          "debt_free_on": "2032-01-17",
+          "interest_cents": 492281,
+          "never_ids": []
+        },
+        "interest_saved_cents": 2443,
+        "interest_saved_reason": null,
+        "months_saved": 4,
+        "util_start_pct": 24.5,
+        "crossings": [
+          {
+            "pct": 30,
+            "key": "util30",
+            "month": 0,
+            "on": "2026-10-17",
+            "already": true,
+            "earliest": false
+          },
+          {
+            "pct": 10,
+            "key": "util10",
+            "month": 41,
+            "on": "2030-03-17",
+            "already": false,
+            "earliest": false
+          }
+        ],
+        "per_debt": [
+          {
+            "id": "sample-4",
+            "payoff_month": 56,
+            "payoff_on": "2031-06-17",
+            "earliest": false,
+            "interest_cents": 243533,
+            "start_util_pct": 19.9,
+            "cross": {
+              "util30": {
+                "target_cents": 750000,
+                "month": 0,
+                "on": "2026-10-17",
+                "already": true
+              },
+              "util10": {
+                "target_cents": 250000,
+                "month": 34,
+                "on": "2029-08-17",
+                "already": false
+              }
+            }
+          },
+          {
+            "id": "sample-5",
+            "payoff_month": 59,
+            "payoff_on": "2031-09-17",
+            "earliest": false,
+            "interest_cents": 246305,
+            "start_util_pct": 39.1,
+            "cross": {
+              "util30": {
+                "target_cents": 240000,
+                "month": 24,
+                "on": "2028-10-17",
+                "already": false
+              },
+              "util10": {
+                "target_cents": 80000,
+                "month": 53,
+                "on": "2031-03-17",
+                "already": false
+              }
+            }
+          }
+        ],
+        "goal": null,
+        "cash": {
+          "status": "safe",
+          "by_kind": [
+            {
+              "kind": "personal",
+              "status": "safe",
+              "planned_cents": 9000,
+              "safe_cents": 1338500,
+              "reason": null
+            },
+            {
+              "kind": "business",
+              "status": "safe",
+              "planned_cents": 13300,
+              "safe_cents": 1978000,
+              "reason": null
+            }
+          ],
+          "max_safe": {
+            "monthly_cents": 824173,
+            "unlimited": true,
+            "binding_kind": null,
+            "reason": null
+          }
+        },
+        "milestones": [
+          {
+            "key": "sample-5:util30",
+            "kind": "pay_down",
+            "target_pct": 30,
+            "target_cents": 240000,
+            "month": 24,
+            "debt_id": "sample-5",
+            "name": "Personal Visa",
+            "date": "2028-10-17",
+            "earliest": false
+          },
+          {
+            "key": "sample-4:util10",
+            "kind": "pay_down",
+            "target_pct": 10,
+            "target_cents": 250000,
+            "month": 34,
+            "debt_id": "sample-4",
+            "name": "Business Amex",
+            "date": "2029-08-17",
+            "earliest": false
+          },
+          {
+            "key": "overall:util10",
+            "kind": "checkpoint",
+            "target_pct": 10,
+            "target_cents": null,
+            "month": 41,
+            "debt_id": null,
+            "name": null,
+            "date": "2030-03-17",
+            "earliest": false
+          },
+          {
+            "key": "sample-5:util10",
+            "kind": "pay_down",
+            "target_pct": 10,
+            "target_cents": 80000,
+            "month": 53,
+            "debt_id": "sample-5",
+            "name": "Personal Visa",
+            "date": "2031-03-17",
+            "earliest": false
+          },
+          {
+            "key": "sample-4:payoff",
+            "kind": "pay_down",
+            "target_pct": null,
+            "target_cents": 0,
+            "month": 56,
+            "debt_id": "sample-4",
+            "name": "Business Amex",
+            "date": "2031-06-17",
+            "earliest": false
+          },
+          {
+            "key": "sample-5:payoff",
+            "kind": "pay_down",
+            "target_pct": null,
+            "target_cents": 0,
+            "month": 59,
+            "debt_id": "sample-5",
+            "name": "Personal Visa",
+            "date": "2031-09-17",
+            "earliest": false
+          },
+          {
+            "key": "debt_free",
+            "kind": "checkpoint",
+            "target_pct": null,
+            "target_cents": 0,
+            "debt_id": null,
+            "name": null,
+            "month": 59,
+            "date": "2031-09-17",
+            "earliest": false
+          }
+        ],
+        "month_count": 59
+      },
+      "saved": null
+    },
+    "/api/money/tasks": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "today": "2026-10-17",
+      "window_days": 14,
+      "tasks": [
+        {
+          "id": "uwiq:e4c807764777",
+          "title": "Lower your revolving utilization below ~30% for optimal approval odds and limit assignments.",
+          "why": "From UnderwriteIQ, Fundhub's funding math, on your latest credit file.",
+          "due_on": null,
+          "kind": "other",
+          "can_do": "self",
+          "late_days": null,
+          "amount_cents": null,
+          "moves_money": false,
+          "transfer": null,
+          "source": "underwriteiq",
+          "from": "UnderwriteIQ",
+          "link": null,
+          "assignment": null
+        }
+      ],
+      "more": 0,
+      "sources": [
+        {
+          "name": "clarity",
+          "ok": true
+        },
+        {
+          "name": "dues",
+          "ok": true
+        },
+        {
+          "name": "late_cards",
+          "ok": true
+        },
+        {
+          "name": "waypoints",
+          "ok": true
+        },
+        {
+          "name": "plan",
+          "ok": true
+        },
+        {
+          "name": "underwriteiq",
+          "ok": true
+        }
+      ]
+    },
+    "/api/money/transfers": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "today": "2026-10-17",
+      "mode": {
+        "enabled": false,
+        "environment": "sandbox",
+        "live": false,
+        "reason": "limits_not_set"
+      },
+      "limits": {
+        "per_transfer_cents": null,
+        "daily_cents": null,
+        "used_today_cents": 0,
+        "left_today_cents": null
+      },
+      "accounts": [],
+      "waiting": [],
+      "history": []
+    },
+    "/api/money/trends": {
+      "ok": true,
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "range": "90d",
+      "from": "2026-07-20",
+      "to": "2026-10-17",
+      "has_history": false,
+      "daily": {
+        "days": [
+          "2026-07-20",
+          "2026-07-21",
+          "2026-07-22",
+          "2026-07-23",
+          "2026-07-24",
+          "2026-07-25",
+          "2026-07-26",
+          "2026-07-27",
+          "2026-07-28",
+          "2026-07-29",
+          "2026-07-30",
+          "2026-07-31",
+          "2026-08-01",
+          "2026-08-02",
+          "2026-08-03",
+          "2026-08-04",
+          "2026-08-05",
+          "2026-08-06",
+          "2026-08-07",
+          "2026-08-08",
+          "2026-08-09",
+          "2026-08-10",
+          "2026-08-11",
+          "2026-08-12",
+          "2026-08-13",
+          "2026-08-14",
+          "2026-08-15",
+          "2026-08-16",
+          "2026-08-17",
+          "2026-08-18",
+          "2026-08-19",
+          "2026-08-20",
+          "2026-08-21",
+          "2026-08-22",
+          "2026-08-23",
+          "2026-08-24",
+          "2026-08-25",
+          "2026-08-26",
+          "2026-08-27",
+          "2026-08-28",
+          "2026-08-29",
+          "2026-08-30",
+          "2026-08-31",
+          "2026-09-01",
+          "2026-09-02",
+          "2026-09-03",
+          "2026-09-04",
+          "2026-09-05",
+          "2026-09-06",
+          "2026-09-07",
+          "2026-09-08",
+          "2026-09-09",
+          "2026-09-10",
+          "2026-09-11",
+          "2026-09-12",
+          "2026-09-13",
+          "2026-09-14",
+          "2026-09-15",
+          "2026-09-16",
+          "2026-09-17",
+          "2026-09-18",
+          "2026-09-19",
+          "2026-09-20",
+          "2026-09-21",
+          "2026-09-22",
+          "2026-09-23",
+          "2026-09-24",
+          "2026-09-25",
+          "2026-09-26",
+          "2026-09-27",
+          "2026-09-28",
+          "2026-09-29",
+          "2026-09-30",
+          "2026-10-01",
+          "2026-10-02",
+          "2026-10-03",
+          "2026-10-04",
+          "2026-10-05",
+          "2026-10-06",
+          "2026-10-07",
+          "2026-10-08",
+          "2026-10-09",
+          "2026-10-10",
+          "2026-10-11",
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15",
+          "2026-10-16",
+          "2026-10-17"
+        ],
+        "estimated": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "cash": {
+          "personal": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "floor": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "business": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "floor": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "unknown": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "floor": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "debt": {
+          "total": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "floor": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "personal": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "business": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "unknown": {
+            "cents": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "cards_used_pct": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "monthly": {
+        "months": [
+          "2026-08",
+          "2026-09",
+          "2026-10"
+        ],
+        "has_transactions": true,
+        "personal": {
+          "in_cents": [
+            680000,
+            680000,
+            680000
+          ],
+          "out_cents": [
+            315500,
+            313000,
+            268000
+          ]
+        },
+        "business": {
+          "in_cents": [
+            829800,
+            662400,
+            322800
+          ],
+          "out_cents": [
+            310000,
+            335000,
+            325000
+          ]
+        },
+        "unknown": {
+          "in_cents": [
+            null,
+            null,
+            null
+          ],
+          "out_cents": [
+            null,
+            null,
+            null
+          ]
+        }
+      },
+      "sales": null,
+      "credit": {
+        "history": []
+      },
+      "sales_unavailable": false
+    },
+    "/api/money/vault": {
+      "ok": true,
+      "audience": "client",
+      "client": {
+        "id": "sample-1",
+        "name": "Portal Sample"
+      },
+      "as_of": "2026-10-17T12:00:00.000Z",
+      "complete": false,
+      "summary": {
+        "required": 8,
+        "accepted": 0,
+        "waived": 0,
+        "uploaded": 0,
+        "missing": 8,
+        "expired": 0,
+        "rejected": 0
+      },
+      "scopes": [
+        {
+          "kind": "business",
+          "id": "sample-2",
+          "name": "Sample Consulting LLC"
+        }
+      ],
+      "items": [
+        {
+          "slot": "id_document:client",
+          "key": "id_document",
+          "scope": {
+            "kind": "client",
+            "id": null,
+            "name": null
+          },
+          "priority": 10,
+          "title": "Government photo ID",
+          "ask": "a photo of your driver's license or passport",
+          "ask_text": "a photo of your driver's license or passport",
+          "label": "Government photo ID",
+          "why": "Every lender checks who you are first. The ID should show the address you live at now. If it does not, send your passport instead.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "id_document"
+          ],
+          "need": 1,
+          "unit": "file",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "id_document"
+            }
+          }
+        },
+        {
+          "slot": "proof_of_address:client",
+          "key": "proof_of_address",
+          "scope": {
+            "kind": "client",
+            "id": null,
+            "name": null
+          },
+          "priority": 20,
+          "title": "Proof of current address",
+          "ask": "a recent utility bill or bank statement with your name and address",
+          "ask_text": "a recent utility bill or bank statement with your name and address",
+          "label": "Proof of current address",
+          "why": "The name and address must match your ID. A utility bill or a bank statement both work.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "proof_of_address",
+            "bank_statement"
+          ],
+          "need": 1,
+          "unit": "file",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "proof_of_address"
+            }
+          }
+        },
+        {
+          "slot": "tax_returns_personal:client",
+          "key": "tax_returns_personal",
+          "scope": {
+            "kind": "client",
+            "id": null,
+            "name": null
+          },
+          "priority": 30,
+          "title": "Personal tax returns, last 2 years",
+          "ask": "your personal tax returns for the last 2 years",
+          "ask_text": "your personal tax returns for the last 2 years",
+          "label": "Personal tax returns, last 2 years",
+          "why": "Banks ask for them when the credit being approved gets large. Having them ready keeps the file moving.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "tax_return"
+          ],
+          "need": 2,
+          "unit": "year",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "tax_return"
+            }
+          }
+        },
+        {
+          "slot": "bank_statements_business:sample-2",
+          "key": "bank_statements_business",
+          "scope": {
+            "kind": "business",
+            "id": "sample-2",
+            "name": "Sample Consulting LLC"
+          },
+          "priority": 40,
+          "title": "Business bank statements, last 3 months",
+          "ask": "your last 3 months of business bank statements",
+          "ask_text": "your last 3 months of business bank statements for Sample Consulting LLC",
+          "label": "Business bank statements, last 3 months \u2014 Sample Consulting LLC",
+          "why": "Lenders read three months of statements to see money coming in and staying in the account.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "business_bank_statement"
+          ],
+          "need": 3,
+          "unit": "month",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": {
+            "kind": "months",
+            "value": 3,
+            "note": "Lenders ask for the last three months; older than three months is no longer the last three."
+          },
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "business_bank_statement",
+              "entity_id": "sample-2"
+            }
+          }
+        },
+        {
+          "slot": "tax_returns_business:sample-2",
+          "key": "tax_returns_business",
+          "scope": {
+            "kind": "business",
+            "id": "sample-2",
+            "name": "Sample Consulting LLC"
+          },
+          "priority": 50,
+          "title": "Business tax returns, last 2 years",
+          "ask": "your business tax returns for the last 2 years",
+          "ask_text": "your business tax returns for the last 2 years for Sample Consulting LLC",
+          "label": "Business tax returns, last 2 years \u2014 Sample Consulting LLC",
+          "why": "Banks ask for them when the credit being approved gets large.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "business_tax_return"
+          ],
+          "need": 2,
+          "unit": "year",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "business_tax_return",
+              "entity_id": "sample-2"
+            }
+          }
+        },
+        {
+          "slot": "articles_of_organization:sample-2",
+          "key": "articles_of_organization",
+          "scope": {
+            "kind": "business",
+            "id": "sample-2",
+            "name": "Sample Consulting LLC"
+          },
+          "priority": 60,
+          "title": "Articles of Organization",
+          "ask": "your Articles of Organization (or Incorporation)",
+          "ask_text": "your Articles of Organization (or Incorporation) for Sample Consulting LLC",
+          "label": "Articles of Organization \u2014 Sample Consulting LLC",
+          "why": "It proves the business exists and who owns it. The business name on it must match the name you apply under.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "articles_of_organization"
+          ],
+          "need": 1,
+          "unit": "file",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "articles_of_organization",
+              "entity_id": "sample-2"
+            }
+          }
+        },
+        {
+          "slot": "ein_letter:sample-2",
+          "key": "ein_letter",
+          "scope": {
+            "kind": "business",
+            "id": "sample-2",
+            "name": "Sample Consulting LLC"
+          },
+          "priority": 70,
+          "title": "EIN confirmation letter",
+          "ask": "your EIN confirmation letter from the IRS",
+          "ask_text": "your EIN confirmation letter from the IRS for Sample Consulting LLC",
+          "label": "EIN confirmation letter \u2014 Sample Consulting LLC",
+          "why": "Banks match it to the business name before they open an account.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "ein_letter"
+          ],
+          "need": 1,
+          "unit": "file",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": null,
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "ein_letter",
+              "entity_id": "sample-2"
+            }
+          }
+        },
+        {
+          "slot": "certificate_good_standing:sample-2",
+          "key": "certificate_good_standing",
+          "scope": {
+            "kind": "business",
+            "id": "sample-2",
+            "name": "Sample Consulting LLC"
+          },
+          "priority": 80,
+          "title": "Certificate of Good Standing",
+          "ask": "a Certificate of Good Standing from your Secretary of State, issued in the last 60 days",
+          "ask_text": "a Certificate of Good Standing from your Secretary of State, issued in the last 60 days for Sample Consulting LLC",
+          "label": "Certificate of Good Standing \u2014 Sample Consulting LLC",
+          "why": "It shows the business is active with the state. Banks only take one issued in the last 60 days. You can order it online.",
+          "custom": false,
+          "custom_id": null,
+          "subtypes": [
+            "certificate_good_standing"
+          ],
+          "need": 1,
+          "unit": "file",
+          "have": 0,
+          "pending": 0,
+          "expired_have": 0,
+          "rejected": 0,
+          "status": "missing",
+          "waiting_on": "client",
+          "detail": "not sent",
+          "waived": null,
+          "documents": [],
+          "expires": {
+            "kind": "days",
+            "value": 60,
+            "note": "\"Must be issued <= 60 days ago\"."
+          },
+          "upload": {
+            "endpoint": "/api/documents-upload",
+            "method": "POST",
+            "fields": {
+              "kind": "client_upload",
+              "subtype": "certificate_good_standing",
+              "entity_id": "sample-2"
+            }
+          }
+        }
+      ],
+      "unfiled": [],
+      "settings": {
+        "ask_every_days": 3,
+        "statement_window_months": 3,
+        "statement_max_age_days": null,
+        "good_standing_max_age_days": 60
+      }
+    }
+  }
+}

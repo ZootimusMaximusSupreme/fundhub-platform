@@ -1,0 +1,14 @@
+{
+  "source": "c8d63d73a8eacbf1c919eb4cb8c0c57eceeb5e82",
+  "prepare": "success",
+  "lint": "success",
+  "node": "failure",
+  "browser": "failure",
+  "money": "success",
+  "performance": "success",
+  "noProductionDeploy": true,
+  "noCustomerWrites": true,
+  "proofScope": "full staff integration and font proof",
+  "referenceFont": "SF Pro Rounded",
+  "webFallback": "Nunito with SIL OFL1.1; Apple font files are not bundled"
+}

@@ -47,7 +47,7 @@ function esc(s) {
 
 /** The body classes the page ships with, before any script runs. */
 function initialBodyClasses() {
-  const m = HTML.match(/<body class="([^"]*)">/);
+  const m = HTML.match(/<body\b[^>]*\bclass="([^"]*)"[^>]*>/);
   assert.ok(m, "client-portal.html has a <body class=…> tag");
   return m[1].split(/\s+/).filter(Boolean);
 }

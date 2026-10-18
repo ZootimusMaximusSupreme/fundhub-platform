@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fundhub — Plan</title>
@@ -13,6 +18,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="money-plan.css">
+<link rel="stylesheet" href="client-ios.css">
+<link rel="stylesheet" href="money-plan-ios.css">
 <!-- ══ PLAN — THE MONTH OF DATED PINS ════════════════════════════════════════
      Owner (2026-10-06): "A waypoint timeline: the full month view, strategic
      pins on dates — when to open accounts and deposit specific amounts — to
@@ -65,7 +72,7 @@ main{padding:24px 24px 64px}
 }
 </style>
 </head>
-<body>
+<body data-client-page="money-plan">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -90,5 +97,6 @@ main{padding:24px 24px 64px}
   </main>
 </div>
 <script defer src="money-plan.js"></script>
+<script defer src="client-ios.js"></script>
 </body>
 </html>

@@ -19,6 +19,7 @@ import { db as defaultDb } from "../../db.mjs";
 import { authenticate, AUTH_UNAVAILABLE } from "./requireAuth.mjs";
 import { verifyAccountSession } from "../../auth/account-session.mjs";
 import { bearerToken } from "./requireAuth.mjs";
+import { installClientSamples } from "../../demo/client-portal-samples.mjs";
 
 export const ALL_KINDS = ["staff", "client", "affiliate", "partner"];
 
@@ -84,6 +85,7 @@ export async function requirePrincipal(req, res, kinds, opts = {}) {
       message: `this endpoint serves ${[...allowed].join(", ")}` });
     return null;
   }
+  if (!(await installClientSamples(req, res, principal, opts.db || defaultDb))) return null;
   return principal;
 }
 
