@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 import { FIN_B15_DISPLAY_ENTRIES, FIN_B15_SPEC_TITLES } from "./fin-b15-display-specs.mjs";
 import { FIN_B15_DISPLAY_CONTRACTS } from "./fin-b15-display-contracts.mjs";
+import { freeBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -74,8 +75,9 @@ test("a row that says alsoLive owns a live check too, and a row that does not sa
 });
 
 for (const [spec, titles] of FIN_B15_SPEC_TITLES) {
-  test(`${spec}: the bound tests run in a real browser and pass`, { timeout: 600_000 }, () => {
+  test(`${spec}: the bound tests run in a real browser and pass`, { timeout: 600_000 }, async () => {
     assert.ok(fs.existsSync(PLAYWRIGHT_CLI), "Playwright CLI is not installed");
+    const port = await freeBrowserPort();
     const reportFile = path.join(os.tmpdir(), `fin-b15-display-${process.pid}-${path.basename(spec)}.json`);
     const grep = [...titles].map(escapeRegExp).join("|");
     const result = spawnSync(process.execPath, [
@@ -87,7 +89,7 @@ for (const [spec, titles] of FIN_B15_SPEC_TITLES) {
         ...process.env,
         CI: "1",
         PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile,
-        E2E_PORT: String(46_000 + ((process.pid + spec.length * 89) % 10_000))
+        E2E_PORT: String(port)
       },
       maxBuffer: 64 * 1024 * 1024
     });

@@ -62,6 +62,11 @@ async function oneCall(handler, path, method, rules, anonymous) {
 export async function probeRoute(handler, key, principalName) {
   const path = PATH_FOR[key] || key;
   const rules = principalName ? PRINCIPALS[principalName]() : [];
+  // This client-only door checks that the signed-in client has a file before
+  // returning the saved switch. Give the probe that one file; other roles get none.
+  if (key === "push/preferences" && principalName === "client") {
+    rules.push([/FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/, () => [{ marketing_push_enabled: false }]]);
+  }
   const get = await oneCall(handler, path, "GET", rules, !principalName);
   const post = await oneCall(handler, path, "POST", rules, !principalName);
   return { GET: get, POST: post };

@@ -28,6 +28,7 @@ import {
   redact,
   reasonLine,
   morningOnlySlow,
+  migrationOwnerConnection,
   GIT_NO_PROMPT,
   PULSE_SHIP_GUARDS,
   PULL_TIMEOUT_MS,
@@ -38,6 +39,15 @@ import { MACHINE_ONLY_PATHS, isMachineOnlyChange, isMachinePath, skipDiffPathspe
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SHIP = path.join(HERE, "ship.mjs");
 const SRC = fs.readFileSync(SHIP, "utf8");
+
+test("ship never uses the restricted app connection for migrations", () => {
+  const appOnly = { DATABASE_URL: "postgres://fundhub_app:secret@db.example/postgres" };
+  assert.equal(migrationOwnerConnection(appOnly), null);
+  assert.equal(migrationOwnerConnection({ ...appOnly, MIGRATION_DATABASE_URL: "postgres://owner:secret@db.example/postgres" }),
+    "postgres://owner:secret@db.example/postgres");
+  assert.equal(migrationOwnerConnection({ ...appOnly, MIGRATION_DATABASE_URL: "postgres://owner:****@db.example/postgres" }), null);
+  assert.match(SRC, /const migrationConnection = migrationOwnerConnection\(\)/);
+});
 
 // ── a real throwaway git repo, isolated from the Mac's own git settings ─────────
 
@@ -387,11 +397,12 @@ describe("pull before the checks: ff-only, then rebase --autostash, then abort �
     const main = SRC.slice(SRC.indexOf("async function main()"));
     const guard = main.indexOf('run("node", ["--test", ...PULSE_SHIP_GUARDS]');
     const catalog = main.indexOf('run("node", ["scripts/pulse/compile-catalog.mjs", "--check"]');
+    const migrations = main.indexOf('run("node", ["db/migrate.mjs"]');
     const hourly = main.indexOf('run("node", ["scripts/pulse/prove.mjs", "--beats"]');
     const morning = main.indexOf('run("node", ["scripts/pulse/prove.mjs"]');
     const deploy = main.indexOf('run("netlify", ["deploy", "--prod"');
-    assert.ok(guard > 0 && catalog > guard && hourly > catalog && morning > hourly && deploy > morning,
-      "pulse checks and both audit commands must run before release");
+    assert.ok(guard > 0 && catalog > guard && migrations > catalog && hourly > migrations && morning > hourly && deploy > morning,
+      "checked migrations must run before the schema-reading pulse proofs; both proofs must run before release");
     assert.match(main, /if \(!morningOnlySlow\(morningAudit\.out\)\) \{/);
     assert.match(main, /fail\("morning pulse bundle proof failed/);
     assert.match(main, /hourly pulse bundle proof failed/);
@@ -510,12 +521,12 @@ describe("push after the ship-log commit, through github-push-whole-repo.mjs —
     assert.match(r2.line, /no answer within 10 minutes/);
   });
 
-  test("GitHub has commits this Mac lacks -> no push (the push script would overwrite them)", () => {
+  test("GitHub has commits this Mac lacks -> no push until this Mac pulls", () => {
     const f = fakePush({ inside: "no" });
     const r = pushToGitHub({ git: f.git, runCmd: f.runCmd });
     assert.equal(r.pushed, false);
     assert.equal(f.calls.some((c) => c.kind === "run"), false, "github-push-whole-repo.mjs is not run");
-    assert.match(r.line, /would overwrite them/);
+    assert.match(r.line, /must pull them first/);
   });
 
   test("cannot read or compare GitHub's main -> no push, one line", () => {
@@ -663,7 +674,7 @@ describe("real git: the pull order and the push check do what the fakes say", ()
       const before = pushToGitHub({ git: gh.macGit, runCmd, env: gh.env });
       assert.equal(before.pushed, false);
       assert.deepEqual(ran, []);
-      assert.match(before.line, /would overwrite them/);
+      assert.match(before.line, /must pull them first/);
       assert.equal(pullMain({ git: gh.macGit, env: gh.env }).ok, true);
       const after = pushToGitHub({ git: gh.macGit, runCmd, env: gh.env });
       assert.equal(after.pushed, true, after.line);

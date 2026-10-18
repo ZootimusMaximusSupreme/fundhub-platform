@@ -1357,12 +1357,16 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
   assert.equal(cases.length, FIN_B06_DISPLAY_CONTRACTS.length);
   assert.equal(DISPLAY_RESULT_CASES.filter((entry) => mine.has(entry.control)).length, FIN_B06_DISPLAY_CONTRACTS.length);
 
-  const bySql = (sql) => (/display-result:([^*\s]+)/.exec(sql) || [])[1];
   const redKeys = new Set(["blueprint-credit-partner"]);
   const db = {
     async query(sql) {
-      const key = bySql(sql);
-      return { rows: [{ sample_count: redKeys.has(key) ? 4 : 2, bad_count: redKeys.has(key) ? 1 : 0 }] };
+      const keys = [...sql.matchAll(/\/\* display-result:([^*\s]+) \*\//g)].map((match) => match[1]);
+      assert.ok(keys.length > 0, "the grouped read must contain exact display-result keys");
+      return { rows: keys.map((key, probe_index) => ({
+        probe_index,
+        sample_count: redKeys.has(key) ? 4 : 2,
+        bad_count: redKeys.has(key) ? 1 : 0,
+      })) };
     }
   };
   // The real shipped files under public/ stand in for the live site (GET only, redirects not followed).
@@ -1389,7 +1393,7 @@ test("the lane judges every check from the saved catalog: green, red on a wrong 
       assert.equal(row.status, entry.contract.notShipped ? "na" : "NOT_PROVED", `${entry.control}: ${row.detail}`);
       continue;
     }
-    const key = bySql(entry.contract.sql);
+    const key = (/display-result:([^*\s]+)/.exec(entry.contract.sql) || [])[1];
     assert.equal(row.status, redKeys.has(key) ? "FAIL" : "PASS", `${key}: ${row.detail}`);
   }
 });

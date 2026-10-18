@@ -456,9 +456,12 @@ test.describe("Numbers tab states at 390px", () => {
     await page.getByRole("tab", { name: "Ads" }).click();
     await expect(page.locator(".ccn-table tbody tr")).toHaveCount(2);
     expect(new URL(page.url()).hash).toBe("#numbers/ads");
-    for (const v of ["Ads", "Angles", "Funnels"]) {
-      const b = await page.getByRole("tab", { name: v }).boundingBox();
-      expect(b.height).toBeGreaterThanOrEqual(44);
-    }
+    await expect.poll(() => page.locator(".ccn-views [role=tab]").evaluateAll((tabs) => tabs.map((tab) => ({
+      name: tab.textContent.trim(),
+      visible: getComputedStyle(tab).visibility === "visible",
+      tallEnough: tab.getBoundingClientRect().height >= 44
+    }))), { message: "all three view tabs stay visible with 44px targets" }).toEqual(
+      ["Ads", "Angles", "Funnels"].map((name) => ({ name, visible: true, tallEnough: true }))
+    );
   });
 });

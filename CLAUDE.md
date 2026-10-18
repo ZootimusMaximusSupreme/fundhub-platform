@@ -62,7 +62,7 @@ This repo only. Do not read, reference, or modify systems outside it to "stay co
 
 Ask him only when you are blocked on a decision only he can make (yes/no, live vs sandbox, delete data, repoint the database). When you do have to ask, ask that one decision, then wait. Do not ask and proceed in the same turn.
 
-Still do not proceed when any of these are true:
+Outside the approved-launch release-check exception below, do not proceed when any of these are true:
 
 * You are about to add a step, field, route, or dependency that was not explicitly asked for
 * You are about to change a file he did not ask to change
@@ -110,6 +110,14 @@ If you trip over something broken that I did not ask about, do not fix it and do
 
 **Hard lock (owner-set 2026-09-18):** This chat owns only the hole named in the paste. If you trip over another break, write one leftover card on the shared board and **STOP**. Do not VERIFY it. Do not FIX it. Do not spawn a fixer. Do not live-walk unnamed holes. Do not write “while proving hole 7 I also found N1–N27.” A dirty leftover on a path that used to work is a leftover, not the headline. See `.cursor/rules/no-extra-holes.mdc`.
 
+### Approved launch checks are in scope (owner-set 2026-10-17)
+
+When Chris approves a launch or says to ship after checks pass, failures in the required release checks are part of that named work, even in adjacent files. Fix and rerun them without asking for repeat permission. This is an exception to the stop-and-ask wording in §2 and the no-extra-holes rule, not permission for unrelated cleanup, weaker tests, live customer or money changes, credential changes, or new product decisions. Same law: `.cursor/rules/approved-launch-release-blockers.mdc` · `.claude/rules/approved-launch-release-blockers.md`.
+
+### Standing account authorization (owner-set 2026-10-17)
+
+Chris authorizes routine use of available accounts and tools for assigned work, including Apple Developer and App Store Connect for this launch. Do not ask again for in-scope account access, upload, submission, or deployment; the earlier App Store Connect denial is superseded. Keep money, deletion, unrelated account changes, and tool-enforced confirmations separate. Same law: `.cursor/rules/owner-authorized-account-ops.mdc` · `.claude/rules/owner-authorized-account-ops.md`.
+
 ### Commit locally, every session (owner-set 2026-09-08)
 
 A laptop died on 2026-09-07 holding uncommitted work. Four marketing skills and 83 ad scripts were never in git and are gone.
@@ -121,7 +129,7 @@ So: commit to the local repository in the same session the work is done, every t
 The full repo on GitHub: **ZootimusMaximusSupreme/fundhub-platform**.
 https://github.com/ZootimusMaximusSupreme/fundhub-platform
 
-Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — every local branch and tag, then drop remote **`gitlab`** if it still exists. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
+Remote name **`origin`**. Push with `node scripts/github-push-whole-repo.mjs` — `main`, every unmerged local branch, and every tag, then drop remote **`gitlab`** if it still exists. Merged branch refs stay deleted. Never push to gitlab.com. An unpushed commit is a problem. Law: `.cursor/rules/github-push.mdc` and `.claude/rules/github-push.md`.
 
 * Compare against **`origin/main`**, not GitLab.
 * Still commit locally every session. Then push that commit to GitHub when auth allows.

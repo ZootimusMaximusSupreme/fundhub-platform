@@ -9,6 +9,8 @@ alwaysApply: true
 
 This chat owns **only** the hole Chris named in the paste.
 
+An approved launch includes its required release checks. A failure in one of those checks is named launch scope, not an extra hole. Fix and rerun it under `approved-launch-release-blockers.mdc`.
+
 ## Never
 
 - VERIFY an unnamed hole

@@ -162,7 +162,7 @@ test("registry: a GET ping writes up or down and never auto-fixes", async () => 
   assert.ok(checks.every((c) => c.kind === "registry"));
 });
 
-const SEND_PROVIDERS = /messaging\/providers\/(?:twilio|twilio-whatsapp|resend|mailgun|mail-letter|web-push|ntfy)\.mjs$/;
+const SEND_PROVIDERS = /(?:messaging\/providers\/(?:twilio|twilio-whatsapp|resend|mailgun|mail-letter|web-push|ntfy)|(?:^|\/)apns)\.mjs$/;
 const ROOT = path.resolve(HERE, "../..");
 
 function filesThatSend(dir, out = []) {
@@ -188,12 +188,12 @@ function fileImportsSend(src) {
   while ((match = re.exec(src))) {
     if (!SEND_PROVIDERS.test(match[2])) continue;
     const clause = match[1];
-    if (clause.includes("*") || /\bsend\b/.test(clause) || /\bsendLetter\b/.test(clause)) return true;
+    if (clause.includes("*") || /\b(?:send|sendLetter|sendAPNS)\b/.test(clause)) return true;
   }
   return false;
 }
 
-test("registry: a live SMS, email, or mail send names a pulse row or a written skip", () => {
+test("registry: a live SMS, email, mail, or APNs send names a pulse row or a written skip", () => {
   const found = [
     ...filesThatSend(path.join(ROOT, "src")),
     ...filesThatSend(path.join(ROOT, "api")),

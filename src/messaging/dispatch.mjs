@@ -40,6 +40,8 @@ import { fenceVerdict, MESSAGING_DRY_RUN } from "../lib/dry-run.mjs";
 import { signUnsubscribeUrl, withUnsubscribeFooter } from "./unsubscribe.mjs";
 import { destinationAddress } from "../auth/authorized-rep.mjs";
 import { sendNativeToClient } from "../push/native-send.mjs";
+import { sendToClient } from "../push/send.mjs";
+import { notificationForSentMessage } from "../push/message-policy.mjs";
 
 /* If the document-check agent is retired, leftover queued SMS-DOC-02 must not
    transmit. The code below treats "no row" as retired, so this literal MUST
@@ -47,11 +49,15 @@ import { sendNativeToClient } from "../push/native-send.mjs";
    a stale literal here silently blocks every request-a-better-photo text and the
    client is told nothing at all. */
 const RETIRED_DOC_CHECK_SMS = "SMS-DOC-02-REQUEST-MORE";
-const BOOKING_CONFIRM_SMS = "SMS-S04-01-CONFIRM";
 
 function nativePushReady(env = process.env) {
   return Boolean(env.APNS_KEY_ID && env.APNS_TEAM_ID &&
     env.APNS_PRIVATE_KEY_BASE64 && env.PUSH_SUB_ENC_KEY);
+}
+
+function webPushReady(env = process.env) {
+  return Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY &&
+    env.VAPID_SUBJECT && env.PUSH_SUB_ENC_KEY);
 }
 
 async function isRetiredDocCheckSms(db, message) {
@@ -378,7 +384,8 @@ async function subjectFor(db, message) {
 
    `message` is a claimed row from claimDue(). */
 export async function dispatchOne(db, message, options = {}) {
-  const { fetchImpl, timeoutMs, signal, env, now, sendNative = sendNativeToClient } = options;
+  const { fetchImpl, timeoutMs, signal, env, now,
+    sendNative = sendNativeToClient, sendWeb = sendToClient } = options;
 
   try {
     // ---- 0. Quiet hours: defer, do not gate --------------------------------
@@ -684,20 +691,24 @@ export async function dispatchOne(db, message, options = {}) {
           WHERE id = $1`,
         [message.id, route.provider, result.providerMessageId]
       );
-      // Only the successful, gated booking-confirmation text can unlock this
-      // extra alert. A held/blocked/failed text or a non-transmitting test
-      // provider never does. The approved payload has no client details.
-      if (message.channel === "sms" && message.template_key === BOOKING_CONFIRM_SMS &&
-          provider.TRANSMITS === true && nativePushReady(env)) {
+      // A companion alert follows only a real, gated client email or text.
+      // Each phone pipe is independent; an alert failure never retries the
+      // already-sent message or changes its recorded delivery result.
+      if (provider.TRANSMITS === true && message.client_id &&
+          (message.channel === "email" || message.channel === "sms")) {
         try {
-          await sendNative(db, {
-            orgId: message.org_id, clientId: message.client_id,
-            notification: { kind: "call_confirmation" }, env
-          });
+          const notification = await notificationForSentMessage(db, message, { now: clock() });
+          if (notification) {
+            const target = { orgId: message.org_id, clientId: message.client_id, notification, env };
+            const sends = [];
+            if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target))
+              .catch((error) => console.warn(`[dispatch] native alert failed for message ${message.id}: ${error?.name || "Error"}`)));
+            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target))
+              .catch((error) => console.warn(`[dispatch] web alert failed for message ${message.id}: ${error?.name || "Error"}`)));
+            await Promise.all(sends);
+          }
         } catch (error) {
-          // The text is already sent and recorded. An APNs failure must not
-          // queue a duplicate text or rewrite its delivery status.
-          console.warn(`[dispatch] native confirmation alert failed for message ${message.id}: ${error?.name || "Error"}`);
+          console.warn(`[dispatch] companion alert was skipped for message ${message.id}: ${error?.name || "Error"}`);
         }
       }
       return { id: message.id, outcome: OUTCOME.SENT, detail: result.providerMessageId };

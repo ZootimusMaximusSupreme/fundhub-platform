@@ -61,25 +61,42 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     (entry) => `${entry.sourceFile}\0${entry.surface}\0${entry.control}`,
   ));
   let redCount = 0;
+  let trackedCount = 0;
+  let mappedCount = 0;
+  let mappedRedCount = 0;
 
   for (const sourceFile of DISPLAY_MAPS) {
     for (const row of rowsFor(sourceFile)) {
       if (row.repeats_row_in || !isTrackedDisplayControl(row)) continue;
+      trackedCount += 1;
       const proof = displayProofFor(sourceFile, row);
       if (proof?.verdict === "red") redCount += 1;
 
       const key = `${sourceFile}\0${row.surface}\0${row.control}`;
-      if (exactKeys.has(key)) continue;
+      if (exactKeys.has(key)) {
+        mappedCount += 1;
+        if (proof?.verdict === "red") mappedRedCount += 1;
+        continue;
+      }
       assert.equal(proof?.verdict, "red", `${key}: unmapped evidence must stay red`);
       assert.equal(proof?.evidence, DISPLAY_RESULT_LANE, `${key}: wrong red proof lane`);
     }
   }
 
-  assert.equal(redCount, 637, "Display red count changed; inspect every new exact proof");
+  // Current seven maps: 1,496 tracked controls, 1,379 mapped, 117 unmapped red,
+  // plus two mapped controls whose saved-result contracts deliberately stay red.
+  assert.equal(trackedCount, 1496, "Display map size changed; inspect the exact rows");
+  assert.equal(mappedCount, 1379, "Display proof coverage changed; inspect the exact cases");
+  assert.equal(mappedRedCount, 2, "Mapped display gaps changed; inspect their saved results");
+  assert.equal(redCount, 119, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {
   const files = [...new Set(DISPLAY_PROOF_CASES.flatMap((proofCase) => proofCase.tests))].sort();
+  if (process.env.FUNDHUB_FULL_SUITE_COVERS_DISPLAY_PROOFS === "1") {
+    assert.ok(files.length > 0, "display proof cases must name executable tests");
+    return; // run-suite already asserted and runs every mapped file directly
+  }
   const env = { ...process.env, NODE_ENV: "test" };
   delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(process.execPath, ["--test", ...files], {

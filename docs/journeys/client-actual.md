@@ -29,12 +29,12 @@ flowchart TD
     CAN --> A_merchant[merchant — 1 route]
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_push[push — 3 routes]
+    CAN --> A_push[push — 5 routes]
     CAN --> A_read[Reading data — 5 routes]
-    CAN --> A_top_level[Everything else — 9 routes]
+    CAN --> A_top_level[Everything else — 10 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 270 routes]
+    WHO -->|Yes| CANT[Blocked — 269 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
     CANT --> B_auth[Signing in and out — 7 blocked]
@@ -65,13 +65,13 @@ flowchart TD
     CANT --> B_scripts[scripts — 2 blocked]
     CANT --> B_social[social — 7 blocked]
     CANT --> B_staff[staff — 3 blocked]
-    CANT --> B_top_level[Everything else — 35 blocked]
+    CANT --> B_top_level[Everything else — 34 blocked]
     CANT --> B_trials[trials — 3 blocked]
 ```
 
 ## What they can reach
 
-**57 of 327 routes.**
+**60 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -83,6 +83,7 @@ flowchart TD
 | `/api/auth/magic-link-verify` | — | anyone |
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
+| `/api/bookings` | GET, POST | staff, client |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/climate` | OPTIONS | anyone |
 | `/api/climate/config` | — | anyone |
@@ -121,6 +122,8 @@ flowchart TD
 | `/api/public/unsubscribe` | — | **not a sign-in** — signed link |
 | `/api/public/vsl-watch` | OPTIONS, POST | anyone |
 | `/api/push/key` | GET | client |
+| `/api/push/native-device` | DELETE, GET, POST | client |
+| `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
@@ -140,7 +143,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**270 of 327 routes.**
+**269 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -170,7 +173,6 @@ flowchart TD
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/bookings` | GET | staff |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/campaigns/action-log` | GET | partner, staff |

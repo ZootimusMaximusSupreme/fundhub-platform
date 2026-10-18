@@ -11,6 +11,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { S1_DISPLAY_SPEC_PROOFS } from "./s1-display-specs.mjs";
+import { freeBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -58,8 +59,9 @@ test("every bound row is one exact map row and its spec file exists and is not a
 });
 
 for (const [spec, titles] of bySpec) {
-  test(`${spec}: the bound tests run in a real browser and pass`, () => {
+  test(`${spec}: the bound tests run in a real browser and pass`, async () => {
     assert.ok(fs.existsSync(PLAYWRIGHT_CLI), "Playwright CLI is not installed");
+    const port = await freeBrowserPort();
     const reportFile = path.join(os.tmpdir(), `s1-display-${process.pid}-${path.basename(spec)}.json`);
     const grep = [...titles].map(escapeRegExp).join("|");
     const result = spawnSync(process.execPath, [
@@ -71,7 +73,7 @@ for (const [spec, titles] of bySpec) {
         ...process.env,
         CI: "1",
         PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile,
-        E2E_PORT: String(45_000 + ((process.pid + spec.length * 97) % 10_000)),
+        E2E_PORT: String(port),
       },
       maxBuffer: 32 * 1024 * 1024,
     });

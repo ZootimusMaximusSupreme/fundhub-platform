@@ -127,7 +127,7 @@ test.describe("Company Brain — chat, upload, approval gating", () => {
       headers, data: { question: "What does the closer do on a rate objection?" }
     });
     const askedBody = await asked.json();
-    expect(asked.status()).toBe(200);
+    expect(asked.status(), `chat ask failed: ${askedBody.error || "unknown_error"}`).toBe(200);
     const threadId = askedBody.thread_id;
     expect(threadId, "asking should create a conversation").toBeTruthy();
 

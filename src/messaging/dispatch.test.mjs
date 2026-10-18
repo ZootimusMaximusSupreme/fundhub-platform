@@ -47,6 +47,8 @@ function fakeDb({
   rules = [],
   subject = "Your file",
   due = [],
+  marketingCounts = { last_day: 0, last_week: 0 },
+  upcomingBooking = true,
   /* custom_fields as stored on the client. The dispatcher reads it to refuse a
      synthetic (journey-run) record when the resolved provider can transmit. */
   customFields = null
@@ -57,6 +59,9 @@ function fakeDb({
     query: async (sql, params) => {
       if (sql.includes("client_authorized_reps")) return { rows: [] };
       if (sql.includes("FROM opt_outs")) {
+        if (sql.includes("channel IN ('sms', 'email')")) {
+          return { rows: ["sms", "email"].some((channel) => optedOut.has(`${params[0]}:${channel}`)) ? [{ x: 1 }] : [] };
+        }
         return { rows: optedOut.has(`${params[0]}:${params[1]}`) ? [{ x: 1 }] : [] };
       }
       if (sql.includes("FROM compliance_rules")) return { rows: rules };
@@ -65,6 +70,8 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
+      if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
         return { rows: [{ custom_fields: customFields }] };
       }
@@ -125,6 +132,13 @@ const APNS_ENV = {
   PUSH_SUB_ENC_KEY: "test-storage-key-never-used-by-spy"
 };
 
+const BOTH_PUSH_ENV = {
+  ...APNS_ENV,
+  VAPID_PUBLIC_KEY: "test-public-key-never-used-by-spy",
+  VAPID_PRIVATE_KEY: "test-private-key-never-used-by-spy",
+  VAPID_SUBJECT: "mailto:ops@fundhub.test"
+};
+
 describe("native alert after a gated booking confirmation", () => {
   const bookingText = () => claimed({ channel: "sms", template_key: "SMS-S04-01-CONFIRM" });
   const bookingDb = (options = {}) => fakeDb({
@@ -165,11 +179,11 @@ describe("native alert after a gated booking confirmation", () => {
     }
   });
 
-  test("dry run, missing APNs keys, and unrelated texts do not trigger native send", async () => {
-    for (const [env, message, expected] of [
-      [{ ...APNS_ENV, MESSAGING_DRY_RUN: "1" }, bookingText(), OUTCOME.DRY_RUN],
-      [{ ...APNS_ENV, APNS_KEY_ID: "" }, bookingText(), OUTCOME.SENT],
-      [APNS_ENV, claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" }), OUTCOME.SENT]
+  test("dry run and missing APNs keys do not trigger native send; other sent service texts do", async () => {
+    for (const [env, message, expected, expectedPushes] of [
+      [{ ...APNS_ENV, MESSAGING_DRY_RUN: "1" }, bookingText(), OUTCOME.DRY_RUN, 0],
+      [{ ...APNS_ENV, APNS_KEY_ID: "" }, bookingText(), OUTCOME.SENT, 0],
+      [APNS_ENV, claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" }), OUTCOME.SENT, 1]
     ]) {
       const calls = [];
       const result = await dispatchOne(bookingDb(), message, {
@@ -177,7 +191,63 @@ describe("native alert after a gated booking confirmation", () => {
         sendNative: async () => { calls.push(1); }
       });
       assert.equal(result.outcome, expected);
-      assert.equal(calls.length, 0);
+      assert.equal(calls.length, expectedPushes);
+    }
+  });
+
+  test("a sent client email and SMS try both web and native phones with generic copy", async () => {
+    for (const message of [
+      claimed({ channel: "email", template_key: "E-01" }),
+      claimed({ channel: "sms", template_key: "SMS-S04-02-REMIND-24H" })
+    ]) {
+      const calls = [];
+      const db = fakeDb({ routing: {
+        email: { provider: "mailgun", enabled: true },
+        sms: { provider: "twilio", enabled: true }
+      } });
+      const result = await dispatchOne(db, message, {
+        fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+        sendNative: async (_db, target) => { calls.push(["native", target.notification]); return { sent: 1 }; },
+        sendWeb: async (_db, target) => { calls.push(["web", target.notification]); return { sent: 1 }; }
+      });
+      assert.equal(result.outcome, OUTCOME.SENT);
+      assert.deepEqual(calls, [["native", { kind: "update" }], ["web", { kind: "update" }]]);
+    }
+  });
+
+  test("one push pipe failing cannot suppress the other or retry the sent message", async () => {
+    const db = bookingDb();
+    const calls = [];
+    const result = await dispatchOne(db, bookingText(), {
+      fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+      sendNative: async () => { throw new Error("test APNs outage"); },
+      sendWeb: async (_db, target) => { calls.push(target.notification); return { sent: 1 }; }
+    });
+    assert.equal(result.outcome, OUTCOME.SENT);
+    assert.deepEqual(calls, [{ kind: "call_confirmation" }]);
+    assert.ok(db.updates.some(({ sql }) => /SET status = 'sent'/.test(sql)));
+    assert.ok(!db.updates.some(({ sql }) => /SET status = 'queued'/.test(sql)));
+  });
+
+  test("BS pre-call text adds one marketing alert only with explicit opt-in and room under the cap", async () => {
+    const preCall = claimed({ channel: "sms", template_key: "SMS-BS01-02-PRECALL" });
+    for (const [dbOptions, expected] of [
+      [{ customFields: { marketing_push_enabled: true } }, 1],
+      [{ customFields: { marketing_push_enabled: false } }, 0],
+      [{ customFields: { marketing_push_enabled: true }, marketingCounts: { last_day: 1, last_week: 1 } }, 0],
+      [{ customFields: { marketing_push_enabled: true }, upcomingBooking: false }, 0],
+      [{ customFields: { marketing_push_enabled: true }, optedOut: new Set([`${CLIENT}:email`]) }, 0]
+    ]) {
+      const db = bookingDb(dbOptions);
+      const sent = [];
+      const result = await dispatchOne(db, preCall, {
+        fetchImpl: spy(), env: BOTH_PUSH_ENV, now: MIDDAY,
+        sendNative: async (_db, target) => { sent.push(["native", target.notification]); return { sent: 1 }; },
+        sendWeb: async (_db, target) => { sent.push(["web", target.notification]); return { sent: 1 }; }
+      });
+      assert.equal(result.outcome, OUTCOME.SENT);
+      assert.equal(sent.length, expected * 2);
+      if (expected) assert.deepEqual(sent, [["native", { kind: "check_in" }], ["web", { kind: "check_in" }]]);
     }
   });
 

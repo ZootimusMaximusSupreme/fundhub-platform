@@ -33,6 +33,6 @@ test("every slice-2 screen proof names one exact catalog row, a real spec and a 
   assertSpecsAreSafe(S2_DISPLAY_SPECS);
 });
 
-test("the browser specs press every named control in a real page and judge the exact write", () => {
-  runSpecs(S2_DISPLAY_SPECS, "slice-2 browser proofs");
+test("the browser specs press every named control in a real page and judge the exact write", async () => {
+  await runSpecs(S2_DISPLAY_SPECS, "slice-2 browser proofs");
 });

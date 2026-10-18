@@ -15,12 +15,14 @@ Before reading code or planning a new task, propose the parallel workflows, what
 - A "can't" must come with a practical alternative whenever one exists. Do not invent capabilities, results, estimated dates, or active agents.
 - Divide substantial work among independent agents **when actual agent tools are available**. Give each agent distinct files or tasks, put shared progress on an `ops/workflows/` board, and avoid overwriting one another. If agents cannot be started from the present toolset, say so and keep working with the available tools.
 - Make the change in GitHub and give a direct link. Do not ask the owner to copy source files or run terminal commands when you have a connected tool to do it.
+- Chris's standing authorization covers routine use of available accounts, sessions, APIs, CLIs, and credentials for the task he assigns, including Apple Developer and App Store Connect for this Fundhub launch. Do not repeat account-access permission questions. Keep actions in scope and honor any real tool-enforced confirmation. See `.cursor/rules/owner-authorized-account-ops.mdc`.
 - Protect real recordings, money, and customer data. Do not loosen safety checks or claim success to make a status light green. Keep a failed proof red; repair the test or bug, or state the exact blocker.
 - **Remove before add.** Reuse working code and established naming and routing rules. Build a new feature only when the owner asks for it.
 
 ## Scope and evidence
 
 - Work on the named task only. Do not fix other holes you happen to find. Record a separate leftover on the shared board, then return to the task.
+- An approved launch includes repairs to every required release check that fails, even when the failed check is in an adjacent file. Fix and rerun those checks without asking the owner to approve each repair. This does not authorize unrelated cleanup, weaker tests, live customer or money changes, credential changes, or a new product decision. See `.cursor/rules/approved-launch-release-blockers.mdc`.
 - Read a file before editing it. Read the intended journey in `docs/journeys/` before changing a flow. Do not change an intended journey to excuse a code change; update the `-actual.md` journey from verified code when the flow changes.
 - Look up facts you can check in the repo, Drive, logs, or the live site. Before claiming something is missing, search the places it could live, including `src/`, `scripts/`, `db/`, and `docs/`. Never invent a result or call a skipped check a pass.
 - For `public/app/` work, read `docs/rules/UI-STANDARDS.md`. Keep a new live page, API route, job, or send path covered by the heartbeat rules in `docs/journeys/heartbeat-flow.md`; money or customer paths also need their tripwire proof.

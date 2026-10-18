@@ -162,8 +162,19 @@ export async function run(ctx) {
   });
 
   /* ---- fetch: the reads ---- */
+  const earlyConfirms = new Map();
   const answers = await ctx.step("fetch", async () => {
-    const out = await runPool(plan.picks, (p) => readOnce(p.url), {
+    const out = await runPool(plan.picks, async (p) => {
+      const answer = await readOnce(p.url);
+      // A previously good link that now gives a real broken response can start its second read while the other banks finish,
+      // but keep the same confirmation cap and start cutoff. A positive status also means the
+      // pulse is not blind; an all-dead web connection must still fail without extra reads.
+      if (p.prev && p.prev.lastGoodAt && answer.status > 0 && isBroken(classifyRead(answer).cls) &&
+          elapsed() <= TIMING.confirmStartMs && earlyConfirms.size < CAPS.maxConfirms) {
+        earlyConfirms.set(p.urlHash, readOnce(p.url));
+      }
+      return answer;
+    }, {
       concurrency: CAPS.concurrency,
       canStart: () => elapsed() < TIMING.stopStartMs
     });
@@ -193,8 +204,12 @@ export async function run(ctx) {
   /* ---- confirm: a link that WAS good and reads dead is read once more ---- */
   const confirmInfo = await ctx.step("confirm", async () => {
     const wasGood = checked.filter((c) => isBroken(c.read.cls) && c.p.prev && c.p.prev.lastGoodAt);
-    const toConfirm = elapsed() > TIMING.confirmStartMs ? [] : wasGood.slice(0, CAPS.maxConfirms);
-    const second = await Promise.all(toConfirm.map((c) => readOnce(c.p.url)));
+    const early = wasGood.filter((c) => earlyConfirms.has(c.p.urlHash));
+    const remaining = elapsed() > TIMING.confirmStartMs
+      ? []
+      : wasGood.filter((c) => !earlyConfirms.has(c.p.urlHash)).slice(0, CAPS.maxConfirms - early.length);
+    const toConfirm = [...early, ...remaining];
+    const second = await Promise.all(toConfirm.map((c) => earlyConfirms.get(c.p.urlHash) || readOnce(c.p.url)));
     const confirmed = [];
     toConfirm.forEach((c, i) => {
       const read = classifyRead(second[i]);

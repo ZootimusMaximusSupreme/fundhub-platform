@@ -55,18 +55,18 @@ flowchart TD
     CAN --> A_top_level[Everything else — 43 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 8 routes]
+    WHO -->|Yes| CANT[Blocked — 10 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 1 blocked]
     CANT --> B_chat[chat — 1 blocked]
-    CANT --> B_push[push — 3 blocked]
+    CANT --> B_push[push — 5 blocked]
     CANT --> B_read[Reading data — 1 blocked]
     CANT --> B_top_level[Everything else — 1 blocked]
 ```
 
 ## What they can reach
 
-**319 of 327 routes.**
+**319 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -102,7 +102,7 @@ flowchart TD
 | `/api/banking/sync-transactions` | POST | owner, admin, sales_manager, closer |
 | `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/bookings` | GET | staff |
+| `/api/bookings` | GET, POST | staff, client |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
 | `/api/call-outcomes` | POST | owner, admin, closer, sales_manager |
 | `/api/campaigns/action-log` | GET | partner, staff |
@@ -399,7 +399,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**8 of 327 routes.**
+**10 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -407,6 +407,8 @@ flowchart TD
 | `/api/auth/authorized-rep-file` | GET, POST | client |
 | `/api/chat/portal-message` | GET, POST | client |
 | `/api/push/key` | GET | client |
+| `/api/push/native-device` | DELETE, GET, POST | client |
+| `/api/push/preferences` | GET, PUT | client |
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |

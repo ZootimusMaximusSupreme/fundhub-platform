@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Push the full local repo (all branches + tags) to GitHub.
+ * Push main, unmerged local branches, and tags to GitHub.
  *
  * Env (gitignored .env or credentials/github-pat.txt via loadEnv):
  *   GITHUB_TOKEN — personal access token with repo (push) scope
  *   GITHUB_REPO  — optional, default ZootimusMaximusSupreme/fundhub-platform
  *
- * Adds/updates remote `origin`, pushes main (--force-with-lease), other branches, tags.
+ * Adds/updates remote `origin`, pushes main (fast-forward only), unmerged branches, tags.
  * Removes remote `gitlab` if present. Never removes GitHub remotes.
  * Never prints the token.
  */
@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "./load-env.mjs";
+import { planBranchPushes, requireMainFastForward } from "./github-push-plan.mjs";
 import { spawnSync } from "node:child_process";
 
 loadEnv();
@@ -132,25 +133,39 @@ try {
     .split("\n")
     .map((b) => b.trim())
     .filter(Boolean);
-  const branchCount = branches.length;
-
   let expectedMain = "";
   const expectedRes = spawnSync("git", ["rev-parse", "--verify", "refs/remotes/origin/main"], {
     encoding: "utf8",
   });
   if (expectedRes.status === 0) expectedMain = (expectedRes.stdout || "").trim();
+  if (expectedMain) {
+    const check = spawnSync("git", ["merge-base", "--is-ancestor", "refs/remotes/origin/main", "refs/heads/main"], {
+      encoding: "utf8",
+    });
+    if (check.status !== 0 && check.status !== 1) {
+      throw new Error(`git merge-base failed: ${(check.stderr || "").trim().slice(0, 300)}`);
+    }
+    requireMainFastForward(check.status === 0);
+  }
+
+  const { active: branchesToPush, merged: mergedBranches } = planBranchPushes(branches, (branch) => {
+    const check = spawnSync("git", ["merge-base", "--is-ancestor", `refs/heads/${branch}`, "refs/heads/main"], {
+      encoding: "utf8",
+    });
+    if (check.status === 0) return true;
+    if (check.status === 1) return false;
+    throw new Error(`git merge-base failed for ${branch}: ${(check.stderr || "").trim().slice(0, 300)}`);
+  });
   const mainArgs = ["push", remoteUrl];
-  if (expectedMain) mainArgs.push(`--force-with-lease=refs/heads/main:${expectedMain}`);
   mainArgs.push("main");
   run("git", mainArgs, { stdio: "inherit" });
   run("git", ["push", remoteUrl, "--tags"], { stdio: "inherit" });
 
-  for (const branch of branches) {
-    if (branch === "main") continue;
+  for (const branch of branchesToPush) {
     run("git", ["push", remoteUrl, branch], { stdio: "inherit" });
   }
 
-  for (const branch of branches) {
+  for (const branch of branchesToPush) {
     const tip = run("git", ["rev-parse", branch]);
     run("git", ["update-ref", `refs/remotes/origin/${branch}`, tip]);
     run("git", ["branch", "--set-upstream-to", `origin/${branch}`, branch]);
@@ -176,7 +191,7 @@ try {
     console.log("removed GitLab remote gitlab");
   }
 
-  console.log(`done — ${branchCount} branch(es) and tags on GitHub (${repo})`);
+  console.log(`done — ${branchesToPush.length + 1} branch(es) and tags on GitHub (${repo}); ${mergedBranches.length} merged local branch(es) skipped`);
 } catch (err) {
   console.error(String(err.message || err));
   process.exit(1);

@@ -1,6 +1,7 @@
 // sendToClient — one notification, every device that client has on file.
 //
-// THE ONLY CALLER OF THE WEB PUSH PROVIDER TODAY. It sits between the store
+// THE ONLY CALLER OF THE WEB PUSH PROVIDER TODAY. The dispatcher calls this
+// after a real email or text leaves. It sits between the store
 // (which holds encrypted credentials) and the provider (which is the only place
 // allowed to transmit), and it owns the two jobs neither of them can do alone:
 //

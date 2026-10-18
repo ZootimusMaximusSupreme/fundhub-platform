@@ -828,9 +828,15 @@ const signed = (key, over = {}) => {
     failure_count: 0, expired_at: null, revoked_at: null, ...over,
   });
   const client = (id, over = {}) => ({ id, org_id: ORG, email: "casey@fundhub-client.test.io", is_demo: false, custom_fields: {}, ...over });
+  const sentMessage = (id, over = {}) => ({
+    id, org_id: ORG, client_id: u(910), direction: "outbound", channel: "sms",
+    template_key: "SMS-S04-01-CONFIRM", status: "sent", updated_at: ago(5 * DAY),
+    created_at: ago(5 * DAY), ...over,
+  });
   FIXTURES.set("provider:web-push-and-client-push", {
     tables: {
       clients: [client(u(910))],
+      messages: [sentMessage(u(6), { created_at: ago(1 * DAY), updated_at: ago(1 * DAY) })],
       client_push_subscriptions: [
         device(u(1)),                                                          // old and reached: fine
         device(u(2), { created_at: ago(2 * DAY), last_success_at: null }),    // turned on two days ago, nothing yet: still new
@@ -840,10 +846,14 @@ const signed = (key, over = {}) => {
     sample: 3,
     breaks: {
       "a device that waited past the grace with no push ever tried": [
-        ["turned on 8 days ago, no success, no failure", (t) => t.client_push_subscriptions.push(
-          device(u(4), { created_at: ago(8 * DAY), last_success_at: null }))],
-        ["turned on 400 days ago, no success, no failure", (t) => t.client_push_subscriptions.push(
-          device(u(4), { created_at: ago(400 * DAY), last_success_at: null }))],
+        ["turned on 8 days ago, then sent a text, with no push attempt", (t) => {
+          t.client_push_subscriptions.push(device(u(4), { created_at: ago(8 * DAY), last_success_at: null }));
+          t.messages.push(sentMessage(u(5)));
+        }],
+        ["turned on 400 days ago, then sent a text, with no push attempt", (t) => {
+          t.client_push_subscriptions.push(device(u(4), { created_at: ago(400 * DAY), last_success_at: null }));
+          t.messages.push(sentMessage(u(5)));
+        }],
       ],
       "a device the push service keeps failing that is still on file": [
         ["three failures after a success", (t) => t.client_push_subscriptions.push(device(u(4), { failure_count: 3 }))],
@@ -853,8 +863,19 @@ const signed = (key, over = {}) => {
       ],
     },
     ignored: [
-      ["two failures and never a success (not yet three)", (t) => t.client_push_subscriptions.push(
-        device(u(4), { failure_count: 2, last_success_at: null, created_at: ago(20 * DAY) })), { sample: 4 }],
+      ["an old device with no eligible message since registration", (t) => {
+        t.messages = [];
+        t.client_push_subscriptions.push(device(u(4), { created_at: ago(40 * DAY), last_success_at: null }));
+      }, { sample: 4 }],
+      ["a promotional email does not imply a companion push", (t) => {
+        t.messages = [];
+        t.client_push_subscriptions.push(device(u(4), { created_at: ago(40 * DAY), last_success_at: null }));
+        t.messages.push(sentMessage(u(5), { channel: "email", template_key: "BS-FUND-D1-E1" }));
+      }, { sample: 4 }],
+      ["two failures and never a success (not yet three)", (t) => {
+        t.client_push_subscriptions.push(device(u(4), { failure_count: 2, last_success_at: null, created_at: ago(20 * DAY) }));
+        t.messages.push(sentMessage(u(5)));
+      }, { sample: 4 }],
       ["a retired device (the push service said gone) with many failures", (t) => t.client_push_subscriptions.push(
         device(u(4), { failure_count: 8, expired_at: ago(1 * DAY) })), { sample: 3 }],
       ["a device the client turned off", (t) => t.client_push_subscriptions.push(
@@ -881,6 +902,7 @@ const signed = (key, over = {}) => {
       ["never reached", "s.last_success_at IS NULL AND ", ""],
       ["never tried", "AND s.failure_count = 0 ", ""],
       ["past the grace", "AND s.created_at < $2::timestamptz", ""],
+      ["a sent service message after registration", "AND EXISTS (\n               SELECT 1 FROM messages m", "AND NOT EXISTS (\n               SELECT 1 FROM messages m"],
       ["failing", "OR s.failure_count >= 3", ""],
       ["not a test client", "AND NOT EXISTS (\n         SELECT 1 FROM clients cl", "AND NOT NOT EXISTS (\n         SELECT 1 FROM clients cl"],
     ],

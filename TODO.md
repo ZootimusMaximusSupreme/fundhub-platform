@@ -1,9 +1,28 @@
 # TODO — unfinished work
 
-## Tomorrow — 2026-10-18: company-wide UX refresh
+## Company-wide UX refresh — added 2026-10-18
 
 - [ ] Start a new-agent-led refresh of Fundhub's full experience across the website, funnels, client and team portals, CRM, Finance OS, and Mac/iPhone apps. Use `ops/workflows/company-ux-refresh-2026-10-18-reference.png` (the Mac welcome screen) as the visual reference: generous space, bold and clear type, simple navigation, restrained black-and-white controls, and a polished Apple-like feel. First map the screens and agree on shared design rules; then split the upgrade among agents while preserving each working journey.
   - One-page client portal home preview is ready for review in `ops/workflows/company-ux-refresh-2026-10-18.md`; the live page is unchanged.
+
+## App improvements (sales process) — added 2026-10-17
+
+- [ ] Backend: lead_app_status table (installed, logged_in, notif_status, last_seen_at)
+- [ ] Backend: endpoint the app posts status to
+- [ ] App: post install + login status on first login
+- [ ] App: post notification status (allowed/denied/not_asked) on open and on return to app
+- [ ] Setter dashboard: per-lead checklist auto-filled from lead_app_status
+- [ ] Setter dashboard: timer since booking
+- [ ] Setter dashboard: call attempt counter
+- [ ] Setter dashboard: flag booked-but-not-installed leads
+- [ ] Setter dashboard: hide app status once lead exits sales process (keep collecting)
+- [ ] App: custom pre-permission screen before iOS notification popup
+- [ ] Decide deferred deep link approach (Branch or similar) for not-yet-installed leads
+- [ ] Post-booking link: one-time login token that opens the app logged in
+
+## Affiliate dashboard — added 2026-10-17
+
+- [ ] Affiliate dashboard: send client + affiliate a notice when the file goes to the ISO (trigger: email sent to ISO)
 
 ## Tomorrow — 2026-10-17: SBA lender partners
 
@@ -17,6 +36,21 @@ Contacts, public facts, and the call questions: `ops/workflows/lender-partners-2
 - [ ] On each call, run the 11 questions in the lender file.
 - [ ] Get the MCA contact's terms with the same 11 questions.
 - [ ] Compare the 11 questions with the CRM lender sheet and merge.
+
+## Credit optimization onboarding — one workflow (added 2026-10-16)
+
+Merge Blake's separate LLC funnel into the main credit optimization onboarding so every client goes through one path. SmartCredit is a required step, signed up through your co-branded link, so every client pays you recurring.
+
+- [ ] Put the two current paths side by side (main onboarding and Blake's LLC funnel) and list anything Blake's has that the main one is missing.
+- [ ] One entry point: every credit optimization client lands on the same onboarding page, whether they came from a closer, an affiliate or Blake. Tag the source on the client record so attribution still works.
+- [ ] First step after payment: SmartCredit signup through the co-branded link, opened right from the portal.
+- [ ] Gate the portal: document upload unlocks only once SmartCredit is connected.
+- [ ] If the co-brand account gives report access, pull the credit report into the portal automatically so the client never uploads one by hand.
+- [ ] Add SmartCredit to the day 1, 3 and 5 reminder texts: chase the SmartCredit signup first, then documents.
+- [ ] Track SmartCredit status per client (not started, signed up, active, cancelled) and flag cancellations, since a cancel means lost recurring revenue and a stale report.
+- [ ] Monthly: match the co-brand commission report against your active client list.
+- [ ] Walk one test client through the merged flow end to end yourself.
+- [ ] Retire Blake's funnel page and redirect its link to the new entry point.
 
 ## Today — 2026-10-13
 
