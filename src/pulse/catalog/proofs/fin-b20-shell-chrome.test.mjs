@@ -18,6 +18,21 @@ async function open(page, path = "/app/sales-floor.html") {
   await page.locator("#fh-shell-chip").waitFor({ state: "attached", timeout: 20_000 });
 }
 
+async function openAccount(page, { technical = false } = {}) {
+  const account = page.locator("#fh-shell-chip");
+  if (await account.evaluate((node) => node.tagName === "DETAILS")) {
+    if (!(await account.evaluate((node) => node.open))) await account.locator("summary").first().click();
+    if (technical) {
+      const diagnostics = page.locator("#fh-shell-account-diagnostics");
+      if (await diagnostics.count() && !(await diagnostics.evaluate((node) => node.open))) {
+        await diagnostics.locator("summary").click();
+      }
+    }
+    return;
+  }
+  if (await account.isHidden()) await page.locator("#fh-shell-chip-show").click();
+}
+
 const words = (scope, selector) => scope.locator(selector).first().evaluate((el) => {
   const parts = [];
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -149,6 +164,7 @@ test("search: a client, an affiliate and a partner are not offered it", { timeou
 test("sign out: the server is told first with the saved token, then the token and role are gone and the staff sign-in opens", { timeout: 60_000 }, async () => {
   const page = await makePage(lab);
   await open(page);
+  await openAccount(page);
   assert.equal(await page.locator("#fh-shell-out").innerText(), "Sign out");
   await page.locator("#fh-shell-out").click();
   await page.waitForURL((u) => u.pathname === "/login.html");
@@ -163,6 +179,7 @@ test("sign out: the server is told first with the saved token, then the token an
 test("sign out: a server that never answers does not strand the person, and a client goes to the portal sign-in", { timeout: 60_000 }, async () => {
   const slow = await makePage(lab, { api: (call) => (call.path === "/api/auth/logout" ? { hold: true } : undefined) });
   await open(slow);
+  await openAccount(slow);
   await slow.locator("#fh-shell-out").click();
   await slow.waitForURL((u) => u.pathname === "/login.html", { timeout: 10_000 });
   assert.equal(await slow.evaluate(() => localStorage.getItem("fh_token")), null, "the token is cleared even though the server never replied");
@@ -170,6 +187,7 @@ test("sign out: a server that never answers does not strand the person, and a cl
 
   const client = await makePage(lab, { role: "client" });
   await open(client, "/app/client-portal.html");
+  await openAccount(client);
   await client.locator("#fh-shell-out").click();
   await client.waitForURL((u) => u.pathname === "/portal-login.html");
   assert.equal(callsTo(client, "/api/auth/logout", "POST").length, 1);
@@ -193,6 +211,7 @@ test("photo: the picked picture is sent as the 'photo' field with the saved toke
     },
   });
   await open(page);
+  await openAccount(page);
   const avatar = page.locator("#fh-shell-avatar");
   assert.equal(await avatar.evaluate((el) => el.tagName), "BUTTON", "no photo yet: a small plus");
   assert.equal(await avatar.getAttribute("aria-label"), "Add your photo");
@@ -218,6 +237,7 @@ test("photo: a refused picture shows the server's reason for a few seconds and l
       : undefined),
   });
   await open(page);
+  await openAccount(page);
   await page.locator('#fh-shell-chip input[type="file"]').setInputFiles({ name: "me.gif", mimeType: "image/gif", buffer: PNG });
   await page.locator("#fh-shell-avatar-err").waitFor({ state: "visible", timeout: 10_000 });
   assert.equal(await page.locator("#fh-shell-avatar-err").innerText(), "only jpg and png photos are accepted (declared type: image/gif)");
@@ -231,6 +251,7 @@ test("photo: a refused picture shows the server's reason for a few seconds and l
     storage: { fh_demo_staff: JSON.stringify({ id: "demo-1", name: "Demo Owner", role: "owner", status: "active" }) },
   });
   await open(demo);
+  await openAccount(demo);
   await demo.locator("#fh-shell-avatar").click();
   await demo.locator("#fh-shell-avatar-err").waitFor({ state: "visible" });
   assert.equal(await demo.locator("#fh-shell-avatar-err").innerText(), "Demo session — sign in for real to add a photo.");
@@ -253,35 +274,37 @@ test("photo: a client, an affiliate and a partner have no photo control, a perso
 
 // ---------------------------------------------------------------------------------------------
 // The chip: who, role, backend word, hide and show; the status word
-test("account chip: name and role, the backend word, hide with the x and bring it back with 'account', kept across a reload", { timeout: 90_000 }, async () => {
+test("account menu: name, role and Sign out open from the summary and close safely", { timeout: 90_000 }, async () => {
   const page = await makePage(lab, { role: "closer", staff: { name: "Riley Chen" } });
   await open(page, "/app/closer-dashboard.html");
-  assert.equal(await words(page, '#fh-shell-chip span[title^="role closer"]'), "Riley Chen · closer");
+  const account = page.locator("#fh-shell-chip");
+  const summary = page.locator("#fh-shell-chip-show");
+  assert.equal(await account.evaluate((node) => node.tagName), "DETAILS");
+  assert.equal(await account.evaluate((node) => node.open), false);
+  assert.match(await summary.innerText(), /Riley/);
+  assert.equal(await page.locator("#fh-shell-out").isVisible(), false);
+  await openAccount(page, { technical: true });
+  assert.equal(await words(page, ".fh-account-person strong"), "Riley Chen");
+  assert.equal(await words(page, ".fh-account-role"), "closer");
   assert.equal(await page.locator("#fh-shell-out").innerText(), "Sign out");
   await until(async () => (await page.locator("#fh-shell-src").innerText()) === "LIVE", { message: "the backend word" });
   assert.match(await page.locator("#fh-shell-src").getAttribute("title"), /^7 migrations applied$/);
-
-  const chip = page.locator("#fh-shell-chip");
-  const show = page.locator("#fh-shell-chip-show");
-  assert.equal(await chip.isVisible(), true);
-  assert.equal(await show.isVisible(), false);
-  await page.locator("#fh-shell-chip-hide").click();
-  assert.equal(await chip.isVisible(), false);
-  assert.equal(await show.isVisible(), true);
-  assert.equal(await show.innerText(), "account");
-  assert.equal(await page.evaluate(() => localStorage.getItem("fh_chip_hidden")), "1");
+  await page.keyboard.press("Escape");
+  assert.equal(await account.evaluate((node) => node.open), false);
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "fh-shell-chip-show");
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator("#fh-shell-chip-show").waitFor({ state: "attached" });
-  assert.equal(await page.locator("#fh-shell-chip").isVisible(), false, "still hidden after a reload");
-  await page.locator("#fh-shell-chip-show").click();
-  assert.equal(await page.locator("#fh-shell-chip").isVisible(), true);
-  assert.equal(await page.locator("#fh-shell-chip-show").isVisible(), false);
-  assert.equal(await page.evaluate(() => localStorage.getItem("fh_chip_hidden")), null);
+  assert.equal(await page.locator("#fh-shell-chip").evaluate((node) => node.open), false, "closed after a reload");
+  await openAccount(page);
+  assert.equal(await page.locator("#fh-shell-out").isVisible(), true);
+  assert.equal(await page.evaluate(() => localStorage.getItem("fh_chip_hidden")), null, "no retired hide-bar state is written");
   await page.close();
 
   const odd = await makePage(lab, { role: "wizard", staff: { name: "Wes Wizard" } });
   await open(odd, "/app/pipeline.html");
-  assert.match(await words(odd, "#fh-shell-chip"), /Wes Wizard · wizard \?/, "an unknown role is marked with a question mark");
+  await openAccount(odd);
+  assert.equal(await words(odd, ".fh-account-person strong"), "Wes Wizard");
+  assert.equal(await words(odd, ".fh-account-role"), "wizard", "the fallback role stays named in the menu");
   await odd.close();
 });
 
@@ -296,6 +319,7 @@ test("status chip: LIVE with the migration count, NO DB with the server's words,
   for (const c of cases) {
     const page = await makePage(lab, { health: () => c.health });
     await open(page);
+    await openAccount(page, { technical: true });
     await until(async () => (await page.locator("#fh-shell-src").innerText()) !== "···", { message: `${c.name}: the word` });
     assert.equal(await page.locator("#fh-shell-src").innerText(), c.word, c.name);
     assert.equal(await page.locator("#fh-shell-src").getAttribute("title"), c.title, c.name);
@@ -306,7 +330,8 @@ test("status chip: LIVE with the migration count, NO DB with the server's words,
     storage: { fh_demo_staff: JSON.stringify({ id: "demo-1", name: "Demo Owner", role: "owner", status: "active" }) },
   });
   await open(demo);
+  await openAccount(demo, { technical: true });
   await until(async () => (await demo.locator("#fh-shell-src").innerText()) === "DEMO", { message: "the demo word" });
-  assert.match(await demo.locator("#fh-shell-src").getAttribute("title"), /^demo session — screens show built-in sample data\./);
+  assert.match(await demo.locator("#fh-shell-src").getAttribute("title"), /^Sample session\./);
   await demo.close();
 });

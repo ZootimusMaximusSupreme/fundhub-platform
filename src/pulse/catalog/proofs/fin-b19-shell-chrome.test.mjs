@@ -22,6 +22,21 @@ const go = async (page, path = PAGE) => {
   await page.goto(`${lab.origin}${path}`, { waitUntil: "domcontentloaded" });
   await ready(page);
 };
+
+const openAccount = async (page, { technical = false } = {}) => {
+  const account = page.locator("#fh-shell-chip");
+  if (await account.evaluate((node) => node.tagName === "DETAILS")) {
+    if (!(await account.evaluate((node) => node.open))) await account.locator("summary").first().click();
+    if (technical) {
+      const diagnostics = page.locator("#fh-shell-account-diagnostics");
+      if (await diagnostics.count() && !(await diagnostics.evaluate((node) => node.open))) {
+        await diagnostics.locator("summary").click();
+      }
+    }
+    return;
+  }
+  if (await account.isHidden()) await page.locator("#fh-shell-chip-show").click();
+};
 const store = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
 // A 1 pixel PNG, so the upload is a real image with the PNG signature.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -33,7 +48,7 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
     const MINT = "rgb(168, 216, 176)";
     const PEACH = "rgb(245, 206, 143)";
     const ROSE = "rgb(242, 166, 155)";
-    const TEXT = "rgb(10, 10, 10)";
+    const TEXT = "rgb(13, 17, 19)";
     const read = async (page) => page.evaluate(() => {
       const el = document.querySelector("#fh-shell-src");
       const style = getComputedStyle(el);
@@ -54,6 +69,7 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
     for (const [name, health, label, hint, background] of cases) {
       const page = await lab.open({ api: (request, url) => (url.pathname === "/api/health" ? health : undefined) });
       await go(page);
+      await openAccount(page, { technical: true });
       await settled(page, label);
       const got = await read(page);
       assert.equal(got.label, label, name);
@@ -67,6 +83,7 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
     const unreachable = await lab.open();
     await unreachable.route("**/api/health", (route) => route.abort());
     await go(unreachable);
+    await openAccount(unreachable, { technical: true });
     await settled(unreachable, "NO API");
     const gone = await read(unreachable);
     assert.equal(gone.title, "/api/health unreachable");
@@ -76,6 +93,7 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
     const notJson = await lab.open();
     await notJson.route("**/api/health", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<html>maintenance</html>" }));
     await go(notJson);
+    await openAccount(notJson, { technical: true });
     await settled(notJson, "NO API");
     const html = await read(notJson);
     assert.equal(html.title, "/api/health did not return JSON");
@@ -95,9 +113,10 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
         api: (request, url) => (url.pathname === "/api/health" ? health : undefined),
       });
       await go(demo);
+      await openAccount(demo, { technical: true });
       await settled(demo, "DEMO");
       const got = await read(demo);
-      assert.match(got.title, /^demo session — screens show built-in sample data\./, name);
+      assert.match(got.title, /^Sample session\./, name);
       assert.equal(got.background, background, `${name}: DEMO is not drawn in the LIVE colour`);
       assert.notEqual(got.background, MINT, name);
       await demo.close();
@@ -109,6 +128,7 @@ test("the badge names what is answering: LIVE, NO DB, NO API, or DEMO, in its ow
       api: (request, url) => (url.pathname === "/api/health" ? { status: 404, body: { ok: false } } : undefined),
     });
     await go(demoOffline);
+    await openAccount(demoOffline, { technical: true });
     await settled(demoOffline, "DEMO");
     assert.equal((await read(demoOffline)).background, ROSE);
     await demoOffline.close();
@@ -120,6 +140,7 @@ test("Sign out tells the server first, then wipes this browser and lands on the 
     const page = await lab.open({ storage: { fh_client: "client-123", fh_demo: "1", fh_demo_staff: "{}" } });
     await go(page);
     assert.equal(await store(page, "fh_token"), "fake-token");
+    await openAccount(page);
     await page.locator("#fh-shell-out").click();
     await page.waitForURL((url) => url.pathname === "/login.html");
     const logout = page.apiCalls.filter((c) => c.path === "/api/auth/logout");
@@ -134,6 +155,7 @@ test("Sign out tells the server first, then wipes this browser and lands on the 
     // A slow or dead server never strands the person on a shared machine: it still signs out.
     const slow = await lab.open({ api: (request, url) => (url.pathname === "/api/auth/logout" ? never() : undefined) });
     await go(slow);
+    await openAccount(slow);
     await slow.locator("#fh-shell-out").click();
     await slow.waitForURL((url) => url.pathname === "/login.html", { timeout: 15_000 });
     assert.equal(await store(slow, "fh_token"), null);
@@ -143,35 +165,35 @@ test("Sign out tells the server first, then wipes this browser and lands on the 
     const client = await lab.open({ role: "client", staff: { role: "client" } });
     await client.goto(`${lab.origin}/app/client-portal.html`, { waitUntil: "domcontentloaded" });
     await client.locator("#fh-shell-out").waitFor({ state: "attached" });
-    await client.locator("#fh-shell-out").click({ force: true });
+    await openAccount(client);
+    await client.locator("#fh-shell-out").click();
     await client.waitForURL((url) => url.pathname === "/portal-login.html");
     await client.close();
   });
 });
 
-test("the x hides the account bar, an account button brings it back, and the choice is remembered", { timeout: 120_000 }, async () => {
+test("the account summary opens the real menu, Escape closes it, and Sign out stays reachable", { timeout: 120_000 }, async () => {
   await proof.check(/^Account chip: x hide the bar/, async () => {
     const page = await lab.open();
     await go(page);
-    const chip = page.locator("#fh-shell-chip");
-    const show = page.locator("#fh-shell-chip-show");
-    assert.equal(await chip.isVisible(), true);
-    assert.equal(await show.isHidden(), true);
-    await page.locator("#fh-shell-chip-hide").click();
-    assert.equal(await chip.isHidden(), true, "the bar is hidden");
-    assert.equal(await chip.getAttribute("aria-hidden"), "true");
-    assert.equal(await show.isVisible(), true, "the way back is on the page");
-    assert.equal((await show.innerText()).trim(), "account");
-    assert.equal(await store(page, "fh_chip_hidden"), "1");
+    const account = page.locator("#fh-shell-chip");
+    const summary = page.locator("#fh-shell-chip-show");
+    assert.equal(await account.evaluate((node) => node.tagName), "DETAILS");
+    assert.equal(await account.evaluate((node) => node.open), false);
+    assert.match((await summary.innerText()).trim(), /Casey/);
+    assert.equal(await page.locator("#fh-shell-out").isVisible(), false);
+    await summary.click();
+    assert.equal(await account.evaluate((node) => node.open), true);
+    assert.equal(await page.locator("#fh-shell-out").isVisible(), true, "Sign out is one account-menu click away");
+    await page.keyboard.press("Escape");
+    assert.equal(await account.evaluate((node) => node.open), false);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "fh-shell-chip-show");
     await page.reload({ waitUntil: "domcontentloaded" });
     await ready(page);
-    assert.equal(await chip.isHidden(), true, "still hidden after a reload");
-    assert.equal(await show.isVisible(), true);
-    await show.click();
-    assert.equal(await chip.isVisible(), true, "the account button brings the bar back, Sign out with it");
+    assert.equal(await account.evaluate((node) => node.open), false, "the menu starts closed after a reload");
+    await summary.click();
     assert.equal(await page.locator("#fh-shell-out").isVisible(), true);
-    assert.equal(await show.isHidden(), true);
-    assert.equal(await store(page, "fh_chip_hidden"), null, "the remembered choice is cleared");
+    assert.equal(await store(page, "fh_chip_hidden"), null, "the retired floating-bar preference is not written");
     await page.close();
   });
 });
@@ -190,6 +212,7 @@ test("the photo control sends the picked image as the photo field, then shows wh
       },
     });
     await go(page);
+    await openAccount(page);
     const avatar = page.locator("#fh-shell-avatar");
     assert.equal(await avatar.evaluate((el) => el.tagName), "BUTTON", "no photo yet: a plus button");
     assert.equal(await page.locator('#fh-shell-chip input[type="file"]').getAttribute("accept"), "image/png,image/jpeg");
@@ -215,6 +238,7 @@ test("the photo control sends the picked image as the photo field, then shows wh
         : undefined),
     });
     await go(refused);
+    await openAccount(refused);
     const chooser2 = refused.waitForEvent("filechooser");
     await refused.locator("#fh-shell-avatar").click();
     await (await chooser2).setFiles({ name: "me.png", mimeType: "image/png", buffer: PNG });
@@ -226,6 +250,7 @@ test("the photo control sends the picked image as the photo field, then shows wh
     // A demo login has no staff row to hang a photo on: it says so and opens no picker.
     const demo = await lab.open({ session: null, storage: { fh_demo_staff: JSON.stringify({ ...STAFF, role: "owner" }) } });
     await go(demo);
+    await openAccount(demo);
     await demo.locator("#fh-shell-avatar").click();
     await demo.waitForSelector("#fh-shell-avatar-err", { state: "visible" });
     assert.match(await demo.locator("#fh-shell-avatar-err").innerText(), /^Demo session — sign in for real to add a photo\./);
@@ -585,16 +610,16 @@ test("the sidebar logo goes to the pipeline, and the collapse button folds the r
     assert.equal(await page.locator("#side a.logo").getAttribute("href"), "pipeline.html");
     const side = page.locator("#side");
     const burger = page.locator("#burger");
-    assert.equal((await burger.innerText()).trim(), "‹‹");
+    assert.equal((await burger.innerText()).trim(), "‹");
     assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false);
     await burger.click();
     assert.equal(await side.evaluate((el) => el.classList.contains("mini")), true, "folded to the icon strip");
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains("fh-side-mini")), true);
-    assert.equal((await burger.innerText()).trim(), "››");
+    assert.equal((await burger.innerText()).trim(), "›");
     assert.equal(await page.locator("#side .navgroup.closed").count(), 0, "every section is open on the icon strip, so no row is lost");
     await burger.click();
     assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false, "and back");
-    assert.equal((await burger.innerText()).trim(), "‹‹");
+    assert.equal((await burger.innerText()).trim(), "‹");
     await page.locator("#side a.logo").click();
     await page.waitForURL((url) => url.pathname === "/app/pipeline.html");
     await page.close();
@@ -604,7 +629,7 @@ test("the sidebar logo goes to the pipeline, and the collapse button folds the r
     const phone = await lab.open({ width: 390, height: 800 });
     await go(phone);
     assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), false);
-    assert.equal((await phone.locator("#burger").innerText()).trim(), "✕");
+    assert.equal((await phone.locator("#burger").innerText()).trim(), "×");
     await phone.locator("#fh-menu-btn").click();
     assert.equal(await phone.locator("#side").evaluate((el) => el.classList.contains("open")), true, "the menu button opens the drawer");
     await phone.locator("#burger").click();

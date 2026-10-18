@@ -163,7 +163,7 @@ test("rendered sidebar logo and burger show their navigation and rail results", 
   await page.close();
 });
 
-test("rendered shared shell searches fake client data and hides/restores its account bar", { timeout: 60_000 }, async (t) => {
+test("rendered shared shell searches fake client data and opens/closes its account menu", { timeout: 60_000 }, async (t) => {
   const { server, origin } = await startServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
@@ -190,19 +190,21 @@ test("rendered shared shell searches fake client data and hides/restores its acc
   assert.equal(new URL(page.url()).searchParams.get("id"), "client-shell-proof");
 
   const chip = page.locator("#fh-shell-chip");
-  const hide = page.locator("#fh-shell-chip-hide");
-  const show = page.locator("#fh-shell-chip-show");
-  await hide.click();
-  assert.equal(await chip.isVisible(), false);
-  assert.equal(await show.isVisible(), true);
-  assert.equal(await show.innerText(), "account");
-  await show.click();
+  const account = page.locator("#fh-shell-chip-show");
+  assert.equal(await chip.evaluate((node) => node.tagName), "DETAILS");
   assert.equal(await chip.isVisible(), true);
-  assert.equal(await show.isVisible(), false);
+  assert.equal(await chip.evaluate((node) => node.open), false);
+  assert.equal(await page.locator("#fh-shell-out").isVisible(), false);
+  await account.click();
+  assert.equal(await chip.evaluate((node) => node.open), true);
+  assert.equal(await page.locator("#fh-shell-out").isVisible(), true);
+  await account.click();
+  assert.equal(await chip.evaluate((node) => node.open), false);
+  assert.equal(await account.isVisible(), true, "the account menu always has a way back");
   await page.close();
 });
 
-test("rendered public shell toggles the Sales links and the phone drawer", { timeout: 60_000 }, async (t) => {
+test("rendered public shell toggles the regrouped sales links and the phone drawer", { timeout: 60_000 }, async (t) => {
   const { server, origin } = await startServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
@@ -227,22 +229,35 @@ test("rendered public shell toggles the Sales links and the phone drawer", { tim
   assert.equal(await menu.getAttribute("aria-expanded"), "false");
 
   await menu.click();
-  const sales = page.locator('#side .navgroup[data-fh-section="sales"]');
-  const pipeline = sales.locator('a.navitem[href="pipeline.html"]');
-  const salesHrefs = await sales.locator("a.navitem").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  const work = page.locator('#side .navgroup[data-fh-section="work"]');
+  const insights = page.locator('#side .navgroup[data-fh-section="insights"]');
+  const pipeline = work.locator('a.navitem[href="pipeline.html"]');
+  const salesHrefs = await page.locator('#side a.navitem').evaluateAll((links) => {
+    const wanted = new Set(["pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html"]);
+    return links.map((link) => link.getAttribute("href")).filter((href) => wanted.has(href));
+  });
   assert.deepEqual(salesHrefs, [
     "pipeline.html",
     "closer-dashboard.html",
+    "calendar.html",
     "my-numbers.html",
     "sales-floor.html",
-    "calendar.html",
   ]);
-  await sales.locator(".navhead").click();
-  assert.equal(await sales.evaluate((node) => node.classList.contains("closed")), true);
+  await work.locator(".navhead").click();
+  assert.equal(await work.evaluate((node) => node.classList.contains("closed")), true);
   assert.equal(await pipeline.isVisible(), false);
-  await sales.locator(".navhead").click();
-  assert.equal(await sales.evaluate((node) => node.classList.contains("closed")), false);
+  await work.locator(".navhead").click();
+  assert.equal(await work.evaluate((node) => node.classList.contains("closed")), false);
   assert.equal(await pipeline.isVisible(), true);
+  const insightHead = insights.locator(".navhead");
+  const numbers = insights.locator('a.navitem[href="my-numbers.html"]');
+  const insightsStartedClosed = await insights.evaluate((node) => node.classList.contains("closed"));
+  await insightHead.click();
+  assert.equal(await insights.evaluate((node) => node.classList.contains("closed")), !insightsStartedClosed);
+  assert.equal(await numbers.isVisible(), insightsStartedClosed, "the moved insight links follow their real group");
+  await insightHead.click();
+  assert.equal(await insights.evaluate((node) => node.classList.contains("closed")), insightsStartedClosed);
+  assert.equal(await numbers.isVisible(), !insightsStartedClosed);
   await pipeline.click();
   await page.waitForURL(/\/app\/pipeline\.html$/);
   await page.locator("#board").waitFor({ state: "attached" });

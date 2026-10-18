@@ -37,7 +37,7 @@ const sidebarCss = fs.readFileSync(path.join(APP, "crm-sidebar.css"), "utf8");
 
 describe("mobile sidebar — owned by the shell", () => {
   test("crm-sidebar.css takes the rail off-canvas below 860px", () => {
-    assert.match(sidebarCss, /@media \(max-width: 860px\)/,
+    assert.match(sidebarCss, /@media\s*\(max-width:\s*860px\)/,
       "crm-sidebar.css has no 860px breakpoint");
     assert.match(sidebarCss, /transform:\s*translateX\(-100%\)/,
       "the rail is not parked off-canvas below 860px");
@@ -51,7 +51,7 @@ describe("mobile sidebar — owned by the shell", () => {
        order. Written in the stylesheet instead, it lost, and every screen kept
        228px of dead padding on a 390px phone. */
     const lock = shell.slice(shell.indexOf('lock.textContent'), shell.indexOf('(document.head || document.documentElement).appendChild(lock)'));
-    assert.match(lock, /@media \(max-width:860px\)/,
+    assert.match(lock, /@media\s*\(max-width:\s*860px\)/,
       "the injected lock stylesheet has no mobile block");
     assert.match(lock, /padding-left:0!important/,
       "the lock never clears the content's left padding on mobile");
@@ -85,8 +85,8 @@ describe("mobile sidebar — owned by the shell", () => {
       "the shell has no shared account row for screens without a named header");
     assert.match(shell, /host\.insertBefore\(row,\s*host\.firstChild\)/,
       "the shared account row does not reserve space before page content");
-    assert.match(sidebarCss, /\.fh-shell-account-row\s*\{[^}]*display:\s*flex/,
-      "the shared account row has no layout");
+    assert.match(shell, /row\.appendChild\(el\)[\s\S]{0,120}el\.setAttribute\("data-fh-in-header",\s*"1"\)/,
+      "the shared account row does not hold the account control in normal page flow");
   });
 });
 
