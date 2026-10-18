@@ -32,13 +32,13 @@ const MAP_DIR = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10
 const keyOf = (c) => /display-result:([^\s*]+)/.exec(c.sql)[1];
 const ALL_CONTRACTS = [...FIN_B07_RESULT_CONTRACTS, ...FIN_B07_UNATTACHED_CONTRACTS];
 
-test("46 rows: 39 saved-result checks, 1 live page read, 3 practice tests, 3 that cannot be attached", () => {
-  assert.equal(FIN_B07_RESULT_CONTRACTS.length, 39);
-  assert.equal(FIN_B07_LIVE_ROWS.length, 39);
+test("46 rows: 40 saved-result checks, 1 live page read and 5 practice tests", () => {
+  assert.equal(FIN_B07_RESULT_CONTRACTS.length, 40);
+  assert.equal(FIN_B07_LIVE_ROWS.length, 40);
   assert.equal(FIN_B07_PAGE_CONTRACTS.length, 1);
-  assert.equal(FIN_B07_PRACTICE_CASES.length, 3);
-  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 3);
-  assert.equal(FIN_B07_UNATTACHED_CONTRACTS.length, 1, "the Work queue check is written and tested and not attached");
+  assert.equal(FIN_B07_PRACTICE_CASES.length, 5);
+  assert.equal(FIN_B07_NOT_ATTACHABLE.length, 0);
+  assert.equal(FIN_B07_UNATTACHED_CONTRACTS.length, 0);
   const pageRows = FIN_B07_LIVE_CASES.filter((c) => FIN_B07_PAGE_CONTRACTS.some((p) => p.control === c.control));
   assert.equal(pageRows.length, 1);
   const keys = new Set([
@@ -46,7 +46,7 @@ test("46 rows: 39 saved-result checks, 1 live page read, 3 practice tests, 3 tha
     ...pageRows.map((c) => [c.sourceFile, c.surface, c.control]),
     ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control]),
   ].map((r) => r.join("\0")));
-  assert.equal(keys.size, 43, "no row may be named twice");
+  assert.equal(keys.size, 46, "no row may be named twice");
 });
 
 test("the live page read carries no SQL, names its reader, and its test file exists and names the lane", () => {
@@ -156,14 +156,14 @@ test("every contract has a scenario that runs it", () => {
     assert.match(c.evidence, /gap-catalog-display\.mjs/);
     assert.equal(c.tests[0], "src/pulse/catalog/proofs/display-batch-staff-ui.test.mjs", "the staff browser spec stays first");
   }
-  // 43 attached rows, 4 already held by the staff file (not repeated for the compiler), 3 of those extended with more tests
-  assert.equal(FIN_B07_DISPLAY_CASES.length, 43 - FIN_B07_ALREADY_DEEP.length + FIN_B07_STAFF_EXTENDED.length);
+  // 46 proved rows, 5 already held by the staff file (not repeated for the compiler), 4 of those extended with more tests
+  assert.equal(FIN_B07_DISPLAY_CASES.length, 46 - FIN_B07_ALREADY_DEEP.length + FIN_B07_STAFF_EXTENDED.length);
 });
 
 test("the rows left out of the live cases are exactly the ones the staff file already holds as deep cases", () => {
   const held = new Set(STAFF_UI_PROOF_CASES.map((c) => [c.sourceFile, c.surface, c.control].join("\0")));
   const mine = new Map(FIN_B07_RESULT_CONTRACTS.map((c, i) => [FIN_B07_LIVE_ROWS[i].join("\0"), c]));
-  assert.equal(mine.size, 39);
+  assert.equal(mine.size, 40);
   const already = [...mine.keys()].filter((k) => held.has(k));
   assert.equal(already.length, FIN_B07_ALREADY_DEEP.length, "the staff file holds a different set of these rows");
   for (const key of already) {
@@ -171,18 +171,8 @@ test("the rows left out of the live cases are exactly the ones the staff file al
   }
 });
 
-test("each row that cannot be attached carries an exact reason that names the file and the fact", () => {
-  for (const r of FIN_B07_NOT_ATTACHABLE) {
-    assert.ok(r.reason.length > 200, r.rowKey);
-    assert.match(r.reason, /public\/app\/|api\//, `${r.rowKey}: names a file`);
-    assert.match(r.reason, /product change/, `${r.rowKey}: says what is missing`);
-  }
-  // None of them is attached to anything, so each one is NOT_PROVED again.
+test("the three repaired rows are attached and none remain in the not-attachable list", () => {
+  assert.deepEqual(FIN_B07_NOT_ATTACHABLE, []);
   const attached = new Set([...FIN_B07_LIVE_ROWS, ...FIN_B07_PRACTICE_CASES.map((c) => [c.sourceFile, c.surface, c.control])].map((r) => r.join("\0")));
-  for (const row of ["banksGate", "irGate", "workQueue"]) {
-    const found = FIN_B07_NOT_ATTACHABLE.find((r) => r.rowKey === row);
-    assert.ok(found, row);
-  }
-  assert.equal([...attached].some((k) => /Page gate: inquiry_specialist|Work queue table: one row per disputed|Page gate: client reads own file/.test(k)), false,
-    "a not-attachable row must not also be attached");
+  assert.equal([...attached].filter((k) => /Page gate: inquiry_specialist|Work queue table: one row per disputed|Page gate: client reads own file/.test(k)).length, 3);
 });

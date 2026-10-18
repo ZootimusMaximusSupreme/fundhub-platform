@@ -13,7 +13,7 @@
  *   - A value with no rule behind it says "Not set". Nothing is filled in.
  *   - Nothing here moves money. Staff write down what they saw happen.
  *
- * Staff (a ?client_id= in the bar, FINANCE role on the server) also see the
+ * Staff (a signed-in FINANCE_OS role, with ?client_id= in the bar) also see the
  * plan controls: add a bank to the plan, mark it opened, add a deposit, skip it,
  * set the next funding sequence date. A client never does — and the server refuses every
  * POST from a client session anyway.
@@ -441,15 +441,28 @@
   function mount(el, ctx) {
     ctx = ctx || {};
     var clientId = ctx.clientId || "";
-    var staff = !!clientId;
+    var staffRoles = { owner: true, admin: true, sales_manager: true, closer: true };
+    var staffKnown = typeof ctx.staff === "boolean";
+    var staff = ctx.staff === true;
     var get = ctx.apiGet ? function (p) { return normal(ctx.apiGet(p)); } : function (p) { return call("GET", p); };
     var send = ctx.apiPost ? function (p, b) { return normal(ctx.apiPost(p, b)); } : function (p, b) { return call("POST", p, b); };
+    var staffReady = staffKnown ? Promise.resolve(staff) : get("/api/auth/session").then(function (res) {
+      var body = res && res.body;
+      var role = String(body && body.staff && body.staff.role || "").trim().toLowerCase();
+      staff = !!(body && body.ok === true && staffRoles[role] && body.principal !== "client");
+      return staff;
+    }, function () {
+      staff = false;
+      return false;
+    });
 
     function paint(html) { el.innerHTML = '<div class="fh-banks">' + html + "</div>"; }
 
     function load() {
       paint(renderLoading());
-      return get(READ_PATH + (clientId ? "?client_id=" + encodeURIComponent(clientId) : "")).then(function (res) {
+      return staffReady.then(function () {
+        return get(READ_PATH + (clientId ? "?client_id=" + encodeURIComponent(clientId) : ""));
+      }).then(function (res) {
         var kind = classify(res);
         if (kind === "signin" && root.location) { root.location.href = signInUrl(); return; }
         if (kind !== "ok") { paint(renderError(kind)); return; }

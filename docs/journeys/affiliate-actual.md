@@ -26,7 +26,7 @@ flowchart TD
     CAN --> A_ops[ops — 1 route]
     CAN --> A_public[public — 19 routes]
     CAN --> A_read[Reading data — 3 routes]
-    CAN --> A_top_level[Everything else — 5 routes]
+    CAN --> A_top_level[Everything else — 4 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
     WHO -->|Yes| CANT[Blocked — 286 routes]
@@ -64,11 +64,12 @@ flowchart TD
     CANT --> B_staff[staff — 3 blocked]
     CANT --> B_top_level[Everything else — 39 blocked]
     CANT --> B_trials[trials — 3 blocked]
+    WHO -->|Yes| UNV[UNVERIFIED — 1 route whose gate could not be traced]
 ```
 
 ## What they can reach
 
-**43 of 329 routes.**
+**42 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -112,14 +113,13 @@ flowchart TD
 | `/api/read/affiliate-portal` | GET | staff, affiliate, client |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |
-| `/api/soft-pull-approve` | GET, POST | **not a sign-in** — signed link |
 | `/api/trials/eligibility` | POST | anyone |
 | `/api/webhooks/:provider` | OPTIONS | **not a sign-in** — provider signature |
 
 ### Worth knowing
 
 - **32 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
-- **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
+- **5 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
@@ -311,7 +311,6 @@ flowchart TD
 | `/api/partner-pages` | GET, PATCH, POST | employees: owner, admin<br>plus: partner |
 | `/api/partners/approve` | POST | owner, admin |
 | `/api/payment-links` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/pii` | GET, POST | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/pipeline-cards` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/pipeline-clients` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/privacy/erasure` | GET, POST | owner, admin |
@@ -357,7 +356,7 @@ flowchart TD
 | `/api/read/funding-rounds` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/funnel-pages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/read/inquiries` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/inquiries` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/inquiry-cases` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
 | `/api/read/lender-matches` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -404,6 +403,7 @@ flowchart TD
 | `/api/social/publish` | POST | partner, staff |
 | `/api/social/schedule` | POST | partner, staff |
 | `/api/social/settings` | GET, POST | employees: owner, admin<br>plus: partner |
+| `/api/soft-pull-approve` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/staff/avatar` | GET, POST | any signed-in employee |
 | `/api/staff/monitoring-consent` | POST | owner |
 | `/api/staff/telemetry` | GET | owner, admin, sales_manager |
@@ -416,7 +416,12 @@ flowchart TD
 
 ## UNVERIFIED
 
-_None — every route's gate was traced to its source._
+The gate on these could not be traced from the code, so this page does not claim
+either way whether this journey reaches them. Each one is a question for a human.
+
+| Route | Methods | Who the code lets in |
+|---|---|---|
+| `/api/pii` | GET, POST | — |
 
 ## How to check this yourself
 

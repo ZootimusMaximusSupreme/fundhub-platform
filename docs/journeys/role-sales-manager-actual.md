@@ -38,7 +38,7 @@ flowchart TD
     CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 57 routes]
+    CAN --> A_read[Reading data — 56 routes]
     CAN --> A_repair[repair — 1 route]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
@@ -68,17 +68,18 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 11 blocked]
+    CANT --> B_read[Reading data — 12 blocked]
     CANT --> B_repair[repair — 4 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 1 blocked]
-    CANT --> B_top_level[Everything else — 13 blocked]
+    CANT --> B_top_level[Everything else — 12 blocked]
     CANT --> B_trials[trials — 2 blocked]
+    WHO -->|Yes| UNV[UNVERIFIED — 1 route whose gate could not be traced]
 ```
 
 ## What they can reach
 
-**206 of 329 routes.**
+**205 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -250,7 +251,6 @@ flowchart TD
 | `/api/read/funding-rounds` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/funnel-pages` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/read/inquiries` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/invoices` | GET | owner, admin, sales_manager |
 | `/api/read/lender-matches` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/message-templates` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -281,7 +281,7 @@ flowchart TD
 | `/api/social/generate` | POST | partner, staff |
 | `/api/social/publish` | POST | partner, staff |
 | `/api/social/schedule` | POST | partner, staff |
-| `/api/soft-pull-approve` | GET, POST | **not a sign-in** — signed link |
+| `/api/soft-pull-approve` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/staff/avatar` | GET, POST | any signed-in employee |
 | `/api/staff/telemetry` | GET | owner, admin, sales_manager |
 | `/api/tasks` | GET, PATCH | staff |
@@ -294,7 +294,7 @@ flowchart TD
 - **1 route is open to any signed-in employee, whatever their role.** That is not a gate on this journey specifically — anyone who can sign in reaches it: `/api/staff/avatar`.
 - **6 routes also accept a shared secret instead of a sign-in** (`DASHBOARD_SECRET`), so a caller holding that value reaches them without being anybody in particular: `/api/dashboard/client`, `/api/dashboard/client-archive`, `/api/dashboard/clients`, `/api/dashboard/kpis`, `/api/dashboard/pipeline`, `/api/dashboard/pipeline-counts`.
 - **32 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
-- **6 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
+- **5 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
@@ -392,7 +392,6 @@ flowchart TD
 | `/api/partner-marketing/usage` | GET | employees: owner, admin<br>plus: partner |
 | `/api/partner-pages` | GET, PATCH, POST | employees: owner, admin<br>plus: partner |
 | `/api/partners/approve` | POST | owner, admin |
-| `/api/pii` | GET, POST | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/privacy/erasure` | GET, POST | owner, admin |
 | `/api/proxy/end` | POST | owner, funding_advisor |
 | `/api/proxy/launch` | POST | owner, funding_advisor |
@@ -404,6 +403,7 @@ flowchart TD
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |
 | `/api/read/eeo-aggregate` | GET | owner, admin |
 | `/api/read/failed-events` | GET | owner, admin |
+| `/api/read/inquiries` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/inquiry-cases` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/lender-observations` | GET | owner, admin, funding_advisor |
 | `/api/read/lenders` | GET | owner, admin, funding_advisor |
@@ -428,7 +428,12 @@ flowchart TD
 
 ## UNVERIFIED
 
-_None — every route's gate was traced to its source._
+The gate on these could not be traced from the code, so this page does not claim
+either way whether this journey reaches them. Each one is a question for a human.
+
+| Route | Methods | Who the code lets in |
+|---|---|---|
+| `/api/pii` | GET, POST | — |
 
 ## How to check this yourself
 
