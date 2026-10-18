@@ -39,10 +39,7 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Film with this device", isOn: $model.settings.recordOnThisDevice)
-                    Picker("Quality", selection: $model.settings.quality) {
-                        ForEach(PrompterSettings.VideoQuality.allCases) { Text($0.label).tag($0) }
-                    }
-                    Text("Frame rate: 60, or 30 if that is all the camera can do. The front camera stays a mirror. The back camera does not.")
+                    Text("1080p video. The front camera tries 60 fps, then 30 if needed. Front takes are mirrored; back takes are not.")
                         .foregroundStyle(.secondary)
                     Picker("Video format", selection: $model.settings.codec) {
                         ForEach(PrompterSettings.VideoCodecChoice.allCases) { Text($0.label).tag($0) }
@@ -79,6 +76,9 @@ struct SettingsView: View {
                             Task { await model.signOut(); dismiss() }
                         }
                     }
+                }
+                Section("About") {
+                    Link("Privacy Policy", destination: URL(string: "https://fundhub.ai/privacy/")!)
                 }
             }
             .navigationTitle("Settings")

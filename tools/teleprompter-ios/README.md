@@ -42,12 +42,12 @@ The iPad works the same way: plug it in, pick it at the top, click **Run**.
 
 ## What it does
 
-### Camera (front camera, highest quality)
+### Camera (current native release)
 
 | Choice | What it does | Why |
 |---|---|---|
-| Quality: **4K 60** or **1080p 60** | Picks that exact size at 60 fps. Default 4K. | Apple's iPhone 17 Pro Max front camera: 4K Dolby Vision at 24, 25, 30, or 60 fps, and 1080p Dolby Vision at 25, 30, or 60 fps (https://support.apple.com/en-us/125091). 4K is for VSLs and thank-you videos. 1080p is for ads. Slow motion (1080p at 120) is not used. If the camera cannot give the size, the screen says so in red. It never upscales. |
-| Frame rate | Locks 60 fps (`activeVideoMinFrameDuration` = `activeVideoMaxFrameDuration`). | 60 is the front camera's top normal rate. A format that can also do 120 is not chosen when a 60 fps format exists. |
+| Picture size | Films at 1080p. The current app does not request 4K, even if the phone supports it. | Do not describe this release as a 4K recorder. The app reports a shortfall when the camera cannot provide 1080p. |
+| Frame rate | The front camera tries 60 fps, then 30 if needed. | The camera's selected format is shown in the app. Measure a saved take on a real phone before claiming its actual frame rate. |
 | Video format: **HEVC** (default) or **H.264** | Sets the codec only. No bitrate cap. | HEVC is the high-quality default (Dolby Vision when the format supports HDR). Apple publishes no bitrate, so the app does not invent one. The file is not re-encoded smaller. ProRes 4K60 needs an external drive, so the app does not ask for it. |
 | **Mirrored save** (always on) | The preview is a mirror, and the saved file stays that way. | Nothing flips the file after record. |
 | **Steady video**: Off, Normal, Extra smooth | Sets video stabilization. | Picks a format that supports it when it can. |
@@ -129,8 +129,8 @@ demo-only arguments for screenshots: `-FundhubDemoOpen` (open script 1),
 
 The simulator has no camera. These need the iPhone 17 Pro Max:
 
-- The front camera really gives 4K (3840×2160) at 60 fps and 1080p (1920×1080) at 60 fps (the app says so in red if the size is missing). It does not film the 120 fps slow-motion mode.
-- The summary line under the script name shows the size, 60 fps, HEVC, and mirrored. No bitrate number is set.
+- The front camera gives the requested 1080p format and its selected frame rate. A saved file must be measured separately; the simulator cannot prove either.
+- The summary line under the script name shows the selected size, frame rate, codec, and mirror state. No bitrate number is set.
 - The saved take matches the mirror. Steady video and the brightness lock look right.
 - The take lands in Photos with its take name, as `.mp4`, with sound (AAC; Meta wants stereo 128 kbps+).
 - A real Bluetooth remote's buttons, and Learn remote.
