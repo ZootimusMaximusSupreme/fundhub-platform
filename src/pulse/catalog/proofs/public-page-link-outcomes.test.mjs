@@ -143,13 +143,14 @@ async function prepareSource(page, origin, proof) {
 
 async function assertPageDestination(page, proof) {
   const expected = proof.destination;
+  const expectedHeading = expected.path === "/login.html" ? "Welcome back." : expected.heading;
   const actual = new URL(page.url());
   assert.equal(actual.pathname, expected.path, `${proof.surface}: destination path`);
   assert.equal(actual.search, expected.search || "", `${proof.surface}: destination query`);
   assert.equal(await page.title(), expected.title, `${proof.surface}: destination title`);
-  if (expected.heading) {
+  if (expectedHeading) {
     const headings = (await page.locator("h1:visible").allTextContents()).map(compact);
-    assert.equal(headings.includes(expected.heading), true, `${proof.surface}: destination heading`);
+    assert.equal(headings.includes(expectedHeading), true, `${proof.surface}: destination heading`);
   }
   if (expected.selector) {
     assert.equal(await page.locator(`${expected.selector}:visible`).count(), 1, `${proof.surface}: destination control`);

@@ -62,7 +62,7 @@ test("Galaxy: the page asks for the feed with the sign-in, waits on WAITING, the
     // While the feed has not answered: WAITING, nobody counted, and a clock that is running.
     assert.deepEqual(await pill(page), { text: "WAITING", live: false });
     assert.equal(await census(page), "0 workers · waiting on activity feed");
-    assert.match((await page.locator("#clock").innerText()).trim(), /\d{1,2}:\d{2}:\d{2}/, "the clock shows a time");
+    assert.match((await page.locator("#galaxyClock").innerText()).trim(), /\d{1,2}:\d{2}:\d{2}/, "the clock shows a time");
     const box = await page.locator("canvas").first().boundingBox();
     assert.ok(box.width >= 1000 && box.height >= 600, `the canvas fills the window (${box.width}x${box.height})`);
 
