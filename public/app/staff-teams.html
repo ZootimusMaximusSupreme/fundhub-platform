@@ -12,160 +12,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="fundhub-brand.css">
 <link rel="stylesheet" href="crm-sidebar.css">
-<style>
-/* ══ SHARED CHROME — identical across every internal surface ══════════════ */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--butter:#F2E39B}           /* spectrum stop @40% — the 6th status color */
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-a{color:inherit;text-decoration:none}
-button,input,select,textarea{font:inherit;color:inherit}
-.logo{width:118px;height:24px;flex:0 0 118px}
-.eyebrow{display:block}
-.eyebrow .sep{color:var(--line);margin:0 6px}
-.app{display:flex;min-height:100vh}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{min-height:57px;flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:8px 24px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:20;flex-wrap:wrap}
-.topbar h1{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-.topbar .crumb{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em;text-transform:uppercase}
-.spacer{flex:1}
-.content{padding:24px 24px 40px;flex:1;width:100%}
-
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.card+.card{margin-top:16px}
-.card-hd{padding:13px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.card-hd .t{font-size:var(--fs-title);font-weight:600;letter-spacing:-.01em}
-.card-bd{padding:16px}
-.hair{height:2px;background:var(--spectrum);border-radius:1px}
-
-.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 14px;font-size:var(--fs-body);font-weight:500;cursor:pointer;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--soft);border-color:var(--gray2)}
-.btn.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.dark:hover{background:var(--ink2)}
-.btn.sm{padding:5px 10px;font-size:var(--fs-caption)}
-.btn.mono{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;text-transform:uppercase}
-.btn.danger{color:#6E2A22;border-color:var(--alert)}
-.btn.danger:hover{background:rgba(242,166,155,.16)}
-
-.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 16px;background:#fff}
-.tab{background:transparent;border:0;border-bottom:2px solid transparent;cursor:pointer;padding:11px 13px;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;color:var(--gray2);margin-bottom:-1px}
-.tab:hover{color:var(--ink)}
-.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
-.tabpane{display:none}
-.tabpane.on{display:block}
-
-.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:5px;font-family:var(--mono);font-size:var(--fs-caption);font-weight:500;letter-spacing:.1em;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
-.b-ok{background:rgba(168,216,176,.24);border-color:var(--ok);color:#2C5138}
-.b-warn{background:rgba(245,206,143,.26);border-color:var(--warn);color:#6B4A12}
-.b-alert{background:rgba(242,166,155,.26);border-color:var(--alert);color:#6E2A22}
-.b-info{background:rgba(169,198,232,.26);border-color:var(--info);color:#22415F}
-.b-accent{background:rgba(196,179,229,.26);border-color:var(--accent);color:#3F2F63}
-.b-gray{background:var(--soft);border-color:var(--line);color:var(--gray)}
-
-table.grid{width:100%;border-collapse:collapse}
-table.grid th{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;color:var(--gray);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:500;background:var(--soft)}
-table.grid td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:var(--fs-body);vertical-align:middle}
-table.grid tr:last-child td{border-bottom:0}
-table.grid tbody tr{cursor:pointer;transition:background .1s}
-table.grid tbody tr:hover{background:var(--soft)}
-table.grid tbody tr.sel{background:rgba(169,198,232,.14)}
-
-.av{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:700;letter-spacing:-.02em;background:var(--ink);color:#fff}
-.who-cell{display:flex;align-items:center;gap:10px}
-.who-cell .nm{font-weight:600}
-.who-cell .em{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.08em}
-
-.field{display:flex;flex-direction:column;gap:5px}
-.field label{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;color:var(--gray)}
-.field input,.field select{border:1px solid var(--line);border-radius:7px;background:#fff;padding:8px 10px;font-size:var(--fs-body);width:100%}
-.field input.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.field input:focus,.field select:focus{outline:none;border-color:var(--gray2);box-shadow:0 0 0 3px rgba(169,198,232,.28)}
-.field .hint{font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.06em}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
-.sw{position:relative;width:38px;height:21px;flex:0 0 38px;border-radius:11px;background:var(--line);border:1px solid var(--line);cursor:pointer;transition:background .15s}
-.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.sw.on{background:var(--ok);border-color:var(--ok)}
-.sw.on::after{transform:translateX(17px)}
-.swrow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
-.swrow:last-child{border-bottom:0}
-.swrow .swl{flex:1;min-width:0}
-.swrow .swl .n{font-size:var(--fs-body);font-weight:500}
-.swrow .swl .d{font-size:var(--fs-caption);color:var(--gray);line-height:1.4}
-
-/* role preset — the one-line answer to "what can this person reach?" */
-.acc{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.acc .acc-g{font-size:var(--fs-caption);color:var(--gray)}
-.acc .acc-n{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.08em;color:var(--gray2);
-  border:1px solid var(--line);border-radius:5px;padding:2px 6px;white-space:nowrap}
-.acc .acc-n.full{border-color:var(--accent);color:#3F2F63}
-
-/* effective permissions in the person editor, grouped and named */
-.ed-pg{width:100%;margin-bottom:9px;display:flex;flex-wrap:wrap;gap:5px}
-.ed-pgh{width:100%;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.13em;text-transform:uppercase;
-  color:var(--gray2);margin-bottom:2px}
-.ed-pgh span{color:var(--gray)}
-
-/* permissions matrix */
-.mwrap{overflow-x:auto}
-table.perm{width:100%;border-collapse:collapse;min-width:820px}
-table.perm th{font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.1em;text-transform:uppercase;color:var(--gray);padding:11px 10px;border-bottom:1px solid var(--line);font-weight:500;text-align:center;background:var(--soft);white-space:nowrap}
-table.perm th.pl{text-align:left;width:38%;min-width:250px;position:sticky;left:0;z-index:2}
-table.perm td{padding:0;border-bottom:1px solid var(--line);text-align:center}
-table.perm td.pl{text-align:left;padding:9px 12px;font-size:var(--fs-body);background:#fff;position:sticky;left:0;z-index:1;border-right:1px solid var(--line)}
-table.perm td.pl .pd{font-size:var(--fs-caption);color:var(--gray2);font-family:var(--mono);letter-spacing:.08em}
-table.perm tr:last-child td{border-bottom:0}
-.pcell{display:block;width:100%;height:38px;line-height:38px;cursor:default;font-family:var(--mono);font-size:var(--fs-body);color:var(--gray2)}
-.pcell.yes{color:#2C5138}
-table.perm tbody tr:hover td.pl{background:var(--soft)}
-
-.editor{position:fixed;top:0;right:0;bottom:var(--fh-statusbar,0px);width:420px;max-width:92vw;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 40px rgba(0,0,0,.10);transform:translateX(102%);transition:transform .2s ease;z-index:2147483001;display:flex;flex-direction:column}
-.editor.open{transform:none}
-.editor-hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
-.editor-bd{padding:18px;overflow-y:auto;flex:1}
-.editor-ft{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:9px}
-.xbtn{margin-left:auto;border:1px solid var(--line);background:#fff;width:40px;height:40px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:var(--fs-body);line-height:1}
-.xbtn:hover{background:var(--soft)}
-.scrim{position:fixed;inset:0;background:rgba(10,10,10,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
-.scrim.on{opacity:1;pointer-events:auto}
-
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
-.stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--spectrum)}
-.stat .sv{font-family:var(--mono);font-size:var(--fs-metric);font-variant-numeric:tabular-nums;font-weight:600;margin-top:8px;letter-spacing:-.02em}
-.stat .sd{font-size:var(--fs-caption);color:var(--gray);margin-top:2px}
-
-.foot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.09em;text-transform:lowercase}
-.empty{padding:24px 16px;text-align:center;color:var(--gray2);font-size:var(--fs-body)}
-@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
-@media(max-width:640px){
-  .tabs{display:grid;grid-template-columns:1fr;padding:0}
-  .tab{width:100%;margin:0;text-align:left;border-bottom:1px solid var(--line)}
-  .card-hd{align-items:stretch}
-  .card-hd select,.card-hd input{width:100%!important}
-  #toAdvanced{width:100%}
-}
-</style>
+<link rel="stylesheet" href="staff-teams.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="staff-teams">
 <div class="app">
   <aside class="side" id="side">
   <div class="side-top"><a class="logo inv" href="pipeline.html" aria-label="fundhub"></a><button class="burger" id="burger" type="button" title="Collapse sidebar">‹‹</button></div>
@@ -236,21 +86,24 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 
   <div class="main">
     <div class="topbar">
-      <span class="crumb">Setup</span><h1>Staff &amp; Teams</h1>
+      <h1>Staff &amp; Teams</h1>
       <div class="spacer"></div>
-      <span class="chip on" id="onShiftChip"><span class="cd"></span><span id="onShiftTxt">— on shift</span></span>
-      <button class="btn dark mono" id="addBtn">+ Add person</button>
+
+
     </div>
 
     <div class="content fh-maxw">
+      <section class="team-intro" aria-labelledby="team-task-title"><div><h2 id="team-task-title">People, roles &amp; access</h2><p>Manage team logins, review consent and keep track of shifts.</p></div>
+      <button class="btn dark mono" id="addBtn">+ Add person</button>
+      </section>
       <div class="stats">
-        <div class="stat"><div class="eyebrow">ST-00 <span class="sep">/</span> HEADCOUNT</div><div class="sv" id="kHead">—</div><div class="sd">on the roster</div></div>
-        <div class="stat"><div class="eyebrow">ST-00 <span class="sep">/</span> ON SHIFT</div><div class="sv" id="kShift">—</div><div class="sd">clocked in right now</div></div>
-        <div class="stat"><div class="eyebrow">ST-00 <span class="sep">/</span> CONSENT</div><div class="sv" id="kConsent">—</div><div class="sd">monitoring consent on file</div></div>
-        <div class="stat"><div class="eyebrow">ST-00 <span class="sep">/</span> PENDING</div><div class="sv" id="kPending">1</div><div class="sd">invited, not yet active</div></div>
+        <div class="stat"><div class="eyebrow">Team members</div><div class="sv" id="kHead">—</div><div class="sd">on the roster</div></div>
+        <div class="stat"><div class="eyebrow">On shift</div><div class="sv" id="kShift">—</div><div class="sd"><span class="chip on" id="onShiftChip"><span class="cd"></span><span id="onShiftTxt">— on shift</span></span></div></div>
+        <div class="stat"><div class="eyebrow">Consent</div><div class="sv" id="kConsent">—</div><div class="sd">monitoring consent on file</div></div>
+        <div class="stat"><div class="eyebrow">Pending access</div><div class="sv" id="kPending">1</div><div class="sd">invited, not yet active</div></div>
       </div>
 
-      <div class="card" style="margin-top:14px">
+      <div class="card">
         <div class="tabs">
           <button class="tab on" data-tab="roster">Roster</button>
           <button class="tab" data-tab="perms">Permissions</button>
@@ -260,17 +113,17 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 
         <div class="tabpane on" id="tab-roster">
           <div class="card-hd" style="border-bottom:1px solid var(--line)">
-            <div class="eyebrow">ST-01 <span class="sep">/</span> ROSTER</div>
+            <div class="eyebrow">ROSTER</div>
             <div class="spacer"></div>
             <button class="btn sm mono" id="toAdvanced">Permissions →</button>
-            <select id="roleFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
+            <select id="roleFilter" aria-label="Filter staff by role" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
               <option value="">All roles</option>
-              <option>Owner</option><option>Sales Manager</option><option>Closer</option>
+              <option>Owner</option><option>Admin</option><option>Sales Manager</option><option>Setter</option><option>Closer</option>
               <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Affiliate</option>
             </select>
-            <input id="qFilter" placeholder="Filter name or code…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:190px">
+            <input id="qFilter" type="search" aria-label="Search staff by name, email or code" placeholder="Search name, email or code…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:190px">
           </div>
-          <div style="overflow-x:auto">
+          <div class="team-table-scroll" tabindex="0" role="region" aria-label="Team table; scroll for more columns">
             <table class="grid" id="rosterTbl">
               <thead><tr><th>Person</th><th>Role</th><th>Consent</th><th>Clock</th><th>Status</th></tr></thead>
               <tbody id="rosterBody"></tbody>
@@ -281,11 +134,11 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 
         <div class="tabpane" id="tab-perms">
           <div class="card-hd" style="border-bottom:1px solid var(--line)">
-            <div class="eyebrow">ST-02 <span class="sep">/</span> PERMISSIONS BY ROLE</div>
+            <div class="eyebrow">PERMISSIONS BY ROLE</div>
             <div class="spacer"></div>
             <span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">NOT AVAILABLE HERE</span>
           </div>
-          <div style="padding:28px 16px;font-size:var(--fs-body);color:var(--gray)">There is no permission list to show you here.<br><br>What each role is allowed to do is decided in the system's code, and the server checks it on every single action. That code does not hand the list to this screen, so this screen has no way to read it.<br><br>This tab used to show a chart of eighteen permissions across six roles. That chart was typed in by hand. It was never checked against the real rules, so it could have been wrong in either direction — and it looked exactly like an answer. It has been removed rather than left up as a guess.</div>
+          <div class="team-notice"><h3>Permissions follow each role</h3><p>Access is enforced by the server on every action. A verified permission list is not available here.</p><p>To change someone’s role, open their name in the roster. This page cannot edit individual role permissions.</p></div>
           <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span class="badge b-gray" id="permCount">No permission list available</span>
             <span style="font-size:var(--fs-body);color:var(--gray)">Nothing on this screen has ever been able to change what a role may do, and nothing here does now.</span>
@@ -294,18 +147,18 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 
         <div class="tabpane" id="tab-clock">
           <div class="card-hd" style="border-bottom:1px solid var(--line)">
-            <div class="eyebrow">ST-03 <span class="sep">/</span> CLOCK STATE &amp; MONITORING CONSENT</div>
+            <div class="eyebrow">CLOCK STATE &amp; MONITORING CONSENT</div>
             <div class="spacer"></div>
             <span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">CONSENT · docs/rules/MONITORING-CONSENT-FORM.md</span>
           </div>
-          <div style="overflow-x:auto">
+          <div class="team-table-scroll" tabindex="0" role="region" aria-label="Team table; scroll for more columns">
             <table class="grid">
               <thead><tr><th>Person</th><th>Clock state</th><th>Since</th><th>Today</th><th>Monitoring consent</th><th>Signed</th><th></th></tr></thead>
               <tbody id="clockBody"></tbody>
             </table>
           </div>
           <div style="padding:13px 16px;border-top:1px solid var(--line)">
-            <div class="eyebrow" style="margin-bottom:7px">ST-04 <span class="sep">/</span> WHAT CONSENT COVERS</div>
+            <div class="eyebrow" style="margin-bottom:7px">WHAT CONSENT COVERS</div>
             <div style="font-size:var(--fs-body);color:var(--gray);line-height:1.6;max-width:76ch">
               Deep monitoring (activity level, apps and sites used, and screenshots when Hubstaff has them on)
               during clocked-in shifts only. Off by default. Owner records a signed written notice to turn it on,
@@ -316,9 +169,9 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
 
         <div class="tabpane" id="tab-telemetry">
           <div class="card-hd" style="border-bottom:1px solid var(--line)">
-            <div class="eyebrow">ST-08 <span class="sep">/</span> SHIFT &amp; ACTIVITY TELEMETRY</div>
+            <div class="eyebrow">SHIFT &amp; ACTIVITY TELEMETRY</div>
             <div class="spacer"></div>
-            <select id="teleStaff" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff;min-width:200px">
+            <select id="teleStaff" aria-label="Person for shift and activity details" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff;min-width:200px">
               <option value="">Select a person…</option>
             </select>
             <button class="btn sm mono" id="teleRefresh">Refresh</button>
@@ -326,17 +179,17 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
           <div id="teleEmpty" style="padding:28px 16px;font-size:var(--fs-body);color:var(--gray)">Pick someone to see shifts, hours, and Hubstaff activity.</div>
           <div id="teleBody" style="display:none">
             <div class="stats" style="margin:0;border-bottom:1px solid var(--line);border-radius:0">
-              <div class="stat"><div class="eyebrow">CONSENT</div><div class="sv" id="teleConsent">—</div><div class="sd" id="teleConsentSd">monitoring consent</div></div>
+              <div class="stat"><div class="eyebrow">Consent</div><div class="sv" id="teleConsent">—</div><div class="sd" id="teleConsentSd">monitoring consent</div></div>
               <div class="stat"><div class="eyebrow">HOURS</div><div class="sv" id="teleHours">—</div><div class="sd">payable across listed shifts</div></div>
               <div class="stat"><div class="eyebrow">ACTIVITY AVG</div><div class="sv" id="teleAvg">—</div><div class="sd" id="teleAvgSd">from monitor samples</div></div>
               <div class="stat"><div class="eyebrow">SAMPLES</div><div class="sv" id="teleSamples">—</div><div class="sd">activity + screenshots</div></div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+            <div class="telemetry-columns">
               <div style="border-right:1px solid var(--line);overflow-x:auto">
                 <div class="card-hd" style="border-bottom:1px solid var(--line)"><div class="eyebrow">SHIFTS</div></div>
                 <table class="grid"><thead><tr><th>Started</th><th>Ended</th><th>State</th></tr></thead><tbody id="teleShifts"></tbody></table>
               </div>
-              <div style="overflow-x:auto">
+              <div class="team-table-scroll" tabindex="0" role="region" aria-label="Team table; scroll for more columns">
                 <div class="card-hd" style="border-bottom:1px solid var(--line)"><div class="eyebrow">RECENT MONITOR EVENTS</div></div>
                 <table class="grid"><thead><tr><th>When</th><th>Kind</th><th>Summary</th></tr></thead><tbody id="teleEvents"></tbody></table>
               </div>
@@ -346,37 +199,37 @@ table.perm tbody tr:hover td.pl{background:var(--soft)}
       </div>
     </div>
 
-    <div class="foot"><span class="pulse"></span><span>systems nominal · fundhub.ai</span></div>
+    
   </div>
 </div>
 
 <div class="scrim" id="scrim"></div>
-<aside class="editor" id="editor">
-  <div class="editor-hd"><div><div class="eyebrow">ST-05 <span class="sep">/</span> <span id="edMode">EDIT PERSON</span></div><div class="t" id="edTitle" style="font-size:var(--fs-title);font-weight:600;margin-top:5px">—</div></div><button class="xbtn" id="edClose">✕</button></div>
+<aside class="editor" id="editor" role="dialog" aria-modal="true" aria-labelledby="edTitle" inert>
+  <div class="editor-hd"><div><div class="eyebrow"><span id="edMode">EDIT PERSON</span></div><div class="t" id="edTitle" style="font-size:var(--fs-title);font-weight:600;margin-top:5px">—</div></div><button class="xbtn" id="edClose" aria-label="Close person editor">✕</button></div>
   <div class="editor-bd">
     <div class="grid2">
-      <div class="field"><label>First name</label><input id="ed_first"></div>
-      <div class="field"><label>Last name</label><input id="ed_last"></div>
-      <div class="field" style="grid-column:1/-1"><label>Email</label><input id="ed_email"></div>
-      <div class="field"><label>Phone</label><input id="ed_phone" class="num"></div>
-      <div class="field"><label>Employee code</label><input id="ed_code" class="num" readonly style="background:var(--soft);color:var(--gray)"><span class="hint">NOT ISSUED BY THIS SYSTEM</span></div>
-      <div class="field"><label>Role</label><select id="ed_role">
+      <div class="field"><label for="ed_first">First name</label><input id="ed_first"></div>
+      <div class="field"><label for="ed_last">Last name</label><input id="ed_last"></div>
+      <div class="field" style="grid-column:1/-1"><label for="ed_email">Email</label><input id="ed_email"></div>
+      <div class="field"><label for="ed_phone">Phone</label><input id="ed_phone" class="num"></div>
+      <div class="field"><label for="ed_code">Employee code</label><input id="ed_code" class="num" readonly style="background:var(--soft);color:var(--gray)"><span class="hint">NOT ISSUED BY THIS SYSTEM</span></div>
+      <div class="field"><label for="ed_role">Role</label><select id="ed_role">
         <option>Owner</option><option>Admin</option><option>Sales Manager</option><option>Closer</option>
         <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Setter</option>
       </select></div>
-      <div class="field"><label>Start date</label><input id="ed_start" type="date"></div>
+      <div class="field"><label for="ed_start">Start date</label><input id="ed_start" type="date"></div>
     </div>
     <div style="margin-top:18px">
-      <div class="eyebrow" style="margin-bottom:6px">ST-06 <span class="sep">/</span> STATE</div>
-      <div class="swrow"><div class="swl"><div class="n">Monitoring consent on file</div><div class="d">Owner only. On = signed form received. Off = revoke to NULL — Hubstaff ingest skips.</div></div><div class="sw" id="ed_consent"></div></div>
-      <div class="swrow"><div class="swl"><div class="n">Text when a call is booked</div><div class="d">Off until you flip it. Sends name, phone, email, the score they typed, and survey answers to this person's phone.</div></div><div class="sw" id="ed_booked_sms"></div></div>
+      <div class="eyebrow" style="margin-bottom:6px">STATE</div>
+      <div class="swrow"><div class="swl"><div class="n">Monitoring consent on file</div><div class="d">Owner only. On = signed form received. Off = revoke to NULL — Hubstaff ingest skips.</div></div><button type="button" class="sw" id="ed_consent" role="switch" aria-label="Monitoring consent on file" aria-checked="false"></button></div>
+      <div class="swrow"><div class="swl"><div class="n">Text when a call is booked</div><div class="d">Off until you flip it. Sends name, phone, email, the score they typed, and survey answers to this person's phone.</div></div><button type="button" class="sw" id="ed_booked_sms" role="switch" aria-label="Text when a call is booked" aria-checked="false"></button></div>
     </div>
     <div style="margin-top:18px">
-      <div class="eyebrow" style="margin-bottom:6px">ST-07 <span class="sep">/</span> EFFECTIVE PERMISSIONS</div>
+      <div class="eyebrow" style="margin-bottom:6px">EFFECTIVE PERMISSIONS</div>
       <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Not available on this screen. What this person's role may do is set in the system's code and checked by the server on every action. This screen cannot read that list and cannot change it.</div>
     </div>
     <div style="margin-top:18px" id="edAgreementsWrap">
-      <div class="eyebrow" style="margin-bottom:6px">ST-09 <span class="sep">/</span> EMPLOYMENT AGREEMENTS</div>
+      <div class="eyebrow" style="margin-bottom:6px">EMPLOYMENT AGREEMENTS</div>
       <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Signed copies stay in Fundhub (contracts + documents). Open them here later — never from git.</div>
       <div id="edAgreements" style="font-size:var(--fs-body);color:var(--gray)">—</div>
     </div>
@@ -1129,5 +982,6 @@ renderAll();
   });
 })();
 </script>
+<script defer src="staff-teams.js"></script>
 </body>
 </html>
