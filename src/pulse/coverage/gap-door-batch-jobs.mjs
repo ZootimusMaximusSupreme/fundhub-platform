@@ -15,12 +15,17 @@ export const JOB_RESULT_EVIDENCE =
 export const FINAL_JOB_RESULT_TEST =
   "src/pulse/catalog/proofs/door-batch-job-final.test.mjs";
 
+export const CUSTOMER_FINAL_JOB_RESULT_TEST =
+  "src/workflows/customer-final-results.test.mjs";
+
 const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:affiliate-payout-run",
   "workflow:blueprint-next-funding-sequence-sweeper",
   "workflow:hiring-outreach-cadence",
   "workflow:merchant-pull-sweeper",
+  "workflow:meet-transcript-sweeper",
   "workflow:paid-checkout-expiry-sweeper",
+  "workflow:repair-bureau-response-reader",
   "function:hubstaff-poll-sweeper",
   "function:marketing-offer-background",
 ]);
@@ -130,9 +135,13 @@ export function evaluateJobReceipt(row, loaded) {
 
 export function jobResultProof(row) {
   if (PROVED_FINAL_JOB_SURFACES.has(row?.surface)) {
-    const evidence = row.surface === "workflow:blueprint-next-funding-sequence-sweeper"
-      ? `${FINAL_JOB_RESULT_TEST} src/blueprint/next-sequence-plan.test.mjs`
-      : FINAL_JOB_RESULT_TEST;
+    let evidence = FINAL_JOB_RESULT_TEST;
+    if (row.surface === "workflow:blueprint-next-funding-sequence-sweeper") {
+      evidence = `${FINAL_JOB_RESULT_TEST} src/blueprint/next-sequence-plan.test.mjs`;
+    }
+    if (["workflow:meet-transcript-sweeper", "workflow:repair-bureau-response-reader"].includes(row.surface)) {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${CUSTOMER_FINAL_JOB_RESULT_TEST}`;
+    }
     return {
       depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
       evidence,

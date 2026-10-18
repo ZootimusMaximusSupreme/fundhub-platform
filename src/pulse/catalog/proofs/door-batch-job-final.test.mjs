@@ -46,7 +46,7 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
     makeRecipe("jobs.json", row).proof?.evidence.includes("door-batch-job-final.test.mjs") &&
     makeRecipe("jobs.json", row).proof?.verdict === "red"
   );
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, 4);
   assert.deepEqual(
     new Set(rows.map((row) => row.surface)),
     new Set(FINAL_JOB_GAP_ROWS.map((row) => row.surface))
@@ -62,6 +62,27 @@ test("jobs without a non-empty final-result proof stay on exact red monitors", (
       /stays red until a non-empty fake-data run judges this named final result$/,
       row.surface
     );
+  }
+});
+
+test("the two customer jobs use their exact non-empty final-result proof", () => {
+  const proved = new Set([
+    "workflow:meet-transcript-sweeper",
+    "workflow:repair-bureau-response-reader",
+  ]);
+  const rows = JSON.parse(fs.readFileSync(MAP, "utf8")).filter((row) => proved.has(row.surface));
+  assert.equal(rows.length, proved.size);
+  for (const row of rows) {
+    const proof = makeRecipe("jobs.json", row).proof;
+    assert.equal(proof.verdict, undefined, row.surface);
+    assert.equal(
+      proof.depth,
+      row.surface === "workflow:repair-bureau-response-reader" ? "deep" : "e2e",
+      row.surface,
+    );
+    assert.equal(proof.asserts, row.control, row.surface);
+    assert.match(proof.evidence, /door-batch-job-final\.test\.mjs/, row.surface);
+    assert.match(proof.evidence, /src\/workflows\/customer-final-results\.test\.mjs/, row.surface);
   }
 });
 
