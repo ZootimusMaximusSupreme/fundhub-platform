@@ -257,7 +257,7 @@ test("red when only one role loses a link (csm alone, then admin alone)", async 
 });
 
 test("red when the deployed page drops a link or points it at another screen", async () => {
-  const dropped = REAL_PAGE.replace(/<a class="action-btn" id="ccp-link-messaging"[^>]*>[\s\S]*?<\/a>/, "");
+  const dropped = REAL_PAGE.replace(/<a class="link-btn" id="ccp-link-messaging"[^>]*>[\s\S]*?<\/a>/, "");
   assert.notEqual(dropped, REAL_PAGE);
   const out = await verdict(QUICK, WITH_DECK_ON_ALL, dropped);
   assert.equal(out.status, "FAIL");
@@ -295,7 +295,7 @@ test("red when the gate hides a link by another means than display, and when the
     assert.doesNotMatch(out.detail, /press on it is blocked/, `${label}: it is the hiding that is reported, not the click guard`);
   }
   // The page writes the link with the hidden attribute (nothing in the check's reach would unhide it).
-  const pageHidden = REAL_PAGE.replace('<a class="action-btn" id="ccp-link-messaging" href="messaging.html">', '<a class="action-btn" id="ccp-link-messaging" href="messaging.html" hidden>');
+  const pageHidden = REAL_PAGE.replace('<a class="link-btn" id="ccp-link-messaging" href="messaging.html">', '<a class="link-btn" id="ccp-link-messaging" href="messaging.html" hidden>');
   assert.notEqual(pageHidden, REAL_PAGE);
   const hid = await verdict(QUICK, WITH_DECK_ON_ALL, pageHidden);
   assert.equal(hid.status, "FAIL", hid.detail);
