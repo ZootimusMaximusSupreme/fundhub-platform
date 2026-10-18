@@ -79,9 +79,9 @@ export function flowGapRows(messages, journeys, agents) {
   ];
 }
 
-// Batch 22: the journeys proxy and two soft-pull steps left the monitor for a practice test, so journey is
-// 9 and no agent row is left (a family with no row left has no entry; the drift guard checks listed families).
+// Batch 22 plus the restored climate state-card proof leave eight journey rows in the monitor.
+// No agent row is left (a family with no row left has no entry; the drift guard checks listed families).
 export const EXPECTED_FLOW_GAP_COUNTS = Object.freeze({
   message: 170,
-  journey: 9,
+  journey: 8,
 });

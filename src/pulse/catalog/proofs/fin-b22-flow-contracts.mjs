@@ -27,6 +27,7 @@ const TWILIO_TEST = "src/http/fin-b22-twilio-status.test.mjs";
 const PUSH_SEND_TEST = "src/push/fin-b22-send-to-client.test.mjs";
 const PAGE_TEST = "src/pulse/catalog/proofs/fin-b22-page-reads.test.mjs";
 const SHIPPED_TEST = "src/pulse/catalog/proofs/fin-b22-not-shipped.test.mjs";
+const CLIMATE_STATE_TEST = "src/pulse/catalog/proofs/fin-b09-g2-findings.test.mjs";
 const ONE_OFF_SEND_TEST = "src/ops/one-off-send-receipt.test.mjs";
 
 /** surface -> { file, tests }. A test with fake data judges the exact result. */
@@ -40,6 +41,9 @@ export const FIN_B22_PRACTICE = Object.freeze({
   }),
   "journey:soft-pull-multi-biz-intended-draft#5-pay-same-page": Object.freeze({
     file: "journeys.json", tests: Object.freeze([SOFT_PULL_SERVER, SOFT_PULL_PAGE]),
+  }),
+  "journey:climate-lead-magnet-intended#3-state-click": Object.freeze({
+    file: "journeys.json", tests: Object.freeze([CLIMATE_STATE_TEST]),
   }),
 });
 
@@ -69,9 +73,6 @@ export const FIN_B22_LIVE_PROOFS = Object.freeze({
   }),
   // Generation 3. Nothing to judge while the live page does not carry the step; read again every run.
   "journey:climate-lead-magnet-intended#1-headline-button": Object.freeze({
-    file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
-  }),
-  "journey:climate-lead-magnet-intended#3-state-click": Object.freeze({
     file: "journeys.json", tests: Object.freeze([SHIPPED_TEST, LANE_TEST]), shipped: true,
   }),
   "journey:climate-lead-magnet-intended#4-form": Object.freeze({

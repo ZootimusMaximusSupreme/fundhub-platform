@@ -53,8 +53,8 @@ test("flow proofs name only real, runnable result tests", () => {
 
 test("no known flow gap remains on the generic red monitor", () => {
   // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
-  // test), the web push devices (saved results), two journey steps (a live page read) and, in generation 3,
-  // seven steps the live page does not carry (a verified nothing-to-judge) out of this list; the row below is
+  // test), the web push devices (saved results), two journey steps (a live page read), the restored climate
+  // state card (a rendered practice proof) and six absent steps (verified nothing-to-judge) out of this list; the row below is
   // the one nothing can judge yet.
   const cases = [];
 
@@ -119,14 +119,13 @@ test("the two journey steps judged by a live page read carry a page-read proof, 
   }
 });
 
-test("the seven steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
+test("the six steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
   const rows = [
     ...loadRows("journeys.json").map((row) => ["journeys.json", row]),
     ...loadRows("messages.json").map((row) => ["messages.json", row]),
   ].filter(([, row]) => FIN_B22_LIVE_PROOFS[row.surface]?.shipped);
   assert.deepEqual(rows.map(([, row]) => row.surface).sort(), [
     "journey:climate-lead-magnet-intended#1-headline-button",
-    "journey:climate-lead-magnet-intended#3-state-click",
     "journey:climate-lead-magnet-intended#4-form",
     "journey:climate-lead-magnet-intended#6-gate",
     "journey:fh-consulting-intended#2-education-only",
@@ -141,6 +140,16 @@ test("the seven steps the live page does not carry are a verified nothing-to-jud
     assert.match(proof.evidence, /says "na" only while the step is not on it/, row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
   }
+});
+
+test("the restored climate state card is proved by its exact rendered click result", () => {
+  const surface = "journey:climate-lead-magnet-intended#3-state-click";
+  const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
+  const proof = proofForFlowRow("journeys.json", row);
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "deep");
+  assert.deepEqual(proofTestFiles(proof), ["src/pulse/catalog/proofs/fin-b09-g2-findings.test.mjs"]);
+  assert.equal(proof.asserts, row.control);
 });
 
 test("the web push row names the practice test of the sender beside its saved-result check", () => {
