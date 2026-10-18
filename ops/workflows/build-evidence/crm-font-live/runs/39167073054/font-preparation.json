@@ -1,0 +1,7 @@
+{
+  "changed": [],
+  "pages": 61,
+  "reference": "tools/fundhub-mac/FundhubMac.swift WelcomeView .system(size:58,weight:.semibold,design:.rounded)",
+  "appleFontsBundled": false,
+  "webFallback": "Nunito under OFL1.1; actual Apple system face used only when available"
+}
