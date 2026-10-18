@@ -9,6 +9,7 @@ import {
 import { flowReadContractProof } from "./flow-read-contracts.mjs";
 import { s2FlowProof } from "./s2-flow-contracts.mjs";
 import { finB22FlowProof } from "./fin-b22-flow-contracts.mjs";
+import { heartbeatCatalogRedFourFlowProof } from "./heartbeat-catalog-red-four.mjs";
 
 const TEST_FILE_RE = /\b(?:src|api|scripts|e2e)\/[A-Za-z0-9_./-]+\.test\.mjs\b/g;
 
@@ -222,7 +223,7 @@ function messageProof(row) {
 }
 
 export function proofForFlowRow(sourceFile, row) {
-  const plugIn = flowReadContractProof(sourceFile, row) || s2FlowProof(sourceFile, row) || finB22FlowProof(sourceFile, row);
+  const plugIn = heartbeatCatalogRedFourFlowProof(sourceFile, row) || flowReadContractProof(sourceFile, row) || s2FlowProof(sourceFile, row) || finB22FlowProof(sourceFile, row);
   if (plugIn) return plugIn;
   const file = basename(sourceFile);
   if (file === "messages.json") {

@@ -94,3 +94,11 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: integrated display repair rows 13–19. Messaging deep links and the visible reference key, owner/admin journey-run access, delete-only AI changes, nested-branch simulation, and per-journey Discard tracking now have exact executable proofs. The integrated focused suite passes 66/66, journey maps are regenerated and current, and lint passes 3,982/3,982.
 - 2026-10-18: integrated display repair rows 26–33. Ops AR sort/expand survives repaint and reads truthful terms, payment method, owner, outstanding amount, and collection history; Partner Galaxy keeps canvas coordinates aligned and uses clearly labeled neutral service-map nodes; Pipeline searches phone/email and restores API order through Manual or the Sort-chip x. Exact browser proofs pass 26/26 and the broader handler/UI/mapping guards pass 193/193 in the isolated batch; final global count waits for the one end-of-run catalog regeneration.
 
+### Isolated repair — four L3 catalog rows
+
+- Branch `codex/heartbeat-catalog-four`, based on `068a136aa`; scope is only IDs `09900ba878d3aff9b245`, `13120425dd5806539508`, `941299e8010b7c318b5d`, and `d00cbba31d2f71b4516c`.
+- Fresh exact-row compile: openBefore `4` (all L2 red), openAfter `0` (all L3 wired). `generated.json` was not changed; integration owns the one final regeneration.
+- My Numbers now returns the closer's own seven-day quiet deposits beside overdue calls. The other three rows needed exact deep proof, not product changes: partner writes are refused, checkout return scope/new entitlement is verified, and blank-form booking emits the exact GET while the external page is blocked.
+- Proof: focused browser/compiler `6/6`; registry/compiler/metrics `39/39`; lint `3984` files/scripts; `npx tsc --noEmit` green. Mutation check removed closer scope and failed on the missing quiet-deposit result, then the final proof passed after restoration.
+- No public page or `fin-b*` file changed. No external scheduling/payment page opened, no payment charged, no production data written, and no message sent.
+
