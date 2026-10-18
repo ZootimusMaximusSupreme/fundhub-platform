@@ -607,7 +607,7 @@ let J=seed();
    content cannot wipe that content back to the mock example. */
 let SAVED=JSON.parse(JSON.stringify(J));
 const ORDER=['client','setter','closer','advisor','affiliate','partner'];
-let active='client', selId=null, dirty=0, touched={}, undoStack=[], tab='step';
+let active='client', selId=null, dirty=0, dirtyByJourney={}, touched={}, undoStack=[], tab='step';
 let pending=null, busy=false, askErr='', askText='';
 let log=[], versions=[];
 let sim={running:false,done:false,feed:[],report:null,timer:null,mode:'first'};
@@ -642,7 +642,7 @@ function revert(entryId){
   selId=null; pending=null; bump(); render();
   toast('<b>Reverted.</b> ' + esc(e.what) + ' — put back the way it was.');
 }
-function bump(){dirty++;touched[active]=true}
+function bump(){dirty++;dirtyByJourney[active]=(dirtyByJourney[active]||0)+1;touched[active]=true}
 function pushUndo(){undoStack.push(JSON.stringify(J[active]));if(undoStack.length>40)undoStack.shift()}
 function commit(what){bump();record('you',what,undoStack[undoStack.length-1]);render()}
 
@@ -669,7 +669,10 @@ function setCfg(id,k,v){const f=findNode(id);if(!f)return;
     record('you','Edited '+f.node.title,editBefore); editBefore=null; renderPanel(); },900);
 }
 function undo(){if(!undoStack.length)return;J[active]=JSON.parse(undoStack.pop());
-  dirty=Math.max(0,dirty-1);selId=null;pending=null;render()}
+  const own=dirtyByJourney[active]||0;
+  if(own){dirty=Math.max(0,dirty-1);if(own===1){delete dirtyByJourney[active];delete touched[active]}
+    else dirtyByJourney[active]=own-1}
+  selId=null;pending=null;render()}
 
 /* ── versions ── */
 function saveVersion(){
@@ -769,9 +772,9 @@ function localPatch(text,scopeId){
 }
 function stagePatch(patch,askedFor){
   pushUndo();
-  const added=[],changed=[];
+  const added=[],changed=[],removed=[];
   (patch.ops||[]).forEach(op=>{ try{
-    if(op.op==='delete'){const f=findNode(op.id);if(f)f.list.splice(f.idx,1);return}
+    if(op.op==='delete'){const f=findNode(op.id);if(f){removed.push(f.node.id);f.list.splice(f.idx,1)}return}
     if(op.op==='update'){const f=findNode(op.id);if(!f)return;
       if(op.title)f.node.title=op.title; if(op.cfg)Object.assign(f.node.cfg,op.cfg);
       f.node._chg=true;changed.push(f.node.id);return}
@@ -789,17 +792,20 @@ function stagePatch(patch,askedFor){
       else if(op.after){const f=findNode(op.after); if(f&&f.list===list) at=f.idx+1}
       list.splice(at,0,n);
     }}catch(e){} });
-  if(!added.length&&!changed.length){undoStack.pop();askErr='That came back empty. Try saying it a different way.';return}
-  pending={summary:patch.summary||'Change ready to review.',asked:askedFor,added,changed};
+  if(!added.length&&!changed.length&&!removed.length){undoStack.pop();askErr='That came back empty. Try saying it a different way.';return}
+  pending={summary:patch.summary||'Change ready to review.',asked:askedFor,added,changed,removed};
   selId=added[0]||changed[0]||null; tab='step'; askText='';
 }
 function acceptPending(){
   const w=n=>{delete n._new;delete n._chg;if(n.branches)n.branches.forEach(b=>b.nodes.forEach(w))};
   J[active].nodes.forEach(w);
-  const n=pending.added.length+pending.changed.length, s=pending.summary;
+  const kept=pending.added.length+pending.changed.length, removed=pending.removed.length;
+  const n=kept+removed, s=pending.summary;
   record('claude',s,undoStack[undoStack.length-1]);
   pending=null; bump(); render();
-  toast('<b>Kept it.</b> '+n+' step'+(n>1?'s':'')+' now part of this journey. Not in the code until you press Apply.');
+  toast('<b>Kept it.</b> '+(removed
+    ? n+' change'+(n>1?'s':'')+' accepted for this journey.'
+    : kept+' step'+(kept>1?'s':'')+' now part of this journey.')+' Not in the code until you press Apply.');
 }
 function rejectPending(){ if(undoStack.length) J[active]=JSON.parse(undoStack.pop());
   pending=null; selId=null; render(); }
@@ -828,12 +834,23 @@ function plan(nodes){
   });
   return out;
 }
+function planFrom(nodes,fromId){
+  for(let i=0;i<nodes.length;i++){
+    const n=nodes[i];
+    if(n.id===fromId)return plan(nodes.slice(i));
+    if(n.branches)for(const branch of n.branches){
+      const inside=planFrom(branch.nodes,fromId);
+      if(inside)return inside.concat(plan(nodes.slice(i+1)));
+    }
+  }
+  return null;
+}
 function startSim(fromId){
   stopSim();
   sim.running=true; sim.done=false; sim.feed=[]; sim.report=null;
   document.body.classList.add('running');
-  let steps=plan(J[active].nodes);
-  if(fromId){ const at=steps.findIndex(s=>s.node&&s.node.id===fromId); if(at>0) steps=steps.slice(at); }
+  let steps=fromId?planFrom(J[active].nodes,fromId):plan(J[active].nodes);
+  if(!steps)steps=plan(J[active].nodes);
   document.querySelectorAll('.nrow').forEach(r=>r.classList.remove('fired','now','skipped'));
   document.querySelectorAll('.lane').forEach(l=>l.classList.remove('notaken'));
   sim.feed.push({t:'evt',time:now(),text:'Started as '+FAKE.first_name+' '+FAKE.last_name+' — '+FAKE.company});
@@ -983,9 +1000,10 @@ function renderCanvas(){
     '<div class="cap end"><div class="pill"><span class="dot"></span><span class="tx">'+
     '<span class="lb">Ends when</span><span class="tt">'+esc(j.end)+'</span></span></div></div></div>';
   if(pending){
-    const c=pending.added.length,u=pending.changed.length;
+    const c=pending.added.length,u=pending.changed.length,r=pending.removed.length,parts=[];
+    if(c)parts.push(c+' new step'+(c>1?'s':''));if(u)parts.push(u+' changed');if(r)parts.push(r+' removed');
     h+='<div class="bar"><div class="bartop"><span class="what"><b>'+esc(pending.summary)+'</b> '+
-      (c?c+' new step'+(c>1?'s':''):'')+(c&&u?', ':'')+(u?u+' changed':'')+
+      parts.join(', ')+
       ' — highlighted above. Nothing is saved until you keep it.</span>'+
       '<span class="btns"><button class="ab" id="reject">Throw it away</button>'+
       '<button class="ab p" id="accept">Keep it</button></span></div></div>';
@@ -1182,7 +1200,8 @@ function wireCanvas(){
       openMenu(e.currentTarget,JSON.parse(w.dataset.path),+w.dataset.idx)};
   });
   const d=document.getElementById('discard');
-  if(d) d.onclick=()=>{pushUndo();J[active]=JSON.parse(JSON.stringify(SAVED[active]));dirty=0;delete touched[active];selId=null;
+  if(d) d.onclick=()=>{const own=dirtyByJourney[active]||0;pushUndo();J[active]=JSON.parse(JSON.stringify(SAVED[active]));
+    dirty=Math.max(0,dirty-own);delete dirtyByJourney[active];delete touched[active];selId=null;
     record('you','Discarded every unapplied change',undoStack[undoStack.length-1]);render()};
   const a=document.getElementById('applybar'); if(a) a.onclick=applyAll;
   const ac=document.getElementById('accept'); if(ac) ac.onclick=acceptPending;
@@ -1251,7 +1270,7 @@ async function applyAll(){
       }
     }
     keys.forEach(k=>{ SAVED[k]=JSON.parse(JSON.stringify(J[k])); });
-    dirty=0; touched={}; undoStack=[];
+    dirty=0; dirtyByJourney={}; touched={}; undoStack=[];
     toast('<b>Applied '+n+' change'+(n>1?'s':'')+'.</b> Saved to the database — '+
       (imp.length?imp.length+' connected area'+(imp.length>1?'s':'')+' brought in line, ':'')+
       'this is what loads next time the editor opens. Nothing is live until you deploy.');

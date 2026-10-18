@@ -7,9 +7,8 @@
 //   practice test   a real page in Chromium, fake /api answers, one action, a judgement of the exact request and
 //                   the words painted (the test file named beside the row in fin-b14-rows.json). It reads no
 //                   saved data. The row leaves the lane.
-// A control listed under "notAttached" is also exercised, but either its row words name something the product
-// does not do or the control gives a wrong result today, so it is left out here and stays reported as not
-// proved (see fin-b14-not-attachable.mjs for each reason, and the KNOWN BREAK tests that hold it).
+// A lender control listed under "notAttached" is also exercised but gives a wrong result today, so it is left
+// out here and stays reported as not proved (see fin-b14-not-attachable.mjs for each remaining reason).
 // A live row may also name practice tests (fin-b14-display-contracts.mjs alsoTests): the saved rows are judged
 // by the SQL and the button's own request by those tests.
 

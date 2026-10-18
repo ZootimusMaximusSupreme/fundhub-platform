@@ -309,7 +309,9 @@
   .ctx-sec .sec-body{padding-bottom:11px;}
 
   /* ---- reference drawer — collapsed, costs one divider row ---- */
-  .demozone{flex-shrink:0;background:var(--surface);border-top:1px solid var(--line);}
+  /* This is the working who-sent-it key, not a demo placeholder. The shared
+     brand sheet hides demo zones globally, so this real control opts back in. */
+  #demozone{display:block!important;flex-shrink:0;background:var(--surface);border-top:1px solid var(--line);}
   .demo-div{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:0;cursor:pointer;
     padding:6px 14px;text-align:left;font-family:var(--mono);font-size:var(--fs-caption);letter-spacing:.14em;
     text-transform:uppercase;color:var(--text-faint);}
@@ -1276,17 +1278,23 @@
     });
   }
 
-  function openThread(row) {
-    state.selected = row;
-    paintList();
-
+  function paintThreadHeader(row) {
     $("thName").textContent = V.displayName(row);
-    $("thSub").textContent = String(row.channel || "").toUpperCase() + " · " +
-      (row.needs_reply === true ? "waiting on a reply from us" : "no reply owed");
+    $("thSub").textContent = String(row.channel || "").toUpperCase() + " · " + (!row.id
+      ? "no thread yet"
+      : (row.needs_reply === true ? "waiting on a reply from us" : "no reply owed"));
     $("thAv").textContent = V.initials(row);
     $("footName").textContent = V.displayName(row);
     paintChannelToggle(row.channel === "email" ? "email" : "sms");
     paintQuietNote(row.channel);
+  }
+
+  function openThread(row) {
+    state.selected = row;
+    row._threadItems = null;
+    paintList();
+
+    paintThreadHeader(row);
     $("composeBody").disabled = false;
     $("composeBody").placeholder = "Write a message…";
     /* The box opens empty and disabled-looking until the person's record
@@ -1317,7 +1325,17 @@
         FHData.explain(res, "this conversation");
         return;
       }
-      paintThread(res.data.items || []);
+      var items = res.data.items || [];
+      var newest = items[0] || {};
+      var learnedContext = false;
+      if (!row.client_id && newest.client_id) { row.client_id = newest.client_id; learnedContext = true; }
+      if (!row.channel && newest.channel) { row.channel = newest.channel; learnedContext = true; }
+      row._threadItems = items;
+      if (learnedContext) {
+        paintThreadHeader(row);
+        paintContext(row);
+      }
+      paintThread(items);
     });
   }
 
@@ -1353,6 +1371,16 @@
       $("ctxLinks").innerHTML = '<div class="empty-box">Pick a conversation first.</div>';
       return;
     }
+    /* A conversation-id link can point to an older thread that is not in the
+       loaded inbox page. Its first message supplies client_id and channel;
+       until that read answers, never make a null client request or link. */
+    if (!row.client_id) {
+      $("ctxRole").textContent = "Finding the client for this conversation…";
+      $("ctxRows").innerHTML = '<div class="empty-box">Loading conversation details&hellip;</div>';
+      $("ctxThreads").innerHTML = '<div class="empty-box">Loading their other threads&hellip;</div>';
+      $("ctxLinks").innerHTML = '<div class="empty-box">Loading their file&hellip;</div>';
+      return;
+    }
     $("ctxRole").textContent = "Talking to us on " + String(row.channel || "").toLowerCase() + ".";
     /* A thread opened with no time on it (a ?conversation_id= link older than
        the loaded list) says "Loading…" until paintThread reads its newest
@@ -1367,6 +1395,10 @@
       FHData.client(row.client_id).then(function (res) {
         if (state.selected !== row) return;
         var cl = (res && res.ok && res.data && res.data.client) || {};
+        row.first_name = cl.first_name || row.first_name;
+        row.last_name = cl.last_name || row.last_name;
+        paintThreadHeader(row);
+        if (row._threadItems) paintThread(row._threadItems);
         var extra = "";
         if (cl.email) extra += '<div class="ctx-row"><span class="k">Email</span><span class="v">' + V.esc(cl.email) + "</span></div>";
         if (extra) $("ctxRows").insertAdjacentHTML("beforeend", extra);

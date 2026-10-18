@@ -56,11 +56,10 @@ test("GET and PUT /api/journeys and POST /api/journeys/ask let in owner and admi
   }
 });
 
-test("POST /api/journeys/run is wider than the row says: sales manager is let in as well", async () => {
-  // The row says owner and admin only. The door gates on ROLE_SETS.FINANCE (owner, admin, sales_manager).
+test("POST /api/journeys/run lets in owner and admin and nobody else", async () => {
   // "unknown_journey" is the cheapest answer past the gate: no journey is walked.
   const run = await rolesLetIn(async (role) => (await call(runHandler, req("POST", { body: { journey: "nope" } }), [[/FROM journeys WHERE org_id = \$1/, []]], role)).res.statusCode, STAFF_ROLES);
-  assert.deepEqual(run, ["admin", "owner", "sales_manager"]);
+  assert.deepEqual(run, ["admin", "owner"]);
 });
 
 // ── Apply to code: GET and PUT ───────────────────────────────────────────────────────────────────────

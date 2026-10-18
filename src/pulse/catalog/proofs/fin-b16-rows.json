@@ -37,6 +37,9 @@
     "'Send this one to' address box (applies to this one message only; never written back to the record)",
     "Channel toggle: Email / Text buttons (open that client's other-channel conversation)",
     "Compose box: type reply, Enter sends, Shift+Enter newline; texting-hours notice shown before typing",
+    "Deep links: ?client_id=, ?channel=, ?conversation_id= open a thread straight from another desk",
+    "Reference disclosure (who-sent-it colour key)",
+    "Right panel: 'Their other threads' list and 'Open elsewhere -> Their file' link",
     "Search box: search people and messages (client-side filter; typing drops needs_reply=1 from the server query on the Needs-reply tab)",
     "Tab: All",
     "Tab: Needs reply (client spoke last, nobody answered; server-side filter)"
