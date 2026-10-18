@@ -161,7 +161,12 @@ jobs:
           PY
           git config user.name 'Fundhub UI checks'
           git config user.email 'ui-checks@fundhub.ai'
-          git checkout -b "codex/crm-reconcile-scan-$GITHUB_RUN_ID"
+          report_dir=$(mktemp -d)
+          cp ops/workflows/build-evidence/crm-reconcile-scan/report.json "$report_dir/report.json"
+          cp ops/workflows/build-evidence/crm-reconcile-scan/README.md "$report_dir/README.md"
+          git checkout -b "codex/crm-reconcile-scan-$GITHUB_RUN_ID" origin/main
+          mkdir -p ops/workflows/build-evidence/crm-reconcile-scan
+          cp "$report_dir/report.json" "$report_dir/README.md" ops/workflows/build-evidence/crm-reconcile-scan/
           git add -f ops/workflows/build-evidence/crm-reconcile-scan
           git commit -m 'Record current-production UI integration scan without changing app files'
           git push origin "HEAD:codex/crm-reconcile-scan-$GITHUB_RUN_ID"

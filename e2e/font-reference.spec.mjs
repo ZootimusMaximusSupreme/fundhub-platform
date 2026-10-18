@@ -12,6 +12,15 @@ for(const width of [1440,390,320])for(const screen of ['my-numbers','pipeline','
  const session=screen==='client-portal'?{ok:true,principal:'client',staff:{id:'safe-client',client_id:CLIENT_ID,role:'client',name:'Safe Client',status:'active',had_call:true}}:screen==='my-numbers'?CLOSER:OWNER;
  await openScreen(page,'/app/'+screen+'.html',session,{'/api/org-brand':{ok:true,brand},'/api/read/my-numbers':numbers,'/api/read/portal-summary':{ok:true,scores:{},documents:[]}});
  await expect(page.locator('html')).toHaveAttribute('data-fh-rounded-default','');
+ if(screen==='client-portal'){
+  await expect(page.locator('#fh-shell-chip-show')).toBeVisible();
+  await expect(page.locator('#fh-shell-src')).toBeHidden();
+  await page.locator('#fh-shell-chip-show').click();
+  await expect(page.locator('#fh-shell-out')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  await page.locator('#fh-shell-chip-hide').click();
+  await expect(page.locator('#fh-shell-src')).toBeHidden();
+ }
  await page.evaluate(()=>document.fonts.ready);
  const woff=await page.request.get('/assets/fonts/nunito-latin-variable.woff2');expect(woff.status()).toBe(200);
  expect((await woff.body()).byteLength).toBeLessThan(100000);

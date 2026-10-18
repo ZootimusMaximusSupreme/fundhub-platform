@@ -2498,6 +2498,7 @@
     if (workspace && workspace.nodeType === 1) return mountWorkspaceAccount(staff, demo);
     var el = document.createElement("div");
     el.id = "fh-shell-chip";
+    var externalAccount = Boolean(SEARCH_SKIP_ROLES[normRole(staff.role)]);
     /* pointer-events:none — the chip is a label, not a control surface. It is
        fixed at z-index 2147483000, above everything a screen can draw, and it
        is ~337px wide, so anything under it stopped receiving clicks: the beta
@@ -2541,6 +2542,13 @@
          back on or it is dead. Set in CHIP_CONTROL_CSS with the hit area. */
       '<button id="fh-shell-chip-hide" type="button" aria-label="Hide this bar" ' +
         'title="Hide this bar. A small ‘account’ button brings it back.">×</button>';
+    if (externalAccount) {
+      el.style.maxWidth = "calc(100vw - 48px)";
+      el.style.minWidth = "0";
+      el.style.flexWrap = "wrap";
+      el.style.whiteSpace = "normal";
+      el.style.overflowWrap = "anywhere";
+    }
     var ctrlStyle = document.createElement("style");
     ctrlStyle.id = "fh-shell-chip-control-style";
     ctrlStyle.textContent = CHIP_CONTROL_CSS;
@@ -2600,7 +2608,9 @@
       ev.stopPropagation();
       setChipHidden(false);
     });
-    setChipHidden(readChipHidden());
+    // Clients begin with the compact Account control; connection diagnostics
+    // never occupy their product header. Existing hide/show and sign-out remain.
+    setChipHidden(externalAccount || readChipHidden());
 
     /* One badge, the truth about this screen's data. A screen drawing its
        built-in sample rows must not look like one reading the database. */
