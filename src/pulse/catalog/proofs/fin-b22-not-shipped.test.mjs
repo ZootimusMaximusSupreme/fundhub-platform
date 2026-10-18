@@ -29,6 +29,7 @@ const ORIGIN = DEFAULT_BASE_URL;
 const CLIMATE = "/climate/";
 const CONSULTING = "/consulting/";
 const OPS = "/app/ops-admin.html";
+const PRESENT_SURFACE = "journey:climate-lead-magnet-intended#3-state-click";
 
 const claimFor = (needle) => {
   const found = NOT_SHIPPED_CLAIMS.find((claim) => claim.surface.includes(needle));
@@ -120,12 +121,19 @@ test("the four climate steps each hold the dashboard's identity: its title, and 
 
 // ── the real pages ───────────────────────────────────────────────────────────
 
-test("on the real pages all seven steps are nothing to judge, and each row says what is absent", async () => {
+test("on the real pages six steps are absent and the restored state-click step stays red", async () => {
   const fetchImpl = site();
   const map = await runFinB22NotShipped({ fetchImpl });
   assert.equal(map.size, 7);
   for (const claim of NOT_SHIPPED_CLAIMS) {
     const row = map.get(notShippedRowId(claim));
+    if (claim.surface === PRESENT_SURFACE) {
+      assert.equal(row.status, "NOT_PROVED", claim.surface);
+      assert.equal(row.na, undefined);
+      assert.match(row.detail, /live page carries this step now.*"not a decision about you"/);
+      assert.match(row.suggestedFix, /attach a check on the saved result/);
+      continue;
+    }
     assert.equal(row.status, "na", claim.surface);
     assert.deepEqual(row.na, { code: NOT_SHIPPED_CODE, args: { family: claim.family, surface: claim.surface } });
     assert.ok(row.detail.startsWith(`${claim.surface}:`), row.detail);
@@ -147,10 +155,14 @@ test("the live address of the ops-admin page, the climate page and the consultin
   for (const p of fetchImpl.calls) assert.ok(allowed(p), `unexpected address read: ${p}`);
 });
 
-test("the morning audit's question is true on the real pages, for every step", async () => {
+test("the morning audit reports the restored state-click step as present and the other six as absent", async () => {
   const fetchImpl = site();
   for (const claim of NOT_SHIPPED_CLAIMS) {
-    assert.equal(await verifyNotShipped({ family: claim.family, surface: claim.surface }, { fetchImpl }), true, claim.surface);
+    assert.equal(
+      await verifyNotShipped({ family: claim.family, surface: claim.surface }, { fetchImpl }),
+      claim.surface !== PRESENT_SURFACE,
+      claim.surface,
+    );
   }
 });
 
@@ -175,14 +187,15 @@ test("each step's list of words and doors is exactly the one written down here",
   }
 });
 
-test("every word and door of every step turns only its own row back to not proved, and names it", async () => {
+test("every word and door turns its row red without hiding the restored state-click red", async () => {
   for (const { needle, page, markers } of EXPECTED) {
     for (const marker of markers) {
       const map = await rows(appended(page, `<p>${marker}</p>`));
       assert.equal(statusOf(map, needle), "NOT_PROVED", `${needle}: ${marker}`);
       assert.ok(map.get(idFor(needle)).detail.includes(JSON.stringify(marker)), `${needle}: ${marker}`);
       for (const other of EXPECTED.filter((entry) => entry.needle !== needle)) {
-        assert.equal(statusOf(map, other.needle), "na", `${other.needle} is untouched by ${needle}: ${marker}`);
+        const expected = other.needle === "#3-state-click" ? "NOT_PROVED" : "na";
+        assert.equal(statusOf(map, other.needle), expected, `${other.needle} is untouched by ${needle}: ${marker}`);
       }
     }
   }
@@ -304,7 +317,9 @@ test("a retitled dashboard is not nothing-to-judge, and the title is read on eve
   assertAllFourNotProved(await rows(changed(second, (html) => retitle(html, "Lending map for visitors"))), "retitled the second page");
   // A title that only says it with other capital letters and spacing is the same title.
   const same = await rows(changed(CLIMATE, (html) => retitle(html, "FundHub  LENDING climate   dashboard")));
-  for (const needle of CLIMATE_STEPS) assert.equal(statusOf(same, needle), "na", needle);
+  for (const needle of CLIMATE_STEPS) {
+    assert.equal(statusOf(same, needle), needle === "#3-state-click" ? "NOT_PROVED" : "na", needle);
+  }
 });
 
 test("a title with no title tag at all is a change, not a pass", async () => {
@@ -492,7 +507,7 @@ test("the audit hands no GET client, so the global one is used; four steps share
       const claim = claimFor(needle);
       answers.push(await verifyNotShipped({ family: claim.family, surface: claim.surface }, { db: null, now: new Date() }));
     }
-    assert.deepEqual(answers, [true, true, true, true]);
+    assert.deepEqual(answers, [true, false, true, true]);
     assert.equal(fetchImpl.calls.filter((p) => p === CLIMATE).length, 1, "one read of /climate/ for the four steps");
   } finally {
     globalThis.fetch = real;

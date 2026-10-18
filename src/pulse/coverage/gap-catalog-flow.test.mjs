@@ -25,6 +25,7 @@ import {
 import { makeStandIn, NOW as KIT_NOW, REPO_ROOT } from "../catalog/proofs/fin-b22-sql-kit.mjs";
 
 const NOW = new Date("2026-10-12T12:00:00.000Z");
+const PRESENT_SURFACE = "journey:climate-lead-magnet-intended#3-state-click";
 
 function dbWith(rows) {
   const calls = [];
@@ -53,7 +54,7 @@ test("the Flow monitor owns the exact 179 remaining catalog rows", () => {
 
 const PAGE_SURFACES = [CLIMATE_READING_SURFACE, CONSULTING_REQUEST_SURFACE];
 
-test("batch 22 plus the one-off repair: four rows use practice tests, ten are judged from saved results, two from a live page read, and seven are nothing to judge while the page lacks them", () => {
+test("batch 22 plus the one-off repair: four rows use practice tests, ten use saved results, two use live reads, six are absent, and one restored step stays red", () => {
   const surfaces = new Set(FLOW_ROWS.map((row) => row.surface));
   for (const surface of Object.keys(FIN_B22_PRACTICE)) assert.equal(surfaces.has(surface), false, `${surface} left the monitor`);
   for (const surface of Object.keys(FIN_B22_LIVE_PROOFS)) assert.equal(surfaces.has(surface), true, `${surface} stays in the lane`);
@@ -330,10 +331,16 @@ function publicFetch(overrides = {}) {
   };
 }
 
-test("seven steps the live page does not carry are nothing to judge, with the code the audit re-checks", async () => {
+test("six absent steps are nothing to judge while the restored state-click step stays red", async () => {
   const rows = await gapChecks({ fetchImpl: publicFetch(), now: NOW });
   for (const claim of NOT_SHIPPED_CLAIMS) {
     const row = rows.find((item) => item.id === notShippedRowId(claim));
+    if (claim.surface === PRESENT_SURFACE) {
+      assert.equal(row.status, "NOT_PROVED", claim.surface);
+      assert.equal(row.na, undefined);
+      assert.match(row.detail, /live page carries this step now.*"not a decision about you"/);
+      continue;
+    }
     assert.equal(row.status, "na", claim.surface);
     assert.equal(row.na.code, NOT_SHIPPED_CODE);
     assert.deepEqual(row.na.args, { family: claim.family, surface: claim.surface });
@@ -355,7 +362,7 @@ test("the audit's check for that code is on the lane and agrees with the row", a
   const rows = await gapChecks({ fetchImpl: shipped, now: NOW });
   const row = rows.find((item) => item.id === notShippedRowId(claim));
   assert.equal(row.status, "NOT_PROVED", "the day the page carries it the row is not proved again, never green");
-  assert.equal(rows.find((item) => item.id === notShippedRowId(NOT_SHIPPED_CLAIMS[1])).status, "na");
+  assert.equal(rows.find((item) => item.id === notShippedRowId(NOT_SHIPPED_CLAIMS[1])).status, "NOT_PROVED");
 });
 
 test("with a page that cannot be read the seven rows are skips: never nothing-to-judge, never green", async () => {
