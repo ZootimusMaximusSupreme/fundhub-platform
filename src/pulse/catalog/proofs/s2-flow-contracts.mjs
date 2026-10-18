@@ -17,6 +17,8 @@
 // row carries the proof below instead.
 const ROLE_ROW =
   /^journey:(?:role-owner|role-sales-manager|role-closer|role-funding-advisor|role-inquiry-remover|client|affiliate|white-label)-intended#(?:reach-.+|stays-blocked)$/;
+const SALES_MANAGER_RUNNER_POLICY =
+  "journey:role-sales-manager-policy#stays-blocked-journey-runner";
 
 export const S2_ROLE_REACH_TEST = "src/pulse/catalog/proofs/s2-role-route-reach.test.mjs";
 
@@ -25,7 +27,8 @@ function basename(sourceFile) {
 }
 
 export function isS2RoleRow(row) {
-  return ROLE_ROW.test(String(row?.surface || ""));
+  const surface = String(row?.surface || "");
+  return ROLE_ROW.test(surface) || surface === SALES_MANAGER_RUNNER_POLICY;
 }
 
 const AUTH_TEST = "src/http/s2-message-routes-auth.test.mjs";

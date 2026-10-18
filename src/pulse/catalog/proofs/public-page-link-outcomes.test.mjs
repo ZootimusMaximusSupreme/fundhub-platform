@@ -268,7 +268,7 @@ function compileOwned(recipeModule = displayRecipes) {
   );
 }
 
-test("the exact 19 saved public-page reds compile to deep executable proof", () => {
+test("the exact 19 public-page outcomes are saved and compile as deep executable proof", () => {
   assert.equal(PUBLIC_PAGE_LINK_OUTCOME_CASES.length, 19);
   assert.equal(new Set(PUBLIC_PAGE_LINK_OUTCOME_IDS).size, 19);
   assert.equal(new Set(PUBLIC_PAGE_LINK_OUTCOME_CASES.map((proof) => proof.key)).size, 19);
@@ -276,9 +276,15 @@ test("the exact 19 saved public-page reds compile to deep executable proof", () 
   assert.ok(PUBLIC_PAGE_LINK_OUTCOME_CASES.every((proof) => proof.evidence.includes(PUBLIC_PAGE_LINK_OUTCOME_TEST)));
   assert.ok(PUBLIC_PAGE_LINK_OUTCOME_CASES.every((proof) => proof.tests.length === 2));
 
-  const openBefore = SAVED_CATALOG.items.filter((item) => item.sourceFile === "public-pages.json" && item.state === "red");
-  assert.equal(openBefore.length, 19);
-  assert.deepEqual(openBefore.map((item) => item.id).sort(), [...PUBLIC_PAGE_LINK_OUTCOME_IDS].sort());
+  const ownedIds = new Set(PUBLIC_PAGE_LINK_OUTCOME_IDS);
+  const saved = SAVED_CATALOG.items.filter((item) => item.sourceFile === "public-pages.json" && ownedIds.has(item.id));
+  assert.equal(saved.length, 19);
+  assert.deepEqual(saved.map((item) => item.id).sort(), [...PUBLIC_PAGE_LINK_OUTCOME_IDS].sort());
+  for (const item of saved) {
+    assert.equal(item.state, "wired", `${item.surface}: saved state`);
+    assert.equal(item.proofDepth, "deep", `${item.surface}: saved depth`);
+    assert.equal(item.proof.tests.includes(PUBLIC_PAGE_LINK_OUTCOME_TEST), true, `${item.surface}: saved executable test`);
+  }
 
   const compiled = compileOwned();
   assert.equal(compiled.items.length, 19);

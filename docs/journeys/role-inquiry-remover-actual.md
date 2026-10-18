@@ -41,7 +41,7 @@ flowchart TD
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
     CAN --> A_staff[staff — 1 route]
-    CAN --> A_top_level[Everything else — 25 routes]
+    CAN --> A_top_level[Everything else — 26 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
     WHO -->|Yes| CANT[Blocked — 162 routes]
@@ -72,12 +72,11 @@ flowchart TD
     CANT --> B_staff[staff — 2 blocked]
     CANT --> B_top_level[Everything else — 18 blocked]
     CANT --> B_trials[trials — 2 blocked]
-    WHO -->|Yes| UNV[UNVERIFIED — 1 route whose gate could not be traced]
 ```
 
 ## What they can reach
 
-**166 of 329 routes.**
+**167 of 329 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -96,7 +95,7 @@ flowchart TD
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/blueprint/declines` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/blueprint/declines` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/blueprint/staff-actions` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/bookings` | GET, POST | staff, client |
 | `/api/campaigns/action-log` | GET | partner, staff |
@@ -118,7 +117,7 @@ flowchart TD
 | `/api/climate/geocode` | OPTIONS | anyone |
 | `/api/company-brain/threads` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/company-brain/upload` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/content/welcome-video` | GET, HEAD | staff, client |
+| `/api/content/welcome-video` | GET, HEAD | **not a sign-in** — signed link |
 | `/api/contracts` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/contracts/sign` | GET, POST | **not a sign-in** — signed link |
 | `/api/creative/actions` | POST | partner, staff |
@@ -129,12 +128,12 @@ flowchart TD
 | `/api/creative/library` | GET | partner, staff |
 | `/api/creative/run` | POST | partner, staff |
 | `/api/customer-insights` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/dashboard/client` | — | staff |
-| `/api/dashboard/client-archive` | POST | staff |
-| `/api/dashboard/clients` | — | staff |
+| `/api/dashboard/client` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/dashboard/client-archive` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/dashboard/clients` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/dashboard/kpis` | — | staff |
-| `/api/dashboard/pipeline` | — | staff |
-| `/api/dashboard/pipeline-counts` | — | staff |
+| `/api/dashboard/pipeline` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/dashboard/pipeline-counts` | — | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/documents-download` | GET | staff, client |
 | `/api/documents-upload` | POST | staff, client |
 | `/api/documents/:id` | HEAD | **not a sign-in** — signed link |
@@ -157,7 +156,8 @@ flowchart TD
 | `/api/ops/notify-owner` | POST | anyone |
 | `/api/ops/weekly-brief` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/org-brand` | GET, PUT | staff, partner, affiliate, client |
-| `/api/paid-services` | GET, POST | staff, client |
+| `/api/paid-services` | GET, POST | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/pii` | GET, POST | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/pipeline-cards` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/pipeline-clients` | POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/public/ad-video-approve` | — | anyone |
@@ -190,7 +190,7 @@ flowchart TD
 | `/api/read/bank-inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/blueprint-combined-approval` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/call-outcomes` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
-| `/api/read/client-progress` | GET | staff, client |
+| `/api/read/client-progress` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/closer-call` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/closer-now` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/company-activity` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -218,8 +218,8 @@ flowchart TD
 | `/api/read/partner-home-tiles` | GET | partner, staff |
 | `/api/read/partner-production` | GET | partner, staff |
 | `/api/read/partner-training` | GET | partner, staff |
-| `/api/read/portal-contracts` | GET | staff, client |
-| `/api/read/portal-summary` | GET | staff, client |
+| `/api/read/portal-contracts` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
+| `/api/read/portal-summary` | GET | employees: owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm<br>plus: client |
 | `/api/read/products` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/repair-cases` | GET | owner, admin, inquiry_specialist, funding_advisor |
 | `/api/read/search` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -241,7 +241,7 @@ flowchart TD
 | `/api/social/generate` | POST | partner, staff |
 | `/api/social/publish` | POST | partner, staff |
 | `/api/social/schedule` | POST | partner, staff |
-| `/api/soft-pull-approve` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/soft-pull-approve` | GET, POST | **not a sign-in** — signed link |
 | `/api/staff/avatar` | GET, POST | any signed-in employee |
 | `/api/tasks` | GET, PATCH | staff |
 | `/api/trials/dashboard` | GET | partner, staff |
@@ -253,7 +253,7 @@ flowchart TD
 - **1 route is open to any signed-in employee, whatever their role.** That is not a gate on this journey specifically — anyone who can sign in reaches it: `/api/staff/avatar`.
 - **6 routes also accept a shared secret instead of a sign-in** (`DASHBOARD_SECRET`), so a caller holding that value reaches them without being anybody in particular: `/api/dashboard/client`, `/api/dashboard/client-archive`, `/api/dashboard/clients`, `/api/dashboard/kpis`, `/api/dashboard/pipeline`, `/api/dashboard/pipeline-counts`.
 - **32 routes are genuinely open** — no sign-in needed, reachable by anyone and not by this journey in particular: `/api/auth/login`, `/api/auth/logout`, `/api/auth/magic-link`, `/api/auth/magic-link-verify`, `/api/auth/reset`, `/api/auth/session`, `/api/climate`, `/api/climate/config`, `/api/climate/geocode`, `/api/health`, `/api/hiring/apply`, `/api/merchant/events`, `/api/ops/notify-owner`, `/api/public/ad-video-approve`, `/api/public/affiliate-click`, `/api/public/climate-match`, `/api/public/education-enroll`, `/api/public/eeo-survey`, `/api/public/funnel-checkout`, `/api/public/morning-brief`, `/api/public/optimize`, `/api/public/partner-apply`, `/api/public/partner-page`, `/api/public/rb2b-webhook`, `/api/public/slo-checkout`, `/api/public/slo-interest`, `/api/public/slo-pull`, `/api/public/slo-repair-checkout`, `/api/public/slo-status`, `/api/public/survey-submit`, `/api/public/vsl-watch`, `/api/trials/eligibility`. These are the sign-in routes and the health check.
-- **5 routes need no sign-in but are NOT open.** `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
+- **7 routes need no sign-in but are NOT open.** `/api/content/welcome-video` (signed link), `/api/contracts/sign` (signed link), `/api/documents/:id` (signed link), `/api/inngest` (Inngest request signing), `/api/public/unsubscribe` (signed link), `/api/soft-pull-approve` (signed link), `/api/webhooks/:provider` (provider signature). Anyone can call these, but a caller without the right signature is refused.
 
 ## What they are blocked from
 
@@ -357,23 +357,23 @@ flowchart TD
 | `/api/marketing/shoot/mark` | POST | owner, admin |
 | `/api/marketing/shoot/take` | POST, PUT | owner, admin |
 | `/api/marketing/today` | GET | owner, admin |
-| `/api/money/accounts` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/alerts` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/banks` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/connections` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/credit` | GET | owner, admin, sales_manager, closer |
-| `/api/money/fundability` | GET | owner, admin, sales_manager, closer |
-| `/api/money/helper` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/overview` | GET | owner, admin, sales_manager, closer |
-| `/api/money/payments` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/plan` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/ready-to-fund` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/setup` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/strategy` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/tasks` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/transfers` | GET, POST | owner, admin, sales_manager, closer |
-| `/api/money/trends` | GET | owner, admin, sales_manager, closer |
-| `/api/money/vault` | GET, POST | owner, admin, sales_manager, closer |
+| `/api/money/accounts` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/alerts` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/banks` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/connections` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/credit` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/fundability` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/helper` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/overview` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/payments` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/plan` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/ready-to-fund` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/setup` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/strategy` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/tasks` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/transfers` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/trends` | GET | employees: owner, admin, sales_manager, closer<br>plus: client |
+| `/api/money/vault` | GET, POST | employees: owner, admin, sales_manager, closer<br>plus: client |
 | `/api/ops/hire-closer` | POST | owner, admin |
 | `/api/partner-addons` | GET, POST | owner, admin |
 | `/api/partner-brand` | GET, PUT | employees: owner, admin<br>plus: partner |
@@ -426,12 +426,7 @@ flowchart TD
 
 ## UNVERIFIED
 
-The gate on these could not be traced from the code, so this page does not claim
-either way whether this journey reaches them. Each one is a question for a human.
-
-| Route | Methods | Who the code lets in |
-|---|---|---|
-| `/api/pii` | GET, POST | — |
+_None — every route's gate was traced to its source._
 
 ## How to check this yourself
 

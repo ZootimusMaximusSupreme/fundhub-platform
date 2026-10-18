@@ -191,6 +191,8 @@ export const TRIPWIRES = Object.freeze({
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
+  "page:leads/c01cb7592c8bb994130158e897e99bf1/index.html":
+    "Private staff scratchpad: it stores blank lead notes only in this browser's localStorage, sends nothing to Fundhub, and is marked noindex.",
   "desk:morning-brief.html":
     "Owner-only report page: it opens from the secret link in Chris's own morning and evening text and never reaches a customer. Its guard is the brief-link beat.",
   "route:public/morning-brief":

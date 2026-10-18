@@ -47,11 +47,7 @@ const VALIDATES_BODY_FIRST = [
 ];
 /* A client signed in to their own file reaches these; the static reading draws
    them as staff-only because it does not follow the client branch. */
-const CLIENT_OWN_FILE = [
-  "banking/link-exchange", "banking/link-token", "blueprint/declines", "money/setup",
-  ...["accounts", "alerts", "banks", "connections", "credit", "fundability", "helper", "overview",
-    "payments", "plan", "ready-to-fund", "strategy", "tasks", "transfers", "trends", "vault"].map((n) => `money/${n}`),
-];
+const CLIENT_OWN_FILE = ["banking/link-exchange", "banking/link-token"];
 const EXPECTED_DISAGREEMENTS = {
   client: [...CLIENT_OWN_FILE, "auth/authorized-rep-file"],
   "role-sales-manager": VALIDATES_BODY_FIRST,
@@ -60,8 +56,11 @@ const EXPECTED_DISAGREEMENTS = {
   "role-closer": [...VALIDATES_BODY_FIRST, "payment-links"],
   "role-funding-advisor": [...VALIDATES_BODY_FIRST, "money/setup"],
   "role-inquiry-remover": [...VALIDATES_BODY_FIRST, "money/setup"],
-  affiliate: ["money/setup"],
-  "white-label": ["money/setup"],
+  // This route has two doors. The static journey sees its signed playback URL;
+  // the session-only probe sends no signature and therefore reaches the
+  // metadata door, which correctly refuses affiliate and partner sessions.
+  affiliate: ["content/welcome-video", "money/setup"],
+  "white-label": ["content/welcome-video", "money/setup"],
 };
 
 const FLOORS = {
@@ -73,9 +72,9 @@ const FLOORS = {
   "client|blocked": { "Signing in and out": 7, "banking": 5, "Campaigns": 10, "Creative Factory": 7, "The dashboard": 7, "Finance": 12, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 63, "Everything else": 34 },
   "role-owner|reach": { "Signing in and out": 13, "banking": 7, "Campaigns": 10, "consent": 1, "contracts": 1, "Creative Factory": 7, "The dashboard": 7, "Documents": 1, "Finance": 13, "Hiring": 8, "journeys": 2, "privacy": 1, "Reading data": 67, "Everything else": 42, "Incoming webhooks": 1 },
   "role-owner|blocked": {  },
-  "role-sales-manager|reach": { "Signing in and out": 6, "banking": 6, "Campaigns": 10, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 11, "journeys": 1, "Reading data": 57, "Everything else": 30, "Incoming webhooks": 1 },
+  "role-sales-manager|reach": { "Signing in and out": 6, "banking": 6, "Campaigns": 10, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 11, "Reading data": 56, "Everything else": 30, "Incoming webhooks": 1 },
   "role-sales-manager|blocked": { "Signing in and out": 8, "banking": 1, "consent": 1, "Finance": 2, "Hiring": 7, "journeys": 1, "privacy": 1, "Reading data": 11, "Everything else": 13 },
-  "role-closer|reach": { "Signing in and out": 6, "banking": 5, "Campaigns": 10, "consent": 1, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 7, "Reading data": 50, "Everything else": 25, "Incoming webhooks": 1 },
+  "role-closer|reach": { "Signing in and out": 6, "banking": 5, "Campaigns": 10, "consent": 1, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 7, "Reading data": 49, "Everything else": 25, "Incoming webhooks": 1 },
   "role-closer|blocked": { "Signing in and out": 8, "banking": 2, "Finance": 6, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 18, "Everything else": 17 },
   "role-funding-advisor|reach": { "Signing in and out": 6, "banking": 1, "Campaigns": 10, "consent": 1, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 7, "Reading data": 53, "Everything else": 26, "Incoming webhooks": 1 },
   "role-funding-advisor|blocked": { "Signing in and out": 8, "banking": 6, "Finance": 6, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 15, "Everything else": 17 },
@@ -146,9 +145,10 @@ describe("the probe and the written gates", () => {
 });
 
 const ROLE_ROW = /^journey:(.+)-intended#(reach-.+|stays-blocked)$/;
+const SALES_MANAGER_RUNNER_POLICY = "journey:role-sales-manager-policy#stays-blocked-journey-runner";
 const ROWS = JOURNEY_ROWS.filter((row) => {
   const m = ROLE_ROW.exec(row.surface);
-  return m && JOURNEYS.some((j) => j.name === m[1]);
+  return row.surface === SALES_MANAGER_RUNNER_POLICY || (m && JOURNEYS.some((j) => j.name === m[1]));
 });
 
 describe("each journey row, judged on its own named group", () => {
@@ -157,8 +157,15 @@ describe("each journey row, judged on its own named group", () => {
   });
 
   for (const row of ROWS) {
-    const [, name, kind] = ROLE_ROW.exec(row.surface);
+    const parsed = ROLE_ROW.exec(row.surface);
+    const name = parsed?.[1];
+    const kind = parsed?.[2];
     test(row.surface, () => {
+      if (row.surface === SALES_MANAGER_RUNNER_POLICY) {
+        assert.equal(state.verdicts["role-sales-manager"]["journeys/run"], "blocked");
+        assert.equal(state.verdicts["role-owner"]["journeys/run"], "reach");
+        return;
+      }
       if (kind === "stays-blocked") {
         const groups = [...row.control.split(": ").slice(1).join(": ").matchAll(/([^,()]+?) \((\d+)\)/g)]
           .map((m) => [m[1].trim(), Number(m[2])]);

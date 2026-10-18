@@ -163,6 +163,7 @@ test("the journeys proxy is judged by a test with fake data: who may ask, what g
 test("route counts never prove signed-in role access: only a test that signs in does", () => {
   const rows = loadRows("journeys.json").filter((row) => (
     /#(?:reach-.+|stays-blocked)$/.test(String(row.surface || ""))
+    || row.surface === "journey:role-sales-manager-policy#stays-blocked-journey-runner"
   ));
   assert.equal(rows.length, 90);
   const probe = fs.readFileSync(new URL("src/pulse/catalog/proofs/s2-role-probe.mjs", ROOT), "utf8");
@@ -182,15 +183,16 @@ test("route counts never prove signed-in role access: only a test that signs in 
   }
 });
 
-test("rendered contracts prove two journey results and the soft-pull steps carry real tests", () => {
-  for (const surface of [
-    "journey:slo-connections-intended#1-open-tab",
-    "journey:optimize-intended#2-book-without-form",
-  ]) {
+test("exact executable proofs cover two journey results and the soft-pull steps carry real tests", () => {
+  const journeyProofs = new Map([
+    ["journey:slo-connections-intended#1-open-tab", "src/pulse/catalog/proofs/flow-read-contracts.test.mjs"],
+    ["journey:optimize-intended#2-book-without-form", "src/pulse/catalog/proofs/heartbeat-catalog-red-four.test.mjs"],
+  ]);
+  for (const [surface, testFile] of journeyProofs) {
     const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
     const proof = proofForFlowRow("journeys.json", row);
     assert.equal(proof.verdict, undefined, surface);
-    assert.match(proof.evidence, /flow-read-contracts\.test\.mjs/, surface);
+    assert.deepEqual(proofTestFiles(proof), [testFile], surface);
   }
 
   // Batch 22: the soft-pull steps are no longer text-only. Steps 2 and 5 are judged by the server handler and

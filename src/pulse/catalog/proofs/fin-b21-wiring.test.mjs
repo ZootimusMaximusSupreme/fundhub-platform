@@ -16,6 +16,7 @@ import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
 import { REPO_ROOT } from "./fin-b21-sql-kit.mjs";
 
 const MAP = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "ops/workflows/coverage-every-surface-2026-10-10/desks-f.json"), "utf8"));
+const SAVED_CATALOG = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "src/pulse/catalog/generated.json"), "utf8"));
 const rowFor = (surface, control) => MAP.filter((row) => row.surface === surface && row.control === control);
 const idFor = (surface, control) => `catalog-display:desks-f.json:${surface}:${control}`;
 
@@ -23,16 +24,6 @@ const LIVE = FIN_B21_CHECKS.map((c) => ({ surface: c.surface, control: c.control
 const PRACTICE = FIN_B21_DISPLAY_PROOF_CASES.map((c) => ({ surface: c.surface, control: c.control }));
 const NOT_ATTACHABLE = FIN_B21_NOT_ATTACHABLE.map((c) => ({ surface: c.surface, control: c.control }));
 const REMOVED = FIN_B21_OWNER_REMOVED_ROWS.map((c) => ({ surface: c.surface, control: c.control }));
-const SOURCE_ONLY_PRACTICE = new Set([
-  "Load-time probe: three silent GETs of the connect URL (facebook, instagram, linkedin) to grey out a button whose app is not set up",
-  "Writer: 'Send at (optional) - times are UTC' box",
-  "Tab 'Sent' (posted, with the reference on the account)",
-  "Post row click / Enter (expand details) and 'See the details' (opens the side drawer)",
-  "Side drawer: close X, click outside, Escape",
-  "Settings sheet: speed, text size, line width, reading line, extra time on a gap sliders; mirror, flip, countdown toggles; 4K / 1080p pills; Learn remote (6 slots); Clear learned buttons",
-  "'This shoot' script list sheet (tap a script to roll it)",
-]);
-
 const groupedRows = (sql, badKey = null, sampleCount = 3) => {
   const probes = [...sql.matchAll(/SELECT (\d+)::int AS probe_index, sample_count, bad_count FROM \(\/\* display-result:([^*\s]+) \*\//g)];
   assert.ok(probes.length > 0, "the lane must request indexed saved-result checks");
@@ -108,7 +99,7 @@ test("the plug-in list holds the practice cases and none of the other rows", () 
   }
 });
 
-test("the display lane keeps the seven source-only additions red until the prohibited generated catalog refresh", async () => {
+test("after the integration refresh every practice row is wired and leaves the live display lane", async () => {
   const db = { query: async (sql) => ({ rows: groupedRows(sql) }) };
   const rows = await gapChecks({ db, orgId: "00000000-0000-4000-8000-0000000000a1", fetchImpl: shippedSite });
   const byId = new Map(rows.map((row) => [row.id, row]));
@@ -118,11 +109,13 @@ test("the display lane keeps the seven source-only additions red until the prohi
     assert.equal(got.status, "PASS", r.control);
   }
   for (const r of PRACTICE) {
-    if (SOURCE_ONLY_PRACTICE.has(r.control)) {
-      assert.equal(byId.get(idFor(r.surface, r.control))?.status, "NOT_PROVED", `${r.control} keeps honest red evidence`);
-    } else {
-      assert.equal(byId.has(idFor(r.surface, r.control)), false, `${r.control} left the lane`);
-    }
+    assert.equal(byId.has(idFor(r.surface, r.control)), false, `${r.control} left the lane`);
+    const saved = SAVED_CATALOG.items.filter((item) => (
+      item.sourceFile === "desks-f.json" && item.surface === r.surface && item.proofAsserts === r.control
+    ));
+    assert.equal(saved.length, 1, `${r.control}: one saved catalog row`);
+    assert.equal(saved[0].state, "wired", r.control);
+    assert.ok(saved[0].proof.tests.length > 0, `${r.control}: executable proof stayed attached`);
   }
   for (const r of REMOVED) {
     const got = byId.get(idFor(r.surface, r.control));
