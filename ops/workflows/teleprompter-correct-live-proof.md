@@ -19,4 +19,4 @@
 
 ## Open gap
 
-No fresh physical-iPhone preview or saved-file evidence exists for the corrected Apple app. Live web HTML/JS reachability is confirmed; Apple app wiring and recording quality remain unverified.
+Signed build 3 installed on the physical iPhone 17 Pro Max on 2026-10-18. One unlocked launch command succeeded, but its following screen capture showed Home, not the app. The phone then auto-locked before an app-screen check. No fresh physical-iPhone preview or saved-file evidence exists for the corrected Apple app. Live web HTML/JS reachability is confirmed; installed app UI and recording quality remain unverified.
