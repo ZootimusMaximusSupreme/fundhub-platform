@@ -1,0 +1,77 @@
+/* Fundhub client workspace. Activated by the verified session or an explicitly
+   public client entry/signature page; staff permissions and surfaces stay intact. */
+body[data-client-page]:not([data-client-public]):not([data-client-ready]):not([data-client-ios])>*{visibility:hidden}
+body[data-client-page]:not([data-client-public]):not([data-client-ready]):not([data-client-ios])::before{content:"Opening your workspace…";position:fixed;inset:0;z-index:200;padding:100px max(24px,calc((100vw - 960px)/2));background:#f8f8f6;color:#687075;font:15px ui-rounded,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body[data-client-ios]{--client-ink:#101416;--client-muted:#687075;--client-canvas:#f8f8f6;--client-line:#e1e4e2;--client-radius:18px;--sans:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;--ink:#101416;--ink2:#303637;--paper:#f8f8f6;--line:#e1e4e2;--gray:#687075;--gray2:#757d80;--soft:#f0f2ef;--fs-title:22px;--fs-metric:34px;--fs-body:15px;--fs-caption:13px;--panel-shadow:0 2px 8px rgba(16,20,22,.025);margin:0;min-width:0;background:var(--client-canvas);color:var(--client-ink);font-family:var(--sans);font-size:15px;line-height:1.5;letter-spacing:-.015em;-webkit-font-smoothing:antialiased}
+body[data-client-ios] *,body[data-client-ios] *::before,body[data-client-ios] *::after{box-sizing:border-box}
+body[data-client-ios] :is(button,input,select,textarea){font-family:var(--sans)}
+body[data-client-ios] :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid var(--client-ink);outline-offset:4px}
+body[data-client-ios] :is(button,summary,input:not([type=checkbox]):not([type=radio]),select){min-height:44px}
+body[data-client-ios] [hidden]{display:none!important}
+body[data-client-ios] :is(img,video){max-width:100%}
+body[data-client-ios] .client-ios-nav{position:fixed;inset:0 auto 0 0;z-index:75;display:flex;flex-direction:column;width:224px;padding:30px 18px 20px;border-right:1px solid var(--client-line);background:#fafbf9}
+body[data-client-ios] .client-ios-brand{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 8px;font-size:22px;font-weight:780;letter-spacing:-.055em;text-decoration:none;color:var(--client-ink)}
+body[data-client-ios] .client-ios-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--client-ink);color:#fff;font-size:22px;font-weight:850}
+body[data-client-ios] .client-ios-nav-label{margin:44px 12px 12px;color:var(--client-muted);font-size:12px;font-weight:550;letter-spacing:0}
+body[data-client-ios] .client-ios-links{display:grid;gap:5px}
+body[data-client-ios] .client-ios-links a{display:flex;align-items:center;gap:11px;min-height:46px;padding:10px 12px;border-radius:11px;color:#646d70;text-decoration:none;font-size:14px;font-weight:550}
+body[data-client-ios] .client-ios-links a:hover{background:#f0f2ee;color:var(--client-ink)}
+body[data-client-ios] .client-ios-links a[aria-current=page]{color:var(--client-ink);background:#e9ede7;font-weight:700}
+body[data-client-ios] .client-ios-links svg{width:19px;height:19px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body[data-client-ios] .client-ios-nav-foot{margin-top:auto;padding:18px 12px 0;border-top:1px solid var(--client-line);color:var(--client-muted);font-size:12px;line-height:1.6}
+body[data-client-ios][data-client-nav]{padding-left:224px}
+body[data-client-ios] :is(#fh-shell-chip,#fh-shell-chip-show){display:none!important}
+body[data-client-ios] .topbar{padding-right:24px!important}
+body[data-client-ios] .client-ios-signout{flex-shrink:0;margin-left:auto;min-height:44px;padding:8px 13px;border:1px solid var(--client-line);border-radius:11px;background:#fff;color:var(--client-ink);font:600 13px var(--sans);cursor:pointer}
+body[data-client-ios] .client-ios-signout:hover{border-color:#a9b0ac}
+body[data-client-ios] .client-ios-session-error{padding:10px 18px;color:#812d29;background:#fff0ee;font-size:13px}
+body[data-client-ios] .client-ios-sample{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 16px;grid-column:1/-1;order:-30;flex:0 0 100%;align-self:start;width:100%;min-width:0;max-width:100%;margin:0 0 20px;padding:8px 12px;border:1px solid #dfe5da;border-radius:11px;background:#f0f4ec;color:#45543e;font-size:12px;line-height:1.5}
+body[data-client-ios] .client-ios-sample button{min-height:44px;padding:7px 10px;border:1px solid #cdd7c6;border-radius:8px;background:#fff;color:#34472c;font:550 12px var(--sans);cursor:pointer}
+body[data-client-ios] .client-ios-sample-host{flex-wrap:wrap}
+body[data-client-ios] .mnav.client-money-navigation{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px;margin:0;padding:16px 32px;border:0;border-bottom:1px solid var(--client-line);border-radius:0;max-width:none;background:var(--client-canvas);overflow:visible}
+body[data-client-ios] .client-money-jump{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;color:var(--client-muted);font-size:13px;min-width:0}
+body[data-client-ios] .client-money-jump select{min-width:160px;max-width:100%;padding:8px 36px 8px 12px;border:1px solid var(--client-line);border-radius:10px;background:#fff;color:var(--client-ink);font-size:14px}
+body[data-client-ios] .mnav.client-money-navigation .client-money-frame{flex:none;border:0;background:transparent;color:var(--client-muted);font-size:12px;padding:0;min-height:44px;white-space:normal}
+@media(min-width:761px){body[data-client-ios][data-client-nav] header :is(.logo,.client-ios-mark){display:none}}
+@media(max-width:760px){
+ body[data-client-ios][data-client-nav]{padding-left:0;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+ body[data-client-ios] .topbar{padding-right:16px!important}
+ body[data-client-ios] .client-ios-nav{inset:auto 0 0;width:auto;padding:5px 8px calc(5px + env(safe-area-inset-bottom));border:0;border-top:1px solid var(--client-line);border-radius:0;background:#fafbf9;box-shadow:0 -3px 12px rgba(16,20,22,.025)}
+ body[data-client-ios] :is(.client-ios-brand,.client-ios-nav-label,.client-ios-nav-foot){display:none}
+ body[data-client-ios] .client-ios-links{display:flex;gap:2px}
+ body[data-client-ios] .client-ios-links a{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:4px;min-height:57px;padding:6px 2px;border-radius:10px;font-size:11px;text-align:center}
+ body[data-client-ios] .client-ios-links svg{width:20px;height:20px}
+ body[data-client-ios] .client-ios-sample{gap:6px;padding:6px 10px;margin-bottom:16px}
+ body[data-client-ios] .client-ios-sample>span{flex:1 1 110px}
+ body[data-client-ios] .mnav.client-money-navigation{padding:12px 18px;gap:4px 16px}
+ body[data-client-ios] .client-money-jump{flex:1 1 100%;display:grid;grid-template-columns:auto minmax(0,1fr);width:100%;gap:6px 10px}
+ body[data-client-ios] .client-money-jump select{min-width:0;flex:1;width:100%}
+}
+@media(prefers-reduced-motion:reduce){body[data-client-ios] *,body[data-client-ios] *::before,body[data-client-ios] *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* A single client header owns identity, chat and account, across legacy URLs. */
+body[data-client-ios][data-client-nav] .client-ios-header{display:flex!important;position:relative;z-index:90;align-items:center;justify-content:space-between;gap:16px;flex:0 0 64px;flex-wrap:nowrap!important;width:100%;height:64px!important;min-height:64px!important;margin:0!important;padding:8px 32px!important;border:0!important;border-bottom:1px solid var(--client-line)!important;border-image:none!important;background:var(--client-canvas)!important;color:var(--client-ink)!important}
+body[data-client-ios] .client-ios-location{min-width:0;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap}
+body[data-client-ios] .client-ios-header-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
+body[data-client-ios] .client-ios-account{position:relative;margin:0;padding:0;border:0;background:transparent}
+body[data-client-ios] .client-ios-account>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 9px 4px 4px;border:1px solid transparent;border-radius:10px;font:550 13px var(--sans);list-style:none;cursor:pointer;color:var(--client-ink);white-space:nowrap}
+body[data-client-ios] .client-ios-account>summary::-webkit-details-marker{display:none}
+body[data-client-ios] .client-ios-account>summary:hover,body[data-client-ios] .client-ios-account[open]>summary{background:#eef0eb;border-color:var(--client-line)}
+body[data-client-ios] .client-ios-account-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#e7ebe3;color:#46503f;font-size:13px;font-weight:650}
+body[data-client-ios] .client-ios-account-panel{position:absolute;right:0;top:calc(100% + 8px);display:grid;gap:4px;min-width:236px;max-width:calc(100vw - 32px);padding:10px;background:#fff;border:1px solid var(--client-line);border-radius:14px;box-shadow:0 12px 40px #17211214;z-index:100}
+body[data-client-ios] .client-ios-account-name{margin:0 0 4px;padding:8px 10px 12px;border-bottom:1px solid var(--client-line);font:600 14px var(--sans);overflow-wrap:anywhere}
+body[data-client-ios] .client-ios-account-panel :is(a,.client-ios-signout){display:flex;align-items:center;justify-content:flex-start;width:100%;min-height:44px;margin:0;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:var(--client-ink)!important;font:500 13px var(--sans);text-decoration:none;white-space:normal;text-align:left}
+body[data-client-ios] .client-ios-account-panel :is(a,.client-ios-signout):hover{background:#f0f2ed}
+body[data-client-ios] .client-ios-header-tools #fh-chat-fab{position:static!important;inset:auto!important;display:inline-flex!important;align-items:center;justify-content:center;min-width:52px!important;width:auto!important;height:44px!important;min-height:44px!important;padding:8px 12px!important;border:1px solid var(--client-line)!important;border-radius:10px!important;background:#fff!important;color:var(--client-ink)!important;box-shadow:none!important;font:550 13px var(--sans)!important;z-index:auto!important}
+body[data-client-ios] #fh-chat-panel{top:76px!important;right:18px!important;bottom:auto!important;max-height:calc(100dvh - 164px)!important;height:min(560px,calc(100dvh - 164px))!important}
+body[data-client-ios] .mnav.client-money-navigation{min-height:64px;padding-top:10px;padding-bottom:10px}
+@media(max-width:760px){
+ body[data-client-ios][data-client-nav] .client-ios-header{height:60px!important;min-height:60px!important;flex-basis:60px;padding:8px 18px!important;gap:8px}
+ body[data-client-ios] .client-ios-location{font-size:13px}
+ body[data-client-ios] .client-ios-header-tools{gap:4px}
+ body[data-client-ios] .client-ios-account>summary{padding-right:4px;gap:5px}
+ body[data-client-ios] .client-ios-account>summary>span:last-child{display:none}
+ body[data-client-ios] #fh-chat-panel{top:72px!important;right:12px!important;max-height:calc(100dvh - 156px)!important;height:min(560px,calc(100dvh - 156px))!important}
+ body[data-client-ios] .mnav.client-money-navigation{padding:10px 18px;min-height:64px}
+ body[data-client-ios] .client-money-jump{font-size:12px}
+}

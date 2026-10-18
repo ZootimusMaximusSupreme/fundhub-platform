@@ -25,7 +25,9 @@
 <meta name="apple-mobile-web-app-title" content="FundHub">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Legacy staff fonts load without blocking the client system-font first paint. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="fundhub-brand.css">
 <style>
 /* ══ CLIENT PORTAL ═══════════════════════════════════════════════════════
@@ -494,9 +496,47 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
   } catch (e) {}
 })();
 </script>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/client-portal-ios.css">
+<!-- Fetch the independent client foundation early; execute only after body and header exist. -->
+<link rel="preload" href="/app/client-ios.js" as="script">
 <script defer src="shell.js"></script>
 </head>
-<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent">
+<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent" data-client-page="client-portal">
+<script>
+/* Client-only presentation: keep the original progress link and every stage.
+   Staff keeps the original open list, copy, link position and identity. */
+(function () {
+  var started = false;
+  function enhance() {
+    if (!document.body.hasAttribute("data-client-ios")) return;
+    var details = document.querySelector(".cp-progress-disclosure");
+    if (!started && details) { details.open = false; started = true; }
+    var hero = document.getElementById(document.body.classList.contains("no-funding") ? "portal-status-pre" : "portal-status-funded");
+    var link = document.getElementById("prog-link");
+    if (hero && link && link.parentNode !== hero) hero.appendChild(link);
+    var caption = document.querySelector(".cp-current-stage");
+    var text = caption ? caption.getAttribute("data-stage-label") || "Status updating" : "";
+    if (caption && caption.textContent !== text) caption.textContent = text;
+    var a = link && link.querySelector("a");
+    if (a && a.textContent !== "View progress →") a.textContent = "View progress →";
+    var account = document.getElementById("acct"), offers = document.getElementById("unlock-t");
+    if (account && offers && offers.closest("section") && account.parentNode === offers.closest("section").parentNode && account.nextElementSibling !== offers.closest("section")) offers.closest("section").before(account);
+    var nextTitle = document.getElementById("cp-next-title"), nextCopy = document.getElementById("cp-next-copy"), nextLink = document.getElementById("cp-next-link");
+    var title = "Review your account.", copy = "Review your documents, agreements and payments.", href = "#acct", action = "Open your account →";
+    var sign = document.getElementById("dispute-auth-card"), call = document.getElementById("call-confirm-btn");
+    if (call && !call.hidden) { title = "Confirm your upcoming call."; copy = "Let your team know you can make it."; href = "#call-confirm-card"; action = "Review your call →"; }
+    if (!document.body.classList.contains("no-docs") && !document.body.classList.contains("no-upload-doors")) { title = "Send your documents."; copy = "Use the secure upload that matches your file."; href = "#action-card"; action = "Upload documents →"; }
+    if (sign && !document.body.classList.contains("no-dispute-consent") && !sign.classList.contains("is-signed")) { title = "Review your authorization."; copy = "Read and sign the request from your team."; href = "#dispute-auth-card"; action = "Review authorization →"; }
+    if (nextTitle && nextTitle.textContent !== title) nextTitle.textContent = title;
+    if (nextCopy && nextCopy.textContent !== copy) nextCopy.textContent = copy;
+    if (nextLink) { if (nextLink.getAttribute("href") !== href) nextLink.setAttribute("href", href); if (nextLink.textContent !== action) nextLink.textContent = action; }
+
+  }
+  new MutationObserver(enhance).observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ["class", "data-client-ios", "hidden"] });
+  enhance();
+})();
+</script>
 <div class="shell">
 
   <header class="topbar">
@@ -510,10 +550,12 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <span id="who-name">—</span>
     </div>
   </header>
+  <script async src="/app/client-ios.js"></script>
 
-  <main>
+  <main id="portal-home">
     <div class="page fh-maxw">
 
+      <div class="cp-home-heading" aria-hidden="true"></div>
       <div class="welcome" id="greeting">Welcome to your Fundhub portal</div>
       <!-- Loading words until the file answers (hole N14, live 2026-09-18): this
            line used to START as the refusal, so every good load showed "We could
@@ -522,6 +564,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       <div class="welcome-sub precall-only" id="greeting-sub-pre">Loading your file…</div>
       <div class="welcome-sub funding-only" id="greeting-sub">Here's where things stand on your funding.</div>
       <div class="rep-files" id="rep-files" hidden></div>
+      <section class="cp-next-action" aria-labelledby="cp-next-title"><div class="card-title">Next action</div><h2 id="cp-next-title">Review your account.</h2><p id="cp-next-copy">Review your documents, agreements and payments.</p><a id="cp-next-link" href="#acct">Open your account →</a></section>
 
       <!-- ══ 1 · WELCOME VIDEO (hero) ════════════════════════════════════ -->
       <section class="card video-card" aria-labelledby="video-title">
@@ -618,8 +661,9 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       </section>
 
       <!-- ══ 2a · BEFORE THE CALL — honest empty status ══════════════════ -->
-      <section class="card prog-card precall-only" aria-labelledby="sb-pre-main">
+      <section class="card prog-card precall-only" id="portal-status-pre" aria-labelledby="sb-pre-main">
         <div class="status-line">
+          <h2 class="cp-file-title">Your file.</h2>
           <div class="sb-eyebrow" id="sb-pre-eyebrow">Before your call</div>
           <div class="sb-main" id="sb-pre-main">Your file is open. Watch the welcome, join the wins group, and bring questions. Funding steps show up after we talk.</div>
         </div>
@@ -627,6 +671,8 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
           <div class="sb-eyebrow">Pre-qualified for</div>
           <div class="sb-main" id="sb-prequal-amt">—</div>
         </div>
+        <details class="cp-progress-disclosure" open>
+          <summary>All file stages <span class="cp-current-stage"></span></summary>
         <div class="stepper" id="stepper-pre">
           <div class="step current"><span class="line"></span><div class="dot">●</div><div class="lbl">Booked</div></div>
           <div class="step future"><span class="line"></span><div class="dot">2</div><div class="lbl">Diagnostic Paid</div></div>
@@ -637,11 +683,13 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
           <div class="step future"><span class="line"></span><div class="dot">7</div><div class="lbl">Round Funded</div></div>
           <div class="step future"><span class="line"></span><div class="dot">8</div><div class="lbl">File Finalized</div></div>
         </div>
+        </details>
       </section>
 
       <!-- ══ 2 · WHERE YOUR FUNDING IS — status line + stepper, one card ══ -->
-      <section class="card prog-card funding-only" aria-labelledby="sb-main">
+      <section class="card prog-card funding-only" id="portal-status-funded" aria-labelledby="sb-main">
         <div class="status-line">
+          <h2 class="cp-file-title">Your file.</h2>
           <div class="sb-eyebrow" id="sb-eyebrow">Current Status</div>
           <div class="sb-main" id="sb-main">Your funding file is open. Amounts show here when a round is approved on your file.</div>
         </div>
@@ -819,7 +867,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       </section>
 
       <!-- ══ 4 · WHAT YOU OWN ════════════════════════════════════════════ -->
-      <section class="card" aria-labelledby="own-t">
+      <section class="card" id="portal-deliverables" aria-labelledby="own-t">
         <div class="sec-hd">
           <div class="card-title" id="own-t">What You Own</div>
           <!-- "always downloadable" was a promise this list could not keep —
@@ -1036,7 +1084,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
       </details>
 
       <!-- ══ 7 · BOTTOM RAIL — advisor (support) + booking (sales) ═══════ -->
-      <div class="rail">
+      <div class="rail" id="portal-support">
         <section class="card" aria-labelledby="adv-t">
           <div class="card-title" id="adv-t">Your Funding Advisor</div>
           <div class="advisor-row">
@@ -1115,6 +1163,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
             <div class="ref-stat"><div class="rs-n" id="ref-n-conv">0</div><div class="rs-l">Signed up</div></div>
           </div>
           <div class="ref-sub" id="ref-rates"></div>
+          <a class="btn-book" href="/app/affiliate.html" id="ref-dashboard">Open Affiliate Dashboard</a>
         </div>
 
         <div class="ref-err" id="ref-err" hidden></div>
@@ -2407,6 +2456,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function paintStage() {
     var c = stageCopy();
+    /* The eight legacy funding ticks prove only booking/payment. Summary status
+       must use the same actual stage as the hero copy, including credit pulls. */
+    var stageLabels = { booked: "Call booked", soft_pull: "Credit pull received", call_held: "Call completed", agreement_signed: "Agreement signed", paid: "Payment received" };
+    var stageCaption = document.querySelector(".cp-current-stage");
+    if (stageCaption) {
+      var stageLabel = stage && stageLabels[stage.key] ? "Current: " + stageLabels[stage.key] : "Status updating";
+      stageCaption.setAttribute("data-stage-label", stageLabel);
+      stageCaption.textContent = stageLabel;
+    }
     var subPre = document.getElementById("greeting-sub-pre");
     if (subPre) subPre.textContent = c ? c.sub : "Welcome to your Fundhub portal.";
     setText("sb-pre-eyebrow", c ? c.eyebrow : "Your file");
@@ -3251,7 +3309,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (!amt) return "live pre-qual · none yet";
       var preMain = document.getElementById("sb-pre-main");
       if (preMain) {
-        preMain.textContent = "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
+        preMain.textContent = document.body.hasAttribute("data-client-ios")
+          ? "Your soft-pull assessment is in."
+          : "Your soft-pull assessment is in. You're pre-qualified for approximately " + amt + ".";
       }
       return "live pre-qual · " + amt;
     });
@@ -4296,7 +4356,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       headers: { authorization: "Bearer " + t, accept: "application/json" },
       credentials: "same-origin"
     }).then(function (r) {
-      return r.json().catch(function () { return null; });
+      return r.ok ? r.json().catch(function () { return null; }) : null;
     }).then(function (d) {
       if (!d || d.ok !== true || !d.shareUrl) {
         btn.disabled = false;
@@ -4315,6 +4375,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       btn.textContent = "Get my link";
       btn.disabled = false;
       load();
+      if (window.FHClientIOS && window.FHClientIOS.refreshAffiliate) window.FHClientIOS.refreshAffiliate();
     }).catch(function () {
       btn.disabled = false;
       btn.textContent = "Get my link";
@@ -4366,6 +4427,24 @@ document.addEventListener("DOMContentLoaded", async function () {
   } else {
     start();
   }
+})();
+</script>
+
+<script>
+(function () {
+  function openAccount() {
+    if (!document.body.hasAttribute("data-client-ios")) return;
+    var view = new URLSearchParams(location.search).get("view");
+    var tab = { documents: "docs", agreements: "agree", payments: "pay", messages: "msg", activity: "act" }[view];
+    if (!tab) return;
+    var account = document.getElementById("acct"), button = document.querySelector('#acct-tabs [data-tab="' + tab + '"]');
+    if (account && button) { account.open = true; button.click(); requestAnimationFrame(function () { account.scrollIntoView({ block: "start", behavior: "instant" }); }); }
+  }
+  new MutationObserver(openAccount).observe(document.body, { attributes: true, attributeFilter: ["data-client-ios"] });
+  document.addEventListener("DOMContentLoaded", openAccount);
+  window.addEventListener("hashchange", openAccount);
+  document.addEventListener("click", function (event) { var link = event.target.closest && event.target.closest("#cp-next-link"); if (link && link.getAttribute("href") === "#acct") { var account = document.getElementById("acct"); if (account) account.open = true; } });
+  if (document.readyState !== "loading") openAccount();
 })();
 </script>
 </body>

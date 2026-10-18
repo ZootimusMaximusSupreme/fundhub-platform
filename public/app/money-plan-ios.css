@@ -1,0 +1,50 @@
+/* Page-only chrome. The shared navigation owns the complete Money section picker. */
+body[data-client-ios][data-client-page="money-plan"] .mbar{padding:18px 32px 0;background:transparent;border:0;border-image:none;color:var(--client-ink)}
+body[data-client-ios][data-client-page="money-plan"] .mbar .brand{display:none}
+body[data-client-ios][data-client-page="money-plan"] .mbar a{color:var(--client-muted);font-size:13px;text-decoration:none}
+body[data-client-ios][data-client-page="money-plan"] .mbar a:hover{text-decoration:underline}
+body[data-client-ios][data-client-page="money-plan"] main{padding:28px 32px 64px;min-width:0}
+/* Reused plan section: applies to this page and FinanceOS's actual mounted Plan root only. */
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .fh-plan{--surface:#fff;--text:#303637;--text-dim:#687075;--text-faint:#757d80;font-size:15px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .head{margin-bottom:24px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .head h1{font-size:32px;font-weight:750;line-height:1.15;letter-spacing:-.04em}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .head p{margin-top:8px;font-size:13px;max-width:65ch}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .card{border-radius:18px;padding:24px;background:#fff;border:1px solid #e1e4e2;box-shadow:none;min-width:0}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tiles{gap:16px;grid-template-columns:2fr 1fr 1fr;margin-bottom:24px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tiles>*{grid-column:auto}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tile{gap:8px;justify-content:flex-start}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tile:first-child{border-top:3px solid #101416}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .eyebrow{font-family:var(--sans);font-size:13px;text-transform:none;letter-spacing:0;font-weight:650;background:none}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .eyebrow::before{display:none}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) :is(.num,.big,.dnum){font-family:var(--sans);font-variant-numeric:tabular-nums}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .big{font-size:32px;font-weight:700;letter-spacing:-.035em}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tile:first-child .big{font-size:24px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .caption{font-size:13px;line-height:1.55}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) :is(.btn,.btn-primary){border-radius:11px;min-height:44px;white-space:normal;font-size:14px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .next-step{align-self:flex-start;margin-top:8px;background:#101416;color:white;padding:10px 16px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .monthbar h2{font-size:20px;font-weight:700;letter-spacing:-.025em}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .plan-list>.eyebrow{font-size:18px;color:#101416;margin-bottom:20px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .day-h{font-family:var(--sans);font-size:12px;text-transform:none;letter-spacing:0;font-weight:550}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .row{border-radius:11px;min-height:64px;padding:14px 16px;gap:12px 16px;background:#fff;overflow-wrap:anywhere}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .row-t{font-weight:650;line-height:1.4}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .row.st-missed{background:#fffdf8}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .plan-calendar>summary{padding:16px 0;min-height:48px;cursor:pointer;font-size:14px;font-weight:600;color:#303637}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .cal{padding:0;margin-top:8px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .cal-grid th{font-family:var(--sans);text-transform:none;letter-spacing:0;padding:12px 8px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .pin{border-radius:8px;min-height:44px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .pl-scrim{z-index:190}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .pl-drawer{z-index:191;border-radius:18px 0 0 18px;padding:28px;gap:20px;font-size:15px}
+:is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .pl-drawer h2{font-size:24px;line-height:1.25;letter-spacing:-.025em}
+@media(max-width:760px){
+ body[data-client-ios][data-client-page="money-plan"] .mbar{padding:12px 18px 0}
+ body[data-client-ios][data-client-page="money-plan"] main{padding:24px 18px 48px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tiles{grid-template-columns:1fr 1fr;gap:12px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tiles>:first-child{grid-column:1/-1}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .card{padding:18px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .tile:not(:first-child) .big{font-size:26px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .row{padding:14px 12px;gap:8px 12px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .monthbar{gap:12px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .month-nav{gap:8px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .pl-drawer{padding:24px 18px}
+ :is(body[data-client-ios][data-client-page="money-plan"] #plan-root,body[data-client-ios] #fos-plan) .plan-calendar{display:none}
+}

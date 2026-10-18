@@ -7,7 +7,7 @@
 <script defer src="/app/fundhub-font.js"></script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub — Credit</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -137,8 +137,10 @@ td .used-bar{width:64px;margin-left:auto}
   .card{padding:16px}
 }
 </style>
+<link rel="stylesheet" href="client-ios.css">
+<link rel="stylesheet" href="money-credit-ios.css">
 </head>
-<body>
+<body data-client-page="money-credit">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -164,5 +166,6 @@ td .used-bar{width:64px;margin-left:auto}
   </main>
 </div>
 <script defer src="money-credit.js"></script>
+<script defer src="client-ios.js"></script>
 </body>
 </html>

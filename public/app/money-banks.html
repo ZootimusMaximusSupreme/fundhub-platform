@@ -7,7 +7,7 @@
 <script defer src="/app/fundhub-font.js"></script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub — Banks</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -65,8 +65,10 @@ main{padding:24px 24px 64px}
   .mbar,.mnav{padding:8px 16px}
 }
 </style>
+<link rel="stylesheet" href="client-ios.css">
+<link rel="stylesheet" href="money-banks-ios.css">
 </head>
-<body>
+<body data-client-page="money-banks">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -92,5 +94,6 @@ main{padding:24px 24px 64px}
   </main>
 </div>
 <script defer src="money-banks.js"></script>
+<script defer src="client-ios.js"></script>
 </body>
 </html>

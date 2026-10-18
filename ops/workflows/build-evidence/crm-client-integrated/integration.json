@@ -2,8 +2,8 @@
   "source": "803d2b7e47f137d7773d4006445b971179cef835",
   "base": "fa8ea1162fc6c3073cdb27096068f198589a7e02",
   "production": "0998ff49969c6e2663a6e1851b4634ab5896113d",
-  "checkedHead": "74d061988d4c3a0c960a781aed13f4d736a51082",
-  "complete": false,
+  "checkedHead": "ea1aebe1b77992de9275301fbc2bfdb208faa89e",
+  "complete": true,
   "noProductionDeploy": true,
   "noCustomerWrites": true,
   "files": [
@@ -334,7 +334,7 @@
     },
     {
       "path": "public/contract.html",
-      "state": "conflict"
+      "state": "manually reconciled approved root page with shared type; current main equals base"
     },
     {
       "path": "public/login-ios.css",
@@ -353,7 +353,7 @@
     },
     {
       "path": "public/portal-login.html",
-      "state": "conflict"
+      "state": "manually reconciled approved root page with shared type; current main equals base"
     },
     {
       "path": "public/progress-ios.css",
@@ -362,7 +362,7 @@
     },
     {
       "path": "public/progress.html",
-      "state": "conflict"
+      "state": "manually reconciled approved root page with shared type; current main equals base"
     },
     {
       "path": "scripts/client-ios-performance.mjs",

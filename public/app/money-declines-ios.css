@@ -1,0 +1,50 @@
+/* Applications: standalone frame and embedded FinanceOS section only. */
+body[data-client-page="money-declines"]{background:#f8f8f6;color:#101416;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Helvetica Neue",sans-serif}
+body[data-client-page="money-declines"]>.app{min-width:0;background:transparent}
+body[data-client-page="money-declines"] .mbar{background:transparent;color:#101416;border:0;border-image:none;padding:20px 32px 8px;min-height:64px}
+body[data-client-page="money-declines"] .mbar .brand{display:none}
+body[data-client-page="money-declines"] .mbar a{color:#4c5256;text-decoration:none;font-size:13px;min-height:44px}
+body[data-client-page="money-declines"] .mbar a::before{content:'←';margin-right:8px}
+body[data-client-page="money-declines"] .mnav{margin:0 32px;padding:4px 0 12px;background:transparent;border-bottom:1px solid #dedfdb;gap:4px;flex-wrap:wrap;overflow:visible}
+body[data-client-page="money-declines"] .mnav a{border:0;border-radius:11px;min-height:44px;padding:8px 14px;font-size:13px;font-weight:600}
+body[data-client-page="money-declines"] .mnav a[aria-current=page]{background:#101416;color:#fff}
+body[data-client-page="money-declines"] main{padding:32px 32px 64px;max-width:1240px;margin:auto;min-width:0}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines){--surface:#fff;--ink:#101416;--ink2:#343a3d;--line:#dedfdb;--paper:#f8f8f6;--text-dim:#656b6e;--text-faint:#777d80;--soft:#eff0ed;color:#101416;font-size:15px;line-height:1.6}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-head{margin-bottom:28px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-head h1{font-size:30px;line-height:1.2;letter-spacing:-.045em;font-weight:720;margin-bottom:12px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) h2{font-size:20px;line-height:1.3;letter-spacing:-.025em;font-weight:650}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) h3{font-size:17px;line-height:1.4}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .caption{font-size:13px;line-height:1.6;color:#656b6e}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .card{padding:24px;background:#fff;border:1px solid #e1e2de;border-radius:20px;box-shadow:none}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-paste{border-top:2px solid #101416}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-paste h2{margin-bottom:4px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-label{font-size:13px;margin-top:20px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-field{font:inherit;border-radius:11px;background:#fafbf9;border:1px solid #d5d8d3;max-width:100%;min-width:0;padding:10px 14px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-text{min-height:180px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-btn-primary{border-radius:11px;background:#101416;border-color:#101416;color:#fff;min-height:46px;padding:10px 20px;font-size:14px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .eyebrow{font-family:inherit;font-size:12px;letter-spacing:.06em;color:#656b6e;margin-top:24px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .eyebrow::before{display:none}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-status{min-height:34px;padding:4px 12px;font-size:12px;background:#f3f4f1;border:1px solid #dedfdb;max-width:100%;overflow-wrap:anywhere}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-status.is-yes{background:#edf3ed;color:#264b36}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-person{border:1px dashed #b6bbb4;border-radius:12px;background:#f8f9f6;padding:16px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-ours{border-top:1px solid #dedfdb;padding-top:8px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-apps{background:#fff;border:1px solid #e1e2de;border-radius:18px;padding:4px 20px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-app{padding:16px 0}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) :is(.dc-problem,.dc-flash,.dc-when,.dc-dhead){overflow-wrap:anywhere;max-width:100%}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) :is(button,summary,input,select){min-height:44px}
+:is(body[data-client-page="money-declines"] #declines-root,#fos-declines) :is(button,summary,input,select,textarea):focus-visible{outline:2px solid #101416;outline-offset:3px}
+@media(min-width:1100px){
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .fh-declines:has(#dc-declines){display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:0 28px;align-items:start}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-head{grid-column:1/-1}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) #dc-declines{grid-column:1;grid-row:2/4}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) #dc-paste{grid-column:2}
+}
+@media(max-width:760px){
+ body[data-client-page="money-declines"] .mbar{padding:12px 20px 0}
+ body[data-client-page="money-declines"] .mnav{margin:0 20px;gap:0;padding-bottom:8px}
+ body[data-client-page="money-declines"] .mnav a{padding:8px 10px;font-size:12px}
+ body[data-client-page="money-declines"] main{padding:28px 20px 48px}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .card{padding:20px 16px}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-head h1{font-size:28px}
+ :is(body[data-client-page="money-declines"] #declines-root,#fos-declines) .dc-btn-primary{align-self:stretch}
+}

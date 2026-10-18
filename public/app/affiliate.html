@@ -127,9 +127,12 @@ table.grid tbody tr:hover{background:var(--soft)}
 @media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.funnel{flex-wrap:wrap}.fstep{flex:1 1 30%}}
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/affiliate-ios.css">
 <script defer src="shell.js"></script>
+<script defer src="/app/client-ios.js"></script>
 </head>
-<body>
+<body data-client-page="affiliate">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -184,28 +187,27 @@ table.grid tbody tr:hover{background:var(--soft)}
 
   <div class="main">
     <div class="topbar">
-      <span class="crumb">My Work</span><h1>Affiliate</h1>
+      <span class="crumb">My Work</span><h1>Affiliate Dashboard</h1>
       <div class="spacer"></div>
       <span class="chip wip" id="affLicenseChip" style="display:none"><span class="cd"></span>License unsigned</span>
       <span class="chip on" id="affWhoChip" style="display:none"><span class="cd"></span><span id="affWho"></span></span>
     </div>
 
-    <div class="content fh-maxw">
+    <main class="content fh-maxw" id="affiliate-main">
+      <div class="affiliate-heading"><div><p class="affiliate-kicker">Your network</p><h2>Share a referral</h2><p>Choose an offer link to share. Track referrals and your own earnings below.</p></div><a class="btn affiliate-history-link" href="#affiliate-records">View activity <span aria-hidden="true">↓</span></a></div>
+      <div class="affiliate-load" role="status" aria-live="polite"><span id="affiliateLoadStatus">Loading your referral dashboard…</span> <button class="btn sm" id="affiliateRetry" type="button" hidden>Try again</button></div>
       <div class="linkbox">
         <div class="lt"></div>
         <div class="lb">
-          <div class="eyebrow">YOUR REFERRAL LINKS — ONE PER OFFER</div>
+          <div class="affiliate-section-title">Your referral links</div><p class="affiliate-section-note">Each offer has its own link. Your referral code stays the same.</p>
           <!-- One row per offer (owner call 2026-10-06): same code, different page.
                Rows come from GET /api/read/affiliate-portal (offerLinks), built by
                src/affiliates/share-link.mjs. This page never assembles a link. -->
           <div id="offerLinks">
             <div class="linkrow"><input readonly value="" placeholder="No code yet" aria-label="Referral link"></div>
           </div>
-          <div class="linkrow">
-            <button class="btn mono" id="copyCode">Copy code</button>
-          </div>
-          <div style="display:flex;gap:26px;margin-top:15px;flex-wrap:wrap">
-            <div><div class="eyebrow" style="color:#71717A">CODE</div><div class="mono" id="affCode" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">No code yet</div></div>
+          <div class="affiliate-link-meta">
+            <div><div class="eyebrow" style="color:#71717A">CODE</div><div class="mono" id="affCode" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">No code yet</div><button class="btn sm" id="copyCode" type="button">Copy code</button></div>
             <div><div class="eyebrow" style="color:#71717A">CLICKS 30D</div><div class="mono" id="affClicks" style="font-size:var(--fs-title);font-weight:600;margin-top:6px">—</div><div id="affClicksNote" style="font-size:var(--fs-caption);color:var(--gray2);margin-top:3px;max-width:150px;line-height:1.35">not recorded yet</div></div>
             <!-- RATE was the string "Per agreement" and COOKIE was the string "60d".
                  Neither was ever read from anything.
@@ -285,6 +287,105 @@ table.grid tbody tr:hover{background:var(--soft)}
         <span class="st">You only see people who used your link, and only your own payouts. You do not see their contact details or credit file.</span>
       </details>
 
+      <div class="card" id="affiliate-records">
+        <div class="tabs" role="tablist" aria-label="Affiliate records">
+          <button class="tab on" data-tab="leads" role="tab" id="switch-leads" aria-controls="tab-leads" aria-selected="true" tabindex="0">Referred leads</button>
+          <button class="tab" data-tab="payouts" role="tab" id="switch-payouts" aria-controls="tab-payouts" aria-selected="false" tabindex="-1">Payouts</button>
+          <button class="tab" data-tab="terms" role="tab" id="switch-terms" aria-controls="tab-terms" aria-selected="false" tabindex="-1">Terms</button>
+        </div>
+
+        <div class="tabpane on" id="tab-leads" role="tabpanel" aria-labelledby="switch-leads">
+          <div class="card-hd">
+            <select aria-label="Filter referrals by status" id="stFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
+              <!-- These are the four statuses affiliate_referrals.status can hold
+                   (033_affiliates.sql:340-343). The six that were here before —
+                   Clicked, Signed up, Assessment paid, Deposit paid, Funded,
+                   Lost — matched nothing in the database, so every one of them
+                   filtered the table down to nothing. -->
+              <option value="">All statuses</option>
+              <option>Referred</option><option>Converted</option>
+              <option>Paid</option><option>Void</option>
+            </select>
+            <input aria-label="Filter referrals by business" id="q" placeholder="Filter business…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:180px">
+            <div class="spacer"></div>
+            <div class="eyebrow">REFERRED LEADS</div>
+          </div>
+          <!-- THE "BUSINESS" COLUMN — where its value may come from, and where it may not.
+               The `clients` table has NO business-name column (checked: db/schema/001_init.sql
+               plus every later ALTER — first_name, last_name, email, phone, client_code, and
+               nothing else). The one business name in the schema is
+               `client_custom_fields.business_name`. That column, and only that column, may
+               fill this cell. Where it is empty the honest fill is `clients.client_code`.
+               A client's first and last name is NOT a business name and must never be
+               substituted for one here: the affiliate contract in the Terms tab below grants
+               the affiliate a business name, a referral date, a status and their own
+               commission. Contact details are outside the Affiliate role, so putting a
+               person's name in this column would hand an outside partner data the contract
+               says they do not get. Nothing fills this table yet. -->
+          <div class="affiliate-table-scroll" role="region" aria-label="Referral details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Referral activity">
+            <thead><tr><th>Referred</th><th>Business</th><th>Status</th><th>First paid product</th><th>Basis</th><th style="text-align:right">Commission</th><th>Payout</th></tr></thead>
+            <tbody id="leadBody"></tbody>
+            <tfoot><tr>
+              <td colspan="5" id="leadTotalLabel" style="border-top:2px solid var(--line);font-weight:600">Total shown</td>
+              <td class="money" id="leadTotal" style="border-top:2px solid var(--line);text-align:right;font-weight:600">—</td>
+              <td style="border-top:2px solid var(--line)"></td></tr></tfoot>
+          </table></div>
+          <div style="padding:12px 16px;border-top:1px solid var(--line);background:var(--soft);font-size:var(--fs-body);color:var(--gray);line-height:1.55">
+            Commission accrues on the <strong>first</strong> qualified paid outcome on a referred client:
+            <strong>Tier 1 = 20%</strong> (direct), <strong>Tier 2 = 5%</strong> override (downline, after unlock).
+            Funding pays on every payment on the funding sale — the deposit and the 10% success fee — counted on the partner's half (the whole payment on a Fundhub-direct client); repair pays on the enrollment fee.
+            Later purchases by the same client do not pay again. A lead that
+            never pays never accrues, which is why "Clicked" and "Signed up" rows show no commission.
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
+          <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
+            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
+          <div class="affiliate-table-scroll" role="region" aria-label="Payout details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Payout history">
+            <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+            <tbody id="payBody"></tbody>
+          </table></div>
+        </div>
+
+        <div class="tabpane" id="tab-terms" role="tabpanel" aria-labelledby="switch-terms">
+          <div class="card-bd">
+            <div class="eyebrow" style="margin-bottom:12px">PARTNER TERMS</div>
+            <dl class="terms" style="max-width:74ch">
+              <dt>Rate</dt><dd>Tier 1: 20% · Tier 2: 5% override. First qualified paid outcome on any client attributed to your code. Effective 2026-08-24. If the rate ever changes, the version open on the day of the outcome governs that payout.</dd>
+              <!-- Walkthrough-4 defects 3 and 13 (2026-09-06). This tab used to
+                   promise "60 days, last-touch" and say the success fee earns
+                   nothing. Both were false: attribution is first touch with no
+                   expiry (src/affiliates/economics.mjs, 033_affiliates.sql
+                   unique index), and since 272 the funding rate reads every
+                   payment on the sale, success fee included (W0 decision). -->
+              <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
+              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
+              <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
+              <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
+              <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
+              <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <!-- This card was missing the opening card-hd tag, so the unmatched
+           closing tag on the header line closed the card early and card-bd
+           became a sibling of the card instead of its body. The tell was 102
+           opening div tags in this file against 103 closing ones; they are
+           equal again. Restored to the same shape the PAYOUT HISTORY header
+           below uses.
+           The label reads CLICK TO CONVERTED, not CLICK TO FUNDED: a conversion
+           here is the first qualifying paid product, which is a funded
+           engagement OR a paid repair enrolment. "Funded" named only half. -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-hd"><div class="eyebrow">Referral overview</div>
+          <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">Lifetime · Clicks to conversions</span></div>
+        <div class="card-bd" id="funnelBody"><div class="empty" id="funnel">Nothing to show yet. Waiting for your referral figures.</div></div>
+      </div>
+
+      <div class="affiliate-resources-heading"><h2>Partner resources</h2><p>Approved answers and tools for your referral work.</p></div>
+      <div class="affiliate-resources">
       <div class="card" id="brainCard" style="margin:14px 0">
         <div class="hair"></div>
         <div class="card-hd">
@@ -298,11 +399,11 @@ table.grid tbody tr:hover{background:var(--soft)}
             Only documents the owner explicitly approved for affiliates. Internal staff docs never appear here.
           </p>
           <form id="brainForm" style="display:flex;gap:10px;flex-wrap:wrap">
-            <input id="brainQ" autocomplete="off" placeholder="Ask about the partner kit, rates, or onboarding…"
+            <input aria-label="Ask the partner knowledge base" id="brainQ" autocomplete="off" placeholder="Ask about the partner kit, rates, or onboarding…"
               style="flex:1;min-width:200px;border:1px solid var(--line);border-radius:7px;padding:10px 12px;font-size:var(--fs-body)">
             <button class="btn dark" type="submit" id="brainBtn">Ask</button>
           </form>
-          <p id="brainStatus" class="mono" style="margin-top:10px;font-size:var(--fs-caption);color:var(--gray)"></p>
+          <p role="status" aria-live="polite" id="brainStatus" class="mono" style="margin-top:10px;font-size:var(--fs-caption);color:var(--gray)"></p>
           <div id="brainAnswer" style="display:none;margin-top:12px;padding:12px 14px;background:var(--soft);border:1px solid var(--line);border-radius:8px;white-space:pre-wrap"></div>
           <div id="brainSources" style="margin-top:12px;color:var(--gray);font-size:var(--fs-body)"></div>
         </div>
@@ -330,108 +431,12 @@ table.grid tbody tr:hover{background:var(--soft)}
             <li>Use Dry Run to practice. Real sends need you to type SEND. Cancel is always safe.</li>
           </ol>
           <button class="btn dark" type="button" id="blasterBtn">Download Message Blaster</button>
-          <p id="blasterStatus" class="mono" style="margin-top:10px;font-size:var(--fs-caption);color:var(--gray)"></p>
+          <p role="status" aria-live="polite" id="blasterStatus" class="mono" style="margin-top:10px;font-size:var(--fs-caption);color:var(--gray)"></p>
         </div>
       </div>
 
-      <!-- This card was missing the opening card-hd tag, so the unmatched
-           closing tag on the header line closed the card early and card-bd
-           became a sibling of the card instead of its body. The tell was 102
-           opening div tags in this file against 103 closing ones; they are
-           equal again. Restored to the same shape the PAYOUT HISTORY header
-           below uses.
-           The label reads CLICK TO CONVERTED, not CLICK TO FUNDED: a conversion
-           here is the first qualifying paid product, which is a funded
-           engagement OR a paid repair enrolment. "Funded" named only half. -->
-      <div class="card" style="margin-top:14px">
-        <div class="card-hd"><div class="eyebrow">REFERRAL FUNNEL</div>
-          <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">LIFETIME · CLICK TO CONVERTED</span></div>
-        <div class="card-bd" id="funnelBody"><div class="empty" id="funnel">Nothing to show yet. Waiting for your referral figures.</div></div>
       </div>
-
-      <div class="card">
-        <div class="tabs">
-          <button class="tab on" data-tab="leads">Referred leads</button>
-          <button class="tab" data-tab="payouts">Payouts</button>
-          <button class="tab" data-tab="terms">Terms</button>
-        </div>
-
-        <div class="tabpane on" id="tab-leads">
-          <div class="card-hd">
-            <select id="stFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
-              <!-- These are the four statuses affiliate_referrals.status can hold
-                   (033_affiliates.sql:340-343). The six that were here before —
-                   Clicked, Signed up, Assessment paid, Deposit paid, Funded,
-                   Lost — matched nothing in the database, so every one of them
-                   filtered the table down to nothing. -->
-              <option value="">All statuses</option>
-              <option>Referred</option><option>Converted</option>
-              <option>Paid</option><option>Void</option>
-            </select>
-            <input id="q" placeholder="Filter business…" style="border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--fs-body);width:180px">
-            <div class="spacer"></div>
-            <div class="eyebrow">REFERRED LEADS</div>
-          </div>
-          <!-- THE "BUSINESS" COLUMN — where its value may come from, and where it may not.
-               The `clients` table has NO business-name column (checked: db/schema/001_init.sql
-               plus every later ALTER — first_name, last_name, email, phone, client_code, and
-               nothing else). The one business name in the schema is
-               `client_custom_fields.business_name`. That column, and only that column, may
-               fill this cell. Where it is empty the honest fill is `clients.client_code`.
-               A client's first and last name is NOT a business name and must never be
-               substituted for one here: the affiliate contract in the Terms tab below grants
-               the affiliate a business name, a referral date, a status and their own
-               commission. Contact details are outside the Affiliate role, so putting a
-               person's name in this column would hand an outside partner data the contract
-               says they do not get. Nothing fills this table yet. -->
-          <div style="overflow-x:auto"><table class="grid">
-            <thead><tr><th>Referred</th><th>Business</th><th>Status</th><th>First paid product</th><th>Basis</th><th style="text-align:right">Commission</th><th>Payout</th></tr></thead>
-            <tbody id="leadBody"></tbody>
-            <tfoot><tr>
-              <td colspan="5" id="leadTotalLabel" style="border-top:2px solid var(--line);font-weight:600">Total shown</td>
-              <td class="money" id="leadTotal" style="border-top:2px solid var(--line);text-align:right;font-weight:600">—</td>
-              <td style="border-top:2px solid var(--line)"></td></tr></tfoot>
-          </table></div>
-          <div style="padding:12px 16px;border-top:1px solid var(--line);background:var(--soft);font-size:var(--fs-body);color:var(--gray);line-height:1.55">
-            Commission accrues on the <strong>first</strong> qualified paid outcome on a referred client:
-            <strong>Tier 1 = 20%</strong> (direct), <strong>Tier 2 = 5%</strong> override (downline, after unlock).
-            Funding pays on every payment on the funding sale — the deposit and the 10% success fee — counted on the partner's half (the whole payment on a Fundhub-direct client); repair pays on the enrollment fee.
-            Later purchases by the same client do not pay again. A lead that
-            never pays never accrues, which is why "Clicked" and "Signed up" rows show no commission.
-          </div>
-        </div>
-
-        <div class="tabpane" id="tab-payouts">
-          <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
-            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
-          <div style="overflow-x:auto"><table class="grid">
-            <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
-            <tbody id="payBody"></tbody>
-          </table></div>
-        </div>
-
-        <div class="tabpane" id="tab-terms">
-          <div class="card-bd">
-            <div class="eyebrow" style="margin-bottom:12px">PARTNER TERMS</div>
-            <dl class="terms" style="max-width:74ch">
-              <dt>Rate</dt><dd>Tier 1: 20% · Tier 2: 5% override. First qualified paid outcome on any client attributed to your code. Effective 2026-08-24. If the rate ever changes, the version open on the day of the outcome governs that payout.</dd>
-              <!-- Walkthrough-4 defects 3 and 13 (2026-09-06). This tab used to
-                   promise "60 days, last-touch" and say the success fee earns
-                   nothing. Both were false: attribution is first touch with no
-                   expiry (src/affiliates/economics.mjs, 033_affiliates.sql
-                   unique index), and since 272 the funding rate reads every
-                   payment on the sale, success fee included (W0 decision). -->
-              <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
-              <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
-              <dt>Payout schedule</dt><dd>Fridays, ACH, on balances above $50. Below that the balance rolls to the next run.</dd>
-              <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
-              <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
-              <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
-            </dl>
-          </div>
-        </div>
-      </div>
-    </div>
+    </main>
 
     <div class="foot"><span class="pulse"></span><span>systems nominal · fundhub.ai</span></div>
   </div>
@@ -448,11 +453,16 @@ table.grid tbody tr:hover{background:var(--soft)}
 document.querySelectorAll('.tab').forEach(function(t){
   t.addEventListener('click',function(){
     var w=t.closest('.card');
-    w.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+    w.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');x.setAttribute('aria-selected','false');x.tabIndex=-1;});
     w.querySelectorAll('.tabpane').forEach(function(x){x.classList.remove('on')});
-    t.classList.add('on');
+    t.classList.add('on');t.setAttribute('aria-selected','true');t.tabIndex=0;
     var p=document.getElementById('tab-'+t.dataset.tab); if(p)p.classList.add('on');
   });
+});
+document.querySelector('.tabs').addEventListener('keydown',function(e){
+  var tabs=Array.from(this.querySelectorAll('[role="tab"]'));var i=tabs.indexOf(document.activeElement);if(i<0)return;
+  var next=e.key==='ArrowRight'?(i+1)%tabs.length:e.key==='ArrowLeft'?(i+tabs.length-1)%tabs.length:e.key==='Home'?0:e.key==='End'?tabs.length-1:null;
+  if(next!==null){e.preventDefault();tabs[next].focus();tabs[next].click();}
 });
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]});}
 
@@ -601,10 +611,11 @@ function renderPayouts(){
    states. Do not wire a KPI to them. */
 
 function copy(txt,btn,label){
-  function done(){var o=btn.textContent;btn.textContent='Copied ✓';setTimeout(function(){btn.textContent=label},1400)}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,done);}
-  else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
-       try{document.execCommand('copy')}catch(e){} document.body.removeChild(ta);done();}
+  function done(){btn.textContent='Copied ✓';setTimeout(function(){btn.textContent=label},1400)}
+  function failed(){var status=document.getElementById('affiliateLoadStatus');if(status)status.textContent='Copy was blocked. Select the link or code and copy it manually.';btn.textContent=label;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,failed);}
+  else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();var copied=false;
+       try{copied=document.execCommand('copy')}catch(e){} document.body.removeChild(ta);if(copied)done();else failed();}
 }
 /* paintOfferLinks — one row per offer: name, the link, Copy link. */
 function paintOfferLinks(links){
@@ -742,7 +753,9 @@ renderLeads(); renderPayouts();
     var mine = meId
       ? lastRows.filter(function (r) { return String(r.id) === String(meId); })[0]
       : null;
-    applyCode(mine && mine.tracking_id);
+    // A missing staff rollup row must not erase identity from the own-portal read.
+    // These reads complete independently; clients cannot read the staff rollup.
+    if (mine && mine.tracking_id) applyCode(mine.tracking_id);
     return mine;
   }
   var t;
@@ -1183,26 +1196,33 @@ renderLeads(); renderPayouts();
 
   function load() {
     var t = token();
-    if (!t) return;   // no session: the page keeps its empty states
+    var status = byId("affiliateLoadStatus");
+    var retry = byId("affiliateRetry");
+    if (retry) retry.hidden = true;
+    if (!t) { status.textContent = "Sign in to see your own referrals and payouts."; return; }
+    status.textContent = "Loading your referral dashboard…";
 
     fetch("/api/read/affiliate-portal", {
       headers: { authorization: "Bearer " + t, accept: "application/json" },
       credentials: "same-origin"
     }).then(function (r) {
-      return r.ok ? r.json() : null;
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
     }).then(function (d) {
-      if (!d || d.ok !== true) return;
+      if (!d || d.ok !== true) throw new Error("Dashboard unavailable");
 
       if (d.enrolled === false) {
         /* Signed in, but holding no affiliate code. A client who has not pressed
            "Refer a friend" lands here. The tables keep their empty states and the
            rate tile says why, rather than showing a rate for a programme this
            person is not in. */
+        status.textContent = "You are not enrolled yet. Refer a friend from your client portal to get started.";
         setText("affRate", "—");
         setText("affRateNote", "you are not enrolled as a referrer yet");
         return;
       }
 
+      status.textContent = "Your referral dashboard is up to date.";
       paintIdentity(d.affiliate);
       paintRate(d.rates);
       paintGates(d.gates);
@@ -1236,9 +1256,13 @@ renderLeads(); renderPayouts();
 
       if (typeof renderLeads === "function") renderLeads();
       if (typeof renderPayouts === "function") renderPayouts();
-    }).catch(function () { /* the page keeps its empty states */ });
+    }).catch(function () {
+      status.textContent = "We could not load your dashboard. Referral and payout figures are unavailable; try again.";
+      if (retry) retry.hidden = false;
+    });
   }
 
+  byId("affiliateRetry").addEventListener("click", load);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", load);
   } else {

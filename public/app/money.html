@@ -173,8 +173,10 @@ table.cards .used-bar{width:64px;margin-left:auto}
   .fact-used{grid-column:span 2}
 }
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/money-ios.css">
 </head>
-<body>
+<body data-client-page="money">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -193,10 +195,12 @@ table.cards .used-bar{width:64px;margin-left:auto}
   </nav>
   <main>
     <div id="money-root" aria-live="polite">
-      <div class="head"><div><h1>Money</h1><p class="caption">Loading your accounts…</p></div></div>
+      <div class="head"><div><h1>Overview</h1><p class="caption">Loading your accounts…</p></div></div>
     </div>
   </main>
 </div>
+<script defer src="money-trends.js"></script>
 <script defer src="money.js"></script>
+<script defer src="/app/client-ios.js"></script>
 </body>
 </html>

@@ -1,0 +1,44 @@
+/* Connections: standalone page and its exact FinanceOS mount. */
+body[data-client-ios][data-client-page="money-connections"] .app{min-width:0;max-width:1600px;margin-inline:auto}
+body[data-client-ios][data-client-page="money-connections"] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px clamp(20px,4vw,56px) 12px;gap:12px}
+body[data-client-ios][data-client-page="money-connections"] .mbar .logo{filter:none}
+body[data-client-ios][data-client-page="money-connections"] .mbar .sub{color:var(--client-muted)}
+body[data-client-ios][data-client-page="money-connections"] .mbar a{color:var(--client-ink);font-weight:600;font-size:.875rem;text-decoration:none;background:white;border:1px solid var(--client-line);border-radius:11px;padding:8px 14px;min-height:44px}
+body[data-client-ios][data-client-page="money-connections"] .mnav{margin:8px clamp(20px,4vw,56px) 0;padding:4px;background:#fff;border:1px solid var(--client-line);border-radius:12px}
+body[data-client-ios][data-client-page="money-connections"] .mnav ul{gap:4px}
+body[data-client-ios][data-client-page="money-connections"] .mnav a{border:0;border-radius:9px;padding:0 14px;font-size:.875rem}
+body[data-client-ios][data-client-page="money-connections"] .mnav a[aria-current="page"]{background:#f0f0ed;color:var(--client-ink)}
+body[data-client-ios][data-client-page="money-connections"] main{padding:30px clamp(20px,4vw,56px) 72px;min-width:0}
+body[data-client-ios] :is(#conn-root,#fos-connections){--surface:#fff;--text:#101416;--text-dim:#616763;min-width:0;font-size:15px;line-height:1.5;letter-spacing:-.015em}
+body[data-client-ios] :is(#conn-root,#fos-connections) .head{margin-bottom:24px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .head h1{font-size:32px;line-height:1.2;letter-spacing:-.04em;font-weight:700;margin-bottom:8px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .head .caption{max-width:74ch}
+body[data-client-ios] :is(#conn-root,#fos-connections) .caption{font-size:13px;line-height:1.55}
+body[data-client-ios] :is(#conn-root,#fos-connections) .card{border:1px solid #e4e5df;border-radius:18px;padding:24px;box-shadow:none;background:#fff}
+body[data-client-ios] :is(#conn-root,#fos-connections) .tiles{gap:0;border:1px solid #e4e5df;border-radius:18px;background:#fff;overflow:hidden}
+body[data-client-ios] :is(#conn-root,#fos-connections) .tile{border:0;border-right:1px solid #e4e5df;border-radius:0;min-height:136px;justify-content:space-between;gap:12px;background:#fff;padding:20px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .tile:last-child{border-right:0}
+body[data-client-ios] :is(#conn-root,#fos-connections) .big{font-family:var(--sans);font-size:32px;letter-spacing:-.04em;font-weight:650;overflow-wrap:anywhere}
+body[data-client-ios] :is(#conn-root,#fos-connections) .thirds{grid-template-columns:minmax(0,1fr);gap:16px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .thirds>*{grid-column:1}
+body[data-client-ios] :is(#conn-root,#fos-connections) .prov{gap:20px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .prov-head{flex-wrap:wrap;gap:12px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .prov-head>div{flex:1;min-width:180px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .prov-name{font-size:20px;letter-spacing:-.025em;margin-bottom:6px;font-weight:650}
+body[data-client-ios] :is(#conn-root,#fos-connections) .state{font-size:12px;padding:4px 10px;line-height:1.5;background:#f5f5f2;border-color:#e4e5df;color:#535b54}
+body[data-client-ios] :is(#conn-root,#fos-connections) .state-active{background:#f0f5ef;color:#36543c;border-color:#d7e2d5}
+body[data-client-ios] :is(#conn-root,#fos-connections) .state-waiting{background:#fbf7ed;color:#7a6232;border-color:#eadfca}
+body[data-client-ios] :is(#conn-root,#fos-connections) :is(.btn,.btn-primary,.field input,.field select,.once,.copyrow code){border-radius:11px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .btn-primary{background:#101416;border-color:#101416;color:#fff}
+body[data-client-ios] :is(#conn-root,#fos-connections) .btn{background:#fff;border-color:#d9dcd5;font-size:14px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .btn-text{min-height:44px}
+body[data-client-ios] :is(#conn-root,#fos-connections) :is(.caption,.conn-name,label){overflow-wrap:anywhere}
+body[data-client-ios] :is(#conn-root,#fos-connections) .conn{padding:20px;background:#fafaf8;border:1px solid #e8e9e3;border-radius:12px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .empty{background:#fff;gap:12px}
+body[data-client-ios] :is(#conn-root,#fos-connections) :is(.empty,.error) h2{font-size:20px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .block>h2{font-size:20px;letter-spacing:-.025em;margin-bottom:8px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .scroll-x{max-width:100%;overscroll-behavior-x:contain}
+body[data-client-ios] :is(#conn-root,#fos-connections) .connection-setup{border-top:1px solid #e4e5df;padding-top:12px}
+body[data-client-ios] :is(#conn-root,#fos-connections) .connection-setup summary{cursor:pointer;min-height:44px;align-content:center;font-size:14px;font-weight:600}
+body[data-client-ios] :is(#conn-root,#fos-connections) .connection-setup-fields{display:grid;gap:16px;max-width:640px;margin-top:12px}
+@media(max-width:760px){body[data-client-ios][data-client-page="money-connections"] main{padding-top:24px}body[data-client-ios] :is(#conn-root,#fos-connections) .card{padding:18px}body[data-client-ios] :is(#conn-root,#fos-connections) .tile{min-height:124px;border:0;border-bottom:1px solid #e4e5df}body[data-client-ios] :is(#conn-root,#fos-connections) .tile:last-child{border:0}body[data-client-ios] :is(#conn-root,#fos-connections) .conn{padding:16px}body[data-client-ios][data-client-page="money-connections"] .mbar{padding-top:20px}body[data-client-ios][data-client-page="money-connections"] .mbar .brand{flex-wrap:wrap}}

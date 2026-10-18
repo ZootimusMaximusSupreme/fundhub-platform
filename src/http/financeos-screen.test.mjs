@@ -19,14 +19,25 @@ const LABELS = ["Overview", "Next steps", "Money helper", "Money moves", "Plan",
 const SCRIPTS = ["money.js", "money-next.js", "money-helper.js", "money-transfers.js", "money-plan.js", "money-banks.js", "money-strategy.js", "money-fundability.js", "money-declines.js", "money-alerts.js", "money-vault.js", "money-accounts.js", "money-credit.js", "money-connections.js", "money-payments.js", "money-setup.js"];
 const text = (html) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
-test("the page has every tab, in order, each opening its own panel", () => {
+test("the page groups every tab by task, each opening its own panel", () => {
   const nav = HTML.match(/<nav class="fos-tabs"[\s\S]*?<\/nav>/);
   assert.ok(nav, "financeos.html lost its tab bar");
   const tabs = [...nav[0].matchAll(/<a role="tab" id="tab-([a-z]+)" href="#([a-z]+)" aria-controls="fos-([a-z]+)"[^>]*>([^<]+)<\/a>/g)];
-  assert.deepEqual(tabs.map((m) => m[1]), TABS);
-  assert.deepEqual(tabs.map((m) => m[2]), TABS);
-  assert.deepEqual(tabs.map((m) => m[3]), TABS);
-  assert.deepEqual(tabs.map((m) => m[4]), LABELS);
+  assert.equal(tabs.length, 16);
+  assert.deepEqual(tabs.map((m) => m[1]).sort(), [...TABS].sort());
+  for (const tab of tabs) {
+    assert.equal(tab[2], tab[1]);
+    assert.equal(tab[3], tab[1]);
+    assert.equal(tab[4], LABELS[TABS.indexOf(tab[1])]);
+  }
+  assert.match(nav[0], /aria-orientation="vertical"/);
+  assert.deepEqual([...nav[0].matchAll(/class="fos-nav-label"[^>]*>([^<]+)/g)].map(m => m[1]), ["Daily money", "Credit &amp; funding", "Tools &amp; documents"]);
+  const money = nav[0].slice(nav[0].indexOf("Daily money"), nav[0].indexOf("Credit &amp; funding"));
+  assert.match(money, /id="tab-accounts"/);
+  assert.match(money, /id="tab-payments"/);
+  assert.match(HTML, /id="fos-nav-toggle"[^>]*aria-expanded="false"[^>]*aria-controls="fos-sections"/);
+  assert.doesNotMatch(HTML, /class="fos-intro"/);
+  assert.doesNotMatch(HTML, /class="logo inv"/);
   for (const k of TABS) {
     assert.match(HTML, new RegExp('<section class="fos-panel" id="fos-' + k + '" role="tabpanel" aria-labelledby="tab-' + k + '"'));
   }
@@ -41,7 +52,7 @@ test("the page loads every section script, then financeos.js last, and both sect
   // money-trends.js (wave 4, H6) is not a tab: it draws the Trends line graphs
   // inside Overview and the sales line under Connections. It loads right after
   // money.js, before financeos.js mounts anything.
-  assert.deepEqual(srcs, [SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "financeos.js"]);
+  assert.deepEqual(srcs, [SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "/app/client-ios.js", "financeos.js"]);
   assert.match(HTML, /<link rel="stylesheet" href="money-connections\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-payments\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-next\.css">/);

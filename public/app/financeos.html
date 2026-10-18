@@ -7,7 +7,7 @@
 <script defer src="/app/fundhub-font.js"></script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub — FinanceOS</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -34,7 +34,7 @@
      finances, called FinanceOS." Direction: docs/finance/finance-os-direction-2026-10-06.md.
      Board: ops/workflows/finance-os-pages-2026-10-06.md (unit P6).
 
-     ONE HEADER, ONE TAB BAR, SIX SECTIONS. Each tab is a section another file
+     ONE COMPACT HEADER, GROUPED NAVIGATION, SIXTEEN SECTIONS. Each tab is a section another file
      owns, mounted with window.FinanceOS.sections.<key>.mount(el, ctx):
        Overview    money.js              Accounts  money-accounts.js
        Credit      money-credit.js       Connections money-connections.js
@@ -71,24 +71,7 @@ button{cursor:pointer}
 ol,ul{list-style:none}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* header — same dark bar as money.html */
-.mbar{background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;min-height:52px;border-bottom:2px solid transparent;border-image:var(--spectrum) 1;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto}
-.brand .logo{height:15px;aspect-ratio:2698/543;flex-shrink:0}
-.brand .sub{color:var(--paper);font-weight:600;white-space:nowrap}
-.brand .who{color:var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.brand .who:empty{display:none}
-.mbar a{color:var(--paper);text-decoration:underline;text-underline-offset:3px;min-height:40px;display:inline-flex;align-items:center}
-
-/* The tab bar. The open tab is bold with a solid underline AND aria-selected —
-   a shape, not only a colour (UI-STANDARDS §12.6). On a phone it scrolls
-   sideways inside itself; the page never does (UI-STANDARDS §11). */
-.fos-tabs{display:flex;gap:0 24px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.fos-tabs a{display:inline-flex;align-items:center;min-height:44px;flex-shrink:0;color:var(--text-dim);text-decoration:none;border-bottom:2px solid transparent}
-.fos-tabs a:hover{color:var(--ink)}
-.fos-tabs a[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
-.fos-tabs a:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
-
+/* Navigation and compact chrome live in financeos-ios.css. */
 main{padding:24px 24px 64px}
 .fos-panel[hidden]{display:none}
 
@@ -502,40 +485,50 @@ main{padding:24px 24px 64px}
 
 @media (max-width:760px){
   main{padding:16px 16px 48px}
-  .mbar{padding:8px 16px}
-  .fos-tabs{padding:0 16px;gap:0 16px}
 }
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/financeos-ios.css">
+<link rel="stylesheet" href="/app/money-workspace.css">
+
 </head>
-<body>
+<body data-client-page="financeos">
 <div class="app">
+  <a class="fos-skip" href="#fos-main">Skip to money content</a>
   <header class="mbar">
-    <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
-      <span class="sub">FinanceOS</span>
-      <span class="who" id="fos-client"></span>
-    </div>
+    <div class="fos-context"><span class="sub">FinanceOS</span><span class="fos-context-divider" aria-hidden="true">/</span><span id="fos-location">Overview</span></div>
+    <span class="who" id="fos-client"></span>
     <a id="money-back" href="client-portal.html">Back to my portal</a>
   </header>
-  <nav class="fos-tabs" role="tablist" aria-label="FinanceOS">
-    <a role="tab" id="tab-overview" href="#overview" aria-controls="fos-overview" aria-selected="true">Overview</a>
-    <a role="tab" id="tab-next" href="#next" aria-controls="fos-next" aria-selected="false" tabindex="-1">Next steps</a>
-    <a role="tab" id="tab-helper" href="#helper" aria-controls="fos-helper" aria-selected="false" tabindex="-1">Money helper</a>
-    <a role="tab" id="tab-transfers" href="#transfers" aria-controls="fos-transfers" aria-selected="false" tabindex="-1">Money moves</a>
-    <a role="tab" id="tab-plan" href="#plan" aria-controls="fos-plan" aria-selected="false" tabindex="-1">Plan</a>
-    <a role="tab" id="tab-banks" href="#banks" aria-controls="fos-banks" aria-selected="false" tabindex="-1">Banks</a>
-    <a role="tab" id="tab-strategy" href="#strategy" aria-controls="fos-strategy" aria-selected="false" tabindex="-1">Strategy</a>
-    <a role="tab" id="tab-fundability" href="#fundability" aria-controls="fos-fundability" aria-selected="false" tabindex="-1">Fundability</a>
-    <a role="tab" id="tab-declines" href="#declines" aria-controls="fos-declines" aria-selected="false" tabindex="-1">Applications</a>
-    <a role="tab" id="tab-alerts" href="#alerts" aria-controls="fos-alerts" aria-selected="false" tabindex="-1">Alerts</a>
-    <a role="tab" id="tab-vault" href="#vault" aria-controls="fos-vault" aria-selected="false" tabindex="-1">Funding papers</a>
-    <a role="tab" id="tab-accounts" href="#accounts" aria-controls="fos-accounts" aria-selected="false" tabindex="-1">Accounts</a>
-    <a role="tab" id="tab-credit" href="#credit" aria-controls="fos-credit" aria-selected="false" tabindex="-1">Credit</a>
-    <a role="tab" id="tab-connections" href="#connections" aria-controls="fos-connections" aria-selected="false" tabindex="-1">Connections</a>
-    <a role="tab" id="tab-payments" href="#payments" aria-controls="fos-payments" aria-selected="false" tabindex="-1">Payments</a>
-    <a role="tab" id="tab-setup" href="#setup" aria-controls="fos-setup" aria-selected="false" tabindex="-1">Setup</a>
-  </nav>
-  <main>
+  <div class="fos-workspace">
+  <aside class="fos-navigation" aria-label="Money workspace">
+    <button class="fos-nav-toggle" id="fos-nav-toggle" type="button" aria-expanded="false" aria-controls="fos-sections"><span><span class="fos-nav-toggle-label">Money sections</span><span id="fos-current-section">Overview</span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg></button>
+    <nav class="fos-tabs" id="fos-sections" role="tablist" aria-label="Money sections" aria-orientation="vertical">
+      <div class="fos-nav-group" role="presentation"><p class="fos-nav-label" role="presentation">Daily money</p>
+        <a role="tab" id="tab-overview" href="#overview" aria-controls="fos-overview" aria-selected="true">Overview</a>
+        <a role="tab" id="tab-accounts" href="#accounts" aria-controls="fos-accounts" aria-selected="false" tabindex="-1">Accounts</a>
+        <a role="tab" id="tab-payments" href="#payments" aria-controls="fos-payments" aria-selected="false" tabindex="-1">Payments</a>
+        <a role="tab" id="tab-transfers" href="#transfers" aria-controls="fos-transfers" aria-selected="false" tabindex="-1">Money moves</a>
+        <a role="tab" id="tab-alerts" href="#alerts" aria-controls="fos-alerts" aria-selected="false" tabindex="-1">Alerts</a>
+      </div>
+      <div class="fos-nav-group" role="presentation"><p class="fos-nav-label" role="presentation">Credit &amp; funding</p>
+        <a role="tab" id="tab-next" href="#next" aria-controls="fos-next" aria-selected="false" tabindex="-1">Next steps</a>
+        <a role="tab" id="tab-credit" href="#credit" aria-controls="fos-credit" aria-selected="false" tabindex="-1">Credit</a>
+        <a role="tab" id="tab-fundability" href="#fundability" aria-controls="fos-fundability" aria-selected="false" tabindex="-1">Fundability</a>
+        <a role="tab" id="tab-strategy" href="#strategy" aria-controls="fos-strategy" aria-selected="false" tabindex="-1">Strategy</a>
+        <a role="tab" id="tab-banks" href="#banks" aria-controls="fos-banks" aria-selected="false" tabindex="-1">Banks</a>
+        <a role="tab" id="tab-declines" href="#declines" aria-controls="fos-declines" aria-selected="false" tabindex="-1">Applications</a>
+      </div>
+      <div class="fos-nav-group" role="presentation"><p class="fos-nav-label" role="presentation">Tools &amp; documents</p>
+        <a role="tab" id="tab-helper" href="#helper" aria-controls="fos-helper" aria-selected="false" tabindex="-1">Money helper</a>
+        <a role="tab" id="tab-plan" href="#plan" aria-controls="fos-plan" aria-selected="false" tabindex="-1">Plan</a>
+        <a role="tab" id="tab-vault" href="#vault" aria-controls="fos-vault" aria-selected="false" tabindex="-1">Funding papers</a>
+        <a role="tab" id="tab-connections" href="#connections" aria-controls="fos-connections" aria-selected="false" tabindex="-1">Connections</a>
+        <a role="tab" id="tab-setup" href="#setup" aria-controls="fos-setup" aria-selected="false" tabindex="-1">Setup</a>
+      </div>
+    </nav>
+  </aside>
+  <main id="fos-main" tabindex="-1">
     <div class="fos-sandbox" id="fos-sandbox" role="note" hidden><strong>Test data — Plaid sandbox</strong><span>These accounts are fake test accounts, not a real bank.</span></div>
     <section class="fos-panel" id="fos-overview" role="tabpanel" aria-labelledby="tab-overview" aria-live="polite"></section>
     <section class="fos-panel" id="fos-next" role="tabpanel" aria-labelledby="tab-next" aria-live="polite" hidden></section>
@@ -554,6 +547,7 @@ main{padding:24px 24px 64px}
     <section class="fos-panel" id="fos-payments" role="tabpanel" aria-labelledby="tab-payments" aria-live="polite" hidden></section>
     <section class="fos-panel" id="fos-setup" role="tabpanel" aria-labelledby="tab-setup" aria-live="polite" hidden></section>
   </main>
+  </div>
 </div>
 <script defer src="money.js"></script>
 <script defer src="money-trends.js"></script>
@@ -572,6 +566,7 @@ main{padding:24px 24px 64px}
 <script defer src="money-connections.js"></script>
 <script defer src="money-payments.js"></script>
 <script defer src="money-setup.js"></script>
+<script defer src="/app/client-ios.js"></script>
 <script defer src="financeos.js"></script>
 </body>
 </html>
