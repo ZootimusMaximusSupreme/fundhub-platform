@@ -90,6 +90,7 @@ export const APPROVED_BODIES = Object.freeze({
   document_needed:  "We need a document from you. Open FundHub.",
   check_in:         "Time for your check-in. Open FundHub.",
   call_confirmation: "Please confirm your upcoming call in FundHub.",
+  call_invite:      "Your call starts soon. Open Fundhub to join.",
   update:           "There is an update on your file. Open FundHub.",
   test:             "Test notification from FundHub."
 });
@@ -101,7 +102,7 @@ const APPROVED_BODY_TEXT = Object.freeze(Object.values(APPROVED_BODIES));
     A kind is always also a body key; the extra keys above exist so a kind can
     have a second approved wording without a second kind. */
 export const PUSH_KINDS = Object.freeze([
-  "payment_due", "statement_close", "document_needed", "check_in", "call_confirmation", "update", "test"
+  "payment_due", "statement_close", "document_needed", "check_in", "call_confirmation", "call_invite", "update", "test"
 ]);
 
 /** kind → its default body. A subset of APPROVED_BODIES, kept under the old

@@ -703,7 +703,9 @@ export async function dispatchOne(db, message, options = {}) {
             const sends = [];
             if (nativePushReady(env)) sends.push(Promise.resolve().then(() => sendNative(db, target))
               .catch((error) => console.warn(`[dispatch] native alert failed for message ${message.id}: ${error?.name || "Error"}`)));
-            if (webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target))
+            // A Join Call invite is native-only until the browser lane has its
+            // own timely delivery and tap proof.
+            if (notification.kind !== "call_invite" && webPushReady(env)) sends.push(Promise.resolve().then(() => sendWeb(db, target))
               .catch((error) => console.warn(`[dispatch] web alert failed for message ${message.id}: ${error?.name || "Error"}`)));
             await Promise.all(sends);
           }

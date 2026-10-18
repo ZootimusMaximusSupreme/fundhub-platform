@@ -1,14 +1,51 @@
 // A companion alert is allowed only after the ordinary email/SMS dispatcher
 // records a real provider send. Never place message copy on the lock screen.
+import { meetingDestination } from "../bookings/meeting-link.mjs";
+
 export const PROMOTIONAL_KEY = /^(?:BS-|(?:SMS|EMAIL)-(?:BS|NOBOOK|S05A|SLO|OFFER|N[0-9]{2}|AISET03|S02))/;
 const BS_PRECALL_SMS = "SMS-BS01-02-PRECALL";
 const BOOKING_CONFIRM_SMS = "SMS-S04-01-CONFIRM";
+const HANDOFF_SMS = "SMS-AISET04-HANDOFF";
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const THIRTY_MINUTES = 30 * 60 * 1000;
+
+async function callInviteForHandoff(db, message, now) {
+  if (message.channel !== "sms") return null;
+  // sendTemplated writes this exact, unique provider_ref from the client and
+  // call time. A normal text or a replay with no matching key is not an invite.
+  const prefix = `workflow:${HANDOFF_SMS}:booking-start:${message.client_id}:`;
+  const ref = String(message.provider_ref || "");
+  if (!ref.startsWith(prefix)) return null;
+  const callTime = ref.slice(prefix.length);
+  const startMs = Date.parse(callTime);
+  if (!Number.isFinite(startMs) || new Date(startMs).toISOString() !== callTime) return null;
+  const nowMs = new Date(now).getTime();
+  if (!Number.isFinite(nowMs) || nowMs < startMs - FIFTEEN_MINUTES || nowMs >= startMs) return null;
+
+  const { rows } = await db.query(
+    `SELECT id, starts_at, ends_at, meeting_url FROM bookings
+      WHERE org_id = $1 AND client_id = $2
+        AND starts_at = $3::timestamptz
+        AND status IN ('booked', 'rescheduled')
+      ORDER BY created_at DESC LIMIT 2`,
+    [message.org_id, message.client_id, callTime]
+  );
+  // Two same-time rows are ambiguous; choosing either may invite the wrong call.
+  if (rows.length !== 1 || new Date(rows[0].starts_at).getTime() !== startMs ||
+      !meetingDestination(rows[0].meeting_url)) return null;
+  const endMs = rows[0].ends_at == null ? Infinity : new Date(rows[0].ends_at).getTime();
+  if (!Number.isFinite(endMs) && endMs !== Infinity) return null;
+  const expiryMs = Math.min(endMs, startMs + THIRTY_MINUTES);
+  if (expiryMs <= nowMs) return null;
+  return { kind: "call_invite", expiresAt: new Date(expiryMs).toISOString() };
+}
 
 export async function notificationForSentMessage(db, message, { now = new Date() } = {}) {
   if (!message?.client_id || !["email", "sms"].includes(message.channel)) return null;
 
   const key = String(message.template_key || "");
   if (key === BOOKING_CONFIRM_SMS) return { kind: "call_confirmation" };
+  if (key === HANDOFF_SMS) return callInviteForHandoff(db, message, now);
   if (!PROMOTIONAL_KEY.test(key)) return { kind: "update" };
 
   // BS can send many emails in three days. Only its actual pre-call SMS is an

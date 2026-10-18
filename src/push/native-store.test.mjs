@@ -136,4 +136,30 @@ describe("native iPhone device lifecycle", () => {
       send: async () => { throw new Error("revoked session must never send"); } });
     assert.equal(result.reason, "no_native_device_on_file");
   });
+
+  test("native invite passes its hard expiry and never sends after it", async () => {
+    const db = memoryDB();
+    await registerNativeDevice(db, { orgId, clientId: firstClient, accountId: firstAccount,
+      sessionId: firstSession, installationId, token, environment: "production", env });
+    const nowMs = Date.parse("2026-10-17T16:05:00.000Z");
+    const expiresAt = "2026-10-17T16:20:00.000Z";
+    const calls = [];
+    const notification = { kind: "call_invite", expiresAt };
+    const sent = await sendNativeToClient(db, { orgId, clientId: firstClient,
+      notification, env, now: () => nowMs,
+      send: async (args) => { calls.push(args); return { status: "sent", gone: false }; } });
+    assert.equal(sent.sent, 1);
+    assert.equal(calls[0].expiresAt, expiresAt);
+    const late = await sendNativeToClient(db, { orgId, clientId: firstClient,
+      notification, env, now: () => Date.parse(expiresAt),
+      send: async () => { throw new Error("expired invite must not reach Apple"); } });
+    assert.equal(late.reason, "invite_expired");
+    assert.equal(late.attempted, 0);
+    const timedOutAtApple = await sendNativeToClient(db, { orgId, clientId: firstClient,
+      notification, env, now: () => nowMs,
+      send: async () => ({ status: "failed", gone: false, reason: "invite_expired" }) });
+    assert.equal(timedOutAtApple.reason, "invite_expired");
+    assert.equal(timedOutAtApple.attempted, 0);
+    assert.equal(db.rows[0].failure_count || 0, 0);
+  });
 });

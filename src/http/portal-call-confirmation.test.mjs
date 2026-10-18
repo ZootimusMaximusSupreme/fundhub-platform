@@ -16,15 +16,73 @@ test("portal summary reads the next call from this session's client and company"
   }), [
     ...signedIn(),
     [/SELECT id, custom_fields FROM clients/, [{ id: CLIENT, custom_fields: { call_confirmed: false } }]],
-    [/SELECT id, starts_at FROM bookings/, [{ id: BOOKING, starts_at: "2026-11-18T20:00:00.000Z" }]]
+    [/starts_at > now\(\) AND status IN/, [{ id: BOOKING, starts_at: "2026-11-18T20:00:00.000Z" }]],
+    [/starts_at <= now\(\)/, []]
   ]);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body.upcoming_call, {
-    id: BOOKING, when: "2026-11-18T20:00:00.000Z", confirmed: false
+    id: BOOKING, when: "2026-11-18T20:00:00.000Z", confirmed: false, join: null
   });
-  const [read] = fake.find(/SELECT id, starts_at FROM bookings/);
+  const [read] = fake.find(/starts_at > now\(\) AND status IN/);
   assert.deepEqual(read.params, [ORG_ID, CLIENT]);
   assert.match(read.sql, /status IN \('booked', 'rescheduled'\)/);
+  assert.match(read.sql, /ORDER BY starts_at ASC LIMIT 1/);
+  assert.equal(res.body.current_call, null);
+});
+
+test("portal exposes only this client's currently joinable HTTPS room", async () => {
+  const when = new Date(Date.now() + 5 * 60_000).toISOString();
+  const { res } = await callShared(portalSummary, req("GET"), [
+    ...signedIn(),
+    [/SELECT id, custom_fields FROM clients/, [{ id: CLIENT, custom_fields: { call_confirmed: true } }]],
+    [/starts_at > now\(\) AND status IN/, [{
+      id: BOOKING, starts_at: when, ends_at: new Date(Date.now() + 35 * 60_000).toISOString(),
+      meeting_url: "https://meet.google.com/abc-defg-hij"
+    }]],
+    [/starts_at <= now\(\)/, []]
+  ]);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.upcoming_call.join, {
+    url: "https://meet.google.com/abc-defg-hij", host: "meet.google.com"
+  });
+});
+
+test("portal leaves the Join Call door closed for a fallback or expired call", async () => {
+  for (const [when, link] of [
+    [new Date(Date.now() + 5 * 60_000).toISOString(), "https://fundhub.ai/portal-login.html"],
+    [new Date(Date.now() + 5 * 60_000).toISOString(), "https://calendly.com/advisor/book-a-call"],
+    [new Date(Date.now() + 5 * 60_000).toISOString(), "https://zoom.us/signin"],
+    [new Date(Date.now() - 40 * 60_000).toISOString(), "https://meet.google.com/old-room"]
+  ]) {
+    const { res } = await callShared(portalSummary, req("GET"), [
+      ...signedIn(),
+      [/SELECT id, custom_fields FROM clients/, [{ id: CLIENT, custom_fields: {} }]],
+      [/starts_at > now\(\) AND status IN/, [{
+        id: BOOKING, starts_at: when, meeting_url: link
+      }]],
+      [/starts_at <= now\(\)/, []]
+    ]);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.upcoming_call.join, null);
+  }
+});
+
+test("a call already under way has a Join door without changing upcoming-call confirmation", async () => {
+  const when = new Date(Date.now() - 5 * 60_000).toISOString();
+  const { res } = await callShared(portalSummary, req("GET"), [
+    ...signedIn(),
+    [/SELECT id, custom_fields FROM clients/, [{ id: CLIENT, custom_fields: { call_confirmed: true } }]],
+    [/starts_at > now\(\) AND status IN/, []],
+    [/starts_at <= now\(\)/, [{
+      id: BOOKING, starts_at: when, ends_at: new Date(Date.now() + 25 * 60_000).toISOString(),
+      meeting_url: "https://zoom.us/j/9920117744"
+    }]]
+  ]);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.upcoming_call, null);
+  assert.deepEqual(res.body.current_call.join, {
+    url: "https://zoom.us/j/9920117744", host: "zoom.us"
+  });
 });
 
 test("client confirms only the next upcoming call on their own file", async () => {
