@@ -9,6 +9,7 @@
 import { db } from "../../src/db.mjs";
 import { requireAuth, AUTH_UNAVAILABLE } from "../../src/http/middleware/requireAuth.mjs";
 import { resolvePrincipal } from "../../src/http/middleware/requirePrincipal.mjs";
+import { installClientSamples } from "../../src/demo/client-portal-samples.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { completeLink } from "../../src/banking/plaid-link.mjs";
@@ -87,6 +88,7 @@ async function clientScope(req, res, { database, auth, resolve, env } = {}) {
   }
 
   if (who && who.kind === "client") {
+    if (!(await installClientSamples(req,res,who,database))) return null;
     const clientId = who.clientId || null;
     const orgId = who.orgId || null;
     if (!isUuid(clientId) || !orgId) {

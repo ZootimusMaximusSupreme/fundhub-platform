@@ -10,6 +10,12 @@ on:
       - scripts/integrate-reviewed-staff.mjs
       - src/ui/rounded-reference-font.test.mjs
       - e2e/font-reference.spec.mjs
+      - src/demo/**
+      - api/auth/session.mjs
+      - api/read/affiliates.mjs
+      - api/banking/link-token.mjs
+      - api/banking/link-exchange.mjs
+      - src/http/middleware/requirePrincipal.mjs
 permissions:
   contents: write
 concurrency:
@@ -22,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: codex/crm-live-font-reconcile
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -60,7 +66,7 @@ jobs:
         id: node
         continue-on-error: true
         run: |
-          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs src/http/morning-brief-page.test.mjs src/http/contracts-screen.test.mjs src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs src/pulse/catalog/proofs/fin-b16-present.test.mjs src/pulse/catalog/proofs/s4-financeos-frame.test.mjs
+          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs src/http/affiliates-self-read.test.mjs src/demo/client-portal-samples.test.mjs src/http/morning-brief-page.test.mjs src/http/contracts-screen.test.mjs src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs src/pulse/catalog/proofs/fin-b16-present.test.mjs src/pulse/catalog/proofs/s4-financeos-frame.test.mjs
       - name: Actual browser font and feature checks
         id: browser
         continue-on-error: true
@@ -159,3 +165,86 @@ jobs:
           git add -f ops/workflows/build-evidence/crm-reconcile-scan
           git commit -m 'Record current-production UI integration scan without changing app files'
           git push origin "HEAD:codex/crm-reconcile-scan-$GITHUB_RUN_ID"
+
+  referral-demo-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_ui_review
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ui_review
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_ui_review
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_ui_review
+      ALLOW_SUPERUSER_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Prepare disposable database
+        id: prepare
+        run: |
+          npm ci --ignore-scripts
+          node db/migrate.mjs
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+      - name: Actual referral persistence and exact sample account linkage
+        id: referral
+        continue-on-error: true
+        run: |
+          node --test --test-concurrency=1 src/http/affiliate-referral.pg.test.mjs src/demo/client-portal-samples.pg.test.mjs
+      - name: App role privileges and tenant isolation
+        id: isolation
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+          ALLOW_SUPERUSER_DB: ""
+        run: |
+          npm run guard:db
+          node --test --test-concurrency=1 src/compliance/rls-bypass.pg.test.mjs src/compliance/invariants.pg.test.mjs
+      - name: Preserve honest database checkpoint
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          REFERRAL: ${{ steps.referral.outcome }}
+          ISOLATION: ${{ steps.isolation.outcome }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const out='ops/workflows/build-evidence/crm-referral-live';
+          fs.mkdirSync(out,{recursive:true});
+          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,referral:process.env.REFERRAL,isolation:process.env.ISOLATION,database:'disposable GitHub Postgres; never production',noCustomerWrites:true,noOutboundSends:true},null,2));
+          execFileSync('git',['config','user.name','Fundhub UI checks']);
+          execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
+          execFileSync('git',['add','-f','--',out]);
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
+            execFileSync('git',['commit','-m','Record scratch database referral and client sample proof'],{stdio:'inherit'});
+            execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});
+            execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});
+          }
+          JS
+      - name: Require actual passing database proof
+        if: always()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          REFERRAL: ${{ steps.referral.outcome }}
+          ISOLATION: ${{ steps.isolation.outcome }}
+        run: |
+          test "$PREPARE" = success
+          test "$REFERRAL" = success
+          test "$ISOLATION" = success

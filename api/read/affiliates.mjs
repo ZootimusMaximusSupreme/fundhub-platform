@@ -69,11 +69,13 @@ import { readHandler, ROLE_SETS } from "../../src/http/read-api.mjs";
 
 export const run = readHandler({
   roles: ROLE_SETS.FINANCE,
-  principals: new Set(["affiliate"]),
+  principals: new Set(["affiliate", "client"]),
   // Staff see the org roster. An affiliate session sees only their own row.
   // The org filter binds the CALLER's org, not orgs.is_default.
   fetch: (db, { limit, offset, query, staff, principal }) => {
-    const isAffiliate = Boolean(principal && principal.kind === "affiliate");
+    // A client enrolled through /affiliates/refer keeps kind=client. Their
+    // persisted affiliateId grants the same SELF read, never the staff roster.
+    const isAffiliate = Boolean(principal && (principal.kind === "affiliate" || principal.kind === "client"));
     if (isAffiliate && !principal.affiliateId) return Promise.resolve([]);
     const orgId = isAffiliate
       ? (principal.orgId || null)

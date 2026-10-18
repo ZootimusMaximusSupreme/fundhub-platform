@@ -66,3 +66,27 @@ test("affiliate with no affiliateId sees nothing", async () => {
   assert.equal(calls.length, 0);
   assert.equal(r.body.items.length, 0);
 });
+
+test("linked client reads only the persisted own affiliate, ignoring a forged query", async () => {
+  const calls = [];
+  const r = res();
+  await affiliatesRun({ method: "GET", query: { affiliate_id: "other", org_id: "other" }, headers: {} }, r, {
+    db: { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [] }; } },
+    requirePrincipal: async () => ({ kind: "client", orgId: ORG, affiliateId: AFF_ID })
+  });
+  assert.equal(r.code, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].params[3], ORG);
+  assert.equal(calls[0].params[4], AFF_ID);
+  assert.ok(!calls[0].params.includes("other"));
+});
+
+test("unenrolled client receives no roster and performs no query", async () => {
+  const r = res();
+  await affiliatesRun({ method: "GET", query: {}, headers: {} }, r, {
+    db: { query: async () => { throw new Error("must not fetch a roster"); } },
+    requirePrincipal: async () => ({ kind: "client", orgId: ORG, affiliateId: null })
+  });
+  assert.equal(r.code, 200);
+  assert.deepEqual(r.body.items, []);
+});
