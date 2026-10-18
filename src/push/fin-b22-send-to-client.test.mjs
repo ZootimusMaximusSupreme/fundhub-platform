@@ -366,6 +366,7 @@ describe("a real gated message reaches a device", () => {
         if (sql.includes("FROM compliance_rules")) return { rows: [] };
         if (sql.includes("FROM message_templates")) return { rows: [{ subject: "" }] };
         if (sql.includes("FROM message_channel_routing")) return { rows: [{ provider: "twilio", enabled: true }] };
+        if (sql.includes("SELECT id, to_address FROM messages")) return { rows: [] };
         if (sql.includes("SELECT custom_fields FROM clients")) return { rows: [{ custom_fields: {} }] };
         if (sql.includes("FROM tasks")) return { rows: [] };
         if (sql.includes("INSERT INTO tasks")) return { rows: [{ id: "task-1" }] };
