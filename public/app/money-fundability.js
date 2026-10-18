@@ -366,7 +366,7 @@
         return '<li><p>' + esc(s.text) + '</p>' +
           (s.check && CHECK_WORDS[s.check] ? '<p class="caption">Moves: ' + esc(CHECK_WORDS[s.check]) + '</p>' : "") + '</li>';
       }).join("");
-    return '<section class="card" aria-labelledby="fd-moves"><h2 class="eyebrow" id="fd-moves">What moves it most</h2>' +
+    return '<section class="card fd-priority" aria-labelledby="fd-moves"><h2 class="eyebrow" id="fd-moves">What moves it most</h2>' +
       (rows ? '<ol class="fd-moves">' + rows + '</ol><p class="caption">UnderwriteIQ\'s own words, in its own order.</p>'
         : '<p class="caption">UnderwriteIQ has no tips for this file right now.</p>') +
       '</section>';
@@ -442,8 +442,9 @@
     links = links || {};
     return renderSample(d) + renderHead(d) +
       '<div class="fd-grid fd-thirds">' + renderNowTile(d) + renderFundingTile(d) + renderLaterTile(d) + '</div>' +
-      '<div class="fd-grid fd-halves">' + renderChart(d) + renderDrivers(d) + '</div>' +
-      '<div class="fd-grid fd-halves">' + renderMoves(d) + renderCannot(d) + '</div>' +
+      renderMoves(d) +
+      '<div class="fd-grid fd-halves">' + renderDrivers(d) + renderChart(d) + '</div>' +
+      renderCannot(d) +
       renderBusinesses(d, links.accounts);
   }
 

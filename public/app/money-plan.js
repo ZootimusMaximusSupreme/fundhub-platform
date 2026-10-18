@@ -209,7 +209,7 @@
 
     var nx = next
       ? '<span class="big">' + esc(dayShort(next.date)) + '</span><p class="caption">' +
-        esc(next.title + (money(next.amount_cents) ? " · " + money(next.amount_cents) : "")) + '</p>'
+        esc(next.title + (money(next.amount_cents) ? " · " + money(next.amount_cents) : "")) + '</p><button type="button" class="btn-primary next-step" data-pin="' + esc(next.id) + '">View next step</button>'
       : '<span class="big">—</span><p class="caption">Nothing coming up in ' + esc(monthTitle(d.month)) + '.</p>';
 
     var bits = [];
@@ -372,7 +372,7 @@
   function render(d, opts) {
     var top = renderHead() + renderFailed(d);
     if (isEmpty(d)) return top + renderMonthBar(d.month, d.today) + renderEmpty(d, opts);
-    return top + renderTiles(d) + renderMonthBar(d.month, d.today) + renderCalendar(d) + renderList(d);
+    return top + renderTiles(d) + renderMonthBar(d.month, d.today) + renderList(d) + '<details class="plan-calendar"><summary>View month calendar</summary>' + renderCalendar(d) + '</details>';
   }
 
   function renderLoading(month, today) {
@@ -518,7 +518,7 @@
       if (!state.data || !findPin(state.data, id)) return;
       state.open = id;
       state.message = "";
-      state.returnTo = { id: id, cls: from && from.classList && from.classList.contains("row") ? "row" : "pin" };
+      state.returnTo = { id: id, cls: from && from.classList && from.classList.contains("row") ? "row" : (from && from.classList && from.classList.contains("next-step") ? "next-step" : "pin") };
       repaint();
       focusClose();
     }

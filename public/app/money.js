@@ -107,7 +107,7 @@
   }
 
   /* CASH — one line per kind. These three numbers are never added together. */
-  function cashLine(kind, part) {
+  function cashLine(kind, part, compact) {
     var p = part || {};
     var n = isNum(p.accounts) ? p.accounts : 0;
     if (kind === "unknown" && n === 0 && !isNum(p.cents)) {
@@ -116,7 +116,7 @@
     return '<div class="cash-line" data-kind="' + esc(kind) + '">' +
       '<span class="caption">' + esc(KIND_LABEL[kind]) + ' cash</span>' +
       '<span class="big">' + esc(money(p.cents, p.is_floor)) + '</span>' +
-      '<span class="caption">' + esc(plural(n, "account", "accounts")) + '</span></div>';
+      (compact ? '' : '<span class="caption">' + esc(plural(n, "account", "accounts")) + '</span>') + '</div>';
   }
 
   function cardsUsed(cards) {
@@ -150,26 +150,29 @@
   function renderTiles(d) {
     var cash = d.cash || {};
     var debt = d.debt || {};
-    var byKind = debt.by_kind || {};
     var used = cardsUsed(debt.cards);
     var next = sortedUpcoming(d)[0];
+    var unknown = cash.unknown || {};
+    var hasUnknown = (isNum(unknown.accounts) && unknown.accounts > 0) || isNum(unknown.cents);
+    var cashNotes = ['personal', 'business', 'unknown'].map(function (kind) {
+      var part = cash[kind] || {};
+      return '<p class="caption">' + esc(KIND_LABEL[kind]) + ': ' +
+        esc(plural(isNum(part.accounts) ? part.accounts : 0, 'account', 'accounts')) + '</p>';
+    }).join('');
 
     var cashTile = '<section class="card tile tile-cash" aria-labelledby="t-cash">' +
       '<h2 class="eyebrow" id="t-cash">What you have</h2>' +
-      cashLine("personal", cash.personal) +
-      cashLine("business", cash.business) +
-      cashLine("unknown", cash.unknown) +
-      '<p class="caption">Each kind is kept apart. They are not added together.</p></section>';
+      cashLine("personal", cash.personal, true) +
+      cashLine("business", cash.business, true) +
+      (hasUnknown ? cashLine("unknown", cash.unknown, true) : '') +
+      '<details class="money-cash-detail"><summary>Cash details</summary><div class="money-cash-notes">' +
+      cashNotes + (hasUnknown ? '' : cashLine("unknown", cash.unknown)) +
+      '<p class="caption">Each kind is kept apart. They are not added together.</p></div></details></section>';
 
     var debtTile = '<section class="card tile" aria-labelledby="t-debt">' +
       '<h2 class="eyebrow" id="t-debt">What you owe</h2>' +
       '<span class="big">' + esc(money(debt.total_cents, debt.is_floor)) + '</span>' +
-      '<p class="caption">All debt we know about</p>' +
-      '<ul class="split">' +
-      '<li><span>Personal</span><span class="num">' + esc(money(byKind.personal)) + '</span></li>' +
-      '<li><span>Business</span><span class="num">' + esc(money(byKind.business)) + '</span></li>' +
-      '<li><span>Not sure yet</span><span class="num">' + esc(money(byKind.unknown)) + '</span></li>' +
-      '</ul></section>';
+      '<p class="caption">All debt we know about</p></section>';
 
     var usedNote;
     if (used.counted) {
@@ -186,19 +189,19 @@
 
     var nextTile;
     if (next) {
-      nextTile = '<section class="card tile" aria-labelledby="t-next">' +
+      nextTile = '<section class="money-next-due" aria-labelledby="t-next">' +
         '<h2 class="eyebrow" id="t-next">Next due</h2>' +
         '<span class="big">' + esc(day(next.on).replace(/, \d{4}$/, "")) + '</span>' +
         '<p class="next-name">' + esc(next.name) + '</p>' +
         '<p class="caption">' + esc(upcomingWord(next)) + ' · ' +
         esc(money(next.amount_cents)) + (next.type === "card_due" ? " minimum" : "") + '</p></section>';
     } else {
-      nextTile = '<section class="card tile" aria-labelledby="t-next">' +
+      nextTile = '<section class="money-next-due" aria-labelledby="t-next">' +
         '<h2 class="eyebrow" id="t-next">Next due</h2>' +
         '<span class="big">—</span><p class="caption">No due dates on file yet</p></section>';
     }
 
-    return '<div class="grid tiles">' + cashTile + debtTile + usedTile + nextTile + '</div>';
+    return nextTile + '<div class="grid tiles">' + cashTile + debtTile + usedTile + '</div>';
   }
 
   function renderTip(d) {
@@ -286,6 +289,7 @@
 
   function renderDebt(d) {
     var debt = d.debt || {};
+    var byKind = debt.by_kind || {};
     var rows = list(debt.by_container).map(function (r) {
       return '<li><span>' + esc(r.name || CONTAINER_LABEL[r.kind] || "Container") +
         ' <span class="caption">' + esc(CONTAINER_LABEL[r.kind] || "") + '</span></span>' +
@@ -314,7 +318,11 @@
     }).join("");
     return '<section class="block" aria-labelledby="h-debt"><h2 id="h-debt">Debt</h2>' +
       '<div class="grid debt">' +
-      '<div class="card"><h3 class="eyebrow">By container</h3>' +
+      '<div class="card"><h3 class="eyebrow">By kind</h3><ul class="split">' +
+      '<li><span>Personal</span><span class="num">' + esc(money(byKind.personal)) + '</span></li>' +
+      '<li><span>Business</span><span class="num">' + esc(money(byKind.business)) + '</span></li>' +
+      '<li><span>Not sure yet</span><span class="num">' + esc(money(byKind.unknown)) + '</span></li></ul>' +
+      '<h3 class="eyebrow debt-container-label">By container</h3>' +
       (rows ? '<ul class="split">' + rows + '</ul>' : '<p class="caption">No debt on file.</p>') +
       '<p class="caption total-line">All debt: <span class="num">' + esc(money(debt.total_cents, debt.is_floor)) + '</span></p></div>' +
       '<div class="debt-side"><div class="card"><h3 class="eyebrow">By card</h3>' +
@@ -437,7 +445,7 @@
     var n = isNum(b.containers) ? b.containers : list(d.containers).length;
     var price = isNum(b.price_per_container_cents)
       ? money(b.price_per_container_cents) + " per container · " + money(b.price_per_container_cents * n) + " a month"
-      : "$X per container";
+      : "Pricing is not available";
     return '<p class="billing caption">Your plan: ' + esc(plural(n, "container", "containers")) + ' · ' + esc(price) + '</p>';
   }
 
@@ -448,17 +456,36 @@
   function renderHead(d, showButton) {
     var who = d && d.client && d.client.name ? d.client.name : "";
     var asOf = d ? stamp(d.as_of) : "";
-    return '<div class="head"><div><h1>Money</h1><p class="caption">' +
+    var hasDue = d && sortedUpcoming(d).length > 0;
+    return '<div class="head"><div><h1>Overview</h1><p class="caption">' +
       esc([who, asOf ? "as of " + asOf : ""].filter(Boolean).join(" · ") || "What you have, what you owe, and what is next") +
       '</p></div>' +
-      (showButton ? '<div class="head-act"><button class="btn-primary" type="button" data-act="connect">Connect a bank</button>' +
+      (showButton ? '<div class="head-act money-actions">' +
+        (hasDue ? '<a class="btn-primary" href="/app/financeos.html#payments" data-money-nav>Review payments</a>' : '') +
+        '<button class="' + (hasDue ? 'btn-secondary' : 'btn-primary') + '" type="button" data-act="connect">Connect a bank</button>' +
         '<p class="act-msg caption" aria-live="polite"></p></div>' : "") + '</div>';
+  }
+
+  /* Daily facts stay in view. The complete source rows live one click below,
+     in native disclosures that also work with the keyboard and without JS. */
+  function detail(key, title, note, html) {
+    return '<details class="money-detail" id="money-detail-' + key + '"><summary>' +
+      '<span><span class="money-detail-title">' + esc(title) + '</span><span class="caption">' + esc(note) +
+      '</span></span><span class="money-detail-chevron" aria-hidden="true">+</span></summary>' +
+      '<div class="money-detail-body">' + html + '</div></details>';
   }
 
   function renderFull(d) {
     return renderSandbox(d) + renderHead(d, true) + renderTiles(d) + renderTip(d) +
-      '<div class="grid two">' + renderUpcoming(d) + renderBills(d) + '</div>' +
-      renderTrendsSlot() + renderContainers(d) + renderDebt(d) + renderCashflow(d) + renderBilling(d);
+      '<section class="money-details" aria-label="Money details">' +
+      detail('payments', 'Payments & repeating bills', plural(list(d.upcoming).length, 'upcoming item', 'upcoming items') + ' · ' +
+        plural(list(d.bills).length, 'repeating bill', 'repeating bills'), '<div class="grid two">' + renderUpcoming(d) + renderBills(d) + '</div>') +
+      detail('accounts', 'Accounts & containers', plural(list(d.accounts).length, 'account', 'accounts') + ' · ' +
+        plural(list(d.containers).length, 'container', 'containers'), renderContainers(d)) +
+      detail('debt', 'Debt details', plural(list(d.debt && d.debt.cards).length, 'card', 'cards') + ' · ' +
+        plural(list(d.debt && d.debt.loans).length, 'loan', 'loans'), renderDebt(d)) +
+      detail('history', 'Trends & cashflow', 'Balance history and monthly money in and out', renderTrendsSlot() + renderCashflow(d)) +
+      detail('plan', 'Your plan', 'Container count and monthly pricing', renderBilling(d)) + '</section>';
   }
 
   /* Trends (wave 4, H6): money-trends.js draws the line graphs into this slot
@@ -478,7 +505,7 @@
 
   function renderLoading() {
     var tile = '<div class="card tile skel"><span class="sk sk-s"></span><span class="sk sk-l"></span><span class="sk sk-m"></span></div>';
-    return '<div class="head"><div><h1>Money</h1><p class="caption">Loading your accounts…</p></div></div>' +
+    return '<div class="head"><div><h1>Overview</h1><p class="caption">Loading your accounts…</p></div></div>' +
       '<div class="grid tiles" aria-busy="true">' + tile + tile + tile + tile + '</div>' +
       '<div class="grid two"><div class="card skel"><span class="sk sk-m"></span><span class="sk sk-l"></span></div>' +
       '<div class="card skel"><span class="sk sk-m"></span><span class="sk sk-l"></span></div></div>';
@@ -496,7 +523,7 @@
   };
 
   function renderError(source) {
-    return '<div class="head"><div><h1>Money</h1></div></div>' +
+    return '<div class="head"><div><h1>Overview</h1></div></div>' +
       '<section class="card error" role="alert"><h2>We could not load your money page</h2>' +
       '<p>' + esc(ERROR_WORDS[source] || ERROR_WORDS.server) + '</p>' +
       '<button class="btn-primary" type="button" data-act="retry">Try again</button></section>';
@@ -600,7 +627,14 @@
     var asked = ctx.clientId || param("client_id") || "";
     var state = { data: null, clientId: asked };
 
-    function paint(html) { el.innerHTML = html; }
+    function paint(html) {
+      el.innerHTML = html;
+      /* Presentation links carry the same staff context as the existing nav. */
+      if (asked && el.querySelectorAll) {
+        var links = el.querySelectorAll('[data-money-nav]');
+        for (var i = 0; i < links.length; i++) links[i].setAttribute('href', withClientHref(links[i].getAttribute('href'), asked));
+      }
+    }
 
     function load() {
       state.clientId = asked;

@@ -191,7 +191,7 @@
   }
 
   function renderScores(d) {
-    return '<div class="grid tiles">' +
+    return '<div class="grid tiles credit-scores">' +
       BUREAUS.map(function (b) { return scoreTile(d, b); }).join("") +
       businessTile(d) + '</div>';
   }
@@ -234,7 +234,7 @@
         ? "Late payments: " + count(late)
         : "Not on file yet") + '</p></section>';
 
-    return '<div class="grid tiles">' + useTile + acctTile + inqTile + negTile + '</div>';
+    return '<div class="grid tiles credit-facts">' + useTile + acctTile + inqTile + negTile + '</div>';
   }
 
   /* UnderwriteIQ's own sentences, verbatim. */

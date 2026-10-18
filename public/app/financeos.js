@@ -1,7 +1,7 @@
 /* FinanceOS — the client's one-page CRM for money (/app/financeos.html).
  *
  * Owner call 2026-10-06: "it all should be on 1 page". This file owns only the
- * frame: the header (client name, sandbox banner), the six tabs, the lazy
+ * frame: the header (client name, sandbox banner), the grouped tabs, the lazy
  * mount of each section, the api calls every section shares, and the sign-in
  * redirect. Each section is another file's
  *   window.FinanceOS.sections.<key> = { mount(el, ctx) → { reload } }
@@ -26,6 +26,11 @@
     ["overview", "Overview"], ["next", "Next steps"], ["helper", "Money helper"], ["transfers", "Money moves"], ["plan", "Plan"], ["banks", "Banks"], ["strategy", "Strategy"], ["fundability", "Fundability"], ["declines", "Applications"], ["alerts", "Alerts"], ["vault", "Funding papers"], ["accounts", "Accounts"], ["credit", "Credit"],
     ["connections", "Connections"], ["payments", "Payments"], ["setup", "Setup"]
   ];
+  /* Visual and keyboard order follows the three task groups. The public TABS
+     keys and labels remain unchanged for existing consumers. */
+  var NAV_KEYS = ["overview", "accounts", "payments", "transfers", "alerts",
+    "next", "credit", "fundability", "strategy", "banks", "declines",
+    "helper", "plan", "vault", "connections", "setup"];
   /* The old standalone pages, and the tab each one is now. A link inside a
      section to one of these switches tabs instead of leaving the page. */
   var PAGE_TAB = {
@@ -119,6 +124,28 @@
     var doc = root.document;
     var tabsEl = doc.querySelector(".fos-tabs");
     if (!tabsEl || !doc.getElementById("fos-overview")) return;
+    var navToggle = doc.getElementById("fos-nav-toggle");
+    var navigation = doc.querySelector(".fos-navigation");
+    var main = doc.querySelector("main");
+    function closeNavigation(restoreFocus) {
+      if (!navToggle || !navigation) return;
+      navToggle.setAttribute("aria-expanded", "false");
+      navigation.removeAttribute("data-open");
+      if (restoreFocus) navToggle.focus();
+    }
+    if (navToggle && navigation) {
+      navToggle.addEventListener("click", function () {
+        var open = navToggle.getAttribute("aria-expanded") !== "true";
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) navigation.setAttribute("data-open", "");
+        else navigation.removeAttribute("data-open");
+      });
+      navigation.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { e.preventDefault(); closeNavigation(true); }
+      });
+    }
+    var skip = doc.querySelector(".fos-skip");
+    if (skip && main) skip.addEventListener("click", function (e) { e.preventDefault(); main.focus(); });
     var cid = param("client_id");
     var qs = cid ? "?client_id=" + encodeURIComponent(cid) : "";
     var leaving = false;
@@ -216,6 +243,10 @@
       }
       if (!mounted[k]) mountTab(k);
       doc.title = "Fundhub — FinanceOS · " + labelOf(k);
+      var locationLabel = doc.getElementById("fos-location");
+      var sectionLabel = doc.getElementById("fos-current-section");
+      if (locationLabel) locationLabel.textContent = labelOf(k);
+      if (sectionLabel) sectionLabel.textContent = labelOf(k);
       var cur = tabOf(k);
       if (cur && cur.scrollIntoView && tabsEl.scrollWidth > tabsEl.clientWidth) {
         try { cur.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}
@@ -229,19 +260,32 @@
 
     root.addEventListener("hashchange", function () { show(tabFromHash(root.location.hash)); });
 
-    /* Arrow keys move along the tab bar (WAI-ARIA tabs pattern). */
+    /* Arrow keys move through the grouped tabs (WAI-ARIA tabs pattern). */
     tabsEl.addEventListener("keydown", function (e) {
-      var keys = { ArrowRight: 1, ArrowLeft: -1, Home: "first", End: "last" };
+      var keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1, Home: "first", End: "last" };
       if (!(e.key in keys)) return;
       var at = 0;
       var now = tabFromHash(root.location.hash);
-      for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === now) at = i;
+      for (var i = 0; i < NAV_KEYS.length; i++) if (NAV_KEYS[i] === now) at = i;
       var step = keys[e.key];
-      var next = step === "first" ? 0 : step === "last" ? TABS.length - 1 : (at + step + TABS.length) % TABS.length;
+      var next = step === "first" ? 0 : step === "last" ? NAV_KEYS.length - 1 : (at + step + NAV_KEYS.length) % NAV_KEYS.length;
       e.preventDefault();
-      go(TABS[next][0]);
-      var t = tabOf(TABS[next][0]);
+      go(NAV_KEYS[next]);
+      var t = tabOf(NAV_KEYS[next]);
       if (t) t.focus();
+    });
+
+    tabsEl.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target && e.target.closest ? e.target.closest("a[role='tab']") : null;
+      if (!a) return;
+      var k = tabForHref(a.getAttribute("href"));
+      if (!k) return;
+      e.preventDefault();
+      go(k);
+      var phone = root.matchMedia && root.matchMedia("(max-width: 760px)").matches;
+      closeNavigation(false);
+      if (phone && main) main.focus({ preventScroll: true });
     });
 
     /* A link inside a section to an old money page opens that tab here. */

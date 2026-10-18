@@ -134,3 +134,74 @@
   .fh-transfers td.r{text-align:left}
   .fh-transfers td::before{content:attr(data-label);display:block;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--tx-dim)}
 }
+
+/* Professional transfer workspace, standalone and FinanceOS tab only.
+   Presentation changes never alter authorization, amounts or approval terms. */
+:is(#transfers-root,#fos-transfers) .fh-transfers{--tx-surface:#fff;--tx-dim:#687075;color:#101416;font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;font-size:15px;line-height:1.5;letter-spacing:-.015em}
+:is(#transfers-root,#fos-transfers) .head{margin-bottom:24px}
+:is(#transfers-root,#fos-transfers) .head h1{font-size:30px;font-weight:720;letter-spacing:-.045em;line-height:1.2;margin-bottom:8px;color:#101416}
+:is(#transfers-root,#fos-transfers) .caption{color:#687075;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+:is(#transfers-root,#fos-transfers) .card{padding:24px;border:1px solid #e1e4e2;border-radius:18px;box-shadow:0 2px 8px rgba(16,20,22,.025);background:#fff}
+:is(#transfers-root,#fos-transfers) .tx-banner{padding:14px 18px;margin-bottom:20px;border-radius:12px;font-size:13px;gap:8px 12px;background:#f1f2ef;border:1px solid #e1e4de;color:#4e5953}
+:is(#transfers-root,#fos-transfers) .tx-banner.off{background:#fff7ed;border-color:#eedac1;color:#86511d}
+:is(#transfers-root,#fos-transfers) .tag{padding:3px 9px;border:1px solid #d9ded8;border-radius:7px;font-size:12px;line-height:1.4;background:#fff;color:inherit}
+:is(#transfers-root,#fos-transfers) .tx-banner.off .tag{border-color:#e2c7a7;color:inherit}
+:is(#transfers-root,#fos-transfers) .tx-tiles{gap:0;border:1px solid #e1e4e2;border-radius:18px;background:#fff;overflow:hidden;margin-bottom:32px}
+:is(#transfers-root,#fos-transfers) .tx-tiles>.tile{border:0;border-radius:0;box-shadow:none;gap:6px;background:transparent}
+:is(#transfers-root,#fos-transfers) .tx-tiles>.tile+.tile{border-left:1px solid #e1e4e2}
+:is(#transfers-root,#fos-transfers) .eyebrow{font-family:inherit;font-weight:600;font-size:13px;letter-spacing:0;text-transform:none;margin-bottom:4px;color:#687075}
+:is(#transfers-root,#fos-transfers) .eyebrow::before{display:none}
+:is(#transfers-root,#fos-transfers) :is(.big,.num){font-family:inherit;font-variant-numeric:tabular-nums;color:#101416;letter-spacing:-.025em}
+:is(#transfers-root,#fos-transfers) .big{font-size:34px;font-weight:660;line-height:1.2}
+:is(#transfers-root,#fos-transfers) .block{margin-bottom:32px}
+:is(#transfers-root,#fos-transfers) .block>h2{font-size:20px;letter-spacing:-.025em;font-weight:680;margin-bottom:16px;color:#101416}
+:is(#transfers-root,#fos-transfers) .wt-list{gap:20px}
+:is(#transfers-root,#fos-transfers) .wt{gap:18px}
+:is(#transfers-root,#fos-transfers) .wt-top{align-items:center;gap:8px 16px}
+:is(#transfers-root,#fos-transfers) .wt-top .big{font-size:28px}
+:is(#transfers-root,#fos-transfers) .wt-title{font-size:17px;font-weight:650;line-height:1.4;color:#101416}
+:is(#transfers-root,#fos-transfers) .wt-facts{gap:16px 24px;padding:16px 0;border-top:1px solid #e8eae7;border-bottom:1px solid #e8eae7}
+:is(#transfers-root,#fos-transfers) .wt-facts dd{font-size:14px;font-weight:550;margin-top:4px}
+:is(#transfers-root,#fos-transfers) .wt-act{padding-top:0;border:0;width:100%;gap:16px;min-width:0}
+:is(#transfers-root,#fos-transfers) .tx-from{width:100%;font-size:13px;line-height:1.6}
+:is(#transfers-root,#fos-transfers) .tx-from strong{display:block;margin-top:4px;font-size:14px;font-weight:550}
+:is(#transfers-root,#fos-transfers) :is(.field select,.field input){min-height:44px;border:1px solid #d6dbd6;border-radius:11px;padding:10px 12px;background:#fff;font-size:14px;min-width:0;width:100%}
+:is(#transfers-root,#fos-transfers) :is(.btn-primary,.btn-line){min-height:44px;padding:10px 16px;border-radius:11px;font-size:14px;font-weight:620;line-height:1.5;white-space:normal;text-align:center}
+:is(#transfers-root,#fos-transfers) .btn-primary{background:#101416;color:#fff;border-color:#101416}
+:is(#transfers-root,#fos-transfers) .btn-line{background:#fff;border-color:#cbd1cc;color:#101416}
+:is(#transfers-root,#fos-transfers) :is(.btn-line,.btn-primary):hover{box-shadow:0 3px 10px rgba(16,20,22,.1)}
+:is(#transfers-root,#fos-transfers) .btn-text{min-height:44px;font-size:13px;color:#687075}
+:is(#transfers-root,#fos-transfers) .confirm{padding:18px;border:1px solid #bbc5bb;border-radius:12px;background:#f8f9f6}
+:is(#transfers-root,#fos-transfers) .confirm-q{font-size:15px;font-weight:620;line-height:1.6}
+:is(#transfers-root,#fos-transfers) .wt-not{margin-top:auto}
+:is(#transfers-root,#fos-transfers) :is(th,td){font-size:13px;border-color:#e8eae7;padding:16px 16px 16px 0}
+:is(#transfers-root,#fos-transfers) caption{font-size:13px;color:#687075;padding-bottom:16px}
+:is(#transfers-root,#fos-transfers) .tx-move{font-size:14px;font-weight:620;line-height:1.5}
+:is(#transfers-root,#fos-transfers) .tx-status{font-size:13px;font-weight:620}
+:is(#transfers-root,#fos-transfers) .tx-steps{gap:10px;margin:14px 0}
+:is(#transfers-root,#fos-transfers) .tx-steps li{gap:8px;overflow-wrap:anywhere;line-height:1.6}
+:is(#transfers-root,#fos-transfers) .st-word{font-family:inherit;letter-spacing:0;text-transform:none;min-width:48px;color:#687075;font-size:12px}
+:is(#transfers-root,#fos-transfers) .tx-steps li::before{width:8px;height:8px;border-width:1px;transform:none}
+:is(#transfers-root,#fos-transfers) .tx-events summary{font-size:13px;min-height:44px}
+:is(#transfers-root,#fos-transfers) .tx-events ol{font-size:13px;line-height:1.6;gap:12px;border-color:#dfe4dd;padding-left:14px}
+:is(#transfers-root,#fos-transfers) .empty-t{font-size:17px;font-weight:650}
+:is(#transfers-root,#fos-transfers) .error h2{font-size:20px;line-height:1.4}
+:is(#transfers-root,#fos-transfers) :is(a,button,input,select,summary):focus-visible{outline:3px solid #737f72;outline-offset:3px}
+@media(max-width:760px){
+ :is(#transfers-root,#fos-transfers) .card{padding:20px}
+ :is(#transfers-root,#fos-transfers) .tx-tiles>.tile{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:18px 20px;gap:4px 12px}
+ :is(#transfers-root,#fos-transfers) .tx-tiles>.tile+.tile{border-left:0;border-top:1px solid #e1e4e2}
+ :is(#transfers-root,#fos-transfers) .tx-tiles .eyebrow{margin-bottom:0}
+ :is(#transfers-root,#fos-transfers) .tx-tiles .big{font-size:28px;grid-column:2;grid-row:1/3}
+ :is(#transfers-root,#fos-transfers) .tx-tiles .caption{grid-column:1;font-size:12px}
+ :is(#transfers-root,#fos-transfers) .wt-facts{grid-template-columns:1fr;gap:12px}
+ :is(#transfers-root,#fos-transfers) .wt-top{align-items:flex-start;flex-direction:column}
+ :is(#transfers-root,#fos-transfers) .wt-top .big{font-size:28px}
+ :is(#transfers-root,#fos-transfers) .confirm{padding:14px}
+ :is(#transfers-root,#fos-transfers) .confirm-row{gap:8px}
+ :is(#transfers-root,#fos-transfers) .wt-act>.btn-line{width:100%}
+ :is(#transfers-root,#fos-transfers) .scroll-x{overflow:visible}
+ :is(#transfers-root,#fos-transfers) td{padding:8px 0}
+ :is(#transfers-root,#fos-transfers) td::before{font-family:inherit;font-size:12px;letter-spacing:0;text-transform:none;color:#687075;margin-bottom:4px}
+ :is(#transfers-root,#fos-transfers) tr{padding:16px 0}
+}
