@@ -60,7 +60,7 @@ jobs:
         id: node
         continue-on-error: true
         run: |
-          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs
+          node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs src/http/morning-brief-page.test.mjs src/http/contracts-screen.test.mjs src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs src/pulse/catalog/proofs/fin-b16-present.test.mjs src/pulse/catalog/proofs/s4-financeos-frame.test.mjs
       - name: Actual browser font and feature checks
         id: browser
         continue-on-error: true

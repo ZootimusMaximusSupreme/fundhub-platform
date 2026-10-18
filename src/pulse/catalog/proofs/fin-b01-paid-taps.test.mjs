@@ -81,7 +81,7 @@ test("no other Command Center tab asks the frame for a sheet (a new one needs a 
     .filter((src) => !["shell.js", "marketing-command-center.js"].includes(src));
   assert.ok(scripts.length >= 7, "the tab script list shrank");
   for (const src of scripts) {
-    const rel = `public/app/${src}`;
+    const rel = src.startsWith("/") ? `public${src}` : `public/app/${src}`;
     if (FILES[rel]) continue;
     const source = read(rel);
     assert.doesNotMatch(source, /\bctx\.costSheet\b|\bctx\.confirm\b|\.costSheet\(|\.confirm\(/, `${rel} asks for a sheet but is not in the table`);

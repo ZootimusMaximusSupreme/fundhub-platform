@@ -97,7 +97,7 @@ async function openDeck(tier, { copyWorks = true, wordings = null, sendAnswer = 
   vm.createContext(sandbox);
   // data.js is the stand-in FHData above; every other script the page names is run, in the page's order.
   for (const src of SCRIPTS.filter((name) => name !== "data.js")) {
-    const file = path.join(APP, src);
+    const file = src.startsWith("/") ? path.join(ROOT, "public", src.slice(1)) : path.join(APP, src);
     vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
   }
   await flush();

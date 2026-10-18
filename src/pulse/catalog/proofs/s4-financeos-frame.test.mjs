@@ -28,7 +28,8 @@ test("the frame lists every tab, names the client and shows the sandbox note", {
     assert.deepEqual(missing, [], "every tab has its section script loaded");
     // 17 section scripts (the sixteen tabs and the trends script), then the frame's own
     const scripts = await page.evaluate(() => [...document.scripts].map((el) => el.getAttribute("src")).filter(Boolean));
-    assert.equal(scripts.length, 18);
+    assert.equal(scripts[0], "/app/fundhub-font.js", "the shared presentation adapter loads first");
+    assert.equal(scripts.length, 19);
     assert.equal(scripts.at(-1), "financeos.js", "the frame script loads after every section");
     assert.deepEqual(refusedScripts, [], "every script answered");
     assert.equal(await page.evaluate(() => typeof window.FinanceOS.trends?.mount + "/" + typeof window.FinanceOS.extras?.connections?.mount), "function/function");

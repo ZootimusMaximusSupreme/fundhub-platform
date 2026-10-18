@@ -16,7 +16,12 @@ const paths=[
 ];
 const read=(ref,file)=>{const r=spawnSync('git',['show',ref+':'+file]);return r.status===0?r.stdout:null;};
 const pending=[],report=[];
+// This branch already persisted the first clean merge. Preserve those reviewed files
+// and later fixes on repeat runs; only reconstruct assets absent from that commit.
+const integratedCheckpoint='00c47e18355286e9893b8fd764d648cd36b7305b';
+const hasCheckpoint=spawnSync('git',['merge-base','--is-ancestor',integratedCheckpoint,'HEAD']).status===0;
 for(const file of paths){
+ if(hasCheckpoint&&fs.existsSync(file)&&read(integratedCheckpoint,file)){report.push({path:file,state:'previously integrated; current fixes preserved'});continue;}
  const incoming=read(source,file);if(!incoming)throw new Error('Reviewed file missing: '+file);
  const previous=read(base,file)||Buffer.alloc(0),current=fs.existsSync(file)?fs.readFileSync(file):Buffer.alloc(0);
  if(current.equals(incoming)){report.push({path:file,state:'identical'});continue;}
