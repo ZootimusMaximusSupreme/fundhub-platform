@@ -13,12 +13,12 @@ for(const width of [1440,390,320])for(const screen of ['my-numbers','pipeline','
  await openScreen(page,'/app/'+screen+'.html',session,{'/api/org-brand':{ok:true,brand},'/api/read/my-numbers':numbers,'/api/read/portal-summary':{ok:true,scores:{},documents:[]}});
  await expect(page.locator('html')).toHaveAttribute('data-fh-rounded-default','');
  if(screen==='client-portal'){
-  await expect(page.locator('#fh-shell-chip-show')).toBeVisible();
+  await expect(page.locator('.client-ios-account>summary')).toBeVisible();
   await expect(page.locator('#fh-shell-src')).toBeHidden();
-  await page.locator('#fh-shell-chip-show').click();
-  await expect(page.locator('#fh-shell-out')).toBeVisible();
+  await page.locator('.client-ios-account>summary').click();
+  await expect(page.locator('.client-ios-signout')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-  await page.locator('#fh-shell-chip-hide').click();
+  await page.locator('.client-ios-account>summary').click();
   await expect(page.locator('#fh-shell-src')).toBeHidden();
  }
  await page.evaluate(()=>document.fonts.ready);

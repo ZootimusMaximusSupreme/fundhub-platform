@@ -37,7 +37,7 @@ function standIn(tables) {
         .run(...keys.map((k) => (row[k] === true ? 1 : row[k] === false ? 0 : row[k])));
     },
     async query(sql, params = []) {
-      const stmt = sqlite.prepare(portableSql(sql));
+      const stmt = sqlite.prepare(portableSql(sql).replace(/'now'/g, "'" + NOW.toISOString() + "'"));
       return { rows: stmt.all(...params).map((r) => ({ ...r })) };
     },
   };
