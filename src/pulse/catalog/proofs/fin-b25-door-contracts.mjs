@@ -76,6 +76,8 @@ const DEFINITIONS = [
   ["dd4ecaf3b77ea088d9cc", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-1 public/eeo-survey: GET ?token= load the voluntary EEO self-ID form (never writes)
   ["f45c2fe84d1f72ec511b", ["src/http/fin-b25-public-doors.test.mjs"]],
+  // routes-1 public/eeo-survey: POST submit the EEO self-ID answers; the database function stores the response and severs the application link atomically.
+  ["616e6e32a8325832552c", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-0 public/partner-page: JSON for a published white-label partner page (partner_id plus slug or domain).
   ["f354dffc9480c8065b41", ["src/http/fin-b25-public-doors.test.mjs"]],
   // routes-0 public/vsl-watch: VSL player beacon: stores watch sessions and position samples (rate limited by visitor and site-wide
@@ -90,6 +92,8 @@ const DEFINITIONS = [
   ["79c2ca0a249cdb1f167c", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-3 read/closer-now: GET which call this closer is on and what is next. Scoped to the signed-in staff member.
   ["dbabdb28f5a26a80ff13", ["src/http/fin-b25-read-doors.test.mjs"]],
+  // routes-1 read/company-activity: GET the Galaxy presence feed: shifts, calls and live agent activity for the signed-in company.
+  ["09f76eea10e8038f86b0", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-0 read/csm-queue: The CSM's day: clients to talk to today, what they owe (open balance next to the name), and what the
   ["7a5ecea71540e8e50f35", ["src/http/fin-b25-read-doors.test.mjs"]],
   // routes-2 read/finance-ask: POST /api/read/finance-ask {question, client_id} — answers three fixed question shapes (can I afford
