@@ -30,7 +30,11 @@ No entitlement, payment, signing, upload, chat, booking, referral or course cont
 
 - `node --test src/auth/magic-link.test.mjs`: **13 passed, 0 skipped** (no database suite; does not prove DB behavior).
 - Inline auth script compared with source branch: unchanged; no auth/API modification.
-- Page-specific Playwright suite: **blocked** at browser launch, all five cases report missing `/root/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell`. None reached UI assertions. Screenshots not yet produced. Lead notified to provision shared runtime browser.
+- Page-specific Playwright suite: **5 passed** using recovered Chromium `/workspace/scratch/browser-tools/chromium`. All UI assertions reached; 12 screenshots produced at 1440 / 390 / 320 for empty, sending, error and sent states. Initial missing-browser blocker resolved.
 - Authored captures: 1440 / 390 / 320, empty / sending / error / sent; native keyboard interaction, overflow assertion, failed-token privacy, successful account/session replacement.
-- Full lint/TypeScript/integrated performance and browser proof pending lead integration. No performance pass claimed. Removed external font requests from this page; no image payload or library introduced.
+- Full lint/TypeScript pending lead integration. Shared performance lab rerun: portal entry LCP **540ms**, CLS **0**, TTFB **6ms**, resource transfer **22,023 bytes**, JavaScript **6,292 bytes**, using 390px / 150ms latency / 1.6Mbps / 4x CPU and mocked APIs. Meets measured entry budgets; INP and live backend latency not measured. Removed external font requests; no image payload or library introduced.
 - No real writes, outbound messages, accounts or credentials used by page tests; API calls mocked.
+
+## First-paint follow-up
+
+The shared script activated the dedicated public page after first paint, causing lab CLS 0.15745. Added static `data-client-ios` on this dedicated unauthenticated page so its already-loaded CSS applies immediately. No session, identity, API, navigation or permission behavior changed. Rerun CLS is 0. Shared lab JSON updated by its existing runner; the client-home measurement is incidental and owned by lead.

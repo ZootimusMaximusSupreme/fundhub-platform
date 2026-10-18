@@ -1,9 +1,14 @@
 # Client portal cloud checkpoint
 
-24/24 actual client page builders completed; no duplicate builders started. Home phone clipping, debug header, repeated desktop wordmark, and stage wrapping repaired.
+Review: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/67
+Branch: codex/client-portal-ios-redo (against codex/two-ios-apps-launch; no production deployment).
 
-Verification: 76 combined browser checks passed, plus Credit 3, Connections 14 and Accounts responsive/control proof. Lint passed (3969 scripts); TypeScript passed. Full suite has baseline failures and timed out. Home lab LCP about 2.64s remains above 2.5s budget.
+24/24 client page builders complete; 0 pages remaining. Home header/progress/wrapping fixed; actual current stage retained. Affiliate late-read race fixed.
 
-Referral own-account UI/security checks pass; database proof PASSED in disposable CI PostgreSQL: 27 tests, including refresh/fresh password sign-in and cross-account refusal; 7 unprivileged role/RLS checks also passed. No usable cloud database or live client account lookup is available. client@fundhub.ai is the seeded client demo; chris@ remains owner. Coherent live demo samples are still pending and have not been applied to real accounts.
+Final combined browser run: 99/99 passed at 1440/390/320, including canonical samples across 19 data pages and data-view switching. TypeScript passed. Lint final rerun is in progress; prior 3973 scripts passed. Real disposable PostgreSQL: 28 tests passed (referral refresh/fresh password sign-in, own-data refusal, sample account/session/sentinel and bank-write guard); 7 application-role/RLS checks passed, 0 skips. Independent sample review: 6 unit + 4 browser passed, no remaining observed safety blocker.
 
-Review build pushed: PR https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/67 at a7be403dd48c6065f7da2a00e39acfbe5a5e4872. CI proof: https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39101843819 . Next: finish strictly account-scoped coherent demo samples and Home performance budget, then final integration review. No production deployment. Packaging is queued until final implementation completion. No repeated design approval needed.
+Home lab LCP 0.98s / CLS .065; sign-in .54s / CLS 0. Lab APIs mocked; live backend timing and field INP unmeasured. Full baseline suite still has failures/timeouts; no full-suite pass claimed.
+
+client@fundhub.ai samples implemented, gated by verified account + org + linked seed sentinel; 20 reads derive from one fictional file through existing engines. View real account preserves original records/actions; sample mutations refused, referral remains real. chris@ stays owner. Actual production account linkage remains unverified without live lookup access.
+
+Next: final evidence/CI checkpoint, then ONE NEW separate Fundhub-only HTML packaging agent. No repeated design approval or owner action needed for that work. Production-release choice remains with Chris.

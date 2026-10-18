@@ -54,3 +54,15 @@ Post-review full focused browser rerun:36/36pass, including visible all8stage di
 ## Font request follow-up
 
 Legacy Google font CSS now loads with media=print and switches to all on load; noscript fallback preserved. Own8 browser cases pass after source change. Exact throttled lab rerun Home LCP2616ms / CLS0.0131; isolated repeat2640ms / sameCLS. The2.5s LCP budget remains missed and is not marked passed. Both raw runs retained in page_client_portal-font-performance.json. Second shared lab run also observed login CLS0.15745 (prior run0); login is outside this agent scope, reported to lead without modification.
+
+## Cold-load performance repair
+
+Waterfall showed verified client presentation waited behind the140KB shared staff shell and full234KB HTML parse due defer ordering. Home now preloads the existing independent shared foundation and runs it asynchronously immediately after body exists. The same real session check still decides client presentation; original shell authentication, role gates and all control/data handlers still execute unchanged. The existing page presentation observer is registered before async foundation so progressive disclosure does not briefly paint expanded. No comment stripping, dependency or feature removal.
+
+Measured exact constrained390px lab: Home LCP1008ms,CLS0.06546 (prior2640ms,CLS0.0131); both LCP<2500ms and CLS<0.1 now fit. This is mocked API/local static server lab evidence, not a live backend or INP claim. Raw result in page_client_portal-async-performance.json; full focused browser rerun underway.
+
+Final cold-load placement guarantees both body and header exist before async shared foundation can run, preserving Sign out even on fast cache. Added visible shared Sign out assertion to every own client fixture. Final lab Home LCP1024ms,CLS0.06546; own8/8pass after header placement; full36/36pass on preceding async/early-observer source. No push or deployment.
+
+## Canonical stage consistency repair
+
+Disclosure status now reads the same actual portal-summary `stage.key` used by hero copy; it no longer derives current status from the older funding stepper, which proves only booking/payment. Canonical soft_pull sample now shows Current: Credit pull received while the hero says soft-pull assessment is in. Unknown/unloaded stage says Status updating. All eight original stage nodes and handlers remain intact. Added regression using the tracked canonical sample bundle; checks hero/current summary agreement and all8stages preserved.

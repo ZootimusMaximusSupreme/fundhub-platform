@@ -525,7 +525,7 @@
           "kind": "personal",
           "name": "Portal Sample (personal)",
           "archived_at": null,
-          "created_at": "2026-10-18T05:56:50.894Z",
+          "created_at": "2026-10-17T12:00:00.000Z",
           "accounts": [
             {
               "id": "sample-7",
@@ -575,7 +575,7 @@
           "kind": "business",
           "name": "Sample Consulting LLC",
           "archived_at": null,
-          "created_at": "2026-10-18T05:56:50.896Z",
+          "created_at": "2026-10-17T12:00:00.000Z",
           "accounts": [
             {
               "id": "sample-6",

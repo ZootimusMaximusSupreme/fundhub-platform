@@ -1,3 +1,5 @@
+> CURRENT INTEGRATION CHECKPOINT: 24/24 pages implemented; final combined browser99/99 passed. Real PostgreSQL referral/sample linkage28/28 and app-role guards7/7 passed. Samples now implemented for strict verified client@ seed linkage, chris@ untouched. Home/sign-in lab budgets now pass. See [short independently readable checkpoint](client-portal-ios-progress.md) and [PR67](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/67). Older unresolved entries below are chronological evidence, superseded by this checkpoint where explicitly resolved. Full baseline suite and production account lookup remain unverified/red. No production deployment.
+
 # Client portal iOS redesign — cloud execution board
 
 ## Owner approval and scope
@@ -244,3 +246,12 @@ See [short current checkpoint](client-portal-ios-progress.md). All 24 page build
 ### Integrated PR and database proof
 
 PR #67: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/67 at a7be403dd48c6065f7da2a00e39acfbe5a5e4872. Focused CI run39101843819 completed real scratch PostgreSQL referral checks:27passed,0skipped, including refresh/fresh login and forged identity isolation. Unprivileged fundhub_app RLS/role checks7passed,0skipped. This closes the missing database proof; it does not verify production client@ account existence or populate samples. Existing Home agent resumed for performance; same read-only reviewer investigating canonical single-file sample generator, no duplicate page builders.
+
+
+## Final implementation checkpoint
+
+All 24 existing page agents completed; follow-ups reused original Home, Affiliate and Portal Sign-in owners. No duplicate page builders. Canonical account samples use planMixedSandboxUser -> same Visa -> buildSampleCreditFile -> withEngineResult -> normal ingests ->20 real portal/money readers in disposable CI, not stitched page fixtures. Static bundle has synthetic IDs and no credentials or live client records. Eligibility requires authenticated client kind, actual account ID/org/client join, active account, normalized client@fundhub.ai and FDH-TEST-CLIENT-ROLE-ACCOUNT; authorized reps/staff/chris/ordinary clients excluded. Query failure refuses sample reads/mutations rather than allowing writes. Real-record switch uses a presentation cookie only; every normal server permission/scope still executes. Referral stays real and is never fabricated. Bank direct-resolver handlers explicitly guarded. Production account linkage has not been queried.
+
+99 combined browser tests pass, 6 sample unit tests, 26 shared/routes tests,18 scoped affiliate tests pass. Real PostgreSQL28 plus7 app-role/RLS passed0skipped at run39102475702; newer final source CI in progress. Final lint rerun in progress (previous3973passed); TypeScript0. HomeLCP980ms/CLS.06546 and sign-inLCP540ms/CLS0 in constrained390px lab; INP/live backend latency not proved. Full broad suite baseline failures/timeouts remain; no safety guards weakened. All IDs preservation evidence retained.
+
+Final source is integrated in review branch; packaging starts only after this checkpoint and final CI/evidence publication. Packaging owns only export outputs/manifests, no app edits.

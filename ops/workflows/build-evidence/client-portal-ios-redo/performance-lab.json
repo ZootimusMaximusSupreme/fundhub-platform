@@ -3,20 +3,20 @@
   "results": [
     {
       "path": "/portal-login.html",
-      "lcp_ms": 492,
-      "cls": 0.1574533471563981,
-      "ttfb_ms": 4.099999999627471,
-      "resource_transfer_bytes": 20132,
-      "javascript_transfer_bytes": 5057,
+      "lcp_ms": 540,
+      "cls": 0,
+      "ttfb_ms": 6,
+      "resource_transfer_bytes": 22023,
+      "javascript_transfer_bytes": 6292,
       "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
     },
     {
       "path": "/app/client-portal.html",
-      "lcp_ms": 2640,
-      "cls": 0.013109716590096635,
-      "ttfb_ms": 0.900000000372529,
-      "resource_transfer_bytes": 273646,
-      "javascript_transfer_bytes": 203736,
+      "lcp_ms": 980,
+      "cls": 0.06545822297054862,
+      "ttfb_ms": 1.799999998882413,
+      "resource_transfer_bytes": 275537,
+      "javascript_transfer_bytes": 198679,
       "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
     }
   ]
