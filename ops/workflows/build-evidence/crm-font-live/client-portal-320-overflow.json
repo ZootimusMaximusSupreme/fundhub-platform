@@ -1,257 +1,59 @@
 {
   "viewport": 320,
-  "document": 349,
+  "document": 320,
   "items": [
     {
-      "tag": "DIV",
-      "id": "fh-shell-chip",
-      "cls": "",
+      "tag": "BUTTON",
+      "id": "",
+      "cls": "tab",
       "rect": {
-        "x": 32,
-        "y": 72.5,
-        "width": 316.8125,
-        "height": 58,
-        "top": 72.5,
-        "right": 348.8125,
-        "bottom": 130.5,
-        "left": 32
+        "x": 258.921875,
+        "y": 806.171875,
+        "width": 104.984375,
+        "height": 44,
+        "top": 806.171875,
+        "right": 363.90625,
+        "bottom": 850.171875,
+        "left": 258.921875
       },
-      "scroll": 315,
-      "client": 315,
+      "scroll": 103,
+      "client": 103,
       "position": "static"
     },
     {
       "tag": "BUTTON",
-      "id": "fh-shell-chip-hide",
-      "cls": "",
-      "rect": {
-        "x": 295.8125,
-        "y": 81.5,
-        "width": 40,
-        "height": 40,
-        "top": 81.5,
-        "right": 335.8125,
-        "bottom": 121.5,
-        "left": 295.8125
-      },
-      "scroll": 40,
-      "client": 40,
-      "position": "relative"
-    },
-    {
-      "tag": "DIV",
       "id": "",
-      "cls": "step future",
+      "cls": "tab",
       "rect": {
-        "x": 314.125,
-        "y": 1232.28125,
-        "width": 58.234375,
-        "height": 66.5,
-        "top": 1232.28125,
-        "right": 372.359375,
-        "bottom": 1298.78125,
-        "left": 314.125
+        "x": 371.90625,
+        "y": 806.171875,
+        "width": 79.484375,
+        "height": 44,
+        "top": 806.171875,
+        "right": 451.390625,
+        "bottom": 850.171875,
+        "left": 371.90625
       },
-      "scroll": 58,
-      "client": 58,
-      "position": "relative"
-    },
-    {
-      "tag": "SPAN",
-      "id": "",
-      "cls": "line",
-      "rect": {
-        "x": 285.015625,
-        "y": 1245.28125,
-        "width": 58.234375,
-        "height": 2,
-        "top": 1245.28125,
-        "right": 343.25,
-        "bottom": 1247.28125,
-        "left": 285.015625
-      },
-      "scroll": 58,
-      "client": 58,
-      "position": "absolute"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "dot",
-      "rect": {
-        "x": 330.234375,
-        "y": 1232.28125,
-        "width": 26,
-        "height": 26,
-        "top": 1232.28125,
-        "right": 356.234375,
-        "bottom": 1258.28125,
-        "left": 330.234375
-      },
-      "scroll": 22,
-      "client": 22,
+      "scroll": 77,
+      "client": 77,
       "position": "static"
     },
     {
-      "tag": "DIV",
+      "tag": "BUTTON",
       "id": "",
-      "cls": "lbl",
+      "cls": "tab",
       "rect": {
-        "x": 314.125,
-        "y": 1266.28125,
-        "width": 58.234375,
-        "height": 32.5,
-        "top": 1266.28125,
-        "right": 372.359375,
-        "bottom": 1298.78125,
-        "left": 314.125
+        "x": 459.390625,
+        "y": 806.171875,
+        "width": 94.515625,
+        "height": 44,
+        "top": 806.171875,
+        "right": 553.90625,
+        "bottom": 850.171875,
+        "left": 459.390625
       },
-      "scroll": 58,
-      "client": 58,
-      "position": "static"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "step future",
-      "rect": {
-        "x": 372.359375,
-        "y": 1232.28125,
-        "width": 44.265625,
-        "height": 66.5,
-        "top": 1232.28125,
-        "right": 416.625,
-        "bottom": 1298.78125,
-        "left": 372.359375
-      },
-      "scroll": 44,
-      "client": 44,
-      "position": "relative"
-    },
-    {
-      "tag": "SPAN",
-      "id": "",
-      "cls": "line",
-      "rect": {
-        "x": 350.234375,
-        "y": 1245.28125,
-        "width": 44.265625,
-        "height": 2,
-        "top": 1245.28125,
-        "right": 394.5,
-        "bottom": 1247.28125,
-        "left": 350.234375
-      },
-      "scroll": 44,
-      "client": 44,
-      "position": "absolute"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "dot",
-      "rect": {
-        "x": 381.484375,
-        "y": 1232.28125,
-        "width": 26,
-        "height": 26,
-        "top": 1232.28125,
-        "right": 407.484375,
-        "bottom": 1258.28125,
-        "left": 381.484375
-      },
-      "scroll": 22,
-      "client": 22,
-      "position": "static"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "lbl",
-      "rect": {
-        "x": 372.359375,
-        "y": 1266.28125,
-        "width": 44.265625,
-        "height": 32.5,
-        "top": 1266.28125,
-        "right": 416.625,
-        "bottom": 1298.78125,
-        "left": 372.359375
-      },
-      "scroll": 44,
-      "client": 44,
-      "position": "static"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "step future",
-      "rect": {
-        "x": 416.625,
-        "y": 1232.28125,
-        "width": 52.953125,
-        "height": 66.5,
-        "top": 1232.28125,
-        "right": 469.578125,
-        "bottom": 1298.78125,
-        "left": 416.625
-      },
-      "scroll": 53,
-      "client": 53,
-      "position": "relative"
-    },
-    {
-      "tag": "SPAN",
-      "id": "",
-      "cls": "line",
-      "rect": {
-        "x": 390.15625,
-        "y": 1245.28125,
-        "width": 52.953125,
-        "height": 2,
-        "top": 1245.28125,
-        "right": 443.109375,
-        "bottom": 1247.28125,
-        "left": 390.15625
-      },
-      "scroll": 53,
-      "client": 53,
-      "position": "absolute"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "dot",
-      "rect": {
-        "x": 430.09375,
-        "y": 1232.28125,
-        "width": 26,
-        "height": 26,
-        "top": 1232.28125,
-        "right": 456.09375,
-        "bottom": 1258.28125,
-        "left": 430.09375
-      },
-      "scroll": 22,
-      "client": 22,
-      "position": "static"
-    },
-    {
-      "tag": "DIV",
-      "id": "",
-      "cls": "lbl",
-      "rect": {
-        "x": 416.625,
-        "y": 1266.28125,
-        "width": 52.953125,
-        "height": 32.5,
-        "top": 1266.28125,
-        "right": 469.578125,
-        "bottom": 1298.78125,
-        "left": 416.625
-      },
-      "scroll": 53,
-      "client": 53,
+      "scroll": 93,
+      "client": 93,
       "position": "static"
     }
   ]
