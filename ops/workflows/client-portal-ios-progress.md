@@ -1,11 +1,9 @@
-## Short progress checkpoint — 2026-10-18
+# Client portal cloud checkpoint
 
-- Page builders: 24/24 actual client pages finished; 0 remaining. Staff-only consent desk preserved unchanged.
-- Current operation: uploading committed source and marked evidence through GitHub connector; 160/331 files saved as verified blobs. Full source PR not published yet.
-- No known page-layout fix remains. Clean combined browser run: 76/76 pass. Original-ID inventory: no missing IDs.
-- Checks still open: real database referral refresh/fresh sign-in; coherent client@ demo data; full-suite baseline failures/timeouts; Home lab LCP about 2.64s vs 2.5s budget, some login CLS variation. No database skip counted as pass.
-- Referral UI/navigation and own-row permission checks pass. Existing persisted accounts.affiliate_id is the source of access; real database acceptance is unrun.
-- Correct demo login: client@fundhub.ai. Chris remains owner. No sample data populated into that account; UI screenshots use safe mocked responses only.
-- External blocker: no DATABASE_URL/authorized account connection in this cloud runtime. Scratch Postgres cannot init as root; sandbox refuses switching groups/users.
-- Owner action: usable database access is needed to finish account/data checks; no new design/build approval needed.
-- Packaging: one NEW separate packaging agent remains queued until full redesign completion/integration. Do not export unfinished source as final. No main merge or production deployment.
+24/24 actual client page builders completed; no duplicate builders started. Home phone clipping, debug header, repeated desktop wordmark, and stage wrapping repaired.
+
+Verification: 76 combined browser checks passed, plus Credit 3, Connections 14 and Accounts responsive/control proof. Lint passed (3969 scripts); TypeScript passed. Full suite has baseline failures and timed out. Home lab LCP about 2.64s remains above 2.5s budget.
+
+Referral own-account UI/security checks pass; database fresh-sign-in proof awaits disposable CI PostgreSQL. No usable cloud database or live client account lookup is available. client@fundhub.ai is the seeded client demo; chris@ remains owner. Coherent live demo samples are still pending and have not been applied to real accounts.
+
+Next: publish integrated code and essential current phone/desktop evidence in a draft PR against codex/two-ios-apps-launch, then run focused disposable-database CI. No production deployment. Packaging is queued until final implementation completion. No repeated design approval needed.
