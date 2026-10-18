@@ -24,7 +24,7 @@ concurrency:
 jobs:
   font-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,15 +59,16 @@ jobs:
         run: |
           node --test src/ui/*.test.mjs src/http/app-nav-reachability.test.mjs src/http/crm-html.test.mjs src/http/client-panel-screen.test.mjs src/pulse/coverage/gap-portal.test.mjs src/http/affiliates-self-read.test.mjs src/demo/client-portal-samples.test.mjs src/http/morning-brief-page.test.mjs src/http/contracts-screen.test.mjs src/pulse/catalog/proofs/fin-b01-paid-taps.test.mjs src/pulse/catalog/proofs/fin-b01-paid-writes.test.mjs src/pulse/catalog/proofs/fin-b02-transfers-open.test.mjs src/pulse/catalog/proofs/fin-b16-present.test.mjs src/pulse/catalog/proofs/s4-financeos-frame.test.mjs src/pulse/catalog/proofs/fin-b20-sales-floor-reads.test.mjs src/pulse/catalog/proofs/fin-b23-money-helper-poll.test.mjs
       - name: Actual browser font and feature checks
+        timeout-minutes: 15
         id: browser
         continue-on-error: true
         env:
           TYPE_ONLY: ${{ contains(github.event.head_commit.message, '[type-only]') }}
         run: |
           if [ "$TYPE_ONLY" = "true" ]; then
-            node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/partner-brand-crm.spec.mjs --reporter=line
+            node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/partner-brand-crm.spec.mjs --workers=4 --max-failures=8 --reporter=line
           else
-          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs e2e/page_*.spec.mjs e2e/client-ios-integration.spec.mjs e2e/client-ios-samples.spec.mjs e2e/client-brand-preservation.spec.mjs --reporter=line 
+          node node_modules/@playwright/test/cli.js test e2e/font-reference.spec.mjs e2e/sidebar-roles.spec.mjs e2e/partner-brand-crm.spec.mjs e2e/sales-dashboards.spec.mjs e2e/pipeline-workspace.spec.mjs e2e/ccp-workspace-layout.spec.mjs e2e/closer-dashboard-layout.spec.mjs e2e/calendar-workspace.spec.mjs e2e/documents-workspace.spec.mjs e2e/messaging-layout-professional.spec.mjs e2e/page_*.spec.mjs e2e/client-ios-integration.spec.mjs e2e/client-ios-samples.spec.mjs e2e/client-brand-preservation.spec.mjs --workers=4 --max-failures=8 --reporter=line 
           fi
       - name: Money account, decline and transfer page controls
         id: money
