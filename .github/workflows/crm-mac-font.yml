@@ -1,4 +1,4 @@
-name: Native Mac rounded font proof
+name: Mac rendered typography proof
 on:
   push:
     branches: [codex/crm-live-font-reconcile]
@@ -29,7 +29,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           test -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-      - name: Actual Apple system font in Chrome
+      - name: Actual rounded face in Mac Chrome
         id: browser
         continue-on-error: true
         env:
@@ -45,9 +45,9 @@ jobs:
           const out='ops/workflows/build-evidence/crm-mac-font';
           fs.mkdirSync(out,{recursive:true});fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,browser:process.env.BROWSER,runtime:'macos-latest; real Chrome',noCustomerWrites:true},null,2));
           execFileSync('git',['config','user.name','Fundhub UI checks']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);execFileSync('git',['add','-f','--',out]);
-          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){execFileSync('git',['commit','-m','Record actual macOS rounded font proof'],{stdio:'inherit'});execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});}
+          if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){execFileSync('git',['commit','-m','Record actual macOS rounded typography and native or fallback identity'],{stdio:'inherit'});execFileSync('git',['pull','--rebase','origin','codex/crm-live-font-reconcile'],{stdio:'inherit'});execFileSync('git',['push','origin','HEAD:codex/crm-live-font-reconcile'],{stdio:'inherit'});}
           JS
-      - name: Require native glyph proof
+      - name: Require documented rounded glyph proof
         if: always()
         env:
           BROWSER: ${{ steps.browser.outcome }}

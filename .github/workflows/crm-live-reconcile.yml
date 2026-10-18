@@ -196,12 +196,19 @@ jobs:
         run: |
           npm ci --ignore-scripts
           node db/migrate.mjs
+          node --input-type=module <<'JS'
+          import {db,close} from './src/db.mjs';
+          import {resolveDefaultOrg} from './src/auth/org.mjs';
+          const org=await resolveDefaultOrg(db);
+          await db.query("INSERT INTO staff (org_id,email,name,role,status) VALUES ($1,'portal-ci-owner@example.test','Portal CI owner','owner','active') ON CONFLICT DO NOTHING",[org]);
+          await close();
+          JS
           psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
       - name: Actual referral persistence and exact sample account linkage
         id: referral
         continue-on-error: true
         run: |
-          node --test --test-concurrency=1 src/http/affiliate-referral.pg.test.mjs src/demo/client-portal-samples.pg.test.mjs
+          node --test --test-concurrency=1 src/http/affiliate-referral.pg.test.mjs src/affiliates/two-tier-chain.pg.test.mjs src/demo/client-portal-samples.pg.test.mjs
       - name: App role privileges and tenant isolation
         id: isolation
         continue-on-error: true
@@ -210,7 +217,7 @@ jobs:
           ALLOW_SUPERUSER_DB: ""
         run: |
           npm run guard:db
-          node --test --test-concurrency=1 src/compliance/rls-bypass.pg.test.mjs src/compliance/invariants.pg.test.mjs
+          node --test --test-concurrency=1 src/compliance/rls-bypass.pg.test.mjs src/compliance/invariants.pg.test.mjs src/security/superuser-guard.test.mjs src/security/rls-shape.test.mjs
       - name: Preserve honest database checkpoint
         if: always()
         env:
@@ -223,7 +230,7 @@ jobs:
           import {execFileSync} from 'node:child_process';
           const out='ops/workflows/build-evidence/crm-referral-live';
           fs.mkdirSync(out,{recursive:true});
-          fs.writeFileSync(out+'/checks.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,referral:process.env.REFERRAL,isolation:process.env.ISOLATION,database:'disposable GitHub Postgres; never production',noCustomerWrites:true,noOutboundSends:true},null,2));
+          fs.writeFileSync(out+'/'+process.env.GITHUB_RUN_ID+'.json',JSON.stringify({source:process.env.GITHUB_SHA,prepare:process.env.PREPARE,referral:process.env.REFERRAL,isolation:process.env.ISOLATION,database:'disposable GitHub Postgres; never production',noCustomerWrites:true,noOutboundSends:true},null,2));
           execFileSync('git',['config','user.name','Fundhub UI checks']);
           execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
           execFileSync('git',['add','-f','--',out]);

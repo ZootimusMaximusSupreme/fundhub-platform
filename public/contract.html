@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Fundhub — Your document</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -111,18 +111,20 @@ button.ghost{background:transparent;color:var(--ink);border-color:var(--line);fo
 .bar .left{flex:1;max-width:520px;color:var(--gray);font-size:12.5px}
 @media print{.panel,.bar,header .sub,.spectrum{display:none}.doc{border:0;padding:0}}
 </style>
-</head><body>
+<link rel="stylesheet" href="/contract-ios.css">
+</head><body data-client-ios data-client-page="contract" data-client-public>
 <div class="spectrum"></div>
 <div class="wrap">
   <header>
-    <div class="brand">fundhub</div>
+    <div class="brand"><span class="contract-mark" aria-hidden="true">f.</span>Fundhub <span class="contract-label">Secure document</span></div>
     <h1 id="title">Loading your document…</h1>
     <div class="sub" id="sub"></div>
     <div class="who" id="who"></div>
   </header>
 
-  <div id="problem" style="display:none"><div class="err" id="problemText"></div></div>
-  <div id="waiting" style="display:none"><div class="wait" id="waitingText"></div></div>
+  <div id="documentLoading" class="contract-loading" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div id="problem" role="alert" style="display:none"><div class="err" id="problemText"></div></div>
+  <div id="waiting" role="status" style="display:none"><div class="wait" id="waitingText"></div></div>
 
   <div id="main" style="display:none">
     <div class="doc" id="body" style="display:none"></div>
@@ -135,7 +137,7 @@ button.ghost{background:transparent;color:var(--ink);border-color:var(--line);fo
       <input id="name" type="text" autocomplete="name" placeholder="Your full name">
       <label class="agree"><input id="agree" type="checkbox"><span id="statement"></span></label>
       <button id="go" disabled>Sign</button>
-      <div class="msg" id="msg"></div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
       <div class="note">
         When you press Sign we save the exact document above, your name, and the
         date and time. Your internet address is saved too, as a record of where
@@ -203,6 +205,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   var state = { contract: null, values: {}, rendered: false };
 
   function problem(text) {
+    $("documentLoading").hidden = true;
     $("title").textContent = "This document could not be opened";
     $("sub").textContent = ""; $("who").innerHTML = "";
     $("problem").style.display = ""; $("problemText").innerHTML = esc(text);
@@ -210,6 +213,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
     $("waiting").style.display = "none";
   }
   function waiting(text) {
+    $("documentLoading").hidden = true;
     $("title").textContent = "Not your turn yet";
     $("sub").innerHTML = '<span class="badge b-warn">waiting</span>';
     $("waiting").style.display = ""; $("waitingText").innerHTML = esc(text);
@@ -338,9 +342,18 @@ window.dispatchEvent(new Event("pdfjs-ready"));
         } else {
           var input = document.createElement("input");
           input.type = "text";
+          input.setAttribute("aria-label", f.label + (f.required ? " (required)" : ""));
           input.value = state.values[f.id] || "";
           input.oninput = function () { state.values[f.id] = input.value; paintField(el, f); check(); };
           el.appendChild(input);
+        }
+        if (!f.locked && (f.type === "signature" || f.type === "initials" || f.type === "checkbox")) {
+          el.tabIndex = 0;
+          el.setAttribute("role", f.type === "checkbox" ? "checkbox" : "button");
+          el.setAttribute("aria-label", f.label + (f.required ? " (required)" : ""));
+          el.onkeydown = function (event) {
+            if (event.key === "Enter" || event.key === " ") { event.preventDefault(); el.click(); }
+          };
         }
         el.appendChild(tag);
         wrap.appendChild(el);
@@ -362,6 +375,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
       if (tag) el.appendChild(tag);
     } else if (f.type === "checkbox") {
       filled = state.values[f.id] === "true";
+      el.setAttribute("aria-checked", filled ? "true" : "false");
       el.textContent = filled ? "X" : "";
       if (tag) el.appendChild(tag);
     } else {
@@ -417,6 +431,7 @@ window.dispatchEvent(new Event("pdfjs-ready"));
   /* ── render ─────────────────────────────────────────────────────────────── */
 
   function render(c) {
+    $("documentLoading").hidden = true;
     state.contract = c;
     $("main").style.display = "";
     $("problem").style.display = "none";
