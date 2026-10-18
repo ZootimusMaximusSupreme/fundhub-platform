@@ -15,3 +15,9 @@ Remaining checks: finish22pages; final integration/feature review; full lint/Typ
 Referral persistence/refusal tests and strict client@ samples remain intact; backend unchanged. Prior actual client login/session/summary linkage passed in the earlier hosted review, not newly reverified on this refinement. Chris@ stays owner. No main merge, migrations, production deploy, credential changes or live test writes. No new owner design approval is needed; the cloud workspace must reconnect to resume.
 
 [Board](crm-portal-layout-audit-2026-10-18.md) · [Page manifest](crm-portal-layout-manifest.json)
+
+## Fresh hosted checkpoint
+
+At the owner's request to make the build visible, a fresh non-production deploy of source `0147b6f6b4e9c3ca8ed71fe9c0ebc6bc83a5d3b2` succeeded in run39138135301. Its direct sign-in HTML and shared workspace stylesheet both passed HTTP200/content checks. [Open portal](https://6ad4de479b7f8edb397e9c25--transcendent-wisp-888771.netlify.app/login.html?next=%2Fapp%2Fclient-portal.html) · [CRM sign-in](https://6ad4de479b7f8edb397e9c25--transcendent-wisp-888771.netlify.app/login.html?next=%2Fapp%2Fpipeline.html). Account authentication remains intact; no credentials or account roles changed.
+
+Production was not replaced. Comparison against main0998ff49969c6e2663a6e1851b4634ab5896113d showed the refinement branch45commits ahead and48behind; publishing it directly would overwrite newer production work. CI's named guards also failed before cancellation; final production reconciliation/verification remains required. The cloud executor is still unavailable. The independent read-only release agent could not run because the agent service reported a usage limit; no independent release sign-off is claimed.
