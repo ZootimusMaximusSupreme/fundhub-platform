@@ -1,0 +1,64 @@
+name: client portal referral proof
+on:
+  push:
+    branches: [codex/client-portal-ios-redo]
+  pull_request:
+    paths:
+      - api/read/affiliates.mjs
+      - src/http/affiliate-referral.pg.test.mjs
+      - .github/workflows/client-portal-ios-proof.yml
+permissions:
+  contents: read
+jobs:
+  referral:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_portal_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Disposable CI service only. No production credentials or customer data.
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_portal_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_portal_ci
+      ALLOW_SUPERUSER_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Build a fresh scratch database
+        run: node db/migrate.mjs
+      - name: Create a scratch-only staff fixture
+        run: |
+          node --input-type=module <<'JS'
+          import { db, close } from './src/db.mjs';
+          import { resolveDefaultOrg } from './src/auth/org.mjs';
+          const org = await resolveDefaultOrg(db);
+          await db.query(`INSERT INTO staff (org_id,email,name,role,status)
+            VALUES ($1,'portal-ci-owner@example.test','Portal CI owner','owner','active')
+            ON CONFLICT DO NOTHING`, [org]);
+          await close();
+          JS
+      - name: Real referral linkage, refresh, fresh login and own dashboard
+        run: |
+          node --test --test-concurrency=1 \
+            src/http/affiliate-referral.pg.test.mjs \
+            src/affiliates/two-tier-chain.pg.test.mjs
+      - name: Verify the unprivileged application role
+        run: |
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+          DATABASE_URL=postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_portal_ci \
+            ALLOW_SUPERUSER_DB= node --test src/security/superuser-guard.test.mjs src/security/rls-shape.test.mjs

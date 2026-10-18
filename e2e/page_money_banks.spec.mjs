@@ -1,0 +1,45 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const sample=JSON.parse(fs.readFileSync(new URL('../src/http/fixtures/money-banks.sample.json',import.meta.url)));
+for(const width of [1440,390,320])test(`Banks preserves client states and staff scope at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});
+ let state='full',role='client',reads=0;
+ await page.route('**/api/**',async route=>{
+  const path=new URL(route.request().url()).pathname;
+  const json=(d,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(d)});
+  if(path==='/api/auth/session')return json({ok:true,principal:role,staff:{role}});
+  if(path==='/api/read/affiliate-portal')return json({ok:true,enrolled:false});
+  if(path==='/api/money/banks'){
+   reads++;
+   if(state==='loading')return;
+   if(state==='error')return json({ok:false},503);
+   return json(state==='empty'?{...sample,recommended_banks:[],relationships:[],location:null}:sample);
+  }
+  return json({ok:false},404);
+ });
+ await page.goto('/app/money-banks.html');
+ await expect(page.locator('body')).toHaveAttribute('data-client-ios','');
+ await expect(page.locator('#banks-root')).toContainText('Chase');
+ await expect(page.locator('.staff')).toHaveCount(0);
+ await expect(page.locator('.mnav a')).toHaveCount(8);
+ await expect(page.locator('.mnav [aria-current=page]')).toHaveText('Banks');
+ for(const a of await page.locator('.mnav a').all())expect(await a.getAttribute('href')).toMatch(/^\/app\/financeos.html#/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_banks-${width}.png`,fullPage:true});
+ state='empty';await page.reload();await expect(page.locator('#banks-root')).toContainText('No banks on your plan yet');
+ await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_banks-empty-${width}.png`,fullPage:true});
+ await page.getByRole('link',{name:'Add business info'}).focus();
+ await expect(page.getByRole('link',{name:'Add business info'})).toBeFocused();
+ expect(await page.getByRole('link',{name:'Add business info'}).getAttribute('href')).toBe('/app/financeos.html#accounts');
+ state='error';await page.reload();await expect(page.getByRole('alert')).toBeVisible();
+ await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_banks-error-${width}.png`,fullPage:true});
+ const before=reads;state='full';await page.getByRole('button',{name:'Try again'}).focus();await page.keyboard.press('Enter');
+ await expect(page.locator('#banks-root')).toContainText('Chase');expect(reads).toBe(before+1);
+ state='loading';await page.reload();await expect(page.locator('[aria-busy=true]').first()).toBeVisible();
+ await page.screenshot({path:`ops/workflows/build-evidence/client-portal-ios-redo/page_money_banks-loading-${width}.png`,fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ role='staff';state='full';await page.goto('/app/money-banks.html?client_id=safe-fixture');
+ await expect(page.locator('#banks-root')).toContainText('Chase');await expect(page.locator('body')).not.toHaveAttribute('data-client-ios');
+ await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-fixture');
+ await expect(page.locator('.staff').first()).toBeVisible();
+});

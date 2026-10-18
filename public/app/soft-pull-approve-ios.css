@@ -1,0 +1,28 @@
+/* Signed-link approval uses the same client presentation without session navigation. */
+body[data-client-ios][data-client-page="soft-pull-approve"] .wrap{max-width:none;width:100%;padding:48px max(24px,calc((100% - 1040px)/2)) 64px}
+body[data-client-ios] .wrap>h1{max-width:800px;font-size:clamp(32px,4vw,48px);font-weight:750;letter-spacing:-.055em;line-height:1.08;margin:16px 0}
+body[data-client-ios] .mono{font-family:var(--sans);font-size:12px;font-weight:650;letter-spacing:.12em;color:#777b85}
+body[data-client-ios] .lede{font-size:16px;line-height:1.6;color:#666d79;margin-bottom:24px;max-width:760px}
+body[data-client-ios] .card{border:1px solid var(--client-line);border-radius:28px;background:#fff;padding:24px;margin-bottom:24px}
+body[data-client-ios] .card:first-of-type{background:#eeebfa}
+body[data-client-ios] .card h2{font-size:18px;letter-spacing:-.035em;margin:0 0 16px}
+body[data-client-ios] .disc,body[data-client-ios] ol.next{font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+body[data-client-ios] ol.next li{margin-bottom:8px}
+body[data-client-ios] #f{padding:24px;background:#fff;border:1px solid var(--client-line);border-radius:28px}
+body[data-client-ios] label{font-size:14px;margin:24px 0 8px;color:#505662}
+body[data-client-ios] input{min-width:0;border-radius:14px;padding:16px;background:#f7f8fa;font-size:16px;border:1px solid var(--client-line);color:var(--client-ink)}
+body[data-client-ios] .row2{gap:16px}
+body[data-client-ios] .row2>div{min-width:0}
+body[data-client-ios] .btn,body[data-client-ios] .btn-pay{min-height:52px;padding:16px 24px;border-radius:16px;background:#16171b;color:#fff;font-size:15px;margin-top:24px;line-height:1.45}
+body[data-client-ios] .btn-sec{min-height:48px;border-radius:14px;font-size:14px;background:#fff;padding:16px}
+body[data-client-ios] .biz{border:1px solid var(--client-line);border-radius:20px;background:#f7f8fa;padding:24px;margin-top:16px}
+body[data-client-ios] .biz-head strong{font-size:16px}
+body[data-client-ios] .biz-rm{min-height:44px;padding:8px 16px;font-size:13px;color:#79504d}
+body[data-client-ios] .fine{font-size:12px;color:#707683;line-height:1.6;margin-top:16px}
+body[data-client-ios] .total{padding:16px;border-radius:16px;background:#e7f4ec;font-size:18px;line-height:1.5;margin-top:16px}
+body[data-client-ios] .total span{display:block;font-size:14px}
+body[data-client-ios] .err,body[data-client-ios] .ok{border-radius:16px;padding:16px;font-size:15px;line-height:1.6;margin-top:16px;overflow-wrap:anywhere}
+body[data-client-ios] .approval-skeleton{padding:24px;border-radius:28px;background:#fff;min-height:240px}
+body[data-client-ios] .approval-skeleton span{display:block;background:#e9ebf1;height:24px;border-radius:8px;margin-bottom:24px}
+body[data-client-ios] .approval-skeleton span:last-child{width:65%}
+@media(max-width:600px){body[data-client-ios][data-client-page="soft-pull-approve"] .wrap{padding:32px 16px 48px}body[data-client-ios] .card,body[data-client-ios] #f{padding:24px 16px;border-radius:24px}body[data-client-ios] .row2{grid-template-columns:1fr;gap:0}body[data-client-ios] .biz{padding:16px}body[data-client-ios] .wrap>h1{font-size:34px}body[data-client-ios] .btn{padding:16px;font-size:14px}}

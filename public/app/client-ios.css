@@ -1,0 +1,31 @@
+/* Approved client portal foundation. Staff surfaces retain their own theme. */
+/* Keep the first paint stable while the session chooses the client or staff
+   frame. This is a layout skeleton, never a false empty account. */
+body[data-client-page]:not([data-client-public]):not([data-client-ready]):not([data-client-ios])>*{visibility:hidden}
+body[data-client-page]:not([data-client-public]):not([data-client-ready]):not([data-client-ios])::before{content:"Loading your workspace…";position:fixed;inset:0;z-index:200;background:linear-gradient(#e8e9f0,#e8e9f0) 254px 40px/180px 20px no-repeat,linear-gradient(#e1e3ed,#e1e3ed) 254px 128px/240px 52px no-repeat,linear-gradient(130deg,#252a40,#30384e) 254px 220px/calc(62% - 150px) 360px no-repeat,linear-gradient(#e9edf5,#e9edf5) calc(100% - 32px) 220px/30% 360px no-repeat,linear-gradient(#fcfcfd,#fcfcfd) left top/222px 100% no-repeat,#f4f5f7;padding:80px 32px 32px 254px;color:#777b85;font:14px -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+@media(max-width:760px){body[data-client-page]:not([data-client-public]):not([data-client-ready]):not([data-client-ios])::before{padding:80px 24px;background:linear-gradient(#e8e9f0,#e8e9f0) 24px 32px/160px 20px no-repeat,linear-gradient(#e1e3ed,#e1e3ed) 24px 128px/220px 48px no-repeat,linear-gradient(130deg,#252a40,#30384e) 24px 216px/calc(100% - 48px) 360px no-repeat,linear-gradient(#e9edf5,#e9edf5) 24px 600px/calc(100% - 48px) 180px no-repeat,#f4f5f7}}
+body[data-client-ios]{--client-ink:#16171b;--client-muted:#777b85;--client-canvas:#f4f5f7;--client-line:rgba(34,38,48,.09);--client-radius:28px;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;--ink:#16171b;--ink2:#303440;--paper:#f4f5f7;--line:rgba(34,38,48,.09);--gray:#777b85;--gray2:#9297a1;--soft:#eef0f6;--panel-shadow:0 10px 30px rgba(42,47,59,.045);margin:0;min-width:0;background:var(--client-canvas);color:var(--client-ink);font-family:var(--sans);letter-spacing:-.025em;-webkit-font-smoothing:antialiased}
+body[data-client-ios] *,body[data-client-ios] *::before,body[data-client-ios] *::after{box-sizing:border-box}
+body[data-client-ios] :is(button,input,select,textarea){font-family:var(--sans)}
+body[data-client-ios] :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid #6c7dd9;outline-offset:4px}
+body[data-client-ios] :is(button,summary,input:not([type=checkbox]):not([type=radio]),select){min-height:44px}
+body[data-client-ios] [hidden]{display:none!important}
+body[data-client-ios] img,body[data-client-ios] video{max-width:100%}
+body[data-client-ios] .client-ios-nav{position:fixed;inset:0 auto 0 0;z-index:75;display:flex;flex-direction:column;width:222px;padding:32px 24px 24px;border-right:1px solid var(--client-line);background:rgba(252,252,253,.94);backdrop-filter:blur(24px)}
+body[data-client-ios] .client-ios-brand{display:flex;align-items:center;gap:10px;min-height:44px;font-size:21px;font-weight:790;letter-spacing:-.06em;text-decoration:none;color:var(--client-ink)}
+body[data-client-ios] .client-ios-mark{display:grid;place-items:center;width:39px;height:39px;border-radius:12px;background:#111216;color:#fff;font-size:21px;font-weight:840}
+body[data-client-ios] .client-ios-nav-label{margin:56px 12px 12px;color:#969aa4;font-size:11px;font-weight:730;letter-spacing:.15em;text-transform:uppercase}
+body[data-client-ios] .client-ios-links{display:grid;gap:6px}
+body[data-client-ios] .client-ios-links a{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 12px;border-radius:14px;color:#6f737e;text-decoration:none;font-size:14px;font-weight:650}
+body[data-client-ios] .client-ios-links a:hover,body[data-client-ios] .client-ios-links a[aria-current=page]{color:var(--client-ink);background:#e9eaf0}
+body[data-client-ios] .client-ios-links svg{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body[data-client-ios] .client-ios-nav-foot{margin-top:auto;padding:20px 12px 0;border-top:1px solid var(--client-line);color:var(--client-muted);font-size:12px;line-height:1.55}
+body[data-client-ios][data-client-nav]{padding-left:222px}
+body[data-client-ios] .client-ios-sample{padding:8px 16px;border:1px solid var(--client-line);border-radius:16px;background:#eeebfa;color:#514b77;font-size:13px}
+body[data-client-ios] :is(#fh-shell-chip,#fh-shell-chip-show){display:none!important}
+body[data-client-ios] .topbar{padding-right:24px!important}
+body[data-client-ios] .client-ios-signout{margin-left:auto;min-height:44px;padding:8px 12px;border:1px solid var(--client-line);border-radius:12px;background:#fff;color:var(--client-ink);font:600 13px var(--sans);cursor:pointer}
+body[data-client-ios] .client-ios-session-error{padding:8px 16px;color:#8b2525;background:#fff0f0;font-size:13px}
+@media(max-width:760px){body[data-client-ios] #fh-chat-fab{bottom:calc(96px + env(safe-area-inset-bottom))!important}body[data-client-ios] #fh-chat-panel{bottom:calc(156px + env(safe-area-inset-bottom))!important;height:min(560px,calc(100dvh - 180px))!important}body[data-client-ios] .topbar{padding-right:16px!important}}
+@media(max-width:760px){body[data-client-ios][data-client-nav]{padding-left:0;padding-bottom:calc(96px + env(safe-area-inset-bottom))}body[data-client-ios] .client-ios-nav{inset:auto 10px calc(7px + env(safe-area-inset-bottom));width:auto;padding:5px;border:1px solid rgba(255,255,255,.9);border-radius:23px;background:rgba(250,250,252,.93);box-shadow:0 10px 35px rgba(27,31,46,.17)}body[data-client-ios] :is(.client-ios-brand,.client-ios-nav-label,.client-ios-nav-foot){display:none}body[data-client-ios] .client-ios-links{display:flex;gap:3px}body[data-client-ios] .client-ios-links a{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:3px;min-height:57px;padding:5px 2px;border-radius:18px;font-size:10px;text-align:center;overflow-wrap:anywhere}body[data-client-ios] .client-ios-links svg{width:20px;height:20px}}
+@media(prefers-reduced-motion:reduce){body[data-client-ios] *,body[data-client-ios] *::before,body[data-client-ios] *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

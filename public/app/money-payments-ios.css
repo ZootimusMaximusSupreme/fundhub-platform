@@ -1,0 +1,53 @@
+/* Client-only payment presentation. All data, permissions and actions stay in money-payments.js. */
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px 40px 8px;min-height:72px}
+body[data-client-ios] .mbar .brand{display:none}
+body[data-client-ios] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600;font-size:var(--fs-caption);min-height:44px}
+body[data-client-ios] .mbar a::before{content:'←';margin-right:8px}
+body[data-client-ios] .mnav{margin:16px 40px 0;padding:8px;gap:8px;border:1px solid var(--client-line);border-radius:24px;background:rgba(255,255,255,.65);max-width:calc(100% - 80px)}
+body[data-client-ios] .mnav a{justify-content:center;flex:1;border:0;border-radius:16px;padding:8px 16px;font-size:var(--fs-caption);font-weight:600;color:var(--client-muted);min-height:44px}
+body[data-client-ios] .mnav a[aria-current=page]{background:var(--client-ink);color:#fff}
+body[data-client-ios] main{padding:32px 40px 64px}
+body[data-client-ios] .head{margin-bottom:32px}
+body[data-client-ios] .head h1{font-size:var(--fs-metric)!important;font-weight:750;letter-spacing:-.06em;line-height:1.12;margin-bottom:8px}
+body[data-client-ios] .caption{color:var(--client-muted);line-height:1.6;overflow-wrap:anywhere}
+body[data-client-ios] .grid{gap:24px;margin-bottom:32px}
+body[data-client-ios] .card{border:1px solid rgba(255,255,255,.85);border-radius:28px;padding:24px;background:rgba(255,255,255,.91);box-shadow:var(--panel-shadow);min-width:0}
+body[data-client-ios] .eyebrow{font-family:var(--sans);font-size:var(--fs-caption);font-weight:700;letter-spacing:.08em;margin-bottom:16px}
+body[data-client-ios] .big,body[data-client-ios] .num{font-family:var(--sans);font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+body[data-client-ios] .big{font-size:var(--fs-metric);font-weight:730}
+body[data-client-ios] .tiles .tile:first-child{background:#222737;border-color:#222737;color:#fff}
+body[data-client-ios] .tiles .tile:first-child :is(.big,.num){color:#fff}
+body[data-client-ios] .tiles .tile:first-child :is(.caption,.eyebrow){color:#c5cad8}
+body[data-client-ios] .tiles .tile:nth-child(2){background:#eae9f4}
+body[data-client-ios] .tiles .tile:nth-child(3){background:#e9f0ef}
+body[data-client-ios] .block{margin-bottom:32px}
+body[data-client-ios] .block>h2{margin-bottom:8px;font-weight:730;letter-spacing:-.04em}
+body[data-client-ios] .fh-payments .plans{gap:24px}
+body[data-client-ios] .fh-payments .plan{gap:24px}
+body[data-client-ios] .fh-payments .plan-name{font-weight:700;overflow-wrap:anywhere}
+body[data-client-ios] .fh-payments .tag{padding:8px 16px;background:#f1f2f6;border:0;font-size:var(--fs-caption)}
+body[data-client-ios] .fh-payments .bar-track{fill:#eef0f5}
+body[data-client-ios] .fh-payments .bar-fill{fill:#7a79a9}
+body[data-client-ios] .scroll-x{max-width:100%;border-radius:16px}
+body[data-client-ios] :is(th,td){padding:16px 8px;font-size:var(--fs-caption)}
+body[data-client-ios] .fh-payments .rows .row{padding:16px 0}
+body[data-client-ios] .fh-payments .log li{padding:16px 0;gap:8px 16px}
+body[data-client-ios] .fh-payments .log .when{font-family:var(--sans);font-size:var(--fs-caption)}
+body[data-client-ios] .fh-payments .help{background:#eae9f4;gap:16px}
+body[data-client-ios] .btn-primary{border:0;border-radius:16px;min-height:48px;padding:8px 24px;background:var(--client-ink);color:#fff}
+body[data-client-ios] .btn-primary:hover{background:#363b4c}
+body[data-client-ios] :is(.empty,.error){min-width:0;border-radius:28px;background:#fff;padding:32px;gap:24px}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:16px 24px 0}
+ body[data-client-ios] .mnav{margin:8px 16px 0;max-width:calc(100% - 32px);border-radius:24px}
+ body[data-client-ios] .mnav a{flex:none;padding:8px 16px}
+ body[data-client-ios] main{padding:32px 16px 48px}
+ body[data-client-ios] .head{margin-bottom:24px;padding:0 8px}
+ body[data-client-ios] .grid{gap:16px;margin-bottom:24px}
+ body[data-client-ios] .card{padding:24px;border-radius:24px}
+ body[data-client-ios] .fh-payments .plans{gap:16px}
+ body[data-client-ios] .fh-payments .log li{grid-template-columns:minmax(0,1fr)}
+ body[data-client-ios] .fh-payments .facts{gap:16px}
+ body[data-client-ios] .fh-payments .row-name{white-space:normal;overflow-wrap:anywhere}
+ body[data-client-ios] .empty,body[data-client-ios] .error{padding:24px}
+}

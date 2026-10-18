@@ -1,0 +1,13 @@
+# Client portal iOS presentation — actual
+
+Approved scope: `ops/workflows/client-portal-ios-redo-2026-10-17.md`. This is a presentation/integration account of verified source and mocked browser behavior, not a claim that all live data paths have run.
+
+1. Each existing client page includes client-scoped shared presentation. A neutral layout skeleton is visible while `/api/auth/session` determines which frame applies. Only a verified `principal=client` enables client navigation. Staff retain their existing frame. Public sign-in uses the client style without authenticating; signed contracts use their own isolated stylesheet and signed-link APIs.
+2. Home keeps all original product/entitlement, upload/download, agreement, signature/consent, payments/history, course/deliverable, call confirmation, status/progress, score, advisor/chat, booking and PWA/push controls. Eight actual file stages remain in a native disclosure. The progress button uses the existing real progress URL. No four-stage sample contract was substituted.
+3. FinanceOS keeps16tabs and original money section modules. Standalone Money HTML doors retain their actual mounts and queries. They are not transformed into empty compatibility pages.
+4. Client referral enrollment still uses the existing transaction-backed `/api/affiliates/refer`. Only successful status+payload followed by the own affiliate read reveals the navigation item. Refresh/new browser sessions re-read the server. A failed response does not store a local enrollment flag.
+5. Affiliate data and totals bind the session's affiliate and organization. A linked client stays a client principal. An unenrolled client receives no roster. Forged query IDs cannot select another affiliate. Staff role checks are unchanged.
+6. Client sign out reuses an existing shell logout control where present; standalone pages use the same logout endpoint, retain retry on HTTP/network failure and clear stored identity after confirmed success. Test/debug chips are excluded from client presentation. Chat stays clear of the bottom navigation.
+7. Consent desk is intentionally staff-only. Its existing client bounce remains. The inline client signature form is the client path. API route signatures, bank/payment permissions, customer data and credentials were not rewritten by the redesign.
+
+Evidence: page feature matrices, original-ID preservation report,76new browser checks and independent review under `ops/workflows/build-evidence/client-portal-ios-redo/`. Tests use safe intercepted responses; they do not prove live account data or real transaction persistence. Database acceptance and coherent samples for the designated `client@fundhub.ai` account remain open; see exact board notes. No production release.

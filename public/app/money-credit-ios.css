@@ -1,0 +1,43 @@
+/* Standalone credit shell; verified client sessions only. */
+body[data-client-ios][data-client-page="money-credit"] .app{min-width:0}
+body[data-client-ios][data-client-page="money-credit"] .mbar{background:transparent;color:var(--client-muted);border:0;border-image:none;padding:24px 32px 8px;min-height:64px}
+body[data-client-ios][data-client-page="money-credit"] .mbar .brand{display:none}
+body[data-client-ios][data-client-page="money-credit"] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600}
+body[data-client-ios][data-client-page="money-credit"] .mbar a::before{content:"←";margin-right:8px}
+body[data-client-ios][data-client-page="money-credit"] .mnav{background:transparent;border:0;padding:8px 32px}
+body[data-client-ios][data-client-page="money-credit"] .mnav ul{gap:8px;padding:8px;border-radius:24px;background:#e9ebf1}
+body[data-client-ios][data-client-page="money-credit"] .mnav a{border:0;border-radius:16px;min-height:44px;color:#626875;font-weight:600;padding:0 16px}
+body[data-client-ios][data-client-page="money-credit"] .mnav a[aria-current="page"]{background:#fff;color:var(--client-ink);box-shadow:0 3px 12px #20283c0a}
+body[data-client-ios][data-client-page="money-credit"] main{padding:32px 32px 64px;min-width:0}
+body[data-client-ios][data-client-page="money-credit"] .head{margin-bottom:32px}
+body[data-client-ios][data-client-page="money-credit"] .head h1{font-size:clamp(40px,5vw,64px)!important;font-weight:740;letter-spacing:-.07em;line-height:1.1;margin-bottom:8px}
+body[data-client-ios][data-client-page="money-credit"] .caption{color:#646a76;overflow-wrap:anywhere}
+body[data-client-ios][data-client-page="money-credit"] .card{border:1px solid #ffffffeb;border-radius:28px;padding:24px;background:#fff;box-shadow:var(--panel-shadow)}
+body[data-client-ios][data-client-page="money-credit"] .eyebrow{font-family:var(--sans);font-size:12px!important;font-weight:700;letter-spacing:.08em;color:#69717f}
+body[data-client-ios][data-client-page="money-credit"] .big{font-family:var(--sans);font-size:48px!important;font-weight:720;letter-spacing:-.06em}
+body[data-client-ios][data-client-page="money-credit"] .num{font-family:var(--sans);font-variant-numeric:tabular-nums}
+body[data-client-ios][data-client-page="money-credit"] .grid.tiles:first-of-type>.tile{background:linear-gradient(145deg,#f0edf9,#fff)}
+body[data-client-ios][data-client-page="money-credit"] .grid.tiles>.tile:nth-child(2){background:linear-gradient(145deg,#eaf2fa,#fff)}
+body[data-client-ios][data-client-page="money-credit"] .grid.tiles>.tile:nth-child(3){background:linear-gradient(145deg,#eaf6ef,#fff)}
+body[data-client-ios][data-client-page="money-credit"] .gauge{max-width:176px;margin:8px 0}
+body[data-client-ios][data-client-page="money-credit"] .gauge-fill{stroke:#7773aa}
+body[data-client-ios][data-client-page="money-credit"] .gauge-track{stroke:#e5e4ed}
+body[data-client-ios][data-client-page="money-credit"] .sample{border:1px solid #e1d9f4;background:#eeebfa;color:#514b77;border-radius:16px;padding:16px}
+body[data-client-ios][data-client-page="money-credit"] .btn-primary{border-radius:16px;min-height:48px;background:#202432;color:#fff;border:0}
+body[data-client-ios][data-client-page="money-credit"] .scroll-x{max-width:100%;border-radius:16px;overscroll-behavior-x:contain}
+body[data-client-ios][data-client-page="money-credit"] th{background:#f4f5f8}
+body[data-client-ios][data-client-page="money-credit"] :is(th,td){padding:16px}
+body[data-client-ios][data-client-page="money-credit"] .empty,body[data-client-ios][data-client-page="money-credit"] .error{padding:32px}
+@media(max-width:760px){
+ body[data-client-ios][data-client-page="money-credit"] :is(.mbar,.mnav){padding-left:16px;padding-right:16px}
+ body[data-client-ios][data-client-page="money-credit"] main{padding:24px 16px 48px}
+ body[data-client-ios][data-client-page="money-credit"] .mnav ul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+ body[data-client-ios][data-client-page="money-credit"] .mnav a{padding:0 8px;justify-content:center;font-size:13px!important;width:100%}
+ body[data-client-ios][data-client-page="money-credit"] .card{padding:24px}
+ body[data-client-ios][data-client-page="money-credit"] .tiles>*{grid-column:span 6}
+ body[data-client-ios][data-client-page="money-credit"] .tiles .card{padding:16px}
+ body[data-client-ios][data-client-page="money-credit"] .big{font-size:40px!important}
+ body[data-client-ios][data-client-page="money-credit"] .eyebrow{letter-spacing:.03em;overflow-wrap:anywhere}
+ body[data-client-ios][data-client-page="money-credit"] .grid{gap:16px}
+}
+@media(max-width:350px){body[data-client-ios][data-client-page="money-credit"] .tiles>*{grid-column:span 12}}

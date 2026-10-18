@@ -1,0 +1,37 @@
+/* Dedicated client presentation; the shared FinanceOS helper and staff stay intact. */
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px clamp(24px,4.25vw,64px);min-height:80px}
+body[data-client-ios] .mbar .logo{filter:none}
+body[data-client-ios] .mbar .sub{color:var(--client-muted)}
+body[data-client-ios] .mbar a{color:var(--client-muted);font-size:.875rem;text-decoration:none}
+body[data-client-ios] .mnav{margin:0 clamp(24px,4.25vw,64px);padding:8px;gap:8px;background:#e9ebf1;border:0;border-radius:20px}
+body[data-client-ios] .mnav a{border-radius:14px;min-height:44px;padding:0 16px;font-size:.875rem}
+body[data-client-ios] .mnav a[aria-current=page]{background:#fff;color:var(--client-ink);box-shadow:0 3px 10px #2024340a}
+body[data-client-ios] main{padding:40px clamp(24px,4.25vw,64px) 48px;min-width:0}
+body[data-client-ios] .fh-helper .head{margin-bottom:24px}
+body[data-client-ios] .fh-helper .head h1{--fs-title:clamp(2.5rem,4vw,4rem);font-size:clamp(2.5rem,4vw,4rem);line-height:1.04;letter-spacing:-.065em;font-weight:740;margin-bottom:16px}
+body[data-client-ios] .fh-helper .card{border:1px solid #ffffffbd;border-radius:28px;padding:24px;background:#fff;box-shadow:0 10px 35px #262b390d}
+body[data-client-ios] .fh-helper .thread{max-height:min(52vh,600px);min-height:240px;margin-bottom:24px;scrollbar-gutter:stable}
+body[data-client-ios] .fh-helper .msgs{gap:24px}
+body[data-client-ios] .fh-helper .bubble{padding:16px 24px;border-radius:20px}
+body[data-client-ios] .fh-helper .from-client .bubble{background:linear-gradient(130deg,#1c1d28,#30384e);border-color:transparent;color:#fff}
+body[data-client-ios] .fh-helper .from-helper .bubble{background:#f1f3f8;border:0}
+body[data-client-ios] .fh-helper .act{border-radius:16px;background:#eaf3ef;border-color:#dce9e3;padding:16px}
+body[data-client-ios] .fh-helper .tag{border-radius:100px;padding:4px 16px;background:#eeebfa;color:#514b77;border:0}
+body[data-client-ios] .fh-helper .composer{padding:16px;border:1px solid #fff;border-radius:24px;background:#fff;box-shadow:0 10px 35px #262b390d}
+body[data-client-ios] .fh-helper textarea{border-radius:16px;border-color:var(--client-line);background:#f5f6f9;min-width:0}
+body[data-client-ios] .fh-helper .btn-primary{border-radius:14px;background:#202434;color:#fff}
+body[data-client-ios] .fh-helper .btn{border-radius:14px;background:#f5f6fa;white-space:normal}
+body[data-client-ios] .fh-helper .sk-m{max-width:100%}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:16px 24px;gap:8px}
+ body[data-client-ios] .mbar .brand .sub{display:none}
+ body[data-client-ios] .mnav{margin:0 16px;border-radius:20px;flex-wrap:nowrap;overflow-x:auto}
+ body[data-client-ios] .mnav a{flex-shrink:0}
+ body[data-client-ios] main{padding:32px 16px 32px}
+ body[data-client-ios] .fh-helper .card{padding:16px}
+ body[data-client-ios] .fh-helper .msg{max-width:96%}
+ body[data-client-ios] .fh-helper .bubble{padding:16px}
+ body[data-client-ios] .fh-helper .thread{max-height:48vh;min-height:240px}
+ body[data-client-ios] .fh-helper .composer{grid-template-columns:minmax(0,1fr)}
+ body[data-client-ios] .fh-helper .composer .btn-primary{width:100%}
+}

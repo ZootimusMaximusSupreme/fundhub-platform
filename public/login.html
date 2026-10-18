@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/fh.css">
 <script src="/pw-toggle.js" defer></script>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/login-ios.css">
+<script src="/app/client-ios.js" defer></script>
 <style>
   /* Scoped to the demo switcher. Nothing here touches the sign-in form, so a
      deploy with the switch off renders byte-for-byte the page it always did. */
@@ -42,14 +45,23 @@
     font: 500 11px/1.5 'JetBrains Mono', monospace; letter-spacing: .04em; color: #A8D8B0;
   }
 </style>
-</head><body>
+</head><body data-client-page="login">
+<script>
+// This shared sign-in page adopts client presentation only for the explicit
+// client destination. This marker grants no role, session, or API access.
+if (new URLSearchParams(location.search).get("next") === "/app/client-portal.html") {
+  document.body.setAttribute("data-client-public", "");
+}
+</script>
 <div class="spectrum"></div>
 <div class="login-box">
   <div class="card">
+    <p class="client-login-eyebrow">Your client portal</p>
     <h1>fundhub</h1>
     <p class="sub" style="margin:0">Sign in to your account</p>
-    <div class="err" id="err"></div>
+    <div class="err" id="err" role="alert" aria-live="polite"></div>
     <form id="f">
+      <label class="client-login-label" for="email">Email address</label>
       <input id="email" type="email" placeholder="Email address" autocomplete="username" required>
       <!-- PREFILL REMOVED. This field used to ship value="demo1234", and the
            note beneath it advertised that password as working. It cannot be:
@@ -60,6 +72,7 @@
            an 8-character password, and anyone who trusted the prefill and hit
            Sign in got "Wrong email or password" with no idea why. An empty box
            is honest; a wrong answer typed in for you is not. -->
+      <label class="client-login-label" for="pw">Password</label>
       <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
       <button class="btn primary" id="go" type="submit">Sign in</button>
     </form>
@@ -70,6 +83,7 @@
     </p>
     <div id="fh-forgot-box" style="display:none;margin-top:8px">
       <p class="note" style="margin:0 0 8px">Enter your login email. Reset links last 1 hour.</p>
+      <label class="client-login-label" for="fh-forgot-email">Reset email address</label>
       <input id="fh-forgot-email" type="email" placeholder="Email address" autocomplete="username">
       <button class="btn" id="fh-forgot-go" type="button">Send reset link</button>
       <p class="note" id="fh-forgot-msg"></p>

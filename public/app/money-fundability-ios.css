@@ -1,0 +1,32 @@
+/* Standalone fundability client presentation. Shared FinanceOS section and staff stay intact. */
+body[data-client-ios] .app{min-width:0;max-width:1600px;margin:auto}
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px clamp(20px,4vw,64px) 16px;gap:12px}
+body[data-client-ios] .brand .logo{filter:none}
+body[data-client-ios] .brand .sub{color:var(--client-muted)}
+body[data-client-ios] .mbar a{color:var(--client-ink);text-decoration:none;border:1px solid var(--client-line);background:#fff;border-radius:99px;padding:0 18px;min-height:44px}
+body[data-client-ios] .mnav{margin:0 clamp(20px,4vw,64px);padding:8px;background:rgba(255,255,255,.65);border:1px solid var(--client-line);border-radius:22px;gap:4px}
+body[data-client-ios] .mnav a{border:0;min-height:44px;padding:0 18px;color:var(--client-muted)}
+body[data-client-ios] .mnav a[aria-current=page]{background:#202434;color:#fff}
+body[data-client-ios] main{padding:36px clamp(20px,4vw,64px) 64px;min-width:0}
+body[data-client-ios] .fd-head{--fs-title:clamp(2.5rem,4.4vw,4.2rem);margin-bottom:28px}
+body[data-client-ios] .fd-head h1{font-weight:740;letter-spacing:-.06em;line-height:1.1;margin-bottom:10px}
+body[data-client-ios] .fd-head .caption{line-height:1.6}
+body[data-client-ios] .fh-fundability .card{border:1px solid var(--client-line);border-radius:28px;padding:28px;box-shadow:var(--panel-shadow)}
+body[data-client-ios] .fh-fundability .fd-grid{gap:18px}
+body[data-client-ios] .fh-fundability .eyebrow{font-family:var(--sans);font-weight:700;letter-spacing:.08em}
+body[data-client-ios] .fh-fundability :is(.big,.num){font-family:var(--sans);letter-spacing:-.045em}
+body[data-client-ios] .fh-fundability .fd-tile{gap:12px;min-height:235px}
+body[data-client-ios] .fh-fundability .fd-tile:first-child{background:radial-gradient(ellipse at top right,rgba(169,191,252,.25),transparent 75%),linear-gradient(130deg,#1c1d28,#30384e);--ink:#fff;--ink2:#fff;--text-dim:#c3c7d3;--gray:#c3c7d3;color:#fff;border-color:transparent}
+body[data-client-ios] .fh-fundability .fd-tile:nth-child(2){background:#e2def7}
+body[data-client-ios] .fh-fundability .fd-tile:nth-child(3){background:#dcefe6}
+body[data-client-ios] .fh-fundability .fd-factor{padding:14px 0}
+body[data-client-ios] .fh-fundability .fd-factor-main{overflow-wrap:anywhere}
+body[data-client-ios] .fh-fundability .fd-mark{background:#eeeaf9;border:0;color:#625683}
+body[data-client-ios] .fh-fundability .is-pass .fd-mark{background:#dcefe6;color:#235842}
+body[data-client-ios] .fh-fundability .fd-btn-primary{border-radius:99px;padding:12px 24px;color:#fff}
+body[data-client-ios] .fh-fundability .fd-link{min-height:44px}
+body[data-client-ios] .fh-fundability .fd-sample{border-radius:18px}
+body[data-client-ios] .fh-fundability .fd-block>h2{margin-bottom:8px;letter-spacing:-.035em}
+body[data-client-ios] .fh-fundability .fd-detail{padding-top:22px;margin-top:16px}
+@media(max-width:1000px){body[data-client-ios] .fh-fundability .fd-thirds>*{grid-column:span 12}}
+@media(max-width:760px){body[data-client-ios] .mbar{padding:20px 20px 12px}body[data-client-ios] .brand .sub{display:none}body[data-client-ios] .mnav{margin:0 16px;border-radius:20px}body[data-client-ios] main{padding:28px 16px 32px}body[data-client-ios] .fh-fundability .card{padding:24px;border-radius:25px}body[data-client-ios] .fh-fundability .fd-tile{min-height:210px}body[data-client-ios] .fh-fundability .fd-factor{grid-template-columns:24px minmax(0,1fr)}body[data-client-ios] .fh-fundability .fd-status{grid-column:2;white-space:normal}body[data-client-ios] .fh-fundability .fd-plot-wrap{padding-right:20px}}

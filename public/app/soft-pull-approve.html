@@ -41,12 +41,17 @@ ol.next li:last-child{margin-bottom:0}
 .total{font-size:14px;font-weight:700;margin-top:14px;padding:12px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
 .total span{color:var(--gray);font-weight:500;font-size:12px}
 </style>
+<link rel="stylesheet" href="client-ios.css">
+<link rel="stylesheet" href="soft-pull-approve-ios.css">
 </head>
-<body>
-<div class="wrap" id="app">
+<body data-client-page="soft-pull-approve" data-client-public>
+<main class="wrap" id="app" aria-live="polite">
   <div class="mono">Fundhub · soft pull</div>
-  <p class="lede">Loading…</p>
-</div>
+  <h1>Preparing your approval</h1>
+  <p class="lede" role="status">Loading your secure authorization…</p>
+  <div class="approval-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+</main>
+<script src="client-ios.js"></script>
 <script>
 (function () {
   var q = new URLSearchParams(location.search);
@@ -248,7 +253,7 @@ ol.next li:last-child{margin-bottom:0}
       '<button class="btn" type="submit" id="go">I agree — submit soft-pull approval</button>' +
       '<p class="fine">Your advisor cannot see this Social Security number on their screen. ' +
       "After you submit, pay the total from the Pay button (or the matching link in your email if you added no businesses).</p>" +
-      '<div id="msg"></div></form>';
+      '<div id="msg" role="status" aria-live="polite"></div></form>';
 
     document.getElementById("add_biz").addEventListener("click", function () {
       if (bizCount >= pricing.max_businesses) return;

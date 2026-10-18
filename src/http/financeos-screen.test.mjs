@@ -41,7 +41,7 @@ test("the page loads every section script, then financeos.js last, and both sect
   // money-trends.js (wave 4, H6) is not a tab: it draws the Trends line graphs
   // inside Overview and the sales line under Connections. It loads right after
   // money.js, before financeos.js mounts anything.
-  assert.deepEqual(srcs, [SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "financeos.js"]);
+  assert.deepEqual(srcs, [SCRIPTS[0], "money-trends.js", ...SCRIPTS.slice(1), "/app/client-ios.js", "financeos.js"]);
   assert.match(HTML, /<link rel="stylesheet" href="money-connections\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-payments\.css">/);
   assert.match(HTML, /<link rel="stylesheet" href="money-next\.css">/);

@@ -1,0 +1,29 @@
+/* Standalone alert page only. The FinanceOS section and staff theme stay intact. */
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:28px 40px 16px;min-height:76px}
+body[data-client-ios] .mbar .logo{filter:none}
+body[data-client-ios] .mbar .sub{color:var(--client-muted)}
+body[data-client-ios] .mbar a{color:var(--client-muted);text-decoration:none;font-size:var(--fs-caption);min-height:44px}
+body[data-client-ios] .mnav{margin:0 40px;padding:8px;background:rgba(255,255,255,.7);border:1px solid var(--client-line);border-radius:20px;gap:4px}
+body[data-client-ios] .mnav a{border:0;min-height:44px;padding:0 16px;color:var(--client-muted);font-size:var(--fs-caption)}
+body[data-client-ios] .mnav a[aria-current=page]{background:#e6e4f4;color:#514b77}
+body[data-client-ios] main{max-width:1420px;margin:auto;padding:32px 40px 64px}
+body[data-client-ios] .fh-alerts .head{margin-bottom:28px}
+body[data-client-ios] .fh-alerts .head h1{letter-spacing:-.055em;font-weight:750;margin-bottom:8px}
+body[data-client-ios] .fh-alerts .card{border:1px solid rgba(255,255,255,.9);border-radius:26px;padding:26px;background:rgba(255,255,255,.9);box-shadow:var(--panel-shadow)}
+body[data-client-ios] .fh-alerts .tiles .card:nth-child(1){background:#eae8f6}
+body[data-client-ios] .fh-alerts .tiles .card:nth-child(2){background:#e7f0eb}
+body[data-client-ios] .fh-alerts .tiles .card:nth-child(3){background:#f2ece3}
+body[data-client-ios] .fh-alerts :is(.eyebrow,.big,.num){font-family:var(--sans)}
+body[data-client-ios] .fh-alerts .eyebrow{letter-spacing:.08em;font-weight:650}
+body[data-client-ios] .fh-alerts .big{font-weight:750;letter-spacing:-.05em}
+body[data-client-ios] .fh-alerts .prot{gap:22px}
+body[data-client-ios] .fh-alerts .prot-head h2{font-weight:700;letter-spacing:-.035em}
+body[data-client-ios] .fh-alerts :is(.next-line,.needs-day,.edit,.step,.cash-box){border-radius:16px}
+body[data-client-ios] .fh-alerts :is(.btn-primary,.btn-line,.btn-danger,.btn-text){border-radius:13px;min-height:44px;white-space:normal}
+body[data-client-ios] .fh-alerts :is(.btn-primary,.switch[aria-checked=true] .track){background:#262831}
+body[data-client-ios] .fh-alerts :is(input,select){border-radius:12px;max-width:100%;min-width:0}
+body[data-client-ios] .fh-alerts .switch[aria-checked=true] .track{border-color:#262831}
+body[data-client-ios] .fh-alerts :is(.caption,.watch,.next-line,.row-main,.text-body){overflow-wrap:anywhere}
+@media(max-width:1000px){body[data-client-ios] .fh-alerts .prots>*{grid-column:1/-1}}
+@media(max-width:760px){body[data-client-ios] .mbar{padding:18px 20px 10px;gap:8px}body[data-client-ios] .mnav{margin:0 20px;border-radius:17px}body[data-client-ios] main{padding:28px 20px 32px}body[data-client-ios] .fh-alerts .card{padding:22px;border-radius:24px}body[data-client-ios] .fh-alerts .grid{gap:14px}body[data-client-ios] .fh-alerts .prot-head{gap:8px}}
+@media(max-width:360px){body[data-client-ios] .mbar{padding:14px 14px 8px}body[data-client-ios] .mnav{margin:0 14px}body[data-client-ios] main{padding:24px 14px}body[data-client-ios] .fh-alerts .card{padding:18px}body[data-client-ios] .fh-alerts .prot-head{flex-direction:column}body[data-client-ios] .fh-alerts .sw-wrap{align-self:flex-end;max-width:100%}}

@@ -1,0 +1,35 @@
+/* Client-only applications presentation; all existing actions stay in the section module. */
+body[data-client-ios] .app{min-width:0;background:radial-gradient(ellipse at 95% 0,rgba(211,218,255,.28),transparent 55%)}
+body[data-client-ios] .mbar{padding:24px 32px 16px;min-height:80px;background:transparent;color:var(--client-ink);border:0;border-image:none}
+body[data-client-ios] .brand .logo{filter:none}
+body[data-client-ios] .brand .sub{color:var(--client-muted)}
+body[data-client-ios] .mbar a{color:var(--client-ink);font-weight:600;text-decoration:none;border-radius:999px;background:#fff;padding:0 16px}
+body[data-client-ios] .mnav{margin:0 32px;padding:8px;background:#e9eaf0;border:0;border-radius:24px;gap:8px;flex-wrap:wrap;overflow:visible}
+body[data-client-ios] .mnav a{flex:1;justify-content:center;padding:8px 16px;border-radius:16px;min-height:44px;font-weight:600;border:0}
+body[data-client-ios] .mnav a[aria-current=page]{background:#fff;color:var(--client-ink);box-shadow:0 3px 10px rgba(30,35,50,.05)}
+body[data-client-ios] main{padding:32px 32px 64px;min-width:0;max-width:1440px;margin:auto}
+body[data-client-ios] .fh-declines .dc-head{margin-bottom:32px}
+body[data-client-ios] .fh-declines .dc-head h1{font-size:clamp(2.5rem,4vw,4rem);line-height:1.08;letter-spacing:-.065em;margin-bottom:16px;font-weight:740}
+body[data-client-ios] .fh-declines .caption{line-height:1.65}
+body[data-client-ios] .fh-declines .card{padding:24px;border:1px solid rgba(255,255,255,.8);border-radius:28px;box-shadow:var(--panel-shadow)}
+body[data-client-ios] .fh-declines .dc-decline{background:linear-gradient(145deg,#e9e5f9,#f5f3fc)}
+body[data-client-ios] .fh-declines .dc-paste{background:#e4eef7}
+body[data-client-ios] .fh-declines .dc-block>h2{letter-spacing:-.04em;margin-bottom:16px}
+body[data-client-ios] .fh-declines .eyebrow{font-family:var(--sans);font-weight:650}
+body[data-client-ios] .fh-declines .dc-field{border-radius:16px;background:rgba(255,255,255,.85);max-width:100%;min-width:0}
+body[data-client-ios] .fh-declines .dc-btn-primary{border-radius:16px;background:#202434;color:#fff;min-height:48px;padding:8px 24px}
+body[data-client-ios] .fh-declines .dc-status{background:#eeebf8;border-color:var(--client-line)}
+body[data-client-ios] .fh-declines .dc-status.is-yes{background:#d7eee1;color:#294f3c}
+body[data-client-ios] .fh-declines .dc-person{border-radius:16px;border-color:#aba5bd;background:rgba(255,255,255,.5)}
+body[data-client-ios] .fh-declines .dc-app{padding:16px;border-radius:16px;background:#fff;margin-bottom:8px;border:1px solid var(--client-line)}
+body[data-client-ios] .fh-declines .dc-error{background:linear-gradient(145deg,#eef3f8,#eeecf9)}
+body[data-client-ios] .fh-declines :is(.dc-status,.dc-problem,.dc-flash,.dc-when,.dc-dhead){overflow-wrap:anywhere;max-width:100%}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:16px;gap:8px}
+ body[data-client-ios] .mbar .brand{flex:1 1 100%}
+ body[data-client-ios] .mnav{margin:0 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
+ body[data-client-ios] .mnav a{padding:8px;min-width:0;overflow-wrap:anywhere}
+ body[data-client-ios] main{padding:32px 16px 48px}
+ body[data-client-ios] .fh-declines .card{padding:24px 16px}
+ body[data-client-ios] .fh-declines .dc-head h1{font-size:2.5rem}
+}

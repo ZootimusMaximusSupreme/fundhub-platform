@@ -1,0 +1,59 @@
+/* Approved client-only iOS treatment. Staff and partner shells retain their styles. */
+.affiliate-heading{display:none}
+body[data-client-ios] .affiliate-heading{display:block;margin:24px 0 28px}
+body[data-client-ios] .affiliate-heading p{color:#777c87;margin:0 0 10px;max-width:480px}
+body[data-client-ios] .affiliate-heading h2{font-size:clamp(38px,4.3vw,62px)!important;line-height:1.05;letter-spacing:-.065em;font-weight:740;margin:0 0 16px}
+body[data-client-ios] .affiliate-load{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 20px;color:#6b7180;font-size:13px!important}
+body[data-client-ios] .linkbox{border:1px solid rgba(255,255,255,.2);border-radius:30px;color:#fff;background:radial-gradient(ellipse at 100% 0,rgba(151,164,225,.28),transparent 65%),linear-gradient(130deg,#1c1d28,#30384e);box-shadow:0 16px 38px rgba(34,37,55,.13)}
+body[data-client-ios] .linkbox .lt{display:none}
+body[data-client-ios] .linkbox .lb{padding:30px}
+body[data-client-ios] .linkbox .eyebrow,body[data-client-ios] .linkbox .sd{color:#c4c9da!important}
+body[data-client-ios] .linkrow input{min-width:0;min-height:48px;width:100%;flex:1 1 250px;border:1px solid #596276;background:rgba(255,255,255,.07);border-radius:13px;color:#fff;font-family:inherit}
+body[data-client-ios] .linkrow .btn{min-height:44px;border-radius:12px;background:#fff;color:#202435;border-color:#fff;font-family:inherit;letter-spacing:0;text-transform:none}
+body[data-client-ios] .offerrow .offername{color:#e2e6f3;font-size:14px!important}
+body[data-client-ios] .stats{gap:16px;margin-top:22px!important}
+body[data-client-ios] .stat{border:1px solid #e5e7ed;border-radius:24px;padding:24px;box-shadow:0 7px 22px rgba(42,47,59,.04);min-width:0}
+body[data-client-ios] .stat::before{display:none}
+body[data-client-ios] .stat:nth-child(2){background:#f0eefb}
+body[data-client-ios] .stat:nth-child(3){background:#edf5f9}
+body[data-client-ios] .stat:nth-child(4){background:#edf7f1}
+body[data-client-ios] .stat .sv{font-family:inherit;font-size:34px!important;letter-spacing:-.05em}
+body[data-client-ios] .stat .sd{line-height:1.5;overflow-wrap:anywhere}
+body[data-client-ios] .card{border:1px solid #e5e7ed;border-radius:25px;box-shadow:0 7px 24px rgba(42,47,59,.035);margin-top:20px!important}
+body[data-client-ios] .card-hd{padding:20px 24px;gap:12px}
+body[data-client-ios] .card-bd{padding:24px}
+body[data-client-ios] .hair{display:none}
+body[data-client-ios] .eyebrow{font-family:inherit;letter-spacing:.05em;font-weight:650}
+body[data-client-ios] .banner{border-radius:20px;padding:20px;min-width:0}
+body[data-client-ios] .banner>div{min-width:0!important}
+body[data-client-ios] .btn{min-height:44px;border-radius:12px;font-family:inherit;letter-spacing:0;text-transform:none}
+body[data-client-ios] input,body[data-client-ios] select{max-width:100%;min-height:44px;border-radius:12px!important}
+body[data-client-ios] #brainQ{min-width:0!important;flex-basis:220px}
+body[data-client-ios] .tabs{gap:4px;padding:10px;background:#f0f1f5;border-bottom:0}
+body[data-client-ios] .tab{flex:1;min-height:44px;border:0;border-radius:12px;font-family:inherit;font-weight:650;letter-spacing:0;text-transform:none;padding:10px 12px}
+body[data-client-ios] .tab.on{background:#fff;color:#171922;box-shadow:0 2px 7px #22252e0d}
+body[data-client-ios] .badge{font-family:inherit;letter-spacing:0;text-transform:none;border-radius:20px}
+body[data-client-ios] .terms dt{font-family:inherit;letter-spacing:0;font-weight:650;font-size:14px!important}
+body[data-client-ios] .terms dd{color:#666d7b}
+body[data-client-ios] table.grid{min-width:670px}
+body[data-client-ios] table.grid th{font-family:inherit;letter-spacing:.02em;font-size:12px!important;background:#f7f8fa}
+body[data-client-ios] .foot{letter-spacing:0;font-family:inherit}
+body[data-client-ios] :is(button,a,input,select):focus-visible{outline:3px solid #6c7dd9;outline-offset:3px}
+@media(max-width:700px){body[data-client-ios] .linkbox .lb,body[data-client-ios] .card-bd{padding:22px}body[data-client-ios] .card-hd{padding:18px}body[data-client-ios] .stat{padding:18px}body[data-client-ios] .stat .sv{font-size:28px!important}body[data-client-ios] .topbar{height:auto;min-height:57px;flex-wrap:wrap}body[data-client-ios] .topbar h1{font-size:17px!important}body[data-client-ios] .affiliate-heading{margin:22px 0}body[data-client-ios] .linkbox .lb>div:last-child{gap:22px!important}body[data-client-ios] #q{width:100%!important}body[data-client-ios] .stats{gap:10px}body[data-client-ios] .tab{padding:10px 8px}}
+@media(prefers-reduced-motion:reduce){body[data-client-ios] *{scroll-behavior:auto!important;transition:none!important}}
+/* The shared navigation replaces this page's CRM rail for clients only. */
+body[data-client-ios][data-client-nav] #side{display:none!important}
+body[data-client-ios] .app{display:block;min-width:0}
+body[data-client-ios] .main{width:100%;min-width:0}
+body[data-client-ios] .content{max-width:1320px;width:100%;padding:28px clamp(18px,4vw,64px) 50px;margin:0 auto}
+body[data-client-ios] .topbar{padding-inline:clamp(18px,4vw,64px);background:transparent;border-bottom:1px solid var(--line)}
+@media(max-width:760px){body[data-client-ios] .content{padding-top:18px}body[data-client-ios] .topbar .crumb{display:none}}
+body[data-client-ios] .tab{min-width:0;white-space:normal}
+body[data-client-ios] .stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+@media(max-width:1000px){body[data-client-ios] .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:760px){body[data-client-ios] .topbar{position:relative;top:auto;gap:8px;padding-block:14px}body[data-client-ios] .topbar #fh-shell-chip{max-width:100%;flex-wrap:wrap!important}body[data-client-ios] .tab{font-size:12px!important}}
+body[data-client-ios] .app{padding-left:0!important;background:transparent}
+body[data-client-ios] .topbar{height:auto;min-height:72px;flex:0 0 auto;flex-wrap:wrap;position:relative;top:auto;padding-block:12px}
+body[data-client-ios] #fh-shell-chip{background:#e9eaf0!important;color:#555d70!important;border:1px solid #dfe2ea!important;border-radius:14px!important;letter-spacing:0!important;padding:7px 10px!important}
+body[data-client-ios] #fh-shell-chip button{color:#343c50!important;border-color:#c5cbd9!important;border-radius:8px!important}
+body[data-client-ios][data-client-nav] :is(#fh-menu-btn,#fh-side-scrim){display:none!important}

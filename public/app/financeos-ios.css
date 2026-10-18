@@ -1,0 +1,37 @@
+/* FinanceOS frame only. Existing modules keep their data, actions and role gates. */
+.fos-intro{display:none}
+body[data-client-ios][data-client-page="financeos"]{--surface:#fff;--text:#16171b;--text-dim:#69717e;--text-faint:#969aa4;--line:rgba(34,38,48,.09);--soft:#eef0f5;--ink:#16171b;--ink2:#30384e;--paper:#f4f5f7;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;background:var(--paper)}
+body[data-client-ios][data-client-page="financeos"]>.app{display:block;min-width:0}
+body[data-client-ios][data-client-page="financeos"] .mbar{padding:16px 32px;min-height:72px;background:rgba(252,252,253,.9);color:var(--ink);border-image:none;border-bottom:1px solid var(--line);gap:16px}
+body[data-client-ios][data-client-page="financeos"] .mbar .sub{color:var(--ink)}
+body[data-client-ios][data-client-page="financeos"] .mbar .who{color:var(--text-dim)}
+body[data-client-ios][data-client-page="financeos"] .mbar .logo{filter:none}
+body[data-client-ios][data-client-page="financeos"] #money-back{padding:8px 16px;min-height:44px;color:var(--ink);background:#e9eaf0;border-radius:16px;text-decoration:none;font-weight:600}
+body[data-client-ios][data-client-page="financeos"] .fos-intro{display:block;padding:32px 32px 24px}
+body[data-client-ios][data-client-page="financeos"] .fos-intro p{color:var(--text-dim);margin-bottom:8px}
+body[data-client-ios][data-client-page="financeos"] .fos-intro h1{font-size:clamp(2.5rem,4.4vw,4rem)!important;letter-spacing:-.065em;line-height:1.08;font-weight:740}
+body[data-client-ios][data-client-page="financeos"] .fos-intro .fos-intro-note{margin-top:16px;max-width:56ch}
+body[data-client-ios][data-client-page="financeos"] .fos-tabs{margin:0 32px;padding:8px;gap:8px;border:1px solid rgba(255,255,255,.85);border-radius:24px;background:rgba(255,255,255,.65);box-shadow:0 8px 32px rgba(42,47,59,.04);max-width:calc(100% - 64px);scroll-padding-inline:8px}
+body[data-client-ios][data-client-page="financeos"] .fos-tabs a{min-height:44px;padding:8px 16px;border:0;border-radius:16px;font-weight:600}
+body[data-client-ios][data-client-page="financeos"] .fos-tabs a[aria-selected="true"]{color:#fff;background:linear-gradient(130deg,#1c1d28,#30384e);box-shadow:0 4px 12px rgba(34,37,55,.12)}
+body[data-client-ios][data-client-page="financeos"] .fos-tabs a:focus-visible{outline:3px solid #6c7dd9;outline-offset:-3px}
+body[data-client-ios][data-client-page="financeos"] main{padding:24px 32px 64px;min-width:0}
+body[data-client-ios][data-client-page="financeos"] .fos-panel{min-width:0}
+body[data-client-ios][data-client-page="financeos"] .fos-panel .card{border-radius:24px;border-color:rgba(34,38,48,.06);box-shadow:0 8px 32px rgba(42,47,59,.045)}
+body[data-client-ios][data-client-page="financeos"] .fos-panel :is(.btn-primary,.btn,button[type="submit"]){border-radius:16px}
+body[data-client-ios][data-client-page="financeos"] .fos-panel :is(input,select,textarea){border-radius:12px;max-width:100%}
+body[data-client-ios][data-client-page="financeos"] .fos-panel :is(.empty,.error,.fos-soon){border-radius:24px}
+body[data-client-ios][data-client-page="financeos"] .fos-sandbox{border-radius:16px}
+body[data-client-ios][data-client-page="financeos"] .fos-panel .head{margin-bottom:24px}
+body[data-client-ios][data-client-page="financeos"] #fos-overview .tiles>.card:first-child{background:linear-gradient(150deg,#eef0fb,#e8e7f7)}
+body[data-client-ios][data-client-page="financeos"] #fos-overview .tiles>.card:nth-child(2){background:linear-gradient(150deg,#f1f6f8,#e9eef6)}
+body[data-client-ios][data-client-page="financeos"] #fos-overview .tiles>.card:nth-child(3){background:linear-gradient(150deg,#eff8f3,#e2f1e9)}
+@media(max-width:760px){
+ body[data-client-ios][data-client-page="financeos"] .mbar{padding:16px;align-items:flex-start}
+ body[data-client-ios][data-client-page="financeos"] .brand{flex-wrap:wrap;gap:8px}
+ body[data-client-ios][data-client-page="financeos"] .brand .who{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+ body[data-client-ios][data-client-page="financeos"] .fos-intro{padding:24px 16px}
+ body[data-client-ios][data-client-page="financeos"] .fos-tabs{margin:0 16px;max-width:calc(100% - 32px);border-radius:24px}
+ body[data-client-ios][data-client-page="financeos"] main{padding:24px 16px 48px}
+ body[data-client-ios][data-client-page="financeos"] .fos-panel .card{border-radius:24px}
+}

@@ -1,0 +1,31 @@
+/* Standalone payment strategy: presentation is gated by verified client session. */
+body[data-client-ios] .app{min-width:0;--surface:#fff;--mono:var(--sans)}
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px 32px 8px;gap:16px}
+body[data-client-ios] .mbar .brand{display:none}
+body[data-client-ios] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600}
+body[data-client-ios] .mnav{background:transparent;border:0;padding:16px 32px;gap:8px;max-width:100%}
+body[data-client-ios] .mnav a{background:#fff;border-color:var(--client-line);min-height:44px;font-weight:600}
+body[data-client-ios] .mnav a[aria-current=page]{background:var(--client-ink);color:#fff}
+body[data-client-ios] main{padding:24px 32px 64px;min-width:0}
+body[data-client-ios] .fh-strategy .head{margin-bottom:32px}
+body[data-client-ios] .fh-strategy .head h1{letter-spacing:-.065em;font-weight:750;line-height:1.1;margin-bottom:16px}
+body[data-client-ios] .fh-strategy .head .caption{line-height:1.65}
+body[data-client-ios] .fh-strategy .card{border-radius:28px;border-color:var(--client-line);padding:24px;box-shadow:var(--panel-shadow)}
+body[data-client-ios] .fh-strategy .controls{background:#fff}
+body[data-client-ios] .fh-strategy .tiles .card:nth-child(1){background:#eeeafb}
+body[data-client-ios] .fh-strategy .tiles .card:nth-child(2){background:#e7f2fc}
+body[data-client-ios] .fh-strategy .tiles .card:nth-child(3){background:#e2f3ea}
+body[data-client-ios] .fh-strategy .eyebrow{font-family:var(--sans);letter-spacing:.09em;font-weight:650}
+body[data-client-ios] .fh-strategy .big{letter-spacing:-.05em;font-weight:700}
+body[data-client-ios] .fh-strategy :is(.btn-primary,.btn-line,.amt-box,.goal-row select,.goal-row input){border-radius:16px}
+body[data-client-ios] .fh-strategy .btn-primary{color:#fff}
+body[data-client-ios] .fh-strategy .btn-line{border-color:var(--client-line);background:#f5f5f8}
+body[data-client-ios] .fh-strategy .seg-btn{background:#f3f3f7;border-color:transparent}
+body[data-client-ios] .fh-strategy .seg-btn[aria-pressed=true]{background:var(--client-ink);color:#fff}
+body[data-client-ios] .fh-strategy .tip{border-radius:20px;background:#eeeafb;padding:16px}
+body[data-client-ios] .fh-strategy :is(.caption,.facts-list li,.warnings li,.save-msg){overflow-wrap:anywhere}
+body[data-client-ios] .fh-strategy .goal-row>*{min-width:0;max-width:100%}
+body[data-client-ios] .sandbox{border-radius:16px}
+@media(max-width:760px){body[data-client-ios] .mbar{padding:16px 16px 0}body[data-client-ios] .mnav{padding:16px}body[data-client-ios] main{padding:16px 16px 32px}body[data-client-ios] .fh-strategy .card{padding:24px 16px;border-radius:24px}body[data-client-ios] .fh-strategy .head{margin-bottom:24px}}
+/* Approved client heading scale supersedes the staff shell's compact title. */
+body[data-client-ios] .fh-strategy .head h1{font-size:clamp(2.5rem,4vw,4rem)!important}

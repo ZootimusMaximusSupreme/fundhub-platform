@@ -1,0 +1,47 @@
+/* Standalone funding papers: presentation only, verified client session only. */
+body[data-client-ios][data-client-page="money-vault"] .app{max-width:1440px;margin:auto}
+body[data-client-ios] .mbar{background:transparent;color:var(--ink);border:0;padding:24px 40px;min-height:88px}
+body[data-client-ios] .mbar .logo{filter:none}
+body[data-client-ios] .mbar .sub{color:var(--gray);font-weight:600}
+body[data-client-ios] .mbar a{color:var(--ink);border:1px solid var(--line);background:#fff;border-radius:999px;padding:0 16px;text-decoration:none;min-height:44px}
+body[data-client-ios] .mnav{margin:0 40px;padding:8px;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:24px;gap:8px;scroll-padding:8px}
+body[data-client-ios] .mnav a{min-height:44px;border-color:transparent;font-weight:600}
+body[data-client-ios] .mnav a[aria-current="page"]{background:#e8e5f7;color:var(--ink);border-color:transparent}
+body[data-client-ios] main{padding:40px 40px 64px}
+body[data-client-ios] .vt-head h1{font-size:clamp(2.5rem,4vw,4rem);letter-spacing:-.065em;line-height:1.08}
+body[data-client-ios] .vt-head .caption{margin-top:16px}
+body[data-client-ios] .fh-vault .card{border:1px solid var(--line);border-radius:28px;padding:24px;background:#fff;box-shadow:var(--panel-shadow)}
+body[data-client-ios] .fh-vault .vt-progress{background:linear-gradient(135deg,#1c1d28,#30384e);color:#e3e9fa;border:0;padding:32px}
+body[data-client-ios] .fh-vault .vt-progress :is(.vt-count,.caption,.vt-next){color:#e3e9fa}
+body[data-client-ios] .fh-vault .vt-count .fh-num{font-family:var(--sans);font-size:var(--fs-h1);letter-spacing:-.06em;color:#fff}
+body[data-client-ios] .fh-vault .vt-bar{border:0;background:#4d5267}
+body[data-client-ios] .fh-vault .vt-bar-done{background:#bce8d3}
+body[data-client-ios] .fh-vault .vt-bar-check{background:repeating-linear-gradient(135deg,#bbb3f2 0 2px,#4d5267 2px 6px)}
+body[data-client-ios] .fh-vault .vt-key{border-color:#bce8d3;background:transparent}
+body[data-client-ios] .fh-vault .vt-key.is-done{background:#bce8d3}
+body[data-client-ios] .fh-vault .vt-key.is-check{background:#bbb3f2}
+body[data-client-ios] .fh-vault .vt-group-head{padding-bottom:16px}
+body[data-client-ios] .fh-vault .vt-item{padding:24px 0}
+body[data-client-ios] .fh-vault .vt-mark{border-color:#d4d6e0;background:#f1f2f6;border-radius:12px}
+body[data-client-ios] .fh-vault .vt-item.is-done>.vt-mark{background:#d9f0e6;color:#244838;border-color:#c2e4d4}
+body[data-client-ios] .fh-vault .vt-item.is-done .vt-status{background:#e3f2eb;color:#244838;border-color:#c2e4d4}
+body[data-client-ios] .fh-vault .vt-status{border-color:#d9dbe5;background:#f4f4f8;font-size:var(--fs-caption)}
+body[data-client-ios] .fh-vault .vt-btn,body[data-client-ios] .fh-vault .vt-btn-primary{border-radius:14px;min-height:44px}
+body[data-client-ios] .fh-vault .vt-docs{border-radius:16px;background:#f5f6f9}
+body[data-client-ios] .fh-vault .vt-doc{padding:16px}
+body[data-client-ios] .fh-vault .vt-complete{background:linear-gradient(135deg,#1c1d28,#30384e)}
+@media(max-width:760px){
+body[data-client-ios] .mbar{padding:16px;gap:8px}
+body[data-client-ios] .mbar .brand{flex-wrap:wrap;gap:8px}
+body[data-client-ios] .mbar .sub{flex-basis:100%}
+body[data-client-ios] .mbar a{padding:0 8px;font-size:var(--fs-caption)}
+body[data-client-ios] .mnav{margin:8px 16px 0;border-radius:20px}
+body[data-client-ios] main{padding:32px 16px 48px}
+body[data-client-ios] .fh-vault .card{padding:24px 16px;border-radius:24px}
+body[data-client-ios] .fh-vault .vt-progress{padding:24px}
+body[data-client-ios] .vt-head h1{font-size:clamp(2rem,10vw,3rem)}
+body[data-client-ios] .fh-vault .vt-doc{padding:16px 8px}
+}
+/* Brand typography uses !important tokens; override the token at the heading. */
+body[data-client-ios] .fh-vault .vt-head h1{--fs-title:clamp(2.5rem,4vw,4rem)}
+@media(max-width:760px){body[data-client-ios] .fh-vault .vt-head h1{--fs-title:clamp(2rem,10vw,3rem)}}

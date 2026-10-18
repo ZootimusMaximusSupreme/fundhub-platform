@@ -1,0 +1,38 @@
+/* Standalone next steps: client-only presentation; section and staff behavior unchanged. */
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px 40px 8px;min-height:72px}
+body[data-client-ios] .mbar .brand{display:none}
+body[data-client-ios] .mbar a{color:var(--client-muted);text-decoration:none;font-weight:600;min-height:44px}
+body[data-client-ios] .mbar a::before{content:'←';margin-right:8px}
+body[data-client-ios] .mnav{margin:16px 40px 0;padding:8px;gap:8px;border:1px solid var(--client-line);border-radius:24px;background:rgba(255,255,255,.65);max-width:calc(100% - 80px)}
+body[data-client-ios] .mnav a{justify-content:center;flex:1;border:0;border-radius:16px;padding:8px 16px;font-weight:600;color:var(--client-muted);min-height:44px}
+body[data-client-ios] main{padding:32px 40px 64px}
+body[data-client-ios] .head{margin-bottom:32px}
+/* One type escape hatch for the page heading, over the brand inheritance rule. */
+body[data-client-ios] .head h1{font-size:var(--fs-metric)!important;font-weight:750;letter-spacing:-.06em;line-height:1.12;margin-bottom:8px}
+body[data-client-ios] .caption{color:var(--client-muted);line-height:1.6;overflow-wrap:anywhere}
+body[data-client-ios] .fh-next .nx-grid{gap:24px}
+body[data-client-ios] .card{border:1px solid rgba(255,255,255,.85);border-radius:28px;padding:24px;background:rgba(255,255,255,.91);box-shadow:var(--panel-shadow);min-width:0}
+body[data-client-ios] .eyebrow{font-family:var(--sans);font-weight:700;letter-spacing:.08em;margin-bottom:8px}
+body[data-client-ios] .fh-next .task{gap:16px 24px;padding:24px 0;border-color:var(--client-line);grid-template-columns:minmax(0,1fr) minmax(120px,200px)}
+body[data-client-ios] .fh-next .t-main{gap:8px}
+body[data-client-ios] .fh-next .t-title{font-weight:700}
+body[data-client-ios] .fh-next .t-act{gap:16px}
+body[data-client-ios] .fh-next .btn-line{border-color:var(--client-line);background:#f1f2f6;border-radius:16px;min-height:44px;white-space:normal;text-align:center}
+body[data-client-ios] .fh-next .btn-text{min-height:44px}
+body[data-client-ios] .fh-next .nx-side{gap:24px}
+body[data-client-ios] .fh-next .ready{background:#eae9f4;gap:24px}
+body[data-client-ios] .btn-primary{min-height:48px;padding:8px 24px;border:0;border-radius:16px;background:var(--client-ink);color:#fff;white-space:normal;text-align:center}
+body[data-client-ios] .fh-next .tag{padding:8px 16px;background:rgba(255,255,255,.65);border-color:var(--client-line)}
+body[data-client-ios] .fh-next .empty,body[data-client-ios] .fh-next .error{gap:24px}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:16px 24px 0}
+ body[data-client-ios] .mnav{margin:8px 16px 0;max-width:calc(100% - 32px)}
+ body[data-client-ios] .mnav a{flex:none}
+ body[data-client-ios] main{padding:32px 16px 48px}
+ body[data-client-ios] .head{margin-bottom:24px;padding:0 8px}
+ body[data-client-ios] .card{border-radius:24px}
+ body[data-client-ios] .fh-next .nx-grid{gap:16px}
+ body[data-client-ios] .fh-next .task{grid-template-columns:minmax(0,1fr)}
+ body[data-client-ios] .fh-next .t-act{align-items:stretch}
+ body[data-client-ios] .fh-next .btn-primary{width:100%}
+}

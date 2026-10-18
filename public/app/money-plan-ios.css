@@ -1,0 +1,39 @@
+/* Standalone plan chrome only; the reusable FinanceOS module and staff retain their behavior. */
+body[data-client-ios][data-client-page="money-plan"]{--fs-title:28px;--fs-metric:36px;--fs-caption:13px}
+body[data-client-ios] .mbar{background:transparent;color:var(--client-ink);border:0;border-image:none;padding:24px 32px 8px;gap:16px}
+body[data-client-ios] .mbar .brand{display:none}
+body[data-client-ios] .mbar a{color:var(--client-muted);font-size:13px;text-decoration:none}
+body[data-client-ios] .mbar a:hover{text-decoration:underline}
+body[data-client-ios] .mnav{margin:8px 32px 0;padding:8px;gap:8px;background:#e9ebf0;border:0;border-radius:24px}
+body[data-client-ios] .mnav a{flex:1;justify-content:center;min-height:44px;padding:8px 16px;border-radius:18px;white-space:nowrap}
+body[data-client-ios] .mnav a[aria-current="page"]{background:white;color:var(--client-ink)}
+body[data-client-ios] main{padding:32px 32px 64px;min-width:0}
+body[data-client-ios] .fh-plan .head{margin-bottom:32px}
+body[data-client-ios] .fh-plan .head h1{font-weight:750;letter-spacing:-.05em}
+body[data-client-ios] .fh-plan .head p{margin-top:8px}
+body[data-client-ios] .fh-plan .card{border-radius:var(--client-radius);padding:24px;border-color:var(--client-line)}
+body[data-client-ios] .fh-plan .tile:first-child{background:#edf0fb}
+body[data-client-ios] .fh-plan .tile{gap:16px}
+body[data-client-ios] .fh-plan .eyebrow{font-family:var(--sans);text-transform:none;letter-spacing:0;font-weight:650}
+body[data-client-ios] .fh-plan :is(.num,.big,.dnum){font-family:var(--sans);font-variant-numeric:tabular-nums}
+body[data-client-ios] .fh-plan :is(.btn,.btn-primary){border-radius:16px;white-space:normal}
+body[data-client-ios] .fh-plan .cal{padding:0}
+body[data-client-ios] .fh-plan .cal-grid th{font-family:var(--sans);text-transform:none;letter-spacing:0;padding:16px 8px}
+body[data-client-ios] .fh-plan .pin{border-radius:12px}
+body[data-client-ios] .fh-plan .row{border-radius:16px;min-height:64px}
+/* Drawer must remain above shared fixed client navigation. */
+body[data-client-ios] .fh-plan .pl-scrim{z-index:90}
+body[data-client-ios] .fh-plan .pl-drawer{z-index:91;border-radius:28px 0 0 28px}
+@media(max-width:1000px){body[data-client-ios] .mnav a{flex:0 1 auto}}
+@media(max-width:760px){
+ body[data-client-ios] .mbar{padding:16px 16px 0}
+ body[data-client-ios] .mnav{margin:8px 16px 0;gap:0;padding:8px;border-radius:20px}
+ body[data-client-ios] .mnav a{padding:8px;flex:1 0 auto}
+ body[data-client-ios] main{padding:24px 16px 48px}
+ body[data-client-ios] .fh-plan .tiles>*{grid-column:span 12}
+ body[data-client-ios] .fh-plan .tiles{gap:16px}
+ body[data-client-ios] .fh-plan .card{padding:24px}
+ body[data-client-ios] .fh-plan .row{padding:16px 8px;overflow-wrap:anywhere}
+ body[data-client-ios] .fh-plan .pl-drawer{border-radius:24px 0 0 24px;padding:24px 16px}
+ body[data-client-ios] .fh-plan .month-nav{width:100%;justify-content:space-between}
+}

@@ -1,0 +1,46 @@
+{
+  "runs": [
+    [
+      {
+        "path": "/portal-login.html",
+        "lcp_ms": 544,
+        "cls": 0,
+        "ttfb_ms": 6,
+        "resource_transfer_bytes": 20132,
+        "javascript_transfer_bytes": 5057,
+        "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+      },
+      {
+        "path": "/app/client-portal.html",
+        "lcp_ms": 2616,
+        "cls": 0.013109716590096635,
+        "ttfb_ms": 1.200000001117587,
+        "resource_transfer_bytes": 273646,
+        "javascript_transfer_bytes": 203736,
+        "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+      }
+    ],
+    [
+      {
+        "path": "/portal-login.html",
+        "lcp_ms": 492,
+        "cls": 0.1574533471563981,
+        "ttfb_ms": 4.099999999627471,
+        "resource_transfer_bytes": 20132,
+        "javascript_transfer_bytes": 5057,
+        "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+      },
+      {
+        "path": "/app/client-portal.html",
+        "lcp_ms": 2640,
+        "cls": 0.013109716590096635,
+        "ttfb_ms": 0.900000000372529,
+        "resource_transfer_bytes": 273646,
+        "javascript_transfer_bytes": 203736,
+        "notes": "390px; 150ms RTT, 1.6Mbps download, 4x CPU; safe mocked APIs; no real backend timing. INP not measured."
+      }
+    ]
+  ],
+  "change": "Legacy Google font stylesheet made nonblocking; staff font availability and noscript fallback preserved",
+  "result": "Home LCP remains above2500ms in both runs; no performance pass claimed"
+}

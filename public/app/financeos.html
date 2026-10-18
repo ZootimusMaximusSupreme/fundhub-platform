@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fundhub — FinanceOS</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -501,8 +501,10 @@ main{padding:24px 24px 64px}
   .fos-tabs{padding:0 16px;gap:0 16px}
 }
 </style>
+<link rel="stylesheet" href="/app/client-ios.css">
+<link rel="stylesheet" href="/app/financeos-ios.css">
 </head>
-<body>
+<body data-client-page="financeos">
 <div class="app">
   <header class="mbar">
     <div class="brand">
@@ -512,6 +514,7 @@ main{padding:24px 24px 64px}
     </div>
     <a id="money-back" href="client-portal.html">Back to my portal</a>
   </header>
+  <div class="fos-intro"><p>Your money, in one place</p><h1>FinanceOS</h1><p class="fos-intro-note">See where things stand. Choose a section to manage your next move.</p></div>
   <nav class="fos-tabs" role="tablist" aria-label="FinanceOS">
     <a role="tab" id="tab-overview" href="#overview" aria-controls="fos-overview" aria-selected="true">Overview</a>
     <a role="tab" id="tab-next" href="#next" aria-controls="fos-next" aria-selected="false" tabindex="-1">Next steps</a>
@@ -567,6 +570,7 @@ main{padding:24px 24px 64px}
 <script defer src="money-connections.js"></script>
 <script defer src="money-payments.js"></script>
 <script defer src="money-setup.js"></script>
+<script defer src="/app/client-ios.js"></script>
 <script defer src="financeos.js"></script>
 </body>
 </html>

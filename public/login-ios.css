@@ -1,0 +1,27 @@
+/* Shared password login: presentation is activated only in client context. */
+.client-login-eyebrow, .client-login-label { display: none; }
+body[data-client-ios][data-client-page="login"] { margin: 0; min-height: 100svh; color: #16171b; background: radial-gradient(ellipse at 90% 0%, #e8e9fa 0, transparent 50%), #f4f5f7; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; letter-spacing: -.025em; }
+[data-client-ios][data-client-page="login"] .spectrum { display: none; }
+[data-client-ios][data-client-page="login"] .login-box { box-sizing: border-box; width: 100%; max-width: 528px; margin: 0 auto; padding: 64px 24px; }
+[data-client-ios][data-client-page="login"] .card { padding: 32px; border: 1px solid rgba(34,38,48,.06); border-radius: 28px; background: #fff; box-shadow: 0 16px 48px rgba(38,43,57,.06); }
+[data-client-ios][data-client-page="login"] .client-login-eyebrow { display: block; margin: 0 0 8px; color: #777b85; font-size: 13px; font-weight: 650; }
+[data-client-ios][data-client-page="login"] h1 { margin: 0 0 16px; font: 740 40px/1.08 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; letter-spacing: -.06em; }
+[data-client-ios][data-client-page="login"] :is(.sub,.note) { color: #737883; font: inherit; font-size: 14px; line-height: 1.6; letter-spacing: -.015em; overflow-wrap: anywhere; }
+[data-client-ios][data-client-page="login"] form { gap: 8px; margin: 32px 0 24px; }
+[data-client-ios][data-client-page="login"] .client-login-label { display: block; color: #444954; font-size: 14px; font-weight: 650; }
+[data-client-ios][data-client-page="login"] input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 56px; padding: 16px; border: 1px solid #dcdfe6; border-radius: 14px; color: #16171b; background: #f8f9fb; font: inherit; }
+[data-client-ios][data-client-page="login"] .fh-pw>input { padding-right: 72px; }
+[data-client-ios][data-client-page="login"] .fh-pw-btn { min-width: 48px; min-height: 44px; }
+[data-client-ios][data-client-page="login"] .btn { justify-content: center; min-height: 56px; padding: 16px; border-radius: 14px; font: inherit; font-size: 14px; font-weight: 700; white-space: normal; cursor: pointer; }
+[data-client-ios][data-client-page="login"] #go { margin-top: 8px; color: #fff; background: #202431; border-color: #202431; }
+[data-client-ios][data-client-page="login"] .btn:disabled { opacity: .65; cursor: wait; }
+[data-client-ios][data-client-page="login"] a { display: inline-flex; align-items: center; min-height: 44px; color: #454d62; }
+[data-client-ios][data-client-page="login"] :is(input,button,a):focus-visible { outline: 3px solid #6c7dd9; outline-offset: 4px; }
+[data-client-ios][data-client-page="login"] #err { margin: 24px 0; padding: 16px; border: 1px solid #f1cdd5; border-radius: 16px; color: #8c273b; background: #fff0f2; font: inherit; font-size: 14px; overflow-wrap: anywhere; }
+[data-client-ios][data-client-page="login"] #fh-demo { border-color: #dcdfe6; margin-top: 24px; padding-top: 24px; }
+[data-client-ios][data-client-page="login"] #fh-demo h2 { color: #737883; }
+[data-client-ios][data-client-page="login"] .fh-demo-btn { min-height: 56px; padding: 16px; border-color: #dcdfe6; border-radius: 14px; background: #f8f9fb; overflow-wrap: anywhere; }
+[data-client-ios][data-client-page="login"] .fh-demo-btn b { color: #16171b; }
+[data-client-ios][data-client-page="login"] .fh-demo-btn span { color: #737883; }
+[data-client-ios][data-client-page="login"] .fh-demo-btn:hover:not(:disabled) { background: #eaf7f0; }
+@media (max-width:480px) { [data-client-ios][data-client-page="login"] .login-box { padding: 32px 16px; } [data-client-ios][data-client-page="login"] .card { padding: 24px; } [data-client-ios][data-client-page="login"] h1 { font-size: 36px; } }

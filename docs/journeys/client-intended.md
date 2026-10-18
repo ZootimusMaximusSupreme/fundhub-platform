@@ -81,3 +81,7 @@ diff between the two files — CLAUDE.md §4 describes intended vs. actual as a 
 comparison, and this repository has never built a machine check for it. Read both,
 side by side, and treat any difference between them as a finding to report, not
 something to silently fix in either file.
+
+## Approved client Affiliate Dashboard extension — 2026-10-17
+
+The owner approved client referral enrollment revealing a usable own Affiliate Dashboard. A successful real enrollment persists the client account affiliate link. The client stays kind=client and reads only that linked affiliate in the same organization, including own aggregate figures. Refresh and a fresh sign-in must retain this access. A failed request must not claim enrollment or expose another affiliate. The cloud board records source/mocked proof and the still-required real database acceptance.
