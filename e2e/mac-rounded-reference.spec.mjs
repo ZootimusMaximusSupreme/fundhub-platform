@@ -1,12 +1,16 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 import {openScreen,CLOSER} from './harness.mjs';
+// Use the installed browser's real macOS identity, not the global Desktop Chrome device's Linux UA.
+test.use({userAgent:undefined});
 test.skip(process.platform!=='darwin','Native Apple system-font proof runs on the dedicated macOS job.');
 const out='ops/workflows/build-evidence/crm-mac-font';
 for(const width of [1440,390,320])test('actual macOS rounded face at '+width,async({page,context})=>{
  await page.setViewportSize({width,height:900});
  await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
  await openScreen(page,'/app/my-numbers.html',CLOSER,{'/api/read/my-numbers':{ok:true}});
+ fs.mkdirSync(out,{recursive:true});
+ fs.writeFileSync(out+'/platform-'+width+'.json',JSON.stringify(await page.evaluate(()=>({platform:navigator.platform,hints:navigator.userAgentData&&navigator.userAgentData.platform,ua:navigator.userAgent,adapter:!!window.FHFundhubType})),null,2));
  await expect(page.locator('html')).toHaveAttribute('data-fh-apple-rounded','');
  await page.evaluate(()=>{
   const node=document.createElement('div');node.id='native-rounded-proof';
