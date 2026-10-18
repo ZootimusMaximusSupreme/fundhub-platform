@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Fundhub — Client Home Design Preview</title>
+  <style>
+    :root {
+      --ink: #101114;
+      --muted: #666a70;
+      --line: #e6e7e9;
+      --canvas: #f6f7f8;
+      --surface: #fff;
+      --sage: #dcece1;
+      --peach: #f6e6dc;
+      --shadow: 0 20px 60px rgba(20, 23, 28, .055), 0 2px 9px rgba(20, 23, 28, .025);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -.015em; }
+    a { color: inherit; text-decoration: none; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a:focus-visible { outline: 3px solid #7a9cd5; outline-offset: 4px; }
+    .page { min-height: 100vh; padding: 0 48px 72px; }
+    .topbar { height: 104px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #e9eaec; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 790; font-size: 21px; letter-spacing: -.06em; white-space: nowrap; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: var(--ink); color: #fff; font-weight: 850; font-size: 21px; letter-spacing: -.1em; padding-right: 3px; }
+    .desktop-nav { display: flex; align-items: center; gap: 34px; font-size: 14px; font-weight: 650; color: #6b6d72; }
+    .desktop-nav a[aria-current="page"] { color: var(--ink); }
+    .top-right { display: flex; align-items: center; gap: 17px; }
+    .preview-label { border: 1px solid #e1e2e4; border-radius: 100px; padding: 8px 13px; background: rgba(255,255,255,.6); color: #72767c; font-size: 12px; font-weight: 640; white-space: nowrap; }
+    .avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: #e8e8e7; color: #56585e; font-size: 13px; font-weight: 750; }
+    main { padding-top: 77px; }
+    .eyebrow { margin: 0 0 19px; font-size: 12px; line-height: 1.2; font-weight: 760; letter-spacing: .17em; text-transform: uppercase; color: #777b80; }
+    h1 { max-width: 930px; margin: 0; font-size: clamp(3.2rem, 6.1vw, 6rem); line-height: .99; letter-spacing: -.08em; font-weight: 750; }
+    .intro-copy { margin: 29px 0 0; color: var(--muted); font-size: 19px; letter-spacing: -.025em; }
+    .main-grid { margin-top: 59px; display: grid; grid-template-columns: minmax(0, 1.63fr) minmax(305px, 1fr); gap: 18px; align-items: stretch; }
+    .hero-card, .next-card, .small-card { border: 1px solid rgba(17,19,23,.055); border-radius: 29px; box-shadow: var(--shadow); }
+    .hero-card { position: relative; min-height: 395px; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; background: var(--surface); padding: 37px 40px 36px; }
+    .hero-card::before { content: ""; position: absolute; right: -120px; bottom: -220px; width: 520px; height: 520px; border: 1px solid #e9ebed; border-radius: 50%; box-shadow: 0 0 0 61px #f9faf9, 0 0 0 62px #eceeed, 0 0 0 122px #fbfbfa, 0 0 0 123px #eff0ef; pointer-events: none; }
+    .hero-card::after { content: ""; position: absolute; right: 84px; bottom: 79px; width: 24px; height: 24px; border-radius: 50%; background: #b9d8c4; box-shadow: 0 0 0 16px rgba(185,216,196,.22); pointer-events: none; }
+    .card-top { display: flex; align-items: center; gap: 10px; color: #555960; font-size: 13px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #8fbea0; }
+    .hero-card h2 { position: relative; z-index: 1; max-width: 590px; margin: 49px 0 12px; font-size: clamp(2.6rem, 4.2vw, 4.6rem); line-height: 1.05; letter-spacing: -.075em; font-weight: 740; }
+    .hero-card p { position: relative; z-index: 1; max-width: 460px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+    .primary { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: space-between; gap: 32px; min-width: 255px; min-height: 54px; margin-top: auto; padding: 0 18px 0 21px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 690; transition: transform .2s ease, background .2s ease; }
+    .primary:hover { background: #303238; transform: translateY(-2px); }
+    .arrow { font-size: 21px; font-weight: 400; line-height: 1; }
+    .next-card { display: flex; flex-direction: column; background: #eef2ee; padding: 37px 36px 35px; }
+    .next-card .eyebrow { color: #5e7163; }
+    .next-card h2 { margin: 38px 0 0; max-width: 320px; font-size: clamp(2rem, 2.65vw, 3rem); line-height: 1.09; letter-spacing: -.065em; font-weight: 725; }
+    .next-card p { max-width: 390px; margin: 14px 0 0; color: #5e6861; line-height: 1.5; }
+    .next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 22px; border-top: 1px solid #dce5dd; margin-top: auto; color: #4c6153; font-size: 13px; font-weight: 690; }
+    .next-foot .circle { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #cbd9cf; border-radius: 50%; font-size: 21px; font-weight: 400; }
+    .section-title { margin: 54px 0 20px; font-size: 27px; font-weight: 725; letter-spacing: -.05em; }
+    .small-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .small-card { display: flex; flex-direction: column; min-height: 190px; padding: 25px 27px; background: var(--surface); }
+    .small-card .icon { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; background: #f3f3f2; color: #303237; font-size: 20px; font-weight: 400; }
+    .small-card h3 { margin: 26px 0 5px; font-size: 19px; line-height: 1.2; letter-spacing: -.04em; font-weight: 710; }
+    .small-card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .small-card .card-arrow { align-self: flex-end; margin-top: auto; color: #777b80; font-size: 20px; }
+    .mobile-nav { display: none; }
+    @media (max-width: 900px) {
+      .page { padding-inline: 24px; }
+      .desktop-nav { display: none; }
+      main { padding-top: 58px; }
+      .main-grid { grid-template-columns: minmax(0, 1fr); margin-top: 45px; }
+      .hero-card { min-height: 370px; }
+      .next-card { min-height: 255px; }
+      .next-card h2 { margin-top: 24px; }
+      .small-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      body { background: #f6f7f8; }
+      .page { padding: 0 17px calc(104px + env(safe-area-inset-bottom)); }
+      .topbar { height: 75px; border-bottom: 0; }
+      .brand { gap: 8px; font-size: 19px; }
+      .brand-mark { width: 35px; height: 35px; border-radius: 11px; font-size: 18px; }
+      .preview-label { font-size: 10px; padding: 6px 8px; }
+      .avatar { display: none; }
+      main { padding-top: 39px; }
+      .eyebrow { margin-bottom: 14px; font-size: 11px; }
+      h1 { font-size: clamp(3.2rem, 13vw, 4.7rem); line-height: 1.01; }
+      .intro-copy { max-width: 310px; margin-top: 20px; font-size: 16px; }
+      .main-grid { gap: 13px; margin-top: 37px; }
+      .hero-card, .next-card, .small-card { border-radius: 24px; }
+      .hero-card { min-height: 355px; padding: 26px 25px; }
+      .hero-card::before { width: 310px; height: 310px; right: -140px; bottom: -161px; box-shadow: 0 0 0 42px #f9faf9, 0 0 0 43px #eceeed, 0 0 0 83px #fbfbfa, 0 0 0 84px #eff0ef; }
+      .hero-card::after { right: 30px; bottom: 65px; width: 16px; height: 16px; box-shadow: 0 0 0 11px rgba(185,216,196,.22); }
+      .hero-card h2 { max-width: 275px; margin-top: 44px; font-size: 44px; }
+      .hero-card p { max-width: 270px; font-size: 14px; }
+      .primary { min-width: 0; width: 100%; min-height: 52px; border-radius: 11px; font-size: 14px; }
+      .next-card { min-height: 236px; padding: 25px; }
+      .next-card h2 { max-width: 280px; margin-top: 18px; font-size: 32px; }
+      .next-card p { font-size: 14px; }
+      .next-foot { margin-top: 22px; padding-top: 15px; }
+      .section-title { margin: 41px 3px 16px; font-size: 24px; }
+      .small-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+      .small-card { min-height: 123px; padding: 19px 20px; display: grid; grid-template-columns: 39px minmax(0, 1fr) 20px; align-items: center; column-gap: 13px; }
+      .small-card .icon { grid-row: 1 / 3; }
+      .small-card h3 { grid-column: 2; margin: 0 0 2px; font-size: 17px; }
+      .small-card p { grid-column: 2; grid-row: 2; font-size: 13px; }
+      .small-card .card-arrow { grid-column: 3; grid-row: 1 / 3; align-self: center; margin: 0; }
+      .mobile-nav { position: fixed; z-index: 4; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); min-height: calc(72px + env(safe-area-inset-bottom)); padding: 9px 13px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(30,33,36,.09); background: rgba(250,250,249,.91); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+      .mobile-nav a { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; color: #7a7d82; font-size: 10px; font-weight: 650; }
+      .mobile-nav a[aria-current="page"] { color: var(--ink); }
+      .mobile-nav .nav-icon { font-size: 20px; line-height: 1; }
+    }
+    @media (max-width: 360px) { .preview-label { display: none; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .primary { transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="page" id="home">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Fundhub client home"><span class="brand-mark" aria-hidden="true">f.</span><span>fundhub</span></a>
+      <nav class="desktop-nav" aria-label="Preview sections">
+        <a href="#home" aria-current="page">Home</a>
+        <a href="#progress">Progress</a>
+        <a href="#files">Documents</a>
+        <a href="#support">Help</a>
+      </nav>
+      <div class="top-right"><span class="preview-label">DESIGN PREVIEW · SAMPLE CONTENT</span><span class="avatar" aria-hidden="true">FH</span></div>
+    </header>
+
+    <main>
+      <p class="eyebrow">Your Fundhub space</p>
+      <h1>Your file,<br>in focus.</h1>
+      <p class="intro-copy">A clear view of where things stand, and what happens next.</p>
+
+      <div class="main-grid">
+        <section class="hero-card" id="progress" aria-labelledby="status-title">
+          <div class="card-top"><span class="live-dot" aria-hidden="true"></span>Current status · example</div>
+          <h2 id="status-title">Reviewing<br>your file.</h2>
+          <p>Your advisor is reviewing what is on file. When there is a new step, it will appear here.</p>
+          <a class="primary" href="#next-step"><span>See what happens next</span><span class="arrow" aria-hidden="true">↗</span></a>
+        </section>
+
+        <section class="next-card" id="next-step" aria-labelledby="next-title">
+          <p class="eyebrow">Next step · example</p>
+          <h2 id="next-title">Nothing you need to do right now.</h2>
+          <p>We will let you know if your advisor needs anything else.</p>
+          <div class="next-foot"><span>Updates appear here as your file moves</span><span class="circle" aria-hidden="true">↗</span></div>
+        </section>
+      </div>
+
+      <h2 class="section-title">Everything else, close by.</h2>
+      <div class="small-grid">
+        <a class="small-card" id="files" href="#files" aria-label="Documents preview section">
+          <span class="icon" aria-hidden="true">▤</span><h3>Documents</h3><p>Files and agreements, together.</p><span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="small-card" href="#progress" aria-label="Activity preview section">
+          <span class="icon" aria-hidden="true">◷</span><h3>Activity</h3><p>A simple history of your file.</p><span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="small-card" id="support" href="#support" aria-label="Advisor help preview section">
+          <span class="icon" aria-hidden="true">◎</span><h3>Your advisor</h3><p>Help when you need a person.</p><span class="card-arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <nav class="mobile-nav" aria-label="Mobile preview sections">
+    <a href="#home" aria-current="page"><span class="nav-icon" aria-hidden="true">⌂</span>Home</a>
+    <a href="#progress"><span class="nav-icon" aria-hidden="true">◉</span>Progress</a>
+    <a href="#files"><span class="nav-icon" aria-hidden="true">▤</span>Files</a>
+    <a href="#support"><span class="nav-icon" aria-hidden="true">◎</span>Help</a>
+  </nav>
+</body>
+</html>
