@@ -36,8 +36,8 @@ try {
   const f=facts.accounts.find(a=>a.name==='Personal Visa');
   const built=buildSampleCreditFile({pulledAt:now.toISOString(),person:{first:'Portal',last:'Sample'},visa:{mask:f.mask,balanceCents:f.currentCents,limitCents:f.limitCents,aprPct:f.purchaseApr,minimumPaymentCents:f.minimumPaymentCents,highBalanceCents:f.maxEodCents,lastActivityOn:f.lastPostedOn}});
   const scored=withEngineResult(built.payload,{submittedName:'Portal Sample',email:'portal-sample@example.test'});
-  const crs=(await db.query(`INSERT INTO crs_results (org_id,client_id,result,outcome_tier,provider,provider_result_id) VALUES ($1,$2,$3::jsonb,$4,$5,$6) RETURNING *`,[orgId,clientId,JSON.stringify(scored.payload),scored.outcomeTier,SAMPLE_PROVIDER,sampleProviderResultId()])).rows[0];
-  await ingestCrsResult(db,crs); await ingestCrsLiabilities(db,crs); await mergeCustomFields(db,clientId,countFields(built.counts));
+  const crs=(await db.query(`INSERT INTO crs_results (org_id,client_id,result,outcome_tier,provider,provider_result_id,created_at) VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7) RETURNING *`,[orgId,clientId,JSON.stringify(scored.payload),scored.outcomeTier,SAMPLE_PROVIDER,sampleProviderResultId(),now])).rows[0];
+  await ingestCrsResult(db,crs); await ingestCrsLiabilities(db,crs); await mergeCustomFields(db,clientId,{...countFields(built.counts),total_funding_estimate:scored.fundingEstimate});
   const bundle={version:1,as_of:now.toISOString(),notice:'Sample view — fictional data. No credit bureau or bank was contacted.',facts,engine:{tier:scored.outcomeTier,funding_estimate:scored.fundingEstimate},reads:{}};
   for(const path of ['read/portal-summary','read/client-progress','read/entitlements',...['overview','accounts','alerts','banks','connections','credit','fundability','helper','payments','plan','ready-to-fund','setup','strategy','tasks','transfers','trends','vault'].map(p=>'money/'+p)]) {
     const {default:handler}=await import('../api/'+path+'.mjs');
@@ -52,10 +52,11 @@ try {
   function scrub(v,k='') {
     if(Array.isArray(v))return v.map(x=>scrub(x,k));
     if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).filter(([key])=>!['shareUrl','share_url','checkout_url','payment_url','approve_url'].includes(key)).map(([key,x])=>[key,scrub(x,key)]));
-    if(typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(v)){if(!ids.has(v))ids.set(v,'sample-'+(++n));return ids.get(v);}
+    if(typeof v==='string'&&/^https?:\/\//i.test(v))return null;
+    if(typeof v==='string')return v.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,id=>{if(!ids.has(id))ids.set(id,'sample-'+(++n));return ids.get(id);});
     return v;
   }
-  const safe=scrub(bundle);
+  const safe=scrub(JSON.parse(JSON.stringify(bundle)));
   // Referral is always read from the real account, never a fabricated enrollment.
   if(safe.reads['/api/read/client-progress'])delete safe.reads['/api/read/client-progress'].referral;
   writeFileSync('/tmp/client-portal-sample-bundle.json',JSON.stringify(safe,null,2)+'\n');
