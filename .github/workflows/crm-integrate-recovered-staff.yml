@@ -36,7 +36,7 @@ jobs:
           const file='ops/workflows/build-evidence/crm-staff-recovered/integration.json';
           const report=JSON.parse(fs.readFileSync(file,'utf8'));
           execFileSync('git',['config','user.name','Fundhub UI integration']);execFileSync('git',['config','user.email','ui-checks@fundhub.ai']);
-          if(report.complete)execFileSync('git',['add','--',...report.files.map(r=>r.path)]);
+          if(report.complete)execFileSync('git',['add','-f','--',...report.files.map(r=>r.path)]);
           execFileSync('git',['add','-f','--',file]);
           if(execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim()){
             execFileSync('git',['commit','-m',report.complete?'Integrate recovered original staff page results with current chrome retained':'Record supporting client asset conflicts without changing app files'],{stdio:'inherit'});
