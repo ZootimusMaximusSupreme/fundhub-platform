@@ -111,8 +111,9 @@
         frameLink.className = 'client-money-frame';
         var sectionKey = location.pathname.split('/').pop().replace(/^money-?/, '').replace(/\.html$/, '') || 'overview';
         frameLink.href = '/app/financeos.html#' + sectionKey;
-        frameLink.textContent = 'Open Money workspace ↗';
-        localNav.replaceChildren(jumpLabel);
+        frameLink.textContent = 'Money workspace ↗';
+        frameLink.setAttribute('aria-label', 'Open Money workspace');
+        localNav.replaceChildren(jumpLabel, frameLink);
         frameLink.classList.add('client-ios-workspace-link');
         localNav.classList.add('client-money-navigation');
         localNav.setAttribute('aria-label', 'Money sections');
@@ -160,7 +161,7 @@
       accountPanel.appendChild(accountName);
       var back = document.getElementById('money-back');
       if (back) accountPanel.appendChild(back);
-      if (typeof frameLink !== 'undefined' && frameLink) accountPanel.appendChild(frameLink);
+
       var license = document.getElementById('affLicenseChip');
       if (license) accountPanel.appendChild(license);
       account.append(accountSummary, accountPanel);

@@ -83,3 +83,13 @@ body[data-client-ios] .client-ios-brand-logo{display:block;width:140px;max-width
 body[data-client-ios] .client-ios-mobile-brand{display:none;align-items:center;min-height:44px;flex-shrink:0;text-decoration:none}
 body[data-client-ios] .client-ios-mobile-logo{display:block;width:112px;height:28px;background-image:var(--logo);background-size:contain;background-repeat:no-repeat;background-position:left center}
 @media(max-width:760px){body[data-client-ios] .client-ios-mobile-brand{display:inline-flex}body[data-client-ios] .client-ios-header>.client-ios-location{display:none}}
+
+/* Main page canvas inherits the authenticated company's paper and ink. */
+body[data-client-ios][data-client-page]{background:var(--client-canvas)!important;color:var(--client-ink)!important}
+body[data-client-ios][data-client-page] main{background:var(--client-canvas)}
+/* Keep section switching and the full workspace together, outside account tools. */
+@media(max-width:760px){
+ body[data-client-ios] .client-money-jump{flex:1 1 0;width:auto;grid-template-columns:minmax(0,1fr)}
+ body[data-client-ios] .client-money-jump>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ body[data-client-ios] .mnav.client-money-navigation .client-money-frame{display:flex;align-items:center;justify-content:flex-end;width:104px;padding-left:8px;line-height:1.3}
+}
