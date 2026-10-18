@@ -1,0 +1,35 @@
+name: CRM read-only production release preflight
+on:
+  push:
+    branches: [codex/crm-live-font-reconcile]
+    paths: [.github/workflows/crm-release-preflight.yml]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install existing release tooling
+        run: |
+          npm ci --ignore-scripts
+          npm install -g netlify-cli
+      - name: Load the existing production read connection
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: node scripts/ship-env-from-netlify.mjs
+      - name: Verify the actual runtime database role
+        run: npm run guard:db
+      - name: Run the existing read-only hourly release proof
+        run: npm run pulse:prove -- --beats
+      # pulse:prove uses read-only transactions and recording sinks, permits only
+      # GET/HEAD, and refuses writes/sends. No migrations, deployment or main update.
