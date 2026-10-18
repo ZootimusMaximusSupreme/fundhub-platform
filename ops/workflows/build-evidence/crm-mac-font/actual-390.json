@@ -1,0 +1,13 @@
+{
+  "width": 390,
+  "fonts": [
+    {
+      "familyName": "Nunito ExtraLight",
+      "postScriptName": "Nunito-SemiBold",
+      "isCustomFont": true,
+      "glyphCount": 19
+    }
+  ],
+  "platform": "MacIntel",
+  "source": "776b4a7e75074d43bba462371f42c9673bb44172"
+}
