@@ -196,7 +196,7 @@ function costRules({ month = 12.5, avatarJob = true } = {}) {
   ];
 }
 
-test("marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), this month's spend against the cap, and the run caps, for this company", async () => {
+test("marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), the month and batch caps, and the run caps, for this company", async () => {
   assert.equal(ROUTES["marketing/costs"], marketingCosts);
   const done = await hit(marketingCosts, { role: "admin", deps: { now: () => NOW }, rules: costRules() });
   assert.equal(done.status, 200);
@@ -209,13 +209,10 @@ test("marketing/costs gives each job kind's last measured cost and minutes (unkn
   assert.equal(done.body.kinds.offer, null, "a kind never measured is unknown, not $0");
   assert.equal(done.body.kinds.quick_copy, null, "a kind with no job in this build is unknown");
   assert.deepEqual(done.body.month, { used_usd: 12.5, cap_usd: 50, unpriced_calls: 0 });
+  assert.deepEqual(done.body.batch, { cap_usd: 40 });
   assert.equal(done.body.run_caps.avatar, 6);
-  // HELD ROW: the catalog row says "the month and batch caps". The batch cap lives on GET
-  // marketing/settings. If this door ever returns it, bind route:marketing/costs
-  // (FIN_B24_HELD_ROWS in fin-b24-door-contracts.mjs) and judge it here.
   assert.deepEqual(Object.keys(done.body.month).sort(), ["cap_usd", "unpriced_calls", "used_usd"]);
-  assert.deepEqual(Object.keys(done.body.run_caps), ["avatar"], "per-run caps only; no batch cap rides in this door");
-  assert.equal(JSON.stringify(done.body).includes("batch"), false, "this door says nothing about a batch cap");
+  assert.deepEqual(Object.keys(done.body.run_caps), ["avatar"], "per-run caps stay separate from the batch cap");
   assert.match(done.body.avatar_line, /About \$1\.23 and 8 minutes \(last run, Oct 13\)\. Stops at \$6/);
   assert.match(done.body.avatar_line, /\$12\.50 of \$50 used this month\./);
   const [last] = sqlCalls(done, /FROM marketing_jobs j/).filter((c) => c.params[1] === "avatar");

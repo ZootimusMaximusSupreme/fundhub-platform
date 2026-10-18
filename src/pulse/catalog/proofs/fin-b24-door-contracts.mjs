@@ -9,19 +9,9 @@
 // doors handed in through the handlers' own seams). They are not live checks and
 // never read a real customer's saved result.
 //
-// Not here on purpose (HELD, see FIN_B24_HELD_ROWS at the bottom): a row whose own
-// words name a result the door never returns. Attaching it would write those words
-// into the catalog as the asserted result, and the door cannot deliver them.
-//   route:climate/geocode  says "state / county". The door returns a state code, a
-//                          point and a formatted address. Never a county.
-//   route:marketing/costs  says "the month and batch caps". The door returns the
-//                          month cap and the per-run caps. The batch cap
-//                          (max_batch_cost_usd) is on GET marketing/settings.
-//   route:inquiry (GET)    says "open inquiry-removal cases". The door lists the
-//                          company's cases of EVERY status (Completed and Canceled
-//                          included), narrowed only when a status is sent.
-// All three have tests that go red when the door breaks; they stay unbound until the
-// row's words or the door change. See ops/workflows/finish-853-2026-10-14/manifest-b24.md.
+// The three rows formerly held here now return the exact named result: county,
+// batch cap, and an open-only default inquiry list. Their real-handler tests are
+// attached below; FIN_B24_HELD_ROWS stays exported as an empty drift guard.
 //
 // Repair cycle 1 (an independent checker found 29 rows that stayed green on a real
 // break): the new `fin-b24-repair-*` test files judge those breaks, and each row's
@@ -502,6 +492,37 @@ const ENTRIES = [
       "marketing/flywheel/tweak on step 1 hands it to the avatar run for the campaign: the line is saved, the run is queued with the note and Settings' cap, and no key or a month cap stops it",
     ],
   },
+  {
+    sourceFile: "routes-0.json",
+    surface: "route:climate/geocode",
+    control: "Turn a typed address into a state / county for the lending-climate map (no lenders read, no record).",
+    tests: ["src/pulse/catalog/proofs/fin-b24-chat-journeys.test.mjs"],
+    titles: [
+      "climate/geocode turns a typed address into a state and county with a point, answers a state name from its centre without a lookup, and says not found when nobody knows it",
+    ],
+  },
+  {
+    sourceFile: "routes-3.json",
+    surface: "route:marketing/costs",
+    control: "GET what each paid job kind cost last time and the month and batch caps. Every cost line on the Command Center reads this.",
+    tests: ["src/pulse/catalog/proofs/fin-b24-marketing-reads.test.mjs"],
+    titles: [
+      "marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), the month and batch caps, and the run caps, for this company",
+    ],
+  },
+  {
+    sourceFile: "routes-0.json",
+    surface: "route:inquiry",
+    control: "GET action=cases or status: open inquiry-removal cases for the Specialist desk, or one outbound call row.",
+    tests: ["src/pulse/catalog/proofs/fin-b24-staff-reads.test.mjs", "src/pulse/catalog/proofs/fin-b24-front-guards.test.mjs", "src/pulse/catalog/proofs/fin-b24-repair-staff.test.mjs"],
+    titles: [
+      "inquiry GET action=cases lists only this company's open cases newest first, can explicitly narrow to a closed status, and action=status reads one call row of this company",
+      "inquiry lets in the inquiry specialist, admin and owner only; every other role is refused before any case is read",
+      "inquiry refuses a login that names no company and lists no case and no call",
+      "inquiry lists each case with the columns the Specialist desk reads (status and open count among them), and nothing else of the row",
+      "inquiry reads one call row of this company with exactly its named columns, and only for a GET",
+    ],
+  },
 ];
 
 export function finB24DoorKey(sourceFile, row) {
@@ -525,50 +546,4 @@ export function finB24DoorProof(sourceFile, row) {
   return BY_KEY.get(finB24DoorKey(sourceFile, row)) || null;
 }
 
-/* ROWS HELD BACK ON PURPOSE. Each row's own words name a result its door never
-   returns, so no test can honestly be bound to the words. The tests below DO exist
-   and DO run in the suite (they go red when the door breaks); the catalog just does
-   not point at them. When the words are changed to `proposedControl` (a decision for
-   Chris: the words, or the door) move the entry into ENTRIES with the same tests and
-   titles. The guard test keeps every held row red, keeps the named tests real, and
-   goes red the moment a door starts returning the missing result, so a held row
-   cannot be forgotten. */
-export const FIN_B24_HELD_ROWS = Object.freeze([
-  Object.freeze({
-    sourceFile: "routes-0.json",
-    surface: "route:climate/geocode",
-    control: "Turn a typed address into a state / county for the lending-climate map (no lenders read, no record).",
-    missing: "county",
-    proposedControl: "Turn a typed address into a state and a map point for the lending-climate map (no lenders read, no record).",
-    tests: ["src/pulse/catalog/proofs/fin-b24-chat-journeys.test.mjs"],
-    titles: [
-      "climate/geocode turns a typed address into a state code and a point, answers a state name from its centre without a lookup, and says not found when nobody knows it",
-    ],
-  }),
-  Object.freeze({
-    sourceFile: "routes-3.json",
-    surface: "route:marketing/costs",
-    control: "GET what each paid job kind cost last time and the month and batch caps. Every cost line on the Command Center reads this.",
-    missing: "batch cap",
-    proposedControl: "GET what each paid job kind cost last time, the month cap and the per-run caps. Every cost line on the Command Center reads this.",
-    tests: ["src/pulse/catalog/proofs/fin-b24-marketing-reads.test.mjs"],
-    titles: [
-      "marketing/costs gives each job kind's last measured cost and minutes (unknown when never measured), this month's spend against the cap, and the run caps, for this company",
-    ],
-  }),
-  Object.freeze({
-    sourceFile: "routes-0.json",
-    surface: "route:inquiry",
-    control: "GET action=cases or status: open inquiry-removal cases for the Specialist desk, or one outbound call row.",
-    missing: "open-only listing",
-    proposedControl: "GET action=cases or status: every inquiry-removal case of the company (newest 100, any status, narrowed when a status is sent) for the Specialist desk, or one outbound call row.",
-    tests: ["src/pulse/catalog/proofs/fin-b24-staff-reads.test.mjs", "src/pulse/catalog/proofs/fin-b24-front-guards.test.mjs", "src/pulse/catalog/proofs/fin-b24-repair-staff.test.mjs"],
-    titles: [
-      "inquiry GET action=cases lists this company's cases newest first, narrowed by status, and action=status reads one call row of this company",
-      "inquiry lets in the inquiry specialist, admin and owner only; every other role is refused before any case is read",
-      "inquiry refuses a login that names no company and lists no case and no call",
-      "inquiry lists each case with the columns the Specialist desk reads (status and open count among them), and nothing else of the row",
-      "inquiry reads one call row of this company with exactly its named columns, and only for a GET",
-    ],
-  }),
-]);
+export const FIN_B24_HELD_ROWS = Object.freeze([]);

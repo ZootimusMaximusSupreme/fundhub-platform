@@ -297,7 +297,9 @@ async function googleLookup(query, timeoutMs = 6000) {
 }
 
 async function censusLookup(query, timeoutMs = 6000) {
-  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(query)}&benchmark=Public_AR_Current&format=json`;
+  // The geographies endpoint returns the same matched address and point as the
+  // locations endpoint, plus the county the lending-climate map needs.
+  const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(query)}&benchmark=Public_AR_Current&vintage=Current_Current&layers=Counties&format=json`;
   const { signal, cancel } = withTimeout(timeoutMs);
   try {
     const res = await fetch(url, { signal, headers: { "User-Agent": "fundhub-climate/1.0" } });
@@ -318,11 +320,13 @@ async function geocodeGoogle(query) {
   if (found.status !== "hit") return null;
   const hit = found.hit;
   const stateComp = (hit.address_components || []).find((c) => c.types.includes("administrative_area_level_1"));
+  const countyComp = (hit.address_components || []).find((c) => c.types.includes("administrative_area_level_2"));
   const stateCode = stateComp?.short_name;
   return {
     ok: true,
     provider: "google",
     stateCode: STATE_CENTROIDS[stateCode] ? stateCode : stateFromText(query),
+    county: countyComp?.long_name || null,
     lat: hit.geometry?.location?.lat,
     lng: hit.geometry?.location?.lng,
     formatted: hit.formatted_address
@@ -334,10 +338,12 @@ async function geocodeCensus(query) {
   if (found.status !== "hit") return null;
   const match = found.hit;
   const stateCode = match.addressComponents?.state;
+  const county = match.geographies?.Counties?.[0]?.NAME || null;
   return {
     ok: true,
     provider: "census",
     stateCode: STATE_CENTROIDS[stateCode] ? stateCode : stateFromText(query),
+    county,
     lat: match.coordinates?.y,
     lng: match.coordinates?.x,
     formatted: match.matchedAddress
@@ -398,7 +404,7 @@ export async function geocode(query) {
   if (!q) return null;
   const exact = q.toUpperCase();
   if (STATE_CENTROIDS[exact]) {
-    return { ok: true, provider: "centroid", stateCode: exact, ...STATE_CENTROIDS[exact] };
+    return { ok: true, provider: "centroid", stateCode: exact, county: null, ...STATE_CENTROIDS[exact] };
   }
   const cacheKey = `geocode:${q.toLowerCase()}`;
   const cached = memory.get(cacheKey);
@@ -407,7 +413,7 @@ export async function geocode(query) {
   const census = google || await geocodeCensus(q);
   const stateCode = census?.stateCode || stateFromText(q);
   const fallback = stateCode && STATE_CENTROIDS[stateCode]
-    ? { ok: true, provider: census?.provider || "centroid", stateCode, ...STATE_CENTROIDS[stateCode] }
+    ? { ok: true, provider: census?.provider || "centroid", stateCode, county: census?.county || null, ...STATE_CENTROIDS[stateCode] }
     : null;
   const result = census?.lat ? census : fallback;
   if (result) memory.set(cacheKey, result);

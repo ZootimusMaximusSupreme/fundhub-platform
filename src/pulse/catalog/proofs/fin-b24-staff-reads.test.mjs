@@ -125,29 +125,34 @@ test("lender-observations lets in exactly owner, admin and funding advisor and r
 
 /* ── inquiry: the Specialist desk's open cases and one outbound call row ─── */
 
-const CASE_A = { id: "1c000000-0000-4000-8000-00000000000a", case_id: "IR-1", client_id: CLIENT_ID, case_status: "open", selected_bureaus_raw: "EQ", call_fired_at: null, ai_call_status: null, open_inquiry_count: 3, created_at: "2026-10-12T10:00:00.000Z", org_id: ORG_ID };
-const CASE_B = { ...CASE_A, id: "1c000000-0000-4000-8000-00000000000b", case_id: "IR-2", case_status: "waiting", created_at: "2026-10-13T10:00:00.000Z" };
+const CASE_A = { id: "1c000000-0000-4000-8000-00000000000a", case_id: "IR-1", client_id: CLIENT_ID, case_status: "In Progress", selected_bureaus_raw: "EQ", call_fired_at: null, ai_call_status: null, open_inquiry_count: 3, created_at: "2026-10-12T10:00:00.000Z", org_id: ORG_ID };
+const CASE_B = { ...CASE_A, id: "1c000000-0000-4000-8000-00000000000b", case_id: "IR-2", case_status: "Queued", created_at: "2026-10-13T10:00:00.000Z" };
+const CASE_DONE = { ...CASE_A, id: "1c000000-0000-4000-8000-00000000000c", case_id: "IR-DONE", case_status: "Completed", created_at: "2026-10-14T10:00:00.000Z" };
+const CASE_CANCELED = { ...CASE_A, id: "1c000000-0000-4000-8000-00000000000d", case_id: "IR-CANCELED", case_status: "Canceled", created_at: "2026-10-15T10:00:00.000Z" };
 const CASE_X = { ...CASE_A, id: "1c000000-0000-4000-8000-0000000000ff", case_id: "IR-X", org_id: OTHER_ORG_ID };
 
 function inquiryCaseRules() {
-  return [[/FROM inquiry_removal_cases/, shelf([CASE_X, CASE_A, CASE_B], [
+  return [[/FROM inquiry_removal_cases/, shelf([CASE_X, CASE_A, CASE_B, CASE_DONE, CASE_CANCELED], [
     clause(/WHERE org_id = \$1::uuid/, (row, p) => row.org_id === p[0]),
     clause(/AND case_status::text = \$2/, (row, p) => row.case_status === p[1]),
+    clause(/AND case_status::text NOT IN \('Completed','Canceled'\)/, (row) => !["Completed", "Canceled"].includes(row.case_status)),
   ])]];
 }
 
-test("inquiry GET action=cases lists this company's cases newest first, narrowed by status, and action=status reads one call row of this company", async () => {
+test("inquiry GET action=cases lists only this company's open cases newest first, can explicitly narrow to a closed status, and action=status reads one call row of this company", async () => {
   assert.equal(ROUTES.inquiry, inquiryHandler);
   const all = await hit(inquiryHandler, { role: "inquiry_specialist", query: { action: "cases" }, rules: inquiryCaseRules() });
   assert.equal(all.status, 200);
   assert.deepEqual(all.body.cases.map((c) => c.case_id).sort(), ["IR-1", "IR-2"], "another company's case never reaches the desk");
   const [list] = sqlCalls(all, /FROM inquiry_removal_cases/);
   assert.deepEqual(list.params, [ORG_ID]);
+  assert.match(list.sql, /case_status::text NOT IN \('Completed','Canceled'\)/, "the default desk leaves completed and canceled cases out");
   assert.match(list.sql, /ORDER BY created_at DESC LIMIT 100/);
 
-  const waiting = await hit(inquiryHandler, { role: "admin", query: { action: "cases", status: "waiting" }, rules: inquiryCaseRules() });
-  assert.deepEqual(waiting.body.cases.map((c) => c.case_id), ["IR-2"]);
-  assert.deepEqual(sqlCalls(waiting, /FROM inquiry_removal_cases/)[0].params, [ORG_ID, "waiting"]);
+  const completed = await hit(inquiryHandler, { role: "admin", query: { action: "cases", status: "Completed" }, rules: inquiryCaseRules() });
+  assert.deepEqual(completed.body.cases.map((c) => c.case_id), ["IR-DONE"]);
+  assert.deepEqual(sqlCalls(completed, /FROM inquiry_removal_cases/)[0].params, [ORG_ID, "Completed"]);
+  assert.doesNotMatch(sqlCalls(completed, /FROM inquiry_removal_cases/)[0].sql, /NOT IN/, "an explicit status can still retrieve closed history");
 
   const CALL = { call_id: "call-1", client_id: CLIENT_ID, org_id: ORG_ID, kind: "bureau", created_at: "2026-10-13T11:00:00.000Z" };
   const callRules = [[/FROM outbound_calls/, shelf([{ ...CALL, org_id: OTHER_ORG_ID }, CALL], [

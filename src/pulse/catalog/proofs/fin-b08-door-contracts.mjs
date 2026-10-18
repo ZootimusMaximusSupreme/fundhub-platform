@@ -4,7 +4,7 @@
 // the real api/ handler over stand-in tables and judge the exact saved result; every one of them was
 // broken on purpose once (product line changed, test seen red, line put back).
 // src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs checks every entry against the coverage map
-// and the test files. Four batch rows are deliberately NOT here (see FIN_B08_NOT_ATTACHED below).
+// and the test files. The four rows once held back are now repaired and attached below.
 import { createHash } from "node:crypto";
 
 export const FIN_B08_DOOR_EVIDENCE = "src/pulse/catalog/proofs/fin-b08-door-contracts.test.mjs";
@@ -76,16 +76,25 @@ const DEFINITIONS = [
   ["be956f7cfc9a02979cb8", ["src/http/fin-b08-repair-generate.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
   // routes-0 repair/inbound-mail: Process a bureau response (pasted text or an uploaded document): parses it, updates dispute items an
   ["a284ee2de26586168354", ["src/http/fin-b08-repair-inbound-mail.test.mjs", "src/http/fin-b08-door-guards.test.mjs"]],
+  // routes-1 contracts/sign: POST action=decline records the signer and creates an assigned task for the sender.
+  ["31bb947e14369a9a0e0c", ["src/http/fin-b08-contracts-sign.test.mjs"]],
+  // routes-2 inquiry-cases clear_inquiry: the session company scopes the inquiry and its case.
+  ["72fad5cb5f5f84a3aa0f", ["src/http/s3-inquiry-cases-handler.test.mjs"]],
+  // routes-1 soft-pull-approve stamp_incorporated: staff stamp one scoped saved business.
+  ["25e2262893fcbdc90db9", ["src/http/fin-b22-soft-pull-flow.test.mjs"]],
+  // routes-2 pii: every read, reveal, history and store is scoped to the session company.
+  ["c0a7cb1361e695f5cd58", ["src/http/fin-b08-pii.test.mjs"]],
 ];
 
-/* Rows of this batch that stay red on purpose, each with the exact thing that is missing.
-   They are listed so a test can fail if one is attached by mistake. */
-export const FIN_B08_NOT_ATTACHED = Object.freeze({
-  "31bb947e14369a9a0e0c": "routes-1 route:contracts/sign POST action=decline: the handler records the decline on the signer (status declined, reason, time) and answers that the person who sent it has been told, but nothing tells the sender. No message, event, task or notify call follows declineSigner (api/contracts/sign.mjs, src/contracts/signers.mjs); the contract's own status has no declined value and does not change; the Documents screen reads the contract list, which carries no signer state, so a declined contract still reads sent / Awaiting there; and no screen reads GET /api/read/contracts?id=, the one place the decline can be seen. The signing page (public/contract.html) defines decline() but no button calls it (owner answer 2026-08-17: contract sign has no decline button), so only a direct call to the endpoint declines. The recorded half is judged in fin-b08-contracts-sign.test.mjs; the 'sender is told' half has no code to judge.",
-  "72fad5cb5f5f84a3aa0f": "routes-2 route:inquiry-cases (clear_inquiry): the control says the org comes from the session. The handler uses the session company for the sign-in gate and for the inquiry.removed event only. clearInquiry (src/inquiry-removal/cases.mjs) reads and updates inquiry_log by id alone (no company in either statement) and no row policy exists on inquiry_log. Measured on the real handler: staff of company A cleared an inquiry that sits in company B, completed B's case, and the event went out stamped with company A and B's client. A company-boundary check is red on today's product.",
-  "25e2262893fcbdc90db9": "routes-1 route:soft-pull-approve POST action=stamp_incorporated: api/soft-pull-approve.mjs:279 calls stampIncorporatedAsStaff, which is defined and imported nowhere in the repo. Measured on the real handler: the call throws ReferenceError (stampIncorporatedAsStaff is not defined), so the action answers 500 and there is no working result to judge. The Present screen and the client control panel both call it. Merge 8d9a693ae (2026-08-27) brought in the call but not the function and stampBusinessIncorporated that commit ddcd92d18 (2026-08-25) added.",
-  "c0a7cb1361e695f5cd58": "routes-2 route:pii (GET/POST /api/pii): the row says a client's identity data is read, revealed and stored by client, and no company check stands behind it. readIdentity, revealSsn and accessHistory (src/pii/index.mjs) read pii_identity and pii_access_log by client_id alone, api/pii.mjs hands them no company, store takes the company from the request body when the session has none, and no row policy on pii_identity or pii_access_log exists in db/. Measured on the real handler over stand-in tables: a staff owner signed in under a SECOND company POSTed reveal for the first company's client and got 200 with the full SSN, and read and history answered 200 for the same client. A company-boundary check is red on today's product, so this row cannot be made honestly green. Same class as inquiry-cases clear_inquiry. The role gate, the required reason, the access log and the encrypted store are judged in fin-b08-pii.test.mjs.",
+/* Historical findings retained so the repair guard can name exactly what left red. */
+export const FIN_B08_REPAIRED_FINDINGS = Object.freeze({
+  "31bb947e14369a9a0e0c": "Repaired: a decline and its assigned sender task now commit together.",
+  "72fad5cb5f5f84a3aa0f": "Repaired: clear_inquiry scopes the inquiry, recount and completion to the session company.",
+  "25e2262893fcbdc90db9": "Repaired: stamp_incorporated now validates and updates one scoped saved business.",
+  "c0a7cb1361e695f5cd58": "Repaired: masked reads, history, reveal and store all require the client's session company.",
 });
+
+export const FIN_B08_NOT_ATTACHED = Object.freeze({});
 
 export function finB08DoorRowId(sourceFile, row) {
   const file = String(sourceFile || "").split(/[\\/]/).at(-1);

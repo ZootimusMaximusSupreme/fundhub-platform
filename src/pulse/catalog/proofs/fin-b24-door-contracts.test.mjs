@@ -26,10 +26,10 @@ function rowsOf(sourceFile) {
   return maps.get(sourceFile);
 }
 
-test("batch 24 binds 37 exact staff route rows, each once, and holds 3 back on purpose", () => {
-  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 37);
-  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 37);
-  assert.equal(FIN_B24_HELD_ROWS.length, 3);
+test("batch 24 binds 40 exact staff route rows, each once, with no result row held back", () => {
+  assert.equal(FIN_B24_DOOR_CONTRACTS.length, 40);
+  assert.equal(new Set(FIN_B24_DOOR_CONTRACTS.map((entry) => entry.key)).size, 40);
+  assert.deepEqual(FIN_B24_HELD_ROWS, []);
 });
 
 test("every bound row is one exact row of the coverage map, a staff or no-impact route, and its handler is routed", () => {
@@ -79,24 +79,15 @@ test("a same-route row with a different result stays unproved", () => {
   assert.equal(finB24DoorProof("routes-3.json", { surface: entry.surface, control: entry.control }), null);
 });
 
-test("a row whose own words name a result its door never returns is held back: it stays red, its tests are real, and nothing is bound to the words", () => {
-  for (const held of FIN_B24_HELD_ROWS) {
-    const row = ROUTE_GAP_ROWS.find((candidate) => candidate.surface === held.surface && candidate.control === held.control);
-    assert.ok(row, `${held.surface} left the red lane without a result that proves its words`);
-    assert.equal(row.sourceFile, held.sourceFile);
-    assert.equal(finB24DoorProof(row.sourceFile, row), null, `${held.surface} must not be bound while its words name a ${held.missing}`);
-    assert.notEqual(held.proposedControl, held.control);
-    // The same tests exist and carry the same titles, so the move into the catalog is one entry.
-    const text = held.tests.map((file) => fs.readFileSync(new URL(file, ROOT), "utf8")).join("\n");
-    for (const title of held.titles) assert.ok(text.includes(title), `no test titled "${title}"`);
+test("the three repaired result rows are attached to exact tests and no longer use the red route lane", () => {
+  const repaired = ["route:climate/geocode", "route:marketing/costs", "route:inquiry"];
+  for (const surface of repaired) {
+    const entry = FIN_B24_DOOR_CONTRACTS.find((candidate) => candidate.surface === surface);
+    assert.ok(entry, `${surface} is attached`);
+    assert.ok(entry.tests.length > 0, `${surface} names its exact handler test`);
+    assert.equal(ROUTE_GAP_ROWS.some((row) => row.surface === surface && row.control === entry.control), false, `${surface} left the red lane`);
+    assert.equal(finB24DoorProof(entry.sourceFile, entry)?.asserts, entry.control);
   }
-  const geocode = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:climate/geocode");
-  assert.match(geocode.control, /state \/ county/);
-  const costs = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:marketing/costs");
-  assert.match(costs.control, /month and batch caps/);
-  const inquiry = FIN_B24_HELD_ROWS.find((held) => held.surface === "route:inquiry");
-  assert.match(inquiry.control, /open inquiry-removal cases/);
-  assert.match(inquiry.proposedControl, /every inquiry-removal case/);
 });
 
 test("the hiring/apply rows are three different rows with the right test for each verb", () => {

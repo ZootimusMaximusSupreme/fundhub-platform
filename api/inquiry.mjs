@@ -48,6 +48,11 @@ export default async function handler(req, res, deps = {}) {
       if (status) {
         params.push(status);
         sql += ` AND case_status::text = $2`;
+      } else {
+        // The Specialist desk is an active-work queue. Completed and canceled
+        // cases stay available through the explicit status filter, but do not
+        // come back in the default open list.
+        sql += ` AND case_status::text NOT IN ('Completed','Canceled')`;
       }
       sql += ` ORDER BY created_at DESC LIMIT 100`;
       const { rows } = await database.query(sql, params);
