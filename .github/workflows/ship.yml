@@ -110,3 +110,45 @@ jobs:
           DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry }}
         run: |
           if [ "$DRY" = "true" ]; then npm run ship -- --dry; else npm run ship; fi
+
+      - name: Verify published CRM and portal assets match this release
+        env:
+          NODE_OPTIONS: "--dns-result-order=ipv4first"
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          const source=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          const paths=['/app/my-numbers.html','/app/my-numbers.css','/app/pipeline.html','/app/sales-floor.html','/app/sales-floor.css','/app/finance-os.html','/app/csm-queue.html','/app/contracts.html','/app/lenders.html','/app/client-portal.html','/portal-login.html','/app/fundhub-font.css','/app/fundhub-font.js','/app/client-ios.css','/app/client-ios.js','/app/shell.js','/app/crm-sidebar.css','/app/workspace-ui.css','/assets/fonts/nunito-latin-variable.woff2'];
+          const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
+          const results=[];
+          for(let offset=0;offset<paths.length;offset+=4){
+            const batch=await Promise.all(paths.slice(offset,offset+4).map(async path=>{
+              const expected=hash(fs.readFileSync('public'+path));let last;
+              for(let attempt=0;attempt<3;attempt++){
+                try{
+                  const response=await fetch('https://fundhub.ai'+path+'?release='+source,{headers:{'cache-control':'no-cache'},signal:AbortSignal.timeout(15000)});
+                  if(!response.ok)throw Error('HTTP '+response.status);
+                  const actual=hash(Buffer.from(await response.arrayBuffer()));
+                  if(actual!==expected)throw Error('published bytes differ from checked source');
+                  return {path,ok:true,sha256:actual};
+                }catch(error){last=String(error.message);}
+              }
+              return {path,ok:false,reason:last};
+            }));
+            results.push(...batch);
+          }
+          const receipt={source,site:'https://fundhub.ai',checkedAt:new Date().toISOString(),readOnly:true,production:true,results};
+          const output=process.env.RUNNER_TEMP+'/crm-live-assets.json';
+          fs.writeFileSync(output,JSON.stringify(receipt,null,2));
+          for(const result of results)console.log((result.ok?'PASS ':'FAIL ')+result.path+(result.reason?' '+result.reason:' '+result.sha256));
+          if(results.some(result=>!result.ok))process.exitCode=1;
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-crm-portal-asset-verification
+          path: ${{ runner.temp }}/crm-live-assets.json
+          if-no-files-found: ignore
+          retention-days: 14
