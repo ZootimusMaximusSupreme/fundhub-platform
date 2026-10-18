@@ -495,8 +495,7 @@ const SCRIPT_2_DRAFT = {
 };
 
 /* Shoot Day (X5): a locked script on the open shoot, rolled twice, the second
-   take kept; and a second one not rolled yet whose offer has no file-name word
-   on file (marketing/ads/NAMING.md names only SLO). Plan fields from
+   take kept; and a Direct Book script not rolled yet. Plan fields from
    src/marketing/shoot-plan.mjs planFields() at 150 words a minute. */
 const SHOOT_SCRIPT_1 = {
   ...SCRIPT_DRAFT,
@@ -529,10 +528,10 @@ const SHOOT_SCRIPT_2 = {
   locked_by: CHRIS,
   updated_at: "2026-10-13T15:30:00.000Z",
   angle_name: "Inquiries off first",
-  offer_word: null,
+  offer_word: "Direct Book",
   take_no: 1,
-  take_file_name: null,
-  take_name_problem: "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+  take_file_name: "Direct Book Ad 92 — Inquiries off first Take 1.mp4",
+  take_name_problem: null,
   last_take_file_name: null,
   takes: 0,
   got_it: false,

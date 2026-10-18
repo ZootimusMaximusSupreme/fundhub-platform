@@ -41,6 +41,9 @@ const HAS_DB = !!process.env.DATABASE_URL;
 const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const SLUG_TAG = "zz-mm-flywheel-pg";
 const EMAIL_TAG = "zz_mm_flywheel_pg";
+const NEW_OFFER_KEY = "DECLINE_AUTOPSY";
+const NEW_CAMPAIGN = "decline-autopsy";
+const NEW_CAMPAIGN_WORDS = "Decline Autopsy";
 
 let seq = 0;
 const rid = (tag) => `mm-fly-${tag}-${RUN}-${++seq}`;
@@ -194,38 +197,38 @@ describe("the flywheel routes", { skip: !HAS_DB ? "no DATABASE_URL" : false }, (
   });
 
   describe("POST marketing/flywheel/campaign", () => {
-    test("Start a flywheel for the Capital Blueprint: one owner-notes file queued with its offer line; once per request_id", async () => {
+    test("Start a flywheel for an offer with no bundled folder: one owner-notes file queued with its offer line; once per request_id", async () => {
       const before = wakes;
       const id = rid("camp");
-      const r = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" } });
+      const r = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: NEW_OFFER_KEY } });
       assert.equal(r.code, 201, JSON.stringify(r.body));
-      assert.equal(r.body.campaign, "capital-blueprint");
-      assert.equal(r.body.campaign_words, "Capital Blueprint");
+      assert.equal(r.body.campaign, NEW_CAMPAIGN);
+      assert.equal(r.body.campaign_words, NEW_CAMPAIGN_WORDS);
       assert.equal(r.body.created, true);
       assert.equal(wakes, before + 1, "the worker is woken to carry the save to git");
-      const rows = await outbox(orgA, "marketing/flywheel/capital-blueprint/00-OWNER-NOTES.md");
+      const rows = await outbox(orgA, `marketing/flywheel/${NEW_CAMPAIGN}/00-OWNER-NOTES.md`);
       assert.equal(rows.length, 1);
       assert.equal(rows[0].mode, "replace");
-      assert.match(rows[0].content, /\nOffer key: UWIQ_DELIVERABLES\n/);
+      assert.match(rows[0].content, new RegExp(`\\nOffer key: ${NEW_OFFER_KEY}\\n`));
       assert.match(rows[0].content, /\n## Notes\n$/);
 
-      const again = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: "UWIQ_DELIVERABLES" } });
+      const again = await call(postCampaign, tokenOwnerA, { body: { request_id: id, key: NEW_OFFER_KEY } });
       assert.deepEqual(again.body, r.body);
-      assert.equal((await outbox(orgA, "marketing/flywheel/capital-blueprint/00-OWNER-NOTES.md")).length, 1);
+      assert.equal((await outbox(orgA, `marketing/flywheel/${NEW_CAMPAIGN}/00-OWNER-NOTES.md`)).length, 1);
 
-      const exists = await call(postCampaign, tokenOwnerA, { body: { request_id: rid("camp2"), key: "UWIQ_DELIVERABLES" } });
+      const exists = await call(postCampaign, tokenOwnerA, { body: { request_id: rid("camp2"), key: NEW_OFFER_KEY } });
       assert.equal(exists.code, 200);
       assert.equal(exists.body.created, false);
     });
 
     test("the new flywheel reads from its pending save for this company only", async () => {
-      const r = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: "capital-blueprint" } });
+      const r = await call(getFlywheel, tokenOwnerA, { method: "GET", query: { campaign: NEW_CAMPAIGN } });
       assert.equal(r.code, 200, JSON.stringify(r.body));
-      assert.equal(r.body.campaign_words, "Capital Blueprint");
+      assert.equal(r.body.campaign_words, NEW_CAMPAIGN_WORDS);
       assert.deepEqual(r.body.stages.map((s) => s.state), ["MISSING", "MISSING", "MISSING", "MISSING", "MISSING", "MISSING"]);
       assert.equal(r.body.stages[0].state_word, "Not on this page yet");
       assert.equal(r.body.stages[2].can_run.ok, false, "the offer needs who we sell to first");
-      assert.equal((await call(getFlywheel, tokenOwnerB, { method: "GET", query: { campaign: "capital-blueprint" } })).code, 404);
+      assert.equal((await call(getFlywheel, tokenOwnerB, { method: "GET", query: { campaign: NEW_CAMPAIGN } })).code, 404);
     });
 
     test("a key that is not an offer is refused by field", async () => {
