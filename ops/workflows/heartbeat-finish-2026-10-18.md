@@ -20,10 +20,10 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 | Lane | Owner | Scope | Dependency | Status |
 | --- | --- | --- | --- | --- |
 | A | this session | exact inventory, shared board, CI/ship gate, integration, final proof | first inventory, then integrates all lanes | active |
-| B | agent | 23 money/payment broken rows | none after inventory | active |
+| B | Turing + integration | 23 money/payment broken rows | none after inventory | complete: two catalog false positives and three PostgreSQL fixture leaks repaired; remaining live/history rows stay honestly red |
 | C | Mill + integration | 31 email/SMS broken rows | none after inventory | complete: SMS duplicate guard repaired; 30 live/config/human rows remain honestly red until their named action |
 | D | Kepler + integration | 38 customer record/journey broken rows | none after inventory | complete: 4 shipped fixes and 2 exact workflow proofs; 32 live/human/external rows remain honestly red |
-| E | agent | 20 staff/plumbing broken rows | none after inventory | active |
+| E | Meitner + integration | 20 staff/plumbing broken rows | none after inventory | complete: live-key proof and CI database-role split repaired; remaining live/config/history rows stay honestly red |
 | F | Feynman + repair agents | 45 display proof gaps | none after inventory | repair active: rows 7–12 fixed and source-proved; final catalog regeneration waits for all display batches |
 | G | Rawls + Ptolemy + integration | 9 route proof gaps | none after inventory | complete: all 9 proved; the 7 endpoint defects are repaired and 1,098/1,098 focused tests pass |
 | H | Ohm + this session | 1 flow and 2 read proof gaps | none after inventory | complete: climate measured red; Present and one-off sender controls repaired and proved; 0 proof gaps remain |
@@ -88,4 +88,6 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: integrated route repair batch J. Climate geocoding, inquiry case defaults and company scope, contract-decline sender tasks, soft-pull incorporation stamps, PII company scope, and marketing batch caps now satisfy their exact outcomes. The integrated route suite passes 1,098/1,098 and the measured route/flow/read proof backlog is zero; only the 45 display rows remain in the generated catalog.
 - 2026-10-18: integrated display repair rows 7–12. Hiring date/page/funnel/decision handling, failed CSV export handling, blank lender-name rejection, and bureau-row draft preservation are fixed. The agent's focused browser, guard, and display suites pass 66/66; final global count waits for the one end-of-run catalog regeneration.
 - 2026-10-18: integrated the finance Postgres fixture-lifecycle repair so the three money suites own one rollback-scoped client and do not leak saved test rows. Scratch-Postgres proof remains part of the final database gate.
+- 2026-10-18: repaired two false money reds in the catalog-data judge. Pending bank transactions may carry `authorized_on` before `posted_on`, and only platform-scoped spend ceilings require a platform; the focused catalog-data suite passes 7/7.
+- 2026-10-18: integrated staff/plumbing lane E. The live key check now reads every compiled sensitive key name, validates shape without returning values, and the CI database suites use owner credentials only for fixtures while keeping RLS assertions on `fundhub_app`. Integrated focused guards pass 4/4. The remaining lane-E reds are stale live evidence, missing configuration, or historical rows and were not painted green.
 
