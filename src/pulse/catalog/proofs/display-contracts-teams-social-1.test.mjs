@@ -107,7 +107,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#kHead").innerText(), "2");
   assert.equal(await staffPage.locator("#kConsent").innerText(), "1/2");
   assert.equal(await staffPage.locator("#kPending").innerText(), "1");
-  assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 ON SHIFT");
+  assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 on shift");
   staffResults.add(proof("Stat tiles: HEADCOUNT, ON SHIFT, CONSENT, PENDING and the 'N on shift' chip").recipe);
   const rosterText = await staffPage.locator("#rosterBody").innerText();
   assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*OWNER[\s\S]*MISSING[\s\S]*OUT[\s\S]*ACTIVE/);
@@ -265,7 +265,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   const socialResults = new Set();
   socialResults.add(proof("Page open: partner list for the picker").recipe);
   assert.match(await socialPage.locator("#tblQueued").innerText(), /Waiting caption/);
-  assert.equal(await socialPage.locator("#ssSuiteTxt").innerText(), "WRITING ON · 7 LEFT");
+  assert.equal(await socialPage.locator("#ssSuiteTxt").innerText(), "Writing on · 7 left");
   assert.match(await socialPage.locator("#btBody").innerText(), /09:30/);
   assert.match(await socialPage.locator("#chGrid").innerText(), /Facebook[\s\S]*@proof[\s\S]*account-proof/);
   assert.match(await socialPage.locator("#ghGrid").innerText(), /TikTok[\s\S]*cannot be used/i);

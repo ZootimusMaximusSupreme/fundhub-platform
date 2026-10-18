@@ -146,7 +146,7 @@
   .census{font-family:var(--mono);color:var(--text-faint);}
   .census b{color:var(--text-dim);font-weight:600;}
   .census .warn{color:var(--alert);font-weight:700;}
-  .clock{font-family:var(--mono);color:var(--text);}
+  .galaxy-clock{font-family:var(--mono);color:var(--text);}
   .live-pill{
     display:flex;align-items:center;gap:6px;font-family:var(--mono);
     color:var(--text);background:var(--card);border:1px solid var(--cardline);
@@ -334,7 +334,7 @@
     </div>
     <div class="topbar-right">
       <div class="census" id="census"></div>
-      <div class="clock" id="clock"></div>
+      <div class="galaxy-clock" id="galaxyClock"></div>
       <div class="live-pill" id="livePill" title="No activity feed yet — Galaxy stays empty until open shifts or agents exist."><span class="live-dot" id="liveDot"></span>WAITING</div>
     </div>
   </header>
@@ -395,7 +395,7 @@ var KPI_H = 0; /* no fake KPI strip — there is no numbers feed */
 var C = {
   /* pace rings + flares are spectrum stops; the rest is the brand neutral ramp.
      sage = ahead, peach = behind, coral = blocked, lemon = money landing. */
-  neutral:'#52525B', green:'#A8D8B0', amber:'#F5CE8F', red:'#F2A69B',
+  neutral:'#626968', green:'#A8D8B0', amber:'#F5CE8F', red:'#F2A69B',
   gold:'#F2E39B', text:'#FCFCFC', dim:'#A1A1AA', faint:'#52525B',
   /* starlight: brand neutrals, depth carried by alpha not hue */
   star:'#E4E4E7', star2:'#A1A1AA', glow:'#A9C6E8', deep:'#111113',
@@ -1691,7 +1691,7 @@ function nowClock(shortT){
     timeZone: "America/Phoenix", timeZoneName: "short"
   });
 }
-var clockEl=document.getElementById('clock'), censusEl=document.getElementById('census');
+var clockEl=document.getElementById('galaxyClock'), censusEl=document.getElementById('census');
 function chrome(){
   clockEl.textContent = nowClock(false);
   if(!NODES.length){
