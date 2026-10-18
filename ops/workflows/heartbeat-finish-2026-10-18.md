@@ -6,8 +6,8 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 
 - Full built catalog: 3,975 mapped rows, 3,942 unique checks, 3,919 wired, 23 catalog-red.
 - Last stored production scorecard: 2026-10-17 6:02 a.m. Arizona, 1,922 rows: 725 working, 78 broken, 853 not proved, 1 unchecked, 265 nothing to judge.
-- Current integrated offline proof inventory: **52 not proved**, measured 2026-10-18 with `node scripts/pulse/count-not-proved.mjs` after the route, climate, Present, and one-off sender repairs:
-  - routes: 7
+- Current integrated offline proof inventory: **45 not proved**, measured 2026-10-18 with `node scripts/pulse/count-not-proved.mjs` after all route, flow, and read repairs:
+  - routes: 0
   - display controls: 45
   - flows: 0
   - reads: 0
@@ -24,8 +24,8 @@ Owner order: fix the broken rows and finish the proof backlog. Money and custome
 | C | Mill + integration | 31 email/SMS broken rows | none after inventory | complete: SMS duplicate guard repaired; 30 live/config/human rows remain honestly red until their named action |
 | D | Kepler + integration | 38 customer record/journey broken rows | none after inventory | complete: 4 shipped fixes and 2 exact workflow proofs; 32 live/human/external rows remain honestly red |
 | E | agent | 20 staff/plumbing broken rows | none after inventory | active |
-| F | Feynman | 45 display proof gaps | none after inventory | complete: 45 confirmed product defects |
-| G | Rawls | 9 route proof gaps | none after inventory | complete: 2 proved, 7 confirmed product defects |
+| F | Feynman + repair agents | 45 display proof gaps | none after inventory | repair active: rows 7–12 fixed and source-proved; final catalog regeneration waits for all display batches |
+| G | Rawls + Ptolemy + integration | 9 route proof gaps | none after inventory | complete: all 9 proved; the 7 endpoint defects are repaired and 1,098/1,098 focused tests pass |
 | H | Ohm + this session | 1 flow and 2 read proof gaps | none after inventory | complete: climate measured red; Present and one-off sender controls repaired and proved; 0 proof gaps remain |
 
 B–H run together. A waits only for the exact current pulse result, then integrates, runs targeted tests, runs the full guard set, and verifies the ship gate. Each repair stays in its own worktree or agent branch. The dirty main checkout and unrelated iOS/auth files are off limits.
@@ -85,4 +85,7 @@ Read `AGENTS.md`, `CLAUDE.md`, `docs/journeys/heartbeat-flow.md`, `ops/workflows
 - 2026-10-18: attached exact non-empty final-result proofs for `contract-chaser` and `pulse-instant-watch`. The chaser proof mints a fresh signer link, queues the approved reminder, and creates the closer task without transmitting; the instant-watch proof exercises owner-only alert success, failure, cooldown, and quiet hours with fake sinks. The combined job proofs pass 23/23. Two final-job reds remain: the owner-spec conflict on `inquiry-call-sweeper` and the ad-video worker result.
 - 2026-10-18: made the paid ad-video background worker injectable without changing its production defaults, then ran the real sweep and final save/notify step against one fake rendered take. It saves the finished copy, records `awaiting_approval`, and produces owner approve/reject links. The authorized final-result proof plus secret-door guards pass 4/4. The only remaining always-red final job is `inquiry-call-sweeper`, whose written journey says calls are held while the registry says Bland calls run; it stays red until that owner policy is reconciled.
 - 2026-10-18: integrated messaging lane C. The SMS dispatcher now blocks same-batch and recent sent/delivered duplicate copy to the same normalized phone before Twilio. The integrated messaging, dedupe, and push command passes 84/84. No message was sent; 30 rows still require live data, configuration, templates, provider evidence, or human decisions and remain red.
+- 2026-10-18: integrated route repair batch J. Climate geocoding, inquiry case defaults and company scope, contract-decline sender tasks, soft-pull incorporation stamps, PII company scope, and marketing batch caps now satisfy their exact outcomes. The integrated route suite passes 1,098/1,098 and the measured route/flow/read proof backlog is zero; only the 45 display rows remain in the generated catalog.
+- 2026-10-18: integrated display repair rows 7–12. Hiring date/page/funnel/decision handling, failed CSV export handling, blank lender-name rejection, and bureau-row draft preservation are fixed. The agent's focused browser, guard, and display suites pass 66/66; final global count waits for the one end-of-run catalog regeneration.
+- 2026-10-18: integrated the finance Postgres fixture-lifecycle repair so the three money suites own one rollback-scoped client and do not leak saved test rows. Scratch-Postgres proof remains part of the final database gate.
 
