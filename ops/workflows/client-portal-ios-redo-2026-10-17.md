@@ -255,3 +255,8 @@ All 24 existing page agents completed; follow-ups reused original Home, Affiliat
 99 combined browser tests pass, 6 sample unit tests, 26 shared/routes tests,18 scoped affiliate tests pass. Real PostgreSQL28 plus7 app-role/RLS passed0skipped at run39102475702; newer final source CI in progress. Final lint rerun in progress (previous3973passed); TypeScript0. HomeLCP980ms/CLS.06546 and sign-inLCP540ms/CLS0 in constrained390px lab; INP/live backend latency not proved. Full broad suite baseline failures/timeouts remain; no safety guards weakened. All IDs preservation evidence retained.
 
 Final source is integrated in review branch; packaging starts only after this checkpoint and final CI/evidence publication. Packaging owns only export outputs/manifests, no app edits.
+
+
+## Packaging started after final integration
+
+Final code/evidence review checkpoint e5a3d786600396a1ce8c3b9912bdfe0549326d9d (local equivalent055b58606752c4045dee639897580b5cbc576980),99browserpass,lint3974pass,TSC0,PG28+role7pass0skips at39102788937. New separate packaging agent actually started: /root/fundhub_html_packaging. Exactly one packaging agent; not a page builder. Scope: all production Fundhub CRM/app/product/auth/agreement/signature HTML and referencedlocalassets; nofunnels,otherbrands,mocks,evidence,secrets/customerfiles/large media. It reads immutable source and owns export/manifests/archive only. Production account lookup and baseline broad suite remain explicit review limits. No main deployment.
