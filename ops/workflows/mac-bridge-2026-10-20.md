@@ -69,3 +69,12 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Why not Claude Remote Control:** Chris tried it many times. It is janky, the terminal breaks often, and setup does not work.
 - **Jev** (TypeSafe AI, released Sept 2026) is a fast decision model, not a chat or coding model. It answers typed questions (pick one, score, yes/no) with a probability. Fit: the router's brain — pick Claude or Codex for a task, and score how risky a command is before it runs. Later, not v1.
 - "Tim" was a mic slip. Ignore.
+
+## Owner calls — 2026-10-20 (third note)
+
+- **It is Chris's own operating system, not a product for any business.** Chat with the always-on Mac from the phone. Code stays in this repo.
+- **It is a delegation agent.** Chris sends a task; it hands the task to the right AI.
+- **It follows this repo's rules** (CLAUDE.md, AGENTS.md, `.claude/rules/`, `.cursor/rules/`).
+- **Safety check is required** before commands run.
+- **CRM work too:** some tasks act inside the Fundhub CRM.
+- **Lanes (as spoken, needs one clear-up):** "Codex only touches dashboards. Claude only touches this." Today's repo law says only Claude changes screens (`.claude/rules/grok-no-displays.md`) and "Codex builds, Claude tests" (`.claude/rules/monday-100-percent.md`). Waiting on Chris for the exact lane table.
