@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fundhub — Hiring</title>
@@ -256,7 +258,7 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
 <script defer src="shell.js"></script>
 <script defer src="data.js"></script>
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--hiring">
 <!-- Hiring. The six api/hiring/* endpoints are GET-only; the one write is
      POST /api/hiring/decide, which the drawer's Advance and Reject buttons call.
      Maintainer notes live in docs/journeys/role-owner-actual.md and in the
@@ -321,10 +323,11 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
       <button class="btn mono" id="resetBtn">Reset filters</button>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Build your team</h2><p class="fh-astra-subtitle">Review shortages, candidates and decisions.</p></div></header>
 
       <!-- Summary -->
-      <div class="stats" id="statRow">
+      <div class="stats fh-astra-summary" id="statRow">
         <div class="stat"><div class="eyebrow">SHORT BY</div><div class="sv">—</div><div class="sd">loading…</div></div>
         <div class="stat"><div class="eyebrow">WAITING ON YOU</div><div class="sv">—</div><div class="sd">loading…</div></div>
         <div class="stat"><div class="eyebrow">ON THE BENCH</div><div class="sv">—</div><div class="sd">loading…</div></div>

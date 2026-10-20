@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fundhub — Finance OS</title>
@@ -103,7 +105,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 @media(max-width:360px){.fos-jumps a{font-size:12px}.fos-summary-facts{display:flex;flex-direction:column;gap:12px}.fos-summary-fact{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:14px}#fosWrap .fos-summary-fact .fh-num{text-align:right;font-size:20px!important;overflow-wrap:normal}.fos-summary-fact small{grid-column:1/-1}}
 </style>
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--finance-os">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -162,7 +164,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
       <span class="crumb" id="fosWho">no client open</span>
     </div>
 
-    <div class="content">
+    <div class="content fh-astra-page">
       <!-- The shared header names the active file; this disclosure changes it
            through the existing URL-based client picker. -->
       <div class="fos-page-heading">

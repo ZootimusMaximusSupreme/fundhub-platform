@@ -110,8 +110,8 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 on shift");
   staffResults.add(proof("Stat tiles: HEADCOUNT, ON SHIFT, CONSENT, PENDING and the 'N on shift' chip").recipe);
   const rosterText = await staffPage.locator("#rosterBody").innerText();
-  assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*OWNER[\s\S]*MISSING[\s\S]*OUT[\s\S]*ACTIVE/);
-  assert.match(rosterText, /Sam Closer[\s\S]*sam@example\.test[\s\S]*CLOSER[\s\S]*ON FILE[\s\S]*IN · NOW[\s\S]*INVITED/);
+  assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*Owner[\s\S]*Missing[\s\S]*Out[\s\S]*Active/);
+  assert.match(rosterText, /Sam Closer[\s\S]*sam@example\.test[\s\S]*Closer[\s\S]*On file[\s\S]*In · now[\s\S]*Invited/);
   staffResults.add(proof("Page open: roster (name, email, role, status, consent, open shift, today's monitor events, hidden-seed count)").recipe);
 
   await staffPage.locator("#roleFilter").selectOption({ label: "Closer" });
@@ -149,7 +149,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#editor").evaluate((e) => e.classList.contains("open")), false);
   staffResults.add(proof("Editor 'Cancel', close X, click outside").recipe);
 
-  await staffPage.getByRole("button", { name: "+ Add person" }).click();
+  await staffPage.getByRole("button", { name: "Add person", exact: true }).click();
   assert.equal(await staffPage.locator("#edTitle").innerText(), "New person");
   assert.equal(await staffPage.locator("#ed_code").inputValue(), "—");
   assert.equal(await staffPage.locator("#ed_first").inputValue(), "");
@@ -165,10 +165,11 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   await staffPage.locator("#edCancel").click();
 
   await staffPage.locator('[data-tab="perms"]').click();
-  for (const label of ["Roster", "Permissions", "Clock & consent", "Telemetry"]) {
+  for (const label of ["People", "Role access", "Time & consent", "Activity"]) {
     assert.equal(await staffPage.getByRole("button", { name: label, exact: true }).isVisible(), true);
   }
-  assert.match(await staffPage.locator("#tab-perms").innerText(), /There is no permission list to show you here/);
+  assert.match(await staffPage.locator("#tab-perms").innerText(), /The permission list is not available here\. This page does not change role rules\./);
+  assert.match(await staffPage.locator("#tab-perms").innerText(), /The server checks what that role can do on every action\./);
   staffResults.add(proof("Tabs: Roster, Permissions, Clock & consent, Telemetry").recipe);
   staffResults.add(proof("Permissions tab (static copy: says no permission list can be shown)").recipe);
   await staffPage.locator('[data-tab="clock"]').click();
@@ -180,12 +181,20 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   staffResults.add(proof("Page open: who am I (marks the 'you' row, owner-only consent buttons)").recipe);
   staffResults.add(proof("Page open: my open shift (so 'Clock in / Clock out' shows the true state)").recipe);
   const confirmConsent = async (staffId, action, phrase) => {
+    const consentResponse = staffPage.waitForResponse((response) => {
+      const request = response.request();
+      if (request.method() !== "POST" || new URL(response.url()).pathname !== "/api/staff/monitoring-consent") return false;
+      const body = request.postDataJSON();
+      return body.staff_id === staffId && body.action === action;
+    });
     const dialogPromise = new Promise((resolve) => staffPage.once("dialog", async (dialog) => {
       resolve(dialog.message());
       await dialog.accept();
     }));
     await staffPage.locator(`[data-consent="${staffId}"]`).click();
     assert.match(await dialogPromise, phrase);
+    assert.equal((await consentResponse).status(), 200);
+    await staffPage.locator(`[data-consent="${staffId}"][data-on="${action === "grant" ? "1" : "0"}"]`).waitFor();
     assert.deepEqual(staffWrites.at(-1), { pathname: "/api/staff/monitoring-consent", body: { staff_id: staffId, action } });
   };
   await confirmConsent("staff-owner-1", "grant", /signed monitoring consent form is on file/);

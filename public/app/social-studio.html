@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fundhub — Social Studio</title>
@@ -323,7 +325,7 @@ details.how .howbd p+p{margin-top:9px}
 <script defer src="shell.js"></script>
 <script defer src="data.js"></script>
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--social-studio">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -386,10 +388,11 @@ details.how .howbd p+p{margin-top:9px}
       <button class="btn" id="composeTop">Write a post</button>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Social workspace</h2><p class="fh-astra-subtitle">Connected accounts, drafts and publishing.</p></div></header>
 
       <!-- the five headline numbers -->
-      <div class="stats" id="stats">
+      <div class="stats fh-astra-summary" id="stats">
         <button type="button" class="stat" data-k="channels" aria-pressed="true">
           <span class="eyebrow">Connected accounts</span>
           <div class="sv" id="kChannels">—</div><div class="sd" id="kChannelsD">—</div></button>

@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fundhub — Products &amp; Commissions</title>
@@ -173,7 +175,7 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
 </style>
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--products-commissions">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -239,8 +241,9 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
       <button class="btn dark mono" id="addProdBtn">+ Add product</button>
     </div>
 
-    <div class="content fh-maxw">
-      <div class="stats">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Products & commissions</h2><p class="fh-astra-subtitle">Products, pricing and dated commission rules.</p></div></header>
+      <div class="stats fh-astra-summary">
         <div class="stat"><div class="eyebrow">PRODUCTS</div><div class="sv" id="kProd">5</div><div class="sd" id="kProdVar">— with variable pricing</div></div>
         <div class="stat"><div class="eyebrow">ACTIVE RULES</div><div class="sv" id="kRules">6</div><div class="sd">front-end and back-end</div></div>
         <div class="stat"><div class="eyebrow">ACCRUED</div><div class="sv" id="kAccrued">$0</div><div class="sd">owed, not yet paid</div></div>
@@ -248,7 +251,7 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
       </div>
 
       <div class="card" style="margin-top:14px">
-        <div class="tabs">
+        <div class="tabs fh-astra-tabs">
           <button class="tab on" data-tab="products">Products</button>
           <button class="tab" data-tab="rules">Commission rules</button>
           <button class="tab" data-tab="slo" id="sloTab" hidden>SLO connections</button>

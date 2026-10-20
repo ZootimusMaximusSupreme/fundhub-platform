@@ -2,11 +2,13 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { createFixture, fixtureResponse } from "./fixtures.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../../..");
 const PUBLIC = path.join(ROOT, "public");
+const BASELINE = execFileSync("git", ["show", "f1ab024ee0fca5b236ecac50957ec0286c628101:public/app/staff-teams.html"], { cwd: ROOT, encoding: "utf8" });
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".ico": "image/x-icon" };
 
 function previewHtml(html) {
@@ -61,7 +63,11 @@ export async function startPreviewServer(port = 0) {
     }
     const type = MIME[path.extname(file)] || "application/octet-stream";
     res.writeHead(200, { "content-type": type });
-    if (url.pathname === "/app/staff-teams.html") res.end(previewHtml(fs.readFileSync(file, "utf8")));
+    if (url.pathname === "/app/staff-teams.html") {
+      const version = url.searchParams.get("variant");
+      const html = version === "astra" || version === "rollout" ? fs.readFileSync(file, "utf8") : BASELINE;
+      res.end(previewHtml(html));
+    }
     else fs.createReadStream(file).pipe(res);
   });
   await new Promise(resolve => server.listen(port, "127.0.0.1", resolve));

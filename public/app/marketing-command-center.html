@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fundhub — Marketing Command Center</title>
@@ -241,7 +243,7 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
 </style>
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--marketing-command-center">
 <div class="app">
 <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -305,13 +307,13 @@ header.topbar{background:var(--ink);color:var(--paper);display:flex;flex-wrap:wr
       <div class="topbar-right"></div>
     </header>
 
-    <div class="content" id="mcc-root">
+    <div class="content fh-astra-page" id="mcc-root">
       <!-- THE FRAME (U34). The tab strip and the gear are painted by
            marketing-command-center.js from the tabs that registered; a tab with
            no script on this page never shows. Each tab draws into its own
            <section class="cc-panel"> inside #mccPanels. -->
       <div class="cc-bar">
-        <nav class="tabs" id="mccTabs" aria-label="Command Center tabs" hidden></nav>
+        <nav class="tabs fh-astra-tabs" id="mccTabs" aria-label="Command Center tabs" hidden></nav>
         <div class="cc-gear" id="mccGear"></div>
       </div>
       <div class="cc-panels" id="mccPanels"></div>

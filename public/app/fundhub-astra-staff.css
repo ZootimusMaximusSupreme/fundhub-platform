@@ -1,0 +1,412 @@
+/* Staff cohort for the approved Astra design. Shared foundation loads first.
+   Recording pages and the legacy closer redirect deliberately do not opt in. */
+body.fh-astra-staff{font-variant-numeric:tabular-nums}
+body.fh-astra-staff .fh-astra-page{padding-bottom:calc(48px + var(--fh-statusbar,32px))}
+body.fh-astra-staff :is(.card-hd,.panel-hd,.sech,.section-title){gap:16px}
+body.fh-astra-staff :is(.card-hd,.panel-hd){padding:16px 24px}
+body.fh-astra-staff :is(.card-bd,.panel-bd){padding:24px}
+body.fh-astra-staff :is(.card,.panel,.cc-card){border-radius:10px}
+body.fh-astra-staff :is(.card,.panel,.cc-card)+:is(.card,.panel,.cc-card){margin-top:24px}
+body.fh-astra-staff :is(.eyebrow,.card-title,.section-title,.section-meta,.sech,.badge,.tag,.chip,.field label,.caption,.hint,.note,.sd,.cap,.cmp){
+  font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none;
+}
+body.fh-astra-staff :is(.eyebrow,.card-title,.section-title,.field label){font-weight:700}
+body.fh-astra-staff :is(.field,.fieldrow){min-width:0}
+body.fh-astra-staff :is(input,select,textarea){font-size:var(--fs-body)}
+body.fh-astra-staff .fh-astra-heading h2{font-size:var(--fs-metric)}
+body.fh-astra-staff .fh-astra-summary{margin-bottom:24px}
+body.fh-astra-staff .fh-astra-summary>.stat{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px}
+body.fh-astra-staff .fh-astra-summary>.stat :is(.sv,.sd){margin:0}
+body.fh-astra-staff .fh-astra-summary>.stat:last-child:nth-child(4n+1){grid-column:1/-1;border-top:1px solid var(--line)}
+body.fh-astra-staff .fh-astra-summary>button.stat[aria-pressed="true"]{box-shadow:inset 0 -3px 0 var(--ink);color:var(--ink)}
+body.fh-astra-staff .fh-astra-summary>button.stat:hover{background:var(--soft)}
+body.fh-astra-staff :is(.tabs,.ptabs,.convo-tabs,.workspace-tabs){font-family:var(--sans)}
+body.fh-astra-staff :is(table.grid,table.queue) th{font-family:var(--sans);font-size:var(--fs-caption);font-weight:700;letter-spacing:0;text-transform:none;padding:16px;background:var(--paper)}
+body.fh-astra-staff :is(table.grid,table.queue) td{font-size:var(--fs-body);padding:16px}
+body.fh-astra-staff :is(.tblscroll,.mwrap,.table-scroll,.fh-scroll-x){max-width:100%;min-width:0;overscroll-behavior-x:contain}
+body.fh-astra-staff :is(.grid2,.layout,.bs-grid,.cols,.fh-stack){gap:24px}
+body.fh-astra-staff :is(.grid2,.layout,.bs-grid,.cols)>*{min-width:0}
+body.fh-astra-staff :is(.editor-hd,.editor-bd,.editor-ft){padding:24px}
+body.fh-astra-staff .editor-ft{flex-wrap:wrap;gap:8px;padding-bottom:max(24px,env(safe-area-inset-bottom))}
+body.fh-astra-staff :is(.editor,.drawer){max-width:100vw}
+body.fh-astra-staff .topbar:not([hidden]){height:auto;min-height:57px;flex-wrap:wrap;gap:16px}
+body.fh-astra-staff .topbar :is(.crumb,.clock){font-family:var(--sans);letter-spacing:0;text-transform:none}
+body.fh-astra-staff .topbar .crumb{font-size:var(--fs-caption)}
+body.fh-astra-staff .foot{font-family:var(--sans);letter-spacing:0;text-transform:none;font-size:var(--fs-caption)}
+/* Editor and setup screens: related fields share a clear working rhythm. */
+body.fh-astra--agent-editor .layout{grid-template-columns:minmax(240px,1fr) minmax(0,3fr)}
+body.fh-astra--agent-editor :is(.alist,.mode,.guard){min-width:0}
+body.fh-astra--agent-editor .mbd{gap:16px;flex-wrap:wrap}
+body.fh-astra--agent-editor :is(.alist .nm,.mt){font-family:var(--sans)}
+body.fh-astra--brand-studio .bs-grid{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}
+body.fh-astra--brand-studio .fieldrow{grid-template-columns:160px minmax(0,1fr);padding:16px 0;gap:24px}
+body.fh-astra--brand-studio .swatchrow{flex-wrap:wrap;gap:8px}
+body.fh-astra--brand-studio :is(.kBrand,.kDomain){overflow-wrap:anywhere}
+body.fh-astra--content-admin .cols{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}
+body.fh-astra--content-admin :is(.drop,.upmeta.on){gap:16px}
+body.fh-astra--content-admin .drop{flex-wrap:wrap}
+body.fh-astra--products-commissions .tabs{margin-top:0}
+body.fh-astra--products-commissions :is(.rule,.rulecard){padding:24px}
+body.fh-astra--contracts .template-workspace .layout{gap:24px}
+body.fh-astra--contracts .page-intro{margin-bottom:24px}
+body.fh-astra--contracts .workflow-note{background:var(--paper);border-color:var(--line)}
+/* Readable work queues; leave their ordering, state and selection intact. */
+body.fh-astra--documents .documents-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.fh-astra--documents .documents-intro{margin-bottom:24px}
+body.fh-astra--documents .library-controls{gap:16px;padding:16px 24px}
+body.fh-astra--documents .library-heading{padding:24px}
+body.fh-astra--csm-queue .q-head{margin-bottom:24px;gap:24px}
+body.fh-astra--csm-queue .q-shift{padding:16px 24px;border-radius:10px}
+body.fh-astra--csm-queue .q-queue-head{padding:24px 0;gap:16px}
+body.fh-astra--csm-queue .q-list{gap:16px}
+body.fh-astra--lenders .lenders-main{padding:32px}
+body.fh-astra--lenders .directory-intro{margin-bottom:24px}
+body.fh-astra--lenders .filters{gap:16px;padding:24px}
+body.fh-astra--lenders .more-filter-fields{gap:16px}
+body.fh-astra--calendar .calendar-workspace{padding:32px}
+body.fh-astra--calendar .calendar-intro{margin-bottom:24px}
+body.fh-astra--calendar .calendar-main{gap:24px}
+body.fh-astra--calendar .subhead{padding:24px;gap:24px;border-radius:10px}
+body.fh-astra--calendar .calendar-summary{gap:8px}
+body.fh-astra--calendar .calendar-summary .stat{border-radius:8px;padding:16px}
+body.fh-astra--calendar .rail-title{font-size:var(--fs-caption);font-weight:700}
+body.fh-astra--consent-capture .cc-wrap{max-width:none}
+body.fh-astra--consent-capture :is(.cc-disclosure,.cc-sub,.cc-note){max-width:76ch}
+body.fh-astra--consent-capture .cc-card{padding:24px}
+body.fh-astra--consent-capture .cc-methods{gap:16px}
+body.fh-astra--consent-capture .cc-method{padding:16px}
+body.fh-astra--consent-capture .cc-actions{gap:16px;flex-wrap:wrap}
+/* Role-first workspaces: preserve next action, call tools and reply priority. */
+body.fh-astra--client-control-panel .record-head{padding:24px}
+body.fh-astra--client-control-panel .workspace-tabs{gap:24px}
+body.fh-astra--client-control-panel .workspace-tabs button{font-size:var(--fs-body);padding:16px 0;border-radius:0}
+body.fh-astra--client-control-panel .workspace-overview-grid{gap:24px}
+body.fh-astra--client-control-panel .workspace-view{padding-top:24px}
+body.fh-astra--closer-dashboard .call-cockpit{gap:24px}
+body.fh-astra--closer-dashboard .call-identity{gap:24px}
+body.fh-astra--closer-dashboard .call-tools{padding:24px;background:var(--paper);border-radius:10px}
+body.fh-astra--closer-dashboard .call-actions{gap:8px;flex-wrap:wrap}
+body.fh-astra--closer-dashboard :is(.client-label,.source-label){font-size:var(--fs-caption);font-family:var(--sans);letter-spacing:0;text-transform:none}
+body.fh-astra--messaging :is(.convo-head,.thread-head,.compose,.context-head){padding:24px}
+body.fh-astra--messaging .convo-tabs{gap:8px;margin-top:16px}
+body.fh-astra--messaging .convo-tabs .ctab{font-size:var(--fs-caption);font-weight:650}
+body.fh-astra--messaging .compose-actions{gap:8px}
+body.fh-astra--company-brain .convo-hd{padding:16px 24px;gap:16px}
+body.fh-astra--company-brain .msgs{padding:24px}
+body.fh-astra--company-brain .composer{padding:16px 24px}
+body.fh-astra--company-brain :is(.cmphint,.muted){font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0}
+body.fh-astra--company-brain .rail{background:var(--paper)}
+body.fh-astra--company-brain .cbox{gap:8px;padding:8px;border-radius:10px}
+/* Pipeline and journey canvases keep their own spatial interaction model. */
+body.fh-astra--pipeline :is(.headline,.filterbar){padding:24px;gap:16px}
+body.fh-astra--pipeline .railbar{padding-inline:24px}
+body.fh-astra--pipeline .board{gap:16px}
+body.fh-astra--pipeline .col{border-radius:10px}
+body.fh-astra--pipeline :is(.card-title,.card .nm,.card .cn){font-size:var(--fs-body)}
+/* The existing pipeline workspace has an !important compact type map.
+   Keep its board model, but replace that map within the Astra opt-in. */
+body.fh-astra.fh-astra--pipeline :is(.rail-tab,.hl-metric .eyebrow,.hl-count,.board-summary,.hl-next,.filter-btn,.select,.lens-switch button,.col-money,.col-count,.c-age,.c-amt .unit,.c-msg-link,.c-btn,.rail-note,.rm-sub,.rm-dest,.rm-foot,.rm-group,.pipeline-details,.pipeline-details *,.pipeline-breakdown>summary,.pipeline-breakdown #sumMoneyWrap,.fchip,.c-needs-amount,.hl-note){
+  font-size:var(--fs-caption)!important;
+}
+body.fh-astra.fh-astra--pipeline :is(input,select,textarea,.search input,.select select,.c-name,.col-name,.c-scores,.c-amt,.rm-item,.rm-label){
+  font-size:var(--fs-body)!important;
+}
+body.fh-astra--pipeline .railbar{height:auto;min-height:60px}
+body.fh-astra--pipeline :is(.rail-tab,.lens-switch button,.c-btn,.c-btn.route,.hl-metric,.hl-count,.hl-next-btn,.pipeline-details summary,.pipeline-breakdown>summary,.fp-clear,.fchip .x,.grip){
+  min-height:44px;min-width:44px;
+}
+body.fh-astra--pipeline .hl-next-btn:not([hidden]){display:inline-flex;align-items:center}
+body.fh-astra--pipeline .filter-btn.pipeline-primary{min-height:48px}
+body.fh-astra--pipeline .search{padding-block:0}
+body.fh-astra--pipeline .search input{min-height:44px}
+body.fh-astra--pipeline .filterpanel .select{padding-block:0}
+body.fh-astra--pipeline .filterpanel select{min-height:44px}
+body.fh-astra--journeys .workspace{gap:0}
+body.fh-astra--journeys #jlist{background:var(--paper)}
+body.fh-astra--journeys .jrow{min-height:48px}
+body.fh-astra--journeys .canvas{padding:32px 24px 128px}
+body.fh-astra--journeys :is(.hbtn,.ptab){font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none;border-radius:8px}
+body.fh-astra--journeys .hactions{gap:8px;flex-wrap:wrap}
+body.fh-astra--journeys .pbody{padding:24px}
+body.fh-astra--automations .summary-bar{margin:24px}
+body.fh-astra--automations .sum-label{font-size:var(--fs-caption);font-family:var(--sans);letter-spacing:0;text-transform:none}
+body.fh-astra--automations .sum-value{font-size:var(--fs-metric);font-family:var(--sans);font-weight:750}
+body.fh-astra--automations .rail-filter{padding:16px;align-self:center}
+body.fh-astra--automations #wfMain{padding:0 24px 48px}
+/* Financial and performance figures retain their labels and comparisons. */
+body.fh-astra--finance-os .fos-page-heading{gap:24px;margin-bottom:24px}
+body.fh-astra--finance-os .fos-controlbar{gap:16px;padding:24px}
+body.fh-astra--finance-os .fos-panel{border-radius:10px}
+body.fh-astra--my-numbers .numbers-overview{gap:24px}
+body.fh-astra--my-numbers :is(.numbers-shell,.numbers-toolbar){padding:24px 32px}
+body.fh-astra--my-numbers .sec{margin-bottom:24px}
+body.fh-astra--sales-floor :is(.sf-toolbar,#fh-floor-main){padding:24px 32px}
+body.fh-astra--sales-floor .herorow{gap:24px}
+body.fh-astra--sales-floor .sech{margin-bottom:16px}
+body.fh-astra--sales-floor .funnel{gap:16px}
+body.fh-astra--ops-admin :is(.zonetabs,.zone){padding-inline:32px}
+body.fh-astra--ops-admin .section{margin-bottom:32px}
+body.fh-astra--ops-admin .kpi-grid{gap:16px}
+body.fh-astra--inquiry-remover :is(.desk-toggle,.stat-head,.section){padding-inline:24px}
+body.fh-astra--inquiry-remover .deskhead{padding-block:24px}
+body.fh-astra--inquiry-remover :is(.desk-tab,.qbtn){font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none}
+body.fh-astra--morning-brief .tile{padding:16px}
+body.fh-astra--morning-brief .card{padding:24px}
+body.fh-astra--morning-brief .tag{font-size:var(--fs-caption);font-family:var(--sans);letter-spacing:0;text-transform:none}
+/* Present remains a slide tool. Only its controls and reading floor change. */
+body.fh-astra--present :is(.btn-ghost,.ck-btn,.mono,.fine,.sub,.row .subl,.prog .nm){font-size:var(--fs-caption)}
+body.fh-astra--present :is(.row .l,.row .r){font-size:var(--fs-body)}
+body.fh-astra--present .topbar{flex-wrap:wrap;min-height:56px}
+body.fh-astra--present :is(.slide,.slide-body){overflow-y:auto}
+body.fh-astra--present .ck-btn{min-height:44px}
+@media(max-width:1100px){
+  body.fh-astra-staff :is(.card-hd,.panel-hd,.card-bd,.panel-bd){padding:16px}
+  body.fh-astra--brand-studio .bs-grid,body.fh-astra--content-admin .cols{grid-template-columns:1fr}
+  body.fh-astra--agent-editor .layout{grid-template-columns:1fr}
+  body.fh-astra--calendar .calendar-workspace,body.fh-astra--lenders .lenders-main{padding:24px}
+  body.fh-astra--present .cockpit{flex-basis:300px}
+}
+@media(max-width:700px){
+  body.fh-astra-staff .fh-astra-heading h2{font-size:var(--fs-title)}
+  body.fh-astra-staff .fh-astra-summary>.stat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 16px;padding:16px}
+  body.fh-astra-staff .fh-astra-summary>.stat .sv{grid-column:2;grid-row:1/3;font-size:var(--fs-title);align-self:center;overflow-wrap:anywhere}
+  body.fh-astra-staff .fh-astra-summary>.stat .sd{grid-column:1}
+  body.fh-astra-staff :is(.grid2,.fieldrow,.two){grid-template-columns:1fr}
+  body.fh-astra-staff .fh-stack{grid-template-columns:1fr!important}
+  body.fh-astra-staff .fh-astra-tabs{gap:24px}
+  body.fh-astra-staff .editor{width:100vw;max-width:100vw}
+  body.fh-astra-staff :is(.editor-hd,.editor-bd,.editor-ft){padding:16px}
+  body.fh-astra-staff .editor-ft{padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  body.fh-astra-staff .editor-ft .btn{white-space:normal}
+  body.fh-astra-staff :is(.field input,.field select,.field textarea){width:100%}
+  body.fh-astra--brand-studio .fieldrow{grid-template-columns:1fr;gap:8px}
+  body.fh-astra--brand-studio .fun{grid-template-columns:1fr}
+  body.fh-astra--content-admin .upmeta.on{grid-template-columns:1fr}
+  body.fh-astra--hiring :is(.kv,.deriv){grid-template-columns:1fr}
+  body.fh-astra--hiring .catgrid{grid-template-columns:minmax(0,1fr) auto!important}
+  body.fh-astra--documents .documents-stats{grid-template-columns:1fr!important}
+  body.fh-astra--documents :is(.library-heading,.library-controls){padding:16px}
+  body.fh-astra--csm-queue .q-head{gap:16px}
+  body.fh-astra--csm-queue .q-shift{padding:16px;gap:16px}
+  body.fh-astra--calendar .calendar-workspace,body.fh-astra--lenders .lenders-main{padding:24px 16px}
+  body.fh-astra--calendar .subhead{padding:16px}
+  body.fh-astra--calendar .calendar-main{gap:16px}
+  body.fh-astra--calendar .calendar-summary{grid-template-columns:1fr}
+  body.fh-astra--consent-capture .cc-card{padding:16px}
+  body.fh-astra--consent-capture .cc-methods{grid-template-columns:1fr}
+  body.fh-astra--client-control-panel .record-head{padding:16px}
+  body.fh-astra--client-control-panel .workspace-tabs{gap:24px;overflow-x:auto}
+  body.fh-astra--client-control-panel .workspace-tabs button{flex:0 0 auto}
+  body.fh-astra--closer-dashboard .call-tools{padding:16px}
+  body.fh-astra--messaging :is(.convo-head,.thread-head,.compose,.context-head){padding:16px}
+  body.fh-astra--company-brain :is(.convo-hd,.msgs,.composer){padding:16px}
+  body.fh-astra--company-brain .convo-hd{gap:8px;flex-wrap:wrap}
+  body.fh-astra--company-brain .cmphint{line-height:1.5}
+  body.fh-astra--pipeline :is(.headline,.filterbar){padding:16px}
+  body.fh-astra--pipeline .railbar{padding-inline:16px}
+  body.fh-astra--journeys .canvas{padding:24px 16px 64px}
+  body.fh-astra--journeys .pbody{padding:16px}
+  body.fh-astra--automations .summary-bar{margin:16px}
+  body.fh-astra--automations #wfMain{padding:0 16px 32px}
+  body.fh-astra--finance-os .fos-controlbar{padding:16px}
+  body.fh-astra--my-numbers :is(.numbers-shell,.numbers-toolbar),
+  body.fh-astra--sales-floor :is(.sf-toolbar,#fh-floor-main){padding:24px 16px}
+  body.fh-astra--ops-admin :is(.zonetabs,.zone){padding-inline:16px}
+  body.fh-astra--inquiry-remover :is(.desk-toggle,.stat-head,.section){padding-inline:16px}
+  body.fh-astra--morning-brief .tiles{grid-template-columns:1fr}
+  body.fh-astra--morning-brief .card{padding:16px}
+  body.fh-astra--present .stage{flex-direction:column!important;overflow-y:auto}
+  body.fh-astra--present :is(.client,.cockpit){flex:0 0 auto;width:100%;max-width:100%;min-width:0;height:60vh;min-height:400px}
+  body.fh-astra--present .cockpit{height:50vh}
+}
+/* Astra comparison: the existing Fundhub shell, with a roster-first workspace.
+   Original layout rules above are retained for unchanged secondary controls. */
+.fh-astra-team .content{padding:32px;min-width:0}
+.fh-astra-team .topbar{background:#fff}
+.fh-astra-team .topbar .crumb{font-family:var(--sans);letter-spacing:0;text-transform:none}
+.fh-astra-team .topbar h1{font-size:var(--fs-body);font-weight:700}
+.fh-astra-team .topbar #onShiftChip{font-family:var(--sans);letter-spacing:0;text-transform:none;border:0;background:transparent;padding:0;gap:8px}
+.fh-astra-team .team-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px}
+.fh-astra-team .team-heading h2{font-size:var(--fs-metric);line-height:1.2;font-weight:750;letter-spacing:-.04em}
+.fh-astra-team .team-subtitle{color:var(--gray);margin-top:8px}
+.fh-astra-team .btn{font-family:var(--sans);font-size:var(--fs-caption);font-weight:700;letter-spacing:0;text-transform:none;border-radius:8px;min-height:44px;padding:8px 16px}
+.fh-astra-team .btn.dark{min-height:48px}
+.fh-astra-team #addBtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.fh-astra-team #addBtn span{font-size:var(--fs-title);font-weight:400;line-height:1}
+.fh-astra-team .team-summary{gap:0;margin:0 0 32px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.fh-astra-team .team-summary .stat{padding:24px;border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;display:grid;grid-template-columns:1fr;gap:8px}
+.fh-astra-team .team-summary .stat:last-child{border-right:0}
+.fh-astra-team .team-summary .stat::before{display:none}
+.fh-astra-team .team-summary .eyebrow{font-family:var(--sans);font-size:var(--fs-caption);font-weight:650;letter-spacing:0;text-transform:none;color:var(--gray)}
+.fh-astra-team .team-summary .eyebrow::before{display:none}
+.fh-astra-team .team-summary .sv{font-family:var(--sans);font-size:var(--fs-metric);font-weight:750;letter-spacing:-.04em;margin:0;line-height:1.1}
+.fh-astra-team .team-summary .sd{margin:0;font-size:var(--fs-caption);color:var(--gray)}
+.fh-astra-team .team-summary .stat:nth-child(2){background:color-mix(in srgb,var(--ok) 10%,white)}
+.fh-astra-team .team-summary .stat:nth-child(3){background:color-mix(in srgb,var(--info) 10%,white)}
+.fh-astra-team .team-summary .stat:nth-child(4){background:color-mix(in srgb,var(--warn) 10%,white)}
+.fh-astra-team .team-workspace{margin:0;min-width:0}
+.fh-astra-team .team-workspace .tabs{display:flex;gap:24px;padding:0 24px;box-shadow:none;border-radius:0;overflow-x:auto}
+.fh-astra-team .team-workspace .tab{width:auto;flex:0 0 auto;padding:16px 0;font-family:var(--sans);font-size:var(--fs-body);font-weight:650;letter-spacing:0;text-transform:none;color:var(--gray);border-bottom:2px solid transparent}
+.fh-astra-team .team-workspace .tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.fh-astra-team .card-hd{padding:24px;gap:16px}
+.fh-astra-team .card-hd h2{font-size:var(--fs-title)}
+.fh-astra-team .roster-toolbar{flex-wrap:nowrap;background:#fff;border-bottom:1px solid var(--line);gap:16px}
+.fh-astra-team .team-search{position:relative;display:flex;align-items:center;width:320px;max-width:100%;flex:0 1 320px}
+.fh-astra-team .team-search svg{position:absolute;left:16px;width:16px;height:16px;color:var(--gray);pointer-events:none}
+.fh-astra-team #qFilter{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 16px 8px 40px;background:#fff;font-size:var(--fs-body)}
+.fh-astra-team #roleFilter,.fh-astra-team #teleStaff{height:44px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 32px 8px 16px;font-size:var(--fs-body)}
+.fh-astra-team #roleFilter{flex:0 0 176px;width:176px}
+.fh-astra-team #toAdvanced{white-space:nowrap;border-color:transparent;color:var(--gray);background:transparent}
+.fh-astra-team #toAdvanced:hover{color:var(--ink);background:var(--soft)}
+.fh-astra-team table.grid th{background:var(--paper);font-family:var(--sans);font-size:var(--fs-caption);font-weight:650;letter-spacing:0;text-transform:none;padding:16px 24px;color:var(--gray);border-bottom:1px solid var(--line)}
+.fh-astra-team table.grid td{padding:16px 24px;font-size:var(--fs-body);border-bottom:1px solid var(--line)}
+.fh-astra-team #rosterTbl{table-layout:fixed}
+.fh-astra-team #rosterTbl th:first-child{width:34%}
+.fh-astra-team #rosterTbl th:nth-child(2){width:22%}
+.fh-astra-team #rosterTbl th:nth-child(3){width:16%}
+.fh-astra-team #rosterTbl th:nth-child(4){width:14%}
+.fh-astra-team #rosterTbl th:nth-child(5){width:14%}
+.fh-astra-team #rosterTbl td:last-child{padding-right:32px;position:relative}
+.fh-astra-team #rosterTbl tr[data-id] td:last-child::after{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--gray2);font-size:var(--fs-title)}
+.fh-astra-team .who-cell{gap:16px;min-width:0}
+.fh-astra-team .who-cell>div{min-width:0}
+.fh-astra-team .who-cell .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh-astra-team .who-cell .em{font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}
+.fh-astra-team .av{width:40px;height:40px;flex-basis:40px;border-radius:8px;font-family:var(--sans);font-size:var(--fs-caption);font-weight:750;background:color-mix(in srgb,var(--accent) 22%,white);color:var(--ink)}
+.fh-astra-team #rosterBody tr:nth-child(4n+2) .av{background:color-mix(in srgb,var(--info) 24%,white)}
+.fh-astra-team #rosterBody tr:nth-child(4n+3) .av{background:color-mix(in srgb,var(--ok) 24%,white)}
+.fh-astra-team #rosterBody tr:nth-child(4n+4) .av{background:color-mix(in srgb,var(--warn) 24%,white)}
+.fh-astra-team .badge{font-family:var(--sans);font-size:var(--fs-caption);font-weight:650;letter-spacing:0;text-transform:none;padding:4px 8px;border-radius:4px;line-height:1.4}
+.fh-astra-team .acc .badge{background:transparent;border-color:transparent;color:var(--ink2);padding:0;white-space:normal}
+.fh-astra-team #rosterBody td:nth-child(4) .badge{background:transparent;border-color:transparent;padding:0}
+.fh-astra-team #rosterBody td:nth-child(4) .b-ok::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.fh-astra-team .roster-footer{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--paper);font-size:var(--fs-caption);color:var(--gray);border-top:1px solid var(--line)}
+.fh-astra-team .row-hint{white-space:nowrap;color:var(--gray2)}
+.fh-astra-team .foot{border:0;font-family:var(--sans);letter-spacing:0;text-transform:none;padding:0 32px 24px}
+.fh-astra-team .access-explainer{display:flex;gap:24px;padding:32px 24px 48px;max-width:760px}
+.fh-astra-team .access-symbol{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;background:color-mix(in srgb,var(--info) 20%,white);border-radius:8px;color:var(--ink2)}
+.fh-astra-team .access-symbol svg{width:24px;height:24px}
+.fh-astra-team .access-explainer h3{font-size:var(--fs-title);font-weight:700;margin-bottom:16px}
+.fh-astra-team .access-explainer p{color:var(--gray);margin-top:16px;line-height:1.6}
+.fh-astra-team .consent-details{padding:16px 24px;border-top:1px solid var(--line);background:var(--paper)}
+.fh-astra-team .consent-details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:8px;font-weight:650;font-size:var(--fs-caption)}
+.fh-astra-team .consent-details summary::before{content:"+"}
+.fh-astra-team .consent-details[open] summary::before{content:"−"}
+.fh-astra-team .consent-details p{margin:8px 0 16px;color:var(--gray);max-width:76ch}
+.fh-astra-team .telemetry-columns{display:grid;grid-template-columns:1fr 1fr;min-width:0}
+.fh-astra-team .telemetry-columns>div{min-width:0}
+.fh-astra-team #teleBody>.stats{gap:0}
+.fh-astra-team #teleBody>.stats>.stat{border-radius:0;border-width:0 1px 1px 0;box-shadow:none;padding:24px}
+.fh-astra-team #teleBody>.stats>.stat::before{display:none}
+.fh-astra-team #teleBody .eyebrow,.fh-astra-team .editor .eyebrow{font-family:var(--sans);font-size:var(--fs-caption);font-weight:700;letter-spacing:0;text-transform:none}
+.fh-astra-team #teleBody .eyebrow::before,.fh-astra-team .editor .eyebrow::before{display:none}
+.fh-astra-team #teleEmpty{padding:48px 24px!important}
+.fh-astra-team .editor{width:480px;max-width:100vw;border-radius:0}
+.fh-astra-team .editor-hd,.fh-astra-team .editor-bd,.fh-astra-team .editor-ft{padding:24px}
+.fh-astra-team .editor-hd{background:var(--paper)}
+.fh-astra-team .editor-bd>.grid2{gap:16px}
+.fh-astra-team .editor-bd>div+div{margin-top:32px!important}
+.fh-astra-team .editor-hd .t{font-size:var(--fs-title);font-weight:750}
+.fh-astra-team .field{gap:8px}
+.fh-astra-team .field label,.fh-astra-team .field .hint{font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none}
+.fh-astra-team .field label{font-weight:650;color:var(--ink2)}
+.fh-astra-team .field input,.fh-astra-team .field select{min-height:44px;border-radius:8px;padding:8px}
+.fh-astra-team .field select{height:44px}
+.fh-astra-team .field .hint{color:var(--gray)}
+.fh-astra-team .swrow{padding:16px 0;gap:16px}
+.fh-astra-team .swrow .swl .n{font-weight:650}
+.fh-astra-team .swrow .swl .d{margin-top:8px}
+.fh-astra-team .sw{width:48px;height:44px;flex-basis:48px;border:0;background:transparent}
+.fh-astra-team .sw::before{content:"";position:absolute;inset:10px 0;background:var(--line);border-radius:16px}
+.fh-astra-team .sw.on::before{background:var(--ok)}
+.fh-astra-team .sw::after{top:13px;left:4px;width:18px;height:18px;box-shadow:none}
+.fh-astra-team .sw.on::after{transform:translateX(22px)}
+.fh-astra-team .editor-ft{display:flex;flex-wrap:wrap;gap:8px}
+.fh-astra-team .editor-ft .spacer{display:none}
+.fh-astra-team #edSave{order:4;margin-left:auto}
+.fh-astra-team #edCancel{order:3}
+.fh-astra-team #edReset{order:2}
+.fh-astra-team #edDeact{order:1;flex-basis:100%;margin-bottom:16px;text-align:left;background:transparent;border-color:transparent;border-bottom:1px solid var(--line);border-radius:0;color:#6E2A22;padding:8px 0 16px}
+.fh-astra-team .team-state{padding:48px 24px;text-align:left;min-height:240px}
+.fh-astra-team .team-state h3{font-size:var(--fs-title);font-weight:700;margin-bottom:8px;color:var(--ink)}
+.fh-astra-team .team-state p{font-size:var(--fs-body);color:var(--gray);margin-bottom:24px}
+.fh-astra-team .team-state .btn{display:inline-flex;align-items:center}
+.fh-astra-team #rosterTbl .team-state-cell{padding:0}
+.fh-astra-team #rosterTbl .team-state-cell::after{display:none}
+.fh-astra-team .team-loading-row{pointer-events:none}
+.fh-astra-team .team-skeleton{display:block;height:16px;width:65%;border-radius:4px;background:var(--soft);animation:team-loading 1.3s ease-in-out infinite}
+.fh-astra-team .team-skeleton.wide{width:90%}
+.fh-astra-team .team-skeleton.short{width:45%;margin-top:8px;height:8px}
+.fh-astra-team .team-skeleton.avatar{width:40px;height:40px;flex:0 0 40px;border-radius:8px}
+.fh-astra-team .team-skeleton-person{display:flex;gap:16px;align-items:center}
+.fh-astra-team .team-skeleton-copy{flex:1}
+@keyframes team-loading{0%,100%{opacity:1}50%{opacity:.4}}
+@media(prefers-reduced-motion:reduce){.fh-astra-team .team-skeleton{animation:none}}
+@media(min-width:1400px){.fh-astra-team .team-summary .stat{grid-template-columns:1fr auto}.fh-astra-team .team-summary .sv{grid-column:2;grid-row:1/3;align-self:center}.fh-astra-team .team-summary .sd{grid-column:1}}
+@media(max-width:1100px){
+  .fh-astra-team .content{padding:24px}
+  .fh-astra-team .team-summary .stat{padding:16px}
+  .fh-astra-team .roster-toolbar{flex-wrap:wrap}
+  .fh-astra-team .roster-toolbar .spacer{display:none}
+  .fh-astra-team #toAdvanced{margin-left:auto}
+  .fh-astra-team table.grid th,.fh-astra-team table.grid td{padding:16px}
+  .fh-astra-team .who-cell{gap:8px}
+  .fh-astra-team #rosterTbl th:first-child{width:32%}
+}
+@media(max-width:700px){
+  .fh-astra-team .content{padding:24px 16px}
+  .fh-astra-team .team-heading{gap:16px;align-items:flex-start;margin-bottom:24px}
+  .fh-astra-team .team-heading h2{font-size:var(--fs-title)}
+  .fh-astra-team .team-subtitle{font-size:var(--fs-caption);margin-top:8px}
+  .fh-astra-team #addBtn{font-size:var(--fs-caption);padding:8px;flex:0 0 auto}
+  .fh-astra-team .team-summary{display:grid;grid-template-columns:1fr!important;margin-bottom:24px}
+  .fh-astra-team .team-summary .stat{display:grid;grid-template-columns:1fr auto;gap:0;padding:16px;border-right:0;border-bottom:1px solid var(--line)}
+  .fh-astra-team .team-summary .stat:last-child{border-bottom:0}
+  .fh-astra-team .team-summary .sv{grid-column:2;grid-row:1/3;align-self:center;font-size:var(--fs-title)}
+  .fh-astra-team .team-summary .sd{grid-column:1;margin-top:0}
+  .fh-astra-team .team-summary .eyebrow{color:var(--ink2)}
+  .fh-astra-team .team-workspace .tabs{gap:24px;padding:0 16px}
+  .fh-astra-team .team-workspace .tab{font-size:var(--fs-caption);padding:16px 0;white-space:nowrap}
+  .fh-astra-team .roster-toolbar{gap:8px;padding:16px}
+  .fh-astra-team .team-search{width:100%;flex:1 1 100%}
+  .fh-astra-team #roleFilter{width:auto!important;flex:1 1 auto;max-width:60%;min-width:0}
+  .fh-astra-team #toAdvanced{width:auto;flex:0 0 auto;padding:8px;font-size:var(--fs-caption)}
+  /* The shared scroll wrapper gives tables min-width:max-content. This
+     stacked phone layout must follow the card width instead. */
+  .fh-astra-team #rosterTbl{display:block;table-layout:auto;width:100%;min-width:0}
+  .fh-astra-team #rosterTbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .fh-astra-team #rosterBody{display:block}
+  .fh-astra-team #rosterBody tr[data-id]{display:grid;grid-template-columns:1fr;gap:8px;padding:16px;border-bottom:1px solid var(--line);position:relative}
+  .fh-astra-team #rosterBody tr[data-id]:last-child{border-bottom:0}
+  .fh-astra-team #rosterBody tr[data-id] td{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0;border:0;min-height:24px}
+  .fh-astra-team #rosterBody tr[data-id] td:first-child{display:block;margin-bottom:8px;padding-right:16px}
+  .fh-astra-team #rosterBody tr[data-id] td:not(:first-child)::before{color:var(--gray);font-size:var(--fs-caption)}
+  .fh-astra-team #rosterBody tr[data-id] td:nth-child(2)::before{content:"Role"}
+  .fh-astra-team #rosterBody tr[data-id] td:nth-child(3)::before{content:"Consent"}
+  .fh-astra-team #rosterBody tr[data-id] td:nth-child(4)::before{content:"Shift"}
+  .fh-astra-team #rosterBody tr[data-id] td:nth-child(5)::before{content:"Login"}
+  .fh-astra-team #rosterBody tr[data-id] td:last-child::after{right:16px;top:24px;transform:none}
+  .fh-astra-team .who-cell{gap:16px}
+  .fh-astra-team .acc{justify-content:flex-end}
+  .fh-astra-team .roster-footer{padding:16px;align-items:flex-start}
+  .fh-astra-team .row-hint{display:none}
+  .fh-astra-team .card-hd{padding:16px}
+  .fh-astra-team #tab-clock table.grid{min-width:900px}
+  .fh-astra-team #tab-clock>.card-hd .spacer{display:none}
+  .fh-astra-team .telemetry-columns{grid-template-columns:1fr}
+  .fh-astra-team #teleStaff{width:100%;min-width:0!important}
+  .fh-astra-team #teleBody>.stats{grid-template-columns:1fr!important}
+  .fh-astra-team #teleBody>.stats>.stat{padding:16px}
+  .fh-astra-team .access-explainer{padding:24px 16px;gap:16px;flex-direction:column}
+  .fh-astra-team .consent-details{padding:16px}
+  .fh-astra-team .editor{width:100vw}
+  .fh-astra-team .editor-hd,.fh-astra-team .editor-bd,.fh-astra-team .editor-ft{padding:16px}
+  .fh-astra-team .editor-bd>.grid2{grid-template-columns:1fr}
+  .fh-astra-team .editor-ft .btn{font-size:var(--fs-caption)}
+  .fh-astra-team #edReset{flex-basis:100%;text-align:left;padding-left:0;border-color:transparent}
+  .fh-astra-team .foot{padding:0 16px 24px}
+  .fh-astra-team .team-state{padding:32px 16px;min-height:240px}
+  .fh-astra-team #rosterBody tr.team-loading-row{display:block;padding:16px;border-bottom:1px solid var(--line)}
+  .fh-astra-team #rosterBody tr.team-loading-row td{display:none;border:0;padding:0}
+  .fh-astra-team #rosterBody tr.team-loading-row td:first-child{display:block}
+}

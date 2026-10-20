@@ -1,0 +1,280 @@
+/* Astra client workspace. Opt-in only; the existing scripts own state,
+   access, pricing, tab mounting and every financial action. Load last. */
+body.fh-astra.fh-astra-client {
+  --fs-body:16px;
+  --fs-caption:13px;
+  --fs-title:22px;
+  --fs-metric:32px;
+  --client-radius:10px;
+  --money-radius:10px;
+  --client-ink:var(--ink);
+  --client-muted:var(--gray);
+  --client-canvas:var(--paper);
+  --client-line:var(--line);
+  --panel-shadow:0 1px 2px rgb(13 17 19 / 2.5%);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.5;
+  letter-spacing:0;
+}
+body.fh-astra.fh-astra-client :is(main,.app,.shell,.wrap,.page,.fos-panel) { min-width:0; }
+body.fh-astra.fh-astra-client :is(button,input,select,textarea) { font-family:var(--sans);font-size:16px; }
+body.fh-astra.fh-astra-client :is(button,summary,.btn,.btn-primary,.btn-secondary,.btn-line,.btn-book,.btn-unlock,.contact-btn,.dl-btn,.upload-btn,.back) { min-height:44px;border-radius:8px; }
+body.fh-astra.fh-astra-client :is(input:not([type="checkbox"]):not([type="radio"]),select) { min-height:48px;font-size:16px;border-radius:8px; }
+body.fh-astra.fh-astra-client :is(.btn-primary,.btn.primary,.btn-book,.upload-btn) { min-height:48px; }
+body.fh-astra.fh-astra-client :is(.caption,.note,.hint,.fine,.mono,.eyebrow,.card-title,.badge,.tag,label,th) { font-size:13px; }
+body.fh-astra.fh-astra-client :is(.eyebrow,.card-title,.mono) { font-family:var(--sans);letter-spacing:0;text-transform:none; }
+body.fh-astra.fh-astra-client .eyebrow::before { display:none; }
+body.fh-astra.fh-astra-client :is(.card,.panel,.action-card,.promo,.contract-loading,.approval-skeleton) { border-radius:10px;border-color:var(--line);box-shadow:var(--panel-shadow); }
+body.fh-astra.fh-astra-client :is(.scroll-x,.fh-scroll-x,.table-wrap) { min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain; }
+body.fh-astra.fh-astra-client :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid var(--ink);outline-offset:3px; }
+
+/* Keep the established client navigation, with the same clean workspace
+   treatment as the staff rail. The verified tenant wordmark stays intact. */
+body.fh-astra.fh-astra-client .client-ios-nav { background:#fff;border-color:var(--line);padding-top:24px; }
+body.fh-astra.fh-astra-client .client-ios-nav-label { margin-top:32px;font-size:13px; }
+body.fh-astra.fh-astra-client .client-ios-links { gap:8px; }
+body.fh-astra.fh-astra-client .client-ios-links a { min-height:48px;font-size:16px;border-radius:8px;padding:8px 16px; }
+body.fh-astra.fh-astra-client .client-ios-links a[aria-current="page"] { background:color-mix(in srgb,var(--accent) 16%,white); }
+body.fh-astra.fh-astra-client .client-ios-nav-foot { font-size:13px; }
+body.fh-astra.fh-astra-client .client-ios-header { min-height:64px;background:#fff;border-bottom:1px solid var(--line);padding:8px 32px;gap:16px; }
+body.fh-astra.fh-astra-client :is(.client-ios-location,.client-ios-signout,.client-ios-chat,.client-ios-account) { font-size:13px; }
+body.fh-astra.fh-astra-client :is(.client-ios-signout,.client-ios-chat,.client-ios-account) { min-height:44px;border-radius:8px; }
+body.fh-astra.fh-astra-client .client-ios-sample { border-radius:8px;font-size:13px;padding:8px 16px; }
+body.fh-astra.fh-astra-client .client-ios-sample button { font-size:13px;min-height:44px; }
+body.fh-astra.fh-astra-client .mnav.client-money-navigation { padding:16px 32px;background:#fff;gap:16px;border-bottom:1px solid var(--line); }
+body.fh-astra.fh-astra-client .client-money-jump { font-size:13px; }
+body.fh-astra.fh-astra-client .client-money-jump select { font-size:16px;min-height:48px;border-radius:8px; }
+body.fh-astra.fh-astra-client .mnav.client-money-navigation .client-money-frame { font-size:13px;min-height:44px; }
+
+/* File status and a useful next action remain the portal's first read.
+   Supporting tools stay in the existing order and retain every state gate. */
+body.fh-astra.fh-astra-portal { overflow:hidden; }
+body.fh-astra.fh-astra-portal #portal-home { padding:32px 32px 64px;background:var(--paper); }
+body.fh-astra.fh-astra-portal .page { gap:0 24px;max-width:none; }
+body.fh-astra.fh-astra-portal #greeting { --cp-size:32px;font-weight:750;letter-spacing:-.04em;margin-bottom:24px; }
+body.fh-astra.fh-astra-portal :is(.card,.action-card,.acct,.promo) { padding:24px;margin-bottom:24px;border-radius:10px;background:#fff; }
+body.fh-astra.fh-astra-portal .prog-card { padding:24px;grid-column:1/9; }
+body.fh-astra.fh-astra-portal .prog-card::before { font-size:13px;letter-spacing:0;text-transform:none;font-weight:650;color:var(--gray);margin-bottom:16px; }
+body.fh-astra.fh-astra-portal .prog-card::after { display:none; }
+body.fh-astra.fh-astra-portal .prog-card .sb-main { --cp-size:22px;line-height:1.4;font-weight:700;letter-spacing:-.02em; }
+body.fh-astra.fh-astra-portal .prog-card .sb-eyebrow { font-size:13px;color:var(--gray); }
+body.fh-astra.fh-astra-portal .cp-next-action { grid-column:9/-1;padding:24px;gap:16px;margin-bottom:24px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--info) 12%,white); }
+body.fh-astra.fh-astra-portal .cp-next-action h2 { --cp-size:22px;font-weight:700;letter-spacing:-.02em; }
+body.fh-astra.fh-astra-portal .cp-next-action p { --cp-size:16px;line-height:1.5; }
+body.fh-astra.fh-astra-portal .cp-next-action .card-title { --cp-size:13px; }
+body.fh-astra.fh-astra-portal .cp-next-action a { padding:8px 16px;min-height:48px;border-radius:8px;font-size:16px;background:var(--ink);color:#fff;border-color:var(--ink); }
+body.fh-astra.fh-astra-portal .card-title { font-weight:700;letter-spacing:0;text-transform:none;color:var(--gray); }
+body.fh-astra.fh-astra-portal .cp-progress-disclosure { margin-top:24px;border-color:var(--line); }
+body.fh-astra.fh-astra-portal .cp-progress-disclosure .stepper { gap:16px;padding-top:16px; }
+body.fh-astra.fh-astra-portal .cp-progress-disclosure .step .lbl { font-size:13px;line-height:1.5; }
+body.fh-astra.fh-astra-portal #action-card { background:color-mix(in srgb,var(--warn) 10%,white); }
+body.fh-astra.fh-astra-portal :is(.upload-door,.tile) { border-radius:8px; }
+body.fh-astra.fh-astra-portal :is(.door-type,.upload-btn,.btn-book,.btn-unlock,.contact-btn,.dl-btn) { font-size:16px;border-radius:8px; }
+body.fh-astra.fh-astra-portal #acct { padding:0; }
+body.fh-astra.fh-astra-portal .acct>summary { min-height:64px;padding:16px 24px; }
+body.fh-astra.fh-astra-portal .acct-bd { padding:0 24px 24px; }
+body.fh-astra.fh-astra-portal .tabs { gap:24px;border-radius:0;box-shadow:none;padding:0;margin:0 0 16px;border-bottom:1px solid var(--line); }
+body.fh-astra.fh-astra-portal .tab { padding:16px 0;border:0;border-bottom:2px solid transparent;border-radius:0;font-size:16px;background:transparent; }
+body.fh-astra.fh-astra-portal .tab.on { border-bottom-color:var(--ink);background:transparent;box-shadow:none; }
+body.fh-astra.fh-astra-portal :is(.pay-row,.doc-row,.own) { gap:16px;padding:16px 0; }
+body.fh-astra.fh-astra-portal :is(.pay-row .pd,.doc-row .dr-m,.own .own-sub,.support-note,.ref-sub,.ref-err,.ref-stat .rs-l,.vtime,.tier-tag) { font-size:13px; }
+body.fh-astra.fh-astra-portal .rail>.card:first-child { border:1px solid var(--line);border-radius:10px;padding:24px;background:#fff; }
+body.fh-astra.fh-astra-portal .advisor-avatar { background:color-mix(in srgb,var(--accent) 20%,white);border-radius:8px; }
+body.fh-astra.fh-astra-portal .video-card { padding:0; }
+body.fh-astra.fh-astra-portal .video-meta { padding:24px; }
+body.fh-astra.fh-astra-portal .modal { border-radius:10px; }
+body.fh-astra.fh-astra-portal .xbtn { width:44px;height:44px;flex-basis:44px; }
+body.fh-astra.fh-astra-portal .fb-mark { border-radius:8px;background:var(--soft);color:var(--ink); }
+
+/* Money modules share one visual vocabulary on direct URLs and in FinanceOS.
+   Root IDs increase specificity over the retained module styles, not behavior. */
+body.fh-astra.fh-astra-money > .app { display:block;min-width:0; }
+body.fh-astra.fh-astra-money .mbar { background:#fff;color:var(--ink);border-image:none;border-bottom:1px solid var(--line);padding:8px 32px;min-height:64px; }
+body.fh-astra.fh-astra-money .mbar .logo.inv { filter:none; }
+body.fh-astra.fh-astra-money .mbar .brand .sub { color:var(--gray); }
+body.fh-astra.fh-astra-money .mbar a { color:var(--gray);font-size:13px;min-height:44px; }
+body.fh-astra.fh-astra-money main { padding:32px 32px 64px; }
+body.fh-astra.fh-astra-money .fos-workspace { grid-template-columns:200px minmax(0,1fr); }
+body.fh-astra.fh-astra-money .fos-navigation { padding:24px 16px; }
+body.fh-astra.fh-astra-money .fos-nav-label { font-size:13px;font-weight:650;letter-spacing:0; }
+body.fh-astra.fh-astra-money .fos-tabs a { min-height:48px;font-size:16px;padding:8px 16px;line-height:1.5; }
+body.fh-astra.fh-astra-money .fos-tabs a[aria-selected="true"] { background:color-mix(in srgb,var(--accent) 16%,white);color:var(--ink);border-color:transparent; }
+body.fh-astra.fh-astra-money #fos-main { padding:32px 32px 64px 24px; }
+body.fh-astra.fh-astra-money :is(#fos-main,#money-root,#accounts-root,#credit-root,#payments-root,#setup-root,#next-root,#plan-root,#banks-root,#fundability-root,#strategy-root,#conn-root,#declines-root,#vault-root,#transfers-root,#alerts-root,#helper-root) {
+  --money-radius:10px;--account-radius:10px;--client-radius:10px;min-width:0;
+}
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.head,.fd-head,.vt-head,.dc-head) { gap:24px;margin-bottom:24px;align-items:flex-start; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.head,.fd-head,.vt-head,.dc-head) :is(h1,h2) { font:750 32px/1.2 var(--sans);letter-spacing:-.04em;margin-bottom:8px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.caption,.note,.hint,.eyebrow,.mask,.tag,.field-label,.account-meta,.money-detail-subtitle) { font-size:13px;line-height:1.5; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .eyebrow { font-family:var(--sans);letter-spacing:0;text-transform:none;font-weight:650;color:var(--gray); }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.card,.tip,.empty,.error,.fos-soon,.bank,.biz,.dc-card,.fd-card,.vt-card) { border-radius:10px;border-color:var(--line); }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .card { background:#fff;box-shadow:var(--panel-shadow);padding:24px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.btn-primary,.btn-secondary,.btn,.btn-line,.btn-sec,button[type="submit"]) { font-family:var(--sans);font-size:16px;min-height:44px;padding:8px 16px;border-radius:8px;white-space:normal; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .btn-primary { min-height:48px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(input,select,textarea) { font-size:16px;border-radius:8px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.fh-alerts,.fh-banks,.fh-declines,.fh-fundability,.fh-helper,.fh-plan,.fh-strategy,.fh-transfers,.fh-vault,.fos-connections) { font-size:16px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .fh-strategy .goal-row :is(select,input) { font-size:16px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .state { font-size:13px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.big,.num) { font-family:var(--sans);font-variant-numeric:tabular-nums; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .big { font-size:32px;font-weight:750;letter-spacing:-.04em; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .tiles { border-radius:10px; }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles { grid-template-columns:repeat(3,minmax(0,1fr));background:#fff; }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card { padding:24px;border-radius:0;box-shadow:none; }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card:nth-child(2) { background:color-mix(in srgb,var(--info) 9%,white); }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card:nth-child(3) { background:color-mix(in srgb,var(--ok) 9%,white); }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .cash-line .big { font-size:24px; }
+body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) :is(.cash-line>.caption:last-child,.tile-cash>.caption:last-child,.cash-none) { font-size:13px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.money-next-due,.money-detail,.money-detail-chevron) { border-radius:8px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .money-detail>summary { padding:16px 0;min-height:72px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .money-detail-title { font-size:16px;font-weight:700; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) th { background:var(--paper);font:650 13px/1.5 var(--sans);letter-spacing:0;text-transform:none;padding:16px; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) td { font-size:16px;padding:16px;line-height:1.5; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.empty,.error) { align-items:flex-start;text-align:left; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.block>h2,.card>h2,.card>h3) { font-size:22px;font-weight:700;letter-spacing:-.02em; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) .card>.eyebrow { font-size:13px;letter-spacing:0; }
+
+/* Entry pages use a short reading column and a single form; account logic
+   remains exactly where it was. These are not capped CRM content columns. */
+body.fh-astra.fh-astra-entry { min-height:100svh;padding:0;background:var(--paper); }
+body.fh-astra.fh-astra-entry .login-box { width:100%;max-width:544px;margin:0 auto;padding:48px 24px; }
+body.fh-astra.fh-astra-entry :is(.login-brand,.portal-brand) { margin:0 0 32px;min-height:44px;font-size:22px; }
+body.fh-astra.fh-astra-entry :is(.login-brand,.portal-brand)>span { border-radius:8px; }
+body.fh-astra.fh-astra-entry .login-box>.card { padding:32px;border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--panel-shadow); }
+body.fh-astra.fh-astra-entry h1 { font:750 32px/1.2 var(--sans);letter-spacing:-.04em;margin:0 0 16px; }
+body.fh-astra.fh-astra-entry :is(.sub,.note) { font-size:16px;line-height:1.6; }
+body.fh-astra.fh-astra-entry :is(.client-login-eyebrow,.portal-eyebrow,.portal-signin-choice>span,.fh-demo-btn span,.login-back,.portal-back) { font-size:13px; }
+body.fh-astra.fh-astra-entry form { display:flex;flex-direction:column;gap:8px;margin:24px 0 16px; }
+body.fh-astra.fh-astra-entry :is(input,.btn,.portal-password,.login-link-choice a) { min-height:48px;border-radius:8px;font-size:16px; }
+body.fh-astra.fh-astra-entry label { font-size:13px;font-weight:650; }
+body.fh-astra.fh-astra-entry :is(.login-support a,.login-back a,.portal-back a,#fh-forgot-link) { display:inline-flex;align-items:center;min-height:44px; }
+body.fh-astra.fh-astra-entry :is(#err,#ok-box,#fh-forgot-box) { border-radius:8px;font-size:16px; }
+
+/* Agreements, progress and after-checkout states keep their existing proof
+   wording. A clean title, restrained panels and legible fields carry it. */
+body.fh-astra.fh-astra-document { padding:0 32px 144px; }
+body.fh-astra.fh-astra-document .wrap { max-width:none;width:100%; }
+body.fh-astra.fh-astra-document header { padding:32px 0;margin-bottom:24px; }
+body.fh-astra.fh-astra-document header h1 { font-size:32px;letter-spacing:-.04em;margin-top:32px; }
+body.fh-astra.fh-astra-document :is(.doc,.panel,.contract-loading) { padding:24px;border-radius:10px;font-size:16px; }
+body.fh-astra.fh-astra-document :is(.note,#signPanel .note,.bar .left,.badge,.contract-label,label.fl) { font-size:13px;line-height:1.6; }
+body.fh-astra.fh-astra-document :is(.agree,#name) { font-size:16px; }
+body.fh-astra.fh-astra-document .bar { border-top:1px solid var(--line);background:#fff;box-shadow:none; }
+body.fh-astra.fh-astra-progress .wrap { max-width:none;width:100%;padding:32px; }
+body.fh-astra.fh-astra-progress header { padding:0 0 24px;margin:0 0 24px;border-bottom:1px solid var(--line); }
+body.fh-astra.fh-astra-progress header h1 { font-size:32px;font-weight:750;letter-spacing:-.04em; }
+body.fh-astra.fh-astra-progress .sec { font:650 13px/1.5 var(--sans);letter-spacing:0;text-transform:none;margin:0 0 16px;color:var(--gray); }
+body.fh-astra.fh-astra-progress :is(.card,.score,.scorebox,.progress-loading) { border-radius:10px;border-color:var(--line);padding:24px; }
+body.fh-astra.fh-astra-progress :is(.sub,.blurb,.line,.desc,.what,.doc-name) { font-size:16px;line-height:1.5; }
+body.fh-astra.fh-astra-progress :is(.note,.meta,.small,.badge,.back,.hint,.ds) { font-size:13px; }
+body.fh-astra.fh-astra-progress :is(.stage-l,.next .d,.moveline,.wp .ti,.row,.opt,.docs a,.docs .dp,.tl .ev .x,.empty) { font-size:16px;line-height:1.5; }
+body.fh-astra.fh-astra-progress :is(.panel .bu,.panel .when,.panel .open,.docs .dd,.tl .ev .d) { font-size:13px; }
+body.fh-astra.fh-astra-progress #main { padding:0; }
+body.fh-astra.fh-astra-progress #cStage::before { display:none; }
+body.fh-astra.fh-astra-progress #cNext { background:color-mix(in srgb,var(--info) 12%,white);border-color:var(--line); }
+body.fh-astra.fh-astra-progress dialog { border-radius:10px;max-width:calc(100vw - 32px); }
+body.fh-astra.fh-astra-approval .wrap { padding:32px; }
+body.fh-astra.fh-astra-approval .wrap>h1 { font-size:32px;letter-spacing:-.04em; }
+body.fh-astra.fh-astra-approval :is(.lede,.disc,ol.next) { font-size:16px; }
+body.fh-astra.fh-astra-approval :is(.card,#f,.biz,.approval-skeleton) { padding:24px;border-radius:10px;border-color:var(--line); }
+body.fh-astra.fh-astra-approval :is(.fine,.form-intro,.mono) { font-size:13px; }
+body.fh-astra.fh-astra-approval :is(.btn,.btn-pay,.btn-sec) { font-size:16px;border-radius:8px; }
+body.fh-astra.fh-astra-receipt { padding:48px 24px; }
+body.fh-astra.fh-astra-receipt>.card { max-width:760px;margin:0 auto;padding:32px;border-radius:10px; }
+body.fh-astra.fh-astra-receipt h1 { font-size:32px;letter-spacing:-.04em;line-height:1.2; }
+body.fh-astra.fh-astra-receipt :is(.lede,.pend,.ok,.err,.wait) { font-size:16px;line-height:1.6; }
+body.fh-astra.fh-astra-receipt :is(.fine,.refline,.mono) { font-size:13px; }
+body.fh-astra.fh-astra-receipt .back { display:inline-flex;align-items:center;min-height:48px; }
+
+/* Fold-like intermediate widths retain useful reading space beside the rail.
+   The FinanceOS section list becomes the existing collapsible control before
+   two rails can squeeze the active task. No actions are removed. */
+@media (min-width:761px) and (max-width:1200px) {
+  body.fh-astra.fh-astra-money .fos-workspace { display:block; }
+  body.fh-astra.fh-astra-money .fos-navigation { position:relative;padding:24px 24px 0;max-height:none;overflow:visible; }
+  body.fh-astra.fh-astra-money .fos-nav-toggle { display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px;border:1px solid var(--line);background:#fff;border-radius:8px;text-align:left; }
+  body.fh-astra.fh-astra-money .fos-nav-toggle>span { display:grid;gap:8px; }
+  body.fh-astra.fh-astra-money .fos-nav-toggle svg { width:20px;height:20px;fill:none;stroke:currentColor; }
+  body.fh-astra.fh-astra-money .fos-tabs { display:none;padding:24px 0; }
+  body.fh-astra.fh-astra-money .fos-navigation[data-open] .fos-tabs { display:grid; }
+  body.fh-astra.fh-astra-money .fos-nav-group { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body.fh-astra.fh-astra-money .fos-nav-label { grid-column:1/-1; }
+  body.fh-astra.fh-astra-money #fos-main { padding:24px; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles { grid-template-columns:1fr; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card { grid-column:auto;border-right:0;border-bottom:1px solid var(--line); }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card:last-child { border-bottom:0; }
+  body.fh-astra.fh-astra-portal :is(.prog-card,.cp-next-action,.fb-wins) { grid-column:1/-1; }
+}
+@media (max-width:760px) {
+  body.fh-astra.fh-astra-client .client-ios-header { padding:8px 16px;gap:8px; }
+  body.fh-astra.fh-astra-client .client-ios-nav { padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-shadow:none; }
+  body.fh-astra.fh-astra-client .client-ios-links { gap:4px; }
+  body.fh-astra.fh-astra-client .client-ios-links a { padding:8px 4px;min-height:64px;font-size:13px;line-height:1.25; }
+  body.fh-astra.fh-astra-client .mnav.client-money-navigation { padding:16px; }
+  body.fh-astra.fh-astra-client .client-money-jump { min-width:0; }
+  body.fh-astra.fh-astra-client .mnav.client-money-navigation .client-money-frame { width:104px; }
+  body.fh-astra.fh-astra-portal #portal-home { padding:24px 16px 112px; }
+  body.fh-astra.fh-astra-portal .page { display:flex;flex-direction:column; }
+  body.fh-astra.fh-astra-portal #greeting { --cp-size:28px; }
+  body.fh-astra.fh-astra-portal :is(.card,.action-card,.promo,.cp-next-action) { padding:16px;margin-bottom:16px;border-radius:10px; }
+  body.fh-astra.fh-astra-portal :is(.prog-card .sb-main,.cp-next-action h2) { --cp-size:22px; }
+  body.fh-astra.fh-astra-portal .cp-progress-disclosure .stepper { grid-template-columns:1fr; }
+  body.fh-astra.fh-astra-portal .cp-next-action a { width:100%;justify-content:center; }
+  body.fh-astra.fh-astra-portal :is(.tiles,.upload-doors,.score-grid,.rail) { grid-template-columns:1fr; }
+  body.fh-astra.fh-astra-portal :is(.own,.pay-row,.doc-row,.fb-wins,.promo-bd,.advisor-row) { flex-wrap:wrap; }
+  body.fh-astra.fh-astra-portal :is(.own-actions,.ref-acts) { width:100%;justify-content:flex-start; }
+  body.fh-astra.fh-astra-portal .acct>summary { padding:16px;flex-wrap:wrap; }
+  body.fh-astra.fh-astra-portal .acct-bd { padding:0 16px 16px; }
+  body.fh-astra.fh-astra-portal .acct .ac-s { display:block;font-size:13px;text-align:left;margin:0; }
+  body.fh-astra.fh-astra-portal .video-card { padding:0; }
+  body.fh-astra.fh-astra-portal .video-meta { padding:16px; }
+  body.fh-astra.fh-astra-portal .ref-url { min-width:0; }
+  body.fh-astra.fh-astra-money .fos-workspace { display:block; }
+  body.fh-astra.fh-astra-money .fos-navigation { padding:16px 16px 0; }
+  body.fh-astra.fh-astra-money .fos-nav-toggle { min-height:64px;border-radius:8px;padding:16px; }
+  body.fh-astra.fh-astra-money :is(.fos-nav-toggle-label,.fos-nav-label) { font-size:13px; }
+  body.fh-astra.fh-astra-money #fos-current-section { font-size:16px; }
+  body.fh-astra.fh-astra-money .fos-nav-group { grid-template-columns:1fr;gap:8px; }
+  body.fh-astra.fh-astra-money :is(main,#fos-main) { padding:24px 16px 48px; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.head,.fd-head,.vt-head,.dc-head) { gap:16px; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.head,.fd-head,.vt-head,.dc-head) :is(h1,h2) { font-size:28px; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) .card { padding:16px; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.grid,.tiles,.fields,.info,.card-facts,.money-actions,.row2,.dc-grid,.vt-grid,.fd-grid) { grid-template-columns:minmax(0,1fr); }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.grid,.tiles,.fields,.card-facts)>* { grid-column:1/-1; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card { display:flex;align-items:flex-start;padding:16px;border-right:0;border-bottom:1px solid var(--line); }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card:last-child { border-bottom:0; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tiles>.card>.big { text-align:left;font-size:32px; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .cash-line { width:100%;grid-template-columns:minmax(0,1fr);gap:8px; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .cash-line>* { grid-column:1;grid-row:auto;text-align:left; }
+  body.fh-astra.fh-astra-money :is(#fos-overview,#money-root) .tile-cash>.caption:last-child { display:block; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.acct,.money-next-due) { grid-template-columns:1fr;gap:16px; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) .acct-num { align-items:flex-start;text-align:left; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.head-act,.money-actions,.form-act) { width:100%; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) .money-actions>* { width:100%; }
+  body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.box-head,.rows .row,.split li,.price-list li) { flex-wrap:wrap; }
+  body.fh-astra.fh-astra-entry .login-box { padding:24px 16px; }
+  body.fh-astra.fh-astra-entry .login-box>.card { padding:24px 16px; }
+  body.fh-astra.fh-astra-entry :is(.login-brand,.portal-brand) { margin-bottom:24px; }
+  body.fh-astra.fh-astra-entry h1 { font-size:28px; }
+  body.fh-astra.fh-astra-document { padding:0 16px 160px; }
+  body.fh-astra.fh-astra-document :is(.doc,.panel,#signPanel,#donePanel,.contract-loading) { padding:16px;border-radius:10px; }
+  body.fh-astra.fh-astra-document #main { grid-template-columns:1fr; }
+  body.fh-astra.fh-astra-document .bar { flex-wrap:wrap;gap:8px;padding:16px; }
+  body.fh-astra.fh-astra-document .bar .left { flex:1 1 100%; }
+  body.fh-astra.fh-astra-document .bar button { width:100%; }
+  body.fh-astra.fh-astra-progress .wrap { padding:24px 16px; }
+  body.fh-astra.fh-astra-progress #main { grid-template-columns:1fr;gap:24px; }
+  body.fh-astra.fh-astra-progress #main>* { grid-column:1/-1; }
+  body.fh-astra.fh-astra-progress :is(.card,.score,.scorebox,.progress-loading) { padding:16px; }
+  body.fh-astra.fh-astra-approval .wrap { padding:24px 16px; }
+  body.fh-astra.fh-astra-approval :is(.approval-layout,.row2) { grid-template-columns:1fr; }
+  body.fh-astra.fh-astra-approval :is(.card,#f,.biz,.approval-skeleton) { padding:16px;border-radius:10px; }
+  body.fh-astra.fh-astra-receipt { padding:24px 16px; }
+  body.fh-astra.fh-astra-receipt>.card { padding:24px 16px; }
+  body.fh-astra.fh-astra-receipt h1 { font-size:28px; }
+}
+@media print {
+  body.fh-astra.fh-astra-document { padding:0;background:#fff; }
+  body.fh-astra.fh-astra-document .doc { padding:0;border:0;box-shadow:none; }
+  body.fh-astra.fh-astra-document #main { display:block; }
+}

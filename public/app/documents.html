@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/app/fundhub-font.css">
 <script defer src="/app/fundhub-font.js"></script>
 
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fundhub — Documents</title>
@@ -21,7 +23,7 @@
 <script defer src="shell.js"></script>
 <script src="demo-client-bootstrap.js"></script>
 </head>
-<body class="documents-page">
+<body class="documents-page fh-astra fh-astra-staff fh-astra--documents">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -75,13 +77,13 @@
 </aside>
 
   <div class="main">
-    <main class="content fh-maxw" id="documentsMain">
+    <main class="content fh-maxw fh-astra-page" id="documentsMain">
       <header class="documents-intro">
         <div><h2>Files &amp; signatures</h2><p>Track client documents from generation to the final signature.</p></div>
         <span class="chip" id="staleChip"><span class="cd"></span><span id="staleTxt">Loading status</span></span>
       </header>
 
-      <section class="documents-stats" aria-label="Document overview">
+      <section class="documents-stats fh-astra-summary" aria-label="Document overview">
         <div class="stat"><div class="stat-label">Documents on file</div><div class="sv" id="kTotal">—</div><div class="sd">Across five document classes</div></div>
         <div class="stat"><div class="stat-label">Awaiting signature</div><div class="sv" id="kSign">—</div><div class="sd">Sent and ready for follow-up</div></div>
         <div class="stat"><div class="stat-label">Not delivered</div><div class="sv" id="kUndel">—</div><div class="sd">Generated and not yet sent</div></div>
@@ -89,7 +91,7 @@
 
       <section class="card document-library" id="documentLibrary" aria-labelledby="listCode" aria-busy="true">
         <div class="library-heading"><div><h3 id="listCode">Document library</h3><p id="resultCount" role="status">Loading documents…</p></div><button class="btn" id="pendingBtn" type="button" aria-pressed="false">Pending only</button></div>
-        <nav class="tabs" id="tabs" aria-label="Document class"></nav>
+        <nav class="tabs fh-astra-tabs" id="tabs" aria-label="Document class"></nav>
         <div class="library-controls">
           <label class="document-search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="q" type="search" aria-label="Search documents" placeholder="Search by client or document"></label>
           <label class="status-filter"><span class="visually-hidden">Document status</span><select id="statusFilter" aria-label="Document status">
