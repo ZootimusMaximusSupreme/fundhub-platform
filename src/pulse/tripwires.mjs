@@ -49,6 +49,8 @@ export const TRIPWIRES = Object.freeze({
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
   "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
   "job:commas-inbox-drain": { impact: "money", checks: ["payments:commas-inbox-waiting", "payments:paid-no-entitlement"] },
+  "job:invoice-checkout-retirement-sweeper": { impact: "money", checks: ["payments:invoice-checkout-retirement"] },
+  "job:invoice-sent-recovery": { impact: "money", checks: ["payments:invoice-sent-recovery"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:slo-genuine-followup": { impact: "money", checks: ["handoff:contact-no-followup"] },

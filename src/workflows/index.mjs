@@ -16,6 +16,8 @@ import { dailyPulse } from './daily-pulse.mjs';
 import { eveningBrief } from './evening-brief.mjs';
 import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
+import { invoiceCheckoutRetirementSweeper } from './invoice-checkout-retirement-sweeper.mjs';
+import { invoiceSentRecovery } from './invoice-sent-recovery.mjs';
 import { whopBillingInboxDrain } from './whop-billing-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
@@ -293,6 +295,8 @@ export const functions = [
 
      COMPLIANCE REVIEW REQUIRED: payment rails and fee timing. */
   paidCheckoutExpirySweeper,
+  invoiceCheckoutRetirementSweeper,
+  invoiceSentRecovery,
   pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second

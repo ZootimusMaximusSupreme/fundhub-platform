@@ -15,7 +15,11 @@ function pushAssert(a) {
     : { assertions: [], verdicts: [], notes: [] };
   data.assertions = data.assertions || [];
   data.assertions.push(a);
-  fs.writeFileSync(UI_OUT, JSON.stringify(data, null, 2));
+  // CI runs two workers and both verification specs share this file. Write a
+  // temp file and rename it, so a reader never sees a half-written file.
+  const tmp = `${UI_OUT}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, UI_OUT);
 }
 
 const FORBIDDEN_FOR_CLOSER = [

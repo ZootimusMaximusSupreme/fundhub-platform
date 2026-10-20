@@ -134,8 +134,9 @@ export async function getInvoice(db, { invoiceId }) {
   return result.rows[0] ?? null;
 }
 
-/** Announce a canonical invoice.* event. Idempotent per invoice id. */
-export async function announceInvoice(db, name, row) {
+/** Announce a canonical invoice.* event. Usually one per invoice; a partial
+ *  receipt can supply its own key because one invoice may be paid in parts. */
+export async function announceInvoice(db, name, row, { idempotencyKey = null } = {}) {
   if (!row?.id || !name) return null;
   const { emit } = await import("../events/bus.mjs");
   return emit(db, name, {
@@ -149,7 +150,7 @@ export async function announceInvoice(db, name, row) {
   }, {
     orgId: row.org_id,
     clientId: row.client_id,
-    idempotencyKey: `${name}:${row.id}`
+    idempotencyKey: idempotencyKey || `${name}:${row.id}`
   });
 }
 
