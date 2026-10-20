@@ -210,6 +210,8 @@ Final local joined checks:150focused tests passed with0failures/9scratch-DB skip
 
 Independent final review is closed on the frozen source: no remaining concrete P1/P2 finding;107tests across9files passed with0failures/2local scratch-PG skips, including reproduced quiet-clock, inbound freshness, phone freshness and acknowledgement races. Parent authorized the scoped joined commit/push to PR83. No merge, deployment or activation is authorized. The new489three-case PG proof and third call-delivery monitor SQL must execute in the fresh required scratch-CI run; local skips remain unproved.
 
+Joined source is saved in commit `8445dbbe8` (33scoped files, no provider PNGs). The final TypeScript refresh exited0. The previously failing nested flow-proof aggregate now passes15/15with0skips, including all its mapped local/fake-data child proofs. Final required GitHub checks on this joined candidate are still pending; source/local proof is not deployment or live customer proof.
+
 ### M — Remaining offer decisions (remaining_offer_decisions, read-only)
 
 Prompt: Review the approved Blueprint owner requests against `docs/journeys/capital-blueprint-intended.md`, `capital-blueprint-actual.md` and this board in the clean Blueprint worktree. Distinguish genuinely unbuilt automatic Bland call scheduling from implemented but inactive agents, reminders, payments and delivery. Return at most three unanswered owner decisions; do not reopen the settled same-package price range,12-month term, no-auto-renewal or provider naming. Read-only: no file edits, external writes, activation, sends, calls, payments or production changes. Parent owns the final questions. Run alongside Workflow L and the parent's readiness check; the final answer waits for the evidence to join.
