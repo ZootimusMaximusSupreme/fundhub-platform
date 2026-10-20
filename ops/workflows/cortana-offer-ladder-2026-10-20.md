@@ -301,11 +301,12 @@ reconciliation rail do not exist in this repo yet.
   That proves the whole $5,000–$10,000 target range is inside the account's
   current checkout cap; a financing option still depends on the buyer and the
   provider decision shown at checkout.
-- Existing product `prod_liEP35ZzcsAOi` has one $5,500 one-time variant
-  `plan_B7Arf7ksDzFeV`. Its checkout reached created and completed with provider
-  `splitit`, but the payment status is `Incomplete`. This product/variant is
-  evidence only and must not be reused by the code unless its displayed title
-  is first verified as the exact safe title below.
+- Existing product `prod_liEP35ZzcsAOi` now displays the exact approved title
+  `Consulting Services Package` in the live product list. It has one $5,500
+  one-time variant `plan_B7Arf7ksDzFeV`. Its checkout reached created and
+  completed with provider `splitit`, but the payment status is `Incomplete`.
+  The title is now aligned; this remains provider evidence, not a paid sale or
+  a working Fundhub API/webhook integration.
 - Checkout Links is empty. Developer shows **0 API keys, 0 apps, and 0
   webhooks**. No production API call or signed callback can work until a
   Fundhub-owned key and webhook are created; no live setting was changed in
