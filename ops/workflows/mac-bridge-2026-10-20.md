@@ -10,8 +10,8 @@ Branch: `feat/mac-bridge-v1` in worktree `.claude/worktrees/mac-bridge`.
 | # | Workflow | Owner | Status | Files |
 |---|---|---|---|---|
 | 0 | Protocol + board | this session | done | `docs/specs/mac-bridge-protocol-v1.md`, this board |
-| 1 | Mac helper (Node) | agent: mac-helper | claimed | `tools/mac-bridge/agent/**` |
-| 2 | iPhone app (SwiftUI) | agent: ios-app | claimed | `tools/mac-bridge/ios/**` |
+| 1 | Mac helper (Node) | agent: mac-helper | done | `tools/mac-bridge/agent/**` |
+| 2 | iPhone app (SwiftUI) | agent: ios-app | done | `tools/mac-bridge/ios/**` |
 | 3 | Join test: phone app in Simulator reads the real helper | this session | pending (waits on 1 + 2) | none new |
 | 4 | Away mode (hosted relay) | — | later (v2) | — |
 | 5 | Send from phone into a session | — | later (v2) | — |
@@ -31,6 +31,32 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 ## Manifests
 
 (agents write here)
+
+### 1 — Mac helper
+
+- **Files (all new, under `tools/mac-bridge/agent/`):** `bin/mac-bridge.mjs` (entry); `src/server.mjs` (HTTP + WebSocket + auth), `src/sessions.mjs` (find files, lazy index, watch, stream), `src/parse.mjs` (Claude and Codex lines to Events), `src/ws.mjs` (hand-written RFC 6455), `src/qr.mjs` (hand-written QR encoder), `src/token.mjs`, `src/bonjour.mjs`; `test/*.test.mjs` plus `test/_helpers.mjs` and `test/index.js` (a 10-line loader: Node 22 cannot take a folder argument without it); `README.md`. Node 22, built-ins only, no package.json anywhere.
+- **Run:** `node tools/mac-bridge/agent/bin/mac-bridge.mjs` (port 7878, or `--port` / `MAC_BRIDGE_PORT`). It prints the pairing link and a QR code. Flags `--no-qr`, `--no-bonjour`. Token is made on first run at `~/.mac-bridge/token` (0600, 64 hex).
+- **Tests:** `node --test tools/mac-bridge/agent/test/` gives `tests 29, pass 29, fail 0, skipped 0`. They use fake files in a temp folder and never read the real folders. Covered: 401 on missing, wrong and longer tokens; health; session list (both tools, newest first, title, project, count, live, 200 cap); Claude and Codex parsing from fixture lines; seq stable on re-read, on append and on a half-written last line; events `after` / `limit` (capped 500) across a resume point; WebSocket (Node's own client) hello, subscribe gets a new event, unsubscribe, a line written in two pieces streams once, new sessions reach everyone; RFC 6455 frame lengths (7-bit, 16-bit, 64-bit), masking, split chunks; token file mode; folders untouched. I broke the code on purpose twice (accept any token; swallow a half-written line) and the tests failed both times.
+- **Live run (real home folders, port 7878):** no token gave `401`; with token `/v1/health` gave `{"ok":true,"name":"CHRISs-Mac-mini.local","version":"1"}`; `/v1/sessions` gave 159 sessions in about 10 ms (47 Claude, 112 Codex). A real Claude session returned 16 events (user, command, output, tool, assistant). A real Codex session returned 478 events including 239 commands with outputs; `after`/`limit` paging worked; an unknown id gave `404 {"error":"not_found"}`. A WebSocket subscribed to a live Claude session received real new events with the right seq while it was being written. The `dns-sd` Bonjour child was running, and was gone after the helper stopped. The process is stopped.
+- **QR:** done, hand-written (byte mode, level L, versions 1 to 10). I checked it with Apple's own decoder (CoreImage) at versions 1, 4 to 10: every code decoded to the exact text.
+- **Choices to know about (contract not changed):**
+  1. **Guardian files hidden.** 379 of 491 Codex files on this Mac are internal safety-review runs (`thread_source: guardian_review`), not chats. Left in, they filled 192 of the 200 list slots. They are hidden by default; `MAC_BRIDGE_SHOW_GUARDIAN=1` shows them. Codex sub-agent chats are kept.
+  2. **`exitCode` rides on the `output` event**, not the `command` event, because the code is not known when the command is first seen and `seq` must never change. Claude gives it in the result text; Codex gives it for normal shell calls. Missing means unknown.
+  3. **Which results show.** Only shell results become `output`. Results of other tools (Read, Grep and so on) are not shown, only the call as a `tool` event. Thinking blocks, injected context (AGENTS.md text, environment tags, system reminders) and sub-agent side chains are skipped.
+  4. **Codex `exec` scripts:** newer Codex runs shell through a JS `exec` wrapper. The helper pulls every `cmd:` string out of it as a `command` event and the script result as one `output`. Code that builds a command in some other way shows as a plain `tool` event.
+  5. **`eventCount`:** exact for files up to 1 MB at list time and for any file once the background indexer has read it (newest first, starts at boot). A very large file may show 0 for a few seconds after start.
+  6. **WebSocket:** subscribing to an unknown session is ignored (no new message type was invented). HTTP needs the header token; only the WebSocket takes `?token=`.
+  7. **Subscribe sends only new events.** History comes from the HTTP events call; reading a long session pages cheaply because the helper resumes from a saved point every 100 events.
+- **Not done / not tested:** no iPhone or Simulator join (row 3). No run over Tailscale. The helper listens on all interfaces with a token and no encryption (plain HTTP), as the spec says; do not expose the port to the public internet. Not committed. Note: the live run created `~/.mac-bridge/token` on this Mac (0600); it is real and now paired to nothing.
+
+### 2 — iPhone app
+
+- **Files (all new, under `tools/mac-bridge/ios/`):** `MacBridge.xcodeproj/project.pbxproj` (hand-written, shape of FundhubPrompter, synced folders), `MacBridge.xcodeproj/xcshareddata/xcschemes/MacBridge.xcscheme`, `Config/MacBridge-Info.plist`, `README.md`; `MacBridge/App/MacBridgeApp.swift`; `MacBridge/Core/` Models, PairingLink, Backoff, PairedMac (UserDefaults + Keychain), BridgeAPI, BridgeSocket, BonjourBrowser; `MacBridge/UI/` AppModel, PairView, QRScannerView, StatusPill, SessionListView, FeedModel, SessionFeedView; `MacBridgeTests/` ModelDecodeTests, PairingLinkTests, BackoffTests.
+- **App:** target `MacBridge`, bundle id `ai.fundhub.macbridge`, name "Mac Bridge", iOS 17, Swift 5, no packages, automatic signing with no team. Info.plist has local network text, Bonjour `_macbridge._tcp`, camera text, ATS local networking, and the `macbridge://` URL scheme (checked in the built app).
+- **Build/test:** `xcodebuild -project tools/mac-bridge/ios/MacBridge.xcodeproj -scheme MacBridge -destination 'platform=iOS Simulator,name=iPhone 17' build test` → `** BUILD SUCCEEDED **`, `Executed 37 tests, with 0 failures`, `** TEST SUCCEEDED **`. Zero compiler warnings.
+- **Simulator:** iPhone 17 (Xcode 27.1). The app opened on the Pair screen and already listed `CHRISs-Mac-mini.local` through Bonjour (the helper from row 1 was running).
+- **Not done:** no full pair-and-read run against the live helper (that is row 3). QR scan cannot run in the Simulator (no camera); paste-link and typed pairing work there. No app icon yet. Not committed.
+- **Contract notes (not changed):** (a) ATS `NSAllowsLocalNetworking` blocks Tailscale MagicDNS names, so away use must type the `100.x` address. (b) The spec has no "last N events" read, so a long session loads every page from `after=0` on open. A `before=`/tail read would fix that in v2.
 
 ## Leftovers
 
