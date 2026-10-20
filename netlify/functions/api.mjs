@@ -74,6 +74,9 @@ import readFundingRounds from "../../api/read/funding-rounds.mjs";
 import readAffiliates from "../../api/read/affiliates.mjs";
 import readAffiliatePortal from "../../api/read/affiliate-portal.mjs";
 import affiliatesRefer from "../../api/affiliates/refer.mjs";
+import affiliatesPayouts from "../../api/affiliates/payouts.mjs";
+import affiliatesPayoutAccount from "../../api/affiliates/payout-account.mjs";
+import readAffiliatePayouts from "../../api/read/affiliate-payouts.mjs";
 import readPartners from "../../api/read/partners.mjs";
 import readPartnerProduction from "../../api/read/partner-production.mjs";
 import readPartnerHomeTiles from "../../api/read/partner-home-tiles.mjs";
@@ -511,6 +514,13 @@ export const ROUTES = {
      Routed with its handler and its migration for the same reason as every
      other line here. Not under "read/" — it writes. */
   "affiliates/refer": affiliatesRefer,
+  /* AFFILIATE PAYOUTS, start to paid (490, 2026-10-20). Staff send through
+     Plaid, mark paid by hand with a reference, hold, release, void, and record
+     the two paperwork gates; the affiliate links their own bank. Flow:
+     docs/journeys/affiliate-payout-flow.md. */
+  "affiliates/payouts": affiliatesPayouts,
+  "affiliates/payout-account": affiliatesPayoutAccount,
+  "read/affiliate-payouts": readAffiliatePayouts,
   "read/partners": readPartners,
   /* Where a partner stands against the production floor — the only filter on the
      partner base (W0-decisions.md, W1-money-model.md §6). The monthly job writes

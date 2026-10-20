@@ -52,6 +52,8 @@ export const ALLOWED_UNMONITORED = {
   "marketing/research/brain": "POST only, owner/admin. A GET answers 405 by design, and pinging it with a body would write a report into Company Brain and pay for embedding it. The monitored door is marketing/research.",
   "public/morning-brief": "The secret link code in Chris's morning and evening text is the whole credential, so a GET without the exact date, kind and code answers 404 on purpose, and it answers that identically for a wrong code, an old date and a missing brief, so the door cannot be used to find out which reports exist. A plain ping would read that correct refusal as an outage every day (isUp counts 200, 400, 401, 403 and 405 as up, not 404). The watch for this surface is the brief-link beat (src/pulse/beats/beat-brief-link.mjs), which follows the real link from the newest text every hour and goes red if the page or this route stops answering.",
   "public/ad-video-approve": "The approval token in Chris's phone notification is the whole credential, so a GET without one answers 404 on purpose — and it answers that identically for a made-up token, an expired one and a spent one, so the door cannot be used to find out which tokens exist. A ping would read that correct refusal as an outage every single time. Pinging it with a body is worse: a POST is the decision, and it would approve or reject a filmed take that nobody watched. The monitored door for this surface is ad-videos, the staff queue, which answers GET and reports how many takes are waiting.",
+  "affiliates/payouts": "POST only, finance staff. A GET answers 405 by design, and pinging it with a body would send a payout through Plaid, mark one paid, hold, release or cancel one, or stamp an affiliate's paperwork. Its read sibling read/affiliate-payouts answers GET and is the monitored door; partners:payout-overdue reads the saved runs every morning.",
+  "affiliates/payout-account": "POST only, affiliate session. A GET answers 405 by design, and pinging it with a body would open a Plaid link or save a bank onto an affiliate's payouts. Its read sibling read/affiliate-portal is the monitored door; partners:payout-overdue goes red if payouts stop going out.",
   "404.html": "This is the missing-page file. Opening it is what a bad link does. A morning ping of the not-found page does not watch a product door.",
   "climate/404.html": "Climate site missing-page file. A morning ping of the not-found page does not watch the climate door. climate/index.html is the page the pulse pings.",
   "climate/404/index.html": "Same missing-page file as climate/404.html, at the folder URL. The pulse watches climate/index.html instead of this file.",
@@ -327,6 +329,9 @@ const API_KEYS = [
      screen, whose empty state reads "No referrals on file" — an affiliate would
      read that as their referrals having vanished, not as a server being down. */
   "read/affiliate-portal",
+  /* Finance staff's list of affiliate payout runs (490). The GET sibling of the
+     two POST-only payout doors below. */
+  "read/affiliate-payouts",
   "read/agent-context",
   "read/agent-shadow-log",
   "read/agents",

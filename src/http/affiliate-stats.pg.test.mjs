@@ -241,8 +241,10 @@ describe("affiliate stats read", { skip: !HAVE_DB ? "no DATABASE_URL" : false },
     // 033 refuses to settle a run for an affiliate whose partner license is
     // unsigned — "payouts accrue but do not release". Sign it, so this test is
     // exercising the counting and not that guard.
+    // 490 adds the tax half of that gate in the database too.
     await db.query(
-      `UPDATE affiliates SET partner_license_signed_at = now() WHERE id = $1`, [p.id]);
+      `UPDATE affiliates SET partner_license_signed_at = now(), tax_form_received_at = now()
+        WHERE id = $1`, [p.id]);
 
     // Built as an open run, lined, then settled — 033 refuses a line on a run
     // that is already paid, which is the order a real payout run follows.
@@ -260,7 +262,9 @@ describe("affiliate stats read", { skip: !HAVE_DB ? "no DATABASE_URL" : false },
       `UPDATE affiliate_payouts SET status = 'processing', initiated_at = now() WHERE id = $1`,
       [payout]);
     await db.query(
-      `UPDATE affiliate_payouts SET status = 'paid', paid_at = now() WHERE id = $1`, [payout]);
+      // 490: paid needs a method and a reference.
+      `UPDATE affiliate_payouts SET status = 'paid', paid_at = now(), method = 'ach',
+              external_ref = 'TEST-ACH-TRACE-1' WHERE id = $1`, [payout]);
 
     mine = await mineFor(tokStaff, p.id);
     assert.equal(Number(mine.paid_runs), 1);
