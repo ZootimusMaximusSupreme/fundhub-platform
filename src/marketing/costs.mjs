@@ -81,6 +81,8 @@ export async function lastMeasured(db, { orgId, jobKind }) {
  */
 export async function readCosts(db, { orgId, settings, now = new Date() }) {
   const monthCap = settings && settings.max_month_cost_usd != null ? Number(settings.max_month_cost_usd) : DEFAULT_MAX_MONTH_USD;
+  const rawBatchCap = settings && settings.max_batch_cost_usd != null ? Number(settings.max_batch_cost_usd) : null;
+  const batchCap = Number.isFinite(rawBatchCap) ? rawBatchCap : null;
   const caps = settings && settings.run_caps && typeof settings.run_caps === "object" ? settings.run_caps : { avatar: DEFAULT_RUN_CAP_USD };
   /** @type {Record<string, any>} */
   const kinds = {};
@@ -94,6 +96,7 @@ export async function readCosts(db, { orgId, settings, now = new Date() }) {
     as_of: now.toISOString(),
     kinds,
     month: { used_usd: month.month_usd, cap_usd: monthCap, unpriced_calls: month.unpriced_rows },
+    batch: { cap_usd: batchCap },
     run_caps: { avatar: Number(caps.avatar) || DEFAULT_RUN_CAP_USD, ...caps },
     limits: {
       avatar: {

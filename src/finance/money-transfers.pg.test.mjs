@@ -33,11 +33,15 @@ const ENV = {
 };
 
 describe("money_transfers + money_transfer_events (migration 466)", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
-  let c, orgId, clientId, otherClientId, accountId, pc, bc, theirs, taskId, transferId;
+  let c, transactionDb, orgId, clientId, otherClientId, accountId, pc, bc, theirs, taskId, transferId;
 
   before(async () => {
     c = await pool().connect();
     await c.query("BEGIN");
+    // The suite owns this checked-out client and rolls the outer transaction
+    // back. The engine's transaction probe must see a query handle, not call
+    // connect() a second time on the already-connected pg Client.
+    transactionDb = { query: (...args) => c.query(...args) };
     orgId = (await c.query(`INSERT INTO orgs (slug, name) VALUES ($1, 'Transfers PgTest Org') RETURNING id`,
       [`money-transfers-pg-${process.pid}-${Date.now()}`])).rows[0].id;
     clientId = (await c.query(`INSERT INTO clients (org_id, first_name, last_name) VALUES ($1, 'Transfers', 'PgTest') RETURNING id`, [orgId])).rows[0].id;
@@ -99,7 +103,7 @@ describe("money_transfers + money_transfer_events (migration 466)", { skip: !HAV
   });
 
   test("the client's yes: the 464 row is approved and claimed, the move opens, the trigger writes the ledger row", async () => {
-    const r = await approveTransfer(c, {
+    const r = await approveTransfer(transactionDb, {
       orgId, clientId, proposalId: taskId, amountCents: 2000, fromAccountId: pc, toAccountId: bc,
       scheduledFor: TODAY, approvedByAccountId: accountId
     }, { env: ENV, now: NOW });
@@ -151,10 +155,10 @@ describe("money_transfers + money_transfer_events (migration 466)", { skip: !HAV
       async createLeg(a) { return { ok: true, transferId: `tr-${a.authorizationId}`, status: "pending" }; },
       async eventsPage() { return { ok: true, events: [{ eventId: 7001, eventType: "posted", transferId: `tr-auth-mt-${taskId}-d` }], hasMore: false, lastId: 7001 }; }
     };
-    const sent = await executeTransfer(c, { transferId }, { env: ENV, now: NOW, provider });
+    const sent = await executeTransfer(transactionDb, { transferId }, { env: ENV, now: NOW, provider });
     assert.equal(sent.step, "submitted");
-    await syncTransferEvents(c, { env: ENV, now: NOW, provider, force: true });
-    await syncTransferEvents(c, { env: ENV, now: NOW, provider, force: true });
+    await syncTransferEvents(transactionDb, { env: ENV, now: NOW, provider, force: true });
+    await syncTransferEvents(transactionDb, { env: ENV, now: NOW, provider, force: true });
     const ev = (await c.query(`SELECT event_type, to_status, debit_status, provider_event_id FROM money_transfer_events WHERE transfer_id = $1 ORDER BY id`, [transferId])).rows;
     assert.deepEqual(ev.map((e) => e.event_type), ["approved", "started", "authorized", "submitted", "plaid_posted"]);
     assert.equal(ev.filter((e) => Number(e.provider_event_id) === 7001).length, 1, "read twice, written once");

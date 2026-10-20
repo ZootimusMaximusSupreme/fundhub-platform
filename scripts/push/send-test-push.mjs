@@ -46,6 +46,7 @@ import { generateVapidKeys } from "../../src/push/crypto.mjs";
 import { sendToClient } from "../../src/push/send.mjs";
 import { vapidConfig } from "../../src/messaging/providers/web-push.mjs";
 import { isPushStorageConfigured } from "../../src/push/store.mjs";
+import { liveSendRequested, runOneOffSend } from "../../src/ops/one-off-send-receipt.mjs";
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -123,7 +124,7 @@ async function sendOne(clientId, { live }) {
 
   const env = live ? { ...process.env, MESSAGING_DRY_RUN: "0" } : process.env;
 
-  const out = await sendToClient(db, {
+  const send = () => sendToClient(db, {
     orgId,
     clientId,
     // The generic test body from src/push/payload.mjs. Same gate as everything
@@ -131,6 +132,24 @@ async function sendOne(clientId, { live }) {
     notification: { kind: "test", url: "/app/client-portal.html", tag: "test" },
     env
   });
+  const wrapped = live
+    ? await runOneOffSend({
+      db,
+      orgId,
+      clientId,
+      scriptId: "send-test-push",
+      channel: "push",
+      send,
+      summarize: (out) => ({
+        attempted: out.attempted,
+        sent: out.sent,
+        failed: out.failed,
+        blocked: out.expired,
+        error: out.reason,
+      }),
+    })
+    : { outcome: await send(), receipt: null };
+  const out = wrapped.outcome;
 
   console.log("");
   console.log("devices tried :", out.attempted);
@@ -146,6 +165,7 @@ async function sendOne(clientId, { live }) {
     console.log("NOTHING WAS SENT — the messaging fence is up. Add --send to really send.");
   } else if (out.sent > 0) {
     console.log("The push service accepted it. Look at the phone.");
+    console.log("receipt       :", wrapped.receipt.id);
     console.log("A push service accepting is not the same as a phone showing it —");
     console.log("only your eyes can confirm the last step.");
   }
@@ -170,7 +190,7 @@ async function main() {
       console.log("  DATABASE_URL=... node scripts/push/send-test-push.mjs --client <uuid> --send");
       return;
     }
-    await sendOne(clientId, { live: has("--send") });
+    await sendOne(clientId, { live: liveSendRequested(args) });
   } finally {
     await close();
   }

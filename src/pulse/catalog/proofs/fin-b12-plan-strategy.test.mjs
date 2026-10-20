@@ -19,6 +19,20 @@ const FRAME = (tab) => ({ entry: "frame", tab, surface: `financeos.html#${tab}` 
 
 const planRead = () => sampleAnswer("money-plan.sample.json");
 
+async function openPlanTab(page, { calendar = false } = {}) {
+  const tab = page.locator("#tab-plan");
+  await tab.waitFor({ state: "attached" });
+  await tab.click();
+  await page.waitForFunction(() => location.hash === "#plan"
+    && document.querySelector("#tab-plan")?.getAttribute("aria-selected") === "true"
+    && document.querySelector("#fos-plan")?.hidden === false);
+  if (!calendar) return;
+  const details = page.locator("#fos-plan details.plan-calendar");
+  await details.waitFor({ state: "attached" });
+  if (!(await details.evaluate((node) => node.open))) await details.locator(":scope > summary").click();
+  await page.waitForSelector("#fos-plan .fh-plan .cal-grid");
+}
+
 /** The plan read for any month: the pins of the sample, moved into the asked month when it differs. */
 function planByMonth() {
   const log = { months: [] };
@@ -46,7 +60,7 @@ function planByMonth() {
 async function openPlan(open, { session = STAFF, read = planRead } = {}) {
   const resource = moneyResource("plan", { read });
   const opened = await open(entryUrl("frame", { ...FRAME("plan"), clientId: session === CLIENT ? "" : CLIENT_ID }), { session, handlers: resource.handlers });
-  await opened.page.waitForSelector(".fh-plan .cal-grid");
+  await openPlanTab(opened.page, { calendar: true });
   return { ...opened, ...resource.log };
 }
 
@@ -90,12 +104,20 @@ test("Plan: every pin opens its own panel, the panel closes with Close and Esc, 
       assert.equal(await page.evaluate(() => document.activeElement?.textContent.trim()), "Close", `${label}: focus moves to Close`);
     };
     for (const pin of answer.pins) {
+      await openPlanTab(page, { calendar: true });
       await page.locator(`.cal-grid .pin[data-pin="${pin.id}"]`).click();
       await check(pin, "chip");
       await page.keyboard.press("Escape");
       await page.waitForFunction(() => !document.querySelector(".pl-drawer"));
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-pin")), pin.id, "Esc puts focus back on the chip that opened it");
     }
+    // The shipped calendar folds after a panel repaint, so prove exact Escape focus return from the
+    // matching visible list row. Close gets the same exact check for every row below.
+    const escapePin = answer.pins[0];
+    await page.locator(`.plan-list .row[data-pin="${escapePin.id}"]`).click();
+    await check(escapePin, "row");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector(".pl-drawer"));
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-pin")), escapePin.id, "Esc puts focus back on the row that opened it");
     for (const pin of [...answer.pins].reverse()) {
       await page.locator(`.plan-list .row[data-pin="${pin.id}"]`).click();
       await check(pin, "row");
@@ -105,7 +127,7 @@ test("Plan: every pin opens its own panel, the panel closes with Close and Esc, 
     }
 
     // Tab and Shift+Tab never leave an open panel.
-    await page.locator(`.cal-grid .pin[data-pin="${answer.pins[1].id}"]`).click();
+    await page.locator(`.plan-list .row[data-pin="${answer.pins[1].id}"]`).click();
     await page.waitForSelector(".pl-drawer");
     const stays = () => page.evaluate(() => !!document.activeElement?.closest(".pl-drawer"));
     for (let i = 0; i < 6; i += 1) {
@@ -156,6 +178,7 @@ test("Plan: the month buttons ask for the month before, the month after and toda
   await proof.check(/^Previous month \/ Next month \/ Today buttons/, async () => {
     const fake = planByMonth();
     const { page } = await open(entryUrl("frame", { ...FRAME("plan"), clientId: CLIENT_ID }), { session: STAFF, handlers: fake.handlers });
+    await openPlanTab(page);
     await page.waitForSelector("#pl-month");
     const heading = () => page.locator("#pl-month").innerText();
     assert.match(await heading(), /October 2026/);
@@ -201,6 +224,7 @@ test("Plan: the empty state offers Add an account and a pin's source link opens 
     const a = await open(entryUrl("frame", { ...FRAME("plan"), clientId: CLIENT_ID }), {
       session: STAFF, handlers: { "/api/money/plan": (route) => json(route, empty()), "/api/money/accounts": accounts, "/api/money/payments": payments },
     });
+    await openPlanTab(a.page);
     const add = a.page.locator('a:has-text("Add an account")');
     await add.waitFor();
     assert.equal(await add.getAttribute("href"), `money-accounts.html?client_id=${CLIENT_ID}`);
@@ -217,7 +241,7 @@ test("Plan: the empty state offers Add an account and a pin's source link opens 
     const b = await open(entryUrl("frame", { ...FRAME("plan"), clientId: CLIENT_ID }), {
       session: STAFF, handlers: { "/api/money/plan": (route) => json(route, withClarity()), "/api/money/accounts": accounts, "/api/money/payments": payments },
     });
-    await b.page.waitForSelector(".cal-grid");
+    await openPlanTab(b.page, { calendar: true });
     await b.page.locator(`.cal-grid .pin[data-pin="${planRead().pins[0].id}"]`).click();
     const link = b.page.locator('.pl-drawer a:has-text("See it on Payments")');
     await link.waitFor();

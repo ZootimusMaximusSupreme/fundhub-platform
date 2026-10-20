@@ -36,6 +36,8 @@
    "surface": "public/app/ops-admin.html",
    "controls": [
     "Affiliates + Hiring drawer (summary row with 'Open Affiliates' link; body is fixed text: no affiliate data yet, no hiring pipeline data yet)",
+    "AR column header sort (click or Enter on Client, Invoice, Amount owed, Overdue, Status)",
+    "AR row expand (terms, payment method, owner, outstanding, collection history)",
     "Open the page (owner and admin only: ops-admin.html is in OWNER_ADMIN_ONLY and NAV_HIDDEN in shell.js; other roles are bounced home)",
     "Period pill: Today / Last 7 Days / Last 30 Days / Quarter to Date (menu, Escape closes)",
     "Write today's C-suite tasks (button, shown only when the calendar is packed, a gap is short, or ad spend is above zero)",
@@ -49,7 +51,10 @@
    "surface": "public/app/partner-galaxy.html",
    "controls": [
     "Message Blaster for Mac: Download button (locked gift, .dmg)",
-    "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)"
+    "Sidebar rows a partner may open (Brand Studio only on this screen; Home, Social Studio, Creative Factory by role)",
+    "Sky canvas: click a cluster to zoom (5 static clusters: Fundhub fulfillment, Sales & Funding, Inquiry Removal, Client-Facing Agents, Ops Agents)",
+    "Sky canvas: click a worker to open the detail panel (NODES, CLIENTS and ROUTES are empty arrays, so no worker exists to click)",
+    "Sky canvas: click empty space or press Escape to pull back; panel close button (esc)"
    ]
   }
  ],

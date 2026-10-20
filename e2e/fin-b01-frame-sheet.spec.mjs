@@ -123,8 +123,10 @@ test.describe("frame: the cost sheet", () => {
     await page.locator("#prCost").click();
     await expect(sheet(page)).toHaveCount(1);
     await expect(page.locator(".app > .main")).toHaveAttribute("inert", "");
-    // A second paid tap on the page behind the sheet cannot open another sheet.
-    await page.locator("#prTurn").click({ force: true, trial: false }).catch(() => {});
+    // A real pointer tap cannot reach an inert control behind the sheet.
+    const blocked = await page.locator("#prTurn").click({ timeout: 1_000 })
+      .then(() => false, () => true);
+    expect(blocked).toBe(true);
     await expect(sheet(page)).toHaveCount(1);
     await expect(sheet(page).locator("h2")).toHaveText("Write 3 scripts?");
   });

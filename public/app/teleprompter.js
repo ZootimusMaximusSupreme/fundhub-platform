@@ -4291,6 +4291,8 @@
   Array.prototype.forEach.call(doc.querySelectorAll("[data-close]"), function (b) { b.onclick = function () { closeSheets(); }; });
   var SHEETS = ["lib", "set", "pick", "qmenu"];
   function openSheet(id) { closeSheets(); if (id === "lib") drawList(); if (id === "set") drawKeys(); $(id).hidden = false; }
+  $("b-lib").onclick = function () { openSheet("lib"); };
+  $("b-set").onclick = function () { openSheet("set"); };
   function closeSheets(keepEdit) {
     learning = null;
     SHEETS.forEach(function (id) { $(id).hidden = true; });

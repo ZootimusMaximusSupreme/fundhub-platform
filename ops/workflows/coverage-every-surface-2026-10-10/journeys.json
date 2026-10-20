@@ -546,16 +546,16 @@
   "step_order": 9
  },
  {
-  "surface": "journey:role-sales-manager-intended#reach-journeys",
-  "control": "role-sales-manager should be able to reach: journeys (1 route)",
+  "surface": "journey:role-sales-manager-policy#stays-blocked-journey-runner",
+  "control": "role-sales-manager must stay blocked from POST /api/journeys/run; only owner and admin may start a real journey run",
   "kind": "journey-step",
   "calls": [],
   "tables": [],
   "impact": "staffOnly",
   "coverage": "none",
-  "evidence": "The intended file is a copy of the actual file generated from the code (docs/journeys/README.md: 'a mirror, not a test'; no automated diff exists), so nothing proves a person of this kind can or cannot open a route. What tests do exist are about the machinery: scripts/journeys/generate.test.mjs, src/http/routes.test.mjs (every handler routed or allow-listed), src/http/auth-gate.test.mjs (the gate shape) and e2e/verification-roles.spec.mjs (mocked backend). No live probe signs in as this role and opens these routes.",
-  "journey": "role-sales-manager-intended",
-  "source": "docs/journeys/role-sales-manager-intended.md",
+  "evidence": "The runner drives the event bus and is deliberately owner/admin only. api/journeys/run.mjs owns the gate; src/http/journeys-run-handler.test.mjs, src/pulse/catalog/proofs/fin-b14-journeys-handlers.test.mjs, and the signed-in route probe all verify that sales_manager is refused.",
+  "journey": "role-sales-manager-policy",
+  "source": "api/journeys/run.mjs",
   "step_order": 10
  },
  {

@@ -45,6 +45,7 @@ test("bank list state buttons send THEIR OWN row's todo id and state, then show 
     }
   });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-funding").click();
   // The Capital Blueprint group is folded shut by default.
   await page.locator("#bp-group .group-title").click();
   const list = page.locator("#bp-todos");
@@ -108,6 +109,7 @@ async function openIdentityLines(lab, answer) {
   });
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: lab.origin });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-credit").click();
   await page.locator("#ccp-consent-state", { hasText: /Consent is on file|No consent|took their permission|run out|later date/ }).waitFor({ timeout: 30_000 });
   return page;
 }

@@ -5,12 +5,12 @@
  * reachable from the FinanceOS card on client-portal.html, and admin and
  * sales_manager cannot open the portal page (PORTAL_ONLY in shell.js — kept on
  * purpose). /api/money/* already lets owner, admin and sales_manager in with
- * ?client_id=, so the staff side needed one door: a row in the panel's Quick
- * launch that opens financeos.html on the client the panel is showing.
+ * ?client_id=, so the staff side needed one door: a row in the panel's Related
+ * tools disclosure that opens financeos.html on the client the panel is showing.
  *
  * WHAT THESE PROVE.
  *   1. The row exists, starts hidden, and has its own [hidden] CSS line
- *      (.action-btn sets display, which beats the browser's [hidden]).
+ *      (.link-btn sets display, which beats the browser's [hidden]).
  *   2. Run for real against a fake node: owner/admin/sales_manager see it with
  *      ?client_id=<this client> on both href and data-fh-href; every other
  *      role, and no client, keeps it hidden.
@@ -59,15 +59,18 @@ function run(role, clientId) {
 }
 
 describe("client control panel — Open FinanceOS row", () => {
-  test("the row is in Quick launch, starts hidden, and [hidden] really hides it", () => {
-    const m = PANEL_HTML.match(/<a class="action-btn" id="ccp-link-financeos" href="financeos\.html" hidden>Open FinanceOS/);
+  test("the row is in Related tools, starts hidden, and [hidden] really hides it", () => {
+    const m = PANEL_HTML.match(/<a class="link-btn" id="ccp-link-financeos" href="financeos\.html" hidden>Open FinanceOS/);
     assert.ok(m, "the Open FinanceOS row is missing or no longer starts hidden");
-    const quick = PANEL_HTML.indexOf('<div class="group-title card-title">Quick launch</div>');
-    const more = PANEL_HTML.indexOf('<details class="more" id="more-menu">', quick);
-    assert.ok(quick !== -1 && more > quick && m.index > quick && m.index < more,
-      "the Open FinanceOS row moved out of the Quick launch group");
+    const toolsStart = PANEL_HTML.indexOf('<details class="more workspace-tools" id="more-menu">');
+    const toolsEnd = PANEL_HTML.indexOf("</details>", toolsStart);
+    const tools = PANEL_HTML.slice(toolsStart, toolsEnd);
+    assert.ok(toolsStart !== -1 && toolsEnd > toolsStart && tools.includes("<summary>Related tools"),
+      "the Related tools disclosure moved or was renamed");
+    assert.ok(tools.includes('id="ccp-link-financeos"'),
+      "the Open FinanceOS row moved out of Related tools");
     assert.match(PANEL_HTML, /#ccp-link-financeos\[hidden\]\{display:none;\}/,
-      ".action-btn sets display — without its own [hidden] line the row shows to every role");
+      ".link-btn sets display — without its own [hidden] line the row shows to every role");
     assert.match(PANEL_HTML, /wireLinks\(id\);\s*\n\s*wireFinanceOsLink\(id\);/,
       "wireFinanceOsLink(id) is no longer called with the panel's client");
   });

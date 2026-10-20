@@ -13,13 +13,9 @@
 //                   where the page depends on a server read, a Node test of that read
 //                   (fin-b18-server-rows.json). It reads no saved data. The row leaves the lane.
 //
-// Left out on purpose, and still red in the lane (each has its reason in manifest-b18.md):
-//   ops-admin.html "AR column header sort", "AR row expand"   the page attaches both once, then replaces the table
-//   partner-galaxy.html "click a worker to open the detail panel"   no worker is drawn (NODES is empty)
-//   partner-galaxy.html "click a cluster to zoom (5 static clusters ...)"   clicking Inquiry Removal where it is
-//       shown zooms Sales & Funding (the sky is drawn taller than it is shown)
-//   partner-galaxy.html "click empty space or press Escape to pull back; panel close button"   the close
-//       button is behind a panel nobody can open
+// Rows repaired after the first audit stay here as exact practice tests. The AR
+// detail row also runs the real read handler so its five promised fields cannot
+// be proved by browser-only fake data.
 
 import PAGE_ROWS from "./fin-b18-rows.json" with { type: "json" };
 import SERVER_ROWS from "./fin-b18-server-rows.json" with { type: "json" };
@@ -28,6 +24,9 @@ import { FIN_B18_LANE, FIN_B18_LIVE_CASES, FIN_B18_LIVE_ROWS } from "./fin-b18-d
 const DIR = "src/pulse/catalog/proofs";
 const keyOf = (sourceFile, surface, control) => `${sourceFile}\0${surface}\0${control}`;
 const LIVE = new Set(FIN_B18_LIVE_ROWS.map(([sourceFile, surface, control]) => keyOf(sourceFile, surface, control)));
+const ALSO = Object.freeze({
+  "AR row expand (terms, payment method, owner, outstanding, collection history)": ["src/http/read-invoices-handler.test.mjs"],
+});
 
 // One entry per row. A row may be pressed by a page test (Chromium) and read by a server test (Node): both
 // files are listed on the one case.
@@ -51,14 +50,17 @@ const filesByRow = () => {
 export const FIN_B18_PRACTICE_CASES = Object.freeze(
   filesByRow()
     .filter((row) => !LIVE.has(keyOf(row.sourceFile, row.surface, row.control)))
-    .map((row) => Object.freeze({
-      sourceFile: row.sourceFile,
-      surface: row.surface,
-      control: row.control,
-      depth: "e2e",
-      evidence: row.files.join("; "),
-      tests: Object.freeze([...row.files]),
-    })),
+    .map((row) => {
+      const tests = [...row.files, ...(ALSO[row.control] || [])];
+      return Object.freeze({
+        sourceFile: row.sourceFile,
+        surface: row.surface,
+        control: row.control,
+        depth: "e2e",
+        evidence: tests.join("; "),
+        tests: Object.freeze(tests),
+      });
+    }),
 );
 
 // A live row keeps the lane in its evidence, and also runs every test that presses or reads the same control.

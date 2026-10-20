@@ -19,6 +19,7 @@ const EXPECTED_PROOF_COUNTS = Object.freeze({
 const MESSAGE_DELIVERY_BATCH = "src/pulse/catalog/proofs/flow-batch-message-delivery.test.mjs";
 const ACTIVE_MESSAGE_BATCH = "src/pulse/catalog/proofs/flow-batch-active-message-results.test.mjs";
 const FLOW_GAP_TEST = "src/pulse/coverage/gap-catalog-flow.test.mjs";
+const ONE_OFF_SEND_RESULT_TEST = "src/ops/one-off-send-receipt.test.mjs";
 const execFileAsync = promisify(execFile);
 
 function loadRows(sourceFile) {
@@ -50,14 +51,12 @@ test("flow proofs name only real, runnable result tests", () => {
   assert.deepEqual(counts, EXPECTED_PROOF_COUNTS);
 });
 
-test("known flow gaps map to the exact executable red monitor", () => {
+test("no known flow gap remains on the generic red monitor", () => {
   // Batch 22 moved the duplicate-text guard (judged from saved results), the journeys proxy (a practice
-  // test), the web push devices (saved results), two journey steps (a live page read) and, in generation 3,
-  // seven steps the live page does not carry (a verified nothing-to-judge) out of this list; the row below is
+  // test), the web push devices (saved results), two journey steps (a live page read), the restored climate
+  // state card (a rendered practice proof) and six absent steps (verified nothing-to-judge) out of this list; the row below is
   // the one nothing can judge yet.
-  const cases = [
-    ["messages.json", "script:one-off senders in scripts/"],
-  ];
+  const cases = [];
 
   for (const [sourceFile, surface] of cases) {
     const row = loadRows(sourceFile).find((candidate) => candidate.surface === surface);
@@ -70,18 +69,25 @@ test("known flow gaps map to the exact executable red monitor", () => {
   }
 });
 
-test("the 1 outbound message leftover that nothing can judge stays red", () => {
+test("no outbound message row is left with only a generic red verdict", () => {
   const rows = loadRows("messages.json")
     .map((row) => ({ row, proof: proofForFlowRow("messages.json", row) }))
     .filter(({ proof }) => proof?.verdict === "red");
 
-  assert.equal(rows.length, 1);
-  assert.deepEqual(rows.map(({ row }) => row.surface).sort(), [
-    "script:one-off senders in scripts/",
-  ]);
+  assert.equal(rows.length, 0);
+  assert.deepEqual(rows.map(({ row }) => row.surface).sort(), []);
   for (const { row, proof } of rows) {
     assert.deepEqual(proofTestFiles(proof), [FLOW_GAP_TEST], row.surface);
   }
+});
+
+test("the one-off scripts are judged by the explicit fence and durable-receipt practice proof", () => {
+  const row = loadRows("messages.json").find((candidate) => candidate.surface === "script:one-off senders in scripts/");
+  const proof = proofForFlowRow("messages.json", row);
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "deep");
+  assert.deepEqual(proofTestFiles(proof), ["src/ops/one-off-send-receipt.test.mjs"]);
+  assert.equal(proof.asserts, row.control);
 });
 
 test("the 9 message rows judged from saved results carry a live-check proof, not a red verdict", () => {
@@ -113,14 +119,13 @@ test("the two journey steps judged by a live page read carry a page-read proof, 
   }
 });
 
-test("the seven steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
+test("the six steps the live page does not carry are a verified nothing-to-judge, not a red verdict", () => {
   const rows = [
     ...loadRows("journeys.json").map((row) => ["journeys.json", row]),
     ...loadRows("messages.json").map((row) => ["messages.json", row]),
   ].filter(([, row]) => FIN_B22_LIVE_PROOFS[row.surface]?.shipped);
   assert.deepEqual(rows.map(([, row]) => row.surface).sort(), [
     "journey:climate-lead-magnet-intended#1-headline-button",
-    "journey:climate-lead-magnet-intended#3-state-click",
     "journey:climate-lead-magnet-intended#4-form",
     "journey:climate-lead-magnet-intended#6-gate",
     "journey:fh-consulting-intended#2-education-only",
@@ -135,6 +140,16 @@ test("the seven steps the live page does not carry are a verified nothing-to-jud
     assert.match(proof.evidence, /says "na" only while the step is not on it/, row.surface);
     assert.equal(proof.asserts, row.control, row.surface);
   }
+});
+
+test("the restored climate state card is proved by its exact rendered click result", () => {
+  const surface = "journey:climate-lead-magnet-intended#3-state-click";
+  const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
+  const proof = proofForFlowRow("journeys.json", row);
+  assert.equal(proof.verdict, undefined);
+  assert.equal(proof.depth, "deep");
+  assert.deepEqual(proofTestFiles(proof), ["src/pulse/catalog/proofs/fin-b09-g2-findings.test.mjs"]);
+  assert.equal(proof.asserts, row.control);
 });
 
 test("the web push row names the practice test of the sender beside its saved-result check", () => {
@@ -157,6 +172,7 @@ test("the journeys proxy is judged by a test with fake data: who may ask, what g
 test("route counts never prove signed-in role access: only a test that signs in does", () => {
   const rows = loadRows("journeys.json").filter((row) => (
     /#(?:reach-.+|stays-blocked)$/.test(String(row.surface || ""))
+    || row.surface === "journey:role-sales-manager-policy#stays-blocked-journey-runner"
   ));
   assert.equal(rows.length, 90);
   const probe = fs.readFileSync(new URL("src/pulse/catalog/proofs/s2-role-probe.mjs", ROOT), "utf8");
@@ -176,15 +192,16 @@ test("route counts never prove signed-in role access: only a test that signs in 
   }
 });
 
-test("rendered contracts prove two journey results and the soft-pull steps carry real tests", () => {
-  for (const surface of [
-    "journey:slo-connections-intended#1-open-tab",
-    "journey:optimize-intended#2-book-without-form",
-  ]) {
+test("exact executable proofs cover two journey results and the soft-pull steps carry real tests", () => {
+  const journeyProofs = new Map([
+    ["journey:slo-connections-intended#1-open-tab", "src/pulse/catalog/proofs/flow-read-contracts.test.mjs"],
+    ["journey:optimize-intended#2-book-without-form", "src/pulse/catalog/proofs/heartbeat-catalog-red-four.test.mjs"],
+  ]);
+  for (const [surface, testFile] of journeyProofs) {
     const row = loadRows("journeys.json").find((candidate) => candidate.surface === surface);
     const proof = proofForFlowRow("journeys.json", row);
     assert.equal(proof.verdict, undefined, surface);
-    assert.match(proof.evidence, /flow-read-contracts\.test\.mjs/, surface);
+    assert.deepEqual(proofTestFiles(proof), [testFile], surface);
   }
 
   // Batch 22: the soft-pull steps are no longer text-only. Steps 2 and 5 are judged by the server handler and
@@ -218,7 +235,7 @@ test("verified inactive templates use the exact monitor without a red verdict", 
   assert.equal(proof.verdict, undefined);
 });
 
-test("every deep message proof runs the gate and final dispatcher outcome", () => {
+test("every deep message proof runs its normal gate/dispatcher chain or the one-off fenced receipt chain", () => {
   for (const { row, proof } of allProofs().filter(({ sourceFile, proof }) => (
     sourceFile === "messages.json" && proof.depth === "deep"
   ))) {
@@ -228,7 +245,9 @@ test("every deep message proof runs the gate and final dispatcher outcome", () =
     const batchedChain = files.has(MESSAGE_DELIVERY_BATCH)
       || files.has(ACTIVE_MESSAGE_BATCH)
       || files.has(FLOW_GAP_TEST);
-    assert.equal(sharedChain || batchedChain, true, row.surface);
+    const oneOffChain = row.surface === "script:one-off senders in scripts/"
+      && files.has(ONE_OFF_SEND_RESULT_TEST);
+    assert.equal(sharedChain || batchedChain || oneOffChain, true, row.surface);
   }
 });
 

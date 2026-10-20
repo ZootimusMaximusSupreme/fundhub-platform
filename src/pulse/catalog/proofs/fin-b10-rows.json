@@ -26,6 +26,7 @@
     "Blueprint group toggle",
     "Client picker select (200 clients, navigates to ?id=)",
     "Credit & Hold Status toggle (credit status, income estimates, hold reason)",
+    "Credit partner links: Open the partner's file, Record the partner's own consent",
     "Declines: Use this email button",
     "Details toggle (email, phone, tier, path)",
     "More menu: Open Bank Inbox button",
@@ -34,9 +35,6 @@
     "Open FinanceOS link (owner, admin, sales_manager only)",
     "Quick launch links: Open Pipeline, Closer Deck, Messaging, Inquiry Remover",
     "System Facts toggle (last pull, scores, round, funded)"
-   ],
-   "notAttached": [
-    "Credit partner links: Open the partner's file, Record the partner's own consent"
    ]
   }
  ],

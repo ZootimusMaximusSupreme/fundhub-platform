@@ -12,6 +12,7 @@
 //                 last_minutes, measured_at, last_searches, last_fetches, last_calls,
 //                 unpriced_calls, job_id} (avatar also run_cap_usd),
 //              month:{used_usd, cap_usd, unpriced_calls},
+//              batch:{cap_usd},
 //              run_caps:{avatar, …}, limits:{avatar:{steps, max_searches, max_search_usd}},
 //              submagic:null, avatar_line}
 //   avatar_line is the sentence under "Build the avatar" (src/marketing/costs.mjs

@@ -38,6 +38,7 @@ import { isSynthetic } from "./live-fence.mjs";
 import { isDraftTemplateCopy, isDraftTemplateRow } from "./draft-guard.mjs";
 import { fenceVerdict, MESSAGING_DRY_RUN } from "../lib/dry-run.mjs";
 import { signUnsubscribeUrl, withUnsubscribeFooter } from "./unsubscribe.mjs";
+import { findRecentDuplicateSms, reserveSmsDedupBatch } from "./sms-dedup.mjs";
 import { destinationAddress } from "../auth/authorized-rep.mjs";
 import { sendNativeToClient } from "../push/native-send.mjs";
 import { sendToClient } from "../push/send.mjs";
@@ -126,7 +127,8 @@ export const OUTCOME = Object.freeze({
   DEFERRED: "deferred",         // inside quiet hours; due again when it opens
   SYNTHETIC: "synthetic",       // a test record, and the provider is real
   DRY_RUN: "dry_run",           // the fence is up; held, not failed
-  TEST_ADDRESS: "test_address"  // the provider refuses this address on sight
+  TEST_ADDRESS: "test_address", // the provider refuses this address on sight
+  DUPLICATE: "duplicate"        // same recipient and copy inside the SMS window
 });
 
 /* ── QUIET HOURS ARE A DEFERRAL, NOT A BLOCK ────────────────────────────────
@@ -384,8 +386,12 @@ async function subjectFor(db, message) {
 
    `message` is a claimed row from claimDue(). */
 export async function dispatchOne(db, message, options = {}) {
-  const { fetchImpl, timeoutMs, signal, env, now,
-    sendNative = sendNativeToClient, sendWeb = sendToClient } = options;
+  const {
+    fetchImpl, timeoutMs, signal, env, now,
+    sendNative = sendNativeToClient,
+    sendWeb = sendToClient,
+    smsDedupBatchKeys = null
+  } = options;
 
   try {
     // ---- 0. Quiet hours: defer, do not gate --------------------------------
@@ -605,6 +611,28 @@ export async function dispatchOne(db, message, options = {}) {
       }
     }
 
+    // Twilio has no idempotency key. Stop the second copy here, after every
+    // safety hold and immediately before a transmitting provider is called.
+    let smsDedup = null;
+    if (provider.TRANSMITS === true && message.channel === "sms") {
+      smsDedup = await findRecentDuplicateSms(db, message, address, {
+        batchKeys: smsDedupBatchKeys,
+        now,
+        env
+      });
+      if (smsDedup.duplicate) {
+        return await finalise(
+          db,
+          message,
+          "blocked",
+          OUTCOME.DUPLICATE,
+          `duplicate_sms:${smsDedup.reason}`,
+          null
+        );
+      }
+      reserveSmsDedupBatch(smsDedupBatchKeys, smsDedup.batchKey);
+    }
+
     /* ---- 2b. The way out ---------------------------------------------------
 
        Every outbound email leaves with a working unsubscribe link, and it is
@@ -667,21 +695,30 @@ export async function dispatchOne(db, message, options = {}) {
     }
 
     // ---- 3. Send -----------------------------------------------------------
-    const result = await provider.send({
-      id: message.id,
-      orgId: message.org_id,
-      clientId: message.client_id,
-      channel: message.channel,
-      to: address,
-      subject: await subjectFor(db, message),
-      body: outboundBody,
-      providerRef: message.provider_ref,
-      // Passed alongside the body, not inside it. The provider turns this into
-      // the RFC 8058 List-Unsubscribe headers, which are metadata rather than
-      // message content — so setting them does not break the never-mutate rule.
-      unsubscribeUrl,
-      attachments: message.attachments || null
-    }, { fetchImpl, timeoutMs, signal, env });
+    let result;
+    try {
+      result = await provider.send({
+        id: message.id,
+        orgId: message.org_id,
+        clientId: message.client_id,
+        channel: message.channel,
+        to: address,
+        subject: await subjectFor(db, message),
+        body: outboundBody,
+        providerRef: message.provider_ref,
+        // Passed alongside the body, not inside it. The provider turns this into
+        // the RFC 8058 List-Unsubscribe headers, which are metadata rather than
+        // message content — so setting them does not break the never-mutate rule.
+        unsubscribeUrl,
+        attachments: message.attachments || null
+      }, { fetchImpl, timeoutMs, signal, env });
+    } catch (error) {
+      if (smsDedup?.batchKey) smsDedupBatchKeys?.delete(smsDedup.batchKey);
+      throw error;
+    }
+    if (result.status !== "sent" && smsDedup?.batchKey) {
+      smsDedupBatchKeys?.delete(smsDedup.batchKey);
+    }
 
     // ---- 4. Record ---------------------------------------------------------
     if (result.status === "sent") {
@@ -840,8 +877,9 @@ export async function dispatchMessage(db, messageId, options = {}) {
 export async function dispatchDue(db, options = {}) {
   const claimed = await claimDue(db, options);
   const results = [];
+  const smsDedupBatchKeys = options.smsDedupBatchKeys || new Set();
   for (const message of claimed) {
-    results.push(await dispatchOne(db, message, options));
+    results.push(await dispatchOne(db, message, { ...options, smsDedupBatchKeys }));
   }
   return {
     claimed: claimed.length,

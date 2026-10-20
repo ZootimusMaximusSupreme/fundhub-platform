@@ -149,7 +149,12 @@ test("clock: Arizona time, the date when the bar is wide, only the time when nar
   const page = await makePage(lab, { role: "owner", width: 1440 });
   await page.goto(`${lab.origin}/app/products-commissions.html`, { waitUntil: "domcontentloaded" });
   await settle(page);
-  const clock = page.locator("#fh-shell-clock");
+  const account = page.locator("#fh-shell-chip");
+  const diagnostics = page.locator("#fh-shell-account-diagnostics");
+  const clock = page.locator("#fh-workspace-clock");
+  assert.equal(await clock.isVisible(), false, "the clock waits inside the closed account menu");
+  await account.locator("summary").first().click();
+  await diagnostics.locator("summary").click();
   await clock.waitFor({ state: "visible" });
   const wide = (await clock.textContent()).trim();
   assert.match(wide, /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/);
@@ -159,10 +164,10 @@ test("clock: Arizona time, the date when the bar is wide, only the time when nar
   assert.equal(wide.includes(phoenixClock.replace(/ (AM|PM)$/, "")), true, `the hour and minute are Phoenix's (${phoenixClock})`);
   await until(async () => (await clock.textContent()).trim() !== wide, { timeout: 4000, message: "the clock to tick" });
   await page.setViewportSize({ width: 1150, height: 900 });
-  await until(async () => /^\d{1,2}:\d{2}:\d{2} (AM|PM) MST$/.test((await clock.textContent()).trim()), { timeout: 4000, message: "the time-only face" });
+  assert.match((await clock.textContent()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/, "the technical clock keeps its full Arizona face when the header narrows");
   assert.equal(await clock.isVisible(), true);
   await page.setViewportSize({ width: 1000, height: 900 });
-  assert.equal(await clock.isVisible(), false, "under 1100px the clock is not shown");
+  assert.equal(await clock.isVisible(), true, "the open Technical details menu remains usable under 1100px");
   await page.close();
 
   const client = await makePage(lab, { role: "client" });

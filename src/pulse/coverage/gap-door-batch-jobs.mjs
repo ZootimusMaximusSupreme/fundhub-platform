@@ -15,14 +15,31 @@ export const JOB_RESULT_EVIDENCE =
 export const FINAL_JOB_RESULT_TEST =
   "src/pulse/catalog/proofs/door-batch-job-final.test.mjs";
 
+export const CUSTOMER_FINAL_JOB_RESULT_TEST =
+  "src/workflows/customer-final-results.test.mjs";
+
+export const CONTRACT_CHASER_FINAL_RESULT_TEST =
+  "src/workflows/contract-chaser-final.test.mjs";
+
+export const INSTANT_WATCH_FINAL_RESULT_TEST =
+  "src/pulse/instant-watch.test.mjs";
+
+export const AD_VIDEO_WORKER_FINAL_RESULT_TEST =
+  "src/workflows/ad-video-worker-final.test.mjs";
+
 const PROVED_FINAL_JOB_SURFACES = new Set([
   "workflow:affiliate-payout-run",
   "workflow:blueprint-next-funding-sequence-sweeper",
+  "workflow:contract-chaser",
   "workflow:hiring-outreach-cadence",
   "workflow:merchant-pull-sweeper",
+  "workflow:meet-transcript-sweeper",
   "workflow:paid-checkout-expiry-sweeper",
+  "workflow:pulse-instant-watch",
+  "workflow:repair-bureau-response-reader",
   "function:hubstaff-poll-sweeper",
   "function:marketing-offer-background",
+  "function:ad-video-worker-background",
 ]);
 
 const FINAL_JOB_SURFACES = new Set([
@@ -130,9 +147,22 @@ export function evaluateJobReceipt(row, loaded) {
 
 export function jobResultProof(row) {
   if (PROVED_FINAL_JOB_SURFACES.has(row?.surface)) {
-    const evidence = row.surface === "workflow:blueprint-next-funding-sequence-sweeper"
-      ? `${FINAL_JOB_RESULT_TEST} src/blueprint/next-sequence-plan.test.mjs`
-      : FINAL_JOB_RESULT_TEST;
+    let evidence = FINAL_JOB_RESULT_TEST;
+    if (row.surface === "workflow:blueprint-next-funding-sequence-sweeper") {
+      evidence = `${FINAL_JOB_RESULT_TEST} src/blueprint/next-sequence-plan.test.mjs`;
+    }
+    if (["workflow:meet-transcript-sweeper", "workflow:repair-bureau-response-reader"].includes(row.surface)) {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${CUSTOMER_FINAL_JOB_RESULT_TEST}`;
+    }
+    if (row.surface === "workflow:contract-chaser") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${CONTRACT_CHASER_FINAL_RESULT_TEST}`;
+    }
+    if (row.surface === "workflow:pulse-instant-watch") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${INSTANT_WATCH_FINAL_RESULT_TEST}`;
+    }
+    if (row.surface === "function:ad-video-worker-background") {
+      evidence = `${FINAL_JOB_RESULT_TEST} ${AD_VIDEO_WORKER_FINAL_RESULT_TEST}`;
+    }
     return {
       depth: ["money", "customerMessage", "customerData"].includes(row?.impact) ? "deep" : "e2e",
       evidence,

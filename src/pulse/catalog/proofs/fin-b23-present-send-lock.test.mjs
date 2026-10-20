@@ -7,10 +7,9 @@
 // failed send is not counted and can be pressed again at once.
 // The page clock is paused, so the cooldown moves only when this test says.
 //
-// What is NOT proved here, and why the catalog row stays open (two product findings, see the
-// batch 23 manifest): "Generate letters and email now" shows "Nothing was sent" and starts no
-// cooldown when the pack WAS delivered, and "Send soft pull" is drawn as a plain button with no
-// "Sending…", no "Sent at" line and no count. Only the half of those two that works today is judged.
+// The two controls that used to be partial are covered here too: Generate letters
+// reads the successful server answer from FHData's data wrapper, and Send soft pull
+// uses the same visible send state as every other client-facing send.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -65,14 +64,11 @@ async function openDeck(open, { tier, handlers, phase = "07" }) {
   return opened;
 }
 
-/** Real time for a stray request to reach the stand-in before a count is read. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
-
 /**
  * The whole lock story for one send button.
  *   button: the data-act, label: its idle words, sent: how many requests one press made.
  */
-async function proveLock({ page, gate, button, label, fail }) {
+async function proveLock({ page, gate, button, label, fail, successText }) {
   const btn = page.locator(`[data-act="${button}"]`);
   assert.equal((await btn.textContent()).trim(), label);
   assert.equal(await btn.isDisabled(), false);
@@ -101,6 +97,7 @@ async function proveLock({ page, gate, button, label, fail }) {
   gate.release();
   await page.waitForFunction((b) => /Sent — hold on/.test(document.querySelector(`[data-act="${b}"]`)?.textContent || ""), button);
   assert.equal(await btn.isDisabled(), true);
+  if (successText) assert.match(await page.locator(".toast").textContent(), successText);
   const stamp = (await page.locator(".sent-at").first().textContent()).trim();
   assert.match(stamp, SENT_AT);
   await btn.click({ force: true });
@@ -149,33 +146,26 @@ test("a failed pay link is not counted as sent and the button can be pressed aga
   await page.close();
 });
 
-test("Generate letters and email now cannot be pressed again while its request is out", { timeout: 60_000 }, async (t) => {
-  // Only the in-flight half is judged for this button. What the page shows after the answer comes back
-  // is a product finding (see the manifest): present.js reads `delivered` off the wrapper, so a delivered
-  // pack is shown as "Nothing was sent" and no cooldown starts. That is why the catalog row stays open.
+test("Generate letters and email now locks while sending, cools down, and counts delivered packs", { timeout: 90_000 }, async (t) => {
   const { open } = await startPages(t);
   const gate = held();
-  const { page } = await openDeck(open, {
+  const { page, errors } = await openDeck(open, {
     tier: "FULL_FUNDING",
     handlers: { "/api/closer-deck": gate.handler(() => ({ body: { ok: true, delivered: true, documentsStored: 2 } })) },
   });
-  const btn = page.locator('[data-act="letters"]');
-  await btn.click();
-  await waitFor(() => gate.calls.length === 1, "the letters request");
-  await page.waitForFunction(() => /Sending…/.test(document.querySelector('[data-act="letters"]')?.textContent || ""));
-  assert.equal(await btn.isDisabled(), true);
-  await btn.click({ force: true });
-  await btn.click({ force: true });
-  assert.equal(gate.calls.length, 1, "extra presses while it is out send nothing");
+  await proveLock({
+    page,
+    gate,
+    button: "letters",
+    label: "Generate letters and email now",
+    successText: /Letters sent\. 2 document\(s\) saved/,
+  });
   assert.equal(gate.calls[0].action, "generate_letters");
-  gate.release();
+  assert.deepEqual(errors, []);
   await page.close();
 });
 
-test("Send soft pull sends once per press: more presses while it is out, or inside the 4 second hold, send nothing", { timeout: 90_000 }, async (t) => {
-  // The soft pull button is drawn as a plain button (no "Sending…", no Sent at line): a product
-  // finding in the manifest. What it still does is refuse a repeat press, and that is judged here.
-  // A press is a bare click event so a toast sitting over the button cannot swallow it.
+test("Send soft pull locks while sending, cools down, and counts repeats", { timeout: 90_000 }, async (t) => {
   const { open } = await startPages(t);
   const gate = held();
   const { page, errors } = await openDeck(open, {
@@ -183,33 +173,9 @@ test("Send soft pull sends once per press: more presses while it is out, or insi
     phase: "03",
     handlers: { "/api/closer-deck": gate.handler(() => ({ body: { ok: true, action: "send_soft_pull" } })) },
   });
-  const btn = page.locator('[data-act="softpull"]');
-  const press = () => btn.dispatchEvent("click");
-
-  await press();
-  await waitFor(() => gate.calls.length === 1, "the soft pull request");
+  await proveLock({ page, gate, button: "softpull", label: "Send soft pull ($32 + approval form)" });
   assert.equal(gate.calls[0].action, "send_soft_pull");
   assert.equal(gate.calls[0].client_id, CLIENT);
-  await press();
-  await press();
-  await settle();
-  assert.equal(gate.calls.length, 1, "presses while the request is out send nothing");
-
-  gate.release();
-  await page.waitForFunction(() => /Soft pull emailed/.test(document.body.innerText));
-  await press();
-  await settle();
-  assert.equal(gate.calls.length, 1, "a press right after the send sends nothing");
-
-  await page.clock.fastForward(3_900);
-  await press();
-  await settle();
-  assert.equal(gate.calls.length, 1, "still held just before 4 seconds");
-
-  await page.clock.fastForward(200);
-  await press();
-  await waitFor(() => gate.calls.length === 2, "the second soft pull request, after the hold");
-  gate.release();
   assert.deepEqual(errors, []);
   await page.close();
 });

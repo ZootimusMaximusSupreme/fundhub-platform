@@ -25,7 +25,7 @@ function mapRows() {
 test("every entry is one exact route row of the coverage map, and none is a money or customer row", () => {
   const rows = mapRows();
   const ids = FIN_B25_DOOR_CONTRACTS.map((entry) => entry.id);
-  assert.equal(ids.length, 38);
+  assert.equal(ids.length, 40);
   assert.equal(new Set(ids).size, ids.length, "an id is listed twice");
   for (const entry of FIN_B25_DOOR_CONTRACTS) {
     const hits = rows.filter(({ sourceFile, row }) => finB25DoorRowId(sourceFile, row) === entry.id);

@@ -102,7 +102,7 @@ function runWiring({ role = "owner", clientId = "c-1", write } = {}) {
 
 describe("client-control-panel.html — send the client their portal sign-in link", () => {
 
-  test("the control exists, inside the Actions group and not on a new screen", () => {
+  test("the control exists in Access > Client sign-in and not on a new screen", () => {
     assert.match(PANEL_HTML, /id="ccp-portal-link"/,
       "the send button is gone, so the reset screen's instruction is unfollowable again");
     assert.match(PANEL_HTML, /id="ccp-portal-link-status"/,
@@ -110,15 +110,17 @@ describe("client-control-panel.html — send the client their portal sign-in lin
     assert.match(PANEL_HTML, /<span id="ccp-portal-link-label">Send portal sign-in link<\/span>/,
       "the button no longer says what it does (UI-STANDARDS §5)");
 
-    // It has to sit in the group the desk already acts on this file from.
-    // Owner rule: no new page, screen, tab or menu row.
-    const actions = PANEL_HTML.slice(
-      PANEL_HTML.indexOf('<div class="group-title card-title">Actions</div>'),
-      PANEL_HTML.indexOf('<div class="group facts-group is-empty" id="ccp-facts-group">')
-    );
-    assert.ok(actions.length > 500, "the Actions group moved or was renamed");
-    assert.ok(actions.includes('id="ccp-portal-link"'),
-      "the send control left the Actions group");
+    // Current main puts account controls together on the record's Access tab.
+    // It remains an in-place action, not a new page, screen, or menu row.
+    const accessStart = PANEL_HTML.indexOf('<section class="workspace-view" id="ccp-view-access"');
+    const accessEnd = PANEL_HTML.indexOf("</section>", accessStart);
+    const access = PANEL_HTML.slice(accessStart, accessEnd);
+    assert.ok(accessStart !== -1 && accessEnd > accessStart && access.includes("<h2>Portal access</h2>"),
+      "the Access tab or Portal access section moved or was renamed");
+    assert.ok(access.includes('<div class="group-title card-title">Client sign-in</div>'),
+      "the Client sign-in group moved or was renamed");
+    assert.ok(access.includes('id="ccp-portal-link"'),
+      "the send control left Access > Client sign-in");
     assert.ok(!/href="[^"]*portal-link[^"]*"/.test(PANEL_HTML),
       "a link to a new screen was added; this control belongs on the client record");
   });

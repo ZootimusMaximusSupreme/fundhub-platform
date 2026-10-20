@@ -9,11 +9,25 @@ import { sweepMeetTranscripts } from "../company-brain/meet-transcript.mjs";
 
 export const SWEEP_CRON = "*/10 * * * *";
 
-export async function handle({ db: database = db, step, env = process.env } = {}) {
+export async function handle({
+  db: database = db,
+  step,
+  env = process.env,
+  fetchImpl,
+  upsert,
+  client,
+  syncDrive
+} = {}) {
   const run = step?.run
     ? (name, fn) => step.run(name, fn)
     : (_n, fn) => fn();
-  return run("sweep-meet-words", () => sweepMeetTranscripts(database, { env }));
+  return run("sweep-meet-words", () => sweepMeetTranscripts(database, {
+    env,
+    fetchImpl,
+    upsert,
+    client,
+    syncDrive
+  }));
 }
 
 export const meetTranscriptSweeper = inngest.createFunction(

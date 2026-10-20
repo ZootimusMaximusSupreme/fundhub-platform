@@ -1,6 +1,6 @@
 // Controls the map still lists, that the product no longer has (finish-the-853, batch 01).
 //
-// A row in the coverage map names a screen control. Four of them were taken out of the
+// A row in the coverage map names a screen control. Six of them were taken out of the
 // product on purpose, or their page was replaced, and the map was never updated:
 //
 //   - the closer deck "$ amount" e-book price box and "Send e-book email" button. The deck
@@ -15,6 +15,8 @@
 //     (e2e/fin-b01-optimize-intake.spec.mjs). It answers PASS, never na.
 //   - the /climate "Gate button". The lead-magnet page that held it was reverted
 //     (f39cec357) and replaced by the Darwin dashboard, which has no gate.
+//   - the old Home and Watch sidebar group headers. The CRM redesign moved their links
+//     into Insights and removed the old group headers.
 //
 // "Nothing to judge" is only true while the control stays gone. So each row names the live
 // files to read (GET only) and what must NOT be in them. The day the control comes back, the
@@ -105,6 +107,34 @@ export const RETIRED_CONTROLS = Object.freeze([
         // <script src>, and each static/chunks/*.js path named in the page), not only the one app
         // chunk. The gate used to be able to come back in any other chunk and stay unseen.
         follow: { max: 40, mustLack: CLIMATE_GATE },
+      },
+    ],
+  },
+  {
+    sourceFile: "desks-e.json",
+    surface: "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+    control: "Sidebar group 'Home' header (fold/unfold) and its links: partner-galaxy.html",
+    impact: "none",
+    retired: "the CRM sidebar no longer has a Home group; partner-galaxy.html now lives under Insights",
+    pages: [
+      {
+        path: "/app/shell.js",
+        mustHave: /data-fh-section=\\"insights\\"[\s\S]*?href=\\"partner-galaxy\.html\\"[\s\S]*?data-fh-section=\\"marketing\\"/,
+        mustLack: [{ name: "the old Home section", test: /data-fh-section=\\"home\\"/ }],
+      },
+    ],
+  },
+  {
+    sourceFile: "desks-e.json",
+    surface: "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)",
+    control: "Sidebar group 'Watch' header (fold/unfold) and its links: galaxy.html, ops-admin.html",
+    impact: "none",
+    retired: "the CRM sidebar no longer has a Watch group; galaxy.html and ops-admin.html now live under Insights",
+    pages: [
+      {
+        path: "/app/shell.js",
+        mustHave: /data-fh-section=\\"insights\\"[\s\S]*?href=\\"galaxy\.html\\"[\s\S]*?href=\\"ops-admin\.html\\"[\s\S]*?data-fh-section=\\"marketing\\"/,
+        mustLack: [{ name: "the old Watch section", test: /data-fh-section=\\"watch\\"/ }],
       },
     ],
   },

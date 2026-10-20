@@ -11,7 +11,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B01_DISPLAY_SPEC_PROOFS, FIN_B01_PRACTICE_SPECS } from "./fin-b01-display-specs.mjs";
-import { freeBrowserPort } from "./browser-port.mjs";
+import { withBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -88,10 +88,9 @@ test("every practice test for a row that stays in the lane is one exact map row 
 for (const [spec, titles] of bySpec) {
   test(`${spec}: the bound tests run in a real browser and pass`, async () => {
     assert.ok(fs.existsSync(PLAYWRIGHT_CLI), "Playwright CLI is not installed");
-    const port = await freeBrowserPort();
     const reportFile = path.join(os.tmpdir(), `fin-b01-display-${process.pid}-${path.basename(spec)}.json`);
     const grep = [...titles].map(escapeRegExp).join("|");
-    const result = spawnSync(process.execPath, [
+    const result = await withBrowserPort((port) => spawnSync(process.execPath, [
       PLAYWRIGHT_CLI, "test", spec, "--grep", grep, "--workers=1", "--reporter=json",
     ], {
       cwd: ROOT,
@@ -103,7 +102,7 @@ for (const [spec, titles] of bySpec) {
         E2E_PORT: String(port),
       },
       maxBuffer: 64 * 1024 * 1024,
-    });
+    }));
     let report = null;
     try { report = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch { /* reported below */ }
     finally { fs.rmSync(reportFile, { force: true }); }

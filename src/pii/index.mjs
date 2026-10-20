@@ -146,9 +146,11 @@ export async function storeIdentity(db, {
          middle_name = EXCLUDED.middle_name,
          name_suffix = EXCLUDED.name_suffix,
          updated_at  = now()
+       WHERE pii_identity.org_id = EXCLUDED.org_id
        RETURNING id, org_id, client_id, dob, addresses, middle_name, name_suffix, created_at, updated_at`,
       [orgId, clientId, enc, dob, JSON.stringify(addresses ?? []), middle, suffix]
     );
+    if (!res.rows[0]) throw new PiiError("client identity is not in this company", { status: 404 });
     return res.rows[0];
   }
 
@@ -163,11 +165,13 @@ export async function storeIdentity(db, {
        dob        = COALESCE(EXCLUDED.dob, pii_identity.dob),
        addresses  = EXCLUDED.addresses,
        updated_at = now()
+     WHERE pii_identity.org_id = EXCLUDED.org_id
      RETURNING id, org_id, client_id, dob, addresses, created_at, updated_at`,
     [orgId, clientId, enc, dob, JSON.stringify(addresses ?? [])]
   );
   // Note the RETURNING list: ssn_enc is not in it. The ciphertext has no reason
   // to travel back through the application on a write path.
+  if (!res.rows[0]) throw new PiiError("client identity is not in this company", { status: 404 });
   return res.rows[0];
 }
 
@@ -178,12 +182,18 @@ export async function storeIdentity(db, {
  * every masked read would bury the reveals — the entries an audit actually cares
  * about — in thousands of page loads. The log is for disclosures, not traffic.
  */
-export async function readIdentity(db, { clientId, env } = {}) {
-  const res = await db.query(
-    `SELECT id, org_id, client_id, ssn_enc, dob, addresses, created_at, updated_at
-       FROM pii_identity WHERE client_id = $1`,
-    [clientId]
-  );
+export async function readIdentity(db, { orgId = null, clientId, env } = {}) {
+  const res = orgId
+    ? await db.query(
+      `SELECT id, org_id, client_id, ssn_enc, dob, addresses, created_at, updated_at
+         FROM pii_identity WHERE client_id = $1 AND org_id = $2`,
+      [clientId, orgId]
+    )
+    : await db.query(
+      `SELECT id, org_id, client_id, ssn_enc, dob, addresses, created_at, updated_at
+         FROM pii_identity WHERE client_id = $1`,
+      [clientId]
+    );
   const row = res.rows[0];
   if (!row) return null;
 
@@ -208,14 +218,19 @@ export async function readIdentity(db, { clientId, env } = {}) {
  * The log row is written FIRST and inside the same transaction. A failure to
  * record the access aborts the disclosure: see rule 3 in the header.
  */
-export async function revealSsn(db, { clientId, accessedBy, reason = null, env } = {}) {
+export async function revealSsn(db, { orgId = null, clientId, accessedBy, reason = null, env } = {}) {
   if (!clientId) throw new PiiError("clientId is required");
   if (!accessedBy) throw new PiiError("accessedBy is required — an unattributed reveal is not loggable", { status: 401 });
 
   return withTransaction(db, async (tx) => {
-    const row = (await tx.query(
-      `SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = $1`, [clientId]
-    )).rows[0];
+    const row = (orgId
+      ? await tx.query(
+        `SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = $1 AND org_id = $2`,
+        [clientId, orgId]
+      )
+      : await tx.query(
+        `SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = $1`, [clientId]
+      )).rows[0];
     if (!row) throw new PiiError("no identity record for this client", { status: 404 });
     if (!row.ssn_enc) throw new PiiError("no SSN on file for this client", { status: 404 });
 
@@ -230,13 +245,21 @@ export async function revealSsn(db, { clientId, accessedBy, reason = null, env }
 }
 
 /** accessHistory — who has looked at this client's identity, newest first. */
-export async function accessHistory(db, { clientId, limit = 100 }) {
-  const res = await db.query(
-    `SELECT id, accessed_by, field, created_at
-       FROM pii_access_log WHERE client_id = $1
-      ORDER BY created_at DESC LIMIT $2`,
-    [clientId, Math.max(1, Math.min(Number(limit) || 100, 500))]
-  );
+export async function accessHistory(db, { orgId = null, clientId, limit = 100 }) {
+  const capped = Math.max(1, Math.min(Number(limit) || 100, 500));
+  const res = orgId
+    ? await db.query(
+      `SELECT id, accessed_by, field, created_at
+         FROM pii_access_log WHERE client_id = $1 AND org_id = $2
+        ORDER BY created_at DESC LIMIT $3`,
+      [clientId, orgId, capped]
+    )
+    : await db.query(
+      `SELECT id, accessed_by, field, created_at
+         FROM pii_access_log WHERE client_id = $1
+        ORDER BY created_at DESC LIMIT $2`,
+      [clientId, capped]
+    );
   return res.rows;
 }
 

@@ -208,7 +208,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await expect(page.locator("#qmenu")).toBeHidden();
     await expect(page.locator("#s-title")).toHaveText("Inquiries off first");
     await expect(page.locator("#content")).toContainText("Every hard pull");
-    await expect(chip).toHaveText("Inquiries off first");
+    await expect(chip).toHaveText("Direct Book Ad 92 — Inquiries off first Take 1.mp4");
     expect(posts).toHaveLength(0);
     await chip.dblclick();
     await expect(page.locator("#qmenu")).toContainText("Your file is worth more");
@@ -226,9 +226,9 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     expect(posts[0]).toMatchObject({ shoot_id: PAGE.shoot.id, root_script_id: THREE.root_script_id, mark: "got_it" });
     expect(posts[0].request_id).toMatch(/^[A-Za-z0-9._:-]{8,200}$/);
     await expect(page.locator("#toast")).toHaveText("Got it. Keep SLO Ad 93 — Your file is worth more Take 1.mp4.");
-    await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
-    await expect(page.locator("#s-file")).toHaveText("Inquiries off first");
-    await expect(page.locator("#p-file")).toHaveText("Inquiries off first");
+    await expect(page.locator("#s-ad")).toHaveText("Direct Book Ad 92 · Take 1 · 3 of 3");
+    await expect(page.locator("#s-file")).toHaveText("Direct Book Ad 92 — Inquiries off first Take 1.mp4");
+    await expect(page.locator("#p-file")).toHaveText("Direct Book Ad 92 — Inquiries off first Take 1.mp4");
     await expect(page.locator("body")).not.toContainText("file-name word");
   });
 
@@ -282,7 +282,7 @@ test.describe("teleprompter, the end of a script and the remote", () => {
     await expect(page.locator("#pending")).toContainText("saved on this phone");
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.queue")).length)).toBe(1);
     // The next script still loads; the shoot keeps going without a connection.
-    await expect(page.locator("#s-ad")).toHaveText("Ad 92 · Take 1 · 3 of 3");
+    await expect(page.locator("#s-ad")).toHaveText("Direct Book Ad 92 · Take 1 · 3 of 3");
     down = false;
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("fhtp.queue")).length)).toBe(0);

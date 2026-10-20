@@ -102,7 +102,7 @@ for (const width of [1440, 390, 320]) {
       await expect(page.locator('#ctxName')).toHaveText('Dana Whitfield'); await expect(page.locator('#ctxRows')).toContainText('dana@example.test');
       await expect(page.locator('#ctxLinks a')).toHaveAttribute('href', `client-control-panel.html?id=${CLIENT}`);
       // The original reference drawer stays hidden by the shared demo-chrome rule.
-      await page.locator('#ctxLinks a').focus(); await page.keyboard.press('Tab'); await expect(page.locator('#closeClientContext')).toBeFocused();
+      await page.locator('#demoToggle').focus(); await page.keyboard.press('Tab'); await expect(page.locator('#closeClientContext')).toBeFocused();
       if (width === 390) await marked(page, 'after-390-context.png', '#clientContext', 'After: client facts and file link have their own phone pane');
       await page.keyboard.press('Escape'); await expect(page.locator('#openClientContext')).toBeFocused();
       await expect(page.locator('#composeBody')).toHaveValue('I can help with your checklist.');

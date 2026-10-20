@@ -272,9 +272,9 @@ test("full at 390: every dial in plain words, the video choices hidden, one Save
   expect(minFont).toBeGreaterThanOrEqual(11);
   // §12.7: sizes from the brand's whitelist, computed.
   const size = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontSize);
-  expect(await size("#setSwitch h2")).toBe("20px");
+  expect(await size("#setSwitch h2")).toBe("22px");
   expect(await size('label[for="set-time"]')).toBe("13px");
-  expect(await size("#set-time")).toBe("16px");
+  expect(await size("#set-time")).toBe("15px");
 
   await shot(page, "s01-switch-390.png", "Settings at 390: the weekly switch", [
     { selector: "#setSwitch .chip", caption: "Off by default, in words" },

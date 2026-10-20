@@ -44,6 +44,8 @@ const EBOOK = RETIRED_CONTROLS[0];
 const SEND_EBOOK = RETIRED_CONTROLS[1];
 const AUDIT = RETIRED_CONTROLS[2];
 const GATE = RETIRED_CONTROLS[3];
+const HOME_HEAD = RETIRED_CONTROLS[4];
+const WATCH_HEAD = RETIRED_CONTROLS[5];
 
 // The page script the climate page names (its hash changes with every build).
 const climatePageChunk = () => {
@@ -51,14 +53,14 @@ const climatePageChunk = () => {
   return /src="(\/climate\/_next\/static\/chunks\/app\/page-[^"]+)"/.exec(html)[1];
 };
 
-test("each retired control is one exact money row of the map and one exact lane row", () => {
-  assert.equal(RETIRED_CONTROLS.length, 4);
+test("each retired control is one exact map row and one exact lane row", () => {
+  assert.equal(RETIRED_CONTROLS.length, 6);
   const maps = new Map();
   for (const rc of RETIRED_CONTROLS) {
     if (!maps.has(rc.sourceFile)) maps.set(rc.sourceFile, JSON.parse(fs.readFileSync(path.join(MAP_DIR, rc.sourceFile), "utf8")));
     const rows = maps.get(rc.sourceFile).filter((r) => r.surface === rc.surface && r.control === rc.control);
     assert.equal(rows.length, 1, rc.control);
-    assert.equal(rows[0].impact, "money", rc.control);
+    assert.equal(rows[0].impact, rc.impact || "money", rc.control);
     const entries = DISPLAY_TRACKING_CASES.filter((e) => e.sourceFile === rc.sourceFile && e.surface === rc.surface && e.control === rc.control);
     assert.equal(entries.length, 1, `${rc.control} is not one row of the display lane`);
     assert.equal(retiredControlFor(entries[0]), rc);
@@ -67,10 +69,10 @@ test("each retired control is one exact money row of the map and one exact lane 
   assert.equal(retiredControlFor(null), null);
 });
 
-test("with the shipped files, the e-book rows and the climate gate are nothing to judge, and the optimize row passes", async () => {
+test("with the shipped files, the retired rows are nothing to judge, and the optimize row passes", async () => {
   const calls = [];
-  const ctx = { fetchImpl: shippedSite({ calls }) };
-  for (const rc of [EBOOK, SEND_EBOOK, GATE]) {
+  const ctx = { fetchImpl: shippedSite({ calls }), retiredCache: new Map() };
+  for (const rc of [EBOOK, SEND_EBOOK, GATE, HOME_HEAD, WATCH_HEAD]) {
     const state = await retiredControlState(rc, ctx);
     assert.equal(state.status, "na", `${rc.control}: ${state.detail}`);
   }
@@ -81,6 +83,20 @@ test("with the shipped files, the e-book rows and the climate gate are nothing t
   // The climate gate is judged in EVERY script the page names, not only the app chunk.
   for (const pathname of climateScripts()) assert.ok(calls.includes(pathname), `${pathname} was not read`);
   assert.ok(climateScripts().length >= 7, "the climate page names its scripts");
+  assert.equal(calls.filter((p) => p === "/app/shell.js").length, 1, "Home and Watch share one shell read");
+});
+
+test("the retired Home and Watch rows go red if either old sidebar section comes back", async () => {
+  for (const [head, section] of [[HOME_HEAD, "home"], [WATCH_HEAD, "watch"]]) {
+    const ctx = {
+      fetchImpl: shippedSite({
+        edit: (p, text) => p === "/app/shell.js" ? `${text}\n/* data-fh-section=\\"${section}\\" */` : text,
+      }),
+    };
+    const state = await retiredControlState(head, ctx);
+    assert.equal(state.status, "FAIL", head.control);
+    assert.match(state.detail, new RegExp(`old ${head.control.includes("Home") ? "Home" : "Watch"} section`));
+  }
 });
 
 // Every script the shipped climate page names (src attribute, any folder).
@@ -246,10 +262,10 @@ test("a page that reads fine but no longer looks like the page is red, not nothi
   }
 });
 
-test("the lane: the e-book rows and the gate are na with the retired-control code, the optimize row is a PASS, and each page is read once", async () => {
+test("the lane: retired rows are na with the retired-control code, the optimize row is a PASS, and each page is read once", async () => {
   const calls = [];
   const rows = await gapChecks({ fetchImpl: shippedSite({ calls }) });
-  for (const rc of [EBOOK, SEND_EBOOK, GATE]) {
+  for (const rc of [EBOOK, SEND_EBOOK, GATE, HOME_HEAD, WATCH_HEAD]) {
     const id = `catalog-display:${rc.sourceFile}:${rc.surface}:${rc.control}`;
     const row = rows.find((r) => r.id === id);
     assert.equal(row.status, "na", `${rc.control}: ${row.detail}`);
@@ -268,6 +284,8 @@ test("the lane: the e-book rows and the gate are na with the retired-control cod
   // Both e-book rows share three files: each is fetched once, not twice.
   assert.equal(calls.filter((p) => p === "/app/present.js").length, 1);
   assert.equal(calls.filter((p) => p === "/app/present.html").length, 1);
+  // Link-gate, retired-control and hidden-head each own one independent shell read.
+  assert.equal(calls.filter((p) => p === "/app/shell.js").length, 3);
 });
 
 test("the lane: the day a control is back its row is red and the claim no longer verifies", async () => {
@@ -307,7 +325,7 @@ test("the optimize row names its browser practice test, and every title in it ex
   ]) assert.ok(spec.includes(`test("${title}"`), title);
 });
 
-test("a run with no GET client skips the four rows and invents no pass", async () => {
+test("a run with no GET client skips the six rows and invents no pass", async () => {
   const rows = await gapChecks({ fetchImpl: null });
   for (const rc of RETIRED_CONTROLS) {
     const row = rows.find((r) => r.id === `catalog-display:${rc.sourceFile}:${rc.surface}:${rc.control}`);

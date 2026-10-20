@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { liveSendRequested, runOneOffSend } from "../src/ops/one-off-send-receipt.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
@@ -11,6 +12,7 @@ const CLIENT_ID = "9af65808-a619-4e65-ae91-239766a006b7";
 const BASE = "https://fundhub.ai";
 const CHECKOUT_BASE = "https://www.fanbasis.com/public-api";
 const PRODUCT_TITLE = "Business Financial Assessment — Fundhub";
+const DO_SEND = liveSendRequested();
 
 function loadEnv() {
   const p = path.join(ROOT, ".env");
@@ -55,6 +57,10 @@ async function createCheckout(apiKey, linkRef) {
 }
 
 async function main() {
+  if (!DO_SEND) {
+    console.log("NOTHING WAS SENT — add --send to create the checkout, email the client, and run the live proof.");
+    return;
+  }
   loadEnv();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL missing");
   if (!process.env.COMMAS_API_KEY) throw new Error("COMMAS_API_KEY missing");
@@ -100,12 +106,29 @@ async function main() {
     `2) Approve the soft pull and enter your details:\n${approve.url}\n\n` +
     `— Fundhub`;
 
-  const mail = await sendEmail({
-    to: client.email,
-    subject: "Your $32 soft-pull assessment",
-    body,
-    providerRef: `prove-soft-pull:${link.id}`
-  }, { env: process.env });
+  const sentEmail = await runOneOffSend({
+    db,
+    orgId: ORG,
+    clientId: CLIENT_ID,
+    scriptId: "prove-soft-pull-live",
+    channel: "email",
+    runId: `payment-link-${link.id}`,
+    send: () => sendEmail({
+      to: client.email,
+      subject: "Your $32 soft-pull assessment",
+      body,
+      providerRef: `prove-soft-pull:${link.id}`
+    }, { env: process.env }),
+    summarize: (mail) => ({
+      attempted: 1,
+      sent: mail.status === "sent" ? 1 : 0,
+      failed: mail.status === "sent" ? 0 : 1,
+      providerRef: mail.providerMessageId,
+      error: mail.error,
+    }),
+  });
+  const mail = sentEmail.outcome;
+  const emailSent = mail.status === "sent";
 
   const consent = (await db.query(
     `SELECT cc.revoked_at IS NULL AS valid FROM client_consents cc
@@ -147,8 +170,9 @@ async function main() {
     pay_url: checkout.url,
     approve_url: approve.url,
     link_id: link.id,
-    email_sent: mail.ok === true,
-    email_detail: mail.ok ? "sent" : (mail.reason || mail.detail || "failed"),
+    email_sent: emailSent,
+    email_detail: emailSent ? "sent" : (mail.error || "failed"),
+    email_receipt_id: sentEmail.receipt.id,
     consent_valid: !!consent?.valid,
     crs_host: process.env.CRS_API_HOST,
     pull_ok: pull.ok === true,
@@ -160,7 +184,7 @@ async function main() {
 
   console.log(JSON.stringify(out, null, 2));
   await pool.end();
-  process.exit(out.email_sent || out.pay_url ? 0 : 1);
+  process.exit(out.email_sent ? 0 : 1);
 }
 
 main().catch((err) => {

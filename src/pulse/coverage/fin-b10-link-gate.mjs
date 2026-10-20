@@ -281,6 +281,11 @@ const WORKER_SOURCE = String.raw`
 const { parentPort, workerData } = require("node:worker_threads");
 const vm = require("node:vm");
 
+// A deployed shell can create a rejected promise inside its VM. Keep that
+// rejection inside this disposable worker instead of letting Node race it
+// against the valid result already being posted to the parent.
+process.on("unhandledRejection", function () {});
+
 function runOne(role) {
   // A null-prototype sandbox object, on purpose: a plain {} is a host object, and from inside the context
   // this.constructor.constructor("return process")() would walk up to the host's Function. With no
@@ -343,7 +348,10 @@ function inWorker(payload, timeoutMs, onWorker) {
     if (typeof onWorker === "function") onWorker(worker);
     timer = setTimeout(() => finish(reject, new Error("the deployed shell run took too long and was stopped")), timeoutMs);
     worker.once("message", (message) => finish(resolve, message));
-    worker.once("error", (error) => finish(reject, new Error(`the deployed shell run failed: ${String(error?.message || error).replace(/\s+/g, " ").slice(0, 120)}`)));
+    worker.once("error", (error) => {
+      const role = Array.isArray(payload.roles) && payload.roles.length ? payload.roles[0] : "requested role";
+      finish(reject, new Error(`the deployed shell could not be run for ${role}: ${String(error?.message || error).replace(/\s+/g, " ").slice(0, 120)}`));
+    });
     worker.once("exit", (code) => finish(reject, new Error(`the deployed shell run ended early (exit ${code})`)));
   });
 }

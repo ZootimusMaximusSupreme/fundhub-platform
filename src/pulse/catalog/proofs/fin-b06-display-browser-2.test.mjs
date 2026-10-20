@@ -37,6 +37,7 @@ async function openHandoff(lab, answer, { clipboard = null } = {}) {
   if (clipboard) await page.addInitScript(clipboard);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: lab.origin });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-credit").click();
   await page.locator("#ccp-consent-state", { hasText: /Consent is on file|No consent|took their permission|run out|later date/ }).waitFor({ timeout: 30_000 });
   return page;
 }
@@ -167,10 +168,59 @@ async function openBlueprint(lab, { custom = {}, respond = null } = {}) {
     }
   });
   await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-funding").click();
   await page.locator("#bp-group .group-title").click();
   await page.locator("#bp-body").waitFor({ state: "visible", timeout: 30_000 });
   return { page, sent, actions: (name) => sent.filter((body) => body.action === name) };
 }
+
+test("Save month/year posts the exact business and refreshes the saved incorporation month", { timeout: 120_000 }, async (t) => {
+  const lab = await openLab();
+  t.after(() => lab.close());
+  const sent = [];
+  let incorporated = null;
+  let reads = 0;
+  const page = await newStaffPage(lab, {
+    role: "owner",
+    api: async (request, url) => {
+      if (url.pathname === "/api/dashboard/client") {
+        reads += 1;
+        return {
+          ok: true,
+          client: { id: CLIENT, first_name: "Pat", last_name: "Lee", email: "pat@example.test", custom_fields: {} },
+          transactions: [], tasks: [], messages: [], crs_results: [], open_blockers: [],
+          business_credit: { businesses: [{
+            name: "Fund Horse Logistics", state: "AZ", ein: "12-3456789",
+            incorporated_date: incorporated, age_months: incorporated ? 77 : null,
+            address: "1 Main St, Phoenix, AZ 85001", extra_owner_name: null
+          }] }
+        };
+      }
+      if (url.pathname === "/api/soft-pull-approve" && request.method() === "POST") {
+        const body = post(request);
+        sent.push(body);
+        incorporated = body.incorporated_date;
+        return { ok: true, business: { name: body.business_name, incorporated_date: incorporated, age_months: 77 } };
+      }
+      return undefined;
+    }
+  });
+  await page.goto(`${lab.origin}/app/client-control-panel.html?client_id=${CLIENT}`, { waitUntil: "domcontentloaded" });
+  await page.locator("#ccp-tab-records").click();
+  await page.locator("#ccp-inc-0").waitFor({ state: "visible", timeout: 30_000 });
+
+  await page.locator("#ccp-inc-0").fill("2020-05");
+  await page.locator("#ccp-inc-0 + button").click();
+  await page.locator("#ccp-inc-0 + button + p", { hasText: "Saved." }).waitFor({ timeout: 10_000 });
+  assert.deepEqual(sent, [{
+    action: "stamp_incorporated",
+    client_id: CLIENT,
+    business_name: "Fund Horse Logistics",
+    incorporated_date: "2020-05"
+  }]);
+  assert.ok(reads >= 2, "the accepted save reads the file again");
+  await page.waitForFunction(() => document.querySelector("#ccp-biz-list")?.innerText.includes("2020-05"));
+});
 
 test("Save ready date posts the day typed in the box, says what was saved, and refuses an empty box", { timeout: 120_000 }, async (t) => {
   const lab = await openLab();
@@ -408,7 +458,7 @@ test("each owned item's Download link opens that item's own document, by type an
 
 // ── Client portal: an upload the server refuses says "Try again", and keeps the picked file ──────────
 
-test("a refused upload says Try again and keeps the picked file, and a second try can still be sent", { timeout: 180_000 }, async (t) => {
+test("an invalid upload asks for a different file, while a server failure keeps the picked file for Try again", { timeout: 180_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   let answer = { status: 400, body: { ok: false, error: "invalid_file_type", message: "only jpg, png and pdf are accepted" } };
@@ -434,22 +484,26 @@ test("a refused upload says Try again and keeps the picked file, and a second tr
     sent.length = 0;
     answer = { status: 400, body: { ok: false, error: "invalid_file_type", message: "only jpg, png and pdf are accepted" } };
     const door = page.locator(`.upload-door.${doorClass}`);
+    const idleLabel = (await door.locator("[data-upload-btn]").innerText()).trim();
     await door.locator("[data-file-input]").setInputFiles({ name: "paper.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 practice") });
     await door.locator("[data-upload-btn]", { hasText: /Send 1 file/ }).waitFor({ timeout: 10_000 });
     await door.locator("[data-upload-btn]").click();
-    // Refused: the button says Try again, never Sent.
-    await door.locator("[data-upload-btn]", { hasText: /^Try again$/ }).waitFor({ timeout: 10_000 });
+    // A file-specific refusal clears that file and asks for a different one; retrying it cannot help.
+    await door.locator("[data-upload-btn]", { hasText: new RegExp(`^${idleLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }).waitFor({ timeout: 10_000 });
+    assert.match(await door.locator("[data-door-msg]").innerText(), /only jpg, png and pdf are accepted Pick a different file\./);
     assert.equal(sent.length, 1, `${doorClass}: one attempt was posted`);
-    // A server error is the same answer on the page.
+    // A server failure can recover, so the picked replacement stays ready for Try again.
     answer = { status: 500, body: { ok: false, error: "boom" } };
+    await door.locator("[data-file-input]").setInputFiles({ name: "paper.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 practice") });
+    await door.locator("[data-upload-btn]", { hasText: /Send 1 file/ }).waitFor({ timeout: 10_000 });
     await door.locator("[data-upload-btn]").click();
     await door.locator("[data-upload-btn]", { hasText: /^Try again$/ }).waitFor({ timeout: 10_000 });
-    assert.equal(sent.length, 2, `${doorClass}: the picked file was kept, so the second try sent it again`);
-    // And the file is still there for a real answer: now it is accepted and the button says Sent.
+    assert.equal(sent.length, 2, `${doorClass}: the replacement reached the server`);
+    // The file is still there for a real answer: the retry is accepted and the button says Sent.
     answer = { status: 200, body: { ok: true, documents: [], docs_missing: null } };
     await door.locator("[data-upload-btn]").click();
     await door.locator("[data-upload-btn]", { hasText: /^Sent$/ }).waitFor({ timeout: 10_000 });
-    assert.equal(sent.length, 3, `${doorClass}: the third try went through`);
+    assert.equal(sent.length, 3, `${doorClass}: Try again reused the picked file and went through`);
   }
 });
 

@@ -146,7 +146,7 @@
   .census{font-family:var(--mono);color:var(--text-faint);}
   .census b{color:var(--text-dim);font-weight:600;}
   .census .warn{color:var(--alert);font-weight:700;}
-  .clock{font-family:var(--mono);color:var(--text);}
+  .galaxy-clock{font-family:var(--mono);color:var(--text);}
   .live-pill{
     display:flex;align-items:center;gap:6px;font-family:var(--mono);
     color:var(--text);background:var(--card);border:1px solid var(--cardline);
@@ -334,7 +334,7 @@
     </div>
     <div class="topbar-right">
       <div class="census" id="census"></div>
-      <div class="clock" id="clock"></div>
+      <div class="galaxy-clock" id="galaxyClock"></div>
       <div class="live-pill" id="livePill" title="No activity feed yet — Galaxy stays empty until open shifts or agents exist."><span class="live-dot" id="liveDot"></span>WAITING</div>
     </div>
   </header>
@@ -395,7 +395,7 @@ var KPI_H = 0; /* no fake KPI strip — there is no numbers feed */
 var C = {
   /* pace rings + flares are spectrum stops; the rest is the brand neutral ramp.
      sage = ahead, peach = behind, coral = blocked, lemon = money landing. */
-  neutral:'#52525B', green:'#A8D8B0', amber:'#F5CE8F', red:'#F2A69B',
+  neutral:'#626968', green:'#A8D8B0', amber:'#F5CE8F', red:'#F2A69B',
   gold:'#F2E39B', text:'#FCFCFC', dim:'#A1A1AA', faint:'#52525B',
   /* starlight: brand neutrals, depth carried by alpha not hue */
   star:'#E4E4E7', star2:'#A1A1AA', glow:'#A9C6E8', deep:'#111113',
@@ -581,11 +581,7 @@ function evActivity(){
   if(!n) return;
   var txt = fillC(pick(n.pool));
   if(txt===n.act) return;
-  if(n.state==='idle' && Math.random()<0.55){ n.state='active'; }
-  else if(n.state==='active' && txt.indexOf('Idle')===0){ n.state='idle'; }
   nodeSay(n, txt);
-  n.out += 1 + ((Math.random()*3)|0);
-  sizeNode(n);
 }
 
 /* -- one worker hands something to another -- */
@@ -595,9 +591,8 @@ function evHandoff(){
   if(!r) return;
   var a = ND[r[0]], b = ND[r[1]];
   if(!a||!b) return;
-  threads.push({a:a,b:b, label:fillC(r[2]), t:0, dur:6.2, off:(Math.random()<0.5?1:-1)*(0.14+Math.random()*0.10), landed:false});
+  threads.push({a:a,b:b, label:String(r[2] || 'handoff'), t:0, dur:6.2, off:(Math.random()<0.5?1:-1)*(0.14+Math.random()*0.10), landed:false});
   a.flash = Math.max(a.flash||0, 0.6);
-  if(b.state==='idle' && Math.random()<0.5) b.state='active';
 }
 
 /* -- a client advances a stage: a pulse travels its rail -- */
@@ -1696,7 +1691,7 @@ function nowClock(shortT){
     timeZone: "America/Phoenix", timeZoneName: "short"
   });
 }
-var clockEl=document.getElementById('clock'), censusEl=document.getElementById('census');
+var clockEl=document.getElementById('galaxyClock'), censusEl=document.getElementById('census');
 function chrome(){
   clockEl.textContent = nowClock(false);
   if(!NODES.length){
@@ -1732,7 +1727,7 @@ function applyLiveFeed(data){
     if(!Array.isArray(n.files)) n.files = [];
     if(!Array.isArray(n.tl)) n.tl = [['—', 'No timeline yet']];
     if(n.tempo == null) n.tempo = n.state === 'active' ? 0.55 : 0.25;
-    if(n.out == null) n.out = 1;
+    if(n.out == null) n.out = 0;
     sizeNode(n);
     ND[n.id] = n;
   });
@@ -1745,12 +1740,6 @@ function applyLiveFeed(data){
     });
   }
   ROUTES = (data.routes || []).slice();
-  if(!ROUTES.length && NODES.length >= 2){
-    var ids = NODES.map(function(n){ return n.id; });
-    for(var ri=0; ri<Math.min(6, ids.length-1); ri++){
-      ROUTES.push([ids[ri], ids[(ri+1)%ids.length], 'handoff — {C}']);
-    }
-  }
   KPIS = (data.kpis || []).slice();
   KPI = {};
   KPIS.forEach(function(k){

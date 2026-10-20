@@ -9,6 +9,7 @@ import { proofRows, startScreens } from "./s4-screen-harness.mjs";
 import { CLIENT, CLIENT_ID, STAFF, entryUrl, moneyResource, sampleAnswer, waitFor } from "./s4-money-harness.mjs";
 
 const proof = proofRows(import.meta.url);
+const FINANCE_STAFF = { ...STAFF, staff: { ...STAFF.staff, role: "sales_manager" } };
 const BUSINESS = "386c687a-167d-4d44-a000-8d50b5a80191";
 const PERSONAL = "36b90655-f93d-4444-90a8-ccf713426e56";
 const ENTRIES = {
@@ -49,7 +50,7 @@ function banksRead() {
   return answer;
 }
 
-async function openBanks(open, target, { session = STAFF, clientId = CLIENT_ID, write } = {}) {
+async function openBanks(open, target, { session = FINANCE_STAFF, clientId = CLIENT_ID, write } = {}) {
   const resource = moneyResource("banks", { read: banksRead, write });
   const { page, errors } = await open(entryUrl(target.entry, { ...target, clientId }), { session, handlers: resource.handlers });
   return { page, errors, ...resource.log, resource };
@@ -196,7 +197,7 @@ test("the page gate: a client reads only their own file and sees no plan control
     await staff.page.close();
 
     const noClient = moneyResource("banks", { read: () => ({ ok: false, error: "client_id_required" }), readStatus: 400 });
-    const lost = await open("/app/money-banks.html", { session: STAFF, handlers: noClient.handlers });
+    const lost = await open("/app/money-banks.html", { session: FINANCE_STAFF, handlers: noClient.handlers });
     await lost.page.waitForFunction(() => /needs to know whose bank plan/.test(document.body.innerText));
     await lost.page.close();
   }, ENTRIES.page.surface);

@@ -125,6 +125,7 @@ export const FIN_B07_WORK_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cas
 export const FIN_B07_REPAIR_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cases-repair.test.mjs";
 export const FIN_B07_MISC_SCENARIOS = "src/pulse/catalog/proofs/fin-b07-live-cases-misc.test.mjs";
 export const FIN_B07_GATES_TEST = "src/pulse/catalog/proofs/fin-b07-page-gates.test.mjs";
+const FIN_B13_SPECIALIST_TEST = "src/pulse/catalog/proofs/fin-b13-specialist-desk.test.mjs";
 export const FIN_B07_LINK_TOKEN_TEST = "src/pulse/catalog/proofs/fin-b07-link-token.test.mjs";
 export const FIN_B07_SEARCH_TEST = "src/pulse/catalog/proofs/fin-b07-search.test.mjs";
 export const FIN_B07_LEADS_TEST = "src/pulse/coverage/fin-b07-leads-page.test.mjs";
@@ -161,6 +162,7 @@ const CONTRACTS = Object.freeze([
   contract("caseQueue", "Every open case on the queue must name a client in this company, a bureau, an Items count that is not lower than the open inquiries attached to the case, and, when it names a funding round, a round of the same client.", "fin-b07-case-queue", CASE_QUEUE_SQL),
   contract("caseStatuses", "A Completed case must carry a completed stamp, a Canceled case a closed stamp, and every case must hold one of the seven statuses the Status column knows.", "fin-b07-case-statuses", CASE_STATUS_SQL),
   // Work queue
+  contract("workQueue", "Every open disputed inquiry line must name a real client in this company, a bureau, the name the bureau reported, and a non-negative attempt count.", "fin-b07-work-queue", WORK_QUEUE_SQL),
   contract("workRow", "Every attempt in a row's history must name a real staff member of the same company, and every identity on file must hold only the encrypted social security number, never plain digits.", "fin-b07-work-row", WORK_ROW_SQL),
   contract("logAttempt", "Every logged attempt must name a staff member and an inquiry of the same company, and the inquiry's attempt counter must equal its call, letter and portal attempts.", "fin-b07-log-attempt", LOG_ATTEMPT_SQL),
   contract("markConfirmed", "Every confirmed inquiry must be closed with a cleared stamp, belong to the case's client, and its case must be Completed once no inquiry on it is still open.", "fin-b07-mark-confirmed", MARK_CONFIRMED_SQL),
@@ -202,16 +204,7 @@ export const FIN_B07_RESULT_CONTRACTS = Object.freeze(
   CONTRACTS.map(({ rowKey, ...rest }) => Object.freeze(rest)),
 );
 
-/**
- * The Work queue table check, written and scenario-tested, and NOT attached to its row (so the row is NOT_PROVED).
- * The row names a Hold column. public/app/inquiry-remover.html draws Hold only when call_state is "holding",
- * and inquiry_log.call_state is the enum inquiry_call_state (db/migrations/140), which spells it "on_hold", so
- * on real data the column never shows a hold. A check that read green over that would be a lie about the
- * screen. Attach it (move this one line into CONTRACTS) once the page compares the enum's own spelling.
- */
-const UNATTACHED = Object.freeze([
-  contract("workQueue", "Every open disputed inquiry line must name a real client in this company, a bureau, the name the bureau reported, and a non-negative attempt count.", "fin-b07-work-queue", WORK_QUEUE_SQL),
-]);
+const UNATTACHED = Object.freeze([]);
 export const FIN_B07_UNATTACHED_CONTRACTS = Object.freeze(
   UNATTACHED.map(({ rowKey, ...rest }) => Object.freeze(rest)),
 );
@@ -281,10 +274,11 @@ function scenariosFor(rowKey) {
  * row, FIN_B07_STAFF_EXTENDED below replaces the case in the PROOF chain only, keeping the staff test
  * and adding these. fin-b07-live-contracts.test.mjs keeps this list equal to the staff file.
  */
-export const FIN_B07_ALREADY_DEEP = Object.freeze(["workRow", "markConfirmed", "repairRow", "bizFields"]);
+export const FIN_B07_ALREADY_DEEP = Object.freeze(["workQueue", "workRow", "markConfirmed", "repairRow", "bizFields"]);
 
 /** Tests added beside the staff file's own, per already-deep row. */
 const STAFF_EXTENDED_TESTS = Object.freeze({
+  workQueue: [FIN_B13_SPECIALIST_TEST],
   workRow: [FIN_B07_DESK_PAGE_TEST],
   repairRow: [FIN_B07_DESK_PAGE_TEST, FIN_B07_REPAIR_READ_TEST, "src/repair/cases.test.mjs", "src/http/repair-cases-read.test.mjs"],
   bizFields: [FIN_B07_BUSINESS_SAVE_TEST, "src/http/soft-pull-approve.test.mjs"],
@@ -314,6 +308,8 @@ function practiceCase(rowKey, tests) {
 
 /** Rows proved by a practice test that runs the real page script or handler with fake answers. */
 export const FIN_B07_PRACTICE_CASES = Object.freeze([
+  practiceCase("banksGate", [FIN_B07_GATES_TEST]),
+  practiceCase("irGate", [FIN_B07_GATES_TEST]),
   practiceCase("galaxy", [FIN_B07_GATES_TEST]),
   practiceCase("linkToken", [FIN_B07_LINK_TOKEN_TEST]),
   practiceCase("search", [FIN_B07_SEARCH_TEST, FIN_B07_SHELL_SEARCH_TEST]),
@@ -321,21 +317,4 @@ export const FIN_B07_PRACTICE_CASES = Object.freeze([
 
 export const FIN_B07_DISPLAY_CASES = Object.freeze([...FIN_B07_LIVE_CASES, ...FIN_B07_STAFF_EXTENDED, ...FIN_B07_PRACTICE_CASES]);
 
-/** Rows this batch looked at and cannot attach without a product change. Each reason is exact. */
-export const FIN_B07_NOT_ATTACHABLE = Object.freeze([
-  Object.freeze({
-    rowKey: "banksGate",
-    row: ROWS.banksGate,
-    reason: "public/app/money-banks.js draws the staff plan forms when a client_id is in the address (var staff = !!clientId), not when the person's role is staff. A signed-in client who types ?client_id= sees them, so the row's claim 'only staff see plan controls' is not true of the page. Only a product change (gate by role) makes it provable.",
-  }),
-  Object.freeze({
-    rowKey: "irGate",
-    row: ROWS.irGate,
-    reason: "The row says setter and closer roles are bounced. Two of the four data doors on public/app/inquiry-remover.html are gated to the desk roles (api/read/inquiry-cases.mjs and api/read/repair-cases.mjs, ROLE_SETS.SPECIALIST_DESK), and so is the Recent Letters door (api/inquiries.mjs ?recent=letters). The Work queue door is not: api/read/inquiries.mjs is gated to ROLE_SETS.STAFF, so a closer, setter, csm or sales_manager gets 200 and the client's name, bureau and inquiry name. Measured through the real handlers on 2026-10-15. The page itself has no role gate (it only says 'This queue is for staff on this desk.' when a door answers 403). Needs a product change (gate api/read/inquiries.mjs to the desk roles, or restate the row).",
-  }),
-  Object.freeze({
-    rowKey: "workQueue",
-    row: ROWS.workQueue,
-    reason: "The row names a Hold column. public/app/inquiry-remover.html draws it as 'live' only when it.call_state === 'holding' (line 1756), but inquiry_log.call_state is the enum inquiry_call_state (db/migrations/140_inquiry_ops.sql) whose value for a hold is 'on_hold', and src/inquiry-removal/cases.mjs maps holding to on_hold before it writes. api/read/inquiries.mjs returns the enum spelling, so on real data no line ever shows a hold. The other seven columns are held by fin-b07-desk-page.test.mjs and the stored fields by the unattached fin-b07-work-queue SQL check, but a row green over a column that cannot light is a lie. Needs a product change (compare the page to the enum's spelling).",
-  }),
-]);
+export const FIN_B07_NOT_ATTACHABLE = Object.freeze([]);

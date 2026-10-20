@@ -70,6 +70,7 @@ function fakeDb({
         return { rows: r ? [r] : [] };
       }
       if (sql.includes("FROM message_templates")) return { rows: [{ subject }] };
+      if (sql.includes("SELECT id, to_address FROM messages")) return { rows: [] };
       if (sql.includes("FROM bookings")) return { rows: upcomingBooking ? [{ one: 1 }] : [] };
       if (sql.includes("count(*) FILTER") && sql.includes("FROM messages")) return { rows: [marketingCounts] };
       if (sql.includes("SELECT custom_fields FROM clients")) {
@@ -693,6 +694,33 @@ describe("claiming", () => {
     const out = await dispatchDue(db, { fetchImpl: spy(), env: ENV, now: MIDDAY });
     assert.strictEqual(out.claimed, 0);
     assert.deepStrictEqual(out.counts, {});
+  });
+
+  test("one pass sends only one copy to the same phone", async () => {
+    const first = "00000000-0000-4000-8000-000000000061";
+    const second = "00000000-0000-4000-8000-000000000062";
+    const db = fakeDb({
+      routing: { sms: { provider: "twilio", enabled: true } },
+      due: [
+        claimed({ id: first, channel: "sms", template_key: "SMS-WELCOME", to_address: "+15551234567" }),
+        claimed({ id: second, channel: "sms", template_key: "SMS-WELCOME", to_address: "+15551234567" })
+      ]
+    });
+    const fetchImpl = spy();
+    const out = await dispatchDue(db, {
+      fetchImpl,
+      now: MIDDAY,
+      env: {
+        ...ENV,
+        TWILIO_SEND_ACCOUNT_SID: "AC00000000000000000000000000000000",
+        TWILIO_SEND_AUTH_TOKEN: "not-a-real-token",
+        TWILIO_SEND_FROM: "+16025550000"
+      }
+    });
+    assert.equal(out.counts[OUTCOME.SENT], 1);
+    assert.equal(out.counts[OUTCOME.DUPLICATE], 1);
+    assert.equal(fetchImpl.calls.length, 1);
+    assert.ok(db.updates.some(({ params }) => params[0] === second && params[1] === "blocked"));
   });
 
   // The claim query is the double-send guard. These assert its shape, because

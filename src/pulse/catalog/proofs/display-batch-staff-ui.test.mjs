@@ -10,7 +10,7 @@ import {
   STAFF_UI_PROOF_CASES,
   STAFF_UI_SPECS,
 } from "./display-batch-staff-ui.mjs";
-import { freeBrowserPort } from "./browser-port.mjs";
+import { withBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -41,8 +41,7 @@ test("staff display batch maps exact rows to one safe local browser run", () => 
 
 test("staff display batch presses every mapped control and checks its result", async () => {
   assert.ok(fs.existsSync(PLAYWRIGHT_CLI), "Playwright CLI is not installed");
-  const port = await freeBrowserPort();
-  const result = spawnSync(process.execPath, [
+  const result = await withBrowserPort((port) => spawnSync(process.execPath, [
     PLAYWRIGHT_CLI,
     "test",
     ...STAFF_UI_SPECS,
@@ -56,7 +55,7 @@ test("staff display batch presses every mapped control and checks its result", a
       E2E_PORT: String(port),
     },
     maxBuffer: 16 * 1024 * 1024,
-  });
+  }));
 
   assert.equal(
     result.status,

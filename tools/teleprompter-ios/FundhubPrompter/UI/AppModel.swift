@@ -3,7 +3,7 @@ import Network
 import SwiftUI
 import UIKit
 
-/// The app's brain: sign-in, the film list, the waiting list, settings.
+/// The app's brain: the built-in film list, waiting list, and settings.
 @MainActor
 final class AppModel: ObservableObject {
     @Published var signIn: SignIn?
@@ -33,7 +33,9 @@ final class AppModel: ObservableObject {
 
     init() {
         let args = ProcessInfo.processInfo.arguments
-        isDemo = args.contains("-FundhubDemo")
+        // The App Store build is a self-contained prompter. It never asks for
+        // a Fundhub account before it can open and film.
+        isDemo = true
         let big = UIDevice.current.userInterfaceIdiom == .pad
         var s = PrompterSettings.load(bigScreen: big)
         if isDemo && args.contains("-FundhubDemoMirror") { s.mirror = true }

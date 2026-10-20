@@ -25,7 +25,6 @@ import {
 import { makeStandIn, NOW as KIT_NOW, REPO_ROOT } from "../catalog/proofs/fin-b22-sql-kit.mjs";
 
 const NOW = new Date("2026-10-12T12:00:00.000Z");
-
 function dbWith(rows) {
   const calls = [];
   return {
@@ -39,29 +38,29 @@ function dbWith(rows) {
   };
 }
 
-test("the Flow monitor owns the exact 180 remaining catalog rows", () => {
+test("the Flow monitor owns the exact 178 remaining catalog rows", () => {
   const counts = FLOW_ROWS.reduce((out, row) => {
     out[row.family] = (out[row.family] || 0) + 1;
     return out;
   }, {});
   assert.deepEqual(counts, EXPECTED_FLOW_GAP_COUNTS);
-  assert.equal(FLOW_ROWS.length, 180);
-  assert.equal(CHECK_IDS.length, 180);
-  assert.equal(new Set(CHECK_IDS).size, 180);
+  assert.equal(FLOW_ROWS.length, 178);
+  assert.equal(CHECK_IDS.length, 178);
+  assert.equal(new Set(CHECK_IDS).size, 178);
   assert.equal(FLOW_ROWS.filter(isInactiveTemplateRow).length, 158);
 });
 
 const PAGE_SURFACES = [CLIMATE_READING_SURFACE, CONSULTING_REQUEST_SURFACE];
 
-test("batch 22: three rows left for a practice test, ten are judged from saved results, two from a live page read, seven are nothing to judge while the page lacks them, one stays not proved", () => {
+test("batch 22 plus the one-off repair: five rows use practice tests, ten use saved results, two use live reads, and six are absent", () => {
   const surfaces = new Set(FLOW_ROWS.map((row) => row.surface));
   for (const surface of Object.keys(FIN_B22_PRACTICE)) assert.equal(surfaces.has(surface), false, `${surface} left the monitor`);
   for (const surface of Object.keys(FIN_B22_LIVE_PROOFS)) assert.equal(surfaces.has(surface), true, `${surface} stays in the lane`);
   assert.deepEqual([...FIN_B22_LIVE_SURFACES, ...PAGE_SURFACES, ...FIN_B22_NOT_SHIPPED_SURFACES].sort(), Object.keys(FIN_B22_LIVE_PROOFS).sort(),
     "the saved-result checks, the page reads, the not-shipped reads and their proofs name the same rows");
-  assert.equal(Object.keys(FIN_B22_PRACTICE).length, 3);
+  assert.equal(Object.keys(FIN_B22_PRACTICE).length, 5);
   assert.equal(FIN_B22_LIVE_SURFACES.size, 10);
-  assert.equal(FIN_B22_NOT_SHIPPED_SURFACES.size, 7);
+  assert.equal(FIN_B22_NOT_SHIPPED_SURFACES.size, 6);
   // Each not-shipped claim names a real Flow row of the right family, so a journey that is corrected (its step
   // renamed or removed) turns this red and the claim has to go with it.
   for (const claim of NOT_SHIPPED_CLAIMS) {
@@ -81,7 +80,7 @@ test("every inactive template gets its own checked nothing-to-judge row", async 
   const rows = await gapChecks({ db: fake.db, orgId: "00000000-0000-0000-0000-000000000001", now: NOW });
   const inactive = rows.filter((row) => row.id.startsWith("flow:message:template:") && row.status === "na");
 
-  assert.equal(rows.length, 180);
+  assert.equal(rows.length, 178);
   assert.equal(inactive.length, 158);
   const inactiveReads = fake.calls.filter((call) => call.sql === INACTIVE_TEMPLATE_SQL);
   assert.equal(inactiveReads.length, 1, "one batched read for all inactive templates");
@@ -127,8 +126,7 @@ test("every active control is either named not proved, judged from saved results
   }
 
   const notProved = rows.filter((row) => row.status === "NOT_PROVED").map((row) => row.id).sort();
-  assert.equal(notProved.length, 1);
-  assert.deepEqual(notProved, ["flow:message:script:one-off senders in scripts/"]);
+  assert.deepEqual(notProved, []);
   // An answer of no rows at all: every "quiet" check is green, and the check that needs rows is red.
   assert.equal(rows.filter((row) => row.status === "FAIL").map((row) => row.id).join(), "flow:message:template-copy:SQL-seeded-only-keys-not-in-doc-source");
   assert.equal(rows.filter((row) => row.status === "na").length, 160);
@@ -331,7 +329,7 @@ function publicFetch(overrides = {}) {
   };
 }
 
-test("seven steps the live page does not carry are nothing to judge, with the code the audit re-checks", async () => {
+test("the six absent steps are nothing to judge", async () => {
   const rows = await gapChecks({ fetchImpl: publicFetch(), now: NOW });
   for (const claim of NOT_SHIPPED_CLAIMS) {
     const row = rows.find((item) => item.id === notShippedRowId(claim));
@@ -340,7 +338,7 @@ test("seven steps the live page does not carry are nothing to judge, with the co
     assert.deepEqual(row.na.args, { family: claim.family, surface: claim.surface });
     assert.ok(row.detail.includes(claim.surface), claim.surface);
   }
-  assert.equal(rows.find((item) => item.id === "flow:message:script:one-off senders in scripts/").status, "NOT_PROVED");
+  assert.equal(rows.some((item) => item.id === "flow:message:script:one-off senders in scripts/"), false);
 });
 
 test("the audit's check for that code is on the lane and agrees with the row", async () => {
@@ -359,7 +357,7 @@ test("the audit's check for that code is on the lane and agrees with the row", a
   assert.equal(rows.find((item) => item.id === notShippedRowId(NOT_SHIPPED_CLAIMS[1])).status, "na");
 });
 
-test("with a page that cannot be read the seven rows are skips: never nothing-to-judge, never green", async () => {
+test("with a page that cannot be read the six rows are skips: never nothing-to-judge, never green", async () => {
   const down = async () => new Response("", { status: 503 });
   const rows = await gapChecks({ fetchImpl: down, now: NOW });
   for (const claim of NOT_SHIPPED_CLAIMS) {

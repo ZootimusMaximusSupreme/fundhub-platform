@@ -11,10 +11,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { FIN_B12_CONTROLS } from "./fin-b12-display-contracts.mjs";
+import { DISPLAY_PROOF_CASES } from "./display-proof-cases.mjs";
+import { displaySavedResultContract, isTrackedDisplayControl } from "./display-saved-result.mjs";
 import { FIN_B12_NOT_ATTACHABLE } from "./fin-b12-not-attachable.mjs";
 import ROWS from "./fin-b12-rows.json" with { type: "json" };
+import { compileDisplayRuntimeData } from "../compiler.mjs";
 import { gapChecks } from "../../coverage/gap-catalog-display.mjs";
-import { schemaColumns } from "./fin-b12-sql-kit.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
@@ -36,11 +38,11 @@ const BOTH = new Set([
   FIN_B12_CONTROLS.galaxyPage, FIN_B12_CONTROLS.bench, FIN_B12_CONTROLS.card, FIN_B12_CONTROLS.applied,
 ]);
 
-test("the 40 batch 12 rows are 17 live checks, 29 practice tests (9 of them also live checks) and 3 that cannot be attached", () => {
+test("the 40 batch 12 rows are 17 live checks and 32 practice tests (9 of them also live checks)", () => {
   assert.equal(live.size, 17);
   assert.ok(practice.has(HEADER_ROW) && !live.has(HEADER_ROW), "the header row is a practice test only");
-  assert.equal(practice.size, 29);
-  assert.equal(blocked.size, 3);
+  assert.equal(practice.size, 32);
+  assert.equal(blocked.size, 0);
   for (const control of blocked) assert.ok(!live.has(control) && !practice.has(control), control);
   const both = new Set([...live].filter((control) => practice.has(control)));
   assert.deepEqual([...both].sort(), [...BOTH].sort(), "the rows that are both are exactly the nine named above");
@@ -55,8 +57,17 @@ test("every practice-test file named in fin-b12-rows.json exists and claims its 
   }
 });
 
-test("the lane leaves exactly the three that cannot be attached as not proved, and no other batch 12 row", async () => {
-  const rows = await gapChecks({ env: {}, fetchImpl: async () => new Response("", { status: 200 }) });
+test("the lane leaves no batch 12 row not proved", async () => {
+  const mapDir = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10");
+  const sources = ["desks-a.json", "desks-b.json", "desks-c.json", "desks-d.json", "desks-e.json", "desks-f.json", "public-pages.json"]
+    .map((sourceFile) => ({ sourceFile, rows: JSON.parse(fs.readFileSync(path.join(mapDir, sourceFile), "utf8")) }));
+  const runtime = compileDisplayRuntimeData(sources, {
+    proofCases: DISPLAY_PROOF_CASES,
+    staffProofCases: [],
+    contractFor: displaySavedResultContract,
+    isTracked: isTrackedDisplayControl,
+  });
+  const rows = await gapChecks({ env: {}, fetchImpl: async () => new Response("", { status: 200 }) }, runtime);
   const byId = new Map(rows.map((row) => [row.id, row]));
   const all = [...live, ...practice, ...blocked];
   const pick = (control) => rows.filter((row) => row.id.endsWith(`:${control}`));
@@ -65,35 +76,39 @@ test("the lane leaves exactly the three that cannot be attached as not proved, a
     if (blocked.has(control)) {
       assert.equal(matches.length, 1, `${control}: one lane row`);
       assert.equal(matches[0].status, "NOT_PROVED", `${control}: stays not proved, and says what is missing`);
+    } else if (live.has(control)) {
+      assert.equal(matches.length, 1, `${control}: one saved-result lane row`);
+      assert.notEqual(matches[0].status, "NOT_PROVED", `${control}: saved-result lane is attached`);
     } else {
-      assert.ok(matches.every((row) => row.status !== "NOT_PROVED"), `${control}: no longer not proved`);
+      assert.equal(matches.length, 0, `${control}: direct browser proof removes it from the not-proved lane`);
     }
   }
   assert.ok(byId.size > 0);
 });
 
-test("documents status filter: the Generation failed option still has nothing that can fill it", () => {
+test("documents status filter offers only statuses the saved row can hold", () => {
   const html = read("public/app/documents.html");
-  assert.match(html, /<option value="gen-failed">Generation failed<\/option>/, "the option is still offered");
-  assert.match(html, /if\(sf==='gen-failed' && d\.gen!=='failed'\) return false;/, "it keeps only rows whose gen is failed");
-  const assigned = [...html.matchAll(/\bgen:\s*([^,\n]+),/g)].map((m) => m[1].trim());
-  assert.deepEqual(assigned, ['r.generated_at ? "generated" : "queued"'], "the loader is the only place gen is set, and it never says failed");
-  const columns = [...(schemaColumns().get("documents") || [])];
-  assert.deepEqual(columns.filter((c) => /fail|error/.test(c)), [], "the documents table has no generation failure column");
+  assert.doesNotMatch(html, /<option value="gen-(?:pending|failed)">/);
+  assert.doesNotMatch(html, /if\(sf==='gen-(?:pending|failed)'/);
+  for (const value of ["del-pending", "del-bounced", "sig-pending", "sig-expired"]) {
+    assert.match(html, new RegExp(`<option value="${value}">`), value);
+    assert.match(html, new RegExp(`if\\(sf==='${value}'`), value);
+  }
 });
 
-test("galaxy legend: the sky still moves size and brightness on dice", () => {
+test("galaxy legend never changes saved output or presence on dice", () => {
   const html = read("public/app/galaxy.html");
   assert.match(html, /<i>size = output today<\/i>/);
   assert.match(html, /<i>brightness = working right now<\/i>/);
   const activity = html.slice(html.indexOf("function evActivity("), html.indexOf("/* -- one worker hands something to another -- */"));
-  assert.match(activity, /n\.out \+= 1 \+ \(\(Math\.random\(\)\*3\)\|0\);/, "output is bumped by a random 1 to 3");
-  assert.match(activity, /n\.state==='idle' && Math\.random\(\)<0\.55\)\{ n\.state='active'; \}/, "an idle worker flips to active at random");
+  assert.doesNotMatch(activity, /n\.out\s*[+\-]?=/, "animation never changes output");
+  assert.doesNotMatch(activity, /n\.state\s*=/, "animation never changes presence");
 });
 
-test("galaxy rails: a hand-off thread still carries a client name picked at random", () => {
+test("galaxy rails draw only routes and labels supplied by the feed", () => {
   const html = read("public/app/galaxy.html");
   assert.match(html, /function fillC\(s\)\{[\s\S]*?pick\(CLIENTS\)[\s\S]*?\.replace\('\{C\}', c\)/, "fillC picks any client from the feed");
-  assert.match(html, /threads\.push\(\{a:a,b:b, label:fillC\(r\[2\]\)/, "a hand-off thread is labelled through fillC");
-  assert.match(html, /ROUTES\.push\(\[ids\[ri\], ids\[\(ri\+1\)%ids\.length\], 'handoff — \{C\}'\]\);/, "the routes are neighbours in the list with the {C} label");
+  assert.match(html, /threads\.push\(\{a:a,b:b, label:String\(r\[2\] \|\| 'handoff'\)/, "the feed's label is used directly");
+  assert.doesNotMatch(html, /label:fillC\(r\[2\]\)/, "a hand-off label is never randomized");
+  assert.doesNotMatch(html, /ROUTES\.push\(\[ids\[ri\]/, "the page never invents routes between neighbours");
 });

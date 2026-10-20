@@ -11,10 +11,8 @@
     "Identity: Agent name input",
     "Identity: Class select (Client-facing, Ops)",
     "Identity: Owner select",
+    "Agent list row (click to open an agent, confirm discard of unsaved edits)",
     "Revert button"
-   ],
-   "notAttached": [
-    "Agent list row (click to open an agent, confirm discard of unsaved edits)"
    ]
   }
  ],
@@ -68,6 +66,15 @@
     "Connections state rail (all, pending, active, expired, revoked, needs_verification)",
     "Drawer: Days select (7, 14, 30, 90, 180)",
     "Drawer: close (\u2715, scrim click, Escape key)"
+   ]
+  }
+ ],
+ "fin-b09-g2-findings.test.mjs": [
+  {
+   "sourceFile": "public-pages.json",
+   "surface": "button:climate/index.html#Click a state: shows its sco",
+   "controls": [
+    "Click a state: shows its score and a plain sentence (drawn by bundled scripts; listed from docs/journeys/climate-lead-magnet-intended.md)"
    ]
   }
  ]

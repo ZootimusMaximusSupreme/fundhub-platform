@@ -58,8 +58,10 @@
    "controls": [
     "'+ Add product' (opens the empty editor)",
     "'View payout ledger ->' and '<- Back to rules'",
+    "Commission rule 'See these payouts ->' (opens the ledger filtered to the people the rule pays)",
     "Commission rule header click (expand a rule) and 'Rate history' disclosure",
     "Ledger filters: person select and status select (Accrued, Approved, Paid)",
+    "Ledger table (date, person, client, product, rule version, basis, rate, payout, status)",
     "Page open: who am I (shows the SLO connections tab for owner and admin only)",
     "Product editor 'Cancel', close X, click outside",
     "Product row click (opens the editor for that product)",

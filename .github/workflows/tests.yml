@@ -389,12 +389,15 @@ jobs:
           ALLOW_SUPERUSER_DB: ""   # no opt-out here — this step exists to fail
         run: npm run guard:db
 
-      # And does that translate into the policies actually applying? Isolation
-      # suites only — not the whole suite, which needs ownership.
-      - name: Partner isolation, as the unprivileged app role
+      # And does that translate into the policies actually applying? These
+      # suites SET UP and CLEAN UP fixtures through the owner connection, then
+      # ASSERT through APP_DATABASE_URL via src/testing/rls-pool.mjs. Pointing
+      # DATABASE_URL at fundhub_app breaks fixture cleanup before an isolation
+      # assertion can run; granting the app ownership would defeat the test.
+      - name: Partner isolation, owner fixtures and unprivileged assertions
         if: always()
         env:
-          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+          DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
         run: |
           node --test \
             src/compliance/rls-bypass.pg.test.mjs \
@@ -402,4 +405,4 @@ jobs:
             src/http/creative-endpoints.pg.test.mjs \
             src/creative/generate.pg.test.mjs \
             src/social/social.pg.test.mjs
-          echo "::notice::Partner isolation suites passed as fundhub_app (NOSUPERUSER, NOBYPASSRLS) — row-level security applies to the role production uses."
+          echo "::notice::Partner isolation suites used the owner for fixtures and fundhub_app (NOSUPERUSER, NOBYPASSRLS) for assertions."

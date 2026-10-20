@@ -4,7 +4,8 @@
 //
 // Rows proved here (see fin-b21-display-practice.mjs):
 //   Empty and error states; Play / Pause and the 3-2-1 countdown; the tiny file-name chip; the top edge
-//   of the phone; the 'Shoot finished' card; keyboard and remote keys; and the closed film link.
+//   of the phone; the on-screen This shoot and Settings openers; the 'Shoot finished' card;
+//   keyboard and remote keys; and the closed film link.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -205,9 +206,38 @@ test("the teleprompter practice tests run in a real browser", { timeout: 240_000
     await page.locator("#qmenu").getByRole("button", { name: /Inquiries off first/ }).click();
     await page.locator("#qmenu").waitFor({ state: "hidden" });
     assert.equal(await page.locator("#s-title").innerText(), "Inquiries off first");
-    assert.equal(await chip.innerText(), "Inquiries off first");
+    assert.equal(await chip.innerText(), TWO.take_file_name);
     assert.match(await page.locator("#content").innerText(), /Every hard pull/);
     assert.equal(log.marks.length, 0, "swapping scripts marks nothing");
+    await page.close();
+  });
+
+  await t.test("the on-screen This shoot and Settings buttons open their full sheets", async () => {
+    const { page, log } = await openPage(world);
+    await page.locator("#content .w").first().waitFor({ state: "visible" });
+    for (const id of ["b-lib", "b-set"]) {
+      const box = await page.locator(`#${id}`).boundingBox();
+      assert.ok(box && box.x >= 0 && box.y >= 0 && box.x + box.width <= 390 && box.y + box.height <= 844,
+        `${id} is inside the phone viewport`);
+    }
+
+    await page.locator("#b-set").click();
+    await page.locator("#set").waitFor({ state: "visible" });
+    for (const id of ["r-wpm", "r-font", "r-measure", "r-line", "r-pause", "t-mirror", "t-flipv", "t-count", "q-4k", "q-1080", "b-forget"]) {
+      assert.equal(await page.locator(`#${id}`).isVisible(), true, `${id} is reachable from Settings`);
+    }
+    assert.equal(await page.locator("#learn button").count(), 6, "all six remote slots are reachable");
+    await page.locator("#set").getByRole("button", { name: "Close" }).click();
+    assert.equal(await page.locator("#set").isHidden(), true);
+
+    await page.locator("#b-lib").click();
+    await page.locator("#lib").waitFor({ state: "visible" });
+    assert.equal(await page.locator("#list button").count(), 3, "the whole shoot is listed");
+    await page.locator("#lib").getByRole("button", { name: /Inquiries off first/ }).click();
+    await page.locator("#lib").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#s-title").innerText(), "Inquiries off first");
+    assert.equal(log.marks.length, 0, "opening a script sends no mark");
+    assert.deepEqual(log.errors, []);
     await page.close();
   });
 

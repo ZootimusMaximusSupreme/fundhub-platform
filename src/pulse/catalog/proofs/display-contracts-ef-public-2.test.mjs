@@ -144,6 +144,10 @@ test("Display EF/Public wave 2 proves every exported row in rendered Chromium", 
 
   await t.test("static public screens render their exact result", async () => {
     const page = await browser.newPage();
+    // These are exported HTML proofs. Keep Next's client hydration from racing
+    // the two server-rendered <title> rows out of the 404 document while this
+    // test reads them; the page body and metadata are already in the HTML.
+    await page.route("**/climate/_next/static/**/*.js", (route) => route.abort());
     const expected = [
       ["/aniso-face/logo-6k/", "Fundhub ASCII", "canvas"],
       ["/aniso-face/logo-6k/preview.html", "Fundhub ASCII 6K", "video"],

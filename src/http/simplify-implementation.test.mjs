@@ -111,7 +111,8 @@ test("approved simplify controls are removed and real jobs are wired", () => {
 
 test("the remaining approved simplify rows stay enforced", () => {
   const messaging = text("public/app/messaging.html");
-  assert.doesNotMatch(messaging, /id="ctxName"/);
+  assert.match(messaging, /class="ctx-person-name" id="ctxName"/);
+  assert.match(messaging, /\$\("ctxName"\)\.textContent = V\.displayName\(row\)/);
   assert.match(messaging, /placeholder = "Write a message…"/);
   assert.doesNotMatch(messaging, /live conversations · " \+ state\.rows\.length/);
 

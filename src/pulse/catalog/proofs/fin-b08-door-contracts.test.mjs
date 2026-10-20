@@ -1,6 +1,6 @@
 // Checks the batch 08 route proofs: every entry names exactly one customer-data row of the coverage
 // map, its handler tests exist and really call a handler, a row whose words changed is not proved by
-// an old entry, and the four rows this batch left red cannot be attached by mistake.
+// an old entry, and the four repaired rows are attached to their exact handler tests.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -26,7 +26,7 @@ function mapRows() {
 test("every entry is one exact customer-data route row of the coverage map", () => {
   const rows = mapRows();
   const ids = FIN_B08_DOOR_CONTRACTS.map((entry) => entry.id);
-  assert.equal(ids.length, 33);
+  assert.equal(ids.length, 37);
   assert.equal(new Set(ids).size, ids.length, "an id is listed twice");
   for (const entry of FIN_B08_DOOR_CONTRACTS) {
     const hits = rows.filter(({ sourceFile, row }) => finB08DoorRowId(sourceFile, row) === entry.id);
@@ -73,18 +73,17 @@ test("the same route with different words, or another file, stays unproved", () 
   assert.equal(finB08DoorProof(sourceFile, { surface: row.surface, control: "" }), null);
 });
 
-test("the four rows this batch could not attach stay red, each with its exact reason", () => {
+test("the four repaired rows are attached once and have left the red route monitor", () => {
   const rows = mapRows();
   const attached = new Set(FIN_B08_DOOR_CONTRACTS.map((entry) => entry.id));
-  const ids = Object.keys(FIN_B08_NOT_ATTACHED);
-  assert.equal(ids.length, 4);
+  assert.deepEqual(FIN_B08_NOT_ATTACHED, {});
+  const ids = ["31bb947e14369a9a0e0c", "72fad5cb5f5f84a3aa0f", "25e2262893fcbdc90db9", "c0a7cb1361e695f5cd58"];
   for (const id of ids) {
-    assert.equal(attached.has(id), false, `${id} must not be attached`);
+    assert.equal(attached.has(id), true, `${id} must be attached`);
     const hits = rows.filter(({ sourceFile, row }) => finB08DoorRowId(sourceFile, row) === id);
-    assert.equal(hits.length, 1, `${id} must still be one map row`);
+    assert.equal(hits.length, 1, `${id} must be one map row`);
     const { sourceFile, row } = hits[0];
-    assert.equal(finB08DoorProof(sourceFile, row), null);
-    assert.match(makeRecipe(sourceFile, row).proof.evidence, /gap-door-batch-routes\.mjs/, `${id} stays on the red monitor`);
-    assert.ok(FIN_B08_NOT_ATTACHED[id].length > 60, "the reason is spelled out");
+    assert.equal(finB08DoorProof(sourceFile, row)?.asserts, row.control);
+    assert.doesNotMatch(makeRecipe(sourceFile, row).proof.evidence, /gap-door-batch-routes\.mjs/, `${id} left the red monitor`);
   }
 });

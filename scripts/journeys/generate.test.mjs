@@ -153,6 +153,22 @@ describe("the extraction is faithful to the code", () => {
       "these routes' gates could not be traced from the code");
   });
 
+  test("a dependency-injected requirePrincipal alias keeps its real role gate", () => {
+    const pii = data.endpoints.find((e) => e.key === "pii");
+    assert.ok(pii, "/api/pii vanished from the routing table");
+    assert.equal(pii.gate.kind, "explicit-roles");
+    assert.deepEqual(pii.gate.principals, ["staff"]);
+    assert.deepEqual(pii.gate.roles, ["owner", "admin", "inquiry_specialist", "funding_advisor"]);
+  });
+
+  test("a client-or-staff door keeps the narrower second staff role gate", () => {
+    const accounts = data.endpoints.find((e) => e.key === "money/accounts");
+    assert.ok(accounts, "/api/money/accounts vanished from the routing table");
+    assert.deepEqual(accounts.gate.principals, ["staff", "client"]);
+    assert.deepEqual(accounts.gate.roles, ["owner", "admin", "sales_manager", "closer"]);
+    assert.match(accounts.gate.note, /requireRole\(ROLE_SETS\.FINANCE_OS\)/);
+  });
+
   test("a signature-verified route is never described as reachable by anyone", () => {
     // The dangerous direction. /api/webhooks/:provider has no requireAuth, and an
     // earlier version of the renderer printed "anyone" for it. Anyone can CALL it;
@@ -168,6 +184,14 @@ describe("the extraction is faithful to the code", () => {
           `${name} describes /api/${e.key} as reachable by "anyone", but it is verified by ${e.gate.verifiedBy}`);
       }
     }
+  });
+
+  test("a signed public door stays visible when the same handler adds a staff-only action", () => {
+    const softPull = data.endpoints.find((e) => e.key === "soft-pull-approve");
+    assert.ok(softPull, "/api/soft-pull-approve vanished from the routing table");
+    assert.equal(softPull.gate.kind, "verified-other");
+    assert.equal(softPull.gate.verifiedBy, "signed link");
+    assert.match(softPull.gate.note, /SECOND DOOR.*staff-only/);
   });
 
   test("a route is never called signature-checked when nothing checks a signature", () => {

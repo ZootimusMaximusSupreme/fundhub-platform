@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { freeBrowserPort } from "./browser-port.mjs";
+import { withBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
@@ -27,12 +27,11 @@ export function assertSpecsAreSafe(specs) {
 /** Run the specs in a real browser; the run must exit clean. */
 export async function runSpecs(specs, label) {
   assert.ok(fs.existsSync(PLAYWRIGHT_CLI), "Playwright CLI is not installed");
-  const port = await freeBrowserPort();
-  const result = spawnSync(process.execPath, [PLAYWRIGHT_CLI, "test", ...specs, "--workers=1"], {
+  const result = await withBrowserPort((port) => spawnSync(process.execPath, [PLAYWRIGHT_CLI, "test", ...specs, "--workers=1"], {
     cwd: ROOT,
     encoding: "utf8",
     env: { ...process.env, CI: "1", E2E_PORT: String(port) },
     maxBuffer: 16 * 1024 * 1024,
-  });
+  }));
   assert.equal(result.status, 0, `${label} failed\n${result.stdout || ""}\n${result.stderr || ""}`);
 }

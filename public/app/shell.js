@@ -2112,12 +2112,18 @@
     var oldClocks = document.querySelectorAll('.fh-page-toolbar .clock,.fh-page-toolbar #clock');
     var diagnostics = document.getElementById("fh-shell-account-diagnostics");
     for (var i = 0; i < oldClocks.length; i++) diagnostics.appendChild(oldClocks[i]);
+    var statusTone = {
+      live: "#A8D8B0",
+      nodb: "#F5CE8F",
+      offline: "#F2A69B"
+    };
     backendState().then(function (state) {
       var source = document.getElementById("fh-shell-src");
       var hint = document.getElementById("fh-shell-status-hint");
       if (!source || !hint) return;
+      var code = demo ? (state.code === "live" ? "nodb" : state.code) : state.code;
       source.textContent = demo ? "DEMO" : state.label;
-      source.style.background = demo ? "#F5CE8F" : (state.code === "live" ? "#A8D8B0" : "#F5CE8F");
+      source.style.background = statusTone[code] || statusTone.offline;
       source.style.color = "#0D1113";
       hint.textContent = (demo ? "Sample session. " : "") + state.hint;
       source.title = hint.textContent;

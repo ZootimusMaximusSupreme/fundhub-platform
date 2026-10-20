@@ -353,13 +353,13 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
   // §12.7 — assert the COMPUTED sizes, not the classes.
   const size = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontSize);
   expect(await size("#tileSpend7 .vl")).toBe("32px");
-  expect(await size("#cardCopy h2")).toBe("20px");
+  expect(await size("#cardCopy h2")).toBe("22px");
   expect(await size("#tileSpend7 .caption")).toBe("13px");
-  expect(await size("#copyAngle")).toBe("16px");
+  expect(await size("#copyAngle")).toBe("15px");
   expect(await size("#offerCost")).toBe("13px");
   // §12.2 — the card wears the brand's resting shadow, written nowhere on this screen.
   const shadow = await page.locator("#cardCopy").evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(shadow).toContain("rgba(10, 10, 10, 0.06)");
+  expect(shadow).toBe("rgba(13, 17, 19, 0.024) 0px 1px 2px 0px");
 
   await shot(page, "01-today-1280.png", "Today at 1280 (mocked answers)", [
     { selector: "#tileSpend7", caption: "Ad spend, all accounts: 7 whole days vs the 7 before" },
@@ -916,7 +916,7 @@ test("the Command Center row is first in the Marketing group of the sidebar", as
   await open(page, handlers({ offerGet: () => [{ ok: true, ready: true, job: null, offer: null }, 200] }));
   const rows = page.locator('[data-fh-section="marketing"] .navitem');
   await expect(rows.first()).toHaveAttribute("href", "marketing-command-center.html");
-  await expect(rows.first()).toHaveText(/Command Center/);
+  await expect(rows.first()).toHaveText(/Marketing overview/);
 });
 
 /* ── the frame (U34): the tab strip, the gear, the address ────────────────── */

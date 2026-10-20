@@ -46,7 +46,9 @@ import { safeError } from "../../src/http/health.mjs";
 import { verifyContractUrl } from "../../src/contracts/signed-link.mjs";
 import { viewForSigning, sign, documentBytes, loadForClient } from "../../src/contracts/sign.mjs";
 import { declineSigner, resolveSigner } from "../../src/contracts/signers.mjs";
+import { notifyContractDecline } from "../../src/contracts/notify.mjs";
 import { ContractError } from "../../src/contracts/errors.mjs";
+import { withTransaction } from "../../src/db/with-transaction.mjs";
 
 const GONE = (res) => res.status(404).json({ ok: false, error: "not_found" });
 
@@ -156,7 +158,10 @@ export default async function handler(req, res) {
     if (String(body.action || "") === "decline") {
       const { signer } = await resolveSigner(db, { contractId, signerId });
       if (!signer) return GONE(res);
-      await declineSigner(db, { signerId: signer.id, reason: body.reason });
+      await withTransaction(db, async (tx) => {
+        const declined = await declineSigner(tx, { signerId: signer.id, reason: body.reason });
+        await notifyContractDecline(tx, { signer: declined, reason: declined.decline_reason });
+      });
       return res.status(200).json({
         ok: true, declined: true,
         message: "Recorded. The person who sent this has been told you did not sign it."

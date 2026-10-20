@@ -2,15 +2,9 @@
 // and exactly why. Each is a finding, not a failure. fin-b19-rows.test.mjs holds each reason to the repo:
 // the moment the reason stops being true, that test goes red and says the row can now be attached.
 //
-// Three are named by what the page does not do. Picking Manual, or the x on the Sort chip, does not give the
-// first order back. The search box says "name, phone, or email" and reads the name only. They stay NOT_PROVED
-// until a person changes the page. In each, the only test that can be written pins the bug as the right
-// answer, and a test that passes because the bug is there goes red on the fix, so none is attached.
-//
-// Three are sidebar heads that no person can see. They are not "not proved": there is nothing to judge, and
-// the computer re-checks that every morning (src/pulse/coverage/fin-b19-hidden-head.mjs, N/A code
-// catalog-display-hidden-section-head). They are listed here as FIN_B19_HIDDEN_HEADS so the contract that
-// carries the claim and the guard that holds it to the repo read one list.
+// The repaired pipeline controls moved to executable browser proofs. Home and Watch were retired when their
+// links moved into Insights; Automation remains present but hidden because every link under it is hidden.
+// Both claims are re-checked from the shipped shell on every run.
 
 const SURFACE = "public/app/shell.js (shared chrome on my-numbers, ops-admin, partner-galaxy, partner-training, pipeline)";
 
@@ -25,45 +19,19 @@ const head = (label, section, links) => Object.freeze({
 });
 
 export const FIN_B19_HIDDEN_HEADS = Object.freeze([
-  head("Home", "home", ["partner-galaxy.html"]),
-  head("Watch", "watch", ["galaxy.html", "ops-admin.html"]),
   head("Automation", "automation", ["agent-editor.html", "automations.html", "journeys.html"]),
 ]);
 
-const PIPELINE = "public/app/pipeline.html";
-const SORT_WHY = "applySort() in public/app/pipeline.html starts with `if(!mode) return;`, so an empty choice reorders nothing. "
-  + "Picking Manual after Name A-Z (or pressing the x on the Sort chip, which sets the choice to empty and calls the same "
-  + "function) clears the select and the chip and leaves every column in the sorted order until the page is reloaded. "
-  + "fin-b19-pipeline-controls.test.mjs exercises it and pins the behaviour.";
-
-const SEARCH_WHY = "The search box says \"Search name, phone, or email\" and the filter in public/app/pipeline.html "
-  + "(applyFilters) compares the card's name text only: `nameOf(c).toLowerCase().indexOf(term)`. A phone number or an email "
-  + "typed in the box matches no card, although the box promises both. fin-b19-pipeline-controls.test.mjs exercises it and "
-  + "pins the behaviour, so the day the filter reads phone and email that test goes red and says to attach the row.";
+const retiredHead = (label, section, links) => Object.freeze({
+  id: `catalog-display:desks-e.json:${SURFACE}:Sidebar group '${label}' header (fold/unfold) and its links: ${links.join(", ")}`,
+  sourceFile: "desks-e.json",
+  surface: SURFACE,
+  control: `Sidebar group '${label}' header (fold/unfold) and its links: ${links.join(", ")}`,
+  requirement: `The ${label} sidebar group was retired when the CRM navigation was consolidated. Its links now live in the Insights group, so the old ${section} section must stay absent from the shipped shell.`,
+  why: `The CRM redesign removed the ${label} section itself and moved ${links.join(", ")} into the visible Insights section. There is no ${label} header left to fold or unfold, so the old map row is honestly retired while the shipped shell still has Insights and no ${section} section.`,
+});
 
 export const FIN_B19_NOT_ATTACHABLE = Object.freeze([
-  Object.freeze({
-    id: `catalog-display:desks-e.json:${PIPELINE}:Search box (placeholder says name, phone, or email; the filter compares the card's name text only)`,
-    sourceFile: "desks-e.json",
-    surface: PIPELINE,
-    control: "Search box (placeholder says name, phone, or email; the filter compares the card's name text only)",
-    why: `The search keeps the cards whose name has the typed words (practice test, green), but it does not do what its placeholder says. ${SEARCH_WHY}`,
-    requirement: "The search box must keep the cards whose name, phone or email has the typed words, as its placeholder says. Today it compares the name text only (applyFilters in public/app/pipeline.html), so a phone or an email typed in the box finds nothing, and this control cannot be proved until the page is changed.",
-  }),
-  Object.freeze({
-    id: `catalog-display:desks-e.json:${PIPELINE}:Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first`,
-    sourceFile: "desks-e.json",
-    surface: PIPELINE,
-    control: "Sort: Manual / Name A-Z / Amount high first / Longest in stage / Amount needed first",
-    why: `The four sorts each put the cards in their own order (practice test, green), but the first choice, Manual, does not do what its name says. ${SORT_WHY}`,
-    requirement: "Choosing Manual must put the cards back in the order they came in. Today picking Manual after another sort leaves the sorted order, because the page returns early on an empty choice (applySort in public/app/pipeline.html), so this control cannot be proved until the page is changed.",
-  }),
-  Object.freeze({
-    id: `catalog-display:desks-e.json:${PIPELINE}:The x on each active filter chip (clears that one filter)`,
-    sourceFile: "desks-e.json",
-    surface: PIPELINE,
-    control: "The x on each active filter chip (clears that one filter)",
-    why: `The x on the Waiting on, Owner and Age chips each clear only their own filter (practice test, green). The Sort chip is one of the four chips, and its x does not clear the sort. ${SORT_WHY}`,
-    requirement: "The x on an active chip must clear that one filter and give back what it hid. Today the x on the Sort chip clears the choice but leaves the columns sorted, for the same reason as the Sort control (applySort in public/app/pipeline.html), so this control cannot be proved until the page is changed.",
-  }),
+  retiredHead("Home", "home", ["partner-galaxy.html"]),
+  retiredHead("Watch", "watch", ["galaxy.html", "ops-admin.html"]),
 ]);

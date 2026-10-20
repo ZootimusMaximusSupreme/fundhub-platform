@@ -3,6 +3,7 @@ import assert from "node:assert";
 import {
   smsDedupWindowMinutes,
   smsDedupBatchKey,
+  normalizeSmsDestination,
   findRecentDuplicateSms,
   reserveSmsDedupBatch,
   DEFAULT_SMS_DEDUP_WINDOW_MINUTES
@@ -44,11 +45,30 @@ describe("findRecentDuplicateSms", () => {
     assert.equal(dup.reason, "batch");
   });
 
+  test("phone formatting cannot bypass the same-pass guard", async () => {
+    const batchKeys = new Set();
+    const key = smsDedupBatchKey({
+      orgId: MSG.org_id,
+      clientId: MSG.client_id,
+      templateKey: MSG.template_key,
+      bodyFingerprint: null,
+      toAddress: "(555) 123-4567"
+    });
+    reserveSmsDedupBatch(batchKeys, key);
+    const db = { query: async () => { throw new Error("db should not run"); } };
+    const dup = await findRecentDuplicateSms(db, MSG, "+1 555 123 4567", { batchKeys, env: {} });
+    assert.equal(dup.duplicate, true);
+    assert.equal(normalizeSmsDestination("(555) 123-4567"), "5551234567");
+  });
+
   test("recent sent row blocks without provider call path needing db twice", async () => {
     const db = {
       query: async (sql) => {
-        assert.match(sql, /status = 'sent'/);
-        return { rows: [{ id: "00000000-0000-4000-8000-000000000088" }] };
+        assert.match(sql, /status IN \('sent', 'delivered'\)/);
+        return { rows: [{
+          id: "00000000-0000-4000-8000-000000000088",
+          to_address: "1 (555) 123-4567"
+        }] };
       }
     };
     const dup = await findRecentDuplicateSms(db, MSG, "+15551234567", {

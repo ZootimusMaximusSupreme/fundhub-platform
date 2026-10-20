@@ -191,6 +191,8 @@ export async function readWatch(tx, { orgId, n }) {
        JOIN ad_metrics_daily m ON m.id = d.ad_metrics_daily_id AND m.org_id = d.org_id
        JOIN ads a ON a.id = m.ad_id AND a.org_id = m.org_id
       WHERE d.org_id = $1
+        AND m.org_id = $1
+        AND a.org_id = $1
         AND a.fundhub_ad_number = $2
       ORDER BY m.date DESC, d.created_at DESC, d.id
       LIMIT ${DIAGNOSES_LIMIT}`,

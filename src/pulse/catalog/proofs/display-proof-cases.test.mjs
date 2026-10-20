@@ -83,12 +83,11 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     }
   }
 
-  // Current seven maps: 1,496 tracked controls, 1,379 mapped, 117 unmapped red,
-  // plus two mapped controls whose saved-result contracts deliberately stay red.
+  // Current seven maps: 1,496 tracked controls, 1,421 mapped and 75 unmapped red.
   assert.equal(trackedCount, 1496, "Display map size changed; inspect the exact rows");
-  assert.equal(mappedCount, 1379, "Display proof coverage changed; inspect the exact cases");
-  assert.equal(mappedRedCount, 2, "Mapped display gaps changed; inspect their saved results");
-  assert.equal(redCount, 119, "Display red count changed; inspect every new exact proof");
+  assert.equal(mappedCount, 1421, "Display proof coverage changed; inspect the exact cases");
+  assert.equal(mappedRedCount, 0, "Mapped display gaps changed; inspect their saved results");
+  assert.equal(redCount, 75, "Display red count changed; inspect every new exact proof");
 });
 
 test("the focused proof test runs every executable test named by every case", () => {
@@ -99,12 +98,14 @@ test("the focused proof test runs every executable test named by every case", ()
   }
   const env = { ...process.env, NODE_ENV: "test" };
   delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ["--test", ...files], {
+  const result = spawnSync(process.execPath, ["--test", "--test-force-exit", ...files], {
     cwd: ROOT,
     encoding: "utf8",
     env,
+    maxBuffer: 64 * 1024 * 1024,
   });
 
+  assert.ifError(result.error);
   assert.equal(
     result.status,
     0,

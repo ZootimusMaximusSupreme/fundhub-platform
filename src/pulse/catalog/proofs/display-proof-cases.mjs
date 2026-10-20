@@ -8,6 +8,7 @@ import { DISPLAY_CONTRACTS_CD_2_PROOFS } from "./display-contracts-cd-2.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES } from "./display-contracts-ef-public.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES } from "./display-contracts-ef-public-2.mjs";
 import { DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES } from "./display-contracts-ef-public-3.mjs";
+import { PUBLIC_PAGE_LINK_OUTCOME_CASES } from "./public-page-link-outcomes.mjs";
 import { DISPLAY_CONTRACTS_MONEY_2_PROOFS } from "./display-contracts-money-2.mjs";
 import { DISPLAY_CONTRACTS_SHELLS_1 } from "./display-contracts-shells-1.mjs";
 import { DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES } from "./display-contracts-teams-social-1.mjs";
@@ -35,6 +36,7 @@ import { FIN_B18_DISPLAY_PROOF_CASES } from "./fin-b18-display-proofs.mjs";
 import { FIN_B19_DISPLAY_PROOF_CASES } from "./fin-b19-display-proofs.mjs";
 import { FIN_B20_DISPLAY_CASES } from "./fin-b20-display-contracts.mjs";
 import { FIN_B21_DISPLAY_PROOF_CASES } from "./fin-b21-display-practice.mjs";
+import { HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS } from "./heartbeat-catalog-red-four.mjs";
 import {
   DISPLAY_RESULT_LANE,
   displaySavedResultContract,
@@ -408,6 +410,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...DISPLAY_CONTRACTS_EF_PUBLIC_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_2_PROOF_CASES,
   ...DISPLAY_CONTRACTS_EF_PUBLIC_3_PROOF_CASES,
+  ...PUBLIC_PAGE_LINK_OUTCOME_CASES,
   ...DISPLAY_CONTRACTS_MONEY_2_PROOFS,
   ...DISPLAY_CONTRACTS_SHELLS_1,
   ...DISPLAY_CONTRACTS_TEAMS_SOCIAL_1_PROOF_CASES,
@@ -434,6 +437,7 @@ const PLUGIN_DISPLAY_PROOF_CASES = [
   ...FIN_B19_DISPLAY_PROOF_CASES,
   ...FIN_B20_DISPLAY_CASES,
   ...FIN_B21_DISPLAY_PROOF_CASES,
+  ...HEARTBEAT_CATALOG_RED_FOUR_DISPLAY_PROOFS,
 ]
   .map(pluginDisplayCase)
   .filter((entry) => !READ_PROOF_KEYS.has(proofKey(entry)));

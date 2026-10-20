@@ -274,7 +274,11 @@ test("ops, affiliate, and partner galaxy do not ship sample people as live", () 
   assert.ok(!/Derek Owusu|Priya Nair/.test(gal));
   assert.ok(!/ND\.jordan|ND\.marcus|ND\.nina/.test(gal), "money flares must not hardcode sample node ids");
   assert.ok(/var CLIENTS = \[\]/.test(gal));
-  assert.ok(/var NODES = \[\]/.test(gal));
+  assert.match(gal, /var NODES = \[\s*mapNode\('map-fulfillment'/);
+  for (const id of ["map-fulfillment", "map-sales", "map-inquiry", "map-client", "map-ops"]) {
+    assert.ok(gal.includes(`mapNode('${id}'`), `${id} must stay a neutral service-map node`);
+  }
+  assert.equal((gal.match(/mapNode\('map-/g) || []).length, 5, "only the five neutral service-map nodes ship");
   assert.ok(gal.includes("No partners on file"));
   const ae = fs.readFileSync(path.join(APP, "agent-editor.html"), "utf8");
   assert.ok(!/Jordan Blake|Nina Castellano|Marcus Webb/.test(ae));

@@ -167,8 +167,11 @@ test.describe("calendar Join Call and Client file", () => {
   });
 
   test("Client file enables when a dated task has a client_id", async ({ page }) => {
-    const due = new Date();
-    due.setHours(due.getHours() + 1);
+    const nineAm = new Date();
+    nineAm.setHours(9, 0, 0, 0);
+    await page.clock.setFixedTime(nineAm);
+    const due = new Date(nineAm);
+    due.setHours(10);
     await openScreen(page, "/app/calendar.html", OWNER, {
       "/api/tasks": {
         ok: true,

@@ -222,14 +222,29 @@ test("times: relative under a day, a date after, the exact time on hover", () =>
   assert.match(T.when("2026-10-05T14:00:00Z", NOW), /^Oct 5, \d{1,2}:\d{2} (AM|PM)$/);
 });
 
-test("CSS: every rule under .fh-transfers, no px font sizes, a phone layout", () => {
-  const rules = CSS.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+test("CSS: every rule stays inside the transfer screens, with no px font sizes and a phone layout", () => {
+  const rules = CSS.replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "")
+    .replace(/:is\(#transfers-root,#fos-transfers\)/g, ".fh-transfers");
+  const splitSelectors = (group) => {
+    const parts = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < group.length; i++) {
+      if (group[i] === "(") depth++;
+      if (group[i] === ")") depth--;
+      if (group[i] === "," && depth === 0) { parts.push(group.slice(start, i)); start = i + 1; }
+    }
+    parts.push(group.slice(start));
+    return parts.map((part) => part.trim()).filter(Boolean);
+  };
   const selectors = [];
-  for (const m of rules.matchAll(/([^{}@]+)\{[^{}]*\}/g)) selectors.push(...m[1].split(",").map((s) => s.trim()).filter(Boolean));
+  for (const m of rules.matchAll(/([^{}@]+)\{[^{}]*\}/g)) selectors.push(...splitSelectors(m[1]));
   assert.ok(selectors.length > 40);
   for (const s of selectors) assert.match(s, /^\.fh-transfers\b/, `unscoped selector: ${s}`);
   assert.doesNotMatch(CSS, /font-size\s*:\s*\d+px/);
   assert.doesNotMatch(CSS, /font\s*:[^;]*\d+px/);
+  assert.match(CSS, /:is\(#transfers-root,#fos-transfers\) \.fh-transfers/);
   assert.match(CSS, /@media \(max-width:760px\)\{[\s\S]*td::before\{content:attr\(data-label\)/);
   assert.match(CSS, /\.fh-transfers \.tx-tiles>\*\{grid-column:span 4\}/);
   assert.doesNotMatch(CSS, /[{;]\s*max-width:\s*\d{3,}px/, "no page width cap (UI-STANDARDS §1)");

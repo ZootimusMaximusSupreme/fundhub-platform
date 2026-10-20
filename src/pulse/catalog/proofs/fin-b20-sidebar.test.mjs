@@ -19,10 +19,10 @@ const SHELL = fs.readFileSync(path.join(APP, "shell.js"), "utf8");
 
 const decode = (t) => t.replace(/&amp;/g, "&");
 const ASIDE = FRAGMENT.replace(/^<!--[\s\S]*?-->\s*/, "").trim();
-const GROUPS = [...ASIDE.matchAll(/<div class="navgroup" data-fh-section="([^"]+)"><button class="navhead" type="button">([^<]+)<span/g)]
+const GROUPS = [...ASIDE.matchAll(/<div class="navgroup" data-fh-section="([^"]+)"><button class="navhead"[^>]*>([^<]+)<span/g)]
   .map((m) => ({ key: m[1], title: decode(m[2]) }));
 const LINKS = [...ASIDE.matchAll(/<div class="navgroup" data-fh-section="([^"]+)">[\s\S]*?<\/div><\/div>/g)].flatMap((group) =>
-  [...group[0].matchAll(/<a class="navitem" href="([^"]+)"><span class="ico">[^<]*<\/span><span class="lbl">([^<]+)<\/span>/g)]
+  [...group[0].matchAll(/<a class="navitem" href="([^"]+)">[\s\S]*?<span class="lbl">([^<]+)<\/span><\/a>/g)]
     .map((link) => ({ section: group[1], href: link[1], label: decode(link[2]) })));
 
 // What each role is shown on its rail. Pinned from the shell's own role map, so a change to who sees
@@ -34,19 +34,19 @@ const OWNER = ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "sal
 const STAFF = ["pipeline.html", "closer-dashboard.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
   "messaging.html", "documents.html", "inquiry-remover.html"];
 const RAIL = {
-  owner: { page: "pipeline.html", links: OWNER, heads: ["sales", "funding", "client-ops", "marketing", "admin", "portals"] },
-  admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["sales", "funding", "client-ops", "marketing", "admin"] },
+  owner: { page: "pipeline.html", links: OWNER, heads: ["work", "clients", "insights", "marketing", "settings"] },
+  admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["work", "clients", "insights", "marketing", "settings"] },
   sales_manager: {
     page: "pipeline.html",
     links: ["pipeline.html", "closer-dashboard.html", "sales-floor.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
       "messaging.html", "documents.html", "inquiry-remover.html", "staff-teams.html", "products-commissions.html"],
-    heads: ["sales", "funding", "client-ops", "admin"],
+    heads: ["work", "clients", "insights", "settings"],
   },
-  closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["sales", "funding", "client-ops"] },
-  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["sales", "funding", "client-ops"] },
-  csm: { page: "pipeline.html", links: STAFF, heads: ["sales", "funding", "client-ops"] },
-  setter: { page: "pipeline.html", links: STAFF, heads: ["sales", "funding", "client-ops"] },
-  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["sales", "funding", "client-ops"] },
+  closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
+  funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients"] },
+  csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
+  setter: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
+  inquiry_specialist: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
   partner: { page: "partner-galaxy.html", links: ["social-studio.html", "creative-factory.html"], heads: ["marketing"] },
 };
 // Rows the file lists that no role is shown (NAV_HIDDEN in shell.js, owner-set 2026-08-19): the page still
@@ -72,9 +72,9 @@ const shown = (page) => page.evaluate(() => ({
 }));
 
 // ---------------------------------------------------------------------------------------------
-test("the file carries nine sections and 32 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
-  assert.deepEqual(GROUPS.map((g) => g.key), ["home", "sales", "funding", "client-ops", "watch", "automation", "marketing", "admin", "portals"]);
-  assert.deepEqual(GROUPS.map((g) => g.title), ["Home", "Sales", "Funding", "Client ops", "Watch", "Automation", "Marketing", "Admin", "Portals"]);
+test("the file carries six current sections and 32 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
+  assert.deepEqual(GROUPS.map((g) => g.key), ["work", "clients", "insights", "marketing", "automation", "settings"]);
+  assert.deepEqual(GROUPS.map((g) => g.title), ["Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
   assert.equal(LINKS.length, 32);
   assert.equal(new Set(LINKS.map((l) => l.href)).size, 32, "each link is listed once");
   for (const l of LINKS) assert.ok(fs.existsSync(path.join(APP, l.href)), `${l.href} is a real screen`);
@@ -117,10 +117,10 @@ test("each role's rail shows exactly its links and section heads, and never one 
 });
 
 // ---------------------------------------------------------------------------------------------
-test("section heads: the six a person sees fold their links away and bring them back; Home, Watch and Automation never show a head", { timeout: 120_000 }, async () => {
+test("section heads: the five groups an owner sees fold their links; hidden Automation stays gated", { timeout: 120_000 }, async () => {
   const page = await openRail("owner", "pipeline.html");
   const got = await shown(page);
-  assert.deepEqual(got.heads, ["sales", "funding", "client-ops", "marketing", "admin", "portals"]);
+  assert.deepEqual(got.heads, ["work", "clients", "insights", "marketing", "settings"]);
   for (const key of got.heads) {
     const title = GROUPS.find((g) => g.key === key).title;
     const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
@@ -134,18 +134,16 @@ test("section heads: the six a person sees fold their links away and bring them 
     await head.click();
     assert.equal(await group.evaluate((el) => el.classList.contains("closed")), startedClosed, `${title}: a second click restores it`);
   }
-  for (const key of ["home", "watch", "automation"]) {
-    const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
-    assert.equal(await group.count(), 1, `${key} is in the markup`);
-    assert.equal(await group.evaluate((el) => el.style.display === "none" && el.hasAttribute("data-fh-gated-group")), true, `${key} has no head for the owner`);
-  }
+  const automation = page.locator('#side .navgroup[data-fh-section="automation"]');
+  assert.equal(await automation.count(), 1, "Automation is in the markup");
+  assert.equal(await automation.evaluate((el) => el.style.display === "none" && el.hasAttribute("data-fh-gated-group")), true, "Automation has no visible row for the owner");
   await page.close();
 });
 
-test("section heads: only the group holding the open screen starts open", { timeout: 60_000 }, async () => {
+test("section heads: Your work and Clients start open, including the current screen", { timeout: 60_000 }, async () => {
   const page = await openRail("owner", "pipeline.html");
   const open = await page.evaluate(() => [...document.querySelectorAll("#side .navgroup")].filter((g) => !g.classList.contains("closed")).map((g) => g.getAttribute("data-fh-section")));
-  assert.deepEqual(open, ["sales"], "the Sales group holds the pipeline row");
+  assert.deepEqual(open, ["work", "clients"], "the daily Work and Clients groups begin open");
   assert.equal(await page.locator('#side a.navitem.on').getAttribute("href"), "pipeline.html");
   await page.close();
 });
@@ -155,21 +153,21 @@ test("collapse button: shrinks the rail to icons and opens every group, a second
   const page = await openRail("owner", "pipeline.html");
   const side = page.locator("#side");
   const burger = page.locator("#burger");
-  assert.equal(await burger.innerText(), "‹‹");
+  assert.equal(await burger.innerText(), "‹");
   const wide = await side.evaluate((el) => el.getBoundingClientRect().width);
   await burger.click();
   assert.equal(await side.evaluate((el) => el.classList.contains("mini")), true);
   assert.equal(await page.evaluate(() => document.documentElement.classList.contains("fh-side-mini")), true);
-  assert.equal(await burger.innerText(), "››");
+  assert.equal(await burger.innerText(), "›");
   await page.waitForFunction((w) => document.querySelector("#side").getBoundingClientRect().width < w, wide);
   const closedWhileMini = await page.evaluate(() => [...document.querySelectorAll("#side .navgroup")].filter((g) => g.style.display !== "none" && g.classList.contains("closed")).length);
   assert.equal(closedWhileMini, 0, "an icon rail has no closed group");
   await burger.click();
   assert.equal(await side.evaluate((el) => el.classList.contains("mini")), false);
-  assert.equal(await burger.innerText(), "‹‹");
+  assert.equal(await burger.innerText(), "‹");
   await page.waitForFunction((w) => Math.abs(document.querySelector("#side").getBoundingClientRect().width - w) < 1, wide);
   const open = await page.evaluate(() => [...document.querySelectorAll("#side .navgroup")].filter((g) => !g.classList.contains("closed")).map((g) => g.getAttribute("data-fh-section")));
-  assert.deepEqual(open, ["sales"]);
+  assert.deepEqual(open, ["work", "clients"]);
   await page.close();
 });
 
@@ -183,7 +181,7 @@ test("phone: the rail is off-screen, Menu opens it with a scrim, the scrim, Esca
   const isOpen = () => side.evaluate((el) => el.classList.contains("open"));
   assert.equal(await isOpen(), false);
   assert.equal(await menu.getAttribute("aria-expanded"), "false");
-  assert.equal(await page.locator("#burger").innerText(), "✕", "on a phone the same button closes");
+  assert.equal(await page.locator("#burger").innerText(), "×", "on a phone the same button closes");
 
   await menu.click();
   assert.equal(await isOpen(), true);
@@ -214,10 +212,10 @@ const ROW_BY_HREF = Object.fromEntries(LINKS.map((l) => [l.href, l]));
 
 test("the eleven hidden rows are in their named groups with their labels and point at real screens", () => {
   const expected = {
-    "partner-galaxy.html": ["home", "Home"], "finance-os.html": ["funding", "Finance OS"], "consent-capture.html": ["client-ops", "Consent"],
-    "galaxy.html": ["watch", "Galaxy"], "ops-admin.html": ["watch", "Ops & Admin"], "agent-editor.html": ["automation", "Agent Editor"],
-    "automations.html": ["automation", "Workflows"], "journeys.html": ["automation", "Journeys"], "hiring.html": ["admin", "Hiring"],
-    "brand-studio.html": ["admin", "Brand Studio"], "affiliate.html": ["portals", "Affiliate"],
+    "partner-galaxy.html": ["insights", "Home"], "finance-os.html": ["clients", "Finance OS"], "consent-capture.html": ["clients", "Consent"],
+    "galaxy.html": ["insights", "Galaxy"], "ops-admin.html": ["insights", "Operations"], "agent-editor.html": ["automation", "Agent Editor"],
+    "automations.html": ["automation", "Workflows"], "journeys.html": ["automation", "Journeys"], "hiring.html": ["settings", "Hiring"],
+    "brand-studio.html": ["settings", "Brand Studio"], "affiliate.html": ["settings", "Affiliate"],
   };
   assert.deepEqual(Object.keys(expected).sort(), [...HIDDEN].sort());
   for (const [href, [section, label]] of Object.entries(expected)) {

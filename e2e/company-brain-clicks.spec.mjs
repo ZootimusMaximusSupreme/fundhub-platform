@@ -56,9 +56,6 @@ test.describe("company brain chat", () => {
     await page.locator("#q").fill("First question");
     await page.locator("#askBtn").click();
     await expect.poll(() => asks.length).toBe(1);
-    // At a 1280-wide screen the account bar shell.js draws sits on top of New
-    // chat (a leftover card is filed). A person hides it with its x first.
-    await page.locator("#fh-shell-chip-hide").click();
     await page.locator("#newChat").click();
     await page.locator("#q").fill("Fresh question");
     await page.locator("#askBtn").click();

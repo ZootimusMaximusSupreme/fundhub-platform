@@ -4,14 +4,13 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { freeBrowserPort } from "./browser-port.mjs";
+import { withBrowserPort } from "./browser-port.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");
 
 test("reviewed read proofs pass through the real rendered pages", async () => {
-  const port = await freeBrowserPort();
-  const result = spawnSync(process.execPath, [
+  const result = await withBrowserPort((port) => spawnSync(process.execPath, [
     CLI,
     "test",
     "e2e/agent-editor-promote-demote.spec.mjs",
@@ -28,7 +27,7 @@ test("reviewed read proofs pass through the real rendered pages", async () => {
       E2E_PORT: String(port),
     },
     maxBuffer: 16 * 1024 * 1024,
-  });
+  }));
 
   assert.equal(
     result.status,

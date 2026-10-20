@@ -495,8 +495,20 @@
     var p = filterQuery();
     p.set("format", "csv");
     fetch("/api/read/lenders?" + p.toString(), { headers: headers() })
-      .then(function (r) { return r.text(); })
+      .then(function (r) {
+        return r.text().then(function (body) {
+          if (r.ok) return body;
+          var message = "Export failed";
+          try {
+            var failure = JSON.parse(body);
+            message = failure.message || failure.error || message;
+          } catch (e) {}
+          toast(message);
+          return null;
+        });
+      })
       .then(function (csv) {
+        if (csv === null) return;
         var blob = new Blob([csv], { type: "text/csv" });
         var a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -627,8 +639,23 @@
       });
   }
 
+  function rememberBureauEdits() {
+    document.querySelectorAll("#bureauBody tr").forEach(function (tr, index) {
+      var row = bureauRows[index];
+      if (!row) return;
+      tr.querySelectorAll("[data-f]").forEach(function (el) {
+        var k = el.getAttribute("data-f");
+        var v = el.value;
+        if (k === "active") v = v === "true";
+        if (k === "expected_hold_minutes") v = v === "" ? null : Number(v);
+        row[k] = v === "" ? null : v;
+      });
+    });
+  }
+
   document.getElementById("btnBureauRetry").addEventListener("click", loadBureau);
   document.getElementById("btnAddBureau").addEventListener("click", function () {
+    rememberBureauEdits();
     bureauRows.push({
       bureau_code: "",
       bureau_name: "",

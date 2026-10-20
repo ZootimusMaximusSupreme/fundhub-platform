@@ -165,9 +165,9 @@ test("Agent list row opens that agent; unsaved edits ask before they are thrown 
     await nameBoxIs(page, "Review Chaser");
     assert.equal(await page.locator("#saveNote").innerText(), "", "Yes drops the unsaved mark");
     assert.equal(writes.length, 0, "switching saves nothing");
-    // NOT asserted, on purpose: that the typed words are really gone. They are not (product finding in
-    // the batch 09 manifest): going back to AG-01 shows "Lead Follow-up v2" again, with no unsaved mark.
-    // That is why this row is listed under notAttached and stays not proved.
+    await page.locator('.aitem[data-a="AG-01"]').click();
+    await nameBoxIs(page, "Lead Follow-up");
+    assert.equal(await page.locator("#saveNote").innerText(), "", "the discarded words do not come back");
     assert.deepEqual(errors, []);
     await page.close();
   });

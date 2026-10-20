@@ -1,0 +1,17 @@
+Fundhub 1.0 (2) — response to Guideline 2.1 Information Needed
+
+Physical-device walkthrough: the attached fundhub-app-review-iphone17promax-ios27-build2-review.mp4 is an 83-second continuous capture of our physical iPhone 17 Pro Max running iOS 27.0.1 and the submitted build 1.0 (2). It starts on the iPhone Home Screen, launches Fundhub, signs in with the test client, shows the native Home and file status, opens the full client portal, then signs out. It was captured from the live device mirror on a Mac, not a simulator. A temporary test sign-in link that appeared in chat is covered in the video.
+
+Purpose and audience: Fundhub is a private portal for existing Fundhub clients seeking business-funding advisory/referral services and for Fundhub staff. It lets a client see their service-file status, documents, amount due, messages, and next steps. Fundhub is not a bank or direct lender; independent funding partners make financing decisions.
+
+Reviewer access: Use the demo credentials in App Review Sign-In Information. On the first screen, tap “Fundhub team? Use your password,” sign in, review “Your file,” and tap “Open full portal.” The normal client path also supports an emailed sign-in link. The test account has no real customer data, no documents, and no amount due. Staff have separate role-based access.
+
+Accounts and content: Existing clients receive access through Fundhub; the app has no public self-registration screen. The submitted client UI has Sign out but no in-app Delete account screen. Privacy/account-deletion requests go to support@fundhub.ai, subject “Privacy Request.” Client-to-team messages and uploaded documents are private to the service account; there is no public user-content feed or public report/block feature.
+
+Payments: The native Home does not sell a product. Depending on the client file, the portal may show a balance, invoice, or external service/payment link. This demo account has no balance due or paid entitlement, so the recording does not demonstrate a purchase or paid-content unlock.
+
+External services: The app connects to Fundhub's own API and portal at fundhub.ai, hosted on Netlify; account data is stored in Supabase-hosted PostgreSQL. Sign-in emails use Resend; optional iPhone alerts use Apple Push Notification service. Optional bank-linking/payment services may appear only for applicable client files and are not needed for the demo flow.
+
+Regions and rights: This submission is offered in the United States only, with no separate regional UI. Funding options depend on the client's location and account. The test walkthrough shows Fundhub branding and private test-account content, not a public library of protected third-party media. The app does not open deposit accounts, originate loans, or make financing decisions. If a specific registration or partner authorization document is needed for this advisory/referral model, please identify it and we will provide it.
+
+Privacy policy: https://fundhub.ai/privacy/

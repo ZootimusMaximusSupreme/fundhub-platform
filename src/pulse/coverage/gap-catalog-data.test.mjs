@@ -69,6 +69,20 @@ test('every query is one read and checks row data, not table shape', () => {
   assert.doesNotMatch(joined, /information_schema|pg_catalog/i);
 });
 
+test('pending bank rows and partner-wide spend ceilings use their real saved-result shapes', () => {
+  assert.deepEqual(TABLE_RULES.bank_transactions, {
+    all: ['org_id', 'client_id', 'amount_cents'],
+    any: ['posted_on', 'authorized_on'],
+  });
+  assert.deepEqual(TABLE_RULES.spend_ceilings, {
+    all: ['org_id', 'partner_id', 'scope', 'daily_limit_cents', 'active'],
+  });
+
+  const joined = SQL_BATCHES.join('\n');
+  assert.match(joined, /\(NULLIF\(BTRIM\(COALESCE\(to_jsonb\(t\)->>'posted_on'/);
+  assert.match(joined, /OR NULLIF\(BTRIM\(COALESCE\(to_jsonb\(t\)->>'authorized_on'/);
+});
+
 test('fake saved results pass only when every row has its business result', async () => {
   const db = fakeDb();
   const rows = await gapChecks({ db, orgId: ORG });

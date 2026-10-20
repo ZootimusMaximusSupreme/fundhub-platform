@@ -1,8 +1,6 @@
 import Foundation
 
-/// SCREENSHOT AND TEST DEMO ONLY. Started with the launch argument
-/// `-FundhubDemo` (never on Chris's phone unless that argument is passed from
-/// Xcode). The shoot below is the made-up example in
+/// Built-in practice shoot for the self-contained App Store app. The shoot below is the made-up example in
 /// docs/specs/marketing-machine-api.md §7.1 (GET marketing/shoot), word for
 /// word: not a real script, not a real number. Nothing here talks to a server.
 final class DemoTransport: Transport {

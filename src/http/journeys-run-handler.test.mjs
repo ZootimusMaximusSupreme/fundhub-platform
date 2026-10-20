@@ -46,10 +46,12 @@ describe("POST /api/journeys/run", () => {
     assert.equal(fake.connected, 0);
   });
 
-  test("a closer cannot start a run (owner, admin, sales manager only)", async () => {
-    const { res, fake } = await call(req("POST", { body: {} }), [staffSession({ role: "closer" })]);
-    assert.equal(res.statusCode, 403);
-    assert.equal(fake.connected, 0);
+  test("a closer or sales manager cannot start an owner/admin run", async () => {
+    for (const role of ["closer", "sales_manager"]) {
+      const { res, fake } = await call(req("POST", { body: {} }), [staffSession({ role })]);
+      assert.equal(res.statusCode, 403, role);
+      assert.equal(fake.connected, 0, role);
+    }
   });
 
   test("GET is refused after the gate", async () => {

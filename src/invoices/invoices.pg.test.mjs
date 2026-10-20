@@ -14,7 +14,7 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { pool, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import {
   createInvoice, markSent, markPaid, voidInvoice, getInvoice,
@@ -24,63 +24,31 @@ import {
 const HAVE_DB = !!process.env.DATABASE_URL;
 
 describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
-  let org, clientId;
-  const made = [];
+  let c, org, clientId;
 
   const mk = async (over = {}) => {
-    const row = await createInvoice(db, {
+    return createInvoice(c, {
       orgId: org, clientId, source: "diy_letters", amount: 1000, ...over
     });
-    if (row) made.push(row.id);
-    return row;
   };
 
-  const EMAIL = "invoice.fixture@example.com";
-
-  /* Clear any fixture a previous interrupted run left behind, so the suite is
-     re-runnable rather than failing on its own leftovers. */
-  async function purge(orgId) {
-    const prior = (await db.query(
-      `SELECT id FROM clients WHERE org_id = $1 AND lower(email) = $2`, [orgId, EMAIL])).rows;
-    if (!prior.length) return;
-    const ids = prior.map((r) => r.id);
-    const inv = (await db.query(`SELECT id FROM invoices WHERE client_id = ANY($1)`, [ids]))
-      .rows.map((r) => r.id);
-    if (inv.length) {
-      await db.query(`DELETE FROM invoice_payments WHERE invoice_id = ANY($1)`, [inv]);
-      await db.query(`DELETE FROM invoice_line_items WHERE invoice_id = ANY($1)`, [inv]);
-    }
-    await db.query(`ALTER TABLE invoices DISABLE TRIGGER trg_invoices_no_delete`);
-    try {
-      await db.query(`DELETE FROM invoices WHERE client_id = ANY($1)`, [ids]);
-    } finally {
-      await db.query(`ALTER TABLE invoices ENABLE TRIGGER trg_invoices_no_delete`);
-    }
-    await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [ids]);
-  }
+  const EMAIL = `invoice.fixture+${process.pid}-${Date.now()}@example.com`;
 
   before(async () => {
-    org = await resolveDefaultOrg(db);
-    await purge(org);
-    clientId = (await db.query(
+    c = await pool().connect();
+    await c.query("BEGIN");
+    org = await resolveDefaultOrg(c);
+    clientId = (await c.query(
       `INSERT INTO clients (org_id, first_name, last_name, email)
        VALUES ($1,'Invoice','Fixture',$2) RETURNING id`,
       [org, EMAIL])).rows[0].id;
   });
 
   after(async () => {
-    // invoices are immutable in production — trg_invoices_no_delete enforces
-    // "void or write off instead". Fixture teardown is the one legitimate
-    // exception, so it drops the guard and puts it straight back.
-    await db.query(`DELETE FROM invoice_payments WHERE invoice_id = ANY($1)`, [made]);
-    await db.query(`DELETE FROM invoice_line_items WHERE invoice_id = ANY($1)`, [made]);
-    await db.query(`ALTER TABLE invoices DISABLE TRIGGER trg_invoices_no_delete`);
-    try {
-      await db.query(`DELETE FROM invoices WHERE client_id = $1`, [clientId]);
-    } finally {
-      await db.query(`ALTER TABLE invoices ENABLE TRIGGER trg_invoices_no_delete`);
+    if (c) {
+      await c.query("ROLLBACK").catch(() => {});
+      c.release();
     }
-    await db.query(`DELETE FROM clients WHERE id = $1`, [clientId]);
     await close();
   });
 
@@ -96,7 +64,7 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   test("markSent moves draft -> sent and stamps sent_at, not issued_at", async () => {
     const row = await mk();
-    const sent = await markSent(db, { invoiceId: row.id });
+    const sent = await markSent(c, { invoiceId: row.id });
     assert.ok(sent, "markSent returned null — the UPDATE matched nothing");
     assert.equal(sent.status, "sent");
     assert.ok(sent.sent_at, "sent_at was not stamped");
@@ -104,8 +72,8 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   test("markSent is a one-way door — a sent invoice cannot be re-sent", async () => {
     const row = await mk();
-    await markSent(db, { invoiceId: row.id });
-    assert.equal(await markSent(db, { invoiceId: row.id }), null);
+    await markSent(c, { invoiceId: row.id });
+    assert.equal(await markSent(c, { invoiceId: row.id }), null);
   });
 
   test("providerRef lands in external_ref", async () => {
@@ -119,9 +87,9 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
     for (const status of ["draft", "sent", "reminded", "escalated", "partially_paid"]) {
       const row = await mk();
       if (status !== "draft") {
-        await db.query(`UPDATE invoices SET status = $2 WHERE id = $1`, [row.id, status]);
+        await c.query(`UPDATE invoices SET status = $2 WHERE id = $1`, [row.id, status]);
       }
-      const paid = await markPaid(db, { invoiceId: row.id });
+      const paid = await markPaid(c, { invoiceId: row.id });
       assert.ok(paid, `markPaid did not settle an invoice in status '${status}'`);
       assert.equal(paid.status, "paid");
       assert.ok(paid.paid_at);
@@ -130,18 +98,18 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
 
   test("markPaid refuses a settled or void invoice", async () => {
     const paid = await mk();
-    await markPaid(db, { invoiceId: paid.id });
-    assert.equal(await markPaid(db, { invoiceId: paid.id }), null, "an invoice was paid twice");
+    await markPaid(c, { invoiceId: paid.id });
+    assert.equal(await markPaid(c, { invoiceId: paid.id }), null, "an invoice was paid twice");
 
     const voided = await mk();
-    await voidInvoice(db, { invoiceId: voided.id });
-    assert.equal(await markPaid(db, { invoiceId: voided.id }), null, "a void invoice was paid");
+    await voidInvoice(c, { invoiceId: voided.id });
+    assert.equal(await markPaid(c, { invoiceId: voided.id }), null, "a void invoice was paid");
   });
 
   test("voidInvoice refuses to void something already paid", async () => {
     const row = await mk();
-    await markPaid(db, { invoiceId: row.id });
-    assert.equal(await voidInvoice(db, { invoiceId: row.id }), null);
+    await markPaid(c, { invoiceId: row.id });
+    assert.equal(await voidInvoice(c, { invoiceId: row.id }), null);
   });
 
   // ── idempotency: all three dimensions, absorbed not raised ─────────────────
@@ -152,7 +120,7 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
     const second = await mk({ idempotencyKey: key });
     assert.ok(first);
     assert.equal(second, null, "the second write was not absorbed");
-    const { rows } = await db.query(
+    const { rows } = await c.query(
       `SELECT count(*)::int n FROM invoices WHERE org_id = $1 AND idempotency_key = $2`, [org, key]);
     assert.equal(rows[0].n, 1);
   });
@@ -184,23 +152,22 @@ describe("invoices against real Postgres", { skip: !HAVE_DB ? "no DATABASE_URL" 
   });
 
   test("passing only the legacy invoiceType still derives source", async () => {
-    const row = await createInvoice(db, {
+    const row = await createInvoice(c, {
       orgId: org, clientId, invoiceType: "success_fee", amount: 500
     });
-    made.push(row.id);
     assert.equal(row.source, "funding_success_fee");
   });
 
   test("passing neither is refused in code, before Postgres has to", async () => {
     await assert.rejects(
-      () => createInvoice(db, { orgId: org, clientId, amount: 100 }),
+      () => createInvoice(c, { orgId: org, clientId, amount: 100 }),
       /source .*or invoiceType|invoiceType/
     );
   });
 
   test("getInvoice round-trips", async () => {
     const row = await mk({ amount: 42 });
-    const got = await getInvoice(db, { invoiceId: row.id });
+    const got = await getInvoice(c, { invoiceId: row.id });
     assert.equal(got.id, row.id);
     assert.equal(Number(got.amount_due), 42);
   });
