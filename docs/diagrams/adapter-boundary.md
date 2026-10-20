@@ -24,6 +24,7 @@ flowchart TB
     o_resend_events["Resend delivery events"]
     o_twilio_status["Twilio delivery-status callback"]
     o_twilio["Twilio inbound SMS + voice-answer"]
+    o_whop_billing["import { verifyWhopSignature } from '../merchant/normalize.mjs';"]
   end
   subgraph BOUNDARY[Adapter layer]
     direction LR
@@ -40,6 +41,7 @@ flowchart TB
     b_resend_events["resend-events<br/>signature<br/>fail-closed"]
     b_twilio_status["twilio-status<br/>HMAC-SHA1<br/>fail-closed"]
     b_twilio["twilio<br/>HMAC-SHA1<br/>fail-closed"]
+    b_whop_billing["whop-billing<br/>signature<br/>fail-closed"]
   end
   BUS[(canonical event bus)]
 
@@ -69,6 +71,8 @@ flowchart TB
   b_twilio_status --> DB_twilio_status[("messages<br/>status update")]
   o_twilio --> b_twilio
   b_twilio --> BUS
+  o_whop_billing --> b_whop_billing
+  b_whop_billing --> DB_whop_billing[("messages<br/>status update")]
 ```
 
 | adapter | direction | auth | emits | verified against a real payload? |
@@ -86,8 +90,9 @@ flowchart TB
 | `resend-events` | inbound webhook | `verifyResendSignature` (null) | — | yes |
 | `twilio-status` | inbound webhook | `verifyTwilioSignature` (HMAC-SHA1) | — | yes |
 | `twilio` | inbound webhook | `verifyTwilioSignature` (HMAC-SHA1) | `message.inbound` | yes |
+| `whop-billing` | inbound webhook | `verifyWhopSignature` (null) | — | yes |
 
-> ⚠️ 4 of 13 adapters still carry a `CONFIRM` banner in their header:
+> ⚠️ 4 of 14 adapters still carry a `CONFIRM` banner in their header:
 > `bland`, `clickfunnels`, `commas`, `lendflow`. Their field paths, header names or signature
 > schemes were written from documentation rather than from an observed payload. The boundary is drawn
 > here as the code intends it, which is not the same as how the vendor actually behaves.

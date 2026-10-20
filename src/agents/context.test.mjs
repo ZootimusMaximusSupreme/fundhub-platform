@@ -94,6 +94,15 @@ test("fetchContext includes open checklist step for the coach", async () => {
   assert.match(ctx.as_prompt_block, /Open checklist step/);
 });
 
+test("current step is the client's open job even when Fundhub has an earlier open job", async () => {
+  const ctx = await fetchContext(mockDb({ waypoints: [
+    { id: "ours", key: "prepare", title: "Prepare letters", position: 0, owner_kind: "fundhub", state: "in_progress" },
+    { id: "theirs", key: "mail", title: "Mail letters", position: 1, owner_kind: "client", state: "in_progress" }
+  ] }), { orgId: ORG, clientId: CLIENT });
+  assert.equal(ctx.checklist.open_step.id, "theirs");
+  assert.equal(ctx.checklist.open_step.owner, "client");
+});
+
 test("formatPromptBlock omits empty interview blocks", () => {
   const text = formatPromptBlock({
     client: { first_name: "Jane", last_name: "Doe" },

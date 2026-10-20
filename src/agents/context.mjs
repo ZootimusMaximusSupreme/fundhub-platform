@@ -311,7 +311,7 @@ export async function fetchContext(db, {
   }));
 
   const waypoints = await listWaypoints(db, { orgId, clientId });
-  const next = nextStepOf(waypoints);
+  const next = nextStepOf(waypoints.map((w) => ({ ...w, owner: w.owner_kind })));
   const openStepRow = next
     ? waypoints.find((w) => w.id === next.waypointId) || null
     : null;

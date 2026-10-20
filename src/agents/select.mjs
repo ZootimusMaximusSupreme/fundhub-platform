@@ -18,6 +18,7 @@
 
 const MESSAGING_CHANNELS = new Set(["sms", "email", "sms_email"]);
 const RUNNING = new Set(["live", "shadow"]);
+import { BLUEPRINT_COACH_CODE, isBlueprintCoachClient } from "../blueprint/coach.mjs";
 
 /* AGENTS THAT ANSWER ON THEIR OWN PATH, never through this runtime.
    FOS-01, the FinanceOS Money Helper (db/migrations/465), is a shadow sms
@@ -37,8 +38,9 @@ export function channelCompatible(agentChannel, inboundChannel) {
   return false;
 }
 
-export function isEligibleAgent(agent, inboundChannel) {
+export function isEligibleAgent(agent, inboundChannel, { blueprintScoped = false } = {}) {
   if (!agent) return false;
+  if (agent.code === BLUEPRINT_COACH_CODE && !blueprintScoped) return false;
   if (OWN_PATH_AGENT_CODES.includes(String(agent.code || "").trim().toUpperCase())) return false;
   if (!RUNNING.has(agent.status)) return false;
   if (agent.agent_class && agent.agent_class !== "client_facing") return false;
@@ -68,8 +70,8 @@ export async function selectAgent(db, {
   if (conversationId) {
     const { rows } = await db.query(
       `SELECT id, agent_code, agent_halted_at, agent_halt_reason
-         FROM conversations WHERE id = $1 AND org_id = $2`,
-      [conversationId, orgId]
+         FROM conversations WHERE id = $1 AND org_id = $2 AND client_id = $3`,
+      [conversationId, orgId, clientId]
     );
     convo = rows[0] || null;
   } else {
@@ -104,9 +106,16 @@ export async function selectAgent(db, {
 
   if (convo?.agent_code) {
     const a = await load(convo.agent_code);
+    if (convo.agent_code === BLUEPRINT_COACH_CODE) {
+      return isEligibleAgent(a, channel, { blueprintScoped: true }) && await isBlueprintCoachClient(db, { orgId, clientId })
+        ? { agent: a, reason: "blueprint_coach", conversationId: convo.id }
+        : { agent: null, reason: "blueprint_coach_unavailable", conversationId: convo.id };
+    }
     if (isEligibleAgent(a, channel)) {
       return { agent: a, reason: "conversation_assigned", conversationId: convo.id };
     }
+    // An explicit staff choice must not silently become another agent.
+    return { agent: null, reason: "no_eligible_agent", conversationId: convo.id };
   }
 
   const convoId = convo?.id || conversationId;
@@ -115,11 +124,12 @@ export async function selectAgent(db, {
       `SELECT sender_agent_code
          FROM messages
         WHERE conversation_id = $1
+          AND org_id = $2 AND client_id = $3
           AND sender_kind = 'agent'
           AND sender_agent_code IS NOT NULL
         ORDER BY created_at DESC
         LIMIT 1`,
-      [convoId]
+      [convoId, orgId, clientId]
     );
     if (rows[0]?.sender_agent_code) {
       const a = await load(rows[0].sender_agent_code);
@@ -127,6 +137,15 @@ export async function selectAgent(db, {
         return { agent: a, reason: "last_agent_sender", conversationId: convoId };
       }
     }
+  }
+
+  // This identity is never a global channel fallback. Paid + active access
+  // and org/client identity are established before it owns an unassigned SMS.
+  const coach = await load(BLUEPRINT_COACH_CODE);
+  if (coach?.code === BLUEPRINT_COACH_CODE && await isBlueprintCoachClient(db, { orgId, clientId })) {
+    return isEligibleAgent(coach, channel, { blueprintScoped: true })
+      ? { agent: coach, reason: "blueprint_coach", conversationId: convoId || null }
+      : { agent: null, reason: "blueprint_coach_unavailable", conversationId: convoId || null };
   }
 
   const { rows: candidates } = await db.query(

@@ -15,7 +15,7 @@ const CLIENT = '22222222-2222-4222-8222-222222222222';
 const PRODUCT = '33333333-3333-4333-8333-333333333333';
 const LINK = '44444444-4444-4444-8444-444444444444';
 const ENV = { WHOP_API_KEY: 'test-only-key', WHOP_ACCOUNT_ID: 'biz_test',
-  WHOP_CONSULTING_PACKAGE_PRODUCT_ID: 'prod_test', WHOP_WEBHOOK_SECRET: 'ws_test' };
+  WHOP_CONSULTING_PACKAGE_PRODUCT_ID: 'prod_test', WHOP_WEBHOOK_SECRET: 'ws_test', ADAPTERS_DRY_RUN: '0' };
 const cfg = whopConfig(ENV);
 const NOW = Date.parse('2026-10-20T17:00:00Z');
 const linkOf = (over = {}) => ({ id: LINK, org_id: ORG, client_id: CLIENT, product_id: PRODUCT,
@@ -153,7 +153,7 @@ test('provider checkout response and variant must match exact amount, product an
   for (const over of [{ product: { id: 'prod_wrong' } }, { account: { id: 'biz_other' } },
     { initial_price: 5000 }, { currency: 'eur' }, { plan_type: 'renewal' }]) {
     await assert.rejects(verifyWhopCheckout(checkoutOf(link), cfg, link, {
-      fetchImpl: async () => response(variantOf(over)) }), /does not match/);
+      env: ENV, fetchImpl: async () => response(variantOf(over)) }), /does not match/);
   }
 });
 
@@ -308,10 +308,25 @@ test('reconciliation heals provider-created checkout after interrupted local res
 });
 
 test('provider errors are redacted and repeated pagination cursor fails visibly', async () => {
-  await assert.rejects(whopRequest('/payments', { apiKey: 'test', fetchImpl: async () => response({ error: { message: 'SECRET_CUSTOMER_DATA' } }, 401) }),
+  await assert.rejects(whopRequest('/payments', { apiKey: 'test', env: ENV, fetchImpl: async () => response({ error: { message: 'SECRET_CUSTOMER_DATA' } }, 401) }),
     (err) => err.code === 'whop_checkout_failed' && !err.message.includes('SECRET'));
-  await assert.rejects(listWhopResource('payments', { accountId: 'biz_test', apiKey: 'test',
+  await assert.rejects(listWhopResource('payments', { accountId: 'biz_test', apiKey: 'test', env: ENV,
     fetchImpl: async () => response({ data: [], page_info: { has_next_page: true, end_cursor: 'same' } }) }), /did not advance/);
+});
+
+test('Whop checkout cannot bypass the adapter fence even with an injected transport', async () => {
+  let calls = 0;
+  const fetchImpl = async () => { calls += 1; return response({ id: 'ch_test' }); };
+  for (const env of [{}, { ADAPTERS_DRY_RUN: '1' }, { ADAPTERS_DRY_RUN: 'unknown' }]) {
+    await assert.rejects(whopRequest('/checkout_configurations', {
+      apiKey: 'test', method: 'POST', body: { mode: 'payment' }, env, fetchImpl
+    }), /held by adapter fence/);
+  }
+  assert.equal(calls, 0, 'held checkout must never reach even the fake provider');
+  assert.deepEqual(await whopRequest('/checkout_configurations', {
+    apiKey: 'test', method: 'POST', body: { mode: 'payment' }, env: ENV, fetchImpl
+  }), { id: 'ch_test' });
+  assert.equal(calls, 1);
 });
 
 test('inbox claims use atomic skip-locked recovery and bounded attempts', async () => {

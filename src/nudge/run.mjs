@@ -68,7 +68,7 @@
 import { db as defaultDb } from "../db.mjs";
 import { emit } from "../events/bus.mjs";
 import { createTask } from "../lib/create-task.mjs";
-import { sendTemplated as defaultSend } from "../workflows/messaging.mjs";
+import { sendBlueprintCoachNudge as defaultSend, blueprintCoachNudgeEligibility } from "../blueprint/coach-nudge.mjs";
 import { STEPS, FINAL_STEP, dueStep, stepFor } from "./ladder.mjs";
 import { blockersFor, contactFor, BOUGHT_STATUSES, PENDING_PAYMENT_STATUSES, CHASEABLE_STATES } from "./exits.mjs";
 import { CHECKOUT_LINK_TTL_DAYS } from "../paid-services/link-ttl.mjs";
@@ -627,6 +627,14 @@ export async function deliverNudge(db, candidate, { now = new Date(), send = def
     return { waypointId, step: step.step, action: "staff_task", taskId: task.id };
   }
 
+  // Blueprint eligibility is checked BEFORE claiming the rung. Draft agents
+  // and later (not-current) steps must remain eligible for a future real turn.
+  const coachEligible = await blueprintCoachNudgeEligibility(db, {
+    orgId: candidate.orgId, clientId: candidate.clientId, channel: step.channel,
+    templateKey: step.templateKey, context: { waypoint: { key: candidate.key || "" } }
+  });
+  if (!coachEligible.ok) return { waypointId, step: step.step, action: "skipped", reasons: [coachEligible.reason] };
+
   /* ── QUIET HOURS, IN THE CLIENT'S OWN ZONE ──────────────────────────────
      Nothing is claimed and nothing is written. The rung stays unspent and the
      next pass inside their daytime picks it up. A message held is a message
@@ -742,6 +750,16 @@ export async function deliverNudge(db, candidate, { now = new Date(), send = def
       waypointId, step: step.step, action: "queued",
       channel: step.channel, messageId: result.messageId || null, localDay, zone
     };
+  }
+
+  if (result?.retryable === true) {
+    // The Blueprint adapter sets this only before any message INSERT/provider
+    // call. Release this owner's unresolved claim so approval/step changes can
+    // recover. A queued or concurrently resolved claim can never be deleted.
+    await db.query(`DELETE FROM waypoint_nudges
+      WHERE id = $1 AND outcome = 'claimed' AND message_id IS NULL`, [claimId]);
+    return { waypointId, step: step.step, action: "skipped", channel: step.channel,
+      reasons: [String(result.reason || "blueprint_not_ready")] };
   }
 
   /* NOTHING WAS QUEUED, SO THE DAY IS GIVEN BACK. The rung stays spent — a step

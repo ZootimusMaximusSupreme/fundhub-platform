@@ -73,12 +73,12 @@ export function validateWhopCheckout(out, cfg, link) {
   return out;
 }
 
-export async function verifyWhopCheckout(out, cfg, link, { fetchImpl = fetch } = {}) {
+export async function verifyWhopCheckout(out, cfg, link, { env = process.env, fetchImpl = fetch } = {}) {
   validateWhopCheckout(out, cfg, link);
   // The checkout response's embedded plan omits product/account identity.
   // Read the documented variant resource before exposing or recovering its URL.
   // https://docs.whop.com/api-reference/beta/variants/retrieve-variant
-  const variant = await whopRequest(`/variants/${out.plan.id}`, { apiKey: cfg.apiKey, fetchImpl });
+  const variant = await whopRequest(`/variants/${out.plan.id}`, { apiKey: cfg.apiKey, env, fetchImpl });
   if (variant.id !== out.plan.id || variant.account?.id !== cfg.accountId
     || variant.product?.id !== cfg.productId || variant.currency !== 'usd'
     || variant.plan_type !== 'one_time' || variant.title !== WHOP_BLUEPRINT_TITLE
@@ -122,8 +122,8 @@ export async function createWhopBlueprintPaymentLink(db, {
   )).rows[0];
   const out = await verifyWhopCheckout(await whopRequest('/checkout_configurations', {
     apiKey: cfg.apiKey, method: 'POST', body: buildWhopBlueprintCheckout(saved, cfg),
-    idempotencyKey: `whop-blueprint:${id}`, fetchImpl
-  }), cfg, saved, { fetchImpl });
+    idempotencyKey: `whop-blueprint:${id}`, env, fetchImpl
+  }), cfg, saved, { env, fetchImpl });
   const result = await db.query(
     `UPDATE payment_links SET checkout_url = $2, whop_checkout_configuration_id = $3,
        whop_plan_id = $4 WHERE id = $1 AND provider = 'whop' RETURNING *`,

@@ -25,13 +25,16 @@ const ENV = { WHOP_API_KEY: 'pg-test-only', WHOP_ACCOUNT_ID: 'biz_pgtest',
 const pool = safe ? new pg.Pool({ connectionString, max: 3, connectionTimeoutMillis: 5000 }) : null;
 after(async () => { clearHandlers(); if (pool) await pool.end(); });
 
-test('Whop receipt reaches real canonical transaction, sale payment and entitlement exactly once', options, async () => {
+for (const amountCents of [500000, 750000, 1000000]) {
+test(`Whop $${amountCents / 100} receipt reaches real canonical transaction, sale payment and entitlement exactly once`, options, async () => {
   const db = await pool.connect();
   await db.query('BEGIN');
   try {
     clearHandlers(); registerLifecycle(); registerMoney();
-    const org = (await db.query('SELECT id FROM orgs ORDER BY id LIMIT 1')).rows[0]?.id;
-    assert.ok(org, 'scratch migrations must seed an org');
+    // Product/catalog seeds are default-org only. Other PG fixtures can leave
+    // additional orgs behind; UUID ordering is not a product identity.
+    const org = (await db.query('SELECT id FROM orgs WHERE is_default ORDER BY id LIMIT 1')).rows[0]?.id;
+    assert.ok(org, 'scratch migrations must seed the default org');
     const product = (await db.query(`SELECT id FROM products WHERE org_id = $1 AND code = 'consulting-package'`, [org])).rows[0];
     assert.ok(product, 'real Blueprint product mapping must be migrated');
     const client = (await db.query(`INSERT INTO clients (org_id, email, first_name, last_name)
@@ -41,23 +44,29 @@ test('Whop receipt reaches real canonical transaction, sale payment and entitlem
     const link = (await db.query(`INSERT INTO payment_links (id, org_id, client_id, purpose,
       description, amount_cents, currency, link_ref, checkout_url, provider, product_id,
       whop_checkout_configuration_id, whop_plan_id)
-      VALUES ($1,$2,$3,'custom','Consulting Services Package',750000,'USD',$4,
+      VALUES ($1,$2,$3,'custom','Consulting Services Package',$6,'USD',$4,
         'https://whop.com/checkout/ch_pgtest/','whop',$5,'ch_pgtest','plan_pgtest') RETURNING *`,
-    [id, org, client, `whop-pg-${randomUUID()}`, product.id])).rows[0];
+    [id, org, client, `whop-pg-${randomUUID()}`, product.id, amountCents])).rows[0];
     const body = { account_id: 'biz_pgtest', type: 'payment.succeeded', data: {
       id: paymentId, account_id: 'biz_pgtest', checkout_configuration_id: 'ch_pgtest',
       plan_id: 'plan_pgtest', product_id: 'prod_pgtest', status: 'paid', currency: 'usd',
-      total: { amount: '7500.00', currency: 'usd', decimals: 2 }, metadata: whopBlueprintMetadata(link),
+      total: { amount: (amountCents / 100).toFixed(2), currency: 'usd', decimals: 2 }, metadata: whopBlueprintMetadata(link),
       line_items: [{ quantity: 1, plan_id: 'plan_pgtest', product_id: 'prod_pgtest' }], paid_at: new Date().toISOString()
     } };
     const row = { org_id: org, account_id: 'biz_pgtest', raw_body: JSON.stringify(body) };
     const deps = { env: ENV, emit: (db, name, payload, opts) => emit(db, name, payload, { ...opts, skipInngest: true }) };
+    const rejected = structuredClone(body);
+    rejected.data.total.amount = ((amountCents - 1) / 100).toFixed(2);
+    await assert.rejects(processWhopBillingInboxRow({ ...row, raw_body: JSON.stringify(rejected) }, db, deps), /amount mismatch/);
+    assert.equal(Number((await db.query(`SELECT count(*) AS n FROM transactions
+      WHERE org_id = $1 AND provider_ref = $2`, [org, paymentId])).rows[0].n), 0,
+    'an unmatched amount must not create a payment or grant access');
     await processWhopBillingInboxRow(row, db, deps);
     await processWhopBillingInboxRow(row, db, deps);
     const transaction = (await db.query(`SELECT id, amount_paid, provider FROM transactions
       WHERE org_id = $1 AND provider_ref = $2`, [org, paymentId])).rows;
     assert.equal(transaction.length, 1);
-    assert.equal(Number(transaction[0].amount_paid), 7500);
+    assert.equal(Number(transaction[0].amount_paid), amountCents / 100);
     assert.equal(transaction[0].provider, 'whop');
     assert.equal(Number((await db.query(`SELECT count(*) AS n FROM sale_payments
       WHERE org_id = $1 AND transaction_id = $2`, [org, transaction[0].id])).rows[0].n), 1);
@@ -76,6 +85,7 @@ test('Whop receipt reaches real canonical transaction, sale payment and entitlem
     assert.equal((await db.query(WHOP_ACCESS_SQL, [org, new Date(Date.now() + 600000)])).rows[0].n, 0);
   } finally { await db.query('ROLLBACK'); db.release(); clearHandlers(); }
 });
+}
 
 test('real Whop inbox unique constraint absorbs redelivery and claims never repeat the active row', options, async () => {
   const db = await pool.connect();

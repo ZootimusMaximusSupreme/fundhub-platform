@@ -14,13 +14,13 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
   if (!links.length) return { ok: true, recovered: 0, checked: 0 };
   if (links.some((link) => !link.whop_checkout_configuration_id)) {
     const checkouts = await listWhopResource('checkout_configurations', {
-      accountId: cfg.accountId, apiKey: cfg.apiKey, fetchImpl });
+      accountId: cfg.accountId, apiKey: cfg.apiKey, env, fetchImpl });
     for (const link of links.filter((item) => !item.whop_checkout_configuration_id)) {
       const expected = whopBlueprintMetadata(link);
       const out = checkouts.find((item) => Object.entries(expected)
         .every(([key, value]) => item.metadata?.[key] === value));
       if (!out) continue;
-      await verifyWhopCheckout(out, cfg, link, { fetchImpl });
+      await verifyWhopCheckout(out, cfg, link, { env, fetchImpl });
       await db.query(`UPDATE payment_links SET checkout_url = $2,
         whop_checkout_configuration_id = $3, whop_plan_id = $4
         WHERE id = $1 AND provider = 'whop' AND whop_checkout_configuration_id IS NULL`,
@@ -30,7 +30,7 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
     }
   }
   const payments = await listWhopResource('payments', { accountId: cfg.accountId,
-    apiKey: cfg.apiKey, query: { product_id: cfg.productId }, fetchImpl });
+    apiKey: cfg.apiKey, query: { product_id: cfg.productId }, env, fetchImpl });
   let recovered = 0;
   const matchedPayments = new Map();
   for (const payment of payments) {
@@ -50,7 +50,7 @@ export async function reconcileWhopBilling(db, { env = process.env, fetchImpl = 
   // Refunds and disputes can be the first delivery to go missing too. Keep the
   // original payment lookup above so out-of-order reversals can wait safely.
   for (const [resource, type] of [['refunds', 'refund.updated'], ['disputes', 'dispute.created']]) {
-    const reversals = await listWhopResource(resource, { accountId: cfg.accountId, apiKey: cfg.apiKey, fetchImpl });
+    const reversals = await listWhopResource(resource, { accountId: cfg.accountId, apiKey: cfg.apiKey, env, fetchImpl });
     for (const reversal of reversals) {
       const paymentId = reversal.payment_id || reversal.payment?.id;
       const link = matchedPayments.get(paymentId)

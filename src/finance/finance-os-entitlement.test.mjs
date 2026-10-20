@@ -73,6 +73,8 @@ describe("financeOsEntitlement", () => {
     const [{ text, params }] = db.calls;
     assert.match(text, /effective_from\s*<=\s*\$4/);
     assert.match(text, /effective_to IS NULL OR effective_to\s*>\s*\$4/);
+    assert.match(text, /current_period_start IS NULL OR current_period_start <= \$4/);
+    assert.match(text, /current_period_end IS NULL OR current_period_end > \$4/);
     assert.deepEqual(params[3], new Date("2026-01-01"));
   });
 

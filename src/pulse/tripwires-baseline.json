@@ -73,7 +73,6 @@
   "job:f-10-client-funding-inbox-provisioner",
   "job:f-11-bank-email-event-router",
   "job:finance-os-money-agent",
-  "job:finance-os-pull-sweeper",
   "job:finance-os-trend-snapshots",
   "job:hiring-bench-sweeper",
   "job:hiring-outreach-cadence",

@@ -22,6 +22,10 @@ import {
 import { callModel } from "./model.mjs";
 import { composeAgentReply } from "./reply.mjs";
 import { recordShadow, recordRun } from "./shadow-log.mjs";
+import {
+  BLUEPRINT_COACH_CODE, prepareBlueprintCoachTurn, parseBlueprintCoachReply,
+  applyBlueprintCoachAction, blueprintCoachQuestion
+} from "../blueprint/coach.mjs";
 
 /**
  * handleInbound(event, db, options?) — core entry. Exported for tests.
@@ -94,8 +98,8 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
   if (inboundRef) {
     const { rows } = await db.query(
       `SELECT id, conversation_id FROM messages
-        WHERE org_id = $1 AND provider_ref = $2 LIMIT 1`,
-      [orgId, inboundRef]
+        WHERE org_id = $1 AND provider_ref = $2 AND client_id = $3 LIMIT 1`,
+      [orgId, inboundRef, clientId]
     );
     inboundMessageId = rows[0]?.id || null;
     conversationId = rows[0]?.conversation_id || null;
@@ -168,12 +172,14 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     };
   }
 
-  const context = await fetchContext(db, {
-    orgId, clientId, conversationId, channel
-  });
+  const coachTurn = agent.code === BLUEPRINT_COACH_CODE
+    ? await prepareBlueprintCoachTurn(db, { orgId, clientId, conversationId, channel }) : null;
+  if (coachTurn && !coachTurn.ok) return { ok: true, reason: coachTurn.reason, agent: agent.code };
+  const context = coachTurn?.context || await fetchContext(db, { orgId, clientId, conversationId, channel });
 
   const system = [
     agent.prompt || "",
+    coachTurn?.instructions || "",
     "",
     "---",
     context.as_prompt_block,
@@ -242,8 +248,13 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     return { ok: true, reason: "empty_model_reply", agent: agent.code };
   }
 
+  const coachReply = coachTurn ? parseBlueprintCoachReply(modelResult.text) : null;
+  if (coachReply && !coachReply.ok) return { ok: true, reason: coachReply.reason, agent: agent.code, blocked: true };
+  const coachQuestion = coachReply ? blueprintCoachQuestion(coachReply.intent, coachTurn.context) : null;
+  if (coachQuestion && !coachQuestion.ok) return { ok: true, reason: coachQuestion.reason, agent: agent.code, blocked: true };
+  let replyBody = coachQuestion?.text || modelResult.text;
   const outboundCheck = checkOutbound({
-    draft: modelResult.text,
+    draft: replyBody,
     guardrails: agent.guardrails
   });
   if (!outboundCheck.ok) {
@@ -263,13 +274,34 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     };
   }
 
+  if (coachReply?.action) {
+    const action = await applyBlueprintCoachAction(db, {
+      orgId, clientId, conversationId, channel, eventId: inboundRef || inboundMessageId || event.id,
+      inboundBody: String(body), agent
+    }, coachReply.action);
+    let nextQuestion = coachQuestion.text;
+    if (action.ok && action.verification?.completed?.length) {
+      // Evidence can advance the checklist. Never ask for proof on the step
+      // the real verifier just closed; choose from the newly saved file.
+      const current = await prepareBlueprintCoachTurn(db, { orgId, clientId, conversationId, channel });
+      if (!current.ok) return { ok: true, reason: current.reason, agent: agent.code, blocked: true };
+      const next = blueprintCoachQuestion("ask_progress", current.context);
+      nextQuestion = next.ok ? next.text : blueprintCoachQuestion("ask_advisor", current.context).text;
+    }
+    // Failed writes never inherit the model's claims of success.
+    replyBody = action.ok ? `${action.message || ""}\n${nextQuestion}`.trim()
+      : "Your request could not be saved. Please try again or contact your advisor.";
+    const finalCheck = checkOutbound({ draft: replyBody, guardrails: agent.guardrails });
+    if (!finalCheck.ok) return { ok: true, reason: finalCheck.reason, agent: agent.code, blocked: true };
+  }
+
   const reply = await composeAgentReply(db, {
     orgId,
     agentCode: agent.code,
     clientId,
     conversationId,
     channel,
-    body: modelResult.text,
+    body: replyBody,
     subject: channel === "email" ? `Re: ${p.subject || "your message"}` : null,
     idempotencyKey: inboundRef || inboundMessageId || `${event.id}`
   }, { ...dispatchOptions, env, now, fetchImpl });

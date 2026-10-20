@@ -46,6 +46,6 @@ export async function handle({ db: handleDb = db, step } = {}) {
 }
 
 export const whopBillingInboxDrain = inngest.createFunction(
-  { id: SOURCE_WORKFLOW, name: 'Whop Blueprint payment recovery' },
+  { id: 'whop-billing-inbox-drain', name: 'Whop Blueprint payment recovery' },
   { cron: SWEEP_CRON }, handle);
 export default sweepWhopBillingInbox;

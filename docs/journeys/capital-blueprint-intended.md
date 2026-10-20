@@ -5,7 +5,8 @@ Owner instructions: Chris's 2026-10-20 request in the $5,000–$10,000 readiness
 ## Offer and roles
 
 - The closer selects one exact whole-dollar price from $5,000 through $10,000, default $5,000. Product remains `consulting-package`, offer `UWIQ_DELIVERABLES`, provider title `Consulting Services Package`.
-- The offer includes 12 months. Any monthly member fee after that remains unset and must not be invented or charged automatically.
+- Owner confirmed 2026-10-20: every allowed price buys the same 12-month package; the closer chooses the price. Higher prices do not create extra service tiers.
+- The offer includes 12 months. Owner confirmed 2026-10-20: service ends unless the client separately agrees to renew; no automatic renewal or charge.
 - The AI accountability coach reads and maintains the client's progress and conversation context. The human CSM is the assigned advisor; client-facing language is "advisor". An AI identity must never be presented as the assigned human.
 - Routine check-ins can use SMS and Bland calls. Existing opt-outs, quiet hours, contact caps, approved prompts and outbound settings still apply. A queued send is not a delivered message or completed call.
 - The offer guides the client toward being fundable. It does not promise a funding amount or a funding approval.

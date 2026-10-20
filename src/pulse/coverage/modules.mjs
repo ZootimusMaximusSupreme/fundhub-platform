@@ -47,7 +47,6 @@ export const SLICE_FILES = Object.freeze([
 ]);
 
 export const GAP_FILES = Object.freeze([
-  ["gap-whop-billing.mjs", () => import("./gap-whop-billing.mjs")],
   ["gap-ads-meta.mjs", () => import("./gap-ads-meta.mjs")],
   ["gap-ads.mjs", () => import("./gap-ads.mjs")],
   ["gap-ai-agents.mjs", () => import("./gap-ai-agents.mjs")],
@@ -55,6 +54,7 @@ export const GAP_FILES = Object.freeze([
   ["gap-auth.mjs", () => import("./gap-auth.mjs")],
   ["gap-bank-links.mjs", () => import("./gap-bank-links.mjs")],
   ["gap-banks.mjs", () => import("./gap-banks.mjs")],
+  ["gap-blueprint.mjs", () => import("./gap-blueprint.mjs")],
   ["gap-brain.mjs", () => import("./gap-brain.mjs")],
   ["gap-built-funnels.mjs", () => import("./gap-built-funnels.mjs")],
   ["gap-calls.mjs", () => import("./gap-calls.mjs")],
@@ -120,5 +120,6 @@ export const GAP_FILES = Object.freeze([
   ["gap-trip-repair.mjs", () => import("./gap-trip-repair.mjs")],
   ["gap-trip-roadmap.mjs", () => import("./gap-trip-roadmap.mjs")],
   ["gap-underwrite.mjs", () => import("./gap-underwrite.mjs")],
-  ["gap-webhooks.mjs", () => import("./gap-webhooks.mjs")]
+  ["gap-webhooks.mjs", () => import("./gap-webhooks.mjs")],
+  ["gap-whop-billing.mjs", () => import("./gap-whop-billing.mjs")]
 ]);

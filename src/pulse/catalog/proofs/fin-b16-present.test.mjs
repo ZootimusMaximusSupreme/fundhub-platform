@@ -131,7 +131,7 @@ test("Other actions opens a second row of actions on the close slide and Hide th
     for (const word of ["Invoice this client", "Send contract", "Repair referral"]) {
       assert.ok(!deck.text().includes(word), `${word} stays out of sight until Other actions is pressed`);
     }
-    assert.ok(deck.text().includes("Send agreement + pay link"), "the one leading action is always there");
+    assert.ok(deck.text().includes("Send pay link"), "the one leading action is always there");
     deck.click("more");
     assert.equal(deck.label("more"), "Hide the other actions");
     for (const word of ["Invoice this client", "Send contract", "Repair referral"]) assert.ok(deck.text().includes(word), word);
@@ -141,7 +141,7 @@ test("Other actions opens a second row of actions on the close slide and Hide th
     deck.click("more");
     assert.equal(deck.label("more"), "Other actions");
     assert.ok(!deck.text().includes("Invoice this client"));
-    assert.ok(deck.text().includes("Send agreement + pay link"));
+    assert.ok(deck.text().includes("Send pay link"));
     assert.deepEqual(deck.writes, [], "opening and closing a row sends nothing");
   });
 });
