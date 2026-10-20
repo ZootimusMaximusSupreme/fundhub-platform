@@ -1,6 +1,8 @@
 // COMPLIANCE REVIEW REQUIRED — closer-deck pay link, letters, disposition.
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { formatCents } from "../config/offers.mjs";
 import readCloserDeck, { CLOSER_DECK_ROLES } from "../../api/read/closer-deck.mjs";
 import closerDeckWrite from "../../api/closer-deck.mjs";
 
@@ -56,7 +58,8 @@ async function post(body, opts = {}) {
     res,
     {
       db: opts.db ?? dbWithClient(),
-      requireAuth: opts.requireAuth ?? (async () => staff(role, opts.orgId))
+      requireAuth: opts.requireAuth ?? (async () => staff(role, opts.orgId)),
+      env: opts.env
     }
   );
   return res;
@@ -105,6 +108,46 @@ describe("GET /api/read/closer-deck", () => {
 });
 
 describe("POST /api/closer-deck", () => {
+  test("the Blueprint endpoint forwards the exact custom amount and refuses invalid overrides", async () => {
+    let captured;
+    let agreedCents = 500000;
+    const db = {
+      async query(sql, params) {
+        if (/FROM contracts/.test(sql)) {
+          const fee = formatCents(agreedCents);
+          const rendered_body = "Capital Blueprint tuition " + fee;
+          return { rows: [{ id: "agreement-blueprint", status: "sent", merge_values: { package_fee: fee },
+            rendered_body, body_sha: "sha256:" + createHash("sha256").update(rendered_body).digest("hex") }] };
+        }
+        if (/SELECT 1 FROM clients/.test(sql)) return { rows: [{ exists: 1 }] };
+        if (/FROM products/.test(sql)) return { rows: [{ id: "blueprint-product", code: "consulting-package" }] };
+        if (/INSERT INTO payment_links/.test(sql)) {
+          captured = params;
+          throw new Error("test_checkout_captured");
+        }
+        return { rows: [] };
+      }
+    };
+    const env = { COMMAS_CHECKOUT_BASE_URL: "https://pay.example/checkout" };
+    const base = { action: "send_pay_link", client_id: CID, offer_key: "UWIQ_DELIVERABLES", sale_motion: "upsell" };
+    for (const cents of [500000, 750000, 1000000]) {
+      captured = null;
+      agreedCents = cents;
+      const res = await post({ ...base, amount_cents: cents }, { db, env });
+      assert.equal(res.body.message, "test_checkout_captured");
+      assert.equal(captured[4], cents);
+    }
+    for (const amount_cents of [499999, 1000001, 750001, "750000", null]) {
+      captured = null;
+      const res = await post({ ...base, amount_cents }, { db, env });
+      assert.equal(res.statusCode, 400);
+      assert.equal(res.body.error, "invalid_offer_amount");
+      assert.equal(captured, null);
+    }
+    const fixed = await post({ ...base, offer_key: "REPAIR_DFY", amount_cents: 100000 }, { db, env });
+    assert.equal(fixed.body.error, "invalid_offer_amount");
+  });
+
   let savedEnv;
   beforeEach(() => {
     savedEnv = process.env.COMMAS_CHECKOUT_BASE_URL;

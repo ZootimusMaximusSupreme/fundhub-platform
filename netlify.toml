@@ -197,6 +197,9 @@
 [functions."commas-inbox-sweeper"]
   schedule = "* * * * *"
 
+[functions."whop-billing-inbox-sweeper"]
+  schedule = "* * * * *"
+
 # The marketing machine's clock (spec docs/specs/marketing-machine-2026-10-04.md §6
 # Step 4). Every 15 minutes it reads the database, writes the 'clock' heartbeat and
 # wakes netlify/functions/marketing-worker-background.mjs when work waits. All real

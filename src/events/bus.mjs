@@ -109,7 +109,7 @@ export async function replay(db, filter = {}) {
 
    `throwOnHandlerError` restores the old behaviour for tests and for the replay
    validator, which wants a failing handler to be loud rather than absorbed. */
-async function dispatch(db, event, { throwOnHandlerError = false } = {}) {
+export async function dispatch(db, event, { throwOnHandlerError = false } = {}) {
   const handlers = getHandlers(event.name);
   const failures = [];
   let recorded = 0;

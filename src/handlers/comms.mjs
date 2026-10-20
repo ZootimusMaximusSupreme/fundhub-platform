@@ -34,6 +34,7 @@ import { addTags } from "../workflows/tags.mjs";
 import { mergeCustomFields } from "../workflows/custom-fields.mjs";
 import { advanceCardToStage } from "../workflows/cards.mjs";
 import { threadMessage as threadStoredMessage } from "../conversations/store.mjs";
+import { completedCallBody } from "../lib/outbound-calls.mjs";
 // One phone-matching rule for the whole repo — see the note on the export.
 import { phoneCandidates } from "../mail/suppression.mjs";
 import { clientIdForRepPhone } from "../auth/authorized-rep.mjs";
@@ -255,12 +256,17 @@ export async function onCallCompleted(event, db) {
   if (p.disposition === "closer") return;
   const clientId = event.clientId || null;
   const providerRef = p.callId || null;
+  const transcript = typeof p.transcript === "string" && p.transcript.trim() ? p.transcript.trim() : null;
+  const body = completedCallBody(p);
   const ins = await db.query(
     `INSERT INTO messages (org_id, client_id, direction, channel, rendered_body, provider, provider_ref, status)
      VALUES ($1,$2,'outbound','voice',$3,$4,$5,$6)
-     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO NOTHING
+     ON CONFLICT (org_id, provider_ref) WHERE provider_ref IS NOT NULL DO UPDATE
+       SET rendered_body = CASE WHEN $7::text IS NOT NULL THEN EXCLUDED.rendered_body
+                                ELSE COALESCE(messages.rendered_body, EXCLUDED.rendered_body) END
+       WHERE messages.client_id IS NOT DISTINCT FROM EXCLUDED.client_id
      RETURNING id, created_at`,
-    [event.orgId, clientId, p.disposition || null, p.source || "bland", providerRef, p.status || "completed"]
+    [event.orgId, clientId, body, p.source || "bland", providerRef, p.status || "completed", transcript]
   );
   await threadMessage(db, {
     orgId: event.orgId,
