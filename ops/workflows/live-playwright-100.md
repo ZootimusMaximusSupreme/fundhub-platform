@@ -43,3 +43,20 @@ Target: `https://fundhub.ai`. These seven required cases use shipped assets with
 | DP07 | All seven changed live assets match release bytes | Pending deployment |
 
 Command: `node node_modules/@playwright/test/cli.js test --config=playwright.dashboard-polish-live.config.mjs`. JSON and marked screenshots are saved under `ops/workflows/dashboard-ux-polish/evidence/live-results.json`; screenshots use fictional fixture data. The agent's signed-in live click path follows a 7/7 score.
+
+## Astra CRM rollout — separate UI release scope, 2026-10-20
+
+Target: `https://fundhub.ai`. These36 required checks use actual shipped HTML/JS/CSS and fictional intercepted API data in new no-cookie browser contexts. No local app-asset substitution, customer action, send, account connection or payment is allowed. This is a shipped-UI geometry score, not a59-page end-to-end business-journey score, native-wrapper proof or physical-iPhone test. The pre-existing seven dashboard-polish checks above remain separately required.
+
+| IDs | Required check | State |
+| --- | --- | --- |
+| AS01 | Every changed public release asset matches this release byte-for-byte against the fixed pre-rollout main baselinef1490ce9d | Not run; awaiting release |
+| AS02–AS08 | Team & Access: readable visible text/inputs,44px targets and no page overflow across the seven profiles below | Not run; awaiting release |
+| AS09–AS15 | Client portal: same seven-profile geometry requirements | Not run; awaiting release |
+| AS16–AS22 | My Money: same seven-profile geometry requirements | Not run; awaiting release |
+| AS23–AS29 | Affiliate: same seven-profile geometry requirements | Not run; awaiting release |
+| AS30–AS36 | Pipeline: same seven-profile geometry requirements | Not run; awaiting release |
+
+Profiles, in ID order within each group:390px Chromium, Pro Max WebKit440 portrait, Pro Max WebKit landscape,768px Chromium,1024px Chromium,1280px Mac WebKit and1440px Chromium. These are browser profiles, not actual device runs. Expanded-state and authored/independent local checks are recorded on `crm-astra-rollout-2026-10-20.md`, not silently counted here.
+
+Command: `node ops/workflows/crm-astra-rollout/responsive-review.mjs --live-deployed` (without `--pages`, which would only be a partial run). It refuses empty/mismatching release assets before claiming live UI success. Byte receipts, exact per-case results, denied/unexpected-write records and marked screenshots go to `ops/workflows/crm-astra-rollout/evidence/live-responsive/`. All required cases must pass in one complete release run for36/36 =100/100. Final signed-in read-only live navigation follows the scoped live UI checks; it does not prove money/customer event order.

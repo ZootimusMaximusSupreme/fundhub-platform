@@ -129,6 +129,11 @@ body.fh-astra--journeys .canvas{padding:32px 24px 128px}
 body.fh-astra--journeys :is(.hbtn,.ptab){font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none;border-radius:8px}
 body.fh-astra--journeys .hactions{gap:8px;flex-wrap:wrap}
 body.fh-astra--journeys .pbody{padding:24px}
+/* The report's old 56px chip clearance put Close underneath the taller shared
+   header (z80). Inset the entire scrollport, so its sticky heading also stays
+   below the header after scrolling; do not out-stack or move the shell. */
+body.fh-astra--journeys #runout{top:calc(var(--fh-workspace-header-h,72px) + 32px)}
+body.fh-astra--journeys .jr-rcard{padding-top:16px}
 body.fh-astra--automations .summary-bar{margin:24px}
 body.fh-astra--automations .sum-label{font-size:var(--fs-caption);font-family:var(--sans);letter-spacing:0;text-transform:none}
 body.fh-astra--automations .sum-value{font-size:var(--fs-metric);font-family:var(--sans);font-weight:750}
@@ -228,6 +233,13 @@ body.fh-astra--present .ck-btn{min-height:44px}
   body.fh-astra--my-numbers :is(.numbers-shell,.numbers-toolbar),
   body.fh-astra--sales-floor :is(.sf-toolbar,#fh-floor-main){padding:24px 16px}
   body.fh-astra--my-numbers .numbers-shell{padding-top:0}
+  /* Nested summaries already use the grid gap: do not add the section margin
+     a second time. Keep next work visible when the phone header wraps. */
+  body.fh-astra--my-numbers .numbers-overview{gap:16px}
+  body.fh-astra--my-numbers .numbers-overview>.sec{margin-bottom:0}
+  body.fh-astra--my-numbers .numbers-toolbar{padding-block:16px}
+  body.fh-astra--my-numbers .pace{padding:16px;min-height:0}
+  body.fh-astra--my-numbers .numbers-target{margin-top:16px}
   body.fh-astra--ops-admin :is(.zonetabs,.zone){padding-inline:16px}
   body.fh-astra--inquiry-remover :is(.desk-toggle,.stat-head,.section){padding-inline:16px}
   body.fh-astra--morning-brief .tiles{grid-template-columns:1fr}

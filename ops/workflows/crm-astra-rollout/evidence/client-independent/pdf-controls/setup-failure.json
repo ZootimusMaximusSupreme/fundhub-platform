@@ -1,0 +1,19 @@
+{
+  "engine": "chromium",
+  "profile": "phone390",
+  "receipt": {
+    "writes": [
+      {
+        "path": "/contract.html",
+        "method": "GET"
+      }
+    ],
+    "auth": [],
+    "external": [],
+    "unexpected": [],
+    "apis": [],
+    "errors": []
+  },
+  "text": "{\"ok\":false}",
+  "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.fld input') to be visible\u001b[22m\n"
+}

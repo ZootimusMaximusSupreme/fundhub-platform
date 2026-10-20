@@ -1,0 +1,446 @@
+[
+  {
+    "engine": "chromium",
+    "profile": "phone390",
+    "tabOrder": [
+      "confirm",
+      "sig",
+      "initials",
+      "name",
+      "agree"
+    ],
+    "keyboard": {
+      "checkbox": "true",
+      "signatureTargetsName": true,
+      "initialsTargetsName": true,
+      "nameTabTarget": "agree",
+      "consentChecked": true,
+      "consentTabTarget": "go",
+      "signEnabled": true
+    },
+    "controls": [
+      {
+        "selector": "#name",
+        "x": 33,
+        "y": 396.328125,
+        "width": 324,
+        "height": 52,
+        "bottom": 448.328125,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": ".agree",
+        "x": 33,
+        "y": 472.328125,
+        "width": 324,
+        "height": 49.59375,
+        "bottom": 521.921875,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": "#go",
+        "x": 33,
+        "y": 539.921875,
+        "width": 324,
+        "height": 52,
+        "bottom": 591.921875,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "solid",
+        "focusOutlineWidth": "2px"
+      },
+      {
+        "selector": "#barGo",
+        "x": 16,
+        "y": 778,
+        "width": 358,
+        "height": 50,
+        "bottom": 828,
+        "right": 374,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      }
+    ],
+    "tags": [
+      {
+        "text": "Address *",
+        "font": 13
+      },
+      {
+        "text": "Confirm details *",
+        "font": 13
+      },
+      {
+        "text": "Signature *",
+        "font": 13
+      },
+      {
+        "text": "Initials *",
+        "font": 13
+      }
+    ],
+    "receipt": {
+      "writes": [],
+      "auth": [],
+      "external": [
+        "fonts.googleapis.com"
+      ],
+      "unexpected": [],
+      "apis": [
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer",
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer&file=1"
+      ],
+      "errors": []
+    },
+    "tokenUnchanged": true,
+    "noOverflow": true
+  },
+  {
+    "engine": "chromium",
+    "profile": "promax440",
+    "tabOrder": [
+      "confirm",
+      "sig",
+      "initials",
+      "name",
+      "agree"
+    ],
+    "keyboard": {
+      "checkbox": "true",
+      "signatureTargetsName": true,
+      "initialsTargetsName": true,
+      "nameTabTarget": "agree",
+      "consentChecked": true,
+      "consentTabTarget": "go",
+      "signEnabled": true
+    },
+    "controls": [
+      {
+        "selector": "#name",
+        "x": 33,
+        "y": 355.25,
+        "width": 374,
+        "height": 52,
+        "bottom": 407.25,
+        "right": 407,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": ".agree",
+        "x": 33,
+        "y": 431.25,
+        "width": 374,
+        "height": 49.59375,
+        "bottom": 480.84375,
+        "right": 407,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": "#go",
+        "x": 33,
+        "y": 498.84375,
+        "width": 374,
+        "height": 52,
+        "bottom": 550.84375,
+        "right": 407,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "solid",
+        "focusOutlineWidth": "2px"
+      },
+      {
+        "selector": "#barGo",
+        "x": 16,
+        "y": 697,
+        "width": 408,
+        "height": 50,
+        "bottom": 747,
+        "right": 424,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      }
+    ],
+    "tags": [
+      {
+        "text": "Address *",
+        "font": 13
+      },
+      {
+        "text": "Confirm details *",
+        "font": 13
+      },
+      {
+        "text": "Signature *",
+        "font": 13
+      },
+      {
+        "text": "Initials *",
+        "font": 13
+      }
+    ],
+    "receipt": {
+      "writes": [],
+      "auth": [],
+      "external": [
+        "fonts.googleapis.com"
+      ],
+      "unexpected": [],
+      "apis": [
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer",
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer&file=1"
+      ],
+      "errors": []
+    },
+    "tokenUnchanged": true,
+    "noOverflow": true
+  },
+  {
+    "engine": "chromium",
+    "profile": "desktop1440",
+    "tabOrder": [
+      "confirm",
+      "sig",
+      "initials",
+      "name",
+      "agree"
+    ],
+    "keyboard": {
+      "checkbox": "true",
+      "signatureTargetsName": true,
+      "initialsTargetsName": true,
+      "nameTabTarget": "agree",
+      "consentChecked": true,
+      "consentTabTarget": "go",
+      "signEnabled": true
+    },
+    "controls": [
+      {
+        "selector": "#name",
+        "x": 926.796875,
+        "y": 408.21875,
+        "width": 452.1875,
+        "height": 52,
+        "bottom": 460.21875,
+        "right": 1378.984375,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": ".agree",
+        "x": 926.796875,
+        "y": 484.21875,
+        "width": 452.1875,
+        "height": 44,
+        "bottom": 528.21875,
+        "right": 1378.984375,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": "#go",
+        "x": 926.796875,
+        "y": 546.21875,
+        "width": 452.1875,
+        "height": 52,
+        "bottom": 598.21875,
+        "right": 1378.984375,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "solid",
+        "focusOutlineWidth": "2px"
+      },
+      {
+        "selector": "#barGo",
+        "x": 1176,
+        "y": 936,
+        "width": 112,
+        "height": 48,
+        "bottom": 984,
+        "right": 1288,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      }
+    ],
+    "tags": [
+      {
+        "text": "Address *",
+        "font": 13
+      },
+      {
+        "text": "Confirm details *",
+        "font": 13
+      },
+      {
+        "text": "Signature *",
+        "font": 13
+      },
+      {
+        "text": "Initials *",
+        "font": 13
+      }
+    ],
+    "receipt": {
+      "writes": [],
+      "auth": [],
+      "external": [
+        "fonts.googleapis.com"
+      ],
+      "unexpected": [],
+      "apis": [
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer",
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer&file=1"
+      ],
+      "errors": []
+    },
+    "tokenUnchanged": true,
+    "noOverflow": true
+  },
+  {
+    "engine": "webkit",
+    "profile": "phone390",
+    "tabOrder": [
+      "confirm",
+      "sig",
+      "initials",
+      "name",
+      "BODY"
+    ],
+    "keyboard": {
+      "checkbox": "true",
+      "signatureTargetsName": true,
+      "initialsTargetsName": true,
+      "nameTabTarget": "",
+      "consentChecked": false,
+      "consentTabTarget": "",
+      "signEnabled": false
+    },
+    "controls": [
+      {
+        "selector": "#name",
+        "x": 33,
+        "y": 395.328125,
+        "width": 324,
+        "height": 52,
+        "bottom": 447.328125,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": ".agree",
+        "x": 33,
+        "y": 471.328125,
+        "width": 324,
+        "height": 49.59375,
+        "bottom": 520.921875,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": "#go",
+        "x": 33,
+        "y": 538.921875,
+        "width": 324,
+        "height": 52,
+        "bottom": 590.921875,
+        "right": 357,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      },
+      {
+        "selector": "#barGo",
+        "x": 16,
+        "y": 778,
+        "width": 358,
+        "height": 50,
+        "bottom": 828,
+        "right": 374,
+        "font": 16,
+        "hit": true,
+        "inView": true,
+        "focusOutline": "none",
+        "focusOutlineWidth": "3px"
+      }
+    ],
+    "tags": [
+      {
+        "text": "Address *",
+        "font": 13
+      },
+      {
+        "text": "Confirm details *",
+        "font": 13
+      },
+      {
+        "text": "Signature *",
+        "font": 13
+      },
+      {
+        "text": "Initials *",
+        "font": 13
+      }
+    ],
+    "receipt": {
+      "writes": [],
+      "auth": [],
+      "external": [
+        "fonts.googleapis.com"
+      ],
+      "unexpected": [],
+      "apis": [
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer",
+        "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer&file=1"
+      ],
+      "errors": []
+    },
+    "tokenUnchanged": true,
+    "noOverflow": true
+  }
+]

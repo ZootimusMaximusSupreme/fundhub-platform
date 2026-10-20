@@ -1,0 +1,422 @@
+{
+  "engine": "chromium",
+  "profile": "phone390",
+  "blank": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "pageWidth": 390,
+    "host": {
+      "x": 16,
+      "y": 261.21875,
+      "width": 358,
+      "height": 462.71875,
+      "right": 374,
+      "bottom": 723.9375,
+      "clientWidth": 356,
+      "clientHeight": 461
+    },
+    "normal": [
+      {
+        "selector": "#name",
+        "box": {
+          "x": 33,
+          "y": 884.53125,
+          "width": 324,
+          "height": 52,
+          "right": 357,
+          "bottom": 936.53125
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      },
+      {
+        "selector": ".agree",
+        "box": {
+          "x": 33,
+          "y": 960.53125,
+          "width": 324,
+          "height": 49.59375,
+          "right": 357,
+          "bottom": 1010.125
+        },
+        "font": 16,
+        "lineHeight": "24.8px"
+      },
+      {
+        "selector": "#go",
+        "box": {
+          "x": 33,
+          "y": 1028.125,
+          "width": 324,
+          "height": 52,
+          "right": 357,
+          "bottom": 1080.125
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      },
+      {
+        "selector": "#barGo",
+        "box": {
+          "x": 16,
+          "y": 778,
+          "width": 358,
+          "height": 50,
+          "right": 374,
+          "bottom": 828
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      }
+    ],
+    "fields": [
+      {
+        "id": "address",
+        "type": "text",
+        "box": {
+          "x": 52.59375,
+          "y": 354.359375,
+          "width": 213.59375,
+          "height": 23.03125,
+          "right": 266.1875,
+          "bottom": 377.390625
+        },
+        "text": null,
+        "expected": {
+          "x": 52.6,
+          "y": 354.41875,
+          "width": 213.6,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "20%",
+          "width": "60%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": {
+          "x": 54.59375,
+          "y": 356.359375,
+          "width": 209.59375,
+          "height": 19.03125,
+          "right": 264.1875,
+          "bottom": 375.390625,
+          "font": 16,
+          "paddingTop": 0,
+          "paddingBottom": 0,
+          "border": 0
+        }
+      },
+      {
+        "id": "confirm",
+        "type": "checkbox",
+        "box": {
+          "x": 52.59375,
+          "y": 400.421875,
+          "width": 17.796875,
+          "height": 23.03125,
+          "right": 70.390625,
+          "bottom": 423.453125
+        },
+        "text": null,
+        "expected": {
+          "x": 52.6,
+          "y": 400.51874999999995,
+          "width": 17.8,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "30%",
+          "width": "5%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      },
+      {
+        "id": "sig",
+        "type": "signature",
+        "box": {
+          "x": 52.59375,
+          "y": 492.578125,
+          "width": 178,
+          "height": 23.03125,
+          "right": 230.59375,
+          "bottom": 515.609375
+        },
+        "text": null,
+        "expected": {
+          "x": 52.6,
+          "y": 492.71875,
+          "width": 178,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "50%",
+          "width": "50%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      },
+      {
+        "id": "initials",
+        "type": "initials",
+        "box": {
+          "x": 52.59375,
+          "y": 538.640625,
+          "width": 71.1875,
+          "height": 23.03125,
+          "right": 123.78125,
+          "bottom": 561.671875
+        },
+        "text": null,
+        "expected": {
+          "x": 52.6,
+          "y": 538.8187499999999,
+          "width": 71.2,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "60%",
+          "width": "20%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      }
+    ]
+  },
+  "filled": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "pageWidth": 390,
+    "host": {
+      "x": 16,
+      "y": 261.21875,
+      "width": 358,
+      "height": 462.71875,
+      "right": 374,
+      "bottom": 723.9375,
+      "clientWidth": 356,
+      "clientHeight": 461
+    },
+    "normal": [
+      {
+        "selector": "#name",
+        "box": {
+          "x": 33,
+          "y": 905.328125,
+          "width": 324,
+          "height": 52,
+          "right": 357,
+          "bottom": 957.328125
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      },
+      {
+        "selector": ".agree",
+        "box": {
+          "x": 33,
+          "y": 981.328125,
+          "width": 324,
+          "height": 49.59375,
+          "right": 357,
+          "bottom": 1030.921875
+        },
+        "font": 16,
+        "lineHeight": "24.8px"
+      },
+      {
+        "selector": "#go",
+        "box": {
+          "x": 33,
+          "y": 1048.921875,
+          "width": 324,
+          "height": 52,
+          "right": 357,
+          "bottom": 1100.921875
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      },
+      {
+        "selector": "#barGo",
+        "box": {
+          "x": 16,
+          "y": 778,
+          "width": 358,
+          "height": 50,
+          "right": 374,
+          "bottom": 828
+        },
+        "font": 16,
+        "lineHeight": "24px"
+      }
+    ],
+    "fields": [
+      {
+        "id": "address",
+        "type": "text",
+        "box": {
+          "x": 52.59375,
+          "y": 354.359375,
+          "width": 213.59375,
+          "height": 23.03125,
+          "right": 266.1875,
+          "bottom": 377.390625
+        },
+        "text": null,
+        "expected": {
+          "x": 52.6,
+          "y": 354.41875,
+          "width": 213.6,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "20%",
+          "width": "60%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": {
+          "x": 54.59375,
+          "y": 356.359375,
+          "width": 209.59375,
+          "height": 19.03125,
+          "right": 264.1875,
+          "bottom": 375.390625,
+          "font": 16,
+          "paddingTop": 0,
+          "paddingBottom": 0,
+          "border": 0
+        }
+      },
+      {
+        "id": "confirm",
+        "type": "checkbox",
+        "box": {
+          "x": 52.59375,
+          "y": 400.421875,
+          "width": 17.796875,
+          "height": 23.03125,
+          "right": 70.390625,
+          "bottom": 423.453125
+        },
+        "text": {
+          "x": 56.78125,
+          "y": 401.9375,
+          "width": 9.421875,
+          "height": 19,
+          "right": 66.203125,
+          "bottom": 420.9375
+        },
+        "expected": {
+          "x": 52.6,
+          "y": 400.51874999999995,
+          "width": 17.8,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "30%",
+          "width": "5%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      },
+      {
+        "id": "sig",
+        "type": "signature",
+        "box": {
+          "x": 52.59375,
+          "y": 492.578125,
+          "width": 178,
+          "height": 23.03125,
+          "right": 230.59375,
+          "bottom": 515.609375
+        },
+        "text": {
+          "x": 91.0625,
+          "y": 493.09375,
+          "width": 101.046875,
+          "height": 22,
+          "right": 192.109375,
+          "bottom": 515.09375
+        },
+        "expected": {
+          "x": 52.6,
+          "y": 492.71875,
+          "width": 178,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "50%",
+          "width": "50%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      },
+      {
+        "id": "initials",
+        "type": "initials",
+        "box": {
+          "x": 52.59375,
+          "y": 538.640625,
+          "width": 71.1875,
+          "height": 23.03125,
+          "right": 123.78125,
+          "bottom": 561.671875
+        },
+        "text": {
+          "x": 77.875,
+          "y": 539.15625,
+          "width": 20.609375,
+          "height": 22,
+          "right": 98.484375,
+          "bottom": 561.15625
+        },
+        "expected": {
+          "x": 52.6,
+          "y": 538.8187499999999,
+          "width": 71.2,
+          "height": 23.05
+        },
+        "inline": {
+          "left": "10%",
+          "top": "60%",
+          "width": "20%",
+          "height": "5%"
+        },
+        "border": 2,
+        "input": null
+      }
+    ]
+  },
+  "receipt": {
+    "errors": [],
+    "api": [
+      "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer",
+      "?id=sample-contract&sig=sample-signature&exp=4102444800&signer=sample-signer&file=1"
+    ],
+    "writes": [],
+    "auth": [],
+    "blockedExternal": [
+      "fonts.googleapis.com"
+    ],
+    "unexpected": []
+  }
+}

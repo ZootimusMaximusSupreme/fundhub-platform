@@ -1,0 +1,1286 @@
+[
+  {
+    "variant": "baseline",
+    "profile": "promax440",
+    "engine": "webkit",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 440,
+        "height": 763
+      },
+      "pageWidth": 440,
+      "host": {
+        "x": 16,
+        "y": 237.546875,
+        "width": 408,
+        "height": 527.4375,
+        "right": 424,
+        "bottom": 764.984375,
+        "clientWidth": 406,
+        "clientHeight": 525
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 243.6,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 343.625,
+            "width": 243.59375,
+            "height": 26.265625,
+            "right": 301.1875,
+            "bottom": 369.890625
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 59.59375,
+            "y": 345.625,
+            "width": 239.59375,
+            "height": 22.265625,
+            "right": 299.1875,
+            "bottom": 367.890625
+          },
+          "inputMinHeight": "auto",
+          "inputFont": "12px",
+          "inputOverflow": {
+            "above": 0,
+            "below": 0
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 20.3,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 396.171875,
+            "width": 20.296875,
+            "height": 26.265625,
+            "right": 77.890625,
+            "bottom": 422.4375
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 203,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 501.265625,
+            "width": 203,
+            "height": 26.265625,
+            "right": 260.59375,
+            "bottom": 527.53125
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 81.2,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 553.796875,
+            "width": 81.1875,
+            "height": 26.265625,
+            "right": 138.78125,
+            "bottom": 580.0625
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/baseline-promax440-MARKED.png"
+  },
+  {
+    "variant": "baseline",
+    "profile": "phone390",
+    "engine": "chromium",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pageWidth": 390,
+      "host": {
+        "x": 16,
+        "y": 237.546875,
+        "width": 358,
+        "height": 462.71875,
+        "right": 374,
+        "bottom": 700.265625,
+        "clientWidth": 356,
+        "clientHeight": 461
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 213.6,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 330.6875,
+            "width": 213.59375,
+            "height": 23.03125,
+            "right": 266.1875,
+            "bottom": 353.71875
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 54.59375,
+            "y": 332.6875,
+            "width": 209.59375,
+            "height": 19.03125,
+            "right": 264.1875,
+            "bottom": 351.71875
+          },
+          "inputMinHeight": "auto",
+          "inputFont": "12px",
+          "inputOverflow": {
+            "above": 0,
+            "below": 0
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 17.8,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 376.75,
+            "width": 17.796875,
+            "height": 23.03125,
+            "right": 70.390625,
+            "bottom": 399.78125
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 178,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 468.90625,
+            "width": 178,
+            "height": 23.03125,
+            "right": 230.59375,
+            "bottom": 491.9375
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 71.2,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 514.96875,
+            "width": 71.1875,
+            "height": 23.03125,
+            "right": 123.78125,
+            "bottom": 538
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/baseline-phone390-MARKED.png"
+  },
+  {
+    "variant": "baseline",
+    "profile": "desktop1440",
+    "engine": "chromium",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "pageWidth": 1440,
+      "host": {
+        "x": 100,
+        "y": 274.015625,
+        "width": 757.125,
+        "height": 979.265625,
+        "right": 857.125,
+        "bottom": 1253.28125,
+        "clientWidth": 755,
+        "clientHeight": 977
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 453,
+          "expectedHeight": 48.85,
+          "box": {
+            "x": 176.5,
+            "y": 470.46875,
+            "width": 453.0625,
+            "height": 48.859375,
+            "right": 629.5625,
+            "bottom": 519.328125
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 178.5,
+            "y": 472.46875,
+            "width": 449.0625,
+            "height": 44.859375,
+            "right": 627.5625,
+            "bottom": 517.328125
+          },
+          "inputMinHeight": "auto",
+          "inputFont": "12px",
+          "inputOverflow": {
+            "above": 0,
+            "below": 0
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 37.75,
+          "expectedHeight": 48.85,
+          "box": {
+            "x": 176.5,
+            "y": 568.1875,
+            "width": 37.75,
+            "height": 48.859375,
+            "right": 214.25,
+            "bottom": 617.046875
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 377.5,
+          "expectedHeight": 48.85,
+          "box": {
+            "x": 176.5,
+            "y": 763.640625,
+            "width": 377.5625,
+            "height": 48.859375,
+            "right": 554.0625,
+            "bottom": 812.5
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 151,
+          "expectedHeight": 48.85,
+          "box": {
+            "x": 176.5,
+            "y": 861.375,
+            "width": 151.015625,
+            "height": 48.859375,
+            "right": 327.515625,
+            "bottom": 910.234375
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/baseline-desktop1440-MARKED.png"
+  },
+  {
+    "variant": "astra",
+    "profile": "promax440",
+    "engine": "webkit",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 440,
+        "height": 763
+      },
+      "pageWidth": 440,
+      "host": {
+        "x": 16,
+        "y": 261.21875,
+        "width": 408,
+        "height": 527.4375,
+        "right": 424,
+        "bottom": 788.65625,
+        "clientWidth": 406,
+        "clientHeight": 525
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 243.6,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 367.296875,
+            "width": 243.59375,
+            "height": 26.265625,
+            "right": 301.1875,
+            "bottom": 393.5625
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 59.59375,
+            "y": 356.4375,
+            "width": 239.59375,
+            "height": 48,
+            "right": 299.1875,
+            "bottom": 404.4375
+          },
+          "inputMinHeight": "48px",
+          "inputFont": "16px",
+          "inputOverflow": {
+            "above": 10.859375,
+            "below": 10.875
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select, textarea)",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-body)"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(button, input, select, textarea)",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select)",
+              "minHeight": "48px",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 20.3,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 419.84375,
+            "width": 20.296875,
+            "height": 26.265625,
+            "right": 77.890625,
+            "bottom": 446.109375
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 203,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 524.9375,
+            "width": 203,
+            "height": 44,
+            "right": 260.59375,
+            "bottom": 568.9375
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 81.2,
+          "expectedHeight": 26.25,
+          "box": {
+            "x": 57.59375,
+            "y": 577.46875,
+            "width": 81.1875,
+            "height": 44,
+            "right": 138.78125,
+            "bottom": 621.46875
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/astra-promax440-MARKED.png"
+  },
+  {
+    "variant": "astra",
+    "profile": "phone390",
+    "engine": "chromium",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pageWidth": 390,
+      "host": {
+        "x": 16,
+        "y": 261.21875,
+        "width": 358,
+        "height": 462.71875,
+        "right": 374,
+        "bottom": 723.9375,
+        "clientWidth": 356,
+        "clientHeight": 461
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 213.6,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 354.359375,
+            "width": 213.59375,
+            "height": 23.03125,
+            "right": 266.1875,
+            "bottom": 377.390625
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 54.59375,
+            "y": 341.875,
+            "width": 209.59375,
+            "height": 48,
+            "right": 264.1875,
+            "bottom": 389.875
+          },
+          "inputMinHeight": "48px",
+          "inputFont": "16px",
+          "inputOverflow": {
+            "above": 12.484375,
+            "below": 12.484375
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select, textarea)",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-body)"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(button, input, select, textarea)",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select)",
+              "minHeight": "48px",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 17.8,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 400.421875,
+            "width": 17.796875,
+            "height": 23.03125,
+            "right": 70.390625,
+            "bottom": 423.453125
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 178,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 492.578125,
+            "width": 178,
+            "height": 44,
+            "right": 230.59375,
+            "bottom": 536.578125
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 71.2,
+          "expectedHeight": 23.05,
+          "box": {
+            "x": 52.59375,
+            "y": 538.640625,
+            "width": 71.1875,
+            "height": 44,
+            "right": 123.78125,
+            "bottom": 582.640625
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/astra-phone390-MARKED.png"
+  },
+  {
+    "variant": "astra",
+    "profile": "desktop1440",
+    "engine": "chromium",
+    "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "geometry": {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "pageWidth": 1440,
+      "host": {
+        "x": 39.796875,
+        "y": 259.625,
+        "width": 826.1875,
+        "height": 1068.640625,
+        "right": 865.984375,
+        "bottom": 1328.265625,
+        "clientWidth": 824,
+        "clientHeight": 1067
+      },
+      "fields": [
+        {
+          "id": "address",
+          "type": "text",
+          "fractions": {
+            "id": "address",
+            "type": "text",
+            "label": "Address",
+            "required": true,
+            "x": 0.1,
+            "y": 0.2,
+            "w": 0.6,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 494.4,
+          "expectedHeight": 53.35,
+          "box": {
+            "x": 123.203125,
+            "y": 473.953125,
+            "width": 494.5,
+            "height": 53.328125,
+            "right": 617.703125,
+            "bottom": 527.28125
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": {
+            "x": 125.203125,
+            "y": 475.953125,
+            "width": 490.5,
+            "height": 49.328125,
+            "right": 615.703125,
+            "bottom": 525.28125
+          },
+          "inputMinHeight": "48px",
+          "inputFont": "16px",
+          "inputOverflow": {
+            "above": 0,
+            "below": 0
+          },
+          "boxRules": [],
+          "inputRules": [
+            {
+              "selector": ".fld input[type=\"text\"]",
+              "minHeight": "",
+              "height": "100%",
+              "fontSize": "12px"
+            },
+            {
+              "selector": "input[type=\"text\"]",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select, textarea)",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-body)"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(button, input, select, textarea)",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra.fh-astra-client :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]), select)",
+              "minHeight": "48px",
+              "height": "",
+              "fontSize": "16px"
+            }
+          ]
+        },
+        {
+          "id": "confirm",
+          "type": "checkbox",
+          "fractions": {
+            "id": "confirm",
+            "type": "checkbox",
+            "label": "Confirm details",
+            "required": true,
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.05,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 41.2,
+          "expectedHeight": 53.35,
+          "box": {
+            "x": 123.203125,
+            "y": 580.609375,
+            "width": 41.203125,
+            "height": 53.328125,
+            "right": 164.40625,
+            "bottom": 633.9375
+          },
+          "boxMinWidth": "0px",
+          "boxMinHeight": "0px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.chk",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "14px"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "sig",
+          "type": "signature",
+          "fractions": {
+            "id": "sig",
+            "type": "signature",
+            "label": "Signature",
+            "required": true,
+            "x": 0.1,
+            "y": 0.5,
+            "w": 0.5,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 412,
+          "expectedHeight": 53.35,
+          "box": {
+            "x": 123.203125,
+            "y": 793.9375,
+            "width": 412.09375,
+            "height": 53.328125,
+            "right": 535.296875,
+            "bottom": 847.265625
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        },
+        {
+          "id": "initials",
+          "type": "initials",
+          "fractions": {
+            "id": "initials",
+            "type": "initials",
+            "label": "Initials",
+            "required": true,
+            "x": 0.1,
+            "y": 0.6,
+            "w": 0.2,
+            "h": 0.05,
+            "page": 0
+          },
+          "expectedWidth": 164.8,
+          "expectedHeight": 53.35,
+          "box": {
+            "x": 123.203125,
+            "y": 900.609375,
+            "width": 164.828125,
+            "height": 53.328125,
+            "right": 288.03125,
+            "bottom": 953.9375
+          },
+          "boxMinWidth": "44px",
+          "boxMinHeight": "44px",
+          "input": null,
+          "inputOverflow": null,
+          "boxRules": [
+            {
+              "selector": ".fld.sig",
+              "minHeight": "",
+              "height": "",
+              "fontSize": "16px"
+            },
+            {
+              "selector": "body.fh-astra :where(button, .btn, .tab, .ctab, .link-btn, .fh-astra-action, summary, [role=\"button\"])",
+              "minHeight": "44px",
+              "height": "",
+              "fontSize": "var(--fs-caption)"
+            }
+          ],
+          "inputRules": []
+        }
+      ]
+    },
+    "errors": [],
+    "writes": [],
+    "credentials": [],
+    "screenshot": "/private/tmp/astra-pdf-fields.4kYZHM/shots/astra-desktop1440-MARKED.png"
+  }
+]

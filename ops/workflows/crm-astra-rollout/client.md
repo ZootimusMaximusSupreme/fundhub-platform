@@ -76,3 +76,13 @@ Root assigned A's independent client findings on 2026-10-20. Checked stylesheet 
 - The three native credit-picker keyboard failures and HEAD comparisons remain on the earlier red record. No test was replaced with `selectOption`, no keyboard success is claimed by this repair proof, and no test file was edited.
 
 A owns the separate independent recheck. Root retains final lint/TypeScript, release and physical-device proof. Lane B now resumes the independent staff review after A's repairs.
+
+## Named PDF overlay repair
+
+Root's final integration review proved that generic form sizes enlarged PDF inputs and signature/initial annotations on phones. The read-only baseline comparison and red marked evidence were saved before the separately assigned repair. See [full PDF field review](pdf-field-review.md).
+
+Only seven document-overlay-scoped CSS lines changed. The PDF's original percent-coordinate boxes, page HTML/scripts/IDs, field data and signing/auth flow stay unchanged. At 390px, Address/signature/initial boxes are again 23.03px high and the input fits at 19.03px; at 440px they are 26.27px and 22.27px. Inputs remain 16px. Ordinary name fields remain 52px high, agreement labels 44px or taller, Sign 52px and bottom Sign 48–50px. Phone PDF annotations are the documented coordinate-system exception, not a reduction of normal form target sizes.
+
+New `e2e/astra-pdf-field-geometry.spec.mjs` runs 390/440/1440 in actual Chromium and WebKit with real vendored PDF rendering. It asserts original fractions, input/text containment, no field overlap, unchanged ordinary form sizes, keyboard/focus behavior, required-field/consent gating and zero API writes/auth leakage with a fictional pre-existing staff token. It never activates Sign. The first new-spec WebKit launcher failures remain recorded; explicit WebKit executable selection fixes the inherited Chromium-path setup issue without changing product assertions.
+
+Final combined new geometry + unchanged contract suite: **11/11 passed (11.6s)**. Relevant signing/field/PDF units: **97 passed, 0 failed/skipped**. Lint 4006 clean; TypeScript exit 0. Six final marked captures and exact JSON records are in `evidence/pdf-field-review/after/`; the original six baseline/before captures and all red launch records remain preserved. Root owns the WebKit CI installation dependency, independent rerun and release. No complete signing-journey, database, live or real-device claim is made.
