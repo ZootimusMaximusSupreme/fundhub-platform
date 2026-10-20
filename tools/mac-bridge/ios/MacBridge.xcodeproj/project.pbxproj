@@ -264,7 +264,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Mac Bridge";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Mac Bridge uses the camera to scan the pairing QR code your Mac shows.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code and Codex sessions.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code, Codex and Cursor sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -295,7 +295,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Mac Bridge";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Mac Bridge uses the camera to scan the pairing QR code your Mac shows.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code and Codex sessions.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code, Codex and Cursor sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

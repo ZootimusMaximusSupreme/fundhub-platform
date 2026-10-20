@@ -9,7 +9,7 @@ enum BridgeError: LocalizedError, Equatable {
     case badResponse
     /// 429: the Mac already runs 3 tasks.
     case busy
-    /// 400: the Mac did not accept the request (for example a prompt that is too long).
+    /// 400 / 413: the Mac did not accept the request (for example a prompt that is too long).
     case rejected(String)
 
     var errorDescription: String? {
@@ -40,7 +40,7 @@ enum BridgeError: LocalizedError, Equatable {
             return .notFound
         case 429:
             return .busy
-        case 400:
+        case 400, 413:
             return .rejected(parsed?.error ?? "bad request")
         default:
             return .http(status)

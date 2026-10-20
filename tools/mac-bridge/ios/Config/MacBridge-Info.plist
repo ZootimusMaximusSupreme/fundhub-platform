@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code and Codex sessions.</string>
+	<string>Mac Bridge finds and talks to the Mac helper on your network to show your Claude Code, Codex and Cursor sessions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Mac Bridge uses the camera to scan the pairing QR code your Mac shows.</string>
 	<key>NSBonjourServices</key>

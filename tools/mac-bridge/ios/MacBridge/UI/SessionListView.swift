@@ -46,7 +46,7 @@ struct SessionListView: View {
                         ContentUnavailableView(
                             "No sessions yet",
                             systemImage: "text.bubble",
-                            description: Text("Claude Code and Codex chats on your Mac show up here.")
+                            description: Text("Claude Code, Codex and Cursor chats on your Mac show up here.")
                         )
                     }
                 }
@@ -174,14 +174,16 @@ struct ToolBadge: View {
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Capsule().fill(tint.opacity(0.18)))
-            .foregroundStyle(tint)
+            .background(Capsule().fill(Self.tint(for: tool).opacity(0.18)))
+            .foregroundStyle(Self.tint(for: tool))
     }
 
-    private var tint: Color {
+    /// Each tool has its own color: Claude orange, Codex blue, Cursor purple.
+    static func tint(for tool: String) -> Color {
         switch tool {
         case "claude": return .orange
         case "codex": return .blue
+        case "cursor": return .purple
         default: return .gray
         }
     }

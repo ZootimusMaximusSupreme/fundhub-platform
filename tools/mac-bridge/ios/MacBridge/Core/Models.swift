@@ -31,13 +31,7 @@ struct Session: Codable, Equatable, Hashable {
 
     var updatedDate: Date? { BridgeDate.parse(updatedAt) }
 
-    var toolLabel: String {
-        switch tool {
-        case "claude": return "Claude"
-        case "codex": return "Codex"
-        default: return tool.capitalized
-        }
-    }
+    var toolLabel: String { ToolName.label(tool) }
 
     /// The helper sets `live` when the file changed in the last 120 seconds.
     /// A stale copy on the phone stops being live on its own after that.
@@ -89,6 +83,21 @@ extension Event {
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         command = try c.decodeIfPresent(String.self, forKey: .command)
         exitCode = try c.decodeIfPresent(Int.self, forKey: .exitCode)
+    }
+}
+
+/// The tools the Mac helper knows: `claude`, `codex`, `cursor` (Cursor added 2026-10-20).
+/// An unknown tool name still shows, just capitalized.
+enum ToolName {
+    static let all = ["claude", "codex", "cursor"]
+
+    static func label(_ tool: String) -> String {
+        switch tool {
+        case "claude": return "Claude"
+        case "codex": return "Codex"
+        case "cursor": return "Cursor"
+        default: return tool.capitalized
+        }
     }
 }
 

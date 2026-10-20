@@ -98,6 +98,13 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Logins Chris must do (one each):** Cursor: open the link from `agent login` (a login is waiting now; link saved in `~/.mac-bridge/cursor-login.log`) or run `agent login` in Terminal and click approve. Claude command line: run `claude auth login` and click approve. Codex: logged in, but row 6 found its ChatGPT usage limit hit until Oct 26.
 - **Not done:** 7878 still runs the older helper; restart it from this worktree to take tasks from the phone and the plug-in. No Codex-from-Codex or Cursor-from-Cursor tool call run (each needs a model turn; Codex is out of credit, Cursor logged out). Not committed.
 
+### 7b — Cursor in the iPhone app
+
+- **Changed (under `tools/mac-bridge/ios/`):** `Core/Models.swift` (one shared `ToolName` label list: Claude, Codex, Cursor), `Core/Tasks.swift` (picker order Claude / Codex / Cursor / Auto; `cursor_not_found` in plain words), `Core/BridgeAPI.swift` (413 `too_large` shows as a plain "did not take this task" like 400), `UI/SessionListView.swift` (badge colors: Claude orange, Codex blue, Cursor purple; empty-list text names Cursor), `Config/MacBridge-Info.plist` + `project.pbxproj` (local network text names Cursor), `README.md`. The reply box already reads "Reply to Cursor" from the session's tool label.
+- **New:** `MacBridgeTests/CursorTests.swift` (8 tests: Cursor session, event and task decode, task stream message, picker order, new-task and reply bodies, own badge color, 413).
+- **Build/test:** same xcodebuild line as row 7 → `** BUILD SUCCEEDED **`, `Executed 67 tests, with 0 failures (0 unexpected)`, `** TEST SUCCEEDED **`. Zero Swift warnings.
+- **Simulator:** `xcrun simctl install booted <MacBridge.app>` → exit 0; `xcrun simctl launch booted ai.fundhub.macbridge` → `ai.fundhub.macbridge: 40646`. A read-only screenshot shows it paired to `CHRISs-Mac-mini.local`, live, with the New task button. No taps (no access). Not committed.
+
 ## Leftovers
 
 - Apple App Store upload needs the App Store Connect API key, which is not saved yet (see memory: apple-developer-account).

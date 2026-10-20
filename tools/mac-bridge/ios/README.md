@@ -1,6 +1,6 @@
 # Mac Bridge — iPhone app
 
-Watch your Claude Code and Codex sessions, and the commands they run, from the iPhone.
+Watch your Claude Code, Codex and Cursor sessions, and the commands they run, from the iPhone.
 v2 also sends tasks: start a new one, or reply inside a session. They run on the Mac in the repo folder.
 Contracts: `docs/specs/mac-bridge-protocol-v1.md` (watch) and `docs/specs/mac-bridge-protocol-v2-tasks.md` (send).
 Mac side: `tools/mac-bridge/agent/`.
@@ -32,7 +32,7 @@ by itself. Do not add it to `project.pbxproj` by hand, or it builds twice.
    Every way checks `GET /v1/health` with the token before anything is saved.
 4. Sessions list: pull down to refresh. New and changed sessions arrive live over the WebSocket.
    Tap one to see its feed. Menu (•••) › Forget this Mac to pair again.
-5. **New task** (pencil button, top right): type the task in the big box, pick **Claude**, **Codex** or **Auto**
+5. **New task** (pencil button, top right): type the task in the big box, pick **Claude**, **Codex**, **Cursor** or **Auto**
    ("Uses the repo rules": the Mac picks the tool), press Send. The screen shows the task status, and opens the
    live feed by itself as soon as the Mac knows the session id.
 6. **Reply** (box at the bottom of any feed): sends a task that resumes this session with the same tool.

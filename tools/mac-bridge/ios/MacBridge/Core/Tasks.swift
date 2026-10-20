@@ -28,7 +28,7 @@ enum TaskStatus: String, Codable, CaseIterable {
 
 /// What the phone can ask for. `auto` lets the Mac pick by the repo rules.
 enum TaskTool: String, Codable, CaseIterable, Identifiable {
-    case claude, codex, auto
+    case claude, codex, cursor, auto
 
     var id: String { rawValue }
 
@@ -36,6 +36,7 @@ enum TaskTool: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: return "Claude"
         case .codex: return "Codex"
+        case .cursor: return "Cursor"
         case .auto: return "Auto"
         }
     }
@@ -60,13 +61,7 @@ struct BridgeTask: Codable, Equatable, Hashable, Identifiable {
 
     var startedDate: Date? { BridgeDate.parse(startedAt) }
 
-    var toolLabel: String {
-        switch tool {
-        case "claude": return "Claude"
-        case "codex": return "Codex"
-        default: return tool.capitalized
-        }
-    }
+    var toolLabel: String { ToolName.label(tool) }
 
     /// First non-empty line of the prompt, for one-line rows.
     var firstLine: String {
@@ -102,6 +97,7 @@ struct BridgeTask: Codable, Equatable, Hashable, Identifiable {
         case .failed:
             if let e = error, !e.isEmpty {
                 if e == "codex_not_found" { return "Codex is not installed on the Mac." }
+                if e == "cursor_not_found" { return "Cursor's agent is not installed on the Mac." }
                 return "It failed: \(e)"
             }
             if let c = exitCode, c != 0 { return "It failed with exit code \(c)." }
