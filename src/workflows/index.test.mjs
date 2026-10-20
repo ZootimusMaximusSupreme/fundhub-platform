@@ -66,8 +66,8 @@ const DELIBERATELY_UNSERVED = {
 const EXPECTED_WORKFLOW_IDS = [
   "af-01-affiliate-drip",
   "af-02-referral-ownership-capture",
+  "affiliate-payout-autopay",
   "affiliate-payout-run",
-  "affiliate-payout-transfer-sync",
   "ai-set-01-josh-setter",
   "ai-set-03-no-answer-cadence",
   "ai-set-04-3way-handoff",

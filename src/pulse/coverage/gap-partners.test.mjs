@@ -343,46 +343,42 @@ test("gap-partners: ctx.fetch is accepted as an alias for ctx.fetchImpl", async 
 const isOverdue = (sql) => sql === PAYOUT_OVERDUE_SQL;
 const isReturned = (sql) => sql === PAYOUT_RETURNED_SQL;
 
-test("payout-overdue: a run past its due day and not paid is FAIL", async () => {
+test("payout-overdue: a run past its due day and not sent is FAIL", async () => {
   const rows = await gapChecks(ctx({ db: fakeDb((sql) => (isOverdue(sql)
     ? { late_on_run: 2, late_on_run_usd: 412.5, late_held: 0, no_run_affiliates: 0, no_run_usd: 0, owed_n: 2 }
     : CLEAN)) }));
   const row = byId(rows, "partners:payout-overdue");
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /2 earned commissions \(\$412\.5\) on a payout run past its due day/);
+  assert.match(row.detail, /2 earned commissions \(\$412\.5\) past the due day and still not sent/);
   assert.match(row.suggestedFix, /Mark paid with the reference/);
   assert.match(row.suggestedFix, /Do not mark anything paid from the pulse/);
 });
 
-test("payout-overdue: owed money with no payout record past the due day is FAIL", async () => {
+test("payout-overdue: owed money with no payout record after a day is FAIL", async () => {
   const rows = await gapChecks(ctx({ db: fakeDb((sql) => (isOverdue(sql)
     ? { late_on_run: 0, late_on_run_usd: 0, late_held: 0, no_run_affiliates: 1, no_run_usd: 120, owed_n: 3 }
     : CLEAN)) }));
   const row = byId(rows, "partners:payout-overdue");
   assert.equal(row.status, "FAIL");
-  assert.match(row.detail, /1 affiliate owed \$120 past the 2026-10-15 due day with no payout record at all/);
+  assert.match(row.detail, /1 affiliate owed \$120 for over a day with no payout record at all/);
 });
 
-test("payout-overdue: a run held for paperwork is a reminder, not a break", async () => {
+test("payout-overdue: a run waiting on the affiliate is a reminder, not a break", async () => {
   const rows = await gapChecks(ctx({ db: fakeDb((sql) => (isOverdue(sql)
     ? { late_on_run: 0, late_on_run_usd: 0, late_held: 3, no_run_affiliates: 0, no_run_usd: 0, owed_n: 3 }
     : CLEAN)) }));
   const row = byId(rows, "partners:payout-overdue");
   assert.equal(row.status, "PASS");
-  assert.match(row.detail, /3 earned commissions are past due on a run held for paperwork/);
+  assert.match(row.detail, /3 earned commissions are waiting on the affiliate/);
 });
 
-test("payout-overdue: the no-run half only opens after this month's due day", async () => {
+test("payout-overdue: the no-run grace is one day before now", async () => {
   const seen = [];
   const db = fakeDb((sql, params) => { if (isOverdue(sql)) seen.push(params); return CLEAN; });
   await gapChecks(ctx({ db, now: new Date("2026-10-08T15:00:00.000Z") }));
-  await gapChecks(ctx({ db, now: new Date("2026-10-16T15:00:00.000Z") }));
   assert.equal(seen[0][0], ORG);
   assert.equal(seen[0][1], "2026-10-08");
-  assert.equal(new Date(seen[0][2]).toISOString(), "2026-10-01T00:00:00.000Z");
-  assert.equal(seen[0][3], PAYOUT_DEFAULTS.minimumUsd);
-  assert.equal(seen[0][4], false, "before the 15th nothing can be late with no run yet");
-  assert.equal(seen[1][4], true, "after the 15th it can");
+  assert.equal(new Date(seen[0][2]).toISOString(), "2026-10-07T15:00:00.000Z");
 });
 
 test("payout-overdue: a failed read is FAIL, never PASS", async () => {

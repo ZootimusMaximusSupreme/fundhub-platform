@@ -44,7 +44,7 @@ stateDiagram-v2
 | → pending / held | cron `affiliate-payout-run` `0 3 1 * *` | `src/affiliates/payouts.mjs` `buildPayoutRun` |
 | held → pending | `record_tax_form` / `stamp_license` / `release` | `POST /api/affiliates/payouts` |
 | pending → processing (Plaid) | `send` | `sendPayoutViaPlaid` → Plaid `/transfer/authorization/create` + `/transfer/create` |
-| processing → paid / pending | cron `affiliate-payout-transfer-sync` `*/15 * * * *` | `syncPayoutTransfers` → Plaid `/transfer/get` |
+| processing → paid / pending | cron `affiliate-payout-autopay` `*/15 * * * *` | `syncPayoutTransfers` → Plaid `/transfer/get` |
 | pending → paid (by hand) | `mark_paid` with method + reference | `markPayoutPaid` (two steps in one transaction) |
 | pending/held → void | `void` | `voidPayout` |
 | bank linked | affiliate, `link_token` then `exchange` | `POST /api/affiliates/payout-account` (Plaid Link, product `transfer`) |
@@ -65,7 +65,7 @@ stateDiagram-v2
 | `partners:payout-returned` | A paid Plaid payout came back from the bank. |
 | `partners:payout-stuck` | A run in processing more than 7 days. |
 | `partners:commission-payable` | Payable commission on no run after the 1st. |
-| job `affiliate-payout-transfer-sync` | The 15-minute sync has not run in 45 minutes. |
+| job `affiliate-payout-autopay` | The 15-minute sync has not run in 45 minutes. |
 
 ## Who decided what
 

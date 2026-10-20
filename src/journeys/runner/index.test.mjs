@@ -195,8 +195,11 @@ import { isSyntheticRow } from "./synthetic.mjs";
    invoice-checkout-retirement-sweeper retires stale Commas links, and
    invoice-sent-recovery restores a missing first-notice event handoff.
    Both are cron-only, so the journey report names them as scheduled rather
-   than pretending a synthetic customer walk fired either one. */
-const REGISTERED = 104;
+   than pretending a synthetic customer walk fired either one.
+   Moved 104 -> 105 with affiliate-payout-autopay (492, 2026-10-20): every 15
+   minutes it pays earned affiliate commission through Plaid. Cron-only, so it
+   sits in neverFired; src/affiliates/payout-rail.pg.test.mjs proves it. */
+const REGISTERED = 105;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

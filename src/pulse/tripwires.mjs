@@ -203,7 +203,7 @@ export const TRIPWIRES = Object.freeze({
   "route:affiliates/payouts": { impact: "money", checks: ["partners:payout-overdue", "partners:payout-returned", "partners:payout-stuck"] },
   "route:affiliates/payout-account": { impact: "money", checks: ["partners:payout-overdue"] },
   "route:read/affiliate-payouts": { impact: "money", checks: ["partners:payout-overdue"] },
-  "job:affiliate-payout-transfer-sync": { impact: "money", checks: ["partners:payout-stuck", "partners:payout-overdue", "partners:payout-returned"] }
+  "job:affiliate-payout-autopay": { impact: "money", checks: ["partners:payout-stuck", "partners:payout-overdue", "partners:payout-returned"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({

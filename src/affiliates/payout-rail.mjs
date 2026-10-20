@@ -6,18 +6,30 @@
  * proof, and the record. Board: ops/workflows/affiliate-payout-plaid-2026-10-20.md.
  * Picture: docs/journeys/affiliate-payout-flow.md.
  *
- * HOW PLAID IS USED (agent-set 2026-10-20; Chris answered "no preference"):
- *   1. The affiliate links their own bank with Plaid Link (product "transfer").
- *      That proves the account is real and theirs. affiliate_payout_accounts.
- *   2. Finance staff press Send. Plaid Transfer pays the run OUT of Fundhub's
- *      Plaid Ledger to that account (a "credit" leg). Same gate the client
- *      transfers use: transferMode() — sandbox unless PLAID_ENV=production AND
- *      FINANCE_OS_TRANSFERS_LIVE=1, and only inside the per-transfer limit.
- *   3. The 15-minute sync asks Plaid what happened. Settled → paid, with the
- *      transfer id as the reference. Failed / returned / cancelled → back to
- *      pending with the reason, so staff can fix the bank and send again.
- *   4. Until Plaid gives production access, a real affiliate is paid by hand
- *      (ACH from the bank, cheque) and staff Mark paid with the reference.
+ * OWNER-SET 2026-10-20 (Chris, relayed word for word): "Plaid's going to take
+ * care of everything. ... Paid them out immediately upon receiving the money.
+ * Once it clears, we just pay it." So there is no monthly wait, no $50 minimum
+ * and no approval click for these payouts:
+ *   1. The client's payment is received and clears: the processor's payment
+ *      lands as a sale_payments row and convert() (economics.mjs) sets the
+ *      referral's commission_due. That is the "cleared" moment — commission is
+ *      set once, on the first qualifying payment, and never grows after it.
+ *   2. Within 15 minutes the autopay job (runAutopay) puts that commission on
+ *      a payout run of its own, due the next day, and sends it straight to the
+ *      affiliate's Plaid-linked bank with Plaid Transfer (a credit leg out of
+ *      Fundhub's Plaid Ledger). Same gate as client transfers: transferMode() —
+ *      sandbox unless PLAID_ENV=production AND FINANCE_OS_TRANSFERS_LIVE=1, and
+ *      only inside the per-transfer limit.
+ *   3. The same job asks Plaid what happened. Settled → paid, the transfer id is
+ *      the reference. Failed / returned / cancelled → back to pending with the
+ *      reason, and the next pass sends it again on a new idempotency key.
+ *   4. A run the affiliate has not cleared for (license, tax form, no bank
+ *      linked) is HELD and goes out by itself the moment the last one is done.
+ *   5. Until Plaid gives production access, a real affiliate's run waits with
+ *      the reason on it; staff can pay by hand and Mark paid with a reference.
+ * Agent-set inside that (Chris answered "no preference" on the mechanics): the
+ * affiliate links their bank with Plaid Link (product "transfer"); due the day
+ * after it clears; finance staff can hold, release, cancel or mark paid.
  *
  * TEST MONEY NEVER PAYS A REAL PERSON. A sandbox send is refused for a real
  * (non-demo) affiliate here, and 492's trigger refuses a sandbox-settled Plaid
@@ -51,6 +63,11 @@ export const PAYOUT_DESCRIPTION = "PAYOUT";
 export const TRANSFER_DONE = Object.freeze(["settled", "funds_available"]);
 export const TRANSFER_DEAD = Object.freeze(["failed", "cancelled", "returned"]);
 export const SANDBOX_LABEL = "(Plaid sandbox — test data)";
+/* A run waiting on the affiliate: the two paperwork holds plus the bank. */
+export const HOLD = Object.freeze({ ...PAYOUT_DEFAULTS.heldReasons, bank: "no_bank_linked" });
+export const AUTO_ACTOR = Object.freeze({ id: "autopay", name: "Plaid autopay" });
+/* Due the day after the client's money clears (owner: "immediately"). */
+export const IMMEDIATE_DUE_DAYS = 1;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
@@ -165,7 +182,8 @@ export async function completeAffiliateBankLink(db, {
     )).rows[0];
   });
 
-  return { ok: true, status: 200, account: shapeAccount(row) };
+  const released = await releaseCleared(db, orgId, affiliateId);
+  return { ok: true, status: 200, account: shapeAccount(row), released };
 }
 
 export function shapeAccount(r) {
@@ -485,25 +503,32 @@ export async function voidPayout(db, { orgId, payoutId, reason, staff } = {}) {
    4. The two paperwork gates
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Held runs waiting on paperwork that is now in: release them. A run still
-   missing the other paper keeps its hold with the new reason. */
-async function releaseCleared(db, orgId, affiliateId) {
+/* Held runs waiting on the affiliate (license, tax form, bank) whose last
+   gate is now open: release them, and autopay sends them on its next pass. A
+   run still missing something keeps its hold, renamed to what is missing. */
+export async function releaseCleared(db, orgId, affiliateId) {
   const a = (await db.query(
-    `SELECT partner_license_signed_at, tax_form_received_at FROM affiliates WHERE id = $1 AND org_id = $2`,
+    `SELECT a.partner_license_signed_at, a.tax_form_received_at,
+            EXISTS (SELECT 1 FROM affiliate_payout_accounts b
+                     WHERE b.affiliate_id = a.id AND b.org_id = a.org_id AND b.status = 'active') AS has_bank
+       FROM affiliates a WHERE a.id = $1 AND a.org_id = $2`,
     [affiliateId, orgId])).rows[0];
   if (!a) return 0;
-  if (a.partner_license_signed_at && a.tax_form_received_at) {
+  const reasons = Object.values(HOLD);
+  const next = !a.partner_license_signed_at ? HOLD.license
+    : !a.tax_form_received_at ? HOLD.tax
+    : !a.has_bank ? HOLD.bank : null;
+  if (!next) {
     return (await db.query(
       `UPDATE affiliate_payouts SET status = 'pending', hold_reason = NULL, updated_at = now()
         WHERE affiliate_id = $1 AND org_id = $2 AND status = 'held' AND hold_reason = ANY($3::text[])
         RETURNING id`,
-      [affiliateId, orgId, Object.values(PAYOUT_DEFAULTS.heldReasons)])).rowCount || 0;
+      [affiliateId, orgId, reasons])).rowCount || 0;
   }
-  const next = !a.partner_license_signed_at ? PAYOUT_DEFAULTS.heldReasons.license : PAYOUT_DEFAULTS.heldReasons.tax;
   await db.query(
     `UPDATE affiliate_payouts SET hold_reason = $3, updated_at = now()
       WHERE affiliate_id = $1 AND org_id = $2 AND status = 'held' AND hold_reason = ANY($4::text[]) AND hold_reason <> $3`,
-    [affiliateId, orgId, next, Object.values(PAYOUT_DEFAULTS.heldReasons)]);
+    [affiliateId, orgId, next, reasons]);
   return 0;
 }
 
@@ -550,6 +575,141 @@ export async function stampAffiliateLicense(db, { orgId, affiliateId } = {}) {
       RETURNING partner_license_signed_at`, [affiliateId, orgId, signed.signed_at, `contract:${signed.id}`])).rows[0];
   const released = await releaseCleared(db, orgId, affiliateId);
   return { ok: true, status: 200, stamped: !!row, signedAt: row ? row.partner_license_signed_at : signed.signed_at, contractId: signed.id, released };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4b. Autopay — paid as soon as the client's money clears (owner-set 2026-10-20)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Earned commission on no run yet. Same rule as the monthly run's OWED_SQL
+   (payouts.mjs): converted, a known positive amount, not lined anywhere — so
+   NULL stays unknown and is never paid as $0. No period and no minimum. */
+const OWED_NOW_SQL = `
+  SELECT r.id, r.affiliate_id, r.client_id, r.commission_due, r.basis_amount, r.rule_snapshot,
+         r.converted_at, c.client_code
+    FROM affiliate_referrals r
+    LEFT JOIN clients c ON c.id = r.client_id
+   WHERE r.org_id = $1
+     AND r.status = 'converted'
+     AND r.commission_due IS NOT NULL
+     AND r.commission_due > 0
+     AND NOT EXISTS (SELECT 1 FROM affiliate_payout_lines l
+                      WHERE l.referral_id = r.id AND l.kind = 'commission')
+     AND ($2::uuid[] IS NULL OR r.affiliate_id = ANY($2::uuid[]))
+   ORDER BY r.affiliate_id, r.converted_at`;
+
+function addDays(d, n) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n)).toISOString().slice(0, 10);
+}
+
+/**
+ * One payout run per newly earned commission, the moment it is earned. One run
+ * per referral keeps the statement simple ("this client's payment → this
+ * payout") and the idempotency key exact: `affnow:<referral id>`. The
+ * commission-once index is the real guard against paying twice.
+ */
+/* `affiliateIds` narrows a pass to named affiliates. Production passes null
+   (everyone); the scratch-database tests pass their own fixtures so a shared
+   test database's other rows are never swept up. */
+export async function buildImmediateRuns(db, { orgId, now = new Date(), affiliateIds = null } = {}) {
+  if (!orgId) throw new Error("buildImmediateRuns: orgId is required");
+  const owed = (await db.query(OWED_NOW_SQL, [orgId, affiliateIds])).rows;
+  const out = { created: 0, held: 0, skipped: 0, payouts: [] };
+  const gates = new Map();
+  for (const r of owed) {
+    if (!gates.has(r.affiliate_id)) {
+      gates.set(r.affiliate_id, (await db.query(
+        `SELECT a.partner_license_signed_at, a.tax_form_received_at,
+                EXISTS (SELECT 1 FROM affiliate_payout_accounts b
+                         WHERE b.affiliate_id = a.id AND b.org_id = a.org_id AND b.status = 'active') AS has_bank
+           FROM affiliates a WHERE a.id = $1 AND a.org_id = $2`, [r.affiliate_id, orgId])).rows[0] || null);
+    }
+    const a = gates.get(r.affiliate_id);
+    if (!a) { out.skipped += 1; continue; }
+    const hold = !a.partner_license_signed_at ? HOLD.license
+      : !a.tax_form_received_at ? HOLD.tax
+      : !a.has_bank ? HOLD.bank : null;
+    const cleared = r.converted_at ? new Date(r.converted_at) : now;
+    const periodEnd = new Date(Math.max(now.getTime(), cleared.getTime() + 1000));
+    const run = await withTransaction(db, async (tx) => {
+      const created = (await tx.query(
+        `INSERT INTO affiliate_payouts
+           (org_id, affiliate_id, period_start, period_end, due_on, status, hold_reason, idempotency_key, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (org_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+         RETURNING id`,
+        [orgId, r.affiliate_id, cleared, periodEnd, addDays(cleared, IMMEDIATE_DUE_DAYS), hold ? "held" : "pending",
+         hold, `affnow:${r.id}`, "Built by autopay when the client's payment cleared."])).rows[0];
+      if (!created) return null;
+      const line = (await tx.query(
+        `INSERT INTO affiliate_payout_lines
+           (org_id, payout_id, referral_id, kind, amount, client_id, client_code, basis_amount, rule_snapshot)
+         VALUES ($1,$2,$3,'commission',$4,$5,$6,$7,$8)
+         ON CONFLICT (referral_id) WHERE kind = 'commission' DO NOTHING
+         RETURNING id`,
+        [orgId, created.id, r.id, r.commission_due, r.client_id, r.client_code || null, r.basis_amount, r.rule_snapshot || {}])).rows[0];
+      if (!line) {
+        await tx.query(`UPDATE affiliate_payouts SET status = 'void', void_reason = 'no_lines_all_settled_elsewhere', updated_at = now() WHERE id = $1`, [created.id]);
+        return null;
+      }
+      return created;
+    });
+    if (!run) { out.skipped += 1; continue; }
+    out.created += 1;
+    if (hold) out.held += 1;
+    out.payouts.push({ payoutId: run.id, affiliateId: r.affiliate_id, referralId: r.id, hold });
+  }
+  return out;
+}
+
+/* Refusals that mean "waiting on something outside this run". Written on the
+   row so staff and the affiliate's statement can say why it has not gone. */
+const WAIT_REASONS = new Set([
+  "sandbox_test_affiliates_only", "transfers_off", "limits_not_set", "plaid_not_configured",
+  "production_needs_live_flag", "plaid_env_not_supported", "no_bank_linked",
+  "bank_link_wrong_environment", "over_transfer_limit", "partner_license_unsigned", "tax_form_missing"
+]);
+
+/** Send every pending run through Plaid. No approval click (owner-set). */
+export async function autoSendPending(db, { orgId, env = process.env, provider = null, now = new Date(), limit = 100, affiliateIds = null } = {}) {
+  const rows = (await db.query(
+    `SELECT id FROM affiliate_payouts
+      WHERE org_id = $1 AND status = 'pending' AND plaid_transfer_id IS NULL
+        AND ($3::uuid[] IS NULL OR affiliate_id = ANY($3::uuid[]))
+      ORDER BY due_on NULLS LAST, created_at LIMIT $2`, [orgId, limit, affiliateIds])).rows;
+  const out = { tried: 0, sent: 0, waiting: 0, failed: 0, errors: [] };
+  for (const { id } of rows) {
+    out.tried += 1;
+    const r = await sendPayoutViaPlaid(db, { orgId, payoutId: id, staff: AUTO_ACTOR, env, provider, now });
+    if (r.ok) { out.sent += 1; continue; }
+    if (WAIT_REASONS.has(r.error)) {
+      out.waiting += 1;
+      await db.query(
+        `UPDATE affiliate_payouts SET rail_failure = $3, updated_at = now()
+          WHERE id = $1 AND org_id = $2 AND status = 'pending' AND rail_failure IS DISTINCT FROM $3`,
+        [id, orgId, String(r.message || r.error).slice(0, 300)]);
+    } else {
+      out.failed += 1;
+      out.errors.push({ payoutId: id, error: r.error });
+    }
+  }
+  return out;
+}
+
+/** The whole pass, every company: build what was just earned, send it, ask
+ *  Plaid what landed. One company failing does not stop the rest. */
+export async function runAutopay(db, { env = process.env, provider = null, now = new Date(), step = null } = {}) {
+  const at = (name, fn) => (step && typeof step.run === "function" ? step.run(name, fn) : fn());
+  const orgs = await at("orgs", async () => (await db.query(`SELECT id FROM orgs`)).rows.map((o) => o.id));
+  const report = { built: [], sent: [], synced: null, errors: [] };
+  for (const orgId of orgs) {
+    try { report.built.push({ orgId, ...(await at(`build-${orgId}`, () => buildImmediateRuns(db, { orgId, now }))) }); }
+    catch (err) { report.errors.push({ orgId, phase: "build", error: String(err && err.message || err).slice(0, 200) }); }
+    try { report.sent.push({ orgId, ...(await at(`send-${orgId}`, () => autoSendPending(db, { orgId, env, provider, now }))) }); }
+    catch (err) { report.errors.push({ orgId, phase: "send", error: String(err && err.message || err).slice(0, 200) }); }
+  }
+  report.synced = await at("sync", () => syncPayoutTransfers(db, { env, provider, now }));
+  return report;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -611,6 +771,7 @@ export function shapePayoutRow(r, today) {
 }
 
 export async function payoutsView(db, { orgId, status = null, limit = 200, now = new Date(), env = process.env } = {}) {
+  if (!isUuid(orgId)) throw new Error("payoutsView: orgId is required");
   const allowed = ["pending", "held", "processing", "paid", "void"];
   const s = status && allowed.includes(status) ? status : null;
   const rows = (await db.query(PAYOUTS_VIEW_SQL, [orgId, s, Math.min(Math.max(Number(limit) || 200, 1), 500)])).rows;
@@ -632,6 +793,7 @@ export async function payoutsView(db, { orgId, status = null, limit = 200, now =
 
 export default {
   dueOnFor, attemptKey, railOutcome, pickPayoutAccount,
+  buildImmediateRuns, autoSendPending, runAutopay, releaseCleared,
   startAffiliateBankLink, completeAffiliateBankLink,
   sendPayoutViaPlaid, syncPayoutTransfers,
   markPayoutPaid, holdPayout, releasePayout, voidPayout,

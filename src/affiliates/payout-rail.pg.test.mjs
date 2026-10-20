@@ -15,7 +15,7 @@ import { db, close } from "../db.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import {
   sendPayoutViaPlaid, syncPayoutTransfers, markPayoutPaid, holdPayout, releasePayout, voidPayout,
-  recordTaxForm, completeAffiliateBankLink, payoutsView, PLAID_METHOD
+  recordTaxForm, completeAffiliateBankLink, payoutsView, buildImmediateRuns, autoSendPending, PLAID_METHOD
 } from "./payout-rail.mjs";
 import { gapChecks } from "../pulse/coverage/gap-partners.mjs";
 
@@ -323,13 +323,63 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
       startHtml: '<script>fetch("/api/public/affiliate-click")</script>', loginHandlesPartners: true }))
       .find((r) => r.id === "partners:payout-overdue");
     assert.equal(row.status, "FAIL", row.detail);
-    assert.match(row.detail, /past its due day/);
+    assert.match(row.detail, /past the due day and still not sent/);
 
     assert.equal((await markPayoutPaid(db, { orgId: org, payoutId: id, method: "check", externalRef: "CHK-1042", staff: STAFF })).ok, true);
     row = (await gapChecks({ db, orgId: org, now, routes: { "public/affiliate-click": true, "auth/login": true },
       startHtml: '<script>fetch("/api/public/affiliate-click")</script>', loginHandlesPartners: true }))
       .find((r) => r.id === "partners:payout-overdue");
     assert.doesNotMatch(row.detail, /\$260/, "the paid commission no longer counts as late");
+  });
+
+  // ── autopay: paid as soon as the client's money clears (owner-set 2026-10-20) ──
+
+  test("autopay: earned commission gets its own run at once, due the next day, held until a bank is linked", async () => {
+    const now = new Date("2026-10-20T15:00:00Z");
+    const a = await mkAffiliate("auto", { demo: true });
+    const r = await owe(a, "au1", 42.5, new Date("2026-10-20T14:50:00Z"));
+
+    const built = await buildImmediateRuns(db, { orgId: org, now, affiliateIds: [a] });
+    assert.equal(built.created, 1, "no $50 minimum and no month wait");
+    let p = (await db.query(`SELECT * FROM affiliate_payouts WHERE affiliate_id = $1`, [a])).rows[0];
+    assert.equal(p.status, "held");
+    assert.equal(p.hold_reason, "no_bank_linked");
+    assert.equal(p.due_on.toISOString().slice(0, 10), "2026-10-21");
+    assert.equal(p.idempotency_key, `affnow:${r}`);
+
+    // A second pass builds nothing: the commission-once guard.
+    assert.equal((await buildImmediateRuns(db, { orgId: org, now, affiliateIds: [a] })).created, 0);
+
+    const link = await completeAffiliateBankLink(db, { orgId: org, affiliateId: a, publicToken: "p", plaid: fakePlaid("sandbox") });
+    assert.equal(link.released, 1, "linking the bank releases the held payout by itself");
+    p = await payout(p.id);
+    assert.equal(p.status, "pending");
+
+    const rail = fakeRail();
+    const sent = await autoSendPending(db, { orgId: org, provider: rail, env: {}, now, affiliateIds: [a] });
+    assert.equal(sent.sent, 1, "no approval click");
+    p = await payout(p.id);
+    assert.equal(p.status, "processing");
+    assert.equal(p.approved_by, "Plaid autopay");
+
+    rail.state.status = "settled";
+    await syncPayoutTransfers(db, { provider: rail });
+    assert.equal((await payout(p.id)).status, "paid");
+  });
+
+  test("autopay: a REAL affiliate on Plaid test money waits, with the reason written on the run", async () => {
+    const now = new Date("2026-10-20T15:00:00Z");
+    const a = await mkAffiliate("autoreal");
+    await owe(a, "ar1", 99, new Date("2026-10-20T14:00:00Z"));
+    await completeAffiliateBankLink(db, { orgId: org, affiliateId: a, publicToken: "p", plaid: fakePlaid("sandbox") });
+    await buildImmediateRuns(db, { orgId: org, now, affiliateIds: [a] });
+    const rail = fakeRail();
+    const sent = await autoSendPending(db, { orgId: org, provider: rail, env: { PLAID_ENV: "sandbox" }, now, affiliateIds: [a] });
+    assert.equal(sent.waiting, 1);
+    assert.equal(rail.calls.authorize, 0, "Plaid was never asked to move test money to a real person");
+    const p = (await db.query(`SELECT status, rail_failure FROM affiliate_payouts WHERE affiliate_id = $1`, [a])).rows[0];
+    assert.equal(p.status, "pending");
+    assert.match(p.rail_failure, /test money/);
   });
 
   test("tripwire: owed money with no payout record at all after the due day turns the pulse red", async () => {

@@ -37,7 +37,7 @@ import { documentVaultChase } from './document-vault-chase.mjs';
 import { paidCheckoutExpirySweeper } from './paid-checkout-expiry-sweeper.mjs';
 import { pulseInstantWatch } from './pulse-instant-watch.mjs';
 import { affiliatePayoutRun } from './affiliate-payout-run.mjs';
-import { affiliatePayoutTransferSync } from './affiliate-payout-transfer-sync.mjs';
+import { affiliatePayoutAutopay } from './affiliate-payout-autopay.mjs';
 import { meetTranscriptSweeper } from './meet-transcript-sweeper.mjs';
 import { metaCampaignSyncSweeper } from './meta-campaign-sync-sweeper.mjs';
 import { clickfunnelsAnalyticsSweeper } from './clickfunnels-analytics-sweeper.mjs';
@@ -325,10 +325,13 @@ export const functions = [
      COMPLIANCE REVIEW REQUIRED: payment rails. */
   affiliatePayoutRun,
 
-  /* The other half of the payout run (492, 2026-10-20): every 15 minutes, ask
-     Plaid what happened to each affiliate payout staff sent. Settled → paid,
-     dead → back to pending with the reason. Sends nothing itself. */
-  affiliatePayoutTransferSync,
+  /* AFFILIATE AUTOPAY (492, owner-set 2026-10-20: "Paid them out immediately
+     upon receiving the money. Once it clears, we just pay it."). Every 15
+     minutes: earned commission goes on its own run, Plaid Transfer sends it
+     with no approval click, and Plaid's answer marks it paid or back to
+     pending. Sandbox unless PLAID_ENV=production and FINANCE_OS_TRANSFERS_LIVE=1;
+     test money only ever pays a test affiliate. */
+  affiliatePayoutAutopay,
 
   meetTranscriptSweeper,
 

@@ -26,7 +26,8 @@ export default async function handler(req, res, deps = {}) {
   if (!orgId) return;
   try {
     const status = req.query && req.query.status ? String(req.query.status) : null;
-    const view = await payoutsView(database, { orgId, status, now: deps.now || new Date(), env: deps.env || process.env });
+    // The company comes off the session, never the query string.
+    const view = await payoutsView(database, { orgId: staff.org_id, status, now: deps.now || new Date(), env: deps.env || process.env });
     return res.status(200).json({ ok: true, ...view });
   } catch (err) {
     if (dbDown(err)) return res.status(503).json({ ok: false, error: "db_unavailable" });

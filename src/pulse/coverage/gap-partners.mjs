@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 
 import { ROUTES } from "../../../netlify/functions/api.mjs";
 import { PAYOUT_DEFAULTS, previousMonth } from "../../affiliates/payouts.mjs";
-import { dueOnFor, PLAID_METHOD } from "../../affiliates/payout-due.mjs";
+import { PLAID_METHOD } from "../../affiliates/payout-due.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const START_HTML = path.resolve(HERE, "../../../public/start.html");
@@ -134,16 +134,18 @@ export const PAYOUT_STUCK_SQL = `
         AND status = 'processing'
         AND coalesce(initiated_at, created_at) < $2) AS partner_stuck`;
 
-/* THE PAYOUT TRIPWIRE (492, 2026-10-20). Earned commission that is past its
-   due day and not paid. Due day: the 15th of the month after the month earned
-   (src/affiliates/payout-rail.mjs dueOnFor). Two ways to be late:
-     late_on_run — it is on a pending or processing run whose due_on has passed.
-     no_run      — it should have been on this month's run (converted before
-                   the 1st, at least the $50 minimum for that affiliate), the
-                   run's due day has passed, and it is on no run at all.
-   A run HELD for paperwork (license, tax form) is a person's setup step, so it
-   is counted in the detail and not failed (heartbeat rule 18). Demo
-   affiliates are left out. Void runs carry no money and are ignored. */
+/* THE PAYOUT TRIPWIRE (492). Owner-set 2026-10-20: an affiliate is paid as
+   soon as the client's payment clears ("Once it clears, we just pay it"). The
+   autopay job (every 15 minutes) builds and sends it; a run is due the day
+   after the money cleared. Two ways to be late:
+     late_on_run — it is on a run still PENDING (not sent) past its due day.
+                   A run already sent (processing) is watched by payout-stuck.
+     no_run      — earned more than a day ago and on no run at all: autopay
+                   did not pick it up.
+   A run HELD on the affiliate (license, tax form, no bank linked) is a
+   person's setup step, so it is counted in the detail and not failed
+   (heartbeat rule 18). Demo affiliates are left out. Void runs carry no
+   money and are ignored. */
 const OWED_COMMISSION = `
     SELECT r.affiliate_id, r.commission_due, r.converted_at,
            run.status AS run_status, run.due_on AS run_due_on
@@ -165,17 +167,11 @@ const OWED_COMMISSION = `
 /* Starts with SELECT on purpose: assertSelect below refuses anything else. */
 export const PAYOUT_OVERDUE_SQL = `
   SELECT
-    count(*) FILTER (WHERE o.run_status IN ('pending', 'processing') AND o.run_due_on < $2::date)::int AS late_on_run,
-    COALESCE(sum(o.commission_due) FILTER (WHERE o.run_status IN ('pending', 'processing') AND o.run_due_on < $2::date), 0)::float8 AS late_on_run_usd,
+    count(*) FILTER (WHERE o.run_status = 'pending' AND o.run_due_on < $2::date)::int AS late_on_run,
+    COALESCE(sum(o.commission_due) FILTER (WHERE o.run_status = 'pending' AND o.run_due_on < $2::date), 0)::float8 AS late_on_run_usd,
     count(*) FILTER (WHERE o.run_status = 'held' AND o.run_due_on < $2::date)::int AS late_held,
-    (SELECT count(*)::int FROM (
-       SELECT n.affiliate_id FROM (${OWED_COMMISSION}) n
-        WHERE n.run_status IS NULL AND n.converted_at < $3::timestamptz AND $5::boolean
-        GROUP BY n.affiliate_id HAVING sum(n.commission_due) >= $4) x) AS no_run_affiliates,
-    (SELECT COALESCE(sum(y.usd), 0)::float8 FROM (
-       SELECT sum(n.commission_due) AS usd FROM (${OWED_COMMISSION}) n
-        WHERE n.run_status IS NULL AND n.converted_at < $3::timestamptz AND $5::boolean
-        GROUP BY n.affiliate_id HAVING sum(n.commission_due) >= $4) y) AS no_run_usd,
+    count(DISTINCT o.affiliate_id) FILTER (WHERE o.run_status IS NULL AND o.converted_at < $3::timestamptz)::int AS no_run_affiliates,
+    COALESCE(sum(o.commission_due) FILTER (WHERE o.run_status IS NULL AND o.converted_at < $3::timestamptz), 0)::float8 AS no_run_usd,
     count(*)::int AS owed_n
     FROM (${OWED_COMMISSION}) o`;
 
@@ -456,35 +452,36 @@ async function payoutStuck(db, orgId, now) {
 
 const usd = (n) => `$${(Math.round(Number(n) * 100) / 100).toLocaleString("en-US")}`;
 
+/** Autopay picks up earned commission within 15 minutes; a day is the grace. */
+export const PAYOUT_GRACE_MS = 24 * 60 * 60 * 1000;
+
 async function payoutOverdue(db, orgId, now) {
   const id = "partners:payout-overdue";
   if (!db || !orgId) {
     return check(id, "skip", `${db ? "no org id" : "no database"} in this run — payout due days not read`);
   }
   const today = now.toISOString().slice(0, 10);
-  const { periodEnd } = previousMonth(now);
-  const runDue = dueOnFor(periodEnd);
-  const minimum = PAYOUT_DEFAULTS.minimumUsd;
+  const cutoff = new Date(now.getTime() - PAYOUT_GRACE_MS);
   try {
-    const row = await readRow(db, PAYOUT_OVERDUE_SQL, [orgId, today, periodEnd, minimum, today > runDue]);
+    const row = await readRow(db, PAYOUT_OVERDUE_SQL, [orgId, today, cutoff]);
     const lateOnRun = num(row.late_on_run);
     const noRun = num(row.no_run_affiliates);
     const held = num(row.late_held);
     const heldNote = held > 0
-      ? ` ${held} earned commission${held === 1 ? " is" : "s are"} past due on a run held for paperwork (license or tax form) — a reminder, not a break.`
+      ? ` ${held} earned commission${held === 1 ? " is" : "s are"} waiting on the affiliate (license, tax form or bank link) — a reminder, not a break.`
       : "";
     if (lateOnRun === 0 && noRun === 0) {
       const owed = num(row.owed_n);
       return check(id, "PASS",
         owed === 0
           ? `no earned commission is waiting to be paid.${heldNote}`
-          : `no earned commission is past its due day (the 15th of the month after it was earned) without being paid.${heldNote}`);
+          : `every earned commission was sent within a day of the client's payment clearing.${heldNote}`);
     }
     const parts = [];
-    if (lateOnRun > 0) parts.push(`${lateOnRun} earned commission${lateOnRun === 1 ? "" : "s"} (${usd(row.late_on_run_usd)}) on a payout run past its due day and still not paid`);
-    if (noRun > 0) parts.push(`${noRun} affiliate${noRun === 1 ? "" : "s"} owed ${usd(row.no_run_usd)} past the ${runDue} due day with no payout record at all`);
+    if (lateOnRun > 0) parts.push(`${lateOnRun} earned commission${lateOnRun === 1 ? "" : "s"} (${usd(row.late_on_run_usd)}) past the due day and still not sent`);
+    if (noRun > 0) parts.push(`${noRun} affiliate${noRun === 1 ? "" : "s"} owed ${usd(row.no_run_usd)} for over a day with no payout record at all`);
     return check(id, "FAIL", `Payout late: ${parts.join("; ")}.${heldNote}`,
-      fix("Open /app/products-commissions.html#affiliate-payouts. Send it through Plaid or pay by hand and Mark paid with the reference. If there is no run, the monthly payout job did not write one: read its run receipt. Do not mark anything paid from the pulse."));
+      fix("Open /app/products-commissions.html#affiliate-payouts and read the reason on the run. If Plaid is not live yet, pay by hand and Mark paid with the reference. If there is no run, the affiliate-payout-autopay job did not build one: read its run receipt. Do not mark anything paid from the pulse."));
   } catch (err) {
     return check(id, "FAIL", `Could not read payout due days: ${String((err && err.message) || err).slice(0, 160)}`,
       fix("Read affiliate_referrals and affiliate_payouts. Do not mark anyone paid."));
