@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Read-only runner evidence, not a release verdict. Node 22 built-ins only.
-// Run: node scripts/pulse/diagnose-site-http.mjs
+// Run: node scripts/pulse/diagnose-site-http.mjs (matched provider fan-outs)
+// Optional original transport matrix: add --baseline
 // Fixed public GETs only. Never log bodies, URLs with queries, headers, or env.
 import { AsyncLocalStorage } from "node:async_hooks";
 import { channel } from "node:diagnostics_channel";
@@ -12,6 +13,7 @@ import { pathToFileURL } from "node:url";
 const SITE = "https://fundhub.ai";
 export const REQUEST_MS = 8000;
 export const TOTAL_MS = 55000;
+export const MATCHED_CONCURRENCIES = Object.freeze([12, 3, 12, 3]);
 export const PATHS = Object.freeze([
   "/api/health", "/portal-login.html", "/roadmap", "/roadmap/pay.html",
   "/api/public/slo-checkout", "/api/auth/magic-link", "/api/webhooks/clickfunnels",
@@ -87,23 +89,32 @@ export function observeFetch(emit, started = performance.now()) {
     subscriptions.push(() => target.unsubscribe(listener));
   };
   const mark = (request, name) => {
-    const row = requests.get(request);
-    if (row && row.times[name] === undefined) row.times[name] = ms(row.started);
-    return row;
+    const state = requests.get(request);
+    if (state && state.times[name] === undefined) state.times[name] = ms(state.row.started);
+    return state;
   };
   watch("request:create", ({ request }) => {
     const row = context.getStore();
-    if (row) { requests.set(request, row); mark(request, "requestCreated"); }
+    if (!row) return;
+    if (row.times.requestCreated !== undefined) {
+      row.priorHops ||= [];
+      row.priorHops.push({ times: row.times, ...(row.socket ? { socket: row.socket } : {}) });
+      row.times = {};
+      delete row.socket;
+      delete row.transportError;
+    }
+    requests.set(request, { row, times: row.times });
+    mark(request, "requestCreated");
   });
   watch("client:sendHeaders", ({ request, socket }) => {
-    const row = mark(request, "headersWrite");
-    if (row && socket) row.socket = { id: socketId(socket), ...socketFacts(socket) };
+    const state = mark(request, "headersWrite");
+    if (state && socket && state.times === state.row.times) state.row.socket = { id: socketId(socket), ...socketFacts(socket) };
   });
   watch("request:bodySent", ({ request }) => mark(request, "requestSent"));
   watch("request:headers", ({ request }) => mark(request, "responseHeaders"));
   watch("request:error", ({ request, error }) => {
-    const row = requests.get(request);
-    if (row) row.transportError = errorFacts(error);
+    const state = requests.get(request);
+    if (state && state.times === state.row.times) state.row.transportError = errorFacts(error);
   });
   for (const [name, event] of [["beforeConnect", "before-connect"], ["connected", "connected"], ["connectError", "connect-error"]]) {
     watch(`client:${name}`, ({ connectParams, socket, error }) => {
@@ -118,6 +129,25 @@ export function observeFetch(emit, started = performance.now()) {
     run: (row, fn) => context.run(row, fn),
     close: () => { subscriptions.forEach((unsubscribe) => unsubscribe()); context.disable(); }
   };
+}
+
+// Every stage visits the identical fixed paths. A low-concurrency stage queues
+// all twelve instead of silently testing just its first three paths.
+export async function runFixedPathStage(concurrency, runTrial, shouldStop = () => false) {
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > PATHS.length) throw new Error("Invalid diagnostic concurrency");
+  let next = 0;
+  let active = 0;
+  let peakActive = 0;
+  let completed = 0;
+  await Promise.all(Array.from({ length: concurrency }, async () => {
+    while (!shouldStop() && next < PATHS.length) {
+      const path = PATHS[next++];
+      peakActive = Math.max(peakActive, ++active);
+      try { await runTrial(path); completed++; } finally { active--; }
+    }
+  }));
+  return { requested: PATHS.length, started: next, completed, skipped: PATHS.length - next,
+    peakActive, complete: completed === PATHS.length && !shouldStop() };
 }
 
 async function dnsInventory() {
@@ -204,19 +234,23 @@ async function httpsTrial(row, signal, family) {
   });
 }
 
-export async function diagnoseSiteHttp() {
+export async function diagnoseSiteHttp({ baseline = false } = {}) {
   const started = performance.now();
   const results = [];
+  const stages = [];
+  const mode = baseline ? "baseline" : "matched-provider-concurrency";
+  let activeStage = null;
   const trace = observeFetch(print, started);
   const deadline = AbortSignal.timeout(TOTAL_MS - 500);
   // Bound even an unresolved system DNS lookup or an idle pooled socket. This
   // script only observes; a network failure does not overwrite the release gate.
   const hardStop = setTimeout(() => {
-    print({ kind: "summary", outcome: "diagnostic-deadline", completed: results.length, ms: ms(started), releaseVerdictChanged: false });
+    print({ kind: "summary", mode, outcome: "diagnostic-deadline", activeStage,
+      stages, completed: results.length, ms: ms(started), incomplete: true, releaseVerdictChanged: false });
     process.exit(0);
   }, TOTAL_MS);
   hardStop.unref();
-  print({ kind: "environment", node: process.version, undici: process.versions.undici || null,
+  print({ kind: "environment", mode, node: process.version, undici: process.versions.undici || null,
     dnsOrder: dns.getDefaultResultOrder(), autoSelectFamily: net.getDefaultAutoSelectFamily(),
     familyAttemptTimeoutMs: net.getDefaultAutoSelectFamilyAttemptTimeout(), requestMs: REQUEST_MS, totalMs: TOTAL_MS });
   let provider;
@@ -224,9 +258,9 @@ export async function diagnoseSiteHttp() {
     ({ probeGet: provider } = await import("../../src/messaging/providers/pulse-probe.mjs"));
     await dnsInventory();
     let id = 0;
-    const trial = async (mode, concurrency, path, family = 0) => {
+    const trial = async (mode, concurrency, path, family = 0, stage = null) => {
       if (deadline.aborted) return;
-      const row = { kind: "request", id: ++id, mode, concurrency, path,
+      const row = { kind: "request", id: ++id, stage, mode, concurrency, path,
         variant: path === "/api/health" ? "strict-health" : "public-door", family, started: performance.now(), times: {}, status: 0 };
       const signal = AbortSignal.any([deadline, AbortSignal.timeout(REQUEST_MS)]);
       if (mode === "https-fresh") await httpsTrial(row, signal, family);
@@ -237,23 +271,44 @@ export async function diagnoseSiteHttp() {
       results.push(row);
       print(row);
     };
-    // Stages wait for one another so c1/c3/c12 do not secretly add their loads.
-    // Two c1 samples compare a function with a static page. c3/c12 are fan-outs,
-    // not twelve serial retries; counts are intentionally small and bounded.
-    await trial("native-fetch", 1, PATHS[0]);
-    await trial("native-fetch", 1, PATHS[1]);
-    for (const concurrency of [3, 12]) {
-      await Promise.all(PATHS.slice(0, concurrency).map((path) => trial("native-fetch", concurrency, path)));
+    if (baseline) {
+      await trial("native-fetch", 1, PATHS[0]);
+      await trial("native-fetch", 1, PATHS[1]);
+      for (const concurrency of [3, 12]) {
+        await Promise.all(PATHS.slice(0, concurrency).map((path) => trial("native-fetch", concurrency, path)));
+      }
+      await Promise.all(PATHS.map((path) => trial("pulse-provider", 12, path)));
+      await Promise.all([0, 4, 6].flatMap((family) => PATHS.slice(0, 2).map((path) => trial("https-fresh", 6, path, family))));
+    } else {
+      // Same process, same twelve paths, exact same provider/UA/8s budget.
+      // Alternating high/low twice separates a fan-out effect from one warm run.
+      for (const [index, concurrency] of MATCHED_CONCURRENCIES.entries()) {
+        if (deadline.aborted) break;
+        const stage = `matched-${index + 1}-c${concurrency}`;
+        activeStage = stage;
+        const stageStarted = performance.now();
+        print({ kind: "stage", event: "start", stage, concurrency, requested: PATHS.length });
+        const counts = await runFixedPathStage(concurrency,
+          (path) => trial("pulse-provider", concurrency, path, 0, stage), () => deadline.aborted);
+        const rows = results.filter((row) => row.stage === stage);
+        const result = { kind: "stage", event: "complete", stage, concurrency, wallMs: ms(stageStarted), ...counts,
+          responses: rows.filter((row) => row.outcome === "response").length,
+          failures: rows.filter((row) => row.outcome !== "response").map((row) => ({ id: row.id, path: row.path, phase: row.phase })),
+          deadlineReached: deadline.aborted };
+        stages.push(result);
+        print(result);
+        activeStage = null;
+      }
     }
-    await Promise.all(PATHS.map((path) => trial("pulse-provider", 12, path)));
-    await Promise.all([0, 4, 6].flatMap((family) => PATHS.slice(0, 2).map((path) => trial("https-fresh", 6, path, family))));
     const groups = [...new Set(results.map((row) => `${row.mode}/${row.concurrency}/${row.family}`))].map((group) => {
       const rows = results.filter((row) => `${row.mode}/${row.concurrency}/${row.family}` === group);
       return { group, count: rows.length, responses: rows.filter((row) => row.outcome === "response").length,
         failures: rows.filter((row) => row.outcome !== "response").map((row) => ({ id: row.id, path: row.path, phase: row.phase, codes: row.codes || row.transportError?.codes || [] })) };
     });
-    print({ kind: "summary", ms: ms(started), completed: results.length, deadlineReached: deadline.aborted,
-      groups, releaseVerdictChanged: false,
+    print({ kind: "summary", mode, ms: ms(started), completed: results.length, deadlineReached: deadline.aborted,
+      expected: baseline ? 35 : PATHS.length * MATCHED_CONCURRENCIES.length,
+      incomplete: baseline ? results.length !== 35 || deadline.aborted : stages.length !== MATCHED_CONCURRENCIES.length || stages.some((stage) => !stage.complete),
+      stages, groups, releaseVerdictChanged: false,
       limit: "Client timing locates the stalled phase. It cannot distinguish edge versus function after a request was sent without matching server evidence." });
   } finally {
     trace.close();
@@ -263,5 +318,5 @@ export async function diagnoseSiteHttp() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  diagnoseSiteHttp().catch((error) => { print({ kind: "diagnostic-error", ...errorFacts(error) }); process.exitCode = 1; });
+  diagnoseSiteHttp({ baseline: process.argv.includes("--baseline") }).catch((error) => { print({ kind: "diagnostic-error", ...errorFacts(error) }); process.exitCode = 1; });
 }
