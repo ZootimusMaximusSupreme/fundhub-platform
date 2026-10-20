@@ -58,6 +58,22 @@ jobs:
           src/pulse/beats/beat-bank-outreach*.test.mjs src/workflows/bank-outreach-checkins.test.mjs
           src/pulse/registry.test.mjs src/pulse/tripwires.test.mjs
           src/pulse/heartbeats.test.mjs src/pulse/workflow-coverage.test.mjs
+      - name: Shared role, navigation and monitoring integration regressions
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: >-
+          node --test src/http/demo-logins.test.mjs src/http/demo-logins.pg.test.mjs
+          src/journeys/runner/index.test.mjs src/workflows/index.test.mjs
+          scripts/diagrams/generate.test.mjs src/ui/rounded-reference-font.test.mjs
+          src/pulse/heartbeat-law.test.mjs src/pulse/coverage/slice-23-pages.test.mjs
+          src/pulse/coverage/run-slices.test.mjs scripts/pulse/prove-policy.test.mjs
+          src/pulse/catalog/proofs/s5-display-attached.test.mjs
+          src/pulse/catalog/proofs/s5-display-sidebar.test.mjs
+          src/pulse/catalog/proofs/fin-b20-repair-gate.test.mjs
+          src/pulse/catalog/proofs/fin-b20-sidebar.test.mjs
+          src/pulse/catalog/proofs/s2-role-route-reach.test.mjs
+          src/pulse/catalog/proofs/fin-b19-shell-chrome.test.mjs
+          src/pulse/catalog/proofs/fin-b20-repair-sidebar.test.mjs
       - name: Browser controls, roles and all four screen states
         run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs --reporter=line
       - name: Existing full scratch end-to-end harness

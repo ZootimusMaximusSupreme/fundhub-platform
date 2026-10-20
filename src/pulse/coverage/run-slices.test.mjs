@@ -312,7 +312,9 @@ test("the morning pass runs every gap file and still does not pass a slice witho
   const files = gapFiles();
   assert.ok(files.length > 0, "expected gap files on disk");
   const loaded = await loadGapModules();
-  assert.deepEqual(loaded.map((item) => item.file), files);
+  const loadedFiles = loaded.map((item) => item.file);
+  assert.deepEqual(loadedFiles, GAP_LANES.map((lane) => `${lane}.mjs`), "loader keeps the declared lane order");
+  assert.deepEqual([...loadedFiles].sort(), files, "every gap file on disk is declared exactly once");
   const broken = loaded.filter((item) => typeof item.gapChecks !== "function");
   assert.deepEqual(
     broken.map((item) => `${item.file}: ${item.loadError || "no gapChecks"}`),

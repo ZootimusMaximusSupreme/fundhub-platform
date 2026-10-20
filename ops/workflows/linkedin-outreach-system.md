@@ -4,7 +4,7 @@ Owner approved the plan and implementation in chat on 2026-10-19. Backend and mo
 
 ## Ground truth
 
-Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, AI call or automatic external send. Three initial reps through ordinary expandable staff seats. Reps work only their own banker list, never client files. Success is verified lender product data saved in the existing Lenders sheet; no invented quota or client referral workflow. Every touch saves the next action, immediately due unless deliberately scheduled. Verified active partners get monthly check-ins, quiet partners quarterly.
+Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, AI call or automatic external send. Two outbound hires use ordinary expandable staff seats. Reps work only their own banker list, never client files. Success is verified lender product data saved in the existing Lenders sheet; no invented quota or client referral workflow. Every touch saves the next action, immediately due unless deliberately scheduled. Verified active partners get monthly check-ins, quiet partners quarterly. Owner wants to use the system October 20, 2026 at 8:00 a.m. MST (America/Phoenix); this is a readiness deadline, not an instruction to send messages automatically.
 
 ## Ownership and dependencies
 
@@ -14,6 +14,7 @@ Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, 
 | Monitoring | pulse agent, GPT-6 Sol High | new `src/pulse/coverage/gap-bank-outreach*`, `src/pulse/beats/beat-bank-outreach*`, shared pulse registration files | Outreach morning/hourly checks passed; tracing full-suite public HTTP timing failures without relaxing limits |
 | Integration | parent | API routes, auth/nav, workflow, intended journey, CI, final proof and PR | Active |
 | UX | UX agent, GPT-6.1 Sol High | `public/app/bank-outreach.*`, `e2e/bank-outreach.spec.mjs` | Built after backend/API proof; 32 browser cases and 8 final affected reruns passed |
+| Role compatibility | role_compat agent, GPT-6.1 Sol High | fin-b19/20 gate/sidebar proof files, s2-role probe and proof | 122 checks passed with no skips; exact allow/deny checks retained |
 
 Backend and monitoring contract work run together. UI implementation waits until backend/API work is built and tested. Parent owns this board; agents report here through parent to avoid overlap. Existing dirty checkout stays untouched; build base is `origin/main` at `842ebfc6e` in `/private/tmp/fundhub-bank-outreach.0jXudA`.
 
@@ -41,6 +42,8 @@ Monitoring: Implement heartbeat/deep result checks/hourly beat for the contracts
 
 UX: Use GPT-6.1 Sol. Inspect current professional CRM and use shared font/brand/shell/sidebar. Build role-scoped bank outreach workspace against this exact API only after parent signals backend/API proof. Include four states, desktop/phone control proof and sample evidence clearly labeled. Do not edit shared shell or backend.
 
+Role compatibility: Repair only the existing role/sidebar/probe test fixtures that the approved outbound role, two API routes and Bank outreach screen changed. Preserve exact role/screen/route parity and all negative controls. Do not weaken handler guards or rewrite intended journeys to excuse code. Backend owns demo roster/new additive migration and S5 sidebar; pulse owns coverage slice/index/all-gap list; parent owns catalog map rows, generated docs, workflow expectations, font references and final CI.
+
 ## Evidence and leftovers
 
 Owner rule change: split, then execute; no workflow approval pauses. Shared AGENTS, CLAUDE, Cursor rule and local startup reminders updated. This does not remove production go-live choice or tool permissions.
@@ -62,6 +65,12 @@ The hourly bundle loaded all 17 beats; bank-outreach completed in 41ms with its 
 Run 39378246616 on 566c8c2e passed lint/TypeScript, every updated real PostgreSQL check (including the active-row pagination edge), all 40 browser cases and the actual morning bundle. Full scratch proof now has 442 PASS, 1 FAIL, 1 SILENT, 100 UNVERIFIED and no P0; the remaining FAIL is a missing local variable in the repaired funding test, not product code. Backend restored the saved-row binding and added a regression executing the exact bureau block; all 8 harness regressions and TypeScript pass locally. Full proof remains failed until rerun.
 
 That run's hourly outreach beat passed in 47ms; the full hourly gate again failed checkout/doors timing after 8-second public GET aborts. An immediate native-fetch sweep in the same job returned all 12 public paths in 45–361ms. Pulse/review found no confirmed transport bug. The next proof records sanitized same-process response-header timings and compares the actual probe provider to native fetch after failure. No deadline, guard, runtime provider or verdict was changed.
+
+Run 39380222475 on fc1b66aac passed lint/TypeScript, real database checks, 40 browsers, strict scratch integration (478 PASS, 0 FAIL, 1 SILENT, 99 UNVERIFIED, no P0), and the actual morning outreach bundle (2 PASS, 0 FAIL). Hourly outreach passed in 46ms with predeploy read-door skipped. Full hourly proof stayed red: checkout/doors took 8031/8004ms. Same-process tracing showed a native response-header stall on repair checkout; the post-proof native sweep independently timed out ClickFunnels, and the exact pulse provider independently timed out health/roadmap/SLO checkout. Therefore it is not isolated to the proof wrapper, user agent or body-cap code. Public network/hosting cause remains unknown. No production or transport repair is claimed; deadlines and red verdict remain unchanged.
+
+The retained complete PR matrix 39380226430 found additional integration omissions: exact sidebar section/desk counts, missing bank catalog map/proof row, copied page-list drift, coverage index note, declared gap order, pinned workflow IDs/count, generated trigger diagrams, absolute shared font references, role probe identity fixture and demo-role parity. Repairs are scoped to this new feature and its established integration contracts. A new additive migration 484 adds only the existing guarded demo roster's outbound seat, reuses an already-demo verifier, never overwrites a credential or enables demo login; no real hire account is created. Pure demo checks pass 47/47, actual S5 sidebar passes 5/5, page/heartbeat checks pass 37/37 and all-gap checks 26/26. Final integrated rerun remains required. Complete historical failed runs are retained, not marked successful.
+
+The compatibility batch passed 122 real browser/API cases across five existing proof files, no failures/skips. Parent rechecked the changed guards and 146 shared integration assertions passed with no skips; TypeScript and generated journey/diagram parity passed. Dedicated CI now includes all affected role/navigation/coverage proof files and the normal app-role demo PostgreSQL test. Latest migration/HTTP/browser/bundle results must still be taken from the final PR check, not inferred from these local checks.
 
 Separate pre-existing leftover from the full harness: closer shift copy was SILENTLY-DID-NOTHING; external vendor-dependent checks remain UNVERIFIED. No unrelated closer product repair was attempted.
 

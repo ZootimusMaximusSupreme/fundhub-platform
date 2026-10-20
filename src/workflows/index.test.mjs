@@ -72,6 +72,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "ai-set-04-3way-handoff",
   "ar-collections",
   "at-01-first-touch-capture",
+  "bank-outreach-checkins",
   "bc-01-customer-responsiveness",
   "bc-02-customer-friction",
   "blake-lead-watch",
@@ -215,6 +216,10 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
      added, in the words of the person who added it. The counts named in it are
      the historical record of what the pin said at the time; the pin itself is
      EXPECTED_WORKFLOW_IDS at the top of this file now, not a number.
+
+     Added bank-outreach-checkins (2026-10-19) — daily Arizona partner next
+     actions for the approved bank relationship workspace. It never sends
+     outreach. Direct workflow and real PostgreSQL tests prove idempotency.
 
      Added the instant pulse (2026-10-07, eee0270dd) — the five-minute watch
      over the critical doors: the health check, the login door, the apply door,

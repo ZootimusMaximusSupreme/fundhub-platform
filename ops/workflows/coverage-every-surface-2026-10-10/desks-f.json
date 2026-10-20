@@ -1312,6 +1312,16 @@
   },
   {
     "surface": "sidebar.fragment.html",
+    "control": "Nav link: Relationships > Bank outreach (bank-outreach.html)",
+    "kind": "link",
+    "calls": [],
+    "tables": [],
+    "impact": "none",
+    "coverage": "e2e",
+    "evidence": "src/pulse/catalog/proofs/s5-display-sidebar.test.mjs clicks the real link for owner/admin/sales_manager/outbound_rep, checks denied roles and the outbound-only workspace, and folds/unfolds Relationships; e2e/bank-outreach.spec.mjs proves the workspace controls. Registered as reg:bank-outreach with dedicated gap-bank-outreach and hourly bank-outreach saved-result checks."
+  },
+  {
+    "surface": "sidebar.fragment.html",
     "control": "Nav link: Sales > Pipeline (pipeline.html)",
     "kind": "link",
     "calls": [],

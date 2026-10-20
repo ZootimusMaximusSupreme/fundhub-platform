@@ -381,6 +381,7 @@ test("brand paint sets the company colors, fonts and logo, and refuses any value
 const EXPECTED_TABS = {
   owner: "*", admin: "admin", funding_advisor: "funding_advisor", closer: "closer", inquiry_specialist: "staff",
   setter: "staff", sales_manager: "sales_manager", csm: "csm",
+  outbound_rep: ["bank-outreach.html"],
   client: ["client-portal.html", "affiliate.html", "financeos.html", "money.html", "money-accounts.html", "money-credit.html",
     "money-connections.html", "money-payments.html", "money-setup.html", "money-plan.html", "money-banks.html", "money-strategy.html",
     "money-fundability.html", "money-next.html", "money-helper.html", "money-transfers.html", "money-declines.html", "money-alerts.html",
@@ -392,7 +393,7 @@ const STAFF_ROLES = ["owner", "admin", "funding_advisor", "closer", "inquiry_spe
 const OUTSIDE = ["client", "affiliate", "partner"];
 const HOMES = { client: "/app/client-portal.html", affiliate: "/app/affiliate.html", partner: "/app/partner-galaxy.html" };
 // Screens of the CRM an outside principal must never be let into.
-const CRM_PAGES = ["pipeline.html", "sales-floor.html", "lenders.html", "client-control-panel.html", "staff-teams.html",
+const CRM_PAGES = ["bank-outreach.html", "pipeline.html", "sales-floor.html", "lenders.html", "client-control-panel.html", "staff-teams.html",
   "products-commissions.html", "closer-dashboard.html", "finance-os.html", "ops-admin.html", "hiring.html", "csm-queue.html",
   "messaging.html", "documents.html", "calendar.html", "my-numbers.html", "campaign-manager.html", "contracts.html", "galaxy.html"];
 
@@ -477,6 +478,8 @@ test("the role gate sends a role away from a page it may not open, the session a
     await probe.close();
     assert.deepEqual(held.tabs, EXPECTED_TABS, "ROLE_TABS is exactly the table the owner signed off");
     for (const role of OUTSIDE) assert.deepEqual(held.open[role], [], `${role} may open no CRM screen`);
+    assert.deepEqual(held.open.outbound_rep, ["bank-outreach.html"], "outbound reps open only their bank workspace");
+    assert.deepEqual(held.portals.outbound_rep, [], "outbound reps open no client or partner portals");
     // The sales floor is the sales manager's, the owner's and the admin's, and nobody else's.
     assert.deepEqual(STAFF_ROLES.concat(OUTSIDE).filter((r) => held.open[r].includes("sales-floor.html")).sort(), ["admin", "owner", "sales_manager"]);
     // The pipeline is every employee's; the closer desk is every employee's except the outside three.

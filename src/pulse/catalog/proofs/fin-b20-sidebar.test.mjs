@@ -27,21 +27,22 @@ const LINKS = [...ASIDE.matchAll(/<div class="navgroup" data-fh-section="([^"]+)
 
 // What each role is shown on its rail. Pinned from the shell's own role map, so a change to who sees
 // what turns this red and has to be a decision.
-const OWNER = ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html", "lenders.html",
+const OWNER = ["bank-outreach.html", "pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html", "lenders.html",
   "client-control-panel.html", "csm-queue.html", "messaging.html", "documents.html", "inquiry-remover.html", "company-brain.html",
   "marketing-command-center.html", "campaign-manager.html", "social-studio.html", "creative-factory.html", "content-admin.html",
   "staff-teams.html", "products-commissions.html", "contracts.html", "client-portal.html"];
 const STAFF = ["pipeline.html", "closer-dashboard.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
   "messaging.html", "documents.html", "inquiry-remover.html"];
 const RAIL = {
-  owner: { page: "pipeline.html", links: OWNER, heads: ["work", "clients", "insights", "marketing", "settings"] },
-  admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["work", "clients", "insights", "marketing", "settings"] },
+  owner: { page: "pipeline.html", links: OWNER, heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
+  admin: { page: "pipeline.html", links: OWNER.filter((h) => h !== "client-portal.html"), heads: ["relationships", "work", "clients", "insights", "marketing", "settings"] },
   sales_manager: {
     page: "pipeline.html",
-    links: ["pipeline.html", "closer-dashboard.html", "sales-floor.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
+    links: ["bank-outreach.html", "pipeline.html", "closer-dashboard.html", "sales-floor.html", "calendar.html", "client-control-panel.html", "csm-queue.html",
       "messaging.html", "documents.html", "inquiry-remover.html", "staff-teams.html", "products-commissions.html"],
-    heads: ["work", "clients", "insights", "settings"],
+    heads: ["relationships", "work", "clients", "insights", "settings"],
   },
+  outbound_rep: { page: "bank-outreach.html", links: ["bank-outreach.html"], heads: ["relationships"] },
   closer: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "my-numbers.html", "calendar.html", ...STAFF.slice(3)], heads: ["work", "clients", "insights"] },
   funding_advisor: { page: "pipeline.html", links: ["pipeline.html", "closer-dashboard.html", "calendar.html", "lenders.html", ...STAFF.slice(3)], heads: ["work", "clients"] },
   csm: { page: "pipeline.html", links: STAFF, heads: ["work", "clients"] },
@@ -72,11 +73,11 @@ const shown = (page) => page.evaluate(() => ({
 }));
 
 // ---------------------------------------------------------------------------------------------
-test("the file carries six current sections and 32 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
-  assert.deepEqual(GROUPS.map((g) => g.key), ["work", "clients", "insights", "marketing", "automation", "settings"]);
-  assert.deepEqual(GROUPS.map((g) => g.title), ["Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
-  assert.equal(LINKS.length, 32);
-  assert.equal(new Set(LINKS.map((l) => l.href)).size, 32, "each link is listed once");
+test("the file carries seven current sections and 33 links, shell.js mounts the same markup, and every desk's inline copy matches", () => {
+  assert.deepEqual(GROUPS.map((g) => g.key), ["relationships", "work", "clients", "insights", "marketing", "automation", "settings"]);
+  assert.deepEqual(GROUPS.map((g) => g.title), ["Relationships", "Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
+  assert.equal(LINKS.length, 33);
+  assert.equal(new Set(LINKS.map((l) => l.href)).size, 33, "each link is listed once");
   for (const l of LINKS) assert.ok(fs.existsSync(path.join(APP, l.href)), `${l.href} is a real screen`);
 
   const marker = SHELL.match(/\/\* ==SIDEBAR_HTML_START== \*\/\s*var SIDEBAR_HTML = ("[\s\S]*?");\s*\/\* ==SIDEBAR_HTML_END== \*\//);
@@ -117,10 +118,10 @@ test("each role's rail shows exactly its links and section heads, and never one 
 });
 
 // ---------------------------------------------------------------------------------------------
-test("section heads: the five groups an owner sees fold their links; hidden Automation stays gated", { timeout: 120_000 }, async () => {
+test("section heads: the six groups an owner sees fold their links; hidden Automation stays gated", { timeout: 120_000 }, async () => {
   const page = await openRail("owner", "pipeline.html");
   const got = await shown(page);
-  assert.deepEqual(got.heads, ["work", "clients", "insights", "marketing", "settings"]);
+  assert.deepEqual(got.heads, ["relationships", "work", "clients", "insights", "marketing", "settings"]);
   for (const key of got.heads) {
     const title = GROUPS.find((g) => g.key === key).title;
     const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);

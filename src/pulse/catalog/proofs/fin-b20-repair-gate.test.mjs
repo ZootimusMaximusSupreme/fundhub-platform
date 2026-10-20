@@ -33,8 +33,10 @@ function liftGate() {
 
 const STAFF = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist"];
 const OWNER_ADMIN = ["owner", "admin"];
+const BANK_ROLES = [...OWNER_ADMIN, "sales_manager", "outbound_rep"];
 // Screens that only some roles open. Everything in ALL that is not here is the shared staff surface.
 const NARROW = {
+  "bank-outreach.html": BANK_ROLES,                                     // assigned banks, never client files
   "hiring.html": OWNER_ADMIN,                                            // applicant personal data
   "staff-teams.html": [...OWNER_ADMIN, "sales_manager"],                 // staff and pay reads: finance roles
   "products-commissions.html": [...OWNER_ADMIN, "sales_manager"],
@@ -64,7 +66,7 @@ const NARROW = {
 test("the gate table: every role opens exactly the screens it is meant to and no others", () => {
   const { ALL, allowedFor, roles } = liftGate();
   for (const screen of Object.keys(NARROW)) assert.ok(ALL.includes(screen), `${screen} is a screen the shell knows`);
-  assert.deepEqual([...roles].sort(), [...STAFF, "client", "affiliate", "partner"].sort(), "the roles the shell knows");
+  assert.deepEqual([...roles].sort(), [...STAFF, "outbound_rep", "client", "affiliate", "partner"].sort(), "the roles the shell knows");
   assert.deepEqual(allowedFor(""), [], "no role, no screens");
 
   const wrong = [];
@@ -92,6 +94,7 @@ after(async () => { await lab.close(); });
 const HOME = {
   owner: "pipeline.html", admin: "pipeline.html", sales_manager: "sales-floor.html", closer: "closer-dashboard.html",
   funding_advisor: "client-control-panel.html", csm: "csm-queue.html", setter: "pipeline.html", inquiry_specialist: "inquiry-remover.html",
+  outbound_rep: "bank-outreach.html",
   partner: "partner-galaxy.html", client: "client-portal.html", affiliate: "affiliate.html",
 };
 
@@ -109,6 +112,13 @@ async function visit(role, file) {
   }
   await page.close();
 }
+
+test("role gate: bank outreach opens for managers and outbound reps, while outbound reps stay out of client work", { timeout: 420_000 }, async () => {
+  for (const role of Object.keys(HOME)) await visit(role, "bank-outreach.html");
+  for (const file of ["pipeline.html", "client-control-panel.html", "lenders.html", "documents.html", "staff-teams.html", "client-portal.html"]) {
+    await visit("outbound_rep", file);
+  }
+});
 
 test("role gate: Hiring and Staff & Teams, opened by the roles that may and sent home for the rest", { timeout: 420_000 }, async () => {
   for (const [role, file] of [
