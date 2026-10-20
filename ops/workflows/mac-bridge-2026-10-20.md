@@ -67,5 +67,5 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Away mode = Tailscale on the Mac and iPhone.** Owner-set. Row 4 (hosted relay) is not needed for Chris's own use.
 - **Bigger goal: a router.** Any local tool (IDE, Claude Code, Codex) plugs in. Tasks get routed to Claude or Codex, and an agent can hand work to another agent. The phone app is the remote for it.
 - **Why not Claude Remote Control:** Chris tried it many times. It is janky, the terminal breaks often, and setup does not work.
-- **"Jev"** is to be added later as another model. Not found in the repo; waiting on Chris to say which model.
-- Open: who "Tim" is in "Tim should solve these issues" (not found in the repo).
+- **Jev** (TypeSafe AI, released Sept 2026) is a fast decision model, not a chat or coding model. It answers typed questions (pick one, score, yes/no) with a probability. Fit: the router's brain — pick Claude or Codex for a task, and score how risky a command is before it runs. Later, not v1.
+- "Tim" was a mic slip. Ignore.
