@@ -54,6 +54,7 @@ jobs:
         run: >-
           node --test src/outreach/*.test.mjs src/http/bank-outreach.test.mjs
           src/http/restricted-staff.test.mjs src/pulse/coverage/gap-bank-outreach*.test.mjs
+          src/verification/journeys/harness-regressions.test.mjs
           src/pulse/beats/beat-bank-outreach*.test.mjs src/workflows/bank-outreach-checkins.test.mjs
           src/pulse/registry.test.mjs src/pulse/tripwires.test.mjs
           src/pulse/heartbeats.test.mjs src/pulse/workflow-coverage.test.mjs
@@ -65,15 +66,34 @@ jobs:
           VERIFY_STRICT: "1"
         run: npm run verify:e2e
       - name: Morning outreach check from the actual function bundle
-        if: always() && steps.migrate.outcome == 'success'
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --lanes=gap-bank-outreach
       - name: Hourly checks from the actual function bundle
-        if: always() && steps.migrate.outcome == 'success'
+        id: hourly
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --beats
+      - name: Public GET diagnostics if the hourly proof fails
+        if: failure() && !cancelled() && steps.hourly.outcome == 'failure'
+        run: |
+          node --input-type=module <<'NODE'
+          import { DOORS } from './src/pulse/beats/beat-doors-live.mjs';
+          import { FUNNEL_PATH, REPAIR_PATH } from './src/pulse/beats/beat-checkout-doors.mjs';
+          const paths = [...new Set([...DOORS.map(door => door.path), FUNNEL_PATH, REPAIR_PATH])];
+          await Promise.all(paths.map(async path => {
+            const started = performance.now();
+            try {
+              const response = await fetch(new URL(path, 'https://fundhub.ai'), { signal: AbortSignal.timeout(8000) });
+              const body = await response.arrayBuffer();
+              console.log(JSON.stringify({ path, status: response.status, ms: Math.round(performance.now() - started), bytes: body.byteLength }));
+            } catch (error) {
+              console.log(JSON.stringify({ path, status: 0, ms: Math.round(performance.now() - started), error: error.name, code: error.cause?.code || null }));
+            }
+          }));
+          NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:

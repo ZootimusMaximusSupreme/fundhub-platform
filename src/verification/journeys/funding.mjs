@@ -26,6 +26,17 @@ function stepFake() {
   };
 }
 
+export function assertFundingCreditor(tradelines, collector, context = {}) {
+  const chase = tradelines.find(row => row.account_ref === 'SIM-CHASE-001');
+  return collector.assertEq({
+    ...context, id: 'fund-bureau-creditor',
+    claim: 'Tradeline creditorName survived ingest on the Chase account',
+    expected: 'Chase Sapphire Preferred',
+    actual: chase?.creditor || chase?.lender || chase?.creditor_name || null,
+    file: 'src/tradelines/store.mjs'
+  });
+}
+
 export async function runFundingJourney(db, ctx, collector) {
   const section = "DATA";
   const journey = "FUNDING";
@@ -256,17 +267,7 @@ export async function runFundingJourney(db, ctx, collector) {
     opReturnedOk: true
   });
 
-  const sample = tl[0] || {};
-  const mappedCreditor = sample.creditor || sample.lender || sample.creditor_name;
-  if (mappedCreditor) {
-    collector.assertEq({
-      section, journey, role, id: "fund-bureau-creditor",
-      claim: "Tradeline creditorName survived ingest as creditor/lender",
-      expected: "Chase Sapphire Preferred",
-      actual: mappedCreditor,
-      file: "src/tradelines/store.mjs"
-    });
-  }
+  assertFundingCreditor(tl, collector, { section, journey, role });
 
   const payload = buildSimulatedCrsPayload({ email: sim.email, name: "Simulated Client" });
   payload.tradelines[0].accountReportedDate = "2026-07-01";
@@ -513,7 +514,7 @@ export async function runFundingJourney(db, ctx, collector) {
     step: "Contract",
     status: contractRow ? "PASS" : "SILENTLY-DID-NOTHING",
     persisted: contractRow
-      ? `id=${contractRow.id} status=${contractRow.status} hash=${contractRow.content_hash || contractRow.immutable_hash || contractRow.body_hash || "none"}`
+      ? `id=${contractRow.id} status=${contractRow.status} hash=${contractRow.body_sha || "none"}`
       : String(contract?.error || "none")
   });
 
