@@ -22,6 +22,18 @@ Generate a transparent, black-and-white Ghost Guard logo concept. It may nod to 
 
 Use black fill on a genuinely transparent background with white negative space only. Save under `assets/ghost-guard/ideas/` without overwriting the rejected v1. Record each exact prompt and output path here.
 
+### Ghost Guard logo — selected merge
+
+**Owner direction:** merge Pixel Pursuit with Binary Specter.
+
+Create one transparent black-and-white Ghost Guard mark that keeps Pixel Pursuit's friendly round ghost, small curved side nibble, and one detached pursuit pellet. Replace its round eyes and soft feet with Binary Specter's two tall rectangular negative-space eyes and a compact asymmetric stepped base. Keep it original, balanced, minimal, and software-forward; it must read as a logo rather than a game sprite. No text, color, shield, outline, gradients, game UI, lock, skull, or decorative background. Save a new asset under `assets/ghost-guard/ideas/` and do not overwrite either source concept.
+
+1. Keep Pixel Pursuit's broad, smooth round head and compact body; confine the pixel geometry to the lower quarter so the friendly silhouette survives.
+2. Use two equal tall rectangular eye cutouts, aligned on one baseline with generous black space between them; omit pupils, brows, and extra facial details.
+3. Replace the rounded feet with two or three broad, unequal grid steps; avoid a repeating scalloped fringe or fully stair-stepped outline that reads as a familiar game sprite.
+4. Preserve one shallow curved side nibble and exactly one detached circular pellet, separated by a clear gap; keep the nibble rounded and small rather than turning it into a wedge-shaped mouth.
+5. Keep the mark solid black on true transparency, with no added circuit traces or effects; at 32 pixels wide, both eyes, the pellet gap, and the asymmetric base must remain distinct.
+
 ## Copy-paste prompts
 
 ### Licensed software access research
@@ -37,6 +49,24 @@ Create a project-ready Ghost Guard logo for a red-team testing product. Brand sh
 Define a first-version Ghost Guard offering that uses authorized red-team testing, with CRS as the first vendor integration target. Map the prospect-facing pitch, required permissions, test boundaries, evidence collected, and a short implementation sequence. Read existing CRS materials in this repository, do not change application code, and record verified paths and open decisions on this board.
 
 ## Notes
+
+### Selected Pixel Pursuit + Binary Specter merge — complete
+
+- Asset: `assets/ghost-guard/ideas/ghost-guard-merged-v1.png` — 1254 × 1254 RGBA PNG, generated with built-in imagegen using both source concepts as supporting references. Original output copied unchanged; neither source asset overwritten.
+- Transparency verified: alpha channel spans 0–255. Background and eye cutouts are transparent.
+- Visual check: inspected against a white backing at full size and with the trimmed mark reduced to 32 pixels wide. Friendly round head, two tall aligned rectangular eyes, one curved side nibble, exactly one detached circular pellet, and broad asymmetric lower steps remain distinct. No text, color, shield, outline, gradient, game UI, lock, skull, or decorative background. This is a generated raster logo concept, not a vector master.
+- Exact prompt:
+
+```text
+Use case: logo-brand.
+Asset type: Ghost Guard original software logo mark, selected Pixel Pursuit and Binary Specter merge.
+Input images: Image 1 is a supporting shape reference for the friendly round ghost, small curved side nibble and one detached circular pursuit pellet. Image 2 is a supporting detail reference for two tall rectangular negative-space eyes and a compact asymmetric stepped base. These are references for a fresh cohesive design, not a literal collage or composite.
+Primary request: Design one original minimal balanced ghost logo with the friendly circular upper silhouette of Image 1, a small curved nibble in its right side and exactly one detached circular black pellet beside it. Give it two tall upright rectangular negative-space eyes, with subtly softened corners, and replace the soft feet with a compact asymmetric stepped lower edge inspired by Image 2. Integrate the rounded upper body and two economical broad lower steps into one clean silhouette. Refined, playful, tech-forward software identity, a logo rather than a game sprite. Keep the face calm and the shapes memorable at favicon size.
+Style: solid black fill, crisp smooth vector-like edges, white-appearing transparent negative space. No texture or shading.
+Composition: one centered mark on a square canvas with generous transparent padding. Genuinely transparent background with alpha, including eye cutouts; no white background plate or painted checkerboard.
+Text: none.
+Avoid: text, letters, numbers, color, shield, outlines, gradients, game UI, locks, skulls, decorative background, shadows, glow, distressed edges, extra objects or pellets, multiple variants, copying existing game characters.
+```
 
 ### Binary specter — complete
 
