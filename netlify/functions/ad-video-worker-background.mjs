@@ -91,6 +91,6 @@ export function makeHandler({
   };
 }
 
-export const handler = makeHandler();
+const handler = makeHandler();
 
 export default handler;
