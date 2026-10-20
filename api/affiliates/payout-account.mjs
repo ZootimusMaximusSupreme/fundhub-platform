@@ -34,7 +34,8 @@ export default async function handler(req, res, deps = {}) {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
-  const principal = await (deps.requirePrincipal || requirePrincipal)(req, res, ["affiliate", "client"], { db: database, env });
+  const gate = deps.requirePrincipal || requirePrincipal;
+  const principal = await gate(req, res, ["affiliate", "client"], { db: database, env });
   if (!principal) return;
   const orgId = principal.orgId || null;
   const affiliateId = principal.affiliateId || null;

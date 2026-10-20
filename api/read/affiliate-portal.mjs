@@ -67,6 +67,7 @@ import { ROLE_SETS, requireRole, isUuid } from "../../src/http/read-api.mjs";
 import { safeError } from "../../src/http/health.mjs";
 import { shareUrlFor } from "../affiliates/refer.mjs";
 import { offerLinksFor, liveOffers } from "../../src/affiliates/share-link.mjs";
+import { shapeAccount } from "../../src/affiliates/payout-rail.mjs";
 
 const REFERRAL_LIMIT = 500;
 const PAYOUT_LIMIT = 100;
@@ -142,6 +143,9 @@ const PAYOUTS_SQL = `
          po.hold_reason,
          po.method,
          po.paid_at,
+         po.due_on,
+         po.external_ref,
+         po.plaid_transfer_status,
          po.created_at,
          (SELECT count(*) FROM affiliate_payout_lines l
            WHERE l.payout_id = po.id) AS line_count
@@ -150,6 +154,14 @@ const PAYOUTS_SQL = `
      AND po.org_id = $2
    ORDER BY po.period_end DESC
    LIMIT ${PAYOUT_LIMIT}`;
+
+/* The bank the affiliate linked for payouts through Plaid (492). Never the
+   token: only what the affiliate needs to recognise their own account. */
+const PAYOUT_ACCOUNT_SQL = `
+  SELECT id, environment, institution_name, account_name, account_mask, account_subtype, status, created_at
+    FROM affiliate_payout_accounts
+   WHERE affiliate_id = $1 AND org_id = $2 AND status = 'active'
+   LIMIT 1`;
 
 const AFFILIATE_SQL = `
   SELECT id, name, tracking_id, status, tier_level, activated_at,
@@ -248,17 +260,18 @@ export default async function handler(req, res, deps = {}) {
     return res.status(200).json({
       ok: true, enrolled: false, affiliate: null,
       rates: { direct: null, downline: null },
-      referrals: [], payouts: [], gates: null
+      referrals: [], payouts: [], gates: null, payoutBank: null
     });
   }
 
   try {
-    const [aff, rates, referrals, payouts, offers] = await Promise.all([
+    const [aff, rates, referrals, payouts, offers, bank] = await Promise.all([
       database.query(AFFILIATE_SQL, [affiliateId, orgId]),
       database.query(RATES_SQL, [orgId, affiliateId]),
       database.query(REFERRALS_SQL, [affiliateId, orgId]),
       database.query(PAYOUTS_SQL, [affiliateId, orgId]),
-      liveOffers(database, orgId)
+      liveOffers(database, orgId),
+      database.query(PAYOUT_ACCOUNT_SQL, [affiliateId, orgId])
     ]);
 
     const a = aff.rows[0];
@@ -330,8 +343,15 @@ export default async function handler(req, res, deps = {}) {
         holdReason: p.hold_reason || null,
         method: p.method || null,
         paidAt: p.paid_at,
+        // 492: when it is due, and the proof once it is paid.
+        dueOn: p.due_on ? new Date(p.due_on).toISOString().slice(0, 10) : null,
+        reference: p.status === "paid" ? (p.external_ref || null) : null,
+        transferStatus: p.plaid_transfer_status || null,
         lineCount: Number(p.line_count || 0)
-      }))
+      })),
+      /* Where payouts go (492). null = no bank linked yet; the screen shows the
+         Link button. testData = linked on Plaid's sandbox, which cannot be paid. */
+      payoutBank: shapeAccount(bank && bank.rows ? bank.rows[0] : null)
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: safeError(err) });

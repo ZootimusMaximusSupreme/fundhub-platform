@@ -484,7 +484,7 @@ async function payoutOverdue(db, orgId, now) {
     if (lateOnRun > 0) parts.push(`${lateOnRun} earned commission${lateOnRun === 1 ? "" : "s"} (${usd(row.late_on_run_usd)}) on a payout run past its due day and still not paid`);
     if (noRun > 0) parts.push(`${noRun} affiliate${noRun === 1 ? "" : "s"} owed ${usd(row.no_run_usd)} past the ${runDue} due day with no payout record at all`);
     return check(id, "FAIL", `Payout late: ${parts.join("; ")}.${heldNote}`,
-      fix("Open /app/affiliate-payouts.html. Send it through Plaid or pay by hand and Mark paid with the reference. If there is no run, the monthly payout job did not write one: read its run receipt. Do not mark anything paid from the pulse."));
+      fix("Open /app/products-commissions.html#affiliate-payouts. Send it through Plaid or pay by hand and Mark paid with the reference. If there is no run, the monthly payout job did not write one: read its run receipt. Do not mark anything paid from the pulse."));
   } catch (err) {
     return check(id, "FAIL", `Could not read payout due days: ${String((err && err.message) || err).slice(0, 160)}`,
       fix("Read affiliate_referrals and affiliate_payouts. Do not mark anyone paid."));
@@ -502,7 +502,7 @@ async function payoutReturned(db, orgId) {
     if (n === 0) return check(id, "PASS", "no paid Plaid payout came back from the bank");
     return check(id, "FAIL",
       `${n} paid Plaid payout${n === 1 ? "" : "s"} (${usd(row.usd)}) came back from the affiliate's bank after settling. The affiliate does not have that money.`,
-      fix("Open /app/affiliate-payouts.html, read the return reason, ask the affiliate to link a good bank, and pay the amount on a new run as an adjustment. Do not edit the paid run."));
+      fix("Open /app/products-commissions.html#affiliate-payouts, read the return reason, ask the affiliate to link a good bank, and pay the amount on a new run as an adjustment. Do not edit the paid run."));
   } catch (err) {
     return check(id, "FAIL", `Could not read Plaid payout returns: ${String((err && err.message) || err).slice(0, 160)}`,
       fix("Read affiliate_payouts. Do not mark anyone paid."));
