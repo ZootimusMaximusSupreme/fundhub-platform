@@ -1,0 +1,21 @@
+{
+  "readyState": "complete",
+  "dependency": "object",
+  "events": [
+    "data.js loaded",
+    "DOMContentLoaded"
+  ],
+  "width": 390,
+  "pageWidth": 390,
+  "busy": "false",
+  "rowCount": 0,
+  "status": "2 people are hidden from this list (owner and seeded test logins).",
+  "errors": [],
+  "requests": [
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand",
+    "/api/auth/session",
+    "/api/read/staff?limit=200"
+  ]
+}

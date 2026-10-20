@@ -1,0 +1,23 @@
+{
+  "readyState": "complete",
+  "dependency": "object",
+  "events": [
+    "data.js loaded",
+    "DOMContentLoaded"
+  ],
+  "width": 440,
+  "pageWidth": 440,
+  "busy": "false",
+  "rowCount": 27,
+  "status": "2 people are hidden from this list (owner and seeded test logins).",
+  "errors": [],
+  "requests": [
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand",
+    "/api/auth/session",
+    "/api/read/staff?limit=200",
+    "/api/shifts",
+    "/api/read/contracts?view=contracts&staff_id=staff-1&limit=50"
+  ]
+}

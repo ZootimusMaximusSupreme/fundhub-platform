@@ -1,0 +1,21 @@
+{
+  "readyState": "complete",
+  "dependency": "object",
+  "events": [
+    "data.js loaded",
+    "DOMContentLoaded"
+  ],
+  "width": 1440,
+  "pageWidth": 1440,
+  "busy": "false",
+  "rowCount": 0,
+  "status": "Team details unavailable",
+  "errors": [],
+  "requests": [
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand",
+    "/api/auth/session",
+    "/api/read/staff?limit=200"
+  ]
+}

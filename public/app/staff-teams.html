@@ -1042,6 +1042,8 @@ renderAll();
     }).catch(function () {});
   }
 
+  // Deferred data.js runs before DOMContentLoaded, even when the session is fast.
+  document.addEventListener("DOMContentLoaded", function () {
   loadMe().then(function () {
   try {
     var demo = false;
@@ -1122,6 +1124,7 @@ renderAll();
            (unmapped.length ? " · " + unmapped.length + " role(s) outside the permission matrix" : "");
   });
   });
+  }, { once: true });
 })();
 </script>
 <script>

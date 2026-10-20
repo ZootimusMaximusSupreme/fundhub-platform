@@ -1,0 +1,196 @@
+{
+  "recordedAt": "2026-10-20T09:10:14.768Z",
+  "scope": "Durable runner setup only; no production performance measurement",
+  "durableRunner": "ops/workflows/crm-astra-rollout/live-performance.mjs",
+  "temporaryReference": "/private/tmp/fundhub-astra-live-perf.2ACabS/run.mjs",
+  "toolRoot": "/private/tmp/fundhub-outreach-lighthouse.ApQVDL",
+  "lighthouseVersion": "13.5.0",
+  "bootstrapChanges": [
+    "Repository-relative fixture, source and output paths",
+    "Explicit existing LIGHTHOUSE_TOOL_ROOT or --lighthouse-tool-root",
+    "Explicit existing CHROME_PATH or --chrome-path",
+    "Reject tools other than reviewed Lighthouse 13.5.0"
+  ],
+  "proofBody": {
+    "unchanged": true,
+    "lineCount": 341,
+    "temporarySha256": "49afba47bddbb0eb80dadc8d6dfdcb1ff34341958e4f6b93ebde86dd1a1ef4cd",
+    "durableSha256": "49afba47bddbb0eb80dadc8d6dfdcb1ff34341958e4f6b93ebde86dd1a1ef4cd"
+  },
+  "syntax": {
+    "command": "node --check ops/workflows/crm-astra-rollout/live-performance.mjs",
+    "exitCode": 0
+  },
+  "missingReleaseGate": {
+    "exitCode": 1,
+    "expectedRefusal": true,
+    "message": "STOP: requires root-confirmed exact live release SHA via --release-confirmed=",
+    "beforeChromeLaunch": true
+  },
+  "canary": {
+    "passed": true,
+    "meaningfulSafetyBehaviorMatchesTemporary": true,
+    "receipt": "preflight-only/safety-receipt.json",
+    "errorCount": 0,
+    "unmappedCount": 0,
+    "lcpNodeProvided": true,
+    "jsonBytes": 188924,
+    "htmlBytes": 335433,
+    "ready": {
+      "at": 743.5,
+      "count": 1,
+      "path": "/canary.html",
+      "width": 390,
+      "height": 844,
+      "fullFixture": true
+    }
+  },
+  "localFixtures": {
+    "checks": [
+      {
+        "key": "portal-login",
+        "ready": {
+          "at": 104.59999999403954,
+          "count": 1,
+          "path": "/portal-login.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 1,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 12,
+        "mismatchedSources": 0,
+        "deniedOrigins": []
+      },
+      {
+        "key": "portal",
+        "ready": {
+          "at": 231.7000000178814,
+          "count": 1,
+          "path": "/app/client-portal.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 1,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 18,
+        "mismatchedSources": 0,
+        "deniedOrigins": [
+          "https://fonts.googleapis.com"
+        ]
+      },
+      {
+        "key": "money",
+        "ready": {
+          "at": 199.30000001192093,
+          "count": 1,
+          "path": "/app/money.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 1,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 15,
+        "mismatchedSources": 0,
+        "deniedOrigins": [
+          "https://fonts.googleapis.com"
+        ]
+      },
+      {
+        "key": "affiliate",
+        "ready": {
+          "at": 191.89999997615814,
+          "count": 27,
+          "path": "/app/affiliate.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 27,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 18,
+        "mismatchedSources": 0,
+        "deniedOrigins": [
+          "https://fonts.googleapis.com"
+        ]
+      },
+      {
+        "key": "teams",
+        "ready": {
+          "at": 195.90000000596046,
+          "count": 27,
+          "path": "/app/staff-teams.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 27,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 17,
+        "mismatchedSources": 0,
+        "deniedOrigins": [
+          "https://fonts.googleapis.com"
+        ]
+      },
+      {
+        "key": "pipeline",
+        "ready": {
+          "at": 147.7999999821186,
+          "count": 27,
+          "path": "/app/pipeline.html",
+          "width": 390,
+          "height": 844,
+          "fullFixture": true,
+          "astra": true
+        },
+        "originalCount": 27,
+        "sameFixtureCount": true,
+        "failure": null,
+        "unmappedCount": 0,
+        "errorCount": 0,
+        "capturedSources": 20,
+        "mismatchedSources": 0,
+        "deniedOrigins": [
+          "https://fonts.googleapis.com"
+        ]
+      }
+    ],
+    "networkEscapes": [],
+    "noPerformanceClaimed": true
+  },
+  "preservedTemporarySuccess": [
+    "temporary-runner-preflight/",
+    "temporary-runner-fixture/"
+  ],
+  "preservedReds": [
+    "preflight-first-favicon-check/",
+    "preflight-network-idle-check/",
+    "local-fixture-preflight/first-navigation-idle-checks.json",
+    "local-fixture-preflight/first-source-capture-lifecycle-checks.json"
+  ],
+  "liveRuns": 0,
+  "waitingFor": "Root exact final live SHA and matching successful root live byte receipt"
+}

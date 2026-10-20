@@ -82,7 +82,7 @@ try{
    if(url.origin!==origin)return route.abort();
    // wireApi is installed later and intercepts every API route first. This
    // fail-closed fallback prevents an unhandled production request escaping.
-   if(LIVE&&(!["GET","HEAD"].includes(request.method())||url.pathname.startsWith("/api/")||! /\.(?:html|css|js|mjs|json|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|ico|pdf)$/i.test(url.pathname))){
+   if(LIVE&&(!["GET","HEAD"].includes(request.method())||url.pathname.startsWith("/api/")||(url.pathname!=="/manifest.webmanifest"&&! /\.(?:html|css|js|mjs|json|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|ico|pdf)$/i.test(url.pathname)))){
     denied.push(`${request.method()} ${url.pathname}`);
     return route.abort();
    }
