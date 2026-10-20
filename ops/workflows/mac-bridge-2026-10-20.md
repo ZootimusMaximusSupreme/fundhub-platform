@@ -15,7 +15,7 @@ Branch: `feat/mac-bridge-v1` in worktree `.claude/worktrees/mac-bridge`.
 | 3 | Join test: phone app in Simulator reads the real helper | this session | blocked: Simulator access not granted (app opened, pair prompt shown) | none new |
 | 4 | Away mode | Chris | Tailscale (owner-set) | — |
 | 5 | Send from phone into a session | — | replaced by 6 + 7 | — |
-| 6 | v2 Mac helper: tasks, safety check, router (Jev off) | agent: mac-tasks | claimed | `tools/mac-bridge/agent/**` |
+| 6 | v2 Mac helper: tasks, router (Jev off) | agent: mac-tasks | claimed | `tools/mac-bridge/agent/**` |
 | 7 | v2 iPhone: new task, reply box, running strip | agent: ios-tasks | claimed | `tools/mac-bridge/ios/**` |
 
 1 and 2 run at the same time. No dependency between them; both read the protocol file. 3 waits for both.
@@ -77,7 +77,7 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **It is Chris's own operating system, not a product for any business.** Chat with the always-on Mac from the phone. Code stays in this repo.
 - **It is a delegation agent.** Chris sends a task; it hands the task to the right AI.
 - **It follows this repo's rules** (CLAUDE.md, AGENTS.md, `.claude/rules/`, `.cursor/rules/`).
-- **Safety check is required** before commands run.
+- ~~Safety check is required~~ — replaced: **no safety check** (owner-set, fourth note).
 - **CRM work too:** some tasks act inside the Fundhub CRM.
 - **Lanes (as spoken, needs one clear-up):** "Codex only touches dashboards. Claude only touches this." Today's repo law says only Claude changes screens (`.claude/rules/grok-no-displays.md`) and "Codex builds, Claude tests" (`.claude/rules/monday-100-percent.md`). Waiting on Chris for the exact lane table.
 
@@ -86,3 +86,4 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Main goal: build from the computer, from the phone.** v2 contract: `docs/specs/mac-bridge-protocol-v2-tasks.md`.
 - **Jev: build the slot, leave it off.** Chris does not want to pay for Jev yet.
 - **Delegation reads the repo rules.** No separate lane table for now.
+- **No safety check.** Chris: "No need for safety check." The repo's own guards stay as they are.

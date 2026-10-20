@@ -13,17 +13,14 @@ Owner goal (2026-10-20): "I just want to be able to build from my computer." Fro
 - At most 3 tasks running at once; more → `429 {"error":"busy"}`.
 - Prompt max 20,000 chars.
 
-## Safety check (required, owner-set)
+## Safety check — none (owner-set 2026-10-20)
 
-Before a task starts, the helper runs `safety.check(prompt)`:
-- Built-in rule list, always on, no cost: block prompts that ask for the repo's denied actions (`rm -rf`, `git push --force`, `git reset --hard`, `git clean -fd`, `npm publish`), deleting data, repointing `DATABASE_URL`, removing or unsetting a key, or turning off `INNGEST_EVENT_KEY` (CLAUDE.md §11). Blocked → `422 {"error":"blocked","reason":"…"}`.
-- Each tool keeps its own guard too (Claude deny list, Codex sandbox).
-- Jev slot: `safety.jev` exists but is **off** (Chris does not want to pay for Jev yet). It only runs when `MAC_BRIDGE_JEV=on` and `JEV_API_KEY` are both set. Default off, no network call.
+Chris: "No need for safety check." The helper adds no rule list of its own. Each tool keeps its own guard exactly as at the desk (the repo's `.claude/settings.json` deny list, Codex's default sandbox). The helper never loosens those.
 
 ## Delegation (built, not plugged in)
 
 `tool: "auto"` asks `router.pick(prompt)`:
-- Jev picker: **off**, same switch as above.
+- Jev picker: **off** unless `MAC_BRIDGE_JEV=on` and `JEV_API_KEY` are both set (Chris does not want to pay for Jev yet). Off = no network call.
 - With Jev off: read the repo rules files and pick by the rules the repo already states; when the rules do not decide, use Claude. Return the pick and the reason.
 - The answer says which tool was used and why, so the phone can show it.
 
@@ -39,7 +36,7 @@ Before a task starts, the helper runs `safety.check(prompt)`:
 
 ```json
 { "id": "string", "tool": "claude", "pickedBy": "you | rules | jev", "pickReason": "string",
-  "prompt": "first 200 chars", "status": "starting | running | done | failed | stopped | blocked",
+  "prompt": "first 200 chars", "status": "starting | running | done | failed | stopped",
   "sessionId": "string or null until known", "startedAt": "ISO", "endedAt": "ISO or null",
   "exitCode": 0, "error": "string or null" }
 ```
@@ -55,4 +52,3 @@ Before a task starts, the helper runs `safety.check(prompt)`:
 - **New task** button on the session list: big text box, pick Claude / Codex / Auto (Auto shows "uses repo rules"), Send. After send, open the live feed as soon as `sessionId` is known.
 - **Reply box** at the bottom of a session feed: sends `POST /v1/tasks` with `resumeSessionId` and the same tool.
 - **Running tasks** strip at the top of the list with a Stop button.
-- Blocked → show the reason in plain words.
