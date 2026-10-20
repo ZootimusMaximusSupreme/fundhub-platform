@@ -188,8 +188,10 @@ import { isSyntheticRow } from "./synthetic.mjs";
    a walked journey. */
 /* Moved 100 -> 101 with bank-outreach-checkins. It is a daily Arizona cron,
    not a journey event, so it must stay explicitly visible in neverFired.
-   Its direct saved-result/idempotency proof lives in the outreach tests. */
-const REGISTERED = 101;
+   Its direct saved-result/idempotency proof lives in the outreach tests.
+   Moved 101 -> 102 the same day with the dedicated Whop Blueprint billing
+   inbox drain (2026-10-20). */
+const REGISTERED = 102;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

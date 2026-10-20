@@ -307,6 +307,7 @@ export default async function handler(req, res) {
         const contract = await createDraft(db, {
           orgId, staffId: staff.id,
           clientId: body.client_id, templateId: body.template_id,
+          amountCents: body.amount_cents,
           values: body.values || {}, title: body.title || null,
           signers: Array.isArray(body.signers) && body.signers.length ? body.signers : null,
           signingOrder: body.signing_order === "parallel" ? "parallel" : "sequential",
@@ -321,7 +322,8 @@ export default async function handler(req, res) {
       case "save_draft": {
         if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: "invalid_id", message: "That id is not a valid record id." });
         const contract = await saveDraft(db, {
-          orgId, id: body.id, values: body.values || {}, title: body.title || null
+          orgId, id: body.id, values: body.values || {}, title: body.title || null,
+          amountCents: body.amount_cents
         });
         return res.status(200).json({ ok: true, action, contract, message: "Saved." });
       }
@@ -338,7 +340,7 @@ export default async function handler(req, res) {
         }
         const out = await preview(db, {
           orgId, templateId: body.template_id,
-          clientId: body.client_id || null, values: body.values || {}
+          clientId: body.client_id || null, values: body.values || {}, amountCents: body.amount_cents
         });
         return res.status(200).json({ ok: true, action, preview: out });
       }
@@ -349,7 +351,7 @@ export default async function handler(req, res) {
         let out;
         try {
           out = await send(db, {
-            orgId, staffId: staff.id, id: body.id, baseUrl: baseUrlFrom(req)
+            orgId, staffId: staff.id, id: body.id, baseUrl: baseUrlFrom(req), amountCents: body.amount_cents
           });
         } catch (err) {
           /* No signing secret is OUR misconfiguration, not the caller's, and it

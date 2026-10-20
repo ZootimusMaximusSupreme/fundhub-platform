@@ -49,6 +49,7 @@ import { priceToCents, assertPriceCents, formatPrice } from "../src/subscription
 import { sendTemplated } from "../src/workflows/messaging.mjs";
 import { createInvoice } from "../src/invoices/index.mjs";
 import { dbDown } from "../src/http/db-down.mjs";
+import { ContractError } from "../src/contracts/errors.mjs";
 
 /* WHO GATES THIS ROUTE.
    ROLE_SETS.FINANCE — {owner, admin, sales_manager} — plus the closer, who is
@@ -169,6 +170,10 @@ export default async function handler(req, res, deps = {}) {
       }
 
       if (body.action === "create") {
+        const provider = body.provider ?? "commas";
+        if (provider !== "commas" && provider !== "whop") {
+          return res.status(400).json({ ok: false, error: "unsupported_payment_provider" });
+        }
         if (!isUuid(body.client_id)) {
           return res.status(400).json({ ok: false, error: "client_id must be a uuid" });
         }
@@ -185,6 +190,9 @@ export default async function handler(req, res, deps = {}) {
            an invoices row (money owed). It must not mint a payment_links row.
            COMPLIANCE REVIEW REQUIRED — payment rails. Draft only: do not send. */
         if (String(body.purpose || "").trim().toLowerCase() === "invoice") {
+          if (provider !== "commas") {
+            return res.status(400).json({ ok: false, error: "whop_blueprint_only" });
+          }
           const amountCents = readAmountCents(body);
           const clientId = String(body.client_id).trim();
           const idempotencyKey = `present-invoice:${clientId}:${amountCents}`;
@@ -216,7 +224,8 @@ export default async function handler(req, res, deps = {}) {
            348 / 459 / 537. checkoutBaseUrl is still passed through — it may
            legitimately be unset. */
         const checkoutBaseUrl = env.COMMAS_CHECKOUT_BASE_URL;
-        if (!checkoutBaseUrl && !String(env.FANBASIS_CHECKOUT_API_KEY || "").trim()) {
+        if (provider === "commas" && !checkoutBaseUrl &&
+            !String(env.CORTANA_COMMAS_API_KEY || env.FANBASIS_CHECKOUT_API_KEY || "").trim()) {
           return res.status(503).json({
             ok: false,
             error: "commas_not_configured",
@@ -230,6 +239,7 @@ export default async function handler(req, res, deps = {}) {
           purpose: body.purpose,
           description: body.description ?? null,
           amountCents,
+          provider,
           currency: body.currency ?? "USD",
           createdByStaffId: staff.id,
           createdByRole: staff.role,
@@ -303,6 +313,9 @@ export default async function handler(req, res, deps = {}) {
     res.setHeader("allow", "GET, POST");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   } catch (e) {
+    if (e instanceof ContractError) {
+      return res.status(e.status || 409).json({ ok: false, error: e.code, message: e.message });
+    }
     if (e instanceof TypeError || e instanceof RangeError) {
       return res.status(400).json({ ok: false, error: String(e.message).slice(0, 200) });
     }
@@ -318,10 +331,10 @@ export default async function handler(req, res, deps = {}) {
        Commas 401 (our API key is wrong) into a 401 on this endpoint, which the
        CRM would show the staff member as "you are signed out". Nothing is
        written on either path — both throw before the INSERT. */
-    if (e && e.code === "commas_not_configured") {
+    if (e && (e.code === "commas_not_configured" || e.code === "whop_not_configured")) {
       return res.status(503).json({ ok: false, error: e.code, message: String(e.message || e.code).slice(0, 200) });
     }
-    if (e && e.code === "commas_checkout_failed") {
+    if (e && (e.code === "commas_checkout_failed" || e.code === "whop_checkout_failed")) {
       return res.status(502).json({ ok: false, error: e.code, message: String(e.message || e.code).slice(0, 200) });
     }
     if (CLIENT_DATA_ERRORS.has(e && e.code)) {

@@ -79,8 +79,24 @@ function payload({ tier = "REPAIR_ONLY", negItems = 3, available = true, busines
 const flush = () => new Promise((r) => setImmediate(r));
 
 /* The real present.js, run whole against a stand-in page. */
-async function openDeck(data, { role = "owner" } = {}) {
-  const root = { innerHTML: "" };
+async function openDeck(data, { role = "owner", contracts = null } = {}) {
+  let markup = "";
+  let elements = {};
+  const root = {
+    get innerHTML() { return markup; },
+    set innerHTML(value) { markup = value; elements = {}; }
+  };
+  function element(id) {
+    if (id === "app") return root;
+    const tag = new RegExp('<[^>]+id="' + id + '"[^>]*>').exec(markup);
+    if (!tag) return null;
+    if (!elements[id]) elements[id] = {
+      value: /value="([^"]*)"/.exec(tag[0])?.[1] || "", listeners: {},
+      addEventListener(type, fn) { this.listeners[type] = fn; }
+    };
+    return elements[id];
+  }
+  const writes = [];
   let onClick = null;
   let onKey = null;
   const stored = role == null ? {} : { fh_role: role };
@@ -92,11 +108,15 @@ async function openDeck(data, { role = "owner" } = {}) {
     location: { search: "?contact=33333333-3333-3333-3333-333333333333", pathname: "/app/present.html" },
     document: {
       readyState: "complete",
-      getElementById: (id) => (id === "app" ? root : null),
+      getElementById: element,
       addEventListener: (type, fn) => { if (type === "click") onClick = fn; }
     },
     localStorage: { getItem: (k) => (Object.prototype.hasOwnProperty.call(stored, k) ? stored[k] : null) },
-    FHData: { read: async () => ({ ok: true, data }), write: async () => ({ ok: false, error: "not in this test" }) }
+    FHData: {
+      read: async () => ({ ok: true, data }),
+      write: async (url, body) => { writes.push({ url, body }); return { ok: true }; }
+    },
+    FHContractSend: contracts
   };
   sandbox.window = sandbox;
   sandbox.addEventListener = (type, fn) => { if (type === "keydown") onKey = fn; };
@@ -107,6 +127,14 @@ async function openDeck(data, { role = "owner" } = {}) {
   assert.ok(onClick && onKey, "present.js registered no click or key listener");
   const deck = {
     html: () => root.innerHTML,
+    writes,
+    input(id, value, type = "input") {
+      const el = element(id);
+      assert.ok(el, "no input " + id);
+      el.value = value;
+      el.listeners[type]({ target: el });
+      return deck;
+    },
     click(act) { onClick({ target: { closest: () => ({ getAttribute: () => act }) } }); return deck; },
     key(k, times = 1) { for (let i = 0; i < times; i++) onKey({ key: k, target: {} }); return deck; }
   };
@@ -455,6 +483,74 @@ describe("Yes on the price slide sells the Blueprint", () => {
     assert.match(fn, /else \{ state\.forceRepair = true; state\.rung = 2; \}/);
     assert.match(JS, /if \(a === "desc:diy"\) \{ state\.edu = false; state\.forceRepair = true; state\.rung = 2;/);
     assert.match(JS, /if \(a === "desc:eduLow"\) \{ state\.forceRepair = false; state\.edu = true; state\.rung = 1;/);
+  });
+});
+
+describe("the Blueprint price chosen on Present reaches payment and agreement", () => {
+  async function chosenBlueprint(opts = {}) {
+    const deck = await openDeck(payload(), opts);
+    deck.click("phase:06").key("ArrowRight", 3).click("stack-close");
+    return deck;
+  }
+
+  test("whole-dollar limits and default come from the server offer", async () => {
+    const deck = await chosenBlueprint();
+    assert.match(deck.html(), /id="fh-blueprint-amount"[^>]*min="5000"[^>]*max="10000"[^>]*step="1"[^>]*value="5000"/);
+    deck.click("pay");
+    await flush();
+    assert.equal(deck.writes.length, 1);
+    assert.equal(deck.writes[0].body.amount_cents, 500000);
+    assert.equal(deck.writes[0].body.provider, "commas");
+  });
+
+  test("a chosen price survives a redraw and is passed with the selected provider", async () => {
+    for (const dollars of ["5000", "7500", "10000"]) {
+      const deck = await chosenBlueprint();
+      deck.input("fh-blueprint-amount", dollars).click("more");
+      assert.ok(text(deck.html()).includes("Chosen: Capital Blueprint · $" + Number(dollars).toLocaleString("en-US")));
+      deck.input("fh-blueprint-provider", "whop", "change").click("pay");
+      await flush();
+      assert.equal(deck.writes[0].url, "/api/closer-deck");
+      assert.equal(deck.writes[0].body.offer_key, "UWIQ_DELIVERABLES");
+      assert.equal(deck.writes[0].body.amount_cents, Number(dollars) * 100);
+      assert.equal(deck.writes[0].body.provider, "whop");
+    }
+  });
+
+  test("invalid and empty inputs never issue a payment write", async () => {
+    for (const dollars of ["4999", "10001", "7500.50", "", "   ", "oops"]) {
+      const deck = await chosenBlueprint();
+      deck.input("fh-blueprint-amount", dollars).click("pay");
+      await flush();
+      assert.equal(deck.writes.length, 0, JSON.stringify(dollars));
+    }
+  });
+
+  test("agreement send takes one snapshot of the same chosen cents", async () => {
+    let sent;
+    const contracts = {
+      listWordings: async () => ({ ok: true, items: [{ id: "blueprint", template_key: "CAPITAL-BLUEPRINT-AGREEMENT" }] }),
+      pickTemplate: (items, key) => items.find((item) => item.template_key === key),
+      sendToClient: async (opts) => { sent = opts; return { ok: true }; }
+    };
+    const deck = await chosenBlueprint({ contracts });
+    deck.input("fh-blueprint-amount", "7500").click("more").click("contract");
+    await flush();
+    await flush();
+    assert.equal(sent.amountCents, 750000);
+    assert.equal(sent.templateId, "blueprint");
+  });
+
+  test("fixed-price offers keep their original payload and show no Blueprint controls", async () => {
+    const deck = await openDeck(payload({ tier: "FULL_FUNDING", negItems: 0 }));
+    deck.click("phase:07");
+    assert.ok(!deck.html().includes('id="fh-blueprint-amount"'));
+    assert.ok(!deck.html().includes('id="fh-blueprint-provider"'));
+    deck.click("pay");
+    await flush();
+    assert.equal(deck.writes[0].body.offer_key, "FUNDING_DFY");
+    assert.equal(Object.hasOwn(deck.writes[0].body, "amount_cents"), false);
+    assert.equal(Object.hasOwn(deck.writes[0].body, "provider"), false);
   });
 });
 

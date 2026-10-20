@@ -3,12 +3,13 @@
 // COMPLIANCE REVIEW REQUIRED (CLAUDE.md §7). Client-facing messaging on a
 // consumer-finance file.
 //
-// THIS FILE DOES NOT SEND. It writes a `messages` row with status='queued' via
+// TEXT DOES NOT SEND HERE. It writes a `messages` row with status='queued' via
 // sendTemplated (src/workflows/messaging.mjs) and stops there. The dispatcher
 // (src/messaging/dispatch.mjs, swept every five minutes) is the only thing that
 // hands a row to a provider, and outbound transmission itself is permitted only
 // inside src/messaging/providers/ — CLAUDE.md §12. There is no fetch in this
-// module, no provider import, and no path around either.
+// module or provider import. The separately approved Blueprint call helper
+// uses the same contact ledger and gated Bland provider after two sent texts.
 //
 //
 // ═══════════════════════════════════════════════════════════════════════════
@@ -46,8 +47,9 @@
 // None of them is enforced here. All three are unique constraints in the
 // database, and this file only reads the result:
 //
-//   FOUR MESSAGES PER WAYPOINT, EVER — UNIQUE (waypoint_id, step) with
-//   CHECK (step BETWEEN 1 AND 4), db/migrations/365. A fifth row is unwritable.
+//   FINITE LADDER — UNIQUE (waypoint_id, step), db/migrations/371. The original
+//   four rungs are unchanged. Migration489 permits only a Blueprint voice-call
+//   receipt at step5, not another text rung or a repeating call loop.
 //
 //   ONE CLIENT-FACING MESSAGE PER CLIENT PER DAY, ACROSS EVERY WAYPOINT —
 //   the partial UNIQUE (client_id, client_local_date), 365. Three overdue items
@@ -68,12 +70,13 @@
 import { db as defaultDb } from "../db.mjs";
 import { emit } from "../events/bus.mjs";
 import { createTask } from "../lib/create-task.mjs";
-import { sendTemplated as defaultSend } from "../workflows/messaging.mjs";
+import { sendBlueprintCoachNudge as defaultSend, blueprintCoachNudgeEligibility } from "../blueprint/coach-nudge.mjs";
 import { STEPS, FINAL_STEP, dueStep, stepFor } from "./ladder.mjs";
 import { blockersFor, contactFor, BOUGHT_STATUSES, PENDING_PAYMENT_STATUSES, CHASEABLE_STATES } from "./exits.mjs";
 import { CHECKOUT_LINK_TTL_DAYS } from "../paid-services/link-ttl.mjs";
 import { destinationKey } from "./destination.mjs";
 import { zoneForClient, isDaytime, localDate } from "./clock.mjs";
+import { runBlueprintCoachCalls } from "../blueprint/coach-call.mjs";
 
 export const SOURCE_WORKFLOW = "waypoint-nudge";
 
@@ -564,7 +567,7 @@ async function whyClaimFailed(db, { waypointId, step, clientId, localDay, orgId,
  * Every return says `action` and, when nothing happened, `reasons`. "skipped"
  * is the normal, healthy outcome and by far the most common one.
  */
-export async function deliverNudge(db, candidate, { now = new Date(), send = defaultSend } = {}) {
+export async function deliverNudge(db, candidate, { now = new Date(), send = defaultSend, coachOptions = {} } = {}) {
   const at = now instanceof Date ? now : new Date(now);
   const { waypointId } = candidate;
   const step = stepFor(candidate.step);
@@ -626,6 +629,14 @@ export async function deliverNudge(db, candidate, { now = new Date(), send = def
     await recordEvent(db, { candidate, step, idempotencyKey, outcome: "staff_task" });
     return { waypointId, step: step.step, action: "staff_task", taskId: task.id };
   }
+
+  // Blueprint eligibility is checked BEFORE claiming the rung. Draft agents
+  // and later (not-current) steps must remain eligible for a future real turn.
+  const coachEligible = await blueprintCoachNudgeEligibility(db, {
+    orgId: candidate.orgId, clientId: candidate.clientId, channel: step.channel,
+    templateKey: step.templateKey, context: { waypoint: { key: candidate.key || "" } }
+  }, coachOptions);
+  if (!coachEligible.ok) return { waypointId, step: step.step, action: "skipped", reasons: [coachEligible.reason] };
 
   /* ── QUIET HOURS, IN THE CLIENT'S OWN ZONE ──────────────────────────────
      Nothing is claimed and nothing is written. The rung stays unspent and the
@@ -723,7 +734,7 @@ export async function deliverNudge(db, candidate, { now = new Date(), send = def
       /* So the message can name the actual thing rather than being a generic
          reminder. The title is the client's own checklist wording. */
       context: { waypoint: { title: candidate.title || "", key: candidate.key || "" } }
-    });
+    }, coachOptions);
   } catch (err) {
     result = { sent: false, reason: `error:${String(err?.message || err).slice(0, 120)}` };
   }
@@ -742,6 +753,24 @@ export async function deliverNudge(db, candidate, { now = new Date(), send = def
       waypointId, step: step.step, action: "queued",
       channel: step.channel, messageId: result.messageId || null, localDay, zone
     };
+  }
+
+  if (result?.retryable === true && !result?.messageId && [
+    "template_pending", "draft_template", "blueprint_coach_not_live", "not_current_client_step",
+    "no_open_client_step", "blueprint_access_inactive", "halted", "step_changed",
+    "blueprint_coach_model_error", "blueprint_coach_model_shadow", "blueprint_coach_model_wait",
+    "invalid_coach_json", "invalid_coach_reply", "invalid_coach_action", "coach_action_intent_mismatch",
+    "proactive_coach_action_forbidden", "blueprint_coach_context_changed", "blueprint_coach_opted_out",
+    "blueprint_coach_guardrail_block", "step_has_no_proof_check", "blueprint_coach_conversation_owned",
+    "dnd_sms", "dnd_email", "client_context_unavailable", "not_blueprint_buyer"
+  ].includes(result.reason)) {
+    // The Blueprint adapter sets this only before any message INSERT/provider
+    // call. Release this owner's unresolved claim so approval/step changes can
+    // recover. A queued or concurrently resolved claim can never be deleted.
+    await db.query(`DELETE FROM waypoint_nudges
+      WHERE id = $1 AND outcome = 'claimed' AND message_id IS NULL`, [claimId]);
+    return { waypointId, step: step.step, action: "skipped", channel: step.channel,
+      reasons: [String(result.reason || "blueprint_not_ready")] };
   }
 
   /* NOTHING WAS QUEUED, SO THE DAY IS GIVEN BACK. The rung stays spent — a step
@@ -814,8 +843,13 @@ async function recordEvent(db, { candidate, step, idempotencyKey, outcome }) {
  * second. Running them in parallel would not break the cap — the database
  * decides, not this loop — but it would make the reported reason a coin toss.
  */
-export async function runNudges(db = defaultDb, { orgId = null, now = new Date(), limit = DEFAULT_LIMIT, send = defaultSend } = {}) {
+export async function runNudges(db = defaultDb, { orgId = null, now = new Date(), limit = DEFAULT_LIMIT, send = defaultSend,
+  coachOptions = {}, callOptions = {}, runCoachCalls = runBlueprintCoachCalls, step = null, deliveryNow = null } = {}) {
   const at = now instanceof Date ? now : new Date(now);
+  // Each model decision/call gets its own durable request in production, not
+  // one serial 200-client request that can outlive the function host. Local
+  // callers retain the same one-pass behavior without Inngest.
+  const runStep = (name, fn) => typeof step?.run === "function" ? step.run(name, fn) : fn();
   const tally = {
     at: at.toISOString(),
     considered: 0, queued: 0, staff_tasks: 0, skipped: 0,
@@ -843,19 +877,21 @@ export async function runNudges(db = defaultDb, { orgId = null, now = new Date()
     results: []
   };
 
-  let candidates;
-  try {
-    candidates = await planNudges(db, { orgId, now: at, limit });
-  } catch (err) {
+  const planned = await runStep("nudge-plan", async () => {
+    try { return { candidates: await planNudges(db, { orgId, now: at, limit }) }; }
+    catch (err) { return { error: String(err?.message || err).slice(0, 300) }; }
+  });
+  if (planned.error) {
     tally.failed += 1;
-    tally.error = String(err?.message || err).slice(0, 300);
+    tally.error = planned.error;
     return tally;
   }
+  const candidates = planned.candidates;
   tally.considered = candidates.length;
 
   if (candidates.length >= limit) {
     tally.budget_exhausted = true;
-    const eligible = await countEligible(db, { orgId, now: at });
+    const eligible = await runStep("nudge-count-eligible", () => countEligible(db, { orgId, now: at }));
     tally.not_reached = eligible == null ? null : Math.max(0, eligible - candidates.length);
     console.warn(
       `[nudge/run] budget full: ${candidates.length} of ${limit} slots used, ` +
@@ -865,15 +901,25 @@ export async function runNudges(db = defaultDb, { orgId = null, now = new Date()
   }
 
   for (const candidate of candidates) {
-    let res;
-    try {
-      res = await deliverNudge(db, candidate, { now: at, send });
-    } catch (err) {
-      tally.failed += 1;
-      tally.results.push({
+    const res = await runStep(`nudge-${candidate.waypointId}-${candidate.step}`, async () => {
+      try {
+        const sendAt = typeof deliveryNow === "function" ? new Date(deliveryNow()) : at;
+        // A delayed durable run must not replay an old text rung after the
+        // ladder has reached its later question or human handoff.
+        if (dueStep(candidate.dueAt, sendAt)?.step !== candidate.step) {
+          return { waypointId: candidate.waypointId, step: candidate.step,
+            action: "skipped", reasons: ["stale_nudge_plan"] };
+        }
+        return await deliverNudge(db, candidate, { now: sendAt, send, coachOptions });
+      }
+      catch (err) { return {
         waypointId: candidate.waypointId, step: candidate.step,
         action: "error", reasons: [String(err?.message || err).slice(0, 200)]
-      });
+      }; }
+    });
+    if (res.action === "error") {
+      tally.failed += 1;
+      tally.results.push(res);
       continue;
     }
     if (res.action === "queued") tally.queued += 1;
@@ -896,6 +942,10 @@ export async function runNudges(db = defaultDb, { orgId = null, now = new Date()
     else tally.skipped += 1;
     tally.results.push(res);
   }
+  // SMS acceptance happens on the dispatcher clock, not this queueing pass.
+  // Always revisit voice candidates on this same existing hourly sweep even
+  // when the text ladder has nothing left to queue.
+  tally.coach_calls = await runCoachCalls(db, { orgId, now: at, limit, ...callOptions, step, deliveryNow });
   return tally;
 }
 

@@ -8,9 +8,26 @@ import {
   offersForClient,
   resolveContractTemplateKey,
   defaultContractValues,
-  commasProductTitleFor
+  commasProductTitleFor,
+  resolveOfferAmountCents
 } from "./offers.mjs";
 import { isCommasSafeCopy } from "../payments/commas-safe-copy.mjs";
+
+test("Blueprint resolves only whole-dollar prices within the owner range", () => {
+  assert.equal(resolveOfferAmountCents("UWIQ_DELIVERABLES"), 500000);
+  assert.equal(OFFERS.UWIQ_DELIVERABLES.priceMinCents, 500000);
+  assert.equal(OFFERS.UWIQ_DELIVERABLES.priceMaxCents, 1000000);
+  for (const cents of [500000, 750000, 1000000]) {
+    assert.equal(resolveOfferAmountCents("UWIQ_DELIVERABLES", cents), cents);
+  }
+  for (const cents of [499999, 1000001, 750001, 750000.5, "750000", null, NaN, Infinity]) {
+    assert.throws(() => resolveOfferAmountCents("UWIQ_DELIVERABLES", cents), /whole-dollar/);
+  }
+  for (const offer of Object.values(OFFERS).filter((o) => o.key !== "UWIQ_DELIVERABLES")) {
+    assert.equal(resolveOfferAmountCents(offer.key), offer.priceCents);
+    assert.throws(() => resolveOfferAmountCents(offer.key, offer.priceCents), /Only Capital Blueprint/);
+  }
+});
 
 test("every offer has a Commas product title with no credit/finance words", () => {
   for (const key of Object.keys(OFFERS)) {

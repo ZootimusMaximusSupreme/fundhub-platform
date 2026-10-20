@@ -139,6 +139,27 @@ describe("the send helper types nothing in", () => {
     });
     assert.deepEqual(calls[0].body.values, { scope: "typed by a closer" });
   });
+
+  test("the selected Blueprint amount reaches both draft and send unchanged", async () => {
+    const calls = [];
+    const helper = loadHelper(stubData(calls));
+    const out = await helper.sendToClient({ clientId: "cl-1", templateId: "tpl-1", amountCents: 1000000 });
+    assert.equal(out.ok, true);
+    assert.deepEqual(calls.map((call) => call.body.amount_cents), [1000000, 1000000]);
+    assert.equal(Object.hasOwn(calls[0].body, "values"), false);
+  });
+
+  test("changing the price while draft creation is pending cannot change the send amount", async () => {
+    const calls = [];
+    const gate = {};
+    const helper = loadHelper(stubData(calls, gate));
+    const opts = { clientId: "cl-1", templateId: "tpl-1", amountCents: 750000 };
+    const pending = helper.sendToClient(opts);
+    opts.amountCents = 1000000;
+    gate.release();
+    assert.equal((await pending).ok, true);
+    assert.deepEqual(calls.map((call) => call.body.amount_cents), [750000, 750000]);
+  });
 });
 
 describe("one press sends once", () => {

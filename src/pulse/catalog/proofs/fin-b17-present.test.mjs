@@ -105,6 +105,7 @@ async function openDeck(tier = "FULL_FUNDING", {
       read: async (what, query) => {
         reads.push({ what, query });
         if (readAnswer) return readAnswer(what, query);
+        if (what === "agent-context") return { ok: true, data: { context: { client: { id: CONTACT }, as_prompt_block: "Saved client file" } } };
         return { ok: true, data: deck || data || payload({ tier }) };
       },
       write: async (url, body) => {
@@ -541,7 +542,9 @@ test("the two walls say what is wrong in words, read nothing without a client, a
     // the link may name the client four ways
     for (const name of ["contact", "client_id", "id", "client"]) {
       const named = await openDeck("FULL_FUNDING", { search: `?${name}=${CONTACT}` });
-      assert.deepEqual(named.reads.map((r) => `${r.what}:${r.query.contact}`), [`closer-deck:${CONTACT}`], `?${name}=`);
+      assert.deepEqual(JSON.parse(JSON.stringify(named.reads.map((r) => [r.what, r.query]))), [
+        ["closer-deck", { contact: CONTACT }], ["agent-context", { client_id: CONTACT }]
+      ], `?${name}= reads the same scoped client only after the deck is admitted`);
       assert.equal(named.slide(), "S-01");
     }
 

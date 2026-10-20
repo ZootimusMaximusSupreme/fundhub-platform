@@ -63,6 +63,7 @@ function check(body, { role = "closer", staff = {}, agent = agentRow(), agentIn 
       // company condition is answered with the row whatever company was bound.
       [/FROM agents WHERE/, (sql, p) => (agent && agent.code === p[1] && (!/WHERE org_id = \$1::uuid/.test(sql) || agentIn.includes(p[0])) ? [agent] : [])],
       [/FROM clients WHERE id = \$1::uuid/, (sql, p) => (client && client.id === p[0] && (!/AND org_id = \$2::uuid/.test(sql) || clientOrg === p[1]) ? [client] : [])],
+      [/FROM clients\s+WHERE id = \$1 AND org_id = \$2/, (_sql, p) => (client && client.id === p[0] && clientOrg === p[1] ? [client] : [])],
       [/FROM opt_outs WHERE client_id = \$1 AND channel = \$2 AND opted_in_at IS NULL/, (_s, p) => (p[0] === CLIENT && optedOut.includes(p[1]) ? [{ "?column?": 1 }] : [])],
       [/FROM compliance_rules/, rules],
       [/INSERT INTO outbound_calls/, []],
@@ -85,6 +86,7 @@ test("agent-call check says a live phone agent could call this client, and dials
   assert.equal(ready.db.calls.filter((c) => /^\s*(INSERT|UPDATE|DELETE)/i.test(c.sql)).length, 0, "a check writes nothing");
   assert.deepEqual(sqlCalls(ready, /FROM agents/)[0].params, [ORG_ID, AGENT]);
   assert.deepEqual(sqlCalls(ready, /FROM clients/)[0].params, [CLIENT, ORG_ID]);
+  assert.deepEqual(sqlCalls(ready, /FROM clients\s+WHERE id = \$1 AND org_id = \$2/)[0].params, [CLIENT, ORG_ID], "the call checks the same saved client context");
 
   // With no client named it says only that the agent itself is ready.
   const agentOnly = await check({});
@@ -98,6 +100,7 @@ test("agent-call check says a live phone agent could call this client, and dials
     rules: [
       [/FROM agents WHERE org_id/, [agentRow()]],
       [/FROM clients WHERE id/, [clientRow()]],
+      [/FROM clients\s+WHERE id = \$1 AND org_id = \$2/, [clientRow()]],
       [/FROM opt_outs/, []],
       [/FROM compliance_rules/, []],
     ],

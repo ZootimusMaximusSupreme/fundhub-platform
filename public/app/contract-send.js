@@ -109,6 +109,7 @@
 
   function sendToClient(opts) {
     opts = opts || {};
+    var amountCents = opts.amountCents;
     if (!root.FHData) {
       return Promise.resolve({ ok: false, error: "data.js failed to load" });
     }
@@ -145,12 +146,15 @@
        the same thing to it — but omitting says plainly that this screen has no
        typed input to contribute. */
     if (opts.values && Object.keys(opts.values).length) payload.values = opts.values;
+    if (amountCents !== undefined) payload.amount_cents = amountCents;
 
     return root.FHData.write("/api/contracts", payload).then(function (r) {
       if (!r.ok) return { ok: false, error: errText(r) };
       var id = r.data && r.data.contract && r.data.contract.id;
       if (!id) return { ok: false, error: "The draft did not save." };
-      return root.FHData.write("/api/contracts", { action: "send", id: id }).then(function (r2) {
+      var sendPayload = { action: "send", id: id };
+      if (amountCents !== undefined) sendPayload.amount_cents = amountCents;
+      return root.FHData.write("/api/contracts", sendPayload).then(function (r2) {
         if (!r2.ok) return { ok: false, error: errText(r2) };
         var links = (r2.data && r2.data.links) || [];
         /* Stamped only on a send that actually went. A failed attempt must be

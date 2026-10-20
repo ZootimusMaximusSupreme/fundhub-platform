@@ -30,6 +30,10 @@ function runtimeDb(agent) {
     async query(sql, params = []) {
       const text = String(sql);
       if (text.includes("FROM conversations")) return { rows: [] };
+      if (text.includes("SELECT * FROM agents WHERE org_id = $1 AND code = $2")) {
+        assert.deepEqual(params, [ORG, "BP-COACH"], "the scoped Blueprint lookup does not turn a draft legacy agent into a coach");
+        return { rows: [] };
+      }
       if (text.includes("SELECT * FROM agents") && text.includes("status IN")) {
         return { rows: [{
           ...agent,

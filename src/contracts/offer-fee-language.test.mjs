@@ -184,16 +184,26 @@ function keyFrom(block) {
   return update ? update[1] : null;
 }
 
+/** Price/scope patches replace exact literals in the previous full template. */
+function applyBodyReplacements(block, body) {
+  const replacements = [...block.matchAll(/'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)];
+  for (const [, before, after] of replacements) {
+    body = body?.replaceAll(before.replace(/''/g, "'"), after.replace(/''/g, "'"));
+  }
+  return body;
+}
+
 /**
  * Every contract template db/ defines, as the last word on it wins.
  * Map<template_key, { body, fields, sources: string[] }>.
  */
-function readTemplatesFromDb() {
+function readTemplatesFromDb({ omitMigrations = new Set() } = {}) {
   const out = new Map();
   for (const dir of ["schema", "migrations", "seed"]) {
     const full = path.join(ROOT, "db", dir);
     if (!fs.existsSync(full)) continue;
     for (const name of fs.readdirSync(full).filter((f) => f.endsWith(".sql")).sort()) {
+      if (dir === "migrations" && omitMigrations.has(name)) continue;
       const sql = fs.readFileSync(path.join(full, name), "utf8");
       if (!/contract_templates/.test(sql)) continue;
       const blocks = stripComments(sql)
@@ -203,7 +213,12 @@ function readTemplatesFromDb() {
         const key = keyFrom(block);
         if (!key) continue;
         const prev = out.get(key) || { body: null, fields: null, sources: [] };
-        const body = bodyFrom(block);
+        let body = bodyFrom(block);
+        // A later price-only migration uses replace(body, old, new), so apply
+        // its literal substitutions to the previously parsed full agreement.
+        if (/SET body = (?:replace\()+body,/.test(block)) {
+          body = applyBodyReplacements(block, prev.body);
+        }
         const fields = fieldsFrom(block);
         out.set(key, {
           body: body ?? prev.body,
@@ -254,15 +269,18 @@ describe("the copy this guard reads is really there", () => {
          declared, so the pairing is checked in both directions instead. */
       assert.ok(Array.isArray(tpl.fields), `${p.templateKey}: blanks did not parse`);
       const asks = [...tpl.body.matchAll(/\{\{field\.([a-z0-9_]+)\}\}/gi)].map((m) => m[1]);
-      const declared = new Set(tpl.fields.map((f) => f.key));
+      const declared = new Set([
+        ...tpl.fields.map((f) => f.key),
+        ...(p.templateKey === "CAPITAL-BLUEPRINT-AGREEMENT" ? ["package_fee"] : [])
+      ]);
       for (const key of asks) {
         assert.ok(declared.has(key),
           `${p.templateKey}: the words ask for {{field.${key}}} and no blank declares it, ` +
           `so it renders empty on the copy the client signs.`);
       }
       if (!tpl.fields.length) {
-        assert.equal(asks.length, 0,
-          `${p.templateKey}: blanks did not parse — the body has field tags but no blanks.`);
+        assert.ok(asks.every((key) => declared.has(key)),
+          `${p.templateKey}: a field tag has neither a form blank nor a server default.`);
       }
     }
   });
@@ -381,7 +399,10 @@ describe("no contract describes a charge that repeats", () => {
 describe("a rename cannot go half way", () => {
   for (const p of pathsWithTemplates) {
     test(`${p.templateKey}: every blank in the words is a blank on the form`, () => {
-      const declared = new Set(TEMPLATES.get(p.templateKey).fields.map((f) => f.key));
+      const declared = new Set([
+        ...TEMPLATES.get(p.templateKey).fields.map((f) => f.key),
+        ...(p.templateKey === "CAPITAL-BLUEPRINT-AGREEMENT" ? ["package_fee"] : [])
+      ]);
       for (const tag of tagsIn(TEMPLATES.get(p.templateKey).body)) {
         if (!tag.startsWith("field.")) continue;
         const key = tag.slice("field.".length);
@@ -511,6 +532,53 @@ describe("every document carries its own signature block", () => {
 });
 
 describe("the live defect, named", () => {
+  test("Blueprint describes twelve months, distinct AI/human roles and no automatic year-two charge", () => {
+    const body = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    assert.match(body, /1\.1 Capital Blueprint is a twelve \(12\)-month educational planning and accountability program/);
+    assert.match(body, /AI accountability coach supports routine progress and follow-up/);
+    assert.match(body, /separately assigned human advisor answers program questions and handles exceptions and funding preparation/);
+    assert.match(body, /text messages and automated voice calls, subject to your contact preferences/);
+    assert.match(body, /No automatic renewal or charge after those twelve months is authorized/);
+    assert.match(body, /continued paid access requires a separately stated price and your agreement before billing/);
+    assert.doesNotMatch(body, /AI (?:accountability )?advisor/);
+  });
+
+  test("the draft program migration changes only its three approved clauses and never signed contracts", () => {
+    const sql = fs.readFileSync(path.join(ROOT, "db/migrations/485_blueprint_program_scope.sql"), "utf8");
+    assert.match(sql, /DRAFT/);
+    const statements = stripComments(sql);
+    assert.match(statements, /^UPDATE contract_templates/);
+    assert.doesNotMatch(statements, /UPDATE contracts\b|DELETE|ALTER TABLE/);
+    assert.match(statements, /WHERE template_key = 'CAPITAL-BLUEPRINT-AGREEMENT'/);
+    const updated = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    const previous = readTemplatesFromDb({ omitMigrations: new Set(["485_blueprint_program_scope.sql"]) })
+      .get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    const pairs = [...statements.matchAll(/'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)];
+    assert.equal(pairs.length, 3);
+    assert.deepEqual(pairs.map(([, before]) => before.slice(0, 3)), ["1.1", "5.1", "6.1"]);
+    assert.equal(applyBodyReplacements(statements, previous), updated);
+    // This migration intentionally uses only nested built-in replace calls.
+    // Assert the complete statement shape, including every closing delimiter.
+    const shape = statements.replace(/'(?:[^']|'')*'/g, "STRING").replace(/\s+/g, " ").trim();
+    assert.equal(shape, "UPDATE contract_templates SET body = replace(replace(replace(body, STRING, STRING), STRING, STRING), STRING, STRING), updated_at = now() WHERE template_key = STRING;");
+    const section = (body, number) => body.match(new RegExp(`\\n${number}\\. [\\s\\S]*?(?=\\n${number + 1}\\. )`))?.[0];
+    for (const number of [3, 7, 8]) {
+      assert.ok(section(previous, number));
+      assert.equal(section(updated, number), section(previous, number));
+    }
+    const removeApproved = (body) => body.split("\n").filter((line) => !/^(1\.1|5\.1|6\.1) /.test(line)).join("\n");
+    assert.equal(removeApproved(updated), removeApproved(previous));
+  });
+
+  test("Blueprint uses the validated server price in both clauses without typed blanks", () => {
+    const tpl = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT");
+    assert.deepEqual(tpl.fields, []);
+    assert.equal((tpl.body.match(/\{\{field\.package_fee\}\}/g) || []).length, 2);
+    assert.doesNotMatch(tpl.body, /five thousand|\$5,000/);
+    assert.equal(defaultContractValues({ offerKey: "UWIQ_DELIVERABLES" }).package_fee, "$5,000");
+    assert.match(tpl.body, /There is no recurring billing and no subscription\./);
+  });
+
   test("credit repair is one payment of the catalogue price", () => {
     const tpl = TEMPLATES.get("CREDIT-REPAIR-AGREEMENT");
     assert.match(tpl.body, /\{\{field\.one_time_fee\}\}/,

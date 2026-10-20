@@ -11,15 +11,16 @@ import { _resetOrgCache } from "../events/bus.mjs";
 import { on, clearHandlers } from "../events/registry.mjs";
 
 // Fake db mirroring commas.test.mjs conventions.
-function fakeDb({ dedup = false, store = [] } = {}) {
+function fakeDb({ dedup = false, store = [], dispatch = { client_id: "client-test", org_id: "org-1" } } = {}) {
   let n = 0;
   return {
     query(sql, params) {
-      if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
+      if (/FROM orgs/.test(sql)) throw new Error("Bland must never default its company");
+      if (/FROM outbound_calls oc/.test(sql)) return { rows: dispatch ? [dispatch] : [] };
       if (/INSERT INTO events/.test(sql)) {
         if (dedup) return { rows: [] };
         const row = { id: `evt-${++n}` };
-        store.push({ ...row, name: params[1], payload: params[5] });
+        store.push({ ...row, orgId: params[0], clientId: params[4], name: params[1], payload: params[5] });
         return { rows: [row] };
       }
       return { rows: [] };
@@ -165,15 +166,16 @@ test("handleBlandWebhook: not_completed (in-progress) → 200, emitted=[], reaso
   assert.deepEqual(res.emitted, []);
 });
 
-test("handleBlandWebhook: clientId passed through to bus emit", async () => {
+test("handleBlandWebhook: explicit clientId agrees with the stored dispatch", async () => {
   _resetOrgCache(); clearHandlers();
   const store = [];
   // Intercept the INSERT INTO events call to capture client_id param
   const db = {
     query(sql, params) {
-      if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
+      if (/FROM orgs/.test(sql)) throw new Error("Bland must never default its company");
+      if (/FROM outbound_calls oc/.test(sql)) return { rows: [{ client_id: "cl-42", org_id: "org-42" }] };
       if (/INSERT INTO events/.test(sql)) {
-        store.push({ clientId: params[4], name: params[1] });
+        store.push({ orgId: params[0], clientId: params[4], name: params[1] });
         return { rows: [{ id: "evt-1" }] };
       }
       return { rows: [] };
@@ -183,6 +185,7 @@ test("handleBlandWebhook: clientId passed through to bus emit", async () => {
   const res = await handleBlandWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET, clientId: "cl-42" });
   assert.equal(res.ok, true);
   assert.equal(store[0]?.clientId, "cl-42");
+  assert.equal(store[0]?.orgId, "org-42");
 });
 
 test("handleBlandWebhook: resolves clientId from outbound_calls when none provided", async () => {
@@ -190,14 +193,14 @@ test("handleBlandWebhook: resolves clientId from outbound_calls when none provid
   const store = [];
   const db = {
     query(sql, params) {
-      if (/FROM orgs/.test(sql)) return { rows: [{ id: "org-1" }] };
-      if (/SELECT client_id FROM outbound_calls/.test(sql)) {
+      if (/FROM orgs/.test(sql)) throw new Error("Bland must never default its company");
+      if (/FROM outbound_calls oc/.test(sql)) {
         // Simulate a prior recordDispatch for this callId
-        if (params[0] === "call_lookup_test") return { rows: [{ client_id: "client-resolved-99" }] };
+        if (params[0] === "call_lookup_test") return { rows: [{ client_id: "client-resolved-99", org_id: "partner-org" }] };
         return { rows: [] };
       }
       if (/INSERT INTO events/.test(sql)) {
-        store.push({ clientId: params[4], name: params[1] });
+        store.push({ orgId: params[0], clientId: params[4], name: params[1] });
         return { rows: [{ id: "evt-1" }] };
       }
       return { rows: [] };
@@ -208,6 +211,7 @@ test("handleBlandWebhook: resolves clientId from outbound_calls when none provid
   // No clientId passed in — must be resolved from outbound_calls
   assert.equal(res.ok, true);
   assert.equal(store[0]?.clientId, "client-resolved-99");
+  assert.equal(store[0]?.orgId, "partner-org");
 });
 
 test("handleBlandWebhook: idempotent re-delivery → deduped=true, handler does not fire", async () => {
@@ -220,4 +224,86 @@ test("handleBlandWebhook: idempotent re-delivery → deduped=true, handler does 
   const res = await handleBlandWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET });
   assert.ok(res.emitted.every((e) => e.deduped === true), "all events deduped");
   assert.equal(fired, 0, "handler must not fire on deduped replay");
+});
+
+test("handleBlandWebhook: transcripts for two companies keep their own stored company/client", async () => {
+  _resetOrgCache(); clearHandlers();
+  const store = [];
+  const seen = [];
+  on("call.completed", (event) => seen.push({ orgId: event.orgId, clientId: event.clientId, transcript: event.payload.transcript }));
+  for (const [orgId, clientId] of [["org-a", "client-a"], ["org-b", "client-b"]]) {
+    const raw = JSON.stringify({ call_id: `call-${clientId}`, status: "completed", transcript: `private words for ${clientId}`,
+      client_id: "attacker-client", org_id: "attacker-org" });
+    const out = await handleBlandWebhook({ db: fakeDb({ store, dispatch: { org_id: orgId, client_id: clientId } }),
+      rawBody: raw, signatureHeader: sign(raw), secret: SECRET });
+    assert.equal(out.ok, true);
+  }
+  assert.deepEqual(seen, [
+    { orgId: "org-a", clientId: "client-a", transcript: "private words for client-a" },
+    { orgId: "org-b", clientId: "client-b", transcript: "private words for client-b" }
+  ]);
+  assert.deepEqual(store.map(({ orgId, clientId }) => [orgId, clientId]), [["org-a", "client-a"], ["org-b", "client-b"]]);
+});
+
+test("handleBlandWebhook: an unknown dispatch cannot persist a transcript under the default company", async () => {
+  _resetOrgCache(); clearHandlers();
+  const store = [];
+  const raw = JSON.stringify({ call_id: "unknown", status: "completed", transcript: "private words",
+    client_id: "client-test", org_id: "org-1" });
+  const out = await handleBlandWebhook({ db: fakeDb({ store, dispatch: null }),
+    rawBody: raw, signatureHeader: sign(raw), secret: SECRET, clientId: "client-test" });
+  assert.equal(out.ok, false);
+  assert.equal(out.status, 409);
+  assert.equal(out.reason, "call_dispatch_not_found");
+  assert.deepEqual(store, []);
+});
+
+test("handleBlandWebhook: an explicit client cannot override the saved dispatch", async () => {
+  _resetOrgCache(); clearHandlers();
+  const store = [];
+  const raw = JSON.stringify({ call_id: "known", status: "completed", transcript: "private words" });
+  const out = await handleBlandWebhook({ db: fakeDb({ store }), rawBody: raw,
+    signatureHeader: sign(raw), secret: SECRET, clientId: "other-client" });
+  assert.equal(out.reason, "call_attribution_mismatch");
+  assert.deepEqual(store, []);
+});
+
+test("handleBlandWebhook: a late transcript enriches the scoped call once without another workflow event", async () => {
+  _resetOrgCache(); clearHandlers();
+  const events = new Set();
+  const messages = [
+    { id: "message-a", orgId: "org-a", clientId: "client-a", ref: "late-call", provider: "bland", channel: "voice", body: "human" },
+    { id: "message-b", orgId: "org-b", clientId: "client-b", ref: "late-call", provider: "bland", channel: "voice", body: "private B" }
+  ];
+  let fired = 0;
+  on("call.completed", () => { fired += 1; });
+  const db = { query(sql, params) {
+    if (/FROM orgs/.test(sql)) throw new Error("must not default company");
+    if (/FROM outbound_calls oc/.test(sql)) return { rows: [{ org_id: "org-a", client_id: "client-a" }] };
+    if (/INSERT INTO events/.test(sql)) {
+      if (events.has(params[3])) return { rows: [] };
+      events.add(params[3]);
+      return { rows: [{ id: "event-one" }] };
+    }
+    if (/UPDATE messages SET rendered_body/.test(sql)) {
+      assert.match(sql, /org_id = \$1 AND client_id = \$2 AND provider_ref = \$3/);
+      assert.match(sql, /provider = 'bland' AND channel = 'voice'/);
+      const row = messages.find((message) => message.orgId === params[0] && message.clientId === params[1]
+        && message.ref === params[2] && message.provider === "bland" && message.channel === "voice" && message.body !== params[3]);
+      if (row) row.body = params[3];
+      return { rows: row ? [{ id: row.id }] : [] };
+    }
+    throw new Error(`Unexpected SQL: ${sql}`);
+  } };
+  for (const extra of [{}, { transcript: "Client: late private transcript", summary: "Useful summary" }, { transcript: "Client: late private transcript", summary: "Useful summary" }]) {
+    const raw = JSON.stringify({ call_id: "late-call", status: "completed", ...extra });
+    const out = await handleBlandWebhook({ db, rawBody: raw, signatureHeader: sign(raw), secret: SECRET });
+    assert.equal(out.ok, true);
+  }
+  assert.equal(events.size, 1);
+  assert.equal(fired, 1);
+  assert.equal(messages.length, 2);
+  assert.match(messages[0].body, /late private transcript/);
+  assert.match(messages[0].body, /Useful summary/);
+  assert.equal(messages[1].body, "private B");
 });

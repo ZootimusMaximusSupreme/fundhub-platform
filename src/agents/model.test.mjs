@@ -42,6 +42,7 @@ test("callModel with only OPENAI_API_KEY posts to OpenAI chat completions", asyn
     env: { OPENAI_API_KEY: "sk-openai" },
     fetchImpl: async (url, opts) => {
       assert.match(url, /api\.openai\.com\/v1\/chat\/completions/);
+      assert.equal(Object.hasOwn(opts, "signal"), false);
       assert.equal(opts.headers.authorization, "Bearer sk-openai");
       const body = JSON.parse(opts.body);
       assert.equal(body.model, DEFAULT_OPENAI_MODEL);
@@ -70,6 +71,7 @@ test("callModel with only ANTHROPIC_API_KEY still posts to Anthropic", async () 
     env: { ANTHROPIC_API_KEY: "test-key" },
     fetchImpl: async (url, opts) => {
       assert.match(url, /anthropic\.com/);
+      assert.equal(Object.hasOwn(opts, "signal"), false);
       assert.equal(opts.headers["x-api-key"], "test-key");
       return {
         ok: true,
@@ -85,6 +87,29 @@ test("callModel with only ANTHROPIC_API_KEY still posts to Anthropic", async () 
   assert.equal(res.request.provider, "anthropic");
   assert.equal(res.usage.input_tokens, 3);
   assert.equal(res.usage.output_tokens, 9);
+});
+
+test("an optional AbortSignal reaches the actual default-provider fetch and cancels without model text", async () => {
+  for (const env of [{ OPENAI_API_KEY: "fake-openai" }, { ANTHROPIC_API_KEY: "fake-anthropic" }]) {
+    const controller = new AbortController();
+    let forwarded;
+    const pending = callModel({ system: "sys", user: "Plan the saved next step", env, signal: controller.signal,
+      fetchImpl: async (_url, opts) => {
+        forwarded = opts.signal;
+        assert.equal(forwarded, controller.signal);
+        assert.equal(Object.hasOwn(JSON.parse(opts.body), "signal"), false);
+        return new Promise((_resolve, reject) => {
+          opts.signal.addEventListener("abort", () => reject(new Error("model request aborted")), { once: true });
+        });
+      }
+    });
+    controller.abort();
+    const result = await pending;
+    assert.equal(forwarded.aborted, true);
+    assert.equal(result.mode, "live");
+    assert.equal(result.text, null);
+    assert.match(result.error, /aborted/);
+  }
 });
 
 test("callModel with both keys uses OpenAI, not Anthropic", async () => {

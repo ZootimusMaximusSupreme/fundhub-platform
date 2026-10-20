@@ -16,6 +16,7 @@ import { dailyPulse } from './daily-pulse.mjs';
 import { eveningBrief } from './evening-brief.mjs';
 import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
+import { whopBillingInboxDrain } from './whop-billing-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
 import { bankOutreachCheckins } from './bank-outreach-checkins.mjs';
@@ -161,6 +162,7 @@ export const functions = [
      REGISTERING IT SENDS NOTHING AND CHARGES NOTHING. It reads bytes Commas
      already delivered and hands them to the same processor. */
   commasInboxDrain,
+  whopBillingInboxDrain,
 
   /* THE ONLY THING THAT ASKS "SHOULD WE BE HIRING" WITHOUT BEING ASKED FIRST.
      Registered 2026-09-05. src/hiring/bench.mjs has argued since 051 that

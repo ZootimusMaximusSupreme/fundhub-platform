@@ -38,7 +38,9 @@ export const FINANCE_OS_BLUEPRINT_MONTHS = 12;
  * ACTIVE MEANS: status = 'active' (not 'past_due' — 075's own header says
  * status only records the money state, and a lapsed card should not silently
  * keep handing out a paid feature), effective_from <= asOf, effective_to is
- * NULL or after asOf. The row with the latest effective_from that matches wins,
+ * NULL or after asOf, and any known paid period covers asOf. The included
+ * year must not remain open forever merely because status is still active.
+ * The row with the latest effective_from that matches wins,
  * matching how 075 finds "the live row".
  */
 export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = new Date() } = {}) {
@@ -55,6 +57,8 @@ export async function financeOsEntitlement(conn = db, { orgId, clientId, asOf = 
         AND status = 'active'
         AND effective_from <= $4
         AND (effective_to IS NULL OR effective_to > $4)
+        AND (current_period_start IS NULL OR current_period_start <= $4)
+        AND (current_period_end IS NULL OR current_period_end > $4)
       ORDER BY effective_from DESC
       LIMIT 1`,
     [orgId, clientId, FINANCE_OS_TIER, asOf]

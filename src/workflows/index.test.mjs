@@ -164,6 +164,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "u-04-promote-crs-primary",
   "u-05-data-health-monitor",
   "waypoint-nudge-sweeper",
+  "whop-billing-inbox-drain",
   "blueprint-closer-ready-sweeper",
 ];
 
@@ -220,6 +221,11 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
      Added bank-outreach-checkins (2026-10-19) — daily Arizona partner next
      actions for the approved bank relationship workspace. It never sends
      outreach. Direct workflow and real PostgreSQL tests prove idempotency.
+
+     Added Whop Blueprint billing recovery (2026-10-20): each minute the job
+     processes the durable signed-receipt inbox and GET-reconciles missing
+     receipts into the canonical purchase writers. It creates no provider
+     checkout, charge or refund and leaves failed/unmatched receipts retryable.
 
      Added the instant pulse (2026-10-07, eee0270dd) — the five-minute watch
      over the critical doors: the health check, the login door, the apply door,

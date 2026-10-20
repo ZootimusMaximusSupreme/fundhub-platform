@@ -44,7 +44,10 @@ export const TRIPWIRES = Object.freeze({
   "page:roadmap/index.html": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "funnel:card-box-script-loads"] },
   "route:public/slo-interest": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:contact-no-followup"] },
   "route:public/survey-submit": { impact: "money", checks: ["lead:pipe-cut-with-traffic", "handoff:lead-first-touches-missing"] },
-  "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link"] },
+  "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
+  "job:whop-billing-inbox-drain": { impact: "money", checks: ["payments:whop-inbox-waiting", "payments:whop-paid-no-access"] },
+  "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
+  "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
   "job:commas-inbox-drain": { impact: "money", checks: ["payments:commas-inbox-waiting", "payments:paid-no-entitlement"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
@@ -157,7 +160,7 @@ export const TRIPWIRES = Object.freeze({
   "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
   "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
   "desk:hiring.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:dead-stage"] },
-  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step"] },
+  "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step", "blueprint:real-advisor"] },
   "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] },
   // W4 messages truth, 2026-10-10 (ops/workflows/coverage-every-surface-2026-10-10.md). What a customer reads
   // and whether the path worked: the nine msg:* rows in src/pulse/coverage/gap-msg.mjs and the alert texts

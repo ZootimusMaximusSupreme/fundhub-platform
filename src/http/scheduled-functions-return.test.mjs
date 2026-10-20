@@ -60,7 +60,8 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
        and texts Chris if the 5-minute alarms stopped. With no DATABASE_URL it does nothing at all. */
     "pulse-outside-watch",
     "social-publish-sweeper",
-    "staff-message-sweeper"
+    "staff-message-sweeper",
+    "whop-billing-inbox-sweeper"
   ]);
   for (const name of names) {
     assert.ok(existsSync(path.join(ROOT, "netlify/functions", `${name}.mjs`)),

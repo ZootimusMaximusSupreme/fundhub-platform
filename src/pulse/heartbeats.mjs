@@ -47,7 +47,8 @@ export const INNGEST_JOBS = Object.freeze([
   ["slo-infinite-drip", "0 15 * * *"],
   ["subscription-billing-sweeper", "17 * * * *"],
   ["watch-curve-diagnosis-sweeper", "30 7 * * *"],
-  ["waypoint-nudge-sweeper", "0 * * * *"]
+  ["waypoint-nudge-sweeper", "0 * * * *"],
+  ["whop-billing-inbox-drain", "* * * * *"]
 ]);
 
 export const NETLIFY_JOBS = Object.freeze([
@@ -57,6 +58,7 @@ export const NETLIFY_JOBS = Object.freeze([
   ["hubstaff-poll-sweeper", "*/10 * * * *"],
   ["ad-video-sweeper", "*/5 * * * *"],
   ["commas-inbox-sweeper", "* * * * *"],
+  ["whop-billing-inbox-sweeper", "* * * * *"],
   ["marketing-clock", "*/15 * * * *"],
   ["pulse-hourly", "7 * * * *"],
   ["pulse-outside-watch", "*/5 * * * *"]

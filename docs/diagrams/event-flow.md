@@ -26,6 +26,7 @@ flowchart LR
     ext_resend_events["Resend delivery events"]
     ext_twilio_status["Twilio delivery-status callback"]
     ext_twilio["Twilio inbound SMS + voice-answer"]
+    ext_whop_billing["import { verifyWhopSignature } from '../merchant/normalize.mjs';"]
   end
   subgraph ADP[Adapters — verify, normalize, emit]
     direction TB
@@ -42,6 +43,7 @@ flowchart LR
     adp_resend_events["resend-events<br/>signed"]
     adp_twilio_status["twilio-status<br/>HMAC-SHA1"]
     adp_twilio["twilio<br/>HMAC-SHA1"]
+    adp_whop_billing["whop-billing<br/>signed"]
   end
   BUS[(events table<br/>append-only, idempotent)]
   REG[[registry handlers<br/>synchronous]]
@@ -60,6 +62,7 @@ flowchart LR
   ext_resend_events --> adp_resend_events
   ext_twilio_status --> adp_twilio_status
   ext_twilio --> adp_twilio
+  ext_whop_billing --> adp_whop_billing
   adp_bland -- "call.completed" --> BUS
   adp_clarity_export -- "—" --> BUS
   adp_clickfunnels -- "entry.captured<br/>survey.submitted<br/>booking.created<br/>booking.rescheduled<br/>booking.cancelled" --> BUS
@@ -73,6 +76,7 @@ flowchart LR
   adp_resend_events -- "—" --> BUS
   adp_twilio_status -- "—" --> BUS
   adp_twilio -- "message.inbound" --> BUS
+  adp_whop_billing -- "—" --> BUS
   BUS --> REG
   BUS --> ING
 ```

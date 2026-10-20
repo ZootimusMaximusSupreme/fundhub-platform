@@ -209,7 +209,7 @@ test("gap meet: candidate SQL reads Meet tapes and transcript files, only with t
    ------------------------------------------------------------------------ */
 const HAVE_DB = !!process.env.DATABASE_URL;
 const COLS = {
-  clients: [["id", "uuid"], ["org_id", "uuid"], ["is_demo", "boolean"], ["first_name", "text"], ["last_name", "text"], ["email", "text"], ["phone", "text"], ["funded", "boolean"], ["funded_amount", "numeric"], ["outcome_tier", "text"], ["dnd_sms", "boolean"], ["dnd_email", "boolean"], ["dnd_voice", "boolean"], ["tags", "text[]"]],
+  clients: [["id", "uuid"], ["org_id", "uuid"], ["is_demo", "boolean"], ["first_name", "text"], ["last_name", "text"], ["email", "text"], ["phone", "text"], ["funded", "boolean"], ["funded_amount", "numeric"], ["outcome_tier", "text"], ["dnd_sms", "boolean"], ["dnd_email", "boolean"], ["dnd_voice", "boolean"], ["tags", "text[]"], ["assigned_csm_staff_id", "uuid"]],
   call_outcomes: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["is_demo", "boolean"], ["logged_at", "timestamptz"], ["outcome", "text"], ["notes", "text"], ["recording_url", "text"], ["transcript", "text"]],
   brain_files: [["id", "uuid"], ["org_id", "uuid"], ["client_id", "uuid"], ["name", "text"], ["web_view_link", "text"], ["indexed_at", "timestamptz"], ["created_at", "timestamptz"]],
   brain_chunks: [["file_id", "uuid"], ["org_id", "uuid"], ["content", "text"]]

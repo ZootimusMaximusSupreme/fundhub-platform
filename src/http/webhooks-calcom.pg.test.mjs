@@ -35,8 +35,18 @@ import { handleWebhook } from "./router.mjs";
 import { _resetOrgCache } from "../events/bus.mjs";
 import { clearHandlers } from "../events/registry.mjs";
 import { _resetRegistered } from "../register-all.mjs";
+import pg from "pg";
+import { handleBlandWebhook } from "../adapters/bland.mjs";
+import { recordDispatch } from "../lib/outbound-calls.mjs";
+import { register as registerComms } from "../handlers/comms.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
+let HAVE_SCRATCH_DB = false;
+try {
+  const url = new URL(process.env.DATABASE_URL);
+  HAVE_SCRATCH_DB = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(url.hostname)
+    && /(?:test|scratch|_ci)(?:\b|_)/i.test(url.pathname);
+} catch { /* completed-call fixture writes require an explicit local scratch database */ }
 
 /* Every body this file sends carries this nonce, so cleanup can delete exactly
    the rows this run created and nothing else — the table is shared with the
@@ -502,5 +512,82 @@ describe("inbound webhook capture (src/http/router.mjs)", { skip: !HAVE_DB ? "no
     });
     assert.equal(out.status, 200, "a capture failure must never cost the provider its 200");
     assert.equal(out.body.reason, "not_completed");
+  });
+});
+
+describe("completed Bland calls use their verified stored dispatch", {
+  skip: !HAVE_SCRATCH_DB || Boolean(process.env.INNGEST_EVENT_KEY)
+    ? "requires a local scratch database without a live event key" : false
+}, () => {
+  async function withFixture(run) {
+    const tx = new pg.Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
+    await tx.connect();
+    await tx.query("BEGIN");
+    try {
+      clearHandlers();
+      registerComms();
+      const org = (await tx.query("SELECT id FROM orgs ORDER BY id LIMIT 1")).rows[0]?.id;
+      assert.ok(org, "scratch migrations must seed an org");
+      const client = (await tx.query(`INSERT INTO clients (org_id, email, first_name, last_name)
+        VALUES ($1,$2,'Bland','Scratch') RETURNING id`,
+      [org, `e2e+aff-bland-${crypto.randomUUID()}@example.com`])).rows[0].id;
+      const callId = `call_${NONCE}_${crypto.randomUUID()}`;
+      await recordDispatch({ callId, clientId: client, orgId: org, kind: "blueprint-accountability", db: tx });
+      await run({ tx, org, client, callId });
+    } finally {
+      await tx.query("ROLLBACK");
+      await tx.end();
+      reset();
+    }
+  }
+
+  async function deliver(tx, body, extra = {}) {
+    const rawBody = JSON.stringify(body);
+    return handleBlandWebhook({ db: tx, rawBody,
+      signatureHeader: hmac(BLAND_SECRET, rawBody), secret: BLAND_SECRET, ...extra });
+  }
+
+  test("completed call and late transcript persist once on the actual dispatch's client", async () => {
+    await withFixture(async ({ tx, org, client, callId }) => {
+      const body = { call_id: callId, status: "completed", completed: true,
+        disposition: "answered", duration: 45, metadata: { client_id: crypto.randomUUID(), org_id: crypto.randomUUID() } };
+      const first = await deliver(tx, body);
+      assert.equal(first.status, 200);
+      assert.equal(first.emitted.length, 1);
+      const later = await deliver(tx, { ...body, summary: "Client will upload the receipt.",
+        transcript: "Client: I will upload my payment receipt today." });
+      assert.equal(later.status, 200);
+      assert.equal(later.emitted[0].deduped, true);
+      const events = (await tx.query(`SELECT org_id, client_id FROM events
+        WHERE name = 'call.completed' AND idempotency_key = $1`, [`bland:${callId}:call.completed`])).rows;
+      assert.equal(events.length, 1);
+      assert.equal(events[0].org_id, org);
+      assert.equal(events[0].client_id, client);
+      const messages = (await tx.query(`SELECT org_id, client_id, channel, rendered_body, conversation_id
+        FROM messages WHERE provider = 'bland' AND provider_ref = $1`, [callId])).rows;
+      assert.equal(messages.length, 1);
+      assert.equal(messages[0].org_id, org);
+      assert.equal(messages[0].client_id, client);
+      assert.equal(messages[0].channel, "voice");
+      assert.match(messages[0].rendered_body, /Client: I will upload my payment receipt today\./);
+      assert.ok(messages[0].conversation_id, "the call must join the client's persisted conversation history");
+    });
+  });
+
+  test("unknown dispatch or wrong caller client never emits a completed event or saves words", async () => {
+    await withFixture(async ({ tx, callId }) => {
+      const body = { call_id: callId, status: "completed", transcript: "Must not attach to another file." };
+      const mismatch = await deliver(tx, body, { clientId: crypto.randomUUID() });
+      assert.equal(mismatch.status, 409);
+      assert.equal(mismatch.reason, "call_attribution_mismatch");
+      const unknownCall = `${callId}_unknown`;
+      const unknown = await deliver(tx, { ...body, call_id: unknownCall });
+      assert.equal(unknown.status, 409);
+      assert.equal(unknown.reason, "call_dispatch_not_found");
+      assert.equal(Number((await tx.query(`SELECT count(*) AS n FROM events
+        WHERE name = 'call.completed' AND payload->>'callId' = ANY($1)`, [[callId, unknownCall]])).rows[0].n), 0);
+      assert.equal(Number((await tx.query(`SELECT count(*) AS n FROM messages
+        WHERE provider = 'bland' AND provider_ref = ANY($1)`, [[callId, unknownCall]])).rows[0].n), 0);
+    });
   });
 });
