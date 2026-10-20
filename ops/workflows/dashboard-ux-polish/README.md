@@ -27,7 +27,7 @@ All 61 source pages and directly linked local assets exist. All 36 published pag
 
 The Kanban read-error message is also simplified: “Sales — could not load the board. Refresh to try again.” Failed reads still show unknown counts, never false zeroes. Before evidence remains in the scan. [Desktop fix](evidence/kanban-error-after-1440-MARKED.png) · [Phone fix](evidence/kanban-error-after-390-MARKED.png).
 
-No API contract, saved data, role gate, recording, payment or outbound-send behavior changed. Screenshot content is fictional local test data. New production publication and live verification follow the owner's marked-draft go-live choice.
+No API contract, saved data, role gate, recording, payment or outbound-send behavior changed. Screenshot content is fictional local test data. The owner authorized publication with GO; release checks and deployed verification are in progress, without another approval gate.
 
 ## Verification
 

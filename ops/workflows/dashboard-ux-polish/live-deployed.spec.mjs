@@ -48,8 +48,10 @@ test("Social Studio shows the shorter help on desktop and phone", async ({ page 
     await page.setViewportSize({ width, height: 900 });
     await openScreen(page, "/app/social-studio.html", OWNER);
     await expect(page.locator("#ssSuiteMsg")).toHaveText("Brand-matched drafts. Review them below before sending.");
-    const connection = await page.locator("#oauthConnectBox").innerText();
-    expect(connection.trim().split(/\s+/).length).toBeLessThan(35);
+    const connection = await page.locator("#oauthConnectBox").evaluate((element) =>
+      Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeName === "B")
+        .map((node) => node.textContent).join(" ").replace(/\s+/g, " ").trim());
+    expect(connection).toBe("Connect Facebook, Instagram or LinkedIn. Other networks are unavailable. Disabled buttons mean setup is needed. Sign-in keys stay private.");
     await expect(page.locator("#vWhat")).toHaveText("Write a post to preview its copy check.");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await page.unroute("**/api/**");

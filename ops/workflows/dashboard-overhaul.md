@@ -11,6 +11,7 @@ Keep the clean professional CRM. Check all pages and Kanban. Cut excess explanat
 | A | Shared sidebar/header brand fixes; integrate and verify | Root | verified review draft |
 | B | Shorten social/marketing UI explanations; preserve actions and real behavior | Copy agent | complete; verified review draft |
 | C | Read-only page completion and Kanban scan; record exact remaining pages | Scan agent | complete; 36 published / 25 not integrated |
+| D | Independent read-only PR release checks | release_checks | running; root owns any repairs |
 
 B and C run in parallel with A. Final browser proof waits for changes. This branch starts at `842ebfc6e` from current `origin/main`. Existing owner edits in the primary iOS checkout are untouched.
 
@@ -44,3 +45,10 @@ Release prompts: "Save the new rule and finish PR #76" (root); "Read PR #76 chec
 - KBN-01 was measured by the finished scan, then repaired as a separate small Kanban copy change. Raw internal error wording is removed; failed counters remain unknown. Its strengthened browser proof passes on desktop and phone.
 - The full rebuild remains 36/61 integrated and published. The [completion scan](dashboard-ux-polish/scan.md) lists the 25 pending original page results. No new builders were started for those pages.
 - PR [#76](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/76) holds the polish. Publication is authorized and release checks are in progress; do not call it live until deployment and live proof pass. The existing owner session was used only for read-only inspection of Team & Access and Social Studio; no production writes or sends occurred.
+
+## Release-check repairs
+
+- Failed evidence is retained: [PR run 39376848941](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39376848941), no-database shard 4, read the previous handoff panel immediately after selecting an Agent step; the row-accounting assertion then also failed. The corresponding push shard passed. An earlier [push run 39375289724](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39375289724) read the old budget after two unfinished drawer refreshes.
+- Only test synchronization changed. The step picker now waits for its exact selected row and title before reading the original exact fields. The campaign test waits for each response-driven detail repaint before the next action and checks the typed 30000 value before the unchanged exact 30000 request assertion. No finance or Journey product behavior changed; no assertion was removed or weakened.
+- Fresh affected-file checks: Journey editor **28/28 passed**, no skips; Campaign Manager browser **54/54 passed**, no skips. Final dashboard/Kanban rerun **40/40 passed**. Lint parsed 4,005 files/scripts and TypeScript passed before these test-only changes; changed test files parse clean and diff check passes.
+- Live proof checks the Social connection help separately from its unchanged form controls; all exact shorter-copy expectations remain. Required deployed score is seven cases, separate from the earlier teleprompter score.

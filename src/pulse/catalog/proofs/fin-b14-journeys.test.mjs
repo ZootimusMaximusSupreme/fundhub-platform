@@ -409,7 +409,14 @@ test("step fields: every kind of step shows its own boxes with what is saved in 
     const fieldKeys = async () => page.locator("#pbody [data-k]").evaluateAll((list) => list.map((el) => el.getAttribute("data-k")));
     const options = async (key) => page.locator(`#pbody [data-k="${key}"] option`).allTextContents();
     const value = async (key) => page.locator(`#pbody [data-k="${key}"]`).inputValue();
-    const pick = async (id) => { await clickStep(page, id); };
+    const pick = async (id) => {
+      await clickStep(page, id);
+      const title = ALL_KINDS.client.nodes.find((node) => node.id === id).title;
+      await waitFor(async () =>
+        await page.locator(`#canvas .nrow[data-id="${id}"]`).getAttribute("aria-selected") === "true" &&
+        await page.locator("#pbody .ptitle").textContent() === title,
+      `the selected ${id} step and its own fields`);
+    };
 
     // 1. every box opens holding what is saved for the step (a box, a text area and a pick list alike)
     await pick("k1");
