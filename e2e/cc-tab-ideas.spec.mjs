@@ -237,6 +237,7 @@ for (const size of SIZES) {
       await expect(sheet).toContainText("Cost: unknown, not measured yet.");
       expect(writesTo(posts, "marketing/flywheel/run")).toHaveLength(0);
       await sheet.getByRole("button", { name: "Build the avatar" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/flywheel/run")).toHaveLength(1);
       const w = writesTo(posts, "marketing/flywheel/run");
       expect(w).toHaveLength(1);
       expect(w[0].body).toMatchObject({ campaign: "partner", stage: 1, kind: "avatar", service_description: "Funding for business owners, done for you." });
