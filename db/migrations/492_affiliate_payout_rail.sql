@@ -28,10 +28,14 @@
 --   4. When a run is paid, its referrals are marked paid (033 named that status
 --      and nothing ever wrote it).
 --
--- DUE DAY (agent-set 2026-10-20, Chris: "no preference"): the 15th of the month
--- after the month the commission was earned. The monthly run is built on the 1st
--- (affiliate-payout-run, 0 3 1 * *) for the month before, so period_end is the
--- 1st and the due day is period_end + 14 days.
+-- PAID WHEN IT CLEARS (owner-set 2026-10-20, Chris): "Paid them out immediately
+-- upon receiving the money. Once it clears, we just pay it." The autopay job
+-- (src/affiliates/payout-rail.mjs runAutopay) builds a run per earned
+-- commission and writes due_on = the day after it cleared.
+--
+-- DUE DAY DEFAULT for a run written without one (the older monthly backstop
+-- run, affiliate-payout-run 0 3 1 * *): period_end + 14 days, the 15th of the
+-- month after the month earned.
 --
 -- THIS MOVES NO MONEY. It adds tables, columns and rules. No run changes status.
 
@@ -214,4 +218,4 @@ END $$;
 COMMENT ON TABLE affiliate_payout_accounts IS
   'An affiliate''s own bank, linked through Plaid Link (product transfer). One active row each. Token encrypted, bound to plaid_item_id. 492.';
 COMMENT ON COLUMN affiliate_payouts.due_on IS
-  'Day the run must be paid by: the 15th of the month after the month earned (period_end + 14). Agent-set 2026-10-20. 492.';
+  'Day the run must be sent by. Autopay: the day after the client payment cleared (owner-set 2026-10-20). Default when unset: period_end + 14. 492.';

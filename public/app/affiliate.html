@@ -345,7 +345,7 @@ table.grid tbody tr:hover{background:var(--soft)}
 
         <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
           <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
-            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">MONTHLY · DUE THE 15TH</span></div>
+            <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">PAID WHEN IT CLEARS</span></div>
           <!-- Where payouts go (492). Plaid Link, product "transfer": the
                affiliate links their own bank; the token never reaches this page. -->
           <div class="card-bd" id="payBankBox" hidden style="border-bottom:1px solid var(--line)">
@@ -373,7 +373,7 @@ table.grid tbody tr:hover{background:var(--soft)}
                    payment on the sale, success fee included (W0 decision). -->
               <dt>Attribution</dt><dd>First touch. The first affiliate link a client arrives through is credited, and that credit does not expire. A later click on another affiliate's link does not move it.</dd>
               <dt>Qualifying products</dt><dd>Business Financial Assessment ($32) · Consulting Services Deposit ($3,000) · Consulting Services Package (~$1,000 DIY) · Credit Optimization Bundle ($2,000) · Inquiry Removal. On a funding sale the 10% success fee counts too: your rate applies to the deposit and the success fee alike.</dd>
-              <dt>Payout schedule</dt><dd>Monthly. Last month's earnings are paid by the 15th, to the bank you link on the Payouts tab, on balances of $50 or more. Below that the balance rolls to the next month.</dd>
+              <dt>Payout schedule</dt><dd>As soon as your client's payment clears, your commission is paid to the bank you link on the Payouts tab. No minimum and no monthly wait.</dd>
               <dt>Clawback</dt><dd>A refund inside 30 days reverses the commission on the next run. After 30 days it stands.</dd>
               <dt>Partner license</dt><dd>Payouts accrue but do not release until the license is signed.</dd>
               <dt>What you can see</dt><dd>Business name, referral date, status, and your own commission. Client contact details, credit data and outcome tiers are outside the Affiliate role.</dd>
@@ -1277,7 +1277,7 @@ renderLeads(); renderPayouts();
           m: (p.method || "—") + (p.reference ? " · " + p.reference : ""),
           amt: p.amount,
           st: PAYOUT_WORD[p.status] || p.status,
-          why: p.holdReason || ""
+          why: ({ partner_license_unsigned: "partner license not signed", tax_form_missing: "we have no tax form on file", no_bank_linked: "link your bank below" })[p.holdReason] || p.holdReason || ""
         };
       });
 

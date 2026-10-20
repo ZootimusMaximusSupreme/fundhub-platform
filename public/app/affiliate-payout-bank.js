@@ -41,7 +41,7 @@
     box.hidden = false;
     btn.hidden = false;
     if (!bank) {
-      text.textContent = "Link the bank account your payouts go to. It takes about a minute with Plaid.";
+      text.textContent = "Link the bank account your payouts go to. You are paid as soon as your client's payment clears. It takes about a minute with Plaid.";
       btn.textContent = "Link your bank";
       return;
     }

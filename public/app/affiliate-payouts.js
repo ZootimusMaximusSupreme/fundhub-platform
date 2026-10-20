@@ -9,7 +9,7 @@
   "use strict";
   var FINANCE = { owner: 1, admin: 1, sales_manager: 1 };
   var STATUS_WORDS = { pending: "Ready to pay", held: "Held", processing: "Sending", paid: "Paid", void: "Cancelled" };
-  var HOLD_WORDS = { partner_license_unsigned: "partner license not signed", tax_form_missing: "no tax form on file" };
+  var HOLD_WORDS = { partner_license_unsigned: "partner license not signed", tax_form_missing: "no tax form on file", no_bank_linked: "affiliate has not linked a bank" };
   var current = null;
 
   function $(id) { return document.getElementById(id); }
@@ -45,8 +45,8 @@
 
   function railLine(rail) {
     if (!rail) return "";
-    if (rail.live) return "Plaid sends real money to linked banks.";
-    if (rail.environment === "sandbox") return "Plaid is on test money. Only test affiliates can be paid through Plaid. Pay real affiliates by hand and use Mark paid.";
+    if (rail.live) return "Payouts go out by themselves through Plaid as soon as the client's payment clears.";
+    if (rail.environment === "sandbox") return "Plaid is on test money, so only test affiliates are paid by themselves. Pay real affiliates by hand and use Mark paid until Plaid gives live access.";
     return "Plaid payouts are off. Pay by hand and use Mark paid.";
   }
 
@@ -54,7 +54,7 @@
     var b = [];
     var plaidOk = p.status === "pending" && p.bank && p.gates.license && p.gates.tax;
     if (p.status === "pending") {
-      if (plaidOk) b.push('<button class="btn sm dark mono" data-act="send" style="min-height:44px">Send with Plaid</button>');
+      if (plaidOk) b.push('<button class="btn sm dark mono" data-act="send" style="min-height:44px">Send now</button>');
       b.push('<button class="btn sm mono" data-act="mark_paid" style="min-height:44px">Mark paid…</button>');
       b.push('<button class="btn sm mono" data-act="hold" style="min-height:44px">Hold…</button>');
     }
@@ -68,7 +68,7 @@
     var rows = (view && view.payouts) || [];
     var c = (view && view.counts) || {};
     $("apSummary").textContent = (c.pending || 0) + " ready · " + (c.held || 0) + " held · " + (c.processing || 0) + " sending";
-    $("apHint").textContent = (c.overdue ? c.overdue + " past the due day. " : "Nothing past the due day. ") + "Due on the 15th of the month after the month earned.";
+    $("apHint").textContent = (c.overdue ? c.overdue + " past the due day. " : "Nothing past the due day. ") + "Paid as soon as the client's payment clears. Due the next day.";
     $("apRail").textContent = railLine(view && view.rail);
     var body = $("apBody");
     if (!rows.length) {
@@ -83,7 +83,7 @@
         ? esc((p.bank.institution || "Bank") + " ··" + (p.bank.mask || "")) + (p.bank.testData ? " (test data)" : "")
         : "Not linked";
       var proof = p.reference ? esc(p.method + " · " + p.reference) : "—";
-      if (p.plaid && p.plaid.failure) proof += '<div class="note" style="color:var(--alert)">' + esc(p.plaid.failure) + "</div>";
+      if (p.plaid && p.plaid.failure) proof += '<div class="note" style="color:var(--alert)">' + (p.status === "pending" ? "Waiting: " : "") + esc(p.plaid.failure) + "</div>";
       else if (p.plaid && p.plaid.status && p.status === "processing") proof = "Plaid: " + esc(p.plaid.status);
       return '<tr data-id="' + esc(p.id) + '">' +
         "<td>" + esc(p.affiliate.name || p.affiliate.code || "Affiliate") + (p.affiliate.test ? ' <span class="note">(test)</span>' : "") + "</td>" +

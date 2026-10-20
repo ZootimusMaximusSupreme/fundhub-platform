@@ -52,12 +52,20 @@ Dependency: every build lane waits on Q. B1 → B2/B3 can run together → B4 la
   6. Due day: the 15th of the month after the month earned. The tripwire goes red after that.
   7. "Watch client payments" was not built: commission already earns on recorded payments (economics.mjs).
 
+- **Q2 answer (2026-10-20, relayed from the coordinator chat in Chris's words):** "Plaid's going to take care of everything. That makes sure all the above is your question or your answer to your question. I'm going to say it. Paid them out immediately upon receiving the money. Once it clears, we just pay it."
+  **OWNER-SET.** Supersedes picks 2, 6 and the monthly cadence above for these payouts:
+  - Paid as soon as the client's payment clears. "Cleared" = the processor's payment is saved (sale_payments) and convert() sets commission_due. Commission is set once on the first qualifying payment and never grows, so paying then is safe.
+  - Autopay job `affiliate-payout-autopay` (every 15 min): build one run per earned commission (no $50 minimum, due the next day), send through Plaid Transfer with no approval click, sync Plaid's answer.
+  - Held only on the affiliate: license, tax form, or no bank linked; released by itself when done.
+  - Still true: test money pays only test affiliates. Real affiliates wait for Plaid production access, with the reason on the run; staff can Mark paid by hand.
+  - The monthly `affiliate-payout-run` stays registered as a backstop; it finds nothing once autopay has lined everything.
+
 ## Manifest (PR #92, branch claude/nervous-swanson-5eba12)
 
 - `db/migrations/492_affiliate_payout_rail.sql` — `affiliate_payout_accounts`; payout columns (`due_on`, approver, bank, Plaid ids/status, `rail_attempts`); rules: paid needs method + reference, sandbox never pays a real affiliate, processing needs a tax form; paid run marks its referrals paid.
 - `src/affiliates/payout-rail.mjs`, `src/affiliates/payout-due.mjs` — the rail.
 - Routes: `affiliates/payouts` (POST, finance), `affiliates/payout-account` (POST, affiliate/light-affiliate client), `read/affiliate-payouts` (GET, finance). `read/affiliate-portal` adds `dueOn`, `reference`, `transferStatus`, `payoutBank`.
-- Job: `affiliate-payout-autopay` `*/15 * * * *` (heartbeat row, tripwire row).
+- Job: `affiliate-payout-autopay` `*/15 * * * *` — build, send, sync (heartbeat row, tripwire row, trip:partner beat covers it).
 - Checks: `partners:payout-overdue`, `partners:payout-returned` in `src/pulse/coverage/gap-partners.mjs`; tripwire map rows for the 3 routes and the job.
 - Screens: Affiliate payouts tab on `products-commissions.html` (`#affiliate-payouts`); Payout bank block on `affiliate.html`; schedule copy fixed ("Fridays" → monthly, due the 15th).
 - Tests: `payout-rail.test.mjs`, `payout-rail.pg.test.mjs` (scratch Postgres in CI), `affiliate-payouts-doors.test.mjs`, new gap-partners cases.
@@ -70,4 +78,5 @@ Dependency: every build lane waits on Q. B1 → B2/B3 can run together → B4 la
 - Nothing sends an affiliate a PARTNER-LICENSE with `merge_values.affiliate_id`; `stamp_license` reads one when it exists. Until then a license stamp needs that contract.
 - No "your payout was paid" message to the affiliate (would be a new send path with its own heartbeat).
 - Plaid production access for Transfer is still not granted (docs/finance/finance-os-direction-2026-10-06.md:36).
-- The 2026-10-20 flagged row (one eligible affiliate, no payout record) is left as Chris said. The new `partners:payout-overdue` check will also show it red after its due day — that is true, not a false alarm.
+- The 2026-10-20 flagged row (one eligible affiliate, no payout record) is left as Chris said. **When this ships, autopay will write a payout record for it** (pending, or held on paperwork/bank). No money moves while Plaid is on test money. `partners:payout-overdue` will show it red after a day — that is true, not a false alarm. Chris decides if it should be left out.
+- The affiliate terms still say "A refund inside 30 days reverses the commission on the next run". With pay-on-clear there may be no next run to net it against (open question 7a in commission-model-open-questions.md). Not changed here.
