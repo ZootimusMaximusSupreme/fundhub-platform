@@ -16,6 +16,13 @@ const hash=text=>crypto.createHash("sha256").update(text).digest("hex");
 // text wrapping and narrow-canvas cluster spacing change. Fixed hash pairs
 // prevent this exception from hiding any later action/data/endpoint edit.
 const reviewedCanvas={before:"384a5e779407d1c362e09c2f4ec527933f9a921fe32362cba5da1fc3ab74cfc6",after:"97cd4eb3511633cb0641c30377870019b806f77af374e3b0f8591990aa00bc13"};
+// Exact reviewed live repairs: Social's one-line empty-state wording and
+// Team's once-only startup scheduling. Complete before/after script hashes
+// must match; no later validation, role, endpoint or action edit is permitted.
+const reviewedLiveScripts={
+ "public/app/social-studio.html":{index:3,before:"7923d96c140bec1107e92f1229c7537828abd6f41c1fa79868f4006c44ae82d6",after:"a0e181855c34a07a3afd7d551a2cb2335550e6653821df190c92be8c996a53d2"},
+ "public/app/staff-teams.html":{index:4,before:"40b02b7ac8966e74ffa93b98c5e61c374ed090b3a268e42dcb44c63a01ef0ec7",after:"bedb66f42c49fa428c05c57c4f2750fe51e8c6f6f366671d4d105b5f8a602c0b"}
+};
 const hook="FHData.staff({ limit: 200 }).then(function (result) {\n    if (window.AstraTeamUI) window.AstraTeamUI.setReadResult(result);\n    return result;\n  })";
 const results=[];
 for(const file of pages){
@@ -27,7 +34,9 @@ for(const file of pages){
  const currentBodies=b.map(script=>file.endsWith("staff-teams.html")?script.body.replace(hook,"FHData.staff({ limit: 200 })"):script.body);
  for(let index=0;index<a.length;index++){
    const visualCanvas=file==="public/app/partner-galaxy.html"&&index===3&&hash(originalBodies[index])===reviewedCanvas.before&&hash(currentBodies[index]||"")===reviewedCanvas.after;
-   if(a[index].attributes!==b[index]?.attributes||(originalBodies[index]!==currentBodies[index]&&!visualCanvas))issues.push(`Original script ${index+1} changed`);
+   const reviewed=reviewedLiveScripts[file];
+   const liveRepair=reviewed&&index===reviewed.index&&hash(originalBodies[index])===reviewed.before&&hash(currentBodies[index]||"")===reviewed.after;
+   if(a[index].attributes!==b[index]?.attributes||(originalBodies[index]!==currentBodies[index]&&!visualCanvas&&!liveRepair))issues.push(`Original script ${index+1} changed`);
  }
  if(b.length!==a.length+(file.endsWith("staff-teams.html")?1:0))issues.push("Unexpected script-count change");
  const beforeIDs=ids(before),afterIDs=ids(after);

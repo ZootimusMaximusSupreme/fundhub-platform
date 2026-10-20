@@ -226,3 +226,96 @@ customer asset lists are updated without dropping JS/file/page-rule checks;
 gap-portal passes79/79 with0 skips. The unchanged S5 registry wrapper passes
 2/2 with0 skips after the real Marketing layout fixes and exact16px input
 expectations. These do not replace fresh GitHub CI on the final commit.
+
+## Final exact-head read-only lane — 7dcb0aa, 2026-10-20
+
+Assigned scope: only the 13 non-browser jobs in each of [push run 39397341121](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121) and [PR run 39397346454](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454). GitHub run metadata independently confirms both `head_sha` values are `7dcb0aa315b80bc9dadc93426c33a1587f1ba040`, attempt 1. No old-head result is substituted. Root owns the separate `screens (real browser)` jobs, integration and release.
+
+At 09:02 UTC, push had 1/13 non-browser jobs successful and 12 running; PR had 5 running and 8 queued. Both actual shard-0 Lint steps passed. Started Postgres jobs had passed fresh-database migrations and the manifest check, but the blocks jobs' app-role privilege and isolation steps had not yet run. These partial results are **not final approval**.
+
+Important counting boundary: `.github/workflows/tests.yml` sets `FUNDHUB_SUITE_PART=unit` for the twelve unit-shard jobs. `scripts/run-suite.mjs` omits `*.pg.test.mjs` in those jobs; its printed `pg exit 0` therefore does **not** mean PostgreSQL test files ran. The six real-Postgres unit shards run the ordinary test files with a real scratch database available. Only the separate blocks job runs every `*.pg.test.mjs` serially, then the explicit app-role privilege and tenant-isolation proofs. Any TAP skip remains unproved, and the owner-connected main PostgreSQL suite is not relabeled app-role proof.
+
+The audit skill keeps this lane read-only: inspect job/step summaries and relevant logs, append findings here, do not modify application/test/workflow/environment/Git/database state or rerun jobs. Historical failures above remain unchanged.
+
+Checkout logs add an important distinction: the push jobs checked out the literal candidate `7dcb0aa315b80bc9dadc93426c33a1587f1ba040`; PR jobs checked out GitHub's synthetic merge `0e7f37912261d8d164b7f289a5b9b6dff6c8b6f7`, explicitly “Merge 7dcb0aa… into f1490ce9da5006eca89c3387e575a090a371d1d0.” Both are evidence for this candidate, but they are not the same Git object.
+
+At 09:06:56 UTC, push had 11/13 successful; PR had 3/13 successful and no failures. Push [blocks job 118543232923](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543232923) completed successfully:
+
+- Fresh database migrations and migration-manifest check both passed.
+- Call/Present chain: 3 passed, 0 failed/skipped.
+- Serial PostgreSQL files: 4054 passed, 0 failed, **4 skipped**.
+- Explicit app-role privilege guard: 3 passed, 0 skipped; log confirms connection as `fundhub_app`, no superuser/BYPASSRLS/CREATEROLE/CREATEDB/replication/schema-create privilege.
+- Tenant-isolation suites: 102 passed, 0 skipped. Fixtures use the owner connection; assertions use `fundhub_app`.
+
+The four serial-PG skips are explicit remaining proof limits: two Meta-ad fixture cases whose fixtures are not built; the public `anon`/`authenticated` roles case because those roles do not exist in the scratch database; and the data-layer journey harness because the owner/superuser connection is deliberately refused by `scratch-guard.mjs`. A successful blocks job does not make those four pass.
+
+Real-PG unit shard 2 also reports two skipped leaf cases: its owner-connected privilege assertion (the separate blocks step above really runs as the app role) and the four-PDF printer because WeasyPrint is unavailable. No-DB jobs skip additional SQL suite wrappers even where their final leaf summary says `# skipped 0`; both the omitted PG files and these skipped suite bodies remain outside their pass totals.
+
+### Final non-browser result — 09:11:50 UTC
+
+**Both sets concluded: push 13/13 successful; PR 13/13 successful.** Read all 26 non-browser job logs. No failing assertion appeared in this assigned lane. The corresponding TAP counts match between push and PR:
+
+| Job | Push job evidence | PR job evidence | Passed / failed / skipped leaf tests in each run |
+| --- | --- | --- | --- |
+| No DB, shard 0 | [118543233558](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233558) | [118543251543](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251543) | 5631 / 0 / 2 |
+| No DB, shard 1 | [118543233565](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233565) | [118543251724](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251724) | 4599 / 0 / 0 |
+| No DB, shard 2 | [118543233406](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233406) | [118543251852](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251852) | 3907 / 0 / 2 |
+| No DB, shard 3 | [118543233359](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233359) | [118543251549](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251549) | 5346 / 0 / 0 |
+| No DB, shard 4 | [118543233491](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233491) | [118543251667](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251667) | 3832 / 0 / 2 |
+| No DB, shard 5 | [118543233607](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233607) | [118543251652](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251652) | 4741 / 0 / 17 |
+| Real PG unit, shard 0 | [118543233335](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233335) | [118543251445](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251445) | 5811 / 0 / 0 |
+| Real PG unit, shard 1 | [118543233181](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233181) | [118543251822](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251822) | 4633 / 0 / 0 |
+| Real PG unit, shard 2 | [118543233980](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233980) | [118543251584](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251584) | 3970 / 0 / 2 |
+| Real PG unit, shard 3 | [118543233394](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233394) | [118543251873](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251873) | 5372 / 0 / 0 |
+| Real PG unit, shard 4 | [118543233823](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233823) | [118543251750](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251750) | 3919 / 0 / 0 |
+| Real PG unit, shard 5 | [118543233343](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543233343) | [118543251687](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251687) | 4781 / 0 / 0 |
+| Real PG blocks | [118543232923](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397341121/job/118543232923) | [118543251484](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39397346454/job/118543251484) | Serial PG 4054 / 0 / 4; separate chain 3 / 0 / 0, app-role guard 3 / 0 / 0, isolation 102 / 0 / 0 |
+
+Both no-DB shard-0 logs additionally show named guards **73/73**, no skips, and lint **4006 files/inline scripts parse clean**. Lint and named-guard steps are intentionally limited to shard 0, not counted as executed on the other five shards. All seven real-PG jobs in each run actually passed fresh-database migrations and migration-manifest checks. Both blocks logs confirm the unprivileged app-role connection and the same four skipped PG cases listed above.
+
+Completed this read-only assignment when both 13-job sets concluded. No job rerun, application/test/workflow edit, environment/database action, commit or release was performed. The old failures and unproved skips remain preserved. **This is not a whole-workflow, browser, deployment or live-customer pass:** root retains those gates.
+
+## Post-merge main observation — f78f6b8, 2026-10-20
+
+Separately assigned read-only observation of [main tests run 39399262837](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837), including all 14 jobs and the browser job. GitHub metadata confirms branch `main`, push event, attempt 1, exact `head_sha` **f78f6b8b95ab4651b1553d942b0e4c8462a5c839**, started at 09:14:45 UTC. At 09:17:28 UTC, all 14 jobs were running; none was counted as passed.
+
+The earlier two candidate runs are not substituted for this actual-main observation. Root owns the separate Ship run and live verification. This lane only reads GitHub job/step/log evidence and appends this receipt; it does not rerun jobs, change source/tests/workflows/environment, access a database, commit or deploy. Existing no-DB, PostgreSQL and platform-specific skip boundaries remain in force.
+
+### Main failure observed — 09:22:51 UTC
+
+- [No-DB shard 2, job 118549593512](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593512): **3906 passed / 1 failed / 2 skipped**; suite exit 1.
+- Failed test: `RateLimiter: enforces a floor between requests`, `scripts/marketing/lib/fetch.test.mjs:151`; assertion at line 156.
+- Expected: elapsed time `>=240ms` across three waits. Observed: **239ms**, `ERR_ASSERTION`, `testCodeFailure`. Recorded test duration is 239.679123ms.
+- This is an actual post-merge red. The discrepancy alone does not establish a harmless timing flake, a product regression cause or a waiver.
+- Root received the exact failure immediately. No rerun, assertion change or repair was attempted. At this observation, nine jobs had succeeded and four were still running, including browser and PostgreSQL blocks. Their results remain pending.
+
+The same case passed in the candidate push (test duration 241.518171ms), candidate PR (240.418042ms), and [current-main real-PG shard 2](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593268) (241.928117ms). These are the logged case durations, not substituted elapsed assertions or a diagnosis. The current-main no-DB failure remains red.
+
+At 09:25:06 UTC, all 13 non-browser jobs had concluded: **12 successful, 1 failed**. Main [PostgreSQL blocks 118549592965](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549592965) passed migrations/manifest, Call/Present 3/3, serial PG 4054 passed / 4 skipped, actual app-role guard 3/3 and isolation 102/102. The same four PG skip reasons remain. Main [no-DB shard 0](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593363) passed lint 4006 and named guards 73/73. The browser job was still running; no complete-run result is inferred yet.
+
+Root assigned a separate read-only investigation, recorded by A in [rate-limiter-timing.md](rate-limiter-timing.md). Its byte comparison finds the utility and test unchanged from pre-rollout main; its controlled-clock counterexample exposes a missing floor recheck. Its clean local samples and 9/9 local target suite do not clear this remote failure. Root classified the utility repair as a separate leftover and explicitly kept this main red; this CI lane performed no repair or remote retry.
+
+### Final post-merge receipt — observed 09:29:55 UTC
+
+Run `39399262837` concluded **cancelled**, updated at 09:27:33 UTC, still tied to exact main merge `f78f6b8b95ab4651b1553d942b0e4c8462a5c839`. All 14 job conclusions were inspected: **12 successful, 1 failed, 1 cancelled**. Read all 14 job logs; the browser log is incomplete because its job was cancelled.
+
+| Main job | Evidence | Final result |
+| --- | --- | --- |
+| No DB shard 0 | [118549593363](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593363) | Success: 5631 passed, 2 skipped; additional guards 73/73, lint 4006 |
+| No DB shard 1 | [118549593142](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593142) | Success: 4599 passed, 0 leaf skips |
+| No DB shard 2 | [118549593512](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593512) | **Failed: 3906 passed, 1 failed, 2 skipped; exact rate-limiter failure above** |
+| No DB shard 3 | [118549593413](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593413) | Success: 5346 passed, 0 leaf skips |
+| No DB shard 4 | [118549593164](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593164) | Success: 3832 passed, 2 skipped |
+| No DB shard 5 | [118549593201](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593201) | Success: 4741 passed, 17 skipped |
+| Real PG unit shard 0 | [118549593171](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593171) | Success: 5811 passed, 0 skipped |
+| Real PG unit shard 1 | [118549593165](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593165) | Success: 4633 passed, 0 skipped |
+| Real PG unit shard 2 | [118549593268](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593268) | Success: 3970 passed, 2 skipped |
+| Real PG unit shard 3 | [118549593365](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593365) | Success: 5372 passed, 0 skipped |
+| Real PG unit shard 4 | [118549593348](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593348) | Success: 3919 passed, 0 skipped |
+| Real PG unit shard 5 | [118549593190](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593190) | Success: 4781 passed, 0 skipped |
+| Real PG blocks | [118549592965](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549592965) | Success: serial PG 4054 passed / 4 skipped; chain 3/3, app-role 3/3, isolation 102/102 |
+| Full browser suite | [118549593180](https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39399262837/job/118549593180) | **Cancelled mid-suite; no final test totals or complete-browser pass** |
+
+The browser log's last numbered success is case 1618, followed by `The operation was canceled.` It does not contain a final Playwright summary. That case number is not a completed-suite count, and this lane does not infer the cancellation cause. The already-green candidate browser runs retain their separate existing macOS-only font-skip limits; they do not turn the cancelled main run into a pass.
+
+All main unit/PG skip lists match their corresponding candidate-run lists. No source change, retry, hidden waiver or DB/app-role substitution was made by this lane. Monitoring stopped on conclusion, and root was sent the final result. **Actual main CI is not all-green; production deployment/live verification remains root's separate evidence.**
