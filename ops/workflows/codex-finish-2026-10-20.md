@@ -148,3 +148,11 @@ Prompt B2.2: Read-only. Find Cortana/DirectROAS's documented server-side event o
 Incident: 14:16–14:18 MST the live API returned 502 after D shipped from `.claude/worktrees/ship-main` (nested inside the repo: Netlify bundled the function under `.claude/worktrees/ship-main/`, so `../../vendor/...` did not resolve). D restored deploy `ship 78b08d2f` via `netlify api restoreSiteDeploy` (the raw API token got 401 on restore), then reshipped from the non-nested `/Users/chrisstanbridge/fundhub-ship`. Ship from a non-nested folder only.
 
 Open: Linux auto-ship hangs on one fundhub.ai GET per run (4 of 4 runs); Mac ship works from `/Users/chrisstanbridge/fundhub-ship` with `MIGRATION_DATABASE_URL=$DATABASE_URL` only when pending is 0 (let the Linux ship apply migrations first). Mac `SUPABASE_ACCESS_TOKEN` (…3046) gets 401.
+
+## Owner calls, 2026-10-20 ~16:00 MST
+
+- Whop webhook: yes. Checked in the Whop dashboard: `https://fundhub.ai/api/webhooks/whop-billing`, v1, **Active**.
+- "We only use ClarityPay" (owner, said with the Whop/financing answer). Recorded as stated; nothing changed.
+- Apollo and Salesforge: **no paid tools now**. Automate outreach as far as possible without them → session `outreach-auto` (board `ops/workflows/bank-outreach-auto-2026-10-20.md`).
+- Cortana: Chris signs in in the browser pane; then the "invoice sent" sender gets built.
+- Robot login (owner password into a GitHub secret): dropped.
