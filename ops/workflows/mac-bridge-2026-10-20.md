@@ -12,7 +12,7 @@ Branch: `feat/mac-bridge-v1` in worktree `.claude/worktrees/mac-bridge`.
 | 0 | Protocol + board | this session | done | `docs/specs/mac-bridge-protocol-v1.md`, this board |
 | 1 | Mac helper (Node) | agent: mac-helper | done | `tools/mac-bridge/agent/**` |
 | 2 | iPhone app (SwiftUI) | agent: ios-app | done | `tools/mac-bridge/ios/**` |
-| 3 | Join test: phone app in Simulator reads the real helper | this session | pending (waits on 1 + 2) | none new |
+| 3 | Join test: phone app in Simulator reads the real helper | this session | blocked: Simulator access not granted (app opened, pair prompt shown) | none new |
 | 4 | Away mode (hosted relay) | — | later (v2) | — |
 | 5 | Send from phone into a session | — | later (v2) | — |
 
