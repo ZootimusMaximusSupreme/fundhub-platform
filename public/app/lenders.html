@@ -18,8 +18,10 @@
 
 <script defer src="shell.js"></script>
 <script src="proxy-apply.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body class="lenders-page">
+<body class="lenders-page fh-astra fh-astra-staff fh-astra--lenders">
 <div class="app">
 <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -85,7 +87,7 @@
         The lender list starts empty on purpose. Import the seven product tables from your spreadsheet to build the directory.
       </div>
 
-      <div class="tabs" aria-label="Lender views">
+      <div class="tabs fh-astra-tabs" aria-label="Lender views">
         <button class="tab on" data-tab="list" type="button" aria-pressed="true" aria-controls="tab-list">Lender list</button>
         <button class="tab" data-tab="review" type="button" aria-pressed="false" aria-controls="tab-review">Bureau mismatch queue <span id="mismatchCount"></span></button>
         <button class="tab" data-tab="bureau" type="button" aria-pressed="false" aria-controls="tab-bureau">AI bureau config</button>

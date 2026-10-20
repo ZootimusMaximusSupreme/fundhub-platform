@@ -61,7 +61,7 @@ test("Download: a signed-in partner gets MessageBlaster.dmg, a signed-out one is
     const good = await openGift({
       gift: async () => { await gate; return { status: 200, contentType: "application/x-apple-diskimage", body: DMG }; },
     });
-    assert.equal((await good.page.locator("#blasterBtn").innerText()).trim(), "Download", "the button says Download");
+    assert.equal((await good.page.locator("#blasterBtn").innerText()).trim(), "Download Message Blaster", "the button names the download");
     const download = good.page.waitForEvent("download");
     await good.page.locator("#blasterBtn").click();
     await waitFor(() => good.calls.length === 1, "the gift request");
@@ -73,7 +73,7 @@ test("Download: a signed-in partner gets MessageBlaster.dmg, a signed-out one is
     assert.equal(file.suggestedFilename(), "MessageBlaster.dmg");
     await good.page.waitForFunction(() => document.getElementById("blasterStatus").innerText === "Download started — open the file on your Mac.");
     assert.equal(await good.page.locator("#blasterBtn").isDisabled(), false, "the button is free again");
-    assert.equal((await good.page.locator("#blasterBtn").innerText()).trim(), "Download", "and it still says Download");
+    assert.equal((await good.page.locator("#blasterBtn").innerText()).trim(), "Download Message Blaster", "and it still names the download");
     assert.deepEqual(good.errors, []);
     await good.page.close();
 
@@ -185,9 +185,9 @@ const SKY_HOOK = () => {
 
 const BREADCRUMB_Y = 20;
 
-async function openSky() {
+async function openSky(viewport = VIEWPORT) {
   const opened = await screens.open("/app/partner-galaxy.html", {
-    session: PARTNER, viewport: VIEWPORT, before: (page) => page.addInitScript(SKY_HOOK),
+    session: PARTNER, viewport, before: (page) => page.addInitScript(SKY_HOOK),
   });
   const { page } = opened;
   await page.waitForSelector("#sky");
@@ -203,8 +203,27 @@ async function openSky() {
 
 const frameOf = (page) => page.evaluate(() => window.__fhSky.frame);
 
-/** Where a drawn place is SHOWN on the screen (the sky is drawn on a bitmap, then fitted to its box). */
-const shown = (g, p) => [g.left + (p.x * g.shownW) / g.drawnW, g.top + (p.y * g.shownH) / g.drawnH];
+/** Scroll a drawn target into view, then use its CURRENT displayed pixel, never a cached viewport offset. */
+async function shown(page, p) {
+  const point = await page.locator("#sky").evaluate((sky, target) => {
+    const rect = sky.getBoundingClientRect();
+    const y = rect.top + target.y * rect.height / sky.height;
+    if (y < 160 || y > innerHeight - 40) {
+      window.scrollBy({ top: y - innerHeight / 2, behavior: "instant" });
+    }
+    const current = sky.getBoundingClientRect();
+    const shownX = current.left + target.x * current.width / sky.width;
+    const shownY = current.top + target.y * current.height / sky.height;
+    return {
+      x: shownX, y: shownY, width: innerWidth, height: innerHeight,
+      receivesPointer: document.elementFromPoint(shownX, shownY) === sky,
+    };
+  }, p);
+  assert.ok(point.x > 0 && point.x < point.width && point.y > 0 && point.y < point.height,
+    `drawn target is inside the viewport: ${JSON.stringify(point)}`);
+  assert.equal(point.receivesPointer, true, `drawn target is an unobscured sky pixel: ${JSON.stringify(point)}`);
+  return [point.x, point.y];
+}
 
 /** "Sky / Sales & Funding" as the page draws it, and whether the pull-back hint is drawn. */
 function breadcrumb(frame) {
@@ -235,8 +254,7 @@ async function cursorAt(page, [x, y]) {
 }
 
 async function workerSpot(page, geometry) {
-  const cx = geometry.left + geometry.shownW / 2;
-  const cy = geometry.top + geometry.shownH / 2;
+  const [cx, cy] = await shown(page, { x: geometry.drawnW / 2, y: geometry.drawnH / 2 });
   for (const radius of [0, 12, 24, 36, 48, 60]) {
     for (const [dx, dy] of [[0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius],
       [radius, radius], [radius, -radius], [-radius, radius], [-radius, -radius]]) {
@@ -274,27 +292,30 @@ test("Sky: all five clusters can be clicked where they are shown and zoom on the
     assert.deepEqual(table.map((c) => c.name), [
       "Fundhub (fulfillment)", "Sales & Funding", "Inquiry Removal", "Client-Facing Agents", "Ops Agents",
     ], "the page draws five clusters, each with its own name");
-    const { page, geometry, errors } = await openSky();
-    assert.deepEqual(breadcrumb(await frameOf(page)), { crumbs: ["Sky"], hint: false }, "at rest the trail is just Sky");
+    // Both the desktop map and the phone's 900px-tall stacked map need real, visible clicks.
+    for (const viewport of [VIEWPORT, { width: 440, height: 763 }]) {
+      const { page, geometry, errors } = await openSky(viewport);
+      assert.deepEqual(breadcrumb(await frameOf(page)), { crumbs: ["Sky"], hint: false }, "at rest the trail is just Sky");
 
-    for (const cluster of table) {
-      const rest = await backToRest(page, cluster.name);
-      assert.ok(rest, `${cluster.name} is drawn on the sky`);
-      const spot = shown(geometry, rest);
-      assert.equal(await cursorAt(page, spot), "pointer", `${cluster.name}: its shown center is clickable`);
-      await page.mouse.click(...spot);
-      await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`,
-        `${cluster.name}: its own name in the trail`, 8000);
-      assert.equal(breadcrumb(await frameOf(page)).hint, true, `${cluster.name}: the pull-back hint appears once zoomed`);
+      for (const cluster of table) {
+        const rest = await backToRest(page, cluster.name);
+        assert.ok(rest, `${cluster.name} is drawn on the sky`);
+        const spot = await shown(page, rest);
+        assert.equal(await cursorAt(page, spot), "pointer", `${cluster.name}: its shown center is clickable`);
+        await page.mouse.click(...spot);
+        await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`,
+          `${cluster.name}: its own name in the trail`, 8000);
+        assert.equal(breadcrumb(await frameOf(page)).hint, true, `${cluster.name}: the pull-back hint appears once zoomed`);
 
-      const zoomed = await settled(page, cluster.name);
-      const grew = zoomed.radius / rest.radius;
-      assert.ok(grew > 1.8 && grew < 2.5, `${cluster.name}: zoomed in about 2x (it grew ${grew.toFixed(2)}x)`);
-      assert.ok(Math.abs(zoomed.x - geometry.drawnW / 2) < 45 && Math.abs(zoomed.y - geometry.drawnH / 2) < 45,
-        `${cluster.name}: centred on the sky`);
+        const zoomed = await settled(page, cluster.name);
+        const grew = zoomed.radius / rest.radius;
+        assert.ok(grew > 1.8 && grew < 2.5, `${cluster.name}: zoomed in about 2x (it grew ${grew.toFixed(2)}x)`);
+        assert.ok(Math.abs(zoomed.x - geometry.drawnW / 2) < 45 && Math.abs(zoomed.y - geometry.drawnH / 2) < 45,
+          `${cluster.name}: centred on the sky`);
+      }
+      assert.deepEqual(errors, []);
+      await page.close();
     }
-    assert.deepEqual(errors, []);
-    await page.close();
   }, SURFACE);
 });
 
@@ -303,7 +324,7 @@ test("Sky: a neutral worker opens the detail panel without inventing live activi
     const { page, geometry, errors } = await openSky();
     const cluster = clusterTable()[0];
     const rest = await settled(page, cluster.name);
-    await page.mouse.click(...shown(geometry, rest));
+    await page.mouse.click(...await shown(page, rest));
     await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`, "the cluster opens", 8000);
     await settled(page, cluster.name);
     const spot = await workerSpot(page, geometry);
@@ -326,7 +347,7 @@ test("Sky: clicking empty space or pressing Escape steps back out of a cluster, 
     const rest = await settled(page, cluster.name);
     assert.ok(rest, "a cluster to zoom on");
 
-    await page.mouse.click(...shown(geometry, rest));
+    await page.mouse.click(...await shown(page, rest));
     await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in", 8000);
     await settled(page, cluster.name);
     const spot = await workerSpot(page, geometry);
@@ -336,11 +357,11 @@ test("Sky: clicking empty space or pressing Escape steps back out of a cluster, 
     await waitFor(async () => !(await page.locator("#panel").evaluate((el) => el.classList.contains("open"))), "panel close button", 5000);
     await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "panel close returns to the cluster", 5000);
 
-    await page.mouse.click(geometry.left + 3, geometry.top + geometry.shownH - 3);
+    await page.mouse.click(...await shown(page, { x: 3, y: geometry.drawnH - 3 }));
     await waitFor(async () => (await trail()) === "Sky", "pulled back by a click in empty space", 8000);
 
     const again = await settled(page, cluster.name);
-    await page.mouse.click(...shown(geometry, again));
+    await page.mouse.click(...await shown(page, again));
     await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in again", 8000);
     await page.keyboard.press("Escape");
     await waitFor(async () => (await trail()) === "Sky", "pulled back by Escape", 8000);

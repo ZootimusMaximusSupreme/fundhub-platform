@@ -288,8 +288,10 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
 </style>
 <script defer src="shell.js"></script>
 <script defer src="data.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--creative-factory">
 <!-- CREATIVE FACTORY — make creative for ONE partner, then decide on it.
      Jobs, the library, the review queue and brand kits, all for that one partner.
 
@@ -368,10 +370,11 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
       <span class="chip" id="cfWriteChip"><span class="cd" id="cfWriteDot" style="background:var(--gray2)"></span><span id="cfWriteChipTxt">Read only</span></span>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Creative workspace</h2><p class="fh-astra-subtitle">Scripts, assets and partner creative.</p></div></header>
 
       <!-- Summary — the five numbers this screen is for. -->
-      <div class="stats" id="stats"></div>
+      <div class="stats fh-astra-summary" id="stats"></div>
 
       <!-- Partner scope — everything below is this one partner's book. -->
       <div class="card">

@@ -4,6 +4,9 @@
   --fh-side-w:224px;
   --fh-side-w-mini:72px;
   --fh-workspace-header-h:72px;
+  /* Fundhub's sidebar keeps the pastel spectrum from docs/rules/fundhub-brand.css.
+     Other companies supply their own spectrum through paintBrand(). */
+  --fh-sidebar-spectrum:linear-gradient(90deg,#F2A69B 0%,#F5CE8F 20%,#F2E39B 40%,#A8D8B0 60%,#A9C6E8 80%,#C4B3E5 100%);
 }
 .app,.app-shell{
   min-height:100vh;margin:0;padding-left:var(--fh-side-w);
@@ -32,7 +35,7 @@ html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w
   padding:0 20px;position:relative;
 }
 .side .side-top::after{
-  content:"";height:2px;background:var(--spectrum);position:absolute;
+  content:"";height:2px;background:var(--fh-sidebar-spectrum);position:absolute;
   bottom:0;left:20px;right:20px;border-radius:2px;opacity:.85;
 }
 .side .side-top .logo{width:124px;height:28px;flex:0 1 124px;filter:none}
@@ -87,6 +90,7 @@ html.fh-side-mini .app,html.fh-side-mini .app-shell{padding-left:var(--fh-side-w
 .side-scrim{display:none}
 .side-scrim.show{display:block;position:fixed;inset:0;background:rgba(13,17,19,.3);z-index:390}
 .fh-menu-btn{display:none}
+.fh-menu-mark{display:block;width:28px;height:28px;background:var(--fh-menu-logo,url("/favicon.svg")) no-repeat center/contain}
 .fh-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .fh-scroll-x > table{min-width:max-content}
 .navitem:is(

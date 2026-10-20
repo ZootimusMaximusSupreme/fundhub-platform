@@ -116,8 +116,9 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
   font-size:var(--fs-caption)!important;
 }
 </style>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-partner-training">
 
 <div class="app-shell">
 <aside class="side" id="side" aria-label="Workspace navigation">
@@ -172,19 +173,25 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
 </aside>
 <div class="stage" id="fh-stage">
 
-<header>
+<header class="topbar">
   <div class="hl">
     <span class="eyebrow">Training / the twelve weeks</span>
     <span class="chip" id="trCount"><span class="cd"></span>—</span>
     <span class="chip" id="trGateCount"><span class="cd"></span>—</span>
   </div>
-  <div class="hr">
+  <div class="hr topbar-right">
     <a class="chip" href="partner-galaxy.html" style="text-decoration:none">Back to Home</a>
     <span class="pulse"></span>
   </div>
 </header>
 
-<div class="shell">
+<main class="shell fh-astra-page">
+  <div class="fh-astra-heading"><div><h1>Your training</h1><p class="fh-astra-subtitle">See where you stand and what comes next in your live cohort.</p></div></div>
+  <div class="training-loading" role="status">
+    <p>Loading your training progress…</p>
+    <div class="training-loading-line" aria-hidden="true"></div>
+    <div class="training-loading-line" aria-hidden="true"></div>
+  </div>
 
   <!-- Shown when the endpoint refuses. It carries the reason, in words: an
        unsigned agreement and a paused account are different problems with
@@ -199,14 +206,14 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
 
   <div id="trBody" hidden>
 
-    <div class="sec">
+    <div class="sec training-position">
       <div class="release">
         <div class="lb">Where you stand</div>
         <div class="big" id="trSelling">—</div>
       </div>
     </div>
 
-    <div class="sec">
+    <div class="sec training-gates">
       <div class="sech">
         <span class="eyebrow">The four gates</span>
         <span class="note">No gate, no selling. They are passed in order.</span>
@@ -214,7 +221,7 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
       <div class="gates" id="trGates"></div>
     </div>
 
-    <div class="sec">
+    <div class="sec training-next">
       <div class="sech"><span class="eyebrow">What is next</span></div>
       <div class="next">
         <div class="row">
@@ -229,7 +236,7 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
       </div>
     </div>
 
-    <div class="sec">
+    <div class="sec training-modules">
       <div class="sech">
         <span class="eyebrow">The thirteen modules</span>
         <span class="note">in the order you meet them, which is not the order they are numbered</span>
@@ -239,7 +246,7 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
         <div id="trModules"><div class="mmsg">Loading your training…</div></div>
       </div>
       <p class="note" style="margin-top:11px">
-        FundHub marks these off as you go — attendance is taken on every live session.
+        Fundhub marks these off as you go — attendance is taken on every live session.
         You cannot mark your own, and that is deliberate: a certification you gave
         yourself would not be a certification.
       </p>
@@ -256,7 +263,7 @@ header{border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-
 
   </div>
 
-</div>
+</main>
 
 </div>
 </div>

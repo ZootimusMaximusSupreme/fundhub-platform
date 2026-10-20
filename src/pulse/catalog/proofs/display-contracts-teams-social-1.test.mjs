@@ -110,8 +110,8 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 on shift");
   staffResults.add(proof("Stat tiles: HEADCOUNT, ON SHIFT, CONSENT, PENDING and the 'N on shift' chip").recipe);
   const rosterText = await staffPage.locator("#rosterBody").innerText();
-  assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*OWNER[\s\S]*MISSING[\s\S]*OUT[\s\S]*ACTIVE/);
-  assert.match(rosterText, /Sam Closer[\s\S]*sam@example\.test[\s\S]*CLOSER[\s\S]*ON FILE[\s\S]*IN · NOW[\s\S]*INVITED/);
+  assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*Owner[\s\S]*Missing[\s\S]*Out[\s\S]*Active/);
+  assert.match(rosterText, /Sam Closer[\s\S]*sam@example\.test[\s\S]*Closer[\s\S]*On file[\s\S]*In · now[\s\S]*Invited/);
   staffResults.add(proof("Page open: roster (name, email, role, status, consent, open shift, today's monitor events, hidden-seed count)").recipe);
 
   await staffPage.locator("#roleFilter").selectOption({ label: "Closer" });
@@ -149,7 +149,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#editor").evaluate((e) => e.classList.contains("open")), false);
   staffResults.add(proof("Editor 'Cancel', close X, click outside").recipe);
 
-  await staffPage.getByRole("button", { name: "+ Add person" }).click();
+  await staffPage.getByRole("button", { name: "Add person", exact: true }).click();
   assert.equal(await staffPage.locator("#edTitle").innerText(), "New person");
   assert.equal(await staffPage.locator("#ed_code").inputValue(), "—");
   assert.equal(await staffPage.locator("#ed_first").inputValue(), "");
@@ -165,10 +165,11 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   await staffPage.locator("#edCancel").click();
 
   await staffPage.locator('[data-tab="perms"]').click();
-  for (const label of ["Roster", "Permissions", "Clock & consent", "Telemetry"]) {
+  for (const label of ["People", "Role access", "Time & consent", "Activity"]) {
     assert.equal(await staffPage.getByRole("button", { name: label, exact: true }).isVisible(), true);
   }
-  assert.match(await staffPage.locator("#tab-perms").innerText(), /There is no permission list to show you here/);
+  assert.match(await staffPage.locator("#tab-perms").innerText(), /The permission list is not available here\. This page does not change role rules\./);
+  assert.match(await staffPage.locator("#tab-perms").innerText(), /The server checks what that role can do on every action\./);
   staffResults.add(proof("Tabs: Roster, Permissions, Clock & consent, Telemetry").recipe);
   staffResults.add(proof("Permissions tab (static copy: says no permission list can be shown)").recipe);
   await staffPage.locator('[data-tab="clock"]').click();
@@ -180,12 +181,20 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   staffResults.add(proof("Page open: who am I (marks the 'you' row, owner-only consent buttons)").recipe);
   staffResults.add(proof("Page open: my open shift (so 'Clock in / Clock out' shows the true state)").recipe);
   const confirmConsent = async (staffId, action, phrase) => {
+    const consentResponse = staffPage.waitForResponse((response) => {
+      const request = response.request();
+      if (request.method() !== "POST" || new URL(response.url()).pathname !== "/api/staff/monitoring-consent") return false;
+      const body = request.postDataJSON();
+      return body.staff_id === staffId && body.action === action;
+    });
     const dialogPromise = new Promise((resolve) => staffPage.once("dialog", async (dialog) => {
       resolve(dialog.message());
       await dialog.accept();
     }));
     await staffPage.locator(`[data-consent="${staffId}"]`).click();
     assert.match(await dialogPromise, phrase);
+    assert.equal((await consentResponse).status(), 200);
+    await staffPage.locator(`[data-consent="${staffId}"][data-on="${action === "grant" ? "1" : "0"}"]`).waitFor();
     assert.deepEqual(staffWrites.at(-1), { pathname: "/api/staff/monitoring-consent", body: { staff_id: staffId, action } });
   };
   await confirmConsent("staff-owner-1", "grant", /signed monitoring consent form is on file/);
@@ -254,7 +263,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.deepEqual(await socialPage.locator("#partnerSel option").allTextContents(), ["Proof Partner A", "Proof Partner B"]);
   assert.deepEqual(await socialPage.locator("#partnerSel option").allTextContents(), ["Proof Partner A", "Proof Partner B"]);
   await socialPage.getByText("@proof", { exact: true }).waitFor();
-  await socialPage.getByText("your saved setting", { exact: true }).waitFor();
+  await socialPage.getByText("saved setting", { exact: true }).waitFor();
   await socialPage.waitForFunction(() => ["oauthFb", "oauthIg", "oauthLi"].every((id) => document.getElementById(id)?.disabled));
   const oauthReads = socialReads.filter((entry) => entry.pathname === "/api/social/oauth");
   assert.equal(oauthReads.length, 3, "the three probes run once, after the partner is known");
@@ -269,7 +278,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.match(await socialPage.locator("#btBody").innerText(), /09:30/);
   assert.match(await socialPage.locator("#chGrid").innerText(), /Facebook[\s\S]*@proof[\s\S]*account-proof/);
   assert.match(await socialPage.locator("#ghGrid").innerText(), /TikTok[\s\S]*cannot be used/i);
-  assert.match(await socialPage.locator("#approvalBody").innerText(), /your saved setting/i);
+  assert.match(await socialPage.locator("#approvalBody").innerText(), /Approval required before sending[\s\S]*saved setting[\s\S]*Held posts do not send[\s\S]*Only the owner or an admin[\s\S]*Credit repair always needs approval/i);
   await socialPage.locator('[data-pane="audit"]').click();
   assert.match(await socialPage.locator("#tblAudit").innerText(), /Proof attempt/);
   socialResults.add(proof("Page open per partner: connected accounts, saved approval setting, post queue, writing allowance, send history (5 reads)").recipe);
@@ -285,7 +294,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
 
   await socialPage.locator("#partnerSel").selectOption("0");
   await socialPage.waitForURL(new RegExp(`partner_id=${partnerA}`));
-  for (const [key, phrase] of [["channels", "Social accounts this partner has connected"], ["queued", "Posts written and not gone anywhere yet"], ["blocked", "Posts the copy check refused"], ["failed", "Posts that could not be sent"], ["posted", "Posts that went out"]]) {
+  for (const [key, phrase] of [["channels", "2 connected · 2 can post"], ["queued", "1 unsent · 0 past due"], ["blocked", "1 blocked · 1 reason"], ["failed", "1 failed after 3 tries"], ["posted", "1 sent. Likes, views, clicks and shares are not tracked."]]) {
     await socialPage.locator(`button.stat[data-k="${key}"]`).click();
     assert.equal(await socialPage.locator(`button.stat[data-k="${key}"]`).getAttribute("aria-pressed"), "true");
     assert.match(await socialPage.locator("#derivBody").innerText(), new RegExp(phrase));
@@ -355,7 +364,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   socialResults.add(proof("Tab 'Needs a rewrite' (blocked by the copy check or refused by a person)").recipe);
   await socialPage.locator('[data-pane="failed"]').click();
   assert.match(await socialPage.locator("#tblFailed").innerText(), /Failed caption[\s\S]*3[\s\S]*gave up after 3[\s\S]*Provider refused the post/);
-  assert.match(await socialPage.locator("#taskStrip").innerText(), /JOB TO FIX[\s\S]*A scheduled Facebook post failed after 3 attempts[\s\S]*one job covering all of them/i);
+  assert.match(await socialPage.locator("#taskStrip").innerText(), /JOB TO FIX[\s\S]*A scheduled Facebook post failed after 3 attempts[\s\S]*One job covers all 1 failed post[\s\S]*No single post is linked/i);
   await socialPage.locator('[data-pane="posted"]').click();
   assert.match(await socialPage.locator("#tblPosted").innerText(), /Posted caption[\s\S]*facebook-reference-123/);
   await socialPage.locator('[data-pane="audit"]').click();

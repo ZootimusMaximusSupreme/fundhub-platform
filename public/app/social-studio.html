@@ -322,8 +322,10 @@ details.how .howbd p+p{margin-top:9px}
 </style>
 <script defer src="shell.js"></script>
 <script defer src="data.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--social-studio">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -386,10 +388,11 @@ details.how .howbd p+p{margin-top:9px}
       <button class="btn" id="composeTop">Write a post</button>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Social workspace</h2><p class="fh-astra-subtitle">Connected accounts, drafts and publishing.</p></div></header>
 
       <!-- the five headline numbers -->
-      <div class="stats" id="stats">
+      <div class="stats fh-astra-summary" id="stats">
         <button type="button" class="stat" data-k="channels" aria-pressed="true">
           <span class="eyebrow">Connected accounts</span>
           <div class="sv" id="kChannels">—</div><div class="sd" id="kChannelsD">—</div></button>
@@ -420,7 +423,7 @@ details.how .howbd p+p{margin-top:9px}
           <span class="chip" id="ssSuiteChip"><span class="cd"></span><span id="ssSuiteTxt">—</span></span>
         </div>
         <div class="card-bd">
-          <p class="hint" id="ssSuiteMsg">Posts are written from this partner's brand. Writing a post does not send it — it lands in the waiting list below, where you can read it first.</p>
+          <p class="hint" id="ssSuiteMsg">Brand-matched drafts. Review them below before sending.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
             <button class="btn" type="button" id="ssGenBtn">Write 3 posts for me</button>
             <span class="hint mono" id="ssGenMsg"></span>
@@ -447,11 +450,8 @@ details.how .howbd p+p{margin-top:9px}
         </div>
         <div id="ghGrid"></div>
         <div class="cap" id="oauthConnectBox">
-          <b>Only Facebook, Instagram and LinkedIn can be connected here.</b> The other five cannot be
-          connected or posted to at all — the part that would send a post to them was never built, and there
-          is no plan on this screen to build it. A button below that is greyed out means that service has not
-          been switched on for this site, and nothing can be connected until somebody does that.
-          Sign-in keys are stored locked away and are never shown back to you.
+          <b>Connect Facebook, Instagram or LinkedIn.</b> Other networks are unavailable.
+          Disabled buttons mean setup is needed. Sign-in keys stay private.
           <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="btn" data-oauth="facebook" id="oauthFb">Connect Facebook</button>
             <button type="button" class="btn" data-oauth="instagram" id="oauthIg">Connect Instagram</button>
@@ -460,11 +460,11 @@ details.how .howbd p+p{margin-top:9px}
           <!-- LinkedIn needs an organisation id before the connect can start. It used to be
                asked for with a browser prompt() box; it is a field on the screen now. -->
           <div class="field" style="margin-top:8px;max-width:320px">
-            <label for="liOrg">LinkedIn organization ID — LinkedIn only</label>
+            <label for="liOrg">LinkedIn organization ID</label>
             <input id="liOrg" type="text" autocomplete="off" placeholder="Paste your organization ID">
-            <span class="hint">LinkedIn will not connect without it. Facebook and Instagram do not use it.</span>
+            <span class="hint">Required for LinkedIn only.</span>
           </div>
-          <div id="oauthMsg" style="margin-top:8px;font-size:var(--fs-caption);color:var(--ink2)">Connecting opens that account's own sign-in page. If an account is not set up yet, this line will say so and nothing is sent.</div>
+          <div id="oauthMsg" style="margin-top:8px;font-size:var(--fs-caption);color:var(--ink2)">Connect opens the network's sign-in page.</div>
         </div>
       </div>
 
@@ -480,7 +480,7 @@ details.how .howbd p+p{margin-top:9px}
                 <div class="field">
                   <label for="cChannel">Account</label>
                   <select id="cChannel"></select>
-                  <span class="hint">A post goes to one account. There is no cross-posting.</span>
+                  <span class="hint">One account per post.</span>
                 </div>
                 <div class="field">
                   <label for="cOffer">What this post is about</label>
@@ -490,15 +490,15 @@ details.how .howbd p+p{margin-top:9px}
                     <option value="credit_cards">Credit cards</option>
                     <option value="credit_repair">Credit repair</option>
                   </select>
-                  <span class="hint">Required. The copy check refuses a post without it.</span>
+                  <span class="hint">Required for the copy check.</span>
                 </div>
               </div>
 
               <div class="field capwrap">
                 <label for="cCaption">What the post says</label>
-                <textarea id="cCaption" placeholder="Write the post. It is checked against the rules before anything is saved."></textarea>
+                <textarea id="cCaption" placeholder="Write your post…"></textarea>
                 <div class="capmeta">
-                  <span class="hint">This is the whole post. There is no separate headline, hashtag or link box.</span>
+                  <span class="hint">Include hashtags and links here.</span>
                   <span class="cc" id="capCount">0 letters</span>
                 </div>
               </div>
@@ -507,9 +507,7 @@ details.how .howbd p+p{margin-top:9px}
                 <div class="field">
                   <label for="cAsset">Picture or video (optional)</label>
                   <select id="cAsset" disabled></select>
-                  <span class="hint">Attaching a picture is not ready on any account, so this is switched off.
-                    Every post goes out as words only: Facebook and LinkedIn send the words and nothing else,
-                    and Instagram will not send a post at all until the picture part is built.</span>
+                  <span class="hint">Attachments unavailable. Text-only posting works on Facebook and LinkedIn; Instagram cannot send yet.</span>
                 </div>
                 <div class="field">
                   <label for="cWhen">Send at (optional) — times are UTC</label>
@@ -525,7 +523,7 @@ details.how .howbd p+p{margin-top:9px}
                 <button class="btn dark" id="queueBtn">Queue post</button>
                 <button class="btn" id="publishDueBtn" type="button">Send anything due now</button>
                 <button class="btn" id="clearComposer">Clear the form</button>
-                <span class="hint" id="queueMsg" style="font-size:var(--fs-caption);color:var(--gray2)">Every post is checked against the rules before it is saved.</span>
+                <span class="hint" id="queueMsg" style="font-size:var(--fs-caption);color:var(--gray2)">Copy checked on save.</span>
               </div>
             </div>
           </div>
@@ -539,23 +537,16 @@ details.how .howbd p+p{margin-top:9px}
           <div class="verdict">
             <span class="badge b-gray mono" id="vState">—</span>
             <span class="badge b-gray mono" id="vCount">nothing checked yet</span>
-            <div class="vwhat" id="vWhat">Type your post and it is checked as you go.</div>
+            <div class="vwhat" id="vWhat">Write a post to preview its copy check.</div>
           </div>
           <div class="card-bd" id="vReasons" style="padding-top:13px"></div>
           <details class="how">
             <summary>How the copy check works</summary>
             <div class="howbd">
-              <p>Your words are read against the rules this business has to follow. A post that breaks one is
-                refused and kept, with the reason written on it.</p>
-              <p><b>What you see here is a rehearsal, not the final answer.</b> The rules used for this preview are
-                a copy held inside this page. If someone changes a rule, this preview does not change with it. The
-                answer that counts is the one you get when you save the post.</p>
-              <p>These are ordinary posts on your own accounts, not paid adverts, so the rules that only apply to
-                paid adverts are skipped, and nothing about who sees the post is checked. The credit-repair rules,
-                the claims rules and the disclosure rules apply in full — your words are judged exactly as an advert
-                would be.</p>
-              <p>If the check itself ever breaks, it refuses the post rather than letting it through.</p>
-              <p>If a picture is ever attached, the check does not look at it. It only reads the words.</p>
+              <p>Blocked posts are kept with their reasons and never sent.</p>
+              <p><b>This is a preview.</b> It uses a saved copy of the rules. Saving runs the current check.</p>
+              <p>Organic posts follow the credit-repair, claims and disclosure rules. Paid-ad and audience rules do not apply.</p>
+              <p>A failed check blocks the post. Only words are checked, never images.</p>
             </div>
           </details>
         </div>
@@ -589,41 +580,36 @@ details.how .howbd p+p{margin-top:9px}
 
         <!-- the six states a post can be in, one plain line each -->
         <div class="legend">
-          <span class="lgi transient"><span class="badge b-gray">Draft</span><span class="lgt">Written, but not sent anywhere yet. You can still change your mind.</span></span>
-          <span class="lgi"><span class="badge b-info">Waiting</span><span class="lgt">Checked and lined up. It will go out at its set time.</span></span>
-          <span class="lgi transient"><span class="badge b-butter">Sending now</span><span class="lgt">Going out right now. This lasts a second or two. A post that sits here means something crashed.</span></span>
-          <span class="lgi"><span class="badge b-ok">Sent</span><span class="lgt">It went out. It is live on the account.</span></span>
-          <span class="lgi"><span class="badge b-alert">Could not be sent</span><span class="lgt">The system tried three times and could not get it out.</span></span>
-          <span class="lgi"><span class="badge b-alert">Needs a rewrite</span><span class="lgt">The copy check refused it. It will never go out. Write a new one.</span></span>
+          <span class="lgi transient"><span class="badge b-gray">Draft</span><span class="lgt">Not queued.</span></span>
+          <span class="lgi"><span class="badge b-info">Waiting</span><span class="lgt">Queued for its send time.</span></span>
+          <span class="lgi transient"><span class="badge b-butter">Sending now</span><span class="lgt">Sending. A stuck post needs attention.</span></span>
+          <span class="lgi"><span class="badge b-ok">Sent</span><span class="lgt">Live on the account.</span></span>
+          <span class="lgi"><span class="badge b-alert">Could not be sent</span><span class="lgt">Failed after three tries.</span></span>
+          <span class="lgi"><span class="badge b-alert">Needs a rewrite</span><span class="lgt">Blocked. Write a new post.</span></span>
         </div>
 
         <div class="pane on" id="pane-queued" role="tabpanel"><div id="tblQueued"></div>
           <div class="cap" id="qActMsg" hidden></div>
           <div class="cap">
-            A post goes out at the time set on it. <b>A post with no send time never goes out on its own</b>, and a post
-            on an account that cannot publish waits rather than fails.
+            <b>No send time means no automatic send.</b> Unavailable accounts hold their posts.
             <br>Emptying the time box and pressing "Queue it" does <b>not</b> take away a time that is already saved —
             the post keeps that time and still goes out. To stop a post going out, throw it away.
           </div>
         </div>
         <div class="pane" id="pane-blocked" role="tabpanel"><div id="tblBlocked"></div>
           <div class="cap">
-            A refused post is kept, with its reasons on it. <b>It can never be sent.</b> There is no unblock, no override
-            and no way to ask for an exception. To fix the wording, write a new post.
+            <b>Blocked posts cannot be sent or overridden.</b> Read the reasons and write a new post.
           </div>
         </div>
         <div class="pane" id="pane-failed" role="tabpanel"><div id="tblFailed"></div><div id="taskStrip"></div></div>
         <div class="pane" id="pane-posted" role="tabpanel"><div id="tblPosted"></div>
           <div class="cap">
-            <b>There are no like, view, click or share figures anywhere in the system</b>, so none are shown here.
-            Nothing records them.
+            Likes, views, clicks and shares are not tracked.
           </div>
         </div>
         <div class="pane" id="pane-audit" role="tabpanel"><div id="tblAudit"></div>
           <div class="cap">
-            A line is written <b>before</b> every attempt to send, so a post that crashes half way still leaves a record.
-            <b>"Undo recorded" does not mean a post can be taken back.</b> It means an undo note was written down, and
-            nothing in the system can act on it.
+            Every send attempt is logged first. <b>"Undo recorded" cannot take back a sent post.</b>
           </div>
         </div>
       </div>
@@ -639,9 +625,8 @@ details.how .howbd p+p{margin-top:9px}
           </div>
           <div class="card-bd" id="btBody"></div>
           <div class="cap">
-            <b>All times here are UTC.</b> An account can also have a time zone saved on it, but nothing uses it —
-            showing these times in it would show a time that is not the time a post goes out. The next time is found by
-            looking 8 days ahead. If no times are set, no time is picked and none is made up.
+            <b>All times are UTC.</b> Saved account time zones do not apply. Next time checks the next 8 days;
+            no posting times means no automatic send time.
           </div>
         </div>
 
@@ -675,7 +660,7 @@ details.how .howbd p+p{margin-top:9px}
     <button class="dx" id="drawerClose" aria-label="Close">✕</button>
   </div>
   <div class="drawer-bd" id="drawerBody"></div>
-  <div class="drawer-ft">Only the writing details are known for these posts. Sending details appear once a post has actually gone out.</div>
+  <div class="drawer-ft">Sending details appear after a post goes out.</div>
 </aside>
 
 <script>
@@ -1144,8 +1129,8 @@ function queueState(p){
   if (p.status === 'awaiting_approval')
     return {k:'held_for_person', short:'Held for a person',
             label: viewerCanApprove()
-              ? 'A person has to approve it before it goes out. You can approve or refuse it here'
-              : 'A person has to approve it, so it will not go out. Only the owner or an admin at Fundhub can approve it',
+              ? 'Held until you approve it. Approve or refuse below'
+              : 'Held for approval by the Fundhub owner or an admin',
             cls:'b-accent'};
   var c = chById(p.channel_id);
   if(!p.scheduled_for) return {k:'no_time', short:'No send time', label:'No send time set — it will never go out on its own', cls:'b-warn'};
@@ -1165,7 +1150,7 @@ function renderStats(){
     });
     DERIV = {};
     document.getElementById('derivBody').textContent =
-      'Nothing to count. Every number above belongs to one partner, and no partner is chosen.';
+      'Choose a partner to see their numbers.';
     return;
   }
   var chs = channels(), act = chs.filter(function(c){ return c.connection_state === 'active'; });
@@ -1195,31 +1180,17 @@ function renderStats(){
 
   DERIV = {
     channels:
-      'Social accounts this partner has connected: <b>'+chs.length+'</b>. '+
-      'Of those, <b>'+act.length+'</b> can post right now.<br>'+
-      'The 8 is not a count. It is how many kinds of social account this system allows.',
+      '<b>'+chs.length+'</b> connected · <b>'+act.length+'</b> can post. 8 account types tracked.',
     queued:
-      'Posts written and not gone anywhere yet: <b>'+q.length+'</b>.<br>'+
-      '<b>'+selected.length+'</b> '+(selected.length===1?'is':'are')+' already past the time set on '+
-      (selected.length===1?'it':'them')+', measured against '+fmtLong(NOW_ISO)+'.<br>'+
-      '<b>'+noTime.length+'</b> '+(noTime.length===1?'has':'have')+' no send time at all, so '+
-      (noTime.length===1?'it':'they')+' will never go out until someone sets one.<br>'+
-      '<b>'+held.length+'</b> '+(held.length===1?'was':'were')+' stopped by the copy check and '+
-      (held.length===1?'is':'are')+' waiting for a person to approve '+(held.length===1?'it':'them')+'. '+
-      (held.length===1?'It stays':'They stay')+' where '+(held.length===1?'it is':'they are')+
-      ' and '+(held.length===1?'does':'do')+' not go out until somebody signed in as the owner or an '+
-      'admin approves '+(held.length===1?'it':'them')+' in the waiting list below.',
+      '<b>'+q.length+'</b> unsent · <b>'+selected.length+'</b> past due as of '+fmtLong(NOW_ISO)+'. '+
+      '<b>'+noTime.length+'</b> need a send time. <b>'+held.length+'</b> wait for owner or admin approval below.',
     blocked:
-      'Posts the copy check refused: <b>'+b.length+'</b>, with <b>'+reasonCount+'</b> reason'+(reasonCount===1?'':'s')+
-      ' given between them.<br>'+
-      'A refused post is kept with its reasons and can never be sent. To change the wording, write a new post. '+
-      'This number only ever goes up.',
+      '<b>'+b.length+'</b> blocked · <b>'+reasonCount+'</b> reason'+(reasonCount===1?'':'s')+
+      '. Blocked posts stay on file and cannot be sent. Write a new post.',
     failed:
-      'Posts that could not be sent: <b>'+f.length+'</b>.<br>'+
-      'The system tries '+MAX_ATTEMPTS+' times before it gives up.',
+      '<b>'+f.length+'</b> failed after '+MAX_ATTEMPTS+' tries.',
     posted:
-      'Posts that went out: <b>'+po.length+'</b>.<br>'+
-      'Nothing else can be shown here. There are no like, view, click or share figures anywhere in the system.'
+      '<b>'+po.length+'</b> sent. Likes, views, clicks and shares are not tracked.'
   };
   document.getElementById('derivBody').innerHTML = DERIV[derivKey] || '—';
 }
@@ -1240,18 +1211,17 @@ function renderChannels(){
        has not come back, the read failed, or there really are no accounts. */
     if(CHANNELS_ERR){
       host.innerHTML = '<div class="empty">The connected accounts could not be read. '+esc(CHANNELS_ERR)+
-        '<br>Nothing is shown in their place, and this is <b>not</b> the same as having none. '+
-        'Reload the page to try again.</div>';
+        '<br>Account count is unknown. Reload to try again.</div>';
       return;
     }
     host.innerHTML = '<div class="empty">'+
       (CHANNELS_READ
-        ? 'No social accounts are connected yet. Once one is, it will show here.'
+        ? 'No social accounts are connected yet.'
         : 'Reading this partner\'s connected accounts…')+
-      '<br>With no account, a post typed in the writer below cannot be saved yet. Use "Write 3 posts for me" at the top to put posts in the waiting list. From there you can give a post a send time, or throw it away, without an account.<br>'+
+      '<br>Without one, a post typed in the writer below cannot be saved yet. Use "Write 3 posts for me" for drafts you can schedule or discard.<br>'+
       (viewerCanConnect()
-        ? 'You can connect Facebook, Instagram or LinkedIn further down this page. If a button there is greyed out, that service has not been switched on for this site yet, and nothing can be connected until somebody does that.'
-        : 'Only the owner can connect an account, so there is nothing for you to do here.')+
+        ? 'Connect Facebook, Instagram or LinkedIn below. Disabled buttons need setup.'
+        : 'Only the owner can connect an account.')+
       '</div>';
     return;
   }
@@ -1261,13 +1231,13 @@ function renderChannels(){
     var days = Object.keys(c.best_times || {});
     var slotCount = days.reduce(function(a,d){ return a + (c.best_times[d]||[]).length; }, 0);
     var consequence = c.connection_state === 'active'
-      ? 'This account can post. Anything due on it goes out on the next send.'
-      : '<b>This account cannot post.</b> Its posts wait rather than fail — they stay in the waiting list and are not counted as a failed try.';
+      ? 'Ready to post. Due posts send next.'
+      : '<b>Posting paused.</b> Posts wait without using a retry.';
     var tokenNote = c.connection_state === 'active'
       ? ''
       : (c.has_access_token
-         ? 'A sign-in key is still stored, but the account is ' + c.connection_state + '.'
-         : 'No sign-in key is stored. This account can never be switched on while that is true.');
+         ? 'Sign-in key stored; account ' + c.connection_state + '.'
+         : 'Reconnect to save a sign-in key.');
     return '<div class="chcard s-'+esc(c.connection_state)+'">'+
       '<div class="chcard-hd">'+
         '<span class="cn">'+esc(CHANNEL_LABEL[c.channel])+
@@ -1356,8 +1326,8 @@ function renderVerdict(){
   if(!ch){ hint.textContent = 'No account chosen yet.'; }
   else if(s.when){ hint.textContent = 'It goes out at the time you set.'; }
   else { hint.textContent = next
-    ? 'Left empty, it goes out at the next posting time: ' + fmt(next) + ' (UTC).'
-    : 'This account has no posting times set, so this post would have no send time and would never go out.'; }
+    ? 'Default: ' + fmt(next) + ' (UTC).'
+    : 'No posting times set. Choose a send time or the post will wait.'; }
 
   var badge = document.getElementById('vState');
   /* Nothing has been typed and nothing picked, so nothing is checked. The panel
@@ -1368,7 +1338,7 @@ function renderVerdict(){
     badge.className = 'badge b-gray mono';
     document.getElementById('vCount').textContent = 'nothing checked yet';
     document.getElementById('vWhat').innerHTML =
-      'Write the post and say what it is about. Nothing is checked until both are filled in, and leaving out what the post is about is itself a refusal.';
+      'Write a post and choose what it is about to preview the check.';
     document.getElementById('vReasons').innerHTML = '';
     return;
   }
@@ -1380,8 +1350,7 @@ function renderVerdict(){
 
   var what;
   if(v.state === 'blocked'){
-    what = 'This post would be <b>saved and refused</b>, with the reasons below kept on it. It would stay in the '+
-           '"needs a rewrite" list for good — it cannot be checked again, overruled, or edited and re-sent.';
+    what = '<b>Blocked on save.</b> Reasons stay with the post. It cannot be overridden or re-sent; write a new post.';
   } else if(v.state === 'needs_approval'){
     /* This used to say a post needing approval was lined up and went out at its
        time anyway. That was true when it was written and is false now: the post
@@ -1389,10 +1358,9 @@ function renderVerdict(){
        anywhere else on this screen, because this is what the writer reads
        BEFORE they save. */
     var wHeld = s.when ? new Date(s.when + ':00Z').toISOString() : next;
-    what = 'This post would be <b>saved and stopped</b>. It does not go out on its own' +
-           (wHeld ? ' — not at <b>'+esc(fmt(wHeld))+'</b>, and not at any other time.' : '.') +
-           ' Somebody signed in as the owner or an admin has to approve it in the waiting list on this ' +
-           'screen before it can go out. If they refuse it instead, it is kept and never sent.';
+    what = '<b>Held for approval on save.</b> An owner or admin must approve it below before it sends' +
+           (wHeld ? ', even with a send time of <b>'+esc(fmt(wHeld))+'</b>.' : '.') +
+           ' Refusing keeps it on file and stops it for good.';
   } else {
     var w = s.when ? new Date(s.when + ':00Z').toISOString() : next;
     what = 'This post would be <b>saved and lined up</b>' +
@@ -1582,7 +1550,7 @@ function renderFailed(){
   var strip = document.getElementById('taskStrip');
   if(!open.length){
     strip.innerHTML = rows.length
-      ? '<div class="cap">Nothing to fix. Jobs are not shown on this screen yet.</div>'
+      ? '<div class="cap">No follow-up job is shown here.</div>'
       : '';
     return;
   }
@@ -1598,9 +1566,8 @@ function renderFailed(){
       '<div class="td" style="opacity:.85">opened '+esc(fmtLong(t.created_at))+' · last updated '+esc(fmtLong(t.updated_at))+
         (t.resolved_at?' · fixed '+esc(fmtLong(t.resolved_at)):' · not fixed yet')+'</div>'+
       '<div class="td" style="opacity:.85;border-top:1px dashed var(--warn);padding-top:8px;margin-top:9px">'+
-        allFailed.length+' post'+(allFailed.length===1?'':'s')+' could not be sent for this partner, and there is '+
-        '<b>one</b> job covering all of them. Every failure after the first only refreshes the wording of this job — '+
-        'the heading keeps the account named by the first one. The job cannot be traced back to a single post.'+
+        '<b>One</b> job covers all '+allFailed.length+' failed post'+(allFailed.length===1?'':'s')+'. '+
+        'Details refresh after each failure; the title keeps the first account. No single post is linked.'+
       '</div>'+
     '</div>';
   }).join('');
@@ -1610,8 +1577,7 @@ function renderPosted(){
   var rows = applyFilters(byStatus('posted')).sort(function(a,b){ return new Date(b.posted_at)-new Date(a.posted_at); });
   var host = document.getElementById('tblPosted');
   if(!hasPartner()){ host.innerHTML = noPartner('Posts that went out'); return; }
-  if(!rows.length){ host.innerHTML = '<div class="empty">Nothing has gone out for this partner and filter. '+
-    'There are no like, view or click figures anywhere in the system.</div>'; return; }
+  if(!rows.length){ host.innerHTML = '<div class="empty">No sent posts match this partner and filter.</div>'; return; }
   host.innerHTML = '<table class="grid"><thead><tr>'+
     '<th>Account</th><th>Post</th><th>About</th><th>Went out</th><th>Reference</th>'+
     '</tr></thead><tbody>'+
@@ -1945,8 +1911,7 @@ function renderBestTimes(){
   var days = Object.keys(c.best_times || {});
   if(!days.length){
     body += '<div class="notice warn" style="margin-top:0"><span class="ni">⚠</span><span>'+
-      '<b>No posting times are set for this account.</b> Every post written for it gets no send time, so it waits '+
-      'in the list and never goes out. Somebody has to set a time.</span></div>';
+      '<b>No posting times set.</b> Choose a send time for each post or it will wait.</span></div>';
   } else {
     body += '<div class="btgrid">' + DAY_ORDER.map(function(d){
       var slots = (c.best_times[d] || []).slice().sort();
@@ -1977,9 +1942,9 @@ function renderApproval(){
     '<div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:12px">'+
       '<span class="sw'+(on?' on':'')+'" role="img" aria-label="a person must approve: '+(on?'yes':'no')+'"></span>'+
       '<span style="font-size:var(--fs-body);font-weight:600">'+
-        (on?'A person must approve a post before it goes out':'Posts go out with nobody approving them')+'</span>'+
+        (on?'Approval required before sending':'Passing posts send without approval')+'</span>'+
       '<span class="badge '+(saved?'b-gray':(s?'b-info':'b-warn'))+'">'+
-        (saved ? 'your saved setting' : (s ? 'nothing saved — the safe default' : 'setting not read'))+'</span>'+
+        (saved ? 'saved setting' : (s ? 'default setting' : 'setting not read'))+'</span>'+
     '</div>'+
     (saved
        ? (s.weekly_asset_target != null
@@ -1991,12 +1956,9 @@ function renderApproval(){
            ' <span style="color:var(--gray2)">(paid adverts only — no effect here)</span></span></div>'
        : s
          ? '<div class="notice" style="margin-top:0;margin-bottom:10px"><span class="ni">◉</span><span>'+
-           '<b>Nothing has been saved for this partner yet.</b> With nothing saved, the system treats every post as '+
-           'needing a person to look at it. That is the safe answer, and it is the same answer the sending part of '+
-           'the system uses.</span></div>'
+           '<b>No saved setting.</b> Approval is required by default.</span></div>'
          : '<div class="notice warn" style="margin-top:0;margin-bottom:10px"><span class="ni">⚠</span><span>'+
-           '<b>This screen could not read the approval setting.</b> Until it can, treat every post as needing a '+
-           'person to look at it.</span></div>')+
+           '<b>Approval setting unavailable.</b> Treat posts as held for approval.</span></div>')+
     '<div class="notice'+(on?'':' warn')+'" style="margin-top:4px"><span class="ni">'+(on?'◉':'⚠')+'</span><span>'+
       (on
         /* This used to say the opposite, and it was right at the time: a post
@@ -2004,23 +1966,14 @@ function renderApproval(){
            and waited with no way out, and this said so. Both halves are true
            now — it stops, AND a person can release it — so both are said here,
            in the same words the waiting list and the counts above use. */
-        ? '<b>A post marked "needs approval" now stops and waits. It does not go out.</b> '+
-          'The part of the system that sends posts cannot see a post that is waiting, so nothing sends it — '+
-          'not late, not by accident, not at all.'+
-          '<br><br><b>Somebody signed in as the owner or an admin can approve it.</b> Every held post is in '+
-          'the waiting list on this screen, with a button to approve it or refuse it. Approving it lets it go '+
-          'out at its time. Refusing it stops it for good and it can never be sent. Nobody else can do either '+
-          '— not the partner, and not any other kind of employee.'
-        : '<b>With this off, a post that breaks no rule is marked as passed, and it does go out.</b> '+
-          'This switch is not just a note any more. On, it stops posts and makes them wait. Off, it lets them '+
-          'through. Credit repair is the one exception, and this switch never releases those — see below.')+
+        ? '<b>Held posts do not send.</b> Only the owner or an admin can approve or refuse them in the waiting list. '+
+          'Approval releases them for their send time; refusal stops them for good.'
+        : '<b>Passing posts send at their set time.</b> Credit-repair posts still need approval.')+
     '</span></div>'+
     '<div class="notice bad" style="margin-top:10px"><span class="ni">◆</span><span>'+
-      '<b>Credit repair ignores this switch completely.</b> Every credit-repair post that is not refused outright is '+
-      'marked as needing a person to approve it, before this setting is even looked at, and that cannot be turned off. '+
-      'This partner has <b>'+crRows.length+'</b> credit-repair post'+(crRows.length===1?'':'s')+'.'+
-      '<br><br>Separately: a credit-repair post that does not itself carry the words '+
-      '"Consumer Credit File Rights Under State and Federal Law" is <b>refused</b>, not merely held.'+
+      '<b>Credit repair always needs approval.</b> '+
+      '<b>'+crRows.length+'</b> credit-repair post'+(crRows.length===1?'':'s')+' on file. '+
+      'Missing "Consumer Credit File Rights Under State and Federal Law" blocks a post instead of holding it.'+
     '</span></div>';
 }
 
@@ -2090,7 +2043,7 @@ function syncWriteControls(){
     if (qm && /No partner is chosen/.test(qm.textContent || '')) qm.textContent = '';
     var omOn = document.getElementById('oauthMsg');
     if (omOn && /No partner is chosen/.test(omOn.textContent || '')) {
-      omOn.textContent = 'Connecting opens that account\'s own sign-in page. If an account is not set up yet, this line will say so and nothing is sent.';
+      omOn.textContent = 'Connect opens the network\'s sign-in page.';
     }
   }
 }
@@ -2462,8 +2415,8 @@ document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDr
   try { role = String(localStorage.getItem('fh_role') || '').trim().toLowerCase(); } catch (e) { role = ''; }
   var box = document.getElementById('oauthConnectBox');
   if (box && role === 'partner') {
-    box.innerHTML = 'Only the owner can connect a social account, and only Facebook, Instagram and LinkedIn can ever be connected. ' +
-      'The other five cannot be posted to at all. You can still write posts here — they wait until an account is connected.';
+    box.innerHTML = 'Only the owner can connect Facebook, Instagram or LinkedIn. Other networks are unavailable. ' +
+      'Use "Write 3 posts for me" for drafts while you wait for a connection.';
   } else if (box) {
     function markMissing(channel, code) {
       var id = channel === 'facebook' ? 'oauthFb' : (channel === 'instagram' ? 'oauthIg' : 'oauthLi');

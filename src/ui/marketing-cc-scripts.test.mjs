@@ -206,7 +206,7 @@ describe("Write now is drawn only when write_now_ready is true", () => {
     assert.match(head, /About \$1\.20 \(last run\)\./);
     assert.match(head, /Model spend this month: \$12\.48 of \$300\.00\./);
     st.panel = { kind: "fix", id: st.scripts.items[1].id };
-    assert.match(S.html.main(st), /One rewrite with the model, about the cost of one script\. About \$0\.40 \(last run\)\./);
+    assert.match(S.html.main(st), /One model rewrite, about the cost of one script\. About \$0\.40 \(last run\)\. Uses your exact note\./);
   });
 
   test("an unknown cap prints 'unknown', never $0", () => {

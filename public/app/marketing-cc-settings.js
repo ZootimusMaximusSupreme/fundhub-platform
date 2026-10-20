@@ -722,9 +722,9 @@
       "</div>" +
       '<fieldset class="field"><legend>' + esc(FIELD_WORDS.size_rule) + "</legend>" + rules + errLine("size_rule", e) + "</fieldset>" +
       field("set-expiry", FIELD_WORDS.draft_expiry_days, numberBox("set-expiry", "draft_expiry_days", d.draft_expiry_days, e, "days"),
-        '<p class="caption muted">A script nobody approves goes away after this many days.</p>' + errLine("draft_expiry_days", e)) +
+        '<p class="caption muted">Unapproved drafts expire after this many days.</p>' + errLine("draft_expiry_days", e)) +
       '<h3 class="eyebrow sub-hd">How each kind of script is written</h3>' +
-      '<p class="caption muted">Bullets keep the hook, line 2, the reveal and the ask word for word, with one short cue for each point. Every word writes the whole script out.</p>' +
+      '<p class="caption muted">Bullets: exact hook, line 2, reveal and ask, plus short cues. Every word: the full script.</p>' +
       '<div class="fgrid gap16">' + styles + "</div>" + errLine("format_style", e) +
       "</div>";
   }
@@ -750,7 +750,7 @@
     var e = st.errors || [];
     var warn = capWarning(d.max_month_cost_usd, st.health);
     return '<div class="card" id="setCaps"><div class="card-hd"><h2>Model spend caps</h2></div>' +
-      '<p class="caption muted">This is money for the writing model only. It is never ad money.</p>' +
+      '<p class="caption muted">Writing costs only. Ad spend is separate.</p>' +
       '<div class="fgrid gap16">' +
       field("set-cap-batch", FIELD_WORDS.max_batch_cost_usd, numberBox("set-cap-batch", "max_batch_cost_usd", d.max_batch_cost_usd, e, "$"), errLine("max_batch_cost_usd", e)) +
       field("set-cap-month", FIELD_WORDS.max_month_cost_usd, numberBox("set-cap-month", "max_month_cost_usd", d.max_month_cost_usd, e, "$"), errLine("max_month_cost_usd", e)) +
@@ -763,7 +763,7 @@
   function renderWinner() {
     return '<div class="card" id="setWinner"><div class="card-hd"><h2>The winner rule</h2>' + chip("Not set yet", "") + "</div>" +
       "<p>Not set yet.</p>" +
-      '<p class="caption muted gap8">Until you fill this in, the machine writes more new versions of the angles you spend the most on.</p>' +
+      '<p class="caption muted gap8">Until set, new versions favor your highest-spend angles.</p>' +
       '<p class="caption muted gap8">' + esc(NEVER) + "</p></div>";
   }
 
@@ -793,7 +793,7 @@
           (c.status && c.status !== "on" ? ' <span class="caption muted">(' + esc(c.status) + ")</span>" : "") + "</span></label>" +
           '<p class="caption muted">' + esc(c.spend) + (c.reason ? " " + esc(c.reason) : "") + "</p></li>";
       }).join("") + "</ul>"
-      : '<p class="caption muted">No Meta campaigns are synced yet. They show up here after the next Meta pull (midnight, Arizona time).</p>';
+      : '<p class="caption muted">No campaigns synced. Next Meta pull: midnight, Arizona time.</p>';
     var none = noCampaignLine(d.meta_campaign_ids);
     return '<fieldset class="funnel" id="' + id("block") + '" data-funnel="' + esc(k) + '">' +
       '<div class="funnel-hd"><h3 class="eyebrow">' + esc(f.name || k) + "</h3>" + chip(d.active ? "Running" : "Not running", d.active ? "on" : "") + "</div>" +
@@ -810,7 +810,7 @@
       '<label class="check"><input type="checkbox"' + data("book_call") + (d.book_call ? " checked" : "") + "><span>This funnel books a call</span></label>" +
       "</div></div>" +
       '<h4 class="eyebrow sub-hd">' + esc(FUNNEL_WORDS.format_mix) + "</h4>" +
-      '<p class="caption muted">The batch splits this funnel\'s scripts in this mix. 2 and 1 means two of the first kind for each one of the second.</p>' +
+      '<p class="caption muted">Script ratio: 2:1 makes two of the first format per one of the second.</p>' +
       '<div class="fgrid mix gap16">' + mix + "</div>" + errLine("format_mix", e) +
       '<h4 class="eyebrow sub-hd">Meta campaigns for this funnel</h4>' + campHtml +
       (none ? '<p class="caption warn-line" data-live="none-' + esc(k) + '">' + esc(none) + "</p>" : "") +
@@ -844,7 +844,7 @@
       : '<p class="caption muted">No funnels yet.</p>';
     return '<div class="card span-12" id="setFunnels"><div class="card-hd"><h2>Funnels</h2>' +
       '<span class="caption faint">' + esc(asOfLine(st.asOf, nowMs)) + "</span></div>" +
-      '<p class="caption muted">Where the ads send people. Link each funnel to its Meta campaigns so the batch can split by spend.</p>' +
+      '<p class="caption muted">Link Meta campaigns to split each script batch by funnel spend.</p>' +
       list + "</div>";
   }
 

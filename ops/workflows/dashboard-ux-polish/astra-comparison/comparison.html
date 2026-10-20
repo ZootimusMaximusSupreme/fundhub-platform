@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fundhub · Current vs Astra</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f4f5;color:#18181b;font:15px system-ui,sans-serif}header{padding:24px 32px;background:#fff;border-bottom:1px solid #d4d4d8}h1{font-size:24px;margin:0 0 8px}p{margin:0;color:#52525b}nav{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:24px}label{display:flex;align-items:center;gap:8px}select,a{font:inherit;min-height:40px;padding:8px 12px;border:1px solid #d4d4d8;border-radius:6px;background:#fff;color:inherit}a{text-decoration:none;display:inline-flex;align-items:center}main{padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}.version{min-width:0}h2{font-size:18px;margin:0 0 8px}.caption{min-height:40px;font-size:13px}.shot{display:block;width:100%;height:auto;border:1px solid #d4d4d8;background:#fff}.phone .shot{width:min(100%,390px);margin:0 auto}.phone .version{max-width:500px}.phone main{justify-content:center;grid-template-columns:repeat(2,minmax(0,500px))}.note{font-size:12px;margin-top:16px}footer{padding:0 24px 24px;color:#52525b;font-size:13px}#status{font-size:12px} @media(max-width:700px){header{padding:16px}main{padding:16px;gap:16px}nav{gap:8px}h1{font-size:20px}h2{font-size:15px}.caption{font-size:12px;min-height:56px}label{font-size:13px}select,a{font-size:13px}.phone main{grid-template-columns:1fr 1fr}} 
+</style>
+</head>
+<body>
+<header>
+  <h1>Team & access · Current vs Astra</h1>
+  <p>Same fictional team. One page. Nothing has been published.</p>
+  <nav aria-label="Comparison options">
+    <label>Size <select id="size"><option value="1440">Desktop · 1440</option><option value="390">Phone · 390</option></select></label>
+    <label>View <select id="view"><option value="roster">Team roster</option><option value="editor">Person editor</option><option value="permissions">Permissions</option><option value="clock">Clock & consent</option><option value="telemetry">Activity</option><option value="empty">Empty</option><option value="loading">Loading</option><option value="error">Error</option></select></label>
+    <a href="/app/staff-teams.html?variant=current" target="_blank">Try current page ↗</a>
+    <a href="/app/staff-teams.html?variant=astra" target="_blank">Try Astra draft ↗</a>
+  </nav>
+</header>
+<main>
+  <section class="version"><h2>A · Current professional CRM</h2><p class="caption">The existing layout, with the pending shared-brand polish.</p><img class="shot" id="current" alt="Current Team and Access screenshot"></section>
+  <section class="version"><h2>B · Astra extra-high</h2><p class="caption">The alternate layout made by GPT-6 Astra at xhigh.</p><img class="shot" id="astra" alt="Astra Team and Access screenshot"></section>
+</main>
+<footer>Local review only. All names, emails, shifts and consent records are fictional. Red marks identify the exact areas being compared. Click-through actions stay in this local preview.</footer>
+<script>
+const size=document.getElementById('size'),view=document.getElementById('view');
+function paint(){const width=size.value;document.body.classList.toggle('phone',width==='390');for(const version of ['current','astra'])document.getElementById(version).src='/__comparison/evidence/'+version+'-'+view.value+'-'+width+'-MARKED.png'}
+size.addEventListener('change',paint);view.addEventListener('change',paint);paint();
+</script>
+</body></html>

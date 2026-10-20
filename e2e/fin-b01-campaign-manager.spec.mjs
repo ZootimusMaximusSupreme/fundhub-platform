@@ -556,14 +556,21 @@ test.describe("campaign manager: drawer money buttons, the No answer, the words,
 
   test("each drawer button says what it does: the words on a button and the action it sends belong together", async ({ page }) => {
     const b = await openDrawer(page);
+    const readyHint = await page.locator("#cwMsg").innerText();
+    const detailReads = b.calls.detail.length;
     page.on("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Stop spending", exact: true }).click();
     await expect.poll(() => b.calls.write.length).toBe(1);
     expect(b.calls.write[0].action).toBe("pause");
+    await expect.poll(() => b.calls.detail.length).toBe(detailReads + 1);
+    await expect(page.locator("#cwMsg")).toHaveText(readyHint);
     await page.getByRole("button", { name: "Start spending again", exact: true }).click();
     await expect.poll(() => b.calls.write.length).toBe(2);
     expect(b.calls.write[1].action).toBe("resume");
+    await expect.poll(() => b.calls.detail.length).toBe(detailReads + 2);
+    await expect(page.locator("#cwMsg")).toHaveText(readyHint);
     await page.locator("#cwBudget").fill("30000");
+    await expect(page.locator("#cwBudget")).toHaveValue("30000");
     await page.getByRole("button", { name: "Change daily budget", exact: true }).click();
     await expect.poll(() => b.calls.write.length).toBe(3);
     expect(b.calls.write[2].action).toBe("update_budget");

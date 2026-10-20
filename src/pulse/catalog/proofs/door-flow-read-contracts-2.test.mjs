@@ -177,5 +177,6 @@ test("Door, Flow, and Read contracts are exact and proved only by final fake-dat
   await page.waitForFunction(() => document.querySelector("#fatRows")?.innerText.includes("Hook Exact"));
   const fatigueRows = page.locator("#fatRows");
   assert.match(await fatigueRows.innerText(), /Hook Exact[\s\S]*Proof Campaign[\s\S]*123\.45[\s\S]*10,000[\s\S]*3\.25[\s\S]*1\.50%[\s\S]*2\.10[\s\S]*refresh/i);
-  assert.equal(await fatigueRows.locator(".badge.b-alert").innerText(), "REFRESH");
+  // Astra removes the legacy uppercase transform, not the recommendation.
+  assert.equal(await fatigueRows.locator(".badge.b-alert").innerText(), "refresh");
 });
