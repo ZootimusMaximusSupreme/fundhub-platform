@@ -8,13 +8,13 @@ Read `AGENTS.md` first for the short rules shared by Codex, Claude, and Cursor. 
 
 Domain facts, business rules, and architecture live in `docs/`. Read them when a task touches them. Do not restate them here.
 
-## 0. STOP — split the work first
+## 0. Split the work first — then proceed
 
 This is a hard rule. It fires at the start of every new project, task, or build request. No exceptions, except Full End-To-End Audit (next paragraph).
 
 **Exception — Full End-To-End Audit:** If Chris said **Full End-To-End Audit** (or full e2e audit / full end to end), skip the split in this turn. Follow `.cursor/rules/full-end-to-end-audit.mdc` — two questions, then stop. Split only after he answers yes + live/sandbox.
 
-Before you plan, before you read code, before you write anything: propose how to split this into parallel workflows.
+Before you plan, before you read code, before you write anything: state how to split this into parallel workflows, then start them.
 
 I forget to do this. When I forget, a ten-minute job takes ten hours. Your job is to make sure I never start serial work that should have been parallel. Do not wait to be asked. Do not skip it because the task seems small.
 
@@ -26,7 +26,7 @@ I forget to do this. When I forget, a ten-minute job takes ten hours. Your job i
 4. Which workflow **this session** owns. Put optional parallel prompts on the shared board — not a bash checklist for Chris.
 5. The shared board. Name the `ops/workflows/<batch>.md` file all workflows will read and write.
 
-Then stop and wait for my go.
+**Owner rule, 2026-10-19: split, then do.** Start available agents and carry out the requested work immediately. Do not ask me to approve the split, repeat an approval already given, or open sessions myself. Keep copy-paste prompts on the shared board. Ask only when a missing owner decision genuinely blocks safe, in-scope work; the split itself is never an approval gate.
 
 ### If it truly cannot be split
 

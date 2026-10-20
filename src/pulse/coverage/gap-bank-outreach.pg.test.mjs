@@ -2,6 +2,7 @@ import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { VERIFIED_SQL, NEXT_ACTION_SQL } from "./gap-bank-outreach.mjs";
 import { HAS_DB, ORG, OTHER_ORG, closeShadowDb, runShadowSql, shadow, withShadows } from "./money-test-kit.mjs";
+import { lenderValues } from "../../outreach/model.mjs";
 
 after(closeShadowDb);
 
@@ -14,6 +15,13 @@ const facts = {
   bureaus_pulled: ["EX"], inquiry_tolerance: "Some", stated_income: false,
   eligible_states: ["AZ"], application_url: "https://bank.example/apply", paper_application_url: "unknown"
 };
+const evidence = "Banker email and terms";
+const expectedNotes = lenderValues(
+  { org_id: ORG, name: "Example Bank" },
+  { lender_table: "BizLOC_Stated", product_name: "Business LOC", evidence },
+  facts,
+  { name: "Alex Rep" }
+)[10];
 
 function query(sql, { account = {}, product = {}, lender = {}, contacts = [{}] } = {}) {
   const tables = [
@@ -24,13 +32,13 @@ function query(sql, { account = {}, product = {}, lender = {}, contacts = [{}] }
       { id: accountId, org_id: ORG, program_id: programId, name: "Example Bank", status: "engaged", next_action: "Call banker", next_due_at: "2026-10-21T14:00:00Z", ...account }
     ]),
     shadow("outreach_products", [["id", "uuid"], ["org_id", "uuid"], ["account_id", "uuid"], ["product_name", "text"], ["lender_table", "text"], ["facts", "jsonb"], ["evidence", "text"], ["verified_at", "timestamptz"], ["lender_id", "uuid"]], [
-      { id: productId, org_id: ORG, account_id: accountId, product_name: "Business LOC", lender_table: "BizLOC_Stated", facts, evidence: "Banker email and terms", verified_at: "2026-10-19T14:00:00Z", lender_id: lenderId, ...product }
+      { id: productId, org_id: ORG, account_id: accountId, product_name: "Business LOC", lender_table: "BizLOC_Stated", facts, evidence, verified_at: "2026-10-19T14:00:00Z", lender_id: lenderId, ...product }
     ]),
     shadow("outreach_contacts", [["org_id", "uuid"], ["account_id", "uuid"], ["name", "text"], ["linkedin_url", "text"], ["email", "text"], ["phone", "text"]], contacts.map((c) => ({
       org_id: ORG, account_id: accountId, name: "Alex Banker", linkedin_url: null, email: "alex@bank.example", phone: null, ...c
     }))),
-    shadow("lenders", [["id", "uuid"], ["org_id", "uuid"], ["name", "text"], ["product_name", "text"], ["lender_table", "text"], ["application_url", "text"], ["eligible_states", "text"], ["bureaus_pulled", "text"], ["minimum_time_in_business_years", "numeric"], ["minimum_revenue_threshold", "numeric"], ["stated_requirements", "text"], ["active", "boolean"]], [
-      { id: lenderId, org_id: ORG, name: "Example Bank", product_name: "Business LOC", lender_table: "BizLOC_Stated", application_url: "https://bank.example/apply", eligible_states: "AZ", bureaus_pulled: "EX", minimum_time_in_business_years: 2, minimum_revenue_threshold: 100000, stated_requirements: "Minimum credit score 680. Inquiry tolerance: Some. Stated income: no.", active: true, ...lender }
+    shadow("lenders", [["id", "uuid"], ["org_id", "uuid"], ["name", "text"], ["product_name", "text"], ["lender_table", "text"], ["application_url", "text"], ["eligible_states", "text"], ["bureaus_pulled", "text"], ["minimum_time_in_business_years", "numeric"], ["minimum_revenue_threshold", "numeric"], ["stated_requirements", "text"], ["notes", "text"], ["active", "boolean"]], [
+      { id: lenderId, org_id: ORG, name: "Example Bank", product_name: "Business LOC", lender_table: "BizLOC_Stated", application_url: "https://bank.example/apply", eligible_states: "AZ", bureaus_pulled: "EX", minimum_time_in_business_years: 2, minimum_revenue_threshold: 100000, stated_requirements: "Minimum credit score 680. Inquiry tolerance: Some. Stated income: no.", notes: expectedNotes, active: true, ...lender }
     ])
   ];
   return withShadows(sql, tables);
@@ -43,6 +51,9 @@ test("saved result SQL passes a real linked product and fails cross-org, missing
   for (const fixture of [
     { lender: { org_id: OTHER_ORG } },
     { lender: { application_url: "https://wrong.example/apply" } },
+    { lender: { notes: null } },
+    { lender: { notes: "Banker email and terms\nPaper application: https://wrong.example/paper" } },
+    { product: { facts: { ...facts, paper_application_url: "https://bank.example/paper" } } },
     { lender: { eligible_states: "SC" } },
     { lender: { bureaus_pulled: "TU" } },
     { lender: { minimum_time_in_business_years: 3 } },
@@ -60,6 +71,21 @@ test("saved result SQL passes a real linked product and fails cross-org, missing
     const result = (await runShadowSql(query(VERIFIED_SQL, fixture))).rows[0];
     assert.equal(result.broken, 1, JSON.stringify(fixture));
   }
+});
+
+test("notes match the canonical evidence and secondary paper URL even when an online URL exists", { skip: !HAS_DB && "DATABASE_URL not set" }, async () => {
+  const paper = "https://bank.example/paper";
+  const amendedFacts = { ...facts, paper_application_url: paper };
+  const notes = lenderValues(
+    { org_id: ORG, name: "Example Bank" },
+    { lender_table: "BizLOC_Stated", product_name: "Business LOC", evidence },
+    amendedFacts,
+    { name: "Alex Rep" }
+  )[10];
+  const result = (await runShadowSql(query(VERIFIED_SQL, {
+    product: { facts: amendedFacts }, lender: { notes }
+  }))).rows[0];
+  assert.deepEqual(result, { total: 1, broken: 0 });
 });
 
 test("active work without a next action is red; paused work is not counted", { skip: !HAS_DB && "DATABASE_URL not set" }, async () => {

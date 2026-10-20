@@ -4,7 +4,7 @@ These shared rules apply to Codex, Claude, Cursor, and anyone working in this re
 
 ## Start with the split
 
-Before reading code or planning a new task, propose the parallel workflows, what can run together and what must wait, a copy-paste prompt for each workflow, which workflow this session owns, and the shared `ops/workflows/` board path. Then stop for the owner's go-ahead. If the task truly cannot be split, say why in one line and continue. Once approved, carry the work through without asking again for the same step.
+Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision.
 
 ## Keep the owner moving
 

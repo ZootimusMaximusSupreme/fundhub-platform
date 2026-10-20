@@ -27,6 +27,7 @@ SELECT count(*)::int AS total,
          OR l.minimum_time_in_business_years IS DISTINCT FROM expected.years
          OR l.minimum_revenue_threshold IS DISTINCT FROM expected.revenue
          OR l.stated_requirements IS DISTINCT FROM expected.requirements
+         OR l.notes IS DISTINCT FROM expected.notes
          OR nullif(btrim(p.evidence), '') IS NULL
          OR NOT EXISTS (
            SELECT 1 FROM outreach_contacts c
@@ -80,10 +81,10 @@ SELECT count(*)::int AS total,
   LEFT JOIN lenders l ON l.id = p.lender_id
   LEFT JOIN LATERAL (
     SELECT CASE WHEN jsonb_typeof(p.facts->'eligible_states') = 'array'
-             THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(p.facts->'eligible_states')), ', ')
+             THEN array_to_string(ARRAY(SELECT item.value FROM jsonb_array_elements_text(p.facts->'eligible_states') WITH ORDINALITY AS item(value, ord) ORDER BY item.ord), ', ')
              ELSE NULL END AS eligible_states,
            CASE WHEN jsonb_typeof(p.facts->'bureaus_pulled') = 'array'
-             THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(p.facts->'bureaus_pulled')), '/')
+             THEN array_to_string(ARRAY(SELECT item.value FROM jsonb_array_elements_text(p.facts->'bureaus_pulled') WITH ORDINALITY AS item(value, ord) ORDER BY item.ord), '/')
              ELSE NULL END AS bureaus_pulled,
            CASE WHEN jsonb_typeof(p.facts->'minimum_time_in_business_years') = 'number'
              THEN (p.facts->>'minimum_time_in_business_years')::numeric ELSE NULL END AS years,
@@ -96,17 +97,24 @@ SELECT count(*)::int AS total,
              '. Stated income: ',
              CASE WHEN jsonb_typeof(p.facts->'stated_income') = 'boolean'
                THEN CASE WHEN p.facts->>'stated_income' = 'true' THEN 'yes' ELSE 'no' END
-               ELSE 'unknown' END, '.') AS requirements
+               ELSE 'unknown' END, '.') AS requirements,
+           concat(p.evidence, chr(10), 'Paper application: ',
+             CASE WHEN p.facts->>'paper_application_url' ~* '^https?://[^ ]+'
+               THEN p.facts->>'paper_application_url' ELSE 'unknown' END) AS notes
   ) expected ON true
  WHERE program.key = 'bank_relationships' AND p.verified_at IS NOT NULL`;
 
 export async function run(ctx) {
-  await ctx.step("read-door", async () => {
-    const res = await ctx.http.get(`${ctx.siteUrl}/api/read/bank-outreach`);
-    if (![401, 403].includes(res.status)) {
-      throw ctx.fail("read-door", `The bank outreach read door did not require staff sign-in (status ${res.status || 0}).`);
-    }
-  });
+  if (ctx.live) {
+    await ctx.step("read-door", async () => {
+      const res = await ctx.http.get(`${ctx.siteUrl}/api/read/bank-outreach`);
+      if (![401, 403].includes(res.status)) {
+        throw ctx.fail("read-door", `The bank outreach read door did not require staff sign-in (status ${res.status || 0}).`);
+      }
+    });
+  } else {
+    ctx.skipStep("read-door", "The read route is checked by the live hourly run after release; this pre-deploy proof checks saved products.");
+  }
   await ctx.step("verified-result", async () => {
     let data;
     try { data = (await ctx.read(VERIFIED_SQL)).rows?.[0]; }
@@ -116,7 +124,9 @@ export async function run(ctx) {
     if (!Number.isFinite(total) || !Number.isFinite(broken)) throw ctx.fail("verified-result", "Verified bank product counts were not returned.");
     if (broken > 0) throw ctx.fail("verified-result", `${broken} of ${total} verified bank products lack a sound lender, evidence, banker, application path, or facts.`);
   });
-  return ctx.done("Bank outreach read door is protected and verified bank product records are sound.");
+  return ctx.done(ctx.live
+    ? "Bank outreach read door is protected and verified bank product records are sound."
+    : "Verified bank product records are sound; the read door awaits the live release.");
 }
 
 export const fixGuide = [
@@ -134,6 +144,7 @@ export const fixGuide = [
 ].join("\n");
 
 const healthy = () => ({
+  env: { NETLIFY: "true" },
   http: { "GET https://fundhub.ai/api/read/bank-outreach": { status: 401, body: '{"ok":false}' } },
   read: [{ match: /beat-bank-outreach:verified-result/, rows: [{ total: 2, broken: 0 }] }]
 });

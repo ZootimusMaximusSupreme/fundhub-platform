@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MANDATORY FIRST STEP — CLAUDE.md section 0. Before reading code or planning, propose how to split this work into parallel workflows. Output: (1) the split, (2) what runs at once vs waits, (3) a copy-paste prompt for each workflow, (4) which one you are taking, (5) the shared board path. Then STOP and wait for approval. If it truly cannot be split, say so in one line with the reason. Do not skip this because the task seems small. Branch: %s\"}}' \"$(git branch --show-current 2>/dev/null || echo unknown)\""
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MANDATORY FIRST STEP — CLAUDE.md section 0. State the workflow split, parallel work and dependencies, this session owner, and shared ops/workflows board. Put self-contained prompts on the board. OWNER RULE 2026-10-19: split, then do. Start available agents and proceed immediately; NEVER stop for split approval or repeat approval already given. If it cannot be split, explain in one line and continue. Ask only for an owner decision that genuinely blocks safe, in-scope work. Existing tool permissions, intended-journey protection, and production go-live rules remain unchanged. Branch: %s\"}}' \"$(git branch --show-current 2>/dev/null || echo unknown)\""
           }
         ]
       }

@@ -4,6 +4,8 @@
 .bank-outreach-page [hidden]{display:none!important}
 .bank-outreach-page .app{display:flex;min-height:100dvh}
 .bank-outreach-page .shell{min-width:0;flex:1}
+/* Reserve the shared header's space before the session resolves. */
+.bank-outreach-page .shell:not(:has(>#fh-workspace-header))::before{content:"";display:block;height:var(--fh-workspace-header-h)}
 #outreach-main{padding:32px;min-width:0}
 .bank-outreach-page h1,.bank-outreach-page h2,.bank-outreach-page p{margin:0}
 .bank-outreach-page h1,.bank-outreach-page h2{font-size:var(--fs-title);font-weight:700;letter-spacing:-.025em;line-height:1.25}
@@ -19,15 +21,15 @@
 .bank-outreach-page :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .bank-outreach-page .panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow)}
 .outreach-overview{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;margin-bottom:32px}
-.hero{grid-column:span 8;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.hero{grid-column:span 6;min-height:224px;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .hero h2{overflow-wrap:anywhere}
 .hero .button{margin-top:16px}
-.results{grid-column:span 4;padding:24px;display:flex;flex-direction:column;gap:16px}
+.results{grid-column:span 6;padding:24px;display:flex;flex-direction:column;gap:16px}
 .metric,#hero-value.manager-value{font-size:var(--fs-metric);font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
 .result-line{display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:16px;font-size:var(--fs-caption)}
 .result-line strong{font-variant-numeric:tabular-nums}
 .view-switch,.drawer-tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
-.view-switch button,.drawer-tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;min-height:44px;padding:8px 0;color:var(--gray);font:inherit;white-space:nowrap;cursor:pointer}
+.view-switch button,.drawer-tabs button{flex:0 0 auto;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;min-height:44px;padding:8px 0;color:var(--gray);font:inherit;white-space:nowrap;cursor:pointer}
 .view-switch button[aria-pressed=true],.drawer-tabs button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:700}
 .section-heading{margin-bottom:24px}
 .filters{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr)) auto;gap:16px;align-items:end;margin-bottom:24px}

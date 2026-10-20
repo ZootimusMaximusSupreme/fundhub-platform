@@ -77,7 +77,7 @@ export function parseInstitutionCsv(source, csv, states = LAUNCH_STATES) {
   if (quoted) fail('CSV has an unclosed quote');
   row.push(cell); if (row.some(v => v.trim())) rows.push(row);
   const headers = (rows.shift() || []).map(v => v.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const aliases = { external_id: source === 'fdic' ? ['cert', 'certificate', 'certificatenumber', 'externalid'] : ['cunum', 'cunumber', 'charter', 'charternumber', 'externalid'], name: ['name', 'bankname', 'cuname', 'creditunionname'], state: ['stalp', 'state', 'physicalstate', 'statecode'], city: ['city', 'physicalcity'], website: ['website', 'webaddress', 'url'] };
+  const aliases = { external_id: source === 'fdic' ? ['cert', 'certificate', 'certificatenumber', 'externalid'] : ['cunum', 'cunumber', 'charter', 'charternumber', 'externalid'], name: ['name', 'bankname', 'cuname', 'creditunionname'], state: ['stalp', 'state', 'physicalstate', 'statecode'], city: ['city', 'physicalcity'], website: ['website', 'webaddr', 'webaddress', 'url'] };
   const cols = Object.fromEntries(Object.entries(aliases).map(([k, names]) => [k, headers.findIndex(h => names.includes(h))]));
   if (['external_id', 'name', 'state'].some(k => cols[k] < 0)) fail('CSV needs institution ID, name, and state columns');
   if (rows.length > 10000) fail('Import at most 10,000 rows at once');

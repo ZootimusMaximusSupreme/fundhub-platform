@@ -29,6 +29,10 @@ test('CSV handles NCUA headers, rejects names as identity and invalid data', () 
   assert.throws(() => parseInstitutionCsv('fdic', 'CERT,NAME,STATE\nname,Bank,AZ'));
   assert.throws(() => parseInstitutionCsv('fdic', 'CERT,NAME,STATE\n1,"Bank,AZ'));
 });
+test('official FDIC WEBADDR header preserves the bank website', () => {
+  const result = parseInstitutionCsv('fdic', 'CERT,NAME,STALP,CITY,WEBADDR\n123,First Bank,AZ,Phoenix,https://bank.example');
+  assert.equal(result.items[0].website, 'https://bank.example');
+});
 test('dates default immediately and URL fields reject non-http application paths', () => {
   assert.equal(dueAt(null, '2026-01-01T00:00:00Z'), '2026-01-01T00:00:00.000Z');
   assert.throws(() => dueAt('not a date'));

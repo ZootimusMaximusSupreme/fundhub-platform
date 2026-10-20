@@ -13,16 +13,17 @@ const facts = { minimum_score: 'unknown', minimum_time_in_business_years: 2, min
 const product = { id: 'product-1', product_name: 'Business working capital line', lender_table: 'BizLOC_Documented', facts, evidence: 'Avery Lane · banker email · October 19, 2026', verified_at: null };
 
 async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false } = {}) {
-  const posts = [], reads = [], data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
+  const posts = [], reads = [], faults = { detail: false, team: false }, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
   if (draft) data.products[0].draft = { ...structuredClone(product), product_name: 'Proposed business line', facts: { ...facts, minimum_score: 680 } };
   let release; const pending = new Promise(resolve => { release = resolve; });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, route => route.abort());
-  const base = { ok: true, canManage: manager, program: { states: ['AZ', 'SC', 'FL', 'CA'] }, summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
+  const base = { ok: true, canManage: manager, program: { states: ['AZ', 'SC', 'FL', 'CA'] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
   await openScreen(page, '/app/bank-outreach.html', manager ? OWNER : REP, {
     '/api/read/bank-outreach': async (route, { url }) => {
       const query = Object.fromEntries(new URL(url).searchParams); reads.push(query);
-      if (query.id) return { ...base, ...data };
-      if (query.view === 'team') return { ...base, byRep: [{ staff_id: 'rep-1', name: 'Casey Reed', total: 14, verified_partners: 7, due_now: 8 }, { staff_id: 'rep-2', name: 'Morgan Ellis', total: 13, verified_partners: 5, due_now: 10 }], byState: ['AZ', 'SC', 'FL', 'CA'].map(state => ({ state, total: 7, verified_partners: 3, due_now: 4 })) };
+      if (query.id) return faults.detail ? { ok: false, message: 'Banker details could not load.' } : { ...base, ...data };
+      if (query.view === 'team' && faults.team) return { ok: false, message: 'Team results could not load.' };
+      if (query.view === 'team') return { ...base, byRep: state === 'empty' ? [] : [{ staff_id: 'rep-1', name: 'Casey Reed', total: 14, verified_partners: 7, due_now: 8 }, { staff_id: 'rep-2', name: 'Morgan Ellis', total: 13, verified_partners: 5, due_now: 10 }], byState: state === 'empty' ? [] : ['AZ', 'SC', 'FL', 'CA'].map(state => ({ state, total: 7, verified_partners: 3, due_now: 4 })) };
       if (state === 'loading') await pending;
       if (state === 'error') return { ok: false, message: 'The bank list is temporarily unavailable.' };
       return { ...base, total: state === 'empty' ? 0 : 27, items: state === 'empty' ? [] : Array.from({ length: Number(query.offset || 0) ? 2 : 25 }, (_, i) => account(i + Number(query.offset || 0))) };
@@ -39,7 +40,7 @@ async function fixture(page, { manager = false, state = 'full', failWrite = fals
       return json(route, { ...base, imported: 3, existing: 2, skipped: 1 });
     }
   });
-  return { posts, reads, data, release };
+  return { posts, reads, faults, data, release };
 }
 async function geometry(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -49,7 +50,9 @@ async function geometry(page) {
 async function capture(page, name, selector) {
   if (!process.env.BANK_OUTREACH_CAPTURE) return;
   fs.mkdirSync(OUT, { recursive: true });
-  await page.locator(selector).scrollIntoViewIfNeeded();
+  if (name.endsWith('-overview') || name.includes('-drawer')) {
+    await page.evaluate(() => { window.scrollTo(0, 0); const dialog = document.querySelector('dialog[open]'); if (dialog) dialog.scrollTop = 0; });
+  } else await page.locator(selector).scrollIntoViewIfNeeded();
   await page.addStyleTag({ content: '.outreach-evidence-box{outline:2px solid #d32323!important;outline-offset:-3px}.outreach-evidence-caption{position:fixed;left:8px;right:8px;bottom:8px;z-index:999999;background:#fff;color:#a11313;border:1px solid #d32323;padding:8px;font:12px/1.4 system-ui;pointer-events:none}' });
   await page.locator(selector).evaluate(el => el.classList.add('outreach-evidence-box'));
   await page.evaluate(text => { const el = document.createElement('div'); el.className = 'outreach-evidence-caption'; el.textContent = text + ' · Safe UI fixture. Red box marks the state or controls under review.'; (document.querySelector('dialog[open]') || document.body).append(el); }, name);
@@ -72,13 +75,18 @@ for (const width of [1440, 390, 320]) {
           await expect(page.locator('#verified-compare')).toHaveText('vs 4 last week');
           await expect(page.locator('#import-open')).toBeHidden(); await expect(page.locator('#view-switch')).toBeHidden();
           await expect(page.locator('#queue-scope')).toContainText('Assigned banks only');
-          await expect(page.locator('#fh-search-trigger')).toHaveCount(0);
+          await expect(page.locator('#fh-shell-search-btn')).toHaveCount(0); await expect(page.locator('#fh-chat-fab')).toHaveCount(0); await expect(page.locator('.navitem:visible')).toHaveCount(1);
           const open = page.locator('.open-bank').first(); expect((await open.boundingBox()).height).toBeGreaterThanOrEqual(44);
         } else if (state === 'empty') await expect(page.locator('#empty-action')).toHaveText('Clear filters');
         else if (state === 'error') { await expect(page.locator('#queue-retry')).toBeVisible(); await expect(page.locator('#queue-state')).toContainText('temporarily unavailable'); await page.locator('#queue-retry').click(); }
         else await expect(page.locator('#queue-state .skeleton')).toHaveCount(3);
         await capture(page, `${width}-rep-${state}`, state === 'full' ? '#queue-panel' : '#queue-state');
-        if (state === 'full') { await page.locator('#work-next').click(); await expect(page.locator('#bank-drawer')).toBeVisible(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank'); await geometry(page); await capture(page, `${width}-rep-drawer`, '#drawer-content'); await page.keyboard.press('Escape'); await expect(page.locator('#work-next')).toBeFocused(); }
+        if (state === 'full') await capture(page, `${width}-rep-overview`, '.outreach-overview');
+        if (state === 'full') {
+          await page.locator('#work-next').click(); await expect(page.locator('#bank-drawer')).toBeVisible(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank'); await geometry(page); await capture(page, `${width}-rep-drawer`, '#drawer-content');
+          for (const section of ['contacts', 'products', 'history', 'relationship']) { await page.locator(`[data-section="${section}"]`).click(); await capture(page, `${width}-rep-${section}-drawer`, '#drawer-content'); }
+          await page.keyboard.press('Escape'); await expect(page.locator('#work-next')).toBeFocused();
+        }
       } finally { env.release(); }
     });
   }
@@ -86,15 +94,29 @@ for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 }); const env = await fixture(page, { manager: true });
     await expect(page.locator('#team-section')).toBeVisible(); await expect(page.locator('#team-content')).toContainText('Casey Reed'); await geometry(page);
     await capture(page, `${width}-manager-full`, '#team-content');
-    await page.locator('#queue-view').click(); await page.locator('.open-bank').first().click(); await page.locator('[data-section="relationship"]').click();
+    await page.locator('#queue-view').click(); await page.locator('.open-bank').first().click();
+    await page.locator('[data-section="products"]').click(); await capture(page, `${width}-manager-products-drawer`, '#drawer-content');
+    await page.locator('[data-section="relationship"]').click(); await capture(page, `${width}-manager-relationship-drawer`, '#drawer-content');
     await page.locator('[name="staff_id"]').selectOption('rep-2'); await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
     await expect.poll(() => env.posts.at(-1)).toMatchObject({ action: 'assign', id: 'bank-0', staff_id: 'rep-2' });
     await page.locator('#drawer-close').click(); await page.locator('#import-open').click();
-    await page.locator('#import-form [name="source"]').selectOption('ncua'); await page.locator('#import-form textarea').fill('CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ'); await page.locator('#import-form [type="submit"]').click();
+    await page.locator('#import-form [name="source"]').selectOption('ncua'); await page.locator('#import-file').setInputFiles({ name: 'official-ncua-fixture.csv', mimeType: 'text/csv', buffer: Buffer.from('CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ') }); await expect(page.locator('#import-form textarea')).toHaveValue('CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ'); await page.locator('#import-form [type="submit"]').click();
     await expect(page.locator('#import-message')).toContainText('Imported 3 banks · 2 already saved · 1 outside launch states.');
     expect(env.posts.at(-1)).toEqual({ action: 'import', source: 'ncua', csv: 'CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ' });
     await capture(page, `${width}-manager-import`, '#import-dialog'); await page.locator('#import-close').click(); await expect(page.locator('#import-open')).toBeFocused();
   });
+  for (const state of ['loading', 'empty', 'error']) {
+    test(`${width}px manager ${state}: honest state and retry or import`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 }); const env = await fixture(page, { manager: true, state });
+      try {
+        await geometry(page);
+        if (state === 'empty') { await page.locator('#queue-view').click(); await expect(page.locator('#empty-action')).toHaveText('Import banks'); await expect(page.locator('#verified-week')).toHaveText('0'); await page.locator('#empty-action').click(); await expect(page.locator('#import-dialog')).toBeVisible(); await page.locator('#import-close').click(); }
+        else if (state === 'loading') await expect(page.locator('#queue-state .skeleton')).toHaveCount(3);
+        else await expect(page.locator('#queue-retry')).toBeVisible();
+        await capture(page, `${width}-manager-${state}`, '#queue-state');
+      } finally { env.release(); }
+    });
+  }
 }
 
 test('queue filters debounce, preserve contracts and paginate at 25', async ({ page }) => {
@@ -143,4 +165,53 @@ test('published facts are read-only for reps; manager amendment uses draft and v
   await page.locator('#drawer-close').click();
   const env = await fixture(page, { manager: true, published: true, draft: true }); await page.locator('#work-next').click(); await page.locator('[data-section="products"]').click(); await expect(page.locator('#product-list')).toContainText('Pending amendment'); await page.locator('[data-edit-product]').click(); await expect(page.locator('[name="minimum_score"]')).toHaveValue('680'); await expect(page.locator('[name="product_name"]')).toHaveValue('Proposed business line');
   await page.locator('[data-verify]').click(); await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'verify_product', id: 'product-1' }); await expect(page.locator('#drawer-message')).toContainText('Verified product saved to Lenders');
+});
+
+test('team and drawer read failures expose working retries; manual bank links open safely', async ({ page }) => {
+  const env = await fixture(page, { manager: true });
+  env.faults.team = true; await page.locator('#queue-view').click(); await page.locator('#team-view').click(); await expect(page.locator('#team-retry')).toBeVisible();
+  env.faults.team = false; await page.locator('#team-retry').click(); await expect(page.locator('#team-content')).toContainText('Casey Reed');
+  env.faults.detail = true; await page.locator('#work-next').click(); await expect(page.locator('#detail-retry')).toBeVisible();
+  env.faults.detail = false; await page.locator('#detail-retry').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
+  for (const link of await page.locator('#bank-links a').all()) { const popupReady = page.waitForEvent('popup'); await link.click(); const popup = await popupReady; await popup.close(); }
+  await page.locator('[data-section="contacts"]').click(); const popupReady = page.waitForEvent('popup'); await page.getByRole('link', { name: 'LinkedIn profile' }).click(); const popup = await popupReady; await popup.close();
+});
+
+test.describe('Arizona time remains fixed outside Arizona', () => {
+  test.use({ timezoneId: 'America/New_York' });
+  test('display labels Arizona and saves chosen Arizona time as UTC', async ({ page }) => {
+    const env = await fixture(page); await page.locator('#work-next').click();
+    await expect(page.locator('#bank-next-due time')).toContainText('8:00 AM Arizona'); await expect(page.locator('#bank-next-due time')).toHaveAttribute('title', /Arizona$/);
+    const form = page.locator('[data-action="log_touch"]'); await form.locator('[name="outcome"]').fill('Banker requested July check-in'); await form.locator('[name="next_action"]').fill('Call banker'); await form.getByLabel('Next action time in Arizona').fill('2026-07-01T09:30'); await form.locator('[type="submit"]').click();
+    await expect.poll(() => env.posts.at(-1)?.next_due_at).toBe('2026-07-01T16:30:00.000Z');
+  });
+});
+
+test('oversized CSV keeps the reviewed data and explains how to recover', async ({ page }) => {
+  await fixture(page, { manager: true }); await page.locator('#import-open').click(); await page.locator('#import-form textarea').fill('CERT,NAME,STALP\n123,Kept Bank,AZ');
+  await page.locator('#import-file').setInputFiles({ name: 'too-large.csv', mimeType: 'text/csv', buffer: Buffer.alloc(5000001) });
+  await expect(page.locator('#import-message')).toContainText('under 5 MB'); await expect(page.locator('#import-form textarea')).toHaveValue('CERT,NAME,STALP\n123,Kept Bank,AZ');
+});
+
+test('cold phone performance: Slow 4G and 4x CPU with fixture API', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await cdp.send('Network.enable'); await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 200000, uploadThroughput: 93750, connectionType: 'cellular4g' });
+  await page.addInitScript(() => {
+    window.__outreachPerf = { lcp: 0, cls: 0, interaction: 0, shifts: [] };
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) window.__outreachPerf.lcp = entry.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) { window.__outreachPerf.cls += entry.value; window.__outreachPerf.shifts.push({ value: entry.value, at: entry.startTime, sources: entry.sources.map(s => ({ tag: s.node?.tagName, id: s.node?.id, class: String(s.node?.className || ''), from: s.previousRect.toJSON(), to: s.currentRect.toJSON() })) }); } }).observe({ type: 'layout-shift', buffered: true });
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (entry.interactionId) window.__outreachPerf.interaction = Math.max(window.__outreachPerf.interaction, entry.duration); }).observe({ type: 'event', durationThreshold: 16, buffered: true });
+  });
+  await fixture(page); await expect(page.locator('#work-next')).toBeVisible(); await page.waitForTimeout(1000);
+  await page.locator('#work-next').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank'); await page.waitForTimeout(300);
+  const metrics = await page.evaluate(() => ({ ...window.__outreachPerf, ttfb: performance.getEntriesByType('navigation')[0].responseStart, htmlBytes: performance.getEntriesByType('navigation')[0].encodedBodySize, resources: performance.getEntriesByType('resource').map(r => ({ url: new URL(r.name).pathname, bytes: r.encodedBodySize })) }));
+  metrics.jsBytes = metrics.resources.filter(r => r.url.endsWith('.js')).reduce((total, r) => total + r.bytes, 0);
+  metrics.pageBytes = metrics.htmlBytes + metrics.resources.reduce((total, r) => total + r.bytes, 0);
+  const report = { scope: 'Local cold static page, safe API fixtures; backend latency and production hosting not measured. Event Timing covers the measured drawer interaction, not field INP. Not Lighthouse.', viewport: '390x844', network: '150ms latency / 1.6Mbps down / 750Kbps up', cpu: '4x slowdown', measured_at: new Date().toISOString(), ...metrics };
+  fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'mobile-performance.json'), JSON.stringify(report, null, 2) + '\n');
+  expect(metrics.lcp, 'CRM LCP below 2.5s').toBeGreaterThan(0); expect(metrics.lcp).toBeLessThan(2500);
+  expect(metrics.cls).toBeLessThan(0.1); expect(metrics.interaction).toBeLessThan(200); expect(metrics.jsBytes).toBeLessThan(500000); expect(metrics.pageBytes).toBeLessThan(2000000);
 });

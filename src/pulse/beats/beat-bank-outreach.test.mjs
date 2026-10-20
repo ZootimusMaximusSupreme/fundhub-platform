@@ -22,6 +22,16 @@ test("unprotected or missing read door goes red before product read", async () =
   assert.equal(result.step, "read-door");
 });
 
+test("pre-deploy bundle checks saved products while the new live door is pending", async () => {
+  const fixture = beat.selfTest.pass();
+  fixture.env = {};
+  fixture.http["GET https://fundhub.ai/api/read/bank-outreach"] = { status: 404, body: "Not found" };
+  const result = await runBeat(beat, makeFakeCtx(beat, fixture));
+  assert.equal(result.ok, true);
+  assert.ok(result.skipped.includes("read-door"));
+  assert.ok(result.steps.some((step) => step.name === "verified-result" && step.ok));
+});
+
 test("hourly saved-result SQL has the same judge as the daily deep check", () => {
   const withoutTag = (sql) => sql.replace(/^\/\*[^*]*\*\//, "").trim();
   assert.equal(withoutTag(beat.VERIFIED_SQL), withoutTag(DAILY_VERIFIED_SQL));

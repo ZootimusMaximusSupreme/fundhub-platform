@@ -22,6 +22,7 @@ SELECT count(*)::int AS total,
          OR l.minimum_time_in_business_years IS DISTINCT FROM expected.years
          OR l.minimum_revenue_threshold IS DISTINCT FROM expected.revenue
          OR l.stated_requirements IS DISTINCT FROM expected.requirements
+         OR l.notes IS DISTINCT FROM expected.notes
          OR nullif(btrim(p.evidence), '') IS NULL
          OR NOT EXISTS (
            SELECT 1 FROM outreach_contacts c
@@ -75,10 +76,10 @@ SELECT count(*)::int AS total,
   LEFT JOIN lenders l ON l.id = p.lender_id
   LEFT JOIN LATERAL (
     SELECT CASE WHEN jsonb_typeof(p.facts->'eligible_states') = 'array'
-             THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(p.facts->'eligible_states')), ', ')
+             THEN array_to_string(ARRAY(SELECT item.value FROM jsonb_array_elements_text(p.facts->'eligible_states') WITH ORDINALITY AS item(value, ord) ORDER BY item.ord), ', ')
              ELSE NULL END AS eligible_states,
            CASE WHEN jsonb_typeof(p.facts->'bureaus_pulled') = 'array'
-             THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(p.facts->'bureaus_pulled')), '/')
+             THEN array_to_string(ARRAY(SELECT item.value FROM jsonb_array_elements_text(p.facts->'bureaus_pulled') WITH ORDINALITY AS item(value, ord) ORDER BY item.ord), '/')
              ELSE NULL END AS bureaus_pulled,
            CASE WHEN jsonb_typeof(p.facts->'minimum_time_in_business_years') = 'number'
              THEN (p.facts->>'minimum_time_in_business_years')::numeric ELSE NULL END AS years,
@@ -91,7 +92,10 @@ SELECT count(*)::int AS total,
              '. Stated income: ',
              CASE WHEN jsonb_typeof(p.facts->'stated_income') = 'boolean'
                THEN CASE WHEN p.facts->>'stated_income' = 'true' THEN 'yes' ELSE 'no' END
-               ELSE 'unknown' END, '.') AS requirements
+               ELSE 'unknown' END, '.') AS requirements,
+           concat(p.evidence, chr(10), 'Paper application: ',
+             CASE WHEN p.facts->>'paper_application_url' ~* '^https?://[^ ]+'
+               THEN p.facts->>'paper_application_url' ELSE 'unknown' END) AS notes
   ) expected ON true
  WHERE program.key = 'bank_relationships' AND p.verified_at IS NOT NULL`;
 

@@ -113,6 +113,11 @@ BEGIN
       EXECUTE format('REVOKE ALL ON %I FROM authenticated', t);
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fundhub_app') THEN
+      -- 104 installs broad default table grants for the creating role. Remove
+      -- inherited mutation rights explicitly before allowing history appends.
+      IF t IN ('outreach_activities','outreach_assignments') THEN
+        EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON %I FROM fundhub_app', t);
+      END IF;
       EXECUTE format('GRANT SELECT, INSERT ON %I TO fundhub_app', t);
       IF t IN ('outreach_programs','outreach_accounts','outreach_contacts','outreach_products') THEN
         EXECUTE format('GRANT UPDATE ON %I TO fundhub_app', t);

@@ -32,7 +32,12 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     const targetUrl = new URL(url);
     assert.ok(['localhost', '127.0.0.1', '::1', '[::1]', 'postgres'].includes(targetUrl.hostname) || /(?:test|scratch|e2e|_ci)(?:$|[_-])/i.test(targetUrl.pathname.slice(1)), 'Use a local or explicitly named scratch/test database');
     pool = new pg.Pool({ connectionString: url, max: 4 });
+    assert.ok((await pool.query(`SELECT 1 FROM pg_roles WHERE rolname='fundhub_app' AND NOT rolsuper AND NOT rolbypassrls`)).rows.length, 'Apply migration 104 to provide the real unprivileged application role');
     await pool.query(`CREATE SCHEMA ${schema}`);
+    await pool.query(`GRANT USAGE ON SCHEMA ${schema} TO fundhub_app`);
+    // Reproduce production's creator default privileges, including an explicit
+    // TRUNCATE grant so history remains protected even under broader defaults.
+    await pool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON TABLES TO fundhub_app`);
     db = {
       query: async (sql, values) => { const c = await db.connect(); try { return await c.query(sql, values); } finally { c.release(); } },
       connect: async () => { const c = await pool.connect(); await c.query(`SET search_path TO ${schema},public`); await c.query(`SET TIME ZONE 'UTC'`); return c; }
@@ -56,8 +61,19 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     assert.equal(tables.length, 6); assert.ok(tables.every(t => t.relrowsecurity && t.relforcerowsecurity));
     const browser = (await db.query(`SELECT grantee,privilege_type FROM information_schema.table_privileges WHERE table_schema=$1 AND grantee IN ('PUBLIC','anon','authenticated')`, [schema])).rows;
     assert.deepEqual(browser, []);
-    const history = (await db.query(`SELECT privilege_type FROM information_schema.table_privileges WHERE table_schema=$1 AND table_name IN ('outreach_activities','outreach_assignments') AND grantee='fundhub_app' AND privilege_type IN ('UPDATE','DELETE')`, [schema])).rows;
+    const history = (await db.query(`SELECT privilege_type FROM information_schema.table_privileges WHERE table_schema=$1 AND table_name IN ('outreach_activities','outreach_assignments') AND grantee='fundhub_app' AND privilege_type IN ('UPDATE','DELETE','TRUNCATE')`, [schema])).rows;
     assert.deepEqual(history, []);
+    const app = await db.connect();
+    try {
+      await app.query(`SET ROLE fundhub_app`);
+      assert.equal((await app.query(`SELECT current_user`)).rows[0].current_user, 'fundhub_app');
+      for (const table of ['outreach_activities', 'outreach_assignments']) {
+        await app.query(`SELECT id FROM ${table} LIMIT 1`);
+        for (const statement of [`UPDATE ${table} SET created_at=created_at WHERE false`, `DELETE FROM ${table} WHERE false`, `TRUNCATE ${table}`]) {
+          await assert.rejects(app.query(statement), { code: '42501' });
+        }
+      }
+    } finally { await app.query(`RESET ROLE`); app.release(); }
   });
   test('imports are idempotent by canonical institution and state; launch states default', async () => {
     assert.equal((await db.query(`SELECT count(*)::int n FROM staff_roles WHERE key='outbound_rep' AND org_id=ANY($1::uuid[])`, [[org, otherOrg]])).rows[0].n, 2);
@@ -147,6 +163,62 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     const otherProgram = (await write(otherOwner, { action: 'import', source: 'ncua', csv: 'CU_NUMBER,CU_NAME,STATE\n600,Other CU,FL' })).program;
     await assert.rejects(db.query(`INSERT INTO outreach_accounts(org_id,program_id,source,external_id,institution_key,name,state) VALUES($1,$2,'ncua','601','ncua:601','Cross org','FL')`, [org, otherProgram.id]), { code: '23503' });
   });
+  test('verification rejects changed linked lenders and rechecks a category race after taking the lender lock', async () => {
+    const a = await target(165);
+    const linked = (await db.query(`INSERT INTO lenders(org_id,lender_table,name,product_name) VALUES($1,'OnlineBizCC','Selected active bank','Keep existing') RETURNING id`, [org])).rows[0];
+    const p = await productReady(a, { lender_id: linked.id });
+    await db.query(`UPDATE lenders SET active=false WHERE id=$1`, [linked.id]);
+    await assert.rejects(write(owner, { action: 'verify_product', id: p.id }), { statusCode: 409 });
+    let lender = (await db.query(`SELECT * FROM lenders WHERE id=$1`, [linked.id])).rows[0];
+    assert.equal(lender.active, false); assert.equal(lender.product_name, 'Keep existing');
+    assert.equal((await db.query(`SELECT verified_at FROM outreach_products WHERE id=$1`, [p.id])).rows[0].verified_at, null);
+    await db.query(`UPDATE lenders SET active=true WHERE id=$1`, [linked.id]);
+    const editor = await db.connect(); let committed = false; let sawLockRead = false;
+    try {
+      await editor.query('BEGIN');
+      await editor.query(`UPDATE lenders SET lender_table='PersonalCC' WHERE id=$1`, [linked.id]);
+      const racingDb = {
+        connect: async () => {
+          const c = await db.connect();
+          return { release: () => c.release(), query: async (sql, values) => {
+            if (/SELECT \* FROM lenders WHERE org_id=.*FOR UPDATE/.test(sql)) {
+              sawLockRead = true;
+              const lockedRead = c.query(sql, values);
+              await editor.query('COMMIT'); committed = true;
+              return lockedRead;
+            }
+            return c.query(sql, values);
+          } };
+        }
+      };
+      await assert.rejects(writeOutreach(racingDb, { staff: owner, body: { action: 'verify_product', id: p.id } }), { statusCode: 409 });
+      assert.equal(sawLockRead, true);
+    } finally { if (!committed) await editor.query('ROLLBACK'); editor.release(); }
+    lender = (await db.query(`SELECT * FROM lenders WHERE id=$1`, [linked.id])).rows[0];
+    assert.equal(lender.lender_table, 'PersonalCC'); assert.equal(lender.product_name, 'Keep existing');
+    assert.equal((await db.query(`SELECT verified_at FROM outreach_products WHERE id=$1`, [p.id])).rows[0].verified_at, null);
+  });
+  test('manager can clear and reselect an unverified lender after conflict but cannot repoint a published product', async () => {
+    const a = await target(166);
+    const initial = (await db.query(`INSERT INTO lenders(org_id,lender_table,name,product_name) VALUES($1,'OnlineBizCC','Original selection','Keep original') RETURNING id`, [org])).rows[0];
+    const p = await productReady(a, { lender_id: initial.id });
+    await db.query(`UPDATE lenders SET active=false WHERE id=$1`, [initial.id]);
+    await assert.rejects(write(owner, { action: 'verify_product', id: p.id }), { statusCode: 409 });
+    const amendment = { action: 'save_product', id: p.id, account_id: a.id, product_name: p.product_name, lender_table: p.lender_table, facts, evidence: p.evidence };
+    const cleared = await write(owner, { ...amendment, lender_id: null });
+    assert.equal(cleared.product.lender_id, null); assert.equal(cleared.product.verified_at, null);
+    const choices = (await db.query(`INSERT INTO lenders(org_id,lender_table,name) VALUES($1,'OnlineBizCC','Second choice'),($1,'OnlineBizCC','Final choice') RETURNING id`, [org])).rows;
+    await write(owner, { action: 'assign', id: a.id, staff_id: rep.id });
+    await assert.rejects(write(rep, { ...amendment, lender_id: choices[0].id }), { statusCode: 403 });
+    assert.equal((await write(owner, { ...amendment, lender_id: choices[0].id })).product.lender_id, choices[0].id);
+    assert.equal((await write(owner, { ...amendment, lender_id: choices[1].id })).product.lender_id, choices[1].id);
+    const verified = await write(owner, { action: 'verify_product', id: p.id });
+    assert.equal(verified.lender_id, choices[1].id);
+    for (const lenderId of [null, choices[0].id]) await assert.rejects(write(owner, { ...amendment, lender_id: lenderId }), { statusCode: 400 });
+    assert.equal((await db.query(`SELECT lender_id FROM outreach_products WHERE id=$1`, [p.id])).rows[0].lender_id, choices[1].id);
+    const unchanged = (await db.query(`SELECT active,product_name FROM lenders WHERE id=$1`, [initial.id])).rows[0];
+    assert.equal(unchanged.active, false); assert.equal(unchanged.product_name, 'Keep original');
+  });
   test('calendar check-ins are monthly/quarterly, idempotent and preserve deliberately scheduled work', async () => {
     const active = await target(170); const quiet = await target(171);
     for (const a of [active, quiet]) { const p = await productReady(a); await write(owner, { action: 'verify_product', id: p.id }); }
@@ -169,6 +241,12 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     assert.equal(detail.products[0].product_name, 'Business card'); assert.equal(detail.products[0].facts.minimum_score, 680); assert.ok(detail.products[0].verified_at);
     assert.equal((await db.query(`SELECT product_name FROM lenders WHERE id=$1`, [results[0].lender_id])).rows[0].product_name, 'Business card');
     assert.equal((await read(owner)).summary.verified_products_week, summary.verified_products_week);
+    await write(owner, { action: 'assign', id: a.id, staff_id: rep.id });
+    const repView = await read(rep, { id: a.id });
+    assert.equal(repView.products[0].product_name, 'Business card');
+    assert.equal(Object.hasOwn(repView.products[0], 'draft'), false);
+    assert.equal(JSON.stringify(repView).includes('Incomplete amendment'), false);
+    assert.equal((await read(owner, { id: a.id })).products[0].draft.product_name, 'Incomplete amendment');
     await assert.rejects(write(owner, { action: 'save_product', id: p.id, account_id: a.id, product_name: 'Wrong category', lender_table: 'PersonalCC', facts, evidence: 'Banker terms' }), { statusCode: 400 });
   });
   test('real HTTP handlers save the rep journey through manager verification and enforce both ownership boundaries', async () => {

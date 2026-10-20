@@ -43,7 +43,15 @@ export async function readOutreach(db, { staff: input, query = {} } = {}) {
     const contacts = (await db.query(`SELECT * FROM outreach_contacts WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
     const activities = (await db.query(`SELECT x.*,s.name staff_name FROM outreach_activities x LEFT JOIN staff s ON s.id=x.staff_id AND s.org_id=x.org_id WHERE x.org_id=$1 AND x.account_id=$2 ORDER BY x.created_at DESC,x.id DESC LIMIT 500`, [staff.org_id, a.id])).rows;
     const products = (await db.query(`SELECT * FROM outreach_products WHERE org_id=$1 AND account_id=$2 ORDER BY created_at,id`, [staff.org_id, a.id])).rows;
-    return { ...base, account: a, contacts, activities, products };
+    // Pending manager amendments are not published banker facts. Keep them out
+    // of the rep response, including the copies retained in approval history.
+    const visibleProducts = staff.canManage ? products : products.map(({ draft: _draft, ...published }) => published);
+    const visibleActivities = staff.canManage ? activities : activities.map(activity => {
+      if (activity.outcome === 'product_amendment_drafted') return { ...activity, note: 'Manager amendment awaiting verification' };
+      if (activity.outcome === 'product_verified') return { ...activity, note: 'Product verified into Lenders' };
+      return activity;
+    });
+    return { ...base, account: a, contacts, activities: visibleActivities, products: visibleProducts };
   }
   const summary = await scopedSummary(db, staff);
   const seats = await reps(db, staff);
@@ -94,7 +102,7 @@ async function saveProduct(db, staff, a, body) {
   if (Object.hasOwn(body, 'lender_id') && body.lender_id !== lenderId) {
     manager(staff);
     // A promoted product cannot be repointed and overwrite another lender row.
-    if (lenderId) fail('This product already has its own lender row');
+    if (previous?.first_verified_at || previous?.verified_at) fail('This product already has its own lender row');
     lenderId = body.lender_id ? uuid(body.lender_id, 'lender') : null;
   }
   if (lenderId) {
@@ -136,7 +144,8 @@ async function verifyProduct(db, staff, id) {
   if (product.lender_id) {
     priorLender = (await db.query(`SELECT * FROM lenders WHERE org_id=$1 AND id=$2 FOR UPDATE`, [staff.org_id, product.lender_id])).rows[0];
     if (!priorLender) fail('Linked lender is missing from this organization');
-    lender = (await db.query(`UPDATE lenders SET lender_table=$2,name=$3,product_name=$4,application_url=$5,eligible_states=$6,bureaus_pulled=$7,stated_requirements=$8,minimum_time_in_business_years=$9,minimum_revenue_threshold=$10,notes=$11,last_updated_by=$12,last_updated_date=current_date,active=true,updated_at=now() WHERE org_id=$1 AND id=$13 RETURNING id`, [...values, product.lender_id])).rows[0];
+    if (!priorLender.active || priorLender.lender_table !== product.lender_table) fail('Linked lender changed; choose an active lender in this product category', 409);
+    lender = (await db.query(`UPDATE lenders SET lender_table=$2,name=$3,product_name=$4,application_url=$5,eligible_states=$6,bureaus_pulled=$7,stated_requirements=$8,minimum_time_in_business_years=$9,minimum_revenue_threshold=$10,notes=$11,last_updated_by=$12,last_updated_date=current_date,updated_at=now() WHERE org_id=$1 AND id=$13 AND active AND lender_table=$2 RETURNING id`, [...values, product.lender_id])).rows[0];
     if (!lender) fail('Linked lender is missing from this organization');
   } else {
     lender = (await db.query(`INSERT INTO lenders(org_id,lender_table,name,product_name,application_url,eligible_states,bureaus_pulled,stated_requirements,minimum_time_in_business_years,minimum_revenue_threshold,notes,last_updated_by,last_updated_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,current_date) RETURNING id`, values)).rows[0];

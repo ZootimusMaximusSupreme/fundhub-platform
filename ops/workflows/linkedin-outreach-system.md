@@ -10,10 +10,10 @@ Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, 
 
 | Workflow | Owner | Files | State |
 | --- | --- | --- | --- |
-| Backend | backend agent, GPT-6.1 Sol High | `db/migrations/483_bank_outreach.sql`, `src/outreach/*`, related new tests | Built; pure model 5/5 passing; real PostgreSQL proof pending |
-| Monitoring | pulse agent, GPT-6 Sol High | new `src/pulse/coverage/gap-bank-outreach*`, `src/pulse/beats/beat-bank-outreach*`, shared pulse registration files | Built; focused PASS/FAIL tests passing; real PostgreSQL/bundle proof pending |
+| Backend | backend agent, GPT-6.1 Sol High | `db/migrations/483_bank_outreach.sql`, `src/outreach/*`, related new tests | Built; first real PostgreSQL run passed; review corrections awaiting repeat |
+| Monitoring | pulse agent, GPT-6 Sol High | new `src/pulse/coverage/gap-bank-outreach*`, `src/pulse/beats/beat-bank-outreach*`, shared pulse registration files | Built; focused PASS/FAIL tests and first real PostgreSQL run passed; amended notes-parity proof awaiting repeat |
 | Integration | parent | API routes, auth/nav, workflow, intended journey, CI, final proof and PR | Active |
-| UX | UX agent, GPT-6.1 Sol High | `public/app/bank-outreach.*`, `e2e/bank-outreach.spec.mjs` | Building after backend model and HTTP/access tests passed |
+| UX | UX agent, GPT-6.1 Sol High | `public/app/bank-outreach.*`, `e2e/bank-outreach.spec.mjs` | Built after backend/API proof; 32 browser cases and 8 final affected reruns passed |
 
 Backend and monitoring contract work run together. UI implementation waits until backend/API work is built and tested. Parent owns this board; agents report here through parent to avoid overlap. Existing dirty checkout stays untouched; build base is `origin/main` at `842ebfc6e` in `/private/tmp/fundhub-bank-outreach.0jXudA`.
 
@@ -43,4 +43,12 @@ UX: Use GPT-6.1 Sol. Inspect current professional CRM and use shared font/brand/
 
 ## Evidence and leftovers
 
-No build proof claimed yet. No production mutations or deployment authorized by this board.
+Owner rule change: split, then execute; no workflow approval pauses. Shared AGENTS, CLAUDE, Cursor rule and local startup reminders updated. This does not remove production go-live choice or tool permissions.
+
+Reviewable draft PR: https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/77.
+
+Local proof: full syntax lint, configured TypeScript, focused API/auth/access/workflow and navigation regressions passed. Browser fixtures (not live bank facts): 32/32 plus final affected 8/8. Desktop/phone 1440/390/320, manager and rep full/empty/loading/error, manual touch/contact/product/assignment, native CSV file upload, draft/published controls, retry, escaping, keyboard and Arizona due time in a New York browser. Mobile CDP lab: Slow4G/4x CPU, LCP 1.06s, CLS 0.00186, measured drawer interaction 88ms, JS 194,937 bytes, page 340,330 bytes. This is fixture/local proof, not Lighthouse, field INP, or production response time.
+
+First GitHub scratch run 39375628131 applied all migrations and passed real saved-result/ownership/tripwire tests. Browser step: 25 passed and one exact-menu assertion failed because it still expected the pre-outreach menu; parent updated that assertion and added outbound role coverage. Later steps did not run. Independent review found history default-grant protection, a changed-lender promotion race and missing notes parity; agents repaired all three with regressions. Repeat scratch tests pending.
+
+No production data changed, no live outreach sent and no production deployment claimed. Marked fixture previews live under `ops/workflows/build-evidence/bank-outreach/`.

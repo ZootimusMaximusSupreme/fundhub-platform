@@ -1,0 +1,134 @@
+{
+  "scope": "Local cold static page, safe API fixtures; backend latency and production hosting not measured. Event Timing covers the measured drawer interaction, not field INP. Not Lighthouse.",
+  "viewport": "390x844",
+  "network": "150ms latency / 1.6Mbps down / 750Kbps up",
+  "cpu": "4x slowdown",
+  "measured_at": "2026-10-20T05:41:12.116Z",
+  "lcp": 1060,
+  "cls": 0.0018602176500977065,
+  "interaction": 88,
+  "shifts": [
+    {
+      "value": 0.0018602176500977065,
+      "at": 2133.0999999940395,
+      "sources": [
+        {
+          "tag": "FORM",
+          "id": "queue-filters",
+          "class": "filters",
+          "from": {
+            "x": 16,
+            "y": 788.890625,
+            "width": 358,
+            "height": 55.109375,
+            "top": 788.890625,
+            "right": 374,
+            "bottom": 844,
+            "left": 16
+          },
+          "to": {
+            "x": 16,
+            "y": 808.390625,
+            "width": 358,
+            "height": 35.609375,
+            "top": 808.390625,
+            "right": 374,
+            "bottom": 844,
+            "left": 16
+          }
+        },
+        {
+          "tag": "P",
+          "id": "hero-note",
+          "class": "sub",
+          "from": {
+            "x": 33,
+            "y": 310.5,
+            "width": 183.015625,
+            "height": 19.5,
+            "top": 310.5,
+            "right": 216.015625,
+            "bottom": 330,
+            "left": 33
+          },
+          "to": {
+            "x": 33,
+            "y": 306,
+            "width": 304.296875,
+            "height": 19.5,
+            "top": 306,
+            "right": 337.296875,
+            "bottom": 325.5,
+            "left": 33
+          }
+        }
+      ]
+    }
+  ],
+  "ttfb": 70.80000001192093,
+  "htmlBytes": 20815,
+  "resources": [
+    {
+      "url": "/assets/fonts/nunito-latin-variable.woff2",
+      "bytes": 60824
+    },
+    {
+      "url": "/app/fundhub-font.css",
+      "bytes": 1967
+    },
+    {
+      "url": "/app/fundhub-brand.css",
+      "bytes": 21438
+    },
+    {
+      "url": "/app/crm-sidebar.css",
+      "bytes": 7644
+    },
+    {
+      "url": "/app/fundhub-font.js",
+      "bytes": 918
+    },
+    {
+      "url": "/app/bank-outreach.css",
+      "bytes": 9596
+    },
+    {
+      "url": "/app/workspace-ui.css",
+      "bytes": 10537
+    },
+    {
+      "url": "/app/shell.js",
+      "bytes": 166103
+    },
+    {
+      "url": "/app/bank-outreach.js",
+      "bytes": 27916
+    },
+    {
+      "url": "/api/auth/session",
+      "bytes": 139
+    },
+    {
+      "url": "/api/read/bank-outreach",
+      "bytes": 9482
+    },
+    {
+      "url": "/api/health",
+      "bytes": 21
+    },
+    {
+      "url": "/api/org-brand",
+      "bytes": 71
+    },
+    {
+      "url": "/favicon.svg",
+      "bytes": 1499
+    },
+    {
+      "url": "/api/read/bank-outreach",
+      "bytes": 1360
+    }
+  ],
+  "jsBytes": 194937,
+  "pageBytes": 340330
+}
