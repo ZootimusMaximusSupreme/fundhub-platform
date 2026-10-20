@@ -466,8 +466,8 @@ test("the display lane judges both rows from the live shell and page with no dat
   const red = await gapChecks({ fetchImpl: site({ seen }) });
   assert.deepEqual(red.filter((r) => ids.includes(r.id)).map((r) => r.status), ["FAIL", "FAIL"]);
   assert.ok(seen.every((call) => call.init.method === "GET"), "only GET");
-  assert.equal(seen.filter((call) => call.url.endsWith(SHELL_PATH)).length, 2,
-    "one link-gate read for both rows, plus the display lane's hidden-head read of the same live shell");
+  assert.equal(seen.filter((call) => call.url.endsWith(SHELL_PATH)).length, 3,
+    "one link-gate read, one retired-control read, and one hidden-head read of the live shell");
   assert.equal(seen.filter((call) => call.url.endsWith(PANEL_PATH)).length, 1, "one read of the page for both rows");
 
   const green = await gapChecks({ fetchImpl: site({ shell: WITH_DECK_ON_ALL }) });
