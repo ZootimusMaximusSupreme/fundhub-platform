@@ -1,6 +1,5 @@
-// Holds the batch 15 product finding to the repo. If the "still true" test goes red, the page was
-// fixed: take the mute out of the two Try again tests and the expected-to-fail marker off the
-// FINDING test (the text in FIN_B15_FINDINGS.whenFixed says exactly what).
+// Holds the batch 15 product finding to the repo. The finding was fixed on 2026-10-20: these tests now
+// go red if the repaint restart comes back, or if a mute or an expected-to-fail marker sneaks back in.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -19,45 +18,39 @@ test("the finding is one exact map row, and that row IS attached to a practice t
   const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, "desks-c.json"), "utf8"));
   for (const f of FIN_B15_FINDINGS) {
     assert.equal(map.filter((r) => r.surface === f.surface && r.control === f.control).length, 1, f.control);
-    assert.ok(f.what.length > 200 && f.whenFixed.length > 40, "the fault and what to do when it is fixed are written out");
+    assert.ok(f.what.length > 200 && f.fix.length > 40, "the fault and its fix are written out");
     const entry = FIN_B15_DISPLAY_ENTRIES.find((e) => e.control === f.control);
     assert.ok(entry, "the row is attached to its practice test");
     const named = (entry.specs || []).filter((s) => s.spec === f.spec).flatMap((s) => s.titles);
-    for (const t of f.mutedTests) assert.ok(named.includes(t), `the row names the muted test "${t}"`);
+    for (const t of f.retryTests) assert.ok(named.includes(t), `the row names the Try again test "${t}"`);
   }
 });
 
-test("the muted tests and the FINDING test exist in the spec, and the mute is narrow: it drops a toggle on a fold that already shows its failure box and nothing else", () => {
+test("the Try again tests and the finding test exist in the spec, with no mute and no expected-to-fail marker", () => {
   for (const f of FIN_B15_FINDINGS) {
     const spec = fs.readFileSync(path.join(ROOT, f.spec), "utf8");
-    for (const t of f.mutedTests) {
-      const at = spec.indexOf(t);
+    for (const t of f.retryTests) {
+      const at = spec.indexOf(`test("${t}"`);
       assert.ok(at > 0, `"${t}" is in ${f.spec}`);
-      const body = spec.slice(at, at + 400);
-      assert.ok(body.includes("muteRepaintRestarts(page)"), `"${t}" mutes the repaint restart and nothing else`);
     }
-    const fAt = spec.indexOf(f.findingTest);
-    assert.ok(fAt > 0, "the FINDING test is in the spec");
-    assert.ok(spec.slice(fAt, fAt + 900).includes("test.fail();"), "the FINDING test is marked expected-to-fail");
-    // The mute drops only a toggle whose fold already has the failure box. If it were widened (say, every
-    // toggle), the two button tests would stop meaning anything.
-    const mute = spec.split("async function muteRepaintRestarts(page)")[1].split("\n}\n")[0];
-    assert.match(mute, /d\.tagName === "DETAILS" && d\.querySelector\("\.ccs-err"\)/);
-    assert.match(mute, /stopImmediatePropagation/);
+    const fAt = spec.indexOf(`test("${f.findingTest}"`);
+    assert.ok(fAt > 0, "the finding test is in the spec");
+    assert.ok(!spec.slice(fAt, fAt + 900).includes("test.fail("), "the finding test must pass, not be expected to fail");
+    assert.ok(!spec.includes("muteRepaintRestarts"), "no test mutes the page's repaint restart any more");
   }
 });
 
-test("the finding is still true: a failed Rules or Every version read is started again on every repaint", () => {
+test("the fix holds: a failed Rules or Every version read is retried only on a real open, never on a repaint", () => {
   const source = fs.readFileSync(path.join(ROOT, "public/app/marketing-cc-scripts.js"), "utf8");
   const body = source.split("function onToggle(ev)")[1].split("function onPointerDown")[0];
-  // The Rules fold starts its read whenever it is open, not loaded, and not already loading. A status of
-  // "error" is none of those, so a failed read is started again by the next repaint.
-  assert.match(body, /key === "rules" && !st\.rules\.loaded && st\.rules\.status !== "loading"\) loadRules\(\)/,
-    "the Rules fold no longer restarts a failed read on every repaint: take the mute out of the Try again tests");
-  // The Every version fold does the same on purpose for status === "error".
-  assert.match(body, /!st\.versions\[id\] \|\| st\.versions\[id\]\.status === "error"\)/,
-    "the Every version fold no longer restarts a failed read on every repaint: take the mute out of the Try again tests");
-  assert.ok(!/status !== "error"/.test(body), "a failed read is now left alone until Try again: take the mute out of the Try again tests");
+  // "opened" is true only when the fold was closed before this toggle. A repaint re-creates an open fold,
+  // so its toggle has opened === false and must not restart a failed read.
+  assert.match(body, /const opened = d\.open && !st\.open\[key\];\s*st\.open\[key\] = d\.open;/,
+    "opened is worked out before st.open is updated");
+  assert.match(body, /key === "rules" && !st\.rules\.loaded && st\.rules\.status !== "loading" && \(opened \|\| st\.rules\.status !== "error"\)\) loadRules\(\)/,
+    "the Rules fold restarts a failed read only on a real open");
+  assert.match(body, /!st\.versions\[id\] \|\| \(opened && st\.versions\[id\]\.status === "error"\)/,
+    "the Every version fold restarts a failed read only on a real open");
 });
 
 test("the Try again buttons are still wired in the page: each one calls the read of its own part", () => {

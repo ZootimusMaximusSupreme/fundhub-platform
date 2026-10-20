@@ -340,30 +340,11 @@ test("Scripts: a stale Reject puts up the banner with the saved version, and Rea
 /* ── Scripts tab: Try again on the Rules fold and the Every version fold ──────────────────────
    The scripts list, the ideas list and the batch history are covered in marketing-cc-scripts.spec.mjs.
 
-   The shipped page has a fault in these two folds (finding 1 in manifest-b15.md): when their read
-   fails, onToggle starts the same read again on every repaint, so the failed read repeats without
-   end and the Try again button is repainted faster than a person can press it. That restart and the
-   button both call the same load function, so on the shipped page a test cannot tell the button
-   from the restart.
-
-   So the two button tests below mute exactly that restart and nothing else: a toggle that fires on
-   a fold which is already showing its failed-read box is dropped before the page sees it (the
-   toggle from opening the fold, and every toggle on a fold that is not failing, go through
-   untouched). With that one trigger muted the press is the only thing that can read again. Each
-   test also checks that nothing reads again by itself while the box is on screen, so a restart
-   from some other place would turn it red. The third test measures the fault itself, on the
-   shipped page with nothing muted, and is marked expected-to-fail: it goes red the day the page is
-   fixed, and the marker, with the two mutes, can come off then. */
-
-/** Drop the toggle that a repaint of an already failed fold fires (the page's restart trigger). */
-async function muteRepaintRestarts(page) {
-  await page.addInitScript(() => {
-    window.addEventListener("toggle", (ev) => {
-      const d = ev.target;
-      if (d && d.tagName === "DETAILS" && d.querySelector(".ccs-err")) ev.stopImmediatePropagation();
-    }, true);
-  });
-}
+   These two folds used to restart a failed read on every repaint (finding 1 in manifest-b15.md), so
+   the button tests had to mute that restart. Fixed 2026-10-20: onToggle retries a failed read only on
+   a real open, never on a repaint. The mute is gone, so the press is the only thing that can read
+   again, and each test also checks nothing reads again by itself while the failure box is up. The
+   third test measures the old fault on the page with nothing changed and must stay green. */
 
 /** The scripts API with nothing writing, so the 5 second poll has nothing to read: only a press can read a part again. */
 function quietScriptsApi() {
@@ -383,8 +364,7 @@ function failingRoute(a, key) {
   return state;
 }
 
-test("Scripts: Try again on a failed Rules fold reads the rules once more and paints them (the page's restart on repaint muted)", async ({ page }) => {
-  await muteRepaintRestarts(page);
+test("Scripts: Try again on a failed Rules fold reads the rules once more and paints them", async ({ page }) => {
   const a = quietScriptsApi();
   const rules = failingRoute(a, "GET marketing/rules");
   await openScripts(page, a);
@@ -406,8 +386,7 @@ test("Scripts: Try again on a failed Rules fold reads the rules once more and pa
   expect(rules.reads, "Try again reads the rules once more").toBe(afterFirst + 1);
 });
 
-test("Scripts: Try again on a failed Every version fold reads the versions once more and paints them (the page's restart on repaint muted)", async ({ page }) => {
-  await muteRepaintRestarts(page);
+test("Scripts: Try again on a failed Every version fold reads the versions once more and paints them", async ({ page }) => {
   const a = quietScriptsApi();
   const versions = failingRoute(a, "GET marketing/script");
   await openScripts(page, a);
@@ -430,11 +409,7 @@ test("Scripts: Try again on a failed Every version fold reads the versions once 
   expect(versions.reads, "Try again reads the versions once more").toBe(afterFirst + 1);
 });
 
-test("FINDING: a failed Rules read waits for Try again and is not started again on every repaint", async ({ page }) => {
-  // Expected to fail on the shipped page: with the Rules read answering 500, the fold asks again
-  // after every repaint (dozens of reads a second). The moment the page leaves a failed read alone
-  // this test passes, Playwright reports "expected to fail, but passed", and the marker comes off.
-  test.fail();
+test("a failed Rules read waits for Try again and is not started again on every repaint", async ({ page }) => {
   const a = quietScriptsApi();
   const rules = failingRoute(a, "GET marketing/rules");
   await openScripts(page, a);
