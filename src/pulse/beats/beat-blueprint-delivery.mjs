@@ -1,7 +1,9 @@
-// Read-only hourly adapter for Blueprint advisor, monthly and coach-call delivery.
+// Read-only hourly adapter for Blueprint staff-link, monthly and coach-call delivery.
 // SQL is pinned byte-for-byte to gap-blueprint.mjs by this beat's test.
+// Owner-set 2026-10-20: no staff CSM on a paid buyer is normal (the AI coaches
+// plus the team CSM queue are the CSM). Only a broken saved staff link is red.
 export const id = "blueprint-delivery";
-export const title = "Blueprint clients have real advisors and completed delivery";
+export const title = "Blueprint staff links and delivery are sound";
 export const kind = "infra";
 export const covers = ["desk:csm-queue.html", "job:finance-os-pull-sweeper", "job:waypoint-nudge-sweeper"];
 export const box = false;
@@ -41,6 +43,7 @@ export const REAL_ADVISOR_SQL = `
          AND (s.current_period_start IS NULL OR s.current_period_start <= $2::timestamptz)
          AND (s.current_period_end IS NULL OR s.current_period_end > $2::timestamptz)
      )
+     AND c.assigned_csm_staff_id IS NOT NULL
      AND NOT EXISTS (
        SELECT 1 FROM staff s
        WHERE s.org_id = c.org_id AND s.id = c.assigned_csm_staff_id
@@ -96,15 +99,15 @@ export const COACH_CALL_DELIVERY_SQL = `
   ) failures
 `;
 
-export const fixGuide = `A Blueprint client lacks a real advisor, monthly delivery or a complete coach-call receipt.
+export const fixGuide = `A Blueprint client has a broken staff link, unfinished monthly delivery or an incomplete coach-call receipt.
 
 Likely causes:
-- No real active non-demo advisor was available for the paid client.
+- A paid client is linked to a demo, disabled, suspended or other-company staff person. (No staff link at all is normal: the AI coaches and team CSM queue are the CSM.)
 - The credit result arrived, but a checklist, plan or letter step failed afterward.
 - A coach call has an unresolved claim, missing attribution or an advisor exception.
 Steps:
 - Run node scripts/pulse/run-beat.mjs blueprint-delivery and read the first red step.
-- Open blueprint-csm-assignment owner work and assign a real eligible human through the staff flow.
+- Open blueprint-csm-assignment owner work and clear or fix the broken staff link through the staff flow.
 - Open blueprint-monthly-delivery owner work and finish delivery from its saved credit result.
 - Open blueprint-coach-call advisor work; reconcile saved Bland receipts without redialing an uncertain result.
 - Do not request another paid credit pull or send to clients from this check.
@@ -132,7 +135,7 @@ export async function run(ctx) {
     }
     await countCheck(ctx, "real-advisor", REAL_ADVISOR_SQL,
       [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE, "consulting-package", "succeeded"],
-      "active paid Blueprint clients lack a real assigned advisor");
+      "active paid Blueprint clients are linked to a demo, disabled or other-company staff person");
   });
   await ctx.step("monthly-delivery", () => countCheck(ctx, "monthly-delivery", MONTHLY_DELIVERY_SQL,
     [orgId, "blueprint-monthly-delivery", TEST_CLIENT_EMAIL_RE],
@@ -140,7 +143,7 @@ export async function run(ctx) {
   await ctx.step("coach-call-delivery", () => countCheck(ctx, "coach-call-delivery", COACH_CALL_DELIVERY_SQL,
     [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE],
     "Blueprint coach-call delivery exceptions or unresolved receipts remain"));
-  return ctx.done("No missing real advisor or open delivery exception was found. Counts do not prove a live customer delivery.");
+  return ctx.done("No broken staff link or open delivery exception was found. Counts do not prove a live customer delivery.");
 }
 
 const world = () => ({ read: [

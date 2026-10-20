@@ -99,10 +99,23 @@ test("shadow/keyless coach can show proposed JSON but never execute its action o
   }
 });
 
+test("owner-set 2026-10-20: a live request_advisor saves one team CSM-queue task and the client hears the Fundhub team, never an advisor", async () => {
+  const db = database();
+  const out = await handleInbound(event, db, model(JSON.stringify({ intent: "ask_advisor", action: { type: "request_advisor" } })));
+  assert.equal(out.reason, "replied");
+  const tasks = db.find(/INSERT INTO tasks/);
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].params[6], "csm", "lands in the team CSM queue role");
+  assert.equal(tasks[0].params[5], "blueprint-coach");
+  const body = db.find(/INSERT INTO messages/)[0].params[4];
+  assert.match(body, /^Your request is saved\. The Fundhub team will follow up\./);
+  assert.doesNotMatch(body, /advisor|Alex/i);
+});
+
 test("failed action discards model wording and does not claim success; opt-out and STOP do not call a model", async () => {
   const db = database({ failWrite: true });
   await handleInbound(event, db, model(JSON.stringify({ intent: "ask_blocker", action: { type: "report_progress", waypointKey: "mail_letters", state: "blocked" } })));
-  assert.equal(db.find(/INSERT INTO messages/)[0].params[4], "Your request could not be saved. Please try again or contact your advisor.");
+  assert.equal(db.find(/INSERT INTO messages/)[0].params[4], "Your request could not be saved. Please try again or contact the Fundhub team.");
   for (const [options, inbound] of [[{ optedOut: true }, event], [{}, { ...event, payload: { ...event.payload, body: "STOP" } }]]) {
     const stopped = database(options);
     const out = await handleInbound(inbound, stopped, { env: {}, callModelFn: async () => { throw new Error("must not call model"); } });
@@ -136,7 +149,7 @@ test("model-authored completion, payment, pull and task claims cannot queue, eve
 test("null-action questions are closed server-owned words, not a model-provided question or status", async () => {
   for (const [intent, question] of [["ask_progress", 'What is your next update on "Mail letters"?'],
     ["ask_blocker", 'What is holding you up on "Mail letters"?'], ["ask_proof", 'Can you upload the proof for "Mail letters"?'],
-    ["ask_advisor", "Would you like help from your human advisor?"]]) {
+    ["ask_advisor", "Would you like the Fundhub team to follow up with you?"]]) {
     const db = database();
     const out = await handleInbound(event, db, model(JSON.stringify({ intent, action: null })));
     assert.equal(out.reason, "replied");
@@ -168,7 +181,7 @@ test("agentic inbound answers the client's actual subject without always asking 
   for (const [question, intent, answer] of [
     ["What is my next step?", "explain_step", /saved current step is "Mail letters"/],
     ["Why do you need proof? I already said it is done", "explain_proof", /message saying it is done does not verify/],
-    ["Who is my human advisor?", "explain_advisor", /saved human advisor is "Alex"/],
+    ["Who is my human advisor?", "explain_advisor", /^I am Fundhub's AI coach\. The Fundhub team follows up/],
     ["Will you automatically charge me next year?", "explain_program", /no automatic renewal or charge/]
   ]) {
     const db = database();
@@ -184,6 +197,7 @@ test("agentic inbound answers the client's actual subject without always asking 
     assert.equal(out.reason, "replied");
     const message = db.find(/INSERT INTO messages/)[0].params[4];
     assert.match(message, answer);
+    assert.doesNotMatch(message, /Alex|advisor/i, "the saved staff name never reaches the client");
     assert.doesNotMatch(message, /What is your next update/);
     assert.equal(db.find(/INSERT INTO tasks|UPDATE client_waypoints/).length, 0);
   }
@@ -251,7 +265,8 @@ test("an action acknowledgement does not claim an old step stays open after a co
     assert.equal(out.reason, "replied");
     const body = db.find(/INSERT INTO messages/)[0].params[4];
     assert.match(body, state === "blocked" ? /Your blocker is saved/ : /Your progress note is saved/);
-    assert.match(body, /human advisor/);
+    assert.match(body, /Would you like the Fundhub team to follow up with you\?/);
+    assert.doesNotMatch(body, /advisor/i, "owner-set 2026-10-20: no advisor promise to the client");
     assert.doesNotMatch(body, /still open|stays open|Mail letters/);
   }
 });

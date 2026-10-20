@@ -450,7 +450,7 @@
 
   function loadSaid() {
     if (!window.FHData || !clientId) return;
-    paintSharedContext(null, "Loading saved AI coach and human advisor context…");
+    paintSharedContext(null, "Loading saved AI coach and Fundhub team context…");
     FHData.read("agent-context", { client_id: clientId }).then(function (res) {
       var context = res && res.ok && res.data && res.data.context;
       paintSharedContext(context, context ? null : "The shared client file could not be loaded. Reload to try again.");
@@ -470,7 +470,7 @@
       panel = document.createElement("details");
       panel.setAttribute("data-fh-shared-context", "");
       var heading = document.createElement("summary");
-      heading.textContent = "AI coach and human advisor — shared client file";
+      heading.textContent = "AI coach and Fundhub team — shared client file";
       panel.appendChild(heading);
       ctx.appendChild(panel);
     }
