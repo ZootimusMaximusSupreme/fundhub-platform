@@ -17,6 +17,10 @@ final class BridgeSocket: ObservableObject {
     @Published private(set) var connectCount = 0
 
     var onSession: ((Session) -> Void)?
+    /// v2: a task changed status. Goes to every client.
+    var onTask: ((BridgeTask) -> Void)?
+    /// Called after every good connect ("hello"), so the task list can catch up.
+    var onHello: (() -> Void)?
 
     private struct Subscription {
         var tool: String
@@ -171,8 +175,11 @@ final class BridgeSocket: ObservableObject {
                 send(.subscribe(tool: sub.tool, sessionId: sub.sessionId))
             }
             connectCount += 1
+            onHello?()
         case .session(let s):
             onSession?(s)
+        case .task(let t):
+            onTask?(t)
         case .event(let tool, let sessionId, let event):
             subscriptions[SessionKey.make(tool: tool, id: sessionId)]?.handler(event)
         case .unknown:

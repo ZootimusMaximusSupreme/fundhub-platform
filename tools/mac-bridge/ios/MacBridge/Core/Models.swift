@@ -122,6 +122,8 @@ enum StreamMessage: Equatable {
     case hello(name: String, version: String)
     case session(Session)
     case event(tool: String, sessionId: String, event: Event)
+    /// v2: `{ "type": "task", "task": Task }` on every task status change.
+    case task(BridgeTask)
     case unknown(String)
 
     private struct Raw: Decodable {
@@ -132,6 +134,7 @@ enum StreamMessage: Equatable {
         var tool: String?
         var sessionId: String?
         var event: Event?
+        var task: BridgeTask?
     }
 
     static func decode(_ data: Data) throws -> StreamMessage {
@@ -145,6 +148,9 @@ enum StreamMessage: Equatable {
         case "event":
             guard let tool = raw.tool, let sid = raw.sessionId, let e = raw.event else { return .unknown(raw.type) }
             return .event(tool: tool, sessionId: sid, event: e)
+        case "task":
+            guard let t = raw.task else { return .unknown(raw.type) }
+            return .task(t)
         default:
             return .unknown(raw.type)
         }

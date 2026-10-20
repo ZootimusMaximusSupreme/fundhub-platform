@@ -12,11 +12,11 @@ Branch: `feat/mac-bridge-v1` in worktree `.claude/worktrees/mac-bridge`.
 | 0 | Protocol + board | this session | done | `docs/specs/mac-bridge-protocol-v1.md`, this board |
 | 1 | Mac helper (Node) | agent: mac-helper | done | `tools/mac-bridge/agent/**` |
 | 2 | iPhone app (SwiftUI) | agent: ios-app | done | `tools/mac-bridge/ios/**` |
-| 3 | Join test: phone app in Simulator reads the real helper | this session | blocked: Simulator access not granted (app opened, pair prompt shown) | none new |
+| 3 | Join test: phone app in Simulator reads the real helper | this session | done: paired by link, real session list live, real feed shows commands | none new |
 | 4 | Away mode | Chris | Tailscale (owner-set) | — |
 | 5 | Send from phone into a session | — | replaced by 6 + 7 | — |
 | 6 | v2 Mac helper: tasks, router (Jev off) | agent: mac-tasks | claimed | `tools/mac-bridge/agent/**` |
-| 7 | v2 iPhone: new task, reply box, running strip | agent: ios-tasks | claimed | `tools/mac-bridge/ios/**` |
+| 7 | v2 iPhone: new task, reply box, running strip | agent: ios-tasks | done | `tools/mac-bridge/ios/**` |
 
 1 and 2 run at the same time. No dependency between them; both read the protocol file. 3 waits for both.
 
@@ -60,6 +60,16 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Not done:** no full pair-and-read run against the live helper (that is row 3). QR scan cannot run in the Simulator (no camera); paste-link and typed pairing work there. No app icon yet. Not committed.
 - **Contract notes (not changed):** (a) ATS `NSAllowsLocalNetworking` blocks Tailscale MagicDNS names, so away use must type the `100.x` address. (b) The spec has no "last N events" read, so a long session loads every page from `after=0` on open. A `before=`/tail read would fix that in v2.
 
+### 7 — v2 iPhone
+
+- **New files (under `tools/mac-bridge/ios/`):** `MacBridge/Core/Tasks.swift` (task model `BridgeTask` with the spec field names, `TaskStatus`, `TaskTool`, `NewTaskRequest`, `TaskResponse`/`TasksResponse`, live-list rules `TaskList`), `MacBridge/UI/TaskViews.swift` (New task sheet, Running row, status badge, task card, reply bar), `MacBridgeTests/TaskTests.swift` (22 tests).
+- **Changed files:** `Core/BridgeAPI.swift` (POST /v1/tasks, GET /v1/tasks, POST /v1/tasks/:id/stop, bearer as v1; one error mapper: 401 pair again, 404, 429 busy, 400 with the Mac's error word, anything else "error <code>"), `Core/Models.swift` (`{"type":"task"}` stream message), `Core/BridgeSocket.swift` (`onTask`, `onHello`), `UI/AppModel.swift` (live task list, start, stop, refresh on open/return/reconnect), `UI/SessionListView.swift` (New task button, Running strip with Stop + confirm, opens the feed by itself), `UI/SessionFeedView.swift` (reply bar pinned at the bottom, "waiting for the session to start"), `UI/FeedModel.swift` (a brand-new session with 0 events waits up to 30 s and re-subscribes each second, because the helper ignores a subscribe to a session it does not know yet), `README.md`.
+- **`project.pbxproj` not changed, on purpose:** the project uses synced folders (`PBXFileSystemSynchronizedRootGroup`), so new files join their target by themselves. Adding them by hand would build them twice.
+- **Owner change applied:** no safety check. No "blocked" status, no 422 screen, no blocked tests. Any unexpected error shows its code in plain words.
+- **Build/test:** `xcodebuild -project tools/mac-bridge/ios/MacBridge.xcodeproj -scheme MacBridge -destination 'platform=iOS Simulator,id=2A5B9D1A-9B97-4270-AB23-3A7DF69BF1A9' -derivedDataPath <scratch> build test` → `** BUILD SUCCEEDED **`, `Executed 59 tests, with 0 failures (0 unexpected)`, `** TEST SUCCEEDED **`. The 37 old tests are unchanged and green, plus 22 new. Zero Swift warnings.
+- **Checked against the helper's code in progress (read only):** same field names, `{type:"task"}` on every change, 429 `busy`, 202 `{task}`. On a reply the helper sets `sessionId` to the resumed id right away. The reply bar also tracks its own task id, so it stays busy even if the Mac writes the reply into a new session id, and then shows a link to that session.
+- **Not done:** no tap-through in the Simulator (no access granted) and no live run against the v2 helper. Not committed.
+
 ## Leftovers
 
 - Apple App Store upload needs the App Store Connect API key, which is not saved yet (see memory: apple-developer-account).
@@ -87,3 +97,12 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 - **Jev: build the slot, leave it off.** Chris does not want to pay for Jev yet.
 - **Delegation reads the repo rules.** No separate lane table for now.
 - **No safety check.** Chris: "No need for safety check." The repo's own guards stay as they are.
+
+## Owner calls — 2026-10-20 (fifth note)
+
+- **Install it into Codex, Claude and Cursor.** Each of the three can plug into the bridge and hand tasks to the others. Cursor becomes a third tool next to Claude and Codex.
+- Chris on the app: "the app is really good actually."
+
+## Leftovers (own product, small)
+
+- Session titles show raw `<pasted_content …>` tags when the first message was a paste. Strip tags in the title.

@@ -36,7 +36,14 @@ struct SessionFeedView: View {
                 .padding(.vertical, 10)
             }
             .overlay {
-                if feed.loading && feed.events.isEmpty {
+                if feed.waitingForStart && feed.events.isEmpty {
+                    VStack(spacing: 8) {
+                        ProgressView()
+                        Text("Waiting for the session to start…")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if feed.loading && feed.events.isEmpty {
                     ProgressView()
                 } else if !feed.loading && feed.events.isEmpty && feed.error == nil {
                     ContentUnavailableView("Nothing here yet", systemImage: "text.bubble")
@@ -71,6 +78,10 @@ struct SessionFeedView: View {
                     unseen += max(0, new - old)
                 }
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // v2: reply in this session (same tool, resumes this session id).
+            ReplyBar(session: feed.session)
         }
         .navigationTitle(feed.session.title.isEmpty ? feed.session.project : feed.session.title)
         .navigationBarTitleDisplayMode(.inline)

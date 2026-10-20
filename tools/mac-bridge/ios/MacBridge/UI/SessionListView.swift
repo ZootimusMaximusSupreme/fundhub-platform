@@ -4,10 +4,20 @@ struct SessionListView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var socket: BridgeSocket
     @State private var confirmForget = false
+    @State private var path: [Session] = []
+    @State private var showNewTask = false
+    @State private var stopCandidate: BridgeTask?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
+                if !model.runningTasks.isEmpty {
+                    Section("Running") {
+                        ForEach(model.runningTasks) { t in
+                            runningRow(t)
+                        }
+                    }
+                }
                 if socket.state == .unauthorized {
                     Section {
                         Label("The Mac rejected this phone's token. Forget this Mac and pair again.", systemImage: "lock.trianglebadge.exclamationmark")
@@ -29,7 +39,7 @@ struct SessionListView: View {
             }
             .listStyle(.insetGrouped)
             .overlay {
-                if model.sessions.isEmpty && model.listError == nil {
+                if model.sessions.isEmpty && model.runningTasks.isEmpty && model.listError == nil {
                     if model.isLoadingSessions {
                         ProgressView()
                     } else {
@@ -52,6 +62,13 @@ struct SessionListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     StatusPill()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showNewTask = true
+                    } label: {
+                        Label("New task", systemImage: "square.and.pencil")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -78,6 +95,38 @@ struct SessionListView: View {
             } message: {
                 Text("The token is removed from this phone. Your Mac is not changed.")
             }
+            .confirmationDialog(
+                "Stop this task?",
+                isPresented: Binding(
+                    get: { stopCandidate != nil },
+                    set: { if !$0 { stopCandidate = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: stopCandidate
+            ) { t in
+                Button("Stop task", role: .destructive) {
+                    stopCandidate = nil
+                    Task { await model.stopTask(id: t.id) }
+                }
+            } message: { t in
+                Text("\(t.toolLabel): \(t.firstLine)\nThe Mac asks it to stop, then ends it after 5 seconds.")
+            }
+            .sheet(isPresented: $showNewTask) {
+                NewTaskView { s in
+                    path = [s]
+                }
+                .environmentObject(model)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func runningRow(_ t: BridgeTask) -> some View {
+        let row = RunningTaskRow(task: t) { stopCandidate = t }
+        if let s = model.session(for: t) {
+            NavigationLink(value: s) { row }
+        } else {
+            row
         }
     }
 }
