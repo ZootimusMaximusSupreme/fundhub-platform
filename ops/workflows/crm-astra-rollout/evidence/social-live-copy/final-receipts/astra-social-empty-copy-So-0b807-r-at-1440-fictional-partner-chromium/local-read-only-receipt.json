@@ -1,0 +1,27 @@
+{
+  "width": 1440,
+  "hasPartner": true,
+  "text": "Write a post to preview its copy check.",
+  "writes": [],
+  "errors": [],
+  "allowedStatic": [
+    "/app/social-studio.html",
+    "/assets/fonts/nunito-latin-variable.woff2",
+    "/app/fundhub-font.css",
+    "/app/fundhub-brand.css",
+    "/app/crm-sidebar.css",
+    "/app/fundhub-astra.css",
+    "/app/fundhub-astra-staff.css",
+    "/app/fundhub-font.js",
+    "/app/shell.js",
+    "/app/data.js",
+    "/app/crm-sidebar.css",
+    "/app/fundhub-brand.css",
+    "/app/workspace-ui.css",
+    "/app/chat-widget.js",
+    "/favicon.svg"
+  ],
+  "blockedExternal": [
+    "GET https://fonts.googleapis.com/css2"
+  ]
+}

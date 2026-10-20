@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-20T08:42:32.525Z",
+  "checkedAt": "2026-10-20T09:39:06.653Z",
   "base": "f1ab024ee0fca5b236ecac50957ec0286c628101",
   "total": 62,
   "changed": 59,
@@ -632,7 +632,7 @@
       "originalScripts": 4,
       "currentScripts": 4,
       "baselineHash": "aa9313914c08aad037aea213a7ac2e1682c3265a8ca1bcc6ac763183fd186ee8",
-      "currentHash": "f6a8fa9b4f748a80726ba8fcda6b86e36a55aad710039bedb4ee1560e406f923",
+      "currentHash": "b5b8a7868704913ca77fdcc6579c9227129e18ac0cdd4c2335fc1658fcf61383",
       "issues": []
     },
     {
@@ -656,7 +656,7 @@
       "originalScripts": 5,
       "currentScripts": 6,
       "baselineHash": "b573590ed860757b4d41d286d65e14ebc6111954b524105573976aa739fbc444",
-      "currentHash": "a7ae2083bc4bfa6221dd37c5aa8a62608fff956936ed87732673ab48e6cd1947",
+      "currentHash": "8f8af41e2d5a2c60728bc0a626f48f0bcd3aa7cc39f62ee9a1458a9750a38f71",
       "issues": []
     },
     {

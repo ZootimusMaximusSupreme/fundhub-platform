@@ -1,0 +1,829 @@
+{
+  "capturedAt": "2026-10-20T09:28:52.900Z",
+  "synthetic": true,
+  "realDevice": false,
+  "liveAssets": true,
+  "site": "https://fundhub.ai",
+  "localAssetReplacement": false,
+  "results": [
+    {
+      "page": "teams",
+      "profile": "phone390",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [
+        "FHData is not defined"
+      ],
+      "denied": [],
+      "interceptedWrites": [],
+      "passed": false,
+      "failure": "page threw a JavaScript error:\nReferenceError: FHData is not defined\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"ReferenceError: FHData is not defined\",\n+ ]"
+    },
+    {
+      "page": "teams",
+      "profile": "promax",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 440,
+          "height": 763
+        },
+        "pageWidth": 440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "teams-promax-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "teams",
+      "profile": "promax-landscape",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "teams-promax-landscape-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "teams",
+      "profile": "intermediate768",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "pageWidth": 768,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "teams-intermediate768-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "teams",
+      "profile": "intermediate1024",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [
+        "FHData is not defined"
+      ],
+      "denied": [],
+      "interceptedWrites": [],
+      "passed": false,
+      "failure": "page threw a JavaScript error:\nReferenceError: FHData is not defined\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"ReferenceError: FHData is not defined\",\n+ ]"
+    },
+    {
+      "page": "teams",
+      "profile": "mac-webkit1280",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [
+        "ReferenceError: Can't find variable: FHData"
+      ],
+      "denied": [],
+      "interceptedWrites": [],
+      "passed": false,
+      "failure": "page threw a JavaScript error:\nUnhandled Promise Rejection: ReferenceError: Can't find variable: FHData\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"Unhandled Promise Rejection: ReferenceError: Can't find variable: FHData\",\n+ ]"
+    },
+    {
+      "page": "teams",
+      "profile": "desktop1440",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pageWidth": 1440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "teams-desktop1440-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "portal",
+      "profile": "phone390",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pageWidth": 390,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-phone390-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "portal",
+      "profile": "promax",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [
+        "GET /manifest.webmanifest"
+      ],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 440,
+          "height": 763
+        },
+        "pageWidth": 440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-promax-MARKED.png",
+      "passed": false
+    },
+    {
+      "page": "portal",
+      "profile": "promax-landscape",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [
+        "GET /manifest.webmanifest"
+      ],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-promax-landscape-MARKED.png",
+      "passed": false
+    },
+    {
+      "page": "portal",
+      "profile": "intermediate768",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "pageWidth": 768,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-intermediate768-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "portal",
+      "profile": "intermediate1024",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "pageWidth": 1024,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-intermediate1024-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "portal",
+      "profile": "mac-webkit1280",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [
+        "GET /manifest.webmanifest"
+      ],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "pageWidth": 1280,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-mac-webkit1280-MARKED.png",
+      "passed": false
+    },
+    {
+      "page": "portal",
+      "profile": "desktop1440",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pageWidth": 1440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "portal-desktop1440-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "phone390",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pageWidth": 390,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-phone390-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "promax",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 440,
+          "height": 763
+        },
+        "pageWidth": 440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-promax-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "promax-landscape",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-promax-landscape-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "intermediate768",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "pageWidth": 768,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-intermediate768-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "intermediate1024",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "pageWidth": 1024,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-intermediate1024-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "mac-webkit1280",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "pageWidth": 1280,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-mac-webkit1280-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "money",
+      "profile": "desktop1440",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pageWidth": 1440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "money-desktop1440-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "phone390",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pageWidth": 390,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-phone390-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "promax",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 440,
+          "height": 763
+        },
+        "pageWidth": 440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-promax-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "promax-landscape",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-promax-landscape-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "intermediate768",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "pageWidth": 768,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-intermediate768-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "intermediate1024",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "pageWidth": 1024,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-intermediate1024-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "mac-webkit1280",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "pageWidth": 1280,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-mac-webkit1280-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "affiliate",
+      "profile": "desktop1440",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pageWidth": 1440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "affiliate-desktop1440-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "phone390",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "pageWidth": 390,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-phone390-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "promax",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 440,
+          "height": 763
+        },
+        "pageWidth": 440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-promax-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "promax-landscape",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-promax-landscape-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "intermediate768",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "pageWidth": 768,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-intermediate768-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "intermediate1024",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "pageWidth": 1024,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-intermediate1024-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "mac-webkit1280",
+      "engine": "webkit",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "pageWidth": 1280,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-mac-webkit1280-MARKED.png",
+      "passed": true
+    },
+    {
+      "page": "pipeline",
+      "profile": "desktop1440",
+      "engine": "chromium",
+      "fixture": true,
+      "liveAssets": true,
+      "realDevice": false,
+      "errors": [],
+      "denied": [],
+      "interceptedWrites": [],
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pageWidth": 1440,
+        "bodyFont": 16,
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": []
+      },
+      "screenshot": "pipeline-desktop1440-MARKED.png",
+      "passed": true
+    }
+  ]
+}

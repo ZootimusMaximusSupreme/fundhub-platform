@@ -1,0 +1,19 @@
+{
+  "readyState": "interactive",
+  "dependency": "undefined",
+  "events": [],
+  "width": 440,
+  "pageWidth": 440,
+  "busy": "true",
+  "rowCount": 0,
+  "status": "Loading team members…",
+  "errors": [
+    "ReferenceError: Can't find variable: FHData"
+  ],
+  "requests": [
+    "/api/auth/session",
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand"
+  ]
+}

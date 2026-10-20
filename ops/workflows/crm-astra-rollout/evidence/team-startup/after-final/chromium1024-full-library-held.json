@@ -1,0 +1,16 @@
+{
+  "readyState": "interactive",
+  "dependency": "undefined",
+  "events": [],
+  "width": 1024,
+  "pageWidth": 1024,
+  "busy": "true",
+  "rowCount": 0,
+  "status": "Loading team members…",
+  "errors": [],
+  "requests": [
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand"
+  ]
+}

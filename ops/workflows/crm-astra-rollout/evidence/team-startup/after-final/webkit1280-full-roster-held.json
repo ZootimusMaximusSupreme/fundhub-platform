@@ -1,0 +1,21 @@
+{
+  "readyState": "complete",
+  "dependency": "object",
+  "events": [
+    "data.js loaded",
+    "DOMContentLoaded"
+  ],
+  "width": 1280,
+  "pageWidth": 1280,
+  "busy": "true",
+  "rowCount": 0,
+  "status": "Loading team members…",
+  "errors": [],
+  "requests": [
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand",
+    "/api/auth/session",
+    "/api/read/staff?limit=200"
+  ]
+}
