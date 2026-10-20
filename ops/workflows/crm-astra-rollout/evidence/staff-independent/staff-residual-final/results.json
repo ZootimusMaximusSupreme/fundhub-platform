@@ -1,0 +1,544 @@
+[
+  {
+    "page": "finance-os",
+    "profile": "promax",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nJB\nFinancial overview\nChange client\n⌄\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability",
+    "screenshot": "shots/finance-os-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "finance-os",
+    "profile": "promax",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nJB\nFinancial overview\nChange client\n⌄\nFind a client\nAlready open\nClose this client\n1 client on file\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability",
+    "screenshot": "shots/finance-os-promax-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "finance-os",
+    "profile": "promax",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 1,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nJB\nFinancial overview\nChange client\n⌄\nFind a client\nAlready open\nClose this client\n1 client on file\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability\nPromo tracking\nnot live\n\nNot live. No promo end dates are stored for this client’s cards, so there is nothing to list and no countdown to show.\n\nThis panel shows nothing made up. It will fill in once promo end dates are recorded.",
+    "screenshot": "shots/finance-os-promax-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "finance-os",
+    "profile": "promax",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 0,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nJB\nFinancial overview\nChange client\n⌄\nFind a client\nAlready open\nClose this client\n1 client on file\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability\nPromo tracking\nnot live\n\nNot live. No promo end dates are stored for this client’s cards, so there is nothing to list and no countdown to show.\n\nThis panel shows nothing made up. It will fill in once promo end dates are recorded.",
+    "screenshot": "shots/finance-os-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "finance-os",
+    "profile": "390",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nJB\nFinancial overview\nChange client\n⌄\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability",
+    "screenshot": "shots/finance-os-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "finance-os",
+    "profile": "1440",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 26,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/finance-os.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nFinance OS\nDana Whitfield\nSearch\n⌘K\nChat\nJB\nJordan\nFinancial overview\nChange client\n⌄\nDana Whitfield · available credit\n—\nThere is no credit report on file for this client yet.\nCredit\nAccounts\nPayments\nCharges\nPaydown simulator\nBlueprint · Finance OS\nCash on hand ($)\nSplit this cash\nType how much cash this client can put toward their cards and choose “Split this cash”. The split and the before and after pre-approval appear here.\nOptimize your accounts\nfinance-os add-on\nNo credit check has run for this client yet this month. One is requested automatically — see Repeating charges below for what is already known.\nCredit picture\ncredit report\nNothing yet. These figures appear once a credit report is pulled for this client.\nRepeating charges\non these accounts\nRepeating charges show here once a connected account has some history.\nBank accounts\n\nBalances stay separate by account type.\n\nBank accounts\ncash\nNo bank account is on file. Nothing here is a made-up balance.\nPayments & invoices\n\nWhat has been paid and what is still owed.\n\nMoney in\npayments received\nPaid so far\n—\nNo payment has been recorded against this client yet.\nThe agreed success fee percent is not available in this view. A success fee appears under Invoiced once it has been billed.\nInvoiced\nbilled and outstanding\nNothing has been invoiced to this client yet.\nPromo tracking availability",
+    "screenshot": "shots/finance-os-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 15,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 369,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nThe lender list starts empty on purpose. Import the seven product tables from your spreadsheet to build the directory.\nLender list\nBureau mismatch queue AI bureau config\nLender name\nProduct table\nMore filters\nBureau, tier, status, state\nApply filters\nAll lender records\nEmpty — import from the spreadsheet\nNo lender records yet\n\nImport your CSV or add a real lender to begin.",
+    "screenshot": "shots/lenders-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 17,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 369,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nThe lender list starts empty on purpose. Import the seven product tables from your spreadsheet to build the directory.\nLender list\nBureau mismatch queue AI bureau config\nLender name\nProduct table\nMore filters\nBureau, tier, status, state\nBureau pulled\nPriority tier\nStatus\nEligible state\nApply filters\nAll lender records\nEmpty — import from the spreadsheet\nNo lender records yet\n\nImport your CSV or add a real lender to begin.",
+    "screenshot": "shots/lenders-promax-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "secondary1",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 11,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 279,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nLender list\nBureau mismatch queue AI bureau config\nReview actual bureau pulls that differ from the lender record. Confirm the observation, mark the record corrected, or dismiss it.\nMismatch queue\n0 open\nNo open mismatches.",
+    "screenshot": "shots/lenders-promax-secondary1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "secondary2",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 279,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nLender list\nBureau mismatch queue AI bureau config\nRouting for the AI inquiry caller. Use verified service numbers and menu paths from your operations records. Owner, admin, and funding advisor can edit.\nAI bureau config\nAdd bureau row\nNo bureau config yet. Add EX / EQ / TU with real numbers from your ops docs.",
+    "screenshot": "shots/lenders-promax-secondary2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "secondary3",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 279,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nLender list\nBureau mismatch queue AI bureau config\nRouting for the AI inquiry caller. Use verified service numbers and menu paths from your operations records. Owner, admin, and funding advisor can edit.\nAI bureau config\nAdd bureau row\nNo bureau config yet. Add EX / EQ / TU with real numbers from your ops docs.",
+    "screenshot": "shots/lenders-promax-secondary3-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "promax",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue AI bureau config",
+          "x": 16,
+          "y": 279,
+          "w": 408,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 468,
+          "clientWidth": 408,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nLender list\nBureau mismatch queue AI bureau config\nRouting for the AI inquiry caller. Use verified service numbers and menu paths from your operations records. Owner, admin, and funding advisor can edit.\nAI bureau config\nAdd bureau row\nNo bureau config yet. Add EX / EQ / TU with real numbers from your ops docs.",
+    "screenshot": "shots/lenders-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "390",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 15,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "tabs fh-astra-tabs",
+          "text": "Lender list\nBureau mismatch queue \nAI bureau config",
+          "x": 16,
+          "y": 389,
+          "w": 358,
+          "h": 57.4,
+          "font": 16,
+          "scrollWidth": 461,
+          "clientWidth": 358,
+          "overflow": "auto"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nJB\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nThe lender list starts empty on purpose. Import the seven product tables from your spreadsheet to build the directory.\nLender list\nBureau mismatch queue \nAI bureau config\nLender name\nProduct table\nAll\nOnlineBizCC\nInBranchBizCC\nBizLOC_Stated\nBizLOC_Documented\nPersonalCC\nPersonalLoans\nPersonalLOC\nMore filters\nBureau, tier, status, state\nApply filters\nAll lender records\nEmpty — import from the spreadsheet\nNo lender records yet\n\nImport your CSV or add a real lender to begin.",
+    "screenshot": "shots/lenders-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "lenders",
+    "profile": "1440",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 32,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/lenders.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nLenders\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n\nFunding operations\n\nLender directory\n\nKeep eligibility current and review bureau differences.\n\nExport CSV\nAdd lender\nImport CSV\nThe lender list starts empty on purpose. Import the seven product tables from your spreadsheet to build the directory.\nLender list\nBureau mismatch queue \nAI bureau config\nLender name\nProduct table\nAll\nOnlineBizCC\nInBranchBizCC\nBizLOC_Stated\nBizLOC_Documented\nPersonalCC\nPersonalLoans\nPersonalLOC\nBureau pulled\nPriority tier\nAll\n1\n2\n3\nStatus\nAll\nActive\nInactive\nEligible state\nApply filters\nAll lender records\nEmpty — import from the spreadsheet\nLender\tProduct table\tBureaus\tEligibility\tTier\tStatus\tUpdated\tActions\nNo lender records yet\n\nImport your CSV or add a real lender to begin.",
+    "screenshot": "shots/lenders-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "messaging",
+    "profile": "promax",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 9,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/messaging.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nDocuments\nInquiry specialist\nInsights\n⌄\nPrivate workspace\nMessaging\nAll clients\nCR\nInbox\nSearch people and messages\nAll 1\nNeeds reply 1\nDW\nDana Whitfield\nnow\nany update on my file?\nSMS\nWaiting on us",
+    "screenshot": "shots/messaging-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "messaging",
+    "profile": "promax",
+    "state": "secondary1",
+    "role": "closer",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/messaging.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nDocuments\nInquiry specialist\nInsights\n⌄\nPrivate workspace\nMessaging\nAll clients\nCR\nDana Whitfield\nSMS · waiting on a reply from us\nDetails\nSMS\nDana Whitfield\nany update on my file?\nnow\nEmail\nText\nOne conversation per channel.\nTexting hours are closed. Anything you send now is saved and goes out automatically at 8:00am Arizona time — you do not need to send it again.\nSend this one to\nUse the full number with the country code, like +15551234567.\nSend\nYour name is saved on anything you send from here. Every message is checked before it goes out.",
+    "screenshot": "shots/messaging-promax-secondary1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "messaging",
+    "profile": "promax",
+    "state": "lower",
+    "role": "closer",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/messaging.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nDocuments\nInquiry specialist\nInsights\n⌄\nPrivate workspace\nMessaging\nAll clients\nCR\nDana Whitfield\nSMS · waiting on a reply from us\nDetails\nSMS\nDana Whitfield\nany update on my file?\nnow\nEmail\nText\nOne conversation per channel.\nTexting hours are closed. Anything you send now is saved and goes out automatically at 8:00am Arizona time — you do not need to send it again.\nSend this one to\nUse the full number with the country code, like +15551234567.\nSend\nYour name is saved on anything you send from here. Every message is checked before it goes out.",
+    "screenshot": "shots/messaging-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "messaging",
+    "profile": "390",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 9,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/messaging.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nDocuments\nInquiry specialist\nInsights\n⌄\nPrivate workspace\nMessaging\nAll clients\nCR\nInbox\nSearch people and messages\nAll 1\nNeeds reply 1\nDW\nDana Whitfield\nnow\nany update on my file?\nSMS\nWaiting on us",
+    "screenshot": "shots/messaging-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "messaging",
+    "profile": "1440",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 23,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/messaging.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nDocuments\nInquiry specialist\nInsights\n⌄\nPrivate workspace\nMessaging\nAll clients\nSearch\n⌘K\nChat\nCR\nCasey\nInbox\nSearch people and messages\nAll 1\nNeeds reply 1\nDW\nDana Whitfield\nnow\nany update on my file?\nSMS\nWaiting on us\n—\nNo conversation open\nPick one on the left to read it.\nPick a conversation on the left to read it.\nClient details\nPick a conversation to see who it is with.\nTheir other threads\nPick a conversation first.\nClient file\nPick a conversation first.\nMessage guide\n⌄\nnone open",
+    "screenshot": "shots/messaging-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "present",
+    "profile": "promax",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 1,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/present.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "PRESENT\nYOUR NUMBERS ARE NOT ON THIS FILE YET\nClient screen only\nS-01 / SESSION\nfundhub.\nFUNDING STRATEGY SESSION\n—\n—\nCUSTOMER-INITIATED · SOFT INQUIRY · NO OBLIGATION\n01 INTRO\n1 / 30\nRapport\nSAY THIS\nHey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?\nMirror their energy. Let them answer. Do not rush.\nI know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?\nWATCH FOR\nThe first 60 seconds decide whether they trust you or have their guard up.\n01\n02\n03\n04\n05\n06\n07\nBack\nNext screen",
+    "screenshot": "shots/present-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "present",
+    "profile": "promax",
+    "state": "lower",
+    "role": "closer",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 1,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/present.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "PRESENT\nYOUR NUMBERS ARE NOT ON THIS FILE YET\nClient screen only\nS-01 / SESSION\nfundhub.\nFUNDING STRATEGY SESSION\n—\n—\nCUSTOMER-INITIATED · SOFT INQUIRY · NO OBLIGATION\n01 INTRO\n1 / 30\nRapport\nSAY THIS\nHey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?\nMirror their energy. Let them answer. Do not rush.\nI know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?\nWATCH FOR\nThe first 60 seconds decide whether they trust you or have their guard up.\n01\n02\n03\n04\n05\n06\n07\nBack\nNext screen",
+    "screenshot": "shots/present-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "present",
+    "profile": "390",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 8,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/present.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "PRESENT\nYOUR NUMBERS ARE NOT ON THIS FILE YET\nClient screen only\nS-01 / SESSION\nfundhub.\nFUNDING STRATEGY SESSION\n—\n—\nCUSTOMER-INITIATED · SOFT INQUIRY · NO OBLIGATION\n01 INTRO\n1 / 30\nRapport\nSAY THIS\nHey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?\nMirror their energy. Let them answer. Do not rush.\nI know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?\nWATCH FOR\nThe first 60 seconds decide whether they trust you or have their guard up.\n01\n02\n03\n04\n05\n06\n07\nBack\nNext screen",
+    "screenshot": "shots/present-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "present",
+    "profile": "1440",
+    "state": "initial",
+    "role": "closer",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 10,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:58886/app/present.html?client_id=aaaaaaaa-1111-4111-8111-111111111111&id=aaaaaaaa-1111-4111-8111-111111111111",
+    "screenText": "PRESENT\nYOUR NUMBERS ARE NOT ON THIS FILE YET\nClient screen only\nS-01 / SESSION\nfundhub.\nFUNDING STRATEGY SESSION\n—\n—\nCUSTOMER-INITIATED · SOFT INQUIRY · NO OBLIGATION\n01 INTRO\n1 / 30\nRapport\nSAY THIS\nHey [First Name]! It's [Your Name] over at Fundhub. How's your week been so far?\nMirror their energy. Let them answer. Do not rush.\nI know we've got a limited amount of time, so are you ready to jump in? Are you in front of a computer with a card handy for the soft-pull assessment?\nWATCH FOR\nThe first 60 seconds decide whether they trust you or have their guard up.\n01\n02\n03\n04\n05\n06\n07\nBack\nNext screen",
+    "screenshot": "shots/present-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  }
+]

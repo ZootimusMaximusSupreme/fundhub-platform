@@ -945,7 +945,7 @@
       out += "</li>";
     });
     out += "</ol>";
-    if (!writeReady) out += '<p class="caption cci-muted">Write now turns on when the script writer is live. Until then each idea waits for the next batch.</p>';
+    if (!writeReady) out += '<p class="caption cci-muted">Write now needs the script writer. Ideas wait for the next batch.</p>';
     return out;
   }
 
@@ -1222,10 +1222,10 @@
       if (!buildBlock) out += costHtml(costLines("funnel", st.costs));
       if (st.open["rename:" + v.id]) {
         out += '<div class="field cci-inline"><label for="cci-rn-' + esc(v.id) + '">New address (after apply.fundhub.ai/)</label><input id="cci-rn-' + esc(v.id) + '" type="text" autocapitalize="off" autocomplete="off" data-draft="rename:' + esc(v.id) + '" value="' + esc(obj(st.drafts)["rename:" + v.id]) + '" placeholder="' + esc(v.path.replace(/^\//, "")) + '">' +
-          '<div class="actions">' + btn("Save the address", "funnel-rename", { data: { id: v.id } }) + '<span class="caption cci-muted">Free. Refused if the address is taken or live.</span></div></div>';
+          '<div class="actions">' + btn("Save the address", "funnel-rename", { data: { id: v.id } }) + '<span class="caption cci-muted">Free. Live funnels cannot move; address must be unused.</span></div></div>';
       }
       out += '<div class="cci-push">' + btn("Push live", "funnel-push", { data: { id: v.id }, disabled: !!pushBlock, cls: "cci-push-btn" }) +
-        '<p class="caption cci-muted">' + esc(pushBlock ? pushBlock : "Two taps. The second one names the address. Costs $0. No ad is made or changed.") + "</p></div>";
+        '<p class="caption cci-muted">' + esc(pushBlock ? pushBlock : "Confirm the address next. Costs $0. No ad is made or changed.") + "</p></div>";
       out += '<div class="cci-open" data-open="preview:' + esc(v.id) + '">' + (st.open["preview:" + v.id] ? renderFunnelDetail(st.funnelDetail[v.id], st.previewRole[v.id]) : "") + "</div>";
       out += '<p class="say" data-say="funnel:' + esc(v.id) + '" role="status" aria-live="polite"></p>';
       out += "</li>";
@@ -1264,11 +1264,11 @@
 
       '<div class="cci-grid">' +
       '<section class="card s6" id="cci-ideas" aria-labelledby="cci-ideas-h"><div class="card-hd"><h2 id="cci-ideas-h">Drop an idea</h2></div>' +
-      '<form id="cci-idea-form" novalidate><div class="field"><label for="cci-idea-text">Your idea (the keyboard mic works)</label>' +
-      '<textarea id="cci-idea-text" rows="4" placeholder="For example: lenders check the business file too. Show a clean one next to a messy one."></textarea></div>' +
+      '<form id="cci-idea-form" novalidate><div class="field"><label for="cci-idea-text">Your idea</label>' +
+      '<textarea id="cci-idea-text" rows="4" placeholder="Type or dictate a few talking points…"></textarea></div>' +
       '<div class="cci-two"><div class="field"><label for="cci-idea-format">Format (optional)</label><select id="cci-idea-format">' + fmt + "</select></div>" +
       '<div class="field"><label for="cci-idea-funnel">Funnel (optional)</label><select id="cci-idea-funnel"><option value="">Any funnel</option></select></div></div>' +
-      '<div class="actions">' + btn("Save idea", "save-idea", { id: "cci-save-idea" }) + '<span class="caption cci-muted">Free. It goes in the next batch.</span></div></form>' +
+      '<div class="actions">' + btn("Save idea", "save-idea", { id: "cci-save-idea" }) + '<span class="caption cci-muted">Free. Added to the next batch.</span></div></form>' +
       '<p class="say" data-say="ideas" role="status" aria-live="polite"></p>' +
       '<p class="eyebrow cci-sub">Your ideas</p><div id="cci-idea-list">' + skeleton(3) + "</div></section>" +
 
@@ -1280,7 +1280,7 @@
 
       '<section class="card s12" id="cci-research" aria-labelledby="cci-research-h"><div class="card-hd"><h2 id="cci-research-h">Deep research</h2></div>' +
       '<div id="cci-research-form-wrap"><form id="cci-research-form" novalidate>' +
-      '<div class="field"><label for="cci-q">Your question (the keyboard mic works)</label><textarea id="cci-q" rows="3" placeholder="For example: what do banks check before a business credit line?"></textarea></div>' +
+      '<div class="field"><label for="cci-q">Your question</label><textarea id="cci-q" rows="3" placeholder="What should we research?"></textarea></div>' +
       '<p class="eyebrow">How deep</p><div class="cci-seg" role="radiogroup" aria-label="How deep">' +
       '<button type="button" class="btn cci-segbtn" role="radio" aria-checked="true" data-act="depth" data-depth="quick"><span class="lbl">Quick look</span></button>' +
       '<button type="button" class="btn cci-segbtn" role="radio" aria-checked="false" data-act="depth" data-depth="deep" id="cci-depth-deep"><span class="lbl">Leave nothing unturned</span></button></div>' +
@@ -1289,7 +1289,7 @@
       '<label class="cci-check"><input type="checkbox" id="cci-src-web" checked> Live web pages</label>' +
       '<label class="cci-check"><input type="checkbox" id="cci-src-vault" checked> The Hormozi vault</label>' +
       '<label class="cci-check"><input type="checkbox" id="cci-src-own"> Our own files</label></div>' +
-      '<div class="field"><label for="cci-belief">What I already think the answer is (optional)</label><input id="cci-belief" type="text"></div>' +
+      '<div class="field"><label for="cci-belief">Your starting view (optional)</label><input id="cci-belief" type="text"></div>' +
       '<div class="field cci-stop"><label for="cci-cap">Stop at $ for this run</label><input id="cci-cap" type="number" inputmode="decimal" min="0.5" step="0.5" placeholder="Type a stop amount"></div>' +
       '<div class="actions">' + btn("Research it", "research-start", { id: "cci-research-go", disabled: true }) + "</div>" +
       '<p class="caption cci-cost" id="cci-research-cost"></p></form>' +
@@ -1304,7 +1304,7 @@
       '<form id="cci-funnel-form" novalidate><div class="cci-two"><div class="field"><label for="cci-funnel-offer">What it sells</label><select id="cci-funnel-offer">' + fo + "</select></div>" +
       '<div class="field"><label for="cci-funnel-path">Your own address (optional)</label><input id="cci-funnel-path" type="text" autocapitalize="off" autocomplete="off" placeholder="Leave blank and we pick one"></div></div>' +
       '<div class="actions">' + btn("Make the funnel", "funnel-create", { id: "cci-funnel-go" }) + "</div>" +
-      '<p class="caption cci-muted">It picks a free address for you (like apply.fundhub.ai/blueprint), tags every page, adds the full tracking, and writes the 3 pages.</p>' +
+      '<p class="caption cci-muted">Creates 3 tracked pages with an available address and campaign tags.</p>' +
       '<div id="cci-funnel-cost"></div></form>' +
       '<p class="say" data-say="funnels" role="status" aria-live="polite"></p>' +
       '<p class="eyebrow cci-sub">Your funnels</p><div id="cci-funnel-list">' + skeleton(3) + "</div></section>" +
@@ -1318,7 +1318,7 @@
 
       '<section class="card s6" id="cci-proof" aria-labelledby="cci-proof-h"><div class="card-hd"><h2 id="cci-proof-h">Proof: client wins and testimonials</h2></div>' +
       '<p class="cci-honest">' + esc(notBuiltSentence("proof")) + "</p>" +
-      '<p class="caption cci-muted">Win cards and testimonial cards are made from the real screenshot or video only.</p></section>' +
+      '<p class="caption cci-muted">Requires a real client screenshot or video.</p></section>' +
       "</div></div>";
   }
 

@@ -355,7 +355,9 @@ test("full at 1280: spend with whole days, as-of words, cost lines, every card f
   expect(await size("#tileSpend7 .vl")).toBe("32px");
   expect(await size("#cardCopy h2")).toBe("22px");
   expect(await size("#tileSpend7 .caption")).toBe("13px");
-  expect(await size("#copyAngle")).toBe("15px");
+  // Phone-safe input sizing is now 16px across Astra; the rest of the exact
+  // typography, card shadow, fold and keyboard/action checks remain unchanged.
+  expect(await size("#copyAngle")).toBe("16px");
   expect(await size("#offerCost")).toBe("13px");
   // §12.2 — the card wears the brand's resting shadow, written nowhere on this screen.
   const shadow = await page.locator("#cardCopy").evaluate((el) => getComputedStyle(el).boxShadow);

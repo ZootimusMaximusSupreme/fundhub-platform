@@ -57,6 +57,8 @@ test.describe("pipeline honest load", () => {
     });
     await expect(page.locator("#boardStatus")).toBeVisible();
     await expect(page.locator("#boardStatus")).toContainText(/could not load|failed|Sales/i);
+    await expect(page.locator("#boardStatus")).toContainText("Refresh to try again.");
+    await expect(page.locator("body")).not.toContainText("internal_error");
     await expect(page.locator('.card[data-client-id]')).toHaveCount(0);
   });
 

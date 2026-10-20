@@ -1,0 +1,613 @@
+/* Astra workspace foundation.
+   Opt in with body.fh-astra and load after legacy page styles.
+   Tenant fonts, wordmarks, navigation and the brand ramp remain authoritative. */
+body.fh-astra{
+  --fs-body:1rem;
+  --fs-caption:.8125rem;
+  --fs-title:1.375rem;
+  --fs-metric:2rem;
+  --astra-space:24px;
+  --astra-radius:10px;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:var(--fs-body);
+  line-height:1.5;
+  letter-spacing:0;
+  -webkit-text-size-adjust:100%;
+}
+/* Presentation must never reveal controls or states hidden by the page logic. */
+body.fh-astra [hidden]{display:none!important}
+body.fh-astra :where(.main,.content,.shell,.stage,.fh-astra-page,.fh-astra-workspace){
+  min-width:0;
+}
+body.fh-astra .fh-astra-page{
+  width:100%;
+  max-width:none;
+  margin-inline:0;
+  padding:32px;
+}
+body.fh-astra :where(button,.btn,.tab,.ctab,.link-btn,.fh-astra-action,summary,[role="button"]){
+  min-width:44px;
+  min-height:44px;
+  font-family:var(--sans);
+  font-size:var(--fs-caption);
+  letter-spacing:0;
+  text-transform:none;
+}
+body.fh-astra :where(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+  min-width:0;
+  max-width:100%;
+  min-height:44px;
+  font-family:var(--sans);
+  font-size:var(--fs-body);
+}
+body.fh-astra :where(label:has(input[type="checkbox"]),label:has(input[type="radio"])){
+  min-height:44px;
+}
+/* Keep the established navigation; enlarge the actual shared hit areas. */
+body.fh-astra .side :is(.navhead,.navitem){
+  min-height:44px;
+  font-size:var(--fs-caption);
+}
+body.fh-astra #fh-menu-btn{min-width:44px;min-height:44px;width:44px;height:44px}
+body.fh-astra #fh-workspace-scope>summary{
+  display:inline-flex;align-items:center;min-height:44px;font-size:var(--fs-caption);
+}
+body.fh-astra .side :is(.side-top .logo,.burger){min-height:44px}
+body.fh-astra .side .burger{min-width:44px;width:44px;height:44px}
+body.fh-astra .side .side-foot .who{font-size:var(--fs-caption)}
+body.fh-astra #fh-workspace-header :is(#fh-shell-search-btn,#fh-chat-fab,#fh-shell-chip-show,#fh-shell-out,#fh-shell-avatar){
+  min-width:44px;min-height:44px;
+}
+body.fh-astra #fh-workspace-header :is(.fh-account-initials,.fh-account-role,.fh-account-technical){
+  font-size:var(--fs-caption);
+}
+body.fh-astra #fh-workspace-header #fh-shell-search-btn .fh-k{font-size:var(--fs-caption)}
+body.fh-astra #fh-workspace-header .fh-account-technical summary,
+body.fh-astra #fh-workspace-scope .fh-context-panel :is(a,button){min-height:44px}
+/* Expanded account/context tools keep their contents inside the available view. */
+body.fh-astra #fh-workspace-header{height:auto;flex-basis:auto;flex-wrap:wrap}
+body.fh-astra #fh-workspace-header .fh-workspace-tools{
+  flex:0 1 auto;max-width:100%;flex-wrap:wrap;justify-content:flex-end;
+}
+body.fh-astra #fh-workspace-header .fh-account-menu,
+body.fh-astra #fh-workspace-scope .fh-context-panel{
+  max-height:calc(100dvh - 112px);overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
+}
+body.fh-astra #fh-workspace-header .fh-account-person>div{min-width:0}
+body.fh-astra #fh-workspace-header .fh-account-technical{white-space:normal;overflow-wrap:anywhere}
+body.fh-astra #fh-workspace-header .fh-account-person strong,
+body.fh-astra #fh-workspace-header .fh-account-technical p,
+body.fh-astra #fh-workspace-scope .fh-context-panel :is(p,strong){font-size:var(--fs-body)}
+body.fh-astra #fh-workspace-header :is(#fh-shell-src,.fh-account-technical .clock){font-size:var(--fs-caption)}
+/* The shell writes the photo button's symbol size inline; keep it readable. */
+body.fh-astra #fh-workspace-header #fh-shell-avatar{font-size:var(--fs-body)!important}
+/* This programmatic photo picker stays 1px, not a visible 44px form control. */
+body.fh-astra #fh-workspace-header #fh-shell-chip>input[type="file"]{
+  min-width:0;min-height:0;max-width:1px;inset:0 auto auto 0;overflow:hidden;clip-path:inset(50%);
+}
+@media(max-width:860px){
+  body.fh-astra #fh-workspace-header .fh-account-menu{
+    position:fixed;inset:104px 16px auto;max-width:none;width:auto;max-height:calc(100dvh - 120px);
+  }
+}
+body.fh-astra :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:3px;
+}
+body.fh-astra :where(.btn,.fh-astra-action){
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px 16px;
+  font-weight:650;
+  background:#fff;
+  color:var(--ink);
+  box-shadow:none;
+}
+body.fh-astra :where(.btn,.fh-astra-action):hover{
+  background:var(--soft);
+  border-color:var(--gray2);
+}
+body.fh-astra :where(.btn.dark,.fh-astra-primary){
+  min-height:48px;
+  background:var(--ink);
+  color:var(--paper);
+  border-color:var(--ink);
+}
+body.fh-astra :where(.btn.dark,.fh-astra-primary):hover{
+  background:var(--ink2);
+}
+body.fh-astra :where(.caption,.hint,.note,.sd,.eyebrow,.badge,.chip,.fh-astra-caption){
+  font-family:var(--sans);
+  font-size:var(--fs-caption);
+  letter-spacing:0;
+  text-transform:none;
+}
+body.fh-astra .fh-astra-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  margin:0 0 24px;
+}
+body.fh-astra .fh-astra-heading :where(h1,h2){
+  font-size:var(--fs-metric);
+  font-weight:750;
+  line-height:1.2;
+  letter-spacing:-.04em;
+}
+body.fh-astra .fh-astra-subtitle{
+  margin-top:8px;
+  color:var(--gray);
+  font-size:var(--fs-body);
+  max-width:76ch;
+}
+body.fh-astra .fh-astra-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  margin:0 0 32px;
+  border:1px solid var(--line);
+  border-radius:var(--astra-radius);
+  background:#fff;
+  overflow:hidden;
+}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat){
+  min-width:0;
+  padding:24px;
+  border:0;
+  border-right:1px solid var(--line);
+  border-radius:0;
+  box-shadow:none;
+  background:transparent;
+}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat):last-child{border-right:0}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat)::before{display:none}
+body.fh-astra .fh-astra-summary :is(.eyebrow,.fh-astra-caption){
+  display:block;
+  color:var(--gray);
+  font-weight:650;
+}
+body.fh-astra .fh-astra-summary .eyebrow::before{display:none}
+body.fh-astra .fh-astra-summary :is(.sv,.fh-astra-value){
+  margin:8px 0;
+  font-family:var(--sans);
+  font-size:var(--fs-metric);
+  font-weight:750;
+  line-height:1.2;
+  letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;
+}
+body.fh-astra .fh-astra-summary .sd{color:var(--gray)}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat):nth-child(2){background:color-mix(in srgb,var(--ok) 10%,white)}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat):nth-child(3){background:color-mix(in srgb,var(--info) 10%,white)}
+body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat):nth-child(4){background:color-mix(in srgb,var(--warn) 10%,white)}
+body.fh-astra .fh-astra-workspace{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--astra-radius);
+  box-shadow:var(--panel-shadow);
+}
+body.fh-astra .fh-astra-tabs{
+  display:flex;
+  gap:24px;
+  padding:0 24px;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  background:#fff;
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  box-shadow:none;
+}
+body.fh-astra .fh-astra-tabs :is(.tab,.fh-astra-tab){
+  flex:0 0 auto;
+  width:auto;
+  min-height:56px;
+  padding:16px 0;
+  margin:0;
+  border:0;
+  border-bottom:2px solid transparent;
+  border-radius:0;
+  background:transparent;
+  color:var(--gray);
+  font-family:var(--sans);
+  font-size:var(--fs-body);
+  font-weight:650;
+  letter-spacing:0;
+  text-transform:none;
+  white-space:nowrap;
+}
+body.fh-astra .fh-astra-tabs :is(.on,[aria-selected="true"],[aria-current="page"]){
+  color:var(--ink);
+  border-bottom-color:var(--ink);
+}
+body.fh-astra .fh-astra-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:16px;
+  padding:24px;
+  border-bottom:1px solid var(--line);
+}
+body.fh-astra .fh-astra-table-wrap{
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+}
+body.fh-astra .fh-astra-table{width:100%;border-collapse:collapse}
+body.fh-astra .fh-astra-table th{
+  padding:16px 24px;
+  border-bottom:1px solid var(--line);
+  background:var(--paper);
+  font-family:var(--sans);
+  font-size:var(--fs-caption);
+  font-weight:650;
+  letter-spacing:0;
+  text-transform:none;
+  color:var(--gray);
+  text-align:left;
+}
+body.fh-astra .fh-astra-table td{
+  padding:16px 24px;
+  border-bottom:1px solid var(--line);
+  font-size:var(--fs-body);
+  font-variant-numeric:tabular-nums;
+}
+body.fh-astra .fh-astra-state{
+  padding:48px 24px;
+  min-height:200px;
+  text-align:left;
+  color:var(--gray);
+}
+body.fh-astra .fh-astra-state :where(h2,h3){
+  color:var(--ink);
+  font-size:var(--fs-title);
+  margin-bottom:8px;
+}
+body.fh-astra .fh-astra-state p{max-width:76ch;margin-bottom:24px}
+@media(max-width:1100px){
+  body.fh-astra .fh-astra-page{padding:24px}
+  body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat){padding:16px}
+}
+@media(max-width:700px){
+  body.fh-astra .fh-astra-page{padding:24px 16px}
+  body.fh-astra .fh-astra-heading{align-items:flex-start;flex-direction:column;gap:16px}
+  body.fh-astra .fh-astra-heading :where(h1,h2){font-size:var(--fs-title)}
+  body.fh-astra .fh-astra-summary{grid-template-columns:1fr!important;margin-bottom:24px}
+  body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat){border-right:0;border-bottom:1px solid var(--line)}
+  body.fh-astra .fh-astra-summary :is(.stat,.fh-astra-stat):last-child{border-bottom:0}
+  body.fh-astra .fh-astra-tabs{padding:0 16px}
+  body.fh-astra .fh-astra-toolbar{padding:16px}
+  body.fh-astra .fh-astra-toolbar :where(input,select){width:100%;flex:1 1 100%}
+  body.fh-astra .fh-astra-state{padding:32px 16px}
+}
+@media(prefers-reduced-motion:reduce){
+  body.fh-astra{scroll-behavior:auto}
+}
+
+/* Affiliate: ledger first, then sharing and the existing partner resources.
+   Specificity intentionally beats the prior affiliate presentation only. */
+body.fh-astra.fh-astra-affiliate .content{padding:32px}
+body.fh-astra.fh-astra-affiliate .affiliate-heading{margin-bottom:24px;gap:24px}
+body.fh-astra.fh-astra-affiliate .affiliate-heading h2{
+  margin:0;font-family:var(--sans);font-size:var(--fs-metric);font-weight:750;letter-spacing:-.04em;
+}
+body.fh-astra.fh-astra-affiliate .affiliate-kicker{
+  margin:0 0 8px;font-size:var(--fs-caption);color:var(--gray);
+}
+body.fh-astra.fh-astra-affiliate .affiliate-heading p:not(.affiliate-kicker){
+  margin-top:8px;font-size:var(--fs-body);color:var(--gray);
+}
+body.fh-astra.fh-astra-affiliate :is(.btn,.tab,.eyebrow,.mono,.badge,.terms dt,.foot){
+  font-family:var(--sans);letter-spacing:0;text-transform:none;
+}
+body.fh-astra.fh-astra-affiliate :is(.eyebrow,.badge,.sd,.affiliate-load,.affiliate-section-note,.foot){
+  font-size:var(--fs-caption);color:var(--gray);
+}
+body.fh-astra.fh-astra-affiliate .eyebrow::before{display:none}
+body.fh-astra.fh-astra-affiliate .btn{
+  min-height:44px;min-width:44px;padding:8px 16px;border:1px solid var(--line);
+  border-radius:8px;background:#fff;color:var(--ink);font-size:var(--fs-caption);font-weight:650;
+}
+body.fh-astra.fh-astra-affiliate .btn.dark{
+  min-height:48px;background:#fff;border-color:var(--line);color:var(--ink);
+}
+body.fh-astra.fh-astra-affiliate .btn:hover{background:var(--soft);border-color:var(--gray2)}
+body.fh-astra.fh-astra-affiliate :is(input,select){
+  min-height:48px;font-size:var(--fs-body)!important;border-radius:8px!important;
+}
+body.fh-astra.fh-astra-affiliate .affiliate-load{gap:16px;margin:0 0 24px}
+body.fh-astra.fh-astra-affiliate .stats{
+  gap:0;margin:0 0 24px!important;border:1px solid var(--line);
+  border-radius:10px;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+body.fh-astra.fh-astra-affiliate .stat{padding:24px;border-right:1px solid var(--line);border-bottom:0}
+body.fh-astra.fh-astra-affiliate .stat:last-child{border-right:0}
+body.fh-astra.fh-astra-affiliate .stat .sv{
+  margin:8px 0;font-family:var(--sans);font-size:var(--fs-metric);font-weight:750;line-height:1.2;
+}
+body.fh-astra.fh-astra-affiliate .stat .sd{font-size:var(--fs-caption);color:var(--gray)}
+body.fh-astra.fh-astra-affiliate :is(.card,.linkbox){
+  border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);box-shadow:var(--panel-shadow);
+}
+body.fh-astra.fh-astra-affiliate .card{margin-top:24px!important}
+body.fh-astra.fh-astra-affiliate .linkbox .lt{display:none}
+body.fh-astra.fh-astra-affiliate :is(.linkbox .lb,.card-hd,.card-bd){padding:24px}
+body.fh-astra.fh-astra-affiliate .affiliate-section-title{font-size:var(--fs-title);font-weight:700}
+body.fh-astra.fh-astra-affiliate .affiliate-section-note{margin:8px 0 24px}
+body.fh-astra.fh-astra-affiliate .offerrow{margin-top:16px}
+body.fh-astra.fh-astra-affiliate .offerrow .offername{font-size:var(--fs-body);font-weight:650;color:var(--ink)}
+body.fh-astra.fh-astra-affiliate .linkrow{gap:8px;margin-top:8px}
+body.fh-astra.fh-astra-affiliate .linkrow input{
+  flex:1 1 240px;min-width:0;padding:8px 16px;background:var(--paper);border-color:var(--line);
+  color:var(--ink2);font-family:var(--sans);letter-spacing:0;
+}
+body.fh-astra.fh-astra-affiliate .linkrow .btn{min-width:112px;min-height:48px}
+body.fh-astra.fh-astra-affiliate .offerrow:first-child .linkrow .btn{
+  background:var(--ink);color:var(--paper);border-color:var(--ink);
+}
+body.fh-astra.fh-astra-affiliate .affiliate-link-meta{
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;margin-top:24px;padding-top:24px;border-color:var(--line);
+}
+body.fh-astra.fh-astra-affiliate .affiliate-link-meta :is(.eyebrow,[id$="Note"]){
+  font-size:var(--fs-caption)!important;color:var(--gray)!important;
+}
+body.fh-astra.fh-astra-affiliate .affiliate-link-meta .mono{font-family:var(--sans)!important;font-size:var(--fs-body)!important}
+body.fh-astra.fh-astra-affiliate .affiliate-link-meta .btn{min-height:44px;margin-top:8px;font-size:var(--fs-caption)}
+body.fh-astra.fh-astra-affiliate .scopebar{padding:8px 0;margin:16px 0 0!important}
+body.fh-astra.fh-astra-affiliate .scopebar summary{min-height:44px;display:flex;align-items:center;font-size:var(--fs-caption)}
+body.fh-astra.fh-astra-affiliate .scopebar summary::before{content:"+";margin-right:8px;font-weight:700}
+body.fh-astra.fh-astra-affiliate .scopebar[open] summary::before{content:"−"}
+body.fh-astra.fh-astra-affiliate .scopebar .st:not(summary){font-size:var(--fs-body);color:var(--gray)}
+body.fh-astra.fh-astra-affiliate .banner{
+  margin-top:24px;padding:24px;border-radius:10px;border-color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 12%,white);
+}
+body.fh-astra.fh-astra-affiliate .banner :is(.bt,.bi){color:var(--ink2)}
+body.fh-astra.fh-astra-affiliate .tabs{padding:0 24px;gap:24px;border-color:var(--line);box-shadow:none}
+body.fh-astra.fh-astra-affiliate .tab{padding:16px 0;font-size:var(--fs-body);min-width:44px;min-height:56px}
+body.fh-astra.fh-astra-affiliate select{height:48px}
+body.fh-astra.fh-astra-affiliate #affiliate-records .card-hd .eyebrow{display:block}
+body.fh-astra.fh-astra-affiliate .fh-astra-table th{font-family:var(--sans);font-size:var(--fs-caption);padding:16px 24px;background:var(--paper)}
+body.fh-astra.fh-astra-affiliate .fh-astra-table td{font-family:var(--sans);font-size:var(--fs-body);padding:16px 24px}
+body.fh-astra.fh-astra-affiliate .badge{font-size:var(--fs-caption);border-radius:4px;color:var(--ink2)}
+body.fh-astra.fh-astra-affiliate :is(.terms dt,.terms dd){font-size:var(--fs-body)}
+body.fh-astra.fh-astra-affiliate .terms dt{font-weight:700;margin-top:24px}
+body.fh-astra.fh-astra-affiliate .terms dd{color:var(--gray)}
+body.fh-astra.fh-astra-affiliate .empty{padding:32px 24px;text-align:left;color:var(--gray)}
+body.fh-astra.fh-astra-affiliate .funnel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px}
+body.fh-astra.fh-astra-affiliate .fstep .fb{background:var(--soft)!important;color:var(--ink)!important;font-size:var(--fs-title)}
+body.fh-astra.fh-astra-affiliate .fstep :is(.fl,.fp){font-family:var(--sans);font-size:var(--fs-caption);color:var(--gray)}
+body.fh-astra.fh-astra-affiliate .affiliate-resources-heading{margin:32px 0 8px}
+body.fh-astra.fh-astra-affiliate .affiliate-resources-heading h2{font-size:var(--fs-title)}
+body.fh-astra.fh-astra-affiliate .affiliate-resources-heading p{font-size:var(--fs-caption);color:var(--gray)}
+body.fh-astra.fh-astra-affiliate .affiliate-resources{gap:24px}
+body.fh-astra.fh-astra-affiliate .affiliate-resources>.card{margin-top:16px!important}
+body.fh-astra.fh-astra-affiliate .foot{padding:24px 32px;border:0}
+body.fh-astra.fh-astra-affiliate .client-ios-links a{font-size:var(--fs-caption)}
+body.fh-astra.fh-astra-affiliate .client-ios-nav-label,
+body.fh-astra.fh-astra-affiliate .client-ios-nav-foot{font-size:var(--fs-caption)}
+
+/* Partner home: the existing service canvas remains a specialist work area.
+   Page chrome and real numbers use the same quiet workspace as the CRM. */
+html:has(body.fh-astra-partner-home){height:auto;overflow:visible;background:var(--paper)}
+body.fh-astra.fh-astra-partner-home{
+  height:auto;overflow:visible;--text:var(--ink);--text-dim:var(--gray);--text-faint:var(--gray);
+}
+body.fh-astra.fh-astra-partner-home .app{height:auto;min-height:100vh;overflow:visible}
+body.fh-astra.fh-astra-partner-home .shell{min-width:0;overflow:visible}
+body.fh-astra.fh-astra-partner-home header.topbar{
+  padding:16px 32px;background:#fff;color:var(--ink);border-color:var(--line);gap:16px;
+}
+body.fh-astra.fh-astra-partner-home :is(.brand,.topbar-right){min-width:0}
+body.fh-astra.fh-astra-partner-home .topbar-right{gap:16px;flex:1 1 360px;justify-content:flex-end}
+body.fh-astra.fh-astra-partner-home :is(.brand .sub,.census,.live-pill){
+  font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;color:var(--gray);
+}
+body.fh-astra.fh-astra-partner-home .live-pill{border-color:var(--line);background:var(--paper)}
+body.fh-astra.fh-astra-partner-home #wl-own-url{max-width:100%;overflow-wrap:anywhere}
+body.fh-astra.fh-astra-partner-home #wl-own-url a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline}
+body.fh-astra.fh-astra-partner-home .clock{color:var(--gray)}
+body.fh-astra.fh-astra-partner-home .fh-astra-heading h1{margin:0}
+body.fh-astra.fh-astra-partner-home .home-tiles{
+  gap:0;padding:0;margin:0 0 32px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;
+}
+body.fh-astra.fh-astra-partner-home .home-tiles .tile{
+  padding:24px;border:0;border-right:1px solid var(--line);border-radius:0;background:#fff;
+}
+body.fh-astra.fh-astra-partner-home .home-tiles .tile:nth-child(2){background:color-mix(in srgb,var(--ok) 10%,white)}
+body.fh-astra.fh-astra-partner-home .home-tiles .tile:nth-child(3){background:color-mix(in srgb,var(--info) 10%,white);border-right:0}
+body.fh-astra.fh-astra-partner-home .tile-label{font-weight:650;text-transform:none;letter-spacing:0;color:var(--gray)}
+body.fh-astra.fh-astra-partner-home .tile-value{font-weight:750;color:var(--ink);letter-spacing:-.04em}
+body.fh-astra.fh-astra-partner-home .tile-value.skeleton{background:var(--soft);color:transparent}
+body.fh-astra.fh-astra-partner-home :is(.tile-compare,.home-tiles-status){font-family:var(--sans);color:var(--gray)}
+body.fh-astra.fh-astra-partner-home .home-tiles-status:not([hidden]){
+  padding:16px 24px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--warn) 10%,white);
+}
+body.fh-astra.fh-astra-partner-home .partner-map{overflow:hidden;container-type:inline-size}
+body.fh-astra.fh-astra-partner-home .partner-map-heading{padding:24px}
+body.fh-astra.fh-astra-partner-home .partner-map-heading h2{margin:0;font-size:var(--fs-title)}
+body.fh-astra.fh-astra-partner-home .partner-map-heading p{margin:8px 0 0;color:var(--gray);font-size:var(--fs-caption)}
+body.fh-astra.fh-astra-partner-home .legend{
+  height:auto;min-height:44px;flex-wrap:wrap;white-space:normal;overflow:visible;padding:16px 24px;
+  border-color:var(--line);background:var(--paper);color:var(--gray);font-size:var(--fs-caption);gap:8px 16px;
+}
+body.fh-astra.fh-astra-partner-home .legend b{color:var(--ink2);text-transform:none;letter-spacing:0}
+body.fh-astra.fh-astra-partner-home .sky-wrap{height:480px;min-height:480px;flex:none;background:var(--card)}
+body.fh-astra.fh-astra-partner-home #panel{
+  width:400px;max-width:calc(100% - 32px);inset:50% 16px auto auto;
+  height:calc(100dvh - 32px);max-height:calc(100% - 32px);
+  transform:translate(18px,-50%) scale(.985);
+  border:1px solid var(--line);border-radius:8px;box-shadow:var(--panel-shadow);
+}
+body.fh-astra.fh-astra-partner-home #panel.open{transform:translateY(-50%)}
+body.fh-astra.fh-astra-partner-home .p-scroll{padding:24px;min-height:0;overscroll-behavior-y:contain}
+body.fh-astra.fh-astra-partner-home .p-name{font-size:var(--fs-title)}
+body.fh-astra.fh-astra-partner-home .p-close{min-width:44px;min-height:44px}
+body.fh-astra.fh-astra-partner-home :is(.p-kicker,.p-role,.p-pace,.p-now-k,.p-sec-t,.p-row,.p-tl-i,.p-chip,.p-foot){
+  font-family:var(--sans);letter-spacing:0;text-transform:none;
+}
+body.fh-astra.fh-astra-partner-home .p-sec{margin-top:24px}
+body.fh-astra.fh-astra-partner-home :is(.p-row,.p-tl-i){padding:8px 0}
+body.fh-astra.fh-astra-partner-home .gift-strip{
+  margin-top:24px;padding:24px;gap:16px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+}
+body.fh-astra.fh-astra-partner-home .gift-strip .copy{min-width:0;flex:1 1 440px;color:var(--gray)}
+body.fh-astra.fh-astra-partner-home .gift-strip .copy strong{color:var(--ink);margin-bottom:8px}
+body.fh-astra.fh-astra-partner-home .gift-strip .btn{
+  border-color:var(--line);background:#fff;color:var(--ink);font-size:var(--fs-caption);min-height:48px;
+}
+body.fh-astra.fh-astra-partner-home .gift-strip .note{font-family:var(--sans);font-size:var(--fs-caption)}
+body.fh-astra.fh-astra-partner-home .statusbar{
+  height:auto;min-height:44px;padding:16px 32px;background:var(--paper);border-color:var(--line);font-family:var(--sans);letter-spacing:0;
+}
+body.fh-astra.fh-astra-partner-home .partner-scope-note{
+  padding:16px 32px 24px 260px;background:var(--paper);color:var(--gray);font-size:var(--fs-caption);line-height:1.5;
+}
+
+/* Partner training: next step first, with the full module record retained. */
+body.fh-astra.fh-astra-partner-training .stage{min-width:0}
+body.fh-astra:is(.fh-astra-partner-home,.fh-astra-partner-training) #fh-shell-chip-show{
+  min-height:44px;min-width:44px;height:44px;font-family:var(--sans);font-size:var(--fs-caption);
+  letter-spacing:0;background:#fff;color:var(--ink);border-color:var(--line);border-radius:8px;
+}
+body.fh-astra.fh-astra-partner-training header{
+  height:auto;min-height:64px;gap:16px;padding:16px 32px;background:#fff;
+}
+body.fh-astra.fh-astra-partner-training :is(.hl,.hr){min-width:0;flex-wrap:wrap;gap:8px}
+body.fh-astra.fh-astra-partner-training .hr a{min-height:44px;display:inline-flex;align-items:center;border-radius:8px;padding:8px 16px}
+body.fh-astra.fh-astra-partner-training :is(.eyebrow,.chip,.gcode,.gwk,.gbl,.mno,.cert,.mwk,.mgate,.mmsg,.release .lb,.next .lb,.mrow.hd){
+  font-family:var(--sans);letter-spacing:0;text-transform:none;color:var(--gray);
+}
+body.fh-astra.fh-astra-partner-training .eyebrow::before{display:none}
+body.fh-astra.fh-astra-partner-training .fh-astra-heading h1{margin:0}
+body.fh-astra.fh-astra-partner-training #trBody{display:flex;flex-direction:column}
+body.fh-astra.fh-astra-partner-training #trBody[hidden]{display:none}
+body.fh-astra.fh-astra-partner-training .training-loading{display:none}
+body.fh-astra.fh-astra-partner-training main:has(#trBody[hidden]):has(#trBlocked[hidden]) .training-loading{
+  display:block;padding:24px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--gray);
+}
+body.fh-astra.fh-astra-partner-training .training-loading p{margin:0 0 24px}
+body.fh-astra.fh-astra-partner-training .training-loading-line{height:16px;width:72%;max-width:600px;margin:16px 0;background:var(--soft);border-radius:4px}
+body.fh-astra.fh-astra-partner-training .training-loading-line:last-child{width:48%}
+body.fh-astra.fh-astra-partner-training .sec{margin-bottom:32px;min-width:0}
+body.fh-astra.fh-astra-partner-training .training-position{order:-3}
+body.fh-astra.fh-astra-partner-training .training-next{order:-2}
+body.fh-astra.fh-astra-partner-training .training-gates{order:-1}
+body.fh-astra.fh-astra-partner-training .release{
+  padding:24px;border:1px solid var(--line);border-radius:10px;
+  background:color-mix(in srgb,var(--accent) 12%,white);color:var(--ink);
+}
+body.fh-astra.fh-astra-partner-training .release .big{font-size:var(--fs-metric);font-weight:750;letter-spacing:-.04em;line-height:1.2}
+body.fh-astra.fh-astra-partner-training .sech{gap:8px;margin-bottom:16px}
+body.fh-astra.fh-astra-partner-training .sech>.eyebrow{font-size:var(--fs-title);font-weight:700;color:var(--ink)}
+body.fh-astra.fh-astra-partner-training .note{font-size:var(--fs-caption);color:var(--gray);max-width:90ch}
+body.fh-astra.fh-astra-partner-training .next{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:0;background:#fff;
+}
+body.fh-astra.fh-astra-partner-training .next .row{padding:24px;min-width:0}
+body.fh-astra.fh-astra-partner-training .next .row+.row{margin:0;border-top:0;border-left:1px solid var(--line)}
+body.fh-astra.fh-astra-partner-training .next .vl{font-size:var(--fs-title);font-weight:700;line-height:1.4;margin-top:8px}
+body.fh-astra.fh-astra-partner-training .gates{gap:16px;grid-template-columns:repeat(4,minmax(0,1fr))}
+body.fh-astra.fh-astra-partner-training .gate{padding:24px;background:#fff}
+body.fh-astra.fh-astra-partner-training .gate.done{background:color-mix(in srgb,var(--ok) 10%,white)}
+body.fh-astra.fh-astra-partner-training .gt{flex-wrap:wrap;gap:8px}
+body.fh-astra.fh-astra-partner-training .gate h4{font-weight:700;color:var(--ink);margin-top:16px}
+/* The legacy screen owns an !important caption list. Reset body copy together. */
+body.fh-astra.fh-astra-partner-training :is(.gate h4,.blocked h3,.blocked .msg,.mrow){font-size:var(--fs-body)!important}
+body.fh-astra.fh-astra-partner-training .mods{background:#fff}
+body.fh-astra.fh-astra-partner-training .mrow{padding:16px 24px;gap:16px;grid-template-columns:48px minmax(0,1fr) 80px 64px 144px}
+body.fh-astra.fh-astra-partner-training .mrow.hd{background:var(--paper);font-size:var(--fs-caption)!important}
+body.fh-astra.fh-astra-partner-training .mrow b{font-weight:650}
+body.fh-astra.fh-astra-partner-training .blocked{padding:24px;border-radius:10px;background:color-mix(in srgb,var(--warn) 12%,white)}
+
+@media(max-width:1100px){
+  body.fh-astra.fh-astra-affiliate .content{padding:24px}
+  body.fh-astra.fh-astra-affiliate .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.fh-astra.fh-astra-affiliate .stat:nth-child(2){border-right:0}
+  body.fh-astra.fh-astra-affiliate .stat:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  body.fh-astra.fh-astra-affiliate .affiliate-link-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.fh-astra.fh-astra-affiliate .affiliate-resources{grid-template-columns:1fr}
+  body.fh-astra.fh-astra-partner-training .gates{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:860px){
+  body.fh-astra.fh-astra-partner-home header.topbar,
+  body.fh-astra.fh-astra-partner-training header.topbar{padding-left:72px}
+}
+@media(max-width:700px){
+  body.fh-astra.fh-astra-affiliate .content{padding:24px 16px}
+  body.fh-astra.fh-astra-affiliate .affiliate-heading h2{font-size:var(--fs-title)}
+  body.fh-astra.fh-astra-affiliate .affiliate-heading p:not(.affiliate-kicker){font-size:var(--fs-body)}
+  body.fh-astra.fh-astra-affiliate .stats{grid-template-columns:1fr!important}
+  body.fh-astra.fh-astra-affiliate .stat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:16px;border-right:0;border-bottom:1px solid var(--line)}
+  body.fh-astra.fh-astra-affiliate .stat:last-child{border-bottom:0}
+  body.fh-astra.fh-astra-affiliate .stat .sv{grid-column:2;grid-row:1;margin:0;font-size:var(--fs-title)}
+  body.fh-astra.fh-astra-affiliate .stat .sd{grid-column:1/-1}
+  body.fh-astra.fh-astra-affiliate .stat .eyebrow{align-self:center}
+  body.fh-astra.fh-astra-affiliate :is(.linkbox .lb,.card-hd,.card-bd){padding:16px}
+  body.fh-astra.fh-astra-affiliate .linkrow{flex-direction:column;align-items:stretch}
+  body.fh-astra.fh-astra-affiliate .linkrow input{flex:0 1 auto;width:100%;padding:8px 16px}
+  body.fh-astra.fh-astra-affiliate .linkrow .btn{align-self:flex-start;min-width:112px;font-size:var(--fs-caption)}
+  body.fh-astra.fh-astra-affiliate .affiliate-link-meta{grid-template-columns:1fr;gap:16px}
+  body.fh-astra.fh-astra-affiliate .affiliate-link-meta>div+div{border-top:1px solid var(--line);padding-top:16px}
+  body.fh-astra.fh-astra-affiliate .tabs{padding:0 16px;gap:24px}
+  body.fh-astra.fh-astra-affiliate .tab{font-size:var(--fs-caption)}
+  body.fh-astra.fh-astra-affiliate .fh-astra-toolbar{align-items:stretch}
+  body.fh-astra.fh-astra-affiliate #q{width:100%!important}
+  body.fh-astra.fh-astra-affiliate .banner{padding:16px}
+  body.fh-astra.fh-astra-affiliate .funnel{grid-template-columns:1fr!important}
+  body.fh-astra.fh-astra-affiliate .fstep{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:16px;background:var(--paper);border-radius:8px}
+  body.fh-astra.fh-astra-affiliate .fstep .fb{grid-column:2;grid-row:1/3;min-width:48px}
+  body.fh-astra.fh-astra-affiliate .fstep :is(.fl,.fp){margin:0;text-align:left}
+  body.fh-astra.fh-astra-affiliate .foot{padding:24px 16px}
+  /* Existing table rows retain their values and order as labelled records. */
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table{display:block;min-width:0;width:100%}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table :is(tbody,tfoot){display:block}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table tr{display:grid;grid-template-columns:minmax(0,1fr);padding:16px;gap:8px;border-bottom:1px solid var(--line)}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table td{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:0;border:0;min-width:0;overflow-wrap:anywhere;text-align:right}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table td::before{color:var(--gray);font-size:var(--fs-caption);text-align:left;flex:0 0 112px}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(1)::before{content:"Referred"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(2)::before{content:"Business"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(3)::before{content:"Status"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(4)::before{content:"First paid product"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(5)::before{content:"Basis"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(6)::before{content:"Commission"}
+  body.fh-astra.fh-astra-affiliate #leadBody tr:not(:has([colspan])) td:nth-child(7)::before{content:"Payout"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(1)::before{content:"Run date"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(2)::before{content:"Period"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(3)::before{content:"Clients"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(4)::before{content:"Method"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(5)::before{content:"Amount"}
+  body.fh-astra.fh-astra-affiliate #payBody tr:not(:has([colspan])) td:nth-child(6)::before{content:"Status"}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table tfoot tr{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table tfoot td{border:0!important;flex:1 1 160px}
+  body.fh-astra.fh-astra-affiliate table.fh-astra-table tfoot td:last-child:empty{display:none}
+  body.fh-astra.fh-astra-partner-home header.topbar{padding:16px 16px 16px 72px}
+  body.fh-astra.fh-astra-partner-home .topbar-right{justify-content:flex-start;flex-basis:100%}
+  body.fh-astra.fh-astra-partner-home .home-tiles{grid-template-columns:1fr}
+  body.fh-astra.fh-astra-partner-home .home-tiles .tile{grid-column:auto;padding:16px;border-right:0;border-bottom:1px solid var(--line)}
+  body.fh-astra.fh-astra-partner-home .home-tiles .tile:last-of-type{border-bottom:0}
+  body.fh-astra.fh-astra-partner-home :is(.partner-map-heading,.legend,.gift-strip){padding:16px}
+  body.fh-astra.fh-astra-partner-home #panel{inset:50% 8px auto;width:calc(100% - 16px);max-width:none}
+  body.fh-astra.fh-astra-partner-home .p-scroll{padding:16px}
+  body.fh-astra.fh-astra-partner-home .partner-scope-note{padding:16px}
+  body.fh-astra.fh-astra-partner-home .statusbar{padding:16px}
+  body.fh-astra.fh-astra-partner-training header{padding:16px 16px 16px 72px}
+  body.fh-astra.fh-astra-partner-training .next{grid-template-columns:1fr}
+  body.fh-astra.fh-astra-partner-training .next .row{padding:16px}
+  body.fh-astra.fh-astra-partner-training .next .row+.row{border-left:0;border-top:1px solid var(--line)}
+  body.fh-astra.fh-astra-partner-training .gates{grid-template-columns:1fr}
+  body.fh-astra.fh-astra-partner-training :is(.release,.gate,.blocked){padding:16px}
+  body.fh-astra.fh-astra-partner-training .release .big{font-size:var(--fs-title)}
+  body.fh-astra.fh-astra-partner-training .mrow{grid-template-columns:1fr;gap:8px;padding:16px}
+  body.fh-astra.fh-astra-partner-training .mrow.hd{display:none}
+  body.fh-astra.fh-astra-partner-training :is(.mwk,.mgate,.mst)::before{content:attr(data-l) " · ";font-family:var(--sans);letter-spacing:0;text-transform:none;color:var(--gray)}
+}
+/* Give the five service areas their own readable row instead of shrinking the map. */
+@container(max-width:900px){
+  body.fh-astra.fh-astra-partner-home .sky-wrap{height:900px;min-height:900px}
+}

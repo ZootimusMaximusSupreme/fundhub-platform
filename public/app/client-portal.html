@@ -501,8 +501,10 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
 <!-- Fetch the independent client foundation early; execute only after body and header exist. -->
 <link rel="preload" href="/app/client-ios.js" as="script">
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-client.css">
 </head>
-<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent" data-client-page="client-portal">
+<body class="no-funding no-docs no-own no-funding-door no-inquiry-door no-bureau-door no-upload-doors no-dispute-consent fh-astra fh-astra-client fh-astra-portal" data-client-page="client-portal">
 <script>
 /* Client-only presentation: keep the original progress link and every stage.
    Staff keeps the original open list, copy, link position and identity. */
@@ -556,7 +558,7 @@ footer.statusbar{flex-shrink:0;height:26px;background:var(--ink);display:flex;al
     <div class="page fh-maxw">
 
       <div class="cp-home-heading" aria-hidden="true"></div>
-      <div class="welcome" id="greeting">Welcome to your Fundhub portal</div>
+      <h1 class="welcome" id="greeting">Welcome to your Fundhub portal</h1>
       <!-- Loading words until the file answers (hole N14, live 2026-09-18): this
            line used to START as the refusal, so every good load showed "We could
            not load your file" for about a second. The refusal is now painted only

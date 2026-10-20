@@ -183,13 +183,16 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
       # --with-deps pulls the system libraries Chromium needs on a bare runner.
-      # chromium only: these specs declare one project and downloading Firefox and
-      # WebKit to not use them is two minutes per run for nothing.
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      # The main project uses Chromium; the PDF annotation and report-overlay
+      # regressions also launch WebKit explicitly for the owner's phone sizes.
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Screens
-        run: npm run test:e2e
+        # Run the entire collection, with no retries or omitted cases. The 1670
+        # existing cases sum to 31 minutes locally. Two workers give CI headroom
+        # within the existing 25-minute budget without shrinking the collection.
+        run: npm run test:e2e -- --workers=2
 
       # The screenshots Playwright captures on failure. Without them a red build
       # says "expected 2, got 0" about a page nobody can see.

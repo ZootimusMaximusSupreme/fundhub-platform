@@ -247,8 +247,10 @@
   }
 </style>
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--automations">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -326,10 +328,10 @@
        announced that the automations were working, which it had no way of
        knowing. It is gone. All three numbers come straight off
        /api/read/workflows — nothing here is guessed. -->
-  <div class="summary-bar">
-    <div class="sum-tile"><div class="sum-label">Workflows</div><div class="sum-value" data-sum="total">—</div></div>
-    <div class="sum-tile attn"><div class="sum-label">Can't Start</div><div class="sum-value" data-sum="blocked">—</div></div>
-    <div class="sum-tile"><div class="sum-label">Start Signal Seen</div><div class="sum-value" data-sum="live">—</div></div>
+  <div class="summary-bar fh-astra-summary">
+    <div class="sum-tile fh-astra-stat"><div class="sum-label">Workflows</div><div class="sum-value" data-sum="total">—</div></div>
+    <div class="sum-tile attn fh-astra-stat"><div class="sum-label">Can't Start</div><div class="sum-value" data-sum="blocked">—</div></div>
+    <div class="sum-tile fh-astra-stat"><div class="sum-label">Start Signal Seen</div><div class="sum-value" data-sum="live">—</div></div>
     <div class="rail-filter">
       <label for="rail-select">Rail</label>
       <select id="rail-select"></select>

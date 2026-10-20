@@ -316,9 +316,10 @@
   .p-foot{margin-top:15px;padding-top:9px;border-top:1px solid var(--ls-line);
     line-height:1.5;color:var(--gray2);}
 </style>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
 <script defer src="shell.js"></script>
 </head>
-<body>
+<body class="fh-astra fh-astra-partner-home">
 <div class="app">
 
   <!-- ══ SIDEBAR — identical across every wireframe ══ -->
@@ -380,9 +381,9 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="logo inv" role="img" aria-label="Fundhub"></div>
+      <div class="logo" role="img" aria-label="Fundhub"></div>
       <div class="sep">/</div>
-      <div class="sub">Galaxy</div>
+      <div class="sub">Partner home</div>
     </div>
     <div class="topbar-right">
       <div class="census" id="wl-own-url">Your page · sign in to see your address</div>
@@ -392,6 +393,14 @@
     </div>
   </header>
 
+  <main class="fh-astra-page partner-workspace">
+  <div class="fh-astra-heading">
+    <div><h1>Your business today</h1><p class="fh-astra-subtitle">Your book, your results, and the services behind them.</p></div>
+  </div>
+  <section class="home-tiles" id="homeTiles" aria-label="Today's numbers"></section>
+
+  <section class="partner-map fh-astra-workspace" aria-labelledby="partner-map-title">
+  <div class="partner-map-heading"><h2 id="partner-map-title">Your service map</h2><p>Explore each team. The map shows service areas; live work is not connected yet.</p></div>
   <div class="legend">
     <b>GX-01 / Reading the sky</b>
     <i>size = output today</i>
@@ -404,6 +413,12 @@
     <i>click a cluster to zoom in · a worker for their day · empty space to pull back</i>
   </div>
 
+  <div class="sky-wrap">
+    <canvas id="sky"></canvas>
+    <aside id="panel"><div class="p-scroll" id="panelBody"></div></aside>
+  </div>
+  </section>
+
   <div class="gift-strip" id="blasterGift">
     <div class="copy">
       <strong>Partner gift · Message Blaster for Mac</strong>
@@ -411,16 +426,11 @@
       <span style="font-family:var(--mono)">{name}</span> for their first name. Built-in walkthrough: rules → re-read check → list preview → type
       <span style="font-family:var(--mono)">SEND</span>. No AI. No spam. No big claims you cannot back up.
     </div>
-    <button class="btn" type="button" id="blasterBtn">Download</button>
+    <button class="btn" type="button" id="blasterBtn">Download Message Blaster</button>
     <div class="note" id="blasterStatus"></div>
   </div>
 
-  <section class="home-tiles" id="homeTiles" aria-label="Today's numbers"></section>
-
-  <div class="sky-wrap">
-    <canvas id="sky"></canvas>
-    <aside id="panel"><div class="p-scroll" id="panelBody"></div></aside>
-  </div>
+  </main>
 
   <footer class="statusbar">
     <span class="ghost"></span>
@@ -616,10 +626,12 @@ function layout(){
   var top  = 66, bot = 44;
   var scale = clamp(Math.min(W/1460, GH/820), 0.62, 1.18);
 
-  CLUSTERS.forEach(function(c){
-    c.hx = padX + c.fx*(W-2*padX);
-    c.hy = top  + c.fy*(GH-top-bot);
-    c.rr = c.r*scale;
+  /* A narrow map gets full-width rows, not smaller text or tighter targets. */
+  var stacked = W<=900;
+  CLUSTERS.forEach(function(c,i){
+    c.hx = stacked ? W/2 : padX + c.fx*(W-2*padX);
+    c.hy = stacked ? 140+i*(GH-240)/(CLUSTERS.length-1) : top+c.fy*(GH-top-bot);
+    c.rr = stacked ? Math.min(c.r*scale,64) : c.r*scale;
     c.cx = (c.cx===undefined)?c.hx:c.cx;
     c.cy = (c.cy===undefined)?c.hy:c.cy;
     var mem = NODES.filter(function(n){return n.c===c.id;});
@@ -1043,7 +1055,7 @@ function drawRails(){
     /* rail name, whispered at the left edge */
     if(nameA > 0.02){
       var lp = rp(i, 0.012);
-      ctx.font = '600 8.5px "JetBrains Mono", monospace';
+      ctx.font = '600 13px "JetBrains Mono", monospace';
       ctx.textAlign='left'; ctx.textBaseline='middle';
       ctx.fillStyle = rgba(C.star2, (0.085 + heat*0.42)*nameA);
       ctx.fillText(RAILS[i].name.toUpperCase(), lp.x+46, lp.y-11);
@@ -1079,7 +1091,7 @@ function drawRails(){
     ctx.beginPath(); ctx.arc(head.x, head.y, 26, 0, TAU); ctx.fill();
     ctx.globalCompositeOperation='source-over';
 
-    ctx.font='500 9.5px Inter, sans-serif';
+    ctx.font='500 13px Inter, sans-serif';
     ctx.textAlign='left'; ctx.textBaseline='middle';
     ctx.fillStyle = rgba(C.star, 0.52*fade);
     ctx.fillText(p.label, head.x+13, head.y-10);
@@ -1105,18 +1117,18 @@ function drawClusterLabels(){
     var y = c.sy - (c.sr*0.74 + 26);
     var big = layer===0;
 
-    ctx.font = big ? '700 11px "JetBrains Mono", monospace' : '700 9px "JetBrains Mono", monospace';
-    ctx.fillStyle = rgba(C.star, (big?0.50:0.19)*em);
+    ctx.font = '700 16px "JetBrains Mono", monospace';
+    ctx.fillStyle = rgba(C.star, (big?0.92:0.65)*em);
     ctx.fillText(c.name.toUpperCase(), c.sx, y);
 
     var note = act+' working  ·  '+mem.length+' total';
-    var col  = C.star, ca = (big?0.26:0.115)*em;
+    var col  = C.star, ca = (big?0.72:0.50)*em;
     if(blk){ note = blk+' BLOCKED  ·  '+act+' working'; col = C.red;   ca = (big?0.92:0.45)*em; }
     else if(bhd){ note = bhd+' behind  ·  '+act+' working'; col = C.amber; ca = (big?0.80:0.40)*em; }
 
-    ctx.font = big ? '600 9.5px "JetBrains Mono", monospace' : '400 8.5px "JetBrains Mono", monospace';
+    ctx.font = big ? '600 13px "JetBrains Mono", monospace' : '400 13px "JetBrains Mono", monospace';
     ctx.fillStyle = rgba(col, ca);
-    ctx.fillText(note, c.sx, y + (big?15:12));
+    ctx.fillText(note, c.sx, y+22);
   });
 }
 
@@ -1200,13 +1212,13 @@ function drawThreads(){
     var mid = qbez(A,cp,B,0.5);
     var la = life * (travel<0.25?travel/0.25:1) * 0.62 * clamp(em,0,1.2);
     ctx.shadowColor='rgba(6,6,10,0.9)'; ctx.shadowBlur=6;
-    ctx.font='500 9.5px Inter, sans-serif';
+    ctx.font='500 13px Inter, sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillStyle = rgba(C.star, la*0.85);
     ctx.fillText(t.a.name+'  →  '+t.b.name, mid.x, mid.y-9);
-    ctx.font='400 9px Inter, sans-serif';
+    ctx.font='400 13px Inter, sans-serif';
     ctx.fillStyle = rgba(C.star2, la*0.75);
-    ctx.fillText(t.label, mid.x, mid.y+3);
+    ctx.fillText(t.label, mid.x, mid.y+11);
     ctx.shadowBlur=0; ctx.shadowColor='transparent';
   }
 }
@@ -1356,7 +1368,7 @@ function drawNodes(){
 
     /* initials */
     if(r>13){
-      ctx.font='700 '+Math.round(clamp(r*0.52,9,26))+'px "JetBrains Mono", monospace';
+      ctx.font='700 '+Math.round(clamp(r*0.52,13,26))+'px "JetBrains Mono", monospace';
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillStyle = rgba('#FFFFFF', (0.28+0.55*b)*dem);
       ctx.fillText(n.ini, S.x, S.y+0.5);
@@ -1366,7 +1378,7 @@ function drawNodes(){
     ctx.shadowColor='rgba(6,6,10,0.92)'; ctx.shadowBlur=7;
 
     /* name */
-    ctx.font='600 10.5px Inter, sans-serif';
+    ctx.font='600 16px Inter, sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='top';
     var na = (0.22 + 0.62*b)*dem;
     if(isSel||isHov) na = res;
@@ -1375,29 +1387,29 @@ function drawNodes(){
 
     /* role, only when it's worth reading */
     if(b>0.55 || isHov || isSel){
-      ctx.font='400 8.5px Inter, sans-serif';
+      ctx.font='400 13px Inter, sans-serif';
       ctx.fillStyle = rgba(C.star2, (0.30+0.42*b)*dem);
-      ctx.fillText(n.role, S.x, S.y + r + 20);
+      ctx.fillText(n.role, S.x, S.y+r+29);
     }
 
     /* what they're doing — always shown for the ones you need to look at */
     var showAct = (ps==='blocked' || ps==='behind' || isHov || isSel);
     if(showAct){
       var ac = ps==='blocked'?'#F2A69B' : ps==='behind'?'#F5CE8F' : '#A9C6E8';
-      ctx.font='500 9.5px Inter, sans-serif';
+      ctx.font='500 13px Inter, sans-serif';
       ctx.fillStyle = rgba(ac, 0.92*res);
       var txt = n.act;
       if(txt.length>46) txt = txt.slice(0,44)+'…';
-      ctx.fillText(txt, S.x, S.y + r + 32);
+      ctx.fillText(txt, S.x, S.y+r+49);
       if(ps==='behind' && n.behindFor){
-        ctx.font='700 8.5px "JetBrains Mono", monospace';
+        ctx.font='700 13px "JetBrains Mono", monospace';
         ctx.fillStyle=rgba(C.amber,0.95*res);
-        ctx.fillText('BEHIND '+n.behindFor.toUpperCase(), S.x, S.y+r+45);
+        ctx.fillText('BEHIND '+n.behindFor.toUpperCase(), S.x, S.y+r+69);
       }
       if(ps==='blocked'){
-        ctx.font='700 8.5px "JetBrains Mono", monospace';
+        ctx.font='700 13px "JetBrains Mono", monospace';
         ctx.fillStyle=rgba(C.red,(0.95+0.05*Math.sin(time*4))*res);
-        ctx.fillText('BLOCKED '+(n.behindFor||'').toUpperCase(), S.x, S.y+r+45);
+        ctx.fillText('BLOCKED '+(n.behindFor||'').toUpperCase(), S.x, S.y+r+69);
       }
     }
     ctx.shadowBlur=0; ctx.shadowColor='transparent';
@@ -1414,29 +1426,38 @@ function drawBreadcrumb(){
   var x = 18, y = 20;
   for(var i=0;i<crumbs.length;i++){
     if(i){
-      ctx.font='400 11px "JetBrains Mono", monospace';
+      ctx.font='400 13px "JetBrains Mono", monospace';
       ctx.fillStyle = rgba(C.star2, 0.55);
       ctx.fillText('/', x, y);
       x += ctx.measureText('/').width + 7;
     }
-    ctx.font = (crumbs[i].on?'700 ':'400 ')+'11px "JetBrains Mono", monospace';
+    ctx.font = (crumbs[i].on?'700 ':'400 ')+'13px "JetBrains Mono", monospace';
+    if(x+ctx.measureText(crumbs[i].t).width>W-18){x=18;y+=20;}
     ctx.fillStyle = rgba(crumbs[i].on?C.star:C.star2, crumbs[i].on?0.92:0.50);
     ctx.fillText(crumbs[i].t, x, y);
     x += ctx.measureText(crumbs[i].t).width + 7;
   }
 
   if(layer>0){
-    ctx.font='400 9px "JetBrains Mono", monospace';
+    ctx.font='400 13px "JetBrains Mono", monospace';
     ctx.fillStyle = rgba(C.star2, 0.42);
-    ctx.fillText('click empty space to pull back', 18, y+16);
+    ctx.fillText('click empty space to pull back', 18, y+22);
   }
 }
 
 function drawFootnote(){
-  ctx.font='400 8.5px "JetBrains Mono", monospace';
+  ctx.font='400 13px "JetBrains Mono", monospace';
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.fillStyle=rgba(C.star2,0.42);
-  ctx.fillText('FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only · no staff identities shown', 16, H-9);
+  ctx.fillStyle=rgba(C.star2,0.72);
+  var words='FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only · no staff identities shown'.split(' ');
+  var lines=[], line='';
+  words.forEach(function(word){
+    var next=line?line+' '+word:word;
+    if(line&&ctx.measureText(next).width>W-32){lines.push(line);line=word;}
+    else line=next;
+  });
+  if(line)lines.push(line);
+  lines.forEach(function(text,i){ctx.fillText(text,16,H-16-(lines.length-1-i)*18);});
 }
 
 /* ============================================================
@@ -1604,7 +1625,7 @@ requestAnimationFrame(draw);
 
 })();
 </script>
-<div style="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147482000;background:#0A0A0A;color:#E4E4E7;border:1px solid #26262B;border-radius:10px;padding:9px 14px;font:500 11px/1.5 'JetBrains Mono',monospace;letter-spacing:.05em;max-width:640px;text-align:center">PARTNER VIEW — your book only. Your brand on the front, fundhub fulfillment behind it. Staff identities and other partners are never shown.</div>
+<div class="partner-scope-note">Your book only. Your brand on the front, Fundhub fulfillment behind it. Staff identities and other partners are never shown.</div>
 <script defer src="data.js"></script>
 <script>
 

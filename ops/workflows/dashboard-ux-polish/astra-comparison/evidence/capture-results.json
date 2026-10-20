@@ -1,0 +1,163 @@
+{
+  "capturedAt": "2026-10-20T07:12:40.071Z",
+  "synthetic": true,
+  "liveConnections": 0,
+  "results": [
+    {
+      "version": "current",
+      "width": 1440,
+      "overflow": {
+        "page": 1440,
+        "viewport": 1440
+      },
+      "rosterGeometry": {
+        "tableRight": 1415,
+        "containerRight": 1415,
+        "rowRight": 1415
+      },
+      "pageErrors": [],
+      "checks": [
+        "27 staff",
+        "role filter",
+        "email filter",
+        "person drawer",
+        "cancel",
+        "permissions tab",
+        "clock tab",
+        "telemetry picker",
+        "telemetry refresh"
+      ],
+      "states": {
+        "empty": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "loading": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "error": {
+          "loadingText": false,
+          "errorText": true
+        }
+      }
+    },
+    {
+      "version": "astra",
+      "width": 1440,
+      "overflow": {
+        "page": 1440,
+        "viewport": 1440
+      },
+      "rosterGeometry": {
+        "tableRight": 1407,
+        "containerRight": 1407,
+        "rowRight": 1407
+      },
+      "pageErrors": [],
+      "checks": [
+        "27 staff",
+        "role filter",
+        "email filter",
+        "person drawer",
+        "cancel",
+        "permissions tab",
+        "clock tab",
+        "telemetry picker",
+        "telemetry refresh"
+      ],
+      "states": {
+        "empty": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "loading": {
+          "loadingText": true,
+          "errorText": false
+        },
+        "error": {
+          "loadingText": false,
+          "errorText": true
+        }
+      }
+    },
+    {
+      "version": "current",
+      "width": 390,
+      "overflow": {
+        "page": 390,
+        "viewport": 390
+      },
+      "rosterGeometry": {
+        "tableRight": 966.796875,
+        "containerRight": 365,
+        "rowRight": 966.796875
+      },
+      "pageErrors": [],
+      "checks": [
+        "27 staff",
+        "role filter",
+        "email filter",
+        "person drawer",
+        "cancel",
+        "permissions tab",
+        "clock tab",
+        "telemetry picker",
+        "telemetry refresh"
+      ],
+      "states": {
+        "empty": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "loading": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "error": {
+          "loadingText": false,
+          "errorText": true
+        }
+      }
+    },
+    {
+      "version": "astra",
+      "width": 390,
+      "overflow": {
+        "page": 390,
+        "viewport": 390
+      },
+      "rosterGeometry": {
+        "tableRight": 373,
+        "containerRight": 373,
+        "rowRight": 373
+      },
+      "pageErrors": [],
+      "checks": [
+        "27 staff",
+        "role filter",
+        "email filter",
+        "person drawer",
+        "cancel",
+        "permissions tab",
+        "clock tab",
+        "telemetry picker",
+        "telemetry refresh"
+      ],
+      "states": {
+        "empty": {
+          "loadingText": false,
+          "errorText": false
+        },
+        "loading": {
+          "loadingText": true,
+          "errorText": false
+        },
+        "error": {
+          "loadingText": false,
+          "errorText": true
+        }
+      }
+    }
+  ]
+}

@@ -217,8 +217,10 @@ table.grid tr:last-child td{border-bottom:0}
 }
 </style>
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--content-admin">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -282,14 +284,15 @@ table.grid tr:last-child td{border-bottom:0}
       <button class="btn dark mono" id="saveBtn" type="button" hidden>Save changes</button>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Portal content</h2><p class="fh-astra-subtitle">Manage the videos and content clients see.</p></div></header>
 
       <div class="notice" id="noBackendNotice" style="display:none;align-items:center;gap:9px;padding:9px 13px;border-radius:8px;background:rgba(169,198,232,.16);border:1px solid var(--info);color:#22415F;font-size:var(--fs-body);margin-bottom:14px">
         <span>◉</span>
         <span id="noticeTxt"></span>
       </div>
 
-      <div class="stats">
+      <div class="stats fh-astra-summary">
         <div class="stat"><div class="eyebrow">CN-00 <span class="sep">/</span> VIDEOS</div><div class="sv" id="kVideos">0</div><div class="sd">in the library</div></div>
         <div class="stat"><div class="eyebrow">CN-00 <span class="sep">/</span> TIERS MAPPED</div><div class="sv" id="kTiers">0/4</div><div class="sd">plus a default</div></div>
         <div class="stat"><div class="eyebrow">CN-00 <span class="sep">/</span> LOCKED TILES</div><div class="sv" id="kTiles">0</div><div class="sd">in this editor, unsaved</div></div>

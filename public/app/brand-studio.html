@@ -251,8 +251,10 @@ table.grid tr.stale:hover td{background:rgba(242,166,155,.15)}
 
 </style>
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--brand-studio">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -316,8 +318,9 @@ table.grid tr.stale:hover td{background:rgba(242,166,155,.15)}
       <button class="btn mono" id="resetBtn">Reset</button>
     </div>
 
-    <div class="content fh-maxw">
-      <div class="stats">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Your brand</h2><p class="fh-astra-subtitle">Identity, colors and the client experience.</p></div></header>
+      <div class="stats fh-astra-summary">
         <div class="stat"><div class="eyebrow">BS-00 <span class="sep">/</span> BRAND</div><div class="sv" id="kBrand">—</div><div class="sd">wordmark + tokens</div></div>
         <div class="stat"><div class="eyebrow">BS-00 <span class="sep">/</span> DOMAIN</div><div class="sv" id="kDomain">—</div><div class="sd" id="kDomainSd">not connected</div></div>
         <div class="stat"><div class="eyebrow">BS-00 <span class="sep">/</span> FUNNELS SELECTED</div><div class="sv" id="kFun">0</div><div class="sd">ticked in this editor</div></div>

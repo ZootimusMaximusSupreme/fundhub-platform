@@ -1,0 +1,1996 @@
+[
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-1440x1000",
+    "width": 1440,
+    "height": 1000,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-1440x1000",
+    "width": 1440,
+    "height": 1000,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 257,
+      "y": 200.1875,
+      "width": 1150,
+      "height": 480
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 20.97512185797018,
+        "y": 100.41434022421748
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 20.97512185797018,
+        "y": 161.89212286668706
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 20.97512185797018,
+        "y": 206.27070960562693
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 355.1523701365341,
+        "y": 298.6184932035844
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 20.97512185797018,
+        "y": 303.9146124335085
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 20.97512185797018,
+        "y": 362.5320378968941
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 512.933937668307,
+        "y": 48.480484622850426
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 906.736994390387,
+        "y": 228.69640193470383
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 283.55943301848885,
+        "y": 108.37610261011562
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 617.9793141797152,
+        "y": 114.13504562827336
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 906.736994390387,
+        "y": 206.69640193470383
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 464
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-1440x1000",
+    "width": 1440,
+    "height": 1000,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -525.71875,
+      "width": 356,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.426300308143652,
+        "y": 139.0635994373926
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.426300308143652,
+        "y": 275.10489328360654
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.426300308143652,
+        "y": 382.2630268006961
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 177.9795952713683,
+        "y": 384.3194633314338
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.426300308143652,
+        "y": 611.250028165221
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.426300308143652,
+        "y": 742.2873626550455
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 191.72371415380107,
+        "y": 85.17976756288559
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 173.31535050727507,
+        "y": 717.2011437532799
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 186.8814977789013,
+        "y": 185.3675289684037
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 163.00853923709008,
+        "y": 527.3310278746586
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 173.31535050727507,
+        "y": 695.2011437532799
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub ·",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 830
+      },
+      {
+        "text": "read-only — no actions from this screen ·",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "service map only · no staff identities",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-440x763",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-440x763",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -582.21875,
+      "width": 406,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 12.01151297514042,
+        "y": 138.98451386664135
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 12.01151297514042,
+        "y": 275.08437462104695
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 12.01151297514042,
+        "y": 382.332657061201
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 203.02899214555464,
+        "y": 384.2349024443251
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 12.01151297514042,
+        "y": 611.2418895226424
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 12.01151297514042,
+        "y": 742.2206697027184
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 216.32767735347545,
+        "y": 84.88985424258945
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 198.3027008394121,
+        "y": 717.1392114584023
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 211.7169510781052,
+        "y": 185.67368931118222
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 188.32472706447993,
+        "y": 527.4186899132823
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 198.3027008394121,
+        "y": 695.1392114584023
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "— no actions from this screen · service map",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-440x763",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-700x900",
+    "width": 700,
+    "height": 900,
+    "scrollWidth": 700,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-700x900",
+    "width": 700,
+    "height": 900,
+    "scrollWidth": 700,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -395.71875,
+      "width": 666,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 15.193100798034664,
+        "y": 139.31331025093482
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 15.193100798034664,
+        "y": 275.16857331511073
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 15.193100798034664,
+        "y": 382.0423504720537
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 332.8266716603334,
+        "y": 384.53248924589656
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 15.193100798034664,
+        "y": 611.2767384522856
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 15.193100798034664,
+        "y": 742.499087811697
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 347.6733190484501,
+        "y": 85.73893593702971
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 328.4777727421457,
+        "y": 717.384261054081
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 342.19942345489125,
+        "y": 184.7241806671713
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 317.3619604333651,
+        "y": 527.0998606911992
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 328.4777727421457,
+        "y": 695.384261054081
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen ·",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "service map only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-700x900",
+    "width": 700,
+    "height": 900,
+    "scrollWidth": 700,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-900x1000",
+    "width": 900,
+    "height": 1000,
+    "scrollWidth": 900,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-900x1000",
+    "width": 900,
+    "height": 1000,
+    "scrollWidth": 900,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 249,
+      "y": -319.3125,
+      "width": 626,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 14.704937057911593,
+        "y": 139.26981577718743
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 14.704937057911593,
+        "y": 275.15760306238667
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 14.704937057911593,
+        "y": 382.08087776953573
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 312.84553595376303,
+        "y": 384.4893051515226
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 14.704937057911593,
+        "y": 611.2719749406359
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 14.704937057911593,
+        "y": 742.4620841467255
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 327.45976586304823,
+        "y": 85.56729611383494
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 308.4851424581739,
+        "y": 717.3555063935612
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 322.0999681462076,
+        "y": 184.8987627587245
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 297.541134249594,
+        "y": 527.1439326971197
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 308.4851424581739,
+        "y": 695.3555063935612
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "· service map only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-900x1000",
+    "width": 900,
+    "height": 1000,
+    "scrollWidth": 900,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "chromium-838x390",
+    "width": 838,
+    "height": 390,
+    "scrollWidth": 838,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-838x390",
+    "width": 838,
+    "height": 390,
+    "scrollWidth": 838,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 25,
+      "y": -778.8125,
+      "width": 788,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.699325344850365,
+        "y": 139.53783782505877
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.699325344850365,
+        "y": 275.2243826581101
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.699325344850365,
+        "y": 381.84285580601255
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 393.36242335234056,
+        "y": 384.7091902199664
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.699325344850365,
+        "y": 611.3020800039752
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.699325344850365,
+        "y": 742.6909569973893
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 409.10047452793435,
+        "y": 85.9852520147547
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 389.4789078555501,
+        "y": 717.5720772853033
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 403.03789313055813,
+        "y": 184.35322525807345
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 377.7161432210559,
+        "y": 526.8946464625251
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 389.4789078555501,
+        "y": 695.5720772853033
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "· no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "chromium-838x390",
+    "width": 838,
+    "height": 390,
+    "scrollWidth": 838,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "loading",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "loading",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "loading",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "empty",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "empty",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "empty",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "error",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "error",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "error",
+    "profile": "chromium-1440x900",
+    "width": 1440,
+    "height": 900,
+    "scrollWidth": 1440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "loading",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "loading",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "loading",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "empty",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "empty",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "empty",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "error",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "error",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-training",
+    "state": "error",
+    "profile": "chromium-390x900",
+    "width": 390,
+    "height": 900,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "affiliate",
+    "state": "full",
+    "profile": "webkit-promax",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "font": "16px"
+      },
+      {
+        "id": "stFilter",
+        "font": "16px"
+      },
+      {
+        "id": "q",
+        "font": "16px"
+      },
+      {
+        "id": "brainQ",
+        "font": "16px"
+      }
+    ],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "webkit-promax",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -582.21875,
+      "width": 406,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.03610342052005,
+        "y": 139.11597931837707
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.03610342052005,
+        "y": 275.1183906146723
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.03610342052005,
+        "y": 382.21684075549524
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 202.68352280423247,
+        "y": 384.37090532967875
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.03610342052005,
+        "y": 611.2555032177821
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.03610342052005,
+        "y": 742.3316302979657
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 216.6967758775239,
+        "y": 85.34106978765666
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 198.07092385883917,
+        "y": 717.2411459087314
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 211.70961641464513,
+        "y": 185.19255788306026
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 187.5658302708729,
+        "y": 527.2768241902378
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 198.07092385883917,
+        "y": 695.2411459087314
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "— no actions from this screen · service map",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub ·",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 830
+      },
+      {
+        "text": "read-only — no actions from this screen ·",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "service map only · no staff identities",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "shown",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "errors": [
+      "ResizeObserver loop completed with undelivered notifications."
+    ]
+  },
+  {
+    "screen": "partner-training",
+    "state": "full",
+    "profile": "webkit-promax",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "errors": []
+  }
+]

@@ -1,0 +1,39 @@
+{
+  "width": 390,
+  "height": 844,
+  "pageWidth": 390,
+  "header": {
+    "x": 0,
+    "y": 0,
+    "width": 390,
+    "height": 88,
+    "bottom": 88,
+    "font": "16px",
+    "z": "80",
+    "hit": true,
+    "hitId": "DIV"
+  },
+  "close": {
+    "x": 301.0625,
+    "y": 64,
+    "width": 62.9375,
+    "height": 44,
+    "bottom": 108,
+    "font": "13px",
+    "z": "auto",
+    "hit": false,
+    "hitId": "fh-workspace-header"
+  },
+  "report": {
+    "x": 0,
+    "y": 0,
+    "width": 390,
+    "height": 844,
+    "bottom": 844,
+    "font": "16px",
+    "z": "60",
+    "hit": true,
+    "hitId": "DIV"
+  },
+  "scrollTop": 0
+}

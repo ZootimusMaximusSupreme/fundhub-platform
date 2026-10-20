@@ -327,7 +327,7 @@ describe("ideas", () => {
     const ideas = [T.ideaView({ id: "i1", raw_points: "An idea", status: "new" })];
     const off = T.renderIdeaList({ ok: true }, ideas, { writeNowReady: false }, COSTS);
     assert.doesNotMatch(off, /Write now from this idea/);
-    assert.match(off, /Write now turns on when the script writer is live/);
+    assert.match(off, /Write now needs the script writer\. Ideas wait for the next batch\./);
     const on = T.renderIdeaList({ ok: true }, ideas, { writeNowReady: true }, COSTS);
     assert.match(on, /Write now from this idea/);
     assert.match(on, /One script\. About \$0\.42/);

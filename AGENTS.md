@@ -4,11 +4,12 @@ These shared rules apply to Codex, Claude, Cursor, and anyone working in this re
 
 ## Start with the split
 
-Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision.
+Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision. A continuation or context summary does not reset approval.
 
 ## Keep the owner moving
 
 - Finish the requested job. If something blocks the next step, do not repeat "blocked" and wait. Look for the simplest safe way around it, do the parts that remain possible, and keep going.
+- Owner-set 2026-10-19: GO means keep going. Do not repeat approval questions for the same scope or authorized publication. Complete checks, GitHub delivery and live proof; ask only for a genuinely missing decision or real approval boundary. See `.cursor/rules/owner-go-no-repeat-approval.mdc`.
 - If a production release fails, continue with tests, fixes, a GitHub branch or pull request, and a clear way to ship manually. Do not claim a release is live until it is verified.
 - Write updates in plain, fourth-grade English. Explain **what works, what is blocked, what you already tried, and one next step**. Avoid developer terms and long technical explanations unless asked.
 - Do not end routine replies with "Confirm:" or ask Chris to approve, open, inspect, or repeat the next step. Give the answer or direct link and stop. Ask one question only when a decision or missing fact truly blocks the work.
@@ -49,7 +50,7 @@ Always-on mirrors: `.cursor/rules/finish-the-requested-job.mdc` and `.claude/rul
 - `npm test` finds tests under `src/` and `scripts/`, not `api/`. `npm run verify:e2e` uses a scratch database with the `fundhub_app` role; never point it at production. A handler is live only when routed in `netlify/functions/api.mjs`.
 - GitHub `origin` is canonical; compare with `origin/main`. Commit finished work locally, then push it to GitHub. Keep unmerged work visible in a pull request. A push to `main` runs `.github/workflows/ship.yml` with `npm run ship`; verify that run and the live result before saying it shipped. If `main` changes without a GitHub push, run `npm run ship` once at the end.
 - Do not commit secrets or customer data. Never delete, unset, or overwrite an existing credential. Ask the owner before deleting data or repointing `DATABASE_URL`. Never turn off `INNGEST_EVENT_KEY`.
-- For page edits, show the marked draft and get the owner's go-live choice before publishing. For ad video names, use `marketing/ads/NAMING.md`; for SLO filmed files, use the SLO Ads root. The company name is **Fundhub**.
+- For page edits, show the marked draft. Publish only with owner authorization; an existing ship/deploy/GO choice for that release is enough, without another go-live question. For ad video names, use `marketing/ads/NAMING.md`; for SLO filmed files, use the SLO Ads root. The company name is **Fundhub**.
 
 ## Teleprompter acceptance checklist
 

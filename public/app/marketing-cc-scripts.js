@@ -675,7 +675,7 @@
       boxes = `<div class="ccs-field"><label for="ccs-edit-body">The whole script</label>` +
         `<textarea id="ccs-edit-body" name="edit-${esc(s.id)}-body" data-keep rows="10">${esc(s.body)}</textarea></div>`;
     }
-    return `<div class="ccs-panel" data-panel="edit"><p><b>Edit the words.</b> Your old version is kept. The checker may warn you. It never blocks your save.</p>` +
+    return `<div class="ccs-panel" data-panel="edit"><p>Old versions are kept. Check warnings never block a save.</p>` +
       boxes +
       `<div class="ccs-row-btns">${btn("Save new version", "edit-save", { cls: "primary", busy: panel.busy, busyLabel: "Saving…" })}${btn("Cancel", "panel-close")}</div></div>`;
   }
@@ -683,10 +683,9 @@
   function fixPanelHtml(s, panel, costText) {
     return `<div class="ccs-panel" data-panel="fix">` +
       `<div class="ccs-field"><label for="ccs-fix-note">What should change?</label>` +
-      `<textarea id="ccs-fix-note" name="fix-${esc(s.id)}" data-keep rows="4" placeholder="Say it in your words. The machine rewrites the script from it."></textarea>` +
-      `<p class="caption">Tap the mic on your keyboard to talk instead of typing.</p></div>` +
+      `<textarea id="ccs-fix-note" name="fix-${esc(s.id)}" data-keep rows="4" placeholder="Type or dictate your rewrite notes…"></textarea></div>` +
       `<label class="ccs-check-row"><input type="checkbox" name="fix-rule-${esc(s.id)}" data-keep> Make this a rule for every script</label>` +
-      `<p class="caption">${esc(`One rewrite with the model, about the cost of one script. ${costText || UNKNOWN_COST} The note goes to the machine exactly as you typed it.`)}</p>` +
+      `<p class="caption">${esc(`One model rewrite, about the cost of one script. ${costText || UNKNOWN_COST} Uses your exact note.`)}</p>` +
       `<div class="ccs-row-btns">${btn("Rewrite it", "fix-send", { cls: "primary", busy: panel.busy, busyLabel: "Sending…" })}${btn("Cancel", "panel-close")}</div></div>`;
   }
 
@@ -778,7 +777,7 @@
         btn("Down", "order-down", { data: { root: s.root_script_id }, disabled: busy || i === list.length - 1, aria: `Film ${ad} later` }) +
         first + `</div></li>`;
     }).join("");
-    return say + `<p class="caption ccs-hint">The film order is the order you read them on shoot day. First is 1.</p><ol class="ccs-rows">${rows}</ol>`;
+    return say + `<p class="caption ccs-hint">Shoot order starts at 1.</p><ol class="ccs-rows">${rows}</ol>`;
   }
 
   function plainListHtml(st, filter) {
@@ -880,8 +879,7 @@
       }
       body = `<div class="ccs-fold-body">` +
         `<div class="ccs-field"><label for="ccs-idea-text">Your idea</label>` +
-        `<textarea id="ccs-idea-text" name="idea-text" data-keep rows="5" placeholder="A few points is enough. Say it or type it."></textarea>` +
-        `<p class="caption">Tap the mic on your keyboard to talk instead of typing.</p></div>` +
+        `<textarea id="ccs-idea-text" name="idea-text" data-keep rows="5" placeholder="Type or dictate a few talking points…"></textarea></div>` +
         `<div class="ccs-two-fields"><div class="ccs-field"><label for="ccs-idea-format">Format (optional)</label>` +
         `<select id="ccs-idea-format" name="idea-format" data-keep><option value="">Any format</option>${formatOpts}</select></div>` +
         `<div class="ccs-field"><label for="ccs-idea-funnel">Funnel (optional)</label>` +
@@ -890,7 +888,7 @@
         `<div class="ccs-row-btns">${btn("Save idea", "idea-save", { busy: st.busy.ideaSave, busyLabel: "Saving…" })}` +
         (ready ? btn("Write it now", "idea-write", { busy: st.busy.ideaWrite, busyLabel: "Starting…" }) : "") + `</div>` +
         `<p class="caption">Save idea is free. It goes in the next batch.</p>` +
-        (ready ? `<p class="caption">${esc(`Write it now writes one script from it today with the model. ${(st.costText && st.costText.start_batch) || UNKNOWN_COST} ${capWords(st.settings.data)}`)}</p>` : "") +
+        (ready ? `<p class="caption">${esc(`Write it now creates one script today. ${(st.costText && st.costText.start_batch) || UNKNOWN_COST} ${capWords(st.settings.data)}`)}</p>` : "") +
         sayHtml(st.say, "ideas") +
         `<p class="eyebrow ccs-sub">Your ideas</p>${list}</div>`;
     }
@@ -920,7 +918,7 @@
         const banned = Array.isArray(d.banned) ? d.banned : [];
         const recent = Array.isArray(d.recent) ? d.recent : [];
         const src = d.source === "bundle"
-          ? `<p class="caption">Read from the copy built into the site. It can be a little older than the repo.</p>` : "";
+          ? `<p class="caption">Site copy; may be older than the repo.</p>` : "";
         const stale = r.status === "error" ? `<p class="caption">${esc(`The newest rules did not load: ${r.error}`)}</p>` : "";
         body = `<div class="ccs-fold-body">${stale}${src}` +
           `<p class="eyebrow ccs-sub">Part 0: every script follows these</p>${list}` +

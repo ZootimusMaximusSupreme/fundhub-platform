@@ -60,6 +60,6 @@ test('payments module keeps professional hierarchy inside FinanceOS mount',async
   window.FinanceOS.sections.payments.mount(host,{apiGet:()=>Promise.resolve({status:200,body:data})});
  },sample);
  await expect(page.locator('#fos-payments .plan')).toHaveCount(sample.plans.length);
- expect(await page.locator('#fos-payments .plan').first().evaluate(el=>getComputedStyle(el).borderRadius)).toBe('18px');
+ expect(await page.locator('#fos-payments .plan').first().evaluate(el=>getComputedStyle(el).borderRadius)).toBe('10px');
  await expect(page.locator('#fos-payments [data-act="person"]')).toBeVisible();
 });

@@ -168,14 +168,23 @@ describe("the client signing page (public/contract.html)", () => {
       "the signing page must hold no credential but the link it was opened with");
   });
 
-  test("it loads no staff app code beyond the isolated type assets", () => {
+  test("it loads no staff app code beyond isolated type and presentation assets", () => {
     const appRefs = [...CLIENT.matchAll(/(?:src|href)=["'](\/app\/[^"']+)["']/g)].map(m => m[1]);
-    assert.deepEqual(appRefs.sort(), ["/app/fundhub-font.css", "/app/fundhub-font.js"]);
+    assert.deepEqual(appRefs.sort(), [
+      "/app/fundhub-astra-client.css", "/app/fundhub-astra.css",
+      "/app/fundhub-font.css", "/app/fundhub-font.js"
+    ]);
     assert.match(CLIENT, /<body[^>]*data-client-public/, "public signing must never acquire a session gate");
-    const isolated = CLIENT.replace(/\/app\/fundhub-font\.(?:css|js)/g, "");
+    const isolated = CLIENT.replace(/\/app\/(?:fundhub-font\.(?:css|js)|fundhub-astra(?:-client)?\.css)/g, "");
     assert.equal(/\/app\//.test(isolated), false);
     const type = fs.readFileSync(path.join(PUBLIC, "app/fundhub-font.js"), "utf8");
     assert.doesNotMatch(type, /fetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|location\s*[.=]|\/api\//);
+    // These two approved additions are CSS-only: no imported resource, data
+    // request or credential code is permitted by the presentation allowlist.
+    for (const name of ["fundhub-astra.css", "fundhub-astra-client.css"]) {
+      const css = fs.readFileSync(path.join(PUBLIC, "app", name), "utf8");
+      assert.doesNotMatch(css, /@import\b|url\s*\(|fetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|\/api\//i);
+    }
   });
 
   test("it is not indexed — a contract link must not turn up in a search engine", () => {

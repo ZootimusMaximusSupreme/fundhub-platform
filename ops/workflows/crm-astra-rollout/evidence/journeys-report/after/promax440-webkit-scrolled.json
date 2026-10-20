@@ -1,0 +1,39 @@
+{
+  "width": 440,
+  "height": 763,
+  "pageWidth": 440,
+  "header": {
+    "x": 0,
+    "y": 0,
+    "width": 440,
+    "height": 88,
+    "bottom": 88,
+    "font": "16px",
+    "z": "80",
+    "hit": true,
+    "hitId": "DIV"
+  },
+  "close": {
+    "x": 350.28125,
+    "y": 124,
+    "width": 63.71875,
+    "height": 44,
+    "bottom": 168,
+    "font": "13px",
+    "z": "auto",
+    "hit": true,
+    "hitId": "runclose"
+  },
+  "report": {
+    "x": 0,
+    "y": 100,
+    "width": 440,
+    "height": 663,
+    "bottom": 763,
+    "font": "16px",
+    "z": "60",
+    "hit": true,
+    "hitId": "DIV"
+  },
+  "scrollTop": 1824
+}

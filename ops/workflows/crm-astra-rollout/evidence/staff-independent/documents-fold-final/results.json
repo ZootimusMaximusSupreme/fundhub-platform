@@ -1,0 +1,1327 @@
+[
+  {
+    "page": "documents",
+    "profile": "promax",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 685,
+          "clientWidth": 406,
+          "left": 17,
+          "right": 423,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 606.234375,
+            "right": 685.5625,
+            "width": 79.328125,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documentsAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "promax",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 279,
+          "scrollWidth": 685,
+          "clientWidth": 406,
+          "left": 17,
+          "right": 423,
+          "first": {
+            "text": "All\n0",
+            "left": -246,
+            "right": -202,
+            "width": 44,
+            "fullyWithin": false
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 327.234375,
+            "right": 406.5625,
+            "width": 79.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documentsAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-promax-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "promax",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 685,
+          "clientWidth": 406,
+          "left": 17,
+          "right": 423,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 606.234375,
+            "right": 685.5625,
+            "width": 79.328125,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documentsAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-promax-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "promax",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 10,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 685,
+          "clientWidth": 406,
+          "left": 17,
+          "right": 423,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 606.234375,
+            "right": 685.5625,
+            "width": 79.328125,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documentsAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-promax-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "promax",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 5,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": []
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documentsAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "landscape",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 6,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": []
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-landscape-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "landscape",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 788,
+          "clientWidth": 788,
+          "left": 25,
+          "right": 813,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-landscape-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "landscape",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 788,
+          "clientWidth": 788,
+          "left": 25,
+          "right": 813,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-landscape-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "landscape",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 11,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": []
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-landscape-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "landscape",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 15,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 788,
+          "clientWidth": 788,
+          "left": 25,
+          "right": 813,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-landscape-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "768",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 22,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 25,
+          "y": 588,
+          "w": 718,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 718,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 718,
+          "clientWidth": 718,
+          "left": 25,
+          "right": 743,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-768-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "768",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 22,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 25,
+          "y": 588,
+          "w": 718,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 718,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 718,
+          "clientWidth": 718,
+          "left": 25,
+          "right": 743,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-768-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "768",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 22,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 25,
+          "y": 588,
+          "w": 718,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 718,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 718,
+          "clientWidth": 718,
+          "left": 25,
+          "right": 743,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-768-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "768",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 25,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 25,
+          "y": 588,
+          "w": 718,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 718,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 718,
+          "clientWidth": 718,
+          "left": 25,
+          "right": 743,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-768-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "768",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 22,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 25,
+          "y": 200,
+          "w": 718,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 718,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 718,
+          "clientWidth": 718,
+          "left": 25,
+          "right": 743,
+          "first": {
+            "text": "All\n0",
+            "left": 49,
+            "right": 93,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 626.234375,
+            "right": 706.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-768-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1024",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 249,
+          "y": 594,
+          "w": 750,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 750,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 750,
+          "clientWidth": 750,
+          "left": 249,
+          "right": 999,
+          "first": {
+            "text": "All\n0",
+            "left": 273,
+            "right": 317,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 850.234375,
+            "right": 930.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1024-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1024",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 249,
+          "y": 594,
+          "w": 750,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 750,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 750,
+          "clientWidth": 750,
+          "left": 249,
+          "right": 999,
+          "first": {
+            "text": "All\n0",
+            "left": 273,
+            "right": 317,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 850.234375,
+            "right": 930.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1024-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1024",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 249,
+          "y": 594,
+          "w": 750,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 750,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 750,
+          "clientWidth": 750,
+          "left": 249,
+          "right": 999,
+          "first": {
+            "text": "All\n0",
+            "left": 273,
+            "right": 317,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 850.234375,
+            "right": 930.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1024-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1024",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 249,
+          "y": 338,
+          "w": 750,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 750,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 750,
+          "clientWidth": 750,
+          "left": 249,
+          "right": 999,
+          "first": {
+            "text": "All\n0",
+            "left": 273,
+            "right": 317,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 850.234375,
+            "right": 930.5625,
+            "width": 80.328125,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-1024-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1024",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 27,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Client documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDel",
+          "x": 249,
+          "y": -57,
+          "w": 750,
+          "h": 328.4,
+          "font": 16,
+          "scrollWidth": 766,
+          "clientWidth": 750,
+          "overflow": "auto"
+        }
+      ],
+      "tabStrips": []
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument statusAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\nClient\nClass\nGenerated\nDelivered\nSignature\nAge pending ↓\nContract\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-1024-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "390",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 666,
+          "clientWidth": 356,
+          "left": 17,
+          "right": 373,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 590.0625,
+            "right": 667.203125,
+            "width": 77.140625,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documents\nAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "390",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 310,
+          "scrollWidth": 666,
+          "clientWidth": 356,
+          "left": 17,
+          "right": 373,
+          "first": {
+            "text": "All\n0",
+            "left": -277,
+            "right": -233,
+            "width": 44,
+            "fullyWithin": false
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 280.0625,
+            "right": 357.203125,
+            "width": 77.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documents\nAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-390-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "390",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 666,
+          "clientWidth": 356,
+          "left": 17,
+          "right": 373,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 590.0625,
+            "right": 667.203125,
+            "width": 77.140625,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documents\nAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-390-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "390",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 10,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 666,
+          "clientWidth": 356,
+          "left": 17,
+          "right": 373,
+          "first": {
+            "text": "All\n0",
+            "left": 33,
+            "right": 77,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 590.0625,
+            "right": 667.203125,
+            "width": 77.140625,
+            "fullyWithin": false
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documents\nAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-390-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "390",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 6,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": []
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nJB\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAwaiting signature\n0\nNot delivered\n0\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nSort documents\nAge: oldest first\nAge: newest first\nDocument: A–Z\nDocument: Z–A\nClient: A–Z\nClient: Z–A\nClass: A–Z\nClass: Z–A\nGenerated: A–Z\nGenerated: Z–A\nDelivered: A–Z\nDelivered: Z–A\nSignature: A–Z\nSignature: Z–A\nClient documents and contract actions. Sort by a column heading.\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-390-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1440",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 36,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 1150,
+          "clientWidth": 1150,
+          "left": 257,
+          "right": 1407,
+          "first": {
+            "text": "All\n0",
+            "left": 281,
+            "right": 325,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 842.0625,
+            "right": 920.203125,
+            "width": 78.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\n\t\nClient\n\t\nClass\n\t\nGenerated\n\t\nDelivered\n\t\nSignature\n\t\nAge pending ↓\n\tContract\n\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1440",
+    "state": "tab-end",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 36,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 1150,
+          "clientWidth": 1150,
+          "left": 257,
+          "right": 1407,
+          "first": {
+            "text": "All\n0",
+            "left": 281,
+            "right": 325,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 842.0625,
+            "right": 920.203125,
+            "width": 78.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\n\t\nClient\n\t\nClass\n\t\nGenerated\n\t\nDelivered\n\t\nSignature\n\t\nAge pending ↓\n\tContract\n\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1440-tab-end-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1440",
+    "state": "tab-start",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 36,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 1150,
+          "clientWidth": 1150,
+          "left": 257,
+          "right": 1407,
+          "first": {
+            "text": "All\n0",
+            "left": 281,
+            "right": 325,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 842.0625,
+            "right": 920.203125,
+            "width": 78.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\n\t\nClient\n\t\nClass\n\t\nGenerated\n\t\nDelivered\n\t\nSignature\n\t\nAge pending ↓\n\tContract\n\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide",
+    "screenshot": "shots/documents-1440-tab-start-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1440",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 41,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 1150,
+          "clientWidth": 1150,
+          "left": 257,
+          "right": 1407,
+          "first": {
+            "text": "All\n0",
+            "left": 281,
+            "right": 325,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 842.0625,
+            "right": 920.203125,
+            "width": 78.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\n\t\nClient\n\t\nClass\n\t\nGenerated\n\t\nDelivered\n\t\nSignature\n\t\nAge pending ↓\n\tContract\n\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-1440-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "documents",
+    "profile": "1440",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 37,
+      "issues": [],
+      "scrollBoxes": [],
+      "tabStrips": [
+        {
+          "selector": "#tabs",
+          "scrollLeft": 0,
+          "scrollWidth": 1150,
+          "clientWidth": 1150,
+          "left": 257,
+          "right": 1407,
+          "first": {
+            "text": "All\n0",
+            "left": 281,
+            "right": 325,
+            "width": 44,
+            "fullyWithin": true
+          },
+          "last": {
+            "text": "Uploads\n0",
+            "left": 842.0625,
+            "right": 920.203125,
+            "width": 78.140625,
+            "fullyWithin": true
+          }
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:65479/app/documents.html",
+    "screenText": "‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nPrivate workspace\nDocuments\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nFiles & signatures\n\nTrack client documents from generation to the final signature.\n\nNo documents overdue\nDocuments on file\n0\nAcross five document classes\nAwaiting signature\n0\nSent and ready for follow-up\nNot delivered\n0\nGenerated and not yet sent\nDocument library\n\n0 of 0 documents\n\nPending only\nAll\n0\nAuthorizations\n0\nContracts\n0\nInvoices\n0\nDeliverables\n0\nUploads\n0\nDocument status\nAny status\nNot delivered\nBounced\nAwaiting signature\nSignature expired\nClient documents and contract actions. Sort by a column heading.\nDocument\n\t\nClient\n\t\nClass\n\t\nGenerated\n\t\nDelivered\n\t\nSignature\n\t\nAge pending ↓\n\tContract\n\n▤\nNo documents on file yet\n\nClient uploads, agreements, invoices, and reports will appear here when they are on file.\n\nDocument classes & status guide\nSoft-pull authorizations\n0\n0 pending · 0 settled\nconsent to pull — nothing runs without one\nContracts\n0\n0 pending · 0 settled\nfunding agreements · repair engagement · partner licenses\nInvoices\n0\n0 pending · 0 settled\nissued against a product at point of sale\nUnderwriteIQ deliverables\n0\n0 pending · 0 settled\nthe five reports the client actually receives\nUploads\n0\n0 pending · 0 settled\nbank · FTC · portal files this person sent\nComplete\nIn progress or awaiting a counterparty\nFailed, bounced, expired, or overdue\nNot applicable to this class\n\nAge starts at the last state change, rather than the date a document was created.",
+    "screenshot": "shots/documents-1440-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  }
+]

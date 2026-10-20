@@ -181,8 +181,10 @@ details.card:not([open])>summary.card-hd{border-bottom:0}
 @media(max-width:1080px){.layout{grid-template-columns:1fr}.alist{position:static}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
 </style>
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--agent-editor">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -245,8 +247,9 @@ details.card:not([open])>summary.card-hd{border-bottom:0}
       <button class="btn mono" id="newBtn">+ New agent</button>
     </div>
 
-    <div class="content fh-maxw">
-      <div class="stats">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Your agents</h2><p class="fh-astra-subtitle">Review instructions, modes and recent runs.</p></div></header>
+      <div class="stats fh-astra-summary">
         <div class="stat"><div class="eyebrow">AGENTS</div><div class="sv" id="kAll">—</div><div class="sd" id="kAllSub">loading…</div></div>
         <div class="stat"><div class="eyebrow">LIVE</div><div class="sv" id="kLive">0</div><div class="sd">acting on real clients</div></div>
         <div class="stat"><div class="eyebrow">SHADOW</div><div class="sv" id="kShadow">0</div><div class="sd">logging, not sending</div></div>

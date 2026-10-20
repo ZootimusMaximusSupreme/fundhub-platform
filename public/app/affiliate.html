@@ -129,10 +129,11 @@ table.grid tbody tr:hover{background:var(--soft)}
 </style>
 <link rel="stylesheet" href="/app/client-ios.css">
 <link rel="stylesheet" href="/app/affiliate-ios.css">
+<link rel="stylesheet" href="/app/fundhub-astra.css">
 <script defer src="shell.js"></script>
 <script defer src="/app/client-ios.js"></script>
 </head>
-<body data-client-page="affiliate">
+<body class="fh-astra fh-astra-affiliate" data-client-page="affiliate">
 <div class="app">
   <aside class="side" id="side" aria-label="Workspace navigation">
   <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
@@ -196,13 +197,19 @@ table.grid tbody tr:hover{background:var(--soft)}
       <span class="chip on" id="affWhoChip" style="display:none"><span class="cd"></span><span id="affWho"></span></span>
     </div>
 
-    <main class="content fh-maxw" id="affiliate-main">
-      <div class="affiliate-heading"><div><p class="affiliate-kicker">Your network</p><h2>Share a referral</h2><p>Choose an offer link to share. Track referrals and your own earnings below.</p></div><a class="btn affiliate-history-link" href="#affiliate-records">View activity <span aria-hidden="true">↓</span></a></div>
+    <main class="content fh-maxw fh-astra-page" id="affiliate-main">
+      <div class="affiliate-heading fh-astra-heading"><div><p class="affiliate-kicker">Your network</p><h2>Referrals &amp; earnings</h2><p class="fh-astra-subtitle">Track your referrals, see your earnings, and choose a link to share.</p></div><a class="btn affiliate-history-link" href="#affiliate-records">View activity <span aria-hidden="true">↓</span></a></div>
       <div class="affiliate-load" role="status" aria-live="polite"><span id="affiliateLoadStatus">Loading your referral dashboard…</span> <button class="btn sm" id="affiliateRetry" type="button" hidden>Try again</button></div>
+      <div class="stats fh-astra-summary" aria-label="Your referral totals">
+        <div class="stat"><div class="eyebrow">Owed to you</div><div class="sv" id="kOwed">—</div><div class="sd" id="kOwedNote">accrued, not yet paid</div></div>
+        <div class="stat"><div class="eyebrow">Paid to you</div><div class="sv" id="kPaid">—</div><div class="sd" id="kPaidNote">lifetime · from settled payout runs</div></div>
+        <div class="stat"><div class="eyebrow">Referred</div><div class="sv" id="kRef">—</div><div class="sd" id="kRefNote">lifetime leads attributed to your code</div></div>
+        <div class="stat"><div class="eyebrow">Converted</div><div class="sv" id="kConv">—</div><div class="sd" id="kConvRate">referrals that paid a qualifying product</div></div>
+      </div>
       <div class="linkbox">
         <div class="lt"></div>
         <div class="lb">
-          <div class="affiliate-section-title">Your referral links</div><p class="affiliate-section-note">Each offer has its own link. Your referral code stays the same.</p>
+          <h2 class="affiliate-section-title">Share a referral</h2><p class="affiliate-section-note">Choose an offer. Each link uses your referral code.</p>
           <!-- One row per offer (owner call 2026-10-06): same code, different page.
                Rows come from GET /api/read/affiliate-portal (offerLinks), built by
                src/affiliates/share-link.mjs. This page never assembles a link. -->
@@ -268,9 +275,6 @@ table.grid tbody tr:hover{background:var(--soft)}
         </div>
       </div>
 
-      <div class="stats" style="margin-top:14px">
-        <div class="stat"><div class="eyebrow">REFERRED</div><div class="sv" id="kRef">—</div><div class="sd" id="kRefNote">lifetime leads attributed to your code</div></div>
-        <div class="stat"><div class="eyebrow">CONVERTED</div><div class="sv" id="kConv">—</div><div class="sd" id="kConvRate">referrals that paid a qualifying product</div></div>
         <!-- SHIPPED DEFAULT IS A DASH, NOT $0. The four tiles are painted from
              /api/read/affiliates, which admits staff and an `affiliate` principal —
              but NOT a `client` who has become a light affiliate (plan section 4).
@@ -281,24 +285,21 @@ table.grid tbody tr:hover{background:var(--soft)}
              this reason. Painting it from the referral rows instead is refused by
              the standing rule further down this file, and the gap is on the
              wave 3 board rather than worked around here. -->
-        <div class="stat"><div class="eyebrow">OWED</div><div class="sv" id="kOwed">—</div><div class="sd" id="kOwedNote">accrued, not yet paid</div></div>
-        <div class="stat"><div class="eyebrow">PAID</div><div class="sv" id="kPaid">—</div><div class="sd" id="kPaidNote">lifetime · from settled payout runs</div></div>
-      </div>
 
       <details class="scopebar" style="margin-top:14px">
         <summary class="st">What you can see</summary>
         <span class="st">You only see people who used your link, and only your own payouts. You do not see their contact details or credit file.</span>
       </details>
 
-      <div class="card" id="affiliate-records">
-        <div class="tabs" role="tablist" aria-label="Affiliate records">
+      <div class="card fh-astra-workspace" id="affiliate-records">
+        <div class="tabs fh-astra-tabs" role="tablist" aria-label="Affiliate records">
           <button class="tab on" data-tab="leads" role="tab" id="switch-leads" aria-controls="tab-leads" aria-selected="true" tabindex="0">Referred leads</button>
           <button class="tab" data-tab="payouts" role="tab" id="switch-payouts" aria-controls="tab-payouts" aria-selected="false" tabindex="-1">Payouts</button>
           <button class="tab" data-tab="terms" role="tab" id="switch-terms" aria-controls="tab-terms" aria-selected="false" tabindex="-1">Terms</button>
         </div>
 
         <div class="tabpane on" id="tab-leads" role="tabpanel" aria-labelledby="switch-leads">
-          <div class="card-hd">
+          <div class="card-hd fh-astra-toolbar">
             <select aria-label="Filter referrals by status" id="stFilter" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff">
               <!-- These are the four statuses affiliate_referrals.status can hold
                    (033_affiliates.sql:340-343). The six that were here before —
@@ -325,7 +326,7 @@ table.grid tbody tr:hover{background:var(--soft)}
                commission. Contact details are outside the Affiliate role, so putting a
                person's name in this column would hand an outside partner data the contract
                says they do not get. Nothing fills this table yet. -->
-          <div class="affiliate-table-scroll" role="region" aria-label="Referral details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Referral activity">
+          <div class="affiliate-table-scroll fh-astra-table-wrap" role="region" aria-label="Referral details, scroll horizontally for all columns" tabindex="0"><table class="grid fh-astra-table" aria-label="Referral activity">
             <thead><tr><th>Referred</th><th>Business</th><th>Status</th><th>First paid product</th><th>Basis</th><th style="text-align:right">Commission</th><th>Payout</th></tr></thead>
             <tbody id="leadBody"></tbody>
             <tfoot><tr>
@@ -345,7 +346,7 @@ table.grid tbody tr:hover{background:var(--soft)}
         <div class="tabpane" id="tab-payouts" role="tabpanel" aria-labelledby="switch-payouts">
           <div class="card-hd"><div class="eyebrow">PAYOUT HISTORY</div>
             <div class="spacer"></div><span class="mono" style="font-size:var(--fs-caption);color:var(--gray2);letter-spacing:.1em">FRIDAYS · ACH</span></div>
-          <div class="affiliate-table-scroll" role="region" aria-label="Payout details, scroll horizontally for all columns" tabindex="0"><table class="grid" aria-label="Payout history">
+          <div class="affiliate-table-scroll fh-astra-table-wrap" role="region" aria-label="Payout details, scroll horizontally for all columns" tabindex="0"><table class="grid fh-astra-table" aria-label="Payout history">
             <thead><tr><th>Run date</th><th>Period covered</th><th>Clients</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
             <tbody id="payBody"></tbody>
           </table></div>

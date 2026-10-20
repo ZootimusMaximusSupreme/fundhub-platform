@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Shared Fundhub rounded typography; custom tenant fonts stay server-selected. -->
+<link rel="preload" href="/assets/fonts/nunito-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app/fundhub-font.css">
+<script defer src="/app/fundhub-font.js"></script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fundhub — Team &amp; access</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fundhub-brand.css">
+<link rel="stylesheet" href="crm-sidebar.css">
+<link rel="stylesheet" href="/__comparison/team-access.css">
+<script defer src="shell.js"></script>
+</head>
+<body class="astra-team">
+<div class="app">
+  <aside class="side" id="side" aria-label="Workspace navigation">
+  <div class="side-top"><a class="logo" href="pipeline.html" aria-label="Fundhub home"></a><button class="burger" id="burger" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button></div>
+  <nav class="side-scroll" id="fh-side-nav" aria-label="Main">
+    <div class="navgroup" data-fh-section="work"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-work">Your work<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-work">
+      <a class="navitem" href="pipeline.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m6-16v16"/></svg></span><span class="lbl">Pipeline</span></a>
+      <a class="navitem" href="closer-dashboard.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-5m7 5V9m7 11V4"/></svg></span><span class="lbl">Sales workspace</span></a>
+      <a class="navitem" href="calendar.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18"/></svg></span><span class="lbl">Calendar</span></a>
+      <a class="navitem" href="messaging.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H6l-4 3V11a9 9 0 1 1 19 0Z"/><path d="M7 10h10m-10 4h6"/></svg></span><span class="lbl">Messaging</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="clients"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-clients">Clients<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-clients">
+      <a class="navitem" href="client-control-panel.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span class="lbl">Client files</span></a>
+      <a class="navitem" href="csm-queue.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3m-16-2H2v6h4v-6Zm16 0h2v6h-4v-6Zm0 6c0 3-2 4-6 4"/></svg></span><span class="lbl">Client Success</span></a>
+      <a class="navitem" href="lenders.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5M4 10h16M5 11v8m7-8v8m7-8v8M3 21h18"/></svg></span><span class="lbl">Lenders</span></a>
+      <a class="navitem" href="documents.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h6"/></svg></span><span class="lbl">Documents</span></a>
+      <a class="navitem" href="inquiry-remover.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><span class="lbl">Inquiry specialist</span></a>
+      <a class="navitem" href="consent-capture.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Consent</span></a>
+      <a class="navitem" href="finance-os.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Finance OS</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="insights"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-insights">Insights<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-insights">
+      <a class="navitem" href="my-numbers.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16v-7"/></svg></span><span class="lbl">My numbers</span></a>
+      <a class="navitem" href="sales-floor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="lbl">Sales floor</span></a>
+      <a class="navitem" href="company-brain.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6C9 3 4 3 2 5v15c2-2 7-2 10 1m0-15c3-3 8-3 10-1v15c-2-2-7-2-10 1V6Z"/></svg></span><span class="lbl">Knowledge base</span></a>
+      <a class="navitem" href="galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Galaxy</span></a>
+      <a class="navitem" href="partner-galaxy.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Home</span></a>
+      <a class="navitem" href="ops-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Operations</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="marketing"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-marketing">Marketing<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-marketing">
+      <a class="navitem" href="marketing-command-center.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 17-7v16L3 14v-3Zm4 5 2 6h4l-2-5M3 11H1v3h2"/></svg></span><span class="lbl">Marketing overview</span></a>
+      <a class="navitem" href="campaign-manager.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4h16v16H4Zm4-11h8m-8 4h8m-8 4h4"/></svg></span><span class="lbl">Campaigns</span></a>
+      <a class="navitem" href="social-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></svg></span><span class="lbl">Social Studio</span></a>
+      <a class="navitem" href="creative-factory.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/></svg></span><span class="lbl">Creative Factory</span></a>
+      <a class="navitem" href="content-admin.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10m-10 4h10m-10 4h6"/></svg></span><span class="lbl">Content</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="automation"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-automation">Automation<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-automation">
+      <a class="navitem" href="agent-editor.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Agent Editor</span></a>
+      <a class="navitem" href="automations.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Workflows</span></a>
+      <a class="navitem" href="journeys.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Journeys</span></a>
+    </div></div>
+    <div class="navgroup" data-fh-section="settings"><button class="navhead" type="button" aria-expanded="true" aria-controls="fh-nav-settings">Manage<span class="chev" aria-hidden="true">⌄</span></button><div class="navlist" id="fh-nav-settings">
+      <a class="navitem on" href="staff-teams.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 2 4v2"/></svg></span><span class="lbl">Team & access</span></a>
+      <a class="navitem" href="hiring.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Hiring</span></a>
+      <a class="navitem" href="products-commissions.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v11l-9 4-9-4V7Zm0 0 9 4 9-4m-9 4v11M7 5l10 5"/></svg></span><span class="lbl">Products & commissions</span></a>
+      <a class="navitem" href="contracts.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V9l-5-6Zm0 0v6h5M8 13h7m-7 4h4"/></svg></span><span class="lbl">Contract templates</span></a>
+      <a class="navitem" href="brand-studio.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Brand Studio</span></a>
+      <a class="navitem" href="client-portal.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Client Portal</span></a>
+      <a class="navitem" href="affiliate.html"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8m-4-4v8"/></svg></span><span class="lbl">Affiliate</span></a>
+    </div></div>
+  </nav>
+  <div class="side-foot"><span class="who">Private workspace</span></div>
+</aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb">Manage</span><h1>Team &amp; access</h1>
+      <div class="spacer"></div>
+      <span class="chip on" id="onShiftChip"><span class="cd"></span><span id="onShiftTxt">— on shift</span></span>
+    </div>
+
+    <div class="content fh-maxw">
+      <header class="team-heading">
+        <div><h2>Your team</h2><p class="team-subtitle">People, roles and workspace access.</p></div>
+        <button class="btn dark" id="addBtn"><span aria-hidden="true">+</span> Add person</button>
+      </header>
+      <section class="stats team-summary" aria-label="Team overview">
+        <div class="stat"><div class="eyebrow">Team members</div><div class="sv" id="kHead">—</div><div class="sd">In this roster</div></div>
+        <div class="stat"><div class="eyebrow">On shift</div><div class="sv" id="kShift">—</div><div class="sd">Clocked in now</div></div>
+        <div class="stat"><div class="eyebrow">Consent on file</div><div class="sv" id="kConsent">—</div><div class="sd">Of this roster</div></div>
+        <div class="stat"><div class="eyebrow">Not active</div><div class="sv" id="kPending">—</div><div class="sd">Invited or login revoked</div></div>
+      </section>
+
+      <div class="card team-workspace">
+        <div class="tabs">
+          <button class="tab on" data-tab="roster">People</button>
+          <button class="tab" data-tab="perms">Role access</button>
+          <button class="tab" data-tab="clock">Time &amp; consent</button>
+          <button class="tab" data-tab="telemetry">Activity</button>
+        </div>
+
+        <div class="tabpane on" id="tab-roster">
+          <div class="card-hd roster-toolbar">
+            <label class="team-search" for="qFilter"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="qFilter" type="search" placeholder="Search people…" aria-label="Search people by name, email or code"></label>
+            <select id="roleFilter" aria-label="Filter by role">
+              <option value="">All roles</option>
+              <option>Owner</option><option>Sales Manager</option><option>Closer</option>
+              <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Affiliate</option>
+            </select>
+            <div class="spacer"></div>
+            <button class="btn sm" id="toAdvanced">About role access <span aria-hidden="true">↗</span></button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="grid" id="rosterTbl">
+              <thead><tr><th>Team member</th><th>Role</th><th>Consent</th><th>Shift</th><th>Login</th></tr></thead>
+              <tbody id="rosterBody"></tbody>
+            </table>
+          </div>
+          <div class="roster-footer"><span id="hiddenLine">Loading roster…</span><span class="row-hint">Select a person to edit <span aria-hidden="true">↗</span></span></div>
+        </div>
+
+        <div class="tabpane" id="tab-perms">
+          <div class="card-hd" style="border-bottom:1px solid var(--line)">
+            <h2>Role access</h2>
+            <div class="spacer"></div>
+            <span class="badge b-gray">Managed by the system</span>
+          </div>
+          <div class="access-explainer"><div class="access-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg></div><div><h3>Roles control access.</h3><p>You can change a person’s role from the People tab. The server checks what that role can do on every action.</p><p>The permission list is not available here. This page does not change role rules.</p></div></div>
+          <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="badge b-gray" id="permCount">No permission list available</span>
+            
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-clock">
+          <div class="card-hd" style="border-bottom:1px solid var(--line)">
+            <h2>Time &amp; consent</h2>
+            <div class="spacer"></div>
+            <span class="caption">Each person clocks their own shift.</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="grid">
+              <thead><tr><th>Person</th><th>Clock state</th><th>Since</th><th>Today</th><th>Monitoring consent</th><th>Signed</th><th></th></tr></thead>
+              <tbody id="clockBody"></tbody>
+            </table>
+          </div>
+          <details class="consent-details"><summary>What monitoring consent covers</summary><p>Activity, apps, sites and enabled Hubstaff screenshots during clocked-in shifts only. Monitoring starts off. The owner records a signed notice to enable it and clears that record to revoke it.</p><p class="caption">Reference: docs/rules/MONITORING-CONSENT-FORM.md</p></details>
+        </div>
+
+        <div class="tabpane" id="tab-telemetry">
+          <div class="card-hd" style="border-bottom:1px solid var(--line)">
+            <h2>Shift activity</h2>
+            <div class="spacer"></div>
+            <select id="teleStaff" style="border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:var(--fs-body);background:#fff;min-width:200px">
+              <option value="">Select a person…</option>
+            </select>
+            <button class="btn sm mono" id="teleRefresh">Refresh</button>
+          </div>
+          <div id="teleEmpty" style="padding:28px 16px;font-size:var(--fs-body);color:var(--gray)">Pick someone to see shifts, hours, and Hubstaff activity.</div>
+          <div id="teleBody" style="display:none">
+            <div class="stats" style="margin:0;border-bottom:1px solid var(--line);border-radius:0">
+              <div class="stat"><div class="eyebrow">CONSENT</div><div class="sv" id="teleConsent">—</div><div class="sd" id="teleConsentSd">monitoring consent</div></div>
+              <div class="stat"><div class="eyebrow">HOURS</div><div class="sv" id="teleHours">—</div><div class="sd">payable across listed shifts</div></div>
+              <div class="stat"><div class="eyebrow">ACTIVITY AVG</div><div class="sv" id="teleAvg">—</div><div class="sd" id="teleAvgSd">from monitor samples</div></div>
+              <div class="stat"><div class="eyebrow">SAMPLES</div><div class="sv" id="teleSamples">—</div><div class="sd">activity + screenshots</div></div>
+            </div>
+            <div class="telemetry-columns">
+              <div style="border-right:1px solid var(--line);overflow-x:auto">
+                <div class="card-hd" style="border-bottom:1px solid var(--line)"><div class="eyebrow">SHIFTS</div></div>
+                <table class="grid"><thead><tr><th>Started</th><th>Ended</th><th>State</th></tr></thead><tbody id="teleShifts"></tbody></table>
+              </div>
+              <div style="overflow-x:auto">
+                <div class="card-hd" style="border-bottom:1px solid var(--line)"><div class="eyebrow">RECENT MONITOR EVENTS</div></div>
+                <table class="grid"><thead><tr><th>When</th><th>Kind</th><th>Summary</th></tr></thead><tbody id="teleEvents"></tbody></table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot"><span>Fundhub workspace</span></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="editor" id="editor">
+  <div class="editor-hd"><div><div class="eyebrow"><span id="edMode">EDIT PERSON</span></div><div class="t" id="edTitle" style="font-size:var(--fs-title);font-weight:600;margin-top:5px">—</div></div><button class="xbtn" id="edClose" aria-label="Close person editor">✕</button></div>
+  <div class="editor-bd">
+    <div class="grid2">
+      <div class="field"><label>First name</label><input id="ed_first"></div>
+      <div class="field"><label>Last name</label><input id="ed_last"></div>
+      <div class="field" style="grid-column:1/-1"><label>Email</label><input id="ed_email"></div>
+      <div class="field"><label>Phone</label><input id="ed_phone" class="num"></div>
+      <div class="field"><label>Employee code</label><input id="ed_code" class="num" readonly style="background:var(--soft);color:var(--gray)"><span class="hint">Not issued by this system</span></div>
+      <div class="field"><label>Role</label><select id="ed_role">
+        <option>Owner</option><option>Admin</option><option>Sales Manager</option><option>Closer</option>
+        <option>Funding Advisor</option><option>Inquiry Specialist</option><option>Setter</option>
+      </select></div>
+      <div class="field"><label>Start date</label><input id="ed_start" type="date"></div>
+    </div>
+    <div style="margin-top:18px">
+      <div class="eyebrow" style="margin-bottom:6px">Preferences</div>
+      <div class="swrow"><div class="swl"><div class="n">Monitoring consent on file</div><div class="d">Owner only. On means a signed form is on file. Off stops monitoring data collection.</div></div><div class="sw" id="ed_consent"></div></div>
+      <div class="swrow"><div class="swl"><div class="n">Text when a call is booked</div><div class="d">Off by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.</div></div><div class="sw" id="ed_booked_sms"></div></div>
+    </div>
+    <div style="margin-top:18px">
+      <div class="eyebrow" style="margin-bottom:6px">Role access</div>
+      <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Access follows this person’s role. The server checks each action; the permission list is not shown here.</div>
+    </div>
+    <div style="margin-top:18px" id="edAgreementsWrap">
+      <div class="eyebrow" style="margin-bottom:6px">Agreements</div>
+      <div style="font-size:var(--fs-body);color:var(--gray);margin-bottom:9px">Open this person’s saved agreements.</div>
+      <div id="edAgreements" style="font-size:var(--fs-body);color:var(--gray)">—</div>
+    </div>
+  </div>
+  <div class="editor-ft">
+    <button class="btn dark mono" id="edSave">Save</button>
+    <button class="btn mono" id="edCancel">Cancel</button>
+    <button class="btn mono" id="edReset" style="display:none">Reset password</button>
+    <div class="spacer"></div>
+    <button class="btn mono danger" id="edDeact">Revoke login</button>
+  </div>
+</aside>
+
+<script>
+
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    var w=t.closest('.card');
+    w.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+    w.querySelectorAll('.tabpane').forEach(function(x){x.classList.remove('on')});
+    t.classList.add('on');
+    var p=document.getElementById('tab-'+t.dataset.tab); if(p)p.classList.add('on');
+  });
+});
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]});}
+
+/* ══ DATA ════════════════════════════════════════════════════════════════ */
+var PEOPLE=[];
+var nextId=8;
+
+var ROLE_KEY={
+  Owner:null,
+  Admin:'admin',
+  Closer:'closer',
+  'Funding Advisor':'funding_advisor',
+  'Inquiry Specialist':'inquiry_specialist',
+  Setter:'setter',
+  'Sales Manager':'sales_manager',
+  Affiliate:null
+};
+/* There is deliberately no permission matrix in this file.
+
+   An 18×6 chart used to live here, typed in by hand. Nothing read it from the
+   server, because nothing serves it: role rules are enforced per endpoint in
+   the server's own code and are never published to the browser. An owner
+   looking at that chart was reading a guess about who can issue refunds or see
+   a Social Security number in a regulated product. Removed until a real source
+   exists — see the ST-02 tab, which now says so on screen. */
+
+var ROLE_CLS={Owner:'b-accent','Sales Manager':'b-info',Closer:'b-ok','Funding Advisor':'b-warn','Inquiry Specialist':'b-gray',Affiliate:'b-gray'};
+function initials(p){return (p.first[0]+p.last[0]).toUpperCase()}
+
+/* ══ ROLE CELL ════════════════════════════════════════════════════════════
+   The person's real role, and nothing more. This column used to add "which
+   areas they reach" and "14 of 18 permissions", both counted off the
+   hand-written chart that used to sit above. Those numbers described the
+   chart, not the system, so they are gone.                                 */
+function presetCell(role){
+  return '<div class="acc"><span class="badge '+(ROLE_CLS[role]||'b-gray')+'">'+esc(role)+'</span></div>';
+}
+
+/* ══ RENDER ══════════════════════════════════════════════════════════════ */
+var selId=null;
+
+function visible(){
+  var r=document.getElementById('roleFilter').value;
+  var q=document.getElementById('qFilter').value.trim().toLowerCase();
+  return PEOPLE.filter(function(p){
+    if(r && p.role!==r) return false;
+    if(q && (p.first+' '+p.last+' '+p.code+' '+p.email).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+}
+
+function renderRoster(){
+  var rows=visible().map(function(p){
+    /* employee code and start date ride in the row's hover title and stay
+       editable in the person editor — they don't earn a column here */
+    var t=p.code+' · started '+p.start;
+    return '<tr data-id="'+esc(String(p.id))+'" class="'+(String(p.id)===String(selId)?'sel':'')+'" title="'+esc(t)+'">'+
+      '<td><div class="who-cell"><span class="av">'+initials(p)+'</span><div><div class="nm">'+esc(p.first+' '+p.last)+'</div><div class="em">'+esc(p.email)+'</div></div></div></td>'+
+      '<td>'+presetCell(p.role)+'</td>'+
+      /* consent === null means a REAL staff row: monitoring consent and clock
+         state have no column anywhere in the schema. Rendering the sample
+         "On file" badge against a real employee would be fabricating a
+         compliance record about a named person, which is the one kind of
+         invented data that could actually hurt someone. Show that it is
+         unknown. */
+      '<td>'+(p.consent===null?'<span class="badge b-gray" title="No consent record in the database">—</span>'
+             :p.consent?'<span class="badge b-ok">On file</span>':'<span class="badge b-alert">Missing</span>')+'</td>'+
+      '<td>'+(p.clock===null?'<span class="badge b-gray" title="No clock data in the database">—</span>'
+             :p.clock?'<span class="badge b-ok">In · '+p.since+'</span>':'<span class="badge b-gray">Out</span>')+'</td>'+
+      '<td>'+(p.status==='suspended'?'<span class="badge b-warn">Revoked</span>'
+             :p.status==='invited'?'<span class="badge b-warn">Invited</span>'
+             :p.active?'<span class="badge b-ok">Active</span>':'<span class="badge b-warn">Invited</span>')+'</td></tr>';
+  }).join('');
+  document.getElementById('rosterBody').innerHTML=rows||'<tr><td colspan="5" class="empty">No one matches that filter.</td></tr>';
+  document.querySelectorAll('#rosterBody tr[data-id]').forEach(function(tr){
+    tr.addEventListener('click',function(){openEditor(tr.dataset.id);});
+  });
+}
+
+function renderClock(){
+  document.getElementById('clockBody').innerHTML=PEOPLE.map(function(p){
+    var canSelf = !!p.self;
+    var clockKnown = p.clock !== null;
+    var clockCell = canSelf
+      ? '<button class="btn sm mono" data-clock="'+esc(String(p.id))+'">'+(p.clock?'Clock out':'Clock in')+'</button>'
+      : '<span class="badge b-gray" title="Each person clocks themselves via /api/shifts — you can only clock your own row">—</span>';
+    var consentCell = p.consent===null
+      ? '<span class="badge b-gray" title="No consent record in the database">—</span>'
+      : p.consent?'<span class="badge b-ok">On file</span>':'<span class="badge b-alert">Off</span>';
+    var consentBtn = (window.__FH_IS_OWNER && p.staffId)
+      ? '<button class="btn sm mono" data-consent="'+esc(String(p.staffId))+'" data-on="'+(p.consent?1:0)+'">'+(p.consent?'Revoke':'Record form')+'</button>'
+      : '';
+    return '<tr>'+
+      '<td><div class="who-cell"><span class="av">'+initials(p)+'</span><div><div class="nm">'+esc(p.first+' '+p.last)+(canSelf?' <span class="badge b-info">you</span>':'')+'</div><div class="em">'+esc(p.email||p.code)+'</div></div></div></td>'+
+      '<td>'+(clockKnown
+             ?(p.clock?'<span class="badge b-ok">Clocked in</span>':'<span class="badge b-gray">Clocked out</span>')
+             :'<span class="badge b-gray" title="Open shift unknown for this row">—</span>')+'</td>'+
+      '<td class="mono" style="font-size:var(--fs-body)">'+(clockKnown&&p.clock?p.since:'—')+'</td>'+
+      '<td class="mono" style="font-size:var(--fs-body)">'+(p.today||'—')+'</td>'+
+      '<td>'+consentCell+'</td>'+
+      '<td class="mono" style="font-size:var(--fs-body);color:var(--gray)">'+(p.consentAt||'—')+'</td>'+
+      '<td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">'+consentBtn+clockCell+'</td></tr>';
+  }).join('');
+  document.querySelectorAll('[data-clock]').forEach(function(b){
+    b.addEventListener('click',function(e){
+      e.stopPropagation();
+      var p=PEOPLE.filter(function(x){return String(x.id)===String(b.dataset.clock)})[0];
+      if(!p || !p.self){ alert('You can only clock yourself. /api/shifts always uses the signed-in session.'); return; }
+      if(typeof window.FHStaffClock !== 'function'){ alert('Clock API not loaded — sign in as staff.'); return; }
+      b.disabled = true;
+      window.FHStaffClock(p.clock ? 'clock_out' : 'clock_in').then(function(){ b.disabled = false; });
+    });
+  });
+  document.querySelectorAll('[data-consent]').forEach(function(b){
+    b.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(typeof window.FHMonitoringConsent !== 'function'){ alert('Consent API not loaded.'); return; }
+      var on = b.dataset.on === '1';
+      var msg = on
+        ? 'Revoke monitoring consent? Hubstaff ingest will skip this person.'
+        : 'Record that a signed monitoring consent form is on file for this person?';
+      if(!confirm(msg)) return;
+      b.disabled = true;
+      window.FHMonitoringConsent(b.dataset.consent, on ? 'revoke' : 'grant').then(function(){ b.disabled = false; });
+    });
+  });
+}
+
+/* ST-02 has no render function on purpose: there is no permission data to
+   render. Its tab is static copy explaining why. */
+
+function renderStats(){
+  var hasClock=PEOPLE.some(function(p){return p.clock!==null});
+  var hasConsent=PEOPLE.some(function(p){return p.consent!==null});
+  var shift=hasClock?PEOPLE.filter(function(p){return p.clock===true}).length:null;
+  var cons=hasConsent?PEOPLE.filter(function(p){return p.consent===true}).length:null;
+  document.getElementById('kHead').textContent=PEOPLE.length;
+  document.getElementById('kShift').textContent=shift===null?'—':String(shift);
+  document.getElementById('kConsent').textContent=cons===null?'—':(cons+'/'+PEOPLE.length);
+  document.getElementById('kPending').textContent=PEOPLE.filter(function(p){return !p.active}).length;
+  document.getElementById('onShiftTxt').textContent=(shift===null?'—':shift)+' on shift';
+  var chip=document.getElementById('onShiftChip');
+  chip.className='chip '+(shift===null?'wip':(shift>0?'on':'wip'));
+}
+function renderAll(){renderRoster();renderClock();renderStats();}
+
+/* ══ EDITOR ══════════════════════════════════════════════════════════════ */
+/* ST-07 used to list this person's permissions as badges, filtered out of the
+   same hand-written chart. It is static copy now — there is nothing real to
+   fill it with. */
+function setSw(id,on){document.getElementById(id).classList.toggle('on',!!on)}
+function getSw(id){return document.getElementById(id).classList.contains('on')}
+
+function openEditor(id){
+  /* Live roster ids are UUIDs — keep as string. Sample ids stay numeric strings. */
+  selId=id==null?null:String(id);
+  var p=PEOPLE.filter(function(x){return x.id===id})[0];
+  document.getElementById('edMode').textContent='EDIT PERSON';
+  document.getElementById('edTitle').textContent=p.first+' '+p.last;
+  document.getElementById('ed_first').value=p.first;
+  document.getElementById('ed_last').value=p.last;
+  document.getElementById('ed_email').value=p.email;
+  document.getElementById('ed_phone').value=p.phone;
+  document.getElementById('ed_code').value=p.code;
+  document.getElementById('ed_role').value=p.role;
+  document.getElementById('ed_start').value=(p.start && p.start!=='—') ? String(p.start).slice(0,10) : '';
+  ['ed_code'].forEach(function(i){
+    document.getElementById(i).readOnly=true;
+  });
+  ['ed_first','ed_last','ed_email','ed_phone','ed_start'].forEach(function(i){
+    document.getElementById(i).readOnly=false;
+  });
+  setSw('ed_consent',p.consent);
+  setSw('ed_booked_sms', p.notifyBookedCallSms);
+  document.getElementById('edReset').style.display = p.email ? '' : 'none';
+  document.getElementById('edDeact').style.display = '';
+  document.getElementById('editor').classList.add('open');
+  document.getElementById('scrim').classList.add('on');
+  renderRoster();
+  loadStaffAgreements(p.staffId || p.id);
+}
+function openNew(){
+  selId=null;
+  document.getElementById('edMode').textContent='ADD PERSON';
+  document.getElementById('edTitle').textContent='New person';
+  ['ed_first','ed_last','ed_email','ed_phone'].forEach(function(i){document.getElementById(i).value=''});
+  /* No employee code is issued anywhere — the invite reply carries none. Show
+     the same unknown marker the roster uses instead of inventing one. */
+  document.getElementById('ed_code').value='—';
+  document.getElementById('ed_role').value='Closer';
+  document.getElementById('ed_start').value='';
+  document.getElementById('ed_email').placeholder='inbox for the invite — login is name@fundhub.ai';
+  ['ed_first','ed_last','ed_email'].forEach(function(i){document.getElementById(i).readOnly=false;});
+  ['ed_phone','ed_start'].forEach(function(i){document.getElementById(i).readOnly=true;});
+  setSw('ed_consent',false);
+  setSw('ed_booked_sms',false);
+  document.getElementById('edReset').style.display='none';   // no account exists yet
+  document.getElementById('edDeact').style.display='none';   // nothing to revoke yet
+  document.getElementById('edAgreements').textContent='Save / invite first — agreements attach after hire.';
+  document.getElementById('editor').classList.add('open');
+  document.getElementById('scrim').classList.add('on');
+}
+function closeEditor(){
+  document.getElementById('editor').classList.remove('open');
+  document.getElementById('scrim').classList.remove('on');
+  selId=null; renderRoster();
+}
+
+/* Employment agreements for this roster person. Stored in contracts +
+   documents (signed_document_id). Filtered by contracts.staff_id. */
+function loadStaffAgreements(staffId){
+  var box=document.getElementById('edAgreements');
+  if(!box) return;
+  if(!staffId || typeof FHData==='undefined' || !FHData.read){
+    box.textContent='—';
+    return;
+  }
+  box.textContent='Loading…';
+  FHData.read('contracts',{ view:'contracts', staff_id:String(staffId), limit:50 }).then(function(res){
+    if(!res || !res.ok){
+      box.textContent=(res && res.error) || 'Could not load agreements.';
+      return;
+    }
+    var items=(res.data && res.data.items) || [];
+    if(!items.length){
+      box.textContent='None on file yet.';
+      return;
+    }
+    box.innerHTML=items.map(function(c){
+      var st=esc(c.status||'');
+      var when=c.signed_at ? new Date(c.signed_at).toLocaleDateString() : (c.sent_at ? ('sent '+new Date(c.sent_at).toLocaleDateString()) : '—');
+      var label=c.signed_document_id ? 'Open signed' : 'Open';
+      var openBtn=(c.id && (c.signed_document_id || c.document_id || c.status==='signed' || c.status==='sent' || c.status==='viewed' || c.status==='void'))
+        ? (' <button type="button" class="btn sm mono ed-open-signed" data-cid="'+esc(c.id)+'" data-signed="'+(c.signed_document_id?'1':'0')+'">'+label+'</button>')
+        : '';
+      return '<div style="padding:8px 0;border-bottom:1px solid var(--line)">'+esc(c.title||c.template_key||'Agreement')+
+        ' <span class="badge b-gray">'+st+'</span> · '+esc(when)+openBtn+'</div>';
+    }).join('');
+    box.querySelectorAll('.ed-open-signed').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var id=btn.getAttribute('data-cid');
+        var wantSigned=btn.getAttribute('data-signed')==='1';
+        if(!id) return;
+        var was=btn.textContent;
+        btn.disabled=true; btn.textContent='opening…';
+        FHData.read('contracts',{ file:'contract', id:id, signed: wantSigned ? 1 : 0 }).then(function(r){
+          btn.disabled=false; btn.textContent=was;
+          if(!r.ok || !r.data || !r.data.pdf_base64){
+            alert((r && r.error) || 'No file on file yet.');
+            return;
+          }
+          downloadPdfB64(r.data.pdf_base64, r.data.filename || 'agreement.pdf');
+        });
+      });
+    });
+  });
+}
+function downloadPdfB64(b64, filename){
+  var bin=atob(b64);
+  var buf=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+  var url=URL.createObjectURL(new Blob([buf],{ type:'application/pdf' }));
+  var a=document.createElement('a');
+  a.href=url; a.download=filename || 'agreement.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+document.querySelectorAll('.sw').forEach(function(s){s.addEventListener('click',function(){s.classList.toggle('on')})});
+document.getElementById('addBtn').addEventListener('click',openNew);
+document.getElementById('edClose').addEventListener('click',closeEditor);
+document.getElementById('edCancel').addEventListener('click',closeEditor);
+document.getElementById('scrim').addEventListener('click',closeEditor);
+document.getElementById('edSave').addEventListener('click',function(){
+  var first=document.getElementById('ed_first').value.trim();
+  var last=document.getElementById('ed_last').value.trim();
+  if(!first||!last){alert('First and last name are required.');return}
+  var rec={first:first,last:last,
+    email:document.getElementById('ed_email').value.trim(),
+    phone:document.getElementById('ed_phone').value.trim(),
+    role:document.getElementById('ed_role').value,
+    start:document.getElementById('ed_start').value,
+    consent:getSw('ed_consent'),
+    notifyBookedCallSms:getSw('ed_booked_sms')};
+  if(selId){
+    var p=PEOPLE.filter(function(x){return String(x.id)===String(selId)})[0];
+    if(!p || !p.staffId){
+      alert('This row is not a real login.');
+      return;
+    }
+    function applyLocalProfile(st){
+      if(st && st.name){
+        var sp=st.name.indexOf(' ');
+        p.first=sp>0?st.name.slice(0,sp):st.name;
+        p.last=sp>0?st.name.slice(sp+1):'';
+      }
+      if(st && st.email) p.email=st.email;
+      if(st && Object.prototype.hasOwnProperty.call(st,'phone')) p.phone=st.phone||'—';
+      if(st && Object.prototype.hasOwnProperty.call(st,'notify_booked_call_sms')) p.notifyBookedCallSms=!!st.notify_booked_call_sms;
+      if(st && Object.prototype.hasOwnProperty.call(st,'start_date')){
+        p.start=st.start_date ? String(st.start_date).slice(0,10) : '—';
+      }
+      if(st && st.employee_code) p.code=st.employee_code;
+    }
+    function finishEdit(){
+      if(typeof window.FHMonitoringConsent === 'function' && window.__FH_IS_OWNER){
+        var want = !!rec.consent;
+        var had = !!p.consent;
+        if(want !== had){
+          window.FHMonitoringConsent(p.staffId, want ? 'grant' : 'revoke').then(function(){
+            p.role=rec.role;
+            closeEditor(); renderAll();
+          });
+          return;
+        }
+      }
+      p.role=rec.role;
+      closeEditor(); renderAll();
+    }
+    var fullName=(rec.first+' '+rec.last).trim();
+    var profileChanged=fullName!==(p.first+' '+p.last).trim()
+      ||rec.email!==p.email
+      ||rec.phone!==p.phone
+      ||rec.start!==p.start
+      ||!!rec.notifyBookedCallSms!==!!p.notifyBookedCallSms;
+    var nextRole=ROLE_KEY[rec.role];
+    var roleChanged=nextRole && rec.role !== p.role;
+    if(typeof FHData==='undefined'||!FHData.write){alert('Not available — the data layer has not loaded.');return}
+    var saveBtn=document.getElementById('edSave');
+    saveBtn.disabled=true; saveBtn.textContent='Saving…';
+    var chain=Promise.resolve({ok:true});
+    if(profileChanged){
+      chain=chain.then(function(){
+        return FHData.write('/api/auth/staff-update',{
+          staff_id:p.staffId,
+          name:fullName,
+          email:rec.email,
+          phone:rec.phone==='—'?'':rec.phone,
+          start_date:rec.start==='—'?'':rec.start,
+          notify_booked_call_sms:!!rec.notifyBookedCallSms
+        });
+      }).then(function(res){
+        if(!res.ok){
+          throw new Error('Could not save their details: '+(res.error||'unknown error')+
+            (res.source==='unauthorized'?' — sign in as owner.':''));
+        }
+        applyLocalProfile(res.data && res.data.staff);
+        return res;
+      });
+    }
+    if(roleChanged){
+      chain=chain.then(function(){
+        return FHData.write('/api/auth/staff-role',{staff_id:p.staffId,role:nextRole});
+      }).then(function(res){
+        if(!res.ok){
+          throw new Error('Could not save the job: '+(res.error||'unknown error')+
+            (res.source==='unauthorized'?' — sign in as owner.':''));
+        }
+        p.role=rec.role;
+        return res;
+      });
+    }
+    chain.then(function(){
+      saveBtn.disabled=false; saveBtn.textContent='Save';
+      finishEdit();
+    }).catch(function(err){
+      saveBtn.disabled=false; saveBtn.textContent='Save';
+      alert(err && err.message ? err.message : 'Could not save.');
+    });
+    return;
+  }
+  var roleKey=ROLE_KEY[rec.role];
+  if(!roleKey){alert('Pick a job we can log in: closer, advisor, inquiry, setter, sales manager, or admin.');return}
+  if(typeof FHData==='undefined'||!FHData.write){alert('Not available — the data layer has not loaded.');return}
+  var btn=document.getElementById('edSave');
+  btn.disabled=true; btn.textContent='Creating…';
+  var notify=rec.email||'';
+  FHData.write('/api/auth/invite',{name:first+' '+last,role:roleKey,notify_email:notify}).then(function(res){
+    btn.disabled=false; btn.textContent='Save';
+    if(!res.ok){
+      alert('Could not create them: '+(res.error||'unknown error')+
+        (res.source==='unauthorized'?' — sign in as owner.':''));
+      return;
+    }
+    var email=(res.data&&res.data.email)||'';
+    var path=(res.data&&res.data.invitePath)||'';
+    var link=location.origin+path;
+    var mailed=!!(res.data&&res.data.mailed);
+    prompt(
+      mailed
+        ? 'Invite emailed. Login: '+email+' — the link lasts 7 days. Copy it if they need a backup:'
+        : 'Mail did not send. Login: '+email+' — copy this link (7 days) and send it yourself:',
+      link
+    );
+    closeEditor();
+    location.reload();
+  });
+});
+document.getElementById('edDeact').addEventListener('click',function(){
+  if(!selId){closeEditor();return}
+  var p=PEOPLE.filter(function(x){return String(x.id)===String(selId)})[0];
+  if(!p){closeEditor();return}
+  if(p.role==='Owner'||p.self){alert('You cannot revoke the owner login.');return}
+  if(!p.staffId){alert('This row is not a real login.');return}
+  if(typeof FHData==='undefined'||!FHData.write){alert('Not available — the data layer has not loaded.');return}
+  if(!confirm('Revoke login for '+p.first+' '+p.last+'? They will not be able to sign in.')) return;
+  var btn=this; btn.disabled=true;
+  FHData.write('/api/auth/suspend',{staff_id:p.staffId}).then(function(res){
+    btn.disabled=false;
+    if(!res.ok){
+      alert('Could not revoke: '+(res.error||'unknown error'));
+      return;
+    }
+    closeEditor();
+    location.reload();
+  });
+});
+/* Reset password — owner/admin only, enforced server-side on the whole route
+   (api/auth/admin-reset.mjs). Nothing in this system sends outbound email, so
+   the response hands back a real link for the admin to copy and relay by
+   hand — same pattern src/auth/invite.mjs already uses for staff invites.
+   Requires window.FHData from data.js, loaded further down this page; by the
+   time a click is possible, script loading has long finished. */
+document.getElementById('edReset').addEventListener('click', async function(){
+  if(!selId){return}
+  var p=PEOPLE.filter(function(x){return String(x.id)===String(selId)})[0];
+  if(!p || !p.email){alert('This person has no email on file.');return}
+  if(typeof FHData === 'undefined' || !FHData.write){alert('Not available — the data layer has not loaded.');return}
+  if(!confirm('Create a password reset link for '+p.first+' '+p.last+' ('+p.email+')?')) return;
+  var btn=this; btn.disabled=true; btn.textContent='Working…';
+  var res = await FHData.write('/api/auth/admin-reset', {email:p.email});
+  btn.disabled=false; btn.textContent='Reset password';
+  if(!res.ok){
+    alert('Could not create a reset link: '+(res.error||'unknown error')+
+      (res.source==='unauthorized' ? ' — you may need to be signed in as owner or admin.' : ''));
+    return;
+  }
+  var link = location.origin + res.data.resetPath;
+  prompt('Reset link for '+p.email+' — copy this and send it to them. Reset links last 1 hour:', link);
+});
+document.getElementById('roleFilter').addEventListener('change',renderRoster);
+document.getElementById('qFilter').addEventListener('input',renderRoster);
+document.getElementById('toAdvanced').addEventListener('click',function(){
+  document.querySelector('.tab[data-tab="perms"]').click();
+});
+
+renderAll();
+</script>
+<script defer src="data.js"></script>
+<script>
+
+/* Staff & Teams — the real roster from /api/read/staff. Replaces the roster
+   table body only; the clock table has no endpoint and keeps its sample markup
+   (reported in the unit notes). The permissions tab has no endpoint either and
+   now renders nothing rather than a hand-written stand-in. */
+(function () {
+  "use strict";
+  var esc = function (v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+      return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; });
+  };
+  var label = function (r) {
+    return String(r || "").replace(/_/g, " ").replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+  };
+
+  /* Feed the screen's OWN model and let it render.
+
+     This used to overwrite #rosterBody directly with five <td>s in the order
+     name/email/role/status/tasks. The table's header is
+     Person | Access | Consent | Clock | Status — so every value landed one
+     column left of where it belonged: the role appeared under "Consent" and the
+     account status under "Clock". And because renderRoster() rebuilds the body
+     from PEOPLE on every filter change, the first keystroke in the search box
+     replaced the six real staff with the seven-person sample roster while the
+     banner still said "live".
+
+     Replacing PEOPLE and calling the screen's own renderAll() fixes both: the
+     columns are right by construction, and filtering, the row editor and the
+     clock tab all keep working against real people. */
+
+  // DB role -> the label this screen shows. Only exact correspondences are
+  // mapped; anything else keeps its real name rather than being forced into a
+  // preset it does not have.
+  var ROLE_LABEL = {
+    owner: "Owner",
+    admin: "Admin",
+    closer: "Closer",
+    funding_advisor: "Funding Advisor",
+    inquiry_specialist: "Inquiry Specialist",
+    setter: "Setter",
+    sales_manager: "Sales Manager"
+  };
+  var ROLE_KEY = {
+    Owner: null,
+    Admin: "admin",
+    Closer: "closer",
+    "Funding Advisor": "funding_advisor",
+    "Inquiry Specialist": "inquiry_specialist",
+    Setter: "setter",
+    "Sales Manager": "sales_manager",
+    Affiliate: null
+  };
+
+  var meEmail = null;
+  var meId = null;
+
+  function loadMe() {
+    var t;
+    try { t = localStorage.getItem("fh_token") || ""; } catch (e) { t = ""; }
+    return fetch("/api/auth/session", { headers: t ? { authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) {
+        if (!(d && d.ok && d.principal === "staff" && d.staff)) return;
+        if (d.staff.email) meEmail = String(d.staff.email).toLowerCase();
+        if (d.staff.id) meId = d.staff.id;
+        window.__FH_IS_OWNER = String(d.staff.role || "").toLowerCase() === "owner";
+      })
+      .catch(function () {
+        try {
+          var sess = JSON.parse(localStorage.getItem("fh_account") || "null");
+          if (sess && sess.email) meEmail = String(sess.email).toLowerCase();
+          if (sess && sess.id) meId = sess.id;
+        } catch (e) {}
+      });
+  }
+
+  window.__FH_IS_OWNER = window.__FH_IS_OWNER || false;
+  function fmtWhen(v) {
+    if (!v) return "—";
+    try { var d = new Date(v); if (isNaN(d.getTime())) return String(v); return d.toLocaleString(); }
+    catch (e) { return String(v); }
+  }
+  function fillTeleSelect() {
+    var sel = document.getElementById("teleStaff"); if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">Select a person…</option>' +
+      PEOPLE.filter(function (p) { return p.staffId; }).map(function (p) {
+        return '<option value="' + esc(String(p.staffId)) + '">' + esc(p.first + " " + p.last) + "</option>";
+      }).join("");
+    if (cur) sel.value = cur;
+  }
+  function renderTelemetry(data) {
+    var empty = document.getElementById("teleEmpty");
+    var body = document.getElementById("teleBody");
+    if (!empty || !body) return;
+    if (!data || !data.ok) {
+      empty.style.display = ""; body.style.display = "none";
+      empty.textContent = (data && data.error) ? ("Could not load: " + data.error) : "Pick someone to see shifts, hours, and Hubstaff activity.";
+      return;
+    }
+    empty.style.display = "none"; body.style.display = "";
+    var on = !!(data.staff && data.staff.monitoring_on);
+    document.getElementById("teleConsent").textContent = on ? "On" : "Off";
+    document.getElementById("teleConsentSd").textContent = on ? ("signed " + fmtWhen(data.staff.monitoring_consent_at)) : "no consent — ingest skips";
+    var hrs = data.hours && data.hours.payable_hours;
+    document.getElementById("teleHours").textContent = hrs == null ? "—" : (Math.round(hrs * 100) / 100) + "h";
+    var avg = data.activity && data.activity.avg_overall;
+    document.getElementById("teleAvg").textContent = avg == null ? "—" : (avg + "%");
+    document.getElementById("teleAvgSd").textContent = (data.activity && data.activity.activity_samples || 0) + " activity blocks";
+    document.getElementById("teleSamples").textContent = String((data.activity && (data.activity.activity_samples + data.activity.screenshot_samples)) || 0);
+    document.getElementById("teleShifts").innerHTML = (data.shifts || []).map(function (s) {
+      return "<tr><td class=\"mono\" style=\"font-size:var(--fs-body)\">" + esc(fmtWhen(s.started_at)) +
+        "</td><td class=\"mono\" style=\"font-size:var(--fs-body)\">" + esc(s.open ? "open" : fmtWhen(s.ended_at)) +
+        "</td><td>" + (s.open ? '<span class="badge b-ok">Open</span>' : '<span class="badge b-gray">Closed</span>') + "</td></tr>";
+    }).join("") || '<tr><td colspan="3" class="empty">No shifts on file.</td></tr>';
+    document.getElementById("teleEvents").innerHTML = ((data.activity && data.activity.recent) || []).map(function (e) {
+      var d = e.detail || {};
+      var summary = e.kind === "monitor_activity"
+        ? ("overall " + (d.overall == null ? "—" : d.overall + "%"))
+        : "screenshot";
+      return "<tr><td class=\"mono\" style=\"font-size:var(--fs-body)\">" + esc(fmtWhen(e.created_at)) +
+        "</td><td><span class=\"badge b-info\">" + esc(e.kind) + "</span></td><td style=\"font-size:var(--fs-body)\">" + esc(summary) + "</td></tr>";
+    }).join("") || '<tr><td colspan="3" class="empty">No monitor events yet.</td></tr>';
+  }
+  window.FHLoadTelemetry = function (staffId) {
+    if (!staffId) return Promise.resolve(null);
+    var t; try { t = localStorage.getItem("fh_token") || ""; } catch (e) { t = ""; }
+    return fetch("/api/staff/telemetry?staff_id=" + encodeURIComponent(staffId), {
+      headers: { accept: "application/json", authorization: t ? "Bearer " + t : "" }
+    }).then(function (r) { return r.json(); }).then(function (d) { renderTelemetry(d); return d; })
+      .catch(function () { renderTelemetry({ ok: false, error: "network" }); });
+  };
+  window.FHMonitoringConsent = function (staffId, action) {
+    return FHData.write("/api/staff/monitoring-consent", { staff_id: staffId, action: action }).then(function (res) {
+      if (!res.ok) { alert("Could not update consent: " + (res.error || "unknown")); return res; }
+      var at = res.data && res.data.staff && res.data.staff.monitoring_consent_at;
+      var on = !!(res.data && res.data.staff && res.data.staff.monitoring_on);
+      PEOPLE.forEach(function (p) {
+        if (String(p.staffId) !== String(staffId)) return;
+        p.consent = on; p.consentAt = on && at ? fmtWhen(at).slice(0, 10) : null;
+      });
+      try { renderAll(); fillTeleSelect(); } catch (e) {}
+      FHData.banner("real", on ? "consent on file" : "consent revoked", "monitoring-consent");
+      return res;
+    });
+  };
+  var teleSel = document.getElementById("teleStaff");
+  var teleBtn = document.getElementById("teleRefresh");
+  function syncTeleRefresh() {
+    if (teleBtn) teleBtn.hidden = !(teleSel && teleSel.value);
+  }
+  if (teleSel) teleSel.addEventListener("change", function () {
+    syncTeleRefresh();
+    if (teleSel.value) window.FHLoadTelemetry(teleSel.value); else renderTelemetry(null);
+  });
+  if (teleBtn) teleBtn.addEventListener("click", function () {
+    if (teleSel && teleSel.value) window.FHLoadTelemetry(teleSel.value);
+  });
+  syncTeleRefresh();
+
+  /* /api/shifts only clocks the signed-in session — never another person. */
+  window.FHStaffClock = function (action) {
+    return FHData.write("/api/shifts", { action: action }).then(function (res) {
+      if (!res.ok) {
+        alert("Could not " + (action === "clock_in" ? "clock in" : "clock out") + ": " +
+              (res.error || (res.data && res.data.error) || "unknown error"));
+        return res;
+      }
+      var shift = res.data && res.data.shift;
+      PEOPLE.forEach(function (p) {
+        if (!p.self) return;
+        if (action === "clock_in" && shift) {
+          p.clock = true;
+          p.since = "now";
+        } else {
+          p.clock = false;
+          p.since = "—";
+        }
+      });
+      try { renderAll(); } catch (e) {}
+      FHData.banner("real", action === "clock_in" ? "clocked in" : "clocked out", "shifts");
+      return res;
+    });
+  };
+
+  function applyMyShift(people) {
+    return fetch("/api/shifts", {
+      headers: {
+        accept: "application/json",
+        authorization: "Bearer " + (localStorage.getItem("fh_token") || "")
+      }
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var open = d && d.ok && d.shift;
+      people.forEach(function (p) {
+        if (!p.self) return;
+        p.clock = !!open;
+        p.since = open ? "now" : "—";
+      });
+    }).catch(function () {});
+  }
+
+  loadMe().then(function () {
+  try {
+    var demo = false;
+    try { demo = localStorage.getItem("fh_demo") === "1"; } catch (e) {}
+    if (!demo && typeof PEOPLE !== "undefined") {
+      PEOPLE.length = 0;
+      if (typeof renderAll === "function") try { renderAll(); } catch (e) {}
+      FHData.banner("sample", "loading roster…", "roster");
+    }
+  } catch (e) {}
+  FHData.wire(FHData.staff({ limit: 200 }).then(function (result) {
+    if (window.AstraTeamUI) window.AstraTeamUI.setReadResult(result);
+    return result;
+  }), "roster", function (data) {
+    var rows = data.items || [];
+    function showHidden(n) {
+      var el = document.getElementById("hiddenLine");
+      if (!el) return;
+      var count = Number(n) || 0;
+      el.textContent = count === 1
+        ? "1 person is hidden from this list (owner and seeded test logins)."
+        : count + " people are hidden from this list (owner and seeded test logins).";
+    }
+    showHidden(data.hiddenCount);
+    if (!rows.length) {
+      if (typeof PEOPLE !== "undefined") {
+        PEOPLE.length = 0;
+        if (typeof renderAll === "function") try { renderAll(); } catch (e) {}
+      }
+      var hidden = Number(data.hiddenCount) || 0;
+      return hidden
+        ? "no staff on the roster yet · " + hidden + " hidden"
+        : "no staff on the roster yet";
+    }
+    if (typeof PEOPLE === "undefined" || typeof renderAll !== "function") return null;
+
+    var unmapped = [];
+    var mapped = rows.map(function (s, i) {
+      var name = String(s.name || s.email || "").trim();
+      var sp = name.indexOf(" ");
+      var role = ROLE_LABEL[s.role];
+      if (!role) { role = label(s.role); unmapped.push(role); }
+      var email = String(s.email || "").toLowerCase();
+      var self = !!(meEmail && email && meEmail === email) || !!(meId && s.id && String(meId) === String(s.id));
+      return {
+        id: s.id || ("row-" + (i + 1)),
+        staffId: s.id || null,
+        self: self,
+        first: sp > 0 ? name.slice(0, sp) : name,
+        last:  sp > 0 ? name.slice(sp + 1) : "",
+        code: s.employee_code || "—",
+        role: role,
+        email: s.email || "",
+        phone: s.phone || "—",
+        notifyBookedCallSms: s.notify_booked_call_sms === true,
+        start: s.start_date ? String(s.start_date).slice(0, 10) : "—",
+        active: s.status === "active",
+        status: s.status || "",
+        consent: (Object.prototype.hasOwnProperty.call(s, "monitoring_consent_at") ? !!s.monitoring_consent_at : null),
+        consentAt: s.monitoring_consent_at ? String(s.monitoring_consent_at).slice(0, 10) : null,
+        clock: self ? false : (Object.prototype.hasOwnProperty.call(s, "open_shift") ? Number(s.open_shift) > 0 : null),
+        since: Number(s.open_shift) > 0 ? "now" : "—",
+        today: (s.monitor_events_today != null ? (s.monitor_events_today + " mon") : "—"),
+        hubstaffUserId: s.hubstaff_user_id || null
+      };
+    });
+
+    applyMyShift(mapped).then(function () {
+      PEOPLE.length = 0;
+      Array.prototype.push.apply(PEOPLE, mapped);
+      try { renderAll(); fillTeleSelect(); } catch (e) {}
+    });
+    var selfRow = mapped.filter(function (p) { return p.self; })[0];
+    var consented = mapped.filter(function (p) { return p.consent === true; }).length;
+    return "live roster · " + rows.length + " staff" +
+           (selfRow ? (selfRow.clock ? " · you are clocked in" : " · you are clocked out") : " · signed-in user not on roster") +
+           " · consent " + consented + "/" + rows.length +
+           (unmapped.length ? " · " + unmapped.length + " role(s) outside the permission matrix" : "");
+  });
+  });
+})();
+</script>
+<script>
+/* Draft-only presentation states. Original actions and endpoint semantics stay
+   in the unchanged page scripts; the roster promise above exposes its outcome. */
+(function () {
+  var phase = 'loading';
+  var originalRoster = window.renderRoster;
+  var originalStats = window.renderStats;
+  var body = document.getElementById('rosterBody');
+  var table = document.getElementById('rosterTbl');
+  function bindStateAction() {
+    var action = body.querySelector('[data-team-state-action]');
+    if (!action) return;
+    action.addEventListener('click', function () {
+      if (action.dataset.teamStateAction === 'add') document.getElementById('addBtn').click();
+      else if (action.dataset.teamStateAction === 'clear') {
+        document.getElementById('qFilter').value = '';
+        document.getElementById('roleFilter').value = '';
+        window.renderRoster();
+      } else location.reload();
+    });
+  }
+  function stateMarkup(title, message, action, label) {
+    return '<tr><td colspan="5" class="team-state-cell"><div class="team-state" role="status">' +
+      '<h3>' + title + '</h3><p>' + message + '</p>' +
+      '<button class="btn" data-team-state-action="' + action + '">' + label + '</button></div></td></tr>';
+  }
+  function loadingMarkup() {
+    var rows = '';
+    for (var i = 0; i < 6; i++) {
+      rows += '<tr class="team-loading-row" aria-hidden="true">' +
+        '<td><div class="team-skeleton-person"><span class="team-skeleton avatar"></span><div class="team-skeleton-copy"><span class="team-skeleton wide"></span><span class="team-skeleton short"></span></div></div></td>' +
+        '<td><span class="team-skeleton wide"></span></td><td><span class="team-skeleton"></span></td><td><span class="team-skeleton"></span></td><td><span class="team-skeleton"></span></td></tr>';
+    }
+    return rows;
+  }
+  window.renderRoster = function () {
+    table.setAttribute('aria-busy', phase === 'loading' ? 'true' : 'false');
+    if (phase === 'loading') {
+      body.innerHTML = loadingMarkup();
+      document.getElementById('hiddenLine').textContent = 'Loading team members…';
+      return;
+    }
+    if (phase === 'error') {
+      body.innerHTML = stateMarkup('Team could not load', 'Your team details are unavailable. Reload to try again.', 'retry', 'Reload team');
+      document.getElementById('hiddenLine').textContent = 'Team details unavailable';
+      bindStateAction();
+      return;
+    }
+    originalRoster();
+    if (!window.PEOPLE.length) {
+      body.innerHTML = stateMarkup('Your team starts here', 'People you add will appear in this roster.', 'add', 'Add a person');
+      bindStateAction();
+    } else if (!window.visible().length) {
+      body.innerHTML = stateMarkup('No matching people', 'Try another name, email or role.', 'clear', 'Clear filters');
+      bindStateAction();
+    }
+    body.querySelectorAll('tr[data-id]').forEach(function (row) {
+      row.tabIndex = 0;
+      row.setAttribute('aria-label', 'Edit ' + row.querySelector('.nm').textContent);
+      var name = row.querySelector('.nm');
+      var email = row.querySelector('.em');
+      if (name) name.title = name.textContent;
+      if (email) email.title = email.textContent;
+      row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          row.click();
+        }
+      });
+    });
+  };
+  window.renderStats = function () {
+    if (phase === 'ready') { originalStats(); return; }
+    ['kHead', 'kShift', 'kConsent', 'kPending'].forEach(function (id) {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('onShiftTxt').textContent = phase === 'loading' ? 'Loading team…' : 'Team unavailable';
+  };
+  window.AstraTeamUI = {
+    setReadResult: function (result) {
+      phase = result && result.ok ? 'ready' : 'error';
+      if (phase === 'error') { window.renderRoster(); window.renderStats(); }
+    }
+  };
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (item) {
+        item.setAttribute('aria-current', item === tab ? 'page' : 'false');
+      });
+    });
+  });
+  document.querySelectorAll('.field').forEach(function (field) {
+    var label = field.querySelector('label');
+    var control = field.querySelector('input,select');
+    if (label && control && control.id) label.htmlFor = control.id;
+  });
+  document.querySelectorAll('.sw').forEach(function (toggle) {
+    toggle.tabIndex = 0;
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', toggle.closest('.swrow').querySelector('.n').textContent);
+    function sync() { toggle.setAttribute('aria-checked', toggle.classList.contains('on') ? 'true' : 'false'); }
+    toggle.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle.click(); }
+    });
+    new MutationObserver(sync).observe(toggle, { attributes: true, attributeFilter: ['class'] });
+    sync();
+  });
+  window.renderRoster();
+  window.renderStats();
+})();
+</script>
+</body>
+</html>

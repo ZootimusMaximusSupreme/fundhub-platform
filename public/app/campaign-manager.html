@@ -226,8 +226,10 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
 @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 <script defer src="shell.js"></script>
+<link rel="stylesheet" href="/app/fundhub-astra.css">
+<link rel="stylesheet" href="/app/fundhub-astra-staff.css">
 </head>
-<body>
+<body class="fh-astra fh-astra-staff fh-astra--campaign-manager">
 <!-- Campaigns (CM) — paid acquisition across Meta and TikTok, for ONE partner's book.
 
      BUILT FROM
@@ -328,7 +330,8 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
       <button class="btn mono" id="reloadBtn">Reload</button>
     </div>
 
-    <div class="content fh-maxw">
+    <div class="content fh-maxw fh-astra-page">
+      <header class="fh-astra-heading"><div><h2>Campaign performance</h2><p class="fh-astra-subtitle">Review results and the next decision.</p></div></header>
 
       <!-- Who this screen is showing. Was the top half of the SCOPE & SOURCES card;
            the card's grey "Did each panel load?" table is gone (owner call, 2026-08-17). -->
@@ -342,7 +345,7 @@ tr.det>td{background:var(--soft);padding:0 14px 13px!important}
       <div class="loadwarn" id="loadWarn" hidden></div>
 
       <!-- ══ CM-00 · SUMMARY ══════════════════════════════════════════════ -->
-      <div class="stats" id="statRow"></div>
+      <div class="stats fh-astra-summary" id="statRow"></div>
 
       <!-- ══ CM-02 · NEEDS ATTENTION ══════════════════════════════════════ -->
       <div class="card">

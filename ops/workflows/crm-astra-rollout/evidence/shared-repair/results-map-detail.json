@@ -1,0 +1,587 @@
+[
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-1024x900",
+    "width": 1024,
+    "height": 900,
+    "scrollWidth": 1024,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 249,
+      "y": -360.8125,
+      "width": 750,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.16687619750462,
+        "y": 139.13078768421462
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.16687619750462,
+        "y": 275.12219305224494
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.16687619750462,
+        "y": 382.20377352090577
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 374.43191601352464,
+        "y": 384.3949333007829
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.16687619750462,
+        "y": 611.2570633372763
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.16687619750462,
+        "y": 742.3441590939502
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 388.5704937037758,
+        "y": 85.4137302113144
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 369.84593093237396,
+        "y": 717.2603503644915
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 383.51480290835315,
+        "y": 185.11295766033345
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 359.2486332051843,
+        "y": 527.2514087637946
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 369.84593093237396,
+        "y": 695.2603503644915
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "map only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "mapPanelFooter": {
+      "panelHeight": 868,
+      "viewportHeight": 900,
+      "footerReachable": true
+    },
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -525.71875,
+      "width": 356,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.455738753321356,
+        "y": 139.220776790537
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.455738753321356,
+        "y": 275.14517274191337
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.455738753321356,
+        "y": 382.12427071938237
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 177.89785549627362,
+        "y": 384.46966404131723
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.455738753321356,
+        "y": 611.2666605579724
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 11.455738753321356,
+        "y": 742.4204270493841
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 192.42080462674056,
+        "y": 85.59221477402181
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 173.43864538461747,
+        "y": 717.3272813044988
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 187.13889033849046,
+        "y": 184.90061057085524
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 162.559771875156,
+        "y": 527.1693824671726
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 173.43864538461747,
+        "y": 695.3272813044988
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub ·",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 830
+      },
+      {
+        "text": "read-only — no actions from this screen ·",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "service map only · no staff identities",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "mapPanelFooter": {
+      "panelHeight": 812,
+      "viewportHeight": 844,
+      "footerReachable": true
+    },
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "chromium-838x390",
+    "width": 838,
+    "height": 390,
+    "scrollWidth": 838,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 25,
+      "y": -778.8125,
+      "width": 788,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.59249915118795,
+        "y": 138.96838442119497
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.59249915118795,
+        "y": 275.08016925666624
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.59249915118795,
+        "y": 382.3468428395476
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 393.85415615560606,
+        "y": 384.23300933771543
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.59249915118795,
+        "y": 611.2402484933776
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16.59249915118795,
+        "y": 742.2070890015084
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 407.1438115995604,
+        "y": 84.89237486019951
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 389.1180781741204,
+        "y": 717.1364569928596
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 402.54080592304166,
+        "y": 185.67390818294115
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 379.1465410468674,
+        "y": 527.4212541701726
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px \"JetBrains Mono\", monospace",
+        "px": 16,
+        "x": 389.1180781741204,
+        "y": 695.1364569928596
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "· no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px \"JetBrains Mono\", monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "mapPanelFooter": {
+      "panelHeight": 358,
+      "viewportHeight": 390,
+      "footerReachable": true
+    },
+    "errors": []
+  },
+  {
+    "screen": "partner-galaxy",
+    "state": "full",
+    "profile": "webkit-promax",
+    "width": 440,
+    "height": 763,
+    "scrollWidth": 440,
+    "bodyFont": "16px",
+    "mainFont": "16px",
+    "smallTargets": [],
+    "inputFonts": [],
+    "captionFonts": [
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px",
+      "13px"
+    ],
+    "mains": 1,
+    "canvasSize": {
+      "x": 17,
+      "y": -582.21875,
+      "width": 406,
+      "height": 900
+    },
+    "mapFonts": [
+      {
+        "text": "SALES",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.060207245272693,
+        "y": 139.24460400649264
+      },
+      {
+        "text": "CARD STACKING",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.060207245272693,
+        "y": 275.15122057351414
+      },
+      {
+        "text": "OPTIMIZATION ROUNDS",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.060207245272693,
+        "y": 382.1031928558819
+      },
+      {
+        "text": "INQUIRY REMOVAL",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 202.84624636138477,
+        "y": 384.4749105512487
+      },
+      {
+        "text": "AR + COLLECTIONS",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.060207245272693,
+        "y": 611.2692352733375
+      },
+      {
+        "text": "AFFILIATES + HIRING",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 12.060207245272693,
+        "y": 742.4406591120459
+      },
+      {
+        "text": "FUNDHUB (FULFILLMENT)",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 217.38138880587925,
+        "y": 85.50032780100062
+      },
+      {
+        "text": "0 working  ·  1 total",
+        "font": "600 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 198.49076967748684,
+        "y": 717.3474187761823
+      },
+      {
+        "text": "SALES & FUNDING",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 212.0572458139181,
+        "y": 184.9644983251261
+      },
+      {
+        "text": "CLIENT-FACING AGENTS",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 187.60547713100974,
+        "y": 527.1582414716652
+      },
+      {
+        "text": "OPS AGENTS",
+        "font": "bold 16px JetBrains Mono, monospace",
+        "px": 16,
+        "x": 198.49076967748684,
+        "y": 695.3474187761823
+      },
+      {
+        "text": "Sky",
+        "font": "bold 13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 18,
+        "y": 20
+      },
+      {
+        "text": "FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 848
+      },
+      {
+        "text": "— no actions from this screen · service map",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 866
+      },
+      {
+        "text": "only · no staff identities shown",
+        "font": "13px JetBrains Mono, monospace",
+        "px": 13,
+        "x": 16,
+        "y": 884
+      }
+    ],
+    "mapPanelOpen": true,
+    "mapPanelFooter": {
+      "panelHeight": 731,
+      "viewportHeight": 763,
+      "footerReachable": true
+    },
+    "errors": []
+  }
+]
