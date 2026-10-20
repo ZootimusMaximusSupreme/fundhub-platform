@@ -141,3 +141,18 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 ## Leftovers (own product, small)
 
 - Session titles show raw `<pasted_content …>` tags when the first message was a paste. Strip tags in the title.
+
+## Owner calls — 2026-10-20 (sixth note): friends can use it
+
+Chris: a friend downloads the app, plugs in his own tools on his own Mac, and never sees Chris's stuff. iOS look, keep it simple — it is just chatting.
+
+What it takes (plan, not started):
+1. **Own home for the code.** The friend must not need the Fundhub repo. Move Mac Bridge to its own GitHub repo. (Owner decision: yes + name.)
+2. **Easy Mac setup for anyone.** One install command that sets up the helper, starts it by itself at login, asks which project folders to use, plugs into Claude/Codex/Cursor, and shows the QR code.
+3. **Take out Chris-only parts.** No Fundhub paths or Fundhub rules built in. The friend picks his folders; the router reads that folder's own rules.
+4. **Lock the line.** Encrypt phone-to-Mac traffic, not just a secret code, before anyone else uses it.
+5. **iOS look, simple.** Chat list like Messages, chat screen with bubbles, one text box. System colors, dark mode.
+6. **Get it on his phone.** TestFlight first (needs the App Store Connect key saved). Public App Store later.
+7. **Away from home.** Friend uses Tailscale too, same as Chris.
+
+Each person's phone pairs only with their own Mac. There is no shared server, so nobody can see anybody else's chats.
