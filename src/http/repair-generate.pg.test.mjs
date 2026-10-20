@@ -23,7 +23,8 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { db, close, pool } from "../db.mjs";
+import { wipeClientDocuments } from "../testing/wipe-client-documents.mjs";
 import { createSession } from "../auth/session.mjs";
 import { listRepairCases } from "../repair/cases.mjs";
 
@@ -145,22 +146,12 @@ describe("POST /api/repair/generate", { skip: !HAVE_DB ? "no DATABASE_URL" : fal
        this client have to go first, past the guard the same way
        src/contracts/lifecycle.pg.test.mjs does, or the client DELETE below
        fails with 23503 and every later test dies in this wipe (CI, 2026-10-05).
-       Re-enabled in a finally so a failure cannot leave either guard off. */
-    await db.query(`ALTER TABLE document_versions DISABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
-    await db.query(`ALTER TABLE documents DISABLE TRIGGER trg_documents_no_delete`).catch(() => {});
-    try {
-      await db.query(
-        `UPDATE documents SET current_version_id = NULL
-          WHERE client_id IN (SELECT id FROM clients WHERE email = $1)`, [EMAIL]);
-      await db.query(
-        `DELETE FROM document_versions WHERE document_id IN
-           (SELECT d.id FROM documents d JOIN clients c ON c.id = d.client_id WHERE c.email = $1)`, [EMAIL]);
-      await db.query(
-        `DELETE FROM documents WHERE client_id IN (SELECT id FROM clients WHERE email = $1)`, [EMAIL]);
-    } finally {
-      await db.query(`ALTER TABLE documents ENABLE TRIGGER trg_documents_no_delete`).catch(() => {});
-      await db.query(`ALTER TABLE document_versions ENABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
-    }
+       One transaction (src/testing/wipe-client-documents.mjs): the old step-by-step
+       copy swallowed a refused guard switch, unpinned anyway, and left deliverable
+       983904a0 with no current version on 2026-10-12. */
+    await wipeClientDocuments(pool(), {
+      where: "client_id IN (SELECT id FROM clients WHERE email = $1)", params: [EMAIL]
+    });
     await db.query(
       `DELETE FROM tasks WHERE client_id IN (SELECT id FROM clients WHERE email = $1)`, [EMAIL]);
     await db.query(`DELETE FROM clients WHERE email = $1`, [EMAIL]);

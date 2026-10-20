@@ -4,7 +4,8 @@
 
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert";
-import { db, close } from "../db.mjs";
+import { db, close, pool } from "../db.mjs";
+import { wipeClientDocuments } from "../testing/wipe-client-documents.mjs";
 import { resolveDefaultOrg } from "../auth/org.mjs";
 import { buildPayload } from "../../scripts/sim/push-credit.mjs";
 import { runTierEngineFromCrsResult } from "../finance/crs-tier.mjs";
@@ -35,19 +36,10 @@ async function deleteClients(ids) {
      the proof-upload test leaves a document on this client. The first CI run
      that got this far (2026-10-05) died here. Past the guard the same way
      src/contracts/lifecycle.pg.test.mjs does, versions first, guard back on in
-     a finally. */
-  await db.query(`ALTER TABLE document_versions DISABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
-  await db.query(`ALTER TABLE documents DISABLE TRIGGER trg_documents_no_delete`).catch(() => {});
-  try {
-    await db.query(`UPDATE documents SET current_version_id = NULL WHERE client_id = ANY($1::uuid[])`, [ids]);
-    await db.query(
-      `DELETE FROM document_versions WHERE document_id IN
-         (SELECT id FROM documents WHERE client_id = ANY($1::uuid[]))`, [ids]);
-    await db.query(`DELETE FROM documents WHERE client_id = ANY($1::uuid[])`, [ids]);
-  } finally {
-    await db.query(`ALTER TABLE documents ENABLE TRIGGER trg_documents_no_delete`).catch(() => {});
-    await db.query(`ALTER TABLE document_versions ENABLE TRIGGER trg_document_versions_no_delete`).catch(() => {});
-  }
+     a finally. Now one transaction (src/testing/wipe-client-documents.mjs): a
+     refused guard switch used to be swallowed, the unpin went through, and the
+     document was left with no current version. */
+  await wipeClientDocuments(pool(), { where: "client_id = ANY($1::uuid[])", params: [ids] });
   const kids = (await db.query(
     `SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
        FROM pg_constraint c
