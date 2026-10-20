@@ -84,7 +84,8 @@ export const DEMO_STAFF = Object.freeze([
   { email: `sales@${DEMO_EMAIL_DOMAIN}`,   role: "sales_manager",      name: "DEMO Sales Manager",      lands: "sales-floor.html",      label: "Sales manager",     portal: "Sales floor" },
   /* Lands on the CSM's own call queue, not on the client chooser. This must
      stay equal to public/app/shell.js HOME.csm — see the note above. */
-  { email: `csm@${DEMO_EMAIL_DOMAIN}`,     role: "csm",                name: "DEMO Client Success Manager", lands: "csm-queue.html", label: "Client success",    portal: "Client Success" }
+  { email: `csm@${DEMO_EMAIL_DOMAIN}`,     role: "csm",                name: "DEMO Client Success Manager", lands: "csm-queue.html", label: "Client success",    portal: "Client Success" },
+  { email: `outbound@${DEMO_EMAIL_DOMAIN}`, role: "outbound_rep",       name: "DEMO Outbound Rep", lands: "bank-outreach.html", label: "Outbound rep", portal: "Bank outreach" }
 ]);
 
 /** The three principals who are not employees. These live in `accounts`

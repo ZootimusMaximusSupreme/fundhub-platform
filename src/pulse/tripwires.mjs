@@ -33,6 +33,10 @@ export function isPingId(id) {
 }
 
 export const TRIPWIRES = Object.freeze({
+  "route:bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
+  "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
+  "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
+  "job:bank-outreach-checkins": { impact: "money", checks: ["bank-outreach:next-action"] },
   // Launch day, 2026-10-09: the path a new customer walks, each with the deep checks that go red
   // when it breaks. Proven read-only on live data and from a built bundle before they were listed.
   "route:public/slo-checkout": { impact: "money", checks: ["payments:checkout-started-no-link", "keys:checkout-key-read"] },

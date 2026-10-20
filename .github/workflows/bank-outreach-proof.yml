@@ -1,0 +1,204 @@
+name: Bank outreach saved-result proof
+on:
+  push:
+    branches: [codex/bank-relationship-outreach]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bank-outreach-proof-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  site-network-diagnosis:
+    name: Read-only site network diagnosis (not a release verdict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Measure DNS, connections and response headers without changing release checks
+        run: |
+          node --test scripts/pulse/diagnose-site-http.test.mjs
+          node scripts/pulse/diagnose-site-http.mjs | tee site-network-diagnostic.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-network-diagnostic-${{ github.sha }}
+          path: site-network-diagnostic.jsonl
+          retention-days: 14
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_outreach_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_outreach_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_outreach_ci
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_outreach_ci
+      ALLOW_SUPERUSER_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install the existing build and browser tools
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+          npm install --global netlify-cli
+      - name: Lint and TypeScript
+        run: |
+          npm run lint
+          npx --yes --package typescript@5.9.3 tsc --noEmit
+      - name: Apply migrations to disposable PostgreSQL
+        id: migrate
+        run: |
+          node db/migrate.mjs
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+          npm run migrations:manifest
+          git diff --exit-code -- db/expected-migrations.mjs
+      - name: Real saved-result, ownership and tripwire checks
+        run: >-
+          node --test src/outreach/*.test.mjs src/http/bank-outreach.test.mjs
+          src/http/restricted-staff.test.mjs src/pulse/coverage/gap-bank-outreach*.test.mjs
+          src/verification/journeys/harness-regressions.test.mjs
+          src/pulse/beats/beat-bank-outreach*.test.mjs src/workflows/bank-outreach-checkins.test.mjs
+          src/pulse/registry.test.mjs src/pulse/tripwires.test.mjs
+          src/pulse/heartbeats.test.mjs src/pulse/workflow-coverage.test.mjs
+      - name: Shared role, navigation and monitoring integration regressions
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: >-
+          node --test src/http/demo-logins.test.mjs src/http/demo-logins.pg.test.mjs
+          src/journeys/runner/index.test.mjs src/workflows/index.test.mjs
+          scripts/diagrams/generate.test.mjs src/ui/rounded-reference-font.test.mjs
+          src/pulse/heartbeat-law.test.mjs src/pulse/coverage/slice-23-pages.test.mjs
+          src/pulse/coverage/run-slices.test.mjs scripts/pulse/prove-policy.test.mjs
+          src/pulse/catalog/proofs/s5-display-attached.test.mjs
+          src/pulse/catalog/proofs/s5-display-sidebar.test.mjs
+          src/pulse/catalog/proofs/fin-b20-repair-gate.test.mjs
+          src/pulse/catalog/proofs/fin-b20-sidebar.test.mjs
+          src/pulse/catalog/proofs/s2-role-route-reach.test.mjs
+          src/pulse/catalog/proofs/fin-b19-shell-chrome.test.mjs
+          src/pulse/catalog/proofs/fin-b20-repair-sidebar.test.mjs
+      - name: Exact added display map and proof accounting
+        run: node --test --test-name-pattern='unmapped display rows|every display proof case' src/pulse/catalog/proofs/display-proof-cases.test.mjs
+      - name: Hiring funnel request and rendered-result synchronization
+        run: node --test --test-name-pattern='the funnel re-reads' src/pulse/catalog/proofs/fin-b13-hiring-page.test.mjs
+      - name: Browser controls, roles and all four screen states
+        run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs e2e/bank-outreach-live-guard.spec.mjs --reporter=line
+      - name: Existing full scratch end-to-end harness
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+          VERIFY_STRICT: "1"
+        run: npm run verify:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bank-outreach-proof-${{ github.sha }}
+          path: |
+            ops/workflows/build-evidence/bank-outreach/
+            test-results/
+            docs/END-TO-END-VERIFICATION.md
+          retention-days: 14
+  hourly-release-runner:
+    # Both actual-bundle proofs match ship.yml's existing release environment.
+    # All morning checks, beats, native GETs and timing limits stay unchanged;
+    # Ubuntu still owns the separate PostgreSQL/browser/strict integration gates.
+    # ship.yml moved to Ubuntu on 2026-10-20 (PR #87: macOS runners never started),
+    # so this job follows it. The disposable database is a service container here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_outreach_ci
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:55432/fundhub_outreach_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:55432/fundhub_outreach_ci
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:55432/fundhub_outreach_ci
+      ALLOW_SUPERUSER_DB: '1'
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install the existing bundle tooling and disposable database
+        run: |
+          npm ci --ignore-scripts
+          npm install --global netlify-cli
+          npx playwright install --with-deps webkit
+      - name: Apply every migration to an isolated scratch database
+        id: migrate
+        run: |
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT version(); CREATE EXTENSION IF NOT EXISTS vector;'
+          node db/migrate.mjs
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+          npm run migrations:manifest
+          git diff --exit-code -- db/expected-migrations.mjs
+      - name: Hourly checks from the actual function bundle
+        id: hourly
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --beats
+      - name: Morning outreach check from the actual function bundle
+        id: morning
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --lanes=gap-bank-outreach
+      - name: WebKit outreach phone controls and expanded-menu geometry
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
+        run: node node_modules/@playwright/test/cli.js test --config playwright.bank-outreach-webkit.config.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && !cancelled()
+        with:
+          name: bank-outreach-webkit-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Public GET diagnostics if the hourly proof fails
+        if: failure() && !cancelled() && steps.hourly.outcome == 'failure'
+        run: |
+          node --input-type=module <<'NODE'
+          import { DOORS } from './src/pulse/beats/beat-doors-live.mjs';
+          import { FUNNEL_PATH, REPAIR_PATH } from './src/pulse/beats/beat-checkout-doors.mjs';
+          import { probeGet } from './src/messaging/providers/pulse-probe.mjs';
+          const paths = [...new Set([...DOORS.map(door => door.path), FUNNEL_PATH, REPAIR_PATH])];
+          await Promise.all(paths.map(async path => {
+            const started = performance.now();
+            try {
+              const response = await fetch(new URL(path, 'https://fundhub.ai'), { signal: AbortSignal.timeout(8000) });
+              const body = await response.arrayBuffer();
+              console.log(JSON.stringify({ path, status: response.status, ms: Math.round(performance.now() - started), bytes: body.byteLength }));
+            } catch (error) {
+              console.log(JSON.stringify({ path, status: 0, ms: Math.round(performance.now() - started), error: error.name, code: error.cause?.code || null }));
+            }
+          }));
+          await Promise.all(paths.map(async path => {
+            const result = await probeGet(new URL(path, 'https://fundhub.ai').href, { env: { ADAPTERS_DRY_RUN: '0' }, timeoutMs: 8000 });
+            console.log(JSON.stringify({ probe: 'pulse-provider', path, status: result.status, class: result.class, ms: result.ms, redirects: result.redirects, bytes: result.bytes }));
+          }));
+          NODE

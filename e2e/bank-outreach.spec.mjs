@@ -1,0 +1,299 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fixture, facts, expectAstraControls, inspectExpandedShell, captureAstra } from './bank-outreach-fixture.mjs';
+
+// Safe browser fixtures prove UI controls, not live bank facts or database writes.
+const OUT = path.resolve('ops/workflows/build-evidence/bank-outreach');
+async function geometry(page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await expect(page.locator('#fh-workspace-header')).toHaveCount(1);
+  await expect(page.locator('html')).toHaveAttribute('data-fh-rounded-default', '');
+}
+async function capture(page, name, selector) {
+  if (!process.env.BANK_OUTREACH_CAPTURE) return;
+  fs.mkdirSync(OUT, { recursive: true });
+  if (name.endsWith('-overview') || name.includes('-drawer')) {
+    await page.evaluate(() => { window.scrollTo(0, 0); const dialog = document.querySelector('dialog[open]'); if (dialog) dialog.scrollTop = 0; });
+  } else await page.locator(selector).scrollIntoViewIfNeeded();
+  await page.addStyleTag({ content: '.outreach-evidence-box{outline:2px solid #d32323!important;outline-offset:-3px}.outreach-evidence-caption{position:fixed;left:8px;right:8px;bottom:8px;z-index:999999;background:#fff;color:#a11313;border:1px solid #d32323;padding:8px;font:12px/1.4 system-ui;pointer-events:none}' });
+  await page.locator(selector).evaluate(el => el.classList.add('outreach-evidence-box'));
+  await page.evaluate(text => { const el = document.createElement('div'); el.className = 'outreach-evidence-caption'; el.textContent = text + ' · Safe UI fixture. Red box marks the state or controls under review.'; (document.querySelector('dialog[open]') || document.body).append(el); }, name);
+  await page.screenshot({ path: path.join(OUT, name + '.png') });
+  await page.locator('.outreach-evidence-caption').evaluateAll(els => els.forEach(el => el.remove()));
+  await page.locator(selector).evaluate(el => el.classList.remove('outreach-evidence-box'));
+}
+
+for (const width of [1440, 390, 320]) {
+  for (const state of ['full', 'empty', 'loading', 'error']) {
+    test(`${width}px rep ${state}: honest state, shared frame and phone fit`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      const env = await fixture(page, { state });
+      try {
+        await geometry(page);
+        if (state === 'full') {
+          await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+          await expect(page.locator('#hero-value')).toHaveText('Mesa Community Bank');
+          await expect(page.locator('#verified-week')).toHaveText('7');
+          await expect(page.locator('#verified-compare')).toHaveText('vs 4 last week');
+          await expect(page.locator('#import-open')).toBeHidden(); await expect(page.locator('#view-switch')).toBeHidden();
+          await expect(page.locator('#queue-scope')).toContainText('Assigned banks only');
+          await expect(page.locator('#fh-shell-search-btn')).toHaveCount(0); await expect(page.locator('#fh-chat-fab')).toHaveCount(0); await expect(page.locator('.navitem:visible')).toHaveCount(1);
+          const open = page.locator('.open-bank').first(); expect((await open.boundingBox()).height).toBeGreaterThanOrEqual(44);
+        } else if (state === 'empty') await expect(page.locator('#empty-action')).toHaveText('Clear filters');
+        else if (state === 'error') { await expect(page.locator('#queue-retry')).toBeVisible(); await expect(page.locator('#queue-state')).toContainText('temporarily unavailable'); await page.locator('#queue-retry').click(); }
+        else await expect(page.locator('#queue-state .skeleton')).toHaveCount(3);
+        await capture(page, `${width}-rep-${state}`, state === 'full' ? '#queue-panel' : '#queue-state');
+        if (state === 'full') await capture(page, `${width}-rep-overview`, '.outreach-overview');
+        if (state === 'full') {
+          await page.locator('#work-next').click(); await expect(page.locator('#bank-drawer')).toBeVisible(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank'); await geometry(page); await capture(page, `${width}-rep-drawer`, '#drawer-content');
+          for (const section of ['contacts', 'products', 'history', 'relationship']) { await page.locator(`[data-section="${section}"]`).click(); await capture(page, `${width}-rep-${section}-drawer`, '#drawer-content'); }
+          await page.keyboard.press('Escape'); await expect(page.locator('#work-next')).toBeFocused();
+        }
+      } finally { env.release(); }
+    });
+  }
+  test(`${width}px manager: team results, assignment, import and drawer fit`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 }); const env = await fixture(page, { manager: true });
+    await expect(page.locator('#team-section')).toBeVisible(); await expect(page.locator('#team-content')).toContainText('Casey Reed'); await geometry(page);
+    await capture(page, `${width}-manager-full`, '#team-content');
+    await page.locator('#queue-view').click(); await page.locator('.open-bank').first().click();
+    await page.locator('[data-section="products"]').click(); await capture(page, `${width}-manager-products-drawer`, '#drawer-content');
+    await page.locator('[data-section="relationship"]').click(); await capture(page, `${width}-manager-relationship-drawer`, '#drawer-content');
+    await page.locator('[name="staff_id"]').selectOption('rep-2'); await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+    await expect.poll(() => env.posts.at(-1)).toMatchObject({ action: 'assign', id: 'bank-0', staff_id: 'rep-2' });
+    await page.locator('#drawer-close').click(); await page.locator('#import-open').click();
+    await page.locator('#import-form [name="source"]').selectOption('ncua'); await page.locator('#import-file').setInputFiles({ name: 'official-ncua-fixture.csv', mimeType: 'text/csv', buffer: Buffer.from('CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ') }); await expect(page.locator('#import-form textarea')).toHaveValue('CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ'); await page.locator('#import-form [type="submit"]').click();
+    await expect(page.locator('#import-message')).toContainText('Imported 3 banks · 2 already saved · 1 outside launch states.');
+    expect(env.posts.at(-1)).toEqual({ action: 'import', source: 'ncua', csv: 'CU_NUMBER,NAME,STATE\n123,Fixture Credit Union,AZ' });
+    await capture(page, `${width}-manager-import`, '#import-dialog'); await page.locator('#import-close').click(); await expect(page.locator('#import-open')).toBeFocused();
+  });
+  for (const state of ['loading', 'empty', 'error']) {
+    test(`${width}px manager ${state}: honest state and retry or import`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 }); const env = await fixture(page, { manager: true, state });
+      try {
+        await geometry(page);
+        if (state === 'empty') { await page.locator('#queue-view').click(); await expect(page.locator('#empty-action')).toHaveText('Import banks'); await expect(page.locator('#verified-week')).toHaveText('0'); await page.locator('#empty-action').click(); await expect(page.locator('#import-dialog')).toBeVisible(); await page.locator('#import-close').click(); }
+        else if (state === 'loading') await expect(page.locator('#queue-state .skeleton')).toHaveCount(3);
+        else await expect(page.locator('#queue-retry')).toBeVisible();
+        await capture(page, `${width}-manager-${state}`, '#queue-state');
+      } finally { env.release(); }
+    });
+  }
+}
+
+test('queue filters debounce, preserve contracts and paginate at 25', async ({ page }) => {
+  const env = await fixture(page); await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+  await page.locator('#search').fill(' Mesa '); await expect.poll(() => env.reads.at(-1)?.q).toBe('Mesa');
+  await page.locator('#state').selectOption('AZ'); await page.locator('#status').selectOption('engaged');
+  await expect.poll(() => env.reads.at(-1)).toMatchObject({ q: 'Mesa', state: 'AZ', status: 'engaged', offset: '0', limit: '25' });
+  await page.locator('#next').click(); await expect(page.locator('#page-count')).toHaveText('26–27 of 27');
+  await page.locator('#previous').click(); await expect(page.locator('#page-count')).toHaveText('1–25 of 27');
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click(); await expect.poll(() => env.reads.at(-1)).toMatchObject({ q: '', state: '', status: '', offset: '0' });
+});
+
+test('rep touches, banker edits, typed product facts and relationship controls save exact values', async ({ page }) => {
+  const env = await fixture(page); await page.locator('#work-next').click();
+  await expect(page.locator('#bank-links a').first()).toHaveAttribute('href', /linkedin\.com\/search\/results\/people/);
+  await page.locator('[data-action="log_touch"] [name="channel"]').selectOption('call'); await page.locator('[name="contact_id"]').selectOption('contact-1');
+  await page.locator('[name="outcome"]').fill('Banker confirmed eligibility'); await page.locator('[name="note"]').fill('Real banker note <not markup>'); await page.locator('[data-action="log_touch"] [name="next_action"]').fill('Get application path');
+  await page.getByRole('button', { name: 'Save touch and next action' }).click();
+  await expect.poll(() => env.posts[0]).toEqual({ action: 'log_touch', account_id: 'bank-0', channel: 'call', contact_id: 'contact-1', outcome: 'Banker confirmed eligibility', note: 'Real banker note <not markup>', next_action: 'Get application path', next_due_at: '' });
+  await page.locator('[data-section="contacts"]').click(); await page.getByRole('button', { name: 'Edit banker', exact: true }).click(); await expect(page.locator('#contact-editor [name="name"]')).toBeFocused();
+  await page.locator('#contact-editor [name="title"]').fill('Senior business banker'); await page.getByRole('button', { name: 'Save banker', exact: true }).click();
+  await expect.poll(() => env.posts.at(-1)).toMatchObject({ action: 'save_contact', id: 'contact-1', name: 'Avery Lane', title: 'Senior business banker' });
+  await page.locator('#new-contact').click(); await page.locator('#contact-editor [name="name"]').fill('Morgan Lee'); await page.locator('#contact-editor [name="email"]').fill('morgan@bank.example'); await page.getByRole('button', { name: 'Save banker', exact: true }).click();
+  await expect(page.locator('#contact-list')).toContainText('Morgan Lee');
+  await page.locator('[data-section="products"]').click(); await expect(page.locator('#product-list')).toContainText('Unknown'); await expect(page.locator('[data-verify]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Edit facts', exact: true }).click();
+  await page.locator('[name="minimum_score"]').fill('unknown'); await page.locator('[name="minimum_time_in_business_years"]').fill('0'); await page.locator('[name="stated_income"]').selectOption('false'); await page.locator('[name="eligible_states"]').fill('az, ca');
+  await page.getByRole('button', { name: 'Save product facts', exact: true }).click();
+  await expect.poll(() => env.posts.at(-1)?.facts).toEqual({ ...facts, minimum_time_in_business_years: 0 });
+  await page.locator('#new-product').click(); await expect(page.locator('#product-editor [name="product_name"]')).toBeFocused();
+  await page.locator('[data-section="history"]').click(); await expect(page.locator('#detail-history')).toContainText('No activity saved');
+  await page.locator('[data-section="relationship"]').click(); await page.locator('[name="partner_activity"]').selectOption('quiet'); await page.locator('[data-action="set_status"] [name="status"]').selectOption('engaged'); await page.locator('[data-action="set_status"] [name="next_action"]').fill('Quarterly review'); await page.getByRole('button', { name: 'Save relationship' }).click();
+  await expect.poll(() => env.posts.at(-1)).toMatchObject({ action: 'set_status', id: 'bank-0', status: 'engaged', partner_activity: 'quiet', next_action: 'Quarterly review', next_due_at: '' });
+});
+
+test('failed writes retain exact inputs and escaped banker data never runs markup', async ({ page }) => {
+  const env = await fixture(page, { failWrite: true }); env.data.account.name = '<img src=x onerror="window.__unsafe=true">'; env.data.contacts[0].name = '<script>unsafe</script>';
+  await page.locator('#work-next').click(); await expect(page.locator('#bank-title')).toHaveText(env.data.account.name); await expect(page.locator('#bank-title img')).toHaveCount(0);
+  await page.locator('[name="outcome"]').fill('Retain me'); await page.locator('[data-action="log_touch"] [name="next_action"]').fill('Call tomorrow'); await page.getByRole('button', { name: 'Save touch and next action' }).click();
+  await expect(page.locator('#drawer-message')).toContainText('Save failed'); await expect(page.locator('[name="outcome"]')).toHaveValue('Retain me'); await expect(page.locator('[data-action="log_touch"] [name="next_action"]')).toHaveValue('Call tomorrow');
+  expect(await page.evaluate(() => window.__unsafe)).toBeUndefined();
+});
+
+test('published facts are read-only for reps; manager amendment uses draft and verifies', async ({ page }) => {
+  await fixture(page, { published: true }); await page.locator('#work-next').click(); await page.locator('[data-section="products"]').click(); await expect(page.locator('[data-edit-product]')).toHaveCount(0); await expect(page.locator('[data-verify]')).toHaveCount(0); await expect(page.locator('#product-list')).toContainText('Published facts are read-only');
+  await page.locator('#drawer-close').click();
+  const env = await fixture(page, { manager: true, published: true, draft: true }); await page.locator('#work-next').click(); await page.locator('[data-section="products"]').click(); await expect(page.locator('#product-list')).toContainText('Pending amendment'); await page.locator('[data-edit-product]').click(); await expect(page.locator('[name="minimum_score"]')).toHaveValue('680'); await expect(page.locator('[name="product_name"]')).toHaveValue('Proposed business line');
+  await page.locator('[data-verify]').click(); await expect.poll(() => env.posts.at(-1)).toEqual({ action: 'verify_product', id: 'product-1' }); await expect(page.locator('#drawer-message')).toContainText('Verified product saved to Lenders');
+});
+
+test('team and drawer read failures expose working retries; manual bank links open safely', async ({ page }) => {
+  const env = await fixture(page, { manager: true });
+  env.faults.team = true; await page.locator('#queue-view').click(); await page.locator('#team-view').click(); await expect(page.locator('#team-retry')).toBeVisible();
+  env.faults.team = false; await page.locator('#team-retry').click(); await expect(page.locator('#team-content')).toContainText('Casey Reed');
+  env.faults.detail = true; await page.locator('#work-next').click(); await expect(page.locator('#detail-retry')).toBeVisible();
+  env.faults.detail = false; await page.locator('#detail-retry').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
+  for (const link of await page.locator('#bank-links a').all()) { const popupReady = page.waitForEvent('popup'); await link.click(); const popup = await popupReady; await popup.close(); }
+  await page.locator('[data-section="contacts"]').click(); const popupReady = page.waitForEvent('popup'); await page.getByRole('link', { name: 'LinkedIn profile' }).click(); const popup = await popupReady; await popup.close();
+});
+
+test.describe('Arizona time remains fixed outside Arizona', () => {
+  test.use({ timezoneId: 'America/New_York' });
+  test('display labels Arizona and saves chosen Arizona time as UTC', async ({ page }) => {
+    const env = await fixture(page); await page.locator('#work-next').click();
+    await expect(page.locator('#bank-next-due time')).toContainText('8:00 AM Arizona'); await expect(page.locator('#bank-next-due time')).toHaveAttribute('title', /Arizona$/);
+    const form = page.locator('[data-action="log_touch"]'); await form.locator('[name="outcome"]').fill('Banker requested July check-in'); await form.locator('[name="next_action"]').fill('Call banker'); await form.getByLabel('Next action time in Arizona').fill('2026-07-01T09:30'); await form.locator('[type="submit"]').click();
+    await expect.poll(() => env.posts.at(-1)?.next_due_at).toBe('2026-07-01T16:30:00.000Z');
+  });
+});
+
+test('oversized CSV keeps the reviewed data and explains how to recover', async ({ page }) => {
+  await fixture(page, { manager: true }); await page.locator('#import-open').click(); await page.locator('#import-form textarea').fill('CERT,NAME,STALP\n123,Kept Bank,AZ');
+  await page.locator('#import-file').setInputFiles({ name: 'too-large.csv', mimeType: 'text/csv', buffer: Buffer.alloc(5000001) });
+  await expect(page.locator('#import-message')).toContainText('under 5 MB'); await expect(page.locator('#import-form textarea')).toHaveValue('CERT,NAME,STALP\n123,Kept Bank,AZ');
+});
+
+test('unanswered product facts stay distinct from explicit unknown, zero and no', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page);
+  env.data.products[0].facts = { ...facts, minimum_score: null, minimum_time_in_business_years: 0, minimum_revenue_threshold: '', bureaus_pulled: [] };
+  await page.locator('#work-next').click(); await page.locator('[data-section="products"]').click();
+  await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-unanswered-facts-drawer`, '.record-facts');
+  const fact = label => page.locator('.record-facts dt').filter({ hasText: new RegExp(`^${label}$`) }).locator('+ dd');
+  await expect(fact('Minimum score')).toHaveText('Unanswered');
+  await expect(fact('Minimum revenue')).toHaveText('Unanswered');
+  await expect(fact('Bureaus pulled')).toHaveText('Unanswered');
+  await expect(fact('Paper application URL')).toHaveText('Unknown');
+  await expect(fact('Minimum years in business')).toHaveText('0');
+  await expect(fact('Stated income')).toHaveText('No');
+  await page.getByRole('button', { name: 'Edit facts', exact: true }).click();
+  await expect(page.locator('[name="minimum_score"]')).toHaveValue('');
+  await expect(page.locator('[name="paper_application_url"]')).toHaveValue('unknown');
+  expect(env.posts).toEqual([]);
+});
+
+test('saved banker email and phone open manual contact targets without a Fundhub send', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page);
+  env.data.contacts[0].email = 'avery+business@bank.example';
+  env.data.contacts[0].phone = '+1 (602) 555-0101';
+  env.data.contacts.push({ id: 'contact-2', name: 'No contact details', title: 'Research contact', email: '', phone: '', linkedin_url: '' });
+  env.data.contacts.push({ id: 'contact-3', name: 'Branch desk', phone: '+1 602-555-0102 ext. 42' });
+  env.data.contacts.push({ id: 'contact-4', name: 'Unconfirmed phone', phone: 'Ask for branch number' });
+  env.data.contacts.push({ id: 'contact-5', name: 'Query characters', email: 'queries?subject=Injected&bcc=other@bank.example' });
+  env.data.contacts.push({ id: 'contact-6', name: 'Control characters', email: 'desk@bank.example\r\nBcc: hidden@bank.example' });
+  await page.locator('#work-next').click(); await page.locator('[data-section="contacts"]').click();
+  await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-manual-contact-drawer`, '#contact-list');
+  const email = page.getByRole('link', { name: 'Email Avery Lane' }), phone = page.getByRole('link', { name: 'Call Avery Lane' });
+  await expect(email).toHaveAttribute('href', 'mailto:avery%2Bbusiness@bank.example');
+  await expect(phone).toHaveAttribute('href', 'tel:+16025550101');
+  await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveAttribute('href', 'tel:+16025550102;ext=42');
+  await expect(page.getByRole('link', { name: 'Call Unconfirmed phone' })).toHaveCount(0);
+  const queryEmail = page.getByRole('link', { name: 'Email Query characters' });
+  await expect(queryEmail).toHaveAttribute('href', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example');
+  expect(await queryEmail.evaluate(link => new URL(link.href).search)).toBe('');
+  await expect(page.getByRole('link', { name: 'Email Control characters' })).toHaveCount(0);
+  for (const link of [email, phone]) expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(40);
+  await expect(page.locator('.saved-record').filter({ hasText: 'No contact details' }).getByRole('link')).toHaveCount(0);
+  await page.evaluate(() => {
+    window.__manualContactTargets = [];
+    document.querySelector('#contact-list').addEventListener('click', event => {
+      const anchor = event.target.closest('a[href^="mailto:"],a[href^="tel:"]');
+      if (anchor) { event.preventDefault(); window.__manualContactTargets.push(anchor.getAttribute('href')); }
+    });
+  });
+  await email.click(); await phone.click(); await page.getByRole('link', { name: 'Call Branch desk' }).click(); await queryEmail.click();
+  expect(await page.evaluate(() => window.__manualContactTargets)).toEqual(['mailto:avery%2Bbusiness@bank.example', 'tel:+16025550101', 'tel:+16025550102;ext=42', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example']);
+  expect(env.posts).toEqual([]);
+});
+
+for (const manager of [false, true]) {
+  test(`${manager ? 'manager' : 'rep'} filtered empty queue clears filters instead of suggesting new imports`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
+    const env = await fixture(page, { manager, filteredEmpty: true });
+    if (manager) await page.locator('#queue-view').click();
+    await page.getByLabel('Search banks').fill('No matching bank');
+    await expect(page.locator('#empty-action')).toBeVisible();
+    await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-${manager ? 'manager' : 'rep'}-filtered-empty`, '#queue-state');
+    await expect(page.locator('#queue-state')).toContainText('No banks match your filters');
+    await expect(page.locator('#empty-action')).toHaveText('Clear filters');
+    await expect(page.locator('#queue-state')).not.toContainText('Import official bank lists');
+    await page.locator('#empty-action').click();
+    await expect(page.getByLabel('Search banks')).toHaveValue('');
+    await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+    await expect.poll(() => env.reads.at(-1)).toMatchObject({ q: '', state: '', status: '', offset: '0' });
+    expect(env.posts).toEqual([]);
+  });
+}
+
+test('inactive filtered banks stay visible without claiming there are no matching banks', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page, { filteredInactive: true });
+  for (const status of ['paused', 'closed']) {
+    await page.locator('#status').selectOption(status);
+    await expect(page.locator('#queue-rows tr')).toHaveCount(1);
+    await expect(page.locator('#queue-rows .status-tag')).toHaveText(status === 'paused' ? 'Paused' : 'Closed');
+    await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-${status}-overview`, '#work-hero');
+    await expect(page.locator('#hero-value')).toHaveText('No active bank in this view');
+    await expect(page.locator('#work-next')).toBeHidden();
+    await page.locator('.open-bank').click();
+    await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
+    await expect.poll(() => env.reads.at(-1)).toMatchObject({ id: 'bank-0' });
+    await page.locator('#drawer-close').click();
+  }
+  expect(env.posts).toEqual([]);
+});
+
+test('cold phone performance: Slow 4G and 4x CPU with fixture API', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await cdp.send('Network.enable'); await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 200000, uploadThroughput: 93750, connectionType: 'cellular4g' });
+  await page.addInitScript(() => {
+    window.__outreachPerf = { lcp: 0, cls: 0, interaction: 0, shifts: [] };
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) window.__outreachPerf.lcp = entry.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true });
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) { window.__outreachPerf.cls += entry.value; window.__outreachPerf.shifts.push({ value: entry.value, at: entry.startTime, sources: entry.sources.map(s => ({ tag: s.node?.tagName, id: s.node?.id, class: String(s.node?.className || ''), from: s.previousRect.toJSON(), to: s.currentRect.toJSON() })) }); } }).observe({ type: 'layout-shift', buffered: true });
+    new PerformanceObserver(list => { for (const entry of list.getEntries()) if (entry.interactionId) window.__outreachPerf.interaction = Math.max(window.__outreachPerf.interaction, entry.duration); }).observe({ type: 'event', durationThreshold: 16, buffered: true });
+  });
+  await fixture(page); await expect(page.locator('#work-next')).toBeVisible(); await page.waitForTimeout(1000);
+  await page.locator('#work-next').click(); await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank'); await page.waitForTimeout(300);
+  const metrics = await page.evaluate(() => ({ ...window.__outreachPerf, ttfb: performance.getEntriesByType('navigation')[0].responseStart, htmlBytes: performance.getEntriesByType('navigation')[0].encodedBodySize, resources: performance.getEntriesByType('resource').map(r => ({ url: new URL(r.name).pathname, bytes: r.encodedBodySize })) }));
+  metrics.jsBytes = metrics.resources.filter(r => r.url.endsWith('.js')).reduce((total, r) => total + r.bytes, 0);
+  metrics.pageBytes = metrics.htmlBytes + metrics.resources.reduce((total, r) => total + r.bytes, 0);
+  const report = { scope: 'Local cold static page, safe API fixtures; backend latency and production hosting not measured. Event Timing covers the measured drawer interaction, not field INP. Not Lighthouse.', viewport: '390x844', network: '150ms latency / 1.6Mbps down / 750Kbps up', cpu: '4x slowdown', measured_at: new Date().toISOString(), ...metrics };
+  fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'mobile-performance.json'), JSON.stringify(report, null, 2) + '\n');
+  expect(metrics.lcp, 'CRM LCP below 2.5s').toBeGreaterThan(0); expect(metrics.lcp).toBeLessThan(2500);
+  expect(metrics.cls).toBeLessThan(0.1); expect(metrics.interaction).toBeLessThan(200); expect(metrics.jsBytes).toBeLessThan(500000); expect(metrics.pageBytes).toBeLessThan(2000000);
+});
+
+for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+  for (const manager of [false, true]) {
+    test(`Astra ${viewport.width}px ${manager ? 'manager' : 'rep'}: expanded menus and editors stay readable`, async ({ page }, testInfo) => {
+      await page.setViewportSize(viewport);
+      const env = await fixture(page, { manager }), prefix = `${viewport.width}-${manager ? 'manager' : 'rep'}`;
+      await expect(page.locator('#work-next')).toBeVisible();
+      await expectAstraControls(page, testInfo, prefix + '-overview');
+      await inspectExpandedShell(page, testInfo, prefix);
+      if (manager) await page.locator('#queue-view').click();
+      await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+      await expectAstraControls(page, testInfo, prefix + '-queue', '#outreach-main');
+      await page.locator('#work-next').click();
+      await expect(page.locator('#drawer-content')).toBeVisible();
+      await expectAstraControls(page, testInfo, prefix + '-touch', '#bank-drawer');
+      await page.locator('[data-section="products"]').click();
+      await page.getByRole('button', { name: 'Edit facts', exact: true }).click();
+      await expectAstraControls(page, testInfo, prefix + '-product', '#bank-drawer');
+      const save = page.getByRole('button', { name: 'Save product facts', exact: true });
+      await save.scrollIntoViewIfNeeded(); await expect(save).toBeInViewport();
+      await save.click({ trial: true });
+      await captureAstra(page, testInfo, prefix + '-product-footer', '#product-editor .form-actions');
+      await page.locator('#drawer-close').click();
+      await expect(page.locator('#work-next')).toBeFocused();
+      expect(env.posts).toEqual([]);
+    });
+  }
+}

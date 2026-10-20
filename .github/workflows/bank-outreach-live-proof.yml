@@ -1,0 +1,74 @@
+name: Bank outreach live read proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_release_sha:
+        description: Exact deployed main commit (40 lowercase hex characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-read:
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    # macOS runners never started on 2026-10-20 (PR #87 moved ship.yml to Ubuntu too).
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate exact release SHA before checkout
+        id: release
+        env:
+          EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          const sha=process.env.EXPECTED_RELEASE_SHA;
+          if(!/^[a-f0-9]{40}$/.test(sha||''))throw Error('Expected one exact 40-character lowercase commit SHA');
+          appendFileSync(process.env.GITHUB_OUTPUT,'sha='+sha+'\n');
+          JS
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require checked source belongs to main
+        env:
+          EXPECTED_RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const sha=process.env.EXPECTED_RELEASE_SHA;
+          if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==sha)throw Error('Checked SHA mismatch');
+          execFileSync('git',['merge-base','--is-ancestor',sha,'origin/main'],{stdio:'ignore'});
+          JS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install existing dependencies and Chromium
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Test proof guards without live calls
+        run: node --test scripts/outreach/verify-live.test.mjs
+      - name: Verify published bytes, ordinary login, and real read-only Bank workspace
+        env:
+          EXPECTED_RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          STAFF_E2E_PASSWORD: ${{ secrets.STAFF_E2E_PASSWORD }}
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          node --input-type=module <<'JS'
+          import {spawnSync} from 'node:child_process';
+          const result=spawnSync(process.execPath,['scripts/outreach/verify-live.mjs','--expected-sha',process.env.EXPECTED_RELEASE_SHA],{stdio:'inherit',env:process.env});
+          process.exit(result.status??1);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bank-outreach-live-aggregate-receipt
+          path: ${{ runner.temp }}/bank-outreach-live-proof.json
+          if-no-files-found: ignore
+          retention-days: 14

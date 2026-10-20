@@ -1346,6 +1346,58 @@ test("countdown appears on first play and never on pause, seek, or resume", asyn
   expect(server.errors).toEqual([]);
 });
 
+// Diagnostic data is derived only AFTER sampling. Never remove a stationary,
+// backwards or invalid-time interval from the unchanged smoothness assertions.
+function scrollFailureContext(points, wpm) {
+  const finite = value => Number.isFinite(value) ? value : null;
+  const endpoint = point => point ? { at: finite(point.at), y: finite(point.y) } : null;
+  const intervals = points.slice(1).map((point, index) => {
+    const previous = points[index], deltaAt = point.at - previous.at, deltaY = previous.y - point.y;
+    const speed = deltaY / (deltaAt / 1000);
+    return { at: finite(point.at), fromAt: finite(previous.at), deltaAt: finite(deltaAt), fromY: finite(previous.y), y: finite(point.y), deltaY: finite(deltaY),
+      speedKind: Number.isNaN(speed) ? "nan" : speed === Infinity ? "positive-infinity" : speed === -Infinity ? "negative-infinity" : speed > 0 ? "forward" : speed < 0 ? "reverse" : "stationary",
+      finiteSpeed: Number.isFinite(speed) };
+  });
+  const bad = intervals.filter(interval => interval.speedKind !== "forward");
+  return { wpm, pointCount: points.length, intervalCount: intervals.length, first: endpoint(points[0]), last: endpoint(points.at(-1)),
+    allAtFinite: points.every(point => Number.isFinite(point.at)), allYFinite: points.every(point => Number.isFinite(point.y)),
+    allSpeedsFinite: intervals.every(interval => interval.finiteSpeed), badIntervalCount: bad.length, badIntervals: bad.slice(0, 8) };
+}
+
+test("scroll failure diagnostics preserve stationary, reverse and invalid-timestamp rejection with bounded numeric context", () => {
+  const forward = Array.from({ length: 61 }, (_, index) => ({ at: index * 1000 / 60, y: 300 - index }));
+  const controls = [
+    { points: forward.map(point => ({ ...point, y: 300 })), kind: "stationary", finite: true },
+    { points: forward.map((point, index) => ({ ...point, y: 300 + index })), kind: "reverse", finite: true },
+    { points: forward.map((point, index) => index === 1 ? { ...forward[0] } : point), kind: "nan", finite: false },
+    { points: forward.map((point, index) => index === 1 ? { ...point, at: forward[0].at } : point), kind: "positive-infinity", finite: false },
+  ];
+  for (const { points, kind, finite } of controls) {
+    const context = scrollFailureContext(points, 200);
+    const speeds = points.slice(1).map((point, index) => (points[index].y - point.y) / ((point.at - points[index].at) / 1000));
+    const average = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+    expect(points.length).toBeGreaterThan(20);
+    expect(points.at(-1).at - points[0].at).toBe(1000);
+    expect(() => {
+      expect(speeds.every(speed => speed > 0), JSON.stringify(context)).toBe(true);
+      expect(Math.max(...speeds) - Math.min(...speeds), JSON.stringify(context)).toBeLessThan(average * 0.05);
+    }).toThrow();
+    expect(context.badIntervals[0].speedKind).toBe(kind);
+    expect(context.allSpeedsFinite).toBe(finite);
+    expect(context.badIntervals.length).toBeLessThanOrEqual(8);
+    expect(context.badIntervalCount).toBe(kind === "stationary" || kind === "reverse" ? 60 : 1);
+    expect(context.first).toEqual({ at: 0, y: 300 });
+    expect(context.last.at).toBe(1000);
+    expect(context.badIntervals[0].deltaAt).toBe(kind === "nan" || kind === "positive-infinity" ? 0 : 1000 / 60);
+    expect(context.allAtFinite).toBe(true);
+    expect(context.allYFinite).toBe(true);
+  }
+  const context = scrollFailureContext(forward, 200);
+  expect(context.badIntervals).toEqual([]);
+  expect(context.badIntervalCount).toBe(0);
+  expect(context.allSpeedsFinite).toBe(true);
+});
+
 for (const wpm of [200, 205, 210, 215]) {
   test(`smooth forward scroll at ${wpm} WPM with the camera overlay`, async ({ page }) => {
     const { server } = await open(page, { wpm });
@@ -1361,11 +1413,12 @@ for (const wpm of [200, 205, 210, 215]) {
       }
       requestAnimationFrame(tick);
     }));
-    expect(points.length).toBeGreaterThan(20);
+    const diagnostic = JSON.stringify(scrollFailureContext(points, wpm));
+    expect(points.length, diagnostic).toBeGreaterThan(20);
     const speeds = points.slice(1).map((p, i) => (points[i].y - p.y) / ((p.at - points[i].at) / 1000));
-    expect(speeds.every((s) => s > 0)).toBe(true);
+    expect(speeds.every((s) => s > 0), diagnostic).toBe(true);
     const average = speeds.reduce((a, b) => a + b, 0) / speeds.length;
-    expect(Math.max(...speeds) - Math.min(...speeds)).toBeLessThan(average * 0.05);
+    expect(Math.max(...speeds) - Math.min(...speeds), diagnostic).toBeLessThan(average * 0.05);
     expect((await state(page)).wpm).toBe(wpm);
     const shade = await page.locator("#cam-shade").evaluate((el) => getComputedStyle(el).backgroundColor);
     // Chromium rounds CSS alpha to an 8-bit value when returning the computed color.

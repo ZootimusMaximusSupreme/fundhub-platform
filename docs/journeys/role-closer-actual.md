@@ -46,7 +46,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 27 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 139 routes]
+    WHO -->|Yes| CANT[Blocked — 141 routes]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_auth[Signing in and out — 8 blocked]
     CANT --> B_banking[banking — 2 blocked]
@@ -67,17 +67,17 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 19 blocked]
+    CANT --> B_read[Reading data — 20 blocked]
     CANT --> B_repair[repair — 1 blocked]
     CANT --> B_social[social — 3 blocked]
     CANT --> B_staff[staff — 2 blocked]
-    CANT --> B_top_level[Everything else — 17 blocked]
+    CANT --> B_top_level[Everything else — 18 blocked]
     CANT --> B_trials[trials — 2 blocked]
 ```
 
 ## What they can reach
 
-**190 of 329 routes.**
+**190 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -281,7 +281,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**139 of 329 routes.**
+**141 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -296,6 +296,7 @@ flowchart TD
 | `/api/auth/staff-role` | POST | owner, admin |
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
+| `/api/bank-outreach` | POST | owner, admin, sales_manager, outbound_rep |
 | `/api/banking/revoke` | GET, POST | owner, admin |
 | `/api/banking/sync-accounts` | POST | owner, admin, sales_manager |
 | `/api/brand/review` | POST | employees: owner, admin<br>plus: partner |
@@ -395,6 +396,7 @@ flowchart TD
 | `/api/push/subscribe` | GET, POST | client |
 | `/api/push/unsubscribe` | DELETE, POST | client |
 | `/api/read/affiliates` | GET | employees: owner, admin, sales_manager<br>plus: affiliate, client |
+| `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/commissions` | GET | owner, admin, sales_manager |
 | `/api/read/company-brain-affiliate` | POST | employees: affiliate, partner<br>plus: affiliate, partner |

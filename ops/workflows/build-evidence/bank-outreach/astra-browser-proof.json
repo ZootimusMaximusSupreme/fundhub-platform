@@ -1,0 +1,1807 @@
+{
+  "scope": "Local fictional API fixtures. Real Chromium/WebKit rendering and controls; no production, authentication-isolation, physical-phone or foldable-device claim.",
+  "generatedAt": "2026-10-20T09:37:38.845Z",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "osRelease": "25.6.0",
+    "playwright": "1.62.1"
+  },
+  "generatedFromHead": "a01f5b766c57d55beee280eed426fac233e90484",
+  "sourceScope": "Hashes pin the final passed source, not earlier failed attempts. The alignment record identifies the tested integration base and any later non-runtime-only merge.",
+  "sourceSha256": {
+    "public/app/bank-outreach.html": "5cf28d930886f84934d9f6cc1a08fbf15089c14c446f05f081b1b8ff8547d24a",
+    "public/app/bank-outreach.css": "2c0d5b7b78b0c289e561713049a2478769f6100d8be07038d84f8ef9d2c9fe48",
+    "public/app/bank-outreach.js": "0f65f86b28a901e109080aef40db7742c7966f2e029cee16feebfde984b85de4",
+    "public/app/fundhub-astra.css": "aa430c21f717f2eef83f5452430790098430c9a5ec6ab1a168c230f39f1c2739",
+    "public/app/fundhub-astra-staff.css": "23472c77cbbe74b93b002b2f5c7035803fd9c1027b3ac6c24a0589dd16dbcc54",
+    "public/app/shell.js": "aea5de25bad8a67ffa13f6013eb3770340311ee34591a316899738588e97ae2a",
+    "public/app/crm-sidebar.css": "d862b17ca0d56c15e6401d130c1042680d8b821670285f6fb63649e8f22fb05b",
+    "public/app/workspace-ui.css": "06d6897bfb9a6d3a4dd9b308a03202adc1f88fdcc90bab5d2954f5b2274fe7a2",
+    "public/app/fundhub-brand.css": "09ee3879c6b0d2aeb0b68bea8c0a85cdbb561f3244361c8f933f8b929fcfeda9",
+    "public/app/fundhub-font.css": "90bb6c8ddf0c7c574278a29efd43304f776887440702c2a87c2c65a6d094386d",
+    "public/app/fundhub-font.js": "78e938aeff3265e835055d185b1e0ec210e7b0e10ea3054ebc5ae2747be3f746",
+    "e2e/bank-outreach.spec.mjs": "063a99055330ff39d8cbb5cfdff75b9dcdd5c201b95725141295ccaf22e0fbaa",
+    "e2e/bank-outreach-fixture.mjs": "a443b6479a884833f1544d4fef7a694c9f377d2873018cd5ab5a61360a018327",
+    "e2e/bank-outreach-webkit.proof.mjs": "35ea9742cc6c2a51b4dfcf013aa93ec0b3e87a542ad7fc806148c46ec50d4db8",
+    "playwright.bank-outreach-webkit.config.mjs": "f3f1d5747e44675dd012cd518fa50205ee7b49f6c23061dba6b169b0e416068e"
+  },
+  "receipts": [
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-chromium-first.json",
+        "bytes": 58800,
+        "sha256": "bf14a1f82830d515cc67b882ca12f376dfc34596e3b025f10a655d7222f641b2"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:17:00.013Z",
+        "duration": 53526.291,
+        "expected": 37,
+        "skipped": 0,
+        "unexpected": 4,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "chromium",
+          "title": "Astra 768px rep: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: scope is not defined\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:48:30)\n    at expectAstraControls (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:84:26)\n  "
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 768px manager: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: scope is not defined\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:48:30)\n    at expectAstraControls (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:84:26)\n  "
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 1024px rep: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: scope is not defined\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:48:30)\n    at expectAstraControls (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:84:26)\n  "
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 1024px manager: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: scope is not defined\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:311:30), <anonymous>:27:7)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:48:30)\n    at expectAstraControls (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mjs:84:26)\n  "
+          ]
+        }
+      ],
+      "profiles": {}
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-first.json",
+        "bytes": 148011,
+        "sha256": "b41248ca0b31de69d842b13d559a0b9bac81e04792cb5d6c9ac74fa8ff0a3d21"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:17:08.752Z",
+        "duration": 44002.556,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 27,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: Can't find variable: scope\n\n   at bank-outreach-fixture.mjs:48\n\n  46 |\n  47 | export async function astraMeasurements(page, scope = 'body') {\n> 48 |   return page.locator(scope).evaluate(root => {\n     |                              ^\n  49 |     const visible = el => {\n  50 |       if (el.closest('[hidden],[aria-hidden=\"true\"],dialog:not([open])')) return false;\n  51 |       for (let ancestor = el.parentElement; ancestor; ancestor = ancestor.parentElement) {\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mj"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: Can't find variable: scope\n\n   at bank-outreach-fixture.mjs:48\n\n  46 |\n  47 | export async function astraMeasurements(page, scope = 'body') {\n> 48 |   return page.locator(scope).evaluate(root => {\n     |                              ^\n  49 |     const visible = el => {\n  50 |       if (el.closest('[hidden],[aria-hidden=\"true\"],dialog:not([open])')) return false;\n  51 |       for (let ancestor = el.parentElement; ancestor; ancestor = ancestor.parentElement) {\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mj"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager loading: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager error: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 1\n\n  Array [\n-   \"/app/bank-outreach.css\",\n    \"/app/fundhub-astra.css\",\n    \"/app/fundhub-astra-staff.css\",\n+   \"/app/crm-sidebar.css\",\n  ]\n\n  10 |   const styles = await page.locator('link[rel=\"stylesheet\"]').evaluateAll(links =>\n  11 |     links.map(link => new URL(link.href).pathname));\n> 12 |   expect(styles.slice(-3)).toEqual(['/app/bank-outreach.css', '/app/fundhub-astra.css', '/app/fundhub-astra-staff.css']);\n     |                            ^\n  13 |   await page.evaluate(() => document.fonts.rea"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: locator.evaluate: ReferenceError: Can't find variable: scope\n\n   at bank-outreach-fixture.mjs:48\n\n  46 |\n  47 | export async function astraMeasurements(page, scope = 'body') {\n> 48 |   return page.locator(scope).evaluate(root => {\n     |                              ^\n  49 |     const visible = el => {\n  50 |       if (el.closest('[hidden],[aria-hidden=\"true\"],dialog:not([open])')) return false;\n  51 |       for (let ancestor = el.parentElement; ancestor; ancestor = ancestor.parentElement) {\n    at astraMeasurements (/private/tmp/fundhub-bank-outreach.0jXudA/e2e/bank-outreach-fixture.mj"
+          ]
+        }
+      ],
+      "profiles": {}
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-second.json",
+        "bytes": 1238645,
+        "sha256": "7fac8dcacf76003e1932a7ba1235b72c4e55699f6967b5899b858118b5ed04c2"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:18:38.411Z",
+        "duration": 32786.898,
+        "expected": 15,
+        "skipped": 0,
+        "unexpected": 12,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: rep-overview: primary Work next banker ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   ret"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: manager-overview: primary Review next bank ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |  "
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: manager-empty-import: primary Import banks\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   r"
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: failed-save: primary Save touch and next action\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 "
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: rep-overview: primary Work next banker ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   ret"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: manager-overview: primary Review next bank ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |  "
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: manager-empty-import: primary Import banks\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   r"
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: failed-save: primary Save touch and next action\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 "
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: rep-overview: primary Work next banker ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   ret"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: manager-overview: primary Review next bank ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |  "
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: manager-empty-import: primary Import banks\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |   r"
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "failed phone save retains exact typed inputs and a reachable retry",
+          "status": "failed",
+          "errors": [
+            "Error: failed-save: primary Save touch and next action\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 "
+          ]
+        }
+      ],
+      "profiles": {
+        "outreach-webkit-390:390x844": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 10,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            44,
+            44
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 10,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            44,
+            44
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-landscape:838x390": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 10,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            44,
+            44
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-chromium-focused.json",
+        "bytes": 48977,
+        "sha256": "776a8d7e73a9e4f7d6a56d651cf9eac6758e1e5444ad6652daa543885b3e7af7"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:18:46.791Z",
+        "duration": 8946.892,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 4,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "chromium",
+          "title": "Astra 768px rep: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: 768-rep-overview: primary Work next banker ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 |  "
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 768px manager: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: 768-manager-overview: primary Review next bank ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94"
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 1024px rep: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: 1024-rep-overview: primary Work next banker ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  94 | "
+          ]
+        },
+        {
+          "project": "chromium",
+          "title": "Astra 1024px manager: expanded menus and editors stay readable",
+          "status": "failed",
+          "errors": [
+            "Error: 1024-manager-overview: primary Review next bank ↗\n\nexpect(received).toBeGreaterThanOrEqual(expected)\n\nExpected: >= 48\nReceived:    44\n\n   at bank-outreach-fixture.mjs:93\n\n  91 |   expect(measured.smallInputs, state + ': editable text below 16px').toEqual([]);\n  92 |   expect(measured.smallText, state + ': captions below 13px').toEqual([]);\n> 93 |   for (const primary of measured.primary) expect(primary.height, state + ': primary ' + primary.text).toBeGreaterThanOrEqual(48);\n     |                                                                                                       ^\n  9"
+          ]
+        }
+      ],
+      "profiles": {
+        "chromium:768x1024": {
+          "measuredStates": [
+            "768-rep-overview-measurements",
+            "768-manager-overview-measurements"
+          ],
+          "observations": 2,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            44
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            44,
+            44
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "chromium:1024x768": {
+          "measuredStates": [
+            "1024-rep-overview-measurements",
+            "1024-manager-overview-measurements"
+          ],
+          "observations": 2,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            44
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            44,
+            44
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-chromium-focused-second.json",
+        "bytes": 1573532,
+        "sha256": "bdbe4b5748e5345a9b5ba1da2b93f9947fe48b9da319619f72d7dd0ede8e003f"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:20:26.865Z",
+        "duration": 7816.390000000001,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "chromium:768x1024": {
+          "measuredStates": [
+            "768-rep-overview-measurements",
+            "768-rep-account-open-measurements",
+            "768-rep-account-closed-measurements",
+            "768-rep-context-open-measurements",
+            "768-rep-queue-measurements",
+            "768-rep-touch-measurements",
+            "768-rep-product-measurements",
+            "768-manager-overview-measurements",
+            "768-manager-account-open-measurements",
+            "768-manager-account-closed-measurements",
+            "768-manager-context-open-measurements",
+            "768-manager-queue-measurements",
+            "768-manager-touch-measurements",
+            "768-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "chromium:1024x768": {
+          "measuredStates": [
+            "1024-rep-overview-measurements",
+            "1024-rep-account-open-measurements",
+            "1024-rep-account-closed-measurements",
+            "1024-rep-context-open-measurements",
+            "1024-rep-queue-measurements",
+            "1024-rep-touch-measurements",
+            "1024-rep-product-measurements",
+            "1024-manager-overview-measurements",
+            "1024-manager-account-open-measurements",
+            "1024-manager-account-closed-measurements",
+            "1024-manager-context-open-measurements",
+            "1024-manager-queue-measurements",
+            "1024-manager-touch-measurements",
+            "1024-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-third.json",
+        "bytes": 4885959,
+        "sha256": "8fd12faa9270d7bd14de60d194d6210f493d5641aa01344818672852d79a2708"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:20:17.893Z",
+        "duration": 80259.914,
+        "expected": 21,
+        "skipped": 0,
+        "unexpected": 6,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "outreach-webkit-390",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Work next banker ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        },
+        {
+          "project": "outreach-webkit-390",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Review next bank ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Work next banker ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Review next bank ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Work next banker ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        },
+        {
+          "project": "outreach-webkit-landscape",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#work-next')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#work-next')\n    14 × locator resolved to <button type=\"button\" id=\"work-next\" data-id=\"bank-0\" class=\"button primary\">Review next bank ↗</button>\n       - unexpected value \"inactive\"\n\n\n  80 |     } else await expect(page.locator('[name=\"staff_id\"]')).toHaveCount(0);\n  81 |     await page.locator('#drawer-close').click();\n> 82 |     await expect(page.locator('#work-next')).toBeFocused("
+          ]
+        }
+      ],
+      "profiles": {
+        "outreach-webkit-390:390x844": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 26,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 26,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-landscape:838x390": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 26,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-chromium-final.json",
+        "bytes": 1613575,
+        "sha256": "f98e37cad53a70cbd32ed1be241d018c372a54f831d5e06fbb404d0d6b02bb48"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:23:49.852Z",
+        "duration": 53048.308,
+        "expected": 41,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "chromium:768x1024": {
+          "measuredStates": [
+            "768-rep-overview-measurements",
+            "768-rep-account-open-measurements",
+            "768-rep-account-closed-measurements",
+            "768-rep-context-open-measurements",
+            "768-rep-queue-measurements",
+            "768-rep-touch-measurements",
+            "768-rep-product-measurements",
+            "768-manager-overview-measurements",
+            "768-manager-account-open-measurements",
+            "768-manager-account-closed-measurements",
+            "768-manager-context-open-measurements",
+            "768-manager-queue-measurements",
+            "768-manager-touch-measurements",
+            "768-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "chromium:1024x768": {
+          "measuredStates": [
+            "1024-rep-overview-measurements",
+            "1024-rep-account-open-measurements",
+            "1024-rep-account-closed-measurements",
+            "1024-rep-context-open-measurements",
+            "1024-rep-queue-measurements",
+            "1024-rep-touch-measurements",
+            "1024-rep-product-measurements",
+            "1024-manager-overview-measurements",
+            "1024-manager-account-open-measurements",
+            "1024-manager-account-closed-measurements",
+            "1024-manager-context-open-measurements",
+            "1024-manager-queue-measurements",
+            "1024-manager-touch-measurements",
+            "1024-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-final.json",
+        "bytes": 5537331,
+        "sha256": "e3728eb874538c5e8d8bb4a9a56676ab93aba6757a48799cfa5c1ccba4bb2bb6"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:23:58.261Z",
+        "duration": 35636.856999999996,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "outreach-webkit-390:390x844": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-landscape:838x390": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-repaint-before.json",
+        "bytes": 124544,
+        "sha256": "b7e562306027c25f9e8ed59b5c015eb1bd9a5bfc73938e502afd77bd54e6d1ba"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:28:09.627Z",
+        "duration": 25885.576,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "project": "outreach-webkit-440",
+          "title": "rep: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('.open-bank').first()\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('.open-bank').first()\n    14 × locator resolved to <button type=\"button\" data-id=\"bank-0\" class=\"button open-bank\" aria-label=\"Open Mesa Community Bank\">Open ↗</button>\n       - unexpected value \"inactive\"\n\n\n  93 |     await expect(page.locator('#queue-panel')).toHaveAttribute('aria-busy', 'false');\n  94 |     await page.locator('#drawer-close').click();\n> 95 |     await expect("
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager: native fields, expanded menus and saved controls meet the phone contract",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('.open-bank').first()\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('.open-bank').first()\n    14 × locator resolved to <button type=\"button\" data-id=\"bank-0\" class=\"button open-bank\" aria-label=\"Open Mesa Community Bank\">Open ↗</button>\n       - unexpected value \"inactive\"\n\n\n  93 |     await expect(page.locator('#queue-panel')).toHaveAttribute('aria-busy', 'false');\n  94 |     await page.locator('#drawer-close').click();\n> 95 |     await expect("
+          ]
+        },
+        {
+          "project": "outreach-webkit-440",
+          "title": "manager empty: readable truthful state and reachable recovery",
+          "status": "failed",
+          "errors": [
+            "Error: expect(locator).toBeFocused() failed\n\nLocator:  locator('#import-open')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" with timeout 5000ms\n  - waiting for locator('#import-open')\n    14 × locator resolved to <button type=\"button\" class=\"button\" id=\"import-open\">Import banks</button>\n       - unexpected value \"inactive\"\n\n\n  136 |             await expect(page.locator('#queue-panel')).toHaveAttribute('aria-busy', 'false');\n  137 |             await page.locator('#import-close').click();\n> 138 |             await expect(page.locator('#import-open'"
+          ]
+        }
+      ],
+      "profiles": {
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements"
+          ],
+          "observations": 20,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-verified.json",
+        "bytes": 6238533,
+        "sha256": "10cc75f129ecc869461fa29f06ab711ba31c4465544b2a48a935c03cb576d87d"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:29:30.880Z",
+        "duration": 44159.744,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "outreach-webkit-390:390x844": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-landscape:838x390": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-chromium-verified.json",
+        "bytes": 1613781,
+        "sha256": "f09fbdfcba016c377ef51064b72e5a4727157f03d1550128302f4eddb095ad05"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:29:41.502Z",
+        "duration": 61398.268,
+        "expected": 41,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "chromium:768x1024": {
+          "measuredStates": [
+            "768-rep-overview-measurements",
+            "768-rep-account-open-measurements",
+            "768-rep-account-closed-measurements",
+            "768-rep-context-open-measurements",
+            "768-rep-queue-measurements",
+            "768-rep-touch-measurements",
+            "768-rep-product-measurements",
+            "768-manager-overview-measurements",
+            "768-manager-account-open-measurements",
+            "768-manager-account-closed-measurements",
+            "768-manager-context-open-measurements",
+            "768-manager-queue-measurements",
+            "768-manager-touch-measurements",
+            "768-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "chromium:1024x768": {
+          "measuredStates": [
+            "1024-rep-overview-measurements",
+            "1024-rep-account-open-measurements",
+            "1024-rep-account-closed-measurements",
+            "1024-rep-context-open-measurements",
+            "1024-rep-queue-measurements",
+            "1024-rep-touch-measurements",
+            "1024-rep-product-measurements",
+            "1024-manager-overview-measurements",
+            "1024-manager-account-open-measurements",
+            "1024-manager-account-closed-measurements",
+            "1024-manager-context-open-measurements",
+            "1024-manager-queue-measurements",
+            "1024-manager-touch-measurements",
+            "1024-manager-product-measurements"
+          ],
+          "observations": 14,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            90
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    },
+    {
+      "raw": {
+        "path": "/private/tmp/bank-outreach-astra-webkit-complete.json",
+        "bytes": 6691465,
+        "sha256": "5f6941c1fbf8eaa5b15e84e0578f04c18520df344ece9f54d7777d8979896173"
+      },
+      "stats": {
+        "startTime": "2026-10-20T09:31:03.686Z",
+        "duration": 37228.348,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "profiles": {
+        "outreach-webkit-390:390x844": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-440:440x763": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        },
+        "outreach-webkit-landscape:838x390": {
+          "measuredStates": [
+            "rep-overview-measurements",
+            "rep-account-open-measurements",
+            "rep-account-closed-measurements",
+            "rep-context-open-measurements",
+            "rep-queue-measurements",
+            "rep-touch-measurements",
+            "rep-banker-measurements",
+            "rep-product-measurements",
+            "rep-relationship-measurements",
+            "rep-loading-measurements",
+            "rep-empty-measurements",
+            "rep-error-measurements",
+            "manager-overview-measurements",
+            "manager-account-open-measurements",
+            "manager-account-closed-measurements",
+            "manager-context-open-measurements",
+            "manager-queue-measurements",
+            "manager-touch-measurements",
+            "manager-banker-measurements",
+            "manager-product-measurements",
+            "manager-relationship-measurements",
+            "manager-import-measurements",
+            "manager-loading-measurements",
+            "manager-empty-measurements",
+            "manager-empty-import-measurements",
+            "manager-error-measurements",
+            "failed-save-measurements"
+          ],
+          "observations": 27,
+          "bodyFontRange": [
+            16,
+            16
+          ],
+          "inputFontRange": [
+            16,
+            16
+          ],
+          "targetHeightRange": [
+            44,
+            210
+          ],
+          "selectHeightRange": [
+            44,
+            44
+          ],
+          "primaryHeightRange": [
+            48,
+            48
+          ],
+          "overflows": [],
+          "violations": []
+        }
+      }
+    }
+  ]
+}
