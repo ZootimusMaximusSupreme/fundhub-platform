@@ -6,7 +6,7 @@
 // a referral link that matches nobody, commission the payout rules say is
 // payable but is not, a partner login door that cannot open, a payout
 // run left in processing, earned commission past its due day and not paid
-// (490), and a paid Plaid payout the bank sent back (490).
+// (492), and a paid Plaid payout the bank sent back (492).
 //
 // Tripwire is existing Recon (AG-07). No second watchdog.
 //
@@ -134,7 +134,7 @@ export const PAYOUT_STUCK_SQL = `
         AND status = 'processing'
         AND coalesce(initiated_at, created_at) < $2) AS partner_stuck`;
 
-/* THE PAYOUT TRIPWIRE (490, 2026-10-20). Earned commission that is past its
+/* THE PAYOUT TRIPWIRE (492, 2026-10-20). Earned commission that is past its
    due day and not paid. Due day: the 15th of the month after the month earned
    (src/affiliates/payout-rail.mjs dueOnFor). Two ways to be late:
      late_on_run — it is on a pending or processing run whose due_on has passed.

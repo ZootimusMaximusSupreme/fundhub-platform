@@ -1,4 +1,4 @@
-// THE AFFILIATE PAYOUT RAIL, against a real database (490).
+// THE AFFILIATE PAYOUT RAIL, against a real database (492).
 //
 // Scratch database only — CI's postgres jobs build it from zero with
 // db/migrate.mjs. Plaid is never called: a fake transfer provider stands in for
@@ -21,7 +21,7 @@ import { gapChecks } from "../pulse/coverage/gap-partners.mjs";
 
 const HAVE_DB = !!process.env.DATABASE_URL;
 
-describe("affiliate payout rail (490)", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
+describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
   let org;
   const MARK = "payrail";
   const STAFF = { id: "s1", name: "Finance Tester", email: "finance@example.com" };
@@ -132,7 +132,7 @@ describe("affiliate payout rail (490)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
     assert.equal(p.external_ref, "TRACE-778812");
     assert.equal(p.approved_by, "Finance Tester");
     const ref = (await db.query(`SELECT status FROM affiliate_referrals WHERE id = $1`, [r])).rows[0];
-    assert.equal(ref.status, "paid", "the paid run marks its referral paid (490)");
+    assert.equal(ref.status, "paid", "the paid run marks its referral paid (492)");
     const aff = (await db.query(`SELECT balance_due, payout_status FROM affiliates WHERE id = $1`, [a])).rows[0];
     assert.equal(Number(aff.balance_due), 0);
     assert.equal(aff.payout_status, "paid");

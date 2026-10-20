@@ -241,7 +241,7 @@ describe("affiliate stats read", { skip: !HAVE_DB ? "no DATABASE_URL" : false },
     // 033 refuses to settle a run for an affiliate whose partner license is
     // unsigned — "payouts accrue but do not release". Sign it, so this test is
     // exercising the counting and not that guard.
-    // 490 adds the tax half of that gate in the database too.
+    // 492 adds the tax half of that gate in the database too.
     await db.query(
       `UPDATE affiliates SET partner_license_signed_at = now(), tax_form_received_at = now()
         WHERE id = $1`, [p.id]);
@@ -262,7 +262,7 @@ describe("affiliate stats read", { skip: !HAVE_DB ? "no DATABASE_URL" : false },
       `UPDATE affiliate_payouts SET status = 'processing', initiated_at = now() WHERE id = $1`,
       [payout]);
     await db.query(
-      // 490: paid needs a method and a reference.
+      // 492: paid needs a method and a reference.
       `UPDATE affiliate_payouts SET status = 'paid', paid_at = now(), method = 'ach',
               external_ref = 'TEST-ACH-TRACE-1' WHERE id = $1`, [payout]);
 

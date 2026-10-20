@@ -20,10 +20,10 @@
  *      (ACH from the bank, cheque) and staff Mark paid with the reference.
  *
  * TEST MONEY NEVER PAYS A REAL PERSON. A sandbox send is refused for a real
- * (non-demo) affiliate here, and 490's trigger refuses a sandbox-settled Plaid
+ * (non-demo) affiliate here, and 492's trigger refuses a sandbox-settled Plaid
  * run turning a real affiliate's payout paid anyway. Belt and braces.
  *
- * WHAT THE DATABASE ALREADY GUARANTEES (033 + 490), so this file does not
+ * WHAT THE DATABASE ALREADY GUARANTEES (033 + 492), so this file does not
  * re-check it as the last word: legal status moves only, no processing or paid
  * without a signed license AND a tax form, no paid without a method and a
  * reference, a paid run is frozen, one commission line per referral ever.

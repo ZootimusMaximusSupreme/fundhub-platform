@@ -325,7 +325,7 @@ export const functions = [
      COMPLIANCE REVIEW REQUIRED: payment rails. */
   affiliatePayoutRun,
 
-  /* The other half of the payout run (490, 2026-10-20): every 15 minutes, ask
+  /* The other half of the payout run (492, 2026-10-20): every 15 minutes, ask
      Plaid what happened to each affiliate payout staff sent. Settled → paid,
      dead → back to pending with the reason. Sends nothing itself. */
   affiliatePayoutTransferSync,

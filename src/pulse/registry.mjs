@@ -329,7 +329,7 @@ const API_KEYS = [
      screen, whose empty state reads "No referrals on file" — an affiliate would
      read that as their referrals having vanished, not as a server being down. */
   "read/affiliate-portal",
-  /* Finance staff's list of affiliate payout runs (490). The GET sibling of the
+  /* Finance staff's list of affiliate payout runs (492). The GET sibling of the
      two POST-only payout doors below. */
   "read/affiliate-payouts",
   "read/agent-context",

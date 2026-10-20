@@ -9,7 +9,7 @@
 //   { action: "stamp_license",   affiliate_id }                    from a signed contract
 //
 // The read is GET /api/read/affiliate-payouts. Logic: src/affiliates/payout-rail.mjs.
-// The database (033 + 490) refuses every illegal move whatever this file does.
+// The database (033 + 492) refuses every illegal move whatever this file does.
 // Flow: docs/journeys/affiliate-payout-flow.md.
 import { db } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
@@ -75,7 +75,7 @@ export default async function handler(req, res, deps = {}) {
     return res.status(status || (ok ? 200 : 400)).json({ ok, action, ...rest });
   } catch (err) {
     if (dbDown(err)) return res.status(503).json({ ok: false, error: "db_unavailable" });
-    // A database rule (033/490) refusing the move is a 409, said plainly.
+    // A database rule (033/492) refusing the move is a 409, said plainly.
     const msg = String((err && err.message) || "");
     if (/affiliate_payouts|affiliate_payout_lines|affiliates /.test(msg)) {
       return res.status(409).json({ ok: false, action, error: "refused_by_database", message: msg.slice(0, 300) });
