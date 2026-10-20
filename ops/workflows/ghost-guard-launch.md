@@ -6,9 +6,21 @@
 | --- | --- | --- | --- |
 | Ghost Guard launch plan and CRS pitch | this session | active | none |
 | Licensed software access research | agent | complete | none |
-| Ghost Guard logo | agent | saved and inspected | none |
+| Ghost Guard logo — black-and-white exploration | three Astra agents | active | none |
 
 All three run in parallel. Repository switch waits for Chris to name the destination repository; it does not block the plan, research, or logo.
+
+GIB discussion is deferred. It is not part of this batch.
+
+### Ghost Guard logo — black-and-white exploration
+
+Generate a transparent, black-and-white Ghost Guard logo concept. It may nod to classic arcade ghost-and-maze energy, but must be an original technology brand: minimal geometric ghost, smart negative space, sharp vector-like edges, memorable at favicon size, no text, no gradient, no neon, no shield, no cybersecurity lock/skull clichés. Create three distinct directions:
+
+1. **Pixel pursuit:** friendly circular ghost silhouette with a small open bite/nibble cut-out and a clean orbit/pellet cue.
+2. **Signal maze:** abstract ghost formed by a single continuous maze-like circuit path with a cut-out eye.
+3. **Binary specter:** rounded pixel ghost with a high-end terminal/grid feel; playful, compact, and brandable.
+
+Use black fill on a genuinely transparent background with white negative space only. Save under `assets/ghost-guard/ideas/` without overwriting the rejected v1. Record each exact prompt and output path here.
 
 ## Copy-paste prompts
 
@@ -25,6 +37,36 @@ Create a project-ready Ghost Guard logo for a red-team testing product. Brand sh
 Define a first-version Ghost Guard offering that uses authorized red-team testing, with CRS as the first vendor integration target. Map the prospect-facing pitch, required permissions, test boundaries, evidence collected, and a short implementation sequence. Read existing CRS materials in this repository, do not change application code, and record verified paths and open decisions on this board.
 
 ## Notes
+
+### Binary specter — complete
+
+- Asset: `assets/ghost-guard/ideas/binary-specter-v1.png` — 1254 × 1254 PNG, generated with built-in imagegen.
+- Transparency verified: alpha ranges from 0 to 255; image is not opaque. Eyes and background are transparent cutouts, appearing white on a white surface.
+- Visual check: inspected on white; compact black rounded ghost with two tall rectangular eyes, a left pixel step and asymmetric stepped feet. Smooth edges, no text, colored accents, shield, lock, skull, or surrounding objects. Large simple forms suit small-size brand exploration; this remains a generated raster concept.
+- Exact prompt:
+
+```text
+Use case: logo-brand.
+Asset type: Ghost Guard original software brand mark, Binary specter concept.
+Primary request: Design one original, compact rounded pixel ghost with a refined terminal/grid feel. Playful, confident, high-end and instantly recognizable at favicon size. Build a bold near-square black silhouette from a few large grid-aligned steps with softly rounded outside corners, an asymmetric stepped lower edge, and two simple white negative-space rectangular eyes. Aim for a distinctive abstract digital spirit, not a familiar game character. Keep the geometry extremely economical and visually balanced.
+Style: flat vector-like solid black shape, crisp smooth edges. White negative-space details only. No shading or texture.
+Composition: one large centered symbol on a square canvas with generous clear padding. Genuinely transparent background with alpha; no background plate or checkerboard artwork.
+Text: none.
+Avoid: copying existing characters, arcade sprites, game UI, fonts, or marks; text, letters, numbers, gradients, neon, colored accents, shields, locks, skulls, weapons, generic hacker imagery, outlines, shadows, glow, 3D, decorative surrounding objects, presentation sheets, multiple variants.
+```
+
+### Pixel pursuit — complete
+
+- Asset: `assets/ghost-guard/ideas/ghost-guard-pixel-pursuit-v1.png`.
+- Built-in imagegen output, 1254 × 1254 RGBA PNG; alpha channel confirmed with values from 0 to 255.
+- Visual check: compact round black ghost, two white eyes, two short uneven rounded feet, a small curved side nibble and one detached pellet. No text, shield, color accent, or prohibited imagery. Alpha-mask inspection confirms the silhouette against the transparent surround; the black mark is difficult to distinguish in the tool's black preview. Raster concept, not a vector master.
+- Exact prompt:
+
+```text
+Use case: logo-brand.
+Asset type: Ghost Guard technology brand concept, direction Pixel pursuit.
+Create one original minimal geometric ghost logo: a friendly compact circular silhouette, subtly shaped as a ghost by two short rounded trailing feet; one small open curved nibble cut-out along its side; exactly one small detached circular pellet beside that opening, suggesting an orbit or pursuit. Two tiny clean white negative-space eyes give it a calm friendly character. Invent distinctive proportions and silhouette. It may evoke general arcade ghost-and-maze energy but must not copy any existing game character or mark. Flat pure black fill and white negative space only; crisp vector-like edges, memorable at favicon size, no outline ornament. Center a single symbol with generous padding on a square genuinely transparent canvas. No text, typography, game UI, gradients, neon, shields, locks, skulls, weapons, generic hacker visuals, shadows, texture, background, or watermark.
+```
 
 ### Licensed software access research — complete
 
@@ -101,3 +143,15 @@ The first Ghost Guard module is a **CRS business-report integration check**. It 
 ### Repo move
 
 Do not move the current dirty Fundhub working tree. Start Ghost Guard in the destination repository once Chris gives its GitHub URL or name; carry only this plan and the final logo asset.
+
+### Signal maze — completed concept
+
+- Saved asset: `assets/ghost-guard/ideas/ghost-guard-signal-maze.png`.
+- Built-in imagegen; 1254 × 1254 PNG, RGBA with alpha confirmed. Original output copied unchanged into the project.
+- Visual check on a white inspection backing: one connected black ghost/maze form, rounded head, one round negative-space eye, a broad inward spiral and angular tail. No text, color accents, shield, lock, skull, weapons, gradients or background plate. Raster concept, not a vector master.
+- Three earlier generation/refinement attempts were discarded because the path was disconnected or the eye was a black dot. The selected fresh generation corrected both.
+- Exact selected prompt:
+
+```text
+Use case: logo-brand. Create one original Ghost Guard tech logo: a SINGLE CONNECTED BLACK maze ribbon bent into an abstract ghost, on genuine transparent background. The black ribbon travels from a rounded upper head clockwise down one side, through a zigzag ghost tail, then curls inward in one large squared spiral. Only two broad turns inside; bold minimal geometry. At the upper head the ribbon thickens into a black face with ONE ROUND TRANSPARENT HOLE for its eye. The eye is a hole in black, NEVER a black dot. All black must be one connected shape. Clean solid-black graphic with negative space, crisp edges, no texture. Centered in square with generous padding. No text, no existing game character, no separate dot, no gray, no gradients, no shield, no locks, no skull, no glow. Original simple enterprise software mark with subtle arcade-maze logic.
+```
