@@ -156,3 +156,11 @@ Open: Linux auto-ship hangs on one fundhub.ai GET per run (4 of 4 runs); Mac shi
 - Apollo and Salesforge: **no paid tools now**. Automate outreach as far as possible without them → session `outreach-auto` (board `ops/workflows/bank-outreach-auto-2026-10-20.md`).
 - Cortana: Chris signs in in the browser pane; then the "invoice sent" sender gets built.
 - Robot login (owner password into a GitHub secret): dropped.
+
+## D — Linux ship gate: cause found, fix in PR #93 (exciting-ramanujan session, 2026-10-20 ~17:00 MST)
+
+- **Cause.** From a GitHub Ubuntu runner, some connections to fundhub.ai's front door (Netlify apex load balancer 75.2.60.5 / 99.83.231.61) go silent. TCP connects, the server ACKs every byte, then no answer ever comes. Measured with packet capture: 59 of 1,120 TLS handshakes silent with 14 at once; 3 of 600 one at a time. curl and Node alike; post-quantum and classic key share alike; DNS and TCP clean. Not our code. The Mac and the live Netlify pulse do not see it.
+- **Fix (PR #93).** The pulse proof (only the proof, not the live probe) sends one more identical GET/HEAD to the site after 1 s of silence and takes the first answer. No deadline or half-deadline rule changed. A door that answers neither is still red.
+- **Proof before merge.** Run 39516992055: plain 11 of 630 GETs hung, hedged 0 of 630; real `prove.mjs --beats` 3 of 3 OK.
+- **Next.** Merge PR #93 → the Linux ship of main deploys by itself (this also ships PR #91, whose ship 39511244534 stopped on the same hang).
+- Diagnosis branches `diag/linux-get-stall` and `diag/linux-get-stall-fix` are tools only, never for main; deleted after the ship.
