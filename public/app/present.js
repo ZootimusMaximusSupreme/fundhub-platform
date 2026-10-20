@@ -198,7 +198,7 @@
     /* 06 Blueprint: the rep's own on/off picks (only where they differ from
        what this file says), and the slide they opened the stack from. */
     stackPick: {}, stackFrom: null,
-    sharedContext: null, sharedContextMessage: "Loading saved AI coach and human advisor context…"
+    sharedContext: null, sharedContextMessage: "Loading saved AI coach and Fundhub team context…"
   };
 
   function esc(s) {
@@ -261,7 +261,7 @@
   function sharedContextPanel() {
     var block = state.sharedContextMessage || (state.sharedContext && state.sharedContext.as_prompt_block)
       || "No saved context is on this client file yet.";
-    return '<details data-fh-shared-context><summary>AI coach and human advisor — shared client file</summary>'
+    return '<details data-fh-shared-context><summary>AI coach and Fundhub team — shared client file</summary>'
       + '<div class="fh-context-lines" data-fh-context-lines>'
       + String(block).split("\n").map(function (line) { return '<p class="caption">' + esc(line) + '</p>'; }).join("")
       + '</div></details>';
