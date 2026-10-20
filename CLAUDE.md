@@ -26,7 +26,7 @@ I forget to do this. When I forget, a ten-minute job takes ten hours. Your job i
 4. Which workflow **this session** owns. Put optional parallel prompts on the shared board — not a bash checklist for Chris.
 5. The shared board. Name the `ops/workflows/<batch>.md` file all workflows will read and write.
 
-Then stop and wait for my go.
+Then stop and wait for my go unless this split already has it. A continuation or context summary does not reset approval. Once I say GO, carry the same work through without another approval loop.
 
 ### If it truly cannot be split
 
@@ -91,6 +91,10 @@ If something is genuinely unsafe or broken, say it once, plainly, and then drop 
 * §9's task report and §10's summaries carry the decision as recorded fact, with no rider suggesting I revisit it.
 
 **Left unnumbered on purpose.** Section numbers are referenced 27 times across this repo (`CLAUDE.md §4`, `§12`, and so on). Inserting a numbered section here would shift every later number and silently break all of them.
+
+### GO means keep going (owner-set 2026-10-19)
+
+"PLEASE GO, STOP ASKING ME (NEW RULE)." Carry approval across turns. Do not ask again for the same split, step, tool use, or authorized release. Keep previews and proof without adding a second publish gate. Ask only for a genuinely missing decision, new scope, or real approval boundary. Same law: `.cursor/rules/owner-go-no-repeat-approval.mdc` · `.claude/rules/owner-go-no-repeat-approval.md`.
 
 ### Dictator mode (owner-set 2026-09-08)
 

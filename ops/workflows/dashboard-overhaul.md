@@ -30,7 +30,9 @@ Read the UI audit skill, current page manifest and release checkpoint. Check cur
 
 ## Release
 
-The existing 36-page checkpoint is already live. These new edits will have a concrete marked preview before any new production publication.
+The existing 36-page checkpoint is already live. The marked preview is saved. Chris authorized publication with "PLEASE GO, STOP ASKING ME (NEW RULE)", then approved the release split and repeated GO. Root owns the rule update and release; `release_checks` independently reads PR checks; live verification waits for deployment. No further routine approval gate applies.
+
+Release prompts: "Save the new rule and finish PR #76" (root); "Read PR #76 checks and report exact blockers without edits" (release_checks); "After deployment, verify the published branding, shorter copy and Kanban behavior" (root).
 
 ## Result
 
@@ -41,4 +43,4 @@ The existing 36-page checkpoint is already live. These new edits will have a con
 - Live read-only scan: all 36 checkpoint HTML responses returned successfully and matched the published checkpoint. All 61 source pages and directly linked local resources exist. This does not prove all controls, roles or customer workflows across every page.
 - KBN-01 was measured by the finished scan, then repaired as a separate small Kanban copy change. Raw internal error wording is removed; failed counters remain unknown. Its strengthened browser proof passes on desktop and phone.
 - The full rebuild remains 36/61 integrated and published. The [completion scan](dashboard-ux-polish/scan.md) lists the 25 pending original page results. No new builders were started for those pages.
-- New edits are not deployed. Live verification of the new draft follows the owner's publication choice. The existing owner session was used only for read-only inspection of Team & Access and Social Studio; no production writes or sends occurred.
+- PR [#76](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/76) holds the polish. Publication is authorized and release checks are in progress; do not call it live until deployment and live proof pass. The existing owner session was used only for read-only inspection of Team & Access and Social Studio; no production writes or sends occurred.
