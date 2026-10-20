@@ -154,9 +154,11 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
 
       if (size.width === 390) {
         await noSideways(page);
-        const small = await page.locator(".cc-shoot button:visible, .cc-shoot a.btn:visible").evaluateAll((els) =>
-          els.map((e) => [e.textContent.trim(), e.getBoundingClientRect().height]).filter(([, h]) => h < 44));
-        expect(small, "every tap is at least 44px tall").toEqual([]);
+        await expect.poll(
+          () => page.locator(".cc-shoot button:visible, .cc-shoot a.btn:visible").evaluateAll((els) =>
+            els.map((e) => [e.textContent.trim(), e.getBoundingClientRect().height]).filter(([, h]) => h < 44)),
+          { message: "every tap is at least 44px tall" },
+        ).toEqual([]);
       }
 
       // Close takes two taps; the second names the consequence.
