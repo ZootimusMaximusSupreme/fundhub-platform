@@ -1,0 +1,157 @@
+{
+  "apiFixtures": [
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "known": true
+    },
+    {
+      "path": "/api/canary",
+      "method": "GET",
+      "known": true
+    },
+    {
+      "path": "/api/chat/portal-message",
+      "method": "GET",
+      "known": true
+    },
+    {
+      "path": "/api/chat/portal-message",
+      "method": "GET",
+      "known": true
+    }
+  ],
+  "denied": [
+    {
+      "url": "http://localhost:62998/favicon.ico",
+      "method": "GET",
+      "type": "other"
+    },
+    {
+      "url": "http://127.0.0.1:62998/forbidden.webmanifest",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:62998/api/forbidden",
+      "method": "POST",
+      "type": "fetch"
+    },
+    {
+      "url": "https://example.invalid/forbidden.css",
+      "method": "GET",
+      "type": "fetch"
+    }
+  ],
+  "allowedStatic": [
+    {
+      "url": "http://127.0.0.1:62998/canary.html",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "url": "http://127.0.0.1:62998/manifest.webmanifest",
+      "method": "HEAD",
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:62998/manifest.webmanifest",
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:62998/manifest.webmanifest",
+      "method": "GET",
+      "type": "other"
+    },
+    {
+      "url": "http://127.0.0.1:62998/canary.html",
+      "method": "GET",
+      "type": "other"
+    }
+  ],
+  "embeddedResources": [],
+  "errors": [],
+  "sources": [
+    {
+      "url": "http://127.0.0.1:62998/canary.html",
+      "method": "GET",
+      "status": 200,
+      "sha256": "6ac6524630b1618b05380a28395f3072094f2045572e73b1c22dabb4132d9555",
+      "decodedBytes": 1407,
+      "contentType": "text/html",
+      "localHash": "6ac6524630b1618b05380a28395f3072094f2045572e73b1c22dabb4132d9555",
+      "matchesLocal": true,
+      "file": "sources/6ac6524630b1618b05380a28395f3072094f2045572e73b1c22dabb4132d9555.html"
+    },
+    {
+      "url": "http://127.0.0.1:62998/manifest.webmanifest",
+      "method": "GET",
+      "status": 200,
+      "sha256": "b77ffdad4d8f5979dd4792e181e9c53cb5330233f0d99112aa0cb416afcf9604",
+      "decodedBytes": 77,
+      "contentType": "application/manifest+json",
+      "localHash": "b77ffdad4d8f5979dd4792e181e9c53cb5330233f0d99112aa0cb416afcf9604",
+      "matchesLocal": true,
+      "file": "sources/b77ffdad4d8f5979dd4792e181e9c53cb5330233f0d99112aa0cb416afcf9604.webmanifest"
+    }
+  ],
+  "headMetadata": [
+    {
+      "url": "http://127.0.0.1:62998/manifest.webmanifest",
+      "method": "HEAD",
+      "status": 200,
+      "headers": {
+        "connection": "keep-alive",
+        "date": "Tue, 20 Oct 2026 11:37:47 GMT",
+        "keep-alive": "timeout=5",
+        "content-type": "application/manifest+json"
+      },
+      "bodyless": true
+    }
+  ],
+  "bootstraps": [
+    {
+      "url": "about:blank",
+      "origin": "null",
+      "expectedOrigin": false,
+      "storageSeeded": false,
+      "backgroundGuardsInstalled": true
+    },
+    {
+      "url": "http://localhost:62998/foreign-canary.html",
+      "origin": "http://localhost:62998",
+      "expectedOrigin": false,
+      "storageSeeded": false,
+      "backgroundGuardsInstalled": true
+    },
+    {
+      "url": "about:blank",
+      "origin": "null",
+      "expectedOrigin": false,
+      "storageSeeded": false,
+      "backgroundGuardsInstalled": true
+    },
+    {
+      "url": "http://127.0.0.1:62998/canary.html",
+      "origin": "http://127.0.0.1:62998",
+      "expectedOrigin": true,
+      "storageSeeded": true,
+      "backgroundGuardsInstalled": true
+    },
+    {
+      "url": "chrome://terms/",
+      "origin": "chrome://terms",
+      "expectedOrigin": false,
+      "storageSeeded": false,
+      "backgroundGuardsInstalled": true
+    },
+    {
+      "url": "http://127.0.0.1:62998/canary.html",
+      "origin": "http://127.0.0.1:62998",
+      "expectedOrigin": true,
+      "storageSeeded": true,
+      "backgroundGuardsInstalled": true
+    }
+  ]
+}

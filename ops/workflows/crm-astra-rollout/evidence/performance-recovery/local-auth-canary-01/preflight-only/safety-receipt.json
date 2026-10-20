@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "noLiveMeasurement": true,
+  "serverRequests": [
+    {
+      "method": "GET",
+      "path": "/canary.html"
+    },
+    {
+      "method": "HEAD",
+      "path": "/manifest.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.webmanifest"
+    }
+  ],
+  "ready": {
+    "at": 686.6000000000931,
+    "count": 1,
+    "path": "/canary.html",
+    "width": 390,
+    "height": 844,
+    "fullFixture": true
+  },
+  "lighthouseVersion": "13.5.0",
+  "sameProvidedPage": true
+}

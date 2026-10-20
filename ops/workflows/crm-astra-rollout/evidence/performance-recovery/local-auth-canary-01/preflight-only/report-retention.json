@@ -1,0 +1,12 @@
+{
+  "scope": "Local authenticated setup canary only; not live speed evidence",
+  "original": "lighthouse.html",
+  "originalBytes": 333409,
+  "originalSHA256": "c8a06382db32747e791e77e3b44be49845112eb18b23301a1214c6ab4fc3b771",
+  "gitRetainedArchive": "lighthouse.html.gz",
+  "gzipBytes": 72134,
+  "gzipSHA256": "d54f36a05539242c003543edca5f73d321869171d7ea65986778171a80a4e71e",
+  "identicalAfterDecompression": true,
+  "originalUnchangedLocally": true,
+  "reason": "Upstream generated HTML contains two whitespace-only lines. Retain exact raw bytes losslessly instead of formatting evidence. Source/docs staged whitespace check passes."
+}
