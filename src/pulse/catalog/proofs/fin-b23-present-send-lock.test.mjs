@@ -240,11 +240,21 @@ test("Send contract locks, sends the agreement for the chosen offer and counts r
   await btn.click();
   await page.waitForFunction(() => /Sending…/.test(document.querySelector('[data-act="contract"]')?.textContent || ""));
   assert.equal(await btn.isDisabled(), true);
-  await btn.click({ force: true });
   // Two requests make one send: the draft, then the send. Let both through.
   await waitFor(() => gate.calls.length === 1, "the draft request");
+  // Template lookup re-renders this button. Once the draft is held, inject
+  // bubbling stray clicks: unlike native clicks on disabled buttons, these
+  // reach the page's sendLocked guard without racing pointer geometry.
+  assert.equal(await page.locator('[data-act="more"]').textContent(), "Hide the other actions");
+  await btn.dispatchEvent("click");
+  await btn.dispatchEvent("click");
+  assert.equal(await btn.isDisabled(), true);
+  assert.deepEqual(drafts.map((d) => d.action), ["create_draft"], "extra clicks cannot draft or send while drafting");
   gate.release();
   await waitFor(() => gate.calls.length === 2, "the send request");
+  await btn.dispatchEvent("click");
+  assert.equal(await btn.isDisabled(), true);
+  assert.deepEqual(drafts.map((d) => d.action), ["create_draft", "send"], "extra clicks cannot duplicate an in-flight send");
   gate.release();
   await page.waitForFunction(() => /Sent — hold on/.test(document.querySelector('[data-act="contract"]')?.textContent || ""));
   assert.deepEqual(drafts.map((d) => d.action), ["create_draft", "send"]);
@@ -252,7 +262,7 @@ test("Send contract locks, sends the agreement for the chosen offer and counts r
   assert.equal(drafts[0].client_id, CLIENT);
   assert.match((await page.locator(".sent-at").first().textContent()).trim(), SENT_AT);
   assert.equal(await btn.isDisabled(), true, "locked inside the cooldown");
-  await btn.click({ force: true });
+  await btn.dispatchEvent("click");
   assert.equal(gate.calls.length, 2, "a press inside the cooldown sends nothing more");
   await page.clock.fastForward(3_900);
   assert.equal((await btn.textContent()).trim(), "Sent — hold on");
