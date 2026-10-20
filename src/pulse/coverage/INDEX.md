@@ -63,6 +63,8 @@ auth/reset
 auth/session
 auth/staff-role
 auth/suspend
+bank-outreach-checkins — daily 7:00 a.m. Phoenix Inngest job; heartbeats.mjs checks its job_heartbeats receipt. gap-bank-outreach.mjs checks verified product/lender facts and missing next actions daily; beat-bank-outreach.mjs checks saved facts hourly and the protected GET /api/read/bank-outreach after release.
+bank-outreach.html
 banking/sync-accounts
 banking/sync-liabilities
 banking/sync-transactions
@@ -152,6 +154,8 @@ hiring.html
 hiring/decide
 inquiry
 inquiry-call-sweeper
+invoice-checkout-retirement-sweeper — 30-minute heartbeat plus fee checkout retirement hourly beat and deep gap
+invoice-sent-recovery — 30-minute heartbeat plus first-notice hourly beat and deep gap
 inquiry-cases
 inquiry-remover.html
 marketing-command-center.html

@@ -43,6 +43,7 @@ const MIGRATION = path.join(ROOT, "db/migrations/094_demo_logins.sql");
    built, and an edit to an applied migration never runs — see the roster test. */
 const SALES_MANAGER_MIGRATION = path.join(ROOT, "db/migrations/112_sales_manager_role.sql");
 const CSM_MIGRATION = path.join(ROOT, "db/migrations/290_csm_role.sql");
+const OUTBOUND_REP_MIGRATION = path.join(ROOT, "db/migrations/484_outbound_rep_demo_login.sql");
 const LOGIN_PAGE = path.join(ROOT, "public/login.html");
 const SHELL = path.join(ROOT, "public/app/shell.js");
 
@@ -203,15 +204,16 @@ describe("the gate is actually wired into both login paths", () => {
 /* ------------------------------------------------------------------------ */
 describe("the roster is the same in all four places", () => {
 
-  test("ten logins, one per role", () => {
+  test("twelve logins, one per role", () => {
+    // Nine staff since outbound_rep was built on 2026-10-19 (483/484).
     // Eight staff since csm was built on 2026-09-05
     // (db/migrations/290_csm_role.sql), which followed sales_manager on
     // 2026-08-01 (112_sales_manager_role.sql). Plus the three principals.
-    assert.equal(DEMO_LOGINS.length, 11);
-    assert.equal(DEMO_STAFF.length, 8);
+    assert.equal(DEMO_LOGINS.length, 12);
+    assert.equal(DEMO_STAFF.length, 9);
     assert.equal(DEMO_ACCOUNTS.length, 3);
     const roles = DEMO_LOGINS.map((d) => d.role);
-    assert.equal(new Set(roles).size, 11, `duplicate role in the roster: ${roles}`);
+    assert.equal(new Set(roles).size, 12, `duplicate role in the roster: ${roles}`);
   });
 
   test("every role is one public/app/shell.js grants tabs to", () => {
@@ -236,7 +238,7 @@ describe("the roster is the same in all four places", () => {
     for (const d of DEMO_LOGINS) {
       assert.ok(isDemoEmail(d.email), `${d.email} is not on ${DEMO_EMAIL_DOMAIN}`);
     }
-    assert.equal(new Set(DEMO_LOGINS.map((d) => d.email)).size, 11, "duplicate demo address");
+    assert.equal(new Set(DEMO_LOGINS.map((d) => d.email)).size, 12, "duplicate demo address");
   });
 
   test("every name reads as a demo account", () => {
@@ -263,7 +265,7 @@ describe("the roster is the same in all four places", () => {
        reason. The roster is checked against all three rather than 094 alone,
        and every future role migration that seeds a login joins this list. */
     const sql = read(MIGRATION) + "\n" + read(SALES_MANAGER_MIGRATION)
-              + "\n" + read(CSM_MIGRATION);
+              + "\n" + read(CSM_MIGRATION) + "\n" + read(OUTBOUND_REP_MIGRATION);
     for (const d of DEMO_LOGINS) {
       assert.ok(sql.includes(`'${d.email}'`),
         `no demo-login migration mentions ${d.email}`);
@@ -285,6 +287,17 @@ describe("the roster is the same in all four places", () => {
     // Six staff + three accounts + three subject rows + two clients all carry it.
     assert.ok((sql.match(/\btrue\b/g) || []).length >= 9,
       "not every seeded row appears to set is_demo = true");
+  });
+
+  test("the new outreach demo seed is additive, org-scoped and preserves existing credentials", () => {
+    const sql = read(OUTBOUND_REP_MIGRATION);
+    assert.match(sql, /FROM orgs WHERE is_default/);
+    assert.match(sql, /org_id = v_org AND is_demo = true/);
+    assert.match(sql, /IF v_hash IS NULL THEN RETURN/);
+    assert.match(sql, /'outbound_rep','active',v_hash,true/);
+    assert.match(sql, /WHERE NOT EXISTS \(/);
+    assert.match(sql, /org_id = v_org AND lower\(email\) = 'outbound@demo\.fundhub\.local'/);
+    assert.doesNotMatch(sql, /^\s*(?:UPDATE|DELETE|TRUNCATE|ALTER ROLE)\b/im);
   });
 
   test("the migration binds the default org and never deletes or overwrites", () => {
@@ -472,20 +485,31 @@ describe("GET /api/auth/login — the switcher's roster, gated server-side", () 
     }
   });
 
-  test("switch on: all eleven, each with the label, the portal and a home", async () => {
+  test("switch on: all twelve, each with the label, the portal and a home", async () => {
     const res = await getOptions("1");
     assert.equal(res.code, 200);
     assert.equal(res.body.demo.enabled, true);
     assert.equal(res.body.demo.password, DEMO_PASSWORD);
     const logins = res.body.demo.logins;
-    assert.equal(logins.length, 11);
+    assert.equal(logins.length, 12);
     for (const d of logins) {
       for (const k of ["role", "email", "name", "label", "portal", "home"]) {
         assert.ok(d[k] && String(d[k]).trim(), `demo login ${d.role} has no ${k}`);
       }
       assert.ok(isDemoEmail(d.email), `${d.email} is not on the demo domain`);
     }
-    assert.equal(new Set(logins.map((d) => d.role)).size, 11, "duplicate role in the switcher");
+    assert.equal(new Set(logins.map((d) => d.role)).size, 12, "duplicate role in the switcher");
+  });
+
+  test("outbound rep uses the normal gated switcher and opens only its bank workspace", async () => {
+    const roster = (await getOptions("1")).body.demo.logins;
+    const outreach = roster.filter(d => d.role === "outbound_rep");
+    assert.equal(outreach.length, 1);
+    assert.deepEqual(outreach[0], { role: "outbound_rep", email: "outbound@demo.fundhub.local", name: "DEMO Outbound Rep", label: "Outbound rep", portal: "Bank outreach", home: "/app/bank-outreach.html" });
+    assert.equal(demoLoginRefusal(outreach[0], {}).error, "demo_logins_disabled");
+    assert.equal(demoLoginRefusal(outreach[0], { [DEMO_ENV_VAR]: "typo" }).error, "demo_logins_disabled");
+    assert.equal(demoLoginRefusal(outreach[0], { [DEMO_ENV_VAR]: "1" }), null);
+    assert.equal((await getOptions(undefined)).body.demo.logins, undefined);
   });
 
   test("the reply carries nothing the page does not render", async () => {

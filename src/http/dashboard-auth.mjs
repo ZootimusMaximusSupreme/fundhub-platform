@@ -62,6 +62,10 @@ export async function requireDashboardAccess(req, res, { db } = {}) {
   const { attachStaff } = await import("./middleware/requireAuth.mjs");
   const staff = await attachStaff(req, { db });
   if (staff) return staff;
+  if (req.authForbidden) {
+    res.status(403).json({ ok: false, error: "forbidden" });
+    return null;
+  }
 
   // Ours, not theirs — and data.js reads db:"down" as an outage banner rather
   // than as a signed-out state.

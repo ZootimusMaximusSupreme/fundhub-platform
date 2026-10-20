@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
 import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLanes } from "./prove-policy.mjs";
+import { formatProofFetchTrace, makeProofFetchTrace, proofFetch } from "./prove-fetch-trace.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -73,6 +74,7 @@ const want = [...listed.SLICE_FILES, ...listed.GAP_FILES].map(([name]) => name);
 const missingFiles = want.filter((name) => !fs.existsSync(path.join(root, "src/pulse/coverage", name)));
 
 const log = { queries: [], fetches: [], refused: [] };
+const webTrace = makeProofFetchTrace();
 globalThis.fetch = guardedFetch();
 const plainC = await openClient(false);
 const staffC = await openClient(true);
@@ -190,6 +192,7 @@ const problems = [
   ...blindRows.map((r) => `${r.id} is ${r.status} on the app role but ${byId.get(r.id)} with staff access — the check cannot see the rows`)
 ];
 if (problems.length) {
+  for (const entry of webTrace.slowOrFailed()) console.log(`  web timing: ${formatProofFetchTrace(entry)}`);
   console.log(`\nPROBLEMS (${problems.length}):`);
   for (const p of problems) console.log(`  - ${p}`);
   process.exit(1);
@@ -302,8 +305,9 @@ function guardedFetch() {
     const key = `${method} ${url} ${(init && init.redirect) || ""}`;
     if (!memo.has(key)) {
       try {
-        const res = await realFetch(url, { method, redirect: (init && init.redirect) || "follow", headers: init && init.headers, signal: AbortSignal.timeout(15000) });
-        memo.set(key, { status: res.status, headers: [...res.headers.entries()], body: method === "HEAD" ? "" : await res.text(), url: res.url });
+        memo.set(key, await proofFetch(realFetch, url, {
+          method, redirect: (init && init.redirect) || "follow", headers: init && init.headers, signal: AbortSignal.timeout(15000)
+        }, method, webTrace));
       } catch (err) {
         memo.set(key, { error: String((err && err.message) || err) });
       }
@@ -486,6 +490,11 @@ async function proveBeats() {
   // 2. Guards: GET and HEAD only.
   const sendLog = [];
   const fetchLog = [];
+  const siteFetchTrace = [];
+  const tracedSitePaths = new Set([
+    "/api/health", "/api/public/funnel-checkout", "/api/public/slo-repair-checkout",
+    "/api/public/survey-submit", "/api/public/slo-interest"
+  ]);
   globalThis.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : (input && input.url) || String(input);
     const method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
@@ -493,8 +502,23 @@ async function proveBeats() {
       sendLog.push(`${method} ${clip(url, 100)}`);
       throw new Error(`pulse:prove blocked ${method} - read-only proof run`);
     }
-    fetchLog.push(`${method} ${new URL(url).host}`);
-    return realFetch(url, init);
+    const target = new URL(url);
+    fetchLog.push(`${method} ${target.host}`);
+    const trace = target.host === "fundhub.ai" && tracedSitePaths.has(target.pathname);
+    const started = Date.now();
+    try {
+      const response = await realFetch(url, init);
+      if (trace) siteFetchTrace.push({ path: target.pathname, status: response.status, ms: Date.now() - started });
+      return response;
+    } catch (err) {
+      if (trace) siteFetchTrace.push({
+        path: target.pathname, status: 0, ms: Date.now() - started,
+        error: String(err?.name || "Error").replace(/[^a-z0-9_]/gi, "").slice(0, 32),
+        code: String(err?.cause?.code || "").replace(/[^a-z0-9_]/gi, "").slice(0, 32),
+        aborted: init?.signal?.aborted === true
+      });
+      throw err;
+    }
   };
 
   // 3. The read-only connection the runner uses for its own reads, one query at a time, each in a savepoint.
@@ -691,6 +715,7 @@ async function proveBeats() {
   console.log(`  web reads made: ${fetchLog.length}${fetchLog.length ? ` (${[...new Set(fetchLog)].slice(0, 4).join(", ")})` : ""}; sink calls: text ${sinks.calls.text.length}, buzz ${sinks.calls.ntfy.length}`);
 
   if (problems.length) {
+    for (const trace of siteFetchTrace) console.log(`  site fetch headers: ${trace.path} ${trace.status} ${trace.ms} ms${trace.error ? ` (${trace.error}${trace.code ? ` ${trace.code}` : ""}; aborted=${trace.aborted})` : ""}`);
     console.log(`\nPROBLEMS (${problems.length}):`);
     for (const p of problems) console.log(`  - ${p}`);
     process.exit(1);

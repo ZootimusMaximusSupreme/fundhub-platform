@@ -280,6 +280,31 @@ test("createCheckoutSession with no metadata still sends a plain success url", a
   assert.equal(sent.success_url, "https://fundhub.ai/app/payment-success.html");
 });
 
+test("createCheckoutSession bounds an invoice mint when a timeout is requested", async () => {
+  let receivedSignal;
+  const fetchImpl = async (_url, opts) => {
+    receivedSignal = opts.signal;
+    return new Promise((_resolve, reject) => {
+      const failsafe = setTimeout(() => reject(new Error("fake fetch did not abort")), 1000);
+      opts.signal.addEventListener("abort", () => {
+        clearTimeout(failsafe);
+        reject(opts.signal.reason);
+      }, { once: true });
+    });
+  };
+  const result = await createCheckoutSession({
+    amountCents: 100,
+    productTitle: "Consulting Services Package",
+    timeoutMs: 10,
+    env: CHECKOUT_ENV,
+    fetchImpl
+  });
+  assert.ok(receivedSignal?.aborted);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 0);
+  assert.match(result.reason, /^checkout_unreachable:/);
+});
+
 test("createCheckoutSession refuses unsafe product titles before calling fetch", async () => {
   const fetchImpl = fakeFetch([]);
   const res = await createCheckoutSession({

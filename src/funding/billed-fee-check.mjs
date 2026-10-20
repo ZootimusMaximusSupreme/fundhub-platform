@@ -50,7 +50,8 @@
 import { toCents, fromCents } from "../commissions/money.mjs";
 import { resolveSuccessFee, amountOrNull } from "./success-fee.mjs";
 import {
-  invoiceDisplayNumber, formatBalanceDue, createInvoice, markSent, markPaid, announceInvoice
+  invoiceDisplayNumber, formatBalanceDue, createInvoice, markSent, markPaid, announceInvoice,
+  successFeeKey
 } from "../invoices/index.mjs";
 import { paidOnInvoiceCents } from "../invoices/allocate.mjs";
 import { createTask } from "../lib/create-task.mjs";
@@ -82,6 +83,20 @@ SELECT id, org_id, client_id, round_number, product
   FROM funding_rounds
  WHERE id = $1::uuid
    AND ($2::uuid IS NULL OR org_id = $2::uuid)
+ LIMIT 1`;
+
+const SQL_FUNDED_ROUND_LOCK = `
+SELECT id, org_id, client_id, round_number, product, status
+  FROM funding_rounds
+ WHERE id = $1::uuid
+   AND ($2::uuid IS NULL OR org_id = $2::uuid)
+ FOR UPDATE`;
+
+const SQL_ANY_ROUND_BILL = `
+SELECT id, status FROM invoices
+ WHERE funding_round_id = $1::uuid
+   AND org_id = $2::uuid
+   AND (source = 'funding_success_fee' OR invoice_type = 'success_fee')
  LIMIT 1`;
 
 /**
@@ -164,6 +179,46 @@ export function reissueKey(invoiceId) {
   return `invoice|success_fee|reissue-of|${invoiceId}`;
 }
 
+/** A legacy funded round can gain its first confirmed bank amount after F-07 ran.
+ *  Lock the round shared with fee corrections, then issue only if it has never
+ *  had a fee bill. A deliberately voided bill is not silently restored. */
+async function issueMissingFeeInvoice(db, { orgId, fundingRoundId }) {
+  const out = await withTransaction(db, async (tx) => {
+    const round = (await tx.query(SQL_FUNDED_ROUND_LOCK, [fundingRoundId, orgId || null])).rows[0];
+    if (!round || round.product !== CARD_STACKING || round.status !== "funded") return null;
+
+    const active = (await tx.query(SQL_ROUND_BILL, [round.id, round.org_id])).rows[0];
+    if (active) return { retry: true };
+    const past = (await tx.query(SQL_ANY_ROUND_BILL, [round.id, round.org_id])).rows[0];
+    if (past) return null;
+
+    const fee = await resolveSuccessFee(tx, { orgId: round.org_id, fundingRoundId: round.id });
+    if (!fee.ok || !fee.saleId || fee.feeCents <= 0) return null;
+    const invoice = await createInvoice(tx, {
+      orgId: round.org_id,
+      clientId: round.client_id,
+      source: "funding_success_fee",
+      amount: fee.feeAmount,
+      saleId: fee.saleId,
+      fundingRoundId: round.id,
+      idempotencyKey: successFeeKey(fee.saleId, round.id),
+      notes: `Confirmed bank approvals recorded after funding — ${fee.confirmedApprovedAmount} @ ${fee.feePercent}%`
+    });
+    if (!invoice) return { retry: true };
+    const sent = await markSent(tx, { invoiceId: invoice.id });
+    if (!sent) throw new Error(`could not mark new fee bill ${invoice.id} sent`);
+    return { invoice: sent, round, fee };
+  });
+  if (!out?.invoice) return out;
+
+  // F-07's customer email/SMS is not replayed. Only the invoice event starts
+  // the existing Commas collections path for this newly confirmed fee.
+  await announceInvoice(db, "invoice.created", out.invoice);
+  await announceInvoice(db, "invoice.sent", out.invoice);
+  await createFundingCloseoutSafe(db, { orgId: out.round.org_id, fundingRoundId: out.round.id });
+  return out;
+}
+
 /**
  * Make the round's bill follow the rule: void it and raise a new one at the
  * rule fee, carrying what was paid across up to the new fee. One transaction.
@@ -172,20 +227,45 @@ export function reissueKey(invoiceId) {
  *   alreadyReissued?: boolean, voided: object|null, invoice: object|null,
  *   carriedCents: number, overpaidCents: number
  * }>}
- * null when there is nothing to follow: the bill matches, or nothing is
- * confirmed (no fee is not a $0 fee). THROWS on a database fault — the caller
- * falls back to telling a person.
+ * A round-locked recheck may return matches/nothingToBill when the saved
+ * pre-lock comparison is stale. THROWS on a database fault — the caller falls
+ * back to telling a person when there was a real drift.
  */
 export async function followRuleFee(db, check) {
-  if (!check || check.matches || check.ruleFeeCents == null) return null;
-  const old = check.invoice;
-  const ruleCents = check.ruleFeeCents;
-  const paidCents = Math.max(check.paidCents || 0, 0);
-  const carriedCents = Math.min(paidCents, ruleCents);
-  const why = `the success fee follows the bank approvals — ${check.feePercent}% of ` +
-    `${formatBalanceDue(check.confirmedApprovedAmount)} confirmed = ${dollars(ruleCents)}`;
+  if (!check?.invoice?.funding_round_id) return null;
 
   const out = await withTransaction(db, async (tx) => {
+    // Application writes update the round's approved summary. Locking this
+    // row makes two later bank answers reconcile in order, not from the same
+    // stale invoice/fee snapshot taken before either correction committed.
+    const round = (await tx.query(SQL_FUNDED_ROUND_LOCK,
+      [check.invoice.funding_round_id, check.invoice.org_id])).rows[0];
+    if (!round || round.product !== CARD_STACKING || round.status !== "funded") {
+      return { notEligible: true };
+    }
+    const current = await checkBilledSuccessFee(tx, {
+      orgId: round.org_id, fundingRoundId: round.id
+    });
+    if (!current) return { alreadyReissued: true };
+    if (current.matches) return { matches: true, check: current };
+    if (current.ruleFeeCents == null) return { nothingToBill: true, check: current };
+
+    const old = current.invoice;
+    const ruleCents = current.ruleFeeCents;
+    const why = `the success fee follows the bank approvals — ${current.feePercent}% of ` +
+      `${formatBalanceDue(current.confirmedApprovedAmount)} confirmed = ${dollars(ruleCents)}`;
+    // A receipt and a correction must agree on which invoice was open first.
+    // allocatePayment takes this same row lock before recording a receipt.
+    const locked = (await tx.query(
+      `SELECT id, status FROM invoices WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+      [old.id, old.org_id]
+    )).rows[0];
+    if (!locked || ["void", "written_off"].includes(locked.status)) {
+      return { alreadyReissued: true };
+    }
+    const paidCents = Math.max(await paidOnInvoiceCents(tx, old.id), 0);
+    const carriedCents = Math.min(paidCents, ruleCents);
+
     const next = await createInvoice(tx, {
       orgId: old.org_id,
       clientId: old.client_id,
@@ -194,7 +274,7 @@ export async function followRuleFee(db, check) {
       saleId: old.sale_id ?? null,
       fundingRoundId: old.funding_round_id,
       idempotencyKey: reissueKey(old.id),
-      notes: `Reissue of ${check.invoiceNumber}: ${why}`
+      notes: `Reissue of ${current.invoiceNumber}: ${why}`
     });
     if (!next) return { alreadyReissued: true };
     const nextNumber = invoiceDisplayNumber(next);
@@ -209,7 +289,7 @@ export async function followRuleFee(db, check) {
       await tx.query(
         `INSERT INTO invoice_payments (org_id, invoice_id, kind, amount, method, notes)
          VALUES ($1, $2, 'payment', $3, 'reissue', $4)`,
-        [old.org_id, next.id, fromCents(carriedCents), `Moved from ${check.invoiceNumber} — paid there before the reissue`]
+        [old.org_id, next.id, fromCents(carriedCents), `Moved from ${current.invoiceNumber} — paid there before the reissue`]
       );
     }
 
@@ -222,7 +302,17 @@ export async function followRuleFee(db, check) {
       RETURNING *`,
       [old.id, `Void: replaced by ${nextNumber} — ${why}`]
     )).rows[0];
-    if (!voided) throw new Error(`bill ${check.invoiceNumber} is already void or written off`);
+    if (!voided) throw new Error(`bill ${current.invoiceNumber} is already void or written off`);
+
+    // The old checkout URL can remain reachable at Commas. Retire Fundhub's
+    // payable link in the same transaction; a late provider receipt is handled
+    // by allocatePayment as an unallocated payment on the void invoice.
+    const retired = await tx.query(
+      `UPDATE payment_links SET status = 'expired', expired_at = now()
+        WHERE org_id = $1 AND invoice_id = $2 AND status IN ('created', 'sent')
+        RETURNING id`,
+      [old.org_id, old.id]
+    );
 
     let invoice = next;
     if (old.status !== "draft" || carriedCents > 0) {
@@ -236,8 +326,12 @@ export async function followRuleFee(db, check) {
         )).rows[0] || invoice;
       }
     }
-    return { voided, invoice, carriedCents, overpaidCents: paidCents - carriedCents };
+    return {
+      check: current, voided, invoice, carriedCents, overpaidCents: paidCents - carriedCents,
+      retiredLinkIds: retired.rows.map((row) => row.id)
+    };
   });
+  if (out.matches || out.nothingToBill || out.notEligible) return out;
   if (out.alreadyReissued) return { ...out, voided: null, invoice: null, carriedCents: 0, overpaidCents: 0 };
 
   // Both facts on the record. invoice.sent only while money is still owing —
@@ -249,7 +343,9 @@ export async function followRuleFee(db, check) {
   else if (out.invoice.status !== "draft") await announceInvoice(db, "invoice.sent", out.invoice);
 
   // The closeout record carries the same fee; it reads the same rule.
-  await createFundingCloseoutSafe(db, { orgId: old.org_id, fundingRoundId: old.funding_round_id });
+  await createFundingCloseoutSafe(db, {
+    orgId: out.voided.org_id, fundingRoundId: out.voided.funding_round_id
+  });
   return out;
 }
 
@@ -277,7 +373,9 @@ export function overpaidTask(check, reissue) {
 /**
  * Called after a bank decision is saved. When the application sits on a
  * card-stacking round whose success-fee bill no longer matches the rule, the
- * bill is reissued at the rule fee (followRuleFee). A person gets one task
+ * bill is reissued at the rule fee (followRuleFee). A funded round with no bill
+ * gets its first bill only after a positive confirmed approval is recorded.
+ * A person gets one task
  * when more was paid than the new fee, when nothing is confirmed left to bill
  * at, or when the reissue fails (one task per distinct state — pressing the
  * same button twice does not stack a second one).
@@ -292,37 +390,48 @@ export async function flagBilledFeeDrift(db, { orgId = null, application = null 
   const fundingRoundId = application?.funding_round_id || null;
   if (!fundingRoundId) return null;
   try {
-    const check = await checkBilledSuccessFee(db, { orgId, fundingRoundId });
-    if (!check) return null;
-    if (check.matches) return { matches: true, task: null, check };
+    // A competing bank answer may finish while this call waits on the round
+    // lock. Re-read after each bounded retry; never trust a pre-lock amount.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const check = await checkBilledSuccessFee(db, { orgId, fundingRoundId });
+      if (!check) {
+        const issued = await issueMissingFeeInvoice(db, { orgId, fundingRoundId });
+        if (issued?.retry) continue;
+        return issued?.invoice ? { matches: false, created: issued.invoice, task: null } : null;
+      }
 
-    const taskFor = (spec) => createTask(db, {
-      orgId: check.invoice.org_id || orgId,
-      clientId: check.invoice.client_id || application.client_id || null,
-      ...spec,
-      sourceWorkflow: FEE_DRIFT_TASK_SOURCE,
-      // Same owner as F-07's own fee tasks (src/workflows/f-07-funding-locked.mjs).
-      assigneeRole: "funding_advisor"
-    });
-
-    if (check.ruleFeeCents != null) {
+      let reissue;
       try {
-        const reissue = await followRuleFee(db, check);
-        if (reissue) {
-          const task = reissue.overpaidCents > 0 ? await taskFor(overpaidTask(check, reissue)) : null;
-          return { matches: false, reissue, task, check };
-        }
+        reissue = await followRuleFee(db, check);
       } catch (err) {
         console.error(
           `[billed-fee-check] could not reissue bill ${check.invoiceNumber} at the rule fee ` +
           `(round=${fundingRoundId}): ${err?.message || err}`
         );
+        if (check.matches) return null;
       }
-    }
+      if (reissue?.alreadyReissued) continue;
+      if (reissue?.notEligible) return null;
+      const current = reissue?.check || check;
+      const taskFor = (spec) => createTask(db, {
+        orgId: current.invoice.org_id || orgId,
+        clientId: current.invoice.client_id || application.client_id || null,
+        ...spec,
+        sourceWorkflow: FEE_DRIFT_TASK_SOURCE,
+        // Same owner as F-07's own fee tasks (src/workflows/f-07-funding-locked.mjs).
+        assigneeRole: "funding_advisor"
+      });
+      if (reissue?.matches) return { matches: true, task: null, check: current };
+      if (reissue?.invoice) {
+        const task = reissue.overpaidCents > 0 ? await taskFor(overpaidTask(current, reissue)) : null;
+        return { matches: false, reissue, task, check: current };
+      }
 
-    // Nothing confirmed left to bill at, or the reissue failed: a person is told.
-    const task = await taskFor(feeDriftTask(check));
-    return { matches: false, task, check };
+      // Nothing confirmed left to bill at, or the reissue failed: a person is told.
+      const task = await taskFor(feeDriftTask(current));
+      return { matches: false, task, check: current };
+    }
+    throw new Error("fee invoice changed during three round-locked checks");
   } catch (err) {
     console.error(
       `[billed-fee-check] could not compare the bill with the rule ` +

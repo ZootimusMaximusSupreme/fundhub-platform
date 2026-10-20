@@ -16,12 +16,16 @@ import { fakeDb, useSharedDb, staffSession, accountSession } from "../../../test
 const CLIENT_ID = "c1000000-0000-4000-8000-000000000001";
 const PARTNER_ID = "b1000000-0000-4000-8000-000000000001";
 
-/** The eight kinds of person the journeys describe, by journey name. */
+/** Journey principals plus staff roles needed by the approved bank outreach boundary. */
 export const PRINCIPALS = Object.freeze({
   client: () => accountSession({ kind: "client", clientId: CLIENT_ID }),
   affiliate: () => accountSession({ kind: "affiliate" }),
   "white-label": () => accountSession({ kind: "partner", partnerId: PARTNER_ID }),
   "role-owner": () => [staffSession({ role: "owner" })],
+  "role-admin": () => [staffSession({ role: "admin" })],
+  "role-outbound-rep": () => [staffSession({ role: "outbound_rep" })],
+  "role-csm": () => [staffSession({ role: "csm" })],
+  "role-setter": () => [staffSession({ role: "setter" })],
   "role-sales-manager": () => [staffSession({ role: "sales_manager" })],
   "role-closer": () => [staffSession({ role: "closer" })],
   "role-funding-advisor": () => [staffSession({ role: "funding_advisor" })],
@@ -66,6 +70,16 @@ export async function probeRoute(handler, key, principalName) {
   // returning the saved switch. Give the probe that one file; other roles get none.
   if (key === "push/preferences" && principalName === "client") {
     rules.push([/FROM clients WHERE org_id = \$1 AND id = \$2 LIMIT 1/, () => [{ marketing_push_enabled: false }]]);
+  }
+  // Outreach rechecks the live staff row after the session. Answer only this
+  // tenant-scoped identity read with the same staff; the real role checks run.
+  if (["bank-outreach", "read/bank-outreach"].includes(key) && principalName?.startsWith("role-")) {
+    const session = rules[0][1]()[0];
+    const staff = { ...session, id: session.staff_id };
+    rules.push([
+      /^SELECT id,org_id,name,email,role FROM staff WHERE id=\$1 AND org_id=\$2 AND status='active' AND COALESCE\(\(to_jsonb\(staff\)->>'active'\)::boolean,true\)$/,
+      (_sql, params) => params[0] === staff.id && params[1] === staff.org_id ? [staff] : [],
+    ]);
   }
   const get = await oneCall(handler, path, "GET", rules, !principalName);
   const post = await oneCall(handler, path, "POST", rules, !principalName);

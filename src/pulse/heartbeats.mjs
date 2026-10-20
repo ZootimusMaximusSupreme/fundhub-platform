@@ -14,6 +14,7 @@
 export const INNGEST_JOBS = Object.freeze([
   ["af-01-affiliate-drip", "*/15 * * * *"],
   ["affiliate-payout-run", "0 3 1 * *"],
+  ["bank-outreach-checkins", "TZ=America/Phoenix 0 7 * * *"],
   ["blake-lead-watch", "*/5 * * * *"],
   ["blueprint-closer-ready-sweeper", "0 * * * *"],
   ["blueprint-finance-os-alerts", "30 7 * * *"],
@@ -33,6 +34,8 @@ export const INNGEST_JOBS = Object.freeze([
   ["hiring-bench-sweeper", "30 13 * * *"],
   ["hiring-outreach-cadence", "*/30 * * * *"],
   ["inquiry-call-sweeper", "*/15 * * * *"],
+  ["invoice-checkout-retirement-sweeper", "*/30 * * * *"],
+  ["invoice-sent-recovery", "*/30 * * * *"],
   ["meet-transcript-sweeper", "*/10 * * * *"],
   ["merchant-pull-sweeper", "30 7 * * *"],
   ["message-dispatch-sweeper", "*/5 * * * *"],

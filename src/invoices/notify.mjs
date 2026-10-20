@@ -32,14 +32,17 @@ export function formatAmount(amount, currency = "USD") {
   return currency === "USD" ? `$${body}` : `${body} ${currency}`;
 }
 
-/* 'funding_success_fee' → 'Funding success fee'. The stored value is a machine
-   word and a client should not be reading snake_case.
+/* A success-fee invoice is labelled for the client as the agreed service,
+   while its stored funding_success_fee source remains the accounting key.
 
    EXPORTED so the portal prints the same words as the email. The client reads
    this label in her inbox and then again on the Payments tab of her portal
    (api/read/portal-summary.mjs); two copies of this transform is two places for
    the same invoice to acquire two names. */
 export function invoiceKindLabel(row = {}) {
+  if (row.source === "funding_success_fee" || row.invoice_type === "success_fee") {
+    return "basic business consulting fee";
+  }
   return String(row.source || row.invoice_type || "invoice")
     .replace(/_/g, " ")
     .replace(/^./, (c) => c.toUpperCase());

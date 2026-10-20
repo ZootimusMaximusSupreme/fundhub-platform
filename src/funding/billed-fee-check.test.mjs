@@ -15,12 +15,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   checkBilledSuccessFee,
+  followRuleFee,
   flagBilledFeeDrift,
   feeDriftTask,
   reissueKey,
   CARD_STACKING,
   FEE_DRIFT_TASK_SOURCE
 } from "./billed-fee-check.mjs";
+import { successFeeKey } from "../invoices/index.mjs";
 import { PRODUCT } from "./card-stacking-rounds.mjs";
 import { setApplicationStatus, setApprovalExclusion } from "../applications/status.mjs";
 import { CLIENT_INVOICES_SQL } from "../fulfillment/client-step.mjs";
@@ -39,11 +41,14 @@ const APP = "2a5b7ba0-ab99-4179-8ebc-e786f3b5b266";
    bill exactly as a real one would. */
 function stubDb({
   product = "card_stacking",
+  roundStatus = "funded",
   invoice = { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE, status: "paid", amount_due: "2500.00", funding_round_id: ROUND },
   confirmed = [{ id: APP, approved_amount: "10000.00", lender_name: "Native American Bank" }],
   pct = "10.0000",
   paid = "2500.00",
+  links = [],
   failVoid = false,
+  onRoundLock = null,
   appRow = { id: APP, org_id: ORG, client_id: CLIENT, funding_round_id: ROUND, status: "Approved", lender_name: "Native American Bank" }
 } = {}) {
   const calls = [];
@@ -54,9 +59,10 @@ function stubDb({
     ? [{ invoice_id: invoice.id, kind: "payment", amount: paid }]
     : [];
   const closeouts = [];
+  const paymentLinks = links.map((link) => ({ ...link }));
   const byId = (id) => invoices.find((i) => i.id === id);
   return {
-    calls, tasks, events, invoices, payments, closeouts,
+    calls, tasks, events, invoices, payments, closeouts, paymentLinks, confirmed,
     async query(sql, params = []) {
       calls.push({ sql, params });
       if (/UPDATE applications/i.test(sql) && /RETURNING/i.test(sql)) {
@@ -70,7 +76,8 @@ function stubDb({
         const key = params[12];
         if (key && invoices.some((i) => i.idempotency_key === key)) return { rows: [] };
         const row = {
-          id: NEW_INVOICE, org_id: params[0], client_id: params[1], source: params[3],
+          id: invoices.length < 2 ? NEW_INVOICE : `c0ffee00-0000-4000-8000-${String(invoices.length).padStart(12, "0")}`,
+          org_id: params[0], client_id: params[1], source: params[3],
           amount_due: String(params[5]), sale_id: params[7], funding_round_id: params[8],
           idempotency_key: key, notes: params[13], status: "draft"
         };
@@ -92,6 +99,9 @@ function stubDb({
         return { rows: [{ ...row }] };
       }
       if (/FROM invoices\b/i.test(sql)) {
+        if (/SELECT id, status FROM invoices/i.test(sql) && /funding_round_id/i.test(sql)) {
+          return { rows: invoices.slice(0, 1).map((i) => ({ id: i.id, status: i.status })) };
+        }
         const live = invoices.filter((i) => !["void", "written_off"].includes(i.status));
         return { rows: live.slice(0, 1).map((i) => ({ ...i })) };
       }
@@ -107,6 +117,13 @@ function stubDb({
           .filter((p) => p.invoice_id === params[0])
           .reduce((s, p) => s + (p.kind === "payment" ? 1 : -1) * Number(p.amount), 0);
         return { rows: [{ paid: net.toFixed(2) }] };
+      }
+
+      if (/UPDATE payment_links/i.test(sql)) {
+        const retired = paymentLinks.filter((link) => link.org_id === params[0]
+          && link.invoice_id === params[1] && ["created", "sent"].includes(link.status));
+        for (const link of retired) link.status = "expired";
+        return { rows: retired.map((link) => ({ id: link.id })) };
       }
 
       // ── events (invoice.* announcements) ───────────────────────────────
@@ -125,7 +142,8 @@ function stubDb({
       if (/INSERT INTO funding_closeout_items/i.test(sql)) return { rows: [{ id: "ci1" }] };
 
       if (/FROM funding_rounds\b/i.test(sql)) {
-        return { rows: [{ id: ROUND, org_id: ORG, client_id: CLIENT, round_number: 2, product }] };
+        if (/FOR UPDATE/i.test(sql)) await onRoundLock?.();
+        return { rows: [{ id: ROUND, org_id: ORG, client_id: CLIENT, round_number: 2, product, status: roundStatus }] };
       }
       if (/FROM funding_round_sales/i.test(sql)) {
         return { rows: pct == null ? [] : [{ sale_id: SALE, agreed_success_fee_percent: pct }] };
@@ -143,6 +161,30 @@ function stubDb({
       return { rows: [] };
     }
   };
+}
+
+function withSerializedRoundLock(db) {
+  let tail = Promise.resolve();
+  db.connect = async () => {
+    let unlock = null;
+    return {
+      async query(sql, params = []) {
+        if (/^BEGIN$/i.test(sql)) return { rows: [] };
+        if (/^(COMMIT|ROLLBACK)$/i.test(sql)) {
+          unlock?.();
+          return { rows: [] };
+        }
+        if (/FROM funding_rounds[\s\S]*FOR UPDATE/i.test(sql)) {
+          const previous = tail;
+          tail = new Promise((resolve) => { unlock = resolve; });
+          await previous;
+        }
+        return db.query(sql, params);
+      },
+      release() {}
+    };
+  };
+  return db;
 }
 
 const netPaid = (db, invoiceId) => db.payments
@@ -229,6 +271,7 @@ test("marking an approval as not counting on a billed round makes the bill follo
 test("an unpaid bill that is too high is reissued and collections follow the new bill", async () => {
   const db = stubDb({
     invoice: { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE, status: "sent", amount_due: "2500.00", funding_round_id: ROUND },
+    links: [{ id: "link-old", org_id: ORG, invoice_id: INVOICE, status: "sent" }],
     paid: "0"
   });
   await setApplicationStatus(db, { orgId: ORG, applicationId: APP, status: "Approved", staff: { name: "A" } });
@@ -236,6 +279,7 @@ test("an unpaid bill that is too high is reissued and collections follow the new
   assert.equal(Number(next.amount_due), 1000);
   assert.equal(next.status, "sent");
   assert.equal(db.payments.length, 0, "nothing was paid, nothing to carry");
+  assert.equal(db.paymentLinks[0].status, "expired", "the old payable link is retired with the void bill");
   assert.deepEqual(db.events.map((e) => e.name), ["invoice.voided", "invoice.created", "invoice.sent"]);
   assert.equal(db.tasks.length, 0);
 });
@@ -251,6 +295,20 @@ test("a part payment is carried across and the new bill reads partly paid", asyn
   assert.equal(netPaid(db, NEW_INVOICE), 400);
   assert.equal(netPaid(db, INVOICE), 0);
   assert.equal(db.tasks.length, 0, "nothing was paid over the new fee");
+});
+
+test("a receipt after the fee check is carried from the locked bill", async () => {
+  const db = stubDb({
+    invoice: { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE, status: "sent", amount_due: "2500.00", funding_round_id: ROUND },
+    paid: "0"
+  });
+  const check = await checkBilledSuccessFee(db, { orgId: ORG, fundingRoundId: ROUND });
+  db.payments.push({ invoice_id: INVOICE, kind: "payment", amount: "400.00" });
+  assert.equal(check.paidCents, 0, "the saved check predates the receipt");
+  const result = await followRuleFee(db, check);
+  assert.equal(result.carriedCents, 40000, "the transaction rereads the actual paid balance");
+  assert.equal(netPaid(db, NEW_INVOICE), 400);
+  assert.equal(netPaid(db, INVOICE), 0);
 });
 
 test("a bill that still matches the rule is left alone", async () => {
@@ -293,9 +351,89 @@ test("an alt-fin round is out of scope — it bills off the Lendflow figure", as
   assert.equal(db.invoices.length, 1);
 });
 
-test("no bill on the round, or no round on the application: nothing to compare", async () => {
-  assert.equal(await flagBilledFeeDrift(stubDb({ invoice: null }), { orgId: ORG, application: { funding_round_id: ROUND } }), null);
+test("no confirmed amount, no agreed rate, or no funded round never creates a bill", async () => {
+  for (const opts of [
+    { invoice: null, confirmed: [] },
+    { invoice: null, pct: null },
+    { invoice: null, roundStatus: "approved" }
+  ]) {
+    const db = stubDb(opts);
+    assert.equal(await flagBilledFeeDrift(db, { orgId: ORG, application: { funding_round_id: ROUND } }), null);
+    assert.equal(db.invoices.length, 0);
+    assert.equal(db.events.length, 0);
+  }
   assert.equal(await flagBilledFeeDrift(stubDb(), { orgId: ORG, application: { funding_round_id: null } }), null);
+});
+
+test("a first confirmed amount on an already-funded round creates one separate bill without F-07 messages", async () => {
+  const db = stubDb({ invoice: null });
+  const opts = { orgId: ORG, applicationId: APP, status: "Approved", staff: { name: "Advisor" } };
+  await setApplicationStatus(db, opts);
+  await setApplicationStatus(db, opts);
+  assert.equal(db.invoices.length, 1);
+  const [bill] = db.invoices;
+  assert.equal(Number(bill.amount_due), 1000);
+  assert.equal(bill.sale_id, SALE);
+  assert.equal(bill.funding_round_id, ROUND);
+  assert.equal(bill.idempotency_key, successFeeKey(SALE, ROUND));
+  assert.equal(bill.status, "sent");
+  assert.deepEqual(db.events.map((event) => event.name), ["invoice.created", "invoice.sent"]);
+  assert.equal(db.closeouts.length, 1);
+  assert.ok(!db.calls.some((call) => /INSERT INTO messages/i.test(call.sql)));
+});
+
+test("two concurrent late bank answers still issue only one first bill", async () => {
+  const db = withSerializedRoundLock(stubDb({ invoice: null }));
+  const opts = { orgId: ORG, applicationId: APP, status: "Approved" };
+  await Promise.all([setApplicationStatus(db, opts), setApplicationStatus(db, opts)]);
+  assert.equal(db.invoices.length, 1);
+  assert.equal(Number(db.invoices[0].amount_due), 1000);
+  assert.equal(db.invoices[0].idempotency_key, successFeeKey(SALE, ROUND));
+  assert.deepEqual(db.events.map((event) => event.name), ["invoice.created", "invoice.sent"]);
+});
+
+test("a deliberately voided fee bill is not silently restored", async () => {
+  const db = stubDb({ invoice: { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE,
+    status: "void", amount_due: "1000.00", funding_round_id: ROUND }, paid: "0" });
+  const out = await flagBilledFeeDrift(db, { orgId: ORG, application: { funding_round_id: ROUND } });
+  assert.equal(out, null);
+  assert.equal(db.invoices.length, 1);
+  assert.equal(db.events.length, 0);
+});
+
+test("the fee is recalculated after the round lock, not from an older bank answer", async () => {
+  const confirmed = [{ id: APP, approved_amount: "10000.00", lender_name: "Bank" }];
+  const db = stubDb({
+    invoice: { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE,
+      status: "sent", amount_due: "2500.00", funding_round_id: ROUND },
+    paid: "0", confirmed,
+    onRoundLock: () => { confirmed[0].approved_amount = "20000.00"; }
+  });
+  await setApplicationStatus(db, { orgId: ORG, applicationId: APP, status: "Approved" });
+  assert.equal(Number(db.invoices.find((bill) => bill.id === NEW_INVOICE).amount_due), 2000);
+  assert.ok(db.calls.some((call) => /FROM funding_rounds[\s\S]*FOR UPDATE/i.test(call.sql)));
+});
+
+test("two overlapping bank corrections finish with one active bill at the latest approved amount", async () => {
+  const confirmed = [{ id: APP, approved_amount: "10000.00", lender_name: "Bank" }];
+  let locks = 0;
+  const db = withSerializedRoundLock(stubDb({
+    invoice: { id: INVOICE, org_id: ORG, client_id: CLIENT, sale_id: SALE,
+      status: "sent", amount_due: "2500.00", funding_round_id: ROUND },
+    paid: "0", confirmed,
+    onRoundLock: () => {
+      locks += 1;
+      if (locks === 2) confirmed[0].approved_amount = "20000.00";
+    }
+  }));
+  const opts = { orgId: ORG, applicationId: APP, status: "Approved" };
+  await Promise.all([setApplicationStatus(db, opts), setApplicationStatus(db, opts)]);
+  const active = db.invoices.filter((bill) => !["void", "written_off"].includes(bill.status));
+  assert.equal(locks, 2);
+  assert.equal(active.length, 1);
+  assert.equal(Number(active[0].amount_due), 2000);
+  assert.equal(db.invoices.length, 3, "each distinct correction replaces its predecessor once");
+  assert.equal(active[0].idempotency_key, reissueKey(NEW_INVOICE));
 });
 
 test("a fault while checking never turns the saved bank answer into an error", async () => {

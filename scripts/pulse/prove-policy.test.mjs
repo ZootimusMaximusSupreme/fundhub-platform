@@ -9,6 +9,85 @@ import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLa
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
+function workflowJob(source, name) {
+  const lines = source.split("\n");
+  const start = lines.indexOf(`  ${name}:`);
+  assert.ok(start >= 0, `missing required workflow job ${name}`);
+  let end = start + 1;
+  while (end < lines.length && !/^  [a-zA-Z0-9_-]+:\s*$/.test(lines[end])) end++;
+  return lines.slice(start, end).join("\n");
+}
+
+test("outreach keeps its real PostgreSQL and browser gates while both bundle proofs match the canonical release runner", () => {
+  const root = path.resolve(HERE, "../..");
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
+  const ship = workflowJob(fs.readFileSync(path.join(root, ".github/workflows/ship.yml"), "utf8"), "ship");
+  const core = workflowJob(workflow, "outreach");
+  const hourly = workflowJob(workflow, "hourly-release-runner");
+  const canonicalRunner = ship.match(/^    runs-on: (.+)$/m)?.[1];
+  // ship.yml moved to Ubuntu on 2026-10-20 (PR #87); the bundle proofs follow it.
+  assert.equal(canonicalRunner, "ubuntu-latest");
+  assert.match(hourly, new RegExp(`^    runs-on: ${canonicalRunner}$`, "m"));
+  assert.match(ship, /NODE_OPTIONS: ["']?--dns-result-order=ipv4first/);
+  assert.match(hourly, /NODE_OPTIONS: --dns-result-order=ipv4first/);
+  assert.match(core, /runs-on: ubuntu-latest/);
+  for (const command of ["node db/migrate.mjs", "VERIFY_STRICT: \"1\"", "npm run verify:e2e",
+    "e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs"]) {
+    assert.ok(core.includes(command), `existing gate disappeared: ${command}`);
+  }
+  assert.equal((workflow.match(/run: npm run pulse:prove -- --beats\s*$/gm) || []).length, 1);
+  assert.match(hourly, /run: npm run pulse:prove -- --beats\s*$/m);
+  assert.equal((workflow.match(/run: npm run pulse:prove -- --lanes=gap-bank-outreach\s*$/gm) || []).length, 1);
+  assert.doesNotMatch(core, /run: npm run pulse:prove/, "network-dependent bundle proofs belong on the canonical release runner");
+  for (const id of ["hourly", "morning"]) {
+    const start = hourly.indexOf(`        id: ${id}\n`);
+    assert.ok(start >= 0, `missing required ${id} bundle proof`);
+    const end = hourly.indexOf("      - name:", start);
+    const step = hourly.slice(start, end < 0 ? undefined : end);
+    assert.match(step, /if: always\(\) && !cancelled\(\) && steps\.migrate\.outcome == 'success'/);
+    assert.match(step, /DATABASE_URL: \$\{\{ env\.APP_DATABASE_URL \}\}/);
+    assert.match(step, id === "hourly" ? /run: npm run pulse:prove -- --beats\s*$/m
+      : /run: npm run pulse:prove -- --lanes=gap-bank-outreach\s*$/m);
+  }
+  assert.match(hourly, /DATABASE_URL: \$\{\{ env\.APP_DATABASE_URL \}\}/);
+  assert.match(hourly, /if: always\(\) && !cancelled\(\) && steps\.migrate\.outcome == 'success'/);
+  assert.doesNotMatch(workflow, /continue-on-error|--fixture|--slow-apply-links|--read-delay/);
+});
+
+test("outreach release proof uses its own disposable database, all migrations and no production credential", () => {
+  const workflow = fs.readFileSync(path.resolve(HERE, "../../.github/workflows/bank-outreach-proof.yml"), "utf8");
+  const hourly = workflowJob(workflow, "hourly-release-runner");
+  assert.match(hourly, /postgres:\/\/fundhub_app:ci_not_a_secret@127\.0\.0\.1:55432\/fundhub_outreach_ci/);
+  assert.match(hourly, /services:\n      postgres:\n        image: pgvector\/pgvector:pg17\n/);
+  assert.match(hourly, /ports: \["55432:5432"\]/);
+  assert.match(hourly, /--health-cmd "pg_isready -U postgres"/);
+  assert.match(hourly, /node db\/migrate\.mjs/);
+  assert.match(hourly, /npm run migrations:manifest/);
+  assert.match(hourly, /git diff --exit-code -- db\/expected-migrations\.mjs/);
+  assert.match(hourly, /ALTER ROLE fundhub_app LOGIN/);
+  assert.doesNotMatch(hourly, /secrets\.|ship-env-from-netlify|npm run ship|netlify deploy|supabase db/);
+});
+
+test("native outreach phone geometry is a required WebKit proof, separate from retained Chromium", () => {
+  const root = path.resolve(HERE, "../..");
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
+  const release = workflowJob(workflow, "hourly-release-runner");
+  const config = fs.readFileSync(path.join(root, "playwright.bank-outreach-webkit.config.mjs"), "utf8");
+  assert.match(release, /npx playwright install --with-deps webkit/);
+  assert.match(release, /run: node node_modules\/@playwright\/test\/cli\.js test --config playwright\.bank-outreach-webkit\.config\.mjs/);
+  assert.match(release, /if: always\(\) && !cancelled\(\)\n        with:\n          name: bank-outreach-webkit-/);
+  assert.match(config, /testMatch: ['"]\*\*\/bank-outreach-webkit\.proof\.mjs['"]/);
+  assert.match(config, /browserName: ['"]webkit['"]/);
+  for (const [width, height] of [[390, 844], [440, 763], [838, 390]]) {
+    assert.ok(config.includes(`viewport: { width: ${width}, height: ${height} }`), `missing native geometry viewport ${width}x${height}`);
+  }
+  assert.match(config, /retries: 0/);
+  assert.match(config, /reuseExistingServer: false/);
+  assert.doesNotMatch(config, /test\.skip|continue-on-error/);
+  assert.match(workflowJob(workflow, "outreach"), /e2e\/bank-outreach\.spec\.mjs e2e\/sidebar-roles\.spec\.mjs/);
+  assert.match(workflowJob(workflow, "outreach"), /e2e\/bank-outreach-live-guard\.spec\.mjs/);
+});
+
 test("masked laptop values stay named and do not block bundle proof", () => {
   assert.equal(isRunnerOnlyNotChecked({ id: "keys:any", why: "the laptop copy is a row of asterisks" }), true);
 });
@@ -79,6 +158,20 @@ test("the slow apply-links capacity fixture keeps the full list and delayed runs
   assert.match(hourly, /reached its unchanged \$\{deadlineMs\} ms deadline in artificial-delay mode/);
   assert.doesNotMatch(hourly, /r\.beatId === ["']money-funding["']/);
   assert.match(hourly, /out\.ran !== loadedBeats\.length/);
+});
+
+test("hourly site timing trace keeps native GETs and the failed verdict intact", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  const hourly = source.slice(source.indexOf("async function proveBeats()"));
+
+  assert.match(hourly, /const response = await realFetch\(url, init\)/, "the proof must preserve fetch options, including the abort signal");
+  assert.match(hourly, /target\.host === "fundhub\.ai" && tracedSitePaths\.has\(target\.pathname\)/);
+  assert.match(hourly, /siteFetchTrace\.push\(\{ path: target\.pathname, status: response\.status, ms:/);
+  assert.match(hourly, /code: String\(err\?\.cause\?\.code \|\| ""\)\.replace\(\/\[\^a-z0-9_\]\/gi, ""\)/);
+  assert.match(hourly, /aborted: init\?\.signal\?\.aborted === true/);
+  assert.match(hourly, /if \(problems\.length\) \{\s*for \(const trace of siteFetchTrace\)/);
+  assert.match(hourly, /const timingLimitMs = DELAYED_DEADLINE_MODE \? deadlineMs : deadlineMs \/ 2/);
+  assert.doesNotMatch(hourly, /siteFetchTrace\.push\([^\n]*(?:search|href|body)/, "trace must not print query strings or response bodies");
 });
 
 test("prove rejects an unsafe slow apply-links duration before starting proof work", () => {

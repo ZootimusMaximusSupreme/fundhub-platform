@@ -1,0 +1,80 @@
+{
+  "scope": "Local static page with labeled synthetic bank/session API fixtures. No production server, records, email, calls or outreach were used. Navigation has no field INP; total blocking time is a lab diagnostic, not INP. Local TTFB does not prove production response time.",
+  "version": "13.5.0",
+  "measuredAt": "2026-10-20T09:31:52.547Z",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "osRelease": "25.6.0",
+    "chromium": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36"
+  },
+  "viewport": "390x844",
+  "network": "DevTools 150ms request latency, 1600Kbps download, 750Kbps upload",
+  "cpu": "4x slowdown",
+  "postAuditRenderCheck": {
+    "title": "Fixture Mesa Community Bank",
+    "rows": 25,
+    "role": "outbound_rep",
+    "width": 390,
+    "horizontalOverflow": false,
+    "bodyFont": "16px",
+    "astraStylesLoaded": true
+  },
+  "metrics": {
+    "lcpMs": 1888.614,
+    "cls": 0.023306525183448435,
+    "totalBlockingTimeMs": 23.57899999999995,
+    "localTtfbMs": 2,
+    "jsTransferBytes": 198533,
+    "pageTransferBytes": 420724
+  },
+  "performanceScore": 0.98,
+  "warnings": [],
+  "apiRequests": [
+    {
+      "method": "GET",
+      "path": "/api/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/read/bank-outreach"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/org-brand"
+    }
+  ],
+  "sourceSha256": {
+    "public/app/bank-outreach.html": "5cf28d930886f84934d9f6cc1a08fbf15089c14c446f05f081b1b8ff8547d24a",
+    "public/app/bank-outreach.css": "2c0d5b7b78b0c289e561713049a2478769f6100d8be07038d84f8ef9d2c9fe48",
+    "public/app/bank-outreach.js": "0f65f86b28a901e109080aef40db7742c7966f2e029cee16feebfde984b85de4",
+    "public/app/fundhub-astra.css": "aa430c21f717f2eef83f5452430790098430c9a5ec6ab1a168c230f39f1c2739",
+    "public/app/fundhub-astra-staff.css": "23472c77cbbe74b93b002b2f5c7035803fd9c1027b3ac6c24a0589dd16dbcc54"
+  },
+  "rawReport": {
+    "path": "/private/tmp/fundhub-outreach-lighthouse.ApQVDL/lighthouse-mobile-fixture.report.json",
+    "bytes": 262360,
+    "sha256": "fc19b35198996c2482a5922fa8d763dc33ece351fe367f67bb34a9237e58ab83"
+  },
+  "reproduction": {
+    "workingDirectory": "repository root",
+    "commands": [
+      "npm install --prefix /private/tmp/fundhub-outreach-lighthouse.ApQVDL --no-save --package-lock=false --ignore-scripts lighthouse@13.5.0",
+      "LIGHTHOUSE_TOOL_ROOT=/private/tmp/fundhub-outreach-lighthouse.ApQVDL node ops/workflows/build-evidence/bank-outreach/lighthouse-local-fixture.mjs"
+    ],
+    "notes": "Use an isolated temporary directory for the tool install. Reuses the existing browser selected by playwright.config.mjs; PLAYWRIGHT_CHROMIUM can select another installed Chromium. The server binds only to localhost and never proxies API requests."
+  },
+  "budgets": {
+    "lcp": true,
+    "cls": true,
+    "js": true,
+    "page": true,
+    "fieldInp": "Not measured",
+    "productionTtfb": "Not measured"
+  }
+}
