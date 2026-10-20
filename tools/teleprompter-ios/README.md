@@ -1,14 +1,12 @@
 # Fundhub Prompter for iPhone and iPad
 
-The Apple app runs the **same live teleprompter** as `public/app/teleprompter.html` and `public/app/teleprompter.js` at `https://fundhub.ai/app/teleprompter.html`. It does not show the old bundled practice scripts or ask for a staff login.
+The separate Apple app opens the **same live teleprompter** as `public/app/teleprompter.html` and `public/app/teleprompter.js` at `https://fundhub.ai/app/teleprompter.html`. It does not show the old bundled practice scripts, ask for a staff login, or require a copied link.
 
 ## Open a Shoot
 
-1. In Fundhub Command Center, open **Shoot Day** and save the shoot plan.
-2. Copy **Open the teleprompter**'s link. It has `/app/teleprompter.html?k=...` in it.
-3. In the Apple app, tap **Paste link**. The app remembers this Shoot link on this phone. For a later shoot, tap the small link icon at the top right and paste its new link.
+Open **Fundhub Prompter** on the iPhone. The current saved shoot for Fundhub's default company loads directly. There is no link or login step. The native app adds a thin camera-permission and file-download shell; the teleprompter layout and filming behavior come from the live website.
 
-The key belongs to one shoot and authorizes that shoot's scripts, edits, marks, and video upload. The app keeps it in the iPhone Keychain, not in its source code or a staff session. The native app adds a thin camera-permission and file-download shell; the teleprompter layout and filming behavior come from the live website.
+The existing open-shoot routes allow reading scripts, marking takes, and uploading recordings without a staff session. Script editing and version reconciliation still require staff or signed-film access; this direct app entry does not silently grant those actions.
 
 ## Build and test
 
