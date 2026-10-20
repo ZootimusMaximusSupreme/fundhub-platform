@@ -128,7 +128,12 @@ test("adapters report their auth scheme and emitted events", async () => {
   // door owner law allows for Microsoft Clarity Data Export pulls
   // (.claude/rules/clarity-export-rate-limit.md). It went in without this
   // line moving, so the count was one short from then until 2026-10-05.
-  assert.equal(adapters.length, 13, "13 adapters in src/adapters");
+  // 14 since 2026-10-20: the dedicated Fundhub Whop Blueprint billing door.
+  assert.equal(adapters.length, 14, "14 adapters in src/adapters");
+  const whop = adapters.find((a) => a.name === "whop-billing");
+  assert.ok(whop, "the Fundhub Whop billing adapter must be extracted");
+  assert.equal(whop.inbound, true);
+  assert.ok(whop.verifiers.length > 0, "Whop billing verifies a signature");
 
   const twilio = adapters.find((a) => a.name === "twilio");
   assert.equal(twilio.scheme, "HMAC-SHA1", "Twilio signs with SHA1, unlike the rest");

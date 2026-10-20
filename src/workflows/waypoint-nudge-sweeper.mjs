@@ -18,16 +18,18 @@
 // WHAT ONE PASS CAN AND CANNOT DO
 //
 // It can write at most one queued `messages` row per client per calendar day in
-// that client's own timezone, and at most four rows per waypoint for the whole
-// life of that waypoint. Both ceilings are database constraints in
-// db/migrations/371_waypoint_nudges.sql, not decisions this file makes, so
+// that client's own timezone. The existing four-rung ladder remains finite;
+// migration489 adds one Blueprint-only voice receipt after two unanswered
+// sent texts, sharing the daily/destination caps. These are database constraints,
+// not decisions this file makes, so
 // running this function twice at once, replaying it, or firing it from sixteen
 // duplicate triggers produces the same result as running it once.
 //
-// It cannot send. src/nudge/run.mjs queues; src/messaging/dispatch.mjs sends,
+// Text reminders queue; src/messaging/dispatch.mjs sends,
 // on its own five-minute clock, behind the per-company outbound switch
 // (messaging_settings.outbound_enabled, migration 126) and the compliance gate.
-// Registering this function does not turn any of that on.
+// Blueprint calls use the separately reviewed live voice agent and gated Bland
+// provider. Registering this function does not activate agents or settings.
 //
 // HOURLY, NOT EVERY FIVE MINUTES. The ladder's own resolution is days, and the
 // only thing a faster clock would buy is a nudge landing at 08:05 local instead
@@ -53,8 +55,8 @@ export const SOURCE_WORKFLOW = "waypoint-nudge-sweeper";
     that fails must not take the scheduled function down with it, because the
     next pass is the recovery — a waypoint that was not chased is still
     overdue. */
-export async function sweep(conn = db, { orgId = null, now = new Date() } = {}) {
-  return runNudges(conn, { orgId, now });
+export async function sweep(conn = db, { orgId = null, now = new Date(), step = null, deliveryNow = null } = {}) {
+  return runNudges(conn, { orgId, now, step, deliveryNow });
 }
 
 /* handle — the shape src/journeys/runner/registry.mjs expects of every
@@ -64,15 +66,21 @@ export async function sweep(conn = db, { orgId = null, now = new Date() } = {}) 
    It has no event trigger (it is a cron), so no journey reaches it and it will
    always appear in the runner's neverFired list. That is the correct outcome
    for a scheduled job, not a coverage hole. */
-export async function handle({ db: handleDb, step } = {}) {
-  const run = () => sweep(handleDb || db);
-  return step && typeof step.run === "function" ? step.run("sweep", run) : run();
+export async function handle({ db: handleDb, step, now } = {}) {
+  // Freeze this run's evaluation time across durable step replays. Each model
+  // turn and each dial then has its own host request and saved receipt.
+  const clock = () => (now == null ? new Date() : new Date(now)).toISOString();
+  const at = typeof step?.run === "function" ? await step.run("nudge-clock", clock) : clock();
+  // Planning is replay-stable; send-time consent, quiet hours and day caps
+  // use the actual execution time. Explicit local test clocks stay fixed.
+  const deliveryNow = typeof step?.run === "function" && now == null ? () => new Date() : null;
+  return sweep(handleDb || db, { now: new Date(at), step, deliveryNow });
 }
 
 export const waypointNudgeSweeper = inngest.createFunction(
   { id: "waypoint-nudge-sweeper", name: "Waypoint nudge sweeper" },
   { cron: SWEEP_CRON },
-  () => sweep(db)
+  ({ step }) => handle({ db, step })
 );
 
 export default sweep;

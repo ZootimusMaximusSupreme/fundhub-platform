@@ -34,6 +34,7 @@ describe("fulfilQueuedSystemPulls", () => {
     });
     assert.equal(tally.checked, 0);
     assert.equal(tally.fulfilled, 0);
+    assert.equal(tally.ok, true);
   });
 
   test("one fault does not stop the next row", async () => {
@@ -59,5 +60,38 @@ describe("fulfilQueuedSystemPulls", () => {
     assert.equal(tally.fulfilled, 1);
     assert.equal(tally.errored.length, 1);
     assert.equal(n, 2);
+    assert.equal(tally.ok, false);
   });
+});
+
+test("aftercare failure creates a scoped owner exception without ordering a second paid pull", async () => {
+  let queued = true;
+  let pulls = 0;
+  const tasks = [];
+  const db = { async query(sql, params) {
+    if (/FROM soft_pull_requests/.test(sql)) return { rows: queued ? [{ id: "request", org_id: "org", client_id: "client" }] : [] };
+    if (/SELECT id FROM tasks/.test(sql)) return { rows: [] };
+    if (/INSERT INTO tasks/.test(sql)) {
+      tasks.push(params);
+      return { rows: [{ id: "owner-task" }] };
+    }
+    throw new Error(`Unexpected query ${sql}`);
+  } };
+  const input = {
+    runPull: async () => { pulls += 1; queued = false; return { ok: true, crsResultId: "saved-credit" }; },
+    aftercare: async () => ({ ok: false, failures: [{ phase: "letterPack", error: "storage failed" }] })
+  };
+  const out = await fulfilQueuedSystemPulls(db, input);
+  assert.equal(out.fulfilled, 1, "the credit pull succeeded; the missing delivery is a separate failure");
+  assert.equal(out.ok, false);
+  assert.equal(out.errored[0].phase, "aftercare");
+  assert.equal(out.deliveryExceptions[0].task.id, "owner-task");
+  assert.equal(tasks[0][0], "org");
+  assert.equal(tasks[0][1], "client");
+  assert.equal(tasks[0][6], "owner");
+  assert.match(tasks[0][9], /saved-credit/);
+  assert.match(tasks[0][9], /do not request another paid credit pull/);
+  await fulfilQueuedSystemPulls(db, input);
+  assert.equal(pulls, 1);
+  assert.equal(tasks.length, 1);
 });

@@ -154,12 +154,11 @@ export const OFFERS = Object.freeze({
        sales question, not a code one, and it is written up in
        ops/workflows/fix-batch-2026-09-03-remaining.md.
 
-       priceMinCents stays $1,000 deliberately. It is the floor a closer may
-       discount to on a custom-priced offer, not the list price, and moving a
-       floor is a second decision nobody has made. */
+       Owner-set 2026-10-20: the closer may choose any whole-dollar price
+       from $5,000 through $10,000. The default remains $5,000. */
     priceCents: 500000,
-    priceMinCents: 100000,
-    priceMaxCents: 500000,
+    priceMinCents: 500000,
+    priceMaxCents: 1000000,
     financing: true,
     letters: true,
     paymentPurpose: "custom",
@@ -409,6 +408,21 @@ export function partnerAddOnsForMenu() {
 export function getOffer(key) {
   if (!key) return null;
   return OFFERS[String(key)] || null;
+}
+
+/** Resolve the exact closer price before any checkout or agreement is made. */
+export function resolveOfferAmountCents(offerKey, amountCents = undefined) {
+  const offer = getOffer(offerKey);
+  if (!offer) throw new RangeError("Unknown offer.");
+  if (amountCents === undefined) return offer.priceCents;
+  if (offer.key !== "UWIQ_DELIVERABLES") {
+    throw new RangeError("Only Capital Blueprint accepts a custom price.");
+  }
+  if (!Number.isSafeInteger(amountCents) || amountCents % 100 !== 0
+      || amountCents < offer.priceMinCents || amountCents > offer.priceMaxCents) {
+    throw new RangeError("Choose a whole-dollar Capital Blueprint price from $5,000 to $10,000.");
+  }
+  return amountCents;
 }
 
 export function offerAllowsLetters(key) {

@@ -38,6 +38,15 @@
    ]
   },
   {
+   "key": "EMAIL-BLUEPRINT-COACH-NUDGE-1",
+   "channel": "email",
+   "approvedBySeed": false,
+   "inactive": false,
+   "files": [
+    "db/migrations/488_blueprint_coach_agents.sql"
+   ]
+  },
+  {
    "key": "EMAIL-CANDIDATE-EEO-INVITE",
    "channel": "email",
    "approvedBySeed": true,
@@ -820,6 +829,24 @@
    "inactive": false,
    "files": [
     "db/seed/015_live_template_backfill.sql"
+   ]
+  },
+  {
+   "key": "SMS-BLUEPRINT-COACH-DUE",
+   "channel": "sms",
+   "approvedBySeed": false,
+   "inactive": false,
+   "files": [
+    "db/migrations/488_blueprint_coach_agents.sql"
+   ]
+  },
+  {
+   "key": "SMS-BLUEPRINT-COACH-NUDGE-2",
+   "channel": "sms",
+   "approvedBySeed": false,
+   "inactive": false,
+   "files": [
+    "db/migrations/488_blueprint_coach_agents.sql"
    ]
   },
   {
