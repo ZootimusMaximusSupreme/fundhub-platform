@@ -244,3 +244,12 @@ Leftover cards (not this job, not fixed):
 - Local `SUPABASE_ACCESS_TOKEN` copies (.env, settings.local.json, Netlify) all answer 401.
 - Main `tests` run red on `creative assets cannot be hard-deleted` (real-PG blocks) and `client home at 320px` (browser).
 - Live pulse reds seen during ship: www.mybrb.bank Apply link 404; EMAIL-S00-WELCOME, EMAIL-S04-01-CONFIRM, CONTRACT-SEND-EMAIL, SMS-S00-WELCOME, SMS-DOC-01-REQUEST templates missing.
+
+### R — Owner calls after release (Chris, 2026-10-20, final)
+
+- "There is no advisor; it's a CSM." "We don't need to name somebody yet." Blueprint buyers get no named human. The AI coaches do the touch-base. Help requests land in the team CSM queue. "Elena Brooks" (elena.brooks@fundhub.ai) is a login an e2e script made on 2026-09-18. It was not assigned to anyone and was not changed. PR91: auto-assign off, coach words say "the Fundhub team", migration 490 changes the coach prompts and the nudge email (the email needs re-approval after ship).
+- Agreement: "The Fundhub team". Migration 491 changes the two advisor sentences in 1.1 and 6.1 for future sends only.
+- "Everything needs to be on." Whop billing webhook switched **Active** in the Fhconsulting dashboard (same URL, same 6 events) at about 21:10 UTC. `FINANCE_OS_SYSTEM_PULL_LIVE=1` set on Netlify (all contexts, not secret) and in `.env` / `credentials/env.full.snapshot`. It takes effect with the PR91 deploy.
+- Portal access for every buyer comes from the funnel onboarding email. For Whop buyers that email depends on the webhook above.
+- Intended journey (`capital-blueprint-intended.md` line 10, CB-07, CB-08) still says "human advisor". This is recorded here as owner-changed. Agents do not edit the intended file.
+- Migrations 490 and 491 were reserved and used by this chat.
