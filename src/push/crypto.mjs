@@ -270,9 +270,13 @@ export function decryptPayload(body, { privateKey, authSecret } = {}) {
 export function generateVapidKeys() {
   const ecdh = crypto.createECDH(CURVE);
   ecdh.generateKeys();
+  const privateKey = ecdh.getPrivateKey();
+  // OpenSSL drops leading zero bytes from an EC private scalar. VAPID keys are
+  // fixed-width P-256 values, so restore those bytes before base64url encoding.
+  const fixedPrivateKey = Buffer.concat([Buffer.alloc(32 - privateKey.length), privateKey]);
   return {
     publicKey: b64u(ecdh.getPublicKey()),
-    privateKey: b64u(ecdh.getPrivateKey())
+    privateKey: b64u(fixedPrivateKey)
   };
 }
 

@@ -188,6 +188,14 @@ describe("push encryption, beyond the vector", () => {
 describe("RFC 8292 — VAPID", () => {
   const keys = generateVapidKeys();
 
+  test("generated key pairs keep the fixed P-256 wire widths", () => {
+    for (let i = 0; i < 4096; i += 1) {
+      const generated = generateVapidKeys();
+      assert.equal(unb64u(generated.publicKey).length, 65);
+      assert.equal(unb64u(generated.privateKey).length, 32);
+    }
+  });
+
   test("the Authorization header is the single vapid scheme, and it verifies", () => {
     const { Authorization } = vapidHeaders({
       endpoint: "https://updates.push.services.mozilla.com/wpush/v2/abc123",
