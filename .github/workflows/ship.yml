@@ -41,10 +41,10 @@ jobs:
   ship:
     # The ship-log commit that a ship pushes back starts with "ship:". It never ships again.
     if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'ship:') }}
-    # The same unchanged read-only release proof passes here; the Ubuntu runner
-    # intermittently times out at TLS on the site's existing apex load balancers.
-    # This remains GitHub cloud execution, with the same guards and one deploy.
-    runs-on: macos-latest
+    # Back on Ubuntu (2026-10-20): macos-latest jobs sat queued with no runner and were
+    # cancelled, so PR #83 could not ship. Ubuntu can time out at TLS in the read-only
+    # release proof that runs after the deploy; that step can go red, the deploy stands.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
