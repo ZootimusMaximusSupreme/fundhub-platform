@@ -1,0 +1,1031 @@
+[
+  {
+    "page": "staff-teams",
+    "profile": "promax",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-promax-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "promax",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-promax-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "promax",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:24 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-promax-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "promax",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:24 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-promax-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "promax",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "controlCount": 3,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:24 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-promax-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "landscape",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 10,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-landscape-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "landscape",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-landscape-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "landscape",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:26 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-landscape-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "landscape",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 12,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:26 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-landscape-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "landscape",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 838,
+      "height": 390,
+      "pageWidth": 838,
+      "controlCount": 5,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:26 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-landscape-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "768",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "alex.morgan@example.test",
+          "x": 89,
+          "y": 655,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "taylor.brooks@example.test",
+          "x": 89,
+          "y": 897,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 163,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-768-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "768",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "alex.morgan@example.test",
+          "x": 89,
+          "y": 655,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "taylor.brooks@example.test",
+          "x": 89,
+          "y": 897,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 163,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-768-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "768",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "alex.morgan@example.test",
+          "x": 89,
+          "y": 655,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "taylor.brooks@example.test",
+          "x": 89,
+          "y": 897,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 163,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:28 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-768-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "768",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "alex.morgan@example.test",
+          "x": 89,
+          "y": 655,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "taylor.brooks@example.test",
+          "x": 89,
+          "y": 897,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 163,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:28 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-768-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "768",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 768,
+      "height": 1024,
+      "pageWidth": 768,
+      "controlCount": 3,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "drew.thompson@example.test",
+          "x": 89,
+          "y": -9,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 178,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "morgan.davis@example.test",
+          "x": 89,
+          "y": 71,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 166,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "blake.wilson@example.test",
+          "x": 89,
+          "y": 152,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "cameron.anderson@example.test",
+          "x": 89,
+          "y": 232,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 197,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "reese.martin@example.test",
+          "x": 89,
+          "y": 313,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 160,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "quinn.garcia@example.test",
+          "x": 89,
+          "y": 393,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 159,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "parker.robinson@example.test",
+          "x": 89,
+          "y": 474,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 179,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "hayden.clark@example.test",
+          "x": 89,
+          "y": 554,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 162,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "skyler.rodriguez@example.test",
+          "x": 89,
+          "y": 635,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 181,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "rowan.walker@example.test",
+          "x": 89,
+          "y": 796,
+          "w": 154.4,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 164,
+          "clientWidth": 154,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:28 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-768-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1024",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 26,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1024-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1024",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 29,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1024-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1024",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 29,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:29 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1024-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1024",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 29,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:29 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1024-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1024",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 1024,
+      "height": 768,
+      "pageWidth": 1024,
+      "controlCount": 14,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "avery.williams@example.test",
+          "x": 313,
+          "y": 164,
+          "w": 164.9,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 168,
+          "clientWidth": 165,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "drew.thompson@example.test",
+          "x": 313,
+          "y": 244,
+          "w": 164.9,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 178,
+          "clientWidth": 165,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "cameron.anderson@example.test",
+          "x": 313,
+          "y": 486,
+          "w": 164.9,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 197,
+          "clientWidth": 165,
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "em",
+          "text": "parker.robinson@example.test",
+          "x": 313,
+          "y": 727,
+          "w": 164.9,
+          "h": 19.5,
+          "font": 13,
+          "scrollWidth": 179,
+          "clientWidth": 165,
+          "overflow": "hidden"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20 at 12:55:29 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\tOut\tActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\tIn · now\tActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\tOut\tActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\tOut\tActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\tOut\tActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\tOut\tActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\tIn · now\tActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\tOut\tActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\tOut\tActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\tIn · now\tActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\tOut\tActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\tOut\tActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\tIn · now\tActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\tOut\tActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\tOut\tActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\tIn · now\tActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\tOut\tActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\tOut\tActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\tIn · now\tActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\tOut\tActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\tOut\tInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\tIn · now\tInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\tOut\tInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\tOut\tInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\tIn · now\tRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1024-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "390",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 13,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "auto"
+        },
+        {
+          "tag": "TABLE",
+          "id": "rosterTbl",
+          "cls": "grid",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "visible"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-390-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "390",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "auto"
+        },
+        {
+          "tag": "TABLE",
+          "id": "rosterTbl",
+          "cls": "grid",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "visible"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-390-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "390",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "auto"
+        },
+        {
+          "tag": "TABLE",
+          "id": "rosterTbl",
+          "cls": "grid",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "visible"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:31 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-390-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "390",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 16,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "auto"
+        },
+        {
+          "tag": "TABLE",
+          "id": "rosterTbl",
+          "cls": "grid",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": 755,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "visible"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:31 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-390-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "390",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 390,
+      "height": 844,
+      "pageWidth": 390,
+      "controlCount": 3,
+      "issues": [],
+      "scrollBoxes": [
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": "fh-scroll-x",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": -258,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "auto"
+        },
+        {
+          "tag": "TABLE",
+          "id": "rosterTbl",
+          "cls": "grid",
+          "text": "Team member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActiv",
+          "x": 17,
+          "y": -258,
+          "w": 356,
+          "h": 6070.6,
+          "font": 16,
+          "scrollWidth": 377,
+          "clientWidth": 356,
+          "overflow": "visible"
+        }
+      ]
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n×\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nJB\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:31 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\nAM\nAlex Morgan\nalex.morgan@example.test\nOwner\nMissing\nOut\nActive\nJL\nJordan Lee\njordan.lee@example.test\nSales Manager\nOn file\nIn · now\nActive\nSR\nSam Rivera\nsam.rivera@example.test\nCloser\nOn file\nOut\nActive\nTB\nTaylor Brooks\ntaylor.brooks@example.test\nFunding Advisor\nOn file\nOut\nActive\nCC\nCasey Chen\ncasey.chen@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRP\nRiley Patel\nriley.patel@example.test\nSetter\nOn file\nOut\nActive\nAW\nAvery Williams\navery.williams@example.test\nAdmin\nOn file\nOut\nActive\nDT\nDrew Thompson\ndrew.thompson@example.test\nSales Manager\nOn file\nIn · now\nActive\nMD\nMorgan Davis\nmorgan.davis@example.test\nCloser\nMissing\nOut\nActive\nBW\nBlake Wilson\nblake.wilson@example.test\nFunding Advisor\nOn file\nOut\nActive\nCA\nCameron Anderson\ncameron.anderson@example.test\nInquiry Specialist\nOn file\nIn · now\nActive\nRM\nReese Martin\nreese.martin@example.test\nSetter\nOn file\nOut\nActive\nQG\nQuinn Garcia\nquinn.garcia@example.test\nAdmin\nMissing\nOut\nActive\nPR\nParker Robinson\nparker.robinson@example.test\nSales Manager\nOn file\nIn · now\nActive\nHC\nHayden Clark\nhayden.clark@example.test\nCloser\nOn file\nOut\nActive\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\nFunding Advisor\nOn file\nOut\nActive\nJL\nJamie Lewis\njamie.lewis@example.test\nInquiry Specialist\nMissing\nIn · now\nActive\nRW\nRowan Walker\nrowan.walker@example.test\nSetter\nOn file\nOut\nActive\nFH\nFinley Hall\nfinley.hall@example.test\nAdmin\nOn file\nOut\nActive\nEA\nEmerson Allen\nemerson.allen@example.test\nSales Manager\nOn file\nIn · now\nActive\nDY\nDakota Young\ndakota.young@example.test\nCloser\nMissing\nOut\nActive\nHH\nHarper Hernandez\nharper.hernandez@example.test\nFunding Advisor\nOn file\nOut\nInvited\nSK\nSage King\nsage.king@example.test\nInquiry Specialist\nOn file\nIn · now\nInvited\nCW\nCharlie Wright\ncharlie.wright@example.test\nSetter\nOn file\nOut\nInvited\nLL\nLogan Lopez\nlogan.lopez@example.test\nAdmin\nMissing\nOut\nInvited\nSS\nSydney Scott\nsydney.scott@example.test\nSales Manager\nOn file\nIn · now\nRevoked\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\nCloser\nOn file\nOut\nRevoked\n0 people are hidden from this list (owner and seeded test logins).\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-390-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1440",
+    "state": "initial",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 31,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\n\nAM\nAlex Morgan\nalex.morgan@example.test\n\t\nOwner\n\tMissing\tOut\tActive\n\nJL\nJordan Lee\njordan.lee@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nSR\nSam Rivera\nsam.rivera@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nTB\nTaylor Brooks\ntaylor.brooks@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCC\nCasey Chen\ncasey.chen@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRP\nRiley Patel\nriley.patel@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nAW\nAvery Williams\navery.williams@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nDT\nDrew Thompson\ndrew.thompson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nMD\nMorgan Davis\nmorgan.davis@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nBW\nBlake Wilson\nblake.wilson@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCA\nCameron Anderson\ncameron.anderson@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tActive\n\nRM\nReese Martin\nreese.martin@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nQG\nQuinn Garcia\nquinn.garcia@example.test\n\t\nAdmin\n\tMissing\tOut\tActive\n\nPR\nParker Robinson\nparker.robinson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nHC\nHayden Clark\nhayden.clark@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nJL\nJamie Lewis\njamie.lewis@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRW\nRowan Walker\nrowan.walker@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nFH\nFinley Hall\nfinley.hall@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nEA\nEmerson Allen\nemerson.allen@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nDY\nDakota Young\ndakota.young@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nHH\nHarper Hernandez\nharper.hernandez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tInvited\n\nSK\nSage King\nsage.king@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tInvited\n\nCW\nCharlie Wright\ncharlie.wright@example.test\n\t\nSetter\n\tOn file\tOut\tInvited\n\nLL\nLogan Lopez\nlogan.lopez@example.test\n\t\nAdmin\n\tMissing\tOut\tInvited\n\nSS\nSydney Scott\nsydney.scott@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tRevoked\n\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\n\t\nCloser\n\tOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1440-initial-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1440",
+    "state": "detail1",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\n\nAM\nAlex Morgan\nalex.morgan@example.test\n\t\nOwner\n\tMissing\tOut\tActive\n\nJL\nJordan Lee\njordan.lee@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nSR\nSam Rivera\nsam.rivera@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nTB\nTaylor Brooks\ntaylor.brooks@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCC\nCasey Chen\ncasey.chen@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRP\nRiley Patel\nriley.patel@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nAW\nAvery Williams\navery.williams@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nDT\nDrew Thompson\ndrew.thompson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nMD\nMorgan Davis\nmorgan.davis@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nBW\nBlake Wilson\nblake.wilson@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCA\nCameron Anderson\ncameron.anderson@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tActive\n\nRM\nReese Martin\nreese.martin@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nQG\nQuinn Garcia\nquinn.garcia@example.test\n\t\nAdmin\n\tMissing\tOut\tActive\n\nPR\nParker Robinson\nparker.robinson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nHC\nHayden Clark\nhayden.clark@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nJL\nJamie Lewis\njamie.lewis@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRW\nRowan Walker\nrowan.walker@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nFH\nFinley Hall\nfinley.hall@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nEA\nEmerson Allen\nemerson.allen@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nDY\nDakota Young\ndakota.young@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nHH\nHarper Hernandez\nharper.hernandez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tInvited\n\nSK\nSage King\nsage.king@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tInvited\n\nCW\nCharlie Wright\ncharlie.wright@example.test\n\t\nSetter\n\tOn file\tOut\tInvited\n\nLL\nLogan Lopez\nlogan.lopez@example.test\n\t\nAdmin\n\tMissing\tOut\tInvited\n\nSS\nSydney Scott\nsydney.scott@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tRevoked\n\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\n\t\nCloser\n\tOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1440-detail1-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1440",
+    "state": "detail2",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:32 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\n\nAM\nAlex Morgan\nalex.morgan@example.test\n\t\nOwner\n\tMissing\tOut\tActive\n\nJL\nJordan Lee\njordan.lee@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nSR\nSam Rivera\nsam.rivera@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nTB\nTaylor Brooks\ntaylor.brooks@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCC\nCasey Chen\ncasey.chen@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRP\nRiley Patel\nriley.patel@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nAW\nAvery Williams\navery.williams@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nDT\nDrew Thompson\ndrew.thompson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nMD\nMorgan Davis\nmorgan.davis@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nBW\nBlake Wilson\nblake.wilson@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCA\nCameron Anderson\ncameron.anderson@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tActive\n\nRM\nReese Martin\nreese.martin@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nQG\nQuinn Garcia\nquinn.garcia@example.test\n\t\nAdmin\n\tMissing\tOut\tActive\n\nPR\nParker Robinson\nparker.robinson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nHC\nHayden Clark\nhayden.clark@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nJL\nJamie Lewis\njamie.lewis@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRW\nRowan Walker\nrowan.walker@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nFH\nFinley Hall\nfinley.hall@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nEA\nEmerson Allen\nemerson.allen@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nDY\nDakota Young\ndakota.young@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nHH\nHarper Hernandez\nharper.hernandez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tInvited\n\nSK\nSage King\nsage.king@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tInvited\n\nCW\nCharlie Wright\ncharlie.wright@example.test\n\t\nSetter\n\tOn file\tOut\tInvited\n\nLL\nLogan Lopez\nlogan.lopez@example.test\n\t\nAdmin\n\tMissing\tOut\tInvited\n\nSS\nSydney Scott\nsydney.scott@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tRevoked\n\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\n\t\nCloser\n\tOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1440-detail2-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1440",
+    "state": "technical-bottom",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 34,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:32 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\n\nAM\nAlex Morgan\nalex.morgan@example.test\n\t\nOwner\n\tMissing\tOut\tActive\n\nJL\nJordan Lee\njordan.lee@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nSR\nSam Rivera\nsam.rivera@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nTB\nTaylor Brooks\ntaylor.brooks@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCC\nCasey Chen\ncasey.chen@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRP\nRiley Patel\nriley.patel@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nAW\nAvery Williams\navery.williams@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nDT\nDrew Thompson\ndrew.thompson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nMD\nMorgan Davis\nmorgan.davis@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nBW\nBlake Wilson\nblake.wilson@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCA\nCameron Anderson\ncameron.anderson@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tActive\n\nRM\nReese Martin\nreese.martin@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nQG\nQuinn Garcia\nquinn.garcia@example.test\n\t\nAdmin\n\tMissing\tOut\tActive\n\nPR\nParker Robinson\nparker.robinson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nHC\nHayden Clark\nhayden.clark@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nJL\nJamie Lewis\njamie.lewis@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRW\nRowan Walker\nrowan.walker@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nFH\nFinley Hall\nfinley.hall@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nEA\nEmerson Allen\nemerson.allen@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nDY\nDakota Young\ndakota.young@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nHH\nHarper Hernandez\nharper.hernandez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tInvited\n\nSK\nSage King\nsage.king@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tInvited\n\nCW\nCharlie Wright\ncharlie.wright@example.test\n\t\nSetter\n\tOn file\tOut\tInvited\n\nLL\nLogan Lopez\nlogan.lopez@example.test\n\t\nAdmin\n\tMissing\tOut\tInvited\n\nSS\nSydney Scott\nsydney.scott@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tRevoked\n\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\n\t\nCloser\n\tOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1440-technical-bottom-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  },
+  {
+    "page": "staff-teams",
+    "profile": "1440",
+    "state": "lower",
+    "role": "owner",
+    "geometry": {
+      "width": 1440,
+      "height": 1000,
+      "pageWidth": 1440,
+      "controlCount": 19,
+      "issues": [],
+      "scrollBoxes": []
+    },
+    "url": "http://127.0.0.1:49739/app/staff-teams.html?variant=rollout",
+    "screenText": "LOCAL DESIGN PREVIEW · FICTIONAL TEAM · NO LIVE CONNECTION\n‹\nYour work\n⌄\nPipeline\nSales workspace\nCalendar\nMessaging\nClients\n⌄\nClient files\nClient Success\nLenders\nDocuments\nInquiry specialist\nInsights\n⌄\nMarketing\n⌄\nManage\n⌄\nTeam & access\nProducts & commissions\nContract templates\nClient Portal\nPrivate workspace\nTeam & access\nAll clients\nSearch\n⌘K\nChat\nJB\nJordan\n+\nJordan Blake\nOwner\nSign out\nTechnical details\n\njordan@fundhub.ai\n\nArizona time · Tue, Oct 20, 12:55:32 AM MST\n\n0 migrations applied\n\nLIVE\nYour team\n\nPeople, roles and workspace access.\n\n+\nAdd person\nTeam members\n27\nIn this roster\nOn shift\n9\nClocked in now\nConsent on file\n20/27\nOf this roster\nNot active\n6\nInvited or login revoked\nPeople\nRole access\nTime & consent\nActivity\nAll roles\nOwner\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nAffiliate\nAbout role access ↗\nTeam member\tRole\tConsent\tShift\tLogin\n\nAM\nAlex Morgan\nalex.morgan@example.test\n\t\nOwner\n\tMissing\tOut\tActive\n\nJL\nJordan Lee\njordan.lee@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nSR\nSam Rivera\nsam.rivera@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nTB\nTaylor Brooks\ntaylor.brooks@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCC\nCasey Chen\ncasey.chen@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRP\nRiley Patel\nriley.patel@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nAW\nAvery Williams\navery.williams@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nDT\nDrew Thompson\ndrew.thompson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nMD\nMorgan Davis\nmorgan.davis@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nBW\nBlake Wilson\nblake.wilson@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nCA\nCameron Anderson\ncameron.anderson@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tActive\n\nRM\nReese Martin\nreese.martin@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nQG\nQuinn Garcia\nquinn.garcia@example.test\n\t\nAdmin\n\tMissing\tOut\tActive\n\nPR\nParker Robinson\nparker.robinson@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nHC\nHayden Clark\nhayden.clark@example.test\n\t\nCloser\n\tOn file\tOut\tActive\n\nSR\nSkyler Rodriguez\nskyler.rodriguez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tActive\n\nJL\nJamie Lewis\njamie.lewis@example.test\n\t\nInquiry Specialist\n\tMissing\tIn · now\tActive\n\nRW\nRowan Walker\nrowan.walker@example.test\n\t\nSetter\n\tOn file\tOut\tActive\n\nFH\nFinley Hall\nfinley.hall@example.test\n\t\nAdmin\n\tOn file\tOut\tActive\n\nEA\nEmerson Allen\nemerson.allen@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tActive\n\nDY\nDakota Young\ndakota.young@example.test\n\t\nCloser\n\tMissing\tOut\tActive\n\nHH\nHarper Hernandez\nharper.hernandez@example.test\n\t\nFunding Advisor\n\tOn file\tOut\tInvited\n\nSK\nSage King\nsage.king@example.test\n\t\nInquiry Specialist\n\tOn file\tIn · now\tInvited\n\nCW\nCharlie Wright\ncharlie.wright@example.test\n\t\nSetter\n\tOn file\tOut\tInvited\n\nLL\nLogan Lopez\nlogan.lopez@example.test\n\t\nAdmin\n\tMissing\tOut\tInvited\n\nSS\nSydney Scott\nsydney.scott@example.test\n\t\nSales Manager\n\tOn file\tIn · now\tRevoked\n\nAM\nAlexandria Montgomery-Richardson\nalexandria.montgomery.richardson@example.test\n\t\nCloser\n\tOn file\tOut\tRevoked\n0 people are hidden from this list (owner and seeded test logins).\nSelect a person to edit ↗\nFundhub workspace\nEDIT PERSON\n—\n✕\nFirst name\nLast name\nEmail\nPhone\nEmployee code\nNot issued by this system\nRole\nOwner\nAdmin\nSales Manager\nCloser\nFunding Advisor\nInquiry Specialist\nSetter\nStart date\nPreferences\nMonitoring consent on file\nOwner only. On means a signed form is on file. Off stops monitoring data collection.\nText when a call is booked\nOff by default. Sends the caller’s name, phone, email, stated score and survey answers to this person.\nRole access\nAccess follows this person’s role. The server checks each action; the permission list is not shown here.\nAgreements\nOpen this person’s saved agreements.\n—\nSave\nCancel\nRevoke login",
+    "screenshot": "shots/staff-teams-1440-lower-MARKED.png",
+    "errors": [],
+    "fixtureOnly": true
+  }
+]

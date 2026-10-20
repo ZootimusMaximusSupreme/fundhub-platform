@@ -1,0 +1,140 @@
+{
+  "capturedAt": "2026-10-20T07:50:27.276Z",
+  "platform": "darwin",
+  "baseline": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+  "note": "Typeahead is separate real keyboard-event proof. Original arrow-key failures remain red; neither selectOption nor script selection is used.",
+  "results": [
+    {
+      "profile": "chromium1440",
+      "target": "credit",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/money-credit.html",
+      "arrowValue": "/app/money-credit.html",
+      "failure": "expect(page).toHaveURL(expected) failed\n\nExpected pattern: /\\/app\\/money-payments\\.html$/\nReceived string:  \"http://127.0.0.1:62495/app/money-strategy.html\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.url\" with timeout 5000ms\n    - waiting for \"http://127.0.0.1:62495/app/money-strategy.html\" navigation to finish...\n    - navigated to \"http://127.0.0.1:62495/app/money-strategy.html\"\n    14 × locator resolved to <html lang=\"en\" data-fh-apple-rounded=\"\" data-fh-rounded-default=\"\">…</html>\n       - unexpected value \"http://127.0.0.1:62495/app/money-strategy.html\"\n"
+    },
+    {
+      "profile": "chromium1440",
+      "target": "credit",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/money-credit.html",
+      "arrowValue": "/app/money-credit.html",
+      "failure": "expect(page).toHaveURL(expected) failed\n\nExpected pattern: /\\/app\\/money-payments\\.html$/\nReceived string:  \"http://127.0.0.1:62495/app/money-strategy.html\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.url\" with timeout 5000ms\n    - waiting for \"http://127.0.0.1:62495/app/money-strategy.html\" navigation to finish...\n    - navigated to \"http://127.0.0.1:62495/app/money-strategy.html\"\n    14 × locator resolved to <html lang=\"en\" data-fh-apple-rounded=\"\" data-fh-rounded-default=\"\">…</html>\n       - unexpected value \"http://127.0.0.1:62495/app/money-strategy.html\"\n"
+    },
+    {
+      "profile": "chromium1440",
+      "target": "finance",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": true,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "typeaheadUrl": "/app/finance-os.html",
+      "financialReads": []
+    },
+    {
+      "profile": "chromium1440",
+      "target": "finance",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": true,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "typeaheadUrl": "/app/finance-os.html",
+      "financialReads": []
+    },
+    {
+      "profile": "chromium390",
+      "target": "credit",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/money-credit.html",
+      "arrowValue": "/app/money-credit.html",
+      "failure": "expect(page).toHaveURL(expected) failed\n\nExpected pattern: /\\/app\\/money-payments\\.html$/\nReceived string:  \"http://127.0.0.1:62495/app/money-strategy.html\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.url\" with timeout 5000ms\n    - waiting for \"http://127.0.0.1:62495/app/money-strategy.html\" navigation to finish...\n    - navigated to \"http://127.0.0.1:62495/app/money-strategy.html\"\n    14 × locator resolved to <html lang=\"en\" data-fh-apple-rounded=\"\" data-fh-rounded-default=\"\">…</html>\n       - unexpected value \"http://127.0.0.1:62495/app/money-strategy.html\"\n"
+    },
+    {
+      "profile": "chromium390",
+      "target": "credit",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/money-credit.html",
+      "arrowValue": "/app/money-credit.html",
+      "failure": "expect(page).toHaveURL(expected) failed\n\nExpected pattern: /\\/app\\/money-payments\\.html$/\nReceived string:  \"http://127.0.0.1:62495/app/money-strategy.html\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.url\" with timeout 5000ms\n    - waiting for \"http://127.0.0.1:62495/app/money-strategy.html\" navigation to finish...\n    - navigated to \"http://127.0.0.1:62495/app/money-strategy.html\"\n    14 × locator resolved to <html lang=\"en\" data-fh-apple-rounded=\"\" data-fh-rounded-default=\"\">…</html>\n       - unexpected value \"http://127.0.0.1:62495/app/money-strategy.html\"\n"
+    },
+    {
+      "profile": "chromium390",
+      "target": "finance",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": true,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "typeaheadUrl": "/app/finance-os.html",
+      "financialReads": []
+    },
+    {
+      "profile": "chromium390",
+      "target": "finance",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": true,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "typeaheadUrl": "/app/finance-os.html",
+      "financialReads": []
+    },
+    {
+      "profile": "webkit440",
+      "target": "credit",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "failure": "expect(locator).toBeVisible() failed\n\nLocator:  locator('select[aria-label=\\'Money section\\']')\nExpected: visible\nReceived: hidden\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.be.visible\" with timeout 5000ms\n  - waiting for locator('select[aria-label=\\'Money section\\']')\n    14 × locator resolved to <select aria-label=\"Money section\">…</select>\n       - unexpected value \"hidden\"\n"
+    },
+    {
+      "profile": "webkit440",
+      "target": "credit",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "failure": "expect(locator).toBeVisible() failed\n\nLocator:  locator('select[aria-label=\\'Money section\\']')\nExpected: visible\nReceived: hidden\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.be.visible\" with timeout 5000ms\n  - waiting for locator('select[aria-label=\\'Money section\\']')\n    14 × locator resolved to <select aria-label=\"Money section\">…</select>\n       - unexpected value \"hidden\"\n"
+    },
+    {
+      "profile": "webkit440",
+      "target": "finance",
+      "version": "baseline",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "failure": "expect(locator).toBeFocused() failed\n\nLocator:  locator('#fosOpen')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.be.focused\" with timeout 5000ms\n  - waiting for locator('#fosOpen')\n    14 × locator resolved to <button id=\"fosOpen\" type=\"button\" class=\"btn dark\">Open this client</button>\n       - unexpected value \"inactive\"\n"
+    },
+    {
+      "profile": "webkit440",
+      "target": "finance",
+      "version": "astra",
+      "errors": [],
+      "originalArrowPassed": false,
+      "typeaheadPassed": false,
+      "arrowUrl": "/app/finance-os.html",
+      "arrowValue": "",
+      "failure": "expect(locator).toBeFocused() failed\n\nLocator:  locator('#fosOpen')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.be.focused\" with timeout 5000ms\n  - waiting for locator('#fosOpen')\n    14 × locator resolved to <button id=\"fosOpen\" type=\"button\" class=\"btn dark\">Open this client</button>\n       - unexpected value \"inactive\"\n"
+    }
+  ]
+}

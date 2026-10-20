@@ -6,7 +6,6 @@ body.fh-astra-staff :is(.card-hd,.panel-hd,.sech,.section-title){gap:16px}
 body.fh-astra-staff :is(.card-hd,.panel-hd){padding:16px 24px}
 body.fh-astra-staff :is(.card-bd,.panel-bd){padding:24px}
 body.fh-astra-staff :is(.card,.panel,.cc-card){border-radius:10px}
-body.fh-astra-staff :is(.card,.panel,.cc-card)+:is(.card,.panel,.cc-card){margin-top:24px}
 body.fh-astra-staff :is(.eyebrow,.card-title,.section-title,.section-meta,.sech,.badge,.tag,.chip,.field label,.caption,.hint,.note,.sd,.cap,.cmp){
   font-family:var(--sans);font-size:var(--fs-caption);letter-spacing:0;text-transform:none;
 }
@@ -83,8 +82,8 @@ body.fh-astra--client-control-panel .workspace-tabs button{font-size:var(--fs-bo
 body.fh-astra--client-control-panel .workspace-overview-grid{gap:24px}
 body.fh-astra--client-control-panel .workspace-view{padding-top:24px}
 body.fh-astra--closer-dashboard .call-cockpit{gap:24px}
-body.fh-astra--closer-dashboard .call-identity{gap:24px}
-body.fh-astra--closer-dashboard .call-tools{padding:24px;background:var(--paper);border-radius:10px}
+body.fh-astra--closer-dashboard .call-identity{gap:16px}
+body.fh-astra--closer-dashboard .call-tools{padding:16px;background:var(--paper);border-radius:10px}
 body.fh-astra--closer-dashboard .call-actions{gap:8px;flex-wrap:wrap}
 body.fh-astra--closer-dashboard :is(.client-label,.source-label){font-size:var(--fs-caption);font-family:var(--sans);letter-spacing:0;text-transform:none}
 body.fh-astra--messaging :is(.convo-head,.thread-head,.compose,.context-head){padding:24px}
@@ -98,10 +97,12 @@ body.fh-astra--company-brain :is(.cmphint,.muted){font-family:var(--sans);font-s
 body.fh-astra--company-brain .rail{background:var(--paper)}
 body.fh-astra--company-brain .cbox{gap:8px;padding:8px;border-radius:10px}
 /* Pipeline and journey canvases keep their own spatial interaction model. */
-body.fh-astra--pipeline :is(.headline,.filterbar){padding:24px;gap:16px}
+body.fh-astra--pipeline .headline{padding:8px 24px;gap:8px}
+body.fh-astra--pipeline .filterbar{padding:8px 24px 12px;gap:8px}
 body.fh-astra--pipeline .railbar{padding-inline:24px}
-body.fh-astra--pipeline .board{gap:16px}
+body.fh-astra--pipeline .board{gap:16px;padding-top:8px}
 body.fh-astra--pipeline .col{border-radius:10px}
+body.fh-astra--pipeline .col-head{padding:8px 12px}
 body.fh-astra--pipeline :is(.card-title,.card .nm,.card .cn){font-size:var(--fs-body)}
 /* The existing pipeline workspace has an !important compact type map.
    Keep its board model, but replace that map within the Astra opt-in. */
@@ -111,7 +112,7 @@ body.fh-astra.fh-astra--pipeline :is(.rail-tab,.hl-metric .eyebrow,.hl-count,.bo
 body.fh-astra.fh-astra--pipeline :is(input,select,textarea,.search input,.select select,.c-name,.col-name,.c-scores,.c-amt,.rm-item,.rm-label){
   font-size:var(--fs-body)!important;
 }
-body.fh-astra--pipeline .railbar{height:auto;min-height:60px}
+body.fh-astra--pipeline .railbar{height:auto;min-height:60px;padding-block:8px}
 body.fh-astra--pipeline :is(.rail-tab,.lens-switch button,.c-btn,.c-btn.route,.hl-metric,.hl-count,.hl-next-btn,.pipeline-details summary,.pipeline-breakdown>summary,.fp-clear,.fchip .x,.grip){
   min-height:44px;min-width:44px;
 }
@@ -185,7 +186,14 @@ body.fh-astra--present .ck-btn{min-height:44px}
   body.fh-astra--hiring :is(.kv,.deriv){grid-template-columns:1fr}
   body.fh-astra--hiring .catgrid{grid-template-columns:minmax(0,1fr) auto!important}
   body.fh-astra--documents .documents-stats{grid-template-columns:1fr!important}
-  body.fh-astra--documents :is(.library-heading,.library-controls){padding:16px}
+  body.fh-astra--documents .content{padding-top:8px}
+  body.fh-astra--documents :is(.documents-intro,.documents-stats){margin-bottom:8px}
+  body.fh-astra--documents .documents-intro .chip{margin-top:8px;padding-block:0}
+  body.fh-astra--documents .documents-stats>.stat{padding:8px 16px;min-height:48px}
+  body.fh-astra--documents .stat-label{min-height:0;max-width:none;align-self:center}
+  body.fh-astra--documents :is(.library-heading,.library-controls){padding:8px 16px}
+  body.fh-astra--documents .library-controls{grid-template-columns:1fr;gap:8px}
+  body.fh-astra--documents .fh-astra-tabs .tab{min-height:44px;padding-block:8px}
   body.fh-astra--csm-queue .q-head{gap:16px}
   body.fh-astra--csm-queue .q-shift{padding:16px;gap:16px}
   body.fh-astra--calendar .calendar-workspace,body.fh-astra--lenders .lenders-main{padding:24px 16px}
@@ -197,12 +205,20 @@ body.fh-astra--present .ck-btn{min-height:44px}
   body.fh-astra--client-control-panel .record-head{padding:16px}
   body.fh-astra--client-control-panel .workspace-tabs{gap:24px;overflow-x:auto}
   body.fh-astra--client-control-panel .workspace-tabs button{flex:0 0 auto}
-  body.fh-astra--closer-dashboard .call-tools{padding:16px}
+  body.fh-astra--closer-dashboard main{padding-top:12px}
+  body.fh-astra--closer-dashboard .call-toolbar{margin-bottom:8px}
+  body.fh-astra--closer-dashboard .call-identity{padding:16px;gap:12px;margin-bottom:16px}
+  body.fh-astra--closer-dashboard .call-tools{padding:8px}
+  body.fh-astra--closer-dashboard .sech{margin-bottom:12px}
+  body.fh-astra--closer-dashboard .bands{gap:8px}
+  body.fh-astra--closer-dashboard .band+.band{padding-top:8px}
+  body.fh-astra--closer-dashboard .sec{margin-bottom:16px}
   body.fh-astra--messaging :is(.convo-head,.thread-head,.compose,.context-head){padding:16px}
   body.fh-astra--company-brain :is(.convo-hd,.msgs,.composer){padding:16px}
   body.fh-astra--company-brain .convo-hd{gap:8px;flex-wrap:wrap}
   body.fh-astra--company-brain .cmphint{line-height:1.5}
-  body.fh-astra--pipeline :is(.headline,.filterbar){padding:16px}
+  body.fh-astra--pipeline .headline{padding:0 16px;row-gap:0}
+  body.fh-astra--pipeline .filterbar{padding:0 16px}
   body.fh-astra--pipeline .railbar{padding-inline:16px}
   body.fh-astra--journeys .canvas{padding:24px 16px 64px}
   body.fh-astra--journeys .pbody{padding:16px}
@@ -211,6 +227,7 @@ body.fh-astra--present .ck-btn{min-height:44px}
   body.fh-astra--finance-os .fos-controlbar{padding:16px}
   body.fh-astra--my-numbers :is(.numbers-shell,.numbers-toolbar),
   body.fh-astra--sales-floor :is(.sf-toolbar,#fh-floor-main){padding:24px 16px}
+  body.fh-astra--my-numbers .numbers-shell{padding-top:0}
   body.fh-astra--ops-admin :is(.zonetabs,.zone){padding-inline:16px}
   body.fh-astra--inquiry-remover :is(.desk-toggle,.stat-head,.section){padding-inline:16px}
   body.fh-astra--morning-brief .tiles{grid-template-columns:1fr}
@@ -219,6 +236,71 @@ body.fh-astra--present .ck-btn{min-height:44px}
   body.fh-astra--present :is(.client,.cockpit){flex:0 0 auto;width:100%;max-width:100%;min-width:0;height:60vh;min-height:400px}
   body.fh-astra--present .cockpit{height:50vh}
 }
+@media(max-width:350px){
+  body.fh-astra--messaging .thread-head{padding-block:8px;min-height:72px}
+  body.fh-astra--messaging .compose{padding-block:8px}
+  body.fh-astra--messaging .compose-to label{flex-basis:auto}
+  body.fh-astra--messaging .compose-box{flex-wrap:nowrap}
+  body.fh-astra--messaging .compose-box textarea{flex-basis:0;min-width:0}
+}
+/* A short landscape window cannot fit a readable thread and the full reply
+   form at once. Keep the bounded message reader and let the workspace scroll
+   to every composer control instead of clipping its fixed-height column. */
+@media(max-width:860px) and (max-height:600px){
+  body.fh-astra--messaging .messaging-workspace.thread-open{display:block;overflow-y:auto}
+  body.fh-astra--messaging .thread-open .thread-col{min-height:100%;overflow:visible}
+  body.fh-astra--messaging .thread-open .thread{flex:none;height:160px;min-height:160px}
+}
+/* Phone review repairs: WebKit native selects ignore a min-height alone.
+   Keep real controls native and preserve every existing state/handler. */
+body.fh-astra.fh-astra-staff :is(input,select,textarea){font-size:var(--fs-body)!important}
+body.fh-astra.fh-astra-staff select:not([multiple]){height:44px;min-height:44px;min-width:44px}
+body.fh-astra.fh-astra-staff :is(button,summary,[role="button"],[role="switch"]){min-height:44px;min-width:44px}
+body.fh-astra.fh-astra-staff :is(.btn.dark,.btn.primary,.fh-astra-primary,.cc-sheet-acts .btn){min-height:48px}
+body.fh-astra.fh-astra--brand-studio input[type="color"]{width:44px;min-width:44px;height:44px;flex-shrink:0}
+body.fh-astra--content-admin .sw{width:52px;height:44px;flex-basis:52px;border-radius:22px}
+body.fh-astra--content-admin .sw::after{width:32px;height:32px;top:5px;left:5px}
+body.fh-astra--content-admin .sw.on::after{transform:translateX(8px)}
+body.fh-astra--products-commissions :is(#ledgerCheckAll,.ledger-pick){width:44px;height:44px;min-width:44px;min-height:44px}
+body.fh-astra--consent-capture .cc-back,
+body.fh-astra--csm-queue :is(.q-name,.q-link),
+body.fh-astra--contracts .workflow-note a,
+body.fh-astra--ops-admin .af-link,
+body.fh-astra--marketing-command-center .tile a,
+body.fh-astra--closer-dashboard .client-file-link{display:inline-flex;align-items:center;min-height:44px}
+body.fh-astra--closer-dashboard .disc label{min-height:44px}
+body.fh-astra--closer-dashboard .drawrange{min-height:44px}
+body.fh-astra.fh-astra--calendar :is(.calendar-kicker,.live-pill,.calendar-timezone,.calendar-label,.today-btn,.seg button,.stat .l,.ws-title,.ws-dname,.ws-count,.hour-label,.evt-time,.evt-meta,.rail-tag,.who-name,.tag,.row-btn,.row-msg,.nowline .lbl,.un-minlbl,.un-when,.un-meta,.un-sec,.un-join,.un-alt,.then-time,.then-sub,.nodate-note,.nodate-sub,.cov-role,.statusbar,.ws-chip .t,.ws-more,.ws-empty,.calendar-retry){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--calendar.week-view .ws-dtoday{font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--client-control-panel #ccp-pick{font-size:var(--fs-body)}
+body.fh-astra.fh-astra--closer-dashboard :is(.eyebrow,.chip,.client-label,.source-label,.call-when,.band .bl,.band .bn,.cliff,.flag,.ctxg div span,.never,.q .t,.q em,.summary-note,.calc-client,.big-tile .lbl,.infield label,.util-line,.res-note,.bd-note,.empty-slot,.apr-tag,.logrow .lbl,.hk,.logbar .foot,footer.statusbar,.client-file-link,table.deal th,table.pm th){font-size:var(--fs-caption)!important}
+body.fh-astra.fh-astra--closer-dashboard :is(.panel table,.panel td,.ctx p,.ctxg div b,table.deal,table.pm){font-size:var(--fs-body)}
+body.fh-astra.fh-astra--closer-dashboard .logrow button{font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--contracts :is(.btn,.workflow-note p,.workflow-note a,.section-caption,th,.template-code,.library-foot,.editor-kicker,.optional,.empty-hint){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--csm-queue :is(.q-shift .when,.q-count .cmp,.q-order,.q-up-next,.chip,.q-context,.q-foot,.q-foot-note,.q-link,#qStamp){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--documents :is(.stat-label,#resultCount,.btn,.tab-count,.document-meta,.age,.empty p,.document-guide>summary,.classcard .cs,.legend,#ctMsg){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--documents table.grid td::before{font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--documents .document-title{font-size:var(--fs-body)}
+body.fh-astra.fh-astra--documents .library-controls .search input{min-height:44px}
+body.fh-astra.fh-astra--finance-os :is(.sub,.fos-summary-fact small,.fos-table-head,.fos-table-head .nm,.fos-table-head .num){font-size:var(--fs-caption)!important}
+body.fh-astra--marketing-command-center .card-hd{padding:0}
+body.fh-astra.fh-astra--lenders :is(.btn,.banner,.filters label,.filters summary,.filters summary span,.meta){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--messaging :is(.ctab .n,.av,.cv-time,.cv-meta,.ch-tag,.who-tag,.search-scope,.th-sub,.msg-sender,.msg-sender .ch-pill,.agent-tag,.msg-time,.msg-error,.ch-btn,.compose-note,.quiet-note,.compose-to label,.to-note,.sending-as,.ctx-role,.ctx-row,.demo-div,.demo-cap,.legend,.context-btn){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--messaging :is(.cv-name,.bubble,.email-subj,.compose-input){font-size:var(--fs-body)}
+body.fh-astra.fh-astra--my-numbers :is(.chip,.note,.pace .lb,.pace .sub,#numbersTargetLabel,.marks,.todo .t,.todo em,.m .lb,.mo .lb,.m .cmp,.st-row.hd,.st-row em,.st-row .why,.mo .sb,.lb-row .rk,.lb-row .nm em,.lb-row .hide,.days .d,.empty-state p){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--my-numbers :is(.st-row .num,.st-row .why)::before{font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--present :is(.brand,.sent-at,.toast,.fin,.stk-item .n,.stk-path .n,.stk-chip,.stk-incl .ck,.stk-none,.stk-tog .nm,.stk-tog .why,.stk-tog .st,.stk-why){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--present .say{font-size:var(--fs-body);line-height:1.5}
+body.fh-astra.fh-astra--sales-floor :is(.sf-jumps a,.f .cv,.rhead,.rrow .nm em,.pickwho em,.unk,.row .l em,.row a,.row .r em,.obt em,.note){font-size:var(--fs-caption)}
+body.fh-astra.fh-astra--sales-floor :is(.rost>.rrow .num,.rost>.rrow .act)::before{font-size:var(--fs-caption)}
+/* Independent follow-up: keep all seven deck phases reachable at44px,
+   including the narrower desktop coaching column. */
+body.fh-astra--present .ck-ph{display:grid;grid-template-columns:repeat(4,minmax(44px,1fr));gap:8px;padding:8px}
+body.fh-astra--present .ck-ph button{font-size:var(--fs-caption)!important}
+body.fh-astra--present .watch>div{font-size:var(--fs-body)!important}
+body.fh-astra--finance-os .fos-jumps a{min-height:44px;min-width:44px}
+body.fh-astra--lenders .directory-kicker{font-size:var(--fs-caption)}
+body.fh-astra--messaging .ctx-col .empty-box{font-size:var(--fs-body)}
 /* Astra comparison: the existing Fundhub shell, with a roster-first workspace.
    Original layout rules above are retained for unchanged secondary controls. */
 .fh-astra-team .content{padding:32px;min-width:0}

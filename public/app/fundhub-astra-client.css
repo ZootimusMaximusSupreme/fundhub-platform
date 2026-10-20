@@ -21,6 +21,9 @@ body.fh-astra.fh-astra-client :is(main,.app,.shell,.wrap,.page,.fos-panel) { min
 body.fh-astra.fh-astra-client :is(button,input,select,textarea) { font-family:var(--sans);font-size:16px; }
 body.fh-astra.fh-astra-client :is(button,summary,.btn,.btn-primary,.btn-secondary,.btn-line,.btn-book,.btn-unlock,.contact-btn,.dl-btn,.upload-btn,.back) { min-height:44px;border-radius:8px; }
 body.fh-astra.fh-astra-client :is(input:not([type="checkbox"]):not([type="radio"]),select) { min-height:48px;font-size:16px;border-radius:8px; }
+/* Native WebKit selects ignore a minimum height while retaining native
+   appearance. Set the actual single-line control height, not appearance. */
+body.fh-astra.fh-astra-client select:not([multiple]):not([size]) { height:48px; }
 body.fh-astra.fh-astra-client :is(.btn-primary,.btn.primary,.btn-book,.upload-btn) { min-height:48px; }
 body.fh-astra.fh-astra-client :is(.caption,.note,.hint,.fine,.mono,.eyebrow,.card-title,.badge,.tag,label,th) { font-size:13px; }
 body.fh-astra.fh-astra-client :is(.eyebrow,.card-title,.mono) { font-family:var(--sans);letter-spacing:0;text-transform:none; }
@@ -46,6 +49,21 @@ body.fh-astra.fh-astra-client .mnav.client-money-navigation { padding:16px 32px;
 body.fh-astra.fh-astra-client .client-money-jump { font-size:13px; }
 body.fh-astra.fh-astra-client .client-money-jump select { font-size:16px;min-height:48px;border-radius:8px; }
 body.fh-astra.fh-astra-client .mnav.client-money-navigation .client-money-frame { font-size:13px;min-height:44px; }
+/* The existing widget inserts its own small-type stylesheet after page load.
+   Scope the readable client variant here without changing chat behavior. */
+body.fh-astra.fh-astra-client #fh-chat-panel { border-radius:10px; }
+body.fh-astra.fh-astra-client #fh-chat-panel :is(.hd,.mode) { font-family:var(--sans);font-size:16px;line-height:1.5; }
+body.fh-astra.fh-astra-client #fh-chat-panel :is(.hd,.modes,#fh-chat-foot) { flex-shrink:0; }
+body.fh-astra.fh-astra-client #fh-chat-panel :is(button,.mode) { min-height:44px;min-width:44px;font-size:16px; }
+/* Close ships with an inline font shorthand; this is its scoped type escape. */
+body.fh-astra.fh-astra-client #fh-chat-close { font-size:16px!important; }
+body.fh-astra.fh-astra-client #fh-chat-body { min-height:0;overscroll-behavior:contain; }
+body.fh-astra.fh-astra-client #fh-chat-body .msg { font:500 16px/1.5 var(--sans);overflow-wrap:anywhere; }
+body.fh-astra.fh-astra-client #fh-chat-body .msg .src,
+body.fh-astra.fh-astra-client #fh-chat-foot .hint { font:500 13px/1.5 var(--sans); }
+body.fh-astra.fh-astra-client #fh-chat-foot :is(input,select) { font:500 16px/1.5 var(--sans);min-width:0; }
+body.fh-astra.fh-astra-client #fh-chat-input { width:0; }
+body.fh-astra.fh-astra-client #fh-chat-send { min-height:48px;font:650 16px/1.5 var(--sans); }
 
 /* File status and a useful next action remain the portal's first read.
    Supporting tools stay in the existing order and retain every state gate. */
@@ -133,6 +151,7 @@ body.fh-astra.fh-astra-money :is(#fos-main,main) td { font-size:16px;padding:16p
 body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.empty,.error) { align-items:flex-start;text-align:left; }
 body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.block>h2,.card>h2,.card>h3) { font-size:22px;font-weight:700;letter-spacing:-.02em; }
 body.fh-astra.fh-astra-money :is(#fos-main,main) .card>.eyebrow { font-size:13px;letter-spacing:0; }
+body.fh-astra.fh-astra-money :is(#fos-main,main) :is(.trange-btn,.tdata>summary) { min-height:44px; }
 
 /* Entry pages use a short reading column and a single form; account logic
    remains exactly where it was. These are not capped CRM content columns. */
@@ -148,6 +167,7 @@ body.fh-astra.fh-astra-entry form { display:flex;flex-direction:column;gap:8px;m
 body.fh-astra.fh-astra-entry :is(input,.btn,.portal-password,.login-link-choice a) { min-height:48px;border-radius:8px;font-size:16px; }
 body.fh-astra.fh-astra-entry label { font-size:13px;font-weight:650; }
 body.fh-astra.fh-astra-entry :is(.login-support a,.login-back a,.portal-back a,#fh-forgot-link) { display:inline-flex;align-items:center;min-height:44px; }
+body.fh-astra.fh-astra-entry .note>a { display:inline-flex;align-items:center;min-height:44px; }
 body.fh-astra.fh-astra-entry :is(#err,#ok-box,#fh-forgot-box) { border-radius:8px;font-size:16px; }
 
 /* Agreements, progress and after-checkout states keep their existing proof
@@ -172,6 +192,8 @@ body.fh-astra.fh-astra-progress :is(.panel .bu,.panel .when,.panel .open,.docs .
 body.fh-astra.fh-astra-progress #main { padding:0; }
 body.fh-astra.fh-astra-progress #cStage::before { display:none; }
 body.fh-astra.fh-astra-progress #cNext { background:color-mix(in srgb,var(--info) 12%,white);border-color:var(--line); }
+/* The existing referral renderer supplies an inline 12px caption. */
+body.fh-astra.fh-astra-progress #cReferral .stage-l.mono { font-size:13px!important; }
 body.fh-astra.fh-astra-progress dialog { border-radius:10px;max-width:calc(100vw - 32px); }
 body.fh-astra.fh-astra-approval .wrap { padding:32px; }
 body.fh-astra.fh-astra-approval .wrap>h1 { font-size:32px;letter-spacing:-.04em; }
@@ -277,4 +299,11 @@ body.fh-astra.fh-astra-receipt .back { display:inline-flex;align-items:center;mi
   body.fh-astra.fh-astra-document { padding:0;background:#fff; }
   body.fh-astra.fh-astra-document .doc { padding:0;border:0;box-shadow:none; }
   body.fh-astra.fh-astra-document #main { display:block; }
+}
+@media (max-height:500px) {
+  body.fh-astra.fh-astra-client #fh-chat-panel {
+    top:8px!important;right:16px!important;bottom:auto!important;
+    width:min(560px,calc(100vw - 32px));
+    height:calc(100dvh - 16px)!important;max-height:calc(100dvh - 16px)!important;
+  }
 }

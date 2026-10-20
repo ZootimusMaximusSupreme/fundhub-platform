@@ -8,6 +8,7 @@ import { createFixture, fixtureResponse } from "./fixtures.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../../..");
 const PUBLIC = path.join(ROOT, "public");
+const ROLLOUT = path.resolve(HERE, "../../crm-astra-rollout");
 const BASELINE = execFileSync("git", ["show", "f1ab024ee0fca5b236ecac50957ec0286c628101:public/app/staff-teams.html"], { cwd: ROOT, encoding: "utf8" });
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".ico": "image/x-icon" };
 
@@ -50,9 +51,11 @@ export async function startPreviewServer(port = 0) {
     }
     let file;
     if (url.pathname === "/" || url.pathname === "/comparison") file = path.join(HERE, "comparison.html");
+    else if (url.pathname === "/rollout") file = path.join(ROLLOUT, "preview.html");
+    else if (url.pathname.startsWith("/__rollout/")) file = path.resolve(ROLLOUT, "." + decodeURIComponent(url.pathname.slice("/__rollout".length)));
     else if (url.pathname.startsWith("/__comparison/")) file = path.resolve(HERE, "." + url.pathname.slice("/__comparison".length));
     else file = path.resolve(PUBLIC, "." + decodeURIComponent(url.pathname));
-    if (!file.startsWith(PUBLIC + path.sep) && !file.startsWith(HERE + path.sep)) {
+    if (!file.startsWith(PUBLIC + path.sep) && !file.startsWith(HERE + path.sep) && !file.startsWith(ROLLOUT + path.sep)) {
       res.writeHead(403).end(); return;
     }
     if (url.pathname === "/app/staff-teams.html" && url.searchParams.get("variant") === "astra") {

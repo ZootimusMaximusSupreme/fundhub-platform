@@ -1,0 +1,552 @@
+{
+  "capturedAt": "2026-10-20T08:12:05.217Z",
+  "fictional": true,
+  "realDevice": false,
+  "results": [
+    {
+      "page": "client-portal",
+      "profile": "promax-landscape",
+      "state": "initial",
+      "engine": "webkit",
+      "metrics": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "controls": [
+          {
+            "index": "1",
+            "tag": "BUTTON",
+            "id": "fh-chat-fab",
+            "cls": "",
+            "text": "Chat",
+            "width": 55.52,
+            "height": 44,
+            "font": 13,
+            "x": 638.16,
+            "y": 9.5
+          },
+          {
+            "index": "2",
+            "tag": "SUMMARY",
+            "id": "",
+            "cls": "",
+            "text": "F\nAccount",
+            "width": 104.33,
+            "height": 44,
+            "font": 13,
+            "x": 701.67,
+            "y": 9.5
+          },
+          {
+            "index": "3",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "",
+            "text": "View real account",
+            "width": 130.78,
+            "height": 44,
+            "font": 13,
+            "x": 649.2,
+            "y": 105
+          },
+          {
+            "index": "4",
+            "tag": "A",
+            "id": "cp-next-link",
+            "cls": "",
+            "text": "Open your account →",
+            "width": 196.17,
+            "height": 48,
+            "font": 16,
+            "x": 281,
+            "y": 382.8
+          },
+          {
+            "index": "5",
+            "tag": "A",
+            "id": "fb-wins",
+            "cls": "card fb-wins",
+            "text": "f\nJoin the Fundhub wins group\nThis is where we post wins. Come say hi before your call.\nJoin on Face",
+            "width": 540.98,
+            "height": 118.78,
+            "font": 16,
+            "x": 256,
+            "y": 1941.77
+          },
+          {
+            "index": "6",
+            "tag": "A",
+            "id": "money-link",
+            "cls": "card fb-wins",
+            "text": "$\nFinanceOS\nYour bank accounts, cards, bills, and business credit in one place.\nOpen FinanceOS",
+            "width": 540.98,
+            "height": 118.78,
+            "font": 16,
+            "x": 256,
+            "y": 2084.55
+          },
+          {
+            "index": "7",
+            "tag": "SUMMARY",
+            "id": "",
+            "cls": "",
+            "text": "All file stages\nCurrent: Credit pull received",
+            "width": 490.98,
+            "height": 44,
+            "font": 13,
+            "x": 281,
+            "y": 703.89
+          },
+          {
+            "index": "8",
+            "tag": "A",
+            "id": "",
+            "cls": "",
+            "text": "View progress →",
+            "width": 164.5,
+            "height": 46,
+            "font": 16,
+            "x": 281,
+            "y": 765.89
+          },
+          {
+            "index": "9",
+            "tag": "SUMMARY",
+            "id": "",
+            "cls": "",
+            "text": "›\nAccount & history\nPayments · Agreements · Documents · Activity · Messages",
+            "width": 538.98,
+            "height": 80,
+            "font": 13,
+            "x": 257,
+            "y": 861.89
+          },
+          {
+            "index": "10",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "View status",
+            "width": 211.48,
+            "height": 44,
+            "font": 16,
+            "x": 298,
+            "y": 2635.3
+          },
+          {
+            "index": "11",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.48,
+            "height": 44,
+            "font": 16,
+            "x": 298,
+            "y": 2686.3
+          },
+          {
+            "index": "12",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.5,
+            "height": 44,
+            "font": 16,
+            "x": 543.48,
+            "y": 2686.3
+          },
+          {
+            "index": "13",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.48,
+            "height": 44,
+            "font": 16,
+            "x": 298,
+            "y": 2973.95
+          },
+          {
+            "index": "14",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.5,
+            "height": 44,
+            "font": 16,
+            "x": 543.48,
+            "y": 2973.95
+          },
+          {
+            "index": "15",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.48,
+            "height": 44,
+            "font": 16,
+            "x": 298,
+            "y": 3264
+          },
+          {
+            "index": "16",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-advise",
+            "text": "Talk to an advisor",
+            "width": 211.5,
+            "height": 44,
+            "font": 16,
+            "x": 543.48,
+            "y": 3264
+          },
+          {
+            "index": "17",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "btn-book",
+            "text": "Ask for a call",
+            "width": 59.03,
+            "height": 120,
+            "font": 16,
+            "x": 281,
+            "y": 3585
+          },
+          {
+            "index": "18",
+            "tag": "BUTTON",
+            "id": "ref-go",
+            "cls": "btn-book",
+            "text": "Get my link",
+            "width": 114.98,
+            "height": 48,
+            "font": 16,
+            "x": 281,
+            "y": 3926
+          },
+          {
+            "index": "19",
+            "tag": "BUTTON",
+            "id": "push-marketing-btn",
+            "cls": "btn-unlock",
+            "text": "Try again",
+            "width": 95.95,
+            "height": 44,
+            "font": 16,
+            "x": 281,
+            "y": 4318
+          },
+          {
+            "index": "20",
+            "tag": "A",
+            "id": "",
+            "cls": "client-ios-brand",
+            "text": "Client portal home",
+            "width": 187,
+            "height": 44,
+            "font": 22,
+            "x": 18,
+            "y": 24
+          },
+          {
+            "index": "21",
+            "tag": "A",
+            "id": "",
+            "cls": "",
+            "text": "Home",
+            "width": 187,
+            "height": 48,
+            "font": 16,
+            "x": 18,
+            "y": 131.5
+          },
+          {
+            "index": "22",
+            "tag": "A",
+            "id": "",
+            "cls": "",
+            "text": "Progress",
+            "width": 187,
+            "height": 48,
+            "font": 16,
+            "x": 18,
+            "y": 187.5
+          },
+          {
+            "index": "23",
+            "tag": "A",
+            "id": "",
+            "cls": "",
+            "text": "Money",
+            "width": 187,
+            "height": 48,
+            "font": 16,
+            "x": 18,
+            "y": 243.5
+          },
+          {
+            "index": "24",
+            "tag": "A",
+            "id": "",
+            "cls": "",
+            "text": "Documents",
+            "width": 187,
+            "height": 48,
+            "font": 16,
+            "x": 18,
+            "y": 299.5
+          }
+        ],
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": [],
+        "clipped": []
+      },
+      "issues": [],
+      "proofs": [],
+      "reach": [],
+      "errors": [],
+      "writes": [],
+      "screenshot": "client-portal-promax-landscape-initial-MARKED.png"
+    },
+    {
+      "page": "client-portal",
+      "profile": "promax-landscape",
+      "state": "chat-open",
+      "engine": "webkit",
+      "metrics": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "controls": [
+          {
+            "index": "113",
+            "tag": "BUTTON",
+            "id": "fh-chat-close",
+            "cls": "",
+            "text": "Close",
+            "width": 44,
+            "height": 44,
+            "font": 16,
+            "x": 763,
+            "y": 21
+          },
+          {
+            "index": "114",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "mode on",
+            "text": "Message staff",
+            "width": 538,
+            "height": 44,
+            "font": 16,
+            "x": 273,
+            "y": 86
+          },
+          {
+            "index": "115",
+            "tag": "INPUT",
+            "id": "fh-chat-input",
+            "cls": "",
+            "text": "Message your team…",
+            "width": 467.09,
+            "height": 48,
+            "font": 16,
+            "x": 273,
+            "y": 315
+          },
+          {
+            "index": "116",
+            "tag": "BUTTON",
+            "id": "fh-chat-send",
+            "cls": "",
+            "text": "Send",
+            "width": 62.91,
+            "height": 48,
+            "font": 16,
+            "x": 748.09,
+            "y": 315
+          }
+        ],
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": [],
+        "clipped": []
+      },
+      "issues": [],
+      "proofs": [],
+      "reach": [
+        {
+          "id": "fh-chat-close",
+          "text": "Close",
+          "visibleWidth": 44,
+          "visibleHeight": 44,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 763,
+          "y": 21,
+          "reachable": true
+        },
+        {
+          "id": "fh-chat-input",
+          "text": "Message your team…",
+          "visibleWidth": 467.09375,
+          "visibleHeight": 48,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 273,
+          "y": 315,
+          "reachable": true
+        },
+        {
+          "id": "fh-chat-send",
+          "text": "Send",
+          "visibleWidth": 62.90625,
+          "visibleHeight": 48,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 748.09375,
+          "y": 315,
+          "reachable": true
+        }
+      ],
+      "errors": [],
+      "writes": [],
+      "screenshot": "client-portal-promax-landscape-chat-open-MARKED.png"
+    },
+    {
+      "page": "client-portal",
+      "profile": "promax-landscape",
+      "state": "expanded",
+      "engine": "webkit",
+      "metrics": {
+        "viewport": {
+          "width": 838,
+          "height": 390
+        },
+        "pageWidth": 838,
+        "controls": [
+          {
+            "index": "113",
+            "tag": "BUTTON",
+            "id": "fh-chat-close",
+            "cls": "",
+            "text": "Close",
+            "width": 44,
+            "height": 44,
+            "font": 16,
+            "x": 763,
+            "y": 21
+          },
+          {
+            "index": "114",
+            "tag": "BUTTON",
+            "id": "",
+            "cls": "mode on",
+            "text": "Message staff",
+            "width": 538,
+            "height": 44,
+            "font": 16,
+            "x": 273,
+            "y": 86
+          },
+          {
+            "index": "115",
+            "tag": "INPUT",
+            "id": "fh-chat-input",
+            "cls": "",
+            "text": "Message your team…",
+            "width": 467.09,
+            "height": 48,
+            "font": 16,
+            "x": 273,
+            "y": 315
+          },
+          {
+            "index": "116",
+            "tag": "BUTTON",
+            "id": "fh-chat-send",
+            "cls": "",
+            "text": "Send",
+            "width": 62.91,
+            "height": 48,
+            "font": 16,
+            "x": 748.09,
+            "y": 315
+          }
+        ],
+        "undersized": [],
+        "smallInputs": [],
+        "smallText": [],
+        "clipped": []
+      },
+      "issues": [],
+      "proofs": [],
+      "reach": [
+        {
+          "id": "fh-chat-close",
+          "text": "Close",
+          "visibleWidth": 44,
+          "visibleHeight": 44,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 763,
+          "y": 21,
+          "reachable": true
+        },
+        {
+          "id": "",
+          "text": "Message staff",
+          "visibleWidth": 538,
+          "visibleHeight": 44,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 273,
+          "y": 86,
+          "reachable": true
+        },
+        {
+          "id": "fh-chat-input",
+          "text": "Message your team…",
+          "visibleWidth": 467.09375,
+          "visibleHeight": 48,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 273,
+          "y": 315,
+          "reachable": true
+        },
+        {
+          "id": "fh-chat-send",
+          "text": "Send",
+          "visibleWidth": 62.90625,
+          "visibleHeight": 48,
+          "requiredWidth": 44,
+          "requiredHeight": 44,
+          "hit": true,
+          "x": 748.09375,
+          "y": 315,
+          "reachable": true
+        }
+      ],
+      "errors": [],
+      "writes": [],
+      "screenshot": "client-portal-promax-landscape-expanded-MARKED.png"
+    }
+  ]
+}

@@ -54,7 +54,9 @@ for (const width of [1440, 390, 320]) {
     await expect(page.locator("#fh-workspace-header")).toHaveAttribute("data-fh-scope", "all-clients");
     if(width===1440) await page.screenshot({ path: `${evidence}/after-1440-viewport.png`, animations: "disabled" });
     const overviewColumns = await page.locator(".documents-stats").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
-    expect(overviewColumns).toBe(3);
+    // Approved Astra phone layout stacks readable summary rows; desktop keeps
+    // the three metrics together. All controls, fold and write checks below stay.
+    expect(overviewColumns).toBe(width < 700 ? 1 : 3);
     if (width < 700) {
       const clipped = await page.locator("#body button").evaluateAll(buttons => buttons.filter(button => {
         const r=button.getBoundingClientRect(), host=button.closest(".document-library").getBoundingClientRect();

@@ -410,7 +410,7 @@ test("every exported Display CD key drives the real page and asserts its exact r
   assert.match(tiles, /Card use 20\.3% Now/i);
   assert.equal(
     (await main.page.locator('section[aria-labelledby="t-cash"]').innerText()).replace(/\s+/g, " ").trim(),
-    "CASH THIS MONTH Safe Personal: $315.00 of the $1,530.55 its cash can cover. Business: $1,185.00 of the $18,450.00 its cash can cover.",
+    "Cash this month Safe Personal: $315.00 of the $1,530.55 its cash can cover. Business: $1,185.00 of the $18,450.00 its cash can cover.",
   );
   prove(IDS.tiles);
 
@@ -563,7 +563,7 @@ test("every exported Display CD key drives the real page and asserts its exact r
   await noAmount.page.locator(".notice").waitFor({ state: "visible" });
   assert.equal(
     (await noAmount.page.locator(".notice").innerText()).replace(/\s+/g, " ").trim(),
-    "PLAN Pick how much you can put toward debt each month.",
+    "Plan Pick how much you can put toward debt each month.",
   );
   assert.equal(await noAmount.page.locator('.notice [data-act="use-amount"]').count(), 0);
   await noAmount.context.close();

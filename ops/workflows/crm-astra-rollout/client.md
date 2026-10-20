@@ -53,3 +53,26 @@ Phone requirement: 16px body and inputs, captions at least 13px, interactive tar
 - Chromium 440px readability checks found no page overflow across all 16 FinanceOS modules. Two actual HTML text-size misses were corrected in the cohort stylesheet: strategy goal selector 15→16px, setup/connections state text 12→13px. A follow-up scan of strategy, connections, setup, portal, progress, password login, link login and reset password found no visible HTML text below 13px, no fields below 16px and no page overflow. SVG plot labels use viewBox units and are not included in the HTML font-floor claim.
 - After those text-size fixes, `E2E_PORT=43241 npx playwright test e2e/page_money_strategy.spec.mjs e2e/page_money_connections.spec.mjs e2e/page_money_setup.spec.mjs --reporter=line --output=test-results/astra-client-readability`: **20 passed (17.1s)**.
 - Root owns independent review, final lint/TypeScript, broader iPhone 17 Pro Max WebKit evidence, and release. Physical iPhone and Mac wrapper proof remain separate, and no production claim is made.
+
+## Named phone repair batch
+
+Root assigned A's independent client findings on 2026-10-20. Checked stylesheet order first: all 25 client pages already load the shared and client sheets after all legacy head styles. The fix changes **only `fundhub-astra-client.css`**:
+
+- Native single-line selects get an explicit 48px height, because WebKit painted 23px native controls despite `min-height`.
+- Expanded trend range buttons and “Show the numbers” summaries get actual 44px targets.
+- Reset-password note links get inline-flex 44px targets.
+- Existing client chat now uses 16px body/input/button text, 13px supporting captions, 44px Close and 48px Send. Only the existing inline Close font needs a scoped `!important` type override; no widget script changed. The input can shrink without forcing the row outside the panel.
+- Short landscape chat uses the available viewport height, with its message body scrolling and the composer/Close retained.
+- The referral-code caption's existing inline 12px value is overridden to 13px in the client progress cohort. No renderer script changed.
+
+### Repair receipts
+
+- Local settled-paint browser proof: `/private/tmp/astra-client-repair-proof.mjs`, adapted from A's review fixture setup, saves to `evidence/client-repair/`. All external requests blocked; API responses are fictional. The expanded referral mock does not enroll anyone; no live write or send occurs.
+- `phone-controls/results.json`: 69 captured states across 10 affected page routes, all 16 FinanceOS modules, WebKit Pro Max 440×763 and 838×390 landscape plus Chromium 390×844. All 63 non-portal captures have non-empty control measurements, no detected target/type/clipping issues, no page overflow and no page exceptions.
+- The first six portal captures are **not counted as proof**: the inherited review harness selected a hidden modal and measured zero controls. Its active-modal filter was corrected in the copied repair harness only to exclude hidden/inert/aria-hidden and invisible ancestors. `chat-confirmed/results.json` rechecks those six initial/opened portal states with 23–28 actual controls each: zero detected target/type/clipping issues, zero page overflow and zero exceptions. The original incomplete records remain retained.
+- Exact post-fix Pro Max measurements: account/business and strategy selectors 48px high / 16px font; overview range buttons 44px / 16px; number summaries 44px / 13px; reset back link 44px / 16px; opened chat Close 44×44 / 16px; chat input and Send 48px high / 16px at 440, 390 and 838×390. The landscape composer remains inside the viewport.
+- Marked captures: [account forms](evidence/client-repair/phone-controls/money-accounts-promax-expanded-MARKED.png), [expanded trends](evidence/client-repair/phone-controls/financeos-promax-expanded-MARKED.png), [reset link](evidence/client-repair/phone-controls/reset-password-promax-initial-MARKED.png), [chat portrait](evidence/client-repair/chat-confirmed/client-portal-promax-expanded-MARKED.png), [chat landscape](evidence/client-repair/chat-confirmed/client-portal-promax-landscape-expanded-MARKED.png).
+- `E2E_PORT=43241 npx playwright test e2e/client-portal-ux.spec.mjs e2e/page_financeos.spec.mjs e2e/page_money.spec.mjs e2e/page_money_strategy.spec.mjs e2e/page_money_connections.spec.mjs e2e/page_money_setup.spec.mjs e2e/money-transfers-clicks.spec.mjs e2e/page_progress.spec.mjs e2e/page_login.spec.mjs --reporter=line --output=test-results/astra-client-phone-repair`: **84 passed (1.6m)**.
+- The three native credit-picker keyboard failures and HEAD comparisons remain on the earlier red record. No test was replaced with `selectOption`, no keyboard success is claimed by this repair proof, and no test file was edited.
+
+A owns the separate independent recheck. Root retains final lint/TypeScript, release and physical-device proof. Lane B now resumes the independent staff review after A's repairs.

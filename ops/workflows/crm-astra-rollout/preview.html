@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fundhub · Astra rollout preview</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f3;color:#202523;font:16px/1.5 system-ui,sans-serif}header,main{max-width:1560px;margin:auto;padding:24px}header{padding-bottom:0}.brand{display:flex;align-items:center;gap:12px}.brand img{width:136px;height:auto}.line{height:4px;margin-top:20px;background:linear-gradient(90deg,#e9bdd4,#c9c4ed,#b9dbea,#bbdec8,#f4dfad,#edc6b2)}h1{font-size:clamp(26px,4vw,38px);line-height:1.15;letter-spacing:-.04em;margin:24px 0 10px}p{margin:0;color:#5b625e;max-width:850px}nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:24px}a,select{font:inherit;color:inherit}nav a,select{min-height:48px;padding:10px 14px;border:1px solid #ccd1cb;background:white;border-radius:8px}nav a{text-decoration:none;display:inline-flex;align-items:center}nav label{display:flex;align-items:center;gap:12px}a:focus-visible,select:focus-visible{outline:3px solid #7551ad;outline-offset:3px}.receipt{font-size:14px;margin-top:16px}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px}article{min-width:0;background:white;border:1px solid #d8ddd7;border-radius:12px;overflow:hidden}h2{margin:0;font-size:19px}article .copy{padding:20px}article p{font-size:14px;margin-top:6px}.shot{background:#e9ece7;border-top:1px solid #d8ddd7;display:flex;justify-content:center;overflow:auto;padding:16px}.shot a{display:block;max-width:100%;min-height:44px}.shot img{display:block;width:100%;max-width:440px;height:auto;border:1px solid #c9cfc7}.desktop .gallery{grid-template-columns:1fr}.desktop .shot img{max-width:1440px}.note{margin-top:24px;padding-top:20px;border-top:1px solid #d8ddd7;font-size:14px}footer{max-width:1560px;margin:auto;padding:0 24px 32px;font-size:14px;color:#5b625e}@media(max-width:520px){header,main{padding:20px 16px}nav label{width:100%;justify-content:space-between}select{max-width:240px}.shot{padding:8px}}
+</style>
+</head>
+<body>
+<header>
+<div class="brand"><img src="/assets/fundhub-wordmark.svg" alt="Fundhub"><span>ASTRA · EXTRA HIGH</span></div><div class="line"></div>
+<h1>The CRM, customer portal and affiliate rollout</h1>
+<p>59 pages restyled: 31 staff, 25 customer, 3 affiliate/partner. These are captured local previews with fictional records—not production or real-device proof. Local phone reviews are complete for the stated fixtures; GitHub release checks are pending.</p>
+<nav aria-label="Preview controls"><label>View <select id="profile"><option value="promax">iPhone 17 Pro Max · WebKit</option><option value="phone390">Phone · 390px</option><option value="promax-landscape">Phone landscape · WebKit</option><option value="intermediate768">Intermediate · 768px</option><option value="intermediate1024">Intermediate · 1024px</option><option value="mac-webkit1280">Mac WebKit · 1280px</option><option value="desktop1440">Desktop · 1440px</option></select></label><a href="/comparison">Original one-page comparison</a><a href="https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/81" target="_blank" rel="noopener">Review on GitHub</a></nav>
+<p class="receipt" id="receipt">Loading capture details…</p>
+</header>
+<main><div class="gallery" id="gallery"></div><p class="note">Three specialist/redirect surfaces are deliberately unchanged: teleprompter, teleprompter remote and closer-call redirect. A screenshot does not prove payments, sends, role permissions or physical-device behavior.</p></main>
+<footer>Click a capture to view its full size. A red caption identifies the local fixture and browser profile.</footer>
+<script>
+const pages=[['teams','Team & Access','Roster, role access, consent and activity.'],['pipeline','Staff pipeline','Working queues, cards and next actions.'],['portal','Customer home','The client’s next step and file.'],['money','Customer money','Accounts, payments and credit tools.'],['affiliate','Affiliate dashboard','Referrals, earnings and existing next steps.']];
+const picker=document.getElementById('profile'),gallery=document.getElementById('gallery');
+let results=[];
+function render(){const profile=picker.value;document.body.classList.toggle('desktop',profile.includes('desktop')||profile.includes('1280'));gallery.replaceChildren();for(const[key,title,description]of pages){const article=document.createElement('article'),copy=document.createElement('div'),heading=document.createElement('h2'),text=document.createElement('p'),frame=document.createElement('div'),link=document.createElement('a'),img=document.createElement('img');copy.className='copy';heading.textContent=title;text.textContent=description;copy.append(heading,text);frame.className='shot';link.href='/__rollout/evidence/responsive/'+key+'-'+profile+'-MARKED.png';link.target='_blank';link.rel='noopener';img.src=link.href;img.alt=title+' captured in '+picker.selectedOptions[0].textContent;img.loading='lazy';link.append(img);frame.append(link);article.append(copy,frame);gallery.append(article)}const captures=results.filter(row=>row.profile===profile);document.getElementById('receipt').textContent=captures.length?'Initial-view checks for this profile: '+captures.filter(row=>row.passed).length+'/'+captures.length+' passed. Expanded forms and menus are checked separately.':'Capture details are pending.'}
+picker.addEventListener('change',render);render();fetch('/__rollout/evidence/responsive/results.json').then(r=>r.json()).then(data=>{results=data.results||[];render()}).catch(()=>{});
+</script>
+</body>
+</html>

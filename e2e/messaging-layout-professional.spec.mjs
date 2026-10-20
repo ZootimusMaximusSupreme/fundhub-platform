@@ -173,6 +173,52 @@ test('medium desktop opens and closes client details without shrinking three col
 
 test.describe('phone touch controls', () => {
   test.use({ hasTouch: true });
+  test('short landscape can scroll to a readable reply and Send, then return without sending', async ({ page }) => {
+    await page.setViewportSize({ width: 838, height: 390 });
+    const { sent } = await wire(page);
+    await page.goto('/app/messaging.html');
+    await page.locator('.convo').first().tap();
+    await expect(page.locator('#thread .msg')).toHaveCount(3);
+    const workspace = page.locator('.messaging-workspace');
+    const scroll = await workspace.evaluate(el => ({
+      overflow: getComputedStyle(el).overflowY,
+      touchAction: getComputedStyle(el).touchAction,
+      content: el.scrollHeight, visible: el.clientHeight,
+    }));
+    expect(['auto', 'scroll']).toContain(scroll.overflow);
+    expect(scroll.touchAction).not.toBe('none');
+    expect(scroll.content).toBeGreaterThan(scroll.visible);
+    expect((await page.locator('#thread').boundingBox()).height).toBeGreaterThan(90);
+    // Use an actual scroll gesture over the thread heading, not a scripted
+    // scrollIntoView that could conceal an overflow:hidden regression.
+    await page.locator('#thName').hover();
+    await page.mouse.wheel(0, 1000);
+    await expect.poll(() => workspace.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    await onScreen(page, '#composeBody');
+    await onScreen(page, '#sendBtn');
+    await page.locator('#composeBody').fill('Landscape draft stays editable.');
+    await expect(page.locator('#sendBtn')).toBeEnabled();
+    expect(await page.locator('#composeBody').evaluate(el => getComputedStyle(el).fontSize)).toBe('16px');
+    const send = await page.locator('#sendBtn').boundingBox();
+    expect(send.height).toBeGreaterThanOrEqual(44);
+    expect(await page.locator('#sendBtn').evaluate(el => {
+      const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return hit === el || el.contains(hit);
+    })).toBe(true);
+    await marked(page, 'after-838-landscape-reply.png', '.compose', 'Landscape: readable reply and reachable Send');
+    await page.locator('#sendBtn').hover();
+    await page.mouse.wheel(0, -1000);
+    await expect.poll(() => workspace.evaluate(el => el.scrollTop)).toBe(0);
+    await onScreen(page, '#backToInbox');
+    await page.locator('#openClientContext').tap();
+    await expect(page.locator('#ctxName')).toHaveText('Dana Whitfield');
+    await page.locator('#closeClientContext').tap();
+    await expect(page.locator('#composeBody')).toHaveValue('Landscape draft stays editable.');
+    await page.locator('#backToInbox').tap();
+    await expect(page.locator('.convo-col')).toBeVisible();
+    expect(sent).toEqual([]);
+    await noOverflow(page);
+  });
   test('a short phone can open a person, inspect details, return and type without overflow', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 740 }); await wire(page); await page.goto('/app/messaging.html'); await page.locator('.convo').first().tap(); await expect(page.locator('#composeTo')).toHaveValue('+15551234567');
     await page.locator('#openClientContext').tap(); await expect(page.locator('#ctxName')).toHaveText('Dana Whitfield'); await page.locator('#closeClientContext').tap(); await page.locator('#composeBody').tap(); await page.locator('#composeBody').fill('Your checklist is next.');

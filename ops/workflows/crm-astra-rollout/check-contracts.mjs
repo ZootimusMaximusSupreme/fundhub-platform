@@ -34,7 +34,17 @@ for(const file of pages){
  for(const id of new Set(beforeIDs))if(!afterIDs.includes(id))issues.push(`Original ID removed: ${id}`);
  const optedIn=/<body\b[^>]*class=["'][^"']*\bfh-astra\b/.test(after);
  const sharedStyle=/href=["']\/app\/fundhub-astra\.css["']/.test(after);
- results.push({file,changed:before!==after,optedIn,sharedStyle,originalScripts:a.length,currentScripts:b.length,baselineHash:hash(before),currentHash:hash(after),issues});
+ // Final cascade is part of the rollout contract, not just the presence of a
+ // stylesheet. Ignore HTML-looking strings inside original script bodies.
+ const markup=after.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"");
+ const styles=Array.from(markup.matchAll(/<style\b[^>]*>[\s\S]*?<\/style>|<link\b[^>]*>/gi))
+   .filter(match=>/^<style\b/i.test(match[0])||/\brel=["']stylesheet["']/i.test(match[0]));
+ const isAstra=tag=>/\bhref=["'][^"']*\/fundhub-astra(?:-staff|-client)?\.css["']/i.test(tag);
+ const firstAstra=styles.findIndex(match=>isAstra(match[0]));
+ const finalCascade=!optedIn||(firstAstra>=0&&styles.slice(firstAstra).every(match=>isAstra(match[0])));
+ if(optedIn&&!sharedStyle)issues.push("Astra opt-in is missing its shared stylesheet");
+ if(!finalCascade)issues.push("Astra styles load before later legacy styles");
+ results.push({file,changed:before!==after,optedIn,sharedStyle,finalCascade,originalScripts:a.length,currentScripts:b.length,baselineHash:hash(before),currentHash:hash(after),issues});
 }
 const report={checkedAt:new Date().toISOString(),base:BASE,total:results.length,changed:results.filter(page=>page.changed).length,optedIn:results.filter(page=>page.optedIn).length,unchanged:results.filter(page=>!page.changed).map(page=>page.file),contractIssues:results.filter(page=>page.issues.length),results};
 fs.writeFileSync(path.join(HERE,"source-contracts.json"),JSON.stringify(report,null,2)+"\n");

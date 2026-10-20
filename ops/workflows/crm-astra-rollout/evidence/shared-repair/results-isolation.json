@@ -1,0 +1,569 @@
+[
+  {
+    "key": "BEFORE-staff-teams-webkit-promax",
+    "engine": "webkit",
+    "target": "staff-teams",
+    "profile": "promax",
+    "baseline": true,
+    "errors": [],
+    "states": [
+      {
+        "state": "initial",
+        "width": 440,
+        "height": 763,
+        "pageWidth": 440,
+        "header": {
+          "id": "fh-workspace-header",
+          "cls": "fh-workspace-header",
+          "text": "Team & accessAll clientsView contextThis page shows its full workspace",
+          "x": 0,
+          "y": 0,
+          "w": 440,
+          "h": 68,
+          "font": 16,
+          "scrollWidth": 440,
+          "clientWidth": 440
+        },
+        "smallTargets": [],
+        "smallText": [],
+        "menu": {
+          "id": "",
+          "cls": "fh-account-menu",
+          "text": "+Jordan BlakeownerSign outTechnical detailsjordan@example.testArizona ",
+          "x": 146,
+          "y": 65.5,
+          "w": 280,
+          "h": 213,
+          "font": 13,
+          "scrollWidth": 278,
+          "clientWidth": 278
+        },
+        "controls": [
+          {
+            "id": "fh-menu-btn",
+            "cls": "fh-menu-btn",
+            "text": "",
+            "x": 9,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "",
+            "cls": "",
+            "text": "All clients",
+            "x": 63,
+            "y": 23,
+            "w": 69.890625,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 70,
+            "clientWidth": 70
+          },
+          {
+            "id": "fh-shell-search-btn",
+            "cls": "",
+            "text": "Search⌘K",
+            "x": 280,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-chat-fab",
+            "cls": "",
+            "text": "Chat",
+            "x": 331,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "fh-shell-chip-show",
+            "cls": "",
+            "text": "JBJordan",
+            "x": 382,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "account",
+        "width": 440,
+        "height": 763,
+        "pageWidth": 483,
+        "header": {
+          "id": "fh-workspace-header",
+          "cls": "fh-workspace-header",
+          "text": "Team & accessAll clientsView contextThis page shows its full workspace",
+          "x": 0,
+          "y": 0,
+          "w": 440,
+          "h": 68,
+          "font": 16,
+          "scrollWidth": 483,
+          "clientWidth": 440
+        },
+        "smallTargets": [],
+        "smallText": [
+          {
+            "id": "fh-shell-avatar",
+            "cls": "",
+            "text": "+",
+            "x": 165,
+            "y": 84.5,
+            "w": 44,
+            "h": 44,
+            "font": 11,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          }
+        ],
+        "menu": {
+          "id": "",
+          "cls": "fh-account-menu",
+          "text": "+Jordan BlakeownerSign outTechnical detailsjordan@example.testArizona ",
+          "x": 146,
+          "y": 65.5,
+          "w": 280,
+          "h": 213,
+          "font": 13,
+          "scrollWidth": 278,
+          "clientWidth": 278
+        },
+        "controls": [
+          {
+            "id": "fh-menu-btn",
+            "cls": "fh-menu-btn",
+            "text": "",
+            "x": 9,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "",
+            "cls": "",
+            "text": "All clients",
+            "x": 63,
+            "y": 23,
+            "w": 69.890625,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 70,
+            "clientWidth": 70
+          },
+          {
+            "id": "fh-shell-search-btn",
+            "cls": "",
+            "text": "Search⌘K",
+            "x": 280,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-chat-fab",
+            "cls": "",
+            "text": "Chat",
+            "x": 331,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "fh-shell-chip-show",
+            "cls": "",
+            "text": "JBJordan",
+            "x": 382,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "fh-shell-avatar",
+            "cls": "",
+            "text": "+",
+            "x": 165,
+            "y": 84.5,
+            "w": 44,
+            "h": 44,
+            "font": 11,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-shell-out",
+            "cls": "",
+            "text": "Sign out",
+            "x": 165,
+            "y": 157.5,
+            "w": 242,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 240,
+            "clientWidth": 240
+          },
+          {
+            "id": "",
+            "cls": "",
+            "text": "Technical details",
+            "x": 165,
+            "y": 215.5,
+            "w": 242,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 242,
+            "clientWidth": 242
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "technical",
+        "width": 440,
+        "height": 763,
+        "pageWidth": 483,
+        "header": {
+          "id": "fh-workspace-header",
+          "cls": "fh-workspace-header",
+          "text": "Team & accessAll clientsView contextThis page shows its full workspace",
+          "x": 0,
+          "y": 0,
+          "w": 440,
+          "h": 68,
+          "font": 16,
+          "scrollWidth": 483,
+          "clientWidth": 440
+        },
+        "smallTargets": [],
+        "smallText": [
+          {
+            "id": "fh-shell-avatar",
+            "cls": "",
+            "text": "+",
+            "x": 165,
+            "y": 84.5,
+            "w": 44,
+            "h": 44,
+            "font": 11,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-shell-src",
+            "cls": "",
+            "text": "LIVE",
+            "x": 165,
+            "y": 366.5,
+            "w": 38.421875,
+            "h": 21.390625,
+            "font": 11,
+            "scrollWidth": 38,
+            "clientWidth": 38
+          }
+        ],
+        "menu": {
+          "id": "",
+          "cls": "fh-account-menu",
+          "text": "+Jordan BlakeownerSign outTechnical detailsjordan@example.testArizona ",
+          "x": 146,
+          "y": 65.5,
+          "w": 280,
+          "h": 341.390625,
+          "font": 13,
+          "scrollWidth": 278,
+          "clientWidth": 278
+        },
+        "controls": [
+          {
+            "id": "fh-menu-btn",
+            "cls": "fh-menu-btn",
+            "text": "",
+            "x": 9,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "",
+            "cls": "",
+            "text": "All clients",
+            "x": 63,
+            "y": 23,
+            "w": 69.890625,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 70,
+            "clientWidth": 70
+          },
+          {
+            "id": "fh-shell-search-btn",
+            "cls": "",
+            "text": "Search⌘K",
+            "x": 280,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-chat-fab",
+            "cls": "",
+            "text": "Chat",
+            "x": 331,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "fh-shell-chip-show",
+            "cls": "",
+            "text": "JBJordan",
+            "x": 382,
+            "y": 11.5,
+            "w": 44,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 44,
+            "clientWidth": 44
+          },
+          {
+            "id": "fh-shell-avatar",
+            "cls": "",
+            "text": "+",
+            "x": 165,
+            "y": 84.5,
+            "w": 44,
+            "h": 44,
+            "font": 11,
+            "scrollWidth": 42,
+            "clientWidth": 42
+          },
+          {
+            "id": "fh-shell-out",
+            "cls": "",
+            "text": "Sign out",
+            "x": 165,
+            "y": 157.5,
+            "w": 242,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 240,
+            "clientWidth": 240
+          },
+          {
+            "id": "",
+            "cls": "",
+            "text": "Technical details",
+            "x": 165,
+            "y": 215.5,
+            "w": 242,
+            "h": 44,
+            "font": 13,
+            "scrollWidth": 242,
+            "clientWidth": 242
+          }
+        ],
+        "outside": []
+      }
+    ],
+    "footer": {
+      "reachable": true,
+      "menuBottom": 406.890625,
+      "viewport": 763,
+      "font": 11
+    },
+    "pickerIsolation": {
+      "width": 440,
+      "height": 763,
+      "pageWidth": 440,
+      "header": {
+        "id": "fh-workspace-header",
+        "cls": "fh-workspace-header",
+        "text": "Team & accessAll clientsView contextThis page shows its full workspace",
+        "x": 0,
+        "y": 0,
+        "w": 440,
+        "h": 68,
+        "font": 16,
+        "scrollWidth": 440,
+        "clientWidth": 440
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "id": "fh-shell-avatar",
+          "cls": "",
+          "text": "+",
+          "x": 165,
+          "y": 84.5,
+          "w": 44,
+          "h": 44,
+          "font": 11,
+          "scrollWidth": 42,
+          "clientWidth": 42
+        },
+        {
+          "id": "fh-shell-src",
+          "cls": "",
+          "text": "LIVE",
+          "x": 165,
+          "y": 366.5,
+          "w": 38.421875,
+          "h": 21.390625,
+          "font": 11,
+          "scrollWidth": 38,
+          "clientWidth": 38
+        }
+      ],
+      "menu": {
+        "id": "",
+        "cls": "fh-account-menu",
+        "text": "+Jordan BlakeownerSign outTechnical detailsjordan@example.testArizona ",
+        "x": 146,
+        "y": 65.5,
+        "w": 280,
+        "h": 341.390625,
+        "font": 13,
+        "scrollWidth": 278,
+        "clientWidth": 278
+      },
+      "controls": [
+        {
+          "id": "fh-menu-btn",
+          "cls": "fh-menu-btn",
+          "text": "",
+          "x": 9,
+          "y": 11.5,
+          "w": 44,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 44,
+          "clientWidth": 44
+        },
+        {
+          "id": "",
+          "cls": "",
+          "text": "All clients",
+          "x": 63,
+          "y": 23,
+          "w": 69.890625,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 70,
+          "clientWidth": 70
+        },
+        {
+          "id": "fh-shell-search-btn",
+          "cls": "",
+          "text": "Search⌘K",
+          "x": 280,
+          "y": 11.5,
+          "w": 44,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 42,
+          "clientWidth": 42
+        },
+        {
+          "id": "fh-chat-fab",
+          "cls": "",
+          "text": "Chat",
+          "x": 331,
+          "y": 11.5,
+          "w": 44,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 44,
+          "clientWidth": 44
+        },
+        {
+          "id": "fh-shell-chip-show",
+          "cls": "",
+          "text": "JBJordan",
+          "x": 382,
+          "y": 11.5,
+          "w": 44,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 44,
+          "clientWidth": 44
+        },
+        {
+          "id": "fh-shell-avatar",
+          "cls": "",
+          "text": "+",
+          "x": 165,
+          "y": 84.5,
+          "w": 44,
+          "h": 44,
+          "font": 11,
+          "scrollWidth": 42,
+          "clientWidth": 42
+        },
+        {
+          "id": "fh-shell-out",
+          "cls": "",
+          "text": "Sign out",
+          "x": 165,
+          "y": 157.5,
+          "w": 242,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 240,
+          "clientWidth": 240
+        },
+        {
+          "id": "",
+          "cls": "",
+          "text": "Technical details",
+          "x": 165,
+          "y": 215.5,
+          "w": 242,
+          "h": 44,
+          "font": 13,
+          "scrollWidth": 242,
+          "clientWidth": 242
+        }
+      ],
+      "outside": []
+    },
+    "passed": false
+  }
+]

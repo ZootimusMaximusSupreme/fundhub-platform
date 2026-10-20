@@ -274,7 +274,9 @@ test("full at 390: every dial in plain words, the video choices hidden, one Save
   const size = (sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontSize);
   expect(await size("#setSwitch h2")).toBe("22px");
   expect(await size('label[for="set-time"]')).toBe("13px");
-  expect(await size("#set-time")).toBe("15px");
+  // The owner's phone requirement raises inputs to 16px; retain the exact
+  // typography check rather than removing it for the redesign.
+  expect(await size("#set-time")).toBe("16px");
 
   await shot(page, "s01-switch-390.png", "Settings at 390: the weekly switch", [
     { selector: "#setSwitch .chip", caption: "Off by default, in words" },

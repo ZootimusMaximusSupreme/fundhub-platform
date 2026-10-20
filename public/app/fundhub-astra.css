@@ -66,6 +66,32 @@ body.fh-astra #fh-workspace-header :is(.fh-account-initials,.fh-account-role,.fh
 body.fh-astra #fh-workspace-header #fh-shell-search-btn .fh-k{font-size:var(--fs-caption)}
 body.fh-astra #fh-workspace-header .fh-account-technical summary,
 body.fh-astra #fh-workspace-scope .fh-context-panel :is(a,button){min-height:44px}
+/* Expanded account/context tools keep their contents inside the available view. */
+body.fh-astra #fh-workspace-header{height:auto;flex-basis:auto;flex-wrap:wrap}
+body.fh-astra #fh-workspace-header .fh-workspace-tools{
+  flex:0 1 auto;max-width:100%;flex-wrap:wrap;justify-content:flex-end;
+}
+body.fh-astra #fh-workspace-header .fh-account-menu,
+body.fh-astra #fh-workspace-scope .fh-context-panel{
+  max-height:calc(100dvh - 112px);overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
+}
+body.fh-astra #fh-workspace-header .fh-account-person>div{min-width:0}
+body.fh-astra #fh-workspace-header .fh-account-technical{white-space:normal;overflow-wrap:anywhere}
+body.fh-astra #fh-workspace-header .fh-account-person strong,
+body.fh-astra #fh-workspace-header .fh-account-technical p,
+body.fh-astra #fh-workspace-scope .fh-context-panel :is(p,strong){font-size:var(--fs-body)}
+body.fh-astra #fh-workspace-header :is(#fh-shell-src,.fh-account-technical .clock){font-size:var(--fs-caption)}
+/* The shell writes the photo button's symbol size inline; keep it readable. */
+body.fh-astra #fh-workspace-header #fh-shell-avatar{font-size:var(--fs-body)!important}
+/* This programmatic photo picker stays 1px, not a visible 44px form control. */
+body.fh-astra #fh-workspace-header #fh-shell-chip>input[type="file"]{
+  min-width:0;min-height:0;max-width:1px;inset:0 auto auto 0;overflow:hidden;clip-path:inset(50%);
+}
+@media(max-width:860px){
+  body.fh-astra #fh-workspace-header .fh-account-menu{
+    position:fixed;inset:104px 16px auto;max-width:none;width:auto;max-height:calc(100dvh - 120px);
+  }
+}
 body.fh-astra :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{
   outline:2px solid var(--ink);
   outline-offset:3px;
