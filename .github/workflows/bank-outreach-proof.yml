@@ -9,6 +9,25 @@ concurrency:
   group: bank-outreach-proof-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  site-network-diagnosis:
+    name: Read-only site network diagnosis (not a release verdict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Measure DNS, connections and response headers without changing release checks
+        run: |
+          node --test scripts/pulse/diagnose-site-http.test.mjs
+          node scripts/pulse/diagnose-site-http.mjs | tee site-network-diagnostic.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-network-diagnostic-${{ github.sha }}
+          path: site-network-diagnostic.jsonl
+          retention-days: 14
   outreach:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -74,6 +93,10 @@ jobs:
           src/pulse/catalog/proofs/s2-role-route-reach.test.mjs
           src/pulse/catalog/proofs/fin-b19-shell-chrome.test.mjs
           src/pulse/catalog/proofs/fin-b20-repair-sidebar.test.mjs
+      - name: Exact added display map and proof accounting
+        run: node --test --test-name-pattern='unmapped display rows|every display proof case' src/pulse/catalog/proofs/display-proof-cases.test.mjs
+      - name: Hiring funnel request and rendered-result synchronization
+        run: node --test --test-name-pattern='the funnel re-reads' src/pulse/catalog/proofs/fin-b13-hiring-page.test.mjs
       - name: Browser controls, roles and all four screen states
         run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs --reporter=line
       - name: Existing full scratch end-to-end harness
