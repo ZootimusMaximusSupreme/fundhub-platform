@@ -160,8 +160,11 @@ test("shared Blueprint facts include exact price, access, human advisor, proof s
   assert.equal(ctx.blueprint.human_advisor.name, "Alex Advisor");
   assert.equal(ctx.checklist.open_step.verify_kind, "dispute_mail_receipt");
   assert.equal(ctx.checklist.steps[0].state, "in_progress", "saved proof must not close a step in a read");
-  assert.match(ctx.as_prompt_block, /Human advisor: Alex Advisor/);
-  assert.match(ctx.as_prompt_block, /AI coach is separate/);
+  // Owner-set 2026-10-20: the CSM is the AI coaches plus the team queue. The
+  // model-facing block never carries a staff name it could repeat to a client.
+  assert.match(ctx.as_prompt_block, /Team follow-up: Fundhub team CSM queue \(a staff CSM is linked\)/);
+  assert.doesNotMatch(ctx.as_prompt_block, /Alex Advisor|Human advisor/);
+  assert.match(ctx.as_prompt_block, /Never name a person or promise a personal advisor/);
   assert.match(ctx.as_prompt_block, /A promise does not complete this step/);
   assert.match(ctx.as_prompt_block, /October mailing receipt/);
   assert.match(ctx.as_prompt_block, /Review mailing receipt/);
@@ -180,7 +183,8 @@ test("a demo, inactive or missing advisor is never presented as the assigned hum
   ]) {
     const ctx = await fetchContext(mockDb({ advisor }), { orgId: ORG, clientId: CLIENT });
     assert.equal(ctx.blueprint.human_advisor, null);
-    assert.doesNotMatch(ctx.as_prompt_block, /Human advisor: (Demo|Inactive) Person/);
+    assert.doesNotMatch(ctx.as_prompt_block, /(Demo|Inactive) Person|staff CSM is linked/);
+    assert.match(ctx.as_prompt_block, advisor ? /saved staff link is not an active real staff member/ : /Team follow-up: Fundhub team CSM queue\n/);
   }
 });
 

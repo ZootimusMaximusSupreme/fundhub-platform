@@ -1,17 +1,30 @@
-// Capital Blueprint — assign one CSM staff row per client on pay (when unset).
+// Capital Blueprint — the CSM role on pay.
 //
-// Round-robin: real active CSM with the fewest clients already assigned. If
-// none is available, preserve the assignment and create visible owner work.
+// OWNER DECISION (Chris, 2026-10-20): "There is no advisor; it's a CSM. There
+// are AI agents and a customer service management thing." "We don't need to
+// name somebody yet." So the touch-base CSM job is done by the AI coaches
+// (BP-COACH, BP-COACH-VOICE) plus the team CSM queue (tasks with
+// assignee_role 'csm'). A Blueprint buyer with no assigned staff person is the
+// NORMAL state: no person is picked and no owner task is raised for it.
+//
+// The round-robin picker stays for later. It runs only when
+// BLUEPRINT_CSM_AUTO_ASSIGN is true, and that flips only when Chris says a real
+// CSM is hired. A saved staff link that points at a demo, disabled or
+// other-company person is still a real break and still raises owner work.
 
 import { productCreatesChecklist } from "../waypoints/purchase.mjs";
 import { createTask } from "../lib/create-task.mjs";
 
 export const CSM_ASSIGNMENT_EXCEPTION_SOURCE = "blueprint-csm-assignment";
 
+/* Owner switch. false = the AI coaches plus the team CSM queue are the CSM.
+   Turn on only when Chris names a hired CSM (owner-set 2026-10-20). */
+export const BLUEPRINT_CSM_AUTO_ASSIGN = false;
+
 async function assignmentException(db, { orgId, clientId }) {
   const task = await createTask(db, {
     orgId, clientId,
-    title: "Assign a real advisor to this Blueprint client",
+    title: "Fix the staff link on this Blueprint client (saved person is not a working CSM)",
     sourceWorkflow: CSM_ASSIGNMENT_EXCEPTION_SOURCE,
     assigneeRole: "owner",
     eventId: `blueprint-csm-assignment:${clientId}`
@@ -55,12 +68,14 @@ export async function pickCsmStaffId(db, { orgId }) {
 }
 
 /**
- * Set clients.assigned_csm_staff_id when still NULL. Idempotent.
+ * Set clients.assigned_csm_staff_id when still NULL and the owner switch is on.
+ * Idempotent. With the switch off (the owner-set default) an unassigned buyer
+ * returns reason "ai_csm": the AI coaches and the team CSM queue cover them.
  *
  * @returns {Promise<{ assigned: boolean, staffId?: string, reason?: string }>}
  */
 export async function assignCsmForBlueprintPurchase(db, {
-  orgId, clientId, productCode
+  orgId, clientId, productCode, autoAssign = BLUEPRINT_CSM_AUTO_ASSIGN
 } = {}) {
   if (!productCreatesChecklist(productCode)) {
     return { assigned: false, reason: "not_blueprint_product" };
@@ -86,9 +101,10 @@ export async function assignCsmForBlueprintPurchase(db, {
       exceptionTask: await assignmentException(db, { orgId, clientId }) };
   }
 
+  // No person is a normal state, never an owner exception.
+  if (autoAssign !== true) return { assigned: false, reason: "ai_csm" };
   const staffId = await pickCsmStaffId(db, { orgId });
-  if (!staffId) return { assigned: false, reason: "no_active_csm",
-    exceptionTask: await assignmentException(db, { orgId, clientId }) };
+  if (!staffId) return { assigned: false, reason: "ai_csm" };
 
   const upd = await db.query(
     `UPDATE clients

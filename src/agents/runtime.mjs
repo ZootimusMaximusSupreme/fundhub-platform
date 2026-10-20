@@ -336,20 +336,20 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     let acknowledgement = action.message || "";
     if (action.ok && coachReply.action.type === "report_progress") {
       acknowledgement = coachReply.action.state === "blocked"
-        ? "Your blocker is saved. A follow-up task is saved for the advisor team."
+        ? "Your blocker is saved. The Fundhub team will follow up."
         : "Your progress note is saved.";
       if (sameOpenStep) acknowledgement += " The step is still open until completion is verified.";
     } else if (action.ok && coachReply.action.type === "verify_progress" && !action.verification?.completed?.length) {
       acknowledgement = "The checklist check found no new completion proof" + (sameOpenStep ? "; the step stays open." : ".");
     } else if (action.ok && coachReply.action.type === "request_advisor") {
-      acknowledgement = "A human advisor follow-up task is saved.";
+      acknowledgement = "Your request is saved. The Fundhub team will follow up.";
     }
     // Failed writes never inherit the model's claims of success. A partial
     // blocker write is reported honestly instead of pretending it vanished.
     replyBody = action.ok ? `${acknowledgement}\n${nextQuestion}`.trim()
       : action.reason === "blocker_saved_advisor_task_failed"
-        ? "Your blocker is saved, but the advisor follow-up could not be saved. Please contact your advisor."
-        : "Your request could not be saved. Please try again or contact your advisor.";
+        ? "Your blocker is saved, but the team follow-up could not be saved. Please contact the Fundhub team."
+        : "Your request could not be saved. Please try again or contact the Fundhub team.";
     const finalCheck = checkOutbound({ draft: replyBody, guardrails: agent.guardrails });
     if (!finalCheck.ok) return { ok: true, reason: finalCheck.reason, agent: agent.code, blocked: true };
   }
