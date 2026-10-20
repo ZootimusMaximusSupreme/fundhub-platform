@@ -25,8 +25,11 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
   let org;
   const MARK = "payrail";
   const STAFF = { id: "s1", name: "Finance Tester", email: "finance@example.com" };
-  const PERIOD_START = new Date("2026-01-01T00:00:00Z");
-  const PERIOD_END = new Date("2026-02-01T00:00:00Z");
+  /* April 2026, after payouts.pg.test.mjs's January period: that file's
+     buildPayoutRun sweeps every owed commission converted before 1 February,
+     so these fixtures sit after it and the two files never take each other's. */
+  const PERIOD_START = new Date("2026-04-01T00:00:00Z");
+  const PERIOD_END = new Date("2026-05-01T00:00:00Z");
 
   const mkAffiliate = async (n, { license = true, tax = true, demo = false } = {}) => (await db.query(
     `INSERT INTO affiliates (org_id, name, status, partner_license_signed_at, tax_form_received_at, is_demo)
@@ -38,11 +41,11 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
     `INSERT INTO clients (org_id, first_name, last_name, email) VALUES ($1,'Rail',$2,$3) RETURNING id`,
     [org, n, `${MARK}.${n}@example.com`])).rows[0].id;
 
-  const owe = async (affiliateId, n, amount, convertedAt = new Date("2026-01-15T12:00:00Z")) => (await db.query(
+  const owe = async (affiliateId, n, amount, convertedAt = new Date("2026-04-15T12:00:00Z")) => (await db.query(
     `INSERT INTO affiliate_referrals
        (org_id, affiliate_id, client_id, tier, status, attributed_at, converted_at, commission_due, basis_amount)
      VALUES ($1,$2,$3,'direct','converted',$4,$5,$6,1000) RETURNING id`,
-    [org, affiliateId, await mkClient(n), new Date("2026-01-02T00:00:00Z"), convertedAt, amount])).rows[0].id;
+    [org, affiliateId, await mkClient(n), new Date("2026-04-02T00:00:00Z"), convertedAt, amount])).rows[0].id;
 
   /* A run built the way buildPayoutRun builds one: open, then lined. */
   const mkRun = async (affiliateId, referralIds, { status = "pending", holdReason = null, start = PERIOD_START, end = PERIOD_END } = {}) => {
@@ -110,11 +113,11 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
 
   // ── the due day ───────────────────────────────────────────────────────────
 
-  test("a new run gets its due day: the 15th of the month after the month earned", async () => {
+  test("a run written without a due day gets the default: the 15th of the month after", async () => {
     const a = await mkAffiliate("due");
     const id = await mkRun(a, [await owe(a, "d1", 100)]);
     const p = await payout(id);
-    assert.equal(p.due_on.toISOString().slice(0, 10), "2026-02-15");
+    assert.equal(p.due_on.toISOString().slice(0, 10), "2026-05-15");
   });
 
   // ── paid by hand ─────────────────────────────────────────────────────────
@@ -168,6 +171,10 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
     const id = await mkRun(a, [await owe(a, "tr1", 200)], { status: "held", holdReason: "tax_form_missing" });
     const early = await releasePayout(db, { orgId: org, payoutId: id, staff: STAFF });
     assert.equal(early.error, "tax_form_missing", "release is refused while the gate is shut");
+    // The bank is linked first; the run stays held because the tax form is still missing.
+    const link = await completeAffiliateBankLink(db, { orgId: org, affiliateId: a, publicToken: "p", plaid: fakePlaid("sandbox") });
+    assert.equal(link.released, 0);
+    assert.equal((await payout(id)).hold_reason, "tax_form_missing");
 
     const r = await recordTaxForm(db, { orgId: org, affiliateId: a, ref: "doc:w9-123", staff: STAFF });
     assert.equal(r.ok, true);
@@ -308,7 +315,7 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
     const a = await mkAffiliate("view");
     await mkRun(a, [await owe(a, "vw1", 80)]);
     await completeAffiliateBankLink(db, { orgId: org, affiliateId: a, publicToken: "p", plaid: fakePlaid("sandbox") });
-    const v = await payoutsView(db, { orgId: org, now: new Date("2026-03-01T00:00:00Z"), env: {} });
+    const v = await payoutsView(db, { orgId: org, now: new Date("2026-06-01T00:00:00Z"), env: {} });
     const mine = v.payouts.find((p) => p.affiliate.id === a);
     assert.ok(mine);
     assert.equal(mine.overdue, true);
@@ -319,7 +326,7 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
   // ── the tripwire, on real rows ───────────────────────────────────────────
 
   test("tripwire: an earned commission past its due day and not paid turns the pulse red, and paying it turns it green", async () => {
-    const now = new Date("2026-03-01T12:00:00Z");
+    const now = new Date("2026-06-01T12:00:00Z");
     const a = await mkAffiliate("trip");
     const id = await mkRun(a, [await owe(a, "tp1", 260)]);
 
@@ -387,9 +394,9 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
   });
 
   test("tripwire: owed money with no payout record at all after the due day turns the pulse red", async () => {
-    const now = new Date("2026-03-20T12:00:00Z");
+    const now = new Date("2026-06-20T12:00:00Z");
     const a = await mkAffiliate("norun");
-    await owe(a, "nr1", 333.33, new Date("2026-02-10T00:00:00Z"));
+    await owe(a, "nr1", 333.33, new Date("2026-05-10T00:00:00Z"));
     const row = (await gapChecks({ db, orgId: org, now, routes: { "public/affiliate-click": true, "auth/login": true },
       startHtml: '<script>fetch("/api/public/affiliate-click")</script>', loginHandlesPartners: true }))
       .find((r) => r.id === "partners:payout-overdue");
