@@ -36,6 +36,7 @@ describe("success fee on confirmed approvals (pg)",
   { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => {
   let orgId;
   let productId;
+  let staff;
 
   async function wipe() {
     const clients = (await db.query(
@@ -142,6 +143,14 @@ describe("success fee on confirmed approvals (pg)",
       `SELECT id FROM products WHERE org_id = $1 AND code = 'card-stacking-dfy' LIMIT 1`, [orgId]
     )).rows[0]?.id;
     assert.ok(productId, "card-stacking-dfy product must exist");
+    // "Doesn't count" is saved against a real staff member (migration 492).
+    await db.query(`DELETE FROM staff WHERE email LIKE $1`, [`${MARK}%`]).catch(() => {});
+    const staffId = (await db.query(
+      `INSERT INTO staff (org_id, email, name, role, status)
+       VALUES ($1, $2, 'Funding Advisor', 'funding_advisor', 'active') RETURNING id`,
+      [orgId, `${MARK}.advisor@example.com`]
+    )).rows[0].id;
+    staff = { id: staffId, name: "Funding Advisor" };
     for (const [key, channel, body] of [
       [F07_EMAIL, "email", "Locked email"], [F07_SMS, "sms", "Locked sms"]
     ]) {
@@ -153,7 +162,12 @@ describe("success fee on confirmed approvals (pg)",
     }
   });
 
-  after(async () => { await wipe(); await close(); clearHandlers(); });
+  after(async () => {
+    await wipe();
+    await db.query(`DELETE FROM staff WHERE email LIKE $1`, [`${MARK}%`]).catch(() => {});
+    await close();
+    clearHandlers();
+  });
 
   test("a funded round with confirmed approvals is billed 10% of the confirmed total", async () => {
     const clientId = await makeClient("happy", 10);
@@ -253,7 +267,7 @@ describe("success fee on confirmed approvals (pg)",
     for (const appId of [a, b]) {
       await setApprovalExclusion(db, {
         orgId, applicationId: appId, excluded: true,
-        reason: "Never used", staff: { name: "Funding Advisor" }
+        reason: "Never used", staff
       });
     }
 

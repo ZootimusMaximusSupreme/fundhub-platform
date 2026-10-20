@@ -305,7 +305,7 @@ describe("funded move blocks on an approval with no amount (pg)", { skip: !HAS_D
     const appId = await addApproval(roundId, clientId, "Barclays", null);
 
     await setApprovalExclusion(db, { orgId, applicationId: appId, excluded: true, reason: "Withdrawn", staff });
-    await setApprovalExclusion(db, { orgId, applicationId: appId, excluded: false, staff });
+    await setApprovalExclusion(db, { orgId, applicationId: appId, excluded: false, reason: "Client used it after all", staff });
 
     const row = (await db.query(
       `SELECT approval_excluded_at, approval_excluded_by, approval_exclusion_reason

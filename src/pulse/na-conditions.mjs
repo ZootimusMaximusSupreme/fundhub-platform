@@ -33,6 +33,8 @@ import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
 import { hasWork, readWaitingWork, workerKinds } from "../marketing/clock.mjs";
 import { netlifyRegistry } from "../marketing/ai-runner.mjs";
 import { JOB_KINDS } from "../marketing/job-kinds.mjs";
+import { countRealFunding, countRealWatchedClients, isFundingRoundRow } from "./real-funding.mjs";
+import { CLIENT_TAGS } from "../workflows/dpc-05-no-progress-escalation.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -366,6 +368,57 @@ export const NA_CONDITIONS = Object.freeze({
       return hasWork(work)
         ? { held: false, found: "Work is waiting for the marketing worker." }
         : { held: true, found: "" };
+    }
+  }),
+
+  /* No real funding work (owner fact 2026-10-20: "There are zero funding rounds"). True while the
+     company has no real funding round, no real card-stacking round receipt and no real bank decision.
+     Real means not marked demo and not on a demo client (src/pulse/real-funding.mjs). Only the funding
+     stall rows and the round and lender-row display rows may carry it. The day one real round, receipt
+     or decision is saved, the claim fails and the row is judged by name. */
+  "no-real-funding-round": core({
+    say() {
+      return "No real funding round exists yet. Judged the day one is saved.";
+    },
+    claim() {
+      return "There is no real funding round, round receipt or bank decision.";
+    },
+    problem(args) {
+      return isText(args.orgId) ? null : "orgId is missing";
+    },
+    rowProblem(row) {
+      return isFundingRoundRow(row?.id) ? null : "A no-real-funding-round reason only fits a funding round row.";
+    },
+    async look(args, ctx) {
+      const seen = await countRealFunding((text, params) => readRows(ctx, text, params), args.orgId);
+      if (seen.total === 0) return { held: true, found: "" };
+      return {
+        held: false,
+        found: `Real funding work exists: ${seen.rounds} rounds, ${seen.receipts} round receipts, ${seen.decisions} bank decisions.`
+      };
+    }
+  }),
+
+  /* No real client on the 72-hour no-progress watch. True while no client outside demo carries a
+     DPC-05 client tag. Only the pipeline:clients row may carry it. */
+  "no-real-client-on-watch": core({
+    say() {
+      return "No real client is on the 72-hour watch yet. Judged the day one is.";
+    },
+    claim() {
+      return "No real client carries a funding or repair client tag.";
+    },
+    problem(args) {
+      return isText(args.orgId) ? null : "orgId is missing";
+    },
+    rowProblem(row) {
+      return row?.id === "pipeline:clients" ? null : "A no-real-client-on-watch reason only fits the pipeline:clients row.";
+    },
+    async look(args, ctx) {
+      const n = await countRealWatchedClients((text, params) => readRows(ctx, text, params), args.orgId, CLIENT_TAGS);
+      return n === 0
+        ? { held: true, found: "" }
+        : { held: false, found: `${n} real client${n === 1 ? " is" : "s are"} on the 72-hour watch.` };
     }
   }),
 

@@ -52,6 +52,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
   let clientId;
   let lenderA;
   let lenderB;
+  let staff;
 
   async function wipe() {
     const clients = (await db.query(
@@ -76,6 +77,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       await db.query(`DELETE FROM clients WHERE id = ANY($1)`, [clients]);
     }
     await db.query(`DELETE FROM lenders WHERE external_row_id LIKE $1`, [`${MARK}%`]).catch(() => {});
+    await db.query(`DELETE FROM staff WHERE email LIKE $1`, [`${MARK}%`]).catch(() => {});
   }
 
   before(async () => {
@@ -85,6 +87,14 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
     clearHandlers();
     orgId = await resolveDefaultOrg(db);
     await wipe();
+
+    // Every bank answer is saved against a real staff member (migration 492).
+    const staffId = (await db.query(
+      `INSERT INTO staff (org_id, email, name, role, status)
+       VALUES ($1, $2, 'Funding Advisor', 'funding_advisor', 'active') RETURNING id`,
+      [orgId, `${MARK}.advisor@example.com`]
+    )).rows[0].id;
+    staff = { id: staffId, name: "Funding Advisor" };
 
     clientId = (await db.query(
       `INSERT INTO clients (org_id, email, first_name, last_name, outcome_tier)
@@ -137,7 +147,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       lenderId: lenderA,
       status: "Approved",
       playName: "Card stacking first pull",
-      staff: { name: "Funding Advisor" }
+      staff
     });
 
     assert.equal(app.status, "Approved", "the approval itself is recorded");
@@ -216,7 +226,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       lenderId: lenderA,
       status: "Approved",
       approvedAmount: "$45,000",
-      staff: { name: "Funding Advisor" }
+      staff
     });
 
     assert.equal(filled.id, before[0].id, "the same approval, not a second one");
@@ -238,7 +248,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       clientId,
       lenderId: lenderB,
       status: "Approved",
-      staff: { name: "Funding Advisor" }
+      staff
     });
 
     /* SINCE 2026-08-30 THAT SECOND APPROVAL BLOCKS THE ROUND. It would never be
@@ -259,7 +269,7 @@ describe("approval now, amount later (pg)", { skip: !HAS_DB ? "no DATABASE_URL" 
       applicationId: unpriced.id,
       excluded: true,
       reason: "Bank never told us the limit and the client did not use it",
-      staff: { name: "Funding Advisor" }
+      staff
     });
 
     const move = await moveCardToStage(db, {

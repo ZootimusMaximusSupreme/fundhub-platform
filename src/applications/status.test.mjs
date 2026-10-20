@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { setApplicationStatus, logBankDecision, listClientDecisionPlays, ApplicationStatusError } from "./status.mjs";
+import { setApplicationStatus, logBankDecision, listClientDecisionPlays, setApprovalExclusion, ApplicationStatusError } from "./status.mjs";
+
+// The signed-in staff member who presses Bank yes / Bank no / Doesn't count. A bank answer is
+// saved against this exact person (application_decisions.staff_id, migration 492).
+const STAFF = { id: "55555555-5555-4555-8555-555555555555", name: "Advisor" };
+const ROUND_NOW = "66666666-6666-4666-8666-666666666666";
 
 function stubDb(row) {
   const calls = [];
@@ -71,6 +76,7 @@ test("logBankDecision reuses an existing application for the lender", async () =
     calls: [],
     async query(sql, params) {
       this.calls.push({ sql, params });
+      if (/FROM funding_rounds/i.test(sql)) return { rows: [{ id: ROUND_NOW }] };
       if (/FROM applications/i.test(sql) && /lender_id/i.test(sql)) {
         return { rows: [{ id: "app-existing" }] };
       }
@@ -89,7 +95,7 @@ test("logBankDecision reuses an existing application for the lender", async () =
     lenderId: "44444444-4444-4444-8444-444444444444",
     status: "Approved",
     playName: "In-branch visit",
-    staff: { name: "Advisor" }
+    staff: STAFF
   });
   assert.equal(row.id, "app-existing");
   const decision = db.calls.find((c) => /INSERT INTO application_decisions/i.test(c.sql));
@@ -137,6 +143,7 @@ function bankDecisionDb() {
     calls,
     async query(sql, params) {
       calls.push({ sql, params });
+      if (/FROM funding_rounds/i.test(sql)) return { rows: [{ id: ROUND_NOW }] };
       if (/SELECT id FROM applications/i.test(sql)) {
         return { rows: [{ id: "app-existing" }] };
       }
@@ -160,7 +167,7 @@ test("logBankDecision writes approved_amount as fixed 2dp dollars", async () => 
   const db = bankDecisionDb();
   await logBankDecision(db, {
     orgId: ORG, clientId: CLIENT, lenderId: LENDER,
-    status: "Approved",
+    status: "Approved", staff: STAFF,
     approvedAmount: "$45,000"
   });
   const up = updateCall(db);
@@ -174,7 +181,7 @@ test("logBankDecision round-trips cents without float drift", async () => {
   const db = bankDecisionDb();
   await logBankDecision(db, {
     orgId: ORG, clientId: CLIENT, lenderId: LENDER,
-    status: "Approved",
+    status: "Approved", staff: STAFF,
     approvedAmount: "450.10"
   });
   assert.ok(updateCall(db).params.includes("450.10"));
@@ -185,7 +192,7 @@ test("a missing approved amount does not touch the column at all", async () => {
     const db = bankDecisionDb();
     await logBankDecision(db, {
       orgId: ORG, clientId: CLIENT, lenderId: LENDER,
-      status: "Approved",
+      status: "Approved", staff: STAFF,
       approvedAmount: missing
     });
     const up = updateCall(db);
@@ -206,7 +213,7 @@ test("logBankDecision refuses an amount that is not a real amount", async () => 
     await assert.rejects(
       () => logBankDecision(db, {
         orgId: ORG, clientId: CLIENT, lenderId: LENDER,
-        status: "Approved",
+        status: "Approved", staff: STAFF,
         approvedAmount: bad
       }),
       (err) => err instanceof ApplicationStatusError && err.code === "invalid_approved_amount",
@@ -220,7 +227,112 @@ test("a denial ignores any amount and writes no approved_amount", async () => {
   const db = bankDecisionDb();
   await logBankDecision(db, {
     orgId: ORG, clientId: CLIENT, lenderId: LENDER,
-    status: "Denied"
+    status: "Denied", staff: STAFF
   });
   assert.ok(!/approved_amount/.test(updateCall(db).sql));
+});
+
+/* ── Set A 2026-10-20, items 17-20 ──────────────────────────────────────────── */
+
+test("a bank answer names the exact staff member who pressed it, by id and name", async () => {
+  const db = bankDecisionDb();
+  await logBankDecision(db, { orgId: ORG, clientId: CLIENT, lenderId: LENDER, status: "Approved", staff: STAFF, approvedAmount: "5000" });
+  const decision = db.calls.find((c) => /INSERT INTO application_decisions/i.test(c.sql));
+  assert.equal(decision.params[1], "app-existing", "the decision names the exact application");
+  assert.equal(decision.params[2], "bank_decision");
+  assert.equal(decision.params[5], "Advisor");
+  assert.equal(decision.params[8], STAFF.id);
+});
+
+test("a bank answer with no signed-in staff member is refused before anything is written", async () => {
+  for (const staff of [null, { name: "Advisor" }, { id: "not-a-uuid", name: "Advisor" }]) {
+    const db = bankDecisionDb();
+    await assert.rejects(
+      () => logBankDecision(db, { orgId: ORG, clientId: CLIENT, lenderId: LENDER, status: "Approved", staff, approvedAmount: "5000" }),
+      (err) => err instanceof ApplicationStatusError && err.code === "staff_required"
+    );
+    assert.equal(db.calls.length, 0, "nothing may be written without the person");
+  }
+});
+
+test("a bank answer saves on the application of the client's CURRENT round, never an older round", async () => {
+  const db = bankDecisionDb();
+  await logBankDecision(db, { orgId: ORG, clientId: CLIENT, lenderId: LENDER, status: "Approved", staff: STAFF, approvedAmount: "7500" });
+  const lookup = db.calls.find((c) => /SELECT id FROM applications/i.test(c.sql));
+  assert.match(lookup.sql, /funding_round_id = \$4::uuid/, "the lookup is scoped to one round");
+  assert.equal(lookup.params[3], ROUND_NOW);
+  const round = db.calls.find((c) => /FROM funding_rounds/i.test(c.sql));
+  assert.match(round.sql, /ORDER BY round_number DESC/);
+});
+
+test("a bank answer on a new round makes a new application on that round", async () => {
+  const calls = [];
+  const db = {
+    calls,
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/FROM funding_rounds/i.test(sql)) return { rows: [{ id: ROUND_NOW }] };
+      if (/SELECT id FROM applications/i.test(sql)) return { rows: [] };
+      if (/FROM lenders/i.test(sql)) return { rows: [{ id: LENDER, name: "Bank", lender_table: null }] };
+      if (/INSERT INTO applications/i.test(sql)) return { rows: [{ id: "app-new" }] };
+      if (/UPDATE applications/i.test(sql) && /RETURNING/i.test(sql)) return { rows: [{ id: "app-new", status: params[2], lender_table: null }] };
+      return { rows: [] };
+    }
+  };
+  await logBankDecision(db, { orgId: ORG, clientId: CLIENT, lenderId: LENDER, status: "Approved", staff: STAFF, approvedAmount: "7500" });
+  const made = calls.find((c) => /INSERT INTO applications/i.test(c.sql));
+  assert.equal(made.params[1], ROUND_NOW, "the new application sits on the current round");
+  const up = calls.find((c) => /UPDATE applications/i.test(c.sql) && /RETURNING/i.test(c.sql));
+  assert.equal(up.params[1], "app-new");
+  assert.ok(up.params.includes("7500.00"));
+});
+
+function exclusionDb() {
+  const calls = [];
+  return {
+    calls,
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/SELECT id, status, approval_excluded_at/i.test(sql)) return { rows: [{ id: "app-1", status: "Approved", approval_excluded_at: null }] };
+      if (/UPDATE applications/i.test(sql) && /RETURNING/i.test(sql)) return { rows: [{ id: "app-1", status: "Approved", lender_table: null, funding_round_id: null }] };
+      return { rows: [] };
+    }
+  };
+}
+
+test("Doesn't count and Count again keep the application, the person, the time and the typed reason", async () => {
+  for (const excluded of [true, false]) {
+    const db = exclusionDb();
+    await setApprovalExclusion(db, { orgId: ORG, applicationId: "app-1", excluded, reason: "  client never used it  ", staff: STAFF });
+    const decision = db.calls.find((c) => /INSERT INTO application_decisions/i.test(c.sql));
+    assert.match(decision.sql, /decided_at/);
+    assert.match(decision.sql, /now\(\)/);
+    assert.equal(decision.params[1], "app-1");
+    assert.equal(decision.params[2], excluded ? "approval_excluded" : "approval_reinstated");
+    assert.equal(decision.params[4], "Advisor");
+    assert.equal(decision.params[5], "client never used it");
+    assert.equal(decision.params[6], STAFF.id);
+  }
+});
+
+test("Doesn't count and Count again with no reason change nothing", async () => {
+  for (const excluded of [true, false]) {
+    for (const reason of [null, "", "   "]) {
+      const db = exclusionDb();
+      await assert.rejects(
+        () => setApprovalExclusion(db, { orgId: ORG, applicationId: "app-1", excluded, reason, staff: STAFF }),
+        (err) => err instanceof ApplicationStatusError && err.code === "reason_required"
+      );
+      assert.equal(db.calls.length, 0, "no filler reason is ever saved");
+    }
+  }
+});
+
+test("Doesn't count with no signed-in staff member changes nothing", async () => {
+  const db = exclusionDb();
+  await assert.rejects(
+    () => setApprovalExclusion(db, { orgId: ORG, applicationId: "app-1", excluded: true, reason: "withdrawn", staff: { name: "Advisor" } }),
+    (err) => err instanceof ApplicationStatusError && err.code === "staff_required"
+  );
+  assert.equal(db.calls.length, 0);
 });

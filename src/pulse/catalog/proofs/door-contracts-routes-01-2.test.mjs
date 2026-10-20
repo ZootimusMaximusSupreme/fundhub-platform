@@ -35,6 +35,9 @@ const APP_ID = "a1000000-0000-4000-8000-000000000001";
 const LENDER_ID = "1e000000-0000-4000-8000-000000000001";
 const ENTITY_ID = "e1000000-0000-4000-8000-000000000001";
 const ACCOUNT_ID = "ba000000-0000-4000-8000-000000000001";
+// The staff member on the session (testing/handler-harness.mjs staffSession) and the client's current round.
+const STAFF_ID = "5a000000-0000-4000-8000-000000000001";
+const ROUND_ID = "f0000000-0000-4000-8000-000000000001";
 
 async function invoke(handler, request, database, deps = {}) {
   const response = makeRes();
@@ -137,10 +140,12 @@ async function proveApplicationsWrite() {
     "Olive Owner",
     "Bank said yes",
     null,
+    STAFF_ID,
   ]);
 
   const decisionDb = fakeDb([
     staffSession(),
+    [/SELECT id FROM funding_rounds[\s\S]*ORDER BY round_number DESC/, [{ id: ROUND_ID }]],
     [/SELECT id FROM applications[\s\S]*client_id = \$2/, [{ id: APP_ID }]],
     [/UPDATE applications[\s\S]*status = \$3/, [appRow()]],
     [/INSERT INTO application_decisions/, []],
@@ -160,11 +165,18 @@ async function proveApplicationsWrite() {
   );
   assert.equal(decisionResult.response.statusCode, 200);
   assert.deepEqual(decisionResult.response.body, { ok: true, application: appRow() });
+  // The answer lands on the application of the client's CURRENT round, never an older round's.
   assert.deepEqual(decisionDb.find(/SELECT id FROM applications[\s\S]*client_id = \$2/)[0].params, [
     ORG_ID,
     CLIENT_ID,
     LENDER_ID,
+    ROUND_ID,
   ]);
+  const bankDecision = decisionDb.find(/INSERT INTO application_decisions/)[0].params;
+  assert.equal(bankDecision[1], APP_ID, "the decision names the exact application");
+  assert.equal(bankDecision[2], "bank_decision");
+  assert.equal(bankDecision[5], "Olive Owner");
+  assert.equal(bankDecision[8], STAFF_ID, "the decision names the staff member who pressed it");
   const bankUpdate = decisionDb.find(/UPDATE applications[\s\S]*status = \$3/)[0];
   assert.deepEqual(bankUpdate.params, [ORG_ID, APP_ID, "Approved", "45000.50"]);
   assert.match(bankUpdate.sql, /approved_amount = \$4/);
@@ -222,7 +234,12 @@ async function proveApplicationExclusion() {
     "Olive Owner",
     "Client did not accept it",
   ]);
-  assert.equal(excludeDb.find(/INSERT INTO application_decisions/)[0].params[2], "approval_excluded");
+  const excludeRow = excludeDb.find(/INSERT INTO application_decisions/)[0].params;
+  assert.equal(excludeRow[1], APP_ID);
+  assert.equal(excludeRow[2], "approval_excluded");
+  assert.equal(excludeRow[4], "Olive Owner");
+  assert.equal(excludeRow[5], "Client did not accept it");
+  assert.equal(excludeRow[6], STAFF_ID);
 
   const reinstated = appRow();
   const reinstateDb = fakeDb([
@@ -233,13 +250,27 @@ async function proveApplicationExclusion() {
   ]);
   const reinstate = await invoke(
     applicationsHandler,
-    req("POST", { body: { action: "reinstate_approval", application_id: APP_ID } }),
+    req("POST", { body: { action: "reinstate_approval", application_id: APP_ID, reason: "Client used the card after all" } }),
     reinstateDb,
   );
   assert.equal(reinstate.response.statusCode, 200);
   assert.deepEqual(reinstate.response.body, { ok: true, application: reinstated });
   assert.deepEqual(reinstateDb.find(/approval_excluded_at = NULL/)[0].params, [ORG_ID, APP_ID]);
-  assert.equal(reinstateDb.find(/INSERT INTO application_decisions/)[0].params[2], "approval_reinstated");
+  const reinstateRow = reinstateDb.find(/INSERT INTO application_decisions/)[0].params;
+  assert.equal(reinstateRow[2], "approval_reinstated");
+  assert.equal(reinstateRow[5], "Client used the card after all");
+  assert.equal(reinstateRow[6], STAFF_ID);
+
+  // Count again with no reason changes nothing.
+  const blankDb = fakeDb([staffSession()]);
+  const blank = await invoke(
+    applicationsHandler,
+    req("POST", { body: { action: "reinstate_approval", application_id: APP_ID } }),
+    blankDb,
+  );
+  assert.equal(blank.response.statusCode, 400);
+  assert.equal(blank.response.body.error, "reason_required");
+  assert.equal(blankDb.find(/UPDATE applications|INSERT INTO application_decisions/).length, 0);
 }
 
 const ENTITY_ROWS = [
