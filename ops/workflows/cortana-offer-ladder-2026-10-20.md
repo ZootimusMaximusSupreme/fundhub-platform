@@ -309,8 +309,9 @@ reconciliation rail do not exist in this repo yet.
   a working Fundhub API/webhook integration.
 - Checkout Links is empty. Developer shows **0 API keys, 0 apps, and 0
   webhooks**. No production API call or signed callback can work until a
-  Fundhub-owned key and webhook are created; no live setting was changed in
-  this workflow.
+  Fundhub-owned key and webhook are created. No payment, plan, key, webhook, or
+  checkout setting was changed; the only live change was the approved product
+  title rename above.
 
 ### Confirmed repo facts
 
