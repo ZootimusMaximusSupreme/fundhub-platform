@@ -25,6 +25,18 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — bureau-config:complete — pulse_false_alarm
+- Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
+- Fix: the check reads what the caller really dials (src/inquiry-ops/bureau-dial-plan.mjs). Red only when neither the script nor the table has a number and a menu.
+- Guard added: src/inquiry-ops/bureau-dial-plan.test.mjs, src/pulse/coverage/gap-records.test.mjs (script plan PASS and FAIL).
+- Incident: none (morning row, not an hourly beat)  PR: none yet
+
+## 2026-10-20 — meta-sync, meta-server-events, Lendflow contract, AI bureau call job — pulse_false_alarm
+- Cause: owner answers B6 and B8. Meta ad sync and AI bureau calling are future features, and Lendflow is paused. Their rows stayed red every day for features nobody uses yet.
+- Fix: not turned off. Each row's real check still runs. It says "nothing to judge" only while src/pulse/parked-features.mjs reads, through the staff view, that the feature is still not in use (codes feature-not-set-up and owner-paused). The day it is in use, the real red is back.
+- Guard added: src/pulse/parked-features.test.mjs, src/pulse/na-conditions.test.mjs
+- Incident: none (morning rows, not hourly beats)  PR: none yet
+
 ## 2026-10-12 — full catalog ship proof — timeout_or_capacity
 - Cause: the full catalog added 1,762 honest red findings. The proof printed every red line, which overflowed the GitHub ship log. A dead old live site also made the rotating CRM file check take 45 seconds.
 - Fix: the proof prints the first 80 findings plus the remaining count. Live red and not-checked results stay in the scorecard but do not pretend the proof engine crashed. CRM file reads stop after two seconds, and the 51-logo sample runs in batches of 20 so a slow GitHub network still leaves room for the rest of the lane.

@@ -33,6 +33,7 @@ import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
 import { hasWork, readWaitingWork, workerKinds } from "../marketing/clock.mjs";
 import { netlifyRegistry } from "../marketing/ai-runner.mjs";
 import { JOB_KINDS } from "../marketing/job-kinds.mjs";
+import { parkedFeature, parkedState, parksRow } from "./parked-features.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -366,6 +367,55 @@ export const NA_CONDITIONS = Object.freeze({
       return hasWork(work)
         ? { held: false, found: "Work is waiting for the marketing worker." }
         : { held: true, found: "" };
+    }
+  }),
+
+  /* A future feature the owner has not set up yet (owner answer B6, 2026-10-20: Meta ad
+     sync and AI bureau calling). True while src/pulse/parked-features.mjs reads, through
+     the staff view, that the feature is still not in use. The row must be one that
+     feature parks, so the claim cannot be copied onto another row. The day the feature
+     is in use the claim is false and the row is "not checked", which is red. */
+  "feature-not-set-up": core({
+    say(args = {}) {
+      const what = parkedFeature(args.feature)?.what || "This feature";
+      return `${what} is a future feature the owner has not set up. Judged the day it is in use.`;
+    },
+    claim(args = {}) {
+      return `${parkedFeature(args.feature)?.what || "The feature"} is still not in use.`;
+    },
+    problem(args) {
+      const f = parkedFeature(args.feature);
+      return f && f.code === "feature-not-set-up" ? null : "feature is not a parked future feature";
+    },
+    rowProblem(row, args) {
+      return parksRow(args.feature, row && row.id) ? null : `This row is not one that ${args.feature} parks.`;
+    },
+    async look(args, ctx) {
+      const state = await parkedState(args.feature, ctx);
+      return state.parked ? { held: true, found: "" } : { held: false, found: `${parkedFeature(args.feature).what} is in use or cannot be read: ${state.why}.` };
+    }
+  }),
+
+  /* A feature the owner paused (owner answer B8, 2026-10-20: Lendflow). Same proof as
+     feature-not-set-up: the parked read must still say the feature is not in use. */
+  "owner-paused": core({
+    say(args = {}) {
+      const what = parkedFeature(args.feature)?.what || "This feature";
+      return `${what} is paused by the owner and not in use. Judged the day it is in use.`;
+    },
+    claim(args = {}) {
+      return `${parkedFeature(args.feature)?.what || "The feature"} is still paused and not in use.`;
+    },
+    problem(args) {
+      const f = parkedFeature(args.feature);
+      return f && f.code === "owner-paused" ? null : "feature is not an owner-paused feature";
+    },
+    rowProblem(row, args) {
+      return parksRow(args.feature, row && row.id) ? null : `This row is not one that ${args.feature} parks.`;
+    },
+    async look(args, ctx) {
+      const state = await parkedState(args.feature, ctx);
+      return state.parked ? { held: true, found: "" } : { held: false, found: `${parkedFeature(args.feature).what} is in use or cannot be read: ${state.why}.` };
     }
   }),
 
