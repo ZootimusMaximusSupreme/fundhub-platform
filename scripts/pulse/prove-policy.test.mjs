@@ -18,7 +18,7 @@ function workflowJob(source, name) {
   return lines.slice(start, end).join("\n");
 }
 
-test("outreach keeps its real PostgreSQL and browser gates while hourly proof matches the canonical release runner", () => {
+test("outreach keeps its real PostgreSQL and browser gates while both bundle proofs match the canonical release runner", () => {
   const root = path.resolve(HERE, "../..");
   const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
   const ship = workflowJob(fs.readFileSync(path.join(root, ".github/workflows/ship.yml"), "utf8"), "ship");
@@ -31,11 +31,23 @@ test("outreach keeps its real PostgreSQL and browser gates while hourly proof ma
   assert.match(hourly, /NODE_OPTIONS: --dns-result-order=ipv4first/);
   assert.match(core, /runs-on: ubuntu-latest/);
   for (const command of ["node db/migrate.mjs", "VERIFY_STRICT: \"1\"", "npm run verify:e2e",
-    "e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs", "npm run pulse:prove -- --lanes=gap-bank-outreach"]) {
+    "e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs"]) {
     assert.ok(core.includes(command), `existing gate disappeared: ${command}`);
   }
   assert.equal((workflow.match(/run: npm run pulse:prove -- --beats\s*$/gm) || []).length, 1);
   assert.match(hourly, /run: npm run pulse:prove -- --beats\s*$/m);
+  assert.equal((workflow.match(/run: npm run pulse:prove -- --lanes=gap-bank-outreach\s*$/gm) || []).length, 1);
+  assert.doesNotMatch(core, /run: npm run pulse:prove/, "network-dependent bundle proofs belong on the canonical release runner");
+  for (const id of ["hourly", "morning"]) {
+    const start = hourly.indexOf(`        id: ${id}\n`);
+    assert.ok(start >= 0, `missing required ${id} bundle proof`);
+    const end = hourly.indexOf("      - name:", start);
+    const step = hourly.slice(start, end < 0 ? undefined : end);
+    assert.match(step, /if: always\(\) && !cancelled\(\) && steps\.migrate\.outcome == 'success'/);
+    assert.match(step, /DATABASE_URL: \$\{\{ env\.APP_DATABASE_URL \}\}/);
+    assert.match(step, id === "hourly" ? /run: npm run pulse:prove -- --beats\s*$/m
+      : /run: npm run pulse:prove -- --lanes=gap-bank-outreach\s*$/m);
+  }
   assert.match(hourly, /DATABASE_URL: \$\{\{ env\.APP_DATABASE_URL \}\}/);
   assert.match(hourly, /if: always\(\) && !cancelled\(\) && steps\.migrate\.outcome == 'success'/);
   assert.doesNotMatch(workflow, /continue-on-error|--fixture|--slow-apply-links|--read-delay/);

@@ -23,6 +23,8 @@ Rep: next due work first, assigned targets, search/state/status filters, paginat
 
 Use current `origin/main` professional CRM shell, shared rounded font, tenant brand, semantic statuses and sidebar. At 1440px and 390px show loading, empty, failed read and realistic full states. A table can scroll inside its container; the page cannot scroll sideways. Errors explain what failed and retain unsaved inputs.
 
+Owner's 2026-10-20 dashboard-overhaul alignment request adds the approved shared Astra opt-in, foundation and staff cohort, loaded after legacy page styles. Preserve this workspace's role-first hierarchy rather than substituting a generic dashboard. Phone body and editable controls are16px; captions at least13px; interactive targets at least44px and primary actions preferably48px. Measure native WebKit dropdowns and expanded shared menus/forms at390/440 portrait and838x390 landscape, with768/1024 intermediate views. No sideways page overflow or unreachable bottom actions. Browser profiles are not real-device certification. Shared foundation must be integrated from its exact canonical release, not copied while moving.
+
 KPIs count verified lender products this week compared with last week, verified partners and state coverage. Activity is supporting information. No guessed rep quotas. The observation period determines later targets.
 
 ## Monitoring and proof

@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
 import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLanes } from "./prove-policy.mjs";
+import { formatProofFetchTrace, makeProofFetchTrace, proofFetch } from "./prove-fetch-trace.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -73,6 +74,7 @@ const want = [...listed.SLICE_FILES, ...listed.GAP_FILES].map(([name]) => name);
 const missingFiles = want.filter((name) => !fs.existsSync(path.join(root, "src/pulse/coverage", name)));
 
 const log = { queries: [], fetches: [], refused: [] };
+const webTrace = makeProofFetchTrace();
 globalThis.fetch = guardedFetch();
 const plainC = await openClient(false);
 const staffC = await openClient(true);
@@ -190,6 +192,7 @@ const problems = [
   ...blindRows.map((r) => `${r.id} is ${r.status} on the app role but ${byId.get(r.id)} with staff access — the check cannot see the rows`)
 ];
 if (problems.length) {
+  for (const entry of webTrace.slowOrFailed()) console.log(`  web timing: ${formatProofFetchTrace(entry)}`);
   console.log(`\nPROBLEMS (${problems.length}):`);
   for (const p of problems) console.log(`  - ${p}`);
   process.exit(1);
@@ -302,8 +305,9 @@ function guardedFetch() {
     const key = `${method} ${url} ${(init && init.redirect) || ""}`;
     if (!memo.has(key)) {
       try {
-        const res = await realFetch(url, { method, redirect: (init && init.redirect) || "follow", headers: init && init.headers, signal: AbortSignal.timeout(15000) });
-        memo.set(key, { status: res.status, headers: [...res.headers.entries()], body: method === "HEAD" ? "" : await res.text(), url: res.url });
+        memo.set(key, await proofFetch(realFetch, url, {
+          method, redirect: (init && init.redirect) || "follow", headers: init && init.headers, signal: AbortSignal.timeout(15000)
+        }, method, webTrace));
       } catch (err) {
         memo.set(key, { error: String((err && err.message) || err) });
       }

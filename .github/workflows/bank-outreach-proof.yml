@@ -104,11 +104,6 @@ jobs:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
           VERIFY_STRICT: "1"
         run: npm run verify:e2e
-      - name: Morning outreach check from the actual function bundle
-        if: always() && !cancelled() && steps.migrate.outcome == 'success'
-        env:
-          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
-        run: npm run pulse:prove -- --lanes=gap-bank-outreach
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -119,8 +114,9 @@ jobs:
             docs/END-TO-END-VERIFICATION.md
           retention-days: 14
   hourly-release-runner:
-    # Match ship.yml's existing release environment, not a different network
-    # client's behavior. All beats, native GETs and timing limits stay unchanged.
+    # Both actual-bundle proofs match ship.yml's existing release environment.
+    # All morning checks, beats, native GETs and timing limits stay unchanged;
+    # Ubuntu still owns the separate PostgreSQL/browser/strict integration gates.
     runs-on: macos-latest
     timeout-minutes: 25
     env:
@@ -158,6 +154,12 @@ jobs:
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --beats
+      - name: Morning outreach check from the actual function bundle
+        id: morning
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --lanes=gap-bank-outreach
       - name: Public GET diagnostics if the hourly proof fails
         if: failure() && !cancelled() && steps.hourly.outcome == 'failure'
         run: |
