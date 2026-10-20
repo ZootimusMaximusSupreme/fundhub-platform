@@ -17,6 +17,7 @@ import { FIN_B17_RESULT_CONTRACTS } from "./fin-b17-display-contracts.mjs";
 import { FIN_B18_RESULT_CONTRACTS } from "./fin-b18-display-contracts.mjs";
 import { FIN_B19_DISPLAY_CONTRACTS } from "./fin-b19-display-contracts.mjs";
 import { FIN_B20_RESULT_CONTRACTS } from "./fin-b20-display-contracts.mjs";
+import { CONSENT_FROM_CONTRACT_CONTRACTS } from "./consent-from-contract.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -173,24 +174,6 @@ SELECT count(*)::int AS sample_count,
  WHERE org_id = $1::uuid AND source_kind = 'pdf' AND jsonb_array_length(fields) > 0
    AND COALESCE(is_demo, false) = false`;
 
-function consentSql(kind) {
-  return `SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NULLIF(BTRIM(consent_text), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(consent_version, '')), '') IS NULL
-         OR capture_method NOT IN ('typed','checkbox','signature')
-         OR ((granted_by_kind = 'client') <> (granted_by_account_id IS NOT NULL))
-         OR ((granted_by_kind = 'staff') <> (granted_by_staff_id IS NOT NULL)))::int AS bad_count
-  FROM client_consents WHERE org_id = $1::uuid AND kind = '${kind}'`;
-}
-
-const CONSENT_REVOKE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NULLIF(BTRIM(COALESCE(revoked_reason, '')), '') IS NULL
-         OR revoked_by_kind NOT IN ('client','staff')
-         OR ((revoked_by_kind = 'client') <> (revoked_by_account_id IS NOT NULL))
-         OR ((revoked_by_kind = 'staff') <> (revoked_by_staff_id IS NOT NULL)))::int AS bad_count
-  FROM client_consents WHERE org_id = $1::uuid AND revoked_at IS NOT NULL`;
-
 const INSIGHT_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE c.id IS NULL OR s.id IS NULL OR jsonb_typeof(i.answers) <> 'object'
@@ -307,9 +290,8 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
   query("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
   query("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
-  query("Record consent: call_recording", "The saved consent must be the call_recording kind with frozen words, version, capture method, and one exact granter.", "consent-call-recording", consentSql("call_recording")),
-  query("Record consent: marketing_use (permission to use what the client said in ads)", "The saved consent must be the marketing_use kind with frozen words, version, capture method, and one exact granter.", "consent-marketing-use", consentSql("marketing_use")),
-  query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
+  // The signed contract is the consent (owner decision 2026-10-20): consent-from-contract.mjs.
+  ...CONSENT_FROM_CONTRACT_CONTRACTS,
   query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
   query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),

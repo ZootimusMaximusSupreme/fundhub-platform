@@ -46,6 +46,9 @@ import {
   defaultContractValues
 } from "../config/offers.mjs";
 import { tagsIn, missingRequired, normaliseManualFields } from "./render.mjs";
+import {
+  CLIENT_AGREEMENT_KEYS, CONSENT_MARKERS, CONSENT_SECTION_NUMBERED, CONSENT_SECTION_PLAIN, NUMBERED_AGREEMENT_KEYS
+} from "./consent-clauses.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -203,7 +206,8 @@ function readTemplatesFromDb({ omitMigrations = new Set() } = {}) {
     const full = path.join(ROOT, "db", dir);
     if (!fs.existsSync(full)) continue;
     for (const name of fs.readdirSync(full).filter((f) => f.endsWith(".sql")).sort()) {
-      if (dir === "migrations" && omitMigrations.has(name)) continue;
+      // A seed file may be left out too (492's fresh-database half lives in db/seed).
+      if ((dir === "migrations" || dir === "seed") && omitMigrations.has(name)) continue;
       const sql = fs.readFileSync(path.join(full, name), "utf8");
       if (!/contract_templates/.test(sql)) continue;
       const blocks = stripComments(sql)
@@ -615,5 +619,41 @@ describe("the live defect, named", () => {
       defaultContractValues({ tier: "FUNDING_PLUS_REPAIR" }).repair_fee,
       formatCents(OFFERS.REPAIR_DFY.priceCents)
     );
+  });
+});
+
+/* THE SIGNED CONTRACT IS THE CONSENT (owner decision 2026-10-20). Every client
+   agreement carries one section saying calls may be recorded, Fundhub uses AI,
+   and Fundhub may use the client's words, results and testimonial in marketing
+   (db/migrations/492 and its fresh-database half db/seed/035). The heartbeat
+   reads the same sentences in each signed copy. */
+describe("every client agreement carries the consent", () => {
+  const WITHOUT_492 = new Set(["492_client_agreement_consent_clauses.sql", "035_client_agreement_consent_clauses.sql"]);
+  const before = readTemplatesFromDb({ omitMigrations: WITHOUT_492 });
+
+  for (const key of CLIENT_AGREEMENT_KEYS) {
+    test(`${key} says it once: recorded calls, AI, and marketing use`, () => {
+      const body = TEMPLATES.get(key).body;
+      for (const marker of Object.values(CONSENT_MARKERS)) {
+        assert.equal(body.split(marker).length - 1, 1, `${key}: "${marker}" must appear exactly once`);
+      }
+    });
+
+    test(`${key}: 492 adds the one section and changes no other word`, () => {
+      const after = TEMPLATES.get(key).body;
+      const numbered = NUMBERED_AGREEMENT_KEYS.includes(key);
+      const inserted = numbered ? `\n${CONSENT_SECTION_NUMBERED}\nAcknowledgement\n` : `\n\n${CONSENT_SECTION_PLAIN}\n\nSIGNATURES\n`;
+      assert.ok(after.includes(inserted), `${key}: the section is not just above the signature block`);
+      const removed = after.replace(numbered ? `\n${CONSENT_SECTION_NUMBERED}` : `\n\n${CONSENT_SECTION_PLAIN}`, "");
+      assert.equal(removed, before.get(key).body);
+    });
+  }
+
+  test("staff, partner and soft-pull wordings are not client service agreements and are untouched", () => {
+    for (const [key, tpl] of TEMPLATES) {
+      if (CLIENT_AGREEMENT_KEYS.includes(key)) continue;
+      assert.equal(tpl.body, before.get(key)?.body, `${key} changed`);
+      assert.equal(tpl.body.includes(CONSENT_MARKERS.callRecording), false, `${key} gained the clause`);
+    }
   });
 });

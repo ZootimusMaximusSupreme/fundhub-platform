@@ -351,6 +351,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/487_commas_invoice_payment_idempotency.sql",
   "migrations/488_blueprint_coach_agents.sql",
   "migrations/489_blueprint_coach_call_ledger.sql",
+  "migrations/492_client_agreement_consent_clauses.sql",
   "seed/002_pipelines.sql",
   "seed/006_message_templates_source_doc.sql",
   "seed/007_contract_templates.sql",
@@ -383,6 +384,7 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/032_slo_first_text_meet.sql",
   "seed/033_slo_texts_voice.sql",
   "seed/034_slo_first5_reply.sql",
+  "seed/035_client_agreement_consent_clauses.sql",
   "seed/295_sms_copy_2026_09.sql",
   "seed/296_marketing_copy_writer_house.sql",
   "seed/297_marketing_funnels.sql"
