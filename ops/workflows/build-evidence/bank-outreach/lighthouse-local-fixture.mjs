@@ -69,8 +69,17 @@ try {
   await pageAfter.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true });
   await pageAfter.goto(origin + '/app/bank-outreach.html?evidence=local-fixture');
   await pageAfter.waitForFunction(() => document.querySelectorAll('#queue-rows tr').length === 25);
-  const rendered = await pageAfter.evaluate(() => ({ title: document.querySelector('#hero-value')?.textContent, rows: document.querySelectorAll('#queue-rows tr').length, role: localStorage.getItem('fh_role'), width: innerWidth, horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1 }));
-  if (rendered.rows !== 25 || rendered.role !== 'outbound_rep' || !rendered.title.includes('Fixture')) throw new Error('Full fixture screen did not render');
+  const rendered = await pageAfter.evaluate(() => ({
+    title: document.querySelector('#hero-value')?.textContent,
+    rows: document.querySelectorAll('#queue-rows tr').length,
+    role: localStorage.getItem('fh_role'), width: innerWidth,
+    horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+    bodyFont: getComputedStyle(document.body).fontSize,
+    astraStylesLoaded: ['/app/fundhub-astra.css', '/app/fundhub-astra-staff.css'].every(href =>
+      Boolean(document.querySelector(`link[href="${href}"]`)?.sheet)),
+  }));
+  if (rendered.rows !== 25 || rendered.role !== 'outbound_rep' || !rendered.title.includes('Fixture') ||
+      rendered.horizontalOverflow || rendered.bodyFont !== '16px' || !rendered.astraStylesLoaded) throw new Error('Full Astra fixture screen did not render');
   const screenshot = lhr.audits['final-screenshot']?.details?.data;
   if (screenshot) await fs.writeFile(path.join(toolRoot, 'audited-final-screen.jpg'), Buffer.from(screenshot.split(',')[1], 'base64'));
   const resources = lhr.audits['resource-summary'].details.items;
@@ -85,7 +94,7 @@ try {
   const rawReport = JSON.stringify(lhr, null, 2) + '\n';
   const rawPath = path.join(toolRoot, 'lighthouse-mobile-fixture.report.json');
   await fs.writeFile(rawPath, rawReport);
-  const sourceFiles = ['public/app/bank-outreach.html', 'public/app/bank-outreach.css', 'public/app/bank-outreach.js'];
+  const sourceFiles = ['public/app/bank-outreach.html', 'public/app/bank-outreach.css', 'public/app/bank-outreach.js', 'public/app/fundhub-astra.css', 'public/app/fundhub-astra-staff.css'];
   const sourceSha256 = Object.fromEntries(await Promise.all(sourceFiles.map(async file => [file, createHash('sha256').update(await fs.readFile(path.join(repo, file))).digest('hex')])));
   const scriptRelativePath = path.relative(repo, fileURLToPath(import.meta.url));
   const report = {

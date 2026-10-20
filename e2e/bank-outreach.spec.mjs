@@ -1,49 +1,10 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { openScreen, OWNER, json } from './harness.mjs';
+import { fixture, facts, expectAstraControls, inspectExpandedShell, captureAstra } from './bank-outreach-fixture.mjs';
 
 // Safe browser fixtures prove UI controls, not live bank facts or database writes.
-const REP = { ok: true, staff: { ...OWNER.staff, id: 'rep-1', role: 'outbound_rep', name: 'Casey Reed' } };
 const OUT = path.resolve('ops/workflows/build-evidence/bank-outreach');
-const account = i => ({ id: 'bank-' + i, name: ['Mesa Community Bank', 'Coastal Business Credit Union', 'Pacific Commercial Bank'][i % 3] + (i > 2 ? ' ' + (i + 1) : ''), source: 'fdic', external_id: String(1000 + i), state: ['AZ', 'SC', 'FL', 'CA'][i % 4], city: 'Phoenix', website: 'https://bank.example', assigned_staff_id: 'rep-1', assigned_staff_name: 'Casey Reed', status: 'researching', partner_activity: 'active', next_action: 'Confirm business line requirements with banker', next_due_at: '2026-01-01T15:00:00Z' });
-const summary = { verified_products_week: 7, verified_products_previous_week: 4, verified_partners: 12, missing_next_action: 0, due_now: 18, total: 27 };
-const contacts = [{ id: 'contact-1', name: 'Avery Lane', title: 'Business banker', email: 'avery@bank.example', phone: '+16025550101', linkedin_url: 'https://www.linkedin.com/in/avery-fixture' }];
-const facts = { minimum_score: 'unknown', minimum_time_in_business_years: 2, minimum_revenue_threshold: 250000, bureaus_pulled: ['EX', 'EQ'], inquiry_tolerance: 'Up to 3 in 6 months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown' };
-const product = { id: 'product-1', product_name: 'Business working capital line', lender_table: 'BizLOC_Documented', facts, evidence: 'Avery Lane · banker email · October 19, 2026', verified_at: null };
-
-async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false } = {}) {
-  const posts = [], reads = [], faults = { detail: false, team: false }, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
-  if (draft) data.products[0].draft = { ...structuredClone(product), product_name: 'Proposed business line', facts: { ...facts, minimum_score: 680 } };
-  let release; const pending = new Promise(resolve => { release = resolve; });
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, route => route.abort());
-  const base = { ok: true, canManage: manager, program: { states: ['AZ', 'SC', 'FL', 'CA'] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
-  await openScreen(page, '/app/bank-outreach.html', manager ? OWNER : REP, {
-    '/api/read/bank-outreach': async (route, { url }) => {
-      const query = Object.fromEntries(new URL(url).searchParams); reads.push(query);
-      if (query.id) return faults.detail ? { ok: false, message: 'Banker details could not load.' } : { ...base, ...data };
-      if (query.view === 'team' && faults.team) return { ok: false, message: 'Team results could not load.' };
-      if (query.view === 'team') return { ...base, byRep: state === 'empty' ? [] : [{ staff_id: 'rep-1', name: 'Casey Reed', total: 14, verified_partners: 7, due_now: 8 }, { staff_id: 'rep-2', name: 'Morgan Ellis', total: 13, verified_partners: 5, due_now: 10 }], byState: state === 'empty' ? [] : ['AZ', 'SC', 'FL', 'CA'].map(state => ({ state, total: 7, verified_partners: 3, due_now: 4 })) };
-      if (state === 'loading') await pending;
-      if (state === 'error') return { ok: false, message: 'The bank list is temporarily unavailable.' };
-      if (filteredEmpty && (query.q || query.state || query.status)) return { ...base, total: 0, items: [] };
-      if (filteredInactive && ['paused', 'closed'].includes(query.status)) { data.account = { ...account(0), status: query.status }; return { ...base, total: 1, items: [data.account] }; }
-      return { ...base, total: state === 'empty' ? 0 : 27, items: state === 'empty' ? [] : Array.from({ length: Number(query.offset || 0) ? 2 : 25 }, (_, i) => account(i + Number(query.offset || 0))) };
-    },
-    '/api/bank-outreach': async route => {
-      const body = JSON.parse(route.request().postData()); posts.push(body);
-      if (failWrite) return json(route, { ok: false, message: 'Save failed. Your notes are still here.' }, 500);
-      if (body.action === 'save_contact') { const contact = { ...body, id: body.id || 'contact-2' }; const index = data.contacts.findIndex(c => c.id === contact.id); if (index < 0) data.contacts.push(contact); else data.contacts[index] = contact; }
-      if (body.action === 'log_touch') { data.account.next_action = body.next_action; }
-      if (body.action === 'save_product') { data.products = [{ ...body, id: body.id || 'product-2', verified_at: null }]; }
-      if (body.action === 'verify_product') data.products[0].verified_at = new Date().toISOString();
-      if (body.action === 'set_status') Object.assign(data.account, { status: body.status, next_action: body.next_action, partner_activity: body.partner_activity });
-      if (body.action === 'assign') data.account.assigned_staff_id = body.staff_id;
-      return json(route, { ...base, imported: 3, existing: 2, skipped: 1 });
-    }
-  });
-  return { posts, reads, faults, data, release };
-}
 async function geometry(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await expect(page.locator('#fh-workspace-header')).toHaveCount(1);
@@ -308,3 +269,31 @@ test('cold phone performance: Slow 4G and 4x CPU with fixture API', async ({ pag
   expect(metrics.lcp, 'CRM LCP below 2.5s').toBeGreaterThan(0); expect(metrics.lcp).toBeLessThan(2500);
   expect(metrics.cls).toBeLessThan(0.1); expect(metrics.interaction).toBeLessThan(200); expect(metrics.jsBytes).toBeLessThan(500000); expect(metrics.pageBytes).toBeLessThan(2000000);
 });
+
+for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+  for (const manager of [false, true]) {
+    test(`Astra ${viewport.width}px ${manager ? 'manager' : 'rep'}: expanded menus and editors stay readable`, async ({ page }, testInfo) => {
+      await page.setViewportSize(viewport);
+      const env = await fixture(page, { manager }), prefix = `${viewport.width}-${manager ? 'manager' : 'rep'}`;
+      await expect(page.locator('#work-next')).toBeVisible();
+      await expectAstraControls(page, testInfo, prefix + '-overview');
+      await inspectExpandedShell(page, testInfo, prefix);
+      if (manager) await page.locator('#queue-view').click();
+      await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+      await expectAstraControls(page, testInfo, prefix + '-queue', '#outreach-main');
+      await page.locator('#work-next').click();
+      await expect(page.locator('#drawer-content')).toBeVisible();
+      await expectAstraControls(page, testInfo, prefix + '-touch', '#bank-drawer');
+      await page.locator('[data-section="products"]').click();
+      await page.getByRole('button', { name: 'Edit facts', exact: true }).click();
+      await expectAstraControls(page, testInfo, prefix + '-product', '#bank-drawer');
+      const save = page.getByRole('button', { name: 'Save product facts', exact: true });
+      await save.scrollIntoViewIfNeeded(); await expect(save).toBeInViewport();
+      await save.click({ trial: true });
+      await captureAstra(page, testInfo, prefix + '-product-footer', '#product-editor .form-actions');
+      await page.locator('#drawer-close').click();
+      await expect(page.locator('#work-next')).toBeFocused();
+      expect(env.posts).toEqual([]);
+    });
+  }
+}

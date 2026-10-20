@@ -67,6 +67,26 @@ test("outreach release proof uses its own disposable database, all migrations an
   assert.doesNotMatch(hourly, /secrets\.|ship-env-from-netlify|npm run ship|netlify deploy|supabase db/);
 });
 
+test("native outreach phone geometry is a required WebKit proof, separate from retained Chromium", () => {
+  const root = path.resolve(HERE, "../..");
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
+  const release = workflowJob(workflow, "hourly-release-runner");
+  const config = fs.readFileSync(path.join(root, "playwright.bank-outreach-webkit.config.mjs"), "utf8");
+  assert.match(release, /npx playwright install webkit/);
+  assert.match(release, /run: node node_modules\/@playwright\/test\/cli\.js test --config playwright\.bank-outreach-webkit\.config\.mjs/);
+  assert.match(release, /if: always\(\) && !cancelled\(\)\n        with:\n          name: bank-outreach-webkit-/);
+  assert.match(config, /testMatch: ['"]\*\*\/bank-outreach-webkit\.proof\.mjs['"]/);
+  assert.match(config, /browserName: ['"]webkit['"]/);
+  for (const [width, height] of [[390, 844], [440, 763], [838, 390]]) {
+    assert.ok(config.includes(`viewport: { width: ${width}, height: ${height} }`), `missing native geometry viewport ${width}x${height}`);
+  }
+  assert.match(config, /retries: 0/);
+  assert.match(config, /reuseExistingServer: false/);
+  assert.doesNotMatch(config, /test\.skip|continue-on-error/);
+  assert.match(workflowJob(workflow, "outreach"), /e2e\/bank-outreach\.spec\.mjs e2e\/sidebar-roles\.spec\.mjs/);
+  assert.match(workflowJob(workflow, "outreach"), /e2e\/bank-outreach-live-guard\.spec\.mjs/);
+});
+
 test("masked laptop values stay named and do not block bundle proof", () => {
   assert.equal(isRunnerOnlyNotChecked({ id: "keys:any", why: "the laptop copy is a row of asterisks" }), true);
 });

@@ -98,7 +98,7 @@ jobs:
       - name: Hiring funnel request and rendered-result synchronization
         run: node --test --test-name-pattern='the funnel re-reads' src/pulse/catalog/proofs/fin-b13-hiring-page.test.mjs
       - name: Browser controls, roles and all four screen states
-        run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs --reporter=line
+        run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs e2e/bank-outreach-live-guard.spec.mjs --reporter=line
       - name: Existing full scratch end-to-end harness
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
@@ -135,6 +135,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm install --global netlify-cli
+          npx playwright install webkit
           brew install postgresql@17 pgvector
           echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
       - name: Apply every migration to an isolated scratch database
@@ -160,6 +161,16 @@ jobs:
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --lanes=gap-bank-outreach
+      - name: WebKit outreach phone controls and expanded-menu geometry
+        if: always() && !cancelled() && steps.migrate.outcome == 'success'
+        run: node node_modules/@playwright/test/cli.js test --config playwright.bank-outreach-webkit.config.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && !cancelled()
+        with:
+          name: bank-outreach-webkit-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Public GET diagnostics if the hourly proof fails
         if: failure() && !cancelled() && steps.hourly.outcome == 'failure'
         run: |

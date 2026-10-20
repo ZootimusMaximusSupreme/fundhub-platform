@@ -16,7 +16,7 @@
 .page-heading{margin-bottom:32px}
 .bank-outreach-page .button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 16px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
 .bank-outreach-page .button:hover{background:var(--soft);border-color:var(--gray2)}
-.bank-outreach-page .button.primary{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.bank-outreach-page.fh-astra--bank-outreach .button.primary{min-height:48px;background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .bank-outreach-page .button:disabled{opacity:.5;cursor:default}
 .bank-outreach-page :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .bank-outreach-page .panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow)}

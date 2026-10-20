@@ -1,7 +1,7 @@
 {
   "scope": "Local static page with labeled synthetic bank/session API fixtures. No production server, records, email, calls or outreach were used. Navigation has no field INP; total blocking time is a lab diagnostic, not INP. Local TTFB does not prove production response time.",
   "version": "13.5.0",
-  "measuredAt": "2026-10-20T07:56:20.047Z",
+  "measuredAt": "2026-10-20T09:31:52.547Z",
   "runtime": {
     "node": "v22.23.2",
     "platform": "darwin",
@@ -17,17 +17,19 @@
     "rows": 25,
     "role": "outbound_rep",
     "width": 390,
-    "horizontalOverflow": false
+    "horizontalOverflow": false,
+    "bodyFont": "16px",
+    "astraStylesLoaded": true
   },
   "metrics": {
-    "lcpMs": 1398.314,
-    "cls": 0.0020216259224255452,
-    "totalBlockingTimeMs": 0,
-    "localTtfbMs": 6,
-    "jsTransferBytes": 197289,
-    "pageTransferBytes": 340818
+    "lcpMs": 1888.614,
+    "cls": 0.023306525183448435,
+    "totalBlockingTimeMs": 23.57899999999995,
+    "localTtfbMs": 2,
+    "jsTransferBytes": 198533,
+    "pageTransferBytes": 420724
   },
-  "performanceScore": 1,
+  "performanceScore": 0.98,
   "warnings": [],
   "apiRequests": [
     {
@@ -48,14 +50,16 @@
     }
   ],
   "sourceSha256": {
-    "public/app/bank-outreach.html": "91622e1970c0d6496930dc746427dca84050d0f7d6ef55b4a8b7119b638303ed",
-    "public/app/bank-outreach.css": "91337f6c8cfdfa3ee7a277431952fb21c0bb71a93e9c753138e543c2db846ebc",
-    "public/app/bank-outreach.js": "06d959c4517fb595515af8298e4ce35beeea374e00d6e9d6c3df928bf2782678"
+    "public/app/bank-outreach.html": "5cf28d930886f84934d9f6cc1a08fbf15089c14c446f05f081b1b8ff8547d24a",
+    "public/app/bank-outreach.css": "2c0d5b7b78b0c289e561713049a2478769f6100d8be07038d84f8ef9d2c9fe48",
+    "public/app/bank-outreach.js": "0f65f86b28a901e109080aef40db7742c7966f2e029cee16feebfde984b85de4",
+    "public/app/fundhub-astra.css": "aa430c21f717f2eef83f5452430790098430c9a5ec6ab1a168c230f39f1c2739",
+    "public/app/fundhub-astra-staff.css": "23472c77cbbe74b93b002b2f5c7035803fd9c1027b3ac6c24a0589dd16dbcc54"
   },
   "rawReport": {
     "path": "/private/tmp/fundhub-outreach-lighthouse.ApQVDL/lighthouse-mobile-fixture.report.json",
-    "bytes": 279149,
-    "sha256": "d8f7ebe8cb39f981f7c7c0ed6b9e67a42696dadfb128aa2295d1cb02b87c258b"
+    "bytes": 262360,
+    "sha256": "fc19b35198996c2482a5922fa8d763dc33ece351fe367f67bb34a9237e58ab83"
   },
   "reproduction": {
     "workingDirectory": "repository root",
