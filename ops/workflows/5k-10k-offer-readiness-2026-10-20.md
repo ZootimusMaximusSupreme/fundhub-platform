@@ -225,3 +225,22 @@ Prompt: In the approved Blueprint worktree and accessible production configurati
 Prompt: Review the approved Blueprint owner requests against `docs/journeys/capital-blueprint-intended.md`, `capital-blueprint-actual.md` and this board in the clean Blueprint worktree. Distinguish genuinely unbuilt automatic Bland call scheduling from implemented but inactive agents, reminders, payments and delivery. Return at most three unanswered owner decisions; do not reopen the settled same-package price range,12-month term, no-auto-renewal or provider naming. Read-only: no file edits, external writes, activation, sends, calls, payments or production changes. Parent owns the final questions. Run alongside Workflow L and the parent's readiness check; the final answer waits for the evidence to join.
 
 Decision review at M, before the owner's N/O addition: the clear unbuilt requested piece was automatic Bland coach-call scheduling. The existing staff-started AI call path was built; no automatic cadence was assumed. Parent then asked whether calls should start after two unanswered text reminders or only when staff starts one. That question was subsequently answered in the owner addition below and is settled. The actual human advisor identity still needs the owner's decision. Other CB-01 through CB-10 behavior is implemented candidate code, not live customer proof.
+
+### Q — Release and activation done (Claude session, 2026-10-20 20:20 UTC)
+
+Codex parent ran out of usage after the merge. Chris then said "lets get agents done if not already"; this Claude session finished the already-approved release and activation.
+
+- PR83 merged as `d5e055d10` (final head `e2637bb98`: push run 39476491709 and PR run 39476500467 both green).
+- GitHub ship could not run: every `macos-latest` job sat queued with no runner and was cancelled (3 attempts). PR87 (`78b08d2ff`) moved the ship job to `ubuntu-latest`. Ubuntu ship run 39486073918 applied migrations 482/483/485/488/489, then stopped twice before deploy on read-only proof timing (`money-checkout` 8.3 s, then `doors-live` 8.0 s, limit half the deadline). Nothing deployed from those runs.
+- Shipped from a clean Mac copy of GitHub main: `ship: 78b08d2f is live` (`c17db693e`). Deploy live, `/api/health` 400 applied / 0 pending (expected 373), Inngest re-registered. Local Supabase keys all answer 401, so the database step used the app connection only to confirm 0 pending (no DDL ran).
+- Activation, same writes as the template Approve and agent Promote routes, approver chris@fundhub.ai: SMS-BLUEPRINT-COACH-DUE, EMAIL-BLUEPRINT-COACH-NUDGE-1, SMS-BLUEPRINT-COACH-NUDGE-2 approved (copy matched migration 488 exactly, sha signed); BP-COACH (internal, sms_email) and BP-COACH-VOICE (bland, voice) draft → live. FOS-01 unchanged (shadow). `outbound_enabled=true`, `MESSAGING_DRY_RUN=0`.
+- Still OFF as owner set: Whop billing webhook (untouched), `FINANCE_OS_SYSTEM_PULL_LIVE` (unset).
+- In scope today: 1 paid active Blueprint client with a due step, FH-000522 "Sim Eleven-Blueprint" (Chris's own test buyer, `+sim-11` email, not flagged synthetic). It is the first live receiver of coach texts, and a coach call after two unanswered texts. No real customer is in scope yet.
+- Not yet proved: a real coach text or call delivered, a real Whop financing payment to access, a live monthly refresh, a real human advisor assignment for a real buyer.
+
+Leftover cards (not this job, not fixed):
+- macOS GitHub runners never start for this repo (also `hourly-release-runner`).
+- Ubuntu ship hits the read-only proof timing limit on web reads to fundhub.ai; Mac ship passes.
+- Local `SUPABASE_ACCESS_TOKEN` copies (.env, settings.local.json, Netlify) all answer 401.
+- Main `tests` run red on `creative assets cannot be hard-deleted` (real-PG blocks) and `client home at 320px` (browser).
+- Live pulse reds seen during ship: www.mybrb.bank Apply link 404; EMAIL-S00-WELCOME, EMAIL-S04-01-CONFIRM, CONTRACT-SEND-EMAIL, SMS-S00-WELCOME, SMS-DOC-01-REQUEST templates missing.
