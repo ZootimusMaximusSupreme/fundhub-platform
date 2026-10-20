@@ -2,6 +2,8 @@
 
 Owner approved the plan and implementation in chat on 2026-10-19. Backend and monitoring come first; dashboards last. UX uses GPT-6.1 Sol. Extra High is reserved for difficult integration/review.
 
+Current release state: implementation built, NOT live or launch-ready. Final code proof 39381800303 on 9e22af05c passed 84 saved-result/ownership checks, 286 shared integration checks (both zero skips), 40 outreach/sidebar browsers, 16 full-harness browsers, strict scratch integration and the morning bundle. The remaining built hourly proof failure is `doors-live`: a public strict-health request stalled before response headers and aborted at 8000ms; the beat took 8001ms against its unchanged under-half-of-10000ms proof limit. Checkout doors passed this run. Outreach's saved-result beat passed in 26ms; its production read-door remains explicitly pending deployment. Full PR matrix 39381804371 is separate and was still running when this record was written. Do not mark the full release green.
+
 ## Ground truth
 
 Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, AI call or automatic external send. Two outbound hires use ordinary expandable staff seats. Reps work only their own banker list, never client files. Success is verified lender product data saved in the existing Lenders sheet; no invented quota or client referral workflow. Every touch saves the next action, immediately due unless deliberately scheduled. Verified active partners get monthly check-ins, quiet partners quarterly. Owner wants to use the system October 20, 2026 at 8:00 a.m. MST (America/Phoenix); this is a readiness deadline, not an instruction to send messages automatically.
@@ -73,5 +75,9 @@ The retained complete PR matrix 39380226430 found additional integration omissio
 The compatibility batch passed 122 real browser/API cases across five existing proof files, no failures/skips. Parent rechecked the changed guards and 146 shared integration assertions passed with no skips; TypeScript and generated journey/diagram parity passed. Dedicated CI now includes all affected role/navigation/coverage proof files and the normal app-role demo PostgreSQL test. Latest migration/HTTP/browser/bundle results must still be taken from the final PR check, not inferred from these local checks.
 
 Separate pre-existing leftover from the full harness: closer shift copy was SILENTLY-DID-NOTHING; external vendor-dependent checks remain UNVERIFIED. No unrelated closer product repair was attempted.
+
+Separate broad-browser leftover: the superseded fc1b66aac run observed `FINDING: a failed Rules read waits for Try again and is not started again on every repaint` in `e2e/fin-b15-cc-controls.spec.mjs`. That test and `public/app/marketing-command-center.js` are unchanged from origin/main; no marketing repaint repair or baseline-pass claim was made. The newer full matrix remains visible in the PR.
+
+One bounded read-only Netlify function-log query returned 100 records but no records identifying the five relevant public paths or giving path-linked latency. It does not establish cold-start, function arrival or edge/network cause. No production setting, provider implementation, deadline, send flag, credential or failed verdict was changed to clear this check. Further live-site timeout repair is distinct from the completed outreach implementation; production publication remains subject to the existing go-live decision.
 
 No production data changed, no live outreach sent and no production deployment claimed. Marked fixture previews live under `ops/workflows/build-evidence/bank-outreach/`.
