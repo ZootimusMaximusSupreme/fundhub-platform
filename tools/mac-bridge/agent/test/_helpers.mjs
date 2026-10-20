@@ -9,10 +9,12 @@ export function tempHome() {
     home,
     claudeDir: path.join(home, '.claude', 'projects'),
     codexDir: path.join(home, '.codex', 'sessions'),
+    cursorDir: path.join(home, '.cursor', 'projects'),
     tokenFile: path.join(home, '.mac-bridge', 'token'),
   };
   fs.mkdirSync(dirs.claudeDir, { recursive: true });
   fs.mkdirSync(dirs.codexDir, { recursive: true });
+  fs.mkdirSync(dirs.cursorDir, { recursive: true });
   return dirs;
 }
 

@@ -9,6 +9,7 @@ Owner goal (2026-10-20): "I just want to be able to build from my computer." Fro
 - Tasks run in the repo folder (`MAC_BRIDGE_REPO`, default `/Users/chrisstanbridge/Developer/fundhub-platform`), so the repo's own rules (CLAUDE.md, AGENTS.md, `.claude/settings.json` allow/deny) apply exactly as on the desk. The helper never loosens them.
 - Claude: `claude -p "<prompt>" --output-format stream-json --verbose` (plus `--resume <id>` to continue). No `--dangerously-skip-permissions`. The repo's `.claude/settings.json` decides what is allowed.
 - Codex: `codex exec "<prompt>"` (plus `codex exec resume <id>` to continue) in its default sandbox. Find the binary on PATH, `MAC_BRIDGE_CODEX_BIN`, or inside the Codex app; if none, the task fails with `codex_not_found`.
+- Cursor (added 2026-10-20): `cursor-agent -p --output-format stream-json -- "<prompt>"` (plus `--resume <chatId>` to continue). No `--force`, `--yolo`, `--trust`, `--approve-mcps` or `--sandbox`; Cursor's own settings decide. Find `cursor-agent` (or Cursor's `agent`) on PATH or in `~/.local/bin`, or `MAC_BRIDGE_CURSOR_BIN`; if none, the task fails with `cursor_not_found`.
 - The new run writes its own session file, so the v1 feed already shows it live.
 - At most 3 tasks running at once; more → `429 {"error":"busy"}`.
 - Prompt max 20,000 chars.
@@ -28,7 +29,7 @@ Chris: "No need for safety check." The helper adds no rule list of its own. Each
 
 | Method + path | Body | Answer |
 |---|---|---|
-| `POST /v1/tasks` | `{ "tool": "claude" \| "codex" \| "auto", "prompt": "…", "resumeSessionId": "…" (optional) }` | `202 { "task": Task }` |
+| `POST /v1/tasks` | `{ "tool": "claude" \| "codex" \| "cursor" \| "auto", "prompt": "…", "resumeSessionId": "…" (optional) }` | `202 { "task": Task }` |
 | `GET /v1/tasks` | — | `{ "tasks": [Task] }`, newest first, max 50 |
 | `POST /v1/tasks/:id/stop` | — | `{ "task": Task }` (sends SIGINT, then SIGTERM after 5 s) |
 
@@ -41,7 +42,7 @@ Chris: "No need for safety check." The helper adds no rule list of its own. Each
   "exitCode": 0, "error": "string or null" }
 ```
 
-`sessionId` is read from the run's output (Claude stream-json `session_id`; Codex its session id) so the phone can open the live feed.
+`sessionId` is read from the run's output (Claude and Cursor stream-json `session_id`; Codex its thread id) so the phone can open the live feed. When a run fails, `error` carries the tool's own reason when it gives one (for example "exited with code 1: Failed to authenticate: …"). Bad input → `400 {"error":"bad_tool" | "empty_prompt" | "prompt_too_long" | "bad_session_id" | "unknown_session" | "bad_json"}`; body over 64 KB → `413 {"error":"too_large"}`.
 
 ## WebSocket (new message)
 
@@ -49,6 +50,6 @@ Chris: "No need for safety check." The helper adds no rule list of its own. Each
 
 ## iPhone app (new)
 
-- **New task** button on the session list: big text box, pick Claude / Codex / Auto (Auto shows "uses repo rules"), Send. After send, open the live feed as soon as `sessionId` is known.
+- **New task** button on the session list: big text box, pick Claude / Codex / Cursor / Auto (Auto shows "uses repo rules"), Send. After send, open the live feed as soon as `sessionId` is known.
 - **Reply box** at the bottom of a session feed: sends `POST /v1/tasks` with `resumeSessionId` and the same tool.
 - **Running tasks** strip at the top of the list with a Stop button.

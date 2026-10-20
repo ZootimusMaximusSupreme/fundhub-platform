@@ -4,13 +4,16 @@ import path from 'node:path';
 import { SessionStore } from './sessions.mjs';
 import { acceptUpgrade } from './ws.mjs';
 import { loadOrCreateToken, tokenMatches, bearerFrom } from './token.mjs';
+import { TaskRunner } from './tasks.mjs';
 
 export const VERSION = '1';
+const MAX_BODY = 64 * 1024; // JSON body limit for POST
 
 export function defaultPaths(home = os.homedir()) {
   return {
     claudeDir: path.join(home, '.claude', 'projects'),
     codexDir: path.join(home, '.codex', 'sessions'),
+    cursorDir: path.join(home, '.cursor', 'projects'),
     tokenFile: path.join(home, '.mac-bridge', 'token'),
   };
 }
@@ -23,6 +26,40 @@ function sendJson(res, status, body) {
     'Cache-Control': 'no-store',
   });
   res.end(data);
+}
+
+/** Read a JSON body up to MAX_BODY. Throws { status, error }. An empty body is {}. */
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const fail = (status, error) => {
+      if (done) return;
+      done = true;
+      reject({ status, error });
+    };
+    const declared = Number(req.headers['content-length']);
+    if (Number.isFinite(declared) && declared > MAX_BODY) return fail(413, 'too_large');
+    req.on('data', (c) => {
+      if (done) return;
+      size += c.length;
+      if (size > MAX_BODY) return fail(413, 'too_large');
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (done) return;
+      done = true;
+      const text = Buffer.concat(chunks).toString('utf8').trim();
+      if (!text) return resolve({});
+      try {
+        resolve(JSON.parse(text));
+      } catch {
+        reject({ status: 400, error: 'bad_json' });
+      }
+    });
+    req.on('error', () => fail(400, 'bad_request'));
+  });
 }
 
 export function lanAddress() {
@@ -38,7 +75,8 @@ export function pairingLink({ host, port, token, name }) {
 
 /**
  * Build the bridge. Nothing listens until start().
- * opts: claudeDir, codexDir, tokenFile, port, host, hostname, pollMs, watch
+ * opts: claudeDir, codexDir, tokenFile, port, host, hostname, pollMs, watch,
+ *       tasks: options for TaskRunner (repo, env, claudeBin, codexBin, binSearch, stopGraceMs, maxRunning)
  */
 export function createBridge(opts = {}) {
   const paths = { ...defaultPaths(), ...opts };
@@ -47,10 +85,15 @@ export function createBridge(opts = {}) {
   const store = new SessionStore({
     claudeDir: paths.claudeDir,
     codexDir: paths.codexDir,
+    cursorDir: paths.cursorDir,
     pollMs: opts.pollMs ?? 2000,
     watch: opts.watch ?? true,
   });
   const clients = new Set();
+  const runner = new TaskRunner({
+    ...(opts.tasks || {}),
+    findSessionTool: (id) => ['claude', 'codex', 'cursor'].find((tool) => store.get(tool, id)) || null,
+  });
 
   const authed = (req) => tokenMatches(bearerFrom(req), token);
 
@@ -58,6 +101,35 @@ export function createBridge(opts = {}) {
     const url = new URL(req.url, 'http://localhost');
     if (!url.pathname.startsWith('/v1/')) return sendJson(res, 404, { error: 'not_found' });
     if (!authed(req)) return sendJson(res, 401, { error: 'unauthorized' });
+
+    // v2 tasks: POST /v1/tasks, GET /v1/tasks, POST /v1/tasks/:id/stop
+    if (url.pathname === '/v1/tasks') {
+      if (req.method === 'GET') return sendJson(res, 200, { tasks: runner.list() });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method_not_allowed' });
+      let body;
+      try {
+        body = await readJson(req);
+      } catch (e) {
+        res.setHeader('Connection', 'close');
+        return sendJson(res, e.status || 400, { error: e.error || 'bad_request' });
+      }
+      const out = await runner.create(body);
+      return sendJson(res, out.status, out.body);
+    }
+    const stopMatch = url.pathname.match(/^\/v1\/tasks\/([^/]+)\/stop$/);
+    if (stopMatch) {
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method_not_allowed' });
+      let id;
+      try {
+        id = decodeURIComponent(stopMatch[1]);
+      } catch {
+        return sendJson(res, 404, { error: 'not_found' });
+      }
+      const task = runner.stop(id);
+      if (!task) return sendJson(res, 404, { error: 'not_found' });
+      return sendJson(res, 200, { task });
+    }
+
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method_not_allowed' });
 
     if (url.pathname === '/v1/health') {
@@ -66,7 +138,7 @@ export function createBridge(opts = {}) {
     if (url.pathname === '/v1/sessions') {
       return sendJson(res, 200, { sessions: await store.list() });
     }
-    const m = url.pathname.match(/^\/v1\/sessions\/(claude|codex)\/([^/]+)\/events$/);
+    const m = url.pathname.match(/^\/v1\/sessions\/(claude|codex|cursor)\/([^/]+)\/events$/);
     if (m) {
       let id;
       try {
@@ -138,6 +210,10 @@ export function createBridge(opts = {}) {
     const msg = JSON.stringify({ type: 'session', session });
     for (const c of clients) c.ws.send(msg);
   });
+  runner.on('task', (task) => {
+    const msg = JSON.stringify({ type: 'task', task });
+    for (const c of clients) c.ws.send(msg);
+  });
   store.on('events', ({ tool, sessionId, events }) => {
     const key = store.key(tool, sessionId);
     for (const c of clients) {
@@ -150,6 +226,7 @@ export function createBridge(opts = {}) {
     token,
     hostname,
     store,
+    runner,
     server,
     get port() {
       return server.address()?.port;
@@ -166,6 +243,7 @@ export function createBridge(opts = {}) {
       return server.address().port;
     },
     async stop() {
+      runner.shutdown();
       store.stop();
       for (const c of clients) c.ws.close(1001);
       clients.clear();

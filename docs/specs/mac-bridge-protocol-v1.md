@@ -1,6 +1,6 @@
 # Mac Bridge — wire protocol v1
 
-Working name: **Mac Bridge**. Goal: see Claude Code and Codex chats, and the commands they run, on the iPhone while away from the Mac.
+Working name: **Mac Bridge**. Goal: see Claude Code, Codex and Cursor chats, and the commands they run, on the iPhone while away from the Mac.
 
 v1 is **read only**. The phone watches. It cannot type into a session or run a command. (Sending is v2 and needs its own owner OK.)
 
@@ -15,6 +15,7 @@ v1 is **read only**. The phone watches. It cannot type into a session or run a c
 
 - Claude Code: `~/.claude/projects/<project-slug>/<session-uuid>.jsonl` (one JSON object per line).
 - Codex: `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`.
+- Cursor (added 2026-10-20): agent transcripts at `~/.cursor/projects/<project-slug>/agent-transcripts/<id>/<id>.jsonl`. Sub-agent files under `<id>/subagents/` are skipped. Cursor CLI chats are kept in SQLite (`store.db`) and are not read. Cursor transcripts have no per-line time and no tool results, so Cursor shell calls show as `command` with no `output`.
 
 The helper only **reads** these. It never writes, moves or deletes them.
 
@@ -42,7 +43,7 @@ All JSON. All `GET`.
 | `/v1/sessions` | `{ "sessions": [Session] }`, newest first, max 200 |
 | `/v1/sessions/:tool/:id/events?after=<seq>&limit=<n>` | `{ "events": [Event] }`, `limit` default 200, max 500 |
 
-`tool` is `claude` or `codex`. Unknown session → `404 {"error":"not_found"}`.
+`tool` is `claude`, `codex` or `cursor`. Unknown session → `404 {"error":"not_found"}`.
 
 ### Session
 
@@ -64,7 +65,7 @@ All JSON. All `GET`.
 ```
 
 - `seq` starts at 1 per session and counts up in file order. Same file → same seq numbers every time.
-- `command` = a shell command the agent ran (Claude `Bash` tool call, Codex shell call).
+- `command` = a shell command the agent ran (Claude `Bash` tool call, Codex shell call, Cursor `Shell` tool call).
 - `output` = what that command printed.
 - `tool` = any other tool call (name + short input).
 - Lines the helper cannot read are skipped, never a crash.

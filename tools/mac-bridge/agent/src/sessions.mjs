@@ -1,11 +1,11 @@
 // Finds session files, indexes them lazily, and streams new events.
 // Read only: this module never writes, moves or deletes anything under the
-// Claude or Codex folders.
+// Claude, Codex or Cursor folders.
 import fsp from 'node:fs/promises';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { createParser, projectName, cut } from './parse.mjs';
+import { createParser, projectName, cursorProjectName, cut } from './parse.mjs';
 
 const MAX_SESSIONS = 200;
 const LIVE_MS = 120 * 1000;
@@ -147,9 +147,9 @@ class Record {
 }
 
 export class SessionStore extends EventEmitter {
-  constructor({ claudeDir, codexDir, pollMs = 2000, watch = true, now = () => Date.now(), showGuardian = process.env.MAC_BRIDGE_SHOW_GUARDIAN === '1' } = {}) {
+  constructor({ claudeDir, codexDir, cursorDir, pollMs = 2000, watch = true, now = () => Date.now(), showGuardian = process.env.MAC_BRIDGE_SHOW_GUARDIAN === '1' } = {}) {
     super();
-    this.dirs = { claude: claudeDir, codex: codexDir };
+    this.dirs = { claude: claudeDir, codex: codexDir, cursor: cursorDir };
     this.pollMs = pollMs;
     this.useWatch = watch;
     this.now = now;
@@ -239,6 +239,34 @@ export class SessionStore extends EventEmitter {
           found.push({ tool: 'codex', id: codexIdFromName(name), file: path.join(codexDir, r) });
         }
       }
+    }
+    // Cursor agent transcripts: <cursorDir>/<slug>/agent-transcripts/<id>/<id>.jsonl
+    // (sub-agent files under <id>/subagents/ are not chats and are skipped).
+    // Cursor CLI chats live in SQLite (store.db) and are not read.
+    const cursorDir = this.dirs.cursor;
+    if (cursorDir) {
+      let projects = [];
+      try {
+        projects = await fsp.readdir(cursorDir, { withFileTypes: true });
+      } catch {}
+      await Promise.all(
+        projects
+          .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
+          .map(async (d) => {
+            const tdir = path.join(cursorDir, d.name, 'agent-transcripts');
+            let entries = [];
+            try {
+              entries = await fsp.readdir(tdir, { withFileTypes: true });
+            } catch {}
+            for (const e of entries) {
+              if (e.isDirectory()) {
+                found.push({ tool: 'cursor', id: e.name, file: path.join(tdir, e.name, `${e.name}.jsonl`), slug: cursorProjectName(d.name) });
+              } else if (e.isFile() && e.name.endsWith('.jsonl')) {
+                found.push({ tool: 'cursor', id: e.name.slice(0, -6), file: path.join(tdir, e.name), slug: cursorProjectName(d.name) });
+              }
+            }
+          }),
+      );
     }
     const stats = await Promise.all(
       found.map(async (f) => {
@@ -422,7 +450,7 @@ export class SessionStore extends EventEmitter {
 
   describe(rec) {
     let project = rec.project;
-    if (!project) project = rec.tool === 'claude' && rec.slugProject ? rec.slugProject : rec.tool;
+    if (!project) project = (rec.tool === 'claude' || rec.tool === 'cursor') && rec.slugProject ? rec.slugProject : rec.tool;
     return {
       id: rec.id,
       tool: rec.tool,

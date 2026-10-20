@@ -1,4 +1,4 @@
-// Turns one JSONL line from a Claude Code or Codex session file into zero or
+// Turns one JSONL line from a Claude Code, Codex or Cursor session file into zero or
 // more protocol Events (without seq; the scanner adds seq in file order).
 // A parser keeps a tiny amount of state (tool calls waiting for their result),
 // which can be snapshotted so a scan can resume from a byte offset.
@@ -371,8 +371,107 @@ class CodexParser {
   }
 }
 
+// ---------------------------------------------------------------- Cursor
+//
+// Cursor agent transcripts: ~/.cursor/projects/<slug>/agent-transcripts/<id>/<id>.jsonl
+// Lines: { role, message: { content: [text | tool_use] } } and
+// { type: "turn_ended", status, error }. No per-line time, no folder, no tool
+// results (so Cursor shell calls show as commands without output).
+
+const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+/** "Monday, Oct 12, 2026, 7:46 PM (UTC-7)" -> ISO, or null. */
+export function cursorTimestamp(s) {
+  const m = String(s).match(/([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4}),? (\d{1,2}):(\d{2}) ?(AM|PM)? ?\(UTC(?:([+-])(\d{1,2})(?::?(\d{2}))?)?\)/i);
+  if (!m) return null;
+  const mon = MONTHS[m[1].toLowerCase()];
+  if (mon === undefined) return null;
+  let h = Number(m[4]); // 24-hour clock when there is no AM/PM
+  if (m[6]) h = (h % 12) + (m[6].toUpperCase() === 'PM' ? 12 : 0);
+  const offMin = m[7] ? (m[7] === '-' ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9] || 0)) : 0;
+  const t = Date.UTC(Number(m[3]), mon, Number(m[2]), h, Number(m[5])) - offMin * 60000;
+  return Number.isFinite(t) ? new Date(t).toISOString() : null;
+}
+
+const CURSOR_SKIP_TOOLS = new Set(['UpdateCurrentStep', 'GetDynamicTools', 'AwaitShell']);
+
+class CursorParser {
+  constructor(snapshot) {
+    this.state = { lastTs: null, ...(snapshot || {}) };
+    this.meta = { cwd: '', title: '' };
+  }
+
+  snapshot() {
+    return { lastTs: this.state.lastTs };
+  }
+
+  feed(o) {
+    if (!o || typeof o !== 'object') return [];
+    if (o.type === 'turn_ended') {
+      // "new_message_submitted" just means the user typed again; not worth a line
+      if (o.status === 'aborted' || (o.status === 'error' && o.error && o.error !== 'new_message_submitted')) {
+        return [ev(this.state.lastTs, 'system', typeof o.error === 'string' ? o.error : 'Turn ended')];
+      }
+      return [];
+    }
+    if (o.role !== 'user' && o.role !== 'assistant') return [];
+    const content = o.message && o.message.content;
+    const parts = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : [];
+    const out = [];
+    if (o.role === 'user') {
+      for (const b of parts) {
+        if (!b || b.type !== 'text' || typeof b.text !== 'string') continue;
+        const stamp = tagBody(b.text, 'timestamp');
+        const ts = stamp ? cursorTimestamp(stamp) : null;
+        if (ts) this.state.lastTs = ts;
+        const q = tagBody(b.text, 'user_query');
+        const text = (q !== null ? q : b.text.replace(/<(\w+)>[\s\S]*?<\/\1>/g, '')).trim();
+        if (text) out.push(ev(this.state.lastTs, 'user', text));
+      }
+      return out;
+    }
+    const ts = this.state.lastTs;
+    for (const b of parts) {
+      if (!b || typeof b !== 'object') continue;
+      if (b.type === 'text' && typeof b.text === 'string') {
+        const t = b.text.replace(/\[REDACTED\]/g, '').trim(); // hidden thinking
+        if (t) out.push(ev(ts, 'assistant', t));
+      } else if (b.type === 'tool_use') {
+        let name = b.name || 'tool';
+        let input = b.input;
+        if (name === 'CallDynamicTool' && input && typeof input === 'object') {
+          name = input.toolName || 'tool';
+          input = input.arguments;
+        }
+        if (CURSOR_SKIP_TOOLS.has(name)) continue;
+        if (name === 'Shell' && input && typeof input.command === 'string') {
+          out.push(ev(ts, 'command', input.command, { command: cut(input.command) }));
+        } else {
+          const detail = shortInput(input);
+          out.push(ev(ts, 'tool', `${name}${detail ? ' ' + detail : ''}`));
+        }
+      }
+    }
+    return out;
+  }
+}
+
+/** Cursor folder slug ("Users-me-Developer-my-app") -> a readable project name ("my-app"). */
+export function cursorProjectName(slug) {
+  let s = String(slug || '');
+  s = s.replace(/-claude-worktrees-.*$/, '');
+  const parts = s.split('-');
+  if (parts[0] === 'Users' && parts.length > 2) {
+    parts.splice(0, 2);
+    if (parts.length > 1 && /^(Developer|Documents|Desktop|Projects|projects|code|Code|src|repos|git|work)$/.test(parts[0])) parts.shift();
+  }
+  return parts.join('-') || s;
+}
+
 export function createParser(tool, snapshot) {
-  return tool === 'codex' ? new CodexParser(snapshot) : new ClaudeParser(snapshot);
+  if (tool === 'codex') return new CodexParser(snapshot);
+  if (tool === 'cursor') return new CursorParser(snapshot);
+  return new ClaudeParser(snapshot);
 }
 
 /** Parse every complete line of a text blob; handy for tests and small tools. */
