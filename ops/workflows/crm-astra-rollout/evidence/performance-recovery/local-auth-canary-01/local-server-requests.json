@@ -1,0 +1,18 @@
+[
+  {
+    "method": "GET",
+    "path": "/canary.html"
+  },
+  {
+    "method": "HEAD",
+    "path": "/manifest.webmanifest"
+  },
+  {
+    "method": "GET",
+    "path": "/manifest.webmanifest"
+  },
+  {
+    "method": "GET",
+    "path": "/manifest.webmanifest"
+  }
+]

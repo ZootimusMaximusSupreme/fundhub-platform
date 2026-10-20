@@ -1,0 +1,14 @@
+[
+  {
+    "url": "about:blank",
+    "origin": "null",
+    "token": "OPAQUE_NOT_ACCESSED",
+    "guarded": true
+  },
+  {
+    "url": "http://localhost:62998/foreign-canary.html",
+    "origin": "http://localhost:62998",
+    "token": null,
+    "guarded": true
+  }
+]

@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width"><link rel="icon" href="data:,"><link rel="manifest" href="/manifest.webmanifest"><title>Authenticated guard preflight only</title></head><body><h1>Local guard preflight</h1><main id="ready"></main><script>
+(async () => {
+  const auth = await fetch('/api/auth/session').then(r => r.json());
+  if (!auth.ok || localStorage.getItem('fh_role') !== 'client' || localStorage.getItem('fh_token') !== 'fictional-performance-token-no-authority') throw new Error('Canary fictional authentication missing');
+  const d = await fetch('/api/canary').then(r => r.json());
+  document.querySelector('#ready').textContent = d.label;
+})();
+window.__canaryPolls = 0;
+setInterval(() => { window.__canaryPolls++; fetch('/api/chat/portal-message').catch(() => {}); }, 4000);
+fetch('/manifest.webmanifest', { method: 'HEAD' });
+fetch('/manifest.webmanifest').then(r => r.json());
+fetch('/forbidden.webmanifest').catch(() => {});
+fetch('/api/forbidden', { method: 'POST' }).catch(() => {});
+fetch('https://example.invalid/forbidden.css').catch(() => {});
+window.__canaryBackgroundBlocked = [];
+for (const name of ['Worker', 'SharedWorker', 'WebSocket', 'WebTransport']) {
+  if (!(name in window)) continue;
+  try { new window[name]('https://example.invalid/worker.js'); }
+  catch { window.__canaryBackgroundBlocked.push(name); }
+}
+</script></body></html>
