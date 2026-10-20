@@ -61,3 +61,11 @@ Work only in `/Users/chrisstanbridge/Developer/fundhub-platform/.claude/worktree
 ## Leftovers
 
 - Apple App Store upload needs the App Store Connect API key, which is not saved yet (see memory: apple-developer-account).
+
+## Owner calls — 2026-10-20 (second note)
+
+- **Away mode = Tailscale on the Mac and iPhone.** Owner-set. Row 4 (hosted relay) is not needed for Chris's own use.
+- **Bigger goal: a router.** Any local tool (IDE, Claude Code, Codex) plugs in. Tasks get routed to Claude or Codex, and an agent can hand work to another agent. The phone app is the remote for it.
+- **Why not Claude Remote Control:** Chris tried it many times. It is janky, the terminal breaks often, and setup does not work.
+- **"Jev"** is to be added later as another model. Not found in the repo; waiting on Chris to say which model.
+- Open: who "Tim" is in "Tim should solve these issues" (not found in the repo).
