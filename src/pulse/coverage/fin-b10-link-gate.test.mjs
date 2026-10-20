@@ -60,7 +60,10 @@ function edit(source, from, to) {
   assert.ok(source.includes(from), `the shell no longer contains: ${from}`);
   return source.replace(from, to);
 }
-const WITH_DECK_ON_ALL = edit(REAL_SHELL, '  var ALL = [\n', '  var ALL = [\n    "present.html",\n');
+// The shell as it stood before 2026-10-20 (Set A items 21/22): present.html on no list, so the gate hid both
+// deck links from every role. Kept as a fixture so the red case is still proved.
+const WITHOUT_DECK = edit(REAL_SHELL, '  var CLOSER_DECK = ["present.html"];', "  var CLOSER_DECK = [];");
+const WITH_DECK_ON_ALL = edit(WITHOUT_DECK, '  var ALL = [\n', '  var ALL = [\n    "present.html",\n');
 const gateOf = async (shell, page = REAL_PAGE) => linkGateState({ fetchImpl: site({ shell, page }) });
 const verdict = async (control, shell, page) => judgeLinkGate(contract(control), await gateOf(shell, page));
 
@@ -74,18 +77,18 @@ function listsOf(source) {
     return (m[1].replace(/^\s*\/\/.*$/gm, "").match(/"[^"]*"/g) || []).map((s) => JSON.parse(s));
   };
   return Object.fromEntries(["ALL", "PRINCIPAL_ONLY", "OWNER_ADMIN_ONLY", "CLOSER_DESK_ONLY", "SALES_FLOOR_ONLY", "PORTAL_ONLY",
-    "HIRING_ONLY", "FINANCE_ONLY", "ADVISOR_ONLY", "CONSENT_DESK_ONLY", "STAFF_MONEY", "ADMIN_BLOCKED"].map((n) => [n, get(n)]));
+    "HIRING_ONLY", "FINANCE_ONLY", "ADVISOR_ONLY", "CONSENT_DESK_ONLY", "STAFF_MONEY", "ADMIN_BLOCKED", "CLOSER_DECK"].map((n) => [n, get(n)]));
 }
 function mayOpen(lists, role, screen) {
   const off = new Set([...lists.PRINCIPAL_ONLY, ...lists.OWNER_ADMIN_ONLY, ...lists.CLOSER_DESK_ONLY, ...lists.SALES_FLOOR_ONLY,
     ...lists.PORTAL_ONLY, ...lists.HIRING_ONLY, ...lists.FINANCE_ONLY, ...lists.ADVISOR_ONLY, ...lists.CONSENT_DESK_ONLY]);
   const staff = lists.ALL.filter((s) => !off.has(s));
   const by = {
-    owner: [...lists.ALL, ...lists.STAFF_MONEY],
-    admin: [...lists.ALL.filter((s) => !lists.ADMIN_BLOCKED.includes(s)), ...lists.STAFF_MONEY],
-    closer: [...staff, ...lists.CLOSER_DESK_ONLY, ...lists.CONSENT_DESK_ONLY, ...lists.STAFF_MONEY],
+    owner: [...lists.ALL, ...lists.STAFF_MONEY, ...lists.CLOSER_DECK],
+    admin: [...lists.ALL.filter((s) => !lists.ADMIN_BLOCKED.includes(s)), ...lists.STAFF_MONEY, ...lists.CLOSER_DECK],
+    closer: [...staff, ...lists.CLOSER_DESK_ONLY, ...lists.CONSENT_DESK_ONLY, ...lists.STAFF_MONEY, ...lists.CLOSER_DECK],
     funding_advisor: [...staff, ...lists.ADVISOR_ONLY, ...lists.CONSENT_DESK_ONLY],
-    sales_manager: [...staff, ...lists.SALES_FLOOR_ONLY, ...lists.FINANCE_ONLY, ...lists.STAFF_MONEY],
+    sales_manager: [...staff, ...lists.SALES_FLOOR_ONLY, ...lists.FINANCE_ONLY, ...lists.STAFF_MONEY, ...lists.CLOSER_DECK],
     csm: [...staff, ...lists.CONSENT_DESK_ONLY],
     setter: staff,
     inquiry_specialist: staff,
@@ -169,8 +172,23 @@ test("the real shell runs for every staff role, and its answer matches an indepe
   assert.equal(state.roles.closer.links["ccp-link-lenders"].shown, false);
 });
 
-test("red today: present.html is on no list, so no role sees either Closer Deck link, and the words name it", async () => {
+test("green today: the real shell shows both deck links to owner, admin, closer and sales manager, and to no one else", async () => {
   const state = await gateOf(REAL_SHELL);
+  for (const control of [SNAPSHOT, QUICK]) {
+    const out = judgeLinkGate(contract(control), state);
+    assert.equal(out.status, "PASS", `${control}: ${out.detail}`);
+  }
+  for (const role of STAFF_ROLES) {
+    const may = ["owner", "admin", "closer", "sales_manager"].includes(role);
+    for (const id of ["ccp-link-present", "ccp-link-present2"]) {
+      const link = state.roles[role].links[id];
+      assert.equal(link.shown && !link.blocked, may, `${role}: ${id}`);
+    }
+  }
+});
+
+test("red when present.html is on no list (the shell before 2026-10-20): no role sees either Closer Deck link, and the words name it", async () => {
+  const state = await gateOf(WITHOUT_DECK);
   for (const control of [SNAPSHOT, QUICK]) {
     const entry = contract(control);
     const out = judgeLinkGate(entry, state);
@@ -463,7 +481,7 @@ test("the display lane judges both rows from the live shell and page with no dat
   const ids = [contract(SNAPSHOT).id, contract(QUICK).id];
 
   const seen = [];
-  const red = await gapChecks({ fetchImpl: site({ seen }) });
+  const red = await gapChecks({ fetchImpl: site({ shell: WITHOUT_DECK, seen }) });
   assert.deepEqual(red.filter((r) => ids.includes(r.id)).map((r) => r.status), ["FAIL", "FAIL"]);
   assert.ok(seen.every((call) => call.init.method === "GET"), "only GET");
   assert.equal(seen.filter((call) => call.url.endsWith(SHELL_PATH)).length, 3,
@@ -484,6 +502,7 @@ test("the display lane judges both rows from the live shell and page with no dat
 
   // Asked straight, with the gate state as the second argument, the judge is the same function.
   const entry = contract(SNAPSHOT);
-  assert.equal(judgeDisplayResult(entry, await gateOf(REAL_SHELL)).status, "FAIL");
+  assert.equal(judgeDisplayResult(entry, await gateOf(WITHOUT_DECK)).status, "FAIL");
+  assert.equal(judgeDisplayResult(entry, await gateOf(REAL_SHELL)).status, "PASS", "the real shell today");
   assert.equal(judgeDisplayResult(entry, await gateOf(WITH_DECK_ON_ALL)).status, "PASS");
 });
