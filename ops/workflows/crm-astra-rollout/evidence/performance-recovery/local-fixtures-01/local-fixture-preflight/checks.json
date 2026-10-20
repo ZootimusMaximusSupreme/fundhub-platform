@@ -1,0 +1,144 @@
+{
+  "checks": [
+    {
+      "key": "portal-login",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 64.39999999990687,
+        "count": 1,
+        "path": "/portal-login.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": []
+    },
+    {
+      "key": "portal",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 166.79999999981374,
+        "count": 1,
+        "path": "/app/client-portal.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "key": "money",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 107.6999999997206,
+        "count": 1,
+        "path": "/app/money.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "key": "affiliate",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 171.20000000018626,
+        "count": 27,
+        "path": "/app/affiliate.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "key": "teams",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 178.79999999981374,
+        "count": 27,
+        "path": "/app/staff-teams.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "key": "pipeline",
+      "localOnly": true,
+      "noLiveMeasurement": true,
+      "ready": {
+        "at": 161.6999999997206,
+        "count": 27,
+        "path": "/app/pipeline.html",
+        "width": 390,
+        "height": 844,
+        "fullFixture": true,
+        "astra": true
+      },
+      "failure": null,
+      "unmapped": [],
+      "errors": [],
+      "denied": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ]
+    }
+  ],
+  "networkEscapes": [],
+  "noPerformanceClaimed": true
+}

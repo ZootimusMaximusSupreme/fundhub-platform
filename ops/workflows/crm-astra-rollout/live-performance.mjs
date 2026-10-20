@@ -10,8 +10,10 @@ import { createFixture } from '../dashboard-ux-polish/astra-comparison/fixtures.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../../..');
-const OUT = path.join(HERE, 'evidence/performance');
 const arg = key => process.argv.find(value => value.startsWith(`--${key}=`))?.slice(key.length + 3);
+const attempt = arg('attempt');
+if (!/^[a-z0-9][a-z0-9-]{2,79}$/.test(attempt || '')) throw new Error('STOP: provide a fresh safe --attempt= name; existing attempts are never overwritten');
+const OUT = path.join(HERE, 'evidence/performance-recovery', attempt);
 const TOOL_ROOT = arg('lighthouse-tool-root') || process.env.LIGHTHOUSE_TOOL_ROOT;
 const CHROME = arg('chrome-path') || process.env.CHROME_PATH;
 if (!TOOL_ROOT || !path.isAbsolute(TOOL_ROOT)) throw new Error('STOP: provide an absolute existing LIGHTHOUSE_TOOL_ROOT or --lighthouse-tool-root=; this runner installs nothing');
@@ -21,7 +23,7 @@ const dependency = createRequire(path.join(TOOL_ROOT, 'package.json'));
 const lighthousePackage = JSON.parse(await fs.readFile(path.join(TOOL_ROOT, 'node_modules/lighthouse/package.json'), 'utf8'));
 if (lighthousePackage.version !== '13.5.0') throw new Error('STOP: this proof configuration requires the reviewed installed Lighthouse 13.5.0');
 const { default: lighthouse } = await import(pathToFileURL(dependency.resolve('lighthouse')).href);
-const { throttling } = await import(pathToFileURL(dependency.resolve('lighthouse/core/config/constants.js')).href);
+const { throttling, nonSimulatedSettingsOverrides } = await import(pathToFileURL(dependency.resolve('lighthouse/core/config/constants.js')).href);
 const { launch } = await import(pathToFileURL(dependency.resolve('chrome-launcher')).href);
 const { default: puppeteer } = await import(pathToFileURL(dependency.resolve('puppeteer-core')).href);
 const selftest = process.argv.includes('--selftest');
@@ -66,10 +68,92 @@ const settings = {
   formFactor: 'mobile', screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 1, disabled: false },
   throttlingMethod: 'devtools', throttling: { ...throttling.mobileSlow4G, cpuSlowdownMultiplier: 4 },
   disableFullPageScreenshot: true, enableErrorReporting: false,
+  networkQuietThresholdMs: 1000, cpuQuietThresholdMs: 5250,
+  pauseAfterFcpMs: 5250, pauseAfterLoadMs: 5250, maxWaitForLoad: 45000,
 };
+const canarySources = new Map();
+const errorDetail = error => ({ message: error.message || String(error), stack: error.stack || null });
+const bounded = async (promise, ms, label) => {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms; invalid attempt`)), ms); })]); }
+  finally { clearTimeout(timer); }
+};
+async function measuredLighthouse(page, url, dir) {
+  // LH 13.5 clamps DevTools windows. Change only the exported network minimum,
+  // for this sequential call, and always restore it. Library files stay intact.
+  const originalMinimums = { ...nonSimulatedSettingsOverrides };
+  const diagnostic = { started: new Date().toISOString(), commands: [], originalMinimums };
+  const target = page.target(), originalCreateSession = target.createCDPSession;
+  target.createCDPSession = async function (...args) {
+    const session = await originalCreateSession.apply(this, args);
+    const send = session.send.bind(session);
+    session.send = async function (method, params, options) {
+      const expression = params?.expression || '';
+      const phase = expression.includes('registerPerformanceObserverInPage') ? 'register-cpu-observer'
+        : expression.includes('checkTimeSinceLastLongTaskInPage') ? 'check-cpu-quiet'
+          : method === 'Page.createIsolatedWorld' ? 'isolated-world' : null;
+      if (!phase) return send(method, params, options);
+      const start = Date.now(), record = { phase, method, started: new Date(start).toISOString(), timeoutMs: params?.timeout ?? options?.timeout, contextId: params?.contextId, status: 'pending' };
+      diagnostic.commands.push(record);
+      try {
+        const result = await send(method, params, options);
+        record.status = 'completed';
+        if (typeof result?.result?.value === 'number') record.quietMs = result.result.value;
+        if (result?.exceptionDetails) record.exceptionDetails = result.exceptionDetails;
+        return result;
+      } catch (error) { record.status = 'failed'; record.error = errorDetail(error); throw error; }
+      finally { record.durationMs = Date.now() - start; }
+    };
+    return session;
+  };
+  try {
+    nonSimulatedSettingsOverrides.networkQuietThresholdMs = 1000;
+    const result = await bounded(lighthouse(url, settings, undefined, page), 120000, 'Total Lighthouse protocol/gather/audit');
+    diagnostic.effectiveSettings = result?.lhr?.configSettings || null;
+    return result;
+  } finally {
+    nonSimulatedSettingsOverrides.networkQuietThresholdMs = originalMinimums.networkQuietThresholdMs;
+    target.createCDPSession = originalCreateSession;
+    diagnostic.finished = new Date().toISOString();
+    diagnostic.restoredMinimums = { ...nonSimulatedSettingsOverrides };
+    diagnostic.restored = JSON.stringify(originalMinimums) === JSON.stringify(diagnostic.restoredMinimums);
+    await json(path.join(dir, 'cpu-protocol-diagnostic.json'), diagnostic);
+    if (!diagnostic.restored) throw new Error('Lighthouse minimum settings were not restored');
+  }
+}
+function assertEffectiveSettings(actual) {
+  for (const key of ['formFactor', 'throttlingMethod', 'networkQuietThresholdMs', 'cpuQuietThresholdMs', 'pauseAfterFcpMs', 'pauseAfterLoadMs', 'maxWaitForLoad']) {
+    if (actual?.[key] !== settings[key]) throw new Error(`Unexpected effective Lighthouse ${key}: ${actual?.[key]}`);
+  }
+  for (const [key, value] of Object.entries(settings.screenEmulation)) if (actual.screenEmulation?.[key] !== value) throw new Error(`Unexpected effective screen ${key}`);
+  for (const [key, value] of Object.entries(settings.throttling)) if (actual.throttling?.[key] !== value) throw new Error(`Unexpected effective throttle ${key}`);
+}
+const canaryHTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width"><link rel="icon" href="data:,"><link rel="manifest" href="/manifest.webmanifest"><title>Authenticated guard preflight only</title></head><body><h1>Local guard preflight</h1><main id="ready"></main><script>
+(async () => {
+  const auth = await fetch('/api/auth/session').then(r => r.json());
+  if (!auth.ok || localStorage.getItem('fh_role') !== 'client' || localStorage.getItem('fh_token') !== 'fictional-performance-token-no-authority') throw new Error('Canary fictional authentication missing');
+  const d = await fetch('/api/canary').then(r => r.json());
+  document.querySelector('#ready').textContent = d.label;
+})();
+window.__canaryPolls = 0;
+setInterval(() => { window.__canaryPolls++; fetch('/api/chat/portal-message').catch(() => {}); }, 4000);
+fetch('/manifest.webmanifest', { method: 'HEAD' });
+fetch('/manifest.webmanifest').then(r => r.json());
+fetch('/forbidden.webmanifest').catch(() => {});
+fetch('/api/forbidden', { method: 'POST' }).catch(() => {});
+fetch('https://example.invalid/forbidden.css').catch(() => {});
+window.__canaryBackgroundBlocked = [];
+for (const name of ['Worker', 'SharedWorker', 'WebSocket', 'WebTransport']) {
+  if (!(name in window)) continue;
+  try { new window[name]('https://example.invalid/worker.js'); }
+  catch { window.__canaryBackgroundBlocked.push(name); }
+}
+</script></body></html>`;
+canarySources.set('/canary.html', Buffer.from(canaryHTML));
+canarySources.set('/manifest.webmanifest', Buffer.from(JSON.stringify({ name: 'Fictional canary', start_url: '/canary.html', display: 'standalone' })));
 
 async function installGuard(page, target, origin, dir) {
-  const log = { apiFixtures: [], denied: [], allowedStatic: [], embeddedResources: [], errors: [], sources: [] };
+  const log = { apiFixtures: [], denied: [], allowedStatic: [], embeddedResources: [], errors: [], sources: [], headMetadata: [], bootstraps: [] };
   const pending = new Set();
   let captureStopped = false;
   await page.setBypassServiceWorker(true);
@@ -78,6 +162,9 @@ async function installGuard(page, target, origin, dir) {
     const task = (async () => {
       const url = new URL(request.url());
       const method = request.method();
+      if (selftest && url.href === target.foreignCanaryUrl && method === 'GET') {
+        return request.respond({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Intercepted foreign origin reset</title>' });
+      }
       if (method === 'GET' && ['image', 'font', 'other'].includes(request.resourceType())
           && (/^data:(?:image\/|font\/)/.test(url.href) || url.href === 'data:,')) {
         log.embeddedResources.push({ type: request.resourceType(), sha256: sha(url.href), urlLength: url.href.length, network: false });
@@ -91,9 +178,10 @@ async function installGuard(page, target, origin, dir) {
         log.apiFixtures.push({ path: url.pathname, method, known: !!data });
         return request.respond({ status: data ? 200 : 503, contentType: 'application/json',
           headers: { 'cache-control': 'no-store', 'x-astra-perf-fixture': 'fictional-local-response' },
-          body: JSON.stringify(data || { ok: false, error: 'unmapped_performance_fixture' }) });
+          body: method === 'HEAD' ? '' : JSON.stringify(data || { ok: false, error: 'unmapped_performance_fixture' }) });
       }
-      const staticPath = /\.(?:html|css|js|mjs|json|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|ico)$/i.test(url.pathname);
+      const staticPath = /\.(?:html|css|js|mjs|json|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|ico)$/i.test(url.pathname)
+        || (url.pathname === '/manifest.webmanifest' && !url.search);
       if (url.origin !== origin || api || !['GET', 'HEAD'].includes(method) || !staticPath
           || ['websocket', 'eventsource'].includes(request.resourceType())) {
         log.denied.push({ url: url.href, method, type: request.resourceType() });
@@ -104,7 +192,7 @@ async function installGuard(page, target, origin, dir) {
       for (const key of Object.keys(headers)) if (/authorization|cookie|token|api.key/i.test(key)) delete headers[key];
       log.allowedStatic.push({ url: url.href, method, type: request.resourceType() });
       return request.continue({ headers });
-    })().catch(error => { log.errors.push(String(error)); });
+    })().catch(error => { log.errors.push({ phase: 'request-guard', url: request.url(), ...errorDetail(error) }); });
     pending.add(task); task.finally(() => pending.delete(task));
   });
   page.on('response', response => {
@@ -112,23 +200,34 @@ async function installGuard(page, target, origin, dir) {
     const u = new URL(response.url());
     if (u.origin !== origin || u.pathname.startsWith('/api/') || !log.allowedStatic.some(r => r.url === u.href)) return;
     const task = (async () => {
+      if (response.request().method() === 'HEAD') {
+        log.headMetadata.push({ url: u.href, method: 'HEAD', status: response.status(), headers: response.headers(), bodyless: true });
+        return;
+      }
       const bytes = await response.buffer();
       const hash = sha(bytes);
       const ext = path.extname(u.pathname).slice(1) || 'bin';
       await fs.writeFile(path.join(dir, 'sources', `${hash}.${ext}`), bytes);
       const headers = response.headers();
       let localHash = null;
-      if (!selftest) {
+      if (selftest) localHash = canarySources.has(u.pathname) ? sha(canarySources.get(u.pathname)) : null;
+      else {
         try { localHash = sha(await fs.readFile(path.join(ROOT, 'public', u.pathname))); } catch {}
       }
-      log.sources.push({ url: u.href, status: response.status(), sha256: hash, decodedBytes: bytes.length,
+      log.sources.push({ url: u.href, method: 'GET', status: response.status(), sha256: hash, decodedBytes: bytes.length,
         contentType: headers['content-type'], cacheControl: headers['cache-control'], localHash,
         matchesLocal: localHash === null ? null : localHash === hash, file: `sources/${hash}.${ext}` });
-    })().catch(error => log.errors.push(`Source capture: ${u.pathname}: ${error.message}`));
+    })().catch(error => log.errors.push({ phase: 'source-capture', url: u.href, ...errorDetail(error) }));
     pending.add(task); task.finally(() => pending.delete(task));
   });
-  page.on('pageerror', error => log.errors.push(error.message));
-  await page.evaluateOnNewDocument(({ target }) => {
+  page.on('pageerror', error => log.errors.push({ phase: 'pageerror', url: page.url(), ...errorDetail(error) }));
+  page.on('console', message => {
+    if (message.text().startsWith('ASTRA_PERF_BOOTSTRAP ')) {
+      try { log.bootstraps.push(JSON.parse(message.text().slice(21))); }
+      catch (error) { log.errors.push({ phase: 'bootstrap-diagnostic', ...errorDetail(error) }); }
+    }
+  });
+  await page.evaluateOnNewDocument(({ target, origin }) => {
     // Defense in depth for network paths that do not use this page's HTTP interception.
     for (const name of ['Worker', 'SharedWorker', 'WebSocket', 'WebTransport']) {
       if (name in window) Object.defineProperty(window, name, { configurable: true, value: function () { throw new Error('Performance audit blocks background network constructors'); } });
@@ -137,11 +236,14 @@ async function installGuard(page, target, origin, dir) {
       try { navigator.serviceWorker.register = () => Promise.reject(new Error('Performance audit blocks service workers')); } catch {}
     }
     window.open = () => null;
-    if (target.session) {
+    const expectedOrigin = location.origin === origin;
+    if (expectedOrigin && target.session) {
       localStorage.setItem('fh_token', 'fictional-performance-token-no-authority');
       localStorage.setItem('fh_role', target.session.staff.role);
       localStorage.removeItem('fh_demo');
     }
+    console.debug('ASTRA_PERF_BOOTSTRAP ' + JSON.stringify({ url: location.href, origin: location.origin, expectedOrigin, storageSeeded: expectedOrigin && !!target.session, backgroundGuardsInstalled: true }));
+    if (!expectedOrigin) return;
     const check = () => {
       if (window.__astraPerfReady) return;
       const count = document.querySelectorAll(target.selector).length;
@@ -153,7 +255,7 @@ async function installGuard(page, target, origin, dir) {
     };
     new MutationObserver(check).observe(document, { childList: true, subtree: true });
     document.addEventListener('DOMContentLoaded', check);
-  }, { target: { ...target, handlers: undefined } });
+  }, { target: { ...target, handlers: undefined }, origin });
   return { log, flush: async ({ auditedStaticUrls } = {}) => {
     if (!captureStopped) {
       // Lighthouse uses its own CDP session. Its source-code re-requests can
@@ -164,14 +266,15 @@ async function installGuard(page, target, origin, dir) {
         try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }); }
         catch (error) { log.errors.push(`Source capture did not settle: ${error.message}`); }
       }
-      while (pending.size) await Promise.allSettled([...pending]);
+      const deadline = Date.now() + 15000;
+      while (pending.size) await bounded(Promise.allSettled([...pending]), Math.max(1, deadline - Date.now()), 'Source/guard settlement');
       if (auditedStaticUrls) {
         const captured = new Set(log.sources.map(source => source.url));
         for (const url of auditedStaticUrls) if (!captured.has(url)) log.errors.push(`Audited static bytes were not captured: ${url}`);
       }
       captureStopped = true;
     }
-    while (pending.size) await Promise.allSettled([...pending]);
+    if (pending.size) await bounded(Promise.allSettled([...pending]), 15000, 'Final source/guard settlement');
   } };
 }
 
@@ -219,8 +322,22 @@ async function runTarget(browser, target, origin, dir) {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true });
   const guard = await installGuard(page, target, origin, dir);
   const started = new Date().toISOString();
+  const startMs = Date.now();
   try {
-    const result = await lighthouse(origin + target.url, settings, undefined, page);
+    if (selftest) {
+      const resetChecks = [];
+      for (const url of ['about:blank', target.foreignCanaryUrl]) {
+        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        resetChecks.push(await page.evaluate(() => ({
+          url: location.href, origin: location.origin,
+          token: location.origin === 'null' ? 'OPAQUE_NOT_ACCESSED' : localStorage.getItem('fh_token'),
+          guarded: ['Worker', 'SharedWorker', 'WebSocket', 'WebTransport'].filter(name => name in window).every(name => String(window[name]).includes('Performance audit blocks')),
+        })));
+      }
+      await json(path.join(dir, 'origin-reset-checks.json'), resetChecks);
+      if (resetChecks.some(check => !check.guarded || ![null, 'OPAQUE_NOT_ACCESSED'].includes(check.token))) throw new Error('Foreign/opaque origin bootstrap guard failed');
+    }
+    const result = await measuredLighthouse(page, origin + target.url, dir);
     if (!result) throw new Error('No Lighthouse result');
     const lhr = result.lhr;
     await fs.writeFile(path.join(dir, 'lighthouse.json'), result.report[0]);
@@ -232,10 +349,12 @@ async function runTarget(browser, target, origin, dir) {
       headStylesheets: [...document.head.querySelectorAll('link[rel=stylesheet]')].map(el => el.href),
       navigationTTFBMs: performance.getEntriesByType('navigation')[0]?.responseStart ?? null,
       width: innerWidth,
+      canaryPolls: window.__canaryPolls ?? null, canaryBackgroundBlocked: window.__canaryBackgroundBlocked || null,
     }));
     const auditedNetwork = lhr.audits['network-requests']?.details?.items || [];
     const allowed = new Set(guard.log.allowedStatic.map(row => row.url));
-    const auditedStaticUrls = [...new Set(auditedNetwork.filter(row => allowed.has(row.url) && row.statusCode >= 200 && row.statusCode < 400).map(row => row.url))];
+    const allowedGET = new Set(guard.log.allowedStatic.filter(row => row.method === 'GET').map(row => row.url));
+    const auditedStaticUrls = [...new Set(auditedNetwork.filter(row => allowedGET.has(row.url) && row.statusCode >= 200 && row.statusCode < 400).map(row => row.url))];
     if (!auditedStaticUrls.length) guard.log.errors.push('No audited static network evidence');
     for (const row of auditedNetwork.filter(row => row.statusCode >= 200 && row.statusCode < 400 && /^https?:/.test(row.url))) {
       const url = new URL(row.url);
@@ -244,31 +363,58 @@ async function runTarget(browser, target, origin, dir) {
     }
     await guard.flush({ auditedStaticUrls });
     await json(path.join(dir, 'guard.json'), guard.log);
-    const summary = { key: target.key, started, liveStatic: !selftest, fictionalAPI: true, release: release || null,
-      settings, ...summarize(lhr, guard.log.sources, dom) };
+    const summary = { key: target.key, started, durationMs: Date.now() - startMs, liveStatic: !selftest, fictionalAPI: true, release: release || null,
+      settings, effectiveSettings: lhr.configSettings, ...summarize(lhr, guard.log.sources, dom) };
     await json(path.join(dir, 'summary.json'), summary);
+    const screen = lhr.audits['final-screenshot']?.details?.data;
+    if (screen) await fs.writeFile(path.join(dir, 'audited-final.jpg'), Buffer.from(screen.split(',')[1], 'base64'));
     const finalPath = new URL(lhr.finalDisplayedUrl || lhr.finalUrl).pathname;
     if (finalPath !== new URL(target.url, origin).pathname || !dom.ready || dom.ready.width !== 390 || (!selftest && !dom.astra)) throw new Error('Wrong page, incomplete fixture, wrong viewport, or missing Astra opt-in; no performance pass');
     if (lhr.runtimeError) throw new Error(`Lighthouse runtime error: ${lhr.runtimeError.message}`);
-    if (guard.log.errors.length) throw new Error(`Page/guard errors: ${guard.log.errors.join('; ')}`);
-    if (guard.log.sources.some(s => s.matchesLocal === false)) throw new Error('Deployed source mismatch; no performance pass');
+    assertEffectiveSettings(lhr.configSettings);
+    if ((lhr.runWarnings || []).some(warning => /time.?out|timed out|incomplet|did not finish|page.*(?:load|hung)/i.test(warning))) throw new Error(`Incomplete Lighthouse load warning: ${JSON.stringify(lhr.runWarnings)}`);
+    if (guard.log.errors.length) throw new Error(`Page/guard errors: ${JSON.stringify(guard.log.errors)}`);
+    if (guard.log.sources.some(s => s.matchesLocal !== true)) throw new Error('Source missing or mismatched; no performance pass');
     if (guard.log.apiFixtures.some(r => !r.known)) throw new Error('Unmapped fixture API: inspect guard.json before interpreting performance');
-    const screen = lhr.audits['final-screenshot']?.details?.data;
-    if (screen) await fs.writeFile(path.join(dir, 'audited-final.jpg'), Buffer.from(screen.split(',')[1], 'base64'));
+    if (selftest) {
+      const checks = {
+        opaqueResetSeen: guard.log.bootstraps.some(row => row.url === 'about:blank' && !row.storageSeeded),
+        foreignResetSeen: guard.log.bootstraps.some(row => row.url === target.foreignCanaryUrl && !row.storageSeeded),
+        exactOriginSeeded: guard.log.bootstraps.some(row => row.origin === origin && row.storageSeeded),
+        noForeignSeed: guard.log.bootstraps.every(row => row.expectedOrigin || !row.storageSeeded),
+        backgroundConstructorsGuarded: dom.canaryBackgroundBlocked?.length === 4,
+        unchangedFourSecondPollObserved: dom.canaryPolls >= 1,
+        headMetadataOnly: guard.log.headMetadata.some(row => row.url === origin + '/manifest.webmanifest' && row.bodyless),
+        manifestGETBytesMatched: guard.log.sources.some(row => row.url === origin + '/manifest.webmanifest' && row.method === 'GET' && row.matchesLocal),
+        postBlocked: guard.log.denied.some(row => row.method === 'POST'),
+        externalBlocked: guard.log.denied.some(row => row.url.startsWith('https://example.invalid/')),
+        otherManifestBlocked: guard.log.denied.some(row => row.url === origin + '/forbidden.webmanifest'),
+      };
+      await json(path.join(dir, 'authenticated-canary-checks.json'), checks);
+      if (Object.values(checks).some(passed => !passed)) throw new Error('Authenticated canary invariant failed; inspect authenticated-canary-checks.json');
+    }
     return summary;
   } catch (error) {
-    await guard.flush();
+    try { await guard.flush(); } catch (flushError) { guard.log.errors.push({ phase: 'failed-attempt-settlement', ...errorDetail(flushError) }); }
     await json(path.join(dir, 'guard.json'), guard.log);
-    await json(path.join(dir, 'failure.json'), { error: error.message, started, liveStatic: !selftest, noPassClaimed: true });
+    await json(path.join(dir, 'failure.json'), { ...errorDetail(error), started, durationMs: Date.now() - startMs, liveStatic: !selftest, noPassClaimed: true });
     throw error;
-  } finally { await context.close(); }
+  } finally { await bounded(context.close(), 15000, 'Owned browser context cleanup'); }
 }
 
-await fs.mkdir(OUT, { recursive: true });
+await fs.mkdir(path.dirname(OUT), { recursive: true });
+await fs.mkdir(OUT); // EEXIST is deliberate: an attempt is immutable.
+const libraryFiles = ['core/config/constants.js', 'core/config/config.js', 'core/gather/driver/wait-for-condition.js', 'core/gather/driver/execution-context.js'];
+const libraryHashes = async () => Object.fromEntries(await Promise.all(libraryFiles.map(async file => [file, sha(await fs.readFile(path.join(TOOL_ROOT, 'node_modules/lighthouse', file)))])));
+const toolReceipt = { started: new Date().toISOString(), attempt, toolRoot: TOOL_ROOT, chromePath: CHROME,
+  lighthouse: lighthousePackage.version, puppeteer: dependency('puppeteer-core/package.json').version,
+  chromeLauncher: dependency('chrome-launcher/package.json').version, node: process.version,
+  originalLibraryHashes: await libraryHashes(), localOnly: selftest || fixturePreflight, requestedSettings: settings };
+await json(path.join(OUT, 'tool-receipt.json'), toolReceipt);
 let chrome, browser, server;
+const reached = [];
 try {
   let origin = 'https://fundhub.ai';
-  const reached = [];
   if (selftest || fixturePreflight) {
     server = http.createServer(async (req, res) => {
       reached.push({ method: req.method, path: req.url });
@@ -280,8 +426,9 @@ try {
         catch { res.writeHead(404).end('Local fixture preparation asset not found'); }
         return;
       }
-      if (req.url !== '/canary.html') { res.writeHead(500).end('Unexpected network escape'); return; }
-      res.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><meta name="viewport" content="width=device-width"><link rel="icon" href="data:,"><title>Guard preflight only</title><h1>Local guard preflight</h1><main id="ready"></main><script>fetch("/api/canary").then(r=>r.json()).then(d=>document.querySelector("#ready").textContent=d.label);fetch("/api/forbidden",{method:"POST"}).catch(()=>{});fetch("https://example.invalid/forbidden.css").catch(()=>{});</script>');
+      if (!canarySources.has(req.url) || !['GET', 'HEAD'].includes(req.method)) { res.writeHead(500).end('Unexpected network escape'); return; }
+      res.writeHead(200, { 'content-type': req.url.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html' })
+        .end(req.method === 'HEAD' ? '' : canarySources.get(req.url));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
@@ -291,6 +438,8 @@ try {
     if (receipt.source !== release || !receipt.assets?.length || receipt.assets.some(asset => !asset.matches)) throw new Error('STOP: matching successful root live-byte receipt is required');
   }
   chrome = await launch({ chromePath: CHROME, chromeFlags: ['--headless', '--disable-background-networking', '--disable-sync', '--no-first-run', '--window-size=390,844', '--disable-features=Prerender2,SpeculationRulesPrefetch'] });
+  toolReceipt.ownedChromePID = chrome.pid;
+  await json(path.join(OUT, 'tool-receipt.json'), toolReceipt);
   browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${chrome.port}`, defaultViewport: null });
   if (fixturePreflight) {
     const checks = [];
@@ -316,19 +465,32 @@ try {
     await json(path.join(OUT, 'local-fixture-preflight', 'checks.json'), { checks, networkEscapes: escapes, noPerformanceClaimed: true });
     if (escapes.length || checks.some(c => c.failure || c.unmapped.length || c.errors.length || !c.ready?.astra)) process.exitCode = 1;
   } else if (selftest) {
-    const target = { key: 'preflight-only', url: '/canary.html', selector: '#ready', min: 1, text: 'FICTIONAL CANARY', session: null, handlers: { '/api/canary': { label: 'FICTIONAL CANARY' } } };
+    const target = { key: 'preflight-only', url: '/canary.html', selector: '#ready', min: 1, text: 'FICTIONAL CANARY', session: client,
+      foreignCanaryUrl: origin.replace('127.0.0.1', 'localhost') + '/foreign-canary.html', handlers: { '/api/canary': { label: 'FICTIONAL CANARY' } } };
     const result = await runTarget(browser, target, origin, path.join(OUT, 'preflight-only'));
-    const escaped = reached.some(r => r.path !== '/canary.html' || r.method !== 'GET');
+    const escaped = reached.some(r => !canarySources.has(r.path) || !['GET', 'HEAD'].includes(r.method));
     await json(path.join(OUT, 'preflight-only', 'safety-receipt.json'), { passed: !escaped, localOnly: true, noLiveMeasurement: true, serverRequests: reached, ready: result.dom.ready, lighthouseVersion: '13.5.0', sameProvidedPage: true });
     if (escaped) throw new Error('Interception failed: unexpected request reached local canary server');
     console.log('PASS: same-page Lighthouse guard retained interception; no API/write/external request reached the server. Local canary only.');
   } else {
     const all = [];
+    const runStatus = pages.flatMap(target => [1, 2, 3].map(run => ({ page: target.key, run, status: 'UNMEASURED' })));
+    await json(path.join(OUT, 'run-status.json'), runStatus);
     for (const target of pages) for (let run = 1; run <= 3; run++) {
       console.log(`Measuring ${target.key} ${run}/3 from actual production static assets`);
-      const result = await runTarget(browser, target, origin, path.join(OUT, release, target.key, `run-${run}`));
+      let result;
+      const status = runStatus.find(row => row.page === target.key && row.run === run);
+      try {
+        result = await runTarget(browser, target, origin, path.join(OUT, release, target.key, `run-${run}`));
+        status.status = 'VALID_WITHIN_GUARDED_SCOPE';
+      } catch (error) {
+        status.status = 'INVALID'; status.error = errorDetail(error);
+        await json(path.join(OUT, 'run-status.json'), runStatus);
+        throw error;
+      }
       all.push({ ...result, run });
       await json(path.join(OUT, release, 'runs.json'), all);
+      await json(path.join(OUT, 'run-status.json'), runStatus);
     }
     const median = values => values.slice().sort((a, b) => a - b)[1];
     const medians = pages.map(target => {
@@ -365,6 +527,13 @@ try {
   }
 } finally {
   if (browser) browser.disconnect();
-  if (chrome) await chrome.kill();
-  if (server) await new Promise(resolve => server.close(resolve));
+  if (chrome) await bounded(chrome.kill(), 15000, 'Owned Chrome cleanup');
+  if (server) { server.closeAllConnections(); await bounded(new Promise(resolve => server.close(resolve)), 15000, 'Owned local canary server cleanup'); }
+  toolReceipt.finalLibraryHashes = await libraryHashes();
+  toolReceipt.libraryFilesUnchanged = JSON.stringify(toolReceipt.originalLibraryHashes) === JSON.stringify(toolReceipt.finalLibraryHashes);
+  toolReceipt.finished = new Date().toISOString();
+  toolReceipt.durationMs = Date.parse(toolReceipt.finished) - Date.parse(toolReceipt.started);
+  await json(path.join(OUT, 'tool-receipt.json'), toolReceipt);
+  if (selftest || fixturePreflight) await json(path.join(OUT, 'local-server-requests.json'), reached);
+  if (!toolReceipt.libraryFilesUnchanged) throw new Error('Installed Lighthouse library files changed; invalid proof');
 }

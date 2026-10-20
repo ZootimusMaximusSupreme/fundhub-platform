@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-10-20T11:36:14Z",
+  "scope": "Fresh read-only shipped Astra UI and source checks after recovery; not all business journeys, speed, physical iPhone or native Mac certification",
+  "deployedApplicationSource": "91486d44c5aaaa247a0af21b499ebcdf219acfe2",
+  "shipRun": "https://github.com/ZootimusMaximusSupreme/fundhub-platform/actions/runs/39404571656",
+  "freshByteComparisonSource": "2111e0424e7b3b403fdad3830b0c608aee7454f1",
+  "publicTree": "1643991ee11be3595991ab93c171283edb5e813f",
+  "comparisonSourceDifference": "Only the existing successful ship-log line follows deployed merge; application tree unchanged",
+  "assetCheck": {
+    "path": "live-responsive/asset-bytes.json",
+    "checkedAt": "2026-10-20T11:33:35.682Z",
+    "sha256": "19c60a062e612bcef22685628972d138f599194ffcf6777a4a95bffd5dbffc7c",
+    "matched": 67,
+    "mismatched": 0
+  },
+  "responsiveCheck": {
+    "path": "live-responsive/results.json",
+    "completedAt": "2026-10-20T11:34:28.011Z",
+    "sha256": "62fb57ec5e6389475b93a4d282cd63cd72eee5e4ef74a8b16c3ebdbff5854d16",
+    "representativePages": ["teams", "portal", "money", "affiliate", "pipeline"],
+    "profiles": ["390px Chromium", "440px WebKit", "838x390 WebKit", "768px Chromium", "1024px Chromium", "1280px WebKit", "1440px Chromium"],
+    "passed": 35,
+    "failed": 0,
+    "pageErrors": 0,
+    "deniedRequests": 0,
+    "interceptedWrites": 0,
+    "localApplicationAssetSubstitution": false,
+    "fictionalInterceptedAPI": true,
+    "realCookies": false,
+    "scoreIncludingExactAssetGate": "AS36/36=100/100"
+  },
+  "dashboardPolishCheck": {
+    "pathFromRepositoryRoot": "ops/workflows/dashboard-ux-polish/evidence/live-results.json",
+    "sha256": "23da3a194e1f64744818c26ca85d6bca2e0c3673b55f75b60fb011fc5b8c651e",
+    "startedAt": "2026-10-20T11:34:21.928Z",
+    "durationMs": 16981.781,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "score": "DP7/7=100/100"
+  },
+  "sourceContracts": {
+    "checkedAt": "2026-10-20T11:34:19.468Z",
+    "base": "f1ab024ee0fca5b236ecac50957ec0286c628101",
+    "pagesExamined": 62,
+    "pagesRestyledAndOptedIn": 59,
+    "specialistOrRedirectPagesUnchanged": 3,
+    "issues": 0,
+    "initialRecoveryAttempt": "Sandbox refused report-file write; unchanged check rerun with permitted worktree access, not an application failure or bypass"
+  },
+  "unchangedSourceUITests": { "passed": 17, "failed": 0, "skipped": 0 },
+  "typescript": "PASS: npx tsc --noEmit",
+  "priorActualSignedInReview": {
+    "date": "2026-10-20",
+    "historicalNotNewlyRerun": true,
+    "summary": "Real owner roster loaded; Role access read-only, filter/clear, F menu open/Escape/focus at440px; body/search16px,menu44x44,search374x44,pageWidth440; no write control clicked, viewport reset",
+    "privateCaptureSavedOutsideGit": true
+  },
+  "limits": [
+    "The external interruption cleared the old temporary uncommitted raw speed/proof files; these new UI receipts are genuinely rerun, not reconstructed old raw evidence",
+    "First-release failures remain in committed live-responsive-first-f78 and live-polish-first-f78 evidence",
+    "Historical valid login median2177.1ms misses1500ms; final speed verification is still incomplete",
+    "No physical-device/native-app or real money/customer/provider-event journey pass"
+  ]
+}
