@@ -4,7 +4,7 @@ These shared rules apply to Codex, Claude, Cursor, and anyone working in this re
 
 ## Start with the split
 
-Before reading code or planning a new task, propose the parallel workflows, what can run together and what must wait, a copy-paste prompt for each workflow, which workflow this session owns, and the shared `ops/workflows/` board path. Then stop for the owner's go-ahead unless that split is already approved. If the task truly cannot be split, say why in one line and continue. Once approved, carry the work through without asking again for the same step. A continuation or context summary does not reset approval.
+Before reading code or planning a new task, state the parallel workflows, what can run together and what must wait, which workflow this session owns, and the shared `ops/workflows/` board path. Put self-contained copy-paste prompts on that board, start available agents, and proceed immediately. **Owner rule, 2026-10-19: split, then do; never stop for approval of the split.** If the task truly cannot be split, say why in one line and continue. Ask only when a missing owner decision genuinely blocks safe, in-scope work; a workflow split is not such a decision. A continuation or context summary does not reset approval.
 
 ## Keep the owner moving
 
@@ -19,6 +19,21 @@ Before reading code or planning a new task, propose the parallel workflows, what
 - Chris's standing authorization covers routine use of available accounts, sessions, APIs, CLIs, and credentials for the task he assigns, including Apple Developer and App Store Connect for this Fundhub launch. Do not repeat account-access permission questions. Keep actions in scope and honor any real tool-enforced confirmation. See `.cursor/rules/owner-authorized-account-ops.mdc`.
 - Protect real recordings, money, and customer data. Do not loosen safety checks or claim success to make a status light green. Keep a failed proof red; repair the test or bug, or state the exact blocker.
 - **Remove before add.** Reuse working code and established naming and routing rules. Build a new feature only when the owner asks for it.
+
+## Finish the requested outcome
+
+**Owner rule, 2026-10-20:** finish the approved job; do not hand back a checkpoint while an authorized next step remains.
+
+- A commit, pull request, saved plan or passing test count is not completion. Compare the delivered result with the original requested outcome before ending the turn.
+- A failure in a required build, verification, dependency or release check stays part of the approved job, including adjacent or pre-existing code. Diagnose it, make the smallest justified repair and rerun the check. Do not ask whether to expand the job merely to clear that required check.
+- If safe, authorized work can still advance the outcome, continue it. A status question or request to update these rules does not cancel the unfinished job or reset approval.
+- Keep failed proof red. Do not weaken, skip or delete checks, hide a failure with repeated reruns, or turn production integrations into mocks to claim completion.
+- Stop only for the verified requested outcome, an explicit user pause, or a genuine owner-only decision, missing input, tool-enforced confirmation or unavailable external prerequisite after safe in-scope alternatives are exhausted. State the exact evidence, what was tried and the one needed decision; never substitute a PR handoff for the job.
+- Keep unrelated improvements as board leftovers. This rule does not grant new product scope, production go-live approval, live customer or money changes, credential changes, deletion or database repointing.
+
+Example: a required live health check times out after the dashboard is built. Continue diagnosis and repair; do not end with “the code is built; should I fix the health check?”
+
+Always-on mirrors: `.cursor/rules/finish-the-requested-job.mdc` and `.claude/rules/finish-the-requested-job.md`.
 
 ## Scope and evidence
 

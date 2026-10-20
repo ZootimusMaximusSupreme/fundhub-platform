@@ -16,6 +16,7 @@
 import { toCents, fromCents } from "../commissions/money.mjs";
 import { getInvoice, markPaid, announceInvoice } from "./index.mjs";
 import { createTask } from "../lib/create-task.mjs";
+import { withTransaction } from "../db/with-transaction.mjs";
 
 const OPEN = ["draft", "sent", "reminded", "escalated", "partially_paid"];
 const SOURCE = "ar-allocate";
@@ -103,20 +104,46 @@ async function alreadyRecorded(db, { orgId, providerPaymentId }) {
   const r = await db.query(
     `SELECT * FROM invoice_payments
       WHERE org_id = $1 AND external_ref = $2
+        AND kind = 'payment' AND method = 'commas'
       LIMIT 1`,
     [orgId, String(providerPaymentId)]
   );
   return r.rows[0] || null;
 }
 
-async function insertPayment(db, { orgId, invoiceId, amount, externalRef, sourceEventId }) {
+function partialEventKey(invoiceId, paymentKey) {
+  if (!paymentKey) throw new Error(`Partial invoice ${invoiceId} has no stable receipt identity`);
+  return `invoice.partially_paid:${invoiceId}:${paymentKey}`;
+}
+
+async function replayRecordedPayment(db, prior) {
+  const invoice = await getInvoice(db, { invoiceId: prior.invoice_id });
+  // The receipt and status may have committed before the post-commit event
+  // write failed. Announcing again is safe: invoice.paid is keyed by invoice ID.
+  if (invoice?.status === "paid") await announceInvoice(db, "invoice.paid", invoice);
+  if (invoice?.status === "partially_paid") {
+    await announceInvoice(db, "invoice.partially_paid", invoice, {
+      idempotencyKey: partialEventKey(invoice.id, prior.external_ref || prior.source_event_id || prior.id)
+    });
+  }
+  return { done: true, replay: true, invoiceId: prior.invoice_id, path: "replay" };
+}
+
+async function insertPayment(db, { orgId, invoiceId, clientId, amount, externalRef, sourceEventId }) {
   const r = await db.query(
-    `INSERT INTO invoice_payments
+    `WITH payable AS (
+       SELECT id FROM invoices
+        WHERE id = $2 AND org_id = $1 AND client_id = $7
+          AND status = ANY($6::text[])
+        FOR UPDATE
+     )
+     INSERT INTO invoice_payments
        (org_id, invoice_id, kind, amount, method, external_ref, source_event_id)
-     VALUES ($1,$2,'payment',$3,'commas',$4,$5)
+     SELECT $1, payable.id, 'payment', $3, 'commas', $4, $5
+       FROM payable WHERE true
      ON CONFLICT DO NOTHING
      RETURNING *`,
-    [orgId, invoiceId, amount, externalRef, sourceEventId]
+    [orgId, invoiceId, amount, externalRef, sourceEventId, OPEN, clientId]
   );
   return r.rows[0] || null;
 }
@@ -162,9 +189,7 @@ export async function allocatePayment(db, event) {
 
   if (orgId && providerPaymentId) {
     const prior = await alreadyRecorded(db, { orgId, providerPaymentId });
-    if (prior) {
-      return { done: true, replay: true, invoiceId: prior.invoice_id, path: "replay" };
-    }
+    if (prior) return replayRecordedPayment(db, prior);
   }
 
   let invoice = null;
@@ -174,11 +199,15 @@ export async function allocatePayment(db, event) {
     invoice = await getInvoice(db, { invoiceId: hintedId });
     if (invoice) path = "provider_ref";
   }
-  if (!invoice) {
-    invoice = await findByPaymentLink(db, {
+  let linkedInvoice = null;
+  if (payload.paymentLinkId || payload.ref) {
+    linkedInvoice = await findByPaymentLink(db, {
       paymentLinkId: payload.paymentLinkId,
       ref: payload.ref
     });
+  }
+  if (!invoice) {
+    invoice = linkedInvoice;
     if (invoice) path = "provider_ref";
   }
   if (!invoice) {
@@ -215,6 +244,23 @@ export async function allocatePayment(db, event) {
     return { done: true, allocated: false, reason: "unresolved", path: "unresolved" };
   }
 
+  const identityMismatch = !orgId || String(invoice.org_id) !== String(orgId)
+    || (clientId && String(invoice.client_id) !== String(clientId))
+    || (roundId && String(invoice.funding_round_id || "") !== String(roundId))
+    || (linkedInvoice && String(linkedInvoice.id) !== String(invoice.id));
+  if (identityMismatch || !OPEN.includes(String(invoice.status || ""))) {
+    const reason = identityMismatch ? "invoice_mismatch" : "invoice_unavailable";
+    console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
+    await staffTask(db, {
+      orgId,
+      clientId: clientId || invoice.client_id,
+      eventId: event.id,
+      title: "Unallocated payment — invoice needs review",
+      body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
+    });
+    return { done: true, allocated: false, reason, invoiceId: invoice.id, path: "unresolved" };
+  }
+
   const payCents = knownCents(payload.amount);
   if (payCents === null) {
     console.warn(`[ar-allocate] path=unresolved reason=unknown_amount invoice=${invoice.id}`);
@@ -228,46 +274,104 @@ export async function allocatePayment(db, event) {
     return { done: true, allocated: false, reason: "unknown_amount", invoiceId: invoice.id, path: "unresolved" };
   }
 
-  const dueCents = knownCents(invoice.amount_due);
-  if (dueCents === null) {
-    console.warn(`[ar-allocate] path=unresolved reason=unknown_due invoice=${invoice.id}`);
+  const result = await withTransaction(db, async (tx) => {
+    // The lock spans the balance read, receipt insert, and invoice status.
+    // A standalone FOR UPDATE statement would release its lock on autocommit.
+    const locked = (await tx.query(
+      `SELECT * FROM invoices WHERE id = $1 FOR UPDATE`,
+      [invoice.id]
+    )).rows[0];
+    if (!locked || !OPEN.includes(String(locked.status || ""))) {
+      return { reason: "invoice_unavailable" };
+    }
+    if (String(locked.org_id) !== String(orgId)
+      || (clientId && String(locked.client_id) !== String(clientId))
+      || (roundId && String(locked.funding_round_id || "") !== String(roundId))) {
+      return { reason: "invoice_mismatch" };
+    }
+
+    // Two webhook envelopes can carry the same Commas payment ID but different
+    // event IDs. Both may pass the early replay lookup. Recheck only after the
+    // invoice lock is ours, before reading the balance or inserting a receipt.
+    // The matching unique index also protects a crossed-invoice race.
+    if (providerPaymentId) {
+      const prior = await alreadyRecorded(tx, { orgId, providerPaymentId });
+      if (prior) return { reason: "replay", prior };
+    }
+
+    const dueCents = knownCents(locked.amount_due);
+    if (dueCents === null) return { reason: "unknown_due" };
+    const alreadyPaid = await paidOnInvoiceCents(tx, locked.id);
+    const remaining = dueCents - alreadyPaid;
+    const applyCents = Math.min(payCents, Math.max(remaining, 0));
+    const surplusCents = payCents - applyCents;
+
+    let inserted = null;
+    if (applyCents > 0) {
+      inserted = await insertPayment(tx, {
+        orgId: locked.org_id,
+        invoiceId: locked.id,
+        clientId: locked.client_id,
+        amount: fromCents(applyCents),
+        externalRef: providerPaymentId,
+        sourceEventId: event.id || null
+      });
+      if (!inserted) {
+        const latest = await getInvoice(tx, { invoiceId: locked.id });
+        const prior = providerPaymentId
+          ? await alreadyRecorded(tx, { orgId, providerPaymentId })
+          : null;
+        return prior
+          ? { reason: "replay", prior }
+          : { reason: !latest || !OPEN.includes(String(latest.status || ""))
+            ? "invoice_unavailable" : "replay" };
+      }
+    }
+
+    const newRemaining = remaining - applyCents;
+    let paidRow = null;
+    let partialRow = null;
+    if (newRemaining <= 0 && applyCents > 0) {
+      paidRow = await markPaid(tx, { invoiceId: locked.id });
+      if (!paidRow) throw new Error(`Could not settle invoice ${locked.id} after recording its receipt`);
+    } else if (applyCents > 0) {
+      partialRow = await markPartiallyPaid(tx, { invoiceId: locked.id });
+      if (!partialRow) throw new Error(`Could not mark invoice ${locked.id} partially paid after recording its receipt`);
+    }
+    return {
+      applyCents, surplusCents, newRemaining, paidRow, partialRow,
+      receiptKey: providerPaymentId || event.id || inserted?.id || null
+    };
+  });
+
+  if (result.reason === "replay") {
+    return replayRecordedPayment(db, result.prior || {
+      invoice_id: invoice.id, external_ref: providerPaymentId, source_event_id: event.id
+    });
+  }
+  if (result.reason) {
+    const reason = result.reason;
+    console.warn(`[ar-allocate] path=unresolved reason=${reason} invoice=${invoice.id}`);
     await staffTask(db, {
       orgId,
-      clientId,
+      clientId: clientId || invoice.client_id,
       eventId: event.id,
-      title: "Unallocated payment — invoice amount unknown",
-      body: providerPaymentId ? `unknown-due:${providerPaymentId}` : event.id
+      title: reason === "unknown_due"
+        ? "Unallocated payment — invoice amount unknown"
+        : "Unallocated payment — invoice changed before allocation",
+      body: providerPaymentId ? `${reason}:${providerPaymentId}` : event.id
     });
-    return { done: true, allocated: false, reason: "unknown_due", invoiceId: invoice.id, path: "unresolved" };
+    return { done: true, allocated: false, reason, invoiceId: invoice.id, path: "unresolved" };
   }
 
-  const alreadyPaid = await paidOnInvoiceCents(db, invoice.id);
-  const remaining = dueCents - alreadyPaid;
-  const applyCents = Math.min(payCents, Math.max(remaining, 0));
-  const surplusCents = payCents - applyCents;
-
-  if (applyCents > 0) {
-    const inserted = await insertPayment(db, {
-      orgId: invoice.org_id,
-      invoiceId: invoice.id,
-      amount: fromCents(applyCents),
-      externalRef: providerPaymentId,
-      sourceEventId: event.id || null
+  const { applyCents, surplusCents, newRemaining, paidRow, partialRow, receiptKey } = result;
+  if (paidRow) await announceInvoice(db, "invoice.paid", paidRow);
+  if (partialRow) {
+    await announceInvoice(db, "invoice.partially_paid", partialRow, {
+      idempotencyKey: partialEventKey(partialRow.id, receiptKey)
     });
-    if (!inserted) {
-      return { done: true, replay: true, invoiceId: invoice.id, path: "replay" };
-    }
   }
-
-  const newRemaining = remaining - applyCents;
-  let settled = false;
-  if (newRemaining <= 0 && applyCents > 0) {
-    const paid = await markPaid(db, { invoiceId: invoice.id });
-    if (paid) await announceInvoice(db, "invoice.paid", paid);
-    settled = !!paid;
-  } else if (applyCents > 0) {
-    await markPartiallyPaid(db, { invoiceId: invoice.id });
-  }
+  const settled = !!paidRow;
 
   if (surplusCents > 0) {
     console.warn(`[ar-allocate] path=overpay surplus_cents=${surplusCents} invoice=${invoice.id}`);

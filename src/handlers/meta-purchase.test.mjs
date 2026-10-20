@@ -242,9 +242,16 @@ describe("$297 order Purchase", () => {
   test("no raw email or phone anywhere in what the sender gets, or in what is recorded", async () => {
     const db = fakeDb({ link: sloLink(), client: realClient(), checkout: sloCheckout() });
     const send = fakeSender();
-    await onMoneyEventForMeta(sloPaymentEvent(), db, { sendMetaEvents: send });
+    // This real CI timestamp contains the phone's area code, but is not PII.
+    await onMoneyEventForMeta(sloPaymentEvent(), db, { sendMetaEvents: send, now: () => 1792480323000 });
+    const [event] = send.sent[0].events;
+    assert.equal(event.event_time, 1792480323);
+    assert.ok(String(event.event_time).includes("480"));
+    assert.deepEqual(event.user_data.em, [sha("pat.buyer@gmail.com")]);
+    assert.deepEqual(event.user_data.ph, [sha("14805550100")]);
     const blob = JSON.stringify(send.sent[0].events) + JSON.stringify(db.writes);
-    for (const raw of ["pat.buyer", "Pat.Buyer", "gmail", "480", "5550100", "555-0100"]) {
+    for (const raw of ["pat.buyer", "Pat.Buyer", "gmail", realClient().email, realClient().phone,
+      "pat.buyer@gmail.com", "14805550100", "4805550100", "5550100", "555-0100"]) {
       assert.equal(blob.includes(raw), false, `raw "${raw}" leaked`);
     }
   });

@@ -17,7 +17,11 @@ function loadUi() {
   return JSON.parse(fs.readFileSync(UI_OUT, "utf8"));
 }
 function saveUi(data) {
-  fs.writeFileSync(UI_OUT, JSON.stringify(data, null, 2));
+  // CI runs two workers and both verification specs share this file. Write a
+  // temp file and rename it, so a reader never sees a half-written file.
+  const tmp = `${UI_OUT}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, UI_OUT);
 }
 function pushAssert(a) {
   const data = loadUi();

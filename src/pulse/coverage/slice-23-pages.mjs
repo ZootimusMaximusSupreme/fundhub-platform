@@ -1,6 +1,6 @@
 // Live desk pages for the 7:00 a.m. pulse. Report only. Never auto-fix.
 // A GET desk is red when its morning ping is missing from PULSE_REGISTRY.
-// Scoped to every routed employee/client desk in the six sidebar groups,
+// Scoped to every routed employee/client desk in the sidebar groups,
 // plus the FinanceOS money tabs.
 //
 // No repo files are read at run time (CLAUDE.md section 12). The desk lists
@@ -16,6 +16,7 @@ const SCHEDULE = "daily";
 
 /** `var ALL = [...]` in public/app/shell.js: every desk the shell guards. */
 export const SHELL_ALL = Object.freeze([
+  "bank-outreach.html",
   "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "pipeline.html",
   "client-control-panel.html", "messaging.html", "calendar.html", "documents.html",
   "company-brain.html", "ops-admin.html", "galaxy.html", "agent-editor.html",
@@ -37,6 +38,9 @@ export const SHELL_STAFF_MONEY = Object.freeze([
 
 /** The desks listed under each `data-fh-section` group of the shell sidebar. */
 export const SIDEBAR_SECTION_DESKS = Object.freeze({
+  relationships: Object.freeze([
+    "bank-outreach.html"
+  ]),
   work: Object.freeze([
     "pipeline.html", "closer-dashboard.html", "calendar.html", "messaging.html"
   ]),
@@ -69,7 +73,7 @@ export function isRoutedDesk(file) {
   return ALL.has(file) || STAFF_MONEY.includes(file);
 }
 
-/** Routed desks in the six pulse page lanes (deduped, sorted). */
+/** Routed desks in the pulse page lanes (deduped, sorted). */
 export function scopedRoutedDesks() {
   const files = new Set([
     ...Object.values(SIDEBAR_SECTION_DESKS).flat(),

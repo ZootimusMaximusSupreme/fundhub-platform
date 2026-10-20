@@ -16,6 +16,49 @@ const ADAPTERS = [
   { name: "commas", verify: verifyCommasSignature, secret: MOCK_SECRETS.COMMAS_WEBHOOK_SECRET }
 ];
 
+export async function assertContractTampering(db, contract, collector, context = {}, { verify = verifyIntegrity } = {}) {
+  const base = { ...context, file: 'src/contracts/sign.mjs', p0: true };
+  let before;
+  try { before = await verify(db, contract); }
+  catch (error) {
+    collector.fail({ ...base, id: 'adv-tamper-baseline', claim: 'Sent contract integrity can be checked before attack', detail: error.message });
+    return;
+  }
+  collector.assertEq({ ...base, id: 'adv-tamper-baseline', claim: 'Sent contract has a valid saved integrity anchor before attack', expected: true, actual: before.ok === true });
+  if (before.ok !== true) return;
+
+  const changedBody = `${contract.rendered_body}\n[verification: altered wording]`;
+  let changed; let frozen = false;
+  try {
+    changed = (await db.query(`UPDATE contracts SET rendered_body=$2 WHERE id=$1 AND org_id=$3 RETURNING *`, [contract.id, changedBody, contract.org_id])).rows[0];
+  } catch (error) {
+    if (error.code === 'P0001' && /wording is frozen/i.test(error.message)) frozen = true;
+    else {
+      collector.fail({ ...base, id: 'adv-tamper-write', claim: 'Tamper probe reaches the real contract wording guard', detail: error.message });
+      return;
+    }
+  }
+  collector.assertEq({ ...base, id: 'adv-tamper-frozen', claim: 'Database refuses changes to sent contract wording', expected: true, actual: frozen });
+  if (frozen) {
+    const saved = (await db.query(`SELECT * FROM contracts WHERE id=$1 AND org_id=$2`, [contract.id, contract.org_id])).rows[0];
+    collector.assertEq({ ...base, id: 'adv-tamper-persisted', claim: 'Saved wording stays unchanged after refused tamper', expected: contract.rendered_body, actual: saved?.rendered_body });
+    if (saved?.rendered_body !== contract.rendered_body) return;
+    // The first guard correctly prevents a corrupt row. Exercise the second
+    // guard on altered wording against the REAL independently saved checksum,
+    // without disabling the database guard or claiming this copy was persisted.
+    changed = { ...saved, rendered_body: changedBody };
+  } else if (changed?.rendered_body !== changedBody) {
+    collector.fail({ ...base, id: 'adv-tamper-write', claim: 'Tamper probe must change wording or receive the frozen-wording refusal', detail: 'UPDATE did not persist the requested altered wording' });
+    return;
+  }
+  try {
+    const result = await verify(db, changed);
+    collector.assertEq({ ...base, id: 'adv-tamper-contract', claim: 'Altered contract wording fails integrity against the saved checksum', expected: true, actual: result.ok === false && result.reason === 'content_changed' });
+  } catch (error) {
+    collector.fail({ ...base, id: 'adv-tamper-contract', claim: 'Altered contract wording fails integrity against the saved checksum', detail: error.message });
+  }
+}
+
 export async function runAdversarialJourney(db, ctx, collector) {
   const section = "DATA";
   const journey = "ADVERSARIAL";
@@ -242,47 +285,13 @@ export async function runAdversarialJourney(db, ctx, collector) {
     }
   }
 
-  // Tampered contract — if any contract exists for org, flip hash and refuse sign
+  // Sent wording and the independent saved checksum are the real contract.
   const anyContract = (await db.query(
-    `SELECT * FROM contracts WHERE org_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    `SELECT * FROM contracts WHERE org_id = $1 AND sent_at IS NOT NULL AND document_version_id IS NOT NULL AND rendered_body IS NOT NULL ORDER BY created_at DESC LIMIT 1`,
     [ctx.orgId]
-  ).catch(() => ({ rows: [] }))).rows[0];
+  )).rows[0];
   if (anyContract) {
-    const before = await verifyIntegrity(db, anyContract).catch((e) => ({ ok: false, error: String(e.message) }));
-    await db.query(
-      `UPDATE contracts SET content_hash = 'tampered' WHERE id = $1`,
-      [anyContract.id]
-    ).catch(async () => {
-      await db.query(
-        `UPDATE contracts SET immutable_hash = 'tampered' WHERE id = $1`,
-        [anyContract.id]
-      ).catch(() => {});
-    });
-    const tampered = (await db.query(`SELECT * FROM contracts WHERE id = $1`, [anyContract.id])).rows[0];
-    const after = await verifyIntegrity(db, tampered).catch((e) => ({ ok: false, error: String(e.message) }));
-    if (after?.ok === false || after?.valid === false || after?.error) {
-      collector.pass({
-        section, journey, role, id: "adv-tamper-contract",
-        claim: "Tampered contract fails integrity check",
-        actual: after,
-        file: "src/contracts/sign.mjs",
-        p0: true
-      });
-    } else if (before?.ok && after?.ok) {
-      collector.fail({
-        section, journey, role, id: "adv-tamper-contract",
-        claim: "Tampered contract fails integrity check",
-        detail: "verifyIntegrity still ok after hash overwrite",
-        p0: true,
-        file: "src/contracts/sign.mjs"
-      });
-    } else {
-      collector.unverified({
-        section, journey, role, id: "adv-tamper-contract",
-        claim: "Tampered contract refused at sign",
-        detail: `before=${JSON.stringify(before)} after=${JSON.stringify(after)}`
-      });
-    }
+    await assertContractTampering(db, anyContract, collector, { section, journey, role });
   } else {
     collector.unverified({
       section, journey, role, id: "adv-tamper-contract",

@@ -532,11 +532,14 @@ describe("every document carries its own signature block", () => {
 });
 
 describe("the live defect, named", () => {
-  test("Blueprint describes twelve months, distinct AI/human roles and no automatic year-two charge", () => {
+  test("Blueprint describes twelve months, the AI coach and the Fundhub team, and no automatic year-two charge", () => {
     const body = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT").body;
     assert.match(body, /1\.1 Capital Blueprint is a twelve \(12\)-month educational planning and accountability program/);
     assert.match(body, /AI accountability coach supports routine progress and follow-up/);
-    assert.match(body, /separately assigned human advisor answers program questions and handles exceptions and funding preparation/);
+    // Owner-set 2026-10-20 (migration 491): no named human advisor; the Fundhub team handles questions.
+    assert.match(body, /The Fundhub team answers program questions and handles exceptions and funding preparation/);
+    assert.match(body, /The Fundhub team handles program questions, exceptions and funding preparation/);
+    assert.doesNotMatch(body, /human advisor/);
     assert.match(body, /text messages and automated voice calls, subject to your contact preferences/);
     assert.match(body, /No automatic renewal or charge after those twelve months is authorized/);
     assert.match(body, /continued paid access requires a separately stated price and your agreement before billing/);
@@ -550,8 +553,10 @@ describe("the live defect, named", () => {
     assert.match(statements, /^UPDATE contract_templates/);
     assert.doesNotMatch(statements, /UPDATE contracts\b|DELETE|ALTER TABLE/);
     assert.match(statements, /WHERE template_key = 'CAPITAL-BLUEPRINT-AGREEMENT'/);
-    const updated = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT").body;
-    const previous = readTemplatesFromDb({ omitMigrations: new Set(["485_blueprint_program_scope.sql"]) })
+    // Judge 485 on its own: the later 491 advisor-wording change is proved separately below.
+    const updated = readTemplatesFromDb({ omitMigrations: new Set(["491_blueprint_agreement_fundhub_team.sql"]) })
+      .get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    const previous = readTemplatesFromDb({ omitMigrations: new Set(["485_blueprint_program_scope.sql", "491_blueprint_agreement_fundhub_team.sql"]) })
       .get("CAPITAL-BLUEPRINT-AGREEMENT").body;
     const pairs = [...statements.matchAll(/'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)];
     assert.equal(pairs.length, 3);
@@ -568,6 +573,20 @@ describe("the live defect, named", () => {
     }
     const removeApproved = (body) => body.split("\n").filter((line) => !/^(1\.1|5\.1|6\.1) /.test(line)).join("\n");
     assert.equal(removeApproved(updated), removeApproved(previous));
+  });
+
+  test("migration 491 swaps only the two advisor sentences for the Fundhub team", () => {
+    const sql = fs.readFileSync(path.join(ROOT, "db/migrations/491_blueprint_agreement_fundhub_team.sql"), "utf8");
+    const statements = stripComments(sql);
+    assert.doesNotMatch(statements, /UPDATE contracts\b|DELETE|ALTER TABLE/);
+    assert.match(statements, /WHERE template_key = 'CAPITAL-BLUEPRINT-AGREEMENT'/);
+    const before = readTemplatesFromDb({ omitMigrations: new Set(["491_blueprint_agreement_fundhub_team.sql"]) })
+      .get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    const after = TEMPLATES.get("CAPITAL-BLUEPRINT-AGREEMENT").body;
+    assert.equal((before.match(/human advisor/g) || []).length, 2);
+    assert.equal(applyBodyReplacements(statements, before), after);
+    const changed = before.split("\n").filter((line, i) => line !== after.split("\n")[i]);
+    assert.deepEqual(changed.map((line) => line.slice(0, 3)), ["1.1", "6.1"]);
   });
 
   test("Blueprint uses the validated server price in both clauses without typed blanks", () => {

@@ -64,11 +64,14 @@ export function makePage({
   cookie = "",
   /** true: a fake fbq that records each call in page.fbqCalls. */
   fbq = false,
+  /** true: a fake Cortana hub that records each custom event. */
+  cortana = false,
   /** window.__fhPv, as the head pixel snippet sets it. */
   fhPv,
 } = {}) {
   const sent = [];
   const fbqCalls = [];
+  const cortanaCalls = [];
   const docListeners = {};
   const winListeners = {};
   const valueReads = [];
@@ -147,6 +150,7 @@ export function makePage({
     getElementById: (id) => [html, ...descendants(html)].find((x) => x.id === id) || null,
     querySelectorAll: (sel) => [html, ...descendants(html)].filter((x) => matches(x, sel)),
     querySelector: (sel) => [html, ...descendants(html)].find((x) => matches(x, sel)) || null,
+    createElement: (tag) => node(tag),
   };
   html.parentNode = document;
 
@@ -178,12 +182,16 @@ export function makePage({
   if (clarity) win.clarity = (...a) => calls.push(a);
   if (fhq) win.fhq = fhq;
   if (fbq) win.fbq = (...a) => { fbqCalls.push(JSON.parse(JSON.stringify(a))); };
+  if (cortana) win.akTracking = { trackEvent: (...a) => { cortanaCalls.push(JSON.parse(JSON.stringify(a))); } };
   if (fhPv !== undefined) win.__fhPv = fhPv;
   win.self = win;
   win.top = framed ? {} : win;
   win.document = document;
 
-  function FakeDate() { return { getTime: () => clock.now }; }
+  function FakeDate(value) {
+    const millis = value == null ? clock.now : value;
+    return { getTime: () => millis, toISOString: () => new Date(millis).toISOString() };
+  }
   class Blob { constructor(parts) { this.text = parts.join(""); } }
 
   const context = {
@@ -194,7 +202,7 @@ export function makePage({
   };
 
   const page = {
-    win, document, body, html, store, calls, sent, valueReads, clock, observed, fbqCalls,
+    win, document, body, html, store, calls, sent, valueReads, clock, observed, fbqCalls, cortanaCalls,
     node,
     /** Parse every send. */
     bodies: () => sent.map((s) => JSON.parse(s.text)),

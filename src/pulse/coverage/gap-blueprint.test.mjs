@@ -22,12 +22,12 @@ function dbFor(counts = [0, 0, 0]) {
   } };
 }
 
-test("Blueprint checks report both missing real advisors and failed saved-result delivery red", async () => {
+test("Blueprint checks report both broken staff links and failed saved-result delivery red", async () => {
   const db = dbFor([2, 1, 0]);
   const out = await gapChecks({ db, orgId: ORG, now: NOW });
   assert.deepEqual(out.map((r) => r.id), CHECK_IDS);
   assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "PASS"]);
-  assert.match(out[0].detail, /^2 active paid Blueprint/);
+  assert.match(out[0].detail, /^2 active paid Blueprint clients linked to a demo, disabled or other-company staff person$/);
   assert.match(out[0].suggestedFix, new RegExp(CSM_ASSIGNMENT_EXCEPTION_SOURCE));
   assert.match(out[1].suggestedFix, /saved credit result/);
   assert.match(out[1].suggestedFix, /Do not request another paid credit pull/);
@@ -71,6 +71,8 @@ test("SQL uses actual same-org staff eligibility and paid-period bounds, never t
   assert.match(REAL_ADVISOR_SQL, /t\.org_id = c\.org_id AND t\.client_id = c\.id/);
   assert.match(REAL_ADVISOR_SQL, /s\.org_id = c\.org_id AND s\.client_id = c\.id/);
   assert.match(REAL_ADVISOR_SQL, /s\.org_id = c\.org_id AND s\.id = c\.assigned_csm_staff_id/);
+  // Owner-set 2026-10-20: no staff link is the normal AI-CSM state, never red.
+  assert.match(REAL_ADVISOR_SQL, /AND c\.assigned_csm_staff_id IS NOT NULL\s+AND NOT EXISTS \(/);
   for (const predicate of ["s.status = 'active'", "s.active = true", "s.is_demo = false", "s.current_period_start <=", "s.current_period_end >"]) {
     assert.ok(REAL_ADVISOR_SQL.includes(predicate), predicate);
   }
@@ -116,7 +118,7 @@ try {
 const pool = safe ? new pg.Pool({ connectionString, max: 1, connectionTimeoutMillis: 5000 }) : null;
 after(async () => { if (pool) await pool.end(); });
 
-test("actual SQL catches demo/disabled/cross-org advisors and unresolved delivery, excluding unrelated clients", {
+test("actual SQL catches demo/disabled/cross-org staff links and unresolved delivery; an unlinked buyer is the normal AI-CSM state", {
   skip: safe ? false : "no local test/scratch database; live databases refused"
 }, async () => {
   const db = await pool.connect();
@@ -137,7 +139,7 @@ test("actual SQL catches demo/disabled/cross-org advisors and unresolved deliver
     const advisor = (await db.query(`INSERT INTO staff (org_id,name,role,status,active,is_demo)
       VALUES ($1,'Real advisor','csm','active',true,false) RETURNING id`, [org])).rows[0].id;
     const run = () => gapChecks({ db, orgId: org, now: NOW });
-    assert.equal((await run())[0].status, "FAIL");
+    assert.equal((await run())[0].status, "PASS", "owner-set 2026-10-20: no staff CSM is normal; AI coaches and team queue cover it");
     await db.query("UPDATE clients SET assigned_csm_staff_id=$2 WHERE id=$1", [client, advisor]);
     assert.equal((await run())[0].status, "PASS");
     for (const change of ["is_demo=true", "active=false", "status='suspended'"]) {

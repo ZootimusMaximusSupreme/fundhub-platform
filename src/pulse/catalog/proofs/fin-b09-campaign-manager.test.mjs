@@ -75,7 +75,7 @@ async function openManager({ session = OWNER, detail = null, connect = null, syn
         requests.detail.push(new URL(url).searchParams);
         const id = new URL(url).searchParams.get("id");
         const found = CAMPAIGNS.find((c) => c.id === id);
-        return json(route, detail ? detail(found) : { ok: true, ...found, targeting: {}, ad_sets: [], metrics_daily: [], recent_actions: [] });
+        return json(route, detail ? await detail(found) : { ok: true, ...found, targeting: {}, ad_sets: [], metrics_daily: [], recent_actions: [] });
       },
       "/api/read/ad-books": async (route, { url }) => {
         const group = new URL(url).searchParams.get("group_by");
@@ -253,7 +253,15 @@ test("Drawer close: the X, the scrim and the Escape key each shut it", async () 
 
 test("Drawer Days select re-reads the detail for that many days and keeps the choice on screen", async () => {
   await proof.check(/^Drawer: Days select/, async () => {
-    const { page, errors, requests } = await openManager();
+    let releaseDetail;
+    const heldDetail = new Promise((resolve) => { releaseDetail = resolve; });
+    let detailReads = 0;
+    const { page, errors, requests } = await openManager({
+      detail: async (campaign) => {
+        if (++detailReads === 2) await heldDetail;
+        return { ok: true, ...campaign, targeting: {}, ad_sets: [], metrics_daily: [], recent_actions: [] };
+      },
+    });
     await page.locator('#campRows tr[data-c="camp-05"]').click();
     await waitFor(() => requests.detail.length === 1, "the first detail read");
     assert.equal(requests.detail[0].get("days"), "30");
@@ -263,13 +271,30 @@ test("Drawer Days select re-reads the detail for that many days and keeps the ch
     assert.deepEqual(await page.locator("#dwDays option").allInnerTexts(), ["7", "14", "30", "90", "180"]);
     let count = 1;
     for (const days of ["7", "90", "180", "14"]) {
-      await page.locator("#dwDays").selectOption(days);
-      count += 1;
-      await waitFor(() => requests.detail.length === count, `the read for ${days} days`);
-      const last = requests.detail.at(-1);
-      assert.equal(last.get("days"), days);
-      assert.equal(last.get("id"), "camp-05", "still the same campaign");
-      await page.waitForFunction((d) => document.querySelector("#dwDays").value === d, days);
+      const response = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === "/api/campaigns/detail"
+          && url.searchParams.get("id") === "camp-05"
+          && url.searchParams.get("days") === days;
+      });
+      try {
+        await page.locator("#dwDays").selectOption(days);
+        count += 1;
+        await waitFor(() => requests.detail.length === count, `the read for ${days} days`);
+        const last = requests.detail.at(-1);
+        assert.equal(last.get("days"), days);
+        assert.equal(last.get("id"), "camp-05", "still the same campaign");
+        if (days === "7") {
+          // The old request/value waits both pass before this answer is painted.
+          assert.equal(await page.locator("#dwDays").inputValue(), "7");
+          assert.equal(await page.locator("#dwSub").innerText(), "last 30 days");
+        }
+      } finally {
+        if (days === "7") releaseDetail();
+      }
+      assert.equal((await response).status(), 200);
+      await page.waitForFunction((d) => document.querySelector("#dwDays").value === d
+        && document.querySelector("#dwSub").innerText === `last ${d} days`, days);
       assert.match(await page.locator("#dwSub").innerText(), new RegExp(`last ${days} days`));
     }
     assert.deepEqual(errors, []);

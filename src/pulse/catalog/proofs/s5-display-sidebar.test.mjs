@@ -18,6 +18,7 @@ const FRAGMENT = fs.readFileSync(path.join(ROOT, "public/app/sidebar.fragment.ht
 
 // The rows the registry names: group data attribute, label as printed, target.
 const GROUPS = [
+  ["relationships", "Relationships"],
   ["work", "Your work"], ["clients", "Clients"], ["insights", "Insights"], ["marketing", "Marketing"],
   ["automation", "Automation"], ["settings", "Manage"],
 ];
@@ -26,9 +27,10 @@ const LINKS = [...FRAGMENT.matchAll(/<div class="navgroup" data-fh-section="([^"
   [...group[0].matchAll(/<a class="navitem" href="([^"]+)">[\s\S]*?<span class="lbl">([^<]+)<\/span>/g)]
     .map((link) => ({ section: group[1], href: link[1], label: decode(link[2]) })));
 
-test("the fragment carries the six current sections and the 32 links this proof clicks", () => {
+test("the fragment carries the seven current sections and the 33 links this proof clicks", () => {
   assert.deepEqual([...FRAGMENT.matchAll(/data-fh-section="([^"]+)"/g)].map((m) => m[1]), GROUPS.map(([key]) => key));
-  assert.equal(LINKS.length, 32);
+  assert.equal(LINKS.length, 33);
+  assert.deepEqual(LINKS.filter(link => link.href === "bank-outreach.html"), [{ section: "relationships", href: "bank-outreach.html", label: "Bank outreach" }]);
   for (const link of LINKS) {
     assert.ok(fs.existsSync(path.join(ROOT, "public/app", link.href)), `${link.href} is a real screen`);
   }
@@ -36,7 +38,7 @@ test("the fragment carries the six current sections and the 32 links this proof 
 
 // Eleven rows are in the rail file but shell.js hides them from every role that
 // has a rail (owner, admin, sales manager, closer, funding advisor, CSM, setter,
-// inquiry specialist, partner), so no person can click them: Home, Galaxy,
+// inquiry specialist, partner, outbound rep), so no person can click them: Home, Galaxy,
 // Ops & Admin, Agent Editor, Workflows, Journeys, Consent, Finance OS, Hiring,
 // Brand Studio and Affiliate. They are left out of this proof on purpose.
 const HIDDEN_FROM_EVERY_ROLE = new Set([
@@ -46,20 +48,34 @@ const HIDDEN_FROM_EVERY_ROLE = new Set([
 const SHOWN_LINKS = LINKS.filter((link) => !HIDDEN_FROM_EVERY_ROLE.has(link.href));
 const SHOWN_SECTIONS = [...new Set(SHOWN_LINKS.map((link) => link.section))];
 
-const EVERY_ROLE = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist", "partner"];
+const EVERY_ROLE = ["owner", "admin", "sales_manager", "closer", "funding_advisor", "csm", "setter", "inquiry_specialist", "partner", "outbound_rep"];
+const BANK_OUTREACH_ROLES = new Set(["owner", "admin", "sales_manager", "outbound_rep"]);
 
-test("the eleven left-out rows really are on no role's rail", { timeout: 180_000 }, async (t) => {
+test("the eleven left-out rows stay hidden and Bank outreach follows its exact role scope", { timeout: 180_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   for (const role of EVERY_ROLE) {
     const page = await newStaffPage(lab, { role });
-    await page.goto(`${lab.origin}/app/sales-floor.html`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${lab.origin}/app/${role === "outbound_rep" ? "bank-outreach.html" : "sales-floor.html"}`, { waitUntil: "domcontentloaded" });
     await page.locator('#side[data-fh-wired="1"]').waitFor({ state: "attached" });
     await page.waitForFunction(() => !document.getElementById("fh-gate-style"), null, { polling: 100, timeout: 30_000 });
     await page.evaluate(() => document.querySelectorAll("#side .navgroup").forEach((g) => g.classList.remove("closed")));
     const shown = await page.evaluate(() => [...document.querySelectorAll("#side a.navitem")]
       .filter((a) => a.getClientRects().length > 0).map((a) => a.getAttribute("href")));
     for (const href of shown) assert.equal(HIDDEN_FROM_EVERY_ROLE.has(href), false, `${role} can now see ${href}: add it to this proof`);
+    const canOpenBanks = BANK_OUTREACH_ROLES.has(role);
+    assert.equal(shown.includes("bank-outreach.html"), canOpenBanks, `${role}: exact Bank outreach visibility`);
+    if (role === "outbound_rep") assert.deepEqual(shown, ["bank-outreach.html"], "outbound rep sees only their bank workspace");
+    const bankGroup = page.locator('#side .navgroup[data-fh-section="relationships"]');
+    const bankLink = bankGroup.locator('a.navitem[href="bank-outreach.html"]');
+    assert.equal(await bankLink.isVisible(), canOpenBanks);
+    if (canOpenBanks) {
+      assert.equal((await bankLink.locator('.lbl').textContent()).trim(), "Bank outreach");
+      assert.equal((await bankGroup.locator('.navhead').evaluate(node => node.firstChild.textContent)).trim(), "Relationships");
+      await bankLink.click();
+      await page.waitForURL(url => url.pathname === '/app/bank-outreach.html', { timeout: 15_000 });
+      assert.equal(new URL(page.url()).pathname, '/app/bank-outreach.html', `${role}: Bank outreach opens its workspace`);
+    }
     await page.close();
   }
 });
@@ -71,12 +87,12 @@ async function openAsOwner(lab) {
   return page;
 }
 
-test("the five sections an owner sees each fold their links away and bring them back", { timeout: 120_000 }, async (t) => {
+test("the six sections an owner sees each fold their links away and bring them back", { timeout: 120_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   const page = await openAsOwner(lab);
-  assert.equal(SHOWN_LINKS.length, 21);
-  assert.deepEqual(SHOWN_SECTIONS, ["work", "clients", "insights", "marketing", "settings"]);
+  assert.equal(SHOWN_LINKS.length, 22);
+  assert.deepEqual(SHOWN_SECTIONS, ["relationships", "work", "clients", "insights", "marketing", "settings"]);
   for (const [key, title] of GROUPS.filter(([key]) => SHOWN_SECTIONS.includes(key))) {
     const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
     const head = group.locator(".navhead").first();
@@ -96,7 +112,7 @@ test("the five sections an owner sees each fold their links away and bring them 
   await page.close();
 });
 
-test("each of the 21 shown nav links is under its section with its label and opens its own screen", { timeout: 420_000 }, async (t) => {
+test("each of the 22 shown nav links is under its section with its label and opens its own screen", { timeout: 420_000 }, async (t) => {
   const lab = await openLab();
   t.after(() => lab.close());
   for (const link of SHOWN_LINKS) {

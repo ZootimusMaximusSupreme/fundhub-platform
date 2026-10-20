@@ -35,7 +35,7 @@ for(const width of [1440,390,320])test(`Setup client controls and states at ${wi
  await expect(page.locator('.act-msg').first()).toContainText('Nothing was charged');
  expect(writes).toEqual([{action:'start_checkout'}]);
  await page.getByRole('button',{name:'Run soft pull'}).tap();
- expect(writes[1]).toEqual({action:'request_soft_pull'});
+ await expect.poll(()=>writes[1]).toEqual({action:'request_soft_pull'});
  for(const next of ['empty','done','error','loading']){
   state=next;await page.goto('/app/money-setup.html');
   if(next==='empty'){await expect(page.locator('#setup-root')).toContainText('Price not set yet');await expect(page.locator('[data-act=checkout]')).toHaveCount(0);}

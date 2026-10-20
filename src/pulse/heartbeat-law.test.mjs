@@ -127,6 +127,15 @@ function functionId(src, exportName) {
   const at = src.indexOf(marker);
   if (at < 0) return null;
   const window = src.slice(at, at + 800);
-  const idMatch = window.match(/id:\s*["']([^"']+)["']/);
-  return idMatch ? idMatch[1] : null;
+  const idMatch = window.match(/\bid:\s*(?:["']([^"']+)["']|([A-Za-z_][A-Za-z0-9_]*))/);
+  if (!idMatch) return null;
+  if (idMatch[1]) return idMatch[1];
+  const escaped = idMatch[2].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const constant = src.match(new RegExp(`\\bexport\\s+const\\s+${escaped}\\s*=\\s*["']([^"']+)["']`));
+  return constant?.[1] || null;
 }
+
+test("heartbeat law: static workflow ID constants resolve but dynamic IDs do not", () => {
+  assert.equal(functionId('export const KEY = "saved-id"; export const job = inngest.createFunction({ id: KEY }, {}, handle);', 'job'), 'saved-id');
+  assert.equal(functionId('export const KEY = makeId(); export const job = inngest.createFunction({ id: KEY }, {}, handle);', 'job'), null);
+});

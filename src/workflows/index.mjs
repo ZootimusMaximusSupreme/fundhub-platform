@@ -16,9 +16,12 @@ import { dailyPulse } from './daily-pulse.mjs';
 import { eveningBrief } from './evening-brief.mjs';
 import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
+import { invoiceCheckoutRetirementSweeper } from './invoice-checkout-retirement-sweeper.mjs';
+import { invoiceSentRecovery } from './invoice-sent-recovery.mjs';
 import { whopBillingInboxDrain } from './whop-billing-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
+import { bankOutreachCheckins } from './bank-outreach-checkins.mjs';
 import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
@@ -101,6 +104,7 @@ import { u05DataHealthMonitor } from './u-05-data-health-monitor.mjs';
 import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
 
 export const functions = [
+  bankOutreachCheckins,
   af01AffiliateDrip,
   af02ReferralOwnershipCapture,
   aiSet01JoshSetter,
@@ -291,6 +295,8 @@ export const functions = [
 
      COMPLIANCE REVIEW REQUIRED: payment rails and fee timing. */
   paidCheckoutExpirySweeper,
+  invoiceCheckoutRetirementSweeper,
+  invoiceSentRecovery,
   pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second

@@ -162,7 +162,9 @@ Denied, a new amount, or "doesn't count" — can leave the bill disagreeing with
 ```mermaid
 flowchart TD
     SAVE[Bank answer saved<br/>setApplicationStatus / setApprovalExclusion<br/>src/applications/status.mjs] --> R{Card-stacking round<br/>with a success-fee bill<br/>that is not void?}
-    R -->|No| DONE[Nothing more]
+    R -->|No| FIRST{Funded card-stacking round, no earlier fee bill,<br/>and a positive confirmed approval plus agreed rate?}
+    FIRST -->|Yes| NEW[Create one first fee invoice for this sale and round;<br/>mark sent and start the existing Commas collections path]
+    FIRST -->|No| DONE[Nothing more; no $0 or guessed bill]
     R -->|Yes| CMP{Bill amount equals<br/>agreed % x confirmed approvals now?<br/>resolveSuccessFee, src/funding/success-fee.mjs}
     CMP -->|Yes| DONE
     CMP -->|"No — nothing confirmed is left"| TASK[Bill left as it is — no $0 fee<br/>task for the funding advisor<br/>source success-fee-after-bill]
@@ -181,9 +183,18 @@ flowchart TD
 
 * **The answer is always saved first.** A fault in the comparison or the reissue is logged
   (`[billed-fee-check]`) and never turns the button press into an error.
-* **One reissue per bill.** The new bill's key names the old one, so pressing the same answer
-  twice, or two presses at once, cannot reissue twice; the second press finds the new bill
-  already matches.
+* **One reissue per bill.** The new bill's key names the old one. Corrections lock the round,
+  re-read the active bill and approval amount, and then reissue; two overlapping answers
+  cannot finish with a stale bill. A first bill after a late approval uses the sale/round key
+  and does not replay F-07's earlier customer email or SMS. A deliberately voided bill is not
+  silently restored.
+* **The payable link follows the balance.** Correcting or settling a fee bill expires its
+  old Fundhub checkout link; a bounded recovery job retires the matching hosted Commas
+  session. A partial receipt refreshes a link for the amount still owed, without another
+  notice. The first invoice notice waits until a usable Commas link exists. If the sent bill's
+  `invoice.sent` handoff is lost, the bounded recovery clock reuses that bill's saved event ID
+  to restart link and notice work without sending a second first notice. A late receipt
+  against a void bill goes to an advisor task instead of settling its replacement.
 * **A void bill owes nothing on screen.** The control panel blockers, the Finance page and the
   list signals read a void or written-off bill as $0 owed (`CLIENT_INVOICES_SQL`,
   `BALANCES_SQL`), so the old bill does not show as a balance outstanding.
@@ -266,5 +277,8 @@ a cleared hold back.
 
 ## UNVERIFIED
 
-* **Nothing.** Every arrow above was traced to a named file. Where a path is deliberately out
-  of scope — the alt-fin rail's rounds — that is stated as scope, not left as an unknown.
+* The 2026-10-20 late-first-invoice, correction, hosted-checkout retirement, and partial-link
+  refresh changes have local tests, but no new production invoice, live Commas retirement,
+  signed settlement, or Cortana receipt has been observed. The three existing funded
+  card-stacking rounds have no confirmed approval rows, so they remain internal advisor
+  tasks rather than payable invoices. The alt-fin rail remains out of this per-bank scope.

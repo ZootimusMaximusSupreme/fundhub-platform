@@ -1764,11 +1764,13 @@
     if (!d || d.tagName !== "DETAILS") return;
     const key = d.getAttribute("data-fold");
     if (!key) return;
+    // A repaint re-creates an open fold and fires toggle again; only a real open retries a failed read.
+    const opened = d.open && !st.open[key];
     st.open[key] = d.open;
-    if (d.open && key === "rules" && !st.rules.loaded && st.rules.status !== "loading") loadRules();
+    if (d.open && key === "rules" && !st.rules.loaded && st.rules.status !== "loading" && (opened || st.rules.status !== "error")) loadRules();
     if (d.open && d.getAttribute("data-load") === "versions") {
       const id = d.getAttribute("data-id");
-      if (id && (!st.versions[id] || st.versions[id].status === "error")) { loadVersions(id); return; }
+      if (id && (!st.versions[id] || (opened && st.versions[id].status === "error"))) { loadVersions(id); return; }
     }
     paint();
   }

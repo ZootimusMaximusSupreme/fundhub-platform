@@ -304,6 +304,8 @@ import clientNotes from "../../api/client-notes.mjs";
 import commissionRules from "../../api/commission-rules.mjs";
 import commissionsWrite from "../../api/commissions.mjs";
 import lendersWrite from "../../api/lenders.mjs";
+import bankOutreachWrite from "../../api/bank-outreach.mjs";
+import readBankOutreach from "../../api/read/bank-outreach.mjs";
 import lenderObservationsWrite from "../../api/lender-observations.mjs";
 import applicationsWrite from "../../api/applications.mjs";
 import inquiryCasesWrite from "../../api/inquiry-cases.mjs";
@@ -436,6 +438,8 @@ export const ROUTES = {
   "commissions": commissionsWrite,
   /* Lender database maintenance + CSV import. ROLE_SETS.STAFF. */
   "lenders": lendersWrite,
+  "bank-outreach": bankOutreachWrite,
+  "read/bank-outreach": readBankOutreach,
   /* Bureau observation log + mismatch review. ROLE_SETS.STAFF. */
   "lender-observations": lenderObservationsWrite,
   /* Application status transitions + decision audit. ROLE_SETS.STAFF. */

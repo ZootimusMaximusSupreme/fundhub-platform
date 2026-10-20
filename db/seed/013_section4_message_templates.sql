@@ -22,11 +22,11 @@ CROSS JOIN (VALUES
   ('SMS-DOC-03-APPROVED',
    'Hey {{contact.first_name}}, documents approved. We''re optimizing your profile now and your specialist will start Round 1 shortly. Reply STOP to opt out.'),
   ('SMS-AR-01-FIRST-NOTICE',
-   'Hey {{contact.first_name}}, Fundhub billing. Round {{custom_fields.funding_round_number}} is complete and invoice {{invoice_number}} for {{balance_due}} is in your portal: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.'),
+   'Hey {{contact.first_name}}, Fundhub billing. Your basic business consulting fee invoice {{invoice_number}} for {{balance_due}} is ready in your portal: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.'),
   ('SMS-AR-02-REMINDER',
-   'Hey {{contact.first_name}}, Fundhub billing. Invoice {{invoice_number}} for {{balance_due}} is still open. Pay or tell us a date: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.'),
+   'Hey {{contact.first_name}}, Fundhub billing. Your basic business consulting fee invoice {{invoice_number}} for {{balance_due}} is still open. Pay or tell us a date: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.'),
   ('SMS-AR-03-FINAL-NOTICE',
-   'Hey {{contact.first_name}}, Fundhub billing. Final notice on invoice {{invoice_number}} for {{balance_due}}. Remaining rounds are on hold until it clears: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.')
+   'Hey {{contact.first_name}}, Fundhub billing. Final notice on basic business consulting fee invoice {{invoice_number}} for {{balance_due}}. Your next service step is on hold until it clears: {{CLIENT_PORTAL_URL}} Reply STOP to opt out.')
 ) AS k(template_key, body)
 ON CONFLICT (org_id, template_key) DO UPDATE SET
   body = EXCLUDED.body,
@@ -808,7 +808,7 @@ SELECT
   o.id,
   'EMAIL-AR-01-FIRST-NOTICE',
   'email',
-  'Invoice {{invoice_number}} — Round {{custom_fields.funding_round_number}} complete',
+  'basic business consulting fee invoice {{invoice_number}}',
   $html$<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -825,10 +825,10 @@ SELECT
         <tr>
           <td style="padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#18181B;">
             <p style="margin:0 0 16px 0;">Hey {{contact.first_name}},</p>
-            <p style="margin:0 0 16px 0;">Round {{custom_fields.funding_round_number}} is complete. Invoice {{invoice_number}} is ready.</p>
+            <p style="margin:0 0 16px 0;">Your basic business consulting fee invoice {{invoice_number}} is ready.</p>
             <p style="margin:0 0 16px 0;">Amount due: {{balance_due}}</p>
             <p style="margin:0 0 16px 0;">Pay here: {{CLIENT_PORTAL_URL}}</p>
-            <p style="margin:0 0 16px 0;">Per your agreement, each round is invoiced as it completes. Settling this keeps the next round on schedule.</p>
+            <p style="margin:0 0 16px 0;">This is a separate invoice for completed consulting work. Settling it keeps your next service step on schedule.</p>
             <p style="margin:0 0 16px 0;">Questions on anything in it — reply to this email.</p>
             <p style="margin:0 0 16px 0;">{{sender_name}}<br>
             Fundhub Billing</p>
@@ -856,7 +856,7 @@ SELECT
   o.id,
   'EMAIL-AR-02-REMINDER',
   'email',
-  'Invoice {{invoice_number}} is still open',
+  'basic business consulting fee invoice {{invoice_number}} is still open',
   $html$<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -873,8 +873,8 @@ SELECT
         <tr>
           <td style="padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#18181B;">
             <p style="margin:0 0 16px 0;">Hey {{contact.first_name}},</p>
-            <p style="margin:0 0 16px 0;">Invoice {{invoice_number}} for {{balance_due}} is still outstanding.</p>
-            <p style="margin:0 0 16px 0;">The work on Round {{custom_fields.funding_round_number}} is done and delivered.</p>
+            <p style="margin:0 0 16px 0;">Your basic business consulting fee invoice {{invoice_number}} for {{balance_due}} is still outstanding.</p>
+            <p style="margin:0 0 16px 0;">The consulting work covered by this invoice is complete.</p>
             <p style="margin:0 0 16px 0;">Pay here: {{CLIENT_PORTAL_URL}}</p>
             <p style="margin:0 0 16px 0;">If you need a few more days, reply with a date and we'll note it on your account. We just need to know where things stand.</p>
             <p style="margin:0 0 16px 0;">{{sender_name}}<br>
@@ -903,7 +903,7 @@ SELECT
   o.id,
   'EMAIL-AR-03-FINAL-NOTICE',
   'email',
-  'Final notice — invoice {{invoice_number}}',
+  'Final notice — basic business consulting fee invoice {{invoice_number}}',
   $html$<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -920,8 +920,8 @@ SELECT
         <tr>
           <td style="padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#18181B;">
             <p style="margin:0 0 16px 0;">Hey {{contact.first_name}},</p>
-            <p style="margin:0 0 16px 0;">This is the final notice on invoice {{invoice_number}} for {{balance_due}}.</p>
-            <p style="margin:0 0 16px 0;">Your remaining funding rounds are on hold until this clears. That's not a threat — it's just how the agreement works. We invoice per completed round so neither side gets ahead of the other.</p>
+            <p style="margin:0 0 16px 0;">This is the final notice on your basic business consulting fee invoice {{invoice_number}} for {{balance_due}}.</p>
+            <p style="margin:0 0 16px 0;">Your next service step is on hold until this clears, as set out in your agreement. This invoice covers completed consulting work.</p>
             <p style="margin:0 0 16px 0;">Pay here: {{CLIENT_PORTAL_URL}}</p>
             <p style="margin:0 0 16px 0;">If there's a reason this can't be paid right now, reply and tell us. We'd rather work out a date than let this sit.</p>
             <p style="margin:0 0 16px 0;">After this notice, the account moves to our automated collections process and no one here handles it directly.</p>

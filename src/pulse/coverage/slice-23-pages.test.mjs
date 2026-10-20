@@ -74,6 +74,7 @@ test("slice 23-pages: scoped desks are routed, on disk, and in the pulse registr
   assert.ok(scoped.includes("hiring.html"));
   assert.ok(scoped.includes("financeos.html"));
   assert.ok(scoped.includes("lenders.html"));
+  assert.ok(scoped.includes("bank-outreach.html"));
 
   for (const file of scoped) {
     assert.ok(fs.existsSync(path.join(APP_DIR, file)), `${file} missing on disk`);
@@ -119,6 +120,8 @@ test("slice 23-pages: the drift test goes red when shell.js adds a desk or drops
   assert.deepEqual(shellDrift(added), ["ALL"]);
   const dropped = src.replace('"money-vault.html"', "");
   assert.deepEqual(shellDrift(dropped), ["STAFF_MONEY"]);
+  const changedRelationship = src.replace('href=\\"bank-outreach.html\\"', 'href=\\"absent.html\\"');
+  assert.deepEqual(shellDrift(changedRelationship), ["section:relationships"]);
 });
 
 test("slice 23-pages: a desk that is not in the shell lists is not routed", () => {

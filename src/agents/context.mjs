@@ -359,9 +359,12 @@ export function formatPromptBlock(ctx) {
     lines.push(`Capital Blueprint access: ${b.access_active ? "active" : "not active"}`);
     if (b.payment) lines.push(`Blueprint payment: ${b.payment.status || "status not recorded"}${b.payment.amount_cents == null ? "" : " · " + formatCents(b.payment.amount_cents)}`);
     if (b.contract) lines.push(`Blueprint agreement: ${b.contract.status || "status not recorded"}${b.contract.package_fee ? " · " + b.contract.package_fee : ""}`);
-    lines.push(b.human_advisor ? `Human advisor: ${b.human_advisor.name || b.human_advisor.id}`
-      : `Human advisor: ${b.advisor_assignment_status === "assignment_unavailable" ? "saved assignment is not an active real staff member" : "not assigned"}`);
-    lines.push("AI coach is separate from the human advisor. A queued message is not proof of delivery.");
+    // Owner-set 2026-10-20: the CSM role is the AI coaches plus the Fundhub
+    // team's CSM queue. No staff name goes to the model, so it cannot name or
+    // promise a personal advisor to the client.
+    lines.push(`Team follow-up: Fundhub team CSM queue${b.human_advisor ? " (a staff CSM is linked)"
+      : b.advisor_assignment_status === "assignment_unavailable" ? " (saved staff link is not an active real staff member)" : ""}`);
+    lines.push("The AI coach does touch-base check-ins for the Fundhub team. Never name a person or promise a personal advisor. A queued message is not proof of delivery.");
   }
   if (s.pipeline_stage) {
     lines.push(`Pipeline: ${s.pipeline_stage.pipeline} / ${s.pipeline_stage.stage}`);

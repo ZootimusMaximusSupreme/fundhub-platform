@@ -83,17 +83,49 @@ function publicUrl(origin, file) {
 }
 
 async function visibleAnchor(page, href, label) {
-  const anchors = page.locator("a");
-  const indexes = await anchors.evaluateAll((nodes, wanted) => nodes
-    .map((node, index) => node.getAttribute("href") === wanted ? index : -1)
-    .filter((index) => index >= 0), href);
-  assert.ok(indexes.length > 0, `${label}: no anchor has href ${href}`);
-  for (const index of indexes) {
-    const locator = anchors.nth(index);
-    if (await locator.isVisible()) return locator;
-  }
-  assert.fail(`${label}: href ${href} has no visible control`);
+  const anchors = page.locator(`a[href=${JSON.stringify(href)}]`);
+  assert.ok(await anchors.count() > 0, `${label}: no anchor has href ${href}`);
+  const anchor = anchors.filter({ visible: true }).first();
+  // Client entry pages stay hidden until their asynchronous session read ends.
+  await anchor.waitFor({ state: "visible", timeout: 5000 });
+  return anchor;
 }
+
+test("public link proof waits for actual login readiness but rejects a permanently hidden link", async (t) => {
+  const { server, origin } = await startServer();
+  const browser = await chromium.launch({ headless: true });
+  let releaseSession;
+  const heldSession = new Promise((resolve) => { releaseSession = resolve; });
+  t.after(async () => {
+    releaseSession();
+    await browser.close();
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  });
+  const page = await browser.newPage();
+  let sessionRequested;
+  const requested = new Promise((resolve) => { sessionRequested = resolve; });
+  await page.route("**/api/auth/session", async (route) => {
+    sessionRequested();
+    await heldSession;
+    await route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+  });
+  await page.goto(`${origin}/login.html`, { waitUntil: "domcontentloaded" });
+  await requested;
+  const href = "mailto:support@fundhub.ai";
+  const link = page.locator(`a[href=${JSON.stringify(href)}]`);
+  assert.equal(await link.isVisible(), false);
+  assert.equal(await link.evaluate((element) => getComputedStyle(element).visibility), "hidden");
+  const readyLink = visibleAnchor(page, href, "login support");
+  releaseSession();
+  assert.equal(await (await readyLink).isVisible(), true);
+  assert.equal(await page.locator("body").getAttribute("data-client-ready"), "");
+
+  // Keep the real readiness CSS in force forever: the helper must still fail.
+  await page.locator("body").evaluate((body) => body.removeAttribute("data-client-ready"));
+  assert.equal(await link.isVisible(), false);
+  await assert.rejects(visibleAnchor(page, href, "permanently hidden login support"), /Timeout 5000ms exceeded/);
+  assert.equal(await link.isVisible(), false);
+});
 
 test("public display contracts click every mapped control and check its result", async (t) => {
   assert.equal(PUBLIC_UI_PROOF_CASES.length, PUBLIC_LINK_ACTIONS.length + PUBLIC_BUTTON_ACTIONS.length);

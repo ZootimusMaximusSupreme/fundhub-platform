@@ -14,6 +14,7 @@ import { validateBeat } from "./contract.mjs";
 
 export const BEAT_FILES = Object.freeze([
   ["beat-apply-links.mjs", () => import("./beat-apply-links.mjs")],
+  ["beat-bank-outreach.mjs", () => import("./beat-bank-outreach.mjs")],
   ["beat-blueprint-delivery.mjs", () => import("./beat-blueprint-delivery.mjs")],
   ["beat-brief-link.mjs", () => import("./beat-brief-link.mjs")],
   ["beat-checkout-doors.mjs", () => import("./beat-checkout-doors.mjs")],
@@ -22,6 +23,8 @@ export const BEAT_FILES = Object.freeze([
   ["beat-email-path.mjs", () => import("./beat-email-path.mjs")],
   ["beat-engine-alive.mjs", () => import("./beat-engine-alive.mjs")],
   ["beat-funding-trip.mjs", () => import("./beat-funding-trip.mjs")],
+  ["beat-invoice-checkout-retirement.mjs", () => import("./beat-invoice-checkout-retirement.mjs")],
+  ["beat-invoice-notice-recovery.mjs", () => import("./beat-invoice-notice-recovery.mjs")],
   ["beat-money-checkout.mjs", () => import("./beat-money-checkout.mjs")],
   ["beat-money-funding.mjs", () => import("./beat-money-funding.mjs")],
   ["beat-money-operations.mjs", () => import("./beat-money-operations.mjs")],

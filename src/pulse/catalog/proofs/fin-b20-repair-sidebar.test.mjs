@@ -4,9 +4,8 @@
 //      two pages that load it and carry none are named. A desk that loses its rail, or a new desk that
 //      forgets it, turns this red. (The first cycle only looked at desks that already had a rail and
 //      asked for "at least 30".)
-//   2. All nine section heads fold and unfold: the six an owner sees on a wide screen, the three that no
-//      role sees today (Home, Watch, Automation) with the menu rows un-hidden in a served copy of shell.js,
-//      and the heads inside the phone drawer.
+//   2. All seven current section heads fold and unfold, including Automation with its menu rows
+//      un-hidden in a served copy of shell.js, and the heads inside the phone drawer.
 //
 // A real Chromium opens the real files from public/app; /api is answered by the test.
 
@@ -28,7 +27,7 @@ const ASIDE = FRAGMENT.replace(/^<!--[\s\S]*?-->\s*/, "").trim();
 // The desks that carry the staff rail, by name. Add a desk here when it is built; remove one only when the
 // screen is retired.
 const RAIL_DESKS = [
-  "affiliate.html", "agent-editor.html", "automations.html", "brand-studio.html", "calendar.html", "campaign-manager.html",
+  "affiliate.html", "agent-editor.html", "automations.html", "bank-outreach.html", "brand-studio.html", "calendar.html", "campaign-manager.html",
   "client-control-panel.html", "closer-dashboard.html", "company-brain.html", "consent-capture.html", "content-admin.html",
   "contracts.html", "creative-factory.html", "csm-queue.html", "documents.html", "finance-os.html", "galaxy.html", "hiring.html",
   "inquiry-remover.html", "journeys.html", "lenders.html", "marketing-command-center.html", "messaging.html", "my-numbers.html",
@@ -111,7 +110,7 @@ async function foldAndUnfold(page, key, label) {
 const visibleHeads = (page) => page.evaluate(() => [...document.querySelectorAll("#side .navgroup")]
   .filter((g) => g.style.display !== "none").map((g) => g.getAttribute("data-fh-section")));
 
-test("section heads: with the hidden menu rows shown, all nine heads are there and each folds and unfolds", { timeout: 180_000 }, async () => {
+test("section heads: with the hidden menu rows shown, all seven heads are there and each folds and unfolds", { timeout: 180_000 }, async () => {
   const seen = new Set();
 
   const owner = await makePage(lab, { role: "owner" });
@@ -119,8 +118,8 @@ test("section heads: with the hidden menu rows shown, all nine heads are there a
   await owner.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
   await settle(owner);
   const ownerHeads = await visibleHeads(owner);
-  assert.deepEqual(ownerHeads, ["work", "clients", "insights", "marketing", "automation", "settings"],
-    "all six current groups are present once the deliberately hidden rows are shown");
+  assert.deepEqual(ownerHeads, ["relationships", "work", "clients", "insights", "marketing", "automation", "settings"],
+    "all seven current groups are present once the deliberately hidden rows are shown");
   for (const key of ownerHeads) { await foldAndUnfold(owner, key, `owner ${key}`); seen.add(key); }
   await owner.close();
 
@@ -133,7 +132,7 @@ test("section heads: with the hidden menu rows shown, all nine heads are there a
   for (const key of partnerHeads) { await foldAndUnfold(partner, key, `partner ${key}`); seen.add(key); }
   await partner.close();
 
-  assert.deepEqual([...seen].sort(), ["automation", "clients", "insights", "marketing", "settings", "work"], "all six current heads were folded");
+  assert.deepEqual([...seen].sort(), ["automation", "clients", "insights", "marketing", "relationships", "settings", "work"], "all seven current heads were folded");
 });
 
 test("section heads: in the phone drawer a head folds its links and brings them back", { timeout: 120_000 }, async () => {
@@ -142,7 +141,7 @@ test("section heads: in the phone drawer a head folds its links and brings them 
   await settle(page);
   await page.locator("#fh-menu-btn").click();
   assert.equal(await page.locator("#side").evaluate((el) => el.classList.contains("open")), true, "the drawer is open");
-  for (const key of ["work", "clients", "insights"]) await foldAndUnfold(page, key, `phone ${key}`);
+  for (const key of ["relationships", "work", "clients", "insights"]) await foldAndUnfold(page, key, `phone ${key}`);
   assert.equal(await page.locator("#side").evaluate((el) => el.classList.contains("open")), true, "folding a head does not close the drawer");
   await page.close();
 });

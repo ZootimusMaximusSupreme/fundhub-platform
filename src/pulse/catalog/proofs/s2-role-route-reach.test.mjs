@@ -119,6 +119,24 @@ before(async () => {
 });
 
 describe("the probe and the written gates", () => {
+  test("bank outreach admits its four staff roles and denies other staff, outside accounts and anonymous requests", async () => {
+    const data = extractAll();
+    const allowed = ["role-owner", "role-admin", "role-sales-manager", "role-outbound-rep"];
+    const denied = ["role-closer", "role-funding-advisor", "role-inquiry-remover", "role-csm", "role-setter", "client", "affiliate", "white-label"];
+    for (const key of ["bank-outreach", "read/bank-outreach"]) {
+      const endpoint = data.endpoints.find((e) => e.key === key);
+      assert.ok(endpoint, `${key} is routed`);
+      assert.deepEqual([...endpoint.gate.roles].sort(), ["admin", "outbound_rep", "owner", "sales_manager"]);
+      for (const name of allowed) assert.equal(verdictFor(await probeRoute(api, key, name)), "reach", `${name}: ${key}`);
+      for (const name of denied) assert.equal(verdictFor(await probeRoute(api, key, name)), "blocked", `${name}: ${key}`);
+      assert.equal(verdictFor(await probeRoute(api, key)), "blocked", `anonymous: ${key}`);
+    }
+    for (const key of ["dashboard/clients", "read/lenders", "read/documents"]) {
+      assert.ok(data.endpoints.some((e) => e.key === key), `${key} is routed`);
+      assert.equal(verdictFor(await probeRoute(api, key, "role-outbound-rep")), "blocked", `outbound rep: ${key}`);
+    }
+  });
+
   test("only a signed-in client with a file reaches the marketing push switch", () => {
     assert.equal(state.verdicts.client["push/preferences"], "reach");
     assert.equal(state.verdicts.client["read/affiliates"], "reach");

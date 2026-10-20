@@ -21,13 +21,78 @@ function fakeDb({
   products = [],
   sales = [],
   attributions = [],
-  recentActors = []
+  recentActors = [],
+  invoices = [],
+  singleConnection = false
 } = {}) {
   const rows = [];
+  const rowLocks = new Map();
+  let activeConnections = 0;
+  let connectionTail = Promise.resolve();
   let n = 0;
-  return {
+  const store = {
     rows,
-    query: async (sql, params) => {
+    rollbacks: 0,
+    async connect() {
+      let releaseCheckout = null;
+      if (singleConnection) {
+        const previous = connectionTail;
+        const held = new Promise((resolve) => { releaseCheckout = resolve; });
+        connectionTail = previous.then(() => held);
+        await previous;
+      }
+      activeConnections++;
+      let inTransaction = false;
+      let unlockRow = null;
+      const insertedIds = new Set();
+      const releaseRow = () => {
+        if (unlockRow) unlockRow();
+        unlockRow = null;
+      };
+      return {
+        async query(sql, params) {
+          if (sql === "BEGIN") {
+            inTransaction = true;
+            return { rows: [] };
+          }
+          if (/FROM invoices[\s\S]*FOR UPDATE/.test(sql)) {
+            const [id, orgId, clientId] = params;
+            const invoice = invoices.find((i) => i.id === id && i.org_id === orgId && i.client_id === clientId);
+            if (!invoice) return { rows: [] };
+            const previous = rowLocks.get(id) || Promise.resolve();
+            const held = new Promise((resolve) => { unlockRow = resolve; });
+            rowLocks.set(id, previous.then(() => held));
+            await previous;
+            return { rows: [{ id }] };
+          }
+          if (sql === "COMMIT" || sql === "ROLLBACK") {
+            if (sql === "ROLLBACK") {
+              store.rollbacks++;
+              for (let at = rows.length - 1; at >= 0; at--) {
+                if (insertedIds.has(rows[at].id)) rows.splice(at, 1);
+              }
+            }
+            releaseRow();
+            inTransaction = false;
+            return { rows: [] };
+          }
+          const out = await store.query(sql, params, true);
+          if (inTransaction && /^\s*INSERT INTO payment_links/i.test(sql)) {
+            for (const row of out.rows) insertedIds.add(row.id);
+          }
+          return out;
+        },
+        release() {
+          releaseRow();
+          activeConnections--;
+          if (releaseCheckout) releaseCheckout();
+        }
+      };
+    },
+    query: async (sql, params, viaLockedConnection = false) => {
+      if (singleConnection && activeConnections && !viaLockedConnection) {
+        throw new Error("test stub: pool max=1 cannot run a separate query while the lock client is checked out");
+      }
       const text = String(sql);
 
       if (/SELECT id, code[\s\S]*FROM products/i.test(text)) {
@@ -67,6 +132,13 @@ function fakeDb({
 
       if (/FROM call_outcomes co/i.test(text)) {
         return { rows: recentActors };
+      }
+
+      if (/SELECT \* FROM payment_links[\s\S]*invoice_id = \$2[\s\S]*provider = 'commas'/i.test(text)) {
+        const [org_id, invoice_id] = params;
+        const existing = rows.find((r) => r.org_id === org_id && r.invoice_id === invoice_id &&
+          r.provider === "commas" && ["created", "sent"].includes(r.status));
+        return { rows: existing ? [{ ...existing }] : [] };
       }
 
       if (/^\s*INSERT INTO payment_links/i.test(text)) {
@@ -134,6 +206,7 @@ function fakeDb({
       throw new Error(`test stub: no route for SQL: ${text.slice(0, 90)}`);
     }
   };
+  return store;
 }
 
 /* REAL-MONEY GUARD. createPaymentLink defaults `env` to process.env and
@@ -250,9 +323,9 @@ describe("createPaymentLink", () => {
   });
 
   test("invoice id is stored on the link and sent in checkout metadata", async () => {
-    const db = fakeDb();
     const INVOICE = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
     const ROUND = "11111111-2222-3333-4444-555555555555";
+    const db = fakeDb({ invoices: [{ id: INVOICE, org_id: ORG, client_id: CLIENT }] });
     let sentMeta = null;
     const fetchImpl = async (_url, opts) => {
       sentMeta = JSON.parse(opts.body).metadata;
@@ -276,6 +349,97 @@ describe("createPaymentLink", () => {
     assert.equal(link.invoice_id, INVOICE);
     assert.equal(sentMeta.invoice_id, INVOICE);
     assert.equal(sentMeta.funding_round_id, ROUND);
+  });
+
+  for (const singleConnection of [false, true]) test(`concurrent invoice mints create one hosted Commas session and one saved link (pool max ${singleConnection ? 1 : 2})`, async () => {
+    const invoiceId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const db = fakeDb({ invoices: [{ id: invoiceId, org_id: ORG, client_id: CLIENT }], singleConnection });
+    let posts = 0;
+    let firstEntered;
+    const entered = new Promise((resolve) => { firstEntered = resolve; });
+    let releaseFirst;
+    const held = new Promise((resolve) => { releaseFirst = resolve; });
+    const fetchImpl = async (_url, opts) => {
+      posts++;
+      assert.ok(opts.signal, "invoice provider call must be bounded");
+      firstEntered();
+      await held;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          data: { id: "once", payment_link: "https://www.fanbasis.com/agency-checkout/x/once" }
+        })
+      };
+    };
+    const args = {
+      orgId: ORG, clientId: CLIENT, purpose: "invoice", amountCents: 10000,
+      invoiceId, env: { FANBASIS_CHECKOUT_API_KEY: "test-only" }, fetchImpl
+    };
+    const first = mint(db, args);
+    await entered;
+    const second = mint(db, args);
+    await Promise.resolve();
+    assert.equal(posts, 1, "second request must wait for the saved-link recheck");
+    releaseFirst();
+    const [a, b] = await Promise.all([first, second]);
+    assert.equal(posts, 1);
+    assert.equal(db.rows.length, 1);
+    assert.equal(a.id, b.id);
+    assert.equal(a.checkout_url, b.checkout_url);
+  });
+
+  test("provider failure rolls back and releases the invoice lock for a later attempt", async () => {
+    const invoiceId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const db = fakeDb({ invoices: [{ id: invoiceId, org_id: ORG, client_id: CLIENT }], singleConnection: true });
+    let posts = 0;
+    const fetchImpl = async () => {
+      posts++;
+      return posts === 1
+        ? { ok: false, status: 503, text: async () => JSON.stringify({ message: "upstream unavailable" }) }
+        : { ok: true, status: 200, text: async () => JSON.stringify({
+          data: { id: "retry", payment_link: "https://www.fanbasis.com/agency-checkout/x/retry" }
+        }) };
+    };
+    const args = {
+      orgId: ORG, clientId: CLIENT, purpose: "invoice", amountCents: 10000,
+      invoiceId, env: { FANBASIS_CHECKOUT_API_KEY: "test-only" }, fetchImpl
+    };
+    await assert.rejects(mint(db, args), /upstream unavailable/);
+    assert.equal(db.rollbacks, 1);
+    assert.equal(db.rows.length, 0);
+    const retry = await mint(db, args);
+    assert.equal(retry.commas_session_id, "retry");
+    assert.equal(posts, 2);
+    assert.equal(db.rows.length, 1);
+  });
+
+  test("invoice mint refuses an open link with a different owner, balance, or currency", async () => {
+    const invoiceId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const db = fakeDb({ invoices: [{ id: invoiceId, org_id: ORG, client_id: CLIENT }] });
+    let posts = 0;
+    const fetchImpl = async () => {
+      posts++;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          data: { id: "first", payment_link: "https://www.fanbasis.com/agency-checkout/x/first" }
+        })
+      };
+    };
+    const args = {
+      orgId: ORG, clientId: CLIENT, purpose: "invoice", amountCents: 10000,
+      invoiceId, env: { FANBASIS_CHECKOUT_API_KEY: "test-only" }, fetchImpl
+    };
+    await mint(db, args);
+    for (const change of [
+      { clientId: "another-client" }, { amountCents: 9000 }, { currency: "EUR" }
+    ]) {
+      await assert.rejects(mint(db, { ...args, ...change }), /not owned|mismatched owner, balance, or currency/);
+    }
+    assert.equal(posts, 1, "no wrong-amount provider session may be minted");
+    assert.equal(db.rows.length, 1);
   });
 
   test("stores a staff-declared motion and product with the creating closer", async () => {
