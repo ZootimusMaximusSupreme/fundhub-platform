@@ -4,6 +4,8 @@
 
 Find the existing Cortana setup thread, trace every stated connection, and list the exact missing links with evidence. This is discovery only: do not change code, configuration, credentials, or live services.
 
+**Owner scope correction, 2026-10-20:** this audit covers only `/watch` → `/apply` → `/funding-book-call` → `/thank-you`. It does not cover the Roadmap or any paid offer. Checkout, Commas, price, sale, Purchase, and paid-offer pages are out of scope.
+
 ## Parallel workflows
 
 | Owner | Scope | Status |
@@ -32,33 +34,32 @@ Read-only task in /Users/chrisstanbridge/Developer/fundhub-platform. Starting fr
 
 - Setup thread: `ops/workflows/cortana-funnel-setup.md`
 - Tracking plan and the four required links: `ops/workflows/cortana-tracking-2026-10-06.md`
-- Related money journey: `docs/journeys/slo-offer-intended.md` and `docs/journeys/slo-offer-actual.md`
+- Book-a-call tracking ground truth: `docs/tracking/tracking-spec.md`, `docs/tracking/meta-events.md`, and `docs/tracking/page-inventory.md`
 
 ## Findings
 
 ### 1. Tag coverage — partial, not proved
 
-- The repo can add the DirectROAS hub tag to ClickFunnels pages through `marketing/landing-pages/tracking-manifest.mjs` and `scripts/cf-push-custom-html.mjs`.
-- Fundhub-hosted buyer pages under `public/` have no DirectROAS/Cortana reference. The source plan also names the ClickFunnels appointment page as a vendor-owned exception.
-- Needed: put the tag on every controllable buyer page, choose an alternate route for the vendor-owned appointment page, and prove one hub request per page in live browser network logs.
+- The repo can add and preserve the DirectROAS hub tag through `marketing/landing-pages/tracking-manifest.mjs` and `scripts/cf-push-custom-html.mjs`.
+- `docs/tracking/page-inventory.md` records DirectROAS on all four book-a-call pages. That is documentation, not fresh live proof.
+- Needed: prove one hub request—not zero or two—on `/watch`, `/apply`, `/funding-book-call`, and `/thank-you` in live browser network logs.
 
 ### 2. Named funnel events — missing
 
-- There is no DirectROAS/Cortana custom-event call or server sender in `src/`, `api/`, or `db/`. Existing browser/server event work is for Meta.
-- Needed: obtain DirectROAS's documented event API, then send PageView, Lead, Schedule, InitiateCheckout, Purchase, and any agreed money events using the same event IDs, value, and currency as the first-party/Meta path. Prove the events in Cortana.
+- There is no Fundhub-owned DirectROAS/Cortana custom-event sender in `src/`, `api/`, or `db/`. Existing first-party and server event work is for Fundhub and Meta.
+- The public hub script now exposes the event and identity contract, so no vendor guess is required.
+- Needed: send the in-scope page, survey, Lead, calendar, Schedule, and thank-you events using the same timing and IDs as the first-party/Meta path. Prove them in Cortana.
 
-### 3. Ad-to-sale identity — partial, not complete
+### 3. Ad-to-booking identity — partial, not complete
 
-- The $297 checkout accepts and stores UTMs plus Meta `fbc`/`fbp`, but the Commas metadata contains only `link_ref`, `client_id`, `source`, and `business_count`.
-- No DirectROAS visitor/click ID, full checkout identity handoff, or payment-to-Cortana match is present.
-- Needed: confirm the DirectROAS identifier from its documentation; carry it and agreed attribution fields across ClickFunnels, booking, checkout, Commas metadata, and the payment record; prove one tagged route from ad URL to sale.
+- The current funnel already keeps UTMs plus Meta `fbc`/`fbp`, but it does not persist DirectROAS's `ak_tid` through the Fundhub lead and booking records.
+- Needed: carry `ak_tid`, UTMs, Meta IDs, email, and phone across `/watch`, `/apply`, the framed/direct booking calendar, and the confirmed booking; prove one tagged ad-to-booking route.
 
 ### 4. Server feed and reconciliation — missing
 
-- `CORTANA_COMMAS_API_KEY` is a healthy Commas checkout credential, not a Cortana tracking feed. It does not show that Cortana receives sales.
-- No DirectROAS server integration, no booking/sale sender, and no date-range reconciliation job exists.
-- Needed: confirm DirectROAS's server intake or Commas integration, build the supported sale/booking feed, then compare Fundhub leads, bookings, and sales with Cortana for the same date range.
+- No DirectROAS server integration, Lead/Schedule sender, or date-range reconciliation job exists.
+- Needed: build the supported Lead/Schedule server feed, then compare Fundhub leads and confirmed bookings with Cortana for the same date range.
 
 ## Evidence boundary
 
-No code, configuration, credentials, test data, or live services changed in this audit. The repo has deployment-capable tag injection and a working Commas checkout key path, but there is no current live browser, Cortana dashboard, or count-match proof for any of the four tracking links.
+No app code, configuration, credentials, test data, or live services changed in this audit. The repo has deployment-capable tag injection, but there is no current live browser, Cortana dashboard, or lead/booking count-match proof for all four links.
