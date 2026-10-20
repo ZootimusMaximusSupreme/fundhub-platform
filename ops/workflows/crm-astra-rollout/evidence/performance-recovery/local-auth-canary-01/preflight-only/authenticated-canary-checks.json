@@ -1,0 +1,13 @@
+{
+  "opaqueResetSeen": true,
+  "foreignResetSeen": true,
+  "exactOriginSeeded": true,
+  "noForeignSeed": true,
+  "backgroundConstructorsGuarded": true,
+  "unchangedFourSecondPollObserved": true,
+  "headMetadataOnly": true,
+  "manifestGETBytesMatched": true,
+  "postBlocked": true,
+  "externalBlocked": true,
+  "otherManifestBlocked": true
+}
