@@ -9,6 +9,52 @@ import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLa
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
+function workflowJob(source, name) {
+  const lines = source.split("\n");
+  const start = lines.indexOf(`  ${name}:`);
+  assert.ok(start >= 0, `missing required workflow job ${name}`);
+  let end = start + 1;
+  while (end < lines.length && !/^  [a-zA-Z0-9_-]+:\s*$/.test(lines[end])) end++;
+  return lines.slice(start, end).join("\n");
+}
+
+test("outreach keeps its real PostgreSQL and browser gates while hourly proof matches the canonical release runner", () => {
+  const root = path.resolve(HERE, "../..");
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
+  const ship = workflowJob(fs.readFileSync(path.join(root, ".github/workflows/ship.yml"), "utf8"), "ship");
+  const core = workflowJob(workflow, "outreach");
+  const hourly = workflowJob(workflow, "hourly-release-runner");
+  const canonicalRunner = ship.match(/^    runs-on: (.+)$/m)?.[1];
+  assert.equal(canonicalRunner, "macos-latest");
+  assert.match(hourly, new RegExp(`^    runs-on: ${canonicalRunner}$`, "m"));
+  assert.match(ship, /NODE_OPTIONS: ["']?--dns-result-order=ipv4first/);
+  assert.match(hourly, /NODE_OPTIONS: --dns-result-order=ipv4first/);
+  assert.match(core, /runs-on: ubuntu-latest/);
+  for (const command of ["node db/migrate.mjs", "VERIFY_STRICT: \"1\"", "npm run verify:e2e",
+    "e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs", "npm run pulse:prove -- --lanes=gap-bank-outreach"]) {
+    assert.ok(core.includes(command), `existing gate disappeared: ${command}`);
+  }
+  assert.equal((workflow.match(/run: npm run pulse:prove -- --beats\s*$/gm) || []).length, 1);
+  assert.match(hourly, /run: npm run pulse:prove -- --beats\s*$/m);
+  assert.match(hourly, /DATABASE_URL: \$\{\{ env\.APP_DATABASE_URL \}\}/);
+  assert.match(hourly, /if: always\(\) && !cancelled\(\) && steps\.migrate\.outcome == 'success'/);
+  assert.doesNotMatch(workflow, /continue-on-error|--fixture|--slow-apply-links|--read-delay/);
+});
+
+test("outreach release proof uses its own disposable database, all migrations and no production credential", () => {
+  const workflow = fs.readFileSync(path.resolve(HERE, "../../.github/workflows/bank-outreach-proof.yml"), "utf8");
+  const hourly = workflowJob(workflow, "hourly-release-runner");
+  assert.match(hourly, /postgres:\/\/fundhub_app:ci_not_a_secret@127\.0\.0\.1:55432\/fundhub_outreach_ci/);
+  assert.match(hourly, /initdb .*--username=postgres -D "\$RUNNER_TEMP\/outreach-pg"/);
+  assert.match(hourly, /brew install postgresql@17 pgvector/);
+  assert.match(hourly, /node db\/migrate\.mjs/);
+  assert.match(hourly, /npm run migrations:manifest/);
+  assert.match(hourly, /git diff --exit-code -- db\/expected-migrations\.mjs/);
+  assert.match(hourly, /ALTER ROLE fundhub_app LOGIN/);
+  assert.match(hourly, /pg_ctl -D "\$RUNNER_TEMP\/outreach-pg" -m fast -w stop/);
+  assert.doesNotMatch(hourly, /secrets\.|ship-env-from-netlify|npm run ship|netlify deploy|supabase db/);
+});
+
 test("masked laptop values stay named and do not block bundle proof", () => {
   assert.equal(isRunnerOnlyNotChecked({ id: "keys:any", why: "the laptop copy is a row of asterisks" }), true);
 });
