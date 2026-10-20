@@ -186,7 +186,8 @@ import { isSyntheticRow } from "./synthetic.mjs";
    A cron with no event trigger, so it sits in neverFired like every sweeper
    here. It is exercised directly by src/pulse/instant-watch.test.mjs, not by
    a walked journey. */
-const REGISTERED = 100;
+// 101 with the dedicated Whop Blueprint billing inbox drain (2026-10-20).
+const REGISTERED = 101;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

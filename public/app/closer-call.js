@@ -450,13 +450,43 @@
 
   function loadSaid() {
     if (!window.FHData || !clientId) return;
+    paintSharedContext(null, "Loading saved AI coach and human advisor context…");
     FHData.read("agent-context", { client_id: clientId }).then(function (res) {
-      var block = res && res.data && res.data.context && res.data.context.as_prompt_block;
+      var context = res && res.ok && res.data && res.data.context;
+      paintSharedContext(context, context ? null : "The shared client file could not be loaded. Reload to try again.");
+      var block = context && context.as_prompt_block;
       if (!block) return;
       var idx = String(block).indexOf("said:");
       if (idx < 0) return;
       paintSaid(String(block).slice(idx).split("\n")[0].replace(/^said:\s*/, ""));
+    }).catch(function () { paintSharedContext(null, "The shared client file could not be loaded. Reload to try again."); });
+  }
+
+  function paintSharedContext(context, message) {
+    var ctx = $(".ctx");
+    if (!ctx) return;
+    var panel = ctx.querySelector("[data-fh-shared-context]");
+    if (!panel) {
+      panel = document.createElement("details");
+      panel.setAttribute("data-fh-shared-context", "");
+      var heading = document.createElement("summary");
+      heading.textContent = "AI coach and human advisor — shared client file";
+      panel.appendChild(heading);
+      ctx.appendChild(panel);
+    }
+    var old = panel.querySelector("[data-fh-context-lines]");
+    if (old) old.remove();
+    var body = document.createElement("div");
+    body.setAttribute("data-fh-context-lines", "");
+    body.className = "fh-context-lines";
+    var block = message || (context && context.as_prompt_block) || "No saved context is on this client file yet.";
+    String(block).split("\n").forEach(function (line) {
+      var p = document.createElement("p");
+      p.className = "caption";
+      p.textContent = line;
+      body.appendChild(p);
     });
+    panel.appendChild(body);
   }
 
   function wireDisposition() {

@@ -1,4 +1,4 @@
-// Closer deck (present.html), section 07 Close: "Send agreement + pay link",
+// Closer deck (present.html), section 07 Close: "Send pay link",
 // "Invoice this client" and "Log disposition and close" (finish-the-853, batch 01).
 //
 // Each is pressed in the real page against fake answers and judged on the exact
@@ -12,6 +12,7 @@
 // NO BACKEND: page.route() answers /api/**. Nothing is mailed, texted or charged.
 import { test, expect } from "@playwright/test";
 import { openScreen, json, CLOSER, CLIENT_ID } from "./harness.mjs";
+import { offersForClient } from "../src/config/offers.mjs";
 
 // These run on a Mac that is often busy with other browser runs: give each test room.
 test.describe.configure({ timeout: 60_000 });
@@ -22,19 +23,18 @@ const DECK = (tier = "REPAIR_ONLY") => ({
   businesses: [{ id: "biz-1", name: "Whitfield Freight LLC", age_months: 66, incorporated_date: "2021-03-01" }],
   income_estimates: {},
   engine: { available: true, tier, fico: { experian: 640, equifax: 632, transunion: 651 }, reasons: [], total: 0 },
-  offers: [
-    { key: "REPAIR_DFY", name: "Repair done for you", priceCents: 150000, priceDisplay: "$1,500", letters: false },
-    { key: "FUNDING_DFY", name: "Funding done for you", priceCents: 500000, priceDisplay: "$5,000", letters: false },
-    { key: "REPAIR_TRIAL", name: "Repair trial round", priceCents: 19700, priceDisplay: "$197", letters: false },
-    { key: "UWIQ_DELIVERABLES", name: "Capital Blueprint", priceCents: 29700, priceDisplay: "$297", letters: false },
-  ],
+  offers: offersForClient(),
   soft_pull: null,
 });
 
 async function open(page, { tier, deck, invoices, outbound } = {}) {
-  const calls = { deck: [], outbound: [], invoices: [] };
+  const calls = { deck: [], outbound: [], invoices: [], context: [] };
   await openScreen(page, `/app/present.html?contact=${CLIENT_ID}`, CLOSER, {
     "/api/read/closer-deck": DECK(tier),
+    "/api/read/agent-context": async (route, { url }) => {
+      calls.context.push(Object.fromEntries(new URL(url).searchParams));
+      return json(route, { ok: true, context: { client: { id: CLIENT_ID }, as_prompt_block: "Saved fixture client context" } });
+    },
     "/api/closer-deck": async (route) => {
       const body = JSON.parse(route.request().postData() || "{}");
       calls.deck.push(body);
@@ -63,7 +63,7 @@ async function open(page, { tier, deck, invoices, outbound } = {}) {
 
 const toast = (page) => page.locator(".toast");
 
-test.describe("closer deck: Send agreement + pay link", () => {
+test.describe("closer deck: Send pay link", () => {
   test("it sends this client with the offer the deck chose and no sale motion, once", async ({ page }) => {
     const calls = await open(page);
     await page.locator('[data-act="pay"]').click();
@@ -73,7 +73,8 @@ test.describe("closer deck: Send agreement + pay link", () => {
     expect(body.client_id).toBe(CLIENT_ID);
     expect(body.offer_key).toBe("REPAIR_DFY");
     expect(body.sale_motion).toBe(null);
-    await expect(toast(page)).toHaveText("Agreement and pay link sent.");
+    await expect(toast(page)).toHaveText("Pay link sent.");
+    expect(calls.context[0].client_id).toBe(CLIENT_ID);
   });
 
   test("a funding deck sends the funding offer", async ({ page }) => {
@@ -95,6 +96,8 @@ test.describe("closer deck: Send agreement + pay link", () => {
     await expect.poll(() => calls.deck.length).toBe(1);
     expect(calls.deck[0].offer_key).toBe("UWIQ_DELIVERABLES");
     expect(calls.deck[0].sale_motion).toBe("upsell");
+    expect(calls.deck[0].amount_cents).toBe(500000);
+    expect(calls.deck[0].provider).toBe("commas");
   });
 
   test("a downsell or upsell chosen for an alternate offer is dropped when the deck goes back to a primary offer", async ({ page }) => {
@@ -136,7 +139,7 @@ test.describe("closer deck: Send agreement + pay link", () => {
     await pay.click();
     await expect.poll(() => calls.deck.length).toBe(1);
     await expect(toast(page)).toHaveText("That offer has no checkout set up.");
-    await expect(pay).toHaveText("Send agreement + pay link");
+    await expect(pay).toHaveText("Send pay link");
     await expect(pay).toBeEnabled();
     await expect(page.locator(".sent-at")).toHaveCount(0);
   });

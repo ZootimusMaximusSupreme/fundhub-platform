@@ -4,9 +4,10 @@
 // client portal quotes. This screen does no funding arithmetic of its own
 // (F15, owner-set 2026-09-03).
 
-import { getOffer, offerAllowsLetters, offersForClient, formatCents } from "../config/offers.mjs";
+import { getOffer, offerAllowsLetters, offersForClient, formatCents, resolveOfferAmountCents } from "../config/offers.mjs";
 import { isFundingPath } from "../config/product-path.mjs";
 import { createPaymentLink, markSent } from "../payment-links/index.mjs";
+import { checkoutConfig } from "../payments/commas-api.mjs";
 import { formatPrice } from "../subscriptions/index.mjs";
 import { sendTemplated } from "../workflows/messaging.mjs";
 import { mergeCustomFields } from "../workflows/custom-fields.mjs";
@@ -682,15 +683,24 @@ export function payLinkSmsBody({ firstName, description, amount, checkoutUrl }) 
 
 export async function sendDeckPayLink(db, {
   orgId, clientId, staffId, staffRole = null, offerKey,
-  saleMotion = null, checkoutBaseUrl, env = process.env
+  saleMotion = null, amountCents = undefined, provider = "commas", checkoutBaseUrl, env = process.env
 }) {
   const offer = getOffer(offerKey);
   if (!offer) {
     throw new CloserDeckError("Unknown offer.", { status: 400, code: "unknown_offer" });
   }
-  if (!checkoutBaseUrl && !String(env.FANBASIS_CHECKOUT_API_KEY || "").trim()) {
+  let resolvedAmountCents;
+  try {
+    resolvedAmountCents = resolveOfferAmountCents(offer.key, amountCents);
+  } catch (err) {
+    throw new CloserDeckError(err.message, { status: 400, code: "invalid_offer_amount" });
+  }
+  if (!new Set(["commas", "whop"]).has(provider) || (provider === "whop" && offer.key !== "UWIQ_DELIVERABLES")) {
+    throw new CloserDeckError("Choose a supported payment provider for this offer.", { status: 400, code: "invalid_offer_provider" });
+  }
+  if (provider === "commas" && !checkoutBaseUrl && !checkoutConfig(env).ok) {
     throw new CloserDeckError(
-      "FANBASIS_CHECKOUT_API_KEY is not set — no checkout link can be built",
+      "Commas checkout is not configured — no checkout link can be built",
       { status: 503, code: "commas_not_configured" }
     );
   }
@@ -714,7 +724,8 @@ export async function sendDeckPayLink(db, {
       purpose,
       description,
       commasProductTitle: offer.commasProductTitle,
-      amountCents: offer.priceCents,
+      amountCents: resolvedAmountCents,
+      provider,
       createdByStaffId: staffId,
       createdByRole: staffRole,
       productCode: offer.productCode,

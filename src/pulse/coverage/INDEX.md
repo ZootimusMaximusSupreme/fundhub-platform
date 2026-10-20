@@ -2,6 +2,10 @@
 
 Morning pulse coverage notes. A job is red after 3 times its schedule.
 
+whop-billing-inbox-drain — durable Fundhub billing receipts and provider GET recovery; hourly whop-billing beat and gap-whop-billing.mjs check overdue receipts and paid buyers missing access.
+
+blueprint:real-advisor / blueprint:monthly-delivery — gap-blueprint.mjs and the hourly blueprint-delivery beat check active paid clients for a real eligible human assignment and keep failed saved-result delivery exceptions red, even after the included year ends. Tripwire surfaces are csm-queue.html and finance-os-pull-sweeper.
+
 Slice modules (detail):
 slice-01-auth.mjs
 slice-02-daily-pulse.mjs

@@ -56,6 +56,7 @@ import { dbDown } from "../src/http/db-down.mjs";
 import { isOptedOut } from "../src/lib/opt-out.mjs";
 import { gate } from "../src/messaging/gate.mjs";
 import { recordDispatch } from "../src/lib/outbound-calls.mjs";
+import { voiceCallTask } from "../src/agents/voice-context.mjs";
 import { placeCall, readiness, agentReadiness, normalizePhone } from "../src/messaging/providers/bland-voice.mjs";
 
 /* Narrower than ROLE_SETS.STAFF. Placing a call is contacting a client, so the
@@ -179,9 +180,8 @@ export default async function handler(req, res) {
     /* The gate is run over the agent's prompt rather than an empty string. The
        prompt IS what the robot says, so the compliance rules should see it — an
        empty body would pass every content rule and tell us nothing. */
-    const verdict = await gate(db, {
-      orgId, clientId, channel: "voice", body: String(agent.prompt || "")
-    });
+    const callTask = await voiceCallTask(db, { orgId, clientId, agent });
+    const verdict = await gate(db, { orgId, clientId, channel: "voice", body: callTask });
     if (verdict.state !== "allowed") {
       return refuse(res, 409, "gate_" + verdict.state,
         (verdict.reasons && verdict.reasons[0] && verdict.reasons[0].message) ||
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
 
     /* ── the call ──────────────────────────────────────────────────────── */
     const result = await placeCall({
-      agent, phone, clientId,
+      agent: { ...agent, prompt: callTask }, phone, clientId,
       metadata: { org_id: orgId, placed_by: staff.id || null },
       env: process.env
     });
@@ -248,6 +248,9 @@ export default async function handler(req, res) {
       message: `${agent.name} is calling ${who}.`
     });
   } catch (err) {
+    if (err?.code === "client_context_unavailable") {
+      return refuse(res, 503, err.code, err.message);
+    }
     if (dbDown(res, err)) return;
     throw err;
   }

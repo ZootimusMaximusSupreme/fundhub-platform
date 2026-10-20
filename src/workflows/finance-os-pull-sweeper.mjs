@@ -1,17 +1,13 @@
 // Finance OS monthly pull sweeper — the clock behind the included soft pull.
 //
 // WHAT ONE PASS DOES. For every client with an active `finance-os` subscription
-// (financeOsEntitlement()) whose current billing period has not yet had a
-// system-requested pull, write one queued row via requestSoftPull(). One row
-// per client per period — the query below checks for an existing `system` row
-// requested inside the current period before writing another.
+// whose paid access period is open and whose last system request was at least
+// 30 days ago, write one queued row via requestSoftPull(). The included year
+// is an access window, not the refresh cadence. Duplicate runs share a key.
 //
-// WHAT IT CANNOT DO, AND DOES NOT PRETEND TO. requestSoftPull() writes a
-// ledger row. It does not call a bureau — see 380_finance_os_monthly_pull.sql's
-// header: fulfilSoftPull() is called from nowhere in application code today,
-// for any requester kind. A pass of this sweeper makes the honest record "a
-// pull was requested"; it does not make a fresh credit file appear. Closing
-// that seam is a separate, human decision, the same class as Plaid's.
+// requestSoftPull() records the request. The existing fulfil hook then runs
+// with its existing consent, simulation and explicit-live-provider gates.
+// A queued request is not proof that a fresh credit file has arrived.
 //
 // NEVER THROWS FOR THE WHOLE PASS. One client's consent revocation, a missing
 // billing period, or a race with a human-initiated pull must not stop every
@@ -37,16 +33,17 @@ import { fulfilQueuedSystemPulls } from "../finance/finance-os-pull-fulfil.mjs";
 
 export const SWEEP_CRON = "0 6 * * *"; // 06:00 UTC daily — matches the other daily sweepers' quiet-hours-safe slot
 export const SOURCE_WORKFLOW = "finance-os-pull-sweeper";
+export const MONTHLY_PULL_DAYS = 30;
 
 export const SCHEDULED_PULL_REASON =
   "Finance OS monthly optimization pull — included with the client's finance-os subscription, requested automatically.";
 
-/** Every active finance-os subscriber whose current period has no `system`
- *  pull yet. One row per (org, client, subscription) — a client cannot hold
+/** Every active finance-os subscriber with no system request in 30 days.
+ *  One row per (org, client, subscription) — a client cannot hold
  *  two active finance-os subscriptions at once (075's window constraint). */
 export async function dueClients(conn, now) {
   const res = await conn.query(
-    `SELECT s.id AS subscription_id, s.org_id, s.client_id
+    `SELECT s.id AS subscription_id, s.org_id, s.client_id, s.current_period_start
        FROM subscriptions s
       WHERE s.tier = $1
         AND s.status = 'active'
@@ -54,15 +51,28 @@ export async function dueClients(conn, now) {
         AND (s.effective_to IS NULL OR s.effective_to > $2)
         AND s.current_period_start IS NOT NULL
         AND s.current_period_end IS NOT NULL
+        AND s.current_period_start <= $2
+        AND s.current_period_end > $2
         AND NOT EXISTS (
           SELECT 1 FROM soft_pull_requests r
            WHERE r.client_id = s.client_id
+             AND r.org_id = s.org_id
              AND r.requested_by_kind = 'system'
-             AND r.requested_at >= s.current_period_start
+             AND r.requested_at > $2::timestamptz - ($3::int * interval '1 day')
         )`,
-    [FINANCE_OS_TIER, now]
+    [FINANCE_OS_TIER, now, MONTHLY_PULL_DAYS]
   );
   return res.rows;
+}
+
+export function monthlyPullKey(row, now) {
+  const start = new Date(row.current_period_start).getTime();
+  const at = new Date(now).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(at) || at < start) {
+    throw new Error("The monthly pull needs a valid open access period");
+  }
+  const window = Math.floor((at - start) / (MONTHLY_PULL_DAYS * 86400000));
+  return `finance-os-monthly:${row.subscription_id}:${window}`;
 }
 
 /** sweep — one pass. `db` and the clock are arguments so tests drive it
@@ -80,6 +90,7 @@ export async function sweep(conn = db, { now = new Date(), env = process.env, fu
         requestedBy: { kind: "system" },
         reason: SCHEDULED_PULL_REASON,
         subscriptionId: row.subscription_id,
+        idempotencyKey: monthlyPullKey(row, now),
         provider: "internal"
       });
       if (out.created) {
@@ -108,7 +119,11 @@ export async function sweep(conn = db, { now = new Date(), env = process.env, fu
     }
   }
 
-  return tally;
+  return {
+    ...tally,
+    ok: tally.errored.length === 0 && Number(tally.fulfil?.failed || 0) === 0
+      && !(tally.fulfil?.errored?.length) && tally.fulfil?.ok !== false
+  };
 }
 
 /* handle — the shape src/journeys/runner/registry.mjs expects. No event
