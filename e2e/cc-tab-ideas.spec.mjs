@@ -169,6 +169,7 @@ for (const size of SIZES) {
       expect(writesTo(posts, "marketing/batches/write-now"), "no POST before the sheet's tap").toHaveLength(0);
       if (size.width === 390) await shoot(page, "x8-02-write-now-sheet-390.png", "Write now: the cost sheet comes first", [{ locator: sheet.locator(".host-box"), caption: "Cost before the paid tap" }]);
       await sheet.getByRole("button", { name: "Write it now" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/batches/write-now").length).toBe(1);
       const w = writesTo(posts, "marketing/batches/write-now");
       expect(w).toHaveLength(1);
       expect(w[0].body).toMatchObject({ count: 1, idea_ids: ["00000000-0000-4000-8000-000000000402"] });
@@ -237,6 +238,7 @@ for (const size of SIZES) {
       await expect(sheet).toContainText("Cost: unknown, not measured yet.");
       expect(writesTo(posts, "marketing/flywheel/run")).toHaveLength(0);
       await sheet.getByRole("button", { name: "Build the avatar" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/flywheel/run").length).toBe(1);
       const w = writesTo(posts, "marketing/flywheel/run");
       expect(w).toHaveLength(1);
       expect(w[0].body).toMatchObject({ campaign: "partner", stage: 1, kind: "avatar", service_description: "Funding for business owners, done for you." });
@@ -267,6 +269,7 @@ for (const size of SIZES) {
       await expect(sheet).toContainText("makes steps 3 to 6 out of date");
       expect(writesTo(posts, "marketing/flywheel/tweak")).toHaveLength(0);
       await sheet.getByRole("button", { name: "Save and re-run" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/flywheel/tweak").length).toBe(1);
       expect(writesTo(posts, "marketing/flywheel/tweak")[0].body).toMatchObject({ campaign: "partner", stage: 2, note: "Look harder at bank overlays." });
       /* Steps 4 and 5 wait on approvals, with the reason printed. */
       await expect(page.locator("#cci-stage-4")).toContainText("Approve step 3 first (the offer).");
@@ -282,6 +285,7 @@ for (const size of SIZES) {
       await expect(page.locator("#cci-cost-3")).toContainText("About $0.67 and 5 minutes (last run, Oct 4).");
       await page.locator("#cci-run-3").click();
       await page.getByRole("dialog").getByRole("button", { name: "Write the offer" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/flywheel/run").length).toBe(1);
       expect(writesTo(posts, "marketing/flywheel/run")[0].body).toMatchObject({ campaign: "partner", stage: 3, kind: "offer" });
       expect(writesTo(posts, "marketing/offer/generate")).toHaveLength(0);
       await expect(page.locator("#cci-stage-6")).toContainText("Free. Reads saved numbers. A few seconds.");
@@ -368,6 +372,7 @@ for (const size of SIZES) {
       await expect(sheet).toContainText("Deep research on: Which banks give business credit lines to new companies?");
       expect(writesTo(posts, "marketing/research")).toHaveLength(0);
       await sheet.getByRole("button", { name: "Start the research" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/research").length).toBe(1);
       const w = writesTo(posts, "marketing/research");
       expect(w).toHaveLength(1);
       expect(w[0].body).toMatchObject({ question: "Which banks give business credit lines to new companies?", depth: "quick", sources: { web: true, vault: true, own_files: false }, max_cost_usd: 5 });
@@ -382,6 +387,7 @@ for (const size of SIZES) {
       const failed = page.locator('[data-run="r-failed"]');
       await expect(failed).toContainText("Could not finish: Anthropic's reader could not open any page.");
       await failed.getByRole("button", { name: "Retry" }).click();
+      await expect.poll(() => writesTo(posts, "marketing/jobs/retry").length).toBe(1);
       expect(writesTo(posts, "marketing/jobs/retry")[0].body).toMatchObject({ job_id: "r-failed" });
     });
 
