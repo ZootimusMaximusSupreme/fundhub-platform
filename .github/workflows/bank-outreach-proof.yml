@@ -1,0 +1,81 @@
+name: Bank outreach saved-result proof
+on:
+  push:
+    branches: [codex/bank-relationship-outreach]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bank-outreach-proof-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_outreach_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_outreach_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fundhub_outreach_ci
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:5432/fundhub_outreach_ci
+      ALLOW_SUPERUSER_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install the existing build and browser tools
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+          npm install --global netlify-cli
+      - name: Lint and TypeScript
+        run: |
+          npm run lint
+          npx --yes --package typescript@5.9.3 tsc --noEmit
+      - name: Apply migrations to disposable PostgreSQL
+        run: |
+          node db/migrate.mjs
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+          npm run migrations:manifest
+          git diff --exit-code -- db/expected-migrations.mjs
+      - name: Real saved-result, ownership and tripwire checks
+        run: >-
+          node --test src/outreach/*.test.mjs src/http/bank-outreach.test.mjs
+          src/http/restricted-staff.test.mjs src/pulse/coverage/gap-bank-outreach*.test.mjs
+          src/pulse/beats/beat-bank-outreach*.test.mjs src/workflows/bank-outreach-checkins.test.mjs
+          src/pulse/registry.test.mjs src/pulse/tripwires.test.mjs
+          src/pulse/heartbeats.test.mjs src/pulse/workflow-coverage.test.mjs
+      - name: Browser controls, roles and all four screen states
+        run: node node_modules/@playwright/test/cli.js test e2e/bank-outreach.spec.mjs e2e/sidebar-roles.spec.mjs --reporter=line
+      - name: Existing full scratch end-to-end harness
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run verify:e2e
+      - name: Morning outreach check from the actual function bundle
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --lanes=gap-bank-outreach
+      - name: Hourly checks from the actual function bundle
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --beats
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bank-outreach-proof-${{ github.sha }}
+          path: |
+            ops/workflows/build-evidence/bank-outreach/
+            test-results/
+            docs/END-TO-END-VERIFICATION.md
+          retention-days: 14

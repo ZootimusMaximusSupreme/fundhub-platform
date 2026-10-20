@@ -1,0 +1,68 @@
+/* Shared CRM frame, rounded typography and tenant brand come from shared files. */
+.bank-outreach-page{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+.bank-outreach-page *{box-sizing:border-box}
+.bank-outreach-page [hidden]{display:none!important}
+.bank-outreach-page .app{display:flex;min-height:100dvh}
+.bank-outreach-page .shell{min-width:0;flex:1}
+#outreach-main{padding:32px;min-width:0}
+.bank-outreach-page h1,.bank-outreach-page h2,.bank-outreach-page p{margin:0}
+.bank-outreach-page h1,.bank-outreach-page h2{font-size:var(--fs-title);font-weight:700;letter-spacing:-.025em;line-height:1.25}
+.bank-outreach-page h1{margin-top:8px}
+.bank-outreach-page .caption,.bank-outreach-page .sub{color:var(--gray);font-size:var(--fs-caption)}
+.bank-outreach-page .sub{margin-top:8px}
+.page-heading,.section-heading,.drawer-header{display:flex;justify-content:space-between;align-items:center;gap:24px}
+.page-heading{margin-bottom:32px}
+.bank-outreach-page .button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 16px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.bank-outreach-page .button:hover{background:var(--soft);border-color:var(--gray2)}
+.bank-outreach-page .button.primary{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.bank-outreach-page .button:disabled{opacity:.5;cursor:default}
+.bank-outreach-page :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.bank-outreach-page .panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--panel-shadow)}
+.outreach-overview{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;margin-bottom:32px}
+.hero{grid-column:span 8;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.hero h2{overflow-wrap:anywhere}
+.hero .button{margin-top:16px}
+.results{grid-column:span 4;padding:24px;display:flex;flex-direction:column;gap:16px}
+.metric,#hero-value.manager-value{font-size:var(--fs-metric);font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.result-line{display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:16px;font-size:var(--fs-caption)}
+.result-line strong{font-variant-numeric:tabular-nums}
+.view-switch,.drawer-tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
+.view-switch button,.drawer-tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;min-height:44px;padding:8px 0;color:var(--gray);font:inherit;white-space:nowrap;cursor:pointer}
+.view-switch button[aria-pressed=true],.drawer-tabs button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:700}
+.section-heading{margin-bottom:24px}
+.filters{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr)) auto;gap:16px;align-items:end;margin-bottom:24px}
+.bank-outreach-page label{display:flex;flex-direction:column;gap:8px;font-size:var(--fs-caption);color:var(--gray);min-width:0}
+.bank-outreach-page :is(input,textarea,select){font:inherit;color:var(--ink);width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff}
+.bank-outreach-page textarea{resize:vertical}
+.queue-panel{overflow:hidden}
+.table-scroll{overflow-x:auto;max-width:100%}
+.bank-outreach-page table{border-collapse:collapse;width:100%;table-layout:fixed}
+.bank-outreach-page th{text-align:left;font-size:var(--fs-caption);font-weight:500;color:var(--gray);padding:16px;border-bottom:1px solid var(--line);background:var(--paper)}
+.bank-outreach-page td{padding:16px;border-bottom:1px solid var(--line);vertical-align:middle}
+.bank-outreach-page th:first-child{width:26%}.bank-outreach-page th:nth-child(2){width:30%}.bank-outreach-page th:last-child{width:96px}
+.bank-outreach-page td strong,.bank-outreach-page td .caption{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bank-outreach-page tr[data-account]{cursor:pointer}
+.bank-outreach-page tr[data-account]:hover{background:var(--paper)}
+.status-tag{display:inline-flex;max-width:100%;border:1px solid var(--line);border-radius:8px;padding:0 8px;font-size:var(--fs-caption);white-space:nowrap}
+.status-tag.verified{background:var(--ok);color:var(--ink)}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px}
+.pagination>div{display:flex;gap:8px}
+.queue-state{padding:32px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.skeleton{display:block;background:var(--soft);border-radius:8px;animation:outreach-pulse 1.4s ease-in-out infinite}
+.skeleton-title{height:32px;width:240px;max-width:100%}.skeleton-row{height:48px;width:100%}
+@keyframes outreach-pulse{50%{opacity:.45}}
+.notice{padding:16px;background:var(--soft);border:1px solid var(--line);border-radius:8px;margin-bottom:24px;overflow-wrap:anywhere}
+.notice.error{border-left:4px solid var(--ink)}
+.team-content{padding:24px}.team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}.team-grid h3{font-size:var(--fs-body);margin:0 0 16px}.team-grid dl{margin:0}.team-grid dl>div{display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding:16px 0}.team-grid dt{overflow-wrap:anywhere}.team-grid dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}.team-grid dd span{display:block}
+.bank-drawer,.import-dialog{color:var(--ink);font:inherit;border:1px solid var(--line);background:var(--paper);padding:24px;max-height:100dvh;overflow-y:auto;overscroll-behavior:contain}
+.bank-drawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(760px,100%);height:100dvh;max-width:100%;border-radius:0}
+.import-dialog{width:min(640px,calc(100% - 32px));border-radius:10px}
+.bank-outreach-page dialog::backdrop{background:rgba(13,17,19,.35)}
+.drawer-header{align-items:flex-start;margin-bottom:24px}.drawer-header>div{min-width:0}.drawer-header h2{overflow-wrap:anywhere;margin-top:8px}.drawer-header .button{flex-shrink:0}
+.bank-next{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:16px}
+.bank-links{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:24px}.bank-links a{color:var(--ink);min-height:44px;display:inline-flex;align-items:center}
+.drawer-tabs{gap:24px}.detail-section form,.import-dialog form{display:flex;flex-direction:column;gap:16px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.detail-section h3{font-size:var(--fs-body);margin:0 0 16px}.detail-section .section-note{margin-bottom:24px}.detail-section select{font-size:var(--fs-body)}
+.saved-record{border-bottom:1px solid var(--line);padding:16px 0;overflow-wrap:anywhere}.saved-record:first-child{padding-top:0}.record-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.record-heading>div{min-width:0}.saved-record p{margin-top:8px}.record-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.record-facts{margin:16px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}.record-facts dt{color:var(--gray);font-size:var(--fs-caption)}.record-facts dd{margin:0;overflow-wrap:anywhere}.new-record{margin:24px 0}.bank-outreach-page .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1100px){.hero{grid-column:span 6}.results{grid-column:span 6}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.manager-column{display:none}}
+@media(max-width:600px){#outreach-main{padding:24px 16px}.page-heading{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:24px}.outreach-overview{grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:24px}.hero,.results{grid-column:1;padding:16px}.results{gap:16px}.section-heading{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:16px}.filters{grid-template-columns:minmax(0,1fr);gap:16px}.bank-outreach-page table,.bank-outreach-page tbody{display:block}.bank-outreach-page thead{display:none}.bank-outreach-page tr[data-account]{display:grid;grid-template-columns:minmax(0,1fr);padding:16px;gap:8px;border-bottom:1px solid var(--line)}.bank-outreach-page td{display:block;border:0;padding:0}.bank-outreach-page td:last-child{margin-top:8px}.bank-outreach-page td .button{width:100%}.bank-outreach-page td strong,.bank-outreach-page td .caption{white-space:normal;overflow-wrap:anywhere}.pagination{flex-direction:column;align-items:stretch}.pagination>div{justify-content:space-between}.team-grid{grid-template-columns:minmax(0,1fr);gap:24px}.team-content,.queue-state{padding:16px}.bank-drawer{padding:24px 16px}.field-grid{grid-template-columns:minmax(0,1fr)}.record-heading{align-items:flex-start;flex-direction:column;gap:8px}.record-facts{grid-template-columns:minmax(0,1fr);gap:8px}.record-facts dd{margin-bottom:8px}.drawer-header{gap:16px}.form-actions .button{width:100%}}
+@media(prefers-reduced-motion:reduce){.skeleton{animation:none}}

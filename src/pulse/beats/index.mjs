@@ -14,6 +14,7 @@ import { validateBeat } from "./contract.mjs";
 
 export const BEAT_FILES = Object.freeze([
   ["beat-apply-links.mjs", () => import("./beat-apply-links.mjs")],
+  ["beat-bank-outreach.mjs", () => import("./beat-bank-outreach.mjs")],
   ["beat-brief-link.mjs", () => import("./beat-brief-link.mjs")],
   ["beat-checkout-doors.mjs", () => import("./beat-checkout-doors.mjs")],
   ["beat-db-health.mjs", () => import("./beat-db-health.mjs")],

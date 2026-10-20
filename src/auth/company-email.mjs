@@ -30,6 +30,7 @@ const ROLE_KEYS = {
   inquiry_specialist: "inquiry_specialist",
   setter: "setter",
   sales_manager: "sales_manager",
+  outbound_rep: "outbound_rep",
   csm: "csm",
   client_success_manager: "csm"
 };

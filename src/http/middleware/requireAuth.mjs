@@ -14,6 +14,7 @@
 
 import { db as defaultDb } from "../../db.mjs";
 import { verifySession } from "../../auth/session.mjs";
+import { restrictedStaffAllowed } from "../restricted-staff.mjs";
 
 // bearerToken — pulls the session token out of a request. Authorization:
 // Bearer is the primary form; the x-session-token header and a fundhub_session
@@ -78,7 +79,12 @@ export async function authenticate(req, { db = defaultDb, env = process.env } = 
   const token = bearerToken(req);
   if (!token) return null;
   try {
-    return await verifySession(db, token, { env });
+    const result = await verifySession(db, token, { env });
+    if (result?.staff && !restrictedStaffAllowed(req, result.staff)) {
+      req.authForbidden = true;
+      return null;
+    }
+    return result;
   } catch (err) {
     // A bad token is not an error — verifySession returns null for that. Getting
     // here means the CHECK itself failed, which is our problem, not the caller's.
@@ -108,6 +114,10 @@ export async function attachStaff(req, opts = {}) {
 export async function requireAuth(req, res, opts = {}) {
   const staff = await attachStaff(req, opts);
   if (!staff) {
+    if (req.authForbidden) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return null;
+    }
     if (req.authUnavailable) {
       // Ours, not theirs. 503 + db:"down" is the shape data.js reads as an
       // outage, so the screens say "backend unavailable" instead of logging
