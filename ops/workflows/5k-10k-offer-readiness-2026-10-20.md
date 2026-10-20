@@ -212,6 +212,14 @@ Independent final review is closed on the frozen source: no remaining concrete P
 
 Joined source is saved in commit `8445dbbe8` (33scoped files, no provider PNGs). The final TypeScript refresh exited0. The previously failing nested flow-proof aggregate now passes15/15with0skips, including all its mapped local/fake-data child proofs. Final required GitHub checks on this joined candidate are still pending; source/local proof is not deployment or live customer proof.
 
+### Owner release decision — conditional on final checks
+
+Owner replied "get it all done" to the exact conditional approval: after the final required checks pass, deploy PR83 and activate the text/voice coaches and reminder templates for eligible paid Blueprint clients. This includes real texts and Bland calls. The Whop billing webhook and monthly live credit-pull setting stay OFF. Parent owns release/activation; L owns CI and must not merge, deploy or activate. Approval does not make pending checks pass or prove live customer delivery.
+
+### P — Activation preflight (parent, read-only until green)
+
+Prompt: In the approved Blueprint worktree and accessible production configuration, prepare the parent's release/activation plan while L follows PR83's exact final-head checks. Read the intended/actual Blueprint journey, current migration/coach/template definitions and this board. Verify existing production identities, agent/template states, required provider-setting names and current safety flags without exposing secrets. Confirm no owner-edited definition would be overwritten, eligibility targets only paid active Blueprint clients, and required real human advisor handling remains honest. Keep Whop's billing webhook and monthly live pull OFF. Do not merge, deploy, apply live SQL, promote agents/templates or send/call while any final required check is pending/red. Parent alone may carry out the already approved release/activation after all required checks pass; L only reports exact CI evidence and required repairs. No duplicate product/key/webhook creation or cross-chat Cortana/payment-source changes.
+
 ### M — Remaining offer decisions (remaining_offer_decisions, read-only)
 
 Prompt: Review the approved Blueprint owner requests against `docs/journeys/capital-blueprint-intended.md`, `capital-blueprint-actual.md` and this board in the clean Blueprint worktree. Distinguish genuinely unbuilt automatic Bland call scheduling from implemented but inactive agents, reminders, payments and delivery. Return at most three unanswered owner decisions; do not reopen the settled same-package price range,12-month term, no-auto-renewal or provider naming. Read-only: no file edits, external writes, activation, sends, calls, payments or production changes. Parent owns the final questions. Run alongside Workflow L and the parent's readiness check; the final answer waits for the evidence to join.
