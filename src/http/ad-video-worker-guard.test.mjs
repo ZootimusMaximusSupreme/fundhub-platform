@@ -11,13 +11,24 @@
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import handler, { AUTH_HEADER } from "../../netlify/functions/ad-video-worker-background.mjs";
+
+const source = readFileSync(new URL("../../netlify/functions/ad-video-worker-background.mjs", import.meta.url), "utf8");
 
 const req = (value) => ({
   headers: { get: (name) => (name === AUTH_HEADER && value !== undefined ? value : null) }
 });
 
 describe("the ad-video worker refuses anyone without the secret", () => {
+  test("uses only the modern default export, outside Lambda's 4 KB env trap", async () => {
+    assert.doesNotMatch(source, /export\s+(const|let|var|async\s+function|function)\s+handler\b/);
+    assert.doesNotMatch(source, /export\s*\{[^}]*\bhandler\b[^}]*\}/);
+    const mod = await import("../../netlify/functions/ad-video-worker-background.mjs");
+    assert.equal(typeof mod.default, "function");
+    assert.equal(mod.handler, undefined);
+  });
+
   test("no secret configured means the door is CLOSED, not open", async () => {
     const had = process.env.AD_VIDEO_WORKER_SECRET;
     delete process.env.AD_VIDEO_WORKER_SECRET;
