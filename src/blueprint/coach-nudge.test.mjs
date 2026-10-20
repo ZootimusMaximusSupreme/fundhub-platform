@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fakeDb } from "../testing/handler-harness.mjs";
 import { sendBlueprintCoachNudge } from "./coach-nudge.mjs";
+import { parseBlueprintCoachNudgePlan } from "./coach-prompt.mjs";
 import { STEPS } from "../nudge/ladder.mjs";
 import { deliverNudge } from "../nudge/run.mjs";
 
@@ -13,8 +14,10 @@ const ctx = { client: { id: "client-a", flags: {} }, blueprint: { access_active:
   as_prompt_block: "Last call: receipt saved" };
 const agent = { code: "BP-COACH", status: "live", agent_class: "client_facing", channel: "sms", runtime: "internal", prompt: "AI coach" };
 const dbFor = (row = agent) => fakeDb([[/FROM agents/, (_sql, p) => p[0] === scope.orgId && p[1] === "BP-COACH" ? [row] : []]]);
+const livePlan = async () => ({ mode: "live", text: JSON.stringify({ intent: "ask_progress", action: null }) });
+const coachOptions = { callModelFn: livePlan, env: {} };
 
-test("existing nudge cadence stays due SMS / day2 email / day5 SMS / day9 human, with no automatic Bland calls", () => {
+test("existing text ladder keeps due SMS / day2 email / day5 SMS / day9 human; calls use their separate sent-reminder trigger", () => {
   assert.deepEqual(STEPS.map((s) => [s.daysOverdue, s.channel, s.kind]), [
     [0, "sms", "client_message"], [2, "email", "client_message"], [5, "sms", "client_message"], [9, null, "staff_task"]
   ]);
@@ -31,6 +34,7 @@ test("nonBlueprint reminders use the original approved-template path with unchan
 test("Blueprint uses real saved current title/proof and existing claim key through the approved-template sender", async () => {
   let queued;
   const out = await sendBlueprintCoachNudge(dbFor(), spec, {
+    ...coachOptions,
     isBuyerImpl: async () => true, fetchContextImpl: async (_db, ids) => { assert.deepEqual(ids, { ...scope, channel: "sms", conversationId: null }); return ctx; },
     sendTemplatedImpl: async (_db, input) => { queued = input; return { sent: true, messageId: "queued" }; }
   });
@@ -46,6 +50,7 @@ test("Blueprint uses real saved current title/proof and existing claim key throu
 test("draft/missing coach, halted/inactive file, stale planned step never reaches the sender", async () => {
   for (const [row, context] of [[{ ...agent, status: "draft" }, ctx], [null, ctx],
     [agent, { ...ctx, blueprint: { access_active: false } }], [agent, { ...ctx, conversation: { agent_halted_at: "today" } }],
+    [agent, { ...ctx, conversation: { agent_code: "EXISTING-ASSIGNED-AGENT" } }],
     [agent, { ...ctx, checklist: { open_step: { ...ctx.checklist.open_step, key: "new-step" } } }]]) {
     let sends = 0;
     const out = await sendBlueprintCoachNudge(dbFor(row), spec, { isBuyerImpl: async () => true, fetchContextImpl: async () => context,
@@ -60,7 +65,7 @@ test("real template sender holds missing, unapproved and DRAFT Blueprint copy wi
     const db = dbFor();
     const query = db.query;
     db.query = async (sql, params) => /FROM message_templates/.test(sql) ? { rows: template ? [template] : [] } : query(sql, params);
-    const out = await sendBlueprintCoachNudge(db, spec, { isBuyerImpl: async () => true, fetchContextImpl: async () => ctx });
+    const out = await sendBlueprintCoachNudge(db, spec, { ...coachOptions, isBuyerImpl: async () => true, fetchContextImpl: async () => ctx });
     assert.equal(out.sent, false);
     assert.ok(["template_pending", "draft_template"].includes(out.reason));
     assert.equal(db.find(/INSERT INTO messages/).length, 0);
@@ -72,6 +77,7 @@ test("an SMS-only coach cannot send the email rung; sms_email uses the real emai
   for (const channel of ["sms", "sms_email"]) {
     let sent;
     const out = await sendBlueprintCoachNudge(dbFor({ ...agent, channel }), emailSpec, {
+      ...coachOptions,
       isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
       sendTemplatedImpl: async (_db, value) => { sent = value; return { sent: true }; }
     });
@@ -124,11 +130,11 @@ function runnerFixture({ draft = false } = {}) {
 
 test("draft coach leaves rung unspent; activation recovers the same claimed step and racing repeats queue once", async () => {
   const f = runnerFixture({ draft: true });
-  const held = await deliverNudge(f.db, f.candidate(), { now: f.now });
+  const held = await deliverNudge(f.db, f.candidate(), { now: f.now, coachOptions });
   assert.equal(held.reasons[0], "blueprint_coach_not_live");
   assert.equal(f.state.claims.length, 0);
   f.state.agent.status = "live";
-  const outcomes = await Promise.all(Array.from({ length: 8 }, () => deliverNudge(f.db, f.candidate(), { now: f.now })));
+  const outcomes = await Promise.all(Array.from({ length: 8 }, () => deliverNudge(f.db, f.candidate(), { now: f.now, coachOptions })));
   assert.equal(outcomes.filter((row) => row.action === "queued").length, 1);
   assert.equal(f.state.claims.length, 1);
   assert.equal(f.state.claims[0].outcome, "queued");
@@ -138,12 +144,12 @@ test("draft coach leaves rung unspent; activation recovers the same claimed step
 
 test("a later step's rung remains available until that step actually becomes current", async () => {
   const f = runnerFixture();
-  const held = await deliverNudge(f.db, f.candidate(1), { now: f.now });
+  const held = await deliverNudge(f.db, f.candidate(1), { now: f.now, coachOptions });
   assert.equal(held.reasons[0], "not_current_client_step");
   assert.equal(f.state.claims.length, 0);
   f.waypoints[0].state = "done";
   f.waypoints[0].completed_at = f.now;
-  const resumed = await deliverNudge(f.db, f.candidate(1), { now: f.now });
+  const resumed = await deliverNudge(f.db, f.candidate(1), { now: f.now, coachOptions });
   assert.equal(resumed.action, "queued");
   assert.equal(f.state.claims.length, 1);
   assert.equal(f.state.claims[0].waypoint_id, "wp-later");
@@ -156,7 +162,125 @@ test("a known pre-insert hold after claim releases only that unresolved claim fo
   assert.equal(held.action, "skipped");
   assert.equal(f.state.claims.length, 0);
   assert.equal(f.state.messages.length, 0);
-  const resumed = await deliverNudge(f.db, f.candidate(), { now: f.now });
+  const resumed = await deliverNudge(f.db, f.candidate(), { now: f.now, coachOptions });
+  assert.equal(resumed.action, "queued");
+  assert.equal(f.state.messages.length, 1);
+});
+
+test("proactive planner reasons over saved history and chooses the useful question rather than a fixed drip", async () => {
+  for (const [intent, wording] of [["ask_progress", /next update/], ["ask_blocker", /holding you up/], ["ask_proof", /upload the proof/]]) {
+    let queued;
+    let calls = 0;
+    const out = await sendBlueprintCoachNudge(dbFor(), spec, {
+      isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
+      callModelFn: async ({ system, user }) => {
+        calls++;
+        assert.match(system, /Last call: receipt saved/);
+        assert.match(system, /not running a fixed drip campaign/);
+        assert.match(user, /SMS-WAYPOINT-DUE/);
+        return { mode: "live", text: JSON.stringify({ intent, action: null }) };
+      },
+      sendTemplatedImpl: async (_db, input) => { queued = input; return { sent: true, messageId: "planned" }; }
+    });
+    assert.equal(calls, 1);
+    assert.equal(out.sent, true);
+    assert.equal(queued.context.coach.intent, intent);
+    assert.match(queued.context.coach.reminder, wording);
+    assert.equal(queued.eventId, spec.eventId);
+  }
+});
+
+test("wait, shadow, failure, arbitrary prose and timed progress actions all hold without a message or task", async () => {
+  for (const [result, reason] of [
+    [{ mode: "live", text: '{"intent":"wait","action":null}' }, "blueprint_coach_model_wait"],
+    [{ mode: "shadow", text: '{"intent":"ask_progress","action":null}' }, "blueprint_coach_model_shadow"],
+    [{ mode: "unknown", text: '{"intent":"ask_progress","action":null}' }, "blueprint_coach_model_error"],
+    [{ mode: "live", error: "provider unavailable" }, "blueprint_coach_model_error"],
+    [{ mode: "live", text: '{"intent":"ask_progress","reply":"Your step is complete","action":null}' }, "invalid_coach_reply"],
+    [{ mode: "live", text: '{"intent":"ask_proof","action":{"type":"verify_progress"}}' }, "proactive_coach_action_forbidden"]
+  ]) {
+    let sends = 0;
+    const db = dbFor();
+    const out = await sendBlueprintCoachNudge(db, spec, {
+      isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
+      callModelFn: async () => result,
+      sendTemplatedImpl: async () => { sends++; }
+    });
+    assert.equal(out.reason, reason);
+    assert.equal(out.retryable, true);
+    assert.equal(sends, 0);
+    assert.equal(db.find(/INSERT INTO messages|INSERT INTO tasks|UPDATE client_waypoints/).length, 0);
+    const run = db.find(/INSERT INTO agent_runs/)[0];
+    assert.equal(run.params[0], scope.orgId);
+    assert.equal(run.params[1], "BP-COACH");
+    assert.equal(run.params[2], scope.clientId);
+    assert.equal(run.params[4], "waypoint.nudge");
+    assert.equal(run.params[8], reason);
+  }
+  assert.equal(parseBlueprintCoachNudgePlan('{"intent":"wait","action":null,"reply":"done"}').ok, false);
+});
+
+test("a stalled model has a bounded deadline and never queues its late decision", async () => {
+  let finishModel;
+  let modelSignal;
+  let sends = 0;
+  const out = await sendBlueprintCoachNudge(dbFor(), spec, {
+    isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
+    callModelFn: ({ maxTokens, signal, timeoutMs }) => {
+      assert.equal(maxTokens, 128);
+      assert.equal(timeoutMs, 2);
+      modelSignal = signal;
+      return new Promise((resolve) => { finishModel = resolve; });
+    },
+    planTimeoutMs: 2, sendTemplatedImpl: async () => { sends++; return { sent: true }; }
+  });
+  assert.equal(out.reason, "blueprint_coach_model_error");
+  assert.equal(out.retryable, true);
+  assert.equal(modelSignal.aborted, true);
+  finishModel(await livePlan());
+  await Promise.resolve();
+  assert.equal(sends, 0);
+});
+
+test("opt-out is checked before model and again after its latency; a changed saved file never queues stale text", async () => {
+  let modelCalls = 0;
+  const optedOut = await sendBlueprintCoachNudge(dbFor(), spec, {
+    isBuyerImpl: async () => true, fetchContextImpl: async () => ctx,
+    isOptedOutImpl: async () => true, callModelFn: async () => { modelCalls++; return livePlan(); }
+  });
+  assert.equal(optedOut.reason, "blueprint_coach_opted_out");
+  assert.equal(modelCalls, 0);
+  for (const changed of ["reply", "optout", "complete", "dnd"]) {
+    let reads = 0;
+    let sends = 0;
+    const out = await sendBlueprintCoachNudge(dbFor(), spec, {
+      ...coachOptions,
+      isBuyerImpl: async () => true,
+      fetchContextImpl: async () => {
+        reads++;
+        if (reads < 2) return ctx;
+        if (changed === "reply") return { ...ctx, as_prompt_block: "Client just answered: I need human help" };
+        if (changed === "complete") return { ...ctx, checklist: { open_step: null } };
+        if (changed === "dnd") return { ...ctx, client: { ...ctx.client, flags: { dnd_sms: true } } };
+        return ctx;
+      },
+      isOptedOutImpl: async () => changed === "optout" && reads >= 2,
+      sendTemplatedImpl: async () => { sends++; return { sent: true }; }
+    });
+    assert.equal(out.sent, false, changed);
+    assert.equal(out.retryable, true, changed);
+    assert.equal(sends, 0, changed);
+  }
+});
+
+test("a model wait releases the existing unsent claim and a later useful decision resumes it once", async () => {
+  const f = runnerFixture();
+  const held = await deliverNudge(f.db, f.candidate(), { now: f.now,
+    coachOptions: { callModelFn: async () => ({ mode: "live", text: '{"intent":"wait","action":null}' }), env: {} } });
+  assert.equal(held.reasons[0], "blueprint_coach_model_wait");
+  assert.equal(f.state.claims.length, 0);
+  assert.equal(f.state.messages.length, 0);
+  const resumed = await deliverNudge(f.db, f.candidate(), { now: f.now, coachOptions });
   assert.equal(resumed.action, "queued");
   assert.equal(f.state.messages.length, 1);
 });

@@ -6,7 +6,8 @@ import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "blueprint:real-advisor",
-  "blueprint:monthly-delivery"
+  "blueprint:monthly-delivery",
+  "blueprint:coach-call-delivery"
 ]);
 
 // Same real-client exclusions as the existing consent and portal checks.
@@ -59,9 +60,45 @@ export const MONTHLY_DELIVERY_SQL = `
      AND ${REAL_CLIENT}
 `;
 
+// The existing hourly clock gives an unresolved claim one sweep to finish.
+// Provider-accepted calls must retain both their message and webhook identity;
+// a lost return leg is a delivery failure, never permission to dial again.
+export const COACH_CALL_DELIVERY_SQL = `
+  /* gap:blueprint-coach-call-delivery */
+  SELECT count(*)::int AS n FROM (
+    SELECT n.id
+      FROM waypoint_nudges n
+      JOIN clients c ON c.org_id = n.org_id AND c.id = n.client_id
+     WHERE n.org_id = $1::uuid AND n.step = 5 AND n.kind = 'voice_call'
+       AND n.channel = 'voice' AND n.template_key = 'BP-COACH-VOICE'
+       AND ${REAL_CLIENT}
+       AND (
+         (n.outcome = 'claimed' AND n.created_at < $2::timestamptz - interval '1 hour')
+         OR (n.outcome = 'queued' AND NOT EXISTS (
+           SELECT 1 FROM messages m
+           JOIN outbound_calls oc ON oc.call_id = m.provider_message_id
+             AND oc.org_id = m.org_id AND oc.client_id = m.client_id
+           WHERE m.id = n.message_id AND m.org_id = n.org_id AND m.client_id = n.client_id
+             AND m.channel = 'voice' AND m.direction = 'outbound'
+             AND m.status = 'sent' AND m.provider = 'bland'
+             AND m.provider_ref = n.idempotency_key
+             AND m.provider_message_id IS NOT NULL AND btrim(m.provider_message_id) <> ''
+         ))
+       )
+    UNION ALL
+    SELECT t.id
+      FROM tasks t
+      JOIN clients c ON c.org_id = t.org_id AND c.id = t.client_id
+     WHERE t.org_id = $1::uuid AND t.source_workflow = 'blueprint-coach-call'
+       AND t.done = false AND COALESCE(t.is_demo, false) = false
+       AND ${REAL_CLIENT}
+  ) failures
+`;
+
 const TRIP = "Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse. Do not send to clients.";
 const ADVISOR_FIX = `Open the existing blueprint-csm-assignment owner work and assign a real active advisor through the staff flow. ${TRIP}`;
 const DELIVERY_FIX = `Open the blueprint-monthly-delivery owner task and finish the plan and letters from its saved credit result. Do not request another paid credit pull. ${TRIP}`;
+const COACH_CALL_FIX = `Open blueprint-coach-call advisor work and reconcile the saved call receipt with Bland and outbound_calls. Do not redial an uncertain provider result. ${TRIP}`;
 
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
@@ -79,7 +116,10 @@ export async function gapChecks(ctx = {}) {
       "active paid Blueprint clients without a real assigned advisor", ADVISOR_FIX],
     [CHECK_IDS[1], MONTHLY_DELIVERY_SQL,
       [orgId, "blueprint-monthly-delivery", TEST_CLIENT_EMAIL_RE],
-      "open Blueprint monthly-delivery exceptions", DELIVERY_FIX]
+      "open Blueprint monthly-delivery exceptions", DELIVERY_FIX],
+    [CHECK_IDS[2], COACH_CALL_DELIVERY_SQL,
+      [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE],
+      "Blueprint coach-call delivery exceptions or unresolved receipts", COACH_CALL_FIX]
   ];
   const out = [];
   for (const [id, sql, params, description, fix] of definitions) {

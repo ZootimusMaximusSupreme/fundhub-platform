@@ -54,12 +54,17 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
   // eight, which are all client_facing. 465 (FinanceOS wave 5, W6) adds the
   // twenty-third: FOS-01, the FinanceOS Money Helper, client_facing, seeded
   // shadow (the beforeEach below resets it to draft like every other row).
-  test("the twenty-three seeded agents are registered", async () => {
+  // 488 adds the two draft Blueprint coaches without changing any existing row.
+  test("the twenty-five seeded agents are registered", async () => {
     const rows = await list(db, { orgId: org });
-    assert.equal(rows.length, 23);
-    assert.equal(rows.filter((r) => r.agent_class === "client_facing").length, 18);
+    assert.equal(rows.length, 25);
+    assert.equal(rows.filter((r) => r.agent_class === "client_facing").length, 20);
     assert.equal(rows.filter((r) => r.agent_class === "ops").length, 5);
     assert.ok(rows.some((r) => r.code === "FOS-01" && r.name === "FinanceOS Money Helper" && r.channel === "sms"));
+    assert.deepEqual(rows.filter((r) => r.code.startsWith("BP-COACH")).map(({ code, channel, status }) => ({ code, channel, status })), [
+      { code: "BP-COACH", channel: "sms_email", status: "draft" },
+      { code: "BP-COACH-VOICE", channel: "voice", status: "draft" },
+    ]);
   });
 
   test("only Setter Josh and the Inquiry Removal AI are live", async () => {
@@ -68,7 +73,7 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     assert.deepEqual(running.map((r) => r.name).sort(),
       ["Inquiry Removal AI", "Setter Josh"]);
     // The screen marks eleven as live; that must not have been believed.
-    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 21);
+    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 23);
   });
 
   test("both live agents record where they actually run", async () => {

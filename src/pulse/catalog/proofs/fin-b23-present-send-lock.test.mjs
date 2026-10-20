@@ -238,11 +238,15 @@ test("Send contract locks, sends the agreement for the chosen offer and counts r
   const btn = page.locator('[data-act="contract"]');
   assert.equal((await btn.textContent()).trim(), "Send contract");
   await btn.click();
+  // Template lookup re-renders the button before the held draft request.
+  // Wait for that request so extra presses target the stable in-flight button,
+  // rather than racing those setup renders under a busy CI runner.
+  await waitFor(() => gate.calls.length === 1, "the draft request");
   await page.waitForFunction(() => /Sending…/.test(document.querySelector('[data-act="contract"]')?.textContent || ""));
   assert.equal(await btn.isDisabled(), true);
   await btn.click({ force: true });
+  assert.equal(gate.calls.length, 1, "an extra press while the draft is out sends nothing more");
   // Two requests make one send: the draft, then the send. Let both through.
-  await waitFor(() => gate.calls.length === 1, "the draft request");
   gate.release();
   await waitFor(() => gate.calls.length === 2, "the send request");
   gate.release();

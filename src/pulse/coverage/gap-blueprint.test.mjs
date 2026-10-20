@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { CHECK_IDS, REAL_ADVISOR_SQL, MONTHLY_DELIVERY_SQL, gapChecks } from "./gap-blueprint.mjs";
+import { CHECK_IDS, REAL_ADVISOR_SQL, MONTHLY_DELIVERY_SQL, COACH_CALL_DELIVERY_SQL, gapChecks } from "./gap-blueprint.mjs";
 import { CSM_ASSIGNMENT_EXCEPTION_SOURCE } from "../../blueprint/assign-csm.mjs";
 import { MONTHLY_DELIVERY_EXCEPTION_SOURCE } from "../../finance/finance-os-pull-fulfil.mjs";
 import { OFFERS } from "../../config/offers.mjs";
@@ -11,7 +11,7 @@ import { PAID_TRANSACTION_STATUS } from "../../entitlements/entitlements.mjs";
 
 const ORG = "00000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-10-20T12:00:00Z");
-function dbFor(counts = [0, 0]) {
+function dbFor(counts = [0, 0, 0]) {
   const calls = [];
   return { calls, async query(sql, params) {
     calls.push({ sql, params });
@@ -23,10 +23,10 @@ function dbFor(counts = [0, 0]) {
 }
 
 test("Blueprint checks report both missing real advisors and failed saved-result delivery red", async () => {
-  const db = dbFor([2, 1]);
+  const db = dbFor([2, 1, 0]);
   const out = await gapChecks({ db, orgId: ORG, now: NOW });
   assert.deepEqual(out.map((r) => r.id), CHECK_IDS);
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL"]);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "PASS"]);
   assert.match(out[0].detail, /^2 active paid Blueprint/);
   assert.match(out[0].suggestedFix, new RegExp(CSM_ASSIGNMENT_EXCEPTION_SOURCE));
   assert.match(out[1].suggestedFix, /saved credit result/);
@@ -39,32 +39,32 @@ test("Blueprint checks report both missing real advisors and failed saved-result
 });
 
 test("healthy or empty counts pass, but a missing scoped reader skips without queries", async () => {
-  assert.deepEqual((await gapChecks({ db: dbFor(), orgId: ORG, now: NOW })).map((r) => r.status), ["PASS", "PASS"]);
+  assert.deepEqual((await gapChecks({ db: dbFor(), orgId: ORG, now: NOW })).map((r) => r.status), ["PASS", "PASS", "PASS"]);
   const db = dbFor();
-  assert.deepEqual((await gapChecks({ db, now: NOW })).map((r) => r.status), ["skip", "skip"]);
+  assert.deepEqual((await gapChecks({ db, now: NOW })).map((r) => r.status), ["skip", "skip", "skip"]);
   assert.equal(db.calls.length, 0);
-  assert.deepEqual((await gapChecks({ orgId: ORG })).map((r) => r.status), ["skip", "skip"]);
+  assert.deepEqual((await gapChecks({ orgId: ORG })).map((r) => r.status), ["skip", "skip", "skip"]);
 });
 
 test("the existing staff read scope wins over the unscoped pool", async () => {
-  const db = dbFor([1, 0]);
+  const db = dbFor([1, 0, 0]);
   let scopeCalls = 0;
   const out = await gapChecks({ orgId: ORG, now: NOW,
     db: { query() { throw new Error("unscoped pool must not be used"); } },
     scope: async (fn) => { scopeCalls += 1; return fn(db); }
   });
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS"]);
-  assert.equal(scopeCalls, 2);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS"]);
+  assert.equal(scopeCalls, 3);
 });
 
 test("failed or malformed reads stay red independently and never expose database error values", async () => {
   for (const invalid of [undefined, null, "", false, true, [], {}, -1, 0.5, "not a number", new Error("secret@example.com customer data")]) {
-    const out = await gapChecks({ db: dbFor([invalid, 0]), orgId: ORG, now: NOW });
-    assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS"]);
+    const out = await gapChecks({ db: dbFor([invalid, 0, 0]), orgId: ORG, now: NOW });
+    assert.deepEqual(out.map((r) => r.status), ["FAIL", "PASS", "PASS"]);
     assert.doesNotMatch(JSON.stringify(out), /secret@example.com|customer data/);
   }
   const out = await gapChecks({ db: dbFor(), orgId: ORG, now: "invalid" });
-  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL"]);
+  assert.deepEqual(out.map((r) => r.status), ["FAIL", "FAIL", "FAIL"]);
 });
 
 test("SQL uses actual same-org staff eligibility and paid-period bounds, never task existence as assignment proof", () => {
@@ -82,6 +82,27 @@ test("SQL uses actual same-org staff eligibility and paid-period bounds, never t
   assert.doesNotMatch(source, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b|\bfetch\s*\(|createTask\(|requestSoftPull\(/);
   assert.match(REAL_ADVISOR_SQL, /SELECT count\(\*\)::int AS n/);
   assert.match(MONTHLY_DELIVERY_SQL, /SELECT count\(\*\)::int AS n/);
+});
+
+test("stuck or unattributed coach calls stay red without exposing clients or ordering another call", async () => {
+  const db = dbFor([0, 0, 2]);
+  const out = await gapChecks({ db, orgId: ORG, now: NOW });
+  assert.deepEqual(out.map((r) => r.status), ["PASS", "PASS", "FAIL"]);
+  assert.match(out[2].detail, /^2 Blueprint coach-call/);
+  assert.match(out[2].suggestedFix, /Do not redial/);
+  assert.deepEqual(db.calls[2].params.slice(0, 2), [ORG, NOW.toISOString()]);
+  for (const predicate of ["n.step = 5", "n.kind = 'voice_call'", "n.template_key = 'BP-COACH-VOICE'",
+    "n.outcome = 'claimed'", "interval '1 hour'", "n.outcome = 'queued'", "m.id = n.message_id",
+    "m.org_id = n.org_id", "m.client_id = n.client_id", "m.provider_ref = n.idempotency_key",
+    "m.status = 'sent'", "m.provider = 'bland'", "oc.call_id = m.provider_message_id",
+    "oc.org_id = m.org_id", "oc.client_id = m.client_id", "t.source_workflow = 'blueprint-coach-call'"]) {
+    assert.ok(COACH_CALL_DELIVERY_SQL.includes(predicate), predicate);
+  }
+  for (const invalid of [undefined, -1, new Error("private@customer.com")]) {
+    const failed = await gapChecks({ db: dbFor([0, 0, invalid]), orgId: ORG, now: NOW });
+    assert.equal(failed[2].status, "FAIL");
+    assert.doesNotMatch(JSON.stringify(failed), /private@customer/);
+  }
 });
 
 // Actual migrated-table SQL proof is restricted to a local named scratch DB.
@@ -147,5 +168,11 @@ test("actual SQL catches demo/disabled/cross-org advisors and unresolved deliver
     await db.query("UPDATE tasks SET is_demo=false WHERE client_id=$1", [client]);
     await db.query("UPDATE tasks SET done=true WHERE client_id=$1", [client]);
     assert.equal((await run())[1].status, "PASS");
+    await db.query(`INSERT INTO tasks (org_id,client_id,title,source_workflow,assignee_role,done)
+      VALUES ($1,$2,'Reconcile saved AI call','blueprint-coach-call','csm',false)`, [org, client]);
+    assert.equal((await run())[2].status, "FAIL", "call attribution exceptions remain visible after access ends");
+    assert.equal((await gapChecks({ db, orgId: randomUUID(), now: NOW }))[2].status, "PASS");
+    await db.query("UPDATE tasks SET done=true WHERE client_id=$1", [client]);
+    assert.equal((await run())[2].status, "PASS");
   } finally { await db.query("ROLLBACK"); db.release(); }
 });

@@ -76,6 +76,41 @@ test("shadow, draft, retired or unrelated live agents never change progress", as
   assert.equal(db.calls.length, 0);
 });
 
+test("the model may answer current-step, evidence, advisor and program questions only from saved facts", () => {
+  const ctx = context();
+  ctx.checklist.open_step.detail = "Save the mailing receipt in the portal";
+  ctx.checklist.open_step.due_at = "2026-10-22T18:00:00Z";
+  for (const intent of ["explain_step", "explain_proof", "explain_advisor", "explain_program"]) {
+    assert.equal(parseBlueprintCoachReply(JSON.stringify({ intent, action: null })).ok, true);
+    assert.equal(parseBlueprintCoachReply(JSON.stringify({ intent, action: { type: "verify_progress" } })).ok, false);
+  }
+  const step = blueprintCoachQuestion("explain_step", ctx).text;
+  assert.match(step, /Mail letters/);
+  assert.match(step, /Save the mailing receipt in the portal/);
+  assert.match(step, /2026-10-22T18:00:00\.000Z/);
+  assert.match(step, /still open/);
+  const proof = blueprintCoachQuestion("explain_proof", ctx).text;
+  assert.match(proof, /message saying it is done does not verify/);
+  assert.match(blueprintCoachQuestion("explain_advisor", ctx).text, /"Alex"/);
+  const noAdvisor = blueprintCoachQuestion("explain_advisor", context({ blueprint: { access_active: true } })).text;
+  assert.match(noAdvisor, /No human advisor is saved/);
+  assert.doesNotMatch(noAdvisor, /Alex/);
+  const program = blueprintCoachQuestion("explain_program", ctx).text;
+  assert.match(program, /same 12-month package/);
+  assert.match(program, /no automatic renewal or charge/);
+  assert.doesNotMatch(program, /\$|monthly fee/);
+  const missing = context({ checklist: { open_step: { ...ctx.checklist.open_step, detail: null, due_at: "invalid" } } });
+  assert.doesNotMatch(blueprintCoachQuestion("explain_step", missing).text, /due|Saved instructions/);
+  for (const [kind, expected] of [["paydown", /checked against your saved credit file/], ["no_new_credit", /ongoing rule/], ["unknown_check", /needs review/]]) {
+    const withKind = context({ checklist: { open_step: { ...ctx.checklist.open_step, verify_kind: kind } } });
+    for (const intent of ["ask_proof", "explain_proof"]) {
+      const answer = blueprintCoachQuestion(intent, withKind).text;
+      assert.match(answer, expected);
+      assert.doesNotMatch(answer, /Can you upload|I pulled|I verified|step is complete/);
+    }
+  }
+});
+
 test("a progress report records the client's words but never closes proof or a racing completed step", async () => {
   const db = fakeDb([[/UPDATE client_waypoints/, [{ id: "step-1" }]]]);
   const action = { type: "report_progress", waypointKey: "mail_letters", state: "in_progress" };

@@ -16,16 +16,17 @@ test("Blueprint hourly beat passes the contract, strict read-only pin and both s
   assert.deepEqual(validateBeat(beat, { file: "beat-blueprint-delivery.mjs" }), []);
   assert.deepEqual(pinBeatSource(readFileSync(new URL("./beat-blueprint-delivery.mjs", import.meta.url), "utf8")), []);
   assert.deepEqual(await checkBeatSelfTest(beat), []);
-  assert.deepEqual(beat.covers, ["desk:csm-queue.html", "job:finance-os-pull-sweeper"]);
+  assert.deepEqual(beat.covers, ["desk:csm-queue.html", "job:finance-os-pull-sweeper", "job:waypoint-nudge-sweeper"]);
   assert.deepEqual(beat.CHECK_IDS, gap.CHECK_IDS);
-  assert.deepEqual(beat.steps, ["real-advisor", "monthly-delivery"]);
+  assert.deepEqual(beat.steps, ["real-advisor", "monthly-delivery", "coach-call-delivery"]);
 });
 
 test("hourly SQL and parameters stay identical to the existing scoped deep checks", async () => {
   assert.equal(beat.REAL_ADVISOR_SQL, gap.REAL_ADVISOR_SQL);
   assert.equal(beat.MONTHLY_DELIVERY_SQL, gap.MONTHLY_DELIVERY_SQL);
+  assert.equal(beat.COACH_CALL_DELIVERY_SQL, gap.COACH_CALL_DELIVERY_SQL);
   assert.equal(beat.TEST_CLIENT_EMAIL_RE, TEST_CLIENT_EMAIL_RE);
-  for (const sql of [beat.ORG_SQL, beat.REAL_ADVISOR_SQL, beat.MONTHLY_DELIVERY_SQL]) assert.doesNotThrow(() => assertReadOnlySql(sql));
+  for (const sql of [beat.ORG_SQL, beat.REAL_ADVISOR_SQL, beat.MONTHLY_DELIVERY_SQL, beat.COACH_CALL_DELIVERY_SQL]) assert.doesNotThrow(() => assertReadOnlySql(sql));
   const ctx = makeFakeCtx(beat, world());
   const result = await runBeat(beat, ctx);
   assert.equal(result.ok, true, result.detail);
@@ -35,7 +36,7 @@ test("hourly SQL and parameters stay identical to the existing scoped deep check
   await gap.gapChecks({ orgId: reads[1].params[0], now: FAKE_NOW,
     db: { async query(sql, params) { expected.push({ sql, params }); return { rows: [{ n: 0 }] }; } } });
   assert.deepEqual(reads.slice(1), expected);
-  assert.equal(reads.length, 3);
+  assert.equal(reads.length, 4);
   assert.equal(ctxLog(ctx).http.length, 0);
   assert.match(result.detail, /do not prove a live customer delivery/);
 });

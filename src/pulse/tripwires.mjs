@@ -43,6 +43,7 @@ export const TRIPWIRES = Object.freeze({
   "route:payment-links": { impact: "money", checks: ["payments:pay-link-webhook", "payments:checkout-started-no-link", "payments:whop-paid-no-access"] },
   "job:whop-billing-inbox-drain": { impact: "money", checks: ["payments:whop-inbox-waiting", "payments:whop-paid-no-access"] },
   "job:finance-os-pull-sweeper": { impact: "customer", checks: ["blueprint:monthly-delivery"] },
+  "job:waypoint-nudge-sweeper": { impact: "customer", checks: ["blueprint:coach-call-delivery", "gap:sms-sending-stuck"] },
   "job:commas-inbox-drain": { impact: "money", checks: ["payments:commas-inbox-waiting", "payments:paid-no-entitlement"] },
   "job:s-01-new-lead-intake": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },
   "job:s-02-incomplete-survey-nudge": { impact: "money", checks: ["handoff:lead-first-touches-missing"] },

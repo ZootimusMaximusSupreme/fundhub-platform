@@ -163,3 +163,95 @@ test("verified completion asks about the newly saved current step, not proof for
   assert.match(body, /What is your next update on "Next actual client job"\?/);
   assert.doesNotMatch(body, /Can you upload the proof for "Mail letters"/);
 });
+
+test("agentic inbound answers the client's actual subject without always asking for progress or writing a task", async () => {
+  for (const [question, intent, answer] of [
+    ["What is my next step?", "explain_step", /saved current step is "Mail letters"/],
+    ["Why do you need proof? I already said it is done", "explain_proof", /message saying it is done does not verify/],
+    ["Who is my human advisor?", "explain_advisor", /saved human advisor is "Alex"/],
+    ["Will you automatically charge me next year?", "explain_program", /no automatic renewal or charge/]
+  ]) {
+    const db = database();
+    const out = await handleInbound({ ...event, payload: { ...event.payload, body: question } }, db, {
+      env: {}, now: () => new Date("2026-10-20T15:00:00Z"),
+      callModelFn: async ({ system, user }) => {
+        assert.match(system, /Last call: client saved the receipt/);
+        assert.match(system, /Answer what they asked/);
+        assert.equal(user, question);
+        return { mode: "live", text: JSON.stringify({ intent, action: null }) };
+      }
+    });
+    assert.equal(out.reason, "replied");
+    const message = db.find(/INSERT INTO messages/)[0].params[4];
+    assert.match(message, answer);
+    assert.doesNotMatch(message, /What is your next update/);
+    assert.equal(db.find(/INSERT INTO tasks|UPDATE client_waypoints/).length, 0);
+  }
+});
+
+test("model latency cannot send or act on a changed step, access, advisor, conversation owner or contact hold", async () => {
+  for (const change of ["complete", "expired", "advisor", "reassigned", "halted", "optout", "dnd", "draft", "prompt", "history"]) {
+    for (const response of [
+      { intent: "explain_step", action: null },
+      { intent: "ask_progress", action: { type: "report_progress", waypointKey: "mail_letters", state: "in_progress" } }
+    ]) {
+      const db = database();
+      const query = db.query;
+      let changed = false;
+      db.query = async (sql, params) => {
+        if (changed) {
+          if (change === "complete" && /SELECT \* FROM client_waypoints/.test(sql)) return { rows: [{ id: "wp-1", key: "mail_letters", title: "Mail letters", owner_kind: "client", state: "done", position: 1 }] };
+          if (change === "expired" && /FROM v_client_entitlements/.test(sql)) return { rows: [] };
+          if (change === "advisor" && /FROM clients c/.test(sql)) return { rows: [{ assigned_csm_staff_id: "other-human", staff_id: "other-human", name: "New advisor", status: "active", is_demo: false }] };
+          if (change === "reassigned" && /FROM conversations/.test(sql)) return { rows: [{ id: "thread", agent_code: "EXISTING", agent_halted_at: null }] };
+          if (change === "halted" && /FROM conversations/.test(sql)) return { rows: [{ id: "thread", agent_code: "BP-COACH", agent_halted_at: "2026-10-20T15:00:01Z" }] };
+          if (change === "optout" && /FROM opt_outs/.test(sql)) return { rows: [{ "?column?": 1 }] };
+          if (change === "dnd" && /FROM clients\s+WHERE id = \$1 AND org_id = \$2/.test(sql)) return { rows: [{ id: CLIENT, first_name: "Pat", phone: "+16025550100", dnd_sms: true }] };
+          if (change === "draft" && /FROM agents/.test(sql)) return { rows: [coach({ status: "draft" })] };
+          if (change === "prompt" && /FROM agents/.test(sql)) return { rows: [coach({ prompt: "New reviewed coach prompt" })] };
+          if (change === "history" && /FROM messages\s+WHERE org_id = \$1 AND client_id/.test(sql)) return { rows: [{ id: "new-inbound", direction: "inbound", channel: "sms", body: "Please wait for my advisor" }] };
+        }
+        return query(sql, params);
+      };
+      const out = await handleInbound(event, db, { env: {}, now: () => new Date("2026-10-20T15:00:00Z"),
+        callModelFn: async ({ maxTokens, signal }) => {
+          assert.equal(maxTokens, 128);
+          assert.ok(signal instanceof AbortSignal);
+          changed = true;
+          return { mode: "live", text: JSON.stringify(response) };
+        }
+      });
+      assert.notEqual(out.reason, "runtime_error", change);
+      assert.equal(out.blocked, true, change);
+      assert.equal(db.find(/INSERT INTO messages|INSERT INTO tasks|UPDATE client_waypoints/).length, 0, change);
+    }
+  }
+});
+
+test("an unrecognized model mode cannot use the live Blueprint reply path", async () => {
+  const db = database();
+  const out = await handleInbound(event, db, model('{"intent":"explain_step","action":null}', { mode: "unknown" }));
+  assert.equal(out.blocked, true);
+  assert.equal(db.find(/INSERT INTO messages|INSERT INTO tasks|UPDATE client_waypoints/).length, 0);
+});
+
+test("an action acknowledgement does not claim an old step stays open after a concurrent verifier closes it", async () => {
+  for (const state of ["in_progress", "blocked"]) {
+    const db = database();
+    const query = db.query;
+    let saved = false;
+    db.query = async (sql, params) => {
+      if (/UPDATE client_waypoints/.test(sql)) saved = true;
+      if (saved && /SELECT \* FROM client_waypoints/.test(sql)) return { rows: [{ id: "wp-1", key: "mail_letters", title: "Mail letters", owner_kind: "client", state: "done", position: 1 }] };
+      return query(sql, params);
+    };
+    const intent = state === "blocked" ? "ask_blocker" : "ask_progress";
+    const out = await handleInbound(event, db, model(JSON.stringify({ intent,
+      action: { type: "report_progress", waypointKey: "mail_letters", state } })));
+    assert.equal(out.reason, "replied");
+    const body = db.find(/INSERT INTO messages/)[0].params[4];
+    assert.match(body, state === "blocked" ? /Your blocker is saved/ : /Your progress note is saved/);
+    assert.match(body, /human advisor/);
+    assert.doesNotMatch(body, /still open|stays open|Mail letters/);
+  }
+});

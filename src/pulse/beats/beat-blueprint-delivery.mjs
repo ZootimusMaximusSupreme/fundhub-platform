@@ -1,15 +1,15 @@
-// Read-only hourly adapter for the two existing Blueprint delivery checks.
+// Read-only hourly adapter for Blueprint advisor, monthly and coach-call delivery.
 // SQL is pinned byte-for-byte to gap-blueprint.mjs by this beat's test.
 export const id = "blueprint-delivery";
 export const title = "Blueprint clients have real advisors and completed delivery";
 export const kind = "infra";
-export const covers = ["desk:csm-queue.html", "job:finance-os-pull-sweeper"];
+export const covers = ["desk:csm-queue.html", "job:finance-os-pull-sweeper", "job:waypoint-nudge-sweeper"];
 export const box = false;
 export const reads = [];
-export const steps = ["real-advisor", "monthly-delivery"];
+export const steps = ["real-advisor", "monthly-delivery", "coach-call-delivery"];
 export const deadlineMs = 9000;
 export const damp = 1;
-export const CHECK_IDS = ["blueprint:real-advisor", "blueprint:monthly-delivery"];
+export const CHECK_IDS = ["blueprint:real-advisor", "blueprint:monthly-delivery", "blueprint:coach-call-delivery"];
 export const ORG_SQL = "SELECT id FROM orgs WHERE slug = 'fundhub'";
 export const TEST_CLIENT_EMAIL_RE = String.raw`\+(walk|sim)-[0-9]+@|@example\.(com|net|org)$|\.(test|example|invalid|localhost|local)$`;
 
@@ -60,15 +60,53 @@ export const MONTHLY_DELIVERY_SQL = `
      AND ${REAL_CLIENT}
 `;
 
-export const fixGuide = `A Blueprint client lacks a real advisor or monthly delivery needs recovery.
+export const COACH_CALL_DELIVERY_SQL = `
+  /* gap:blueprint-coach-call-delivery */
+  SELECT count(*)::int AS n FROM (
+    SELECT n.id
+      FROM waypoint_nudges n
+      JOIN clients c ON c.org_id = n.org_id AND c.id = n.client_id
+     WHERE n.org_id = $1::uuid AND n.step = 5 AND n.kind = 'voice_call'
+       AND n.channel = 'voice' AND n.template_key = 'BP-COACH-VOICE'
+       AND COALESCE(c.is_demo, false) = false
+  AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+  AND COALESCE(c.email, '') !~* $3::text
+       AND (
+         (n.outcome = 'claimed' AND n.created_at < $2::timestamptz - interval '1 hour')
+         OR (n.outcome = 'queued' AND NOT EXISTS (
+           SELECT 1 FROM messages m
+           JOIN outbound_calls oc ON oc.call_id = m.provider_message_id
+             AND oc.org_id = m.org_id AND oc.client_id = m.client_id
+           WHERE m.id = n.message_id AND m.org_id = n.org_id AND m.client_id = n.client_id
+             AND m.channel = 'voice' AND m.direction = 'outbound'
+             AND m.status = 'sent' AND m.provider = 'bland'
+             AND m.provider_ref = n.idempotency_key
+             AND m.provider_message_id IS NOT NULL AND btrim(m.provider_message_id) <> ''
+         ))
+       )
+    UNION ALL
+    SELECT t.id
+      FROM tasks t
+      JOIN clients c ON c.org_id = t.org_id AND c.id = t.client_id
+     WHERE t.org_id = $1::uuid AND t.source_workflow = 'blueprint-coach-call'
+       AND t.done = false AND COALESCE(t.is_demo, false) = false
+       AND COALESCE(c.is_demo, false) = false
+  AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
+  AND COALESCE(c.email, '') !~* $3::text
+  ) failures
+`;
+
+export const fixGuide = `A Blueprint client lacks a real advisor, monthly delivery or a complete coach-call receipt.
 
 Likely causes:
 - No real active non-demo advisor was available for the paid client.
 - The credit result arrived, but a checklist, plan or letter step failed afterward.
+- A coach call has an unresolved claim, missing attribution or an advisor exception.
 Steps:
 - Run node scripts/pulse/run-beat.mjs blueprint-delivery and read the first red step.
 - Open blueprint-csm-assignment owner work and assign a real eligible human through the staff flow.
 - Open blueprint-monthly-delivery owner work and finish delivery from its saved credit result.
+- Open blueprint-coach-call advisor work; reconcile saved Bland receipts without redialing an uncertain result.
 - Do not request another paid credit pull or send to clients from this check.
 Files: src/blueprint/assign-csm.mjs, src/finance/finance-os-pull-fulfil.mjs, src/pulse/coverage/gap-blueprint.mjs
 `;
@@ -99,13 +137,17 @@ export async function run(ctx) {
   await ctx.step("monthly-delivery", () => countCheck(ctx, "monthly-delivery", MONTHLY_DELIVERY_SQL,
     [orgId, "blueprint-monthly-delivery", TEST_CLIENT_EMAIL_RE],
     "Blueprint monthly-delivery exceptions remain open; use the saved credit result"));
-  return ctx.done("No missing real advisor or open monthly-delivery exception was found. Counts do not prove a live customer delivery.");
+  await ctx.step("coach-call-delivery", () => countCheck(ctx, "coach-call-delivery", COACH_CALL_DELIVERY_SQL,
+    [orgId, ctx.now.toISOString(), TEST_CLIENT_EMAIL_RE],
+    "Blueprint coach-call delivery exceptions or unresolved receipts remain"));
+  return ctx.done("No missing real advisor or open delivery exception was found. Counts do not prove a live customer delivery.");
 }
 
 const world = () => ({ read: [
   { match: /FROM orgs/, rows: [{ id: "00000000-0000-4000-8000-000000000001" }] },
   { match: /gap:blueprint-real-advisor/, rows: [{ n: 0 }] },
-  { match: /gap:blueprint-monthly-delivery/, rows: [{ n: 0 }] }
+  { match: /gap:blueprint-monthly-delivery/, rows: [{ n: 0 }] },
+  { match: /gap:blueprint-coach-call-delivery/, rows: [{ n: 0 }] }
 ] });
 export const selfTest = { pass: world, fail: () => ({ read: [
   world().read[0], { match: /gap:blueprint-real-advisor/, rows: [{ n: 1 }] }

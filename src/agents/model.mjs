@@ -182,7 +182,7 @@ function pickProvider(env, mediaParts) {
 }
 
 /**
- * callModel({ system, user, env?, fetchImpl?, model?, maxTokens?, media? })
+ * callModel({ system, user, env?, fetchImpl?, model?, maxTokens?, media?, signal? })
  * → {
  *     mode: 'live' | 'shadow',
  *     text: string | null,          // assistant reply (synthetic marker when keyless)
@@ -208,7 +208,7 @@ export async function callModel(args = {}) {
 async function callModelDefault({
   system, user, env = process.env, fetchImpl = globalThis.fetch,
   model = DEFAULT_MODEL, maxTokens = DEFAULT_MAX_TOKENS,
-  media = []
+  media = [], signal
 } = {}) {
   const mediaParts = Array.isArray(media) ? media.filter(Boolean) : [];
   const provider = pickProvider(env, mediaParts);
@@ -250,9 +250,9 @@ async function callModelDefault({
 
   try {
     if (provider === "openai") {
-      return await callOpenAI({ env, fetchImpl, request, mediaParts });
+      return await callOpenAI({ env, fetchImpl, request, mediaParts, signal });
     }
-    return await callAnthropic({ env, fetchImpl, request, mediaParts });
+    return await callAnthropic({ env, fetchImpl, request, mediaParts, signal });
   } catch (err) {
     return {
       mode: "live",
@@ -268,7 +268,7 @@ async function callModelDefault({
   }
 }
 
-async function callOpenAI({ env, fetchImpl, request, mediaParts }) {
+async function callOpenAI({ env, fetchImpl, request, mediaParts, signal }) {
   const key = openaiKeyOf(env);
   const userContent = buildOpenAIUserContent(request.user, mediaParts);
   const messages = [];
@@ -277,6 +277,7 @@ async function callOpenAI({ env, fetchImpl, request, mediaParts }) {
 
   const res = await fetchImpl(`${openaiBaseUrl(env)}/v1/chat/completions`, {
     method: "POST",
+    ...(signal ? { signal } : {}),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${key}`
@@ -308,11 +309,12 @@ async function callOpenAI({ env, fetchImpl, request, mediaParts }) {
   return { mode: "live", text, raw, request, error: null, usage };
 }
 
-async function callAnthropic({ env, fetchImpl, request, mediaParts }) {
+async function callAnthropic({ env, fetchImpl, request, mediaParts, signal }) {
   const key = env.ANTHROPIC_API_KEY;
   const userContent = buildUserContent(request.user, mediaParts);
   const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    ...(signal ? { signal } : {}),
     headers: {
       "content-type": "application/json",
       "x-api-key": key,

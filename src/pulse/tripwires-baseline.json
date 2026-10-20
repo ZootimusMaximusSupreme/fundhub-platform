@@ -105,7 +105,6 @@
   "job:u-04-promote-crs-primary",
   "job:u-05-data-health-monitor",
   "job:watch-curve-diagnosis-sweeper",
-  "job:waypoint-nudge-sweeper",
   "page:404.html",
   "page:affiliates/index.html",
   "page:aniso-face/logo-6k/index.html",

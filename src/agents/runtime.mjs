@@ -196,7 +196,8 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     : String(body || "");
 
   const modelResult = await callModelFn({
-    system, user, env, fetchImpl
+    system, user, env, fetchImpl,
+    ...(coachTurn ? { maxTokens: 128, timeoutMs: 8000, signal: AbortSignal.timeout(8000) } : {})
   });
 
   // Keyless OR status=shadow → log, send nothing.
@@ -248,9 +249,38 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
     return { ok: true, reason: "empty_model_reply", agent: agent.code };
   }
 
+  if (coachTurn && modelResult.mode !== "live") return { ok: true, reason: "model_error", agent: agent.code, blocked: true };
   const coachReply = coachTurn ? parseBlueprintCoachReply(modelResult.text) : null;
   if (coachReply && !coachReply.ok) return { ok: true, reason: coachReply.reason, agent: agent.code, blocked: true };
-  const coachQuestion = coachReply ? blueprintCoachQuestion(coachReply.intent, coachTurn.context) : null;
+  let freshCoachTurn = coachTurn;
+  if (coachReply) {
+    // A reply is a decision about the facts the model saw, not permission to
+    // act on an old file after its step, access or human ownership changed.
+    const currentSelection = await selectAgent(db, { orgId, clientId, channel, conversationId });
+    const currentAgent = currentSelection.agent;
+    if (currentAgent?.code !== agent.code || currentAgent.status !== agent.status
+        || currentAgent.prompt !== agent.prompt || currentAgent.runtime !== agent.runtime
+        || currentAgent.channel !== agent.channel || currentAgent.agent_class !== agent.agent_class
+        || JSON.stringify(currentAgent.guardrails) !== JSON.stringify(agent.guardrails)
+        || (currentSelection.conversationId || conversationId) !== conversationId) {
+      return { ok: true, reason: "blueprint_coach_context_changed", agent: agent.code, blocked: true };
+    }
+    freshCoachTurn = await prepareBlueprintCoachTurn(db, { orgId, clientId, conversationId, channel });
+    if (!freshCoachTurn.ok) return { ok: true, reason: freshCoachTurn.reason, agent: agent.code, blocked: true };
+    if (await isOptedOut(db, clientId, channel)) return { ok: true, reason: "opted_out", agent: agent.code, blocked: true };
+    const before = coachTurn.context;
+    const current = freshCoachTurn.context;
+    if (current.as_prompt_block !== before.as_prompt_block
+        || JSON.stringify(current.checklist?.open_step) !== JSON.stringify(before.checklist?.open_step)
+        || JSON.stringify(current.blueprint?.human_advisor) !== JSON.stringify(before.blueprint?.human_advisor)
+        || JSON.stringify(current.client?.flags) !== JSON.stringify(before.client?.flags)
+        || current.conversation?.id !== before.conversation?.id
+        || current.conversation?.agent_code !== before.conversation?.agent_code
+        || current.conversation?.agent_halted_at !== before.conversation?.agent_halted_at) {
+      return { ok: true, reason: "blueprint_coach_context_changed", agent: agent.code, blocked: true };
+    }
+  }
+  const coachQuestion = coachReply ? blueprintCoachQuestion(coachReply.intent, freshCoachTurn.context) : null;
   if (coachQuestion && !coachQuestion.ok) return { ok: true, reason: coachQuestion.reason, agent: agent.code, blocked: true };
   let replyBody = coachQuestion?.text || modelResult.text;
   const outboundCheck = checkOutbound({
@@ -279,18 +309,47 @@ async function run(event, db, { env, fetchImpl, now, callModelFn, dispatchOption
       orgId, clientId, conversationId, channel, eventId: inboundRef || inboundMessageId || event.id,
       inboundBody: String(body), agent
     }, coachReply.action);
+    const currentSelection = await selectAgent(db, { orgId, clientId, channel, conversationId });
+    if (currentSelection.agent?.code !== agent.code || currentSelection.agent.status !== agent.status
+        || currentSelection.agent.prompt !== agent.prompt
+        || await isOptedOut(db, clientId, channel)) {
+      return { ok: true, reason: "blueprint_coach_context_changed", agent: agent.code, blocked: true };
+    }
+    const current = await prepareBlueprintCoachTurn(db, { orgId, clientId, conversationId, channel });
+    if (!current.ok) return { ok: true, reason: current.reason, agent: agent.code, blocked: true };
     let nextQuestion = coachQuestion.text;
     if (action.ok && action.verification?.completed?.length) {
       // Evidence can advance the checklist. Never ask for proof on the step
       // the real verifier just closed; choose from the newly saved file.
-      const current = await prepareBlueprintCoachTurn(db, { orgId, clientId, conversationId, channel });
-      if (!current.ok) return { ok: true, reason: current.reason, agent: agent.code, blocked: true };
       const next = blueprintCoachQuestion("ask_progress", current.context);
       nextQuestion = next.ok ? next.text : blueprintCoachQuestion("ask_advisor", current.context).text;
+    } else if (action.ok) {
+      const next = blueprintCoachQuestion(coachReply.intent, current.context);
+      nextQuestion = next.ok ? next.text : blueprintCoachQuestion("ask_advisor", current.context).text;
     }
-    // Failed writes never inherit the model's claims of success.
-    replyBody = action.ok ? `${action.message || ""}\n${nextQuestion}`.trim()
-      : "Your request could not be saved. Please try again or contact your advisor.";
+    // A successful write is historical truth; its old "still open" wording
+    // is not. A verifier can close the step while this action is finishing.
+    const currentStep = current.context.checklist?.open_step;
+    const originalStep = freshCoachTurn.context.checklist?.open_step;
+    const sameOpenStep = currentStep?.key === originalStep?.key
+      && ["not_started", "in_progress", "blocked"].includes(currentStep?.state);
+    let acknowledgement = action.message || "";
+    if (action.ok && coachReply.action.type === "report_progress") {
+      acknowledgement = coachReply.action.state === "blocked"
+        ? "Your blocker is saved. A follow-up task is saved for the advisor team."
+        : "Your progress note is saved.";
+      if (sameOpenStep) acknowledgement += " The step is still open until completion is verified.";
+    } else if (action.ok && coachReply.action.type === "verify_progress" && !action.verification?.completed?.length) {
+      acknowledgement = "The checklist check found no new completion proof" + (sameOpenStep ? "; the step stays open." : ".");
+    } else if (action.ok && coachReply.action.type === "request_advisor") {
+      acknowledgement = "A human advisor follow-up task is saved.";
+    }
+    // Failed writes never inherit the model's claims of success. A partial
+    // blocker write is reported honestly instead of pretending it vanished.
+    replyBody = action.ok ? `${acknowledgement}\n${nextQuestion}`.trim()
+      : action.reason === "blocker_saved_advisor_task_failed"
+        ? "Your blocker is saved, but the advisor follow-up could not be saved. Please contact your advisor."
+        : "Your request could not be saved. Please try again or contact your advisor.";
     const finalCheck = checkOutbound({ draft: replyBody, guardrails: agent.guardrails });
     if (!finalCheck.ok) return { ok: true, reason: finalCheck.reason, agent: agent.code, blocked: true };
   }
