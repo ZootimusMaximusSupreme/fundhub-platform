@@ -69,18 +69,17 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm install -g netlify-cli
 
-      # One live page is kept OUT of git on purpose: the private lead call list holds real names and
-      # phone numbers, and this repository is public. On the Mac it sits in a git-excluded folder
-      # (public/leads/) and went live with every Mac deploy. A GitHub runner has no such folder, so
-      # the page answered 404 from the first GitHub ship (2026-10-09) until this step (2026-10-10).
-      # The page is stored as an Actions secret and written here, excluded from git the same way,
-      # so ship still sees a clean tree. Nothing prints it.
+      # Git holds only the safe browser shell for this route. The live call list has real names and
+      # phone numbers, so its complete page stays in an Actions secret and replaces that shell only
+      # inside this disposable runner. Mark that one tracked file assume-unchanged before replacing
+      # it so ship's clean-tree guard still catches every other uncommitted file. Nothing prints it.
       - name: Put the private pages in place
         env:
           PRIVATE_LEADS_PAGE_B64: ${{ secrets.PRIVATE_LEADS_PAGE_B64 }}
         run: |
           if [ -n "$PRIVATE_LEADS_PAGE_B64" ]; then
             mkdir -p public/leads/c01cb7592c8bb994130158e897e99bf1
+            git update-index --assume-unchanged -- public/leads/c01cb7592c8bb994130158e897e99bf1/index.html
             printf '%s' "$PRIVATE_LEADS_PAGE_B64" | base64 -d > public/leads/c01cb7592c8bb994130158e897e99bf1/index.html
             echo "public/leads/" >> .git/info/exclude
             test -s public/leads/c01cb7592c8bb994130158e897e99bf1/index.html
