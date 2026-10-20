@@ -186,7 +186,12 @@ import { isSyntheticRow } from "./synthetic.mjs";
    A cron with no event trigger, so it sits in neverFired like every sweeper
    here. It is exercised directly by src/pulse/instant-watch.test.mjs, not by
    a walked journey. */
-const REGISTERED = 100;
+/* Moved 100 -> 102 on 2026-10-20 with the two fee invoice clocks:
+   invoice-checkout-retirement-sweeper retires stale Commas links, and
+   invoice-sent-recovery restores a missing first-notice event handoff.
+   Both are cron-only, so the journey report names them as scheduled rather
+   than pretending a synthetic customer walk fired either one. */
+const REGISTERED = 102;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

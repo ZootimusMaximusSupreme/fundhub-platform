@@ -98,7 +98,7 @@ BEGIN
     v_org,
     'INVOICE-SENT-EMAIL',
     'email',
-    'Your invoice from {{invoice.company}} — {{invoice.amount}}',
+    'Your {{invoice.kind}} invoice from {{invoice.company}} — {{invoice.amount}}',
     E'Hi {{contact.first_name}},\n\n' ||
     E'Here is your invoice from {{invoice.company}}.\n\n' ||
     E'What it is for: {{invoice.kind}}\n' ||

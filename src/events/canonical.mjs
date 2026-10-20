@@ -68,6 +68,7 @@ export const CANONICAL_EVENTS = [
   "commission.paid",
   "invoice.created",
   "invoice.sent",
+  "invoice.partially_paid",
   "invoice.paid",
   "invoice.voided",
   /* Emitted by src/contracts/send.mjs and sign.mjs with an idempotency key

@@ -265,9 +265,46 @@ export function pgFake(seed = {}) {
             }))
         };
       }
-      if (/FROM payment_links WHERE invoice_id/.test(sql)) {
-        const hit = paymentLinks.find((p) => p.invoice_id === params[0]);
-        return { rows: hit ? [{ id: hit.id }] : [] };
+      if (/FROM payment_links pl/.test(sql) && /JOIN invoices old/.test(sql)) {
+        const [orgId, clientId, roundId, saleId, invoiceId] = params;
+        return { rows: paymentLinks.filter((p) => {
+          const old = invoices.find((i) => i.id === p.invoice_id);
+          return old && old.org_id === orgId && old.client_id === clientId &&
+            old.funding_round_id === roundId && (old.sale_id || null) === saleId &&
+            old.id !== invoiceId && old.status === "void" &&
+            (p.provider || "commas") === "commas" &&
+            ["created", "sent", "expired"].includes(p.status);
+        }).map((p) => ({ id: p.id, invoice_id: p.invoice_id })) };
+      }
+      if (/FROM payment_links\s+WHERE invoice_id = \$1/.test(sql) && /status = 'expired'/.test(sql)) {
+        const [invoiceId, orgId, dueCents] = params;
+        return { rows: paymentLinks.filter((p) => p.invoice_id === invoiceId && p.org_id === orgId &&
+          (p.provider || "commas") === "commas" &&
+          (p.status === "expired" || (["created", "sent"].includes(p.status) && p.amount_cents !== dueCents)))
+          .map((p) => ({ id: p.id })) };
+      }
+      if (/FROM payment_links\s+WHERE invoice_id = \$1/.test(sql)) {
+        const [invoiceId, orgId] = params;
+        const hit = paymentLinks
+          .filter((p) => p.invoice_id === invoiceId && p.org_id === orgId &&
+            (p.provider || "commas") === "commas" &&
+            ["created", "sent"].includes(p.status) && p.checkout_url)
+          .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0];
+        return { rows: hit ? [{ id: hit.id, amount_cents: hit.amount_cents, checkout_url: hit.checkout_url }] : [] };
+      }
+      if (/UPDATE payment_links[\s\S]*SET status = 'expired'/.test(sql)) {
+        const [linkId, orgId, invoiceId] = params;
+        const link = paymentLinks.find((p) => p.id === linkId && p.org_id === orgId && p.invoice_id === invoiceId);
+        if (!link || !["created", "sent"].includes(link.status)) return { rows: [] };
+        link.status = "expired";
+        return { rows: [link] };
+      }
+      if (/UPDATE payment_links[\s\S]*SET status = 'void'/.test(sql)) {
+        const [linkId, orgId, invoiceId] = params;
+        const link = paymentLinks.find((p) => p.id === linkId && p.org_id === orgId && p.invoice_id === invoiceId);
+        if (!link || link.status !== "expired") return { rows: [] };
+        link.status = "void";
+        return { rows: [{ id: link.id }] };
       }
       if (/FROM payment_links[\s\S]*link_ref/.test(sql)) {
         const hit = paymentLinks.find((p) => p.link_ref === params[0] && p.invoice_id);

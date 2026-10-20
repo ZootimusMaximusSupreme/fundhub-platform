@@ -116,6 +116,8 @@ const EXPECTED_WORKFLOW_IDS = [
   "hiring-bench-sweeper",
   "hiring-outreach-cadence",
   "inquiry-call-sweeper",
+  "invoice-checkout-retirement-sweeper",
+  "invoice-sent-recovery",
   "meet-transcript-sweeper",
   "message-dispatch-sweeper",
   "meta-campaign-sync-sweeper",
@@ -176,9 +178,14 @@ function idsOnDisk() {
     const src = fs.readFileSync(path.join(HERE, file), "utf8");
     // Strip comments so a createFunction described in prose is not counted.
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    const re = /inngest\.createFunction\(\s*\{[^}]*?\bid:\s*["']([^"']+)["']/g;
+    const re = /inngest\.createFunction\(\s*\{[^}]*?\bid:\s*(?:["']([^"']+)["']|([A-Za-z_][A-Za-z0-9_]*))/g;
     let m;
-    while ((m = re.exec(code))) found.set(m[1], file);
+    while ((m = re.exec(code))) {
+      const constant = m[2] && code.match(new RegExp(`\\bexport\\s+const\\s+${m[2]}\\s*=\\s*["']([^"']+)["']`));
+      const id = m[1] || constant?.[1];
+      assert.ok(id, `${file}: workflow id must be a literal or exported string constant`);
+      found.set(id, file);
+    }
   }
   return found;
 }

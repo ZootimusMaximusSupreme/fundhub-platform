@@ -303,6 +303,7 @@ export async function createCheckoutSession({
   autoExpireAfterPeriods = null,
   metadata = null,
   successUrl = null,
+  timeoutMs = null,
   env = process.env,
   fetchImpl = fetch
 } = {}) {
@@ -377,7 +378,10 @@ export async function createCheckoutSession({
         "content-type": "application/json",
         accept: "application/json"
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      ...(Number.isInteger(timeoutMs) && timeoutMs > 0
+        ? { signal: AbortSignal.timeout(timeoutMs) }
+        : {})
     });
     const text = await res.text();
     let json;

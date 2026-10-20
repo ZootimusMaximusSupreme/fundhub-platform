@@ -166,8 +166,9 @@ flowchart LR
 | `commission.paid` | commission + billing | `onCommissionPaidAlert` | 0 |
 | `invoice.created` | commission + billing | — | 0 |
 | `invoice.sent` | commission + billing | — | 1 |
-| `invoice.paid` | commission + billing | — | 0 |
-| `invoice.voided` | commission + billing | — | 0 |
+| `invoice.partially_paid` | commission + billing | `onInvoiceCheckoutPartiallyPaid` | 0 |
+| `invoice.paid` | commission + billing | `onInvoiceCheckoutClosed` | 0 |
+| `invoice.voided` | commission + billing | `onInvoiceCheckoutClosed` | 0 |
 | `contract.sent` | contracts | — | 0 |
 | `contract.signed` | contracts | `onContractSignedConsent`, `onContractSigned` | 0 |
 | `repair.enrolled` | credit repair | — | 0 |
