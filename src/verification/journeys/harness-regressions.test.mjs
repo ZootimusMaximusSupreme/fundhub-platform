@@ -1,22 +1,51 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCollector, STATUS } from '../assert.mjs';
-import { assertFundingCreditor } from './funding.mjs';
+import { assertFundingCreditor, runFundingJourney } from './funding.mjs';
 import { assertContractTampering } from './adversarial.mjs';
 import { assertWorkflowRegistry } from './workflows.mjs';
 import { functions } from '../../workflows/index.mjs';
 import { bodyHash } from '../../contracts/send.mjs';
+import { buildSimulatedCrsPayload } from '../../demo/simulate-client.mjs';
+import { BUREAU_FIELDS } from '../fixtures.mjs';
 
 const red = collector => collector.items.some(item => [STATUS.FAIL, STATUS.SILENT].includes(item.status));
 test('funding creditor proof selects the stable account when Toyota is returned first', () => {
   const collector = createCollector();
-  assertFundingCreditor([{ account_ref: 'SIM-TOYO-001', lender: 'Toyota Motor Credit' }, { account_ref: 'SIM-CHASE-001', lender: 'Chase Sapphire Preferred' }], collector);
+  const chase = { id: 'persisted-chase-row', account_ref: 'SIM-CHASE-001', lender: 'Chase Sapphire Preferred' };
+  const selected = assertFundingCreditor([{ id: 'persisted-toyota-row', account_ref: 'SIM-TOYO-001', lender: 'Toyota Motor Credit' }, chase], collector);
   assert.equal(collector.items[0].status, STATUS.PASS);
+  assert.equal(selected, chase); assert.equal(selected.id, 'persisted-chase-row');
 });
 test('funding creditor proof remains red for missing or incorrectly mapped Chase account', () => {
   for (const rows of [[], [{ account_ref: 'SIM-CHASE-001', lender: 'Toyota Motor Credit' }], [{ account_ref: 'SIM-CHASE-001' }]]) {
-    const collector = createCollector(); assertFundingCreditor(rows, collector); assert.equal(red(collector), true);
+    const collector = createCollector(); const selected = assertFundingCreditor(rows, collector); assert.equal(red(collector), true);
+    assert.equal(selected, rows.find(row => row.account_ref === 'SIM-CHASE-001') || null);
   }
+});
+test('the actual funding bureau block retains the selected row through its later field checks', async () => {
+  // Execute the exact bureau section from the real journey. Earlier payment and
+  // consent steps are outside this regression; all downstream sample references
+  // in this section run, so a lost local binding raises the same CI crash here.
+  const source = runFundingJourney.toString();
+  const start = source.indexOf('  const tl =');
+  const end = source.indexOf('  steps.push({', start);
+  assert.ok(start > 0 && end > start);
+  const bureauBlock = source.slice(start, end);
+  const rows = [{ id: 'toyota-row', account_ref: 'SIM-TOYO-001', lender: 'Toyota Motor Credit' }, { id: 'chase-row', account_ref: 'SIM-CHASE-001', lender: 'Chase Sapphire Preferred' }];
+  const db = { query: async sql => {
+    if (/SELECT \* FROM tradelines/.test(sql)) return { rows };
+    if (/INSERT INTO crs_results/.test(sql)) return { rows: [{ id: 'new-crs-result' }] };
+    if (/UPDATE clients SET outcome_tier/.test(sql)) return { rows: [] };
+    throw new Error(`Unexpected bureau-section query: ${sql}`);
+  } };
+  const collector = createCollector();
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const exercise = new AsyncFunction('db', 'ctx', 'sim', 'collector', 'section', 'journey', 'role', 'assertFundingCreditor', 'buildSimulatedCrsPayload', 'ingestCrsResult', 'BUREAU_FIELDS', `${bureauBlock}\nreturn sample;`);
+  const selected = await exercise(db, { orgId: 'org' }, { client: { id: 'client' }, email: 'fixture@example.test' }, collector, 'DATA', 'FUNDING', 'system', assertFundingCreditor, buildSimulatedCrsPayload, async () => ({ ingested: 2 }), BUREAU_FIELDS);
+  assert.equal(selected.id, 'chase-row');
+  assert.ok(collector.items.some(item => item.id === 'fund-bureau-accountIdentifier'));
+  assert.equal(red(collector), false);
 });
 
 function contractProbeDb({ mutation = 'frozen', checksum = null } = {}) {

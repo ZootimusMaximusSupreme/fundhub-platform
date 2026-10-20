@@ -10,8 +10,8 @@ Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, 
 
 | Workflow | Owner | Files | State |
 | --- | --- | --- | --- |
-| Backend | backend agent, GPT-6.1 Sol High | `db/migrations/483_bank_outreach.sql`, `src/outreach/*`, related new tests | Built; first real PostgreSQL run passed; review corrections awaiting repeat |
-| Monitoring | pulse agent, GPT-6 Sol High | new `src/pulse/coverage/gap-bank-outreach*`, `src/pulse/beats/beat-bank-outreach*`, shared pulse registration files | Built; focused PASS/FAIL tests and first real PostgreSQL run passed; amended notes-parity proof awaiting repeat |
+| Backend | backend agent, GPT-6.1 Sol High | `db/migrations/483_bank_outreach.sql`, `src/outreach/*`, related new tests | Built; current real PostgreSQL ownership, race, history, notes and pagination checks passed |
+| Monitoring | pulse agent, GPT-6 Sol High | new `src/pulse/coverage/gap-bank-outreach*`, `src/pulse/beats/beat-bank-outreach*`, shared pulse registration files | Outreach morning/hourly checks passed; tracing full-suite public HTTP timing failures without relaxing limits |
 | Integration | parent | API routes, auth/nav, workflow, intended journey, CI, final proof and PR | Active |
 | UX | UX agent, GPT-6.1 Sol High | `public/app/bank-outreach.*`, `e2e/bank-outreach.spec.mjs` | Built after backend/API proof; 32 browser cases and 8 final affected reruns passed |
 
@@ -57,7 +57,11 @@ Queue pagination edge repaired: active work sorts before paused/closed records. 
 
 Run 39376821560 on 9041fdf40 passed all updated PostgreSQL/access/race/notes tests, 40 bank/sidebar browser cases, lint/TypeScript and the actual morning bundle (2 outreach PASS, 0 FAIL; unrelated partial-lane checks explicitly unrun). Full legacy scratch report had 460 PASS, 3 FAIL, 1 SILENT and 99 UNVERIFIED. Its three failures were stale test mechanics: choosing the first tradeline instead of its stable account, trying nonexistent hash columns instead of real frozen wording, and a 49–50 workflow ceiling after growth to 101. Harness-only repairs passed 7 focused regressions and independent review; real-report results stay red until repeat. Product code, database privileges and external UNVERIFIED rows were not changed by those repairs.
 
-The hourly bundle loaded all 17 beats; bank-outreach completed in 41ms with its predeploy read-door explicitly skipped. All 42 database reads succeeded; no writes or sends occurred. Full proof failed two unchanged timing limits after public GETs stalled at 8 seconds. The same paths answered under 1 second from this Mac; CI also reached strict health in 543ms, so the cause is intermittent per-request network/hosting, not a confirmed bank regression. Repeat proof and on-failure per-path diagnostic retained. Missing production receipts/config in the fresh scratch database remain red/unproved, never relabeled green.
+The hourly bundle loaded all 17 beats; bank-outreach completed in 41ms with its predeploy read-door explicitly skipped. All 42 database reads succeeded; no writes or sends occurred. Full proof failed two unchanged timing limits after public GETs stalled at 8 seconds. The same paths answered under 1 second from this Mac; CI also reached strict health in 543ms. This does not establish the failure's cause. Repeat proof and on-failure per-path diagnostics are retained. Missing production receipts/config in the fresh scratch database remain red/unproved, never relabeled green.
+
+Run 39378246616 on 566c8c2e passed lint/TypeScript, every updated real PostgreSQL check (including the active-row pagination edge), all 40 browser cases and the actual morning bundle. Full scratch proof now has 442 PASS, 1 FAIL, 1 SILENT, 100 UNVERIFIED and no P0; the remaining FAIL is a missing local variable in the repaired funding test, not product code. Backend restored the saved-row binding and added a regression executing the exact bureau block; all 8 harness regressions and TypeScript pass locally. Full proof remains failed until rerun.
+
+That run's hourly outreach beat passed in 47ms; the full hourly gate again failed checkout/doors timing after 8-second public GET aborts. An immediate native-fetch sweep in the same job returned all 12 public paths in 45–361ms. Pulse/review found no confirmed transport bug. The next proof records sanitized same-process response-header timings and compares the actual probe provider to native fetch after failure. No deadline, guard, runtime provider or verdict was changed.
 
 Separate pre-existing leftover from the full harness: closer shift copy was SILENTLY-DID-NOTHING; external vendor-dependent checks remain UNVERIFIED. No unrelated closer product repair was attempted.
 

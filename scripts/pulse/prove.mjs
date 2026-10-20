@@ -486,6 +486,11 @@ async function proveBeats() {
   // 2. Guards: GET and HEAD only.
   const sendLog = [];
   const fetchLog = [];
+  const siteFetchTrace = [];
+  const tracedSitePaths = new Set([
+    "/api/health", "/api/public/funnel-checkout", "/api/public/slo-repair-checkout",
+    "/api/public/survey-submit", "/api/public/slo-interest"
+  ]);
   globalThis.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : (input && input.url) || String(input);
     const method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
@@ -493,8 +498,23 @@ async function proveBeats() {
       sendLog.push(`${method} ${clip(url, 100)}`);
       throw new Error(`pulse:prove blocked ${method} - read-only proof run`);
     }
-    fetchLog.push(`${method} ${new URL(url).host}`);
-    return realFetch(url, init);
+    const target = new URL(url);
+    fetchLog.push(`${method} ${target.host}`);
+    const trace = target.host === "fundhub.ai" && tracedSitePaths.has(target.pathname);
+    const started = Date.now();
+    try {
+      const response = await realFetch(url, init);
+      if (trace) siteFetchTrace.push({ path: target.pathname, status: response.status, ms: Date.now() - started });
+      return response;
+    } catch (err) {
+      if (trace) siteFetchTrace.push({
+        path: target.pathname, status: 0, ms: Date.now() - started,
+        error: String(err?.name || "Error").replace(/[^a-z0-9_]/gi, "").slice(0, 32),
+        code: String(err?.cause?.code || "").replace(/[^a-z0-9_]/gi, "").slice(0, 32),
+        aborted: init?.signal?.aborted === true
+      });
+      throw err;
+    }
   };
 
   // 3. The read-only connection the runner uses for its own reads, one query at a time, each in a savepoint.
@@ -691,6 +711,7 @@ async function proveBeats() {
   console.log(`  web reads made: ${fetchLog.length}${fetchLog.length ? ` (${[...new Set(fetchLog)].slice(0, 4).join(", ")})` : ""}; sink calls: text ${sinks.calls.text.length}, buzz ${sinks.calls.ntfy.length}`);
 
   if (problems.length) {
+    for (const trace of siteFetchTrace) console.log(`  site fetch headers: ${trace.path} ${trace.status} ${trace.ms} ms${trace.error ? ` (${trace.error}${trace.code ? ` ${trace.code}` : ""}; aborted=${trace.aborted})` : ""}`);
     console.log(`\nPROBLEMS (${problems.length}):`);
     for (const p of problems) console.log(`  - ${p}`);
     process.exit(1);

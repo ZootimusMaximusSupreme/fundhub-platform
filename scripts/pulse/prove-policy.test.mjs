@@ -81,6 +81,20 @@ test("the slow apply-links capacity fixture keeps the full list and delayed runs
   assert.match(hourly, /out\.ran !== loadedBeats\.length/);
 });
 
+test("hourly site timing trace keeps native GETs and the failed verdict intact", () => {
+  const source = fs.readFileSync(path.join(HERE, "prove.mjs"), "utf8");
+  const hourly = source.slice(source.indexOf("async function proveBeats()"));
+
+  assert.match(hourly, /const response = await realFetch\(url, init\)/, "the proof must preserve fetch options, including the abort signal");
+  assert.match(hourly, /target\.host === "fundhub\.ai" && tracedSitePaths\.has\(target\.pathname\)/);
+  assert.match(hourly, /siteFetchTrace\.push\(\{ path: target\.pathname, status: response\.status, ms:/);
+  assert.match(hourly, /code: String\(err\?\.cause\?\.code \|\| ""\)\.replace\(\/\[\^a-z0-9_\]\/gi, ""\)/);
+  assert.match(hourly, /aborted: init\?\.signal\?\.aborted === true/);
+  assert.match(hourly, /if \(problems\.length\) \{\s*for \(const trace of siteFetchTrace\)/);
+  assert.match(hourly, /const timingLimitMs = DELAYED_DEADLINE_MODE \? deadlineMs : deadlineMs \/ 2/);
+  assert.doesNotMatch(hourly, /siteFetchTrace\.push\([^\n]*(?:search|href|body)/, "trace must not print query strings or response bodies");
+});
+
 test("prove rejects an unsafe slow apply-links duration before starting proof work", () => {
   const result = spawnSync(process.execPath, [path.join(HERE, "prove.mjs"), "--beats", "--slow-apply-links=11001"], {
     encoding: "utf8",

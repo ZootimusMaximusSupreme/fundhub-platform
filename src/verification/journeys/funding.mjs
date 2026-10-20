@@ -28,13 +28,14 @@ function stepFake() {
 
 export function assertFundingCreditor(tradelines, collector, context = {}) {
   const chase = tradelines.find(row => row.account_ref === 'SIM-CHASE-001');
-  return collector.assertEq({
+  collector.assertEq({
     ...context, id: 'fund-bureau-creditor',
     claim: 'Tradeline creditorName survived ingest on the Chase account',
     expected: 'Chase Sapphire Preferred',
     actual: chase?.creditor || chase?.lender || chase?.creditor_name || null,
     file: 'src/tradelines/store.mjs'
   });
+  return chase || null;
 }
 
 export async function runFundingJourney(db, ctx, collector) {
@@ -267,7 +268,7 @@ export async function runFundingJourney(db, ctx, collector) {
     opReturnedOk: true
   });
 
-  assertFundingCreditor(tl, collector, { section, journey, role });
+  const sample = assertFundingCreditor(tl, collector, { section, journey, role });
 
   const payload = buildSimulatedCrsPayload({ email: sim.email, name: "Simulated Client" });
   payload.tradelines[0].accountReportedDate = "2026-07-01";
