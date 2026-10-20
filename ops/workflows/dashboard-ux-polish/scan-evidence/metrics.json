@@ -1,0 +1,56 @@
+[
+  {
+    "width": 1440,
+    "state": "full",
+    "overflow": 0,
+    "cards": 40,
+    "waiting": "14",
+    "status": "Loading Sales…",
+    "firstCardTop": 394
+  },
+  {
+    "width": 1440,
+    "state": "empty",
+    "overflow": 0,
+    "cards": 0,
+    "waiting": "0",
+    "status": "Loading Sales…",
+    "firstCardTop": null
+  },
+  {
+    "width": 1440,
+    "state": "error",
+    "overflow": 0,
+    "cards": 0,
+    "waiting": "—",
+    "status": "Sales — could not load the board (nodb: Scan fixture unavailable).",
+    "firstCardTop": null
+  },
+  {
+    "width": 390,
+    "state": "full",
+    "overflow": 0,
+    "cards": 40,
+    "waiting": "14",
+    "status": "Loading Sales…",
+    "firstCardTop": 402
+  },
+  {
+    "width": 390,
+    "state": "empty",
+    "overflow": 0,
+    "cards": 0,
+    "waiting": "0",
+    "status": "Loading Sales…",
+    "firstCardTop": null
+  },
+  {
+    "width": 390,
+    "state": "error",
+    "overflow": 0,
+    "cards": 0,
+    "waiting": "—",
+    "status": "Sales — could not load the board (nodb: Scan fixture unavailable).",
+    "firstCardTop": null
+  }
+]

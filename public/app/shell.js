@@ -1111,7 +1111,7 @@
         btn.type = "button";
         btn.setAttribute("aria-label", "Open menu");
         btn.setAttribute("aria-controls", "side");
-        btn.textContent = "☰";
+        btn.innerHTML = '<span class="fh-menu-mark" aria-hidden="true"></span>';
         btn.addEventListener("click", function () { openMobile(); });
         if (side.parentNode) side.parentNode.insertBefore(btn, side.nextSibling);
         else document.body.appendChild(btn);
@@ -1203,7 +1203,7 @@
       function onMq() {
         /* Was: force .mini below 860, which left a 60px unlabelled glyph rail
            permanently docked on a 390px phone. Now the rail is off-canvas and
-           starts closed; the ☰ button brings it in. */
+           starts closed; the brand-mark button brings it in. */
         if (mq.matches) {
           /* Drop .mini so a rail collapsed on desktop does not carry over as a
              60px glyph strip after a resize or rotate. Mobile is one state:
@@ -2707,6 +2707,8 @@
     if (typeof window !== "undefined" && window.FHFundhubType) window.FHFundhubType.applyBrand(b, staff);
     var root = document.documentElement;
     var HEX = /^#[0-9a-fA-F]{6}$/;
+    var fundhubBrand = b.slug === "fundhub" && b.entity_name === "Fundhub" &&
+      (!staff || String(staff.role || "").trim().toLowerCase() !== "partner");
     // Re-validated here even though the table has a CHECK: a custom property
     // accepts url() and expressions, so this is the last gate before the
     // value reaches the stylesheet.
@@ -2715,6 +2717,7 @@
     if (Array.isArray(b.ramp) && b.ramp.length === 6 &&
         b.ramp.every(function (s) { return HEX.test(String(s)); })) {
       root.style.setProperty("--spectrum", rampToSpectrum(b.ramp));
+      root.style.setProperty("--fh-sidebar-spectrum", fundhubBrand ? "" : "var(--spectrum)");
       // --accent is decoration, so it follows the brand.
       root.style.setProperty("--accent", b.ramp[5]);
       /* --alert / --warn / --ok / --info ARE DELIBERATELY NOT SET HERE.
@@ -2758,6 +2761,7 @@
     injectFonts(legacyFundhubFace ? null : b.display_face, b.mono_face);
     var wm = safeWordmark(b.wordmark_url);
     if (wm) root.style.setProperty("--logo", "url(\"" + wm.replace(/"/g, "") + "\")");
+    root.style.setProperty("--fh-menu-logo", !fundhubBrand && wm ? "var(--logo)" : "");
     var chip = document.getElementById("fh-shell-chip");
     if (chip && b.entity_name) chip.setAttribute("data-brand", b.entity_name);
   }

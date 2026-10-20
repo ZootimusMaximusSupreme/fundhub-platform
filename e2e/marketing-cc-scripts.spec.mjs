@@ -221,7 +221,7 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     const a = api();
     const calls = await open(page, a);
     await page.getByRole("button", { name: "Fix" }).click();
-    await expect(card(page)).toContainText("One rewrite with the model, about the cost of one script. Cost: unknown, not measured yet.");
+    await expect(card(page)).toContainText("One model rewrite, about the cost of one script. Cost: unknown, not measured yet. Uses your exact note.");
     await page.getByLabel("What should change?").fill("Make the hook about the business file, not the personal one.");
     await page.getByLabel("Make this a rule for every script").check();
     await page.getByRole("button", { name: "Rewrite it" }).click();
@@ -317,7 +317,7 @@ test.describe("Scripts tab on a phone (390x844)", () => {
     expect(p.body.write_now).toBeUndefined();
 
     await page.getByLabel("Your idea").fill("Rates are going up.");
-    await expect(page.locator("[data-sec=ideas]")).toContainText("Write it now writes one script from it today with the model. Cost: unknown, not measured yet.");
+    await expect(page.locator("[data-sec=ideas]")).toContainText("Write it now creates one script today. Cost: unknown, not measured yet.");
     await page.getByRole("button", { name: "Write it now" }).click();
     await expect(page.locator(".ccs-say.show")).toContainText("Saved. Writing one script from it now.");
     expect(posts(calls, "POST marketing/ideas")[1].body.write_now).toBe(true);

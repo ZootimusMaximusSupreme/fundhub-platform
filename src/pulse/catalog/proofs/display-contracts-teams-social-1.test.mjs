@@ -254,7 +254,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.deepEqual(await socialPage.locator("#partnerSel option").allTextContents(), ["Proof Partner A", "Proof Partner B"]);
   assert.deepEqual(await socialPage.locator("#partnerSel option").allTextContents(), ["Proof Partner A", "Proof Partner B"]);
   await socialPage.getByText("@proof", { exact: true }).waitFor();
-  await socialPage.getByText("your saved setting", { exact: true }).waitFor();
+  await socialPage.getByText("saved setting", { exact: true }).waitFor();
   await socialPage.waitForFunction(() => ["oauthFb", "oauthIg", "oauthLi"].every((id) => document.getElementById(id)?.disabled));
   const oauthReads = socialReads.filter((entry) => entry.pathname === "/api/social/oauth");
   assert.equal(oauthReads.length, 3, "the three probes run once, after the partner is known");
@@ -269,7 +269,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.match(await socialPage.locator("#btBody").innerText(), /09:30/);
   assert.match(await socialPage.locator("#chGrid").innerText(), /Facebook[\s\S]*@proof[\s\S]*account-proof/);
   assert.match(await socialPage.locator("#ghGrid").innerText(), /TikTok[\s\S]*cannot be used/i);
-  assert.match(await socialPage.locator("#approvalBody").innerText(), /your saved setting/i);
+  assert.match(await socialPage.locator("#approvalBody").innerText(), /Approval required before sending[\s\S]*saved setting[\s\S]*Held posts do not send[\s\S]*Only the owner or an admin[\s\S]*Credit repair always needs approval/i);
   await socialPage.locator('[data-pane="audit"]').click();
   assert.match(await socialPage.locator("#tblAudit").innerText(), /Proof attempt/);
   socialResults.add(proof("Page open per partner: connected accounts, saved approval setting, post queue, writing allowance, send history (5 reads)").recipe);
@@ -285,7 +285,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
 
   await socialPage.locator("#partnerSel").selectOption("0");
   await socialPage.waitForURL(new RegExp(`partner_id=${partnerA}`));
-  for (const [key, phrase] of [["channels", "Social accounts this partner has connected"], ["queued", "Posts written and not gone anywhere yet"], ["blocked", "Posts the copy check refused"], ["failed", "Posts that could not be sent"], ["posted", "Posts that went out"]]) {
+  for (const [key, phrase] of [["channels", "2 connected · 2 can post"], ["queued", "1 unsent · 0 past due"], ["blocked", "1 blocked · 1 reason"], ["failed", "1 failed after 3 tries"], ["posted", "1 sent. Likes, views, clicks and shares are not tracked."]]) {
     await socialPage.locator(`button.stat[data-k="${key}"]`).click();
     assert.equal(await socialPage.locator(`button.stat[data-k="${key}"]`).getAttribute("aria-pressed"), "true");
     assert.match(await socialPage.locator("#derivBody").innerText(), new RegExp(phrase));
@@ -355,7 +355,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   socialResults.add(proof("Tab 'Needs a rewrite' (blocked by the copy check or refused by a person)").recipe);
   await socialPage.locator('[data-pane="failed"]').click();
   assert.match(await socialPage.locator("#tblFailed").innerText(), /Failed caption[\s\S]*3[\s\S]*gave up after 3[\s\S]*Provider refused the post/);
-  assert.match(await socialPage.locator("#taskStrip").innerText(), /JOB TO FIX[\s\S]*A scheduled Facebook post failed after 3 attempts[\s\S]*one job covering all of them/i);
+  assert.match(await socialPage.locator("#taskStrip").innerText(), /JOB TO FIX[\s\S]*A scheduled Facebook post failed after 3 attempts[\s\S]*One job covers all 1 failed post[\s\S]*No single post is linked/i);
   await socialPage.locator('[data-pane="posted"]').click();
   assert.match(await socialPage.locator("#tblPosted").innerText(), /Posted caption[\s\S]*facebook-reference-123/);
   await socialPage.locator('[data-pane="audit"]').click();

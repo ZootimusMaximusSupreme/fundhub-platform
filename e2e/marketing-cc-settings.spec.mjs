@@ -220,7 +220,7 @@ test("full at 390: every dial in plain words, the video choices hidden, one Save
 
   // 5. The winner rule.
   await expect(page.locator("#setWinner")).toContainText("Not set yet.");
-  await expect(page.locator("#setWinner")).toContainText("Until you fill this in, the machine writes more new versions of the angles you spend the most on.");
+  await expect(page.locator("#setWinner")).toContainText("Until set, new versions favor your highest-spend angles.");
 
   // 6. Funnels, with each campaign's 7-day spend: null reads "unknown", never $0.
   await expect(page.locator("#setFunnels fieldset.funnel")).toHaveCount(FUNNELS().funnels.length);
