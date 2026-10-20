@@ -25,7 +25,8 @@ test("outreach keeps its real PostgreSQL and browser gates while both bundle pro
   const core = workflowJob(workflow, "outreach");
   const hourly = workflowJob(workflow, "hourly-release-runner");
   const canonicalRunner = ship.match(/^    runs-on: (.+)$/m)?.[1];
-  assert.equal(canonicalRunner, "macos-latest");
+  // ship.yml moved to Ubuntu on 2026-10-20 (PR #87); the bundle proofs follow it.
+  assert.equal(canonicalRunner, "ubuntu-latest");
   assert.match(hourly, new RegExp(`^    runs-on: ${canonicalRunner}$`, "m"));
   assert.match(ship, /NODE_OPTIONS: ["']?--dns-result-order=ipv4first/);
   assert.match(hourly, /NODE_OPTIONS: --dns-result-order=ipv4first/);
@@ -57,13 +58,13 @@ test("outreach release proof uses its own disposable database, all migrations an
   const workflow = fs.readFileSync(path.resolve(HERE, "../../.github/workflows/bank-outreach-proof.yml"), "utf8");
   const hourly = workflowJob(workflow, "hourly-release-runner");
   assert.match(hourly, /postgres:\/\/fundhub_app:ci_not_a_secret@127\.0\.0\.1:55432\/fundhub_outreach_ci/);
-  assert.match(hourly, /initdb .*--username=postgres -D "\$RUNNER_TEMP\/outreach-pg"/);
-  assert.match(hourly, /brew install postgresql@17 pgvector/);
+  assert.match(hourly, /services:\n      postgres:\n        image: pgvector\/pgvector:pg17\n/);
+  assert.match(hourly, /ports: \["55432:5432"\]/);
+  assert.match(hourly, /--health-cmd "pg_isready -U postgres"/);
   assert.match(hourly, /node db\/migrate\.mjs/);
   assert.match(hourly, /npm run migrations:manifest/);
   assert.match(hourly, /git diff --exit-code -- db\/expected-migrations\.mjs/);
   assert.match(hourly, /ALTER ROLE fundhub_app LOGIN/);
-  assert.match(hourly, /pg_ctl -D "\$RUNNER_TEMP\/outreach-pg" -m fast -w stop/);
   assert.doesNotMatch(hourly, /secrets\.|ship-env-from-netlify|npm run ship|netlify deploy|supabase db/);
 });
 
@@ -72,7 +73,7 @@ test("native outreach phone geometry is a required WebKit proof, separate from r
   const workflow = fs.readFileSync(path.join(root, ".github/workflows/bank-outreach-proof.yml"), "utf8");
   const release = workflowJob(workflow, "hourly-release-runner");
   const config = fs.readFileSync(path.join(root, "playwright.bank-outreach-webkit.config.mjs"), "utf8");
-  assert.match(release, /npx playwright install webkit/);
+  assert.match(release, /npx playwright install --with-deps webkit/);
   assert.match(release, /run: node node_modules\/@playwright\/test\/cli\.js test --config playwright\.bank-outreach-webkit\.config\.mjs/);
   assert.match(release, /if: always\(\) && !cancelled\(\)\n        with:\n          name: bank-outreach-webkit-/);
   assert.match(config, /testMatch: ['"]\*\*\/bank-outreach-webkit\.proof\.mjs['"]/);

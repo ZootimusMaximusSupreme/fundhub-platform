@@ -197,12 +197,12 @@ test('source keeps one normal click, fresh browser, no business submission, inje
   assert.equal((source.match(/\.fill\(/g) || []).length, 2);
 });
 
-test('manual workflow pins main/macOS/Node22/exact SHA and exposes existing secret only to the guarded proof', () => {
+test('manual workflow pins main/Ubuntu/Node22/exact SHA and exposes existing secret only to the guarded proof', () => {
   const workflow = readFileSync(fileURLToPath(new URL('../../.github/workflows/bank-outreach-live-proof.yml', import.meta.url)), 'utf8');
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^  (push|pull_request|schedule):/m);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
-  assert.match(workflow, /runs-on: macos-latest/);
+  assert.match(workflow, /runs-on: ubuntu-latest/);
   assert.match(workflow, /node-version: '22'/);
   assert.match(workflow, /\^\[a-f0-9\]\{40\}\$/);
   assert.match(workflow, /ref: \$\{\{ steps\.release\.outputs\.sha \}\}/);

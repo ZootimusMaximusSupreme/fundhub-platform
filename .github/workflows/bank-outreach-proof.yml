@@ -117,11 +117,24 @@ jobs:
     # Both actual-bundle proofs match ship.yml's existing release environment.
     # All morning checks, beats, native GETs and timing limits stay unchanged;
     # Ubuntu still owns the separate PostgreSQL/browser/strict integration gates.
-    runs-on: macos-latest
+    # ship.yml moved to Ubuntu on 2026-10-20 (PR #87: macOS runners never started),
+    # so this job follows it. The disposable database is a service container here.
+    runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fundhub_outreach_ci
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      DATABASE_URL: postgres://postgres@127.0.0.1:55432/fundhub_outreach_ci
-      MIGRATION_DATABASE_URL: postgres://postgres@127.0.0.1:55432/fundhub_outreach_ci
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:55432/fundhub_outreach_ci
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:55432/fundhub_outreach_ci
       APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:55432/fundhub_outreach_ci
       ALLOW_SUPERUSER_DB: '1'
       NODE_OPTIONS: --dns-result-order=ipv4first
@@ -135,15 +148,10 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm install --global netlify-cli
-          npx playwright install webkit
-          brew install postgresql@17 pgvector
-          echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
+          npx playwright install --with-deps webkit
       - name: Apply every migration to an isolated scratch database
         id: migrate
         run: |
-          initdb --no-locale --encoding=UTF8 --auth=trust --username=postgres -D "$RUNNER_TEMP/outreach-pg"
-          pg_ctl -D "$RUNNER_TEMP/outreach-pg" -l "$RUNNER_TEMP/outreach-pg.log" -o '-h 127.0.0.1 -p 55432' -w start
-          createdb --host=127.0.0.1 --port=55432 --username=postgres fundhub_outreach_ci
           psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT version(); CREATE EXTENSION IF NOT EXISTS vector;'
           node db/migrate.mjs
           psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
@@ -194,9 +202,3 @@ jobs:
             console.log(JSON.stringify({ probe: 'pulse-provider', path, status: result.status, class: result.class, ms: result.ms, redirects: result.redirects, bytes: result.bytes }));
           }));
           NODE
-      - name: Stop only this job's scratch database
-        if: always()
-        run: |
-          if [ -f "$RUNNER_TEMP/outreach-pg/postmaster.pid" ]; then
-            pg_ctl -D "$RUNNER_TEMP/outreach-pg" -m fast -w stop
-          fi

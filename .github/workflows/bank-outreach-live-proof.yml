@@ -14,7 +14,8 @@ permissions:
 jobs:
   live-read:
     if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
-    runs-on: macos-latest
+    # macOS runners never started on 2026-10-20 (PR #87 moved ship.yml to Ubuntu too).
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Validate exact release SHA before checkout
@@ -50,7 +51,7 @@ jobs:
       - name: Install existing dependencies and Chromium
         run: |
           npm ci --ignore-scripts
-          npx playwright install chromium
+          npx playwright install --with-deps chromium
       - name: Test proof guards without live calls
         run: node --test scripts/outreach/verify-live.test.mjs
       - name: Verify published bytes, ordinary login, and real read-only Bank workspace
