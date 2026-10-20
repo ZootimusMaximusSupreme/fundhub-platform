@@ -12,6 +12,10 @@ All three run in parallel. Repository switch waits for Chris to name the destina
 
 GIB discussion is deferred. It is not part of this batch.
 
+## Owner-selected Ghost Guard visual direction
+
+The approved direction is the dark charcoal rounded ghost with two cyan eyes inside the sharp cyan frame shown in `assets/ghost-guard/references/approved-direction-2026-10-20.png`. This supersedes the black-and-white exploration and the merged pixel concept as the source of truth for the next Ghost Guard logo pass.
+
 ### Ghost Guard logo — black-and-white exploration
 
 Generate a transparent, black-and-white Ghost Guard logo concept. It may nod to classic arcade ghost-and-maze energy, but must be an original technology brand: minimal geometric ghost, smart negative space, sharp vector-like edges, memorable at favicon size, no text, no gradient, no neon, no shield, no cybersecurity lock/skull clichés. Create three distinct directions:
