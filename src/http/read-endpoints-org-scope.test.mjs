@@ -51,6 +51,12 @@ const READ_DIR = path.join(HERE, "..", "..", "api", "read");
 /* Endpoints that legitimately carry no org filter. Each needs a stated reason.
    Keep this list SHORT and keep every entry's justification true. */
 const NO_ORG_COLUMN = new Map([
+  /* Outreach delegates the authenticated staff object, not a caller org. The
+     store re-reads active identity by staff.id AND staff.org_id, then binds
+     that identity on every account lookup. The exact delegation and identity
+     boundary are checked below; real cross-org reads also run in
+     src/outreach/store.pg.test.mjs. */
+  ["bank-outreach.mjs", "scoped in src/outreach/store.mjs readOutreach(), which revalidates the session identity and binds its org"],
   /* These two write no SQL of their own. Both call listTradelines() from
      src/tradelines/store.mjs and pass `orgId: staff.org_id` from the session,
      and that function THROWS when the org is missing rather than quietly
@@ -217,7 +223,10 @@ test("an endpoint excused from the org filter still passes the session's org to 
   );
 
   const notDelegating = excused
-    .filter((f) => !DELEGATES_SESSION_ORG.test(f.code))
+    .filter((f) => f.name === "bank-outreach.mjs"
+      ? !/const staff = await requireAuth\(req, res, \{ db: database \}\)/.test(f.code) ||
+        !/readOutreach\(database, \{ staff, query: req\.query \|\| \{\} \}\)/.test(f.code)
+      : !DELEGATES_SESSION_ORG.test(f.code))
     .map((f) => f.name);
 
   assert.deepEqual(
@@ -227,6 +236,17 @@ test("an endpoint excused from the org filter still passes the session's org to 
     "have drifted apart, which means the endpoint is now unscoped while this test says " +
     "it is fine."
   );
+});
+
+test("outreach's full-session delegation resolves an active identity in that same company", () => {
+  const handler = stripComments(fs.readFileSync(path.join(READ_DIR, "bank-outreach.mjs"), "utf8"));
+  assert.match(handler, /import \{ readOutreach \} from "\.\.\/\.\.\/src\/outreach\/store\.mjs"/);
+  const store = stripComments(fs.readFileSync(path.join(HERE, "../outreach/store.mjs"), "utf8"));
+  assert.match(store, /const staff = await identity\(db, input\)/);
+  assert.match(store, /FROM staff WHERE id=\$1 AND org_id=\$2 AND status='active'/);
+  assert.match(store, /\[staff\.id, staff\.org_id\]/);
+  assert.match(store, /a\.id=\$1 AND a\.org_id=\$2/);
+  assert.match(store, /\[id, staff\.org_id, PROGRAM_KEY, staff\.canManage, staff\.id\]/);
 });
 
 test("no read endpoint filters on the DEFAULT company instead of the caller's", () => {

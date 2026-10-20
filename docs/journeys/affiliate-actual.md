@@ -30,7 +30,7 @@ flowchart TD
     CAN --> A_top_level[Everything else — 5 routes]
     CAN --> A_trials[trials — 1 route]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
-    WHO -->|Yes| CANT[Blocked — 285 routes]
+    WHO -->|Yes| CANT[Blocked — 287 routes]
     CANT --> B_adintel[adintel — 1 blocked]
     CANT --> B_affiliates[affiliates — 1 blocked]
     CANT --> B_analytics[analytics — 4 blocked]
@@ -58,18 +58,18 @@ flowchart TD
     CANT --> B_privacy[privacy — 1 blocked]
     CANT --> B_proxy[proxy — 2 blocked]
     CANT --> B_push[push — 5 blocked]
-    CANT --> B_read[Reading data — 65 blocked]
+    CANT --> B_read[Reading data — 66 blocked]
     CANT --> B_repair[repair — 5 blocked]
     CANT --> B_scripts[scripts — 2 blocked]
     CANT --> B_social[social — 7 blocked]
     CANT --> B_staff[staff — 3 blocked]
-    CANT --> B_top_level[Everything else — 39 blocked]
+    CANT --> B_top_level[Everything else — 40 blocked]
     CANT --> B_trials[trials — 3 blocked]
 ```
 
 ## What they can reach
 
-**44 of 329 routes.**
+**44 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -125,7 +125,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**285 of 329 routes.**
+**287 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -148,6 +148,7 @@ flowchart TD
 | `/api/auth/staff-role` | POST | owner, admin |
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
+| `/api/bank-outreach` | POST | owner, admin, sales_manager, outbound_rep |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
@@ -332,6 +333,7 @@ flowchart TD
 | `/api/read/agents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ai-bureau-config` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/bank-inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/blueprint-combined-approval` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/call-outcomes` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |

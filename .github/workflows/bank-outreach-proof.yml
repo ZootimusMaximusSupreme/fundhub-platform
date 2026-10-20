@@ -44,6 +44,7 @@ jobs:
           npm run lint
           npx --yes --package typescript@5.9.3 tsc --noEmit
       - name: Apply migrations to disposable PostgreSQL
+        id: migrate
         run: |
           node db/migrate.mjs
           psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
@@ -61,12 +62,15 @@ jobs:
       - name: Existing full scratch end-to-end harness
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+          VERIFY_STRICT: "1"
         run: npm run verify:e2e
       - name: Morning outreach check from the actual function bundle
+        if: always() && steps.migrate.outcome == 'success'
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --lanes=gap-bank-outreach
       - name: Hourly checks from the actual function bundle
+        if: always() && steps.migrate.outcome == 'success'
         env:
           DATABASE_URL: ${{ env.APP_DATABASE_URL }}
         run: npm run pulse:prove -- --beats

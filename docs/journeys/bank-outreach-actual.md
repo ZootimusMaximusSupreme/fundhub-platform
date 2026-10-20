@@ -1,0 +1,19 @@
+# Bank outreach — actual implementation
+
+Implemented against the owner-approved [intended journey](bank-outreach-intended.md). Build branch: `codex/bank-relationship-outreach`, [PR #77](https://github.com/ZootimusMaximusSupreme/fundhub-platform/pull/77). This is not a production launch claim.
+
+1. Managers import official FDIC/NCUA CSV files through the workspace. The parser retains institution IDs, state and website, accepts official aliases including `WEBADDR` and `CU_NUMBER`, filters to AZ/SC/FL/CA and deduplicates targets without clearing prior work.
+2. Managers assign active same-company staff. `outbound_rep` gets only this workspace; the shared session resolver denies unrelated staff API paths. The store re-reads active role/company identity and applies assignment/company scope even on direct calls.
+3. Reps save banker details, manually open LinkedIn/email/phone links, and log touches with a next action. One transaction appends the activity and moves the queue due time; an omitted due time means now. UI dates and scheduling explicitly use Arizona time.
+4. Product facts preserve typed numbers, booleans, arrays and explicit unknowns. Verification needs evidence, a reachable banker and an application path. Only a manager can verify into the existing Lenders sheet. Lender locks recheck company, product category and active state before promotion.
+5. Published facts remain live during manager amendments. Reps cannot read pending draft facts or their audit snapshots. Verification saves prior product/lender facts into append-only history, promotes the candidate atomically and keeps the original verified-week date. Unverified lender selections can be corrected; published links cannot be repointed.
+6. Active/quiet partners receive monthly/quarterly next actions. The shared Inngest daily job fills missing reminders idempotently; it does not send external messages.
+7. Deep morning checks and hourly read-only checks compare published product facts, evidence/paper link, banker and same-company active lender. The job has a stale-receipt check. The hourly read door requires sign-in once deployed; a predeploy proof explicitly leaves that live-door check pending.
+
+## Observable proof and limits
+
+- Real PostgreSQL tests exercise the migration, production-like default grants, app-role history mutation refusals, two-company/rep boundaries, HTTP handlers, promotion rollback, category races, amendments and reminder idempotency. They refuse a non-scratch database and skip plainly when no database URL is present.
+- Browser fixtures prove UI controls and requests, not real bank facts or production writes. The completed local run passed 32 cases at 1440/390/320; eight affected reruns and eight shared-sidebar role cases also passed. Marked fixtures and the mobile network/CPU report are saved in `ops/workflows/build-evidence/bank-outreach/`.
+- Mobile lab: Slow4G/4x CPU, LCP 1.06s, CLS 0.00186, measured interaction 88ms. These are local fixture measurements, not Lighthouse, field INP or live-server response time.
+- Full scratch integration, updated PostgreSQL regressions and built morning/hourly function proofs run in `.github/workflows/bank-outreach-proof.yml`. Current run results are linked in the PR; unrun/skipped checks are not green evidence.
+- No live rep seats, customer records, external outreach or production deployment were created by this build.

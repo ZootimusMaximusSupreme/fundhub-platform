@@ -51,4 +51,6 @@ Local proof: full syntax lint, configured TypeScript, focused API/auth/access/wo
 
 First GitHub scratch run 39375628131 applied all migrations and passed real saved-result/ownership/tripwire tests. Browser step: 25 passed and one exact-menu assertion failed because it still expected the pre-outreach menu; parent updated that assertion and added outbound role coverage. Later steps did not run. Independent review found history default-grant protection, a changed-lender promotion race and missing notes parity; agents repaired all three with regressions. Repeat scratch tests pending.
 
+Independent recheck closed all three findings and two residuals (unverified lender reselect recovery and FDIC `WEBADDR`). No confirmed visual blocker. Shared sidebar now passes 8/8 browser cases, including an exact one-workspace outbound menu. Full scratch harness uses `VERIFY_STRICT=1` so reported failures cannot silently exit green. Morning/hourly bundle proofs still run after a separate check fails, provided the scratch migration succeeded; their results remain separate.
+
 No production data changed, no live outreach sent and no production deployment claimed. Marked fixture previews live under `ops/workflows/build-evidence/bank-outreach/`.
