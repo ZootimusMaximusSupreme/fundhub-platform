@@ -22,10 +22,16 @@ test('arguments require exactly one lowercase full release SHA; no account, targ
 });
 
 test('empty and masked secrets fail before login, without echoing their value', () => {
-  for (const value of [undefined, '', '   ', '********', '[REDACTED_SECRET]', 'MASKED_PASSWORD', '[HIDDEN]', 'your-password', 'xxxxxx', '••••••', 'placeholder']) {
+  for (const value of [undefined, '', '   ', '********', '[REDACTED_SECRET]', 'MASKED_PASSWORD', '[HIDDEN]', 'your-password', 'xxxxxx', '....', '••••••', '●●●●', ' *•●* ', 'placeholder', 'changeme']) {
     assert.throws(() => requirePassword(value), error => error.message === 'PASSWORD_UNAVAILABLE');
   }
   assert.equal(requirePassword(PASSWORD), PASSWORD);
+});
+
+test('real password characters and embedded marker words are not mistaken for complete masks', () => {
+  for (const value of ['controlled*Strong42!', 'controlled-hidden-Strong42!', 'controlled-placeholder-Strong42!', 'controlled-MASKED_PASSWORD42!', 'controlled-redacted42!', '  controlled*Strong42!  ']) {
+    assert.equal(requirePassword(value), value); // Preserve exact credential bytes, including surrounding spaces.
+  }
 });
 
 test('URL policy pins HTTPS apex host, forbids credentials, alternate ports and encoded paths', () => {

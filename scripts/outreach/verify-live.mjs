@@ -22,8 +22,10 @@ export function parseArgs(args) {
   return { expectedSha: args[1] };
 }
 export function requirePassword(value) {
-  requireProof(typeof value === 'string' && value.trim().length > 0 && !/[\*•●]/u.test(value) &&
-    !/redacted|masked|hidden|placeholder|changeme|your[_ -]?password|^x{4,}$|^\.{4,}$/i.test(value), 'PASSWORD_UNAVAILABLE');
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  const marker = candidate.startsWith('[') && candidate.endsWith(']') ? candidate.slice(1, -1) : candidate;
+  requireProof(candidate.length > 0 && !/^(?:[*•●]+|x{4,}|\.{4,})$/iu.test(marker) &&
+    !/^(?:redacted(?:[_ -]secret)?|masked(?:[_ -]password)?|hidden|placeholder|changeme|your[_ -]?password)$/i.test(marker), 'PASSWORD_UNAVAILABLE');
   return value;
 }
 export function safeUrl(value, base = SITE) {
