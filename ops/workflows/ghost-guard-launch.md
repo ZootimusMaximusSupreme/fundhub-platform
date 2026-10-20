@@ -14,7 +14,11 @@ GIB discussion is deferred. It is not part of this batch.
 
 ## Owner-selected Ghost Guard visual direction
 
-The approved direction is the dark charcoal rounded ghost with two cyan eyes inside the sharp cyan frame shown in `assets/ghost-guard/references/approved-direction-2026-10-20.png`. This supersedes the black-and-white exploration and the merged pixel concept as the source of truth for the next Ghost Guard logo pass.
+**Owner call:** Meet the ghost. The mark is only a ghost—nothing framing it and no pellet, shield, maze, or second symbol. Keep the dark charcoal body and two cyan eyes from `assets/ghost-guard/references/approved-direction-2026-10-20.png`; remove its cyan frame. This supersedes the black-and-white exploration and the merged pixel concept as the source of truth for the next Ghost Guard logo pass.
+
+### Ghost-only render prompt
+
+Create a single dark charcoal ghost with a rounded head, straight sides, three soft lower scallops, and two small cyan eyes. The ghost is the entire mark: no frame, outline, shield, orbit, pellet, text, background plate, gradients, glow, or other objects. Use a genuine transparent background. The result must be clean, simple, and tech-forward at favicon size.
 
 ### Ghost Guard logo — black-and-white exploration
 
@@ -53,6 +57,24 @@ Create a project-ready Ghost Guard logo for a red-team testing product. Brand sh
 Define a first-version Ghost Guard offering that uses authorized red-team testing, with CRS as the first vendor integration target. Map the prospect-facing pitch, required permissions, test boundaries, evidence collected, and a short implementation sequence. Read existing CRS materials in this repository, do not change application code, and record verified paths and open decisions on this board.
 
 ## Notes
+
+### Ghost-only render — complete
+
+- Asset: `assets/ghost-guard/ideas/ghost-guard-ghost-only-v1.png` — 1254 × 1254 RGBA PNG. Exactly one built-in imagegen generation; original output copied unchanged to a new file.
+- Transparency verified: alpha channel spans 0–255. The main visible mark is bounded at approximately x367–887, y307–947 (alpha >=16).
+- Visual check: one charcoal ghost, rounded head, straight sides, three soft lower scallops, and two circular cyan eyes. No frame, shield, outline, pellet, orbit, maze, text, background plate, or other visible object. Simple silhouette and face suit small-icon use. The generated raster has subtle fill variation and almost invisible stray pixels below alpha 16 outside the mark; it is not a perfectly flat vector master.
+- Exact prompt:
+
+```text
+Use case: logo-brand.
+Asset type: Ghost Guard project-ready transparent raster logo mark.
+Input image: supporting style reference only for the dark charcoal body, cyan eyes and calm simple proportions. Do not reproduce its cyan frame.
+Primary request: Create exactly one dark charcoal ghost only. Give it a smoothly rounded head, straight vertical sides, exactly three soft rounded lower scallops, and two small equal circular cyan eyes. The ghost is the entire mark. Keep a clean, balanced, tech-forward silhouette that reads clearly at favicon size.
+Style: flat solid colors, crisp smooth vector-like edges, no texture or shading.
+Composition: one centered ghost with comfortable transparent padding on a square canvas. Genuine transparent alpha background.
+Text: none.
+Avoid: frame, outline, shield, pellet, orbit, maze, text, background plate, gradient, glow, shadow, extra facial details, other objects, multiple variants.
+```
 
 ### Selected Pixel Pursuit + Binary Specter merge — complete
 
