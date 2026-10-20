@@ -355,7 +355,9 @@ const chooseByCall = (t, offer) => {
 const CONTRACT_IGNORED = [
   ["a draft was never sent", (t) => { t.contracts[0].sent_at = null; t.clients = []; }],
   ["a demo contract is not judged", (t) => { t.contracts[0].is_demo = true; t.clients = []; }],
-  ["a contract sent over 30 days ago is not judged", (t) => { t.contracts[0].sent_at = LONG_AGO; t.clients = []; }]
+  ["a contract sent over 30 days ago is not judged", (t) => { t.contracts[0].sent_at = LONG_AGO; t.clients = []; }],
+  // A test fixture on a demo client, broken on purpose: counted, it would be red.
+  ["a broken contract on a demo client is not judged", (t) => { t.clients[0].is_demo = true; t.contracts[0].document_id = null; }]
 ];
 
 /** Breaks and ok variants about WHICH wording went out, shared by the contract queries. */

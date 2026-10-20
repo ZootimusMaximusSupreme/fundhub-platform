@@ -112,6 +112,10 @@ const BLANK_NOT_THE_PRICE_LIST = SALE_CONTRACT_KEYS.flatMap((key) =>
 // live representative's). A signer may be handed the link in person, so the mail is
 // owed only when the client or a signer has an email address.
 //
+// A contract on a demo client (clients.is_demo) is test data, like a demo contract,
+// and is not judged (2026-10-20: the only sent contract on production was a test
+// fixture on demo client FH-000670 with the contract's own demo flag left false).
+//
 // Judged now: the document was registered (send writes document_id), the signing
 // email went to the signer it is for, no signer's email failed or sat stuck a whole
 // day without a later one going out, and the wording is one the chosen offer sells.
@@ -153,7 +157,7 @@ SELECT count(DISTINCT c.id)::int AS sample_count,
   LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
   LEFT JOIN contract_templates t ON t.org_id = c.org_id AND t.id = c.template_id
   LEFT JOIN staff st ON st.org_id = c.org_id AND st.id = c.sent_by
- WHERE c.org_id = $1::uuid AND c.is_demo = false
+ WHERE c.org_id = $1::uuid AND c.is_demo = false AND COALESCE(cl.is_demo, false) = false
    AND c.sent_at > now() - interval '30 days'`;
 
 /** An active, real wording for this key exists. A pasted-in PDF wording has boxes
@@ -179,7 +183,7 @@ ${DECK_CONTRACT_KEYS.map((key) => `         NOT ${hasRealWording(key)}`).join("\
                      LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
                      LEFT JOIN contract_templates t ON t.org_id = c.org_id AND t.id = c.template_id
                      LEFT JOIN staff st ON st.org_id = c.org_id AND st.id = c.sent_by
-                    WHERE c.org_id = o.id AND c.is_demo = false
+                    WHERE c.org_id = o.id AND c.is_demo = false AND COALESCE(cl.is_demo, false) = false
                       AND c.sent_at > now() - interval '30 days'
                       AND (${CONTRACT_BAD})))::int AS bad_count
   FROM orgs o
@@ -202,7 +206,7 @@ SELECT count(DISTINCT c.id)::int AS sample_count,
   FROM contracts c
   LEFT JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
   LEFT JOIN contract_templates t ON t.org_id = c.org_id AND t.id = c.template_id
- WHERE c.org_id = $1::uuid AND c.is_demo = false
+ WHERE c.org_id = $1::uuid AND c.is_demo = false AND COALESCE(cl.is_demo, false) = false
    AND c.source_kind = 'text' AND c.sent_at > now() - interval '30 days'`;
 
 // The panel lists active wordings (GET /api/read/contracts?view=templates&active_only=1).
