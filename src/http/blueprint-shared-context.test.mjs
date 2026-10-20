@@ -76,9 +76,10 @@ function renderCloser(responseContext, message = null) {
 test("Closer Dashboard and Present show the identical canonical Blueprint context", async () => {
   const shown = await renderPresent({ ok: true, data: { context } });
   assert.ok(shown.reads.some((r) => r.key === "agent-context" && r.query.client_id === "known-client"));
-  for (const phrase of ["Human advisor: Real Advisor", "signed · $7,500", "Upload mailing proof", "sms · queued", "Bland call:", "I saved the receipt", "Advisor review"]) {
+  for (const phrase of ["Team follow-up: Fundhub team CSM queue", "signed · $7,500", "Upload mailing proof", "sms · queued", "Bland call:", "I saved the receipt", "Advisor review"]) {
     assert.ok(shown.html.includes(phrase), phrase);
   }
+  assert.ok(!shown.html.includes("Real Advisor"), "owner-set 2026-10-20: no staff name in the shared file");
   assert.ok(shown.html.includes("&lt;script&gt;bad()&lt;/script&gt;"));
   assert.ok(!shown.html.includes("<script>bad()</script>"));
   const dashboard = renderCloser(context);
@@ -92,5 +93,6 @@ test("both shared-context panels show a read failure instead of fake missing acc
   assert.ok(shown.html.includes(failure));
   assert.ok(!shown.html.includes("Capital Blueprint access: not active"));
   assert.ok(!shown.html.includes("Human advisor: not assigned"));
+  assert.ok(!shown.html.includes("Team follow-up:"));
   assert.equal(renderCloser(null, failure).text, failure);
 });

@@ -37,7 +37,8 @@ test("Blueprint manual call requires paid active current client context and revi
     fetchContextImpl: async (_db, ids) => { assert.deepEqual(ids, { orgId: "org-a", clientId: "client-a", conversationId: null, channel: "voice" }); return context; } };
   const task = await voiceCallTask({}, options);
   assert.match(task, /Last SMS: I have the receipt/);
-  assert.match(task, /not the client's human advisor/);
+  assert.match(task, /You are an AI, not a person/);
+  assert.doesNotMatch(task, /human advisor/);
   assert.match(task, /cannot execute checklist actions/);
   assert.doesNotMatch(task, /Return one JSON object only/);
   for (const changed of [{ isBuyerImpl: async () => false },

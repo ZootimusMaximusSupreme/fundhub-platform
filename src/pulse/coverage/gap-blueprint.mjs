@@ -11,6 +11,11 @@ export const CHECK_IDS = Object.freeze([
 ]);
 
 // Same real-client exclusions as the existing consent and portal checks.
+//
+// blueprint:real-advisor — owner-set 2026-10-20: the CSM is the AI coaches
+// plus the team CSM queue, so a paid buyer with NO staff link is normal and
+// green. Red means a saved staff link points at a demo, disabled, suspended
+// or other-company person: a real break. The check id is kept unchanged.
 const REAL_CLIENT = `COALESCE(c.is_demo, false) = false
   AND COALESCE(c.custom_fields->>'synthetic', '') <> 'true'
   AND COALESCE(c.email, '') !~* $3::text`;
@@ -39,6 +44,7 @@ export const REAL_ADVISOR_SQL = `
          AND (s.current_period_start IS NULL OR s.current_period_start <= $2::timestamptz)
          AND (s.current_period_end IS NULL OR s.current_period_end > $2::timestamptz)
      )
+     AND c.assigned_csm_staff_id IS NOT NULL
      AND NOT EXISTS (
        SELECT 1 FROM staff s
        WHERE s.org_id = c.org_id AND s.id = c.assigned_csm_staff_id
@@ -96,7 +102,7 @@ export const COACH_CALL_DELIVERY_SQL = `
 `;
 
 const TRIP = "Recon (AG-07) is the one tripwire. Do not auto-fix from this pulse. Do not send to clients.";
-const ADVISOR_FIX = `Open the existing blueprint-csm-assignment owner work and assign a real active advisor through the staff flow. ${TRIP}`;
+const ADVISOR_FIX = `Open the existing blueprint-csm-assignment owner work and clear or fix the broken staff link through the staff flow. No staff person is needed; the AI coaches and team CSM queue cover the client. ${TRIP}`;
 const DELIVERY_FIX = `Open the blueprint-monthly-delivery owner task and finish the plan and letters from its saved credit result. Do not request another paid credit pull. ${TRIP}`;
 const COACH_CALL_FIX = `Open blueprint-coach-call advisor work and reconcile the saved call receipt with Bland and outbound_calls. Do not redial an uncertain provider result. ${TRIP}`;
 
@@ -113,7 +119,7 @@ export async function gapChecks(ctx = {}) {
     [CHECK_IDS[0], REAL_ADVISOR_SQL,
       [orgId, Number.isFinite(now.getTime()) ? now.toISOString() : null, TEST_CLIENT_EMAIL_RE,
         OFFERS.UWIQ_DELIVERABLES.productCode, PAID_TRANSACTION_STATUS],
-      "active paid Blueprint clients without a real assigned advisor", ADVISOR_FIX],
+      "active paid Blueprint clients linked to a demo, disabled or other-company staff person", ADVISOR_FIX],
     [CHECK_IDS[1], MONTHLY_DELIVERY_SQL,
       [orgId, "blueprint-monthly-delivery", TEST_CLIENT_EMAIL_RE],
       "open Blueprint monthly-delivery exceptions", DELIVERY_FIX],

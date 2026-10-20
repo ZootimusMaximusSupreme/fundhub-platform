@@ -26,7 +26,8 @@ test("coach reads the actual saved org/client, current step and prior call witho
   assert.equal(result.ok, true);
   assert.match(result.context.as_prompt_block, /Prior call/);
   assert.match(result.instructions, /A promise is not proof/);
-  assert.match(result.instructions, /not the client's human advisor/);
+  assert.match(result.instructions, /You are an AI, not a person/);
+  assert.doesNotMatch(result.instructions, /human advisor/);
 });
 
 test("unpaid, inactive, wrong-client, halted and do-not-text files cannot coach", async () => {
@@ -61,7 +62,7 @@ test("closed intents render server-owned questions from the actual open client s
   assert.equal(blueprintCoachQuestion("ask_progress", context()).text, 'What is your next update on "Mail letters"?');
   assert.equal(blueprintCoachQuestion("ask_blocker", context()).text, 'What is holding you up on "Mail letters"?');
   assert.equal(blueprintCoachQuestion("ask_proof", context()).text, 'Can you upload the proof for "Mail letters"?');
-  assert.equal(blueprintCoachQuestion("ask_advisor", context()).text, "Would you like help from your human advisor?");
+  assert.equal(blueprintCoachQuestion("ask_advisor", context()).text, "Would you like the Fundhub team to follow up with you?");
   for (const state of ["done", "skipped"]) assert.equal(blueprintCoachQuestion("ask_progress", context({ checklist: { open_step: { title: "Mail letters", owner: "client", state } } })).ok, false);
   assert.equal(blueprintCoachQuestion("ask_proof", context({ checklist: { open_step: { title: "Mail letters", owner: "client", state: "in_progress" } } })).reason, "step_has_no_proof_check");
   assert.equal(blueprintCoachQuestion("How does it feel now that your proof passed?", context()).ok, false);
@@ -91,10 +92,14 @@ test("the model may answer current-step, evidence, advisor and program questions
   assert.match(step, /still open/);
   const proof = blueprintCoachQuestion("explain_proof", ctx).text;
   assert.match(proof, /message saying it is done does not verify/);
-  assert.match(blueprintCoachQuestion("explain_advisor", ctx).text, /"Alex"/);
-  const noAdvisor = blueprintCoachQuestion("explain_advisor", context({ blueprint: { access_active: true } })).text;
-  assert.match(noAdvisor, /No human advisor is saved/);
-  assert.doesNotMatch(noAdvisor, /Alex/);
+  // Owner-set 2026-10-20: the CSM is the AI coaches plus the team queue.
+  // Even with a linked staff row, the client is never named a person.
+  const withLink = blueprintCoachQuestion("explain_advisor", ctx).text;
+  const noLink = blueprintCoachQuestion("explain_advisor", context({ blueprint: { access_active: true } })).text;
+  for (const text of [withLink, noLink]) {
+    assert.match(text, /The Fundhub team follows up/);
+    assert.doesNotMatch(text, /Alex|advisor/i);
+  }
   const program = blueprintCoachQuestion("explain_program", ctx).text;
   assert.match(program, /same 12-month package/);
   assert.match(program, /no automatic renewal or charge/);
@@ -159,7 +164,7 @@ test("real verifier keeps a mailing promise open and closes only on stored recei
   }
 });
 
-test("advisor help uses actual saved staff and event idempotency, otherwise honest CSM queue", async () => {
+test("request_advisor saves one event-deduped team CSM-queue task and tells the client the Fundhub team follows up", async () => {
   for (const assigned of [true, false]) {
     let written;
     const ctx = context({ blueprint: { access_active: true, human_advisor: assigned ? { id: "real-advisor" } : null } });
@@ -169,14 +174,16 @@ test("advisor help uses actual saved staff and event idempotency, otherwise hone
     assert.equal(written.assigneeRole, "csm");
     assert.equal(written.eventId, "blueprint-coach:inbound-1:advisor");
     assert.match(written.detail, /Client message:/);
-    assert.match(out.message, assigned ? /advisor has a saved/ : /team's queue/);
+    assert.equal(out.message, "Your request is saved. The Fundhub team will follow up.");
+    assert.doesNotMatch(out.message, /advisor/i);
+    assert.doesNotMatch(written.title, /advisor/i);
   }
   const failure = await applyBlueprintCoachAction(fakeDb(), scope, { type: "request_advisor" }, { ...deps(), createTaskImpl: async () => ({ created: false, id: null, reason: "duplicate_race" }) });
   assert.equal(failure.ok, false);
   assert.equal(failure.message, undefined);
 });
 
-test("a saved blocker also routes one event-deduped follow-up to the assigned human", async () => {
+test("a saved blocker also routes one event-deduped follow-up to the team CSM queue", async () => {
   const db = fakeDb([[/UPDATE client_waypoints/, [{ id: "step-1" }]]]);
   let task;
   const out = await applyBlueprintCoachAction(db, scope,
@@ -187,7 +194,9 @@ test("a saved blocker also routes one event-deduped follow-up to the assigned hu
   assert.equal(task.assigneeStaffId, "real-advisor");
   assert.equal(task.eventId, "blueprint-coach:inbound-1:advisor");
   assert.match(out.message, /blocker is saved/);
-  assert.match(out.message, /advisor has a saved follow-up task/);
+  assert.equal(task.assigneeRole, "csm");
+  assert.match(out.message, /The Fundhub team will follow up/);
+  assert.doesNotMatch(out.message, /advisor/i);
 });
 
 test("reminders/call task use only current saved step and reviewed live voice identity; missing facts stay missing", () => {
