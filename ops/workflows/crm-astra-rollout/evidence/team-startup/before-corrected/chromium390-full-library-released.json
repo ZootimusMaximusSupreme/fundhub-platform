@@ -1,0 +1,22 @@
+{
+  "readyState": "complete",
+  "dependency": "object",
+  "events": [
+    "data.js loaded",
+    "DOMContentLoaded"
+  ],
+  "width": 390,
+  "pageWidth": 390,
+  "busy": "true",
+  "rowCount": 0,
+  "status": "Loading team members…",
+  "errors": [
+    "FHData is not defined"
+  ],
+  "requests": [
+    "/api/auth/session",
+    "/api/auth/session",
+    "/api/health",
+    "/api/org-brand"
+  ]
+}

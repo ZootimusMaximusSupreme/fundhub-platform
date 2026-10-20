@@ -1,0 +1,120 @@
+{
+  "started": "2026-10-20T11:37:44.976Z",
+  "commands": [
+    {
+      "phase": "isolated-world",
+      "method": "Page.createIsolatedWorld",
+      "started": "2026-10-20T11:37:52.524Z",
+      "timeoutMs": 30050,
+      "status": "completed",
+      "durationMs": 4
+    },
+    {
+      "phase": "register-cpu-observer",
+      "method": "Runtime.evaluate",
+      "started": "2026-10-20T11:37:52.528Z",
+      "timeoutMs": 60000,
+      "contextId": 5,
+      "status": "completed",
+      "durationMs": 2
+    },
+    {
+      "phase": "check-cpu-quiet",
+      "method": "Runtime.evaluate",
+      "started": "2026-10-20T11:37:52.530Z",
+      "timeoutMs": 60000,
+      "contextId": 5,
+      "status": "completed",
+      "quietMs": 1.5,
+      "durationMs": 153
+    },
+    {
+      "phase": "check-cpu-quiet",
+      "method": "Runtime.evaluate",
+      "started": "2026-10-20T11:37:57.932Z",
+      "timeoutMs": 60000,
+      "contextId": 5,
+      "status": "completed",
+      "quietMs": 5404.399999999907,
+      "durationMs": 153
+    },
+    {
+      "phase": "isolated-world",
+      "method": "Page.createIsolatedWorld",
+      "started": "2026-10-20T11:37:58.179Z",
+      "timeoutMs": 30050,
+      "status": "completed",
+      "durationMs": 0
+    }
+  ],
+  "originalMinimums": {
+    "pauseAfterFcpMs": 5250,
+    "pauseAfterLoadMs": 5250,
+    "networkQuietThresholdMs": 5250,
+    "cpuQuietThresholdMs": 5250
+  },
+  "effectiveSettings": {
+    "output": [
+      "json",
+      "html"
+    ],
+    "maxWaitForFcp": 30000,
+    "maxWaitForLoad": 45000,
+    "pauseAfterFcpMs": 5250,
+    "pauseAfterLoadMs": 5250,
+    "networkQuietThresholdMs": 1000,
+    "cpuQuietThresholdMs": 5250,
+    "formFactor": "mobile",
+    "throttling": {
+      "rttMs": 150,
+      "throughputKbps": 1638.4,
+      "requestLatencyMs": 562.5,
+      "downloadThroughputKbps": 1474.5600000000002,
+      "uploadThroughputKbps": 675,
+      "cpuSlowdownMultiplier": 4
+    },
+    "throttlingMethod": "devtools",
+    "screenEmulation": {
+      "mobile": true,
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 1,
+      "disabled": false
+    },
+    "emulatedUserAgent": "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36",
+    "auditMode": false,
+    "gatherMode": false,
+    "clearStorageTypes": [
+      "file_systems",
+      "shader_cache",
+      "service_workers",
+      "cache_storage"
+    ],
+    "disableStorageReset": false,
+    "debugNavigation": false,
+    "channel": "node",
+    "usePassiveGathering": false,
+    "disableFullPageScreenshot": true,
+    "skipAboutBlank": false,
+    "blankPage": "about:blank",
+    "ignoreStatusCode": false,
+    "locale": "en-US",
+    "blockedUrlPatterns": null,
+    "additionalTraceCategories": null,
+    "extraHeaders": null,
+    "precomputedLanternData": null,
+    "onlyAudits": null,
+    "onlyCategories": [
+      "performance"
+    ],
+    "skipAudits": null
+  },
+  "finished": "2026-10-20T11:37:58.819Z",
+  "restoredMinimums": {
+    "pauseAfterFcpMs": 5250,
+    "pauseAfterLoadMs": 5250,
+    "networkQuietThresholdMs": 5250,
+    "cpuQuietThresholdMs": 5250
+  },
+  "restored": true
+}
