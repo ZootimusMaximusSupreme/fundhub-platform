@@ -1,0 +1,47 @@
+name: Site network diagnostics (evidence only)
+
+on:
+  push:
+    branches:
+      - codex/outreach-network-diagnosis
+
+permissions:
+  contents: read
+
+jobs:
+  public-get-comparison:
+    name: Same public GETs on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 4
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    env:
+      # Match the canonical release runner's option on BOTH operating systems.
+      # This comparison does not assert that address family caused the stalls.
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check diagnostic timing, coverage and log privacy
+        shell: bash
+        run: |
+          mkdir -p artifacts/site-network
+          node --test scripts/pulse/diagnose-site-http.test.mjs | tee artifacts/site-network/tests.log
+      - name: Compare identical provider GETs at unchanged timeouts
+        shell: bash
+        run: |
+          # No install, database, credentials, sends, retries or release verdict.
+          # Both runners use the same twelve paths, provider and eight-second cap.
+          node scripts/pulse/diagnose-site-http.mjs | tee artifacts/site-network/diagnostic.jsonl
+      - name: Save diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-network-${{ runner.os }}-${{ github.sha }}
+          path: artifacts/site-network/
+          retention-days: 14
+          if-no-files-found: warn

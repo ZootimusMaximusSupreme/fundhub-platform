@@ -1,0 +1,49 @@
+name: Outreach unchanged hourly proof on the canonical release runner
+on:
+  push:
+    branches: [codex/outreach-network-diagnosis]
+    paths: [.github/workflows/outreach-mac-hourly-proof.yml]
+permissions:
+  contents: read
+jobs:
+  hourly:
+    # Same OS and Node options as ship.yml. A separate local database keeps
+    # this experiment away from production records, credentials and sends.
+    runs-on: macos-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgres://postgres@127.0.0.1:55432/fundhub_outreach_ci
+      MIGRATION_DATABASE_URL: postgres://postgres@127.0.0.1:55432/fundhub_outreach_ci
+      APP_DATABASE_URL: postgres://fundhub_app:ci_not_a_secret@127.0.0.1:55432/fundhub_outreach_ci
+      ALLOW_SUPERUSER_DB: '1'
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install the existing bundle tooling and disposable database
+        run: |
+          npm ci --ignore-scripts
+          npm install --global netlify-cli
+          brew install postgresql@17 pgvector
+          echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
+      - name: Start an isolated scratch database and apply every migration
+        id: migrate
+        run: |
+          initdb --no-locale --encoding=UTF8 --auth=trust --username=postgres -D "$RUNNER_TEMP/outreach-pg"
+          pg_ctl -D "$RUNNER_TEMP/outreach-pg" -l "$RUNNER_TEMP/outreach-pg.log" -o '-h 127.0.0.1 -p 55432' -w start
+          createdb --host=127.0.0.1 --port=55432 --username=postgres fundhub_outreach_ci
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT version(); CREATE EXTENSION IF NOT EXISTS vector;'
+          node db/migrate.mjs
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE fundhub_app LOGIN PASSWORD 'ci_not_a_secret';"
+          npm run migrations:manifest
+          git diff --exit-code -- db/expected-migrations.mjs
+      - name: Every hourly check from the actual function bundle, unchanged
+        env:
+          DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+        run: npm run pulse:prove -- --beats
+      - name: Stop only this job's scratch database
+        if: always() && steps.migrate.outcome == 'success'
+        run: pg_ctl -D "$RUNNER_TEMP/outreach-pg" -m fast -w stop
