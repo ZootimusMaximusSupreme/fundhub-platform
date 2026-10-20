@@ -1,0 +1,76 @@
+{
+  "scope": "Local static page with labeled synthetic bank/session API fixtures. No production server, records, email, calls or outreach were used. Navigation has no field INP; total blocking time is a lab diagnostic, not INP. Local TTFB does not prove production response time.",
+  "version": "13.5.0",
+  "measuredAt": "2026-10-20T07:56:20.047Z",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "osRelease": "25.6.0",
+    "chromium": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36"
+  },
+  "viewport": "390x844",
+  "network": "DevTools 150ms request latency, 1600Kbps download, 750Kbps upload",
+  "cpu": "4x slowdown",
+  "postAuditRenderCheck": {
+    "title": "Fixture Mesa Community Bank",
+    "rows": 25,
+    "role": "outbound_rep",
+    "width": 390,
+    "horizontalOverflow": false
+  },
+  "metrics": {
+    "lcpMs": 1398.314,
+    "cls": 0.0020216259224255452,
+    "totalBlockingTimeMs": 0,
+    "localTtfbMs": 6,
+    "jsTransferBytes": 197289,
+    "pageTransferBytes": 340818
+  },
+  "performanceScore": 1,
+  "warnings": [],
+  "apiRequests": [
+    {
+      "method": "GET",
+      "path": "/api/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/read/bank-outreach"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/org-brand"
+    }
+  ],
+  "sourceSha256": {
+    "public/app/bank-outreach.html": "91622e1970c0d6496930dc746427dca84050d0f7d6ef55b4a8b7119b638303ed",
+    "public/app/bank-outreach.css": "91337f6c8cfdfa3ee7a277431952fb21c0bb71a93e9c753138e543c2db846ebc",
+    "public/app/bank-outreach.js": "06d959c4517fb595515af8298e4ce35beeea374e00d6e9d6c3df928bf2782678"
+  },
+  "rawReport": {
+    "path": "/private/tmp/fundhub-outreach-lighthouse.ApQVDL/lighthouse-mobile-fixture.report.json",
+    "bytes": 279149,
+    "sha256": "d8f7ebe8cb39f981f7c7c0ed6b9e67a42696dadfb128aa2295d1cb02b87c258b"
+  },
+  "reproduction": {
+    "workingDirectory": "repository root",
+    "commands": [
+      "npm install --prefix /private/tmp/fundhub-outreach-lighthouse.ApQVDL --no-save --package-lock=false --ignore-scripts lighthouse@13.5.0",
+      "LIGHTHOUSE_TOOL_ROOT=/private/tmp/fundhub-outreach-lighthouse.ApQVDL node ops/workflows/build-evidence/bank-outreach/lighthouse-local-fixture.mjs"
+    ],
+    "notes": "Use an isolated temporary directory for the tool install. Reuses the existing browser selected by playwright.config.mjs; PLAYWRIGHT_CHROMIUM can select another installed Chromium. The server binds only to localhost and never proxies API requests."
+  },
+  "budgets": {
+    "lcp": true,
+    "cls": true,
+    "js": true,
+    "page": true,
+    "fieldInp": "Not measured",
+    "productionTtfb": "Not measured"
+  }
+}

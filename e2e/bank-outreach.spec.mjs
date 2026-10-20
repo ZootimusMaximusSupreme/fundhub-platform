@@ -12,7 +12,7 @@ const contacts = [{ id: 'contact-1', name: 'Avery Lane', title: 'Business banker
 const facts = { minimum_score: 'unknown', minimum_time_in_business_years: 2, minimum_revenue_threshold: 250000, bureaus_pulled: ['EX', 'EQ'], inquiry_tolerance: 'Up to 3 in 6 months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown' };
 const product = { id: 'product-1', product_name: 'Business working capital line', lender_table: 'BizLOC_Documented', facts, evidence: 'Avery Lane · banker email · October 19, 2026', verified_at: null };
 
-async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false } = {}) {
+async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false } = {}) {
   const posts = [], reads = [], faults = { detail: false, team: false }, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
   if (draft) data.products[0].draft = { ...structuredClone(product), product_name: 'Proposed business line', facts: { ...facts, minimum_score: 680 } };
   let release; const pending = new Promise(resolve => { release = resolve; });
@@ -26,6 +26,8 @@ async function fixture(page, { manager = false, state = 'full', failWrite = fals
       if (query.view === 'team') return { ...base, byRep: state === 'empty' ? [] : [{ staff_id: 'rep-1', name: 'Casey Reed', total: 14, verified_partners: 7, due_now: 8 }, { staff_id: 'rep-2', name: 'Morgan Ellis', total: 13, verified_partners: 5, due_now: 10 }], byState: state === 'empty' ? [] : ['AZ', 'SC', 'FL', 'CA'].map(state => ({ state, total: 7, verified_partners: 3, due_now: 4 })) };
       if (state === 'loading') await pending;
       if (state === 'error') return { ok: false, message: 'The bank list is temporarily unavailable.' };
+      if (filteredEmpty && (query.q || query.state || query.status)) return { ...base, total: 0, items: [] };
+      if (filteredInactive && ['paused', 'closed'].includes(query.status)) { data.account = { ...account(0), status: query.status }; return { ...base, total: 1, items: [data.account] }; }
       return { ...base, total: state === 'empty' ? 0 : 27, items: state === 'empty' ? [] : Array.from({ length: Number(query.offset || 0) ? 2 : 25 }, (_, i) => account(i + Number(query.offset || 0))) };
     },
     '/api/bank-outreach': async route => {
@@ -191,6 +193,97 @@ test('oversized CSV keeps the reviewed data and explains how to recover', async 
   await fixture(page, { manager: true }); await page.locator('#import-open').click(); await page.locator('#import-form textarea').fill('CERT,NAME,STALP\n123,Kept Bank,AZ');
   await page.locator('#import-file').setInputFiles({ name: 'too-large.csv', mimeType: 'text/csv', buffer: Buffer.alloc(5000001) });
   await expect(page.locator('#import-message')).toContainText('under 5 MB'); await expect(page.locator('#import-form textarea')).toHaveValue('CERT,NAME,STALP\n123,Kept Bank,AZ');
+});
+
+test('unanswered product facts stay distinct from explicit unknown, zero and no', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page);
+  env.data.products[0].facts = { ...facts, minimum_score: null, minimum_time_in_business_years: 0, minimum_revenue_threshold: '', bureaus_pulled: [] };
+  await page.locator('#work-next').click(); await page.locator('[data-section="products"]').click();
+  await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-unanswered-facts-drawer`, '.record-facts');
+  const fact = label => page.locator('.record-facts dt').filter({ hasText: new RegExp(`^${label}$`) }).locator('+ dd');
+  await expect(fact('Minimum score')).toHaveText('Unanswered');
+  await expect(fact('Minimum revenue')).toHaveText('Unanswered');
+  await expect(fact('Bureaus pulled')).toHaveText('Unanswered');
+  await expect(fact('Paper application URL')).toHaveText('Unknown');
+  await expect(fact('Minimum years in business')).toHaveText('0');
+  await expect(fact('Stated income')).toHaveText('No');
+  await page.getByRole('button', { name: 'Edit facts', exact: true }).click();
+  await expect(page.locator('[name="minimum_score"]')).toHaveValue('');
+  await expect(page.locator('[name="paper_application_url"]')).toHaveValue('unknown');
+  expect(env.posts).toEqual([]);
+});
+
+test('saved banker email and phone open manual contact targets without a Fundhub send', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page);
+  env.data.contacts[0].email = 'avery+business@bank.example';
+  env.data.contacts[0].phone = '+1 (602) 555-0101';
+  env.data.contacts.push({ id: 'contact-2', name: 'No contact details', title: 'Research contact', email: '', phone: '', linkedin_url: '' });
+  env.data.contacts.push({ id: 'contact-3', name: 'Branch desk', phone: '+1 602-555-0102 ext. 42' });
+  env.data.contacts.push({ id: 'contact-4', name: 'Unconfirmed phone', phone: 'Ask for branch number' });
+  env.data.contacts.push({ id: 'contact-5', name: 'Query characters', email: 'queries?subject=Injected&bcc=other@bank.example' });
+  env.data.contacts.push({ id: 'contact-6', name: 'Control characters', email: 'desk@bank.example\r\nBcc: hidden@bank.example' });
+  await page.locator('#work-next').click(); await page.locator('[data-section="contacts"]').click();
+  await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-manual-contact-drawer`, '#contact-list');
+  const email = page.getByRole('link', { name: 'Email Avery Lane' }), phone = page.getByRole('link', { name: 'Call Avery Lane' });
+  await expect(email).toHaveAttribute('href', 'mailto:avery%2Bbusiness@bank.example');
+  await expect(phone).toHaveAttribute('href', 'tel:+16025550101');
+  await expect(page.getByRole('link', { name: 'Call Branch desk' })).toHaveAttribute('href', 'tel:+16025550102;ext=42');
+  await expect(page.getByRole('link', { name: 'Call Unconfirmed phone' })).toHaveCount(0);
+  const queryEmail = page.getByRole('link', { name: 'Email Query characters' });
+  await expect(queryEmail).toHaveAttribute('href', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example');
+  expect(await queryEmail.evaluate(link => new URL(link.href).search)).toBe('');
+  await expect(page.getByRole('link', { name: 'Email Control characters' })).toHaveCount(0);
+  for (const link of [email, phone]) expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(40);
+  await expect(page.locator('.saved-record').filter({ hasText: 'No contact details' }).getByRole('link')).toHaveCount(0);
+  await page.evaluate(() => {
+    window.__manualContactTargets = [];
+    document.querySelector('#contact-list').addEventListener('click', event => {
+      const anchor = event.target.closest('a[href^="mailto:"],a[href^="tel:"]');
+      if (anchor) { event.preventDefault(); window.__manualContactTargets.push(anchor.getAttribute('href')); }
+    });
+  });
+  await email.click(); await phone.click(); await page.getByRole('link', { name: 'Call Branch desk' }).click(); await queryEmail.click();
+  expect(await page.evaluate(() => window.__manualContactTargets)).toEqual(['mailto:avery%2Bbusiness@bank.example', 'tel:+16025550101', 'tel:+16025550102;ext=42', 'mailto:queries%3Fsubject%3DInjected%26bcc%3Dother@bank.example']);
+  expect(env.posts).toEqual([]);
+});
+
+for (const manager of [false, true]) {
+  test(`${manager ? 'manager' : 'rep'} filtered empty queue clears filters instead of suggesting new imports`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
+    const env = await fixture(page, { manager, filteredEmpty: true });
+    if (manager) await page.locator('#queue-view').click();
+    await page.getByLabel('Search banks').fill('No matching bank');
+    await expect(page.locator('#empty-action')).toBeVisible();
+    await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-${manager ? 'manager' : 'rep'}-filtered-empty`, '#queue-state');
+    await expect(page.locator('#queue-state')).toContainText('No banks match your filters');
+    await expect(page.locator('#empty-action')).toHaveText('Clear filters');
+    await expect(page.locator('#queue-state')).not.toContainText('Import official bank lists');
+    await page.locator('#empty-action').click();
+    await expect(page.getByLabel('Search banks')).toHaveValue('');
+    await expect(page.locator('#queue-rows tr')).toHaveCount(25);
+    await expect.poll(() => env.reads.at(-1)).toMatchObject({ q: '', state: '', status: '', offset: '0' });
+    expect(env.posts).toEqual([]);
+  });
+}
+
+test('inactive filtered banks stay visible without claiming there are no matching banks', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const env = await fixture(page, { filteredInactive: true });
+  for (const status of ['paused', 'closed']) {
+    await page.locator('#status').selectOption(status);
+    await expect(page.locator('#queue-rows tr')).toHaveCount(1);
+    await expect(page.locator('#queue-rows .status-tag')).toHaveText(status === 'paused' ? 'Paused' : 'Closed');
+    await capture(page, `390-${process.env.BANK_OUTREACH_EVIDENCE_PHASE || 'fixed'}-${status}-overview`, '#work-hero');
+    await expect(page.locator('#hero-value')).toHaveText('No active bank in this view');
+    await expect(page.locator('#work-next')).toBeHidden();
+    await page.locator('.open-bank').click();
+    await expect(page.locator('#bank-title')).toHaveText('Mesa Community Bank');
+    await expect.poll(() => env.reads.at(-1)).toMatchObject({ id: 'bank-0' });
+    await page.locator('#drawer-close').click();
+  }
+  expect(env.posts).toEqual([]);
 });
 
 test('cold phone performance: Slow 4G and 4x CPU with fixture API', async ({ page }) => {

@@ -3,14 +3,14 @@
   "viewport": "390x844",
   "network": "150ms latency / 1.6Mbps down / 750Kbps up",
   "cpu": "4x slowdown",
-  "measured_at": "2026-10-20T05:41:12.116Z",
-  "lcp": 1060,
+  "measured_at": "2026-10-20T07:54:22.076Z",
+  "lcp": 1040,
   "cls": 0.0018602176500977065,
-  "interaction": 88,
+  "interaction": 112,
   "shifts": [
     {
       "value": 0.0018602176500977065,
-      "at": 2133.0999999940395,
+      "at": 2134,
       "sources": [
         {
           "tag": "FORM",
@@ -65,8 +65,8 @@
       ]
     }
   ],
-  "ttfb": 70.80000001192093,
-  "htmlBytes": 20815,
+  "ttfb": 42.79999998211861,
+  "htmlBytes": 20825,
   "resources": [
     {
       "url": "/assets/fonts/nunito-latin-variable.woff2",
@@ -77,32 +77,32 @@
       "bytes": 1967
     },
     {
-      "url": "/app/fundhub-brand.css",
-      "bytes": 21438
-    },
-    {
       "url": "/app/crm-sidebar.css",
       "bytes": 7644
     },
     {
-      "url": "/app/fundhub-font.js",
-      "bytes": 918
-    },
-    {
-      "url": "/app/bank-outreach.css",
-      "bytes": 9596
+      "url": "/app/fundhub-brand.css",
+      "bytes": 21438
     },
     {
       "url": "/app/workspace-ui.css",
       "bytes": 10537
     },
     {
-      "url": "/app/shell.js",
-      "bytes": 166103
+      "url": "/app/bank-outreach.css",
+      "bytes": 9709
+    },
+    {
+      "url": "/app/fundhub-font.js",
+      "bytes": 918
     },
     {
       "url": "/app/bank-outreach.js",
-      "bytes": 27916
+      "bytes": 29359
+    },
+    {
+      "url": "/app/shell.js",
+      "bytes": 166103
     },
     {
       "url": "/api/auth/session",
@@ -129,6 +129,6 @@
       "bytes": 1360
     }
   ],
-  "jsBytes": 194937,
-  "pageBytes": 340330
+  "jsBytes": 196380,
+  "pageBytes": 341896
 }
