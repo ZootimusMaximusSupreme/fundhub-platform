@@ -96,14 +96,27 @@ test('filters, save, import, add, export, bureau zero/null, and keyboard preserv
 });
 
 test('client scope retains match query and safe proxy Apply without a direct bank link', async ({ page }) => {
-  const queries = [];
-  await page.addInitScript(() => { window.__applies = []; });
-  await openScreen(page, '/app/lenders.html?client_id=' + CLIENT_ID, OWNER, { '/api/read/lender-matches': (_route, { url }) => { queries.push(Object.fromEntries(new URL(url).searchParams)); return { ok: true, matches: [lender(), lender(1)] }; }, '/api/read/lender-observations': { ok: true, observations: [] } });
-  await page.evaluate(() => { window.FHProxyApply.applyToLender = payload => window.__applies.push(payload); });
+  await safeExternal(page);
+  const queries = [], launches = [], popups = [], bankRequests = [];
+  page.on('popup', popup => popups.push(popup));
+  page.on('request', request => { if (new URL(request.url()).hostname === 'bank.example') bankRequests.push(request.url()); });
+  await openScreen(page, '/app/lenders.html?client_id=' + CLIENT_ID, OWNER, {
+    '/api/read/lender-matches': (_route, { url }) => { queries.push(Object.fromEntries(new URL(url).searchParams)); return { ok: true, matches: [lender(), lender(1)] }; },
+    '/api/read/lender-observations': { ok: true, observations: [] },
+    '/api/proxy/launch': route => { launches.push({ method: route.request().method(), body: route.request().postDataJSON() }); return json(route, { ok: false, error: 'controlled_proxy_refusal', message: 'Controlled proxy launch refused.' }, 503); }
+  });
   await expect(page.locator('[data-fh-apply]')).toHaveCount(1); await expect(page.locator('#applyClientBanner')).toContainText('If the add-on is off');
-  await page.locator('[data-fh-apply]').click(); expect(await page.evaluate(() => window.__applies)).toEqual([{ clientId: CLIENT_ID, lenderId: 'lender-0', lenderName: 'Mesa Community Bank' }]);
+  await expect(page.locator('[data-fh-apply]')).toHaveAttribute('data-lender-name', 'Mesa Community Bank');
+  await page.locator('[data-fh-apply]').click();
+  const modal = page.locator('#fh-proxy-apply-modal');
+  await expect(modal).toContainText('Controlled proxy launch refused.');
+  await expect(modal).toContainText('Browser routing is NOT active');
+  await expect(modal).toContainText('bank application was not opened');
+  expect(launches).toEqual([{ method: 'POST', body: { client_id: CLIENT_ID, lender_id: 'lender-0', application_id: null } }]);
+  await modal.getByRole('button', { name: 'Close', exact: true }).click();
   await page.locator('#fTable').selectOption('PersonalLOC'); await page.locator('#btnFilter').click(); await expect.poll(() => queries.at(-1)).toEqual({ client_id: CLIENT_ID, lender_table: 'PersonalLOC' });
   await expect(page.locator('a[href="https://bank.example/apply"]')).toHaveCount(0);
+  expect(launches).toHaveLength(1); expect(popups).toHaveLength(0); expect(bankRequests).toHaveLength(0);
 });
 
 test('list/review/bureau errors offer retry and never claim successful emptiness', async ({ page }) => {
