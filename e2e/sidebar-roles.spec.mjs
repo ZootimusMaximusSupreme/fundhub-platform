@@ -32,6 +32,14 @@ const SETTER = {
   }
 };
 
+const OUTBOUND_REP = {
+  ok: true,
+  staff: {
+    id: "staff-outbound", name: "Casey Outreach", email: "casey@fundhub.ai",
+    role: "outbound_rep", org_id: "org-1", status: "active"
+  }
+};
+
 const CLOSER_DESK = ["my-numbers.html"];
 const SALES_FLOOR = ["sales-floor.html"];
 /* The lender database. ROLE_SETS.LENDERS at the API (owner, admin,
@@ -40,6 +48,7 @@ const ADVISOR_ONLY = ["lenders.html"];
 const OWNER_ADMIN_ONLY = ["contracts.html"];
 const RETIRED = ["journeys.html", "hiring.html"];
 const PORTAL_ONLY = ["client-portal.html", "affiliate.html"];
+const OUTREACH = ["bank-outreach.html"];
 
 async function waitForGate(page) {
   await page.waitForFunction(() => {
@@ -96,14 +105,14 @@ test.describe("sidebar role visibility", () => {
     const hrefs = await visibleNavHrefs(page);
     expectIncludes(hrefs, CLOSER_DESK);
     expectIncludes(hrefs, ["pipeline.html", "closer-dashboard.html"]);
-    expectExcludes(hrefs, [...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...ADVISOR_ONLY]);
+    expectExcludes(hrefs, [...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...ADVISOR_ONLY, ...OUTREACH]);
     for (const h of hrefs) expect(SCREENS.has(h), `broken nav link ${h}`).toBe(true);
   });
 
   test("sales_manager sees sales floor, not closer desk", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", SALES_MANAGER);
     const hrefs = await visibleNavHrefs(page);
-    expectIncludes(hrefs, SALES_FLOOR);
+    expectIncludes(hrefs, [...SALES_FLOOR, ...OUTREACH]);
     expectExcludes(hrefs, [...CLOSER_DESK, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...ADVISOR_ONLY]);
     for (const h of hrefs) expect(SCREENS.has(h), `broken nav link ${h}`).toBe(true);
   });
@@ -111,7 +120,7 @@ test.describe("sidebar role visibility", () => {
   test("owner sees the active desks and owner-only rows, not retired rows", async ({ page }) => {
     await openScreen(page, "/app/pipeline.html", OWNER);
     const hrefs = await visibleNavHrefs(page);
-    expectIncludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...ADVISOR_ONLY]);
+    expectIncludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...ADVISOR_ONLY, ...OUTREACH]);
     expectExcludes(hrefs, RETIRED);
     for (const h of hrefs) expect(SCREENS.has(h), `broken nav link ${h}`).toBe(true);
   });
@@ -120,7 +129,7 @@ test.describe("sidebar role visibility", () => {
     await openScreen(page, "/app/pipeline.html", FUNDING_ADVISOR);
     const hrefs = await visibleNavHrefs(page);
     expectIncludes(hrefs, ["pipeline.html", ...ADVISOR_ONLY]);
-    expectExcludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY]);
+    expectExcludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...OUTREACH]);
     for (const h of hrefs) expect(SCREENS.has(h), `broken nav link ${h}`).toBe(true);
   });
 
@@ -128,8 +137,14 @@ test.describe("sidebar role visibility", () => {
     await openScreen(page, "/app/pipeline.html", SETTER);
     const hrefs = await visibleNavHrefs(page);
     expectIncludes(hrefs, ["pipeline.html"]);
-    expectExcludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...ADVISOR_ONLY]);
+    expectExcludes(hrefs, [...CLOSER_DESK, ...SALES_FLOOR, ...OWNER_ADMIN_ONLY, ...RETIRED, ...PORTAL_ONLY, ...ADVISOR_ONLY, ...OUTREACH]);
     for (const h of hrefs) expect(SCREENS.has(h), `broken nav link ${h}`).toBe(true);
+  });
+  test("outbound rep sees only the assigned-bank outreach workspace", async ({ page }) => {
+    await openScreen(page, "/app/bank-outreach.html", OUTBOUND_REP);
+    expect(await visibleNavHrefs(page)).toEqual(OUTREACH);
+    await expect(page.locator("#fh-shell-search-btn")).toHaveCount(0);
+    await expect(page.locator("#fh-chat-fab")).toHaveCount(0);
   });
 });
 
@@ -174,6 +189,6 @@ test.describe("sidebar fixed geometry", () => {
     await waitForGate(page);
     const heads = await page.locator("aside.side .navhead").allTextContents();
     const labels = heads.map((h) => h.replace(/[▾⌄]/g, "").trim());
-    expect(labels).toEqual(["Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
+    expect(labels).toEqual(["Relationships", "Your work", "Clients", "Insights", "Marketing", "Automation", "Manage"]);
   });
 });

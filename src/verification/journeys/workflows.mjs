@@ -5,6 +5,37 @@ import { insertClient } from "../insert-client.mjs";
 import { CANONICAL_EVENTS } from "../../events/canonical.mjs";
 import { functions } from "../../workflows/index.mjs";
 
+export const REQUIRED_WORKFLOW_CONTRACTS = Object.freeze({
+  's-01-new-lead-intake': { event: 'entry.captured' },
+  's-04-call-booked': { event: 'booking.created' },
+  'c-00-crs-soft-pull-request': { event: 'diagnostic.paid' },
+  'c-06-crs-results-router': { event: 'analysis.completed' },
+  'f-01-funding-intake': { event: 'round.started' },
+  'f-07-funding-locked': { event: 'round.funded' },
+  'contract-chaser': { cron: '0 10 * * *' },
+  'message-dispatch-sweeper': { cron: '*/5 * * * *' },
+  'daily-pulse': { cron: 'TZ=America/Phoenix 0 6 * * *' },
+  'evening-brief': { cron: '0 4 * * *' },
+  'bank-outreach-checkins': { cron: 'TZ=America/Phoenix 0 7 * * *' }
+});
+
+function workflowId(fn) {
+  return (typeof fn?.id === 'function' ? fn.id() : fn?.id) || fn?.opts?.id || null;
+}
+
+export function assertWorkflowRegistry(registry, collector, context = {}) {
+  const base = { ...context, file: 'src/workflows/index.mjs' };
+  const ids = registry.map(workflowId);
+  const checks = [collector.assertEq({ ...base, id: 'wf-unique-ids', claim: 'Every registered workflow has a unique nonempty ID', expected: true, actual: ids.every(id => typeof id === 'string' && id.trim().length > 0) && new Set(ids).size === ids.length })];
+  checks.push(collector.assertEq({ ...base, id: 'wf-callable-handlers', claim: 'Every registered workflow has an invokable handler', expected: true, actual: registry.every(fn => typeof fn === 'function' || typeof fn?.fn === 'function') }));
+  for (const [id, contract] of Object.entries(REQUIRED_WORKFLOW_CONTRACTS)) {
+    const matches = registry.filter(fn => workflowId(fn) === id);
+    const key = contract.event ? 'event' : 'cron';
+    checks.push(collector.assertEq({ ...base, id: `wf-required-${id}`, claim: `Required workflow ${id} is registered once with its ${key}`, expected: true, actual: matches.length === 1 && matches[0]?.opts?.triggers?.some(trigger => trigger[key] === contract[key]) === true }));
+  }
+  return checks.every(check => check.status === 'PASS');
+}
+
 function stepFake(log) {
   return {
     async run(name, fn) {
@@ -52,7 +83,7 @@ export async function runWorkflowJourney(db, ctx, collector) {
 
   const catalog = [];
   for (const fn of functions) {
-    const id = fn?.id?.() || fn?.opts?.id || fn?.name || "unknown";
+    const id = workflowId(fn) || "unknown";
     const name = fn?.name || id;
     let eventName = triggerEvent(fn);
     // Fallback: grep the module file from stack / known list by name
@@ -73,13 +104,7 @@ export async function runWorkflowJourney(db, ctx, collector) {
     catalog.push({ id: String(id), name: String(name), event: eventName, fn });
   }
 
-  collector.assertEq({
-    section, journey, role, id: "wf-count",
-    claim: "Workflow registry has 49–50 functions (contract chaser + sweeper included)",
-    expected: true,
-    actual: functions.length >= 49 && functions.length <= 51,
-    file: "src/workflows/index.mjs"
-  });
+  const registryValid = assertWorkflowRegistry(functions, collector, { section, journey, role });
 
   // Build event → workflows index
   const byEvent = new Map();
@@ -194,14 +219,14 @@ export async function runWorkflowJourney(db, ctx, collector) {
 
   steps.push({
     step: "Drive workflows from canonical events",
-    status: errored.length ? "FAIL" : "PASS",
+    status: errored.length || !registryValid ? "FAIL" : "PASS",
     persisted: `reacted=${reacted.length} errored=${errored.length} never=${never.length} orphanEvents=${orphanEvents.length}`
   });
 
   return {
     note: {
       title: "G. Workflow engine",
-      usableToday: errored.length === 0,
+      usableToday: registryValid && errored.length === 0,
       steps,
       body: [
         `Registered workflows: ${functions.length}`,
@@ -213,7 +238,7 @@ export async function runWorkflowJourney(db, ctx, collector) {
       ].join("\n")
     },
     clientIds: [client.id],
-    usableToday: errored.length === 0,
+    usableToday: registryValid && errored.length === 0,
     catalog: { reacted, errored, never, orphanEvents, total: functions.length }
   };
 }

@@ -26,6 +26,7 @@ export const ALL_KINDS = ["staff", "client", "affiliate", "partner"];
 /* resolvePrincipal — request → principal or null. Never throws. */
 export async function resolvePrincipal(req, { db = defaultDb, env = process.env } = {}) {
   const staffResult = await authenticate(req, { db, env });
+  if (req.authForbidden) return null;
   // Short-circuit: if the staff check could not run, the account check is about
   // to fail the same way. Falling through would still be correct but would
   // double the timeout during an outage.
@@ -77,6 +78,10 @@ export async function requirePrincipal(req, res, kinds, opts = {}) {
     return null;
   }
   if (!principal) {
+    if (req.authForbidden) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return null;
+    }
     res.status(401).json({ ok: false, error: "unauthorized" });
     return null;
   }

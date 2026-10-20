@@ -16,6 +16,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { createContext, runInContext } from "node:vm";
 
 import { launchProxySession, endActiveProxySession, ProxySessionError } from "../../../proxy/launch.mjs";
 import { ORG, ago, contractSql, id } from "./fin-b07-case-runner.mjs";
@@ -256,4 +258,80 @@ test("Apply sends this client and this lender, and the dialog's Copy, End sessio
   await page.waitForFunction(() => document.getElementById("fh-proxy-apply-modal").style.display === "none");
   assert.equal(record.end.length, 1, "Close does not end the session");
   await page.close();
+});
+
+test("Apply still sends exactly once when lender rows render before the deferred shell and DOMContentLoaded", async (t) => {
+  const { open } = await startScreens(t);
+  const record = { launch: [], end: [] };
+  let page, releaseShell, receivePage;
+  const shellGate = new Promise(resolve => { releaseShell = resolve; });
+  const pageReady = new Promise(resolve => { receivePage = resolve; });
+  const opening = open(`/app/lenders.html?client_id=${PAGE_CLIENT}`, {
+    session: OWNER, handlers: applyHandlers(record), viewport: { width: 1280, height: 2000 },
+    init: () => {
+      window.__proofDOMContentLoaded = false;
+      document.addEventListener("DOMContentLoaded", () => { window.__proofDOMContentLoaded = true; });
+    },
+    before: async candidate => {
+      page = candidate;
+      await page.route("**/shell.js", async route => { await shellGate; await route.continue(); });
+      receivePage();
+    },
+  });
+  try {
+    await pageReady;
+    await page.waitForSelector("#lenderBody button[data-fh-apply]");
+    assert.equal(await page.evaluate(() => window.__proofDOMContentLoaded), false, "rows really rendered before startup binding; do not delay the lender response to hide this order");
+    releaseShell();
+    await opening;
+    assert.equal(await page.evaluate(() => window.__proofDOMContentLoaded), true);
+    // A repeated shared bind must be harmless, including the actual DOMContentLoaded bind.
+    await page.evaluate(() => window.FHProxyApply.bindApplyButtons(document));
+    await page.locator("#lenderBody button[data-fh-apply]").click();
+    await page.locator("#fh-proxy-apply-modal").getByRole("button", { name: "End session", exact: true }).waitFor();
+    assert.deepEqual(record.launch, [{ client_id: PAGE_CLIENT, lender_id: WITH_URL, application_id: null }], "one actual Apply click must launch only once across both startup orders");
+    assert.equal(record.end.length, 0, "starting Apply never ends a session");
+  } finally {
+    releaseShell();
+    await opening.catch(() => {});
+    if (page) await page.close();
+  }
+});
+
+test("the exact shared binder keeps current row wiring single, while the old direct listener makes the one-launch assertion red", () => {
+  const proxy = readFileSync(new URL("../../../../public/app/proxy-apply.js", import.meta.url), "utf8");
+  const start = proxy.indexOf("  function bindApplyButtons(root) {");
+  const end = proxy.indexOf("\n\n  // Probe once DOM is ready", start);
+  assert(start >= 0 && end > start, "use the real shared binder, not a stand-in implementation");
+  const binder = proxy.slice(start, end);
+  const lenders = readFileSync(new URL("../../../../public/app/lenders.html", import.meta.url), "utf8");
+  const marker = '        ab.setAttribute("data-lender-name", L.name || "Lender");';
+  const wiringStart = lenders.indexOf(marker);
+  const wiringEnd = lenders.indexOf("\n      } else if (scopedClientId && !L.application_url)", wiringStart);
+  assert(wiringStart >= 0 && wiringEnd > wiringStart);
+  const wiring = lenders.slice(wiringStart + marker.length, wiringEnd);
+  const expected = [{ client_id: PAGE_CLIENT, lender_id: WITH_URL, application_id: null }];
+  function oneClick(source) {
+    const clicks = [], launched = [], children = [];
+    const attributes = { "data-client-id": PAGE_CLIENT, "data-lender-id": WITH_URL, "data-lender-name": "Mesa Community Bank" };
+    const button = { textContent: "Apply", getAttribute: name => attributes[name] ?? null, addEventListener: (type, fn) => { assert.equal(type, "click"); clicks.push(fn); } };
+    const cell = { appendChild: child => children.push(child), querySelectorAll: selector => { assert.equal(selector, "[data-fh-apply]"); return children; } };
+    const apply = opts => launched.push({ client_id: opts.clientId, lender_id: opts.lenderId || null, application_id: opts.applicationId || null });
+    const context = createContext({ ab: button, applyCell: cell, document: cell, scopedClientId: PAGE_CLIENT, L: { id: WITH_URL, name: "Mesa Community Bank" }, applyToLender: apply, window: { FHProxyApply: { applyToLender: apply } } });
+    runInContext(binder, context);
+    context.window.FHProxyApply.bindApplyButtons = context.bindApplyButtons;
+    runInContext(source, context);
+    context.bindApplyButtons(cell); // Later DOMContentLoaded startup uses this exact function.
+    for (const click of clicks) click({ preventDefault() {} });
+    return launched;
+  }
+  assert.deepEqual(oneClick(wiring), expected);
+  const oldDirectBinding = `ab.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    window.FHProxyApply.applyToLender({ clientId: scopedClientId, lenderId: L.id, lenderName: L.name || "Lender" });
+  });
+  applyCell.appendChild(ab);`;
+  const broken = oneClick(oldDirectBinding);
+  assert.equal(broken.length, 2, "negative control recreates the old direct plus shared startup listeners");
+  assert.throws(() => assert.deepEqual(broken, expected), { name: "AssertionError" }, "the exact one-launch check must reject the measured old defect");
 });

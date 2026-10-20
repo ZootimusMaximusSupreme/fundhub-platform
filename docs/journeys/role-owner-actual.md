@@ -47,12 +47,12 @@ flowchart TD
     CAN --> A_privacy[privacy — 1 route]
     CAN --> A_proxy[proxy — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 67 routes]
+    CAN --> A_read[Reading data — 68 routes]
     CAN --> A_repair[repair — 5 routes]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 7 routes]
     CAN --> A_staff[staff — 3 routes]
-    CAN --> A_top_level[Everything else — 43 routes]
+    CAN --> A_top_level[Everything else — 44 routes]
     CAN --> A_trials[trials — 4 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
     WHO -->|Yes| CANT[Blocked — 10 routes]
@@ -66,7 +66,7 @@ flowchart TD
 
 ## What they can reach
 
-**319 of 329 routes.**
+**321 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -93,6 +93,7 @@ flowchart TD
 | `/api/auth/staff-role` | POST | owner, admin |
 | `/api/auth/staff-update` | POST | owner, admin |
 | `/api/auth/suspend` | POST | owner, admin |
+| `/api/bank-outreach` | POST | owner, admin, sales_manager, outbound_rep |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
@@ -305,6 +306,7 @@ flowchart TD
 | `/api/read/agents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ai-bureau-config` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/bank-inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/blueprint-combined-approval` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/call-outcomes` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -399,7 +401,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**10 of 329 routes.**
+**10 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

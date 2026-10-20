@@ -19,6 +19,7 @@ import { commasInboxDrain } from './commas-inbox-drain.mjs';
 import { whopBillingInboxDrain } from './whop-billing-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
+import { bankOutreachCheckins } from './bank-outreach-checkins.mjs';
 import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
@@ -101,6 +102,7 @@ import { u05DataHealthMonitor } from './u-05-data-health-monitor.mjs';
 import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
 
 export const functions = [
+  bankOutreachCheckins,
   af01AffiliateDrip,
   af02ReferralOwnershipCapture,
   aiSet01JoshSetter,

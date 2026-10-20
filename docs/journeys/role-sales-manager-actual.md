@@ -37,12 +37,12 @@ flowchart TD
     CAN --> A_money[money — 17 routes]
     CAN --> A_ops[ops — 2 routes]
     CAN --> A_public[public — 19 routes]
-    CAN --> A_read[Reading data — 56 routes]
+    CAN --> A_read[Reading data — 57 routes]
     CAN --> A_repair[repair — 1 route]
     CAN --> A_scripts[scripts — 2 routes]
     CAN --> A_social[social — 4 routes]
     CAN --> A_staff[staff — 2 routes]
-    CAN --> A_top_level[Everything else — 31 routes]
+    CAN --> A_top_level[Everything else — 32 routes]
     CAN --> A_trials[trials — 2 routes]
     CAN --> A_webhooks[Incoming webhooks — 1 route]
     WHO -->|Yes| CANT[Blocked — 125 routes]
@@ -77,7 +77,7 @@ flowchart TD
 
 ## What they can reach
 
-**204 of 329 routes.**
+**206 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|
@@ -95,6 +95,7 @@ flowchart TD
 | `/api/auth/magic-link-verify` | — | anyone |
 | `/api/auth/reset` | POST | anyone |
 | `/api/auth/session` | — | anyone |
+| `/api/bank-outreach` | POST | owner, admin, sales_manager, outbound_rep |
 | `/api/banking/accounts` | GET, POST | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/banking/link-exchange` | POST | owner, admin, sales_manager, closer |
 | `/api/banking/link-token` | POST | owner, admin, sales_manager, closer |
@@ -224,6 +225,7 @@ flowchart TD
 | `/api/read/agents` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/ai-bureau-config` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/bank-inbox` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
+| `/api/read/bank-outreach` | GET | owner, admin, sales_manager, outbound_rep |
 | `/api/read/banking-surface` | GET | owner, admin, sales_manager |
 | `/api/read/blueprint-combined-approval` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
 | `/api/read/call-outcomes` | GET | owner, admin, funding_advisor, closer, inquiry_specialist, setter, sales_manager, csm |
@@ -295,7 +297,7 @@ flowchart TD
 
 ## What they are blocked from
 
-**125 of 329 routes.**
+**125 of 331 routes.**
 
 | Route | Methods | Who the code lets in |
 |---|---|---|

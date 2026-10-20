@@ -14,6 +14,7 @@
 // A changed control text stops matching and the row goes back to not proved.
 
 export const S5_DISPLAY_ROWS = Object.freeze([
+  Object.freeze({"name":"sidebar-bank-outreach","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Relationships > Bank outreach (bank-outreach.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
   Object.freeze({"name":"sidebar-pipeline","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Pipeline (pipeline.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
   Object.freeze({"name":"sidebar-closer-dashboard","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > Closer Dashboard (closer-dashboard.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),
   Object.freeze({"name":"sidebar-my-numbers","sourceFile":"desks-f.json","surface":"sidebar.fragment.html","control":"Nav link: Sales > My numbers (my-numbers.html)","impact":"none","test":"src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"}),

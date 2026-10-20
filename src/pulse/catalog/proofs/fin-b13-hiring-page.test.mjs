@@ -704,9 +704,33 @@ test("the funnel re-reads for its role and days; the decision log filters by kin
 
   // Funnel: the role alone re-reads it, the days alone re-read it, and what comes back is what is painted.
   assert.deepEqual(await page.locator("#fnDays option").evaluateAll((els) => els.map((el) => el.value)), ["30", "90", "180", "365", "730"]);
+  await page.waitForFunction(() => /^90d window · 1 groups · 4 applications$/.test(document.getElementById("fnWindow").textContent)
+    && document.querySelector("#fnTbl tbody tr td:nth-child(2)")?.textContent === "Closer");
   const before = state.funnelCalls.length;
+  const isSetterRead = (request) => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/hiring/funnel" && url.searchParams.get("days") === "90" && url.searchParams.get("role") === "setter";
+  };
+  let releaseSetterRead;
+  const holdSetterRead = new Promise(resolve => { releaseSetterRead = resolve; });
+  await page.route("**/api/hiring/funnel?**", async route => {
+    if (isSetterRead(route.request())) await holdSetterRead;
+    await route.fallback();
+  });
+  const setterRequest = page.waitForRequest(isSetterRead, { timeout: 15_000 });
+  const setterResponse = page.waitForResponse(response => isSetterRead(response.request()), { timeout: 15_000 });
   await page.locator("#fnRole").selectOption("setter");
-  await page.waitForFunction((n) => n > 0 && /1 groups/.test(document.getElementById("fnWindow").textContent), before);
+  await setterRequest;
+  try {
+    // The old "1 groups" label is still visible while the new read is held:
+    // that text alone must never count as the Setter response being painted.
+    assert.match(await text(page, "#fnWindow"), /^90d window · 1 groups · 4 applications$/);
+    assert.equal(await text(page, "#fnTbl tbody tr td:nth-child(2)"), "Closer");
+    assert.equal(state.funnelCalls.length, before);
+  } finally { releaseSetterRead(); }
+  await setterResponse;
+  await page.waitForFunction(() => /^90d window · 1 groups · 4 applications$/.test(document.getElementById("fnWindow").textContent)
+    && document.querySelector("#fnTbl tbody tr td:nth-child(2)")?.textContent === "Setter");
   assert.deepEqual(state.funnelCalls.at(-1), { days: "90", role: "setter", limit: "200" });
   assert.equal(state.funnelCalls.length, before + 1, "choosing a role must read the funnel once");
   await page.locator("#fnDays").selectOption("30");

@@ -231,7 +231,7 @@ describe("app shell — the lists this test reads", () => {
     }
     assert.deepEqual(
       [...FINANCE_ONLY].sort(),
-      ["products-commissions.html", "staff-teams.html"].sort()
+      ["bank-outreach.html", "products-commissions.html", "staff-teams.html"].sort()
     );
     assert.ok(WITH_SIDEBAR.length >= 20,
       `only ${WITH_SIDEBAR.length} screens were found to carry a sidebar`);

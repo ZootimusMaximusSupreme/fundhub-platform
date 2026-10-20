@@ -83,9 +83,15 @@ test("unmapped display rows stay red instead of trusting test names in map evide
     }
   }
 
-  // Current seven maps: 1,496 tracked controls, 1,421 mapped and 75 unmapped red.
-  assert.equal(trackedCount, 1496, "Display map size changed; inspect the exact rows");
-  assert.equal(mappedCount, 1421, "Display proof coverage changed; inspect the exact cases");
+  // The approved Bank outreach link adds one exact, browser-proved map row.
+  const bankRows = rowsFor("desks-f.json").filter(row => row.surface === "sidebar.fragment.html" && row.control === "Nav link: Relationships > Bank outreach (bank-outreach.html)");
+  assert.equal(bankRows.length, 1, "the added display row is exactly the approved bank workspace link");
+  const bankProof = displayProofFor("desks-f.json", bankRows[0]);
+  assert.equal(bankProof.depth, "e2e");
+  assert.ok(bankProof.evidence.includes("src/pulse/catalog/proofs/s5-display-sidebar.test.mjs"), "the added row must retain its real browser proof");
+  // Current seven maps: 1,497 tracked controls, 1,422 mapped and 75 unmapped red.
+  assert.equal(trackedCount, 1497, "Display map size changed; inspect the exact rows");
+  assert.equal(mappedCount, 1422, "Display proof coverage changed; inspect the exact cases");
   assert.equal(mappedRedCount, 0, "Mapped display gaps changed; inspect their saved results");
   assert.equal(redCount, 75, "Display red count changed; inspect every new exact proof");
 });
