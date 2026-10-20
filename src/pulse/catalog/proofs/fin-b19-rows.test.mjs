@@ -1,5 +1,5 @@
 // Guards for the batch 19 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the six rows
+// plain runnable test that opens no live site, every attached row has a proof case, and the three rows
 // left out stay out only while the reason in fin-b19-not-attachable.mjs is still true.
 
 import assert from "node:assert/strict";
@@ -36,7 +36,7 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 40, "37 attached rows and 3 hidden sidebar rows");
+  assert.equal(listed, 40, "37 attached rows, 2 retired sidebar rows and 1 hidden sidebar row");
 });
 
 test("attached rows have one proof case each; the exercised-but-not-attached rows have none", () => {
@@ -51,9 +51,9 @@ test("attached rows have one proof case each; the exercised-but-not-attached row
   }
 });
 
-test("only the three hidden sidebar heads stay out, judged by the live shared chrome", () => {
-  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 0);
-  assert.equal(FIN_B19_HIDDEN_HEADS.length, 3);
+test("the retired Home and Watch heads plus hidden Automation stay out, judged by the live shared chrome", () => {
+  assert.equal(FIN_B19_NOT_ATTACHABLE.length, 2);
+  assert.equal(FIN_B19_HIDDEN_HEADS.length, 1);
   const listedNotAttached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.notAttached || []));
   assert.deepEqual(
     [...listedNotAttached].sort(),
@@ -72,10 +72,10 @@ test("only the three hidden sidebar heads stay out, judged by the live shared ch
     "the Sort chip x restores Manual order");
 
   assert.match(pipeline, /c\.dataset\.search\|\|nameOf\(c\)/, "search reads the card's name, phone and email index");
-  assert.match(pipeline, /<input id="q" value="" placeholder="Search name, phone, or email">/,
+  assert.match(pipeline, /<input id="q" value="" placeholder="Search clients" aria-label="Search clients by name">/,
     "the search box words changed: re-check the Search row");
 
-  // The three heads: every link under each is still on NAV_HIDDEN in shell.js, which is what hides the section.
+  // Automation: every link under it is still on NAV_HIDDEN in shell.js, which is what hides the section.
   // (fin-b19-hidden-head.test.mjs holds the live reader to the same file, and breaks it on purpose.)
   const shell = fs.readFileSync(path.join(ROOT, "public/app/shell.js"), "utf8");
   const hidden = shell.match(/var NAV_HIDDEN = \[([\s\S]*?)\];/)[1];

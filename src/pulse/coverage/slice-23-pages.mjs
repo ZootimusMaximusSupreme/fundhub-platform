@@ -1,7 +1,7 @@
 // Live desk pages for the 7:00 a.m. pulse. Report only. Never auto-fix.
 // A GET desk is red when its morning ping is missing from PULSE_REGISTRY.
-// Scoped to routed employee/client desks: pipeline, funding, portal,
-// contracts, hiring, and FinanceOS money tabs.
+// Scoped to every routed employee/client desk in the six sidebar groups,
+// plus the FinanceOS money tabs.
 //
 // No repo files are read at run time (CLAUDE.md section 12). The desk lists
 // below are a copy of what public/app/shell.js says, made at build time. The
@@ -37,11 +37,28 @@ export const SHELL_STAFF_MONEY = Object.freeze([
 
 /** The desks listed under each `data-fh-section` group of the shell sidebar. */
 export const SIDEBAR_SECTION_DESKS = Object.freeze({
-  sales: Object.freeze([
-    "pipeline.html", "closer-dashboard.html", "my-numbers.html", "sales-floor.html", "calendar.html"
+  work: Object.freeze([
+    "pipeline.html", "closer-dashboard.html", "calendar.html", "messaging.html"
   ]),
-  funding: Object.freeze(["lenders.html", "client-control-panel.html", "finance-os.html"]),
-  portals: Object.freeze(["client-portal.html", "affiliate.html"])
+  clients: Object.freeze([
+    "client-control-panel.html", "csm-queue.html", "lenders.html", "documents.html",
+    "inquiry-remover.html", "consent-capture.html", "finance-os.html"
+  ]),
+  insights: Object.freeze([
+    "my-numbers.html", "sales-floor.html", "company-brain.html", "galaxy.html",
+    "partner-galaxy.html", "ops-admin.html"
+  ]),
+  marketing: Object.freeze([
+    "marketing-command-center.html", "campaign-manager.html", "social-studio.html",
+    "creative-factory.html", "content-admin.html"
+  ]),
+  automation: Object.freeze([
+    "agent-editor.html", "automations.html", "journeys.html"
+  ]),
+  settings: Object.freeze([
+    "staff-teams.html", "hiring.html", "products-commissions.html", "contracts.html",
+    "brand-studio.html", "client-portal.html", "affiliate.html"
+  ]),
 });
 
 const ALL = new Set(SHELL_ALL);
@@ -55,11 +72,7 @@ export function isRoutedDesk(file) {
 /** Routed desks in the six pulse page lanes (deduped, sorted). */
 export function scopedRoutedDesks() {
   const files = new Set([
-    ...SIDEBAR_SECTION_DESKS.sales,
-    ...SIDEBAR_SECTION_DESKS.funding,
-    ...SIDEBAR_SECTION_DESKS.portals,
-    "contracts.html",
-    "hiring.html",
+    ...Object.values(SIDEBAR_SECTION_DESKS).flat(),
     ...STAFF_MONEY
   ]);
   return [...files].filter(isRoutedDesk).sort();

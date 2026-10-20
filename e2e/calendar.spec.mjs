@@ -21,6 +21,12 @@ function todayAt9am() {
   return d;
 }
 
+async function fixedMorningTask(page, task = TASK_WITH_CALL) {
+  const morning = todayAt9am();
+  await page.clock.setFixedTime(morning);
+  return { ...task, due_at: new Date(morning.getTime() + 60 * 60 * 1000).toISOString() };
+}
+
 function todayLong() {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric"
@@ -43,10 +49,11 @@ test.describe("Calendar call controls", () => {
   });
 
   test("Join Call enables when meeting_url is present", async ({ page }) => {
+    const task = await fixedMorningTask(page);
     await wireApi(page, {
       session: CLOSER,
       handlers: {
-        "/api/tasks": () => ({ ok: true, tasks: [TASK_WITH_CALL] })
+        "/api/tasks": () => ({ ok: true, tasks: [task] })
       }
     });
     await gotoScreen(page, "calendar.html");
@@ -54,10 +61,11 @@ test.describe("Calendar call controls", () => {
   });
 
   test("Client file enables when client_id is linked", async ({ page }) => {
+    const task = await fixedMorningTask(page);
     await wireApi(page, {
       session: CLOSER,
       handlers: {
-        "/api/tasks": () => ({ ok: true, tasks: [TASK_WITH_CALL] })
+        "/api/tasks": () => ({ ok: true, tasks: [task] })
       }
     });
     await gotoScreen(page, "calendar.html");
@@ -65,10 +73,11 @@ test.describe("Calendar call controls", () => {
   });
 
   test("Join Call stores the meeting URL on the button", async ({ page }) => {
+    const task = await fixedMorningTask(page);
     await wireApi(page, {
       session: CLOSER,
       handlers: {
-        "/api/tasks": () => ({ ok: true, tasks: [TASK_WITH_CALL] })
+        "/api/tasks": () => ({ ok: true, tasks: [task] })
       }
     });
     await gotoScreen(page, "calendar.html");
@@ -77,10 +86,11 @@ test.describe("Calendar call controls", () => {
   });
 
   test("Client file navigates to the client control panel", async ({ page }) => {
+    const task = await fixedMorningTask(page);
     await wireApi(page, {
       session: CLOSER,
       handlers: {
-        "/api/tasks": () => ({ ok: true, tasks: [TASK_WITH_CALL] })
+        "/api/tasks": () => ({ ok: true, tasks: [task] })
       }
     });
     await gotoScreen(page, "calendar.html");

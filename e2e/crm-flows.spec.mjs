@@ -83,7 +83,7 @@ test.describe("documents", () => {
     });
     const age = page.locator("td .age").first();
     await expect(age).toHaveText("1d");
-    await expect(page.locator("#staleTxt")).toHaveText("0 past 14 days");
+    await expect(page.locator("#staleTxt")).toHaveText("No documents overdue");
   });
 });
 

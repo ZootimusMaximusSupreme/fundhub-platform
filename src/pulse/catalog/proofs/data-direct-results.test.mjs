@@ -158,7 +158,7 @@ test('the parked pipeline controls and product alias resolver return their curre
   const html = read('public/app/pipeline.html');
   assert.doesNotMatch(html, /<div class="rail-tab"[^>]*data-rail="R-03"/);
   assert.match(html, /Optimization · Round Sent/);
-  assert.match(html, /A payment does not move a card/);
+  assert.match(html, /Payments do not change sales stages/);
 
   const calls = [];
   const db = {

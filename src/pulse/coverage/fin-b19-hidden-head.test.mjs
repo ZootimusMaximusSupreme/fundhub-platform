@@ -2,7 +2,7 @@
 // from this checkout, then breaks it on purpose, one edit at a time, and shows the answer change. A reader that
 // said "hidden" for everything, or "na" for what it could not read, fails here.
 //
-// The three heads are Home, Watch and Automation. Every row under them is on NAV_HIDDEN, so shell.js hides
+// Automation is the one remaining hidden head. Every row under it is on NAV_HIDDEN, so shell.js hides
 // the whole section for every role. The page half (the head is not drawn, for nine roles, in Chromium) is
 // src/pulse/catalog/proofs/fin-b19-shell-sidebar.test.mjs.
 
@@ -73,8 +73,8 @@ function lane(shellText, { shellStatus = 200 } = {}) {
 
 const headRows = (rows) => new Map(FIN_B19_HIDDEN_HEADS.map((head) => [head.control, rows.find((row) => row.id === head.id)]));
 
-test("the three rows are tracked, carry their claim, and the claim names the head's key and words", () => {
-  assert.equal(FIN_B19_HIDDEN_HEADS.length, 3);
+test("the hidden row is tracked, carries its claim, and the claim names the head's key and words", () => {
+  assert.equal(FIN_B19_HIDDEN_HEADS.length, 1);
   for (const head of FIN_B19_HIDDEN_HEADS) {
     const entry = DISPLAY_TRACKING_CASES.find((item) => item.id === head.id);
     assert.ok(entry, `${head.label} is not a tracked display row`);
@@ -86,9 +86,9 @@ test("the three rows are tracked, carry their claim, and the claim names the hea
 
 test("the reader understands the real shell.js: the built-in sidebar, the hidden list, and each head", () => {
   const html = sidebarHtml(SHELL);
-  assert.ok(html && html.includes('data-fh-section="home"'));
+  assert.ok(html && html.includes('data-fh-section="automation"'));
   const list = stringList(SHELL, "NAV_HIDDEN");
-  assert.ok(list.includes("partner-galaxy.html") && list.includes("agent-editor.html"));
+  assert.ok(list.includes("agent-editor.html") && list.includes("automations.html") && list.includes("journeys.html"));
   assert.equal(list.includes("pipeline.html"), false);
   for (const head of FIN_B19_HIDDEN_HEADS) {
     const section = sectionOf(html, head.section);
@@ -97,51 +97,51 @@ test("the reader understands the real shell.js: the built-in sidebar, the hidden
   }
 });
 
-test("on the real file each of the three heads is hidden, and the heads that are drawn are not", () => {
+test("on the real file Automation is hidden, and the heads that are drawn are not", () => {
   for (const head of FIN_B19_HIDDEN_HEADS) {
     const got = stateOf(SHELL, head);
     assert.equal(got.state, "hidden", `${head.label}: ${got.reason || got.open}`);
     assert.deepEqual(got.links, [...head.links]);
     assert.deepEqual(got.open, []);
   }
-  // Sales, Funding, Client ops, Marketing, Admin and Portals each have a row that is not hidden.
-  for (const [section, label] of [["sales", "Sales"], ["funding", "Funding"], ["client-ops", "Client ops"],
-    ["marketing", "Marketing"], ["admin", "Admin"], ["portals", "Portals"]]) {
+  // Every shipped group except Automation has at least one row that is not hidden.
+  for (const [section, label] of [["work", "Your work"], ["clients", "Clients"], ["insights", "Insights"],
+    ["marketing", "Marketing"], ["settings", "Manage"]]) {
     const got = judgeText(SHELL, { path: "/app/shell.js", section, label });
     assert.equal(got.state, "shown", label);
     assert.ok(got.open.length > 0, label);
   }
 });
 
-test("take one row off the hidden list: that head, and only that head, comes back as shown", () => {
+test("take one row off the hidden list: Automation comes back as shown", () => {
   for (const head of FIN_B19_HIDDEN_HEADS) {
     for (const file of head.links) {
       const text = withoutHidden(SHELL, file);
       const broken = stateOf(text, head);
       assert.equal(broken.state, "shown", `${head.label} without ${file} on the list`);
       assert.deepEqual(broken.open, [file]);
-      for (const other of FIN_B19_HIDDEN_HEADS.filter((item) => item !== head)) {
-        assert.equal(stateOf(text, other).state, "hidden", `${other.label} is untouched by ${file}`);
-      }
     }
   }
 });
 
 test("a head that is renamed, re-keyed, or left with no rows is not hidden, and is never read as nothing to judge", () => {
-  const [home] = FIN_B19_HIDDEN_HEADS;
-  const reKeyed = SHELL.replace('data-fh-section=\\"home\\"', 'data-fh-section=\\"start\\"');
+  const [automation] = FIN_B19_HIDDEN_HEADS;
+  const reKeyed = SHELL.replace('data-fh-section=\\"automation\\"', 'data-fh-section=\\"tools\\"');
   assert.notEqual(reKeyed, SHELL);
-  assert.equal(stateOf(reKeyed, home).state, "changed");
+  assert.equal(stateOf(reKeyed, automation).state, "changed");
 
-  const reworded = SHELL.replace('type=\\"button\\">Home<span', 'type=\\"button\\">Start<span');
+  const reworded = SHELL.replace('>Automation<span', '>Tools<span');
   assert.notEqual(reworded, SHELL);
-  const reread = stateOf(reworded, home);
+  const reread = stateOf(reworded, automation);
   assert.equal(reread.state, "changed");
-  assert.match(reread.reason, /Start/);
+  assert.match(reread.reason, /Tools/);
 
-  const emptied = SHELL.replace(/<a class=\\"navitem\\" href=\\"partner-galaxy\.html\\">.*?<\/a>/, "");
+  const emptied = SHELL
+    .replace(/<a class=\\"navitem\\" href=\\"agent-editor\.html\\">.*?<\/a>/, "")
+    .replace(/<a class=\\"navitem\\" href=\\"automations\.html\\">.*?<\/a>/, "")
+    .replace(/<a class=\\"navitem\\" href=\\"journeys\.html\\">.*?<\/a>/, "");
   assert.notEqual(emptied, SHELL);
-  assert.equal(stateOf(emptied, home).state, "shown", "a head with no rows is not hidden by the chrome");
+  assert.equal(stateOf(emptied, automation).state, "shown", "a head with no rows is not hidden by the chrome");
 });
 
 test("what cannot be read is unread, not hidden", async () => {
@@ -173,7 +173,7 @@ test("what cannot be read is unread, not hidden", async () => {
   }
 });
 
-test("the read is one GET with redirects left alone, and one GET answers every head", async () => {
+test("the read is one GET with redirects left alone, and one GET answers the hidden head", async () => {
   const fetchImpl = serve(SHELL);
   const entries = FIN_B19_HIDDEN_HEADS.map((head) => DISPLAY_TRACKING_CASES.find((item) => item.id === head.id));
   const rows = await judgeHiddenHeads(entries, { fetchImpl, baseUrl: "https://fundhub.ai" });
@@ -181,7 +181,7 @@ test("the read is one GET with redirects left alone, and one GET answers every h
   assert.equal(fetchImpl.seen[0].url, "https://fundhub.ai/app/shell.js");
   assert.equal(fetchImpl.seen[0].init.method, "GET");
   assert.equal(fetchImpl.seen[0].init.redirect, "manual");
-  assert.equal(rows.size, 3);
+  assert.equal(rows.size, 1);
   for (const row of rows.values()) {
     assert.equal(row.status, "na");
     assert.equal(row.na.code, HIDDEN_HEAD_CODE);
@@ -189,7 +189,7 @@ test("the read is one GET with redirects left alone, and one GET answers every h
   }
 });
 
-test("through the whole lane: three rows say nothing to judge; take one row off the list and only its head goes back to not proved", async () => {
+test("through the whole lane: Automation says nothing to judge; showing one row makes it not proved", async () => {
   const clean = headRows(await gapChecks({ fetchImpl: lane(SHELL) }));
   for (const head of FIN_B19_HIDDEN_HEADS) {
     const row = clean.get(head.control);
@@ -198,33 +198,30 @@ test("through the whole lane: three rows say nothing to judge; take one row off 
     assert.match(row.detail, /no role is shown this head/);
   }
 
-  const shown = withoutHidden(SHELL, "ops-admin.html");
+  const shown = withoutHidden(SHELL, "agent-editor.html");
   const broken = headRows(await gapChecks({ fetchImpl: lane(shown) }));
-  const [home, watch, automation] = FIN_B19_HIDDEN_HEADS;
-  assert.equal(broken.get(watch.control).status, "NOT_PROVED");
-  assert.match(broken.get(watch.control).detail, /ops-admin\.html is not on the hidden list/);
-  assert.equal(broken.get(watch.control).na, undefined);
-  assert.equal(broken.get(home.control).status, "na");
-  assert.equal(broken.get(automation.control).status, "na");
+  const [automation] = FIN_B19_HIDDEN_HEADS;
+  assert.equal(broken.get(automation.control).status, "NOT_PROVED");
+  assert.match(broken.get(automation.control).detail, /agent-editor\.html is not on the hidden list/);
+  assert.equal(broken.get(automation.control).na, undefined);
 });
 
-test("the morning audit asks again: true while the head is hidden, false the day a row is shown, false for a row that is not one of the three", async () => {
-  const [home, watch] = FIN_B19_HIDDEN_HEADS;
+test("the morning audit asks again: true while the head is hidden and false the day a row is shown", async () => {
+  const [automation] = FIN_B19_HIDDEN_HEADS;
   const args = (head) => ({ sourceFile: head.sourceFile, surface: head.surface, control: head.control });
   const verify = naVerify[HIDDEN_HEAD_CODE];
-  assert.equal(await verify(args(home), { fetchImpl: serve(SHELL) }), true);
-  assert.equal(await verify(args(watch), { fetchImpl: serve(withoutHidden(SHELL, "galaxy.html")) }), false);
-  assert.equal(await verify(args(home), { fetchImpl: serve(withoutHidden(SHELL, "galaxy.html")) }), true, "Watch's change does not touch Home");
-  assert.equal(await verify(args(home), { fetchImpl: serve("", { status: 200 }) }), false, "unread is not true");
-  assert.equal(await verify(args(home), { fetchImpl: null }), false);
-  assert.equal(await verify({ ...args(home), control: "invented" }, { fetchImpl: serve(SHELL) }), false);
-  assert.equal(await verifyHiddenHead(DISPLAY_TRACKING_CASES, args(home), { fetchImpl: serve(SHELL) }), true);
+  assert.equal(await verify(args(automation), { fetchImpl: serve(SHELL) }), true);
+  assert.equal(await verify(args(automation), { fetchImpl: serve(withoutHidden(SHELL, "agent-editor.html")) }), false);
+  assert.equal(await verify(args(automation), { fetchImpl: serve("", { status: 200 }) }), false, "unread is not true");
+  assert.equal(await verify(args(automation), { fetchImpl: null }), false);
+  assert.equal(await verify({ ...args(automation), control: "invented" }, { fetchImpl: serve(SHELL) }), false);
+  assert.equal(await verifyHiddenHead(DISPLAY_TRACKING_CASES, args(automation), { fetchImpl: serve(SHELL) }), true);
 });
 
 test("the audit's own door (verifyNa) lets the row stay na while it holds, and turns it into a red row the day it does not", async () => {
-  const [, watch] = FIN_B19_HIDDEN_HEADS;
+  const [automation] = FIN_B19_HIDDEN_HEADS;
   const rows = await gapChecks({ fetchImpl: lane(SHELL) });
-  const row = rows.find((item) => item.id === watch.id);
+  const row = rows.find((item) => item.id === automation.id);
   assert.equal(row.status, "na");
 
   const laneNaVerify = (served) => async (sliceId, code, args) => {
@@ -233,7 +230,7 @@ test("the audit's own door (verifyNa) lets the row stay na while it holds, and t
   };
   const held = await verifyNa(row, { laneNaVerify: laneNaVerify(serve(SHELL)) });
   assert.equal(held.ok, true, held.reason);
-  const gone = await verifyNa(row, { laneNaVerify: laneNaVerify(serve(withoutHidden(SHELL, "galaxy.html"))) });
+  const gone = await verifyNa(row, { laneNaVerify: laneNaVerify(serve(withoutHidden(SHELL, "agent-editor.html"))) });
   assert.equal(gone.ok, false);
 
   // A proof copied onto a row of another kind, or with its facts cut away, is refused.
@@ -264,7 +261,7 @@ const GATE_BREAKS = [
   ["the sidebar is no longer the built-in one", (t) => mutate(t, "wrap.innerHTML = SIDEBAR_HTML;", "wrap.innerHTML = '';")],
 ];
 
-test("a gate that no longer applies the list is not hidden: every break goes back to not proved, for all three heads", () => {
+test("a gate that no longer applies the list is not hidden: every break goes back to not proved", () => {
   for (const [name, edit] of GATE_BREAKS) {
     const text = edit(SHELL);
     for (const head of FIN_B19_HIDDEN_HEADS) {
@@ -288,7 +285,7 @@ test("the shapes in a comment above the gate do not stand in for the gate", () =
   assert.deepEqual(applyingCode(SHELL), { ok: true });
 });
 
-test("through the lane: a broken gate turns the three rows back to not proved, and the morning audit refuses the na", async () => {
+test("through the lane: a broken gate turns the hidden row back to not proved, and the morning audit refuses the na", async () => {
   const broken = mutate(SHELL, "if (!allowed || hideNav) {", "if (!allowed) {");
   const rows = headRows(await gapChecks({ fetchImpl: lane(broken) }));
   for (const head of FIN_B19_HIDDEN_HEADS) {

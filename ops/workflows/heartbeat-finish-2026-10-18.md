@@ -144,4 +144,5 @@ Focused results: handler/auth/display batch command `851/851`; Social Studio Chr
 - Final named proof run passes `92/92`. The focused CCP/Pipeline regression set passes `46/46`; the expanded 23-file owned-page/UI-guard aggregate exits clean.
 - `npm run lint` parses `4,005` files and inline scripts clean; `npx tsc --noEmit` passes. No catalog regeneration, production write, send, charge, push, or deploy occurred.
 - Separate leftover, outside this lane's allowed Sales Floor scope: `fin-b19-sales-floor.test.mjs` still expects the old recordings-scroll signal and omits the current `Try again` control from the forbidden state; its all-rows assertion cascades from those two failures.
+- 2026-10-19: aligned the final CI proofs with the shipped CRM redesign: Home and Watch are verified retired rows, Automation remains the one hidden head, all six stale browser files pass `78/78`, catalog stays `3,942/3,942` wired with `0` red, and lint, TypeScript, journeys, display N/A guards, and exact Batch 19 browser proofs are green.
 

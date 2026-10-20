@@ -66,10 +66,10 @@ const EXPECTED_DISAGREEMENTS = {
 const FLOORS = {
   "affiliate|reach": { "Signing in and out": 6, "contracts": 1, "Documents": 1, "Everything else": 4, "Incoming webhooks": 1 },
   "affiliate|blocked": { "Signing in and out": 8, "banking": 7, "Campaigns": 10, "consent": 1, "Creative Factory": 7, "The dashboard": 7, "Finance": 13, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 65, "Everything else": 39 },
-  "client|reach": { "Signing in and out": 6, "consent": 1, "contracts": 1, "Documents": 1, "Finance": 1, "Reading data": 5, "Everything else": 8, "Incoming webhooks": 1 },
-  // One formerly blocked top-level door is now the client-only push/preferences
-  // route. The explicit role assertion below pins that exact change.
-  "client|blocked": { "Signing in and out": 7, "banking": 5, "Campaigns": 10, "Creative Factory": 7, "The dashboard": 7, "Finance": 12, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 63, "Everything else": 34 },
+  "client|reach": { "Signing in and out": 6, "consent": 1, "contracts": 1, "Documents": 1, "Finance": 1, "Reading data": 6, "Everything else": 8, "Incoming webhooks": 1 },
+  // The client-only push/preferences route and the client affiliate read are now
+  // reachable. The explicit assertions below pin both changes.
+  "client|blocked": { "Signing in and out": 7, "banking": 5, "Campaigns": 10, "Creative Factory": 7, "The dashboard": 7, "Finance": 12, "Hiring": 7, "journeys": 2, "privacy": 1, "Reading data": 62, "Everything else": 34 },
   "role-owner|reach": { "Signing in and out": 13, "banking": 7, "Campaigns": 10, "consent": 1, "contracts": 1, "Creative Factory": 7, "The dashboard": 7, "Documents": 1, "Finance": 13, "Hiring": 8, "journeys": 2, "privacy": 1, "Reading data": 67, "Everything else": 42, "Incoming webhooks": 1 },
   "role-owner|blocked": {  },
   "role-sales-manager|reach": { "Signing in and out": 6, "banking": 6, "Campaigns": 10, "contracts": 1, "Creative Factory": 7, "The dashboard": 6, "Documents": 1, "Finance": 11, "Reading data": 56, "Everything else": 30, "Incoming webhooks": 1 },
@@ -121,6 +121,7 @@ before(async () => {
 describe("the probe and the written gates", () => {
   test("only a signed-in client with a file reaches the marketing push switch", () => {
     assert.equal(state.verdicts.client["push/preferences"], "reach");
+    assert.equal(state.verdicts.client["read/affiliates"], "reach");
     for (const journey of JOURNEYS) {
       if (journey.name === "client") continue;
       assert.equal(state.verdicts[journey.name]["push/preferences"], "blocked", journey.name);

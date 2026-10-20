@@ -8,8 +8,8 @@
 // function, which the test supplies), so fin-b19-display-contracts.test.mjs can run the very same text on
 // stand-in tables and see it go red.
 //
-// Six more contracts at the end are not queries: three carry the claim that a sidebar head is shown to no
-// role (HEAD_CONTRACTS), and three name a pipeline control the page has to fix first (PAGE_GAP_CONTRACTS).
+// Three more contracts at the end are not queries: one carries the claim that a sidebar head is shown to no
+// role (HEAD_CONTRACTS), and two carry the retired Home and Watch rows (PAGE_GAP_CONTRACTS).
 
 import { FIN_B19_HIDDEN_HEADS, FIN_B19_NOT_ATTACHABLE } from "./fin-b19-not-attachable.mjs";
 
@@ -166,10 +166,8 @@ const HEAD_CONTRACTS = FIN_B19_HIDDEN_HEADS.map((head) => Object.freeze({
   hiddenHead: Object.freeze({ path: "/app/shell.js", section: head.section, label: head.label }),
 }));
 
-// The three pipeline rows whose control does not do what its words say (Manual, the x on the Sort chip, and the
-// search box that promises phone and email).
-// There is no saved result and the page has to change first, so the contract is an honest gap that names
-// exactly what is wrong, and the row stays NOT_PROVED with that sentence on the board.
+// The retired Home and Watch sidebar rows. The retired-control lane reads the shipped shell and turns these
+// contracts into a verified N/A only while Insights exists and the old section stays absent.
 const PAGE_GAP_CONTRACTS = FIN_B19_NOT_ATTACHABLE.map((row) => Object.freeze({
   control: row.control,
   mode: "always-red",
