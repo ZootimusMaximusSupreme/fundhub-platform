@@ -37,9 +37,12 @@ export class RateLimiter {
   /** Resolves when it is polite to issue the next request. */
   async wait() {
     const turn = this._chain.then(async () => {
-      const gap = Date.now() - this._last;
-      const owed = this.minIntervalMs - gap;
-      if (owed > 0) await sleep(owed);
+      // Loop: a timer can fire a millisecond early by the wall clock, which
+      // would break the floor this class promises.
+      let owed;
+      while ((owed = this.minIntervalMs - (Date.now() - this._last)) > 0) {
+        await sleep(owed);
+      }
       this._last = Date.now();
     });
     // Keep the chain alive even if a caller rejects downstream.
