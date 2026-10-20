@@ -1,6 +1,8 @@
 # Funding and credit-repair agreement drafts — 2026-10-20
 
 > Recovered 2026-10-20 by Set A lane L5 from the Codex session log (rollout-2026-10-20T02-46-55, its apply_patch calls replayed in order). Codex wrote this file and the funding template in a temporary worktree that was later pruned, so neither ever reached git. Wording unchanged except: owner decision 2026-10-20 (the signed contract is the consent) added section 8, CALLS, AI AND YOUR STORY, to the ready-to-send funding template, using the exact words in `src/contracts/consent-clauses.mjs`. The repair draft below must carry the same section before it is activated.
+>
+> Activated 2026-10-20 (owner direction to finish both agreements): `db/migrations/493_funding_and_repair_agreement_text.sql` makes the ready-to-send funding text the live Funding Agreement, and replaces the Credit Repair Agreement's placeholder block with finished terms built from this draft plus repo facts (round one the day you sign and 30 to 45 days per round from `public/app/present.js`; up to six rounds from `docs/finance/fundhub-offers-review-2026-10-11.md`; right to cancel from Chris's executed agreements in `db/migrations/288_real_contract_text.sql`). The migration header lists the source of every fact. This file is kept as the drafting record.
 
 Internal drafting record only. The completed funding template is [FUNDING-AGREEMENT-ready-to-send.txt](agreements/FUNDING-AGREEMENT-ready-to-send.txt); it has not replaced the live `contract_templates` placeholder or been sent. The repair version below remains non-sendable.
 
