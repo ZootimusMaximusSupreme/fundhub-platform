@@ -36,6 +36,10 @@ Say so in one line, give the reason, and continue. But bias hard toward splittin
 
 Before you begin any work, ask yourself: could a second agent be doing something useful right now? If yes, say so on the board with ready-to-paste prompts — do not assign Chris manual operator steps.
 
+## Finish the outcome, not a checkpoint
+
+**Owner rule, 2026-10-20:** follow AGENTS.md's “Finish the requested outcome” contract and the always-on `.cursor/rules/finish-the-requested-job.mdc` / `.claude/rules/finish-the-requested-job.md` mirrors. Required build, verification, dependency and release failures stay in the approved task even in adjacent or pre-existing code; this qualifies §2's no-extra-holes stop for required delivery checks, not unrelated improvements. A plan, commit, PR or partial pass is not completion. Continue every authorized next step; a status question or rule update does not reset approval. Preserve failed proof and all real owner-only production/data gates.
+
 ## 1. Check the model before you start
 
 Right after the split proposal, state one line: the model this work needs, and whether the current one matches.

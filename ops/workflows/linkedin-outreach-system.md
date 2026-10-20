@@ -10,6 +10,14 @@ Launch states AZ, SC, FL, CA. Manual LinkedIn, email and calls. No paid vendor, 
 
 ## Ownership and dependencies
 
+Resumed completion work, owner-set 2026-10-20: do not hand this job back because a required release check fails. Parent owns persistent completion instructions and final integration/release. The network diagnostic and current regression triage run in parallel; any transport change waits for measured evidence. Existing production go-live and data/credential protections remain unchanged.
+
+Completion rules prompt (parent): augment AGENTS.md, CLAUDE.md and matching always-on Cursor/Claude rules so commits, PRs and partial passing checks are checkpoints, not completed outcomes. Required delivery failures remain approved work; preserve real owner-only gates and failed proof. Apply the rule in the active original checkout too, without staging unrelated edits.
+
+Network diagnosis prompt: investigate the repeated eight-second pre-header abort in the actual hourly proof using bounded, read-only, same-runner transport measurements. Own only scripts/pulse/diagnose-site-http.mjs and its focused test if needed; parent owns workflow wiring. Compare DNS/address family and bounded concurrency without changing runtime, signals, deadlines or verdicts. Print no secrets, bodies or query strings. Report evidence before proposing the smallest fix.
+
+Regression triage prompt: read final-head GitHub matrix results and completed failure logs. Classify each remaining failure against the outreach build and required release contract; do not dismiss a failed required gate as new scope. No code or workflow writes. Give parent exact failing check, reproducible source and smallest justified next action. Do not cancel or rerun checks.
+
 | Workflow | Owner | Files | State |
 | --- | --- | --- | --- |
 | Backend | backend agent, GPT-6.1 Sol High | `db/migrations/483_bank_outreach.sql`, `src/outreach/*`, related new tests | Built; current real PostgreSQL ownership, race, history, notes and pagination checks passed |
