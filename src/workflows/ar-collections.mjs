@@ -17,9 +17,10 @@ import {
   invoiceDisplayNumber,
   formatBalanceDue
 } from "../invoices/index.mjs";
-import { allocatePayment, remainingDueCents, remainingDueAmount, knownCents } from "../invoices/allocate.mjs";
+import { allocatePayment, remainingDueCents, remainingDueAmount } from "../invoices/allocate.mjs";
 import { checkoutConfig } from "../payments/commas-api.mjs";
 import { createPaymentLink } from "../payment-links/index.mjs";
+import { retireInvoiceCheckoutLink } from "../payment-links/retire-invoice-checkout.mjs";
 
 export const EMAIL_AR_01 = "EMAIL-AR-01-FIRST-NOTICE";
 export const SMS_AR_01 = "SMS-AR-01-FIRST-NOTICE";
@@ -53,38 +54,89 @@ async function arContext(db, row, payload = {}) {
   };
 }
 
-async function attachInvoicePayLink(db, row, env) {
-  if (!row?.id) return null;
-  const cfg = checkoutConfig(env || {});
-  if (!cfg.ok) return null;
-  const due = knownCents(row.amount_due);
-  if (due === null || due <= 0) return null;
-  const existing = await db.query(
-    `SELECT id FROM payment_links WHERE invoice_id = $1 LIMIT 1`,
-    [row.id]
-  );
-  if (existing.rows[0]) return existing.rows[0];
-  try {
-    const link = await createPaymentLink(db, {
-      orgId: row.org_id,
-      clientId: row.client_id,
-      purpose: "custom",
-      description: `Success fee ${invoiceDisplayNumber(row)}`,
-      amountCents: due,
-      invoiceId: row.id,
-      fundingRoundId: row.funding_round_id || null,
-      env
+async function retirePriorInvoiceLinks(db, row, env, retireLink = retireInvoiceCheckoutLink) {
+  if (!row.funding_round_id) return;
+  const prior = (await db.query(
+    `SELECT pl.id, pl.invoice_id
+       FROM payment_links pl
+       JOIN invoices old ON old.id = pl.invoice_id
+      WHERE old.org_id = $1 AND old.client_id = $2
+        AND old.funding_round_id = $3
+        AND old.sale_id IS NOT DISTINCT FROM $4
+        AND old.id <> $5 AND old.status = 'void'
+        AND pl.provider = 'commas'
+        AND pl.status IN ('created', 'sent', 'expired')
+      ORDER BY pl.created_at ASC, pl.id ASC`,
+    [row.org_id, row.client_id, row.funding_round_id, row.sale_id || null, row.id]
+  )).rows;
+  for (const link of prior) {
+    await retireLink(db, {
+      linkId: link.id, orgId: row.org_id, invoiceId: link.invoice_id, env
     });
-    if (link && (link.commas_session_id || link.link_ref)) {
-      await db.query(
-        `UPDATE invoices SET external_ref = COALESCE(external_ref, $2) WHERE id = $1`,
-        [row.id, link.commas_session_id || link.link_ref]
-      );
-    }
-    return link;
-  } catch {
-    return null;
   }
+}
+
+export async function attachInvoicePayLink(
+  db, row, env, createLink = createPaymentLink, retireLink = retireInvoiceCheckoutLink
+) {
+  if (!row?.id) throw new Error("Cannot mint a checkout without an invoice");
+  const due = await remainingDueCents(db, row);
+  if (due === null) throw new Error(`Invoice ${row.id} has no known balance`);
+  if (due <= 0) return { settled: true };
+  await retirePriorInvoiceLinks(db, row, env, retireLink);
+  const stale = (await db.query(
+    `SELECT id FROM payment_links
+      WHERE invoice_id = $1 AND org_id = $2
+        AND provider = 'commas'
+        AND (status = 'expired' OR
+             (status IN ('created', 'sent') AND amount_cents <> $3))
+      ORDER BY created_at ASC, id ASC`,
+    [row.id, row.org_id, due]
+  )).rows;
+  for (const link of stale) {
+    await retireLink(db, { linkId: link.id, orgId: row.org_id, invoiceId: row.id, env });
+  }
+  const existing = await db.query(
+    `SELECT id, amount_cents, checkout_url
+       FROM payment_links
+      WHERE invoice_id = $1 AND org_id = $2
+        AND provider = 'commas'
+        AND status IN ('created', 'sent')
+        AND checkout_url IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [row.id, row.org_id]
+  );
+  if (existing.rows[0]) {
+    if (Number(existing.rows[0].amount_cents) !== due) {
+      throw new Error(`Invoice ${row.id} checkout amount no longer matches its balance`);
+    }
+    return existing.rows[0];
+  }
+  const cfg = checkoutConfig(env || {});
+  if (!cfg.ok) throw new Error(cfg.reason);
+  // description is stored on the Fundhub link. The Commas product title is
+  // selected separately by createPaymentLink and keeps its safe catalog name.
+  const link = await createLink(db, {
+    orgId: row.org_id,
+    clientId: row.client_id,
+    purpose: "custom",
+    description: "basic business consulting fee",
+    amountCents: due,
+    invoiceId: row.id,
+    fundingRoundId: row.funding_round_id || null,
+    env
+  });
+  if (!link?.id || !link.checkout_url) {
+    throw new Error(`Invoice ${row.id} checkout was not saved with a payable URL`);
+  }
+  if (link.commas_session_id || link.link_ref) {
+    await db.query(
+      `UPDATE invoices SET external_ref = COALESCE(external_ref, $2) WHERE id = $1`,
+      [row.id, link.commas_session_id || link.link_ref]
+    );
+  }
+  return link;
 }
 
 async function sendPair(db, { orgId, clientId, eventId, emailKey, smsKey, context }) {
@@ -92,14 +144,20 @@ async function sendPair(db, { orgId, clientId, eventId, emailKey, smsKey, contex
     orgId, clientId, channel: "email", templateKey: emailKey,
     eventId: `${eventId}:${emailKey}`, context
   });
+  if (email?.reason === "template_pending" || email?.reason === "draft_template") {
+    throw new Error(`AR notice template ${emailKey} is not ready`);
+  }
   const sms = await sendTemplated(db, {
     orgId, clientId, channel: "sms", templateKey: smsKey,
     eventId: `${eventId}:${smsKey}`, context
   });
+  if (sms?.reason === "template_pending" || sms?.reason === "draft_template") {
+    throw new Error(`AR notice template ${smsKey} is not ready`);
+  }
   return { email, sms };
 }
 
-async function chase({ event, db, step, env }) {
+async function chase({ event, db, step, env, createLink, retireLink }) {
   const payload = event.payload || {};
   const invoiceId = payload.invoiceId || payload.invoice_id;
   if (!invoiceId) return { done: false, reason: "no_invoice_id" };
@@ -119,7 +177,8 @@ async function chase({ event, db, step, env }) {
   const first = await step.run("send-ar-01", async () => {
     const row = await getInvoice(db, { invoiceId });
     if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
-    await attachInvoicePayLink(db, row, env);
+    const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
+    if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
       orgId, clientId, eventId: `${eventId}:01`,
       emailKey: EMAIL_AR_01, smsKey: SMS_AR_01,
@@ -132,6 +191,8 @@ async function chase({ event, db, step, env }) {
   const second = await step.run("send-ar-02", async () => {
     const row = await getInvoice(db, { invoiceId });
     if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
+    if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
       orgId, clientId, eventId: `${eventId}:02`,
       emailKey: EMAIL_AR_02, smsKey: SMS_AR_02,
@@ -144,6 +205,8 @@ async function chase({ event, db, step, env }) {
   const third = await step.run("send-ar-03", async () => {
     const row = await getInvoice(db, { invoiceId });
     if (!stillOpen(row)) return { skipped: true, reason: row?.status || "missing" };
+    const link = await attachInvoicePayLink(db, row, env, createLink, retireLink);
+    if (link.settled) return { skipped: true, reason: "no_balance" };
     return sendPair(db, {
       orgId, clientId, eventId: `${eventId}:03`,
       emailKey: EMAIL_AR_03, smsKey: SMS_AR_03,
@@ -194,13 +257,13 @@ async function chase({ event, db, step, env }) {
   return { done: true, first, second, third, handoff };
 }
 
-export async function handle({ event, db, step, env }) {
+export async function handle({ event, db, step, env, createLink, retireLink }) {
   if (event.name === "payment.received") {
     const clientId = await step.run("resolve-client", () => resolveClient(db, event));
     return step.run("allocate-payment", () =>
       allocatePayment(db, { ...event, clientId: clientId || event.clientId || null }));
   }
-  return chase({ event, db, step, env });
+  return chase({ event, db, step, env, createLink, retireLink });
 }
 
 export const arCollections = inngest.createFunction(

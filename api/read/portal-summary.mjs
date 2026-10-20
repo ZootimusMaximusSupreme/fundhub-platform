@@ -492,7 +492,7 @@ function readPayments(orgId, clientId) {
  * creates one payment_links row per success-fee invoice and puts it in the chase
  * email. This is a READ endpoint: it hands back the link that exists, and null
  * when there is not one. It never creates one, never calls a provider, and a
- * link already marked paid is not offered.
+ * link already marked paid, expired, or void is not offered.
  *
  * FAILS SOFT, like every other read below it: null, so the screen can say it
  * could not check. A read that cannot answer must never come back as $0 owed.
@@ -518,7 +518,12 @@ function readInvoiceDue(orgId, clientId) {
             WHERE pl.invoice_id = v.invoice_id
               AND pl.org_id     = v.org_id
               AND pl.checkout_url IS NOT NULL
-              AND pl.status <> 'paid'
+              AND pl.status IN ('created', 'sent')
+              AND pl.amount_cents = (v.open_balance * 100)::bigint
+              AND (pl.provider = 'commas' OR (
+                v.source IS DISTINCT FROM 'funding_success_fee'
+                AND i.invoice_type IS DISTINCT FROM 'success_fee'
+              ))
               AND COALESCE(pl.is_demo, false) = false
             ORDER BY pl.created_at DESC
             LIMIT 1

@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORTAL = path.resolve(HERE, "../../public/app/client-portal.html");
 const html = fs.readFileSync(PORTAL, "utf8");
+const portalRead = fs.readFileSync(path.resolve(HERE, "../../api/read/portal-summary.mjs"), "utf8");
 
 /* One function, from `function <name>(` to its matching brace. */
 function sliceFn(name) {
@@ -67,7 +68,7 @@ const DUE = {
   total_display: "$2,500.00",
   items: [{
     reference: "INV-B4B9C768",
-    kind: "Funding success fee",
+    kind: "basic business consulting fee",
     amount: 2500,
     amount_display: "$2,500.00",
     status: "sent",
@@ -83,6 +84,25 @@ describe("client portal — staff Payments tab shows the bill (hole 9)", () => {
       "painting the staff pane from transactions alone is what hid the bill");
     assert.match(html, /paintStaffPays\("due",\s*data\.invoice_due\)/,
       "the staff view must take the bill from portal-summary");
+  });
+
+  test("the portal offers only active invoice checkout links", () => {
+    assert.match(portalRead, /pl\.status IN \('created', 'sent'\)/,
+      "expired, void, and paid checkout links must not be offered");
+    assert.match(portalRead, /pl\.amount_cents = \(v\.open_balance \* 100\)::bigint/,
+      "a stale full-balance checkout must not be offered after partial payment");
+    assert.doesNotMatch(portalRead, /pl\.status <> 'paid'/);
+    const { pane, paint } = makePane();
+    paint("due", DUE);
+    assert.match(pane.innerHTML, /basic business consulting fee/);
+  });
+
+  test("a fee invoice cannot display a newer other-provider link over its Commas checkout", () => {
+    assert.match(portalRead,
+      /pl\.provider = 'commas' OR \(\s*v\.source IS DISTINCT FROM 'funding_success_fee'\s+AND i\.invoice_type IS DISTINCT FROM 'success_fee'\s*\)/,
+      "fee invoices must use Commas even when another provider has a newer same-balance link");
+    assert.match(portalRead, /ORDER BY pl\.created_at DESC/,
+      "newest-link selection makes this provider gate necessary");
   });
 
   test("paid list first, bill second — the $2,500 shows with the payment", () => {

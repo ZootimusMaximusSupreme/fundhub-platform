@@ -6,6 +6,7 @@
 import { register as registerLifecycle } from "./handlers/client-lifecycle.mjs";
 import { register as registerComms } from "./handlers/comms.mjs";
 import { register as registerPaymentLinks } from "./handlers/payment-links.mjs";
+import { register as registerInvoiceCheckoutRetirement } from "./handlers/invoice-checkout-retirement.mjs";
 import { register as registerPartnerAddOns } from "./handlers/partner-addons.mjs";
 import { register as registerMoneyChain } from "./handlers/money-chain.mjs";
 import { register as registerPartnerRecruit } from "./partners/recruit.mjs";
@@ -31,6 +32,9 @@ export function registerAll() {
   registerLifecycle();
   registerComms();
   registerPaymentLinks();
+  // Closing an invoice retires any other live hosted checkout for that bill.
+  // Provider failure is dead-lettered by the bus and can be retried safely.
+  registerInvoiceCheckoutRetirement();
   /* White-label add-ons. STRICTLY AFTER registerPaymentLinks: that handler is
      what marks the link 'paid', and this one refuses to start a partner's
      recurring add-on off an ask that has not been paid. Handler order is

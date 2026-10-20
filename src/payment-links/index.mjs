@@ -9,6 +9,7 @@
 // transaction and never charges anyone — the link is a URL a client visits to
 // pay Commas directly.
 import crypto from "node:crypto";
+import { pool } from "../db.mjs";
 import { buildCommasCheckoutUrl } from "../adapters/commas.mjs";
 import { createCheckoutSession, checkoutConfig } from "../payments/commas-api.mjs";
 import { commasProductTitleFor } from "../config/offers.mjs";
@@ -20,6 +21,40 @@ import { resolveOfferAmountCents } from "../config/offers.mjs";
 const PURPOSES = new Set(["deposit", "diagnostic", "repair", "custom"]);
 const SALE_MOTIONS = new Set(["downsell", "upsell"]);
 const OPEN_STATUSES = ["created", "sent"];
+
+// Supavisor uses transaction pooling: a session advisory lock can land on a
+// different backend at unlock. Lock the actual invoice row in a bounded
+// transaction, then recheck, mint, and save on that same checked-out client.
+const INVOICE_CHECKOUT_TIMEOUT_MS = 5000;
+async function withInvoiceCheckoutLock(db, orgId, clientId, invoiceId, work) {
+  const conn = typeof db.connect === "function" ? await db.connect() : await pool().connect();
+  let inTransaction = false;
+  let discard = false;
+  try {
+    await conn.query("BEGIN");
+    inTransaction = true;
+    const invoice = (await conn.query(
+      `SELECT id FROM invoices
+        WHERE id = $1 AND org_id = $2 AND client_id = $3
+        FOR UPDATE`,
+      [invoiceId, orgId, clientId]
+    )).rows[0];
+    if (!invoice) throw new Error(`Invoice ${invoiceId} is not owned by this client and org`);
+    const result = await work(conn);
+    await conn.query("COMMIT");
+    inTransaction = false;
+    return result;
+  } catch (err) {
+    if (inTransaction) {
+      try { await conn.query("ROLLBACK"); } catch { discard = true; }
+    } else {
+      discard = true;
+    }
+    throw err;
+  } finally {
+    conn.release(discard);
+  }
+}
 
 export function generateLinkRef() {
   return `pl_${crypto.randomBytes(12).toString("hex")}`;
@@ -207,7 +242,6 @@ export async function createPaymentLink(db, {
     await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents });
   }
 
-  const linkRef = generateLinkRef();
   const commasTitle = commasProductTitleFor({
     productCode: context.productCode,
     purpose,
@@ -222,67 +256,93 @@ export async function createPaymentLink(db, {
     err.status = 400;
     throw err;
   }
-  let checkoutUrl;
-  let commasSessionId = null;
+  const mintAndSave = async (saveDb = db, checkoutTimeoutMs = null) => {
+    const linkRef = generateLinkRef();
+    let checkoutUrl;
+    let commasSessionId = null;
 
-  const cfg = checkoutConfig(env);
-  if (cfg.ok) {
-    const minted = await createCheckoutSession({
-      amountCents,
-      productTitle: commasTitle,
-      metadata: {
-        link_ref: linkRef,
-        client_id: clientId,
-        partner_id: partnerId,
-        org_id: orgId,
-        product_id: context.productId,
-        sale_id: context.saleId,
-        sale_motion: saleMotion,
-        invoice_id: invoiceId,
-        funding_round_id: fundingRoundId
-      },
-      env,
-      fetchImpl
-    });
-    if (!minted.ok) {
-      const err = new Error(minted.reason || "Commas checkout session failed");
-      err.code = "commas_checkout_failed";
-      err.status = minted.status || 502;
+    const cfg = checkoutConfig(env);
+    if (cfg.ok) {
+      const minted = await createCheckoutSession({
+        amountCents,
+        productTitle: commasTitle,
+        metadata: {
+          link_ref: linkRef,
+          client_id: clientId,
+          partner_id: partnerId,
+          org_id: orgId,
+          product_id: context.productId,
+          sale_id: context.saleId,
+          sale_motion: saleMotion,
+          invoice_id: invoiceId,
+          funding_round_id: fundingRoundId
+        },
+        env,
+        fetchImpl,
+        timeoutMs: checkoutTimeoutMs
+      });
+      if (!minted.ok) {
+        const err = new Error(minted.reason || "Commas checkout session failed");
+        err.code = "commas_checkout_failed";
+        err.status = minted.status || 502;
+        throw err;
+      }
+      checkoutUrl = minted.paymentLink;
+      commasSessionId = minted.productId != null ? String(minted.productId) : null;
+    } else if (checkoutBaseUrl) {
+      checkoutUrl = buildCommasCheckoutUrl({
+        baseUrl: checkoutBaseUrl,
+        linkRef,
+        amountCents,
+        description: commasTitle
+      });
+    } else {
+      const err = new Error(cfg.reason || "No Commas checkout configured");
+      err.code = "commas_not_configured";
+      err.status = 503;
       throw err;
     }
-    checkoutUrl = minted.paymentLink;
-    commasSessionId = minted.productId != null ? String(minted.productId) : null;
-  } else if (checkoutBaseUrl) {
-    checkoutUrl = buildCommasCheckoutUrl({
-      baseUrl: checkoutBaseUrl,
-      linkRef,
-      amountCents,
-      description: commasTitle
-    });
-  } else {
-    const err = new Error(cfg.reason || "No Commas checkout configured");
-    err.code = "commas_not_configured";
-    err.status = 503;
-    throw err;
-  }
 
-  const result = await db.query(
-    `INSERT INTO payment_links
+    const result = await saveDb.query(
+      `INSERT INTO payment_links
        (org_id, client_id, partner_id, purpose, description, amount_cents, currency,
         link_ref, checkout_url, created_by_staff_id, commas_session_id,
         product_id, sale_id, sale_motion, closer_staff_id, sales_manager_staff_id,
         invoice_id)
      VALUES ($1,$2,$17,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      RETURNING *`,
-    [
-      orgId, clientId, purpose, description, amountCents, currency,
-      linkRef, checkoutUrl, createdByStaffId, commasSessionId,
-      context.productId, context.saleId, saleMotion,
-      context.closerStaffId, context.salesManagerStaffId,
-      invoiceId, partnerId
-    ]
-  );
-  return result.rows[0];
+      [
+        orgId, clientId, purpose, description, amountCents, currency,
+        linkRef, checkoutUrl, createdByStaffId, commasSessionId,
+        context.productId, context.saleId, saleMotion,
+        context.closerStaffId, context.salesManagerStaffId,
+        invoiceId, partnerId
+      ]
+    );
+    return result.rows[0];
+  };
+
+  if (!invoiceId) return mintAndSave();
+  return withInvoiceCheckoutLock(db, orgId, clientId, invoiceId, async (lockConn) => {
+    const existing = (await lockConn.query(
+      `SELECT * FROM payment_links
+        WHERE org_id = $1 AND invoice_id = $2 AND provider = 'commas'
+          AND status IN ('created', 'sent')
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`,
+      [orgId, invoiceId]
+    )).rows[0];
+    if (existing) {
+      if (String(existing.client_id) !== String(clientId) ||
+          Number(existing.amount_cents) !== amountCents ||
+          String(existing.currency).toUpperCase() !== String(currency).toUpperCase() ||
+          !String(existing.checkout_url || "").trim()) {
+        throw new Error(`Invoice ${invoiceId} has an open Commas checkout with mismatched owner, balance, or currency`);
+      }
+      return existing;
+    }
+    return mintAndSave(lockConn, INVOICE_CHECKOUT_TIMEOUT_MS);
+  });
 }
 
 /** markSent — created -> sent. Idempotent: a link already sent (or paid) is

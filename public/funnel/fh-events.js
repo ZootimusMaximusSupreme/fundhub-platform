@@ -267,6 +267,179 @@
     return true;
   }
 
+  /* Cortana's hub is async in the funnel head. These are observations of the
+     FREE book-a-call path only; no browser event below reports a paid sale or
+     a durable booking conversion. The Fundhub track post remains the source
+     of truth when the hub is blocked. */
+  var cortanaPending = [], cortanaTimer = null, cortanaWaits = 0, cortanaBusy = false;
+  var CORTANA_PENDING_KEY = "fh_dr_pending_v1";
+  var CORTANA_MAX_PENDING = 12;
+  var CORTANA_PAGES = {
+    book_call_watch_view: { "/watch": 1 },
+    book_call_apply_view: { "/apply": 1 },
+    book_call_apply_started: { "/apply": 1 },
+    book_call_apply_final_answer: { "/apply": 1 },
+    book_call_calendar_view: { "/apply": 1, "/funding-book-call": 1 },
+    book_call_time_selected: { "/apply": 1, "/funding-book-call": 1 },
+    book_call_booking_observed: { "/apply": 1, "/funding-book-call": 1 },
+    book_call_thank_you_view: { "/thank-you": 1 }
+  };
+  var CORTANA_HUB_SRC = "https://app.directroas.com/api/hub/v1/cmsdutl8e00mukv041vwuo39w";
+  var cortanaHubChecked = false;
+  function cortanaTracker() {
+    var t = window.akTracking || window.CortanaTracking;
+    return t && typeof t.trackEvent === "function" ? t : null;
+  }
+  function ensureCortanaHub() {
+    if (cortanaHubChecked || cortanaTracker()) return;
+    cortanaHubChecked = true;
+    try {
+      var scripts = document.querySelectorAll("script");
+      for (var i = 0; i < scripts.length; i++) {
+        var src = scripts[i].getAttribute("src") || scripts[i].src || "";
+        if (String(src).indexOf(CORTANA_HUB_SRC) === 0) return;
+      }
+      // ClickFunnels currently omits this pixel on /apply, while the other
+      // free-call pages include it. Load the same Fundhub hub once here.
+      var script = document.createElement("script");
+      script.async = true;
+      script.setAttribute("src", CORTANA_HUB_SRC);
+      (document.head || document.documentElement).append(script);
+    } catch (e) {}
+  }
+  function cortanaAccepted(name) {
+    try { return !!sessionStorage.getItem("fh_dr_" + name); } catch (e) { return false; }
+  }
+  function saveCortanaPending() {
+    try { sessionStorage.setItem(CORTANA_PENDING_KEY, JSON.stringify(cortanaPending)); } catch (e) {}
+  }
+  function restoreCortanaPending() {
+    var saved;
+    try { saved = JSON.parse(sessionStorage.getItem(CORTANA_PENDING_KEY) || "[]"); } catch (e) { return; }
+    if (!saved || Object.prototype.toString.call(saved) !== "[object Array]") return;
+    var session = sid();
+    for (var i = 0; i < saved.length && cortanaPending.length < CORTANA_MAX_PENDING; i++) {
+      var item = saved[i];
+      if (!item || !has.call(CORTANA_PAGES, item.name) || !has.call(CORTANA_PAGES[item.name], item.page) ||
+          item.sid !== session || typeof item.at !== "number" || !isFinite(item.at) || item.at <= 0 ||
+          cortanaAccepted(item.name)) continue;
+      var duplicate = false;
+      for (var j = 0; j < cortanaPending.length; j++) if (cortanaPending[j].name === item.name) duplicate = true;
+      if (!duplicate) cortanaPending.push({ name: item.name, page: item.page, sid: session, at: item.at });
+    }
+    saveCortanaPending();
+  }
+  function cortanaUtm(value) {
+    return typeof value === "string" && /^[A-Za-z0-9_.~-]{1,120}$/.test(value) ? value : "";
+  }
+  function cortanaEnvelope(item) {
+    var envelope = {
+      schema_version: "fh-cortana-v1",
+      event_id: "dr.b." + item.name + "." + item.sid,
+      occurred_at: new Date(item.at).toISOString(),
+      funnel: "book_call",
+      stage: item.name,
+      page_path: item.page,
+      session_id: item.sid
+    };
+    var tid = cortanaCookie();
+    if (tid) envelope.ak_tid = tid;
+    var saved = attribution();
+    for (var i = 0; i < KEYS.length; i++) {
+      var key = KEYS[i], safe = key.indexOf("utm_") === 0 ? cortanaUtm(saved[key]) : "";
+      if (safe) envelope[key] = safe;
+    }
+    var fbc = cookie("_fbc") || storedFbc(), fbp = cookie("_fbp");
+    if (fbc) envelope.fbc = fbc;
+    if (fbp) envelope.fbp = fbp;
+    return envelope;
+  }
+  function scheduleCortana() {
+    if (cortanaTimer || cortanaBusy || !cortanaPending.length) return;
+    // Keep one low-rate poll alive after the first ten seconds. The queue is
+    // bounded and survives a reload; a slow or rejected hub never erases it.
+    var delay = cortanaWaits < 40 ? 250 : cortanaWaits < 100 ? 1000 : 5000;
+    cortanaTimer = setTimeout(flushCortana, delay);
+  }
+  function flushCortana() {
+    cortanaTimer = null;
+    if (cortanaBusy || !cortanaPending.length) return;
+    var tracker = cortanaTracker();
+    if (!tracker) {
+      ensureCortanaHub();
+      cortanaWaits++;
+      scheduleCortana();
+      return;
+    }
+    var item = cortanaPending[0];
+    function retry() {
+      cortanaBusy = false;
+      cortanaWaits++;
+      scheduleCortana();
+    }
+    function accepted(value) {
+      if (value === false || (value && (value.ok === false || value.success === false))) {
+        retry();
+        return;
+      }
+      cortanaBusy = false;
+      cortanaWaits = 0;
+      try { sessionStorage.setItem("fh_dr_" + item.name, "1"); } catch (e) {}
+      cortanaPending.shift();
+      saveCortanaPending();
+      flushCortana();
+    }
+    try {
+      var result = tracker.trackEvent(item.name, cortanaEnvelope(item));
+      if (result && typeof result.then === "function") {
+        cortanaBusy = true;
+        result.then(accepted, retry);
+      } else accepted(result);
+    } catch (e) { retry(); }
+  }
+  function cortanaCookie() {
+    try {
+      var m = /(?:^|;\s*)ak_tid=([^;]+)/.exec(String(document.cookie || ""));
+      if (!m) return "";
+      var v = decodeURIComponent(m[1]);
+      return /^[A-Za-z0-9._-]{8,200}$/.test(v) ? v : "";
+    } catch (e) { return ""; }
+  }
+  function cortanaMilestones(event, props, page) {
+    if (event === "page_view") {
+      if (page === "/watch") return ["book_call_watch_view"];
+      if (page === "/apply") return ["book_call_apply_view"];
+      if (page === "/thank-you") return ["book_call_thank_you_view"];
+      return [];
+    }
+    if (page !== "/apply" && page !== "/funding-book-call") return [];
+    if (event === "survey_answer" && page === "/apply") {
+      return props.last === true
+        ? ["book_call_apply_started", "book_call_apply_final_answer"]
+        : ["book_call_apply_started"];
+    }
+    if (event === "calendar_view") return ["book_call_calendar_view"];
+    if (event === "time_selected") return ["book_call_time_selected"];
+    if (event === "booking_confirmed") return ["book_call_booking_observed"];
+    return [];
+  }
+  function fireCortana(event, props, page, body) {
+    if (navigator.webdriver === true) return;
+    var names = cortanaMilestones(event, props, page);
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      if (cortanaAccepted(name) || cortanaPending.length >= CORTANA_MAX_PENDING) continue;
+      var queued = false;
+      for (var j = 0; j < cortanaPending.length; j++) if (cortanaPending[j].name === name) queued = true;
+      if (!queued) cortanaPending.push({ name: name, page: page, sid: body.session_id, at: now() });
+    }
+    if (cortanaPending.length) {
+      saveCortanaPending();
+      ensureCortanaHub();
+      if (!cortanaTimer && !cortanaBusy) flushCortana();
+    }
+  }
+
   /* custom_data from kept props only, by name; empty values left out. */
   function data(pairs) {
     var out = {};
@@ -346,6 +519,7 @@
         if (list.length) body.meta_event_id = list[0][3];
       }
       try { fire(list); } catch (e) {}
+      try { fireCortana(event, kept, page, body); } catch (e) {}
       beacon(JSON.stringify(body));
     } catch (e) {}
   }
@@ -780,6 +954,19 @@
   /* ── start ────────────────────────────────────────────────────────────── */
 
   try { window.fhTrack = fhTrack; } catch (e) {}
+
+  try {
+    var cortanaPage = pagePath();
+    if (navigator.webdriver !== true &&
+        (cortanaPage === "/watch" || cortanaPage === "/apply" ||
+         cortanaPage === "/funding-book-call" || cortanaPage === "/thank-you")) {
+      restoreCortanaPending();
+      if (cortanaPending.length) {
+        ensureCortanaHub();
+        flushCortana();
+      }
+    }
+  } catch (e) {}
 
   try {
     var here = pagePath();
