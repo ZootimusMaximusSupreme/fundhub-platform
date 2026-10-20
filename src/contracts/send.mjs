@@ -45,7 +45,8 @@ import { normaliseFields, applyAutoFill, assertSignable } from "./fields.mjs";
 import { replaceSigners, listSigners, normaliseSigners } from "./signers.mjs";
 import { loadTemplatePdf } from "./upload.mjs";
 import { notifySigners } from "./notify.mjs";
-import { defaultContractValues } from "../config/offers.mjs";
+import { defaultContractValues, formatCents } from "../config/offers.mjs";
+import { blueprintAmount, blueprintFeeCents } from "./blueprint-price.mjs";
 
 export const CONTRACT_MIME = "text/html";
 
@@ -163,6 +164,56 @@ function withTemplateDefaults(templateKey, values) {
   return filled;
 }
 
+const BLUEPRINT_TEMPLATE = "CAPITAL-BLUEPRINT-AGREEMENT";
+const BLUEPRINT_AMOUNT = "_blueprint_amount_cents";
+
+/* Keep the chosen price with the draft. A title-only save must not reset it
+   to the catalogue default; a caller cannot supply contradictory fee wording. */
+export function blueprintContractValues(templateKey, values = {}, {
+  amountCents = undefined, savedValues = null
+} = {}) {
+  if (templateKey !== BLUEPRINT_TEMPLATE) {
+    if (amountCents !== undefined) {
+      throw badRequest("Only Capital Blueprint accepts a custom price.", "invalid_blueprint_amount");
+    }
+    return withTemplateDefaults(templateKey, values);
+  }
+  const savedFee = savedValues?.package_fee;
+  const savedAmount = savedValues?.[BLUEPRINT_AMOUNT] !== undefined
+    ? blueprintAmount(savedValues[BLUEPRINT_AMOUNT])
+    : savedFee != null && String(savedFee).trim() ? blueprintFeeCents(savedFee) : undefined;
+  if (savedAmount !== undefined && savedFee != null && String(savedFee).trim()
+      && blueprintFeeCents(savedFee) !== savedAmount) {
+    throw badRequest("The saved Blueprint price and agreement fee disagree.", "blueprint_amount_mismatch");
+  }
+  const suppliedFee = values?.package_fee;
+  const feeAmount = suppliedFee != null && String(suppliedFee).trim()
+    ? blueprintFeeCents(suppliedFee) : undefined;
+  const chosen = amountCents !== undefined ? blueprintAmount(amountCents)
+    : savedAmount ?? feeAmount ?? blueprintAmount(undefined);
+  if ((feeAmount !== undefined && feeAmount !== chosen)
+      || (values?.[BLUEPRINT_AMOUNT] !== undefined && values[BLUEPRINT_AMOUNT] !== chosen)) {
+    throw badRequest("The Blueprint price must match the agreement fee.", "blueprint_amount_mismatch");
+  }
+  return {
+    ...withTemplateDefaults(templateKey, { ...savedValues, ...values }),
+    package_fee: formatCents(chosen),
+    [BLUEPRINT_AMOUNT]: chosen
+  };
+}
+
+function assertBlueprintPriceTemplate(template, values) {
+  if (template.template_key !== BLUEPRINT_TEMPLATE
+      || values[BLUEPRINT_AMOUNT] === blueprintAmount(undefined)) return;
+  const body = String(template.body || "");
+  if ((body.match(/\{\{\s*field\.package_fee\s*\}\}/g) || []).length < 2
+      || /five thousand|\$5,000/i.test(body) || template.source_kind === "pdf") {
+    throw conflict(
+      "The Blueprint agreement still has the old fixed price. Load the updated price wording before sending this amount.",
+      "blueprint_price_template_outdated");
+  }
+}
+
 /**
  * createDraft — a contract that exists but has no words yet.
  *
@@ -173,7 +224,7 @@ function withTemplateDefaults(templateKey, values) {
  */
 export async function createDraft(db, {
   orgId, staffId, clientId, templateId, values = {}, title = null,
-  signers = null, signingOrder = "sequential", subjectStaffId = null
+  signers = null, signingOrder = "sequential", subjectStaffId = null, amountCents = undefined
 } = {}) {
   if (!orgId) throw badRequest("A contract needs to belong to a company.", "org_required");
   if (!staffId) throw badRequest("A contract has to record who created it.", "staff_required");
@@ -205,7 +256,8 @@ export async function createDraft(db, {
   /* Filled here, at the moment the draft is written, so merge_values on the row
      IS what the document will render from. Filling at send instead would leave
      the stored record disagreeing with the words that went out. */
-  const mergeValues = withTemplateDefaults(template.template_key, values);
+  const mergeValues = blueprintContractValues(template.template_key, values, { amountCents });
+  assertBlueprintPriceTemplate(template, mergeValues);
 
   const { rows } = await db.query(
     `INSERT INTO contracts
@@ -249,7 +301,7 @@ export async function createDraft(db, {
 }
 
 /** saveDraft — change which blanks are filled in. Refused once sent. */
-export async function saveDraft(db, { orgId, id, values = {}, title = null } = {}) {
+export async function saveDraft(db, { orgId, id, values = {}, title = null, amountCents = undefined } = {}) {
   const current = await getContract(db, { orgId, id });
   if (!current) throw notFound();
   if (current.status !== "draft") {
@@ -260,12 +312,20 @@ export async function saveDraft(db, { orgId, id, values = {}, title = null } = {
   }
   /* Same catalogue fill as createDraft. A save that posts only the boxes a
      screen happens to show must not blank the ones it does not. */
+  const mergeValues = blueprintContractValues(current.template_key, values, {
+    amountCents, savedValues: current.merge_values
+  });
+  if (current.template_key === BLUEPRINT_TEMPLATE) {
+    const template = await getTemplate(db, { orgId, id: current.template_id });
+    if (!template) throw notFound("That contract template does not exist.", "template_not_found");
+    assertBlueprintPriceTemplate(template, mergeValues);
+  }
   const { rows } = await db.query(
     `UPDATE contracts SET merge_values = $3::jsonb,
             title = COALESCE(NULLIF(btrim($4), ''), title), updated_at = now()
       WHERE id = $1::uuid AND org_id = $2::uuid
       RETURNING ${CONTRACT_COLUMNS}`,
-    [id, orgId, JSON.stringify(withTemplateDefaults(current.template_key, values)),
+    [id, orgId, JSON.stringify(mergeValues),
      title == null ? "" : String(title)]
   );
   return rows[0];
@@ -283,10 +343,15 @@ export async function saveDraft(db, { orgId, id, values = {}, title = null } = {
  * can preview before it has written anything down.
  */
 export async function preview(db, {
-  orgId, templateId, clientId, values = {}, at = new Date()
+  orgId, templateId, clientId, values = {}, at = new Date(), amountCents = undefined
 } = {}) {
   const template = await getTemplate(db, { orgId, id: templateId });
   if (!template) throw notFound("That contract template does not exist.", "template_not_found");
+
+  if (template.template_key === BLUEPRINT_TEMPLATE || amountCents !== undefined) {
+    values = blueprintContractValues(template.template_key, values, { amountCents });
+    assertBlueprintPriceTemplate(template, values);
+  }
 
   const base = await clientContext(db, clientId);
   const context = mergeContext({ contact: base.contact, values, at });
@@ -321,7 +386,7 @@ export async function preview(db, {
  */
 export async function send(db, {
   orgId, staffId, id, store = null, ttlSeconds = DEFAULT_TTL_SECONDS,
-  baseUrl = null, secret = undefined, at = new Date(), now = Date.now
+  baseUrl = null, secret = undefined, at = new Date(), now = Date.now, amountCents = undefined
 } = {}) {
   if (!staffId) throw badRequest("A send has to record who sent it.", "staff_required");
 
@@ -332,6 +397,16 @@ export async function send(db, {
   }
   if (current.status === "signed") {
     throw conflict("This contract is already signed.", "already_signed");
+  }
+
+  const validatedValues = blueprintContractValues(current.template_key, {}, {
+    amountCents, savedValues: current.merge_values
+  });
+  if (current.template_key === BLUEPRINT_TEMPLATE && amountCents !== undefined
+      && validatedValues.package_fee !== blueprintContractValues(current.template_key, {}, {
+        savedValues: current.merge_values
+      }).package_fee) {
+    throw badRequest("The Blueprint price must match the saved agreement fee.", "blueprint_amount_mismatch");
   }
 
   // ── already sent: re-mint the links, touch nothing else ───────────────────
@@ -362,6 +437,7 @@ export async function send(db, {
       "It cannot be sent until the real wording is loaded.",
       "placeholder_text");
   }
+  assertBlueprintPriceTemplate(template, validatedValues);
 
   const signers = await listSigners(db, current.id);
   if (!signers.length) {
@@ -385,7 +461,8 @@ export async function send(db, {
      document, and the value is written back onto the row in the same freeze
      UPDATE below so the stored record never disagrees with the words that went
      out. Drafts created since simply come back unchanged. */
-  const values = withTemplateDefaults(current.template_key, current.merge_values);
+  const values = current.template_key === BLUEPRINT_TEMPLATE
+    ? validatedValues : withTemplateDefaults(current.template_key, current.merge_values);
   const stillEmpty = missingRequired(template.manual_fields, values);
   if (stillEmpty.length) {
     throw badRequest(

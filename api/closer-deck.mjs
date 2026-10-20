@@ -1,7 +1,7 @@
 // POST /api/closer-deck — live actions from the presenter cockpit.
 //
 //   { action: "send_soft_pull", client_id }
-//   { action: "send_pay_link", client_id, offer_key }
+//   { action: "send_pay_link", client_id, offer_key, amount_cents? }
 //   { action: "generate_letters", client_id, offer_key, edu?, force_repair?, tier? }
 //   { action: "log_disposition", client_id, offer_key, route?, temperature?, beliefs_count?, cost_of_inaction? }
 //
@@ -34,6 +34,7 @@ async function ownsClient(database, orgId, clientId) {
 export default async function handler(req, res, deps = {}) {
   const database = deps.db ?? db;
   const requireAuth = deps.requireAuth ?? defaultRequireAuth;
+  const env = deps.env ?? process.env;
 
   if (req.method && req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -83,7 +84,10 @@ export default async function handler(req, res, deps = {}) {
         staffRole: staff.role,
         offerKey: body.offer_key,
         saleMotion: body.sale_motion || null,
-        checkoutBaseUrl: process.env.COMMAS_CHECKOUT_BASE_URL
+        amountCents: body.amount_cents,
+        provider: body.provider ?? "commas",
+        checkoutBaseUrl: env.COMMAS_CHECKOUT_BASE_URL,
+        env
       });
       return res.status(200).json({ ok: true, action: "send_pay_link", ...result });
     }

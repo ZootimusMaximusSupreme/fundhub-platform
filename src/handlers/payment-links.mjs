@@ -34,6 +34,9 @@ async function turnOnFinanceOsIfSetup(db, link) {
 
 export async function onPaymentReceivedForLink(event, db) {
   const p = event.payload || {};
+  // Whop settles its own saved link after checking the signed checkout identity.
+  // Its pay_ reference must never enter the Commas session column.
+  if (event.source === "whop" || p.source === "whop" || p.provider === "whop") return;
   const paidAmountCents = p.amount != null ? toCents(p.amount) : null;
   /* Commas ids only. p.productId is OUR products.id, copied off the link by
      processCommasInboxRow — every deposit link shares one. Writing it into

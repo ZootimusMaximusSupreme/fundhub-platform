@@ -190,8 +190,9 @@ import { isSyntheticRow } from "./synthetic.mjs";
    invoice-checkout-retirement-sweeper retires stale Commas links, and
    invoice-sent-recovery restores a missing first-notice event handoff.
    Both are cron-only, so the journey report names them as scheduled rather
-   than pretending a synthetic customer walk fired either one. */
-const REGISTERED = 102;
+   than pretending a synthetic customer walk fired either one.
+   103 with the dedicated Whop Blueprint billing inbox drain (2026-10-20). */
+const REGISTERED = 103;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { OFFERS } from "../config/offers.mjs";
+import { OFFERS, formatCents } from "../config/offers.mjs";
 import { mergeBureauReports } from "../finance/crs-map.mjs";
 import { makeFakeDb } from "../documents/fake-db.mjs";
 import { createStore, memoryProvider } from "../documents/store.mjs";
@@ -452,6 +453,62 @@ test("generateDeckLetters refuses the qualified funding offer", async () => {
     }),
     (e) => e instanceof CloserDeckError && e.code === "letters_blocked_funding_route" && e.status === 409
   );
+});
+
+test("Blueprint sends the resolved cents and original product into checkout persistence", async () => {
+  for (const amountCents of [undefined, 500000, 750000, 1000000]) {
+    let persisted;
+    const db = {
+      async query(sql, params) {
+        if (/FROM contracts/.test(sql)) {
+          const fee = formatCents(amountCents ?? 500000);
+          const rendered_body = "Capital Blueprint tuition " + fee;
+          return { rows: [{ id: "agreement-blueprint", status: "sent", merge_values: { package_fee: fee },
+            rendered_body, body_sha: "sha256:" + createHash("sha256").update(rendered_body).digest("hex") }] };
+        }
+        if (/FROM products/.test(sql)) return { rows: [{ id: "product-blueprint", code: "consulting-package" }] };
+        if (/INSERT INTO payment_links/.test(sql)) {
+          persisted = params;
+          // End the test at persistence, before a message can be queued or sent.
+          throw new Error("test_checkout_captured");
+        }
+        return { rows: [] };
+      }
+    };
+    await assert.rejects(() => sendDeckPayLink(db, {
+      orgId: ORG, clientId: CID, staffId: "s1", offerKey: "UWIQ_DELIVERABLES",
+      saleMotion: "upsell", amountCents, env: {}, checkoutBaseUrl: "https://pay.example/checkout"
+    }), /test_checkout_captured/);
+    assert.equal(persisted[4], amountCents ?? 500000);
+    assert.equal(persisted[10], "product-blueprint");
+    const url = new URL(persisted[7]);
+    assert.equal(Number(url.searchParams.get("amount")), (amountCents ?? 500000) / 100);
+    assert.equal(url.searchParams.get("description"), "Consulting Services Package");
+  }
+});
+
+test("invalid or non-Blueprint price overrides stop before checkout and database work", async () => {
+  let queries = 0;
+  const db = { async query() { queries++; throw new Error("must not query"); } };
+  for (const [offerKey, amountCents] of [
+    ["UWIQ_DELIVERABLES", 499900], ["UWIQ_DELIVERABLES", 1000100],
+    ["UWIQ_DELIVERABLES", 500001], ["UWIQ_DELIVERABLES", "750000"],
+    ["REPAIR_DFY", 500000], ["FUNDING_DFY", 750000], ["SOFT_PULL", 3200]
+  ]) {
+    await assert.rejects(() => sendDeckPayLink(db, {
+      orgId: ORG, clientId: CID, staffId: "s1", offerKey, amountCents, env: {}
+    }), (e) => e.code === "invalid_offer_amount" && e.status === 400);
+  }
+  assert.equal(queries, 0);
+});
+
+test("Whop is only selectable for Blueprint and unsupported providers stop before writes", async () => {
+  const db = { async query() { throw new Error("must not query"); } };
+  for (const [offerKey, provider] of [["REPAIR_DFY", "whop"], ["FUNDING_DFY", "whop"], ["UWIQ_DELIVERABLES", "unknown"]]) {
+    await assert.rejects(() => sendDeckPayLink(db, {
+      orgId: ORG, clientId: CID, staffId: "s1", offerKey, provider, env: {}
+    }), (e) => e.code === "invalid_offer_provider" && e.status === 400);
+  }
 });
 
 /* Hole 16 — a multi-company file was priced off business ages nobody asked

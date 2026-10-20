@@ -6,8 +6,10 @@
 import { runCrsPull } from "./crs-pull.mjs";
 import { livePullAllowed } from "./crs-identities.mjs";
 import { runBlueprintMonthlyPullAftercare } from "../blueprint/monthly-pull-aftercare.mjs";
+import { createTask } from "../lib/create-task.mjs";
 
 export const FINANCE_OS_SYSTEM_PULL_LIVE = "FINANCE_OS_SYSTEM_PULL_LIVE";
+export const MONTHLY_DELIVERY_EXCEPTION_SOURCE = "blueprint-monthly-delivery";
 
 /** True when both CRS_ALLOW_LIVE and FINANCE_OS_SYSTEM_PULL_LIVE are explicitly on. */
 export function systemPullUsesSimulation(env = process.env) {
@@ -48,7 +50,8 @@ export async function fulfilQueuedSystemPulls(conn, {
     failed: 0,
     skipped: [],
     errored: [],
-    simulated: simulate
+    simulated: simulate,
+    deliveryExceptions: []
   };
 
   const rows = await queuedSystemPulls(conn, { limit });
@@ -74,17 +77,29 @@ export async function fulfilQueuedSystemPulls(conn, {
       }
       tally.fulfilled += 1;
       if (aftercare) {
-        await aftercare(conn, {
+        const delivered = await aftercare(conn, {
           orgId: row.org_id,
           clientId: row.client_id,
           crsResultId: pull.crsResultId ?? null
-        }).catch((e) => {
+        }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+        if (delivered?.ok !== true) {
           tally.errored.push({
             clientId: row.client_id,
+            requestId: row.id,
             phase: "aftercare",
-            error: String(e?.message || e)
+            error: delivered?.error || delivered?.failures?.map((failure) => `${failure.phase}: ${failure.error}`).join("; ") || "monthly_aftercare_failed"
           });
-        });
+          const exception = await createTask(conn, {
+            orgId: row.org_id, clientId: row.client_id,
+            title: "Finish Blueprint monthly delivery from the saved credit result",
+            sourceWorkflow: MONTHLY_DELIVERY_EXCEPTION_SOURCE,
+            assigneeRole: "owner",
+            eventId: `blueprint-monthly-delivery:${row.id}`,
+            detail: `Credit result: ${pull.crsResultId || "not recorded"}. Request: ${row.id}. Finish the plan and letters from this saved result; do not request another paid credit pull.`
+          }).catch((error) => ({ created: false, error: String(error?.message || error) }));
+          tally.deliveryExceptions.push({ clientId: row.client_id, requestId: row.id,
+            crsResultId: pull.crsResultId ?? null, task: exception });
+        }
       }
     } catch (e) {
       tally.errored.push({
@@ -95,7 +110,7 @@ export async function fulfilQueuedSystemPulls(conn, {
     }
   }
 
-  return tally;
+  return { ...tally, ok: tally.failed === 0 && tally.errored.length === 0 };
 }
 
 export default fulfilQueuedSystemPulls;

@@ -30,6 +30,7 @@ import { onRepairEvent } from "../repair/handlers.mjs";
 import * as submagicProvider from "../messaging/providers/submagic.mjs";
 import { recordSubmagicWebhook } from "../ad-videos/pipeline.mjs";
 import { parseMerchantProvider, handleMerchantWebhook } from "../merchant/webhooks.mjs";
+import { handleWhopBillingWebhook } from "../adapters/whop-billing.mjs";
 
 /* PROVIDER TABLES ARE NULL-PROTOTYPE. Read this before turning either of the
    two below back into a plain `{}` literal.
@@ -74,7 +75,7 @@ const STD = table({
     sig: ["x-webhook-clickfunnels-signature", "x-clickfunnels-signature"],
     env: "CLICKFUNNELS_WEBHOOK_SECRET"
   },
-  bland: { fn: handleBlandWebhook, sig: "x-bland-signature", env: "BLAND_WEBHOOK_SECRET" },
+  bland: { fn: handleBlandWebhook, sig: ["x-webhook-signature", "x-bland-signature"], env: "BLAND_WEBHOOK_SECRET" },
   /* lendflow was written, tested and documented as live — and never registered
      here, so /api/webhooks/lendflow answered 404. It is the SOLE emitter of
      round.started / round.submitted / round.approved / round.funded, so eight
@@ -317,6 +318,10 @@ export async function handleWebhook({ db, provider, rawBody, headers = {}, url, 
 async function dispatchWebhook({ db, provider, rawBody, headers = {}, url, env = process.env }) {
   ensureRegistered();
   const h = (name) => headers[name] ?? headers[String(name).toLowerCase()];
+
+  if (provider === "whop-billing") {
+    return norm(await handleWhopBillingWebhook({ db, rawBody, headers, env }));
+  }
 
   /* A CLIENT'S OWN merchant processor — Finance OS, not Fundhub billing.
      /api/webhooks/merchant-whop/<connection id> and

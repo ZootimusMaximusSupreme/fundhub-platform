@@ -14,6 +14,9 @@ import { buildCommasCheckoutUrl } from "../adapters/commas.mjs";
 import { createCheckoutSession, checkoutConfig } from "../payments/commas-api.mjs";
 import { commasProductTitleFor } from "../config/offers.mjs";
 import { assertCommasSafeCopy } from "../payments/commas-safe-copy.mjs";
+import { createWhopBlueprintPaymentLink } from "../payments/whop-blueprint.mjs";
+import { assertBlueprintAgreementPrice } from "../contracts/blueprint-price.mjs";
+import { resolveOfferAmountCents } from "../config/offers.mjs";
 
 const PURPOSES = new Set(["deposit", "diagnostic", "repair", "custom"]);
 const SALE_MOTIONS = new Set(["downsell", "upsell"]);
@@ -66,7 +69,7 @@ export function generateLinkRef() {
  * guard makes that a decision instead of an accident, and saves three round
  * trips on every partner purchase. Product resolution is org-scoped and runs
  * for both, because a partner add-on IS a products row (271). */
-async function resolveLinkContext(db, {
+export async function resolveLinkContext(db, {
   orgId,
   clientId,
   productId = null,
@@ -181,8 +184,17 @@ export async function createPaymentLink(db, {
   invoiceId = null, fundingRoundId = null,
   commasProductTitle = null,
   checkoutBaseUrl,
+  provider = "commas",
   env = process.env, fetchImpl = fetch
 }) {
+  if (provider === "whop") {
+    return createWhopBlueprintPaymentLink(db, {
+      orgId, clientId, partnerId, purpose, description, amountCents, currency,
+      createdByStaffId, createdByRole, productId, productCode, saleId, saleMotion,
+      invoiceId, fundingRoundId, env, fetchImpl
+    });
+  }
+  if (provider !== "commas") throw new TypeError("createPaymentLink: unsupported payment provider");
   if (!orgId) throw new TypeError("createPaymentLink: orgId is required");
   /* EXACTLY ONE OWNER, the same rule 277's CHECK enforces in the database.
      A link addressed to both a client and a partner has no answer to "whose
@@ -224,6 +236,11 @@ export async function createPaymentLink(db, {
     createdByStaffId,
     createdByRole
   });
+
+  if (context.productCode === "consulting-package") {
+    resolveOfferAmountCents("UWIQ_DELIVERABLES", amountCents);
+    await assertBlueprintAgreementPrice(db, { orgId, clientId, amountCents });
+  }
 
   const commasTitle = commasProductTitleFor({
     productCode: context.productCode,

@@ -48,6 +48,9 @@ async function call(body, {
     staffSession({ role, org_id }),
     [/FROM agents WHERE org_id = \$1::uuid AND code = \$2/, (_s, p) => (agent && agentIn.includes(p[0]) && p[1] === agent.code ? [agent] : [])],
     [/FROM clients WHERE id = \$1::uuid AND org_id = \$2::uuid/, (_s, p) => (client && p[0] === client.id && p[1] === (client.org_id || ORG_ID) ? [client] : [])],
+    // The real voice-context reader must resolve the same saved client before dialing.
+    [/FROM clients\s+WHERE id = \$1 AND org_id = \$2/, (_s, p) => (client && p[0] === client.id && p[1] === (client.org_id || ORG_ID) ? [client] : [])],
+    [/FROM messages\s+WHERE org_id = \$1 AND client_id = \$2/, (_s, p) => (p[0] === ORG_ID && p[1] === CLIENT ? [{ id: "prior-sms", direction: "inbound", channel: "sms", body: "Please call about my checklist", status: "received" }] : [])],
     [/FROM opt_outs WHERE client_id = \$1 AND channel = \$2 AND opted_in_at IS NULL/, (_s, p) => (
       p[0] === CLIENT && optedOut.includes(p[1]) ? [{ "?column?": 1 }] : [])],
     [/FROM compliance_rules/, rules],
@@ -83,6 +86,7 @@ describe("POST /api/agent-call action=call", () => {
     assert.match(wire[0].url, /\/calls$/);
     assert.equal(wire[0].body.phone_number, "+16025550100");
     assert.match(wire[0].body.task, /Ask when the client wants to book a call/);
+    assert.match(wire[0].body.task, /Please call about my checklist/);
     assert.match(wire[0].body.task, /recorded/i);
     assert.equal(wire[0].body.record, true);
     assert.equal(wire[0].body.metadata.client_id, CLIENT);

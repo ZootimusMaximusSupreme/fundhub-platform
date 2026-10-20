@@ -16,7 +16,7 @@
 
 import crypto from "node:crypto";
 import { emit } from "../events/bus.mjs";
-import { resolveClientByCallId } from "../lib/outbound-calls.mjs";
+import { resolveDispatchByCallId, enrichCompletedCallTranscript } from "../lib/outbound-calls.mjs";
 
 // --- 1. Signature verification (fail-closed) --------------------------------
 // HMAC-SHA256 of raw body keyed by the shared secret. Returns false on any
@@ -81,13 +81,26 @@ export function normalizeBlandEvent(body) {
     Boolean(b.transferred_to) ||
     String(b.queue_status || "").toLowerCase().includes("transfer");
 
+  // Preserve the words of the call for the same CRM context used by SMS.
+  // Bland supplies either a joined transcript or speaker-labelled turns.
+  const text = (value) => typeof value === "string" && value.trim() ? value.trim() : null;
+  const turns = Array.isArray(b.transcripts) ? b.transcripts : [];
+  const transcript = text(b.concatenated_transcript) || text(b.transcript) ||
+    text(turns.map((turn) => {
+      const words = text(turn?.text);
+      return words ? `${text(turn.user) || "Speaker"}: ${words}` : "";
+    }).filter(Boolean).join("\n"));
+
   return {
     callId: callId ? String(callId) : null,
     status: statusRaw || null,
     isCompleted,
     disposition: disposition ? String(disposition) : null,
     durationSec,
-    transferred
+    transferred,
+    transcript,
+    summary: text(b.summary),
+    recordingUrl: text(b.recording_url)
   };
 }
 
@@ -116,6 +129,9 @@ export function mapToCanonical(evt) {
         outcome: dispositionToOutcome(evt.disposition),
         durationSec: evt.durationSec,
         transferred: evt.transferred,
+        transcript: evt.transcript || null,
+        summary: evt.summary || null,
+        recordingUrl: evt.recordingUrl || null,
         source: "bland"
       }
     }
@@ -125,8 +141,8 @@ export function mapToCanonical(evt) {
 // --- Adapter entrypoint -----------------------------------------------------
 // handleBlandWebhook({ db, rawBody, signatureHeader, secret, clientId? })
 //   → { ok, status, emitted: [{name, id, deduped}], reason? }
-// clientId: optional — pass when the call was initiated for a known client so that
-// downstream workflows (dpc-02, ai-set-03) can resolveClient without a DB lookup.
+// clientId is only a caller cross-check. Attribution always comes from the
+// stored dispatch and its matching client/company, never webhook payload IDs.
 export async function handleBlandWebhook({ db, rawBody, signatureHeader, secret, clientId }) {
   if (!verifyBlandSignature(rawBody, signatureHeader, secret)) {
     return { ok: false, status: 401, reason: "bad_signature", emitted: [] };
@@ -145,10 +161,12 @@ export async function handleBlandWebhook({ db, rawBody, signatureHeader, secret,
     return { ok: true, status: 200, reason: "not_completed", emitted: [] };
   }
 
-  // Resolve clientId from the dispatch record when not supplied by the caller.
-  let resolvedClientId = clientId != null ? String(clientId) : null;
-  if (resolvedClientId == null && evt.callId) {
-    resolvedClientId = await resolveClientByCallId(evt.callId, db);
+  const dispatch = await resolveDispatchByCallId(evt.callId, db);
+  if (!dispatch) {
+    return { ok: false, status: 409, reason: "call_dispatch_not_found", emitted: [] };
+  }
+  if (clientId != null && String(clientId) !== String(dispatch.clientId)) {
+    return { ok: false, status: 409, reason: "call_attribution_mismatch", emitted: [] };
   }
 
   const canonical = mapToCanonical(evt);
@@ -158,8 +176,14 @@ export async function handleBlandWebhook({ db, rawBody, signatureHeader, secret,
     const idKey = evt.callId ? `bland:${evt.callId}:${c.name}` : undefined;
     const res = await emit(db, c.name, c.payload, {
       idempotencyKey: idKey,
-      clientId: resolvedClientId ?? undefined
+      clientId: dispatch.clientId,
+      orgId: dispatch.orgId
     });
+    if (res.deduped && evt.transcript) {
+      await enrichCompletedCallTranscript(db, {
+        orgId: dispatch.orgId, clientId: dispatch.clientId, callId: evt.callId, payload: c.payload
+      });
+    }
     emitted.push({ name: c.name, id: res.id, deduped: res.deduped });
   }
 

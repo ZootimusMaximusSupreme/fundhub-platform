@@ -189,7 +189,7 @@
     checks: {}, costNum: "", obj: null, showRef: false, toast: "", clientOnly: false,
     survey: {}, engine: { available: false, reason: "engine data unavailable", fico: {}, reasons: [] },
     offers: [], softPull: null, saleMotion: "", loaded: false, error: null,
-    contractLink: "", contractMsg: "",
+    contractLink: "", contractMsg: "", blueprintAmountDollars: null, blueprintProvider: "commas",
     /* One entry per send control: whether it is in flight, when it last went
        out, and how many times. F24 — see sendBtn below. */
     sends: {}, moreOpen: false, repairReferral: false,
@@ -197,7 +197,8 @@
     businesses: [], incBusy: "", incMsg: "",
     /* 06 Blueprint: the rep's own on/off picks (only where they differ from
        what this file says), and the slide they opened the stack from. */
-    stackPick: {}, stackFrom: null
+    stackPick: {}, stackFrom: null,
+    sharedContext: null, sharedContextMessage: "Loading saved AI coach and human advisor context…"
   };
 
   function esc(s) {
@@ -238,11 +239,44 @@
   }
   function price(key) {
     var o = offer(key);
+    if (key === "UWIQ_DELIVERABLES" && state.blueprintAmountDollars != null) {
+      var cents = blueprintAmountCents();
+      if (cents !== null) return money(cents / 100);
+    }
     return (o && o.priceDisplay) ? o.priceDisplay : "—";
+  }
+  function blueprintAmountCents() {
+    var o = offer("UWIQ_DELIVERABLES");
+    if (!o) return null;
+    var raw = state.blueprintAmountDollars;
+    var dollars = raw == null ? Number(o.priceCents) / 100 : Number(raw);
+    if (!Number.isSafeInteger(dollars) || (raw != null && String(raw).trim() === "")) return null;
+    var cents = dollars * 100;
+    return Number.isSafeInteger(cents) && cents >= o.priceMinCents && cents <= o.priceMaxCents ? cents : null;
   }
   function financingNote(key) {
     var o = offer(key);
     return o && o.financing ? '<div class="fin">Financing available</div>' : "";
+  }
+  function sharedContextPanel() {
+    var block = state.sharedContextMessage || (state.sharedContext && state.sharedContext.as_prompt_block)
+      || "No saved context is on this client file yet.";
+    return '<details data-fh-shared-context><summary>AI coach and human advisor — shared client file</summary>'
+      + '<div class="fh-context-lines" data-fh-context-lines>'
+      + String(block).split("\n").map(function (line) { return '<p class="caption">' + esc(line) + '</p>'; }).join("")
+      + '</div></details>';
+  }
+  async function loadSharedContext() {
+    try {
+      var r = await window.FHData.read("agent-context", { client_id: contactId });
+      var context = r && r.ok && r.data && r.data.context;
+      state.sharedContext = context || null;
+      state.sharedContextMessage = context ? "" : "The shared client file could not be loaded. Reload to try again.";
+    } catch (_err) {
+      state.sharedContext = null;
+      state.sharedContextMessage = "The shared client file could not be loaded. Reload to try again.";
+    }
+    render();
   }
   function contents() {
     var o = offer("UWIQ_DELIVERABLES");
@@ -1313,9 +1347,21 @@
         var offerKey = selectedOfferKey();
         var chosen = offer(offerKey);
         html += '<div><span class="mono">Do this now</span>';
-        html += '<div style="font-size:10.5px;color:var(--gray2);margin:4px 0 6px">Chosen: '
+        html += '<div id="fh-chosen-offer" style="font-size:10.5px;color:var(--gray2);margin:4px 0 6px">Chosen: '
           + esc((chosen && chosen.name) || offerKey) + " · " + esc(price(offerKey)) + "</div>";
         html += '<div style="margin-top:2px;display:flex;flex-direction:column;gap:5px">';
+        if (offerKey === "UWIQ_DELIVERABLES" && chosen) {
+          html += '<label class="mono" for="fh-blueprint-amount">Capital Blueprint price (whole dollars)</label>';
+          html += '<input id="fh-blueprint-amount" class="fh-blueprint-price" type="number" inputmode="numeric" min="'
+            + esc(chosen.priceMinCents / 100) + '" max="' + esc(chosen.priceMaxCents / 100)
+            + '" step="1" value="' + esc(state.blueprintAmountDollars == null ? chosen.priceCents / 100 : state.blueprintAmountDollars) + '">';
+          html += '<span class="caption">' + esc(money(chosen.priceMinCents / 100)) + ' to ' + esc(money(chosen.priceMaxCents / 100)) + '</span>';
+          html += '<label class="mono" for="fh-blueprint-provider">Payment provider</label>';
+          html += '<select id="fh-blueprint-provider" class="fh-blueprint-price"><option value="commas"'
+            + (state.blueprintProvider === "commas" ? " selected" : "") + '>Commas</option><option value="whop"'
+            + (state.blueprintProvider === "whop" ? " selected" : "") + '>Whop financing</option></select>';
+          html += sendBtn("Send Blueprint agreement", "contract", false);
+        }
         if (!isPrimaryPayOffer(offerKey)) {
           html += '<label class="mono" for="fh-sale-motion">Sale motion</label>';
           html += '<select id="fh-sale-motion" style="width:100%;border:1px solid var(--line);background:transparent;padding:6px 8px;font-size:12px">';
@@ -1324,7 +1370,7 @@
           html += '<option value="upsell"' + (state.saleMotion === "upsell" ? " selected" : "") + ">Upsell</option>";
           html += "</select>";
         }
-        html += sendBtn("Send agreement + pay link", "pay", true);
+        html += sendBtn("Send pay link", "pay", true);
 
         /* The fulfilment step for THIS offer, and only this offer. */
         if (state.edu) {
@@ -1363,7 +1409,7 @@
              the template, and it already matched the right template to the
              offer without help. Removing the form also removes F28: the seller
              on the agreement is Fundhub, never a name staff typed. */
-          html += sendBtn("Send contract", "contract", false);
+          if (offerKey !== "UWIQ_DELIVERABLES") html += sendBtn("Send contract", "contract", false);
           if (state.contractLink) {
             html += ckBtn("Copy the sign link", "contract-copy", false);
             html += '<input id="fh-contract-link" readonly value="' + esc(state.contractLink) + '" style="width:100%;border:1px solid var(--line);background:transparent;font-family:var(--mono);font-size:10px;padding:6px 8px">';
@@ -1420,6 +1466,7 @@
       }
     }
 
+    html += sharedContextPanel();
     html += '</div><div class="ck-ph">';
     ["01", "02", "03", "04", "05", "06", "07"].forEach(function (p) {
       var active = ph.indexOf(p) === 0;
@@ -1467,6 +1514,20 @@
     if (saleMotion) {
       saleMotion.addEventListener("change", function (e) { state.saleMotion = e.target.value; });
       saleMotion.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    }
+    var blueprintAmount = document.getElementById("fh-blueprint-amount");
+    if (blueprintAmount) {
+      blueprintAmount.addEventListener("input", function (e) {
+        state.blueprintAmountDollars = e.target.value;
+        var label = document.getElementById("fh-chosen-offer");
+        if (label) label.textContent = "Chosen: " + offer("UWIQ_DELIVERABLES").name + " · " + price("UWIQ_DELIVERABLES");
+      });
+      blueprintAmount.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    }
+    var blueprintProvider = document.getElementById("fh-blueprint-provider");
+    if (blueprintProvider) {
+      blueprintProvider.addEventListener("change", function (e) { state.blueprintProvider = e.target.value; });
+      blueprintProvider.addEventListener("keydown", function (e) { e.stopPropagation(); });
     }
     var referral = document.getElementById("fh-repair-referral");
     if (referral) {
@@ -1525,6 +1586,12 @@
      the seller every time. */
   function sendContractNow() {
     if (!window.FHContractSend || !contactId) { toast("No contact on this deck."); return; }
+    var wantKey = resolveContractTemplateKey();
+    var amountCents;
+    if (selectedOfferKey() === "UWIQ_DELIVERABLES") {
+      amountCents = blueprintAmountCents();
+      if (amountCents === null) { toast("Choose a valid whole-dollar Capital Blueprint price first."); return; }
+    }
     markSending("contract");
     state.contractMsg = "Finding the right agreement…";
     render();
@@ -1534,7 +1601,6 @@
         markSent("contract", false);
         return;
       }
-      var wantKey = resolveContractTemplateKey();
       var picked = window.FHContractSend.pickTemplate(r.items || [], wantKey);
       if (!picked) {
         /* Never fall back to "whatever is first in the list" — that is how the
@@ -1550,7 +1616,8 @@
       render();
       window.FHContractSend.sendToClient({
         clientId: contactId,
-        templateId: picked.id
+        templateId: picked.id,
+        amountCents: amountCents
       }).then(function (sent) {
         if (!sent.ok) {
           state.contractMsg = sent.error || "Could not send.";
@@ -1725,6 +1792,11 @@
      Actions with no button — nothing today — pass nothing and behave as before. */
   async function fire(action, extra, act) {
     if (!window.FHData || !contactId) { toast("No contact on this deck."); return; }
+    if (action === "send_pay_link" && selectedOfferKey() === "UWIQ_DELIVERABLES") {
+      var blueprintCents = blueprintAmountCents();
+      if (blueprintCents === null) { toast("Choose a whole-dollar Capital Blueprint price from " + money(offer("UWIQ_DELIVERABLES").priceMinCents / 100) + " to " + money(offer("UWIQ_DELIVERABLES").priceMaxCents / 100) + "."); return; }
+      extra = Object.assign({}, extra || {}, { amount_cents: blueprintCents, provider: state.blueprintProvider });
+    }
     if (act) markSending(act);
     var body = Object.assign({
       action: action,
@@ -1764,7 +1836,7 @@
     }
     if (act) markSent(act, true);
     if (action === "send_soft_pull") toast("Soft pull emailed — pay link + approval form.");
-    else if (action === "send_pay_link") toast("Agreement and pay link sent.");
+    else if (action === "send_pay_link") toast("Pay link sent.");
     else toast("Disposition written to contact record.");
   }
 
@@ -1909,6 +1981,7 @@
     applyDeck(r.data || r);
     state.loaded = true;
     render();
+    loadSharedContext();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

@@ -119,14 +119,14 @@ async function proveLock({ page, gate, button, label, fail, successText }) {
   assert.match((await page.locator(".sent-at").first().textContent()).trim(), /^Sent at \d{1,2}:\d{2}\s(AM|PM) · sent 2 times$/);
 }
 
-test("Send agreement + pay link locks while sending, cools down for 4 seconds, and counts repeats", { timeout: 90_000 }, async (t) => {
+test("Send pay link locks while sending, cools down for 4 seconds, and counts repeats", { timeout: 90_000 }, async (t) => {
   const { open } = await startPages(t);
   const gate = held();
   const { page, errors } = await openDeck(open, {
     tier: "FULL_FUNDING",
     handlers: { "/api/closer-deck": gate.handler(() => ({ body: { ok: true } })) },
   });
-  await proveLock({ page, gate, button: "pay", label: "Send agreement + pay link" });
+  await proveLock({ page, gate, button: "pay", label: "Send pay link" });
   assert.equal(gate.calls[0].action, "send_pay_link");
   assert.equal(gate.calls[0].client_id, CLIENT);
   assert.deepEqual(errors, []);
@@ -142,7 +142,7 @@ test("a failed pay link is not counted as sent and the button can be pressed aga
     handlers: { "/api/closer-deck": gate.handler(() => answer.value || { body: { ok: true } }) },
   });
   answer.value = { body: { ok: false, error: { message: "The pay link could not be made." } } };
-  await proveLock({ page, gate, button: "pay", label: "Send agreement + pay link", fail: { answerWith: answer, answer: answer.value } });
+  await proveLock({ page, gate, button: "pay", label: "Send pay link", fail: { answerWith: answer, answer: answer.value } });
   await page.close();
 });
 
@@ -238,11 +238,15 @@ test("Send contract locks, sends the agreement for the chosen offer and counts r
   const btn = page.locator('[data-act="contract"]');
   assert.equal((await btn.textContent()).trim(), "Send contract");
   await btn.click();
+  // Template lookup re-renders the button before the held draft request.
+  // Wait for that request so extra presses target the stable in-flight button,
+  // rather than racing those setup renders under a busy CI runner.
+  await waitFor(() => gate.calls.length === 1, "the draft request");
   await page.waitForFunction(() => /Sending…/.test(document.querySelector('[data-act="contract"]')?.textContent || ""));
   assert.equal(await btn.isDisabled(), true);
   await btn.click({ force: true });
+  assert.equal(gate.calls.length, 1, "an extra press while the draft is out sends nothing more");
   // Two requests make one send: the draft, then the send. Let both through.
-  await waitFor(() => gate.calls.length === 1, "the draft request");
   gate.release();
   await waitFor(() => gate.calls.length === 2, "the send request");
   gate.release();
