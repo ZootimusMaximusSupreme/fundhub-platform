@@ -360,15 +360,8 @@
         ab.setAttribute("data-client-id", scopedClientId);
         ab.setAttribute("data-lender-id", L.id);
         ab.setAttribute("data-lender-name", L.name || "Lender");
-        ab.addEventListener("click", function (ev) {
-          ev.preventDefault();
-          window.FHProxyApply.applyToLender({
-            clientId: scopedClientId,
-            lenderId: L.id,
-            lenderName: L.name || "Lender"
-          });
-        });
         applyCell.appendChild(ab);
+        window.FHProxyApply.bindApplyButtons(applyCell);
       } else if (scopedClientId && !L.application_url) {
         applyCell.textContent = "No URL";
         applyCell.style.color = "var(--gray)";
