@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assignCsmForBlueprintPurchase, pickCsmStaffId } from "./assign-csm.mjs";
+import { assignCsmForBlueprintPurchase, pickCsmStaffId, BLUEPRINT_CSM_AUTO_ASSIGN } from "./assign-csm.mjs";
 import { BLUEPRINT_PRODUCT_CODE } from "../waypoints/purchase.mjs";
 
 const ORG = "00000000-0000-4000-8000-000000000001";
@@ -50,22 +50,38 @@ test("assignCsmForBlueprintPurchase skips non-blueprint products", async () => {
   assert.equal(out.reason, "not_blueprint_product");
 });
 
-test("no eligible real advisor creates one deduped owner exception and never assigns a substitute", async () => {
+test("owner-set 2026-10-20: the auto-assign switch is off, so the AI coaches and team CSM queue are the CSM", () => {
+  assert.equal(BLUEPRINT_CSM_AUTO_ASSIGN, false);
+});
+
+test("a buyer with zero real CSMs gets reason ai_csm, no owner exception task and no substitute", async () => {
   const state = { csmRows: [] };
-  const db = mockDb(state);
   const input = { orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE };
-  const first = await assignCsmForBlueprintPurchase(db, input);
-  assert.equal(first.assigned, false);
-  assert.equal(first.reason, "no_active_csm");
-  assert.equal(first.exceptionTask.created, true);
-  assert.equal(state.exception.orgId, ORG);
-  assert.equal(state.exception.clientId, CLIENT);
+  for (const autoAssign of [undefined, true]) {
+    const out = await assignCsmForBlueprintPurchase(mockDb(state), { ...input, autoAssign });
+    assert.equal(out.assigned, false);
+    assert.equal(out.reason, "ai_csm");
+    assert.equal(out.exceptionTask, undefined);
+  }
   assert.equal(state.assigned, undefined);
-  state.exception.done = true;
-  const again = await assignCsmForBlueprintPurchase(db, input);
-  assert.equal(again.exceptionTask.created, false);
-  assert.equal(state.taskWrites, 1);
-  assert.equal(state.exception.done, false, "a recurring shortage reopens its owner task");
+  assert.equal(state.taskWrites, undefined, "no 'assign a real advisor' owner task per buyer");
+});
+
+test("an active non-demo CSM row (the Elena Brooks test login shape) is never auto-assigned while the switch is off", async () => {
+  const state = { csmRows: [{ id: CSM_A }] };
+  let staffReads = 0;
+  const base = mockDb(state);
+  const db = { async query(sql, params) {
+    if (/FROM staff s/i.test(sql) && /^\s*SELECT/i.test(sql)) staffReads += 1;
+    return base.query(sql, params);
+  } };
+  const out = await assignCsmForBlueprintPurchase(db, {
+    orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE
+  });
+  assert.deepEqual(out, { assigned: false, reason: "ai_csm" });
+  assert.equal(state.assigned, undefined, "nobody is linked to the buyer");
+  assert.equal(staffReads, 0, "the picker is not even consulted");
+  assert.equal(state.taskWrites, undefined);
 });
 
 test("an existing unavailable advisor remains saved but is reported to the owner", async () => {
@@ -80,7 +96,7 @@ test("an existing unavailable advisor remains saved but is reported to the owner
 });
 
 test("an owner exception write failure stays visible to the purchase caller", async () => {
-  const base = mockDb({ csmRows: [] });
+  const base = mockDb({ assigned: CSM_A, invalidAssignment: true, csmRows: [] });
   const db = { async query(sql, params) {
     if (/INSERT INTO tasks/.test(sql)) throw new Error("owner queue unavailable");
     return base.query(sql, params);
@@ -102,7 +118,7 @@ test("an unavailable advisor saved during assignment still creates owner work", 
     return base.query(sql, params);
   } };
   const out = await assignCsmForBlueprintPurchase(db, {
-    orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE
+    orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE, autoAssign: true
   });
   assert.equal(out.assigned, false);
   assert.equal(out.reason, "advisor_unavailable");
@@ -118,11 +134,11 @@ test("assignCsmForBlueprintPurchase picks CSM with fewest clients", async () => 
   assert.equal(id, CSM_B);
 });
 
-test("assignCsmForBlueprintPurchase writes once", async () => {
+test("with the owner switch on, assignCsmForBlueprintPurchase writes once", async () => {
   const state = { csmRows: [{ id: CSM_A }] };
   const db = mockDb(state);
   const first = await assignCsmForBlueprintPurchase(db, {
-    orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE
+    orgId: ORG, clientId: CLIENT, productCode: BLUEPRINT_PRODUCT_CODE, autoAssign: true
   });
   assert.equal(first.assigned, true);
   assert.equal(first.staffId, CSM_A);

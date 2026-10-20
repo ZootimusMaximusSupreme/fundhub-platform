@@ -107,7 +107,7 @@ for (const width of [1440, 390]) {
     await marked(page, amount.locator(".."), `present-price-${width}-MARKED.png`, "DRAFT FIXTURE: exact $7,500 selected for agreement and Whop pay link; no live send.");
     const shared = page.locator("[data-fh-shared-context]");
     await shared.locator("summary").click();
-    await expect(shared).toContainText("Human advisor: Fixture Advisor");
+    await expect(shared).toContainText("Team follow-up: Fundhub team CSM queue (a staff CSM is linked)");
     await expect(shared).toContainText("Bland call: client saved the receipt");
     await expect(shared).toContainText("sms · queued");
     await expect(shared.locator("p").filter({ hasText: "Upload mailing proof" })).toBeVisible();
@@ -115,7 +115,7 @@ for (const width of [1440, 390]) {
     await lastTask.scrollIntoViewIfNeeded();
     await expect(lastTask).toBeInViewport();
     await shared.locator("[data-fh-context-lines]").evaluate((element) => { element.scrollTop = 0; });
-    await marked(page, shared, `present-context-${width}-MARKED.png`, "DRAFT FIXTURE: shared saved progress, real advisor field, queued SMS and completed call words.");
+    await marked(page, shared, `present-context-${width}-MARKED.png`, "DRAFT FIXTURE: shared saved progress, team follow-up field, queued SMS and completed call words.");
   });
 
   test(`Closer Dashboard ${width}: same shared progress and conversation are visible`, async ({ page }) => {
@@ -123,7 +123,7 @@ for (const width of [1440, 390]) {
     await openScreen(page, `/app/closer-dashboard.html?client_id=${CLIENT_ID}`, CLOSER, handlers([]));
     const shared = page.locator("[data-fh-shared-context]");
     await shared.locator("summary").click();
-    for (const text of ["Human advisor: Fixture Advisor", "signed · $7,500", "Upload mailing proof", "sms · queued", "Bland call: client saved the receipt", "I saved the receipt"]) {
+    for (const text of ["Team follow-up: Fundhub team CSM queue (a staff CSM is linked)", "signed · $7,500", "Upload mailing proof", "sms · queued", "Bland call: client saved the receipt", "I saved the receipt"]) {
       await expect(shared).toContainText(text);
     }
     await expect(shared.locator("[data-fh-context-lines]")).toBeVisible();
@@ -133,6 +133,6 @@ for (const width of [1440, 390]) {
     await lastTask.scrollIntoViewIfNeeded();
     await expect(lastTask).toBeInViewport();
     await shared.locator("[data-fh-context-lines]").evaluate((element) => { element.scrollTop = 0; });
-    await marked(page, shared, `closer-context-${width}-MARKED.png`, "DRAFT FIXTURE: Closer Dashboard reads the same saved AI coach and human advisor file as Present.");
+    await marked(page, shared, `closer-context-${width}-MARKED.png`, "DRAFT FIXTURE: Closer Dashboard reads the same saved AI coach and Fundhub team file as Present.");
   });
 }

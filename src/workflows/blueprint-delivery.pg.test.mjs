@@ -73,21 +73,27 @@ test("real staff eligibility excludes demo, disabled and suspended rows and miss
     await staff("Other company", "active", true, false, otherOrg);
     const real = await staff("Real advisor", "active", true, false);
     assert.equal(await pickCsmStaffId(db, { orgId: org }), real);
-    const input = { orgId: org, clientId: client, productCode: "consulting-package" };
+    const base = { orgId: org, clientId: client, productCode: "consulting-package" };
+    // Owner-set 2026-10-20: with the switch off (default) a real, active,
+    // non-demo CSM row is still not auto-assigned and no owner task is raised.
+    assert.equal((await assignCsmForBlueprintPurchase(db, base)).reason, "ai_csm");
+    assert.equal((await db.query("SELECT assigned_csm_staff_id FROM clients WHERE id=$1", [client])).rows[0].assigned_csm_staff_id, null);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM tasks WHERE client_id=$1", [client])).rows[0].n, 0);
+    const input = { ...base, autoAssign: true };
     assert.equal((await assignCsmForBlueprintPurchase(db, input)).staffId, real);
     assert.equal((await assignCsmForBlueprintPurchase(db, input)).reason, "already_assigned");
     await db.query("UPDATE clients SET assigned_csm_staff_id = $2 WHERE id = $1", [client, demo]);
     assert.equal((await assignCsmForBlueprintPurchase(db, input)).reason, "assignment_unavailable");
     assert.equal((await db.query("SELECT assigned_csm_staff_id FROM clients WHERE id=$1", [client])).rows[0].assigned_csm_staff_id, demo);
+    await db.query("UPDATE tasks SET done=true WHERE client_id=$1", [client]);
+    assert.equal((await assignCsmForBlueprintPurchase(db, input)).reason, "assignment_unavailable");
     await db.query("UPDATE clients SET assigned_csm_staff_id = NULL WHERE id=$1", [client]);
     await db.query("UPDATE staff SET active = false WHERE id=$1", [real]);
-    assert.equal((await assignCsmForBlueprintPurchase(db, input)).reason, "no_active_csm");
-    await db.query("UPDATE tasks SET done=true WHERE client_id=$1", [client]);
-    await assignCsmForBlueprintPurchase(db, input);
+    assert.equal((await assignCsmForBlueprintPurchase(db, input)).reason, "ai_csm");
     const tasks = (await db.query("SELECT * FROM tasks WHERE org_id=$1 AND client_id=$2", [org, client])).rows;
-    assert.equal(tasks.length, 1);
+    assert.equal(tasks.length, 1, "only the broken saved link raised owner work; no CSM is not a task");
     assert.equal(tasks[0].assignee_role, "owner");
-    assert.equal(tasks[0].done, false);
+    assert.equal(tasks[0].done, false, "a recurring broken link reopens its owner task");
   });
 });
 

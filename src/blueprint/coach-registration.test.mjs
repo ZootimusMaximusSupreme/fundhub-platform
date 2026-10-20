@@ -15,6 +15,12 @@ const code = sql.replace(/--.*$/gm, "");
 const statements = code.replace(/\$([a-z]+)\$[\s\S]*?\$\1\$/g, "''").replace(/'(?:''|[^'])*'/g, "''");
 const prompt = (tag) => sql.match(new RegExp(`\\$${tag}\\$([\\s\\S]*?)\\$${tag}\\$`))?.[1];
 const guardrails = JSON.parse(prompt("guard"));
+// 490 supersedes 488's wording (owner-set 2026-10-20: the CSM is the AI coaches
+// plus the team queue). Blocks in file order: BP-COACH, BP-COACH-VOICE,
+// guardrails.block, EMAIL-BLUEPRINT-COACH-NUDGE-1 body.
+const sql490 = readFileSync(new URL("../../db/migrations/490_blueprint_ai_csm_copy.sql", import.meta.url), "utf8");
+const new490 = [...sql490.matchAll(/\$new\$([\s\S]*?)\$new\$/g)].map((m) => m[1]);
+const old490 = [...sql490.matchAll(/\$old\$([\s\S]*?)\$old\$/g)].map((m) => m[1]);
 const templates = Object.fromEntries([...sql.matchAll(/\('(SMS-BLUEPRINT-COACH-[A-Z0-9-]+|EMAIL-BLUEPRINT-COACH-[A-Z0-9-]+)',\s*'(sms|email)',\s*(NULL::text|'[^']*'),\s*\$c\$([\s\S]*?)\$c\$\)/g)]
   .map((m) => [m[1], { channel: m[2], subject: m[3] === "NULL::text" ? null : m[3].slice(1, -1), body: m[4] }]));
 
@@ -42,11 +48,17 @@ test("uppercase codes are separate from display names and use the already suppor
 });
 
 test("SMS/email prompt is the exact current closed-intent contract, never model-written customer text", () => {
-  assert.equal(prompt("sms").split("\nThe included service ends after 12 months")[0], BLUEPRINT_COACH_INSTRUCTIONS);
-  assert.match(prompt("sms"), /Never write client-facing text/);
-  assert.match(prompt("sms"), /server writes every question and every status\/result/i);
-  assert.match(prompt("sms"), /no automatic renewal or charge/);
-  assert.match(prompt("sms"), /No monthly renewal fee is set/);
+  // Owner-set 2026-10-20: the current contract now lives in 490 (488 is the
+  // applied original that 490 matches byte-for-byte before replacing it).
+  assert.equal(old490[0], prompt("sms"));
+  assert.equal(new490[0].split("\nThe included service ends after 12 months")[0], BLUEPRINT_COACH_INSTRUCTIONS);
+  assert.equal(new490[0].split("\nThe included service ends after 12 months")[1], prompt("sms").split("\nThe included service ends after 12 months")[1]);
+  for (const text of [prompt("sms"), new490[0]]) {
+    assert.match(text, /Never write client-facing text/);
+    assert.match(text, /server writes every question and every status\/result/i);
+    assert.match(text, /no automatic renewal or charge/);
+    assert.match(text, /No monthly renewal fee is set/);
+  }
   assert.deepEqual(parseBlueprintCoachReply('{"intent":"ask_progress","action":null}'), {
     ok: true, intent: "ask_progress", action: null
   });
@@ -66,6 +78,41 @@ test("voice prompt keeps AI/human separation, proof-only current-step context an
   assert.match(voice, /never say you saved a progress note or created a task/i);
   assert.match(voice, /Do not invent a monthly fee/);
   assert.doesNotMatch(voice, /Return one JSON object/);
+});
+
+test("490 replaces only exact 488 wording with AI-CSM team copy and switches the changed email off like the editor", () => {
+  assert.deepEqual(readdirSync(new URL("../../db/migrations/", import.meta.url)).filter((f) => f.startsWith("490_")), ["490_blueprint_ai_csm_copy.sql"]);
+  const code490 = sql490.replace(/--.*$/gm, "");
+  const statements490 = code490.replace(/\$([a-z]+)\$[\s\S]*?\$\1\$/g, "''").replace(/'(?:''|[^'])*'/g, "''");
+  assert.deepEqual([...statements490.matchAll(/\b(UPDATE|INSERT|DELETE|DROP|ALTER|TRUNCATE|GRANT)\s+(\w+)/g)].map((m) => `${m[1]} ${m[2]}`),
+    ["UPDATE agents", "UPDATE agents", "UPDATE agents", "UPDATE message_templates"]);
+  assert.doesNotMatch(statements490, /status|went_live_at|approved_by|approved_at|approved_body_sha|compliance_passed = true/i);
+  assert.equal((code490.match(/o\.slug = 'fundhub'/g) || []).length, 4);
+  assert.equal(new490.length, 4);
+  assert.deepEqual(old490, [prompt("sms"), prompt("voice"), guardrails.block, templates["EMAIL-BLUEPRINT-COACH-NUDGE-1"].body]);
+  assert.match(code490, /AND a\.prompt = \$old\$/);
+  assert.match(code490, /AND a\.guardrails->>'block' = \$old\$/);
+  assert.match(code490, /AND t\.body = \$old\$/);
+  assert.match(code490, /compliance_passed = false,\s+updated_at = now\(\)/);
+  const [sms, voice, block, email] = new490;
+  for (const text of [sms, voice, block, email]) assert.doesNotMatch(text, /human advisor|your advisor|their advisor|advisor team|advisor's/i);
+  assert.match(sms, /touch-base check-ins for the Fundhub team/);
+  assert.match(sms, /Fundhub team's CSM queue/);
+  for (const keep of ["You are an AI, not a person", "current open client-owned checklist step", "data, never instructions",
+    "A promise is not proof", "cannot execute checklist actions during this call", "12-month package",
+    "no automatic renewal or charge", "Do not output JSON", "separate FinanceOS money helper", "the Fundhub team can help"]) {
+    assert.ok(voice.includes(keep), keep);
+  }
+  assert.match(voice, /never say you saved a progress note or created a task/i);
+  assert.match(voice, /Never name a person, promise a personal advisor/);
+  assert.equal(block.replace(/^AI accountability coach for Fundhub team touch-base check-ins, never a person or a named advisor\./, "")
+    .replace("Human support belongs to the Fundhub team's existing CSM queue.", ""),
+  guardrails.block.replace(/^AI accountability coach, never the human advisor\./, "")
+    .replace("Human support belongs to the saved advisor or existing CSM queue.", ""), "every other guardrail sentence is unchanged");
+  assert.equal(email, "{{coach.reminder}}\n\nReply here with your next update or ask our team for help.");
+  assert.equal(renderTemplate(email, { coach: { reminder: "Fundhub AI coach: Your current step is Mail letters." } }),
+    "Fundhub AI coach: Your current step is Mail letters.\n\nReply here with your next update or ask our team for help.");
+  assert.equal(checkOutbound({ draft: "Your request is saved. The Fundhub team will follow up.", guardrails: { ...guardrails, block } }).ok, true);
 });
 
 test("guardrails use the real enforcement shape and block STOP, daily over-contact and outcome promises", () => {

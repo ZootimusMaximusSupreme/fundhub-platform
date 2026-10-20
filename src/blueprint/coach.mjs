@@ -49,18 +49,22 @@ export async function applyBlueprintCoachAction(db, {
   if (!ready.ok) return ready;
   const { context } = ready;
   const step = context.checklist?.open_step;
+  // Owner-set 2026-10-20: the CSM role is the AI coaches plus the team CSM
+  // queue. The task lands in that queue (or with a saved CSM, if the owner
+  // ever turns auto-assign on); the client is told the Fundhub team follows
+  // up and is never promised or named a personal advisor.
   const requestAdvisor = async () => {
     const create = deps.createTaskImpl || createTask;
     const result = await create(db, {
       orgId, clientId, assigneeRole: "csm",
       assigneeStaffId: context.blueprint.human_advisor?.id || null,
-      title: "Blueprint client needs advisor help",
+      title: "Blueprint client asked for team follow-up",
       sourceWorkflow: "blueprint-coach", eventId: `blueprint-coach:${eventId}:advisor`,
       detail: `Client message: ${inboundBody.slice(0, 1600)}\nCurrent step: ${step?.title || "No open step saved"}`
     });
     if (!result.created && !result.id) return { ok: false, reason: result.reason || "advisor_task_not_saved" };
     return { ok: true, changed: result.created, taskId: result.id,
-      message: context.blueprint.human_advisor ? "Your advisor has a saved follow-up task." : "Your request is saved in the advisor team's queue." };
+      message: "Your request is saved. The Fundhub team will follow up." };
   };
   if (action.type === "request_advisor") return requestAdvisor();
   if (action.type === "verify_progress") {
@@ -90,7 +94,7 @@ export async function applyBlueprintCoachAction(db, {
     const task = await requestAdvisor();
     if (!task.ok) return { ok: false, reason: "blocker_saved_advisor_task_failed" };
     return { ok: true, changed: true, waypointId: result.rows[0].id, taskId: task.taskId,
-      message: `Your blocker is saved. The step is still open. ${task.message}` };
+      message: "Your blocker is saved. The step is still open. The Fundhub team will follow up." };
   }
   return { ok: true, changed: true, waypointId: result.rows[0].id,
     message: "Your progress note is saved. The step is still open until completion is verified." };
