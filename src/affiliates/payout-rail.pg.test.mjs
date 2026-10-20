@@ -82,8 +82,11 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
   async function purge() {
     const affs = (await db.query(`SELECT id FROM affiliates WHERE name LIKE $1`, [`${MARK}%`])).rows.map((r) => r.id);
     if (affs.length) {
+      // Scratch cleanup only: a paid run is frozen and undeletable by design
+      // (033), so its guards are paused while this file's own rows are removed.
       await db.query(`ALTER TABLE affiliate_payout_lines DISABLE TRIGGER trg_affiliate_payout_lines_guard`);
       await db.query(`ALTER TABLE affiliate_payouts DISABLE TRIGGER trg_affiliate_payouts_no_delete`);
+      await db.query(`ALTER TABLE affiliate_payouts DISABLE TRIGGER trg_affiliate_payouts_guard`);
       await db.query(`ALTER TABLE affiliate_referrals DISABLE TRIGGER trg_affiliate_referrals_no_delete`);
       try {
         await db.query(`DELETE FROM affiliate_payout_lines WHERE payout_id IN (SELECT id FROM affiliate_payouts WHERE affiliate_id = ANY($1))`, [affs]);
@@ -93,6 +96,7 @@ describe("affiliate payout rail (492)", { skip: !HAVE_DB ? "no DATABASE_URL" : f
       } finally {
         await db.query(`ALTER TABLE affiliate_payout_lines ENABLE TRIGGER trg_affiliate_payout_lines_guard`);
         await db.query(`ALTER TABLE affiliate_payouts ENABLE TRIGGER trg_affiliate_payouts_no_delete`);
+        await db.query(`ALTER TABLE affiliate_payouts ENABLE TRIGGER trg_affiliate_payouts_guard`);
         await db.query(`ALTER TABLE affiliate_referrals ENABLE TRIGGER trg_affiliate_referrals_no_delete`);
       }
       await db.query(`DELETE FROM affiliates WHERE id = ANY($1)`, [affs]);

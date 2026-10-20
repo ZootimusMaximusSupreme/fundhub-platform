@@ -2,6 +2,8 @@
 
 Morning pulse coverage notes. A job is red after 3 times its schedule.
 
+affiliate-payout-autopay — owner-set 2026-10-20 pay-on-clear affiliate payouts through Plaid (492): gap-partners.mjs partners:payout-overdue (unsent past the due day, or earned with no payout record after a day) and partners:payout-returned; the hourly partner-trip beat covers the job and affiliates/payouts, affiliates/payout-account, read/affiliate-payouts.
+
 whop-billing-inbox-drain — durable Fundhub billing receipts and provider GET recovery; hourly whop-billing beat and gap-whop-billing.mjs check overdue receipts and paid buyers missing access.
 
 blueprint:real-advisor / blueprint:monthly-delivery — gap-blueprint.mjs and the hourly blueprint-delivery beat check active paid clients for a real eligible human assignment and keep failed saved-result delivery exceptions red, even after the included year ends. Tripwire surfaces are csm-queue.html and finance-os-pull-sweeper.
@@ -43,6 +45,7 @@ slice-40-more.mjs
 ad-video-sweeper
 af-01-affiliate-drip
 af-02-referral-ownership-capture
+affiliate-payout-autopay
 affiliate-payout-run
 affiliate.html
 affiliates/refer
