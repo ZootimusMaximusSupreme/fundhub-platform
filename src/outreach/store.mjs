@@ -70,7 +70,7 @@ export async function readOutreach(db, { staff: input, query = {} } = {}) {
   const params = [staff.org_id, staff.canManage, staff.id, PROGRAM_KEY, state, filterStatus, search ? `%${search.replace(/[\\%_]/g, '\\$&')}%` : null];
   const where = `a.org_id=$1 AND ($2::boolean OR a.assigned_staff_id=$3) AND p.key=$4 AND ($5::text IS NULL OR a.state=$5) AND ($6::text IS NULL OR a.status=$6) AND ($7::text IS NULL OR a.name ILIKE $7 OR a.city ILIKE $7)`;
   const total = (await db.query(`SELECT count(*)::int total FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id WHERE ${where}`, params)).rows[0].total;
-  const items = (await db.query(`SELECT a.*,s.name assigned_staff_name FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id LEFT JOIN staff s ON s.id=a.assigned_staff_id AND s.org_id=a.org_id WHERE ${where} ORDER BY a.next_due_at ASC NULLS LAST,a.name,a.id LIMIT $8 OFFSET $9`, [...params, limit, offset])).rows;
+  const items = (await db.query(`SELECT a.*,s.name assigned_staff_name FROM outreach_accounts a JOIN outreach_programs p ON p.id=a.program_id AND p.org_id=a.org_id LEFT JOIN staff s ON s.id=a.assigned_staff_id AND s.org_id=a.org_id WHERE ${where} ORDER BY (a.status IN ('paused','closed')) ASC,a.next_due_at ASC NULLS LAST,a.name,a.id LIMIT $8 OFFSET $9`, [...params, limit, offset])).rows;
   return { ...base, items, total, summary, reps: seats };
 }
 

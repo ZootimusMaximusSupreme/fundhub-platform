@@ -103,6 +103,28 @@ describe('bank outreach disposable PostgreSQL', { skip: !url ? 'no DATABASE_URL:
     const history = (await db.query(`SELECT previous_staff_id,assigned_staff_id FROM outreach_assignments WHERE account_id=$1 ORDER BY created_at`, [a.id])).rows;
     assert.equal(history.length, 2); assert.equal(history[1].previous_staff_id, rep.id); assert.equal(history[1].assigned_staff_id, secondRep.id);
   });
+  test('page one exposes active assigned work ahead of 26 old inactive banks and preserves explicit inactive filters', async () => {
+    const queueRep = await staffRow(org, 'outbound_rep');
+    const csvRows = Array.from({ length: 27 }, (_, i) => `${9000 + i},Pagination bank ${i},FL`);
+    await write(owner, { action: 'import', source: 'fdic', csv: `CERT,NAME,STALP\n${csvRows.join('\n')}` });
+    const owned = (await db.query(`UPDATE outreach_accounts SET assigned_staff_id=$2,status=CASE WHEN external_id='9026' THEN 'researching' WHEN external_id::int % 2=0 THEN 'paused' ELSE 'closed' END,next_action='Contact the banker',next_due_at=CASE WHEN external_id='9026' THEN now() ELSE '2000-01-01'::timestamptz END WHERE org_id=$1 AND external_id=ANY($3::text[]) RETURNING id,external_id`, [org, queueRep.id, Array.from({ length: 27 }, (_, i) => String(9000 + i))])).rows;
+    const activeId = owned.find(a => a.external_id === '9026').id;
+    const anotherRep = await target(9030, 'FL');
+    await write(owner, { action: 'assign', id: anotherRep.id, staff_id: secondRep.id });
+    await write(otherOwner, { action: 'import', source: 'fdic', csv: 'CERT,NAME,STALP\n9031,Foreign pagination bank,FL' });
+    const first = await read(queueRep);
+    assert.equal(first.total, 27); assert.equal(first.items.length, 25);
+    assert.equal(first.items[0].id, activeId); assert.equal(first.items[0].status, 'researching');
+    assert.ok(first.items.every(a => a.org_id === org && a.assigned_staff_id === queueRep.id));
+    const second = await read(queueRep, { offset: 25 });
+    assert.equal(second.items.length, 2); assert.ok(second.items.every(a => ['paused', 'closed'].includes(a.status)));
+    for (const state of ['paused', 'closed']) {
+      const filtered = await read(queueRep, { status: state });
+      assert.equal(filtered.total, 13); assert.ok(filtered.items.every(a => a.status === state));
+    }
+    assert.equal((await read(queueRep, { q: 'Foreign pagination' })).total, 0);
+    assert.equal((await read(queueRep, { id: activeId })).account.next_action, 'Contact the banker');
+  });
   test('touch appends evidence and defaults next work immediately; foreign contact writes roll back', async () => {
     const a = await target(130); const b = await target(131);
     await write(owner, { action: 'assign', id: a.id, staff_id: rep.id });

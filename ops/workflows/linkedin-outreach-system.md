@@ -53,4 +53,6 @@ First GitHub scratch run 39375628131 applied all migrations and passed real save
 
 Independent recheck closed all three findings and two residuals (unverified lender reselect recovery and FDIC `WEBADDR`). No confirmed visual blocker. Shared sidebar now passes 8/8 browser cases, including an exact one-workspace outbound menu. Full scratch harness uses `VERIFY_STRICT=1` so reported failures cannot silently exit green. Morning/hourly bundle proofs still run after a separate check fails, provided the scratch migration succeeded; their results remain separate.
 
+Queue pagination edge repaired: active work sorts before paused/closed records. A new PostgreSQL case creates 26 old inactive targets and one active target, asserts the active row appears first, and keeps explicit inactive filters and other-company/assignee denial intact. Nine focused model/HTTP checks pass locally; this added database case awaits CI.
+
 No production data changed, no live outreach sent and no production deployment claimed. Marked fixture previews live under `ops/workflows/build-evidence/bank-outreach/`.
