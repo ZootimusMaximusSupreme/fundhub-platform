@@ -8,8 +8,8 @@
 //                            for each answer
 //   Affiliates + Hiring      the drawer opens, holds the fixed words, and its link goes to Affiliates
 //
-// Not here, on purpose: the AR column header sort and the AR row expand. The page attaches both once at
-// parse time and then replaces the whole table (see manifest-b18.md), so a person can not use either.
+// The AR checks use the same fake read boundary as the other browser tests and
+// judge the visible replacement table after it paints.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -41,7 +41,7 @@ function pulse({ packed = false, short = false, adsStatus = "not_configured", sp
 }
 
 /** Open the page with logged reads. handlers answer kpis, ops-pulse and (optionally) hire-closer. */
-async function openOps({ session = OWNER, pulseBody = pulse(), hire = null } = {}) {
+async function openOps({ session = OWNER, pulseBody = pulse(), hire = null, invoices = { ok: true, items: [] } } = {}) {
   const calls = { kpis: [], pulse: [], hire: [], other: [] };
   const handlers = {
     "/api/dashboard/kpis": async (route, { url }) => { calls.kpis.push(new URL(url).searchParams.get("period")); return json(route, KPIS); },
@@ -49,6 +49,7 @@ async function openOps({ session = OWNER, pulseBody = pulse(), hire = null } = {
       calls.pulse.push(new URL(url).searchParams.get("period"));
       return json(route, typeof pulseBody === "function" ? pulseBody() : pulseBody);
     },
+    "/api/read/invoices": async (route) => json(route, invoices),
     "/api/ops/hire-closer": async (route, { method }) => {
       calls.hire.push({ method, body: JSON.parse(route.request().postData() || "null") });
       const answer = hire ? await hire() : { status: 200, body: { ok: true, acted: false } };
@@ -62,6 +63,19 @@ async function openOps({ session = OWNER, pulseBody = pulse(), hire = null } = {
   });
   return { ...opened, calls };
 }
+
+const arInvoice = (id, name, extra = {}) => ({
+  id, client_name: name, open_balance: "100.00", days_overdue: 1, status: "sent",
+  due_at: "2026-10-20T12:00:00.000Z", sent_at: "2026-10-01T12:00:00.000Z",
+  reminded_at: null, reminder_count: 0, escalated_at: null, last_payment_at: null,
+  payment_method: null, owner_name: null, ...extra,
+});
+
+const AR_ITEMS = [
+  arInvoice("20000000-0000-4000-8000-000000000001", "Zed Company", { open_balance: "100.00", days_overdue: 3, status: "sent" }),
+  arInvoice("30000000-0000-4000-8000-000000000001", "Amy Company", { open_balance: "300.00", days_overdue: 1, status: "escalated" }),
+  arInvoice("10000000-0000-4000-8000-000000000001", "Mid Company", { open_balance: "200.00", days_overdue: 2, status: "reminded" }),
+];
 
 // ───────────────────────── Open the page ─────────────────────────
 
@@ -263,6 +277,63 @@ test("Affiliates + Hiring: the drawer starts shut, opens to its fixed words, and
 
     await page.locator("#aff-link").click();
     await page.waitForURL(/\/app\/affiliate\.html$/);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }, SURFACE);
+});
+
+test("AR headers sort every visible column by click or keyboard after the table repaints", { timeout: 90_000 }, async () => {
+  await proof.check(/^AR column header sort/, async () => {
+    const { page, errors } = await openOps({ invoices: { ok: true, items: AR_ITEMS } });
+    await page.waitForSelector("#ar-table tr[data-ar]");
+    const names = () => page.$$eval("#ar-table tr[data-ar]", (rows) => rows.map((r) => r.cells[0].textContent.trim()));
+    const cases = [
+      ["Client", "Amy Company"], ["Invoice", "Mid Company"], ["Amount owed", "Zed Company"],
+      ["Overdue", "Amy Company"], ["Status", "Amy Company"],
+    ];
+    for (const [label, first] of cases) {
+      const th = page.locator("#ar-table th", { hasText: label });
+      assert.equal(await th.getAttribute("tabindex"), "0", `${label} is reachable by keyboard`);
+      await th.click();
+      assert.equal(await th.getAttribute("aria-sort"), "ascending", `${label} sorts ascending`);
+      assert.equal((await names())[0], first, `${label} changes the visible row order`);
+    }
+    const client = page.locator("#ar-table th", { hasText: "Client" });
+    await client.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await client.getAttribute("aria-sort"), "ascending");
+    await page.keyboard.press("Enter");
+    assert.equal(await client.getAttribute("aria-sort"), "descending");
+    assert.equal((await names())[0], "Zed Company", "Enter reverses the Client order");
+    assert.deepEqual(errors, []);
+    await page.close();
+  }, SURFACE);
+});
+
+test("AR rows open the promised saved details and close by click or keyboard", { timeout: 90_000 }, async () => {
+  await proof.check(/^AR row expand/, async () => {
+    const detail = arInvoice("40000000-0000-4000-8000-000000000001", "Dana Whitfield", {
+      open_balance: "1250.50", days_overdue: 12, status: "escalated",
+      due_at: "2026-10-20T12:00:00.000Z", sent_at: "2026-10-01T12:00:00.000Z",
+      reminded_at: "2026-10-10T12:00:00.000Z", reminder_count: 2,
+      escalated_at: "2026-10-15T12:00:00.000Z", last_payment_at: "2026-10-16T12:00:00.000Z",
+      payment_method: "ACH", owner_name: "Morgan CSM",
+    });
+    const { page, errors } = await openOps({ invoices: { ok: true, items: [detail] } });
+    const row = page.locator("#ar-table tr[data-ar]");
+    await row.waitFor();
+    assert.equal(await row.getAttribute("tabindex"), "0");
+    await row.click();
+    assert.equal(await row.getAttribute("aria-expanded"), "true");
+    const words = (await page.locator("#ar-table .ar-detail").innerText()).replace(/\s+/g, " ");
+    for (const expected of ["Terms Due Oct 20, 2026", "Payment method ACH", "Owner Morgan CSM",
+      "Outstanding $1,250.50", "Collection history", "Invoice sent", "Reminder sent (2)",
+      "Moved to collections", "Payment recorded"]) assert.match(words, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+    await row.click();
+    assert.equal(await page.locator("#ar-table .ar-detail").count(), 0, "a second click closes it");
+    await row.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await page.locator("#ar-table .ar-detail").count(), 1, "Enter opens it too");
     assert.deepEqual(errors, []);
     await page.close();
   }, SURFACE);

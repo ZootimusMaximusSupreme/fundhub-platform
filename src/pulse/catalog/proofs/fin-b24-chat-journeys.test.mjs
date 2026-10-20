@@ -414,21 +414,22 @@ test("journeys/run walks all six seeded journeys when none is named, can answer 
   assert.equal(unknown.fake.released, 1);
 });
 
-test("journeys/run is for owner, admin and sales manager only, and refuses every other role before a connection is opened", async () => {
-  for (const role of ["owner", "admin", "sales_manager"]) {
+test("journeys/run is for owner and admin only, and blocks sales manager and every other role before a connection is opened", async () => {
+  for (const role of ["owner", "admin"]) {
     const out = await walk({ journey: "advisor" }, { role });
     assert.equal(out.res.statusCode, 200, role);
   }
-  for (const role of ["closer", "setter", "csm", "funding_advisor", "inquiry_specialist", "partner", "client"]) {
+  for (const role of ["sales_manager", "closer", "setter", "csm", "funding_advisor", "inquiry_specialist", "partner", "client"]) {
     const out = await walk({ journey: "advisor" }, { role });
     assert.equal(out.res.statusCode, 403, role);
+    assert.equal(out.res.body.error, "forbidden", role);
     assert.equal(out.fake.connected, 0, `${role} never opens a connection`);
   }
 });
 
-/* ── climate/geocode: a typed address to a state and a point ─────────────── */
+/* ── climate/geocode: a typed address to a state, county and point ───────── */
 
-test("climate/geocode turns a typed address into a state code and a point, answers a state name from its centre without a lookup, and says not found when nobody knows it", async () => {
+test("climate/geocode turns a typed address into a state and county with a point, answers a state name from its centre without a lookup, and says not found when nobody knows it", async () => {
   assert.equal(ROUTES["climate/geocode"], climateGeocode);
   const seen = [];
   globalThis.fetch = async (url) => {
@@ -438,6 +439,7 @@ test("climate/geocode turns a typed address into a state code and a point, answe
     if (/nowhere/i.test(wanted)) return new Response(JSON.stringify({ result: { addressMatches: [] } }), { status: 200 });
     return new Response(JSON.stringify({ result: { addressMatches: [{
       matchedAddress: "123 N CENTRAL AVE, PHOENIX, AZ, 85004", coordinates: { x: -112.07, y: 33.45 }, addressComponents: { state: "AZ" },
+      geographies: { Counties: [{ NAME: "Maricopa County" }] },
     }] } }), { status: 200 });
   };
   const keyName = ["GOOGLE", "MAPS", "API", "KEY"].join("_");
@@ -447,12 +449,11 @@ test("climate/geocode turns a typed address into a state code and a point, answe
     const address = await hit(climateGeocode, { anonymous: true, method: "POST", body: { q: "123 N Central Ave, Phoenix, AZ 85004" }, rules: [] });
     assert.equal(address.status, 200);
     assert.equal(address.body.stateCode, "AZ");
+    assert.equal(address.body.county, "Maricopa County");
     assert.equal(address.body.lat, 33.45);
     assert.equal(address.body.lng, -112.07);
     assert.equal(address.body.provider, "census");
-    // HELD ROW: the catalog row says "state / county". If a county ever comes back, bind
-    // route:climate/geocode (FIN_B24_HELD_ROWS in fin-b24-door-contracts.mjs) and judge it here.
-    assert.deepEqual(Object.keys(address.body).sort(), ["formatted", "lat", "lng", "ok", "provider", "stateCode"], "the door returns a state and a point, never a county");
+    assert.deepEqual(Object.keys(address.body).sort(), ["county", "formatted", "lat", "lng", "ok", "provider", "stateCode"]);
     assert.equal(address.headers["access-control-allow-origin"], "*");
     assert.equal(address.headers["cache-control"], "no-store");
     assert.equal(seen.length, 1);
@@ -460,6 +461,7 @@ test("climate/geocode turns a typed address into a state code and a point, answe
     const centre = await hit(climateGeocode, { anonymous: true, method: "POST", body: { address: "tx" }, rules: [] });
     assert.equal(centre.status, 200);
     assert.equal(centre.body.stateCode, "TX");
+    assert.equal(centre.body.county, null, "a state centroid does not invent a county");
     assert.equal(centre.body.provider, "centroid");
     assert.equal(seen.length, 1, "a state code needs no lookup");
 

@@ -33,16 +33,23 @@ export function smsBodyFingerprint(body) {
   return crypto.createHash("sha256").update(String(body ?? "")).digest("hex").slice(0, 32);
 }
 
+/** Match the pulse's recipient rule: formatting and an optional country code
+ * cannot turn one US phone into two destinations. */
+export function normalizeSmsDestination(value) {
+  const text = String(value || "").trim();
+  const digits = text.replace(/[^0-9]/g, "");
+  return digits ? digits.slice(-10) : text;
+}
+
 /**
  * In-memory keys for one dispatchDue() pass — blocks a second identical SMS in
  * the same batch before the first row's UPDATE … status='sent' is visible.
  */
-export function smsDedupBatchKey({ orgId, clientId, templateKey, bodyFingerprint, toAddress }) {
+export function smsDedupBatchKey({ orgId, templateKey, bodyFingerprint, toAddress }) {
   const tpl = templateKey ? String(templateKey) : "";
   const body = tpl ? "" : String(bodyFingerprint || "");
-  const to = String(toAddress || "").trim();
-  const client = clientId ? String(clientId) : "";
-  return `${orgId}|sms|${tpl}|${body}|${to}|${client}`;
+  const to = normalizeSmsDestination(toAddress);
+  return `${orgId}|sms|${tpl}|${body}|${to}`;
 }
 
 /**
@@ -58,7 +65,7 @@ export async function findRecentDuplicateSms(
   if (message?.channel !== "sms") return { duplicate: false };
   if (!smsDedupEnabled(env)) return { duplicate: false };
 
-  const to = String(toAddress || message.to_address || "").trim();
+  const to = normalizeSmsDestination(toAddress || message.to_address);
   if (!to) return { duplicate: false };
 
   const templateKey = message.template_key ? String(message.template_key) : "";
@@ -78,8 +85,8 @@ export async function findRecentDuplicateSms(
   const windowMin = smsDedupWindowMinutes(env);
   const at = resolveTimestampParam(typeof now === "function" ? now() : now);
   const sinceSql = at
-    ? `$7::timestamptz - ($8::int * interval '1 minute')`
-    : `now() - ($7::int * interval '1 minute')`;
+    ? `$6::timestamptz - ($7::int * interval '1 minute')`
+    : `now() - ($6::int * interval '1 minute')`;
 
   const params = at
     ? [
@@ -88,7 +95,6 @@ export async function findRecentDuplicateSms(
         to,
         templateKey || null,
         freeformBody,
-        message.client_id ?? null,
         at,
         windowMin
       ]
@@ -98,31 +104,30 @@ export async function findRecentDuplicateSms(
         to,
         templateKey || null,
         freeformBody,
-        message.client_id ?? null,
         windowMin
       ];
 
   const { rows } = await db.query(
-    `SELECT id FROM messages
+    `SELECT id, to_address FROM messages
       WHERE org_id = $1::uuid
         AND direction = 'outbound'
         AND channel = 'sms'
-        AND status = 'sent'
+        AND status IN ('sent', 'delivered')
         AND id <> $2::uuid
-        AND to_address = $3
+        AND right(regexp_replace(COALESCE(to_address, ''), '[^0-9]', '', 'g'), 10) = $3
         AND (
           ($4::text IS NOT NULL AND template_key = $4)
           OR ($4::text IS NULL AND template_key IS NULL AND rendered_body = $5::text)
         )
-        AND ($6::uuid IS NULL OR client_id = $6::uuid)
-        AND last_attempt_at >= ${sinceSql}
-      ORDER BY last_attempt_at DESC
+        AND COALESCE(last_attempt_at, created_at) >= ${sinceSql}
+      ORDER BY COALESCE(last_attempt_at, created_at) DESC
       LIMIT 1`,
     params
   );
 
-  if (rows[0]?.id) {
-    return { duplicate: true, reason: "recent_sent", priorId: rows[0].id };
+  const prior = rows[0];
+  if (prior?.id) {
+    return { duplicate: true, reason: "recent_sent", priorId: prior.id };
   }
   return { duplicate: false, batchKey };
 }

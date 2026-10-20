@@ -1,7 +1,7 @@
 // Guards for the batch 16 row table: every listed row is one exact map row, every named test file is a plain
 // runnable test that opens no live site, every attached row has exactly one proof case (a live check or a
-// practice test, with every test file that presses it), and the forty rows are all accounted for: 36 attached,
-// 1 retired page row, and 3 that cannot honestly be attached (named below, each with its exact reason).
+// practice test, with every test file that presses it), and the forty rows are all accounted for: 39 attached
+// and 1 retired page row.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -29,16 +29,6 @@ const RETIRED = {
   control: "Decline Autopsy sales page (SHELVED 2026-08-31): netlify.toml sends /partner/autopsy/* to the menu, so the file is not reachable; its routes are commented out in netlify/functions/api.mjs.",
 };
 
-// Rows with NO proof case. Each is a real map row and each has an exact reason (manifest-b16.md findings 1 and 8).
-const NOT_ATTACHABLE = [
-  { sourceFile: "desks-c.json", surface: "messaging.html", control: "Reference disclosure (who-sent-it colour key)",
-    reason: "the brand sheet hides #demozone with display:none !important, so no person can see or press the key; a test of the code behind it would pass while the control is unusable" },
-  { sourceFile: "desks-c.json", surface: "messaging.html", control: "Deep links: ?client_id=, ?channel=, ?conversation_id= open a thread straight from another desk",
-    reason: "?conversation_id= for a thread that is not in the loaded list opens a stub with no client: the header reads 'Unnamed client' and the Their file link is ?id=null" },
-  { sourceFile: "desks-c.json", surface: "messaging.html", control: "Right panel: 'Their other threads' list and 'Open elsewhere -> Their file' link",
-    reason: "the same stub: opened by ?conversation_id= its Their file link is ?id=null and the other threads are asked with no client" },
-];
-
 test("every listed row is one exact map row, and its test file is a plain test that never opens a live site", () => {
   let listed = 0;
   for (const [name, groups] of Object.entries(ROWS)) {
@@ -54,19 +44,18 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  // 47 listings: a row can be pressed by more than one file (Today steps 2 to 6, Needs reply, Send this one to),
+  // 50 listings: a row can be pressed by more than one file (Today steps 2 to 6, Needs reply, Send this one to),
   // and the 6 live rows each list their screen half.
-  assert.equal(listed, 47);
+  assert.equal(listed, 50);
 });
 
-test("36 attached rows have one proof case each (6 live, 30 practice); the retired row and the 3 left out have none", () => {
+test("39 attached rows have one proof case each (6 live, 33 practice); the retired row has none", () => {
   assert.equal(FIN_B16_LIVE_PROOF_CASES.length, 6);
-  assert.equal(FIN_B16_PRACTICE_CASES.length, 30);
-  assert.equal(FIN_B16_DISPLAY_PROOF_CASES.length, 36);
+  assert.equal(FIN_B16_PRACTICE_CASES.length, 33);
+  assert.equal(FIN_B16_DISPLAY_PROOF_CASES.length, 39);
   const caseKeys = FIN_B16_DISPLAY_PROOF_CASES.map(keyOf);
-  assert.equal(new Set(caseKeys).size, 36);
+  assert.equal(new Set(caseKeys).size, 39);
   assert.equal(caseKeys.includes(keyOf(RETIRED)), false, "the retired page row is the lane's own live redirect check");
-  for (const row of NOT_ATTACHABLE) assert.equal(caseKeys.includes(keyOf(row)), false, `${row.control} must have no proof case`);
   // A live row names the lane (so it stays in the lane); a practice row never does.
   for (const c of FIN_B16_LIVE_PROOF_CASES) assert.match(c.evidence, /gap-catalog-display\.mjs/);
   for (const c of FIN_B16_PRACTICE_CASES) assert.doesNotMatch(c.evidence, /gap-catalog-display\.mjs/);
@@ -100,13 +89,12 @@ test("a row pressed by several files lists them all, and the server-side tests a
   }
 });
 
-test("all 40 rows of the batch are accounted for: 36 attached, 1 retired page, 3 not attachable", () => {
-  const all = [...FIN_B16_DISPLAY_PROOF_CASES, RETIRED, ...NOT_ATTACHABLE];
+test("all 40 rows of the batch are accounted for: 39 attached and 1 retired page", () => {
+  const all = [...FIN_B16_DISPLAY_PROOF_CASES, RETIRED];
   assert.equal(all.length, 40);
   assert.equal(new Set(all.map(keyOf)).size, 40, "no row has two outcomes");
   for (const row of all) assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
   // The 40 are the not-proved rows of desks-c.json (36), public-pages.json (1) and desks-f.json (3).
   const count = (file) => all.filter((r) => r.sourceFile === file).length;
   assert.deepEqual([count("desks-c.json"), count("public-pages.json"), count("desks-f.json")], [36, 1, 3]);
-  for (const row of NOT_ATTACHABLE) assert.ok(row.reason.length > 40, "a reason is written for each");
 });

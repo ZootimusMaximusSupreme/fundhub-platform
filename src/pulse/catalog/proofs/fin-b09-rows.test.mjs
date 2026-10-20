@@ -1,6 +1,5 @@
 // Guards for the batch 09 row table: every listed row is one exact map row, every named test file is a
-// plain runnable test that opens no live site, every attached row has a proof case, and the two
-// rows left out stay out only while the reason in fin-b09-not-attachable.mjs is still true.
+// plain runnable test that opens no live site, and every row has one proof case.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,43 +35,26 @@ test("every listed row is one exact map row, and its test file is a plain test t
       }
     }
   }
-  assert.equal(listed, 38, "37 attached rows and 1 exercised-but-not-attached row");
+  assert.equal(listed, 39, "all 39 listed rows");
 });
 
-test("attached rows have one proof case each; the exercised-but-not-attached row has none", () => {
+test("all 39 attached rows have one proof case each", () => {
   const attached = Object.values(ROWS).flatMap((groups) => groups.flatMap((g) => g.controls));
-  assert.equal(attached.length, 37);
-  assert.equal(FIN_B09_DISPLAY_PROOF_CASES.length, 37);
-  assert.equal(new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 37);
+  assert.equal(attached.length, 39);
+  assert.equal(FIN_B09_DISPLAY_PROOF_CASES.length, 39);
+  assert.equal(new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => `${c.sourceFile}\0${c.surface}\0${c.control}`)).size, 39);
   const left = new Set(FIN_B09_DISPLAY_PROOF_CASES.map((c) => c.control));
   for (const row of FIN_B09_NOT_ATTACHABLE) assert.equal(left.has(row.control), false, row.control);
 });
 
-test("the two left-out rows are real map rows, each with a reason that is still true", () => {
-  assert.equal(FIN_B09_NOT_ATTACHABLE.length, 2);
-  for (const row of FIN_B09_NOT_ATTACHABLE) {
-    assert.equal(oneRow(row.sourceFile, row.surface, row.control).length, 1, row.control);
-    assert.ok(row.why.length > 80, "the reason is written out");
-  }
-
-  // Climate: the shipped bundle still has no plain sentence under a clicked state.
-  const climate = path.join(ROOT, "public/climate");
-  const files = [path.join(climate, "index.html")];
-  const chunks = path.join(climate, "_next/static/chunks");
-  for (const f of fs.readdirSync(chunks)) if (f.endsWith(".js")) files.push(path.join(chunks, f));
-  const app = path.join(chunks, "app");
-  for (const f of fs.readdirSync(app)) if (f.endsWith(".js")) files.push(path.join(app, f));
-  const text = files.map((f) => fs.readFileSync(f, "utf8")).join("\n");
-  assert.ok(!/wider picture|not a decision about/i.test(text),
-    "the climate page now carries the plain sentence: attach the Click a state row with a practice test");
-  assert.match(text, /Today's Score/, "the state panel still shows the score");
+test("no batch 09 row remains exercised but unattached", () => {
+  assert.deepEqual(FIN_B09_NOT_ATTACHABLE, []);
 });
 
-test("the agent list row's reason is still true: the discard keeps the typed words (read in the page source)", () => {
+test("the agent list row restores its saved copy before switching", () => {
   const html = fs.readFileSync(path.join(ROOT, "public/app/agent-editor.html"), "utf8");
-  // collect() writes the form into cur, and the confirm path only calls select(); nothing restores cur from SAVED.
-  const listClick = /el\.addEventListener\('click',function\(\)\{\s*if\(dirty && !confirm\('You have unsaved changes on '\+cur\.name\+'\. Discard them\?'\)\) return;\s*select\(el\.dataset\.a\);/;
-  assert.match(html, listClick, "the list click still only asks and then selects");
-  assert.ok(!/SAVED\[cur\.id\]/.test(html.split("function renderList")[1].split("function renderEvents")[0]),
-    "the list click now restores the saved copy: the discard works, attach the row");
+  const listClick = html.split("function renderList")[1].split("function renderEvents")[0];
+  assert.match(listClick, /if\(!confirm\('You have unsaved changes on '\+cur\.name\+'\. Discard them\?'\)\) return;/);
+  assert.match(listClick, /restoreSavedAgent\(\);\s*}\s*select\(el\.dataset\.a\);/,
+    "the confirmed discard restores the saved object before another agent opens");
 });

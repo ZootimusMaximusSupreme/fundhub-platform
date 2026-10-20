@@ -6,7 +6,6 @@
 // again every run. This file is that check:
 //
 //   journey:climate-lead-magnet-intended#1-headline-button   the "See how many banks..." headline and its button
-//   journey:climate-lead-magnet-intended#3-state-click       the state card with its plain sentence
 //   journey:climate-lead-magnet-intended#4-form              the four answers and the lead door they post to
 //   journey:climate-lead-magnet-intended#6-gate              the $32 Business Financial Assessment gate
 //       The visitor page these four steps describe was reverted by the owner on 2026-09-18 (f39cec357). The page
@@ -82,16 +81,6 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     anchors: CLIMATE_ANCHORS,
     identity: CLIMATE_IDENTITY,
     markers: Object.freeze(["See how many banks in our book fit your state", "Get your number"]),
-    reason: "the visitor page was reverted by the owner on 2026-09-18; /climate/ is the lending-climate dashboard",
-  }),
-  Object.freeze({
-    family: "journey",
-    surface: "journey:climate-lead-magnet-intended#3-state-click",
-    noun: "the state card with its name and its plain sentence (\"not a decision about you\")",
-    pages: CLIMATE_PAGES,
-    anchors: CLIMATE_ANCHORS,
-    identity: CLIMATE_IDENTITY,
-    markers: Object.freeze(["not a decision about you", "wider picture", "Pick a state"]),
     reason: "the visitor page was reverted by the owner on 2026-09-18; /climate/ is the lending-climate dashboard",
   }),
   Object.freeze({

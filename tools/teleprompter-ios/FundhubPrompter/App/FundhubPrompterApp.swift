@@ -29,17 +29,10 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        Group {
-            if model.signIn == nil {
-                LoginView()
-            } else {
-                ScriptListView()
-            }
-        }
+        ScriptListView()
         .onChange(of: phase) { _, p in
-            if p == .active && model.signIn != nil { model.startPolling() } else if p != .active { model.stopPolling() }
+            if p == .active { model.startPolling() } else { model.stopPolling() }
         }
-        .onAppear { if model.signIn != nil { model.startPolling() } }
-        .onChange(of: model.signIn) { _, s in if s != nil { model.startPolling() } else { model.stopPolling() } }
+        .onAppear { model.startPolling() }
     }
 }

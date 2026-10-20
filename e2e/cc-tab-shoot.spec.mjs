@@ -80,7 +80,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
       await expect(rows.nth(0)).toContainText("Retake");
       await expect(rows.nth(0).locator("[data-file]")).toHaveText("SLO Ad 93 — Your file is worth more Take 2.mp4");
       await expect(rows.nth(1).locator("[data-file]")).toHaveText("SLO Ad 91 — Lenders read two files Take 1.mp4");
-      await expect(rows.nth(2)).toContainText("File name unknown: The Funding, done-for-you offer has no file-name word yet");
+      await expect(rows.nth(2).locator("[data-file]")).toHaveText("Direct Book Ad 92 — Inquiries off first Take 1.mp4");
 
       // The teleprompter waits for a plan, and says why.
       const tp = page.getByRole("button", { name: "Open the teleprompter" });
@@ -152,6 +152,15 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
       await expect(board).toContainText("Filmed");
       await expect(page.getByRole("link", { name: "Open SLO Ads in Drive" })).toHaveAttribute("href", "https://drive.google.com/drive/folders/13ZOjA56MNuM-PHSRK5fQK0bovRwR8raZ");
 
+      if (size.width === 390) {
+        await noSideways(page);
+        await expect.poll(
+          () => page.locator(".cc-shoot button:visible, .cc-shoot a.btn:visible").evaluateAll((els) =>
+            els.map((e) => [e.textContent.trim(), e.getBoundingClientRect().height]).filter(([, h]) => h < 44)),
+          { message: "every tap is at least 44px tall" },
+        ).toEqual([]);
+      }
+
       // Close takes two taps; the second names the consequence.
       await page.getByRole("button", { name: "Close the shoot" }).click();
       expect(posts).toHaveLength(1);
@@ -160,12 +169,6 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) 
       await expect.poll(() => posts.length).toBe(2);
       expect(posts[1].body).toMatchObject({ id: PAGE.shoot.id, status: "done" });
 
-      if (size.width === 390) {
-        await noSideways(page);
-        const small = await page.locator(".cc-shoot button:visible, .cc-shoot a.btn:visible").evaluateAll((els) =>
-          els.map((e) => [e.textContent.trim(), e.getBoundingClientRect().height]).filter(([, h]) => h < 44));
-        expect(small, "every tap is at least 44px tall").toEqual([]);
-      }
       expect(errors).toEqual([]);
     });
   });

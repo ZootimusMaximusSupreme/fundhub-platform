@@ -304,7 +304,7 @@ describe("teleprompter, pure", () => {
       assert.equal(T.fileName(served, served.take_no), served.take_file_name);
       assert.equal(T.afterMark(served, "another_take").take_file_name, served.take_file_name.replace("Take 1.mp4", "Take 2.mp4"));
     }
-    assert.equal(T.fileName(TWO, 1), null, "no offer word on file, no name");
+    assert.equal(T.fileName({ ...TWO, offer_word: null }, 1), null, "no offer word on file, no name");
     assert.equal(T.fileName({ ...ONE, ad_id: null }, 1), null);
     assert.equal(T.fileName(ONE, 0), null);
   });

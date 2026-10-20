@@ -125,7 +125,7 @@ describe("the other states", () => {
     const d = fixture();
     d.turns = [];
     const html = H.render(d, { now: NOW });
-    assert.match(text(html), /Ask your money helper anything about your money/);
+    assert.match(text(html), /Ask about your connected accounts, bills or plan, or paste a decline letter/);
     assert.equal((html.match(/data-act="suggest"/g) || []).length, 3);
     assert.match(html, /class="composer"/);
   });

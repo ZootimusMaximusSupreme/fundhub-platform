@@ -181,13 +181,13 @@ test("Save: text numbers and flags are made real, a blank name is refused in wor
   assert.equal(unchanged.res.body.error, "save_failed");
 });
 
-test("KNOWN BREAK (the reason the row Save button is left out, fin-b14-not-attachable.mjs): the page's emptied Name is null, and null passes the blank-name check", async () => {
-  // The page builds its patch with `patch[k] = v === "" ? null : v`, so a cleared Name box arrives as null. The
-  // handler refuses a blank name with String(patch.name).trim() === "", and String(null) is "null".
+test("Save: null from a cleared Name is refused before the database", async () => {
+  // The page builds its patch with `patch[k] = v === "" ? null : v`, so a cleared Name box arrives as null.
   const { res, fake } = await call(lendersHandler, req("POST", { body: { action: "save", id: LENDER_ID, patch: { name: null } } }), [updateRule]);
-  assert.equal(res.statusCode, 200, "BREAK: it is not refused with Name is required.");
-  const update = fake.find(/UPDATE lenders SET/)[0];
-  assert.equal(update.params[2], null, "BREAK: the statement goes to the database with a null name, which the NOT NULL column refuses");
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.error, "name_required");
+  assert.equal(res.body.message, "Name is required.");
+  assert.equal(fake.find(/UPDATE lenders SET/).length, 0, "a missing name never reaches the database");
 });
 
 test("Save, Add blank row and Import now are for owner, admin and funding advisor only", async () => {

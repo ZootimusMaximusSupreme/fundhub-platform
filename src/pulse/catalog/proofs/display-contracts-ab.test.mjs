@@ -249,14 +249,17 @@ test("Display AB runs every exported row through the real rendered page", async 
     return false;
   });
   await affiliate.goto(`${origin}/app/affiliate.html`, { waitUntil: "domcontentloaded" });
-  await affiliate.waitForFunction(() => document.querySelector("#kRef")?.textContent === "4" && document.querySelectorAll("#leadBody tr").length === 4);
+  await affiliate.waitForFunction(() => document.querySelector("#kRef")?.textContent === "4"
+    && document.querySelectorAll("#leadBody tr").length === 4
+    && document.querySelector("#affiliateLoadStatus")?.textContent === "Your referral dashboard is up to date."
+    && document.querySelector("#affLicenseChip")?.offsetParent !== null);
 
   await prove(t, exercised, "c66a9dec0593294d0aa3", async () => {
     assert.equal(await affiliate.locator("#kRef").textContent(), "4");
     assert.equal(await affiliate.locator("#kConv").textContent(), "2");
     assert.equal(await affiliate.locator("#kOwed").textContent(), "$1,250.50");
     assert.equal(await affiliate.locator("#kPaid").textContent(), "$600.00");
-    assert.match(await affiliate.locator("#funnelBody").innerText(), /10[\s\S]*CLICKS[\s\S]*4[\s\S]*REFERRED[\s\S]*2[\s\S]*CONVERTED/);
+    assert.match(await affiliate.locator("#funnelBody").innerText(), /10[\s\S]*Clicks[\s\S]*4[\s\S]*Referred[\s\S]*2[\s\S]*Converted/);
     await assertVisibleText(affiliate, "#licenseBanner", "Payouts are held — your partner license is not signed");
     await assertVisibleText(affiliate, "#affLicenseChip", "License unsigned");
     await assertVisibleText(affiliate, "#affWhoChip", "Ava Affiliate");
@@ -465,11 +468,11 @@ test("Display AB runs every exported row through the real rendered page", async 
   });
   const allDocumentTitles = Object.values(documentTitlesByClass).flat().sort();
   const pendingDocumentBadges = Object.freeze({
-    "Soft Pull Authorization": ["QUEUED", "NOT SENT", "AWAITING", "20d"],
-    "Funding Draft": ["GENERATED", "NOT SENT", "AWAITING", "3d"],
-    "Funding Sent": ["GENERATED", "SENT", "AWAITING", "2d"],
-    "Repair Opened": ["GENERATED", "SENT", "AWAITING", "2d"],
-    "Invoice One": ["GENERATED", "NOT SENT", "N/A", "30d"],
+    "Soft Pull Authorization": ["Queued", "Not sent", "Awaiting", "20d"],
+    "Funding Draft": ["Generated", "Not sent", "Awaiting", "3d"],
+    "Funding Sent": ["Generated", "Sent", "Awaiting", "2d"],
+    "Repair Opened": ["Generated", "Sent", "Awaiting", "2d"],
+    "Invoice One": ["Generated", "Not sent", "N/A", "30d"],
   });
   const visibleDocumentTitles = (page) => page.locator("#body tr td:first-child > div:first-child").allTextContents();
   const documentState = async (rowLocator) => Promise.all([
@@ -492,9 +495,12 @@ test("Display AB runs every exported row through the real rendered page", async 
     assert.equal(await documents.locator("#kTotal").textContent(), "9");
     assert.equal(await documents.locator("#kSign").textContent(), "4");
     assert.equal(await documents.locator("#kUndel").textContent(), "2");
-    assert.equal(await documents.locator("#staleTxt").textContent(), "2 past 14 days");
+    assert.equal(await documents.locator("#staleTxt").textContent(), "2 overdue · 14+ days");
   });
   await prove(t, exercised, "c31881ec935f59eb86e2", async () => {
+    const guide = documents.locator(".document-guide");
+    await guide.locator("summary").click();
+    assert.equal(await guide.getAttribute("open"), "");
     for (const [kind, titles] of Object.entries(documentTitlesByClass)) {
       const card = documents.locator(`.classcard[data-c="${kind}"]`);
       await card.click();
@@ -509,7 +515,7 @@ test("Display AB runs every exported row through the real rendered page", async 
     for (const [kind, titles] of Object.entries(documentTitlesByClass)) {
       await documents.locator(`#tabs [data-c="${kind}"]`).click();
       assert.deepEqual((await visibleDocumentTitles(documents)).sort(), [...titles].sort());
-      assert.equal(await documents.locator(`#tabs [data-c="${kind}"]`).getAttribute("aria-current"), "true");
+      assert.equal(await documents.locator(`#tabs [data-c="${kind}"]`).getAttribute("aria-pressed"), "true");
     }
     await documents.locator('#tabs [data-c=""]').click();
     assert.deepEqual((await visibleDocumentTitles(documents)).sort(), allDocumentTitles);
@@ -562,9 +568,9 @@ test("Display AB runs every exported row through the real rendered page", async 
   });
   await prove(t, exercised, "c439c8e2e1aeeec25347", async () => {
     await resetDocuments();
-    assert.deepEqual(await documentState(row("Soft Pull Authorization")), ["QUEUED", "NOT SENT", "AWAITING", "20d"]);
-    assert.deepEqual(await documentState(row("Funding Signed")), ["GENERATED", "SENT", "SIGNED", "—"]);
-    assert.deepEqual(await documentState(row("Identity Upload")), ["GENERATED", "N/A", "N/A", "—"]);
+    assert.deepEqual(await documentState(row("Soft Pull Authorization")), ["Queued", "Not sent", "Awaiting", "20d"]);
+    assert.deepEqual(await documentState(row("Funding Signed")), ["Generated", "Sent", "Signed", "—"]);
+    assert.deepEqual(await documentState(row("Identity Upload")), ["Generated", "N/A", "N/A", "—"]);
   });
   await prove(t, exercised, "607570c414ad961bd536", async () => {
     await row("Identity Upload").locator('[data-dl="d-upload"]').click();

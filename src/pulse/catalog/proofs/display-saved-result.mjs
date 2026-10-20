@@ -211,6 +211,27 @@ SELECT count(*)::int AS sample_count,
   LEFT JOIN staff s ON s.org_id = l.org_id AND s.id = l.staff_id
  WHERE l.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false`;
 
+const COMMISSION_LEDGER_TABLE_SQL = `
+SELECT count(*)::int AS sample_count,
+       count(*) FILTER (WHERE s.id IS NULL
+         OR NULLIF(BTRIM(COALESCE(s.name, l.employee_code, '')), '') IS NULL
+         OR l.client_id IS NULL OR c.id IS NULL
+         OR NULLIF(BTRIM(COALESCE(NULLIF(BTRIM(CONCAT_WS(' ', c.first_name, c.last_name)), ''), l.client_code, '')), '') IS NULL
+         OR NULLIF(BTRIM(COALESCE(l.product_name_at_earning, '')), '') IS NULL
+         OR l.rule_id IS NULL OR r.id IS NULL
+         OR jsonb_typeof(l.rule_snapshot) IS DISTINCT FROM 'object'
+         OR NULLIF(BTRIM(COALESCE(l.rule_snapshot->>'name', '')), '') IS NULL
+         OR l.base_amount IS NULL OR l.amount IS NULL OR l.earned_at IS NULL
+         OR COALESCE(l.rule_snapshot->>'calc_method', '') NOT IN ('percent','flat','flat_per_unit','tiered')
+         OR (l.rule_snapshot->>'calc_method' = 'percent' AND l.rule_snapshot->>'percent' IS NULL)
+         OR (l.rule_snapshot->>'calc_method' IN ('flat','flat_per_unit') AND l.rule_snapshot->>'flat_amount' IS NULL)
+         OR (l.rule_snapshot->>'calc_method' = 'flat_per_unit' AND l.rule_snapshot->>'per_unit_amount' IS NULL))::int AS bad_count
+  FROM commission_ledger l
+  LEFT JOIN staff s ON s.org_id = l.org_id AND s.id = l.staff_id
+  LEFT JOIN clients c ON c.org_id = l.org_id AND c.id = l.client_id
+  LEFT JOIN commission_rules r ON r.org_id = l.org_id AND r.id = l.rule_id
+ WHERE l.org_id = $1::uuid AND COALESCE(l.is_demo, false) = false`;
+
 const COMMISSION_RULES_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE NULLIF(BTRIM(r.name), '') IS NULL
@@ -296,7 +317,7 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason", "Each closed rule must link to its replacement at the exact boundary and keep the submitted reason on the new row.", "commission-supersede", COMMISSION_SUPERSEDE_SQL),
   query("'Approve selected': moves Accrued rows to Approved", "Each commission.approved receipt must link to the same ledger amount and an approved timestamp and actor.", "commission-approved", COMMISSION_APPROVED_SQL),
   query("'Mark paid...': asks for the ACH / check / payroll id, marks Approved rows Paid (records only, moves no money)", "Each commission.paid receipt must link to the same paid ledger amount and exact payout reference.", "commission-paid", COMMISSION_PAID_SQL),
-  gap("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "The screen paints Client and Rule version as dashes, Basis as $0 (it reads the text front_end or back_end as a number) and Rate as the split share, so no saved-row read can prove this named table displays correct values."),
+  query("Ledger table (date, person, client, product, rule version, basis, rate, payout, status)", "Every non-demo ledger row shown in this money table must link its staff, client, frozen rule version, product, basis amount, rule rate, payout, date, and status.", "commission-ledger-table", COMMISSION_LEDGER_TABLE_SQL),
   query("Refer a friend: Get my link button", "A client account with a referral link must point to one active same-company affiliate with a real tracking code.", "referral-link", REFERRAL_LINK_SQL),
   ...FIN_B01_DISPLAY_RESULT_CONTRACTS,
   ...FIN_B02_RESULT_CONTRACTS,

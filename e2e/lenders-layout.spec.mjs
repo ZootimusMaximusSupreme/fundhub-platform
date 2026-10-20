@@ -14,6 +14,9 @@ async function geometry(page) {
   await expect(page.locator('#fh-workspace-header')).toHaveCount(1);
   await expect(page.locator('.directory-intro .logo')).toHaveCount(0);
 }
+async function expectTapHeight(locator) {
+  await expect.poll(() => locator.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+}
 async function capture(page, width, state, selector) {
   if (!process.env.LENDERS_CAPTURE) return;
   fs.mkdirSync(OUT, { recursive: true });
@@ -49,7 +52,7 @@ for (const width of [1440, 390, 320]) {
           const first = page.locator('#lenderBody tr').first();
           await expect(first.locator('[data-f="name"]')).toHaveValue('Mesa Community Bank');
           if (width < 600) {
-            expect(await first.locator('.save-btn').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+            await expectTapHeight(first.locator('.save-btn'));
             await expect(page.locator('#moreFilters')).not.toHaveAttribute('open', '');
             await page.locator('#moreFilters summary').click();
             await expect(page.locator('#fState')).toBeVisible();
@@ -119,7 +122,7 @@ for (const width of [1440, 390, 320]) {
     await page.locator('[data-tab="review"]').click(); await expect(page.locator('#reviewBody tr')).toHaveCount(1); await geometry(page);
     await expect(page.locator('#reviewBody')).toContainText('Verified against the application receipt.');
     await capture(page, width, 'review', '#tab-review .panel');
-    const dismiss = page.locator('#reviewBody [data-act="dismissed"]'); if (width < 600) expect(await dismiss.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    const dismiss = page.locator('#reviewBody [data-act="dismissed"]'); if (width < 600) await expectTapHeight(dismiss);
     await dismiss.click(); await expect.poll(() => reviews[0]).toEqual({ action: 'review', id: observation.id, review_status: 'dismissed' });
     await page.locator('[data-tab="bureau"]').click(); await expect(page.locator('#bureauBody tr')).toHaveCount(1); await geometry(page);
     await expect(page.locator('#bureauBody [data-f="expected_hold_minutes"]')).toHaveValue('0');

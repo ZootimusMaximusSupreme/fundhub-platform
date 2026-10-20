@@ -2,8 +2,8 @@ import { inngest } from "./client.mjs";
 import { db } from "../db.mjs";
 import { onBureauResponseDocsReceived } from "../repair/response-agent.mjs";
 
-export async function handle({ event, db: database }) {
-  return onBureauResponseDocsReceived(database || db, event);
+export async function handle({ event, db: database, ...deps }) {
+  return onBureauResponseDocsReceived(database || db, event, deps);
 }
 
 export const repairBureauResponseReader = inngest.createFunction(

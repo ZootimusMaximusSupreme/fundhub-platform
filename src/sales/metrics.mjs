@@ -204,7 +204,7 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
   const window = monthWindow(now);
   const prior = priorWindow(window);
 
-  const [cur, prev, d2f, commissions, target, shift, unlogged, unloggedList, unrecordedList, team, offerStack] = await Promise.all([
+  const [cur, prev, d2f, commissions, target, shift, unlogged, unloggedList, unrecordedList, team, offerStack, quietDeals] = await Promise.all([
     staffCashCents(db, { orgId, staffId, ...window }),
     staffCashCents(db, { orgId, staffId, ...prior }),
     depositToFunded(db, { orgId, staffId, ...window }),
@@ -215,7 +215,8 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
     listUnloggedCalls(db, { orgId, staffId, limit: 10 }),
     listUnrecordedCalls(db, { orgId, staffId, now, limit: 10 }),
     teamLeaderboard(db, { orgId, ...window }),
-    closerOfferStack(db, { orgId, staffId, ...window })
+    closerOfferStack(db, { orgId, staffId, ...window }),
+    coldDeals(db, { orgId, staffId })
   ]);
 
   const cashCents = Number(cur.cents || 0);
@@ -303,6 +304,12 @@ export async function closerMyNumbers(db, { orgId, staffId, now = new Date() } =
         detail: u.detail,
         client_id: u.client_id,
         call_outcome_id: u.id
+      })),
+      ...quietDeals.map((deal) => ({
+        urgency: `${deal.quiet_days}d quiet`,
+        title: `Follow up with ${deal.name}`,
+        detail: "Deposit paid, not funded",
+        client_id: deal.client_id
       }))
     ],
     streak: {
@@ -485,15 +492,31 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
   }));
 
   const cashCents = Number(cash.rows[0]?.cents || 0);
-  const target = await db.query(
-    `SELECT target_value FROM staff_targets
-      WHERE org_id = $1 AND period = 'monthly' AND metric = 'deposits'
-        AND staff_id IS NULL AND role = 'sales_manager'
-      LIMIT 1`,
-    [orgId]
-  );
+  const [target, dailyTarget] = await Promise.all([
+    db.query(
+      `SELECT target_value FROM staff_targets
+        WHERE org_id = $1 AND period = 'monthly' AND metric = 'deposits'
+          AND staff_id IS NULL AND role = 'sales_manager'
+        LIMIT 1`,
+      [orgId]
+    ),
+    db.query(
+      `SELECT target_value FROM staff_targets
+        WHERE org_id = $1 AND period = 'daily' AND metric = 'deposits'
+          AND staff_id IS NULL AND role = 'sales_manager'
+        LIMIT 1`,
+      [orgId]
+    )
+  ]);
   const targetCents = target.rows[0]
     ? Math.round(Number(target.rows[0].target_value) * 100)
+    : null;
+  const dailyTargetValue = dailyTarget.rows[0]?.target_value;
+  const dailyTargetDeposits = dailyTargetValue == null
+    ? null
+    : Math.round(Number(dailyTargetValue));
+  const validDailyTarget = Number.isFinite(dailyTargetDeposits) && dailyTargetDeposits > 0
+    ? dailyTargetDeposits
     : null;
 
   return {
@@ -515,8 +538,10 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
       booked: todayFunnel.booked,
       held: todayFunnel.held,
       deposits: todayFunnel.deposits,
-      target_cents: null,
-      target_reason: "No daily deposit target has been set for the sales team yet."
+      target_deposits: validDailyTarget,
+      target_reason: validDailyTarget == null
+        ? "No daily deposit target has been set for the sales team yet."
+        : null
     },
     offer_stack: offer.stack,
     offer_stack_unattributed: offer.unattributed,
@@ -742,8 +767,14 @@ async function closerRoster(db, { orgId, start, end, now }) {
   return out;
 }
 
-async function coldDeals(db, { orgId }) {
+async function coldDeals(db, { orgId, staffId = null }) {
   // Clients with a deposit outcome, not funded, no message in 7+ days.
+  const params = [orgId];
+  let staffClause = "";
+  if (staffId) {
+    params.push(staffId);
+    staffClause = `AND o.staff_id = $${params.length}`;
+  }
   const r = await db.query(
     `SELECT c.id AS client_id,
             COALESCE(NULLIF(trim(c.first_name || ' ' || c.last_name), ''), c.email, 'Client') AS name,
@@ -759,13 +790,14 @@ async function coldDeals(db, { orgId }) {
           WHERE client_id = c.id AND org_id = c.org_id
        ) m ON true
       WHERE o.org_id = $1
+        ${staffClause}
         AND o.outcome = 'deposit'
         AND c.funded IS NOT TRUE
         AND o.logged_at < now() - interval '7 days'
         AND COALESCE(m.last_at, o.logged_at) < now() - interval '7 days'
       ORDER BY quiet_days DESC
       LIMIT 20`,
-    [orgId]
+    params
   ).catch(() => ({ rows: [] }));
   return r.rows.map((row) => ({
     client_id: row.client_id,

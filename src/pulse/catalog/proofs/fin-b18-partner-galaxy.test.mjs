@@ -3,7 +3,7 @@
 //
 //   Download button   the Message Blaster gift: signed out, a bad answer, and a good answer that saves the file
 //   Sidebar           which rows a partner is shown on this screen, and which screens a partner may open
-//   Sky canvas        (not attached to a row, see below) click a cluster to zoom in, pull back one level
+//   Sky canvas        click every cluster where it is shown, open/close a worker panel, and pull back
 //
 // The canvas draws everything itself, and the page keeps its zoom in a closure no test can reach. So the
 // sky tests read what a person reads: the sky is drawn through a hooked 2D context that records, for every
@@ -11,23 +11,9 @@
 // size and place of each cluster's glow, and the pointer over the sky is a pointing hand on a cluster that
 // is not zoomed on and a zoom-out cursor on the one that is.
 //
-// WHERE A PERSON CLICKS. The page sizes its canvas once, before the number tiles above it are drawn, and
-// never again. When the tiles appear the sky box gets shorter (at 1400 x 900: drawn 653 px tall, shown 472
-// px tall), so the picture is squeezed while the pointer is read in unsqueezed px. A person clicks where the
-// cluster is SHOWN, so these tests convert every drawn place to where it is shown before they click.
-//
-// Not attached to a row, on purpose (each has its reason in manifest-b18.md):
-//   "click a worker to open the detail panel"   NODES, CLIENTS and ROUTES are empty arrays in the page, so no
-//                                               worker is drawn and nothing can be clicked.
-//   "click a cluster to zoom (5 static clusters ...)"   four of the five zoom on their own name. Clicking
-//                                               Inquiry Removal where it is shown zooms Sales & Funding
-//                                               instead (measured at 1400 x 900, the camera at rest): its
-//                                               own click area is centred below the bottom of the sky box,
-//                                               so only a thin strip at the bottom edge of its glow works.
-//   "click empty space or press Escape to pull back; panel close button"   the row names the panel close
-//                                               button too, and that button is behind a panel no person can
-//                                               open (same empty arrays). The two ways to pull back are
-//                                               still judged below, but the row is not claimed proved.
+// WHERE A PERSON CLICKS. The page keeps the canvas bitmap and hit-testing coordinates aligned with the
+// displayed sky box after layout changes. The tests still locate visible clusters and workers from recorded
+// draw calls, then click the same displayed coordinates a person sees.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -248,6 +234,19 @@ async function cursorAt(page, [x, y]) {
   return page.evaluate(() => document.getElementById("sky").style.cursor);
 }
 
+async function workerSpot(page, geometry) {
+  const cx = geometry.left + geometry.shownW / 2;
+  const cy = geometry.top + geometry.shownH / 2;
+  for (const radius of [0, 12, 24, 36, 48, 60]) {
+    for (const [dx, dy] of [[0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius],
+      [radius, radius], [radius, -radius], [-radius, radius], [-radius, -radius]]) {
+      const spot = [cx + dx, cy + dy];
+      if (await cursorAt(page, spot) === "pointer") return spot;
+    }
+  }
+  assert.fail("the focused team's service node is not reachable");
+}
+
 /** Wait until the camera stops: the biggest glow of the cluster stops changing. */
 async function settled(page, name) {
   let last = -1;
@@ -269,67 +268,89 @@ async function backToRest(page, name) {
   return settled(page, name);
 }
 
-// Not attached to a row (see the header): Inquiry Removal is left out of the loop because clicking it where
-// it is shown zooms Sales & Funding instead. The four that work are told apart, clicked and zoomed on.
-test("Sky: four of the five clusters can be told apart, clicked, and zoomed on: its own name in the trail, the camera on it", { timeout: 300_000 }, async () => {
-  const table = clusterTable();
-  assert.deepEqual(table.map((c) => c.name), [
-    "Fundhub (fulfillment)", "Sales & Funding", "Inquiry Removal", "Client-Facing Agents", "Ops Agents",
-  ], "the page draws five clusters, each with its own name");
-  const { page, geometry, errors } = await openSky();
-  assert.deepEqual(breadcrumb(await frameOf(page)), { crumbs: ["Sky"], hint: false }, "at rest the trail is just Sky");
+test("Sky: all five clusters can be clicked where they are shown and zoom on their own name", { timeout: 300_000 }, async () => {
+  await proof.check(/^Sky canvas: click a cluster to zoom/, async () => {
+    const table = clusterTable();
+    assert.deepEqual(table.map((c) => c.name), [
+      "Fundhub (fulfillment)", "Sales & Funding", "Inquiry Removal", "Client-Facing Agents", "Ops Agents",
+    ], "the page draws five clusters, each with its own name");
+    const { page, geometry, errors } = await openSky();
+    assert.deepEqual(breadcrumb(await frameOf(page)), { crumbs: ["Sky"], hint: false }, "at rest the trail is just Sky");
 
-  for (const cluster of table.filter((c) => c.id !== "inq")) {
-    const rest = await backToRest(page, cluster.name);
-    assert.ok(rest, `${cluster.name} is drawn on the sky`);
-    // where it is shown: a pointing hand there, and a click goes to it
-    const spot = shown(geometry, rest);
-    assert.equal(await cursorAt(page, spot), "pointer", `${cluster.name}: the pointer over where it is shown is a pointing hand`);
-    await page.mouse.click(...spot);
-    await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`,
-      `${cluster.name}: its own name in the trail`, 8000);
-    assert.equal(breadcrumb(await frameOf(page)).hint, true, `${cluster.name}: the pull-back hint appears once zoomed`);
+    for (const cluster of table) {
+      const rest = await backToRest(page, cluster.name);
+      assert.ok(rest, `${cluster.name} is drawn on the sky`);
+      const spot = shown(geometry, rest);
+      assert.equal(await cursorAt(page, spot), "pointer", `${cluster.name}: its shown center is clickable`);
+      await page.mouse.click(...spot);
+      await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`,
+        `${cluster.name}: its own name in the trail`, 8000);
+      assert.equal(breadcrumb(await frameOf(page)).hint, true, `${cluster.name}: the pull-back hint appears once zoomed`);
 
-    // the camera is on it: its glow grew about 2x and it sits in the middle of the sky
-    const zoomed = await settled(page, cluster.name);
-    const grew = zoomed.radius / rest.radius;
-    assert.ok(grew > 1.8 && grew < 2.5, `${cluster.name}: zoomed in about 2x (it grew ${grew.toFixed(2)}x)`);
-    assert.ok(Math.abs(zoomed.x - geometry.drawnW / 2) < 45 && Math.abs(zoomed.y - geometry.drawnH / 2) < 45,
-      `${cluster.name}: centred (at ${Math.round(zoomed.x)}, ${Math.round(zoomed.y)} on a ${geometry.drawnW} x ${geometry.drawnH} sky)`);
-    // the one zoomed on is no longer one to zoom on: the zoom-out hand over it
-    assert.equal(await cursorAt(page, shown(geometry, zoomed)), "zoom-out", `${cluster.name}: it is no longer one to zoom on`);
-  }
-  assert.deepEqual(errors, []);
-  await page.close();
+      const zoomed = await settled(page, cluster.name);
+      const grew = zoomed.radius / rest.radius;
+      assert.ok(grew > 1.8 && grew < 2.5, `${cluster.name}: zoomed in about 2x (it grew ${grew.toFixed(2)}x)`);
+      assert.ok(Math.abs(zoomed.x - geometry.drawnW / 2) < 45 && Math.abs(zoomed.y - geometry.drawnH / 2) < 45,
+        `${cluster.name}: centred on the sky`);
+    }
+    assert.deepEqual(errors, []);
+    await page.close();
+  }, SURFACE);
 });
 
-// Not attached to a row (see the header): the two ways to pull back, judged on what the page draws.
+test("Sky: a neutral worker opens the detail panel without inventing live activity", { timeout: 180_000 }, async () => {
+  await proof.check(/^Sky canvas: click a worker to open the detail panel/, async () => {
+    const { page, geometry, errors } = await openSky();
+    const cluster = clusterTable()[0];
+    const rest = await settled(page, cluster.name);
+    await page.mouse.click(...shown(geometry, rest));
+    await waitFor(async () => breadcrumb(await frameOf(page)).crumbs.join("/") === `Sky/${cluster.name}`, "the cluster opens", 8000);
+    await settled(page, cluster.name);
+    const spot = await workerSpot(page, geometry);
+    await page.mouse.click(...spot);
+    await page.waitForSelector("#panel.open");
+    const words = (await page.locator("#panel").innerText()).replace(/\s+/g, " ");
+    assert.match(words, /Fulfillment service/);
+    assert.match(words, /No live activity feed connected/);
+    assert.match(words, /Not connected/);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }, SURFACE);
+});
+
 test("Sky: clicking empty space or pressing Escape steps back out of a cluster, and Escape at rest changes nothing", { timeout: 240_000 }, async () => {
-  const { page, geometry, errors } = await openSky();
-  const cluster = clusterTable()[1];
-  const trail = async () => breadcrumb(await frameOf(page)).crumbs.join("/");
-  const rest = await settled(page, cluster.name);
-  assert.ok(rest, "a cluster to zoom on");
+  await proof.check(/^Sky canvas: click empty space or press Escape/, async () => {
+    const { page, geometry, errors } = await openSky();
+    const cluster = clusterTable()[1];
+    const trail = async () => breadcrumb(await frameOf(page)).crumbs.join("/");
+    const rest = await settled(page, cluster.name);
+    assert.ok(rest, "a cluster to zoom on");
 
-  // zoom in, then click empty space (the bottom left corner of the sky): back to rest
-  await page.mouse.click(...shown(geometry, rest));
-  await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in", 8000);
-  await page.mouse.click(geometry.left + 3, geometry.top + geometry.shownH - 3);
-  await waitFor(async () => (await trail()) === "Sky", "pulled back by a click in empty space", 8000);
+    await page.mouse.click(...shown(geometry, rest));
+    await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in", 8000);
+    await settled(page, cluster.name);
+    const spot = await workerSpot(page, geometry);
+    await page.mouse.click(...spot);
+    await page.waitForSelector("#panel.open");
+    await page.locator("#pClose").click();
+    await waitFor(async () => !(await page.locator("#panel").evaluate((el) => el.classList.contains("open"))), "panel close button", 5000);
+    await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "panel close returns to the cluster", 5000);
 
-  // zoom in, then Escape: back to rest
-  const again = await settled(page, cluster.name);
-  await page.mouse.click(...shown(geometry, again));
-  await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in again", 8000);
-  await page.keyboard.press("Escape");
-  await waitFor(async () => (await trail()) === "Sky", "pulled back by Escape", 8000);
+    await page.mouse.click(geometry.left + 3, geometry.top + geometry.shownH - 3);
+    await waitFor(async () => (await trail()) === "Sky", "pulled back by a click in empty space", 8000);
 
-  // Escape at rest changes nothing
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(200);
-  assert.equal(await trail(), "Sky");
-  assert.deepEqual(errors, []);
-  await page.close();
+    const again = await settled(page, cluster.name);
+    await page.mouse.click(...shown(geometry, again));
+    await waitFor(async () => (await trail()) === `Sky/${cluster.name}`, "zoomed in again", 8000);
+    await page.keyboard.press("Escape");
+    await waitFor(async () => (await trail()) === "Sky", "pulled back by Escape", 8000);
+
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    assert.equal(await trail(), "Sky");
+    assert.deepEqual(errors, []);
+    await page.close();
+  }, SURFACE);
 });
 
 test("every listed row was exercised", () => {

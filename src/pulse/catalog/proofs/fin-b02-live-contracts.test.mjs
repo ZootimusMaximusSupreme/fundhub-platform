@@ -1,4 +1,4 @@
-// Finish-853 batch 02: the seven live display checks, run as the exact SQL text the lane runs.
+// Finish-853 batch 02: the eight live display checks, run as the exact SQL text the lane runs.
 // (Repair cycle 1 widened them: see the manifest. Each wrong-result case below is one real way the
 // control's saved result can be wrong, and each is red on its own.)
 //
@@ -17,6 +17,8 @@ import { makeStandIn, REPO_ROOT } from "./fin-b02-sql-kit.mjs";
 import {
   FIN_B02_DISPLAY_CASES,
   FIN_B02_HERO_READY_CONTRACT,
+  FIN_B02_HERO_LIVE_TEST,
+  FIN_B02_HERO_TEST,
   FIN_B02_LIVE_ROWS,
   FIN_B02_LIVE_TEST,
   FIN_B02_RESULT_CONTRACTS,
@@ -708,7 +710,7 @@ test("every live control text is one exact map row and owns exactly one contract
 
 test("each new contract SQL is a fresh read: marker, $1::uuid, sample_count and bad_count", () => {
   const queries = FIN_B02_RESULT_CONTRACTS.filter((c) => c.mode === "query");
-  assert.equal(queries.length, 7);
+  assert.equal(queries.length, 8);
   for (const c of queries) {
     assert.match(c.sql, /^\/\* display-result:[a-z0-9-]+ \*\//);
     assert.match(c.sql, /sample_count/);
@@ -722,22 +724,21 @@ test("each new contract SQL is a fresh read: marker, $1::uuid, sample_count and 
   assert.ok(!markers.includes("do-task"));
 });
 
-test("the hero is not attached: it stays not proved with the exact words, and the ready SQL is kept off the row", () => {
+test("the hero is attached to its live deposit check and its browser target-bar proof", () => {
   const hero = DISPLAY_RESULT_CONTRACTS.find((c) => c.control === FIN_B02_HERO_READY_CONTRACT.control);
   assert.ok(hero, "the hero row has a contract entry");
-  assert.equal(hero.mode, "always-red");
-  assert.equal(hero.sql, null);
-  assert.match(hero.requirement, /target bar is set to 0% on every paint/);
-  assert.match(hero.requirement, /hero\.target_cents/);
+  assert.equal(hero.mode, "query");
+  assert.equal(hero.sql, FIN_B02_HERO_READY_CONTRACT.sql);
+  assert.match(hero.requirement, /saved daily team target/);
+  assert.match(hero.requirement, /bar exceed 100%/);
   assert.equal(FIN_B02_HERO_READY_CONTRACT.mode, "query");
-  assert.equal(DISPLAY_RESULT_CONTRACTS.filter((c) => c.sql === FIN_B02_HERO_READY_CONTRACT.sql).length, 0);
-  // Why it is not attached, checked against the product so the words cannot go stale unnoticed.
-  // If either line below changes, the bar may now follow a target: re-read manifest-b02.md, then put
-  // FIN_B02_HERO_READY_CONTRACT back on the row (and its screen test) and delete this guard.
+  assert.equal(DISPLAY_RESULT_CONTRACTS.filter((c) => c.sql === FIN_B02_HERO_READY_CONTRACT.sql).length, 1);
   const page = fs.readFileSync(path.join(REPO_ROOT, "public/app/sales-floor.js"), "utf8");
-  assert.match(page, /bar\.style\.width = "0%"/, "the hero bar is no longer hard-coded to 0%: re-attach the hero row");
+  assert.match(page, /Number\(today\.deposits\) \/ dailyTarget \* 100/);
+  assert.match(page, /Math\.min\(100,/);
   const read = fs.readFileSync(path.join(REPO_ROOT, "src/sales/metrics.mjs"), "utf8");
-  assert.match(read, /target_cents: null,\n\s+target_reason: "No daily deposit target/, "today.target_cents is no longer null: re-attach the hero row");
+  assert.match(read, /period = 'daily' AND metric = 'deposits'/);
+  assert.match(read, /target_deposits: validDailyTarget/);
 });
 
 test("each repaired row names the tests that press its control or run its handler", () => {
@@ -755,6 +756,7 @@ test("each repaired row names the tests that press its control or run its handle
   has(FIN_B02_RESULT_CONTRACTS[5].control, FIN_B02_LIVE_TEST, "src/pulse/catalog/proofs/s4-soft-pull-approve.test.mjs");
   has(FIN_B02_RESULT_CONTRACTS[6].control, FIN_B02_LIVE_TEST, "src/http/money-next-screen.test.mjs", "src/http/money-tasks.test.mjs", "src/finance/money-tasks.test.mjs", "src/pulse/catalog/proofs/fin-b02-do-task.test.mjs");
   has(FIN_B02_RESULT_CONTRACTS[0].control, FIN_B02_LIVE_TEST, "src/pulse/catalog/proofs/fin-b02-present-buttons.test.mjs");
+  has(FIN_B02_RESULT_CONTRACTS[7].control, FIN_B02_HERO_TEST, FIN_B02_HERO_LIVE_TEST);
   // The invoice row has ONE case, not two (the staff runner's case is replaced, not repeated).
   assert.equal(FIN_B02_DISPLAY_CASES.filter((c) => c.control === FIN_B02_RESULT_CONTRACTS[3].control).length, 1);
 });

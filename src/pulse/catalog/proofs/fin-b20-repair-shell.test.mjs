@@ -33,6 +33,21 @@ async function open(page, path) {
   await page.locator("#fh-shell-chip").waitFor({ state: "attached", timeout: 20_000 });
 }
 
+async function openAccount(page, { technical = false } = {}) {
+  const account = page.locator("#fh-shell-chip");
+  if (await account.evaluate((node) => node.tagName === "DETAILS")) {
+    if (!(await account.evaluate((node) => node.open))) await account.locator("summary").first().click();
+    if (technical) {
+      const diagnostics = page.locator("#fh-shell-account-diagnostics");
+      if (await diagnostics.count() && !(await diagnostics.evaluate((node) => node.open))) {
+        await diagnostics.locator("summary").click();
+      }
+    }
+    return;
+  }
+  if (await account.isHidden()) await page.locator("#fh-shell-chip-show").click();
+}
+
 // ---------------------------------------------------------------------------------------------
 // 1. Search on a desk with no data.js (lenders.html)
 const DESK = "/app/lenders.html";
@@ -178,6 +193,7 @@ test("status word: LIVE only when the real health body says ok and up; behind, u
   for (const c of cases) {
     const page = await makePage(lab, { health: () => (c.raw ? { raw: c.raw } : { body: c.body }) });
     await open(page, "/app/pipeline.html");
+    await openAccount(page, { technical: true });
     await until(async () => (await page.locator("#fh-shell-src").innerText()) !== "···", { message: `${c.name}: the word` });
     assert.equal(await page.locator("#fh-shell-src").innerText(), c.word, c.name);
     assert.equal(await page.locator("#fh-shell-src").evaluate((el) => getComputedStyle(el).backgroundColor), c.tone, `${c.name}: the colour`);
@@ -193,6 +209,7 @@ test("status word: LIVE only when the real health body says ok and up; behind, u
     storage: { fh_demo_staff: demoStaff }, health: () => ({ body: up }),
   });
   await open(demo, "/app/pipeline.html");
+  await openAccount(demo, { technical: true });
   await until(async () => (await demo.locator("#fh-shell-src").innerText()) === "DEMO", { message: "the demo word" });
   assert.equal(await demo.locator("#fh-shell-src").evaluate((el) => getComputedStyle(el).backgroundColor), PEACH, "demo data is never painted as real data");
   await demo.close();
@@ -207,6 +224,7 @@ test("sign out: the remembered client and entity go with the token and role, and
   const page = await makePage(lab, { storage: { fh_client: CLIENT_ID, fh_entity: ENTITY_ID } });
   await open(page, "/app/pipeline.html");
   assert.equal(await page.evaluate(() => localStorage.getItem("fh_client")), CLIENT_ID, "remembered while working");
+  await openAccount(page);
   await page.locator("#fh-shell-out").click();
   await page.waitForURL((u) => u.pathname === "/login.html");
   const left = await page.evaluate(() => ({
@@ -224,6 +242,7 @@ test("sign out: a demo session is ended too, so the next load is signed out and 
     storage: { fh_demo_staff: demoStaff, fh_demo: "1", fh_client: CLIENT_ID, fh_entity: ENTITY_ID },
   });
   await open(page, "/app/pipeline.html");
+  await openAccount(page);
   await page.locator("#fh-shell-out").click();
   await page.waitForURL((u) => u.pathname === "/login.html");
   const left = await page.evaluate(() => ({
@@ -245,18 +264,28 @@ const fakeAddress = (local) => [local, "proof.invalid"].join("@");
 test("account chip: the name is shown before the address; with no name the address is; hiding sets aria-hidden both ways", { timeout: 90_000 }, async () => {
   const named = await makePage(lab, { role: "closer", staff: { name: "Riley Chen", email: fakeAddress("riley.chen") } });
   await open(named, "/app/closer-dashboard.html");
-  assert.equal(await words(named, '#fh-shell-chip span[title^="role closer"]'), "Riley Chen · closer");
-  const chip = named.locator("#fh-shell-chip");
-  assert.equal(await chip.getAttribute("aria-hidden"), "false");
-  await named.locator("#fh-shell-chip-hide").click();
-  assert.equal(await chip.getAttribute("aria-hidden"), "true", "hidden from the accessibility tree when hidden");
-  await named.locator("#fh-shell-chip-show").click();
-  assert.equal(await chip.getAttribute("aria-hidden"), "false");
+  const account = named.locator("#fh-shell-chip");
+  const summary = named.locator("#fh-shell-chip-show");
+  assert.equal(await account.evaluate((node) => node.tagName), "DETAILS");
+  assert.equal(await account.evaluate((node) => node.open), false);
+  assert.equal(await words(named, ".fh-account-shortname"), "Riley");
+  assert.equal(await named.locator("#fh-shell-out").isVisible(), false, "Sign out waits inside the closed account menu");
+  await openAccount(named);
+  assert.equal(await words(named, ".fh-account-person strong"), "Riley Chen");
+  assert.equal(await words(named, ".fh-account-role"), "closer");
+  assert.equal(await named.locator("#fh-shell-out").innerText(), "Sign out");
+  await named.keyboard.press("Escape");
+  assert.equal(await account.evaluate((node) => node.open), false, "Escape closes the account menu");
+  assert.equal(await named.evaluate(() => document.activeElement?.id), "fh-shell-chip-show", "focus returns to the account summary");
+  assert.equal(await named.evaluate(() => localStorage.getItem("fh_chip_hidden")), null, "the retired hide-bar state is not written");
   await named.close();
 
   const unnamed = await makePage(lab, { role: "closer", staff: { name: "", email: fakeAddress("riley.chen") } });
   await open(unnamed, "/app/closer-dashboard.html");
-  assert.equal(await words(unnamed, '#fh-shell-chip span[title^="role closer"]'), `${fakeAddress("riley.chen")} · closer`);
+  assert.equal(await words(unnamed, ".fh-account-shortname"), fakeAddress("riley.chen"));
+  await openAccount(unnamed);
+  assert.equal(await words(unnamed, ".fh-account-person strong"), fakeAddress("riley.chen"));
+  assert.equal(await words(unnamed, ".fh-account-role"), "closer");
   await unnamed.close();
 });
 
@@ -273,7 +302,10 @@ test("clock: staff who open a customer's screen are not given the office clock, 
   }
   const desk = await makePage(lab, { role: "owner" });
   await open(desk, "/app/products-commissions.html");
-  await desk.locator("#fh-shell-clock").waitFor({ state: "attached" });
+  assert.equal(await desk.locator("#fh-workspace-clock").isVisible(), false, "the account's technical clock is closed by default");
+  await openAccount(desk, { technical: true });
+  await desk.locator("#fh-workspace-clock").waitFor({ state: "visible" });
+  assert.match((await desk.locator("#fh-workspace-clock").innerText()).trim(), /^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}:\d{2} (AM|PM) MST$/);
   await desk.close();
 });
 

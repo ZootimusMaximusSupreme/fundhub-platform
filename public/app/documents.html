@@ -93,7 +93,7 @@
         <div class="library-controls">
           <label class="document-search" for="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="q" type="search" aria-label="Search documents" placeholder="Search by client or document"></label>
           <label class="status-filter"><span class="visually-hidden">Document status</span><select id="statusFilter" aria-label="Document status">
-            <option value="">Any status</option><option value="gen-pending">Not generated</option><option value="gen-failed">Generation failed</option><option value="del-pending">Not delivered</option><option value="del-bounced">Bounced</option><option value="sig-pending">Awaiting signature</option><option value="sig-expired">Signature expired</option>
+            <option value="">Any status</option><option value="del-pending">Not delivered</option><option value="del-bounced">Bounced</option><option value="sig-pending">Awaiting signature</option><option value="sig-expired">Signature expired</option>
           </select></label>
           <label class="mobile-sort"><span class="visually-hidden">Sort documents</span><select id="mobileSort" aria-label="Sort documents">
             <option value="age:-1">Age: oldest first</option><option value="age:1">Age: newest first</option><option value="doc:1">Document: A–Z</option><option value="doc:-1">Document: Z–A</option><option value="client:1">Client: A–Z</option><option value="client:-1">Client: Z–A</option><option value="cls:1">Class: A–Z</option><option value="cls:-1">Class: Z–A</option><option value="gen:1">Generated: A–Z</option><option value="gen:-1">Generated: Z–A</option><option value="del:1">Delivered: A–Z</option><option value="del:-1">Delivered: Z–A</option><option value="sig:1">Signature: A–Z</option><option value="sig:-1">Signature: Z–A</option>
@@ -235,8 +235,6 @@ function rows(){
     if(curCls && d.cls!==curCls) return false;
     if(pendingOnly && !pending(d)) return false;
     if(q && (d.doc+' '+d.client+' '+d.sub).toLowerCase().indexOf(q)<0) return false;
-    if(sf==='gen-pending' && d.gen==='generated') return false;
-    if(sf==='gen-failed' && d.gen!=='failed') return false;
     if(sf==='del-pending' && d.del!=='not_sent') return false;
     if(sf==='del-bounced' && d.del!=='bounced') return false;
     if(sf==='sig-pending' && d.sig!=='awaiting') return false;

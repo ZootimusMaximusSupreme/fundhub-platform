@@ -513,7 +513,23 @@ var CL = {}; CLUSTERS.forEach(function(c){CL[c.id]=c;});
 
 var CLIENTS = [];
 
-var NODES = [];
+/* One neutral service-map node per team. These are not staff identities and do
+   not invent live work. They make the read-only map navigable while saying the
+   exact truth until a partner-scoped activity feed exists. */
+function mapNode(id, c, name, ini, role){
+  return {id:id,c:c,name:name,ini:ini,kind:'agent',role:role,state:'idle',pace:null,
+    tempo:0,act:'No live activity feed connected',out:0,unit:'events',
+    shift:'Not connected',on:'Not connected',pool:['No live activity feed connected'],
+    stats:[['Live activity','Not connected']],
+    tl:[[nowClock(true),'No live activity feed connected']],files:[]};
+}
+var NODES = [
+  mapNode('map-fulfillment','lead','Fulfillment service','FF','Service map'),
+  mapNode('map-sales','sales','Sales and funding service','SF','Service map'),
+  mapNode('map-inquiry','inq','Inquiry removal service','IR','Service map'),
+  mapNode('map-client','cfa','Client-facing service','CF','Service map'),
+  mapNode('map-ops','ops','Operations service','OP','Service map')
+];
 var ND = {}; NODES.forEach(function(n){ND[n.id]=n;});
 
 /* handoff routes that actually happen at Fundhub */
@@ -682,7 +698,7 @@ function evActivity(){
 
 /* -- one worker hands something to another -- */
 function evHandoff(){
-  if(!NODES.length) return;
+  if(!NODES.length || !ROUTES.length) return;
   if(threads.length>=5) return;
   var r = pick(ROUTES);
   var a = ND[r[0]], b = ND[r[1]];
@@ -1417,7 +1433,7 @@ function drawFootnote(){
   ctx.font='400 8.5px "JetBrains Mono", monospace';
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   ctx.fillStyle=rgba(C.star2,0.42);
-  ctx.fillText('FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · work product only · named activity: consent on file for all shown', 16, H-9);
+  ctx.fillText('FUNDHUB-GALAXY · v1 · ORG: fundhub · read-only — no actions from this screen · service map only · no staff identities shown', 16, H-9);
 }
 
 /* ============================================================
@@ -1578,6 +1594,9 @@ chrome(); setInterval(chrome, 1000);
    ============================================================ */
 window.addEventListener('resize', resize);
 resize();
+if(window.ResizeObserver){
+  new ResizeObserver(function(){ resize(); }).observe(cv.parentElement);
+}
 requestAnimationFrame(draw);
 
 })();

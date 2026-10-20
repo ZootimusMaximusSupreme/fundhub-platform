@@ -1,5 +1,6 @@
 const KEY_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 const MASK_RE = /^(?:\*{4,}|x{4,}|redacted|masked)$/i;
+const KEY_HEALTH_TEST = "src/pulse/catalog/proofs/door-batch-key-health.test.mjs";
 
 export const KEY_HEALTH_EVIDENCE =
   "src/pulse/coverage/gap-door-batch-keys.mjs " +
@@ -7,11 +8,29 @@ export const KEY_HEALTH_EVIDENCE =
 
 export const CHECK_IDS = Object.freeze(["door-batch:keys-live-proof"]);
 
+export function keyNamesFromCatalog(catalog) {
+  return [...new Set(
+    (Array.isArray(catalog?.items) ? catalog.items : [])
+    .filter((item) => item?.family === "key" && item?.proof?.tests?.includes(KEY_HEALTH_TEST))
+    .map((item) => String(item.target || "").trim())
+    .filter((name) => KEY_NAME_RE.test(name))
+  )].sort();
+}
+
+async function compiledCatalog() {
+  return (await import("../catalog/generated.json", { with: { type: "json" } })).default;
+}
+
 function valueShape(name, value) {
   if (/(?:^|_)(?:URL|URI|ORIGIN)$/.test(name)) {
     try {
       const parsed = new URL(value);
-      return ["http:", "https:"].includes(parsed.protocol) ? null : "url must use http or https";
+      const protocols = /(?:^|_)DATABASE_URL$/.test(name)
+        ? ["postgres:", "postgresql:"]
+        : ["http:", "https:"];
+      return protocols.includes(parsed.protocol)
+        ? null
+        : `url must use ${protocols.map((protocol) => protocol.slice(0, -1)).join(" or ")}`;
     } catch {
       return "value is not a valid url";
     }
@@ -33,6 +52,14 @@ function valueShape(name, value) {
   return null;
 }
 
+function liveValueProblems(name, env) {
+  const value = String(env?.[name] ?? "").trim();
+  if (!value) return ["value is missing"];
+  if (MASK_RE.test(value) || /\*{4,}/.test(value)) return ["value is masked"];
+  const shapeProblem = valueShape(name, value);
+  return shapeProblem ? [shapeProblem] : [];
+}
+
 export function evaluateKeyHealth(row, env = {}, references = []) {
   const name = String(row?.env_name || "").trim();
   const problems = [];
@@ -42,13 +69,7 @@ export function evaluateKeyHealth(row, env = {}, references = []) {
   if (!Number.isInteger(row?.read_by_files) || row.read_by_files < 1) problems.push("map names no reader");
   if (!Array.isArray(references) || references.length < 1) problems.push("repo code has no reader");
 
-  const value = String(env?.[name] ?? "").trim();
-  if (!value) problems.push("value is missing");
-  else if (MASK_RE.test(value) || /\*{4,}/.test(value)) problems.push("value is masked");
-  else {
-    const shapeProblem = valueShape(name, value);
-    if (shapeProblem) problems.push(shapeProblem);
-  }
+  problems.push(...liveValueProblems(name, env));
 
   return {
     ok: problems.length === 0,
@@ -69,11 +90,24 @@ export function keyHealthProof(row) {
   };
 }
 
-export async function gapChecks() {
+export async function gapChecks(ctx = {}) {
+  const env = ctx.env && typeof ctx.env === "object" ? ctx.env : process.env;
+  const keyNames = keyNamesFromCatalog(ctx.catalog || await compiledCatalog());
+  const failures = keyNames.flatMap((name) => {
+    const problems = liveValueProblems(name, env);
+    return problems.length ? [{ name, problems }] : [];
+  });
+  const status = failures.length === 0 ? "PASS" : "FAIL";
+  const detail = failures.length === 0
+    ? `${keyNames.length}/${keyNames.length} sensitive live keys are present and correctly shaped. No values were returned.`
+    : `${failures.length}/${keyNames.length} sensitive live keys need attention: ${failures.map(({ name, problems }) => `${name} (${problems.join(", ")})`).join("; ")}. No values were returned.`;
+
   return [{
     id: CHECK_IDS[0],
-    status: "FAIL",
-    detail: "The shared key batch proves key rules with fake values, but it does not read every live value.",
-    suggestedFix: "Add safe live checks for the keys that matter. Never print a secret value.",
+    status,
+    detail,
+    suggestedFix: failures.length
+      ? "Set or repair only the named live variables. Never paste their values into logs."
+      : null,
   }];
 }

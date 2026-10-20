@@ -100,10 +100,10 @@ export default async function handler(req, res, deps = {}) {
         if (body[k] !== undefined) patch[k] = body[k];
       }
     }
-    // The screen posts every empty box as "". `lenders.name` is NOT NULL with a
-    // non-empty check (db/migrations/138_lenders.sql:60), so a cleared Name box
-    // reached Postgres and came back as a raw 500. Refuse it in words instead.
-    if (patch.name !== undefined && String(patch.name).trim() === "") {
+    // The screen turns an emptied Name box into null. `lenders.name` is NOT NULL
+    // with a non-empty check (db/migrations/138_lenders.sql:60), so refuse both
+    // null and blank text in words before either can reach Postgres.
+    if (patch.name !== undefined && (patch.name == null || String(patch.name).trim() === "")) {
       return res.status(400).json({
         ok: false,
         error: "name_required",

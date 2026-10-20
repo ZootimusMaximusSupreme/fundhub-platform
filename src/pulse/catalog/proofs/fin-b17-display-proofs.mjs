@@ -25,6 +25,9 @@ const CLOSER_LANE_ROWS = [
   /^present\.js is served and wired/,
 ];
 const CLOSER_LANE_TESTS = ["src/pulse/coverage/gap-closer.test.mjs"];
+const SAVED_RESULT_CONTROLS = new Set([
+  "Ledger table (date, person, client, product, rule version, basis, rate, payout, status)",
+]);
 
 // One map row, and every practice test file that presses it. A row that a vm test and a real-page test
 // both judge is listed under both files in fin-b17-rows.json and is ONE proof case here, naming both.
@@ -47,12 +50,13 @@ export const FIN_B17_PRACTICE_CASES = Object.freeze(
     .filter((row) => !LIVE.has(keyOf(row.sourceFile, row.surface, row.control)))
     .map((row) => {
       const tests = [...row.files, ...(CLOSER_LANE_ROWS.some((re) => re.test(row.control)) ? CLOSER_LANE_TESTS : [])];
+      const readsSavedResult = SAVED_RESULT_CONTROLS.has(row.control);
       return Object.freeze({
         sourceFile: row.sourceFile,
         surface: row.surface,
         control: row.control,
-        depth: "e2e",
-        evidence: tests.join("; "),
+        depth: readsSavedResult ? "deep" : "e2e",
+        evidence: `${tests.join("; ")}${readsSavedResult ? `; ${FIN_B17_LANE}` : ""}`,
         tests: Object.freeze(tests),
       });
     }),

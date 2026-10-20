@@ -206,6 +206,8 @@ test("Connections: Copy address and Copy key put the exact text on the clipboard
     assert.equal((await copied())[1], "https://fundhub.ai/api/merchant/events");
 
     // Make a new Open API connection: the key is shown once, with Copy key and Copy address.
+    const apiSetup = page.locator('[data-provider="api"] details.connection-setup');
+    if (!(await apiSetup.evaluate((node) => node.open))) await apiSetup.locator(":scope > summary").click();
     await page.locator('[data-act="create"][data-provider="api"]').click();
     await waitFor(() => resource.log.posts.some((p) => p.action === "create" && p.provider === "api"));
     const key = page.locator('.once [data-act="copy"]:has-text("Copy key")');

@@ -1,14 +1,5 @@
-// Batch 12, generation 2: the three rows that stay not attachable, held by what the REAL page does.
-//
-// fin-b12-rows.test.mjs holds each reason to the page source with patterns. This file holds it to the
-// behaviour: the real page in Chromium, fake /api answers shaped exactly like the saved rows, and a
-// judgement of what the page paints. A held reason is a finding, not a proof: each test below is GREEN
-// while the product is wrong and goes RED the day the product is fixed, which is the signal to attach
-// the row for real. Nothing here reads live data, and none of it is called proof.
-//
-//   documents.html Status filter select   two of its six options can never list a saved document
-//   galaxy.html    Legend strip           size and brightness are moved on dice after the feed loads
-//   galaxy.html    Rail pulses + threads  a hand-off thread names a real client that handed nothing
+// Batch 12, generation 2: exact browser proofs for the repaired Documents status filter and Galaxy legend
+// and hand-off threads. Fake /api answers have the same shape as saved rows; nothing reads live data.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,6 +8,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { OWNER, startScreens } from "./s4-screen-harness.mjs";
+import { proofRows } from "./fin-b12-kit.mjs";
+
+const proof = proofRows(import.meta.url);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const DAY = 86_400_000;
@@ -44,47 +38,40 @@ const DOCUMENTS = [
   document("d7", "Queued to send", { delivery_status: "pending" }),
 ];
 
-// What each of the six options lists for those seven saved rows, in the order the page offers them.
-// Not generated and Generation failed are the dead ones. The other four are the positive control: they
-// show the page does filter, so an empty list for the dead two is the options and not the harness.
+// Every offered option has a saved state that can fill it.
 const EXPECTED = [
   ["", "Any status", DOCUMENTS.map((d) => d.title)],
-  ["gen-pending", "Not generated", []],
-  ["gen-failed", "Generation failed", []],
   ["del-pending", "Not delivered", ["Never sent", "Queued to send"]],
   ["del-bounced", "Bounced", ["Send bounced", "Send failed"]],
   ["sig-pending", "Awaiting signature", ["Waiting on signer"]],
   ["sig-expired", "Signature expired", ["Signing window over"]],
 ];
 
-test("documents status filter: with real-shaped rows four options list documents and Not generated and Generation failed list nothing", { timeout: 120_000 }, async (t) => {
+test("documents status filter: every offered status lists exactly its saved rows", { timeout: 120_000 }, async (t) => {
   const { open } = await startScreens(t);
-  const handlers = {
-    "/api/read/documents": { ok: true, count: DOCUMENTS.length, limit: 200, offset: 0, hasMore: false, items: DOCUMENTS },
-    "/api/read/contracts": { ok: true, items: [] },
-  };
-  const { page, errors } = await open("/app/documents.html", { session: OWNER, handlers });
-  await page.waitForFunction((n) => document.querySelectorAll("#body tr td:first-child").length === n, DOCUMENTS.length);
-  const titles = () => page.locator("#body tr td:first-child > div:first-child").allTextContents();
+  await proof.check(/^Status filter select/, async () => {
+    const handlers = {
+      "/api/read/documents": { ok: true, count: DOCUMENTS.length, limit: 200, offset: 0, hasMore: false, items: DOCUMENTS },
+      "/api/read/contracts": { ok: true, items: [] },
+    };
+    const { page, errors } = await open("/app/documents.html", { session: OWNER, handlers });
+    await page.waitForFunction((n) => document.querySelectorAll("#body tr td:first-child").length === n, DOCUMENTS.length);
+    const titles = () => page.locator("#body tr td:first-child > div:first-child").allTextContents();
 
-  const options = await page.locator("#statusFilter option").evaluateAll((els) => els.map((el) => [el.value, el.textContent.trim()]));
-  assert.deepEqual(options, EXPECTED.map(([value, label]) => [value, label]), "the select still offers exactly these six statuses plus Any");
+    const options = await page.locator("#statusFilter option").evaluateAll((els) => els.map((el) => [el.value, el.textContent.trim()]));
+    assert.deepEqual(options, EXPECTED.map(([value, label]) => [value, label]));
 
-  for (const [value, label, want] of EXPECTED) {
-    await page.locator("#statusFilter").selectOption(value);
-    if (want.length) {
+    for (const [value, label, want] of EXPECTED) {
+      await page.locator("#statusFilter").selectOption(value);
       await page.waitForFunction((n) => document.querySelectorAll("#body tr td:first-child > div:first-child").length === n, want.length);
       assert.deepEqual((await titles()).sort(), [...want].sort(), `${label}: lists exactly its documents`);
-    } else {
-      await page.waitForFunction(() => /Nothing matches that filter\./.test(document.querySelector("#body")?.innerText || ""));
-      assert.deepEqual(await titles(), [], `${label}: lists nothing, whatever the saved rows say`);
     }
-  }
-  assert.deepEqual(errors, []);
-  await page.close();
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
 
-test("documents status filter: the table cannot hold a document that is not generated, and has no generation failure column", () => {
+test("documents status filter: removed generation options have no saved database state", () => {
   const sql = fs.readFileSync(path.join(ROOT, "db/migrations/030_documents.sql"), "utf8");
   const table = sql.slice(sql.indexOf("CREATE TABLE documents ("), sql.indexOf("CREATE TABLE documents (") + 6000);
   const tableEnd = table.indexOf("\n);");
@@ -139,10 +126,10 @@ const FEED = {
   kpis: [], clients: ["Dana Whitfield"], routes: [],
 };
 
-async function openSky(open) {
+async function openSky(open, answer = FEED) {
   const opened = await open("/app/galaxy.html", {
     session: OWNER, clock: true, init: SKY_SPY,
-    handlers: { "/api/read/company-activity": FEED },
+    handlers: { "/api/read/company-activity": answer },
   });
   await opened.page.waitForFunction(() => /LIVE/.test(document.querySelector("#livePill")?.textContent || ""));
   return opened;
@@ -151,9 +138,10 @@ async function openSky(open) {
 const census = (page) => page.locator("#census").innerText();
 const drawnText = (page) => page.evaluate(() => [...window.__drawn.keys()]);
 
-test("galaxy legend: with nothing changed in the saved feed, the sky moves size and brightness on its own", { timeout: 180_000 }, async (t) => {
+test("galaxy legend: size and brightness stay tied to the saved feed", { timeout: 180_000 }, async (t) => {
   const { open } = await startScreens(t);
-  const { page, errors } = await openSky(open);
+  await proof.check(/^Legend strip/, async () => {
+    const { page, errors } = await openSky(open);
 
   // What the feed says, drawn the first second: two people, none working, output 1 + 1 each.
   await page.clock.runFor(300);
@@ -180,29 +168,20 @@ test("galaxy legend: with nothing changed in the saved feed, the sky moves size 
   const first = await panel();
   assert.equal(first.events + first.calls, 2, "the saved rows add up to 2 for this person");
 
-  // Let the sky run. Nothing in the feed changes. The figure the panel calls "Output today" must stay at 2
-  // if the legend is true. It does not.
-  let now = first;
-  for (let step = 0; step < 40 && !(now.total > now.events + now.calls); step += 1) {
-    await page.clock.runFor(3000);
-    now = await panel();
-  }
-  assert.ok(now.total > now.events + now.calls, `Total events (${now.total}) climbs past the saved events + calls (${now.events} + ${now.calls}) with no new saved row`);
-
-  // And brightness: both people were off shift in the feed. The sky counts them as working.
-  let working = await census(page);
-  for (let step = 0; step < 40 && !/[12] working/.test(working); step += 1) {
-    await page.clock.runFor(3000);
-    working = await census(page);
-  }
-  assert.match(working, /[12] working/, "a person with no open shift and no recent event is counted as working");
-  assert.deepEqual(errors, []);
-  await page.close();
+    // Let the animation run for two minutes. With no new feed, output and presence stay unchanged.
+    await page.clock.runFor(120_000);
+    const after = await panel();
+    assert.deepEqual(after, first, "the animation never changes saved output");
+    assert.match(await census(page), /0 working/, "off-shift workers stay idle");
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
 
-test("galaxy legend: the pace swatches are the colours the canvas uses, and the feed can never send blocked", async (t) => {
+test("galaxy legend: pace swatches match the canvas and a saved blocked agent reaches the census", async (t) => {
   const { open } = await startScreens(t);
-  const { page } = await openSky(open);
+  const blocked = { ...FEED, nodes: [person("staff:a", "Casey Reed", "CR"), { ...person("agent:a", "Guarded Agent", "GA"), kind: "agent", state: "blocked", out: 5 }] };
+  const { page } = await openSky(open, blocked);
   const swatches = await page.evaluate(() => Object.fromEntries(["n", "g", "a", "r"].map((k) => {
     const el = document.querySelector(`.legend .sw.${k}`);
     return [k, getComputedStyle(el).backgroundColor];
@@ -213,29 +192,43 @@ test("galaxy legend: the pace swatches are the colours the canvas uses, and the 
   const palette = Object.fromEntries(["neutral", "green", "amber", "red"].map((k) => [k, html.match(new RegExp(`${k}:'(#[0-9A-Fa-f]{6})'`))[1]]));
   assert.deepEqual(swatches, { n: rgb(palette.neutral), g: rgb(palette.green), a: rgb(palette.amber), r: rgb(palette.red) });
 
-  // The feed's own builder: a person is active or idle, an agent is active or idle. Blocked is never sent.
+  assert.match(await census(page), /1 blocked/, "the blocked state from the feed reaches the legend census");
+  // The feed's own builder derives output from saved agent_runs and blocked state from the shadow log.
   const feed = fs.readFileSync(path.join(ROOT, "src/galaxy/company-activity.mjs"), "utf8");
-  const states = [...feed.matchAll(/\bconst state = ([^;\n]+);/g)].map((m) => m[1].trim());
-  assert.deepEqual(states, ['open || recent ? "active" : "idle"', 'live ? "active" : "idle"']);
-  assert.doesNotMatch(feed, /"blocked"/, "no state called blocked leaves the server");
-  // And an agent's size is a constant (3 or 1 by sort order), not output.
-  assert.match(feed, /const out = Number\(row\.sort_order \|\| 0\) > 0 \? 3 : 1;/);
+  assert.match(feed, /const out = Number\(row\.runs_today \|\| 0\);/);
+  assert.match(feed, /const state = blocked \? "blocked" : \(recent \? "active" : "idle"\);/);
+  assert.match(feed, /FROM agent_shadow_log l/);
+  assert.match(feed, /l\.reason IN \('guardrail_halt', 'guardrail_block'\)/);
+  assert.doesNotMatch(feed, /const out = Number\(row\.sort_order/);
+  await page.close();
 });
 
-test("galaxy rails: a hand-off thread names a real client that handed nothing, when the saved feed holds no route", { timeout: 180_000 }, async (t) => {
+test("galaxy rails: no saved route draws no thread, and one saved route keeps its exact label", { timeout: 180_000 }, async (t) => {
   const { open } = await startScreens(t);
-  const { page, errors } = await openSky(open);
-  assert.deepEqual(FEED.routes, [], "the feed carries no hand-off route");
-  assert.deepEqual(FEED.nodes.flatMap((n) => n.files), [], "and no worker has touched a file");
+  await proof.check(/^Rail pulses/, async () => {
+    const empty = await openSky(open);
+    assert.deepEqual(FEED.routes, [], "the feed carries no hand-off route");
+    await empty.page.clock.runFor(120_000);
+    const without = await drawnText(empty.page);
+    assert.equal(without.some((s) => s.includes("handoff —") || s.includes("  →  ")), false,
+      "no route means no invented thread");
+    await empty.page.close();
 
-  let names = [];
-  for (let step = 0; step < 40; step += 1) {
-    await page.clock.runFor(3000);
-    names = await drawnText(page);
-    if (names.includes("handoff — Dana Whitfield")) break;
-  }
-  assert.ok(names.includes("handoff — Dana Whitfield"), "a thread is drawn with the real client's name on it");
-  assert.ok(names.includes("Casey Reed  →  Jordan Lee"), "from one worker to the next one in the list");
-  assert.deepEqual(errors, []);
-  await page.close();
+    const exactFeed = { ...FEED, routes: [["staff:a", "staff:b", "handoff — Dana Whitfield"]] };
+    const exact = await openSky(open, exactFeed);
+    let names = [];
+    for (let step = 0; step < 8; step += 1) {
+      await exact.page.clock.runFor(1000);
+      names = await drawnText(exact.page);
+      if (names.includes("handoff — Dana Whitfield")) break;
+    }
+    assert.ok(names.includes("handoff — Dana Whitfield"), "the saved route label is drawn exactly");
+    assert.ok(names.includes("Casey Reed  →  Jordan Lee"), "the saved route endpoints are used");
+    assert.deepEqual(exact.errors, []);
+    await exact.page.close();
+  });
+});
+
+test("every listed row was exercised", () => {
+  proof.assertAllClaimed();
 });

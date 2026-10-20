@@ -7,6 +7,7 @@
     "Canvas: '+' between steps opens the add-step menu (10 types: text, email, wait, question, move card, assign, hand off, agent, take payment, save)",
     "Canvas: 'Keep it' / 'Throw it away' on an AI patch",
     "Canvas: click a step to select it (opens Step panel)",
+    "Bottom bar: Discard (revert unsaved edits)",
     "Header: Apply to code and bottom-bar Apply (saves every edited journey)",
     "Header: Save version",
     "Header: Undo (also Cmd/Ctrl+Z)",
@@ -20,11 +21,8 @@
     "Run report panel: Close button",
     "Simulate tab: 'At a question' select + Run the journey / Stop",
     "Step panel fields: text body and timing (text), subject/body/timing (email), wait length + unit, question field + test, stage + pipeline, role, agent + note, payment amount + product, note",
-    "Step panel: Move up / Move down / Delete"
-   ],
-   "notAttached": [
-    "Bottom bar: Discard (revert unsaved edits)",
     "Step panel: 'Make the change' (AI rewrites one step) and canvas ask box 'Make the change' + example prompts",
+    "Step panel: Move up / Move down / Delete",
     "Step panel: 'Run from here' (plays the journey in the browser from this step)"
    ]
   },
@@ -52,11 +50,24 @@
     "Import now button (paste CSV, creates and updates lender rows)",
     "Mismatch queue row: Confirm button",
     "Mismatch queue row: Corrected button"
-   ],
-   "notAttached": [
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
     "AI bureau config: Add bureau row button (adds an empty editable row)",
-    "Export CSV button (downloads lenders.csv for the current filters)",
+    "Export CSV button (downloads lenders.csv for the current filters)"
+   ]
+  },
+  {
+   "sourceFile": "desks-c.json",
+   "surface": "lenders.html",
+   "controls": [
     "Lender row Save button (writes the 7 fields, stamps last_updated_by)"
+   ],
+   "also": [
+    "src/pulse/catalog/proofs/fin-b14-lenders-handlers.test.mjs"
    ]
   },
   {
@@ -81,8 +92,7 @@
   {
    "sourceFile": "desks-c.json",
    "surface": "journeys.html",
-   "controls": [],
-   "notAttached": [
+   "controls": [
     "Page gate: owner and admin author journeys (PUT/ask/run answer 403 to others); no sidebar row exists (NAV_HIDDEN), reached only by URL or link"
    ]
   }

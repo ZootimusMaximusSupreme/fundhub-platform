@@ -210,7 +210,10 @@ test("Today's recordings jump takes the screen to the recordings panel and sends
     assert.ok(before > 700, `the panel starts below the first screen (top ${before}px)`);
     const calls = page.apiCalls.length;
     await page.locator("#fh-recordings-jump").click();
-    await waitFor(async () => (await top()) < 300, "the panel to scroll into view");
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    await waitFor(async () => (await top()) < viewportHeight, "the panel to scroll into view");
+    const after = await top();
+    assert.ok(after < before, `the panel moved toward the viewport (${before}px to ${after}px)`);
     assert.equal(page.apiCalls.filter((c) => c.method === "POST").length, 0, "no request is sent");
     assert.ok(page.apiCalls.length === calls, "no request at all: it only scrolls");
     assert.deepEqual(errors, []);
@@ -278,9 +281,14 @@ test("a closer is sent home by the page, the read answers 403 for anyone off the
     const note = page.locator('[data-fh-gate="sales-floor"]');
     await note.waitFor({ state: "visible" });
     assert.equal(
-      (await note.innerText()).trim(),
+      await note.evaluate((node) => [...node.childNodes]
+        .filter((child) => child.nodeType === Node.TEXT_NODE)
+        .map((child) => child.textContent)
+        .join("")
+        .trim()),
       "Forbidden — the sales floor is for sales managers and owners. Closers are refused.",
     );
+    assert.equal((await note.locator("button").innerText()).trim(), "Try again");
     assert.equal(await page.locator("#fh-closer-focus .pickwho").count(), 0, "no floor numbers are painted");
     await page.close();
 

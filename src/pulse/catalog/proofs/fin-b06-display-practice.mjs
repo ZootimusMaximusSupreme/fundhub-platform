@@ -28,8 +28,11 @@ function proof(sourceFile, surface, control, assertion, files = [TEST_FILE]) {
   });
 }
 
-// Five controls whose click leaves nothing to read: the practice test is the only evidence.
+// Six controls whose exact page action cannot be attributed from a saved row: the practice test is the only evidence.
 const PRACTICE_ONLY = Object.freeze([
+  proof("desks-a.json", "client-control-panel.html", "Businesses cards: Save month/year button (stamp incorporation)",
+    "With a real-shaped business card, Save month/year posts stamp_incorporated with this client, that card's exact business name and the exact month typed; only an accepted save says Saved, then the page re-reads the file and paints the saved month.",
+    [TEST_FILE_2]),
   proof("desks-a.json", "client-control-panel.html", "Capital Blueprint: Bank list state buttons",
     "With two banks on the list, Done, Skipped and Put back on the list each post update_bank_todo_state with this client, the id of THEIR OWN row and the chosen state (the other row is left alone), the list is read again and shows the server's state, and a refused change leaves the buttons usable."),
   proof("desks-a.json", "client-control-panel.html", "Identity-on-file state line and client approval link box + Copy link",
@@ -44,7 +47,7 @@ const PRACTICE_ONLY = Object.freeze([
 ]);
 
 // Controls that have BOTH. The page half is the practice test; the saved half is the live check on the same row.
-const DOOR_PROOF = "Each of the three doors posts to /api/documents-upload with this client, its own kind (client_upload, inquiry_doc, bureau_response) and exactly the type picked in its select, and posts no type at all when none was picked. A dropped kind or a dropped choice leaves a saved row that looks like an ordinary file, so only the page can show it. A refused upload (a 400 or a 500) says Try again, keeps the picked file so the next press sends it again, and only an accepted upload says Sent.";
+const DOOR_PROOF = "Each of the three doors posts to /api/documents-upload with this client, its own kind (client_upload, inquiry_doc, bureau_response) and exactly the type picked in its select, and posts no type at all when none was picked. A dropped kind or a dropped choice leaves a saved row that looks like an ordinary file, so only the page can show it. A file-specific 400 says why and asks for a different file instead of retrying one the server already refused; a recoverable server failure says Try again and keeps the picked file so the next press sends it again; only an accepted upload says Sent.";
 const BP = "client-control-panel.html";
 const PRACTICE_ALSO_LIVE = Object.freeze([
   proof("desks-a.json", "client-portal.html", "Upload door: bureau response (type select, Upload button, file picker)", DOOR_PROOF, [TEST_FILE, TEST_FILE_2]),

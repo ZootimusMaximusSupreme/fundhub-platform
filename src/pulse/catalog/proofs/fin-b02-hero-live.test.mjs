@@ -2,7 +2,7 @@
 // the lane runs.
 //
 // Row (desks-f.json, sales-floor.html): "Hero: 'Today' deposits, booked and held, 'Funded, not
-// just sold' rate and target bar". NOT ATTACHED to that row (see below); these tests hold the SQL ready.
+// just sold' rate and target bar". This live check is attached beside the browser target-bar test.
 //
 // The hero counts call_outcomes rows with outcome 'deposit' twice: today's deposits and the month's
 // funded rate (src/sales/metrics.mjs floorFunnelDay and depositToFunded). The check judges those

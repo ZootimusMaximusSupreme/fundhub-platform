@@ -5,7 +5,7 @@
 // Practice test, fake data, no network, no database. Nothing is sent: no adapter is called.
 // Row 1 (POST): queue / schedule / approve / reject / discard a social post. Approve and reject are
 //   owner or admin staff only; a post goes public when scheduled.
-// Row 2 (GET): Social Studio queue read: the partner's queued, held, scheduled posts with blocked reasons.
+// Row 2 (GET): Social Studio read: queued, held, scheduled, failed and posted rows plus the failed-post task.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
@@ -41,11 +41,26 @@ function world(over = {}) {
       queueRow(Q(5), OTHER_PARTNER, { status: "queued" }),
       queueRow(Q(6), FOREIGN_PARTNER, { org_id: OTHER_ORG_ID, status: "awaiting_approval", social_post_id: POST(6) }),
       queueRow(Q(7), PARTNER, { status: "scheduled", social_post_id: POST(7) }),
+      queueRow(Q(8), PARTNER, { status: "scheduled", social_post_id: POST(8), created_at: "2026-10-08T00:00:00.000Z" }),
+      queueRow(Q(9), PARTNER, { status: "scheduled", social_post_id: POST(9), created_at: "2026-10-09T00:00:00.000Z" }),
     ],
     social_posts: [
       { id: POST(2), org_id: ORG_ID, partner_id: PARTNER, status: "awaiting_approval", approved_at: null, approved_by: null, blocked_reasons: [{ code: "human_approval_required_setting" }] },
       { id: POST(6), org_id: OTHER_ORG_ID, partner_id: FOREIGN_PARTNER, status: "awaiting_approval", approved_at: null, approved_by: null, blocked_reasons: [] },
       { id: POST(7), org_id: ORG_ID, partner_id: PARTNER, status: "queued", approved_at: null, approved_by: null, blocked_reasons: [] },
+      { id: POST(8), org_id: ORG_ID, partner_id: PARTNER, channel_id: CHANNEL, asset_id: null,
+        caption: "This one could not be sent", offer_type: "funding", scheduled_for: "2026-10-08T16:00:00.000Z",
+        status: "failed", blocked_reasons: [], attempt: 3, posted_at: null, external_post_id: null,
+        last_error: "provider refused it", created_at: "2026-10-08T00:00:00.000Z", updated_at: "2026-10-08T17:00:00.000Z" },
+      { id: POST(9), org_id: ORG_ID, partner_id: PARTNER, channel_id: CHANNEL, asset_id: null,
+        caption: "This one went out", offer_type: "funding", scheduled_for: "2026-10-09T16:00:00.000Z",
+        status: "posted", blocked_reasons: [], attempt: 1, posted_at: "2026-10-09T16:01:00.000Z",
+        external_post_id: "facebook-post-9", last_error: null, created_at: "2026-10-09T00:00:00.000Z", updated_at: "2026-10-09T16:01:00.000Z" },
+    ],
+    onboarding_tasks: [
+      { id: "c1000000-0000-4000-8000-000000000001", partner_id: PARTNER, task_key: "social_post_failed",
+        title: "A scheduled Facebook post failed after 3 attempts", detail: "provider refused it", severity: "warning",
+        resolved_at: null, created_at: "2026-10-08T17:00:00.000Z", updated_at: "2026-10-08T17:00:00.000Z" },
     ],
     social_channels: [{ id: CHANNEL, org_id: ORG_ID, partner_id: PARTNER, channel: "facebook", connection_state: "active", best_times: {}, timezone: "America/Phoenix" }],
     partner_module_settings: [
@@ -90,6 +105,17 @@ function rulesFor(t) {
       const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
       return project("marketing_content_queue", sql, p, ordered.slice(0, limit));
     }),
+    q(/FROM social_posts\s+WHERE partner_id = \$1\s+AND status IN \('failed', 'posted'\)/i, (sql, p) => {
+      const limit = Number(/LIMIT (\d+)/i.exec(cleanSql(sql))[1]);
+      const kept = keep(t.social_posts, whereOf(sql), p, { alias: "social_posts" });
+      const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
+      return project("social_posts", sql, p, ordered.slice(0, limit));
+    }),
+    q(/FROM partner_onboarding_tasks\s+WHERE partner_id = \$1\s+AND task_key = 'social_post_failed'/i, (sql, p) => {
+      const kept = keep(t.onboarding_tasks, whereOf(sql), p, { alias: "partner_onboarding_tasks" });
+      const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
+      return project("partner_onboarding_tasks", sql, p, ordered.slice(0, 1));
+    }),
     q(/FROM partner_module_settings\s+WHERE partner_id = \$1$/i, select("partner_module_settings", t.partner_module_settings)),
     q(/SELECT approve_before_launch FROM partner_module_settings/i, select("partner_module_settings", t.partner_module_settings)),
     q(/SELECT org_id FROM partners WHERE id = \$1/i, select("partners", t.partners)),
@@ -113,11 +139,12 @@ const find = (t, table, id) => t[table].find((r) => r.id === id);
 const owner = asRole("owner");
 
 describe("GET /api/social/posts (the queue read)", () => {
-  test("a partner reads their own queue, newest first: queued, held, scheduled, with blocked reasons", async () => {
+  test("a partner reads their own queue plus failed and posted posts, newest first, without stale duplicates", async () => {
     const { res, fake } = await call("GET", asPartner(PARTNER));
     assert.equal(res.statusCode, 200);
     const ids = res.body.items.map((i) => i.id);
-    assert.deepEqual([...ids].sort(), [Q(1), Q(2), Q(3), Q(4), Q(7)].sort(), "this partner's items only");
+    assert.deepEqual([...ids].sort(), [Q(1), Q(2), Q(3), Q(4), Q(7), POST(8), POST(9)].sort(), "this partner's items only");
+    assert.equal(ids.includes(Q(8)) || ids.includes(Q(9)), false, "terminal posts replace their stale queue rows");
     assert.equal(ids.includes(Q(5)) || ids.includes(Q(6)), false, "another partner's and another company's posts are not shown");
     const byId = Object.fromEntries(res.body.items.map((i) => [i.id, i]));
     assert.equal(byId[Q(2)].status, "awaiting_approval");
@@ -126,6 +153,16 @@ describe("GET /api/social/posts (the queue read)", () => {
     assert.equal(byId[Q(4)].blocked_reasons[0].message, "no guarantees");
     assert.equal(byId[Q(7)].status, "scheduled");
     assert.equal(byId[Q(7)].social_post_id, POST(7));
+    assert.deepEqual(
+      [byId[POST(8)].status, byId[POST(8)].attempt, byId[POST(8)].last_error, byId[POST(8)].channel_id],
+      ["failed", 3, "provider refused it", CHANNEL]
+    );
+    assert.deepEqual(
+      [byId[POST(9)].status, byId[POST(9)].posted_at, byId[POST(9)].external_post_id],
+      ["posted", "2026-10-09T16:01:00.000Z", "facebook-post-9"]
+    );
+    assert.deepEqual(res.body.tasks.map((task) => [task.task_key, task.severity, task.detail]),
+      [["social_post_failed", "warning", "provider refused it"]], "the one open repair task is returned with failed posts");
     // Every named column is read from the statement's own SELECT list.
     assert.deepEqual([byId[Q(1)].caption, byId[Q(1)].offer_type, byId[Q(1)].scheduled_for, byId[Q(1)].social_post_id],
       ["Ask us how repair works", "funding", "2026-10-20T16:00:00.000Z", null]);
@@ -136,6 +173,10 @@ describe("GET /api/social/posts (the queue read)", () => {
     const read = sqlOf(fake, /FROM marketing_content_queue/)[0];
     assert.deepEqual(read.params, [PARTNER]);
     pinned(read.sql, "this partner, newest first, 100 at most", "WHERE partner_id = $1 ORDER BY created_at DESC LIMIT 100");
+    const terminalRead = sqlOf(fake, /FROM social_posts/)[0];
+    assert.deepEqual(terminalRead.params, [PARTNER]);
+    pinned(terminalRead.sql, "this partner's terminal posts only", "WHERE partner_id = $1 AND status IN ('failed', 'posted')");
+    assert.deepEqual(sqlOf(fake, /FROM partner_onboarding_tasks/)[0].params, [PARTNER]);
     assert.equal(wrote(fake), false);
   });
 
@@ -180,7 +221,7 @@ describe("POST /api/social/posts", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.item.status, "discarded");
     assert.equal(find(t, "marketing_content_queue", Q(1)).status, "discarded");
-    assert.equal(t.social_posts.length, 3, "no post was made");
+    assert.equal(t.social_posts.length, 5, "no post was made");
     assert.equal(writes(fake).length, 1);
   });
 
@@ -189,7 +230,7 @@ describe("POST /api/social/posts", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.item.status, "queued");
     assert.equal(find(t, "marketing_content_queue", Q(1)).scheduled_for, "2026-11-01T17:00:00.000Z");
-    assert.equal(t.social_posts.length, 3);
+    assert.equal(t.social_posts.length, 5);
     assert.equal(sqlOf(fake, /INSERT INTO social_posts/).length, 0);
     assert.deepEqual(sqlOf(fake, /FROM marketing_content_queue\s+WHERE id/)[0].params, [Q(1), PARTNER, null]);
   });

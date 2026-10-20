@@ -26,7 +26,7 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A["Approved in Scripts<br/>ad_scripts.status = locked, ad_id set<br/>(or filmed + needs_retake)"] --> B["GET marketing/shoot<br/>plan_candidates, retakes first, then film_order"]
-    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer word on file: SLO only (slo_roadmap or lane slo)<br/>k = highest take used before the shoot + takes rolled + 1<br/>used = a clip filed in ad_videos, or a take rolled on a closed shoot<br/>whose clip is not filed yet (closing early never repeats a name)"]
+    B --> N["take_file_name = '{offer word} Ad {n} — {title} Take {k}.mp4'<br/>offer words on file: SLO for the roadmap; Direct Book for funding_dfy/book_call<br/>k = highest take used before the shoot + takes rolled + 1<br/>used = a clip filed in ad_videos, or a take rolled on a closed shoot<br/>whose clip is not filed yet (closing early never repeats a name)"]
     N -->|"no ad number, no title,<br/>or an offer with no word"| X["take_file_name null<br/>take_name_problem says why in words"]
     B --> P["Shoot tab: Save the plan"]
     P --> T["Teleprompter rolls teleprompter_text<br/>(the hook only for a new-opening retake)"]
@@ -149,15 +149,14 @@ The key is an HMAC (`f1|org|shoot|exp`) over `DOCUMENT_URL_SECRET` (or `FILM_URL
 
 ## Gaps against the intended flow (findings, not fixed here)
 
-1. **Offer word for Book a call.** `marketing/ads/NAMING.md` names only `SLO`. Scripts for the `funding_dfy` offer (the `book_call` funnel) show "file name unknown" until Chris names a word. Safe default: no word is made up.
-2. **The board's Assign, Retry and Use this cut / Re-film** (design §3.4) need `POST marketing/videos/assign|retry|hold-choice`, which are the Videos unit's routes. The board says so in one sentence; `can_retry` is always false.
-3. **Animations and Loaded** steps (spec §8.2 table) have no `ad_videos` state yet (9.1a states `cut`, `animated`, `loaded` are not in migration 389). No row can reach them.
-4. **A merged take shows under its master** (spec §8.2): joined takes are left off the board, not drawn under the master.
-5. **Teleprompter tabs** (spec §8.1: Inbox, Shoot Day, Videos, Ideas, Rules) are not on the teleprompter page; those jobs live in the Command Center tabs (design §3.0). The page links back to the Command Center.
-6. **Service worker, `window.FH_API_BASE` and the app's own sign-in form** (spec §8.1, for the iPhone app) are not built: there is no app yet. The page keeps its last answer in this phone's storage and rolls from it when offline.
-7. **The shared review module** `public/app/marketing-review.js` (design §3.0) does not exist yet; the tab and the teleprompter each write their own request ids and offline queue.
-8. **The Shoot tab is not on the page yet.** `public/app/cc-tab-shoot.js` registers with `window.FundhubCC` (the tab contract, `docs/specs/command-center-tabs.md`); the integrator adds its `<script>` tag when the frame (U34) lands.
-9. **Past shoots show no loaded count** (design §3.4 item 7). Date, planned, Got it and finished are shown; loaded waits for a loaded state in `ad_videos` (same cause as gap 3). No number is made up.
-10. **Another device hears a saved edit late.** The Shoot and Scripts tabs read again at once only in the same browser. On another device they read again when the tab is shown, when the page comes back after a minute away, or on the 5-minute reload. There is no server push.
-11. **Real iPhone camera proof.** The web page has the front camera, rear-camera switch, mirrored-front recording canvas, preview fade, and 4K request. Browser tests prove the switch and one-recorder flow. A real iPhone still decides the size and frame rate it grants, so that device proof remains open.
-12. **Long press opens the keyboard on finger-up.** iPhone Safari opens the keyboard only inside a touch, so the edit box shows at once and the keyboard opens when the finger lifts (tapping the box also opens it). Not yet tried on a real iPhone.
+1. **The board's Assign, Retry and Use this cut / Re-film** (design §3.4) need `POST marketing/videos/assign|retry|hold-choice`, which are the Videos unit's routes. The board says so in one sentence; `can_retry` is always false.
+2. **Animations and Loaded** steps (spec §8.2 table) have no `ad_videos` state yet (9.1a states `cut`, `animated`, `loaded` are not in migration 389). No row can reach them.
+3. **A merged take shows under its master** (spec §8.2): joined takes are left off the board, not drawn under the master.
+4. **Teleprompter tabs** (spec §8.1: Inbox, Shoot Day, Videos, Ideas, Rules) are not on the teleprompter page; those jobs live in the Command Center tabs (design §3.0). The page links back to the Command Center.
+5. **Service worker, `window.FH_API_BASE` and the app's own sign-in form** (spec §8.1, for the iPhone app) are not built: there is no app yet. The page keeps its last answer in this phone's storage and rolls from it when offline.
+6. **The shared review module** `public/app/marketing-review.js` (design §3.0) does not exist yet; the tab and the teleprompter each write their own request ids and offline queue.
+7. **The Shoot tab is not on the page yet.** `public/app/cc-tab-shoot.js` registers with `window.FundhubCC` (the tab contract, `docs/specs/command-center-tabs.md`); the integrator adds its `<script>` tag when the frame (U34) lands.
+8. **Past shoots show no loaded count** (design §3.4 item 7). Date, planned, Got it and finished are shown; loaded waits for a loaded state in `ad_videos` (same cause as gap 2). No number is made up.
+9. **Another device hears a saved edit late.** The Shoot and Scripts tabs read again at once only in the same browser. On another device they read again when the tab is shown, when the page comes back after a minute away, or on the 5-minute reload. There is no server push.
+10. **Real iPhone camera proof.** The web page has the front camera, rear-camera switch, mirrored-front recording canvas, preview fade, and 4K request. Browser tests prove the switch and one-recorder flow. A real iPhone still decides the size and frame rate it grants, so that device proof remains open.
+11. **Long press opens the keyboard on finger-up.** iPhone Safari opens the keyboard only inside a touch, so the edit box shows at once and the keyboard opens when the finger lifts (tapping the box also opens it). Not yet tried on a real iPhone.

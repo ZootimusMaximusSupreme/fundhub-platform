@@ -9,7 +9,8 @@
 import { loadEnv } from "./load-env.mjs";
 loadEnv();
 
-import { db } from "../src/db.mjs";
+import { db, close } from "../src/db.mjs";
+import { liveSendRequested, runOneOffSend } from "../src/ops/one-off-send-receipt.mjs";
 import { createStore, memoryProvider } from "../src/documents/store.mjs";
 import {
   createDraft, send, voidContract, getTemplateByKey, getContract
@@ -17,7 +18,7 @@ import {
 import { EMPLOYMENT_LINK_TTL_SECONDS } from "../src/contracts/signed-link.mjs";
 
 const BASE_URL = (process.env.PUBLIC_BASE_URL || "https://fundhub.ai").replace(/\/$/, "");
-const DO_SEND = process.argv.includes("--send");
+const DO_SEND = liveSendRequested();
 const DOC_STORE = createStore({ provider: memoryProvider() });
 
 const ORG = "fb789b0b-8d8d-4cdc-8a24-ee6b6659e0b6";
@@ -138,8 +139,45 @@ async function mintAndSend({ templateKey, staffId, clientId, title, signer, valu
   };
 }
 
+async function mintAndSendWithReceipt(input) {
+  const sent = await runOneOffSend({
+    db,
+    orgId: ORG,
+    clientId: input.clientId || null,
+    scriptId: "resend-employee-contracts-2026-08-25",
+    channel: "email",
+    send: () => mintAndSend(input),
+    summarize: (out) => {
+      const delivery = out.notified?.delivery || {};
+      const attempted = Array.isArray(delivery.outcomes)
+        ? delivery.outcomes.length
+        : Number(delivery.sent || 0) + Number(delivery.failed || 0) + Number(delivery.blocked || 0);
+      return {
+        attempted: attempted || 1,
+        sent: Number(delivery.sent || 0),
+        failed: Number(delivery.failed || 0) + (delivery.paused ? 1 : 0),
+        blocked: Number(delivery.blocked || 0),
+        providerRef: out.contract_id,
+        error: delivery.paused ? "outbound mail is paused" : null,
+      };
+    },
+  });
+  return { ...sent.outcome, receipt_id: sent.receipt.id, receipt_status: sent.receipt.status };
+}
+
 async function main() {
   const report = { phase: [], hires: [], test: null };
+
+  if (!DO_SEND) {
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "dry_run",
+      message: "NOTHING WAS SENT — add --send to run the sample proof and employee resends.",
+      planned_hires: HIRES.map((hire) => hire.key),
+    }, null, 2));
+    await close();
+    return;
+  }
 
   // Resolve mock client id
   const mockClientByEmail = (
@@ -160,7 +198,7 @@ async function main() {
   }
 
   report.phase.push("sample_send");
-  const sample = await mintAndSend(MOCK);
+  const sample = await mintAndSendWithReceipt(MOCK);
   report.test = { ...sample, prove: await proveLink(sample.sign_url, "sample") };
 
   // Void the sample so it does not linger as a hire doc
@@ -172,12 +210,6 @@ async function main() {
   });
   report.test.voided = true;
 
-  if (!DO_SEND) {
-    console.log(JSON.stringify({ ok: true, mode: "test_only", report }, null, 2));
-    await db.end?.();
-    process.exit(0);
-  }
-
   for (const hire of HIRES) {
     report.phase.push(`void_${hire.key}`);
     const voided = [];
@@ -186,17 +218,17 @@ async function main() {
     }
 
     report.phase.push(`send_${hire.key}`);
-    const sent = await mintAndSend(hire);
+    const sent = await mintAndSendWithReceipt(hire);
     const prove = await proveLink(sent.sign_url, hire.key);
     report.hires.push({ key: hire.key, voided, sent, prove });
   }
 
   console.log(JSON.stringify({ ok: true, mode: "sent", report }, null, 2));
-  await db.end?.();
+  await close();
 }
 
 main().catch(async (e) => {
   console.error(e);
-  try { await db.end?.(); } catch { /* ignore */ }
+  try { await close(); } catch { /* ignore */ }
   process.exit(1);
 });

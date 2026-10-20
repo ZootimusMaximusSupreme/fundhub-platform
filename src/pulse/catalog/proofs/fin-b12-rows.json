@@ -118,6 +118,23 @@
       ]
     }
   ],
+  "fin-b12-held-reasons.test.mjs": [
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "documents.html",
+      "controls": [
+        "Status filter select (not delivered, bounced, awaiting signature, signature expired)"
+      ]
+    },
+    {
+      "sourceFile": "desks-b.json",
+      "surface": "galaxy.html",
+      "controls": [
+        "Legend strip (size, brightness, pace colors)",
+        "Rail pulses (six rails: Sales, Card Stacking, Optimization Rounds, Inquiry Removal, AR + Collections, Affiliates + Hiring) and hand-off threads"
+      ]
+    }
+  ],
   "fin-b12-repair-pages.test.mjs": [
     {
       "sourceFile": "desks-b.json",

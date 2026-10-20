@@ -38,7 +38,7 @@
 
 import { db, pool } from "../../src/db.mjs";
 import { requireAuth } from "../../src/http/middleware/requireAuth.mjs";
-import { requireRole, ROLE_SETS } from "../../src/http/read-api.mjs";
+import { requireRole } from "../../src/http/read-api.mjs";
 import { safeError } from "../../src/http/health.mjs";
 
 import { run as walk } from "../../src/journeys/runner/index.mjs";
@@ -55,6 +55,7 @@ const isUuid = (v) => typeof v === "string" && UUID_RE.test(v.trim());
    author. Anything else in the table came from somewhere else and the runner
    has no reading of how it starts. */
 const EDITOR_KEYS = new Set(["client", "setter", "closer", "advisor", "affiliate", "partner"]);
+const JOURNEY_AUTHOR_ROLES = new Set(["owner", "admin"]);
 
 /* Journeys from the table, or the seeded fallback. Never a blend of the two:
    a half-real, half-example run would report on a journey nobody has.
@@ -118,7 +119,7 @@ async function loadJourneys(client, orgId) {
 export default async function handler(req, res) {
   const staff = await requireAuth(req, res, { db });
   if (!staff) return;
-  if (!requireRole(res, staff, ROLE_SETS.FINANCE)) return;
+  if (!requireRole(res, staff, JOURNEY_AUTHOR_ROLES)) return;
 
   if (req.method !== "POST") {
     res.setHeader("allow", "POST");

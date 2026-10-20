@@ -112,7 +112,10 @@ export default defineConfig({
      playwright.live.config.mjs (testMatch "**\/live-*.spec.mjs") and never to
      this offline run — naming only launch-proof-live let six of them into the
      default collection (walkthrough-4 defect 9, 2026-09-06). */
-  testIgnore: ["**/launch-proof-live.spec.mjs", "**/live-*.spec.mjs"],
+  /* *.paused.spec.mjs files are live-site proofs that were paused on purpose
+     (company-brain-chat.paused signs in to fundhub.ai and writes real data).
+     They never belong in this offline run, where they could only fail. */
+  testIgnore: ["**/launch-proof-live.spec.mjs", "**/live-*.spec.mjs", "**/*.paused.spec.mjs"],
   // A UI test that hangs is worse than one that fails: it is a red build with
   // no message. Fail fast and say what timed out.
   timeout: 30_000,

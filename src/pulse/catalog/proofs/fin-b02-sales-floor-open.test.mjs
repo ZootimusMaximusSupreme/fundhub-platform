@@ -13,9 +13,7 @@
 //      name holds exactly one recent client's first and last name is attached to that client and
 //      its link is stamped on that client's latest call; anything else is left alone.
 //
-// NOT here, on purpose: the hero's target bar. public/app/sales-floor.js sets it to 0% every time
-// and the server has no daily target; that is the separate row "Hero: 'Today' deposits ... target
-// bar", left not attachable.
+// The hero's target bar is held by its own exact browser and saved-result tests.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -50,7 +48,7 @@ const FLOOR = {
     booked: 12, held: 8, show_rate: 8 / 12, deposits: 3, close_rate: 3 / 8,
     funded: 2, funded_of_deposits: 2 / 3, downsells: 1, downsell_cash_cents: 40000, downsell_cash_display: "$400",
   },
-  today: { date: "2026-10-13", booked: 4, held: 3, deposits: 1, target_cents: null, target_reason: "No daily deposit target has been set for the sales team yet." },
+  today: { date: "2026-10-13", booked: 4, held: 3, deposits: 1, target_deposits: null, target_reason: "No daily deposit target has been set for the sales team yet." },
   offer_stack: {
     available: true,
     items: [

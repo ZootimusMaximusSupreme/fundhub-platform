@@ -241,8 +241,8 @@ describe("Shoot Day (X5)", { skip: !HAS_DB ? "no DATABASE_URL" : false }, () => 
     assert.equal(by[s91.id].take_file_name, `SLO Ad 91 — ${s91.title} Take 1.mp4`);
     assert.equal(by[s91.id].angle_name, s91.title);
     assert.equal(by[s91.id].ad_id, "91");
-    assert.equal(by[sBook.id].take_file_name, null, "no offer word on file for Book a call");
-    assert.match(by[sBook.id].take_name_problem, /no file-name word/);
+    assert.equal(by[sBook.id].take_file_name, `Direct Book Ad 95 — ${sBook.title} Take 1.mp4`);
+    assert.equal(by[sBook.id].take_name_problem, null, "Direct Book is the owner-set file-name word for book-a-call ads");
     assert.equal(by[sRetake.id].first_line_only, true);
     assert.equal(by[sRetake.id].teleprompter_text, PARTS[0].text);
     assert.equal(by[s91.id].teleprompter_text, BODY);

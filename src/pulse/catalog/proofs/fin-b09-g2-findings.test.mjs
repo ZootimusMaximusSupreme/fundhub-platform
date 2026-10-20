@@ -1,9 +1,7 @@
-// Batch 09, generation 2: the two not-attachable rows that DO have a page to open are re-checked here by
-// running the real page, not by reading its source. Each test passes while the finding is still true and
-// goes red the day the product changes, with the words "attach the row". It is not a proof of the row.
+// Batch 09, generation 2: browser regression checks for the repaired Agent Editor discard and the one
+// remaining climate finding. Fake /api answers only. No live data.
 //
-// 1. agent-editor.html, "Agent list row (click to open an agent, confirm discard of unsaved edits)":
-//    the question is asked and the click works, but "Discard them?" Yes does not discard.
+// 1. agent-editor.html, "Agent list row (click to open an agent, confirm discard of unsaved edits)".
 // 2. climate/index.html, "Click a state: shows its score and a plain sentence": the shipped dashboard
 //    shows a score and a band word but no sentence.
 //
@@ -38,7 +36,7 @@ const AGENTS = [
   agent("AG-03", "Review Chaser", "ops", "email", "Jordan Blake"),
 ];
 
-test("finding 1 still true: Yes on 'Discard them?' keeps the typed words and drops the unsaved mark", async () => {
+test("Agent Editor: Yes on 'Discard them?' restores the saved words and drops the unsaved mark", async () => {
   const holder = {};
   const { page, errors } = await screens.open("/app/agent-editor.html", {
     handlers: {
@@ -70,18 +68,17 @@ test("finding 1 still true: Yes on 'Discard them?' keeps the typed words and dro
   assert.match(questions[0], /Discard them\?/);
   assert.equal(await page.locator("#saveNote").innerText(), "", "the unsaved mark is gone");
 
-  // Come back. If the discard were real this would read the saved name.
+  // Come back. The edited copy was discarded, so the saved name is restored.
   await page.locator('.aitem[data-a="AG-01"]').click();
   await page.waitForFunction(() => document.querySelector("#a_code")?.value === "AG-01");
   const shown = await page.locator("#a_name").inputValue();
-  assert.equal(shown, "Lead Follow-up v2",
-    "the page now shows the saved name after a discard: the discard works, attach the 'Agent list row' row");
-  assert.equal(await page.locator("#saveNote").innerText(), "", "and it shows the typed words with no unsaved mark");
+  assert.equal(shown, "Lead Follow-up");
+  assert.equal(await page.locator("#saveNote").innerText(), "", "the restored copy is clean");
   assert.deepEqual(errors, []);
   await page.close();
 });
 
-test("finding 1, what it costs: after 'Discard' the next Save sends the words that were meant to be dropped", async () => {
+test("Agent Editor: after Discard, the next Save sends the saved words, not the discarded edit", async () => {
   const holder = {};
   const writes = [];
   const { page, errors } = await screens.open("/app/agent-editor.html", {
@@ -116,9 +113,8 @@ test("finding 1, what it costs: after 'Discard' the next Save sends the words th
 
   assert.equal(writes.length, 1, "Save sent one request");
   assert.equal(writes[0].code, "AG-01");
-  assert.notEqual(writes[0].name, "Lead Follow-up",
-    "Save now sends the saved name: the discard works, attach the 'Agent list row' row");
-  assert.equal(writes[0].name, "Typed then discarded", "the words the person chose to discard are what Save sends");
+  assert.equal(writes[0].name, "Lead Follow-up");
+  assert.notEqual(writes[0].name, "Typed then discarded", "discarded words are never sent later");
   assert.deepEqual(errors, []);
   await page.close();
 });
@@ -136,7 +132,7 @@ const climate = {
   banks: [{ id: "b1", name: "Desert Credit Union", eligible_states: "AZ", priority_tier: 1, application_url: null, logo_path: null }],
 };
 
-test("finding 2 still true: clicking a state shows score, band and numbers but no plain sentence", async () => {
+test("clicking a state shows score, band, numbers and the plain-language scope sentence", async () => {
   const { page, errors } = await screens.open("/climate/", {
     session: null,
     handlers: { "/api/climate": climate },
@@ -155,13 +151,9 @@ test("finding 2 still true: clicking a state shows score, band and numbers but n
     assert.ok(text.includes(label), `the panel shows ${label}`);
   }
 
-  // What the row's words promise and the panel does not have: a plain sentence. A line with six or more
-  // real words (three letters or more) is a sentence; every line here is a label, a number or a name.
-  const words = (line) => (line.match(/[A-Za-z]{3,}/g) || []).length;
-  const sentences = text.split("\n").map((line) => line.trim()).filter((line) => words(line) >= 6);
-  assert.deepEqual(sentences, [],
-    "the state panel now carries a sentence: the page matches the row, attach 'Click a state' with a practice test");
-  assert.equal(await panel.locator("p").count(), 0, "and no paragraph");
+  const sentence = "This is the wider lending picture for your state, not a decision about you.";
+  assert.equal(await panel.locator("p").count(), 1);
+  assert.equal(await panel.locator("p").innerText(), sentence);
   assert.deepEqual(errors, []);
   await page.close();
 });

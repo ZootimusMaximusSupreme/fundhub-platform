@@ -20,6 +20,13 @@ function planRead() {
   return answer;
 }
 
+async function openCalendar(page) {
+  const calendar = page.locator("details.plan-calendar");
+  await calendar.waitFor({ state: "attached" });
+  if (!(await calendar.evaluate((node) => node.open))) await calendar.locator("summary").click();
+  await page.waitForSelector(".fh-plan .cal-grid");
+}
+
 // "Pay SBA Loan" (Oct 1) and "Pay Business Amex" (Oct 15), both from the dues source.
 const [PIN, OTHER] = [planRead().pins[0].id, planRead().pins[2].id];
 
@@ -33,7 +40,7 @@ async function openPlan(open, target, handlerOverrides = {}) {
     ...handlerOverrides,
   });
   const opened = await open(entryUrl(target.entry, { ...target, clientId: CLIENT_ID }), { session: STAFF, handlers: resource.handlers });
-  await opened.page.waitForSelector(".fh-plan .cal-grid");
+  await openCalendar(opened.page);
   return { ...opened, ...resource.log };
 }
 
@@ -81,6 +88,7 @@ test("the month calendar and the list show every dated pin; staff marks post the
     const markMissed = async () => {
       // Mark missed on another pin
       await page.keyboard.press("Escape");
+      await openCalendar(page);
       await page.locator(`.cal-grid .pin[data-pin="${OTHER}"]`).click();
       page.once("dialog", (dialog) => dialog.accept());
       await page.locator('.pl-drawer [data-act="mark"][data-status="missed"]').click();
@@ -117,7 +125,7 @@ for (const target of Object.values(TARGETS)) {
       };
       const resource = moneyResource("plan", { read });
       const { page, errors } = await open(entryUrl(target.entry, { ...target, clientId: who.clientId }), { session: who.session, handlers: resource.handlers });
-      await page.waitForSelector(".fh-plan .cal-grid");
+      await openCalendar(page);
       await page.locator(`.cal-grid .pin[data-pin="${PIN}"]`).click();
       await page.waitForSelector(".pl-drawer");
       const shown = await page.locator('.pl-drawer [data-act="mark"]').evaluateAll((els) => els.map((el) => el.getAttribute("data-status")));

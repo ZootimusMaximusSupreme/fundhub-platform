@@ -7,11 +7,8 @@
 //   the "Send this one to" box               filled from the record, sent for one message, never written back
 //   deep links                               ?client_id= ?channel= ?conversation_id=
 //   the right panel                          other threads, Their file link
-//   the Reference key (who-sent-it colours)  opens and closes by itself; its three colours are the three
-//                                            ways the thread paints a message. The brand stylesheet hides
-//                                            the whole drawer today (UI-STANDARDS section 5), so the press
-//                                            is made through the page (element.click()), not by a finger,
-//                                            and the test prints whether a person can see it.
+//   the Reference key (who-sent-it colours)  is visible, opens and closes by a real click; its three colours
+//                                            are the three ways the thread paints a message
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -44,10 +41,10 @@ const CLIENTS = {
   [MARCUS_ID]: { id: MARCUS_ID, first_name: "Marcus", last_name: "Okoye", email: "marcus@example.com", phone: "+15550100002", custom_fields: {} },
 };
 const THREADS = {
-  [DANA_SMS]: [{ id: "m-s2", conversation_id: DANA_SMS, direction: "outbound", channel: "sms", rendered_body: "looking now, one moment", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: "staff-1", sender_name: "Jordan Blake", created_at: "2026-10-13T11:55:00Z" },
-    { id: "m-s1", conversation_id: DANA_SMS, direction: "inbound", channel: "sms", rendered_body: "any update on my file?", subject: null, status: "received", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T11:50:00Z" }],
-  [DANA_EMAIL]: [{ id: "m-e1", conversation_id: DANA_EMAIL, direction: "outbound", channel: "email", rendered_body: "Your documents are attached.", subject: "Documents", status: "sent", provider: "resend", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: "staff-1", sender_name: "Jordan Blake", created_at: "2026-10-12T09:00:00Z" }],
-  [MARCUS_EMAIL]: [{ id: "m-m1", conversation_id: MARCUS_EMAIL, direction: "inbound", channel: "email", rendered_body: "Thanks, got it.", subject: "Re: Plan", status: "received", provider: "resend", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T08:00:00Z" }],
+  [DANA_SMS]: [{ id: "m-s2", conversation_id: DANA_SMS, client_id: DANA_ID, direction: "outbound", channel: "sms", rendered_body: "looking now, one moment", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: "staff-1", sender_name: "Jordan Blake", created_at: "2026-10-13T11:55:00Z" },
+    { id: "m-s1", conversation_id: DANA_SMS, client_id: DANA_ID, direction: "inbound", channel: "sms", rendered_body: "any update on my file?", subject: null, status: "received", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T11:50:00Z" }],
+  [DANA_EMAIL]: [{ id: "m-e1", conversation_id: DANA_EMAIL, client_id: DANA_ID, direction: "outbound", channel: "email", rendered_body: "Your documents are attached.", subject: "Documents", status: "sent", provider: "resend", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: "staff-1", sender_name: "Jordan Blake", created_at: "2026-10-12T09:00:00Z" }],
+  [MARCUS_EMAIL]: [{ id: "m-m1", conversation_id: MARCUS_EMAIL, client_id: MARCUS_ID, direction: "inbound", channel: "email", rendered_body: "Thanks, got it.", subject: "Re: Plan", status: "received", provider: "resend", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T08:00:00Z" }],
 };
 const page_of = (items) => ({ ok: true, count: items.length, limit: 200, offset: 0, hasMore: false, items });
 
@@ -322,11 +319,8 @@ test("Send this one to: filled from the record, sent for this message only, and 
   });
 });
 
-// NOT ATTACHED TO ITS ROW (finding 8 in manifest-b16.md). ?conversation_id= for a thread that is not in the
-// loaded list opens a stub with no client: the header reads "Unnamed client" and "Their file" goes to ?id=null.
-// So this test runs, but it is not the row's proof: it would have to either encode that or go red.
-test("deep links open the named client's thread, on the named channel, or one conversation by id (row not attached)", { timeout: 120_000 }, async () => {
-  {
+test("deep links open the named client's thread, on the named channel, or one conversation by id", { timeout: 120_000 }, async () => {
+  await proof.check(/^Deep links:/, async () => {
     // ?client_id= alone opens their text thread.
     const bySms = await openInbox(`?client_id=${DANA_ID}`, { wait: null });
     await opened(bySms.page, "Dana Whitfield");
@@ -354,6 +348,11 @@ test("deep links open the named client's thread, on the named channel, or one co
     const byId = await openInbox(`?conversation_id=${MARCUS_EMAIL}`, { wait: null });
     await waitFor(() => byId.log.messages.includes(MARCUS_EMAIL));
     await byId.page.waitForFunction(() => /Thanks, got it\./.test(document.querySelector("#thread")?.textContent || ""));
+    await opened(byId.page, "Marcus Okoye");
+    await waitFor(() => byId.log.client.includes(MARCUS_ID));
+    assert.match(await byId.page.locator("#thSub").innerText(), /^EMAIL/);
+    assert.equal(await byId.page.locator('#ctxLinks a:has-text("Their file")').getAttribute("href"), `client-control-panel.html?id=${MARCUS_ID}`);
+    assert.doesNotMatch(await byId.page.locator("#ctxLinks").innerText(), /null/i);
     await byId.page.close();
 
     // Something that is not an id opens nothing.
@@ -361,13 +360,11 @@ test("deep links open the named client's thread, on the named channel, or one co
     assert.equal(await bad.page.locator("#thName").innerText(), "No conversation open");
     assert.deepEqual(bad.log.messages, []);
     await bad.page.close();
-  }
+  });
 });
 
-// NOT ATTACHED TO ITS ROW (finding 8 in manifest-b16.md): the same stub, opened by ?conversation_id=, gives a
-// "Their file" link to ?id=null and asks for the other threads with no client.
-test("the right panel lists their other threads and links to their file (row not attached)", { timeout: 90_000 }, async () => {
-  {
+test("the right panel lists their other threads and links to their file", { timeout: 90_000 }, async () => {
+  await proof.check(/^Right panel:/, async () => {
     const { page, log, errors } = await openInbox("");
     await page.locator(".convo").first().click();
     await opened(page, "Dana Whitfield");
@@ -388,13 +385,18 @@ test("the right panel lists their other threads and links to their file (row not
     assert.equal(await page.locator('#ctxLinks a:has-text("Their file")').getAttribute("href"), `client-control-panel.html?id=${MARCUS_ID}`);
     assert.deepEqual(errors, []);
     await page.close();
-  }
+
+    const linked = await openInbox(`?conversation_id=${MARCUS_EMAIL}`, { wait: null });
+    await opened(linked.page, "Marcus Okoye");
+    await waitFor(() => linked.log.conversations.includes(MARCUS_ID));
+    assert.equal(await linked.page.locator('#ctxLinks a:has-text("Their file")').getAttribute("href"), `client-control-panel.html?id=${MARCUS_ID}`);
+    assert.ok(linked.log.conversations.every(Boolean), "the right panel never asks for threads with a missing client");
+    await linked.page.close();
+  });
 });
 
-// NOT ATTACHED TO ITS ROW (finding 1 in manifest-b16.md): the brand sheet hides #demozone with
-// display:none !important, so no person can see or press the key. This tests the code behind it.
-test("the Reference key opens and closes by itself, and its three colours are the three ways the thread paints a message (row not attached)", { timeout: 90_000 }, async (t) => {
-  {
+test("the Reference key opens and closes by itself, and its three colours are the three ways the thread paints a message", { timeout: 90_000 }, async () => {
+  await proof.check(/^Reference disclosure/, async () => {
     // One thread with all three kinds of sender: a person on the team, the system (no sender name) and the client.
     const AUTO = { id: "m-auto", conversation_id: DANA_SMS, direction: "outbound", channel: "sms", rendered_body: "Your next step is ready.", subject: null, status: "sent", provider: "twilio", blocked_reason: null, last_error: null, scheduled_at: null, sender_staff_id: null, sender_name: null, created_at: "2026-10-13T11:56:00Z" };
     const api = inboxApi();
@@ -457,7 +459,9 @@ test("the Reference key opens and closes by itself, and its three colours are th
       expanded: document.getElementById("demoToggle").getAttribute("aria-expanded"),
       zoneOpen: document.getElementById("demozone").classList.contains("open"),
     }));
-    const press = () => page.evaluate(() => document.getElementById("demoToggle").click());
+    const toggle = page.locator("#demoToggle");
+    assert.equal(await toggle.isVisible(), true, "the who-sent-it key is visible to a person");
+    const press = () => toggle.click();
     const traffic = () => JSON.stringify(log);
     assert.deepEqual(await state(), { hidden: true, expanded: "false", zoneOpen: false });
     const quiet = traffic();
@@ -470,9 +474,8 @@ test("the Reference key opens and closes by itself, and its three colours are th
     assert.equal(traffic(), quiet, "pressing the Reference key sends and reads nothing");
     assert.deepEqual(log.writes, []);
     assert.deepEqual(errors, []);
-    t.diagnostic(`shown to a person on this page: ${await page.locator("#demoToggle").isVisible()}`);
     await page.close();
-  }
+  });
 });
 
 // ───────────────────────── second pass: the holes an independent check found ─────────────────────────

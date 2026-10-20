@@ -396,6 +396,29 @@ test("Credit partner links: both point at the partner's own file and consent, an
     assert.deepEqual(errors, []);
     await page.close();
 
+    // The shell asks for the session after the Blueprint read. Its second link-gate pass must keep the
+    // partner URLs, not restore the primary client's original data-fh-href values.
+    let releaseSession;
+    const sessionGate = new Promise((resolve) => { releaseSession = resolve; });
+    let sessionAnswers = 0;
+    const late = await openPanel({ overrides: { extra: {
+      "/api/auth/session": async () => {
+        await sessionGate;
+        sessionAnswers += 1;
+        return OWNER;
+      },
+    } } });
+    await waitFor(async () => (await late.page.locator("#bp-partner-now").textContent()).includes("is on this file"), "the partner before the late session");
+    assert.equal(await late.page.locator("#bp-partner-open").getAttribute("data-fh-href"), `client-control-panel.html?id=${PARTNER}`);
+    assert.equal(await late.page.locator("#bp-partner-consent").getAttribute("data-fh-href"), `consent-capture.html?client_id=${PARTNER}`);
+    releaseSession();
+    await waitFor(() => sessionAnswers === 1, "the late session answer");
+    await late.page.waitForTimeout(100);
+    assert.equal(await late.page.locator("#bp-partner-open").getAttribute("href"), `client-control-panel.html?id=${PARTNER}`);
+    assert.equal(await late.page.locator("#bp-partner-consent").getAttribute("href"), `consent-capture.html?client_id=${PARTNER}`);
+    assert.deepEqual(late.errors, []);
+    await late.page.close();
+
     // With no partner on the file the links are put away and the add form shows. Adding one reads the file again:
     // the form goes away and both links appear for the new partner.
     let added = false;

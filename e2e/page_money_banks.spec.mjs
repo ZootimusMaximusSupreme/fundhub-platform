@@ -44,7 +44,7 @@ for(const width of [1440,390,320])test(`Banks preserves client states and staff 
  state='loading';await page.reload();await expect(page.locator('[aria-busy=true]').first()).toBeVisible();
  await page.screenshot({path:`ops/workflows/build-evidence/crm-portal-layout-audit-2026-10-18/page_money_banks-loading-${width}.png`,fullPage:true});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- role='staff';state='full';await page.goto('/app/money-banks.html?client_id=safe-fixture');
+ role='owner';state='full';await page.goto('/app/money-banks.html?client_id=safe-fixture');
  await expect(page.locator('#banks-root')).toContainText('Chase');await expect(page.locator('body')).not.toHaveAttribute('data-client-ios');
  await expect(page.locator('#money-back')).toHaveAttribute('href','finance-os.html?client_id=safe-fixture');
  await expect(page.locator('.staff').first()).toBeVisible();

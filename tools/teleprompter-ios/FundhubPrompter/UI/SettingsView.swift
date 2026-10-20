@@ -6,7 +6,6 @@ struct SettingsView: View {
     @EnvironmentObject var camera: CameraController
     var prompter: PrompterController? = nil
     @Environment(\.dismiss) private var dismiss
-    @State private var server = ""
 
     var body: some View {
         NavigationStack {
@@ -67,33 +66,13 @@ struct SettingsView: View {
                     Text("Space, Enter and Page Down play and pause. The arrows change the speed. Page Up starts over. At the end: play = Got it, Page Up = Another take.")
                 }
 
-                Section("Server") {
-                    TextField("https://fundhub.ai", text: $server)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .onSubmit(saveServer)
-                    if let who = model.signIn {
-                        Text("Signed in as \(who.name ?? who.email ?? "staff")").foregroundStyle(.secondary)
-                        Button("Sign out", role: .destructive) {
-                            Task { await model.signOut(); dismiss() }
-                        }
-                    }
-                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { saveServer(); dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .onAppear { server = model.settings.serverAddress }
         }
-    }
-
-    private func saveServer() {
-        let s = server.trimmed
-        guard let u = URL(string: s), u.scheme == "https", u.host != nil else { return }
-        model.settings.serverAddress = s
     }
 }
 

@@ -134,7 +134,20 @@ export function superRoleApplies() {
    ------------------------------------------------------------------------ */
 
 function principalsFromRequirePrincipal(src) {
-  const m = /requirePrincipal\(\s*req\s*,\s*res\s*,\s*\[([^\]]*)\]/.exec(code(src));
+  const clean = code(src);
+  let m = /requirePrincipal\(\s*req\s*,\s*res\s*,\s*\[([^\]]*)\]/.exec(clean);
+  if (!m) {
+    // Dependency-injected handlers keep the production gate as the fallback:
+    //   const auth = deps.requirePrincipal ?? requirePrincipal;
+    //   await auth(req, res, ["staff"], ...)
+    // Follow that alias instead of reporting the route as unverified. The
+    // fallback name is required here, so an arbitrary injected function does
+    // not get mistaken for an authentication gate.
+    const alias = /const\s+(\w+)\s*=\s*deps\.requirePrincipal\s*(?:\?\?|\|\|)\s*requirePrincipal\s*;/.exec(clean);
+    if (alias) {
+      m = new RegExp(`${alias[1]}\\(\\s*req\\s*,\\s*res\\s*,\\s*\\[([^\\]]*)\\]`).exec(clean);
+    }
+  }
   if (!m) return null;
   return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
 }
@@ -276,6 +289,25 @@ function primaryGate(file, { sets, wrappers }) {
     };
   }
 
+  /* A SIGNED PUBLIC DOOR MAY SHARE ITS HANDLER WITH A STAFF-ONLY ACTION.
+     Read this before the ordinary staff gates below. Otherwise adding a
+     requireAuth branch for one action makes the extractor hide the signed
+     public door for every other method. api/soft-pull-approve.mjs is the
+     concrete case: GET and the consent POST use an expiring signed link, while
+     stamp_incorporated is a separate staff action in the same file. */
+  const signedToken = /verify\w*(Token|Url|Request)\s*\(/.test(src) && /\bsig\b/.test(src) && /\bexp\b/.test(src);
+  if (signedToken) {
+    const staffBranch = /require(Auth|Role|Principal)/.test(src);
+    return {
+      kind: "verified-other", roles: null, principals: null, verifiedBy: "signed link",
+      note: "no sign-in needed, and NOT open — the link carries a signature and an expiry, " +
+            "and the check fails closed when either is missing" +
+            (staffBranch
+              ? ". A SECOND DOOR on the same path is staff-only, behind the ordinary session gate"
+              : "")
+    };
+  }
+
   /* THE OTHER requireRole. src/http/middleware/requireRole.mjs exports a CURRIED
      form — requireRole("a","b")(req,res) — and unlike read-api.mjs's version it
      has SUPER_ROLES, so an owner passes it without being named. api/inquiry.mjs
@@ -356,18 +388,6 @@ function primaryGate(file, { sets, wrappers }) {
      and api/public/unsubscribe.mjs calls verifyUnsubscribeRequest(), both over
      a sig and an exp, both failing closed. Matching only "…Token(" drew both
      as open to anyone, which understated the gate (hole 24, 2026-09-18). */
-  const signedToken = /verify\w*(Token|Url|Request)\s*\(/.test(src) && /\bsig\b/.test(src) && /\bexp\b/.test(src);
-  if (signedToken) {
-    const staffBranch = /require(Auth|Role|Principal)/.test(src);
-    return {
-      kind: "verified-other", roles: null, principals: null, verifiedBy: "signed link",
-      note: "no sign-in needed, and NOT open — the link carries a signature and an expiry, " +
-            "and the check fails closed when either is missing" +
-            (staffBranch
-              ? ". A SECOND DOOR on the same path is staff-only, behind the ordinary session gate"
-              : "")
-    };
-  }
   /* The word "signature" must be in the CODE. "rawBody" alone is not a
      signature check: four public forms (api/public/education-enroll,
      funnel-checkout, optimize, survey-submit) read req.rawBody only to parse
@@ -444,6 +464,18 @@ function narrowStaff(gate, file, { sets } = {}) {
   if (gate.principals && !gate.principals.includes("staff")) return gate;
   const src = code(read(file));
   const limits = [];
+
+  /* A principal-kind gate followed by the ordinary read-api role gate:
+       requirePrincipal(req, res, ["staff", "client"])
+       ...
+       requireRole(res, staff, ROLE_SETS.FINANCE_OS)
+     The client branch stays open, while only the named staff roles pass. The
+     money/* handlers deliberately use this shape so clients can manage their
+     own file without opening the same tools to every employee. */
+  const roleGate = /requireRole\(\s*res\s*,\s*staff\s*,\s*ROLE_SETS\.(\w+)\s*\)/.exec(src);
+  if (roleGate && sets?.[roleGate[1]]) {
+    limits.push({ roles: sets[roleGate[1]], by: `requireRole(ROLE_SETS.${roleGate[1]})` });
+  }
 
   for (const cond of ifConditions(src)) {
     const m = /^!\s*(\w+)\.has\(([\s\S]*)\)$/.exec(cond);

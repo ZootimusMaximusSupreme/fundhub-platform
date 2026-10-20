@@ -152,7 +152,7 @@ test("affiliate source values render as exact figures, gates, rows, and money", 
   assert.equal(await page.locator("#kConv").textContent(), "2");
   assert.equal(await page.locator("#kOwed").textContent(), "$1,250.50");
   assert.equal(await page.locator("#kPaid").textContent(), "$600.00");
-  assert.match(await page.locator("#funnelBody").innerText(), /10[\s\S]*CLICKS[\s\S]*4[\s\S]*REFERRED[\s\S]*2[\s\S]*CONVERTED/);
+  assert.match(await page.locator("#funnelBody").innerText(), /10[\s\S]*Clicks[\s\S]*4[\s\S]*Referred[\s\S]*2[\s\S]*Converted/);
 
   assert.equal(await page.locator("#affCode").textContent(), "FH1042");
   assert.equal(await page.locator('#offerLinks input[aria-label="Capital Blueprint link"]').inputValue(), "https://fundhub.ai/start?ref=FH1042");

@@ -184,6 +184,7 @@ describe("authorize first, then pay", () => {
     const down = standIn({ failOn: /INSERT INTO client_consents/ });
     down.fake = fakeDb([[/INSERT INTO client_consents/, Object.assign(new Error("Connection terminated unexpectedly"), { code: "08006" })],
       [/FROM clients WHERE id = \$1 AND org_id = \$2/, [{ id: CLIENT, first_name: "Dana", last_name: "Whitfield", email: "dana@fundhub-client.test.io" }]],
+      [/INSERT INTO pii_identity/, [{ id: "pii-1" }]],
       [/FROM accounts\s+WHERE client_id = \$1/, [{ id: "a1000000-0000-4000-8000-000000000001" }]]]);
     const out = await post({ ...person(), businesses: [] }, { db: down });
     assert.equal(out.res.statusCode, 503);
@@ -235,6 +236,46 @@ describe("authorize first, then pay", () => {
       assert.equal(out.res.statusCode, status);
       assert.equal(out.fake.calls.length, 0, "the database was not touched");
     }
+  });
+});
+
+describe("staff stamps one saved business incorporation date", () => {
+  const STAFF = "5a000000-0000-4000-8000-000000000001";
+  const staff = { id: STAFF, role: "funding_advisor", org_id: ORG_ID };
+
+  test("stamp_incorporated updates only the named business on this client's company and returns its measured age", async () => {
+    const fake = fakeDb([
+      [/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, [{ "?column?": 1 }]],
+      [/UPDATE businesses[\s\S]*WHERE org_id = \$1 AND client_id = \$2 AND name = \$3/, (_sql, p) => [{
+        id: "b1000000-0000-4000-8000-000000000001",
+        name: p[2],
+        age_months: p[3],
+        incorporated_date: p[4],
+      }]],
+    ]);
+    const res = makeRes();
+    await handler({
+      method: "POST",
+      body: { action: "stamp_incorporated", client_id: CLIENT, business_name: "Acme 1 LLC", incorporated_date: "2021-03" },
+      query: {}, headers: {},
+    }, res, { db: fake, requireAuth: async () => staff, now: NOW });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.business, { name: "Acme 1 LLC", incorporated_date: "2021-03", age_months: 67 });
+    const [write] = ran(fake, /UPDATE businesses/);
+    assert.deepEqual(write.params, [ORG_ID, CLIENT, "Acme 1 LLC", 67, "2021-03"]);
+    assert.match(write.sql, /WHERE org_id = \$1 AND client_id = \$2 AND name = \$3/);
+  });
+
+  test("stamp_incorporated cannot stamp another company's client or touch a business", async () => {
+    const fake = fakeDb([[/SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/, []]]);
+    const res = makeRes();
+    await handler({
+      method: "POST",
+      body: { action: "stamp_incorporated", client_id: OTHER_CLIENT, business_name: "Their LLC", incorporated_date: "2021-03" },
+      query: {}, headers: {},
+    }, res, { db: fake, requireAuth: async () => staff, now: NOW });
+    assert.equal(res.statusCode, 404);
+    assert.equal(ran(fake, /UPDATE businesses/).length, 0);
   });
 });
 

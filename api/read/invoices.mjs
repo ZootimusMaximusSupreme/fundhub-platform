@@ -47,6 +47,8 @@ const run = readHandler({
     }
     return db.query(`SELECT v.invoice_id AS id, v.client_id, v.client_code,
            NULLIF(BTRIM(CONCAT_WS(' ', c.first_name, c.last_name)), '') AS client_name,
+           NULLIF(BTRIM(s.name), '') AS owner_name,
+           pay.payment_method,
            v.source, v.status, v.currency,
            v.amount_due, v.amount_paid, v.balance_due, v.open_balance, v.settlement_state,
            v.payment_count, v.last_payment_at, v.due_at, v.sent_at, v.paid_at,
@@ -55,6 +57,14 @@ const run = readHandler({
       FROM v_invoice_aging v
       JOIN invoices i ON i.id = v.invoice_id
       LEFT JOIN clients c ON c.id = v.client_id AND c.org_id = v.org_id
+      LEFT JOIN staff s ON s.id = c.assigned_csm_staff_id AND s.org_id = c.org_id
+      LEFT JOIN LATERAL (
+        SELECT NULLIF(BTRIM(p.method), '') AS payment_method
+          FROM invoice_payments p
+         WHERE p.invoice_id = v.invoice_id AND p.org_id = v.org_id
+         ORDER BY p.paid_at DESC, p.created_at DESC
+         LIMIT 1
+      ) pay ON true
      WHERE v.org_id = $5::uuid
        AND ($3::uuid IS NULL OR v.client_id = $3)
        AND ($4::text IS NULL OR v.status = $4)

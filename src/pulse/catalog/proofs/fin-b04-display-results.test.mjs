@@ -194,8 +194,8 @@ test("every contract names its control exactly as the coverage map does", () => 
   }
 });
 
-test("a control this batch could not make honest carries no query and no case, and its map row still exists", () => {
-  assert.equal(FIN_B04_NOT_ATTACHABLE.length, 1);
+test("no batch 04 control remains not attachable", () => {
+  assert.equal(FIN_B04_NOT_ATTACHABLE.length, 0);
   for (const row of FIN_B04_NOT_ATTACHABLE) {
     const map = JSON.parse(fs.readFileSync(path.join(MAP_DIR, row.sourceFile), "utf8"));
     assert.equal(map.filter((r) => r.surface === row.surface && r.control === row.control).length, 1,

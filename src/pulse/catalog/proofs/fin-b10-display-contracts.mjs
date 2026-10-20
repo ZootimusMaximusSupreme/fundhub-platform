@@ -1,6 +1,5 @@
 // Finish-853 batch 10: live checks for seven display controls. Five leave a durable saved result (a SQL
 // contract each); two are links the app's own link gate decides (a link-gate contract each, see linkGate()).
-// One more row is held open on purpose (see OPEN_GAP below): it cannot be attached honestly today.
 // Each SQL contract is one read-only SQL text. It takes the company as $1::uuid and returns sample_count
 // (how many saved results exist) and bad_count (how many are wrong).
 //
@@ -47,12 +46,6 @@ function linkGate(control, requirement, key, links) {
     sql: null,
     links: Object.freeze(links.map(([id, file, label, roles]) => Object.freeze({ id, file, label, roles: Object.freeze([...roles]) }))),
   });
-}
-
-// A row that is held open because no honest check can be attached today. The lane reports it as NOT_PROVED
-// with these exact words (an "always-red" contract), so the reason travels with the row.
-function openGap(control, requirement) {
-  return Object.freeze({ control, mode: "always-red", requirement, sql: null });
 }
 
 // Funnel pages: Sync now. Every saved page-stat row must belong to a ClickFunnels connection of its own
@@ -155,21 +148,6 @@ SELECT count(*)::int AS sample_count,
      WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false
   ) ranked`;
 
-// Credit partner links. The two links are painted by paintCombined() with `el.partnerOpen.href = ...` and
-// `el.partnerConsent.href = ...`, which set the address but never the shell's own copy (data-fh-href). The
-// shell's link gate runs twice, once from the cached role and once when the session answers, and every pass
-// rewrites each link from that copy. So when the session answer lands AFTER the Blueprint read, the second
-// pass puts the PRIMARY client back on both links: "Open the partner's file" opens the primary's file and
-// "Record the partner's own consent" opens consent capture for the primary, who has already consented.
-// Measured in Chromium with the session answer held back 1.5 seconds. Any honest test of "points at the
-// partner's own file" is red until paintCombined() also sets data-fh-href, and a green one only holds
-// because the stand-in session answers at once. The pulse cannot see it: it is a timing outcome of one
-// browser session, not a saved result or a deployed list.
-const OPEN_GAP = openGap(
-  "Credit partner links: Open the partner's file, Record the partner's own consent",
-  "Not attachable today. paintCombined() in client-control-panel.html sets the two partner links' addresses but not the shell's copy (data-fh-href), so when the session answer arrives after the Blueprint read, shell.js gateLinks() rewrites both to the primary client's file and consent screen. A test that waits for the session answer is red until that one line is fixed; a test that does not wait is green over the break. No saved result and no deployed list shows it.",
-);
-
 export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
   contract(
     "Funnel pages: Sync now button",
@@ -218,7 +196,6 @@ export const FIN_B10_RESULT_CONTRACTS = Object.freeze([
       ["ccp-link-ir", "inquiry-remover.html", "Open Inquiry Remover", ALL_STAFF],
     ],
   ),
-  OPEN_GAP,
 ]);
 
 /** The exact map rows (desks file, surface, control) each live check is attached to. */
@@ -232,10 +209,8 @@ export const FIN_B10_LIVE_ROWS = Object.freeze([
   ["desks-a.json", "client-control-panel.html", FIN_B10_RESULT_CONTRACTS[6].control],
 ]);
 
-/** The one row held open (NOT_PROVED with the exact reason above). */
-export const FIN_B10_OPEN_ROWS = Object.freeze([
-  ["desks-a.json", "client-control-panel.html", OPEN_GAP.control],
-]);
+/** No batch-10 row remains held open. */
+export const FIN_B10_OPEN_ROWS = Object.freeze([]);
 
 // The five saved-result checks are held by the SQL test; the two link-gate checks by the gate test.
 const testFor = (control) => (FIN_B10_RESULT_CONTRACTS.find((c) => c.control === control)?.mode === "link-gate"
@@ -253,8 +228,7 @@ export const FIN_B10_LIVE_CASES = Object.freeze(FIN_B10_LIVE_ROWS.map(([sourceFi
 })));
 
 /**
- * Everything the catalog compiler turns into a lane case (resultCases): the seven live rows and the one
- * held-open row. The open row has no test, so it is NOT handed to the proof-case plug-in list.
+ * Everything the catalog compiler turns into a lane case (resultCases): the seven live rows.
  */
 export const FIN_B10_COMPILE_CASES = Object.freeze([
   ...FIN_B10_LIVE_CASES,

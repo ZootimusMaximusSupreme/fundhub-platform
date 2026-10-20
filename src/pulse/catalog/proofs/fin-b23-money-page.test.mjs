@@ -136,6 +136,7 @@ test("the Trends slot draws the exact returned numbers, and a missing day is a g
     },
   };
   const { page, errors } = await open(`/app/financeos.html?client_id=${CLIENT_ID}#overview`, { session: STAFF, handlers });
+  await openMoneyDetail(page, "history");
   await page.waitForSelector('figure[data-chart="cash"]');
   assert.deepEqual(asked, ["90d"]);
 
@@ -180,6 +181,7 @@ test("a Money page that did not load the trends script leaves the slot empty, an
   };
   const { page } = await open(`/app/money.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers });
   await page.waitForSelector("[data-trends-slot]", { state: "attached" });
+  await openMoneyDetail(page, "history");
   await page.waitForTimeout(500);
   const loaded = await page.evaluate(() => typeof (window.FinanceOS && window.FinanceOS.trends && window.FinanceOS.trends.mount) === "function");
   if (loaded) {
@@ -232,10 +234,18 @@ async function linesOf(figure) {
   return figure.locator("polyline.tline").evaluateAll((els) => els.map((e) => ({ cls: e.getAttribute("class"), points: e.getAttribute("points") })));
 }
 
+async function openMoneyDetail(page, key) {
+  const detail = page.locator(`#money-detail-${key}`);
+  await detail.waitFor({ state: "attached" });
+  if (!(await detail.evaluate((node) => node.open))) await detail.locator(":scope > summary").click();
+  await detail.locator(".money-detail-body").waitFor({ state: "visible" });
+}
+
 test("the drawn lines sit at the returned values, break at a missing day, dash the estimated stretch and dot a lone day", { timeout: 90_000 }, async (t) => {
   const { open } = await startPages(t);
   const handlers = { "/api/money/overview": SANDBOX, "/api/money/trends": LINES };
   const { page, errors } = await open(`/app/financeos.html?client_id=${CLIENT_ID}#overview`, { session: STAFF, handlers });
+  await openMoneyDetail(page, "history");
   await page.waitForSelector('figure[data-chart="cash"]');
 
   // ---- Cash: two lines, two separate scales of one plot -------------------------------
@@ -335,6 +345,7 @@ test("the range buttons ask for the range they name, remember it, and fall back 
   // 1. Nothing remembered: 90 days, asked for this client, and the 90 days button is the pressed one.
   const asked = [];
   const first = await open(`/app/financeos.html?client_id=${CLIENT_ID}#overview`, { session: STAFF, handlers: handlersFor(asked) });
+  await openMoneyDetail(first.page, "history");
   await first.page.waitForSelector(".trange-btn");
   assert.deepEqual(asked, [["90d", CLIENT_ID]]);
   assert.deepEqual(await pressedOf(first.page), ALL_90);
@@ -349,6 +360,7 @@ test("the range buttons ask for the range they name, remember it, and fall back 
   // 3. Open the page again in the same tab: it asks for 30 days straight away.
   asked.length = 0;
   await first.page.reload();
+  await openMoneyDetail(first.page, "history");
   await first.page.waitForSelector(".trange-btn");
   assert.deepEqual(asked[0], ["30d", CLIENT_ID]);
   assert.deepEqual(await pressedOf(first.page), [["30d", "true"], ["90d", "false"], ["12m", "false"]]);
@@ -360,6 +372,7 @@ test("the range buttons ask for the range they name, remember it, and fall back 
     session: STAFF, handlers: handlersFor(junk),
     init: () => { try { sessionStorage.setItem("fos_trends_range", "7d"); } catch (e) { /* none */ } },
   });
+  await openMoneyDetail(second.page, "history");
   await second.page.waitForSelector(".trange-btn");
   assert.deepEqual(junk, [["90d", CLIENT_ID]]);
   assert.deepEqual(await pressedOf(second.page), ALL_90);
@@ -377,6 +390,7 @@ test("the range buttons ask for the range they name, remember it, and fall back 
       };
     },
   });
+  await openMoneyDetail(third.page, "history");
   await third.page.waitForSelector(".trange-btn");
   assert.deepEqual(blocked, [["90d", CLIENT_ID]]);
   assert.deepEqual(await pressedOf(third.page), ALL_90);
@@ -384,6 +398,7 @@ test("the range buttons ask for the range they name, remember it, and fall back 
 
   // 6. Drawn with no range named at all (the exported draw function), it says 90 days too, and follows the read's own range.
   const html = await (await open(`/app/financeos.html?client_id=${CLIENT_ID}#overview`, { session: STAFF, handlers: handlersFor([]) })).page;
+  await openMoneyDetail(html, "history");
   await html.waitForSelector(".trange-btn");
   const pressed = await html.evaluate(() => {
     const read = (markup) => [...new DOMParser().parseFromString(markup, "text/html").querySelectorAll(".trange-btn")]

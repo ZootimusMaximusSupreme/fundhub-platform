@@ -107,7 +107,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await staffPage.locator("#kHead").innerText(), "2");
   assert.equal(await staffPage.locator("#kConsent").innerText(), "1/2");
   assert.equal(await staffPage.locator("#kPending").innerText(), "1");
-  assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 ON SHIFT");
+  assert.equal(await staffPage.locator("#onShiftTxt").innerText(), "1 on shift");
   staffResults.add(proof("Stat tiles: HEADCOUNT, ON SHIFT, CONSENT, PENDING and the 'N on shift' chip").recipe);
   const rosterText = await staffPage.locator("#rosterBody").innerText();
   assert.match(rosterText, /Alex Owner[\s\S]*alex@example\.test[\s\S]*OWNER[\s\S]*MISSING[\s\S]*OUT[\s\S]*ACTIVE/);
@@ -211,10 +211,14 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   let posts = [
     { id: "post-queued", partner_id: partnerA, channel_id: channel.id, caption: "Waiting caption", offer_type: "funding", status: "queued", scheduled_for: "2030-01-01T09:30:00Z", created_at: "2026-10-10T00:00:00Z", attempt: 0 },
     { id: "post-blocked", partner_id: partnerA, channel_id: channel.id, caption: "Blocked caption", offer_type: "credit_cards", status: "blocked", blocked_reasons: [{ rule_set: "claims", rule: "claim" }], created_at: "2026-10-10T00:00:00Z" },
+    { id: "post-failed", social_post_id: "post-failed", partner_id: partnerA, channel_id: channel.id, caption: "Failed caption", offer_type: "funding", status: "failed", scheduled_for: "2026-10-11T09:30:00Z", created_at: "2026-10-11T00:00:00Z", attempt: 3, last_error: "Provider refused the post" },
+    { id: "post-posted", social_post_id: "post-posted", partner_id: partnerA, channel_id: channel.id, caption: "Posted caption", offer_type: "funding", status: "posted", scheduled_for: "2026-10-09T09:30:00Z", posted_at: "2026-10-09T09:31:00Z", external_post_id: "facebook-reference-123", created_at: "2026-10-09T00:00:00Z", attempt: 1 },
   ];
   const socialReads = [];
   const socialWrites = [];
+  const socialErrors = [];
   const socialPage = await browser.newPage({ viewport: { width: 1440, height: 1000 }, timezoneId: "America/Phoenix" });
+  socialPage.on("pageerror", (error) => socialErrors.push(error.message));
   await socialPage.addInitScript(() => localStorage.setItem("fh_token", "social-proof-token"));
   await socialPage.route("**/api/**", async (route) => {
     const request = route.request();
@@ -226,7 +230,7 @@ test("Teams/Social controls show their rendered result against controlled APIs",
       if (pathname === "/api/read/partners") return json(route, { ok: true, items: [{ id: partnerA, name: "Proof Partner A" }, { id: partnerB, name: "Proof Partner B" }] });
       if (pathname === "/api/social/channels") return json(route, { ok: true, items: [{ ...channel, partner_id: url.searchParams.get("partner_id") }, { ...channel2, partner_id: url.searchParams.get("partner_id") }] });
       if (pathname === "/api/social/settings") return json(route, { ok: true, settings: { stored: true, approve_before_launch: true, weekly_asset_target: 4, max_concurrent_jobs: 2, autopilot_enabled: false, launch_enabled: false } });
-      if (pathname === "/api/social/posts") return json(route, { ok: true, items: posts });
+      if (pathname === "/api/social/posts") return json(route, { ok: true, items: posts, tasks: [{ id: "task-social-failed", task_key: "social_post_failed", title: "A scheduled Facebook post failed after 3 attempts", detail: "Provider refused the post", severity: "warning", resolved_at: null, created_at: "2026-10-11T10:00:00Z", updated_at: "2026-10-11T10:00:00Z" }] });
       if (pathname === "/api/partner-marketing/usage") return json(route, { ok: true, enabled: true, remaining: 7 });
       if (pathname === "/api/campaigns/action-log") return json(route, { ok: true, items: [{ id: "audit-proof", partner_id: partnerA, actor: "staff", rule_key: "social_post", reason: "Proof attempt", target_id: "post-queued", before: {}, after: {}, created_at: "2026-10-11T00:00:00Z", revertible: false }] });
       if (pathname === "/api/social/oauth") return json(route, { ok: false, error: "not_configured" });
@@ -251,12 +255,17 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.deepEqual(await socialPage.locator("#partnerSel option").allTextContents(), ["Proof Partner A", "Proof Partner B"]);
   await socialPage.getByText("@proof", { exact: true }).waitFor();
   await socialPage.getByText("your saved setting", { exact: true }).waitFor();
+  await socialPage.waitForFunction(() => ["oauthFb", "oauthIg", "oauthLi"].every((id) => document.getElementById(id)?.disabled));
+  const oauthReads = socialReads.filter((entry) => entry.pathname === "/api/social/oauth");
+  assert.equal(oauthReads.length, 3, "the three probes run once, after the partner is known");
+  assert.deepEqual(oauthReads.map((entry) => new URLSearchParams(entry.search).get("partner_id")), [partnerA, partnerA, partnerA]);
+  assert.deepEqual(oauthReads.map((entry) => new URLSearchParams(entry.search).get("channel")).sort(), ["facebook", "instagram", "linkedin"]);
   const hasRead = (pathname) => socialReads.some((entry) => entry.pathname === pathname);
   for (const endpoint of ["/api/read/partners", "/api/social/channels", "/api/social/settings", "/api/social/posts", "/api/partner-marketing/usage", "/api/campaigns/action-log"]) assert.equal(hasRead(endpoint), true, `${endpoint} was requested`);
   const socialResults = new Set();
   socialResults.add(proof("Page open: partner list for the picker").recipe);
   assert.match(await socialPage.locator("#tblQueued").innerText(), /Waiting caption/);
-  assert.equal(await socialPage.locator("#ssSuiteTxt").innerText(), "WRITING ON · 7 LEFT");
+  assert.equal(await socialPage.locator("#ssSuiteTxt").innerText(), "Writing on · 7 left");
   assert.match(await socialPage.locator("#btBody").innerText(), /09:30/);
   assert.match(await socialPage.locator("#chGrid").innerText(), /Facebook[\s\S]*@proof[\s\S]*account-proof/);
   assert.match(await socialPage.locator("#ghGrid").innerText(), /TikTok[\s\S]*cannot be used/i);
@@ -320,9 +329,10 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   await socialPage.locator("#cChannel").selectOption(channel.id);
   await socialPage.locator("#cOffer").selectOption("funding");
   await socialPage.locator("#cCaption").fill("Rendered queue action proof.");
+  await socialPage.locator("#cWhen").fill("2030-01-02T09:15");
   await socialPage.locator("#queueBtn").click();
   await socialPage.getByText("Saved. Copy check says: queued. Use \"Send anything due now\" to send everything that is already past its time.", { exact: true }).waitFor();
-  assert.deepEqual(socialWrites.at(-1), { pathname: "/api/social/schedule", body: { partner_id: partnerA, channel_id: channel.id, caption: "Rendered queue action proof.", offer_type: "funding", asset_id: null, scheduled_for: null } });
+  assert.deepEqual(socialWrites.at(-1), { pathname: "/api/social/schedule", body: { partner_id: partnerA, channel_id: channel.id, caption: "Rendered queue action proof.", offer_type: "funding", asset_id: null, scheduled_for: "2030-01-02T09:15:00.000Z" } });
   socialResults.add(proof("'Queue post': screens the words on the server, saves the post as waiting (or blocked / held) with its send time").recipe);
 
   const publishDialogPromise = new Promise((resolve) => socialPage.once("dialog", async (dialog) => {
@@ -343,11 +353,32 @@ test("Teams/Social controls show their rendered result against controlled APIs",
   assert.equal(await socialPage.locator("#pane-blocked").evaluate((e) => e.classList.contains("on")), true);
   assert.match(await socialPage.locator("#tblBlocked").innerText(), /Blocked caption/);
   socialResults.add(proof("Tab 'Needs a rewrite' (blocked by the copy check or refused by a person)").recipe);
+  await socialPage.locator('[data-pane="failed"]').click();
+  assert.match(await socialPage.locator("#tblFailed").innerText(), /Failed caption[\s\S]*3[\s\S]*gave up after 3[\s\S]*Provider refused the post/);
+  assert.match(await socialPage.locator("#taskStrip").innerText(), /JOB TO FIX[\s\S]*A scheduled Facebook post failed after 3 attempts[\s\S]*one job covering all of them/i);
+  await socialPage.locator('[data-pane="posted"]').click();
+  assert.match(await socialPage.locator("#tblPosted").innerText(), /Posted caption[\s\S]*facebook-reference-123/);
   await socialPage.locator('[data-pane="audit"]').click();
   assert.match(await socialPage.locator("#tblAudit").innerText(), /Proof attempt/);
   socialResults.add(proof("Tab 'Send history' (one line per attempt, written before the attempt)").recipe);
 
   await socialPage.locator('[data-pane="queued"]').click();
+  const queuedRow = socialPage.locator('tr[data-row="post-queued"]');
+  await queuedRow.press("Enter");
+  const queuedDetail = socialPage.locator('tr[data-det="post-queued"]');
+  assert.equal(await queuedDetail.isVisible(), true);
+  await queuedDetail.getByRole("button", { name: "See the details" }).click();
+  assert.equal(await socialPage.locator("#drawer").evaluate((node) => node.classList.contains("on")), true);
+  assert.match(await socialPage.locator("#drawerBody").innerText(), /Not checked yet[\s\S]*none recorded/i);
+  await socialPage.locator("#drawerClose").click();
+  assert.equal(await socialPage.locator("#drawer").evaluate((node) => node.classList.contains("on")), false);
+  await queuedDetail.getByRole("button", { name: "See the details" }).click();
+  await socialPage.locator("#scrim").dispatchEvent("click");
+  assert.equal(await socialPage.locator("#drawer").evaluate((node) => node.classList.contains("on")), false);
+  await queuedDetail.getByRole("button", { name: "See the details" }).click();
+  await socialPage.keyboard.press("Escape");
+  assert.equal(await socialPage.locator("#drawer").evaluate((node) => node.classList.contains("on")), false);
+  assert.deepEqual(socialErrors, []);
   await socialPage.locator("#fOffer").selectOption("funding");
   assert.match(await socialPage.locator("#fCount").innerText(), /posts match your filter/i);
   await socialPage.locator("#fChannel").selectOption(channel.id);

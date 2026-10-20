@@ -48,35 +48,49 @@ export const TAKES_PER_PASS = 10;
 /** The header the scheduler proves itself with. */
 export const AUTH_HEADER = "x-fundhub-worker";
 
-export async function handler(req) {
-  const expected = process.env.AD_VIDEO_WORKER_SECRET || "";
-  const got = req?.headers?.get ? req.headers.get(AUTH_HEADER) : null;
+export function makeHandler({
+  database = db,
+  runSweep = sweep,
+  env = process.env,
+  saveFinishedImpl = saveFinished,
+  sweepOptions = {},
+} = {}) {
+  return async function adVideoWorkerHandler(req) {
+    const expected = env.AD_VIDEO_WORKER_SECRET || "";
+    const got = req?.headers?.get ? req.headers.get(AUTH_HEADER) : null;
 
-  /* No secret configured is a CLOSED door, not an open one. A missing variable
-     must never be the thing that makes a paid endpoint public. */
-  if (!expected || got !== expected) {
-    console.error("[ad-video-worker] refused: the shared secret did not match");
-    return new Response("no", { status: 404 });
-  }
+    /* No secret configured is a CLOSED door, not an open one. A missing variable
+       must never be the thing that makes a paid endpoint public. */
+    if (!expected || got !== expected) {
+      console.error("[ad-video-worker] refused: the shared secret did not match");
+      return new Response("no", { status: 404 });
+    }
 
-  /* WHICH BUILD IS RUNNING. Two passes on 2026-09-24 behaved like code from
-     before a deploy and nothing in the log could say which build they were.
-     Netlify sets COMMIT_REF at build time; printing it makes a stale function
-     visible in one line. */
-  console.log(`[ad-video-worker] build ${String(process.env.COMMIT_REF || "unknown").slice(0, 8)} starting a pass`);
-  const result = await sweep(db, { limit: TAKES_PER_PASS, saveFinished });
+    /* WHICH BUILD IS RUNNING. Two passes on 2026-09-24 behaved like code from
+       before a deploy and nothing in the log could say which build they were.
+       Netlify sets COMMIT_REF at build time; printing it makes a stale function
+       visible in one line. */
+    console.log(`[ad-video-worker] build ${String(env.COMMIT_REF || "unknown").slice(0, 8)} starting a pass`);
+    const result = await runSweep(database, {
+      ...sweepOptions,
+      limit: TAKES_PER_PASS,
+      saveFinished: saveFinishedImpl,
+    });
 
-  if (!result.ok) {
-    console.error(`[ad-video-worker] pass failed: ${result.error}`);
-  } else if (result.detected || result.advanced) {
-    console.log(`[ad-video-worker] found ${result.detected}, moved ${result.advanced}: ` +
-      JSON.stringify(result.per || []));
-  }
+    if (!result.ok) {
+      console.error(`[ad-video-worker] pass failed: ${result.error}`);
+    } else if (result.detected || result.advanced) {
+      console.log(`[ad-video-worker] found ${result.detected}, moved ${result.advanced}: ` +
+        JSON.stringify(result.per || []));
+    }
 
-  return new Response(JSON.stringify(result), {
-    status: 200,
-    headers: { "content-type": "application/json" }
-  });
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
 }
+
+export const handler = makeHandler();
 
 export default handler;

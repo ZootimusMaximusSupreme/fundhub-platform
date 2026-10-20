@@ -37,12 +37,17 @@ const T = (iso) => new Date(iso);
 
 describe("file-protection alerts (migration 471)", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () => {
   let c;
+  let transactionDb;
   let orgId;
   let seq = 0;
 
   before(async () => {
     c = await pool().connect();
     await c.query("BEGIN");
+    // saveStatementCycle owns a transaction when handed a Pool. This suite
+    // already owns one checked-out client and one outer rollback, so expose
+    // only query() instead of letting its Pool probe reconnect this Client.
+    transactionDb = { query: (...args) => c.query(...args) };
     orgId = (await c.query(
       `INSERT INTO orgs (slug, name) VALUES ($1, 'FileAlerts PgTest Org') RETURNING id`,
       [`file-alerts-pg-test-${process.pid}-${Date.now()}`]
@@ -202,7 +207,7 @@ describe("file-protection alerts (migration 471)", { skip: !HAVE_DB ? "no DATABA
     assert.equal((await cycleRow(card)).statement_close_day, 15, "the promo write left the close day alone");
 
     // The daily Plaid liabilities read: saveStatementCycle replaces the columns IT names.
-    await saveStatementCycle(c, {
+    await saveStatementCycle(transactionDb, {
       statement_close_day: 20, payment_due_day: 5, minimum_payment_cents: 5000,
       last_statement_balance_cents: 50000, source: "provider", raw: { plaid: true }
     }, { orgId, clientId, bankAccountId: card });

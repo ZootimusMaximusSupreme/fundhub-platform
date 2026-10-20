@@ -30,12 +30,19 @@ async function openOverview(open, target, { session = CLIENT, clientId = "", rea
   return { ...opened, ...resource.log, link, trends };
 }
 
+async function openOverviewDetail(page, key) {
+  const detail = page.locator(`#money-detail-${key}`);
+  await detail.waitFor({ state: "attached" });
+  if (!(await detail.evaluate((node) => node.open))) await detail.locator("summary").click();
+}
+
 test("the page opens on the client's own file, or on the file staff name", { timeout: 60_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Open the page \(client, or staff with \?client_id=\)/, async () => {
     const answer = sampleAnswer("money-overview.sandbox.json");
     const own = await openOverview(open, PAGE);
-    await own.page.waitForFunction(() => /Money/.test(document.querySelector("h1")?.innerText || ""));
+    await own.page.waitForSelector(".head h1");
+    assert.equal(await own.page.locator(".head h1").innerText(), "Overview");
     assert.deepEqual(own.reads, [""], "a client reads their own file with no client_id");
     assert.match(await own.page.locator(".head .caption").first().innerText(), new RegExp(answer.client.name));
     assert.match(await own.page.locator("body").innerText(), /Test data — Plaid sandbox/);
@@ -77,6 +84,7 @@ test("Trends buttons ask for 30 days, 90 days or 12 months and keep the choice",
   await proof.check(/^Trends: 30 days \/ 90 days \/ 12 months buttons/, async () => {
     const trendsDown = { value: false };
     const { page, trends } = await openOverview(open, FRAME, { session: STAFF, clientId: CLIENT_ID, trendsDown });
+    await openOverviewDetail(page, "history");
     await page.waitForSelector(".trange-btn");
     assert.deepEqual(trends, ["90d"], "the default range is 90 days");
     await page.locator('.trange-btn[data-range="30d"]').click();

@@ -103,17 +103,17 @@ function proofById(id) {
   return proof;
 }
 
-test("the shard exports exact proof metadata and an honest freshly compiled 3-row partition", () => {
+test("the shard exports exact proof metadata and an honest freshly compiled zero-row open partition", () => {
   assert.deepEqual(FLOW_READ_CURRENT_RED_COUNTS, {
-    flow: 1,
-    read: 2,
-    total: 3,
+    flow: 0,
+    read: 0,
+    total: 0,
     proved: 12,
-    unproved: 3,
+    unproved: 0,
   });
   assert.equal(FLOW_READ_CONTRACT_ROW_KEYS.length, 12);
   assert.equal(new Set(FLOW_READ_CONTRACT_ROW_KEYS).size, 12);
-  assert.equal(FLOW_READ_UNPROVED.length, 3);
+  assert.equal(FLOW_READ_UNPROVED.length, 0);
 
   const unprovedKeys = new Set(FLOW_READ_UNPROVED.map((row) => (
     flowReadContractRowKey(row.sourceFile, row)
@@ -145,7 +145,7 @@ test("the shard exports exact proof metadata and an honest freshly compiled 3-ro
       assert.match(catalog.reason, /below required level/);
     }
   }
-  assert.deepEqual({ wired, stillRed }, { wired: 11, stillRed: 1 });
+  assert.deepEqual({ wired, stillRed }, { wired: 12, stillRed: 0 });
 });
 
 test("every exported proof key is exercised by its real rendered page", async (t) => {
@@ -272,7 +272,7 @@ test("every exported proof key is exercised by its real rendered page", async (t
     assert.equal(await page.locator("#licenseBanner").isVisible(), true);
     assert.match(await page.locator("#licenseBannerBody").textContent(), /license-proof\.pdf/);
     assert.equal(await page.locator("#affLicenseChip").isVisible(), true);
-    assert.equal((await page.locator("#affLicenseChip").innerText()).trim(), "LICENSE UNSIGNED");
+    assert.equal((await page.locator("#affLicenseChip").innerText()).trim(), "License unsigned");
     proved("367dca0db64096fe33fd");
   });
 

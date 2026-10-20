@@ -10,7 +10,10 @@ export const TABLE_RULES = Object.freeze({
   alerts: { all: ["org_id", "kind", "state", "title"], any: ["detail", "as_of"] },
   bank_inbox: { all: ["org_id", "client_id", "classification", "subject"], any: ["body_preview", "raw"] },
   bank_relationship_deposits: { all: ["org_id", "client_id", "amount_cents", "deposited_on"] },
-  bank_transactions: { all: ["org_id", "client_id", "amount_cents", "posted_on"] },
+  bank_transactions: {
+    all: ["org_id", "client_id", "amount_cents"],
+    any: ["posted_on", "authorized_on"],
+  },
   blueprint_bank_relationship_todos: { all: ["org_id", "client_id", "bank_key", "state"] },
   blueprint_decline_steps: { all: ["org_id", "decline_id", "step_key", "status"], any: ["step_text", "filled_text", "blank_label"] },
   blueprint_declines: { all: ["org_id", "client_id", "bank", "declined_on"], any: ["outcome", "reason_categories", "analysis"] },
@@ -66,7 +69,11 @@ export const TABLE_RULES = Object.freeze({
   sale_payments: { all: ["org_id", "sale_id", "kind", "amount", "paid_at"] },
   snapshots: { all: ["org_id", "client_id", "source", "data"], any: ["score", "bureau"] },
   social_posts: { all: ["org_id", "partner_id", "caption", "status"], any: ["scheduled_for", "posted_at", "blocked_reasons", "last_error"] },
-  spend_ceilings: { all: ["org_id", "partner_id", "platform", "daily_limit_cents", "active"] },
+  // The table constraint owns the discriminator shape: partner ceilings need
+  // neither campaign_id nor platform, campaign ceilings need campaign_id, and
+  // only platform ceilings need platform. Requiring platform here makes every
+  // valid partner-wide ceiling look broken.
+  spend_ceilings: { all: ["org_id", "partner_id", "scope", "daily_limit_cents", "active"] },
   tradelines: { all: ["org_id", "client_id", "lender", "kind", "source"], any: ["credit_limit_cents", "balance_cents"] },
   waypoint_definitions: { all: ["key", "title", "detail", "owner_kind"] },
   waypoint_nudges: { all: ["org_id", "client_id", "waypoint_id", "step", "kind", "outcome"] },

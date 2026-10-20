@@ -3603,7 +3603,7 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
 | Key | Meaning |
 |---|---|
 | `angle_name` | The script's title, word for word: the angle in `marketing/ads/NAMING.md`. Null when it has no title. |
-| `offer_word` | The word that starts the file name. Only `SLO` (the roadmap offer) is on file; any other offer is null, never a made-up word. |
+| `offer_word` | The canonical word that starts the file name: `SLO` for the roadmap offer and `Direct Book` for Funding, done-for-you. Any offer without an approved word stays null. |
 | `take_no` | The next take: the highest take number already used for this ad before the shoot started, plus the takes rolled on this shoot, plus 1. Used means a clip filed in `ad_videos`, or a take rolled on a closed shoot whose clip is not filed yet, so closing a shoot early never hands out the same name twice. |
 | `take_file_name` | `{offer_word} Ad {ad_id} — {angle_name} Take {take_no}.mp4`, the exact name the clip gets. Null when a part is missing; `take_name_problem` says which, in plain words. `src/ad-videos/merge-takes.mjs` `parseTakeName()` reads it back to the same four parts. |
 | `last_take_file_name` | The name of the take just rolled on this shoot, or null. |
@@ -3860,10 +3860,10 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
           "created_at": "2026-10-12T11:12:40.000Z",
           "updated_at": "2026-10-13T15:30:00.000Z",
           "angle_name": "Inquiries off first",
-          "offer_word": null,
+          "offer_word": "Direct Book",
           "take_no": 1,
-          "take_file_name": null,
-          "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+          "take_file_name": "Direct Book Ad 92 — Inquiries off first Take 1.mp4",
+          "take_name_problem": null,
           "last_take_file_name": null,
           "takes": 0,
           "got_it": false,
@@ -3952,10 +3952,10 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
         "created_at": "2026-10-12T11:12:40.000Z",
         "updated_at": "2026-10-13T15:30:00.000Z",
         "angle_name": "Inquiries off first",
-        "offer_word": null,
+        "offer_word": "Direct Book",
         "take_no": 1,
-        "take_file_name": null,
-        "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+        "take_file_name": "Direct Book Ad 92 — Inquiries off first Take 1.mp4",
+        "take_name_problem": null,
         "last_take_file_name": null,
         "takes": 0,
         "got_it": false,
@@ -4223,10 +4223,10 @@ Built by unit X5: `api/marketing/shoot.mjs`, `api/marketing/shoot/mark.mjs`, `sr
           "created_at": "2026-10-12T11:12:40.000Z",
           "updated_at": "2026-10-13T15:30:00.000Z",
           "angle_name": "Inquiries off first",
-          "offer_word": null,
+          "offer_word": "Direct Book",
           "take_no": 1,
-          "take_file_name": null,
-          "take_name_problem": "The Funding, done-for-you offer has no file-name word yet (like SLO for the roadmap), so the file name is unknown.",
+          "take_file_name": "Direct Book Ad 92 — Inquiries off first Take 1.mp4",
+          "take_name_problem": null,
           "last_take_file_name": null,
           "takes": 0,
           "got_it": false,

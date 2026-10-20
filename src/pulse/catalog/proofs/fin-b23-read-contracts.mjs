@@ -3,9 +3,9 @@
 // opens the real page (or calls the real handler) with fake data and judges the
 // exact rendered result, and that test was broken on purpose and went red.
 // The entries sit in the proved list of read-proof-cases.mjs; the matching red
-// entries were removed from READ_GAPS in gap-catalog-reads.mjs. Two rows stay
-// in READ_GAPS on purpose (present-send-lock, climate-map): their findings say
-// exactly what the product would have to change first.
+// entries were removed from READ_GAPS in gap-catalog-reads.mjs. The climate row
+// is measured separately by workflow H because it needs a shipped-page GET,
+// while the repaired Present send lock is now proved by its rendered test.
 
 import { sourceFileForReadSurface } from "../../coverage/gap-catalog-reads.mjs";
 
@@ -22,6 +22,9 @@ function proved(surface, control, testFile) {
 }
 
 export const FIN_B23_READ_PROVED = Object.freeze([
+  proved("present.html (+ present.js, contract-send.js)",
+    "Double-press guard on every send button ('Sending...', 4 second cooldown, 'Sent at' line, count of sends)",
+    "fin-b23-present-send-lock.test.mjs"),
   proved("campaign-manager.html",
     "Creative fatigue panel (CM-06: frequency, CTR, ROAS, recommendation, label)",
     "fin-b23-campaign-fatigue-label.test.mjs"),

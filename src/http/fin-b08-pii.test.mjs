@@ -2,15 +2,15 @@
 // a stand-in pii_identity and pii_access_log. The row's words: GET gives the masked identity (last
 // four) or the access history; POST reveal needs a reason and is access-logged; POST store keeps
 // the SSN encrypted; only owner, admin, inquiry specialist and funding advisor may call it.
-// Practice test, fake data, no network, no database. (The handler has no company check: that is a
-// product finding in the manifest, not something this test pins.)
+// Practice test, fake data, no network, no database. Every operation is also pinned to the
+// signed-in staff member's company before an identity row can be read or written.
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 
 import handler from "../../api/pii.mjs";
 import { decryptSsn } from "../pii/index.mjs";
-import { makeRes, req, runWithSharedDb, staffSession, accountSession, STAFF_ID, ORG_ID } from "../testing/handler-harness.mjs";
+import { makeRes, req, runWithSharedDb, staffSession, accountSession, STAFF_ID, ORG_ID, OTHER_ORG_ID } from "../testing/handler-harness.mjs";
 import { fakeDb } from "../testing/handler-harness.mjs";
 import { bindProblem } from "../testing/s3-scoped-rows.mjs";
 import { STAFF_ROLES } from "../pulse/catalog/proofs/s2-route-kit.mjs";
@@ -24,18 +24,22 @@ before(() => { process.env.PII_ENC_KEY = crypto.randomBytes(32).toString("base64
 after(() => { if (saved === undefined) delete process.env.PII_ENC_KEY; else process.env.PII_ENC_KEY = saved; });
 
 /** pii_identity and pii_access_log in memory; COALESCE and plain replace follow the statement's own SET list. */
-function piiTables({ identities = [], log = [], failLog = false } = {}) {
-  const state = { identities, log };
+function piiTables({ identities = [], log = [], failLog = false, clients = [{ id: CLIENT, org_id: ORG_ID }] } = {}) {
+  const state = { identities, log, clients };
   const fake = fakeDb([
-    [/^\s*SELECT id, org_id, client_id, ssn_enc, dob, addresses, created_at, updated_at\s+FROM pii_identity WHERE client_id = \$1/i,
-      (_s, p) => identities.filter((r) => r.client_id === p[0]).map((r) => ({ ...r }))],
-    [/^\s*SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = \$1/i,
-      (_s, p) => identities.filter((r) => r.client_id === p[0]).map((r) => ({ org_id: r.org_id, ssn_enc: r.ssn_enc }))],
+    [/^\s*SELECT 1 FROM clients WHERE id = \$1 AND org_id = \$2/i,
+      (_s, p) => clients.filter((r) => r.id === p[0] && r.org_id === p[1]).map(() => ({ "?column?": 1 }))],
+    [/^\s*SELECT id, org_id, client_id, ssn_enc, dob, addresses, created_at, updated_at\s+FROM pii_identity WHERE client_id = \$1(?: AND org_id = \$2)?/i,
+      (s, p) => identities.filter((r) => r.client_id === p[0] && (!/AND org_id = \$2/i.test(s) || r.org_id === p[1])).map((r) => ({ ...r }))],
+    [/^\s*SELECT org_id, ssn_enc FROM pii_identity WHERE client_id = \$1(?: AND org_id = \$2)?/i,
+      (s, p) => identities.filter((r) => r.client_id === p[0] && (!/AND org_id = \$2/i.test(s) || r.org_id === p[1])).map((r) => ({ org_id: r.org_id, ssn_enc: r.ssn_enc }))],
     [/^\s*INSERT INTO pii_access_log/i, (_s, p) => {
       if (failLog) return new Error("log table is read-only");
       log.push({ org_id: p[0], client_id: p[1], accessed_by: p[2], field: p[3], created_at: `2026-10-14T12:0${log.length}:00Z` });
       return { rows: [], rowCount: 1 };
     }],
+    [/^\s*SELECT id, accessed_by, field, created_at\s+FROM pii_access_log WHERE client_id = \$1 AND org_id = \$2\s+ORDER BY created_at DESC LIMIT \$3/i,
+      (_s, p) => log.filter((r) => r.client_id === p[0] && r.org_id === p[1]).slice().reverse().slice(0, p[2])],
     [/^\s*SELECT id, accessed_by, field, created_at\s+FROM pii_access_log WHERE client_id = \$1\s+ORDER BY created_at DESC LIMIT \$2/i,
       (_s, p) => log.filter((r) => r.client_id === p[0]).slice().reverse().slice(0, p[1])],
     [/^\s*INSERT INTO pii_identity \(org_id, client_id, ssn_enc, dob, addresses\)/i, (s, p) => {
@@ -48,6 +52,7 @@ function piiTables({ identities = [], log = [], failLog = false } = {}) {
         identities.push(row);
         return [{ ...row, ssn_enc: undefined }];
       }
+      if (/WHERE pii_identity\.org_id = EXCLUDED\.org_id/i.test(s) && existing.org_id !== org_id) return [];
       for (const [, col, body] of list.matchAll(/([a-z_]+)\s*=\s*([^,]+?(?:\([^)]*\))?)\s*(?:,|$)/gi)) {
         if (col === "updated_at") continue;
         if (/COALESCE\(EXCLUDED\./i.test(body)) existing[col] = incoming[col] ?? existing[col];
@@ -212,11 +217,32 @@ describe("/api/pii", () => {
     assert.equal(tables.find(/pii_identity|pii_access_log/).length, 0);
   });
 
-  test("a store with no company on the sign-in and none in the body is 400 and nothing is saved", async () => {
+  test("another company's client is a 404 for masked read, history, reveal and store, with no identity table touched", async () => {
+    const tables = piiTables({ identities: [identity()] });
+    const who = [staffSession({ role: "owner", org_id: OTHER_ORG_ID })];
+    const requests = [
+      req("GET", { query: { client_id: CLIENT } }),
+      req("GET", { query: { client_id: CLIENT, history: "1" } }),
+      req("POST", { body: { client_id: CLIENT, action: "reveal", reason: "Bureau call" } }),
+      req("POST", { body: { client_id: CLIENT, action: "store", ssn: SSN } }),
+    ];
+    for (const request of requests) {
+      const before = tables.calls.length;
+      const { res } = await call(request, tables, who);
+      assert.equal(res.statusCode, 404);
+      assert.equal(res.body.error, "not_found");
+      const calls = tables.calls.slice(before).map((c) => c.sql);
+      assert.equal(calls.some((sql) => /pii_identity|pii_access_log/.test(sql)), false);
+    }
+    assert.equal(tables.state.log.length, 0);
+    assert.equal(tables.state.identities.length, 1);
+  });
+
+  test("a sign-in with no company is 403 and nothing is saved", async () => {
     const tables = piiTables();
     const { res } = await call(req("POST", { body: { client_id: CLIENT, action: "store", ssn: SSN } }), tables, [staffSession({ role: "owner", org_id: null })]);
-    assert.equal(res.statusCode, 400);
-    assert.equal(res.body.error, "org_id is required");
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.error, "no_org_on_session");
     assert.equal(tables.state.identities.length, 0);
     assert.equal(tables.find(/INSERT INTO pii_identity/).length, 0);
   });

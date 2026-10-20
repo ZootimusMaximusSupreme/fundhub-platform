@@ -67,8 +67,7 @@ describe("the Shoot tab, pure", () => {
     const [one, two] = PAGE.shoot.scripts;
     assert.equal(T.rowName(one), "Ad 91 · Lenders read two files");
     assert.deepEqual(plain(T.fileLine(one)), { ok: true, text: "SLO Ad 91 — Lenders read two files Take 3.mp4" });
-    assert.equal(T.fileLine(two).ok, false);
-    assert.match(T.fileLine(two).text, /^File name unknown: The Funding, done-for-you offer has no file-name word yet/);
+    assert.deepEqual(plain(T.fileLine(two)), { ok: true, text: "Direct Book Ad 92 — Inquiries off first Take 1.mp4" });
     assert.deepEqual(plain(T.chipsFor(one)), [{ cls: "on", word: "Got it" }]);
     assert.deepEqual(plain(T.chipsFor({ takes: 1, needs_retake: true })), [{ cls: "wip", word: "1 take" }, { cls: "wip", word: "Retake" }]);
     assert.deepEqual(plain(T.chipsFor({ first_line_only: true, needs_retake: true })), [{ cls: "wip", word: "First line only" }]);

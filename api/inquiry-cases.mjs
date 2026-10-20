@@ -6,7 +6,7 @@ import { requireAuth } from "../src/http/middleware/requireAuth.mjs";
 import { ROLE_SETS, requireRole, isUuid } from "../src/http/read-api.mjs";
 import { createCase, updateCase, closeCase, CASE_STATUSES } from "../src/inquiry-ops/cases.mjs";
 import { generateFromCrs } from "../src/inquiry-ops/generate-from-crs.mjs";
-import { clearInquiry as clearBridgeInquiry } from "../src/inquiry-removal/cases.mjs";
+import { clearInquiry as clearBridgeInquiry, InquiryCaseError } from "../src/inquiry-removal/cases.mjs";
 import { sendCase, SendGateError } from "../src/inquiry-ops/send.mjs";
 import { overrideBureauGate } from "../src/inquiry-ops/gate.mjs";
 import {
@@ -62,7 +62,8 @@ export default async function handler(req, res, deps = {}) {
       }
       const result = await clearBridgeInquiry(database, {
         inquiryId,
-        staffId: staff.id
+        staffId: staff.id,
+        orgId
       });
       if (result.caseCleared && result.caseRow) {
         // emit() is emit(db, name, payload, opts) — src/events/bus.mjs. This call
@@ -288,6 +289,13 @@ export default async function handler(req, res, deps = {}) {
 
     return res.status(200).json({ ok: true, case: c, event });
   } catch (err) {
+    if (err instanceof InquiryCaseError) {
+      return res.status(err.status || 400).json({
+        ok: false,
+        error: err.status === 404 ? "not_found" : "bad_request",
+        message: err.message,
+      });
+    }
     if (dbDown(res, err)) return;
     throw err;
   }

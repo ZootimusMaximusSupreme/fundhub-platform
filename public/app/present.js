@@ -1238,7 +1238,7 @@
           + (sp.pull_status_source === "crs_result" ? " (from the stored result)" : "") + "</div>";
         if (sp.outcome_tier) html += "<div>tier: " + esc(sp.outcome_tier) + "</div>";
         html += '</div><div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">';
-        html += ckBtn("Send soft pull ($32 + approval form)", "softpull", true);
+        html += sendBtn("Send soft pull ($32 + approval form)", "softpull", true);
         html += '</div><div style="font-size:10px;color:var(--gray2);margin-top:5px">Catalog price $32. Live prove may use $1. Stay on the Meet.</div></div>';
 
       }
@@ -1751,13 +1751,14 @@
        endpoint now answers with `delivered` and, when it is false, the reason,
        so the screen says what actually happened. */
     if (action === "generate_letters") {
-      var ok = r.delivered === true;
+      var payload = r.data || {};
+      var ok = payload.delivered === true;
       if (act) markSent(act, ok);
       if (ok) {
-        var n = r.documentsStored || r.letterCount || 0;
+        var n = payload.documentsStored || payload.letterCount || 0;
         toast((state.edu ? "Deliverables sent. " : "Letters sent. ") + n + " document(s) saved to the client portal.");
       } else {
-        toast("Nothing was sent — " + (r.reason || "the pack came out empty") + ".");
+        toast("Nothing was sent — " + (payload.reason || "the pack came out empty") + ".");
       }
       return;
     }

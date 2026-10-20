@@ -121,8 +121,10 @@ function buildHumanNode(row) {
 function buildAgentNode(row) {
   const cluster = clusterForAgent(row.agent_class);
   const live = row.status === "live";
-  const state = live ? "active" : "idle";
-  const out = Number(row.sort_order || 0) > 0 ? 3 : 1;
+  const out = Number(row.runs_today || 0);
+  const recent = Number(row.runs_15m || 0) > 0;
+  const blocked = Number(row.blocked_15m || 0) > 0;
+  const state = blocked ? "blocked" : (recent ? "active" : "idle");
   return {
     id: `agent:${row.code}`,
     c: cluster,
@@ -131,11 +133,12 @@ function buildAgentNode(row) {
     role: row.channel ? String(row.channel).replace(/_/g, " ") : "Agent",
     kind: "agent",
     state,
-    tempo: live ? 0.5 : 0.2,
+    tempo: state === "active" ? 0.5 : 0.2,
     out,
-    pace: live ? 1 : null,
+    pace: null,
     unit: "runs",
-    act: live ? "Runtime live" : (row.status || "idle"),
+    act: blocked ? "Guardrail blocked a recent run"
+      : (recent ? "Runtime active" : (live ? "Live · no run in 15 minutes" : (row.status || "idle"))),
     pool: ROLE_POOL[cluster] || ROLE_POOL.ops,
     shift: row.went_live_at ? fmtTime(row.went_live_at) : "—",
     on: live && row.went_live_at
@@ -145,10 +148,12 @@ function buildAgentNode(row) {
       ["Status", String(row.status || "—")],
       ["Class", String(row.agent_class || "—")],
       ["Channel", String(row.channel || "—")],
-      ["Runtime", String(row.runtime || "—")]
+      ["Runtime", String(row.runtime || "—")],
+      ["Runs today", String(out)],
+      ["Runs in 15 minutes", String(Number(row.runs_15m || 0))]
     ],
     files: [],
-    tl: [["—", live ? "Agent is live" : "Agent not live"]],
+    tl: [["—", blocked ? "Recent run blocked by guardrails" : (live ? "Agent is live" : "Agent not live")]],
     is_demo: false
   };
 }
@@ -242,12 +247,22 @@ export async function companyActivity(db, { orgId } = {}) {
   }
 
   const agentsRes = await db.query(
-    `SELECT code, name, agent_class, channel, status, runtime, went_live_at, sort_order
-       FROM agents
-      WHERE org_id = $1
-        AND status IN ('live', 'shadow')
-        AND (retired_at IS NULL)
-      ORDER BY sort_order, code
+    `SELECT a.code, a.name, a.agent_class, a.channel, a.status, a.runtime, a.went_live_at, a.sort_order,
+            (SELECT count(*)::int FROM agent_runs r
+              WHERE r.org_id = a.org_id AND r.agent_code = a.code
+                AND r.created_at >= date_trunc('day', now())) AS runs_today,
+            (SELECT count(*)::int FROM agent_runs r
+              WHERE r.org_id = a.org_id AND r.agent_code = a.code
+                AND r.created_at >= now() - interval '15 minutes') AS runs_15m,
+            (SELECT count(*)::int FROM agent_shadow_log l
+              WHERE l.org_id = a.org_id AND l.agent_code = a.code
+                AND l.created_at >= now() - interval '15 minutes'
+                AND l.reason IN ('guardrail_halt', 'guardrail_block')) AS blocked_15m
+       FROM agents a
+      WHERE a.org_id = $1
+        AND a.status IN ('live', 'shadow')
+        AND (a.retired_at IS NULL)
+      ORDER BY a.sort_order, a.code
       LIMIT 40`,
     [orgId]
   );

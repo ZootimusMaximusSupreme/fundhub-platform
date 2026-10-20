@@ -196,11 +196,11 @@ test("the lane: the day a control is back its row is red and the claim no longer
   assert.equal(await naVerify[OWNER_REMOVED_CODE](undefined, { fetchImpl: shippedSite() }), false);
 });
 
-test("the lane: the Settings sheet and the This shoot list stay NOT_PROVED, whatever the live files say", async () => {
+test("the lane: the now-wired Settings sheet and This shoot proofs no longer appear as open rows", async () => {
   const rows = await gapChecks({ fetchImpl: shippedSite() });
   for (const control of [SETTINGS, THIS_SHOOT]) {
     const row = rows.find((r) => r.id === `catalog-display:desks-f.json:${SURFACE}:${control}`);
-    assert.equal(row.status, "NOT_PROVED", control);
+    assert.equal(row, undefined, control);
   }
 });
 

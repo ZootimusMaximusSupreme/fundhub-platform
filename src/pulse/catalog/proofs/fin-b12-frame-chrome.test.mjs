@@ -77,10 +77,10 @@ test("the back link goes to the client's portal for a client and to Finance OS f
 test("the tab bar has 16 tabs, arrow keys and Home and End move along it, and #hash opens a tab", { timeout: 90_000 }, async (t) => {
   const { open } = await startScreens(t);
   await proof.check(/^Tab bar: 16 tabs/, async () => {
-    const WORDS = ["Overview", "Next steps", "Money helper", "Money moves", "Plan", "Banks", "Strategy", "Fundability",
-      "Applications", "Alerts", "Funding papers", "Accounts", "Credit", "Connections", "Payments", "Setup"];
-    const KEYS = ["overview", "next", "helper", "transfers", "plan", "banks", "strategy", "fundability",
-      "declines", "alerts", "vault", "accounts", "credit", "connections", "payments", "setup"];
+    const WORDS = ["Overview", "Accounts", "Payments", "Money moves", "Alerts", "Next steps", "Credit", "Fundability",
+      "Strategy", "Banks", "Applications", "Money helper", "Plan", "Funding papers", "Connections", "Setup"];
+    const KEYS = ["overview", "accounts", "payments", "transfers", "alerts", "next", "credit", "fundability",
+      "strategy", "banks", "declines", "helper", "plan", "vault", "connections", "setup"];
     const { page } = await open(`/app/financeos.html?client_id=${CLIENT_ID}`, { session: STAFF, handlers: {} });
     await page.waitForSelector(".fos-tabs [role=tab]");
     const tabs = page.locator(".fos-tabs [role=tab]");

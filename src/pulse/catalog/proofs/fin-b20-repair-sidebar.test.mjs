@@ -91,18 +91,21 @@ async function settle(page) {
 async function foldAndUnfold(page, key, label) {
   const group = page.locator(`#side .navgroup[data-fh-section="${key}"]`);
   const head = group.locator(".navhead").first();
-  const first = group.locator("a.navitem:not([data-fh-gated])").first();      // a row this role is shown
-  const linksShown = async (expected, note) => {
-    await until(async () => (await first.isVisible()) === expected, { message: `${label}: ${note}`, timeout: 4000 });
+  const list = group.locator(".navlist").first();
+  const panelShown = async (expected, note) => {
+    await until(async () => (await list.evaluate((el) => getComputedStyle(el).display !== "none")) === expected, { message: `${label}: ${note}`, timeout: 4000 });
   };
   const startedClosed = await group.evaluate((el) => el.classList.contains("closed"));
-  await linksShown(!startedClosed, "its links match the starting state");
+  assert.equal(await head.getAttribute("aria-expanded"), String(!startedClosed), `${label}: its accessibility state matches the starting state`);
+  await panelShown(!startedClosed, "its panel matches the starting state");
   await head.click();
   assert.equal(await group.evaluate((el) => el.classList.contains("closed")), !startedClosed, `${label}: a click flips it`);
-  await linksShown(startedClosed, "its links follow the fold");
+  assert.equal(await head.getAttribute("aria-expanded"), String(startedClosed), `${label}: its accessibility state follows the fold`);
+  await panelShown(startedClosed, "its panel follows the fold");
   await head.click();
   assert.equal(await group.evaluate((el) => el.classList.contains("closed")), startedClosed, `${label}: a second click restores it`);
-  await linksShown(!startedClosed, "its links follow the fold back");
+  assert.equal(await head.getAttribute("aria-expanded"), String(!startedClosed), `${label}: its accessibility state follows the fold back`);
+  await panelShown(!startedClosed, "its panel follows the fold back");
 }
 
 const visibleHeads = (page) => page.evaluate(() => [...document.querySelectorAll("#side .navgroup")]
@@ -116,8 +119,8 @@ test("section heads: with the hidden menu rows shown, all nine heads are there a
   await owner.goto(`${lab.origin}/app/pipeline.html`, { waitUntil: "domcontentloaded" });
   await settle(owner);
   const ownerHeads = await visibleHeads(owner);
-  assert.deepEqual(ownerHeads, ["sales", "funding", "client-ops", "watch", "automation", "marketing", "admin", "portals"],
-    "everything but Home, which is a partner's: Watch and Automation are there once their rows are shown");
+  assert.deepEqual(ownerHeads, ["work", "clients", "insights", "marketing", "automation", "settings"],
+    "all six current groups are present once the deliberately hidden rows are shown");
   for (const key of ownerHeads) { await foldAndUnfold(owner, key, `owner ${key}`); seen.add(key); }
   await owner.close();
 
@@ -126,11 +129,11 @@ test("section heads: with the hidden menu rows shown, all nine heads are there a
   await partner.goto(`${lab.origin}/app/brand-studio.html`, { waitUntil: "domcontentloaded" });
   await settle(partner);
   const partnerHeads = await visibleHeads(partner);
-  assert.ok(partnerHeads.includes("home"), "a partner is shown the Home head");
+  assert.deepEqual(partnerHeads, ["insights", "marketing", "settings"], "a partner's Home, marketing tools and Brand Studio stay in their current groups");
   for (const key of partnerHeads) { await foldAndUnfold(partner, key, `partner ${key}`); seen.add(key); }
   await partner.close();
 
-  assert.deepEqual([...seen].sort(), ["admin", "automation", "client-ops", "funding", "home", "marketing", "portals", "sales", "watch"], "all nine heads were folded");
+  assert.deepEqual([...seen].sort(), ["automation", "clients", "insights", "marketing", "settings", "work"], "all six current heads were folded");
 });
 
 test("section heads: in the phone drawer a head folds its links and brings them back", { timeout: 120_000 }, async () => {
@@ -139,7 +142,7 @@ test("section heads: in the phone drawer a head folds its links and brings them 
   await settle(page);
   await page.locator("#fh-menu-btn").click();
   assert.equal(await page.locator("#side").evaluate((el) => el.classList.contains("open")), true, "the drawer is open");
-  for (const key of ["funding", "client-ops", "sales"]) await foldAndUnfold(page, key, `phone ${key}`);
+  for (const key of ["work", "clients", "insights"]) await foldAndUnfold(page, key, `phone ${key}`);
   assert.equal(await page.locator("#side").evaluate((el) => el.classList.contains("open")), true, "folding a head does not close the drawer");
   await page.close();
 });
