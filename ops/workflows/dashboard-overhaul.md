@@ -1,5 +1,36 @@
 # Dashboard UX finish — 2026-10-19
 
+## Astra one-page comparison — 2026-10-20
+
+Owner request: redo one page using GPT-6 Astra extra-high, then show the comparison before any go-live choice. Approved with GO; no repeated split gate. This is a separate draft, not a replacement for the current live CRM.
+
+| Lane | Owner | Exact scope | Dependency |
+| --- | --- | --- | --- |
+| A | Astra xhigh agent | Team & Access alternative only, inside `ops/workflows/dashboard-ux-polish/astra-comparison/` | Existing page and shared brand contract |
+| B | Root (this session) | Same-data baseline, safe local preview, desktop/phone comparison and independent UI review | Baseline runs alongside A; final comparison waits for A |
+
+Isolated checkout: `/private/tmp/fundhub-astra-comparison.t8PMKZ`, branch `codex/astra-team-access-comparison`. Primary dirty iOS checkout and pending polish release remain untouched.
+
+Progress: baseline captured at 1440 and 390 using 27 fictional staff. Both widths passed role/email filters, person drawer, cancel, permissions and clock tabs, and telemetry picker/refresh; no browser errors or sideways page scroll. Original loading presentation shows an empty roster rather than a loading panel; this stays an observed baseline limitation. Latest owner says to show the comparison first, so the prior polish release is held with its fixes preserved. No merge or production change has been made.
+
+### Seven-part build plan
+
+1. Role: signed-in Fundhub owner.
+2. One job: manage the team and see who can access what.
+3. First question: who is on the team, and what can they reach?
+4. Reuse: existing `public/app/staff-teams.html`, shared shell/sidebar, official wordmark/F mark, Nunito and pastel spectrum, existing roster/editor/permission/clock behavior.
+5. Data: existing page endpoints only; preview uses clearly labeled fictional fixture data and local in-memory actions. No production reads containing customer data or writes.
+6. Files: agent owns `astra-comparison/team-access.html`, `team-access.css`, and `design-notes.md`; root owns `preview-server.mjs`, `fixtures.mjs`, `capture.mjs`, `comparison.html`, `review.md`, and `evidence/` in that same folder, plus this board. No production page, route, database, shared style, or dependency edits.
+7. Risk/proof: preserve IDs, permissions and action semantics; compare identical data at 1440 and 390, capture full/empty/loading/error, check controls against local fake APIs. Root grades independently. Preview is not production-readiness or live workflow proof.
+
+### A — self-contained prompt
+
+Work in `/private/tmp/fundhub-astra-comparison.t8PMKZ` only. Create one separate Team & Access redesign for owner comparison using GPT-6 Astra with xhigh reasoning. Read the Fundhub builder skill at `/Users/chrisstanbridge/Developer/fundhub-platform/.agents/skills/fundhub-builder/SKILL.md`, repo CLAUDE.md section 0, `docs/rules/UI-STANDARDS.md`, `docs/rules/PERF-STANDARDS.md`, `public/app/fundhub-brand.css`, owner-scope rule, current owner intended journey, and current `public/app/staff-teams.html`. Keep the clean professional CRM (not iOS/glass), official branding and controls. Copy the page into `ops/workflows/dashboard-ux-polish/astra-comparison/team-access.html`, preserve endpoint/auth/permission semantics and JS IDs, and make a materially better layout with short copy. Put new styles in `team-access.css` at that path; load it via `/__comparison/team-access.css`. Relative original app assets must work when served at `/app/staff-teams.html?variant=astra`. Own only those two files and `design-notes.md`. Preserve all current behaviors and four states; no invented product capabilities. No new dependencies, real staff/customer writes, deployment, commits, or shared app edits. Root owns the fixture server and audit. Report ready paths and changes quickly; root needs a visible draft now, not a full product redesign.
+
+### B — self-contained prompt
+
+Work in `/private/tmp/fundhub-astra-comparison.t8PMKZ`. Keep live unchanged. Capture the original Team & Access page and the Astra alternative using identical clearly fictional team fixtures and a local-only server. Root owns preview/capture/fixtures/comparison/review files in `ops/workflows/dashboard-ux-polish/astra-comparison/`. Read UI audit skill and standards. Compare 1440/390 layouts and state behavior; keep review evidence marked with exact red callouts. Show the concrete draft comparison beside the chat. Do not change the Astra implementation while auditing it. Save results and limitations on this board. No production writes, deployment or unrelated repairs.
+
 ## Owner feedback
 
 Keep the clean professional CRM. Check all pages and Kanban. Cut excess explanation on social/marketing screens. Apply the brand pastel rainbow beneath the sidebar wordmark. Show the small Fundhub F mark by Calendar and use the brand mark for the logged-in menu control.
