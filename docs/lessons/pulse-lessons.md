@@ -28,10 +28,10 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 ## 2026-10-20 — engine-alive — config_or_env
 - Cause: the Inngest account is on the Free plan (50,000 runs a month). It passed the limit on 2026-10-13 (email "You've reached your monthly execution limit", 51,228 of 50,000). Inngest kept going for a week, then stopped calling /api/inngest at 6:20:07 p.m. Arizona on 2026-10-20 (01:20:07 UTC). Every timed and event job stopped, with no backlog. No deploy happened at 6:20; the 6:38 p.m. ship re-registered fine and did not help. Our logs show no error: Inngest just stopped calling.
 - Biggest user: `commas-inbox-drain` runs every minute on Inngest (1,440 runs a day, about 43,000 a month alone). All Inngest jobs together ran about 3,300 times a day, about 100,000 a month.
-- Fix: not code: Chris upgrades the Inngest plan at https://app.inngest.com/billing, or the jobs wait for the reset on 2026-11-01.
+- Fix: not code: Chris upgrades the Inngest plan at https://app.inngest.com/billing (owner-set 2026-10-20: we will upgrade).
 - Guard added: the engine-alive fix guide now names the plan limit first and says to search Gmail for Inngest usage mail. The usage emails (81%, 87%, 102%, limit reached) went to stanbridgejchris@gmail.com and nobody acted on them.
 - Restart: Inngest started calling again at 7:24 p.m. Arizona with a catch-up burst. Nothing on our side caused it (no deploy, no sync). Whatever Inngest changed on the account at 7:24 is the reason; on Free it can stop again until 2026-11-01. A small burst at 6:52 p.m. also came and went.
-- Also seen: Inngest locked the login at 6:45 p.m. after 5 failed sign-ins (email "Your account has been locked", unlocked 7:45 p.m.). Not from this fix session.
+- Also seen: Inngest locked the login at 6:45 p.m. after 5 failed sign-ins (email "Your account has been locked", unlocked 7:45 p.m.). That was Chris; nothing was wrong with the account.
 - Incident: not closed from here (no pulse_incidents write in this session).  PR: see git log
 
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
