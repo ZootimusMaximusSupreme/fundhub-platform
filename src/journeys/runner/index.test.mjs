@@ -195,8 +195,10 @@ import { isSyntheticRow } from "./synthetic.mjs";
    invoice-checkout-retirement-sweeper retires stale Commas links, and
    invoice-sent-recovery restores a missing first-notice event handoff.
    Both are cron-only, so the journey report names them as scheduled rather
-   than pretending a synthetic customer walk fired either one. */
-const REGISTERED = 104;
+   than pretending a synthetic customer walk fired either one.
+   Moved 104 -> 105 the same day with cortana-payment-feed, a 5-minute clock
+   that sends paid steps to Cortana; cron-only, so it stays in neverFired. */
+const REGISTERED = 105;
 
 const N = (id, type, cfg = {}, branches) => ({ id, type, title: id, cfg, touches: [], branches });
 const cond = (id, lanes) => N(id, "condition", { field: "f", op: "is true" }, lanes);

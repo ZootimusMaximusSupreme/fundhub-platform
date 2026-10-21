@@ -119,6 +119,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "inquiry-call-sweeper",
   "invoice-checkout-retirement-sweeper",
   "invoice-sent-recovery",
+  "cortana-payment-feed",
   "meet-transcript-sweeper",
   "message-dispatch-sweeper",
   "meta-campaign-sync-sweeper",

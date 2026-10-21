@@ -18,6 +18,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-blueprint-delivery.mjs", () => import("./beat-blueprint-delivery.mjs")],
   ["beat-brief-link.mjs", () => import("./beat-brief-link.mjs")],
   ["beat-checkout-doors.mjs", () => import("./beat-checkout-doors.mjs")],
+  ["beat-cortana-feed.mjs", () => import("./beat-cortana-feed.mjs")],
   ["beat-db-health.mjs", () => import("./beat-db-health.mjs")],
   ["beat-doors-live.mjs", () => import("./beat-doors-live.mjs")],
   ["beat-email-path.mjs", () => import("./beat-email-path.mjs")],

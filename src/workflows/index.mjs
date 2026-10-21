@@ -18,6 +18,7 @@ import { messageDispatchSweeper } from './message-dispatch-sweeper.mjs';
 import { commasInboxDrain } from './commas-inbox-drain.mjs';
 import { invoiceCheckoutRetirementSweeper } from './invoice-checkout-retirement-sweeper.mjs';
 import { invoiceSentRecovery } from './invoice-sent-recovery.mjs';
+import { cortanaPaymentFeed } from './cortana-payment-feed.mjs';
 import { whopBillingInboxDrain } from './whop-billing-inbox-drain.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
@@ -297,6 +298,10 @@ export const functions = [
   paidCheckoutExpirySweeper,
   invoiceCheckoutRetirementSweeper,
   invoiceSentRecovery,
+  /* CORTANA PAYMENT FEED. Every paid Commas or Whop row, weighted into
+     Cortana's Soft Pull, New Deals Closed and All Payments (LTV) buckets
+     (owner ask 2026-10-20). Writes an ad-tracking record only; moves no money. */
+  cortanaPaymentFeed,
   pulseInstantWatch,
 
   /* THE AFFILIATE PAYOUT RUN. Registered 2026-09-21, and it closes the second

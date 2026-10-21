@@ -36,6 +36,7 @@ export const INNGEST_JOBS = Object.freeze([
   ["inquiry-call-sweeper", "*/15 * * * *"],
   ["invoice-checkout-retirement-sweeper", "*/30 * * * *"],
   ["invoice-sent-recovery", "*/30 * * * *"],
+  ["cortana-payment-feed", "*/5 * * * *"],
   ["meet-transcript-sweeper", "*/10 * * * *"],
   ["merchant-pull-sweeper", "30 7 * * *"],
   ["message-dispatch-sweeper", "*/5 * * * *"],

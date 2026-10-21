@@ -132,6 +132,24 @@ The shared tracker on the parent page listens for `message` events from origin `
 
 `booking_confirmed` (and Meta Schedule later) fire only when ClickFunnels has **accepted** the booking — never on the Book press alone (a Book press with a bad phone is refused by ClickFunnels). The /funding-book-call footer block stamps `fh_booking_v1.submittedAt` at that same moment, so the existing listeners on /apply and /roadmap-book keep working.
 
+## Cortana payment feed (2026-10-20)
+
+Owner ask: Cortana weighs the funnel. The soft pull is a light step, not a purchase; then the first purchase; then every later payment is lifetime value.
+
+| Paid row in `transactions` | Cortana conversion | Revenue column |
+|---|---|---|
+| $32 soft pull (`product` `crs` or offer `SOFT_PULL`) | Soft Pull | New Revenue |
+| A client's first paid row that is not the soft pull (Blueprint, repair, repair trial, funding done-for-you, any mix) | New Deals Closed | New Revenue |
+| Every paid row, soft pull included (funding fee per round, repair for the next round, $1,000 auto-checkout, end-of-Blueprint deposit and fee) | All Payments (LTV) | LTV |
+
+- Sender: `src/workflows/cortana-payment-feed.mjs` (every 5 minutes) through `src/messaging/providers/cortana-webhook.mjs`. Commas and Whop both write paid rows to `transactions`, so Blueprint money on Whop is included without connecting Whop inside Cortana.
+- Each conversion has one "Fundhub server - …" Webhook source in Cortana. URLs: `CORTANA_WEBHOOK_SOFT_PULL_URL`, `CORTANA_WEBHOOK_FIRST_PURCHASE_URL`, `CORTANA_WEBHOOK_ALL_PAYMENTS_URL`. Switch: `CORTANA_FEED_ENABLED=1`.
+- Fields mapped in Cortana: name, email, phone, value (Revenue), utm_source, utm_campaign, utm_medium, utm_content (UTM Ad), utm_ad_id, fbclid, gclid, conversion_date.
+- Dedupe: Cortana's webhook has no event id. `cortana_feed_sends` (unique payment + bucket) is claimed before each post; a failed post is retried by the next run.
+- Skipped: demo rows, failed charges, company and test emails, and anything paid before 2026-10-20 (Arizona).
+- Watch: heartbeat job `cortana-payment-feed`, deep check `ads:cortana-payment-feed`, hourly beat `cortana-feed` — red when a paid row older than 30 minutes is not in Cortana.
+- Cortana's native Commas sources ("First Commas (Fanbasis) Purchase" and "Commas (Fanbasis) Payments") are switched off once this ships, so a payment is counted once.
+
 ## Clarity
 
 `public/js/clarity.js` (project `tscu15s674`) loads on every page in the inventory. The shared tracker also sends `click` labels to Clarity as custom events, as today.

@@ -156,6 +156,7 @@ inquiry
 inquiry-call-sweeper
 invoice-checkout-retirement-sweeper — 30-minute heartbeat plus fee checkout retirement hourly beat and deep gap
 invoice-sent-recovery — 30-minute heartbeat plus first-notice hourly beat and deep gap
+cortana-payment-feed — 5-minute heartbeat plus paid-payment-in-Cortana hourly beat and deep gap
 inquiry-cases
 inquiry-remover.html
 marketing-command-center.html
