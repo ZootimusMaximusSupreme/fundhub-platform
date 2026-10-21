@@ -86,7 +86,7 @@ describe("the map and the allow-lists are the spec's tables", () => {
       cells[0].replace(/`/g, ""),
       [...cells[2].matchAll(/`([a-z_]+)`/g)].map((m) => m[1]).sort()
     ]));
-    assert.equal(Object.keys(fromSpec).length, 24);
+    assert.equal(Object.keys(fromSpec).length, 25);
     const fromCode = Object.fromEntries(
       Object.entries(TRACK_EVENTS).map(([e, props]) => [e, Object.keys(props).sort()]));
     assert.deepEqual(fromCode, fromSpec);
@@ -189,6 +189,23 @@ describe("one track event → one events row", () => {
     await send(h, { event: "click", seq: 4, props: { label: "cta:pay-297" } });
     assert.deepEqual(h.rows.map((r) => r.name), ["funnel.click", "funnel.click"]);
     assert.deepEqual(h.rows.map((r) => r.opts.idempotencyKey), [`funnel-track:${SID}:3`, `funnel-track:${SID}:4`]);
+  });
+
+  test("app_download_tap is funnel.app_download_tap on /thank-you: each press is a row, no prop is kept", async () => {
+    const h = harness();
+    // What a hand-made post could carry: nothing here may reach the row.
+    const props = { href_path: "/join/AbC123xyz", label: "download-for-iphone", store: "testflight", email: "visitor@example.com" };
+    const first = await send(h, { event: "app_download_tap", page: "/thank-you", seq: 8, props });
+    const second = await send(h, { event: "app_download_tap", page: "/thank-you", seq: 9, props });
+    const retry = await send(h, { event: "app_download_tap", page: "/thank-you", seq: 9, props });
+    assert.deepEqual([first.saved, second.saved, retry.saved], [true, true, false]);
+    assert.deepEqual(h.rows.map((r) => r.name), ["funnel.app_download_tap", "funnel.app_download_tap"]);
+    assert.deepEqual(h.rows.map((r) => r.opts.idempotencyKey), [`funnel-track:${SID}:8`, `funnel-track:${SID}:9`]);
+    for (const row of h.rows) {
+      assert.deepEqual(row.payload.props, {});
+      assert.deepEqual([row.payload.page, row.payload.funnel, row.payload.step], ["/thank-you", "watch", 4]);
+    }
+    assert.deepEqual(cleanProps("app_download_tap", props), {});
   });
 
   test("every other event is funnel.<event>", () => {
