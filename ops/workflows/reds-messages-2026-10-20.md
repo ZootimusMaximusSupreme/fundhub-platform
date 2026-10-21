@@ -17,7 +17,7 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 4 | `msg:per-template-path` | C, fixed in this PR | GREEN with PR | Same two bounces were the only email in 7 days. Same fix. |
 | 5 | `handoff:lead-first-touches-missing` | A + B | red until delete | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored by seed 299 in this PR. The red row itself is fake lead FH-000843 → delete. |
 | 6 | `consent:dispute-required` | Needs Chris | red | The 1 row is Braum (FH-000507): repair program active since 10-05, no signed agreement of any kind, no consent row. Braum is no-contact / no-change. |
-| 7 | `calls:booked-no-join-link` | A fixed by Set A + B | red until delete + 1 new booking | Set A (PR #97, live) saves the Google Meet link on new bookings. The 5 newest "real" bookings it reads are fake (Aug test bookings + FH-000567). 24 of 26 fake booking events have no client id, so a client-only delete misses them. |
+| 7 | `calls:booked-no-join-link` | C, fixed in this PR | GREEN with PR | Set A (PR #97, live) saves the Google Meet link on new bookings. The check still judged old bookings, which can never carry a link (19 August ClickFunnels bookings with real-looking emails stay; the delete session kept them). Owner: "Old bookings do not matter. Only new bookings." The feed now counts from the fix's ship (2026-10-21 01:38 UTC); a call ahead with no link is still red. Live: PASS. |
 | 8 | Closer desk: Send contract button | fixed by Set A | GREEN | Migration 493 (PR #97) put the real Funding and Credit Repair agreement words live. 12 wordings, 0 bad. |
 | 9 | Closer desk: Contract panel blanks | fixed by Set A | GREEN | Demo client contract no longer counted. 0 results, quiet. |
 | 10 | Closer desk: Contract panel Send | fixed by Set A | GREEN | Same. |
@@ -34,7 +34,9 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 21 | Social Studio: Queue it | B | red until delete | Queued row `60735863-198a-402e-9cf7-5204bef5c93f` of "DEMO Partner — Northlight Capital" (marked demo). |
 | 22 | Social Studio: Approve it | B | red until delete | Post `ca70eef7-d5e4-431f-b61b-309240342b03`, one of 10 test posts made 2026-10-12 18:12 UTC for test partners clean/blocked/croa/unscreened/hold/holddue/holdgate/nohold/publish/failing. |
 
-Count: 11 green now · 4 green with this PR (3, 4, 16, 19) · 6 clear with the fake-data delete (5, 7, 17, 18, 21, 22) · 1 Needs Chris (6).
+Count: 11 green now · 5 green with this PR (3, 4, 7, 16, 19) · 5 wait on the fake-data delete (5, 17, 18, 21, 22) · 1 Needs Chris (6).
+
+Delete status (session `delete-fake-data`, PR #101): FH-000843 is HELD as one of 21 real-looking clients waiting on Chris (ids 5, 17, 18 wait on that answer). Social rows (21, 22) are outside its brief; asked the coordinator for Chris's yes/no.
 
 ## Needs Chris: delete fake data (rows behind my reds)
 
@@ -64,6 +66,7 @@ Owner said yes (2026-10-20). Handed to session `delete-fake-data`. Do NOT delete
 - `src/pulse/coverage/gap-msg.test.mjs`, `gap-msg.pg.test.mjs`: tests both ways.
 - `db/seed/299_restore_lead_chase_templates_2026_10_20.sql`: restores 7 templates, insert-if-missing, Fundhub only.
 - `src/messaging/restore-lead-chase-templates.test.mjs`, `.pg.test.mjs`: byte-for-byte and database tests.
+- `src/pulse/coverage/gap-calls.mjs`: `JOIN_FEED_SINCE`; the feed question counts bookings from the link fix's ship. `gap-calls.test.mjs`: tests both ways.
 - `src/pulse/catalog/generated.json`, `src/pulse/catalog/proofs/fin-b22-sql-template-keys.json`: regenerated.
 - `docs/lessons/pulse-lessons.md`: 3 entries.
 - No route, job, page, money rule or journey changed.

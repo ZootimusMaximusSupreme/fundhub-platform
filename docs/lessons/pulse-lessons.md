@@ -25,6 +25,11 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — calls:booked-no-join-link — pulse_false_alarm
+- Cause: the check judged the 5 newest bookings at any age. Nothing kept a join link before 2026-10-21 01:38 UTC (ship d1de88a1), so every older booking can never have one, and the check stayed red with no new booking to judge. Owner: "Old bookings do not matter. Only new bookings."
+- Fix: the feed question counts bookings only from that moment (`JOIN_FEED_SINCE`). The "call still ahead with no link" question is not cut, so the first new booking with no link is red 10 minutes after it lands.
+- Guard added: `src/pulse/coverage/gap-calls.test.mjs` (old bookings say nothing; 3+ new ones with no link still red; a call ahead is never hidden).
+
 ## 2026-10-20 — email:provider-fail, msg:per-template-path — pulse_false_alarm
 - Cause: the App Store review login (FH-000844, client@fundhub.ai) asked for sign-in links. That mailbox does not exist, so Resend blocked both emails as bounces. The message checks did not know it was a test login, so they read it as "email is not reaching people".
 - Fix: the message checks leave out the one client with the review login's fixed key (FDH-TEST-CLIENT-ROLE-ACCOUNT), the same way they leave out demo clients. A customer's bounce still counts.
