@@ -1,4 +1,5 @@
 import jobs from "../../../ops/workflows/coverage-every-surface-2026-10-10/jobs.json" with { type: "json" };
+import { parkRow, parksRow } from "../parked-features.mjs";
 
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.test\.mjs\b/g;
 const FAILED = new Set([
@@ -235,8 +236,18 @@ function databaseRunner(ctx) {
   return typeof ctx?.run === "function" ? ctx.run : null;
 }
 
+/* Owner answer B6 (2026-10-20): AI bureau calling is a future feature. Its job row keeps
+   its real red, and is "nothing to judge" only while src/pulse/parked-features.mjs reads,
+   through the staff view, that no real inquiry case has a bureau call due or placed. */
+async function parkFinalJobGaps(rows, ctx) {
+  const scope = typeof ctx?.scope === "function" ? ctx.scope : null;
+  return Promise.all(rows.map((row) => (
+    parksRow("bureau-calls", row.id) ? parkRow(row, "bureau-calls", { scope, env: ctx?.env, now: ctx?.now }) : row
+  )));
+}
+
 export async function gapChecks(ctx = {}) {
-  const jobGaps = FINAL_JOB_GAP_ROWS.map((row) => judgeFinalJobGap(row));
+  const jobGaps = await parkFinalJobGaps(FINAL_JOB_GAP_ROWS.map((row) => judgeFinalJobGap(row)), ctx);
   const run = databaseRunner(ctx);
   if (typeof run !== "function") {
     return [{

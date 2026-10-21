@@ -16,6 +16,7 @@ import { SUPER_ROLES } from "../../src/http/middleware/requireRole.mjs";
 import { composeAndSend } from "../../src/messaging/compose.mjs";
 import {
   getOrCreateInternalThread,
+  pairKey,
   sendInternalMessage,
   listInternalThreads,
   listThreadMessages
@@ -100,6 +101,21 @@ export default async function handler(req, res) {
     if (kind === "internal") {
       // No compliance gate, no shift gate — internal ping (spec §4.3).
       let conversationId = body.conversation_id || null;
+      /* THE RIGHT THREAD OR NO SEND. When the widget names both the teammate and
+         a thread, the thread must be the one between the sender and that
+         teammate. A thread id left over from the last teammate (a slow thread
+         lookup that landed after the pick changed) used to win and the note
+         went to the wrong person. */
+      if (conversationId && body.peer_staff_id) {
+        const convo = await db.query(
+          `SELECT kind, internal_pair_key FROM conversations WHERE id = $1 AND org_id = $2`,
+          [conversationId, orgId]
+        );
+        const row = convo.rows[0];
+        if (!row || row.kind !== "internal" || row.internal_pair_key !== pairKey(staffId, body.peer_staff_id)) {
+          return res.status(409).json({ ok: false, error: "conversation_peer_mismatch" });
+        }
+      }
       if (!conversationId) {
         if (!body.peer_staff_id) {
           return res.status(400).json({ ok: false, error: "peer_staff_id_required" });
@@ -128,6 +144,20 @@ export default async function handler(req, res) {
     }
 
     if (kind === "client") {
+      /* THE RIGHT CLIENT OR NO SEND. composeAndSend takes a thread id over a
+         client id, so a thread left over from the last client plus a newly
+         picked client used to text the OLD client. When both are named they
+         must agree: a client thread that belongs to that client. */
+      if (body.conversation_id && body.client_id) {
+        const convo = await db.query(
+          `SELECT kind, client_id FROM conversations WHERE id = $1 AND org_id = $2`,
+          [body.conversation_id, orgId]
+        );
+        const row = convo.rows[0];
+        if (!row || row.kind !== "client" || String(row.client_id) !== String(body.client_id)) {
+          return res.status(409).json({ ok: false, error: "conversation_client_mismatch" });
+        }
+      }
       // Same path as /api/messages — compliance gate via composeAndSend.
       const shift = await requireActiveShift(req, res, {
         db, principal, exempt: SUPER_ROLES

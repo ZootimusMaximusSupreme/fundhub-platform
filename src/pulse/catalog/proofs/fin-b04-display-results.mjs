@@ -107,7 +107,7 @@ export const FIN_B04_ROWS = Object.freeze([
     control: "Contract panel: wording select and blank-field inputs",
     key: "contract-blanks",
     sql: CONTRACT_BLANKS_SQL,
-    requirement: "Every sent contract must hold a value for each blank its wording marks as required, each blank the price list fills must hold the price list's figure, and the wording must be one the chosen offer sells."
+    requirement: "Every sent contract must hold a value for each blank its wording marks as required; the deposit and success-fee percent the closer may set on the call must be a dollar amount and a percent of approved funding; every other blank the price list fills must hold the price list's figure; and the wording must be one the chosen offer sells."
   }),
   Object.freeze({
     sourceFile: "desks-a.json",

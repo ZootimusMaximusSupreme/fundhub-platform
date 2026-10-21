@@ -17,6 +17,8 @@ import { FIN_B17_RESULT_CONTRACTS } from "./fin-b17-display-contracts.mjs";
 import { FIN_B18_RESULT_CONTRACTS } from "./fin-b18-display-contracts.mjs";
 import { FIN_B19_DISPLAY_CONTRACTS } from "./fin-b19-display-contracts.mjs";
 import { FIN_B20_RESULT_CONTRACTS } from "./fin-b20-display-contracts.mjs";
+import { CONSENT_FROM_CONTRACT_CONTRACTS } from "./consent-from-contract.mjs";
+import { REAL_DECISION_SQL, REAL_EVENT_SQL } from "../../real-funding.mjs";
 
 export const DISPLAY_RESULT_LANE = "src/pulse/coverage/gap-catalog-display.mjs";
 
@@ -38,6 +40,13 @@ function query(control, requirement, key, body) {
   return Object.freeze({ control, mode: "query", requirement, sql: `/* display-result:${key} */\n${body.trim()}` });
 }
 
+/* A funding-round or bank-decision contract. It judges REAL rows only (owner fact 2026-10-20: every
+   round in the database today is test data), and with no real funding work at all it says "nothing to
+   judge" with the no-real-funding-round reason the morning audit re-checks (gap-catalog-display.mjs). */
+function fundingQuery(control, requirement, key, body) {
+  return Object.freeze({ ...query(control, requirement, key, body), emptyAs: "no-real-funding" });
+}
+
 function gap(control, requirement) {
   return Object.freeze({ control, mode: "always-red", requirement, sql: null });
 }
@@ -45,25 +54,38 @@ function gap(control, requirement) {
 // Owner rule 2026-10-14: a deep check waits for the first real result. A control nobody has used yet reads
 // green with "no saved results yet" and goes red on the first wrong one (emptyAs "quiet", judged in
 // src/pulse/coverage/gap-catalog-display.mjs). Applied 2026-10-20 to the first-batch record and staff
-// controls below: Braum (FH-000507) is the only real client, and he has no funding round, lender decision,
+// controls below that are not funding controls: Braum (FH-000507) is the only real client, and he has no
 // PDF wording, saved insight or helper turn, so an empty table here means "not used yet", not a break.
 function quietQuery(control, requirement, key, body) {
   return Object.freeze({ ...query(control, requirement, key, body), emptyAs: "quiet" });
 }
 
+/* The round number a receipt names, or NULL when it is not a whole number above zero. */
+const RECEIPT_ROUND_NUMBER = `CASE WHEN COALESCE(e.payload->>'roundNumber', '') ~ '^[1-9][0-9]{0,8}$'
+              THEN (e.payload->>'roundNumber')::int END`;
+
+/* The receipt names a funding round that exists for the same client and round number. */
+const RECEIPT_ROUND_EXISTS = `EXISTS (SELECT 1 FROM funding_rounds rr
+                     WHERE rr.org_id = e.org_id AND rr.client_id = e.client_id
+                       AND rr.round_number = ${RECEIPT_ROUND_NUMBER})`;
+
 const ROUND_SUBMITTED_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE client_id IS NULL OR payload->>'stage' IS DISTINCT FROM 'round_submitted'
-         OR payload->>'source' IS DISTINCT FROM 'card_stacking'
-         OR COALESCE(payload->>'roundNumber', '') !~ '^[1-9][0-9]*$')::int AS bad_count
-  FROM events
- WHERE org_id = $1::uuid AND name = 'round.submitted'
-   AND payload->>'source' = 'card_stacking'
-   AND COALESCE(is_demo, false) = false`;
+       count(*) FILTER (WHERE e.client_id IS NULL OR e.payload->>'stage' IS DISTINCT FROM 'round_submitted'
+         OR e.payload->>'source' IS DISTINCT FROM 'card_stacking'
+         OR ${RECEIPT_ROUND_NUMBER} IS NULL
+         OR NOT ${RECEIPT_ROUND_EXISTS})::int AS bad_count
+  FROM events e
+ WHERE e.org_id = $1::uuid AND e.name = 'round.submitted'
+   AND e.payload->>'source' = 'card_stacking'
+   AND ${REAL_EVENT_SQL}`;
 
+/* Billing is per round, so the funded receipt must name the exact round row (same client, same
+   round number) and carry the same funded amount that row holds. */
 const ROUND_FUNDED_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE fr.id IS NULL OR e.client_id IS DISTINCT FROM fr.client_id
+       count(*) FILTER (WHERE fr.id IS NULL OR e.client_id IS NULL OR e.client_id IS DISTINCT FROM fr.client_id
+         OR ${RECEIPT_ROUND_NUMBER} IS DISTINCT FROM fr.round_number
          OR COALESCE(CASE WHEN COALESCE(e.payload->>'fundedAmount', '') ~ '^[0-9]+([.][0-9]+)?$'
               THEN (e.payload->>'fundedAmount')::numeric END, 0) <= 0
          OR fr.funded_amount IS DISTINCT FROM CASE
@@ -72,42 +94,63 @@ SELECT count(*)::int AS sample_count,
   FROM events e
   LEFT JOIN funding_rounds fr ON fr.org_id = e.org_id AND fr.id::text = e.payload->>'fundingRoundId'
  WHERE e.org_id = $1::uuid AND e.name = 'round.funded'
-   AND e.payload->>'source' = 'card_stacking'`;
+   AND e.payload->>'source' = 'card_stacking'
+   AND ${REAL_EVENT_SQL}`;
 
+/* Closing a round is ONE round done, not the whole job (owner, 2026-10-20). The engagement is
+   complete only when the funding sequence closes, so a round close must never claim it. */
 const ROUND_CLOSED_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE client_id IS NULL OR payload->>'stage' IS DISTINCT FROM 'closed'
-         OR payload->>'source' IS DISTINCT FROM 'card_stacking'
-         OR payload->>'engagementComplete' IS DISTINCT FROM 'true')::int AS bad_count
-  FROM events
- WHERE org_id = $1::uuid AND name = 'round.closeout'
-   AND payload->>'source' = 'card_stacking'`;
+       count(*) FILTER (WHERE e.client_id IS NULL OR e.payload->>'stage' IS DISTINCT FROM 'closed'
+         OR e.payload->>'source' IS DISTINCT FROM 'card_stacking'
+         OR ${RECEIPT_ROUND_NUMBER} IS NULL
+         OR NOT ${RECEIPT_ROUND_EXISTS}
+         OR lower(COALESCE(e.payload->>'engagementComplete', '')) = 'true')::int AS bad_count
+  FROM events e
+ WHERE e.org_id = $1::uuid AND e.name = 'round.closeout'
+   AND e.payload->>'source' = 'card_stacking'
+   AND ${REAL_EVENT_SQL}`;
 
+/* The approved amount must sit on the exact application the decision names, be above zero, and that
+   application must sit on a funding round of its own client (billing is per round). */
 const APPROVED_AMOUNT_SQL = `
 SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE a.id IS NULL OR COALESCE(a.approved_amount, 0) <= 0)::int AS bad_count
+       count(*) FILTER (WHERE a.id IS NULL OR COALESCE(a.approved_amount, 0) <= 0
+         OR fr.id IS NULL OR fr.client_id IS DISTINCT FROM a.client_id)::int AS bad_count
   FROM application_decisions d
   LEFT JOIN applications a ON a.org_id = d.org_id AND a.id = d.application_id
- WHERE d.org_id = $1::uuid AND d.event_type = 'bank_decision' AND d.status = 'Approved'`;
+  LEFT JOIN funding_rounds fr ON fr.org_id = a.org_id AND fr.id = a.funding_round_id
+ WHERE d.org_id = $1::uuid AND d.event_type = 'bank_decision' AND d.status = 'Approved'
+   AND ${REAL_DECISION_SQL}`;
 
+/* The decision names the exact application and the staff member who pressed it: a staff row in the
+   same company, by id (migration 494), not only a typed name. */
 const APPROVED_DECISION_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE a.id IS NULL OR d.application_id IS NULL OR d.decided_at IS NULL
-         OR NULLIF(BTRIM(COALESCE(d.created_by, '')), '') IS NULL)::int AS bad_count
+         OR NULLIF(BTRIM(COALESCE(d.created_by, '')), '') IS NULL
+         OR s.id IS NULL)::int AS bad_count
   FROM application_decisions d
   LEFT JOIN applications a ON a.org_id = d.org_id AND a.id = d.application_id
- WHERE d.org_id = $1::uuid AND d.event_type = 'bank_decision' AND d.status = 'Approved'`;
+  LEFT JOIN staff s ON s.org_id = d.org_id AND s.id = d.staff_id
+ WHERE d.org_id = $1::uuid AND d.event_type = 'bank_decision' AND d.status = 'Approved'
+   AND ${REAL_DECISION_SQL}`;
 
 const DENIED_DECISION_SQL = APPROVED_DECISION_SQL.replace("'Approved'", "'Denied'");
 
+/* "Doesn't count / Count again": the record keeps the application, the staff member (by id), the
+   time, and the reason the person typed. */
 const EXCLUSION_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE a.id IS NULL OR d.decided_at IS NULL
          OR NULLIF(BTRIM(COALESCE(d.created_by, '')), '') IS NULL
+         OR s.id IS NULL
          OR NULLIF(BTRIM(COALESCE(d.notes, '')), '') IS NULL)::int AS bad_count
   FROM application_decisions d
   LEFT JOIN applications a ON a.org_id = d.org_id AND a.id = d.application_id
- WHERE d.org_id = $1::uuid AND d.event_type IN ('approval_excluded', 'approval_reinstated')`;
+  LEFT JOIN staff s ON s.org_id = d.org_id AND s.id = d.staff_id
+ WHERE d.org_id = $1::uuid AND d.event_type IN ('approval_excluded', 'approval_reinstated')
+   AND ${REAL_DECISION_SQL}`;
 
 const HELPER_TURN_SQL = `
 SELECT count(*)::int AS sample_count,
@@ -182,24 +225,6 @@ SELECT count(*)::int AS sample_count,
   FROM contract_templates
  WHERE org_id = $1::uuid AND source_kind = 'pdf' AND jsonb_array_length(fields) > 0
    AND COALESCE(is_demo, false) = false`;
-
-function consentSql(kind) {
-  return `SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NULLIF(BTRIM(consent_text), '') IS NULL
-         OR NULLIF(BTRIM(COALESCE(consent_version, '')), '') IS NULL
-         OR capture_method NOT IN ('typed','checkbox','signature')
-         OR ((granted_by_kind = 'client') <> (granted_by_account_id IS NOT NULL))
-         OR ((granted_by_kind = 'staff') <> (granted_by_staff_id IS NOT NULL)))::int AS bad_count
-  FROM client_consents WHERE org_id = $1::uuid AND kind = '${kind}'`;
-}
-
-const CONSENT_REVOKE_SQL = `
-SELECT count(*)::int AS sample_count,
-       count(*) FILTER (WHERE NULLIF(BTRIM(COALESCE(revoked_reason, '')), '') IS NULL
-         OR revoked_by_kind NOT IN ('client','staff')
-         OR ((revoked_by_kind = 'client') <> (revoked_by_account_id IS NOT NULL))
-         OR ((revoked_by_kind = 'staff') <> (revoked_by_staff_id IS NOT NULL)))::int AS bad_count
-  FROM client_consents WHERE org_id = $1::uuid AND revoked_at IS NOT NULL`;
 
 const INSIGHT_SQL = `
 SELECT count(*)::int AS sample_count,
@@ -301,13 +326,13 @@ SELECT count(*)::int AS sample_count,
 export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   ...FIN_B13_DISPLAY_CONTRACTS,
   ...FIN_B21_DISPLAY_CONTRACTS,
-  quietQuery("Mark round submitted button", "A card-stacking round.submitted receipt must carry the client, stage, source, and round number.", "round-submitted", ROUND_SUBMITTED_SQL),
-  query("Mark funded… button, amount box, Save funded, Cancel", "The round.funded receipt must link to the same funding round and preserve the exact funded amount.", "round-funded", ROUND_FUNDED_SQL),
-  quietQuery("Close round button", "A card-stacking round.closeout receipt must name the closed stage and engagement-complete result.", "round-closed", ROUND_CLOSED_SQL),
-  quietQuery("Lender row: Approved $ amount input", "An Approved bank-decision receipt must link to an application with a positive saved approved amount.", "approved-amount", APPROVED_AMOUNT_SQL),
-  quietQuery("Lender row: Approved button", "An Approved bank-decision receipt must link to the exact application and named staff actor.", "approved-decision", APPROVED_DECISION_SQL),
-  quietQuery("Lender row: Declined button", "A Denied bank-decision receipt must link to the exact application and named staff actor.", "denied-decision", DENIED_DECISION_SQL),
-  quietQuery("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "The exclusion or reinstatement receipt must link the application, actor, time, and saved reason.", "approval-exclusion", EXCLUSION_SQL),
+  fundingQuery("Mark round submitted button", "Every real card-stacking round.submitted receipt must carry the client, stage, source, and a round number that names a funding round of that client.", "round-submitted", ROUND_SUBMITTED_SQL),
+  fundingQuery("Mark funded… button, amount box, Save funded, Cancel", "Every real round.funded receipt must link to the same funding round (same client and round number) and preserve the exact funded amount saved on it.", "round-funded", ROUND_FUNDED_SQL),
+  fundingQuery("Close round button", "Every real card-stacking round.closeout receipt must name the client, the closed stage and a round number that names a funding round of that client, and must not mark the whole engagement complete: one round closing is one round done, and the engagement completes only when the funding sequence closes.", "round-closed", ROUND_CLOSED_SQL),
+  fundingQuery("Lender row: Approved $ amount input", "Every real Approved bank decision must link to an application with a positive saved approved amount, on a funding round of the same client.", "approved-amount", APPROVED_AMOUNT_SQL),
+  fundingQuery("Lender row: Approved button", "Every real Approved bank decision must link to the exact application and to the staff member who pressed it, by staff id in the same company.", "approved-decision", APPROVED_DECISION_SQL),
+  fundingQuery("Lender row: Declined button", "Every real Denied bank decision must link to the exact application and to the staff member who pressed it, by staff id in the same company.", "denied-decision", DENIED_DECISION_SQL),
+  fundingQuery("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "Every real exclusion or reinstatement must link the application, the staff member by id, the time, and the reason the person typed.", "approval-exclusion", EXCLUSION_SQL),
   query("Send: message box, Send button, Enter key (20,000 character cap)", "A saved helper turn must retain the input and a completed reply, brain, and answer time on the same row.", "helper-send", HELPER_TURN_SQL),
   quietQuery("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
   query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
@@ -317,11 +342,10 @@ export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
   quietQuery("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
   quietQuery("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
-  query("Record consent: call_recording", "The saved consent must be the call_recording kind with frozen words, version, capture method, and one exact granter.", "consent-call-recording", consentSql("call_recording")),
-  query("Record consent: marketing_use (permission to use what the client said in ads)", "The saved consent must be the marketing_use kind with frozen words, version, capture method, and one exact granter.", "consent-marketing-use", consentSql("marketing_use")),
-  query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
+  // The signed contract is the consent (owner decision 2026-10-20): consent-from-contract.mjs.
+  ...CONSENT_FROM_CONTRACT_CONTRACTS,
   quietQuery("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
-  query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
+  fundingQuery("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
   query("Commission rule 'Close v<N> - open v<N+1>': saves a new effective-dated rate and reason", "Each closed rule must link to its replacement at the exact boundary and keep the submitted reason on the new row.", "commission-supersede", COMMISSION_SUPERSEDE_SQL),

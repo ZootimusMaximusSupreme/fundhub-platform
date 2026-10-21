@@ -7,6 +7,7 @@ import adVideoApprove from "../../../api/public/ad-video-approve.mjs";
 import documentDownload from "../../../api/documents/[id].mjs";
 import adVideoWorker from "../../../netlify/functions/ad-video-worker-background.mjs";
 import { gapChecks as adVideoJobChecks } from "./gap-door-batch-jobs.mjs";
+import { parkRow } from "../parked-features.mjs";
 
 const FILE_RE = /\b(?:(?:src|api|netlify|scripts|e2e)\/)?[A-Za-z0-9_./[\]-]+\.test\.mjs\b/g;
 const RESULT_RE = /\bsrc\/pulse\/(?:coverage\/gap-|beats\/beat-)[A-Za-z0-9_./-]+\.mjs\b/g;
@@ -155,13 +156,21 @@ export function webhookResultProof(row) {
 export async function gapChecks(ctx = {}) {
   const jobCtx = typeof ctx?.scope?.run === "function" ? { ...ctx, run: ctx.scope.run } : ctx;
   const worker = (await adVideoJobChecks(jobCtx))[0];
+  const lendflow = {
+    id: CHECK_IDS[0],
+    status: "FAIL",
+    detail: "The Lendflow door and fail-closed HMAC code run, but no real Lendflow payload has confirmed the provider's signature scheme or stage words.",
+    suggestedFix: "Keep this red until one real or sandbox Lendflow payload confirms the header, HMAC scheme, and stage words.",
+  };
+  // Owner answer B8 (2026-10-20): Lendflow is paused by the owner. The red above stands
+  // the day a Lendflow key is set or a Lendflow webhook arrives (src/pulse/parked-features.mjs).
+  const lendflowRow = await parkRow(lendflow, "lendflow", {
+    scope: typeof ctx?.scope === "function" ? ctx.scope : null,
+    env: ctx?.env,
+    now: ctx?.now,
+  });
   return [
-    {
-      id: CHECK_IDS[0],
-      status: "FAIL",
-      detail: "The Lendflow door and fail-closed HMAC code run, but no real Lendflow payload has confirmed the provider's signature scheme or stage words.",
-      suggestedFix: "Keep this red until one real or sandbox Lendflow payload confirms the header, HMAC scheme, and stage words.",
-    },
+    lendflowRow,
     {
       id: CHECK_IDS[1],
       status: worker.status,

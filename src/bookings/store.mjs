@@ -326,6 +326,60 @@ export async function setStatusByProviderUid(db, { orgId, providerUid, status } 
 }
 
 /**
+ * fillMeetingUrl(db, { orgId, clientId, providerUid, startsAt, url })
+ *   → { bookings: n, tasks: n }
+ *
+ * Keeps the call's join link on the booking and on the closer's call task, so
+ * the 15-minute text, the Join call button and the pulse all read the same link.
+ * The link comes from the host's calendar (src/bookings/meet-link.mjs).
+ *
+ * FILLS A BLANK, NEVER OVERWRITES. A link someone already saved stays.
+ *
+ * THE BOOKING IS FOUND TWO WAYS, because one ClickFunnels booking reaches us
+ * twice. The calendar form post arrives first and its booking.created carries
+ * the form message id; a second later the appointment webhook re-keys the saved
+ * row to the call's own id (src/adapters/clickfunnels.mjs promoteBookingUid) and
+ * emits nothing. So a run that started from the form post holds an id no row
+ * carries any more. The row is found by that id, or by the same client at the
+ * same start time. The task is found by every id the booking was ever saved
+ * under.
+ */
+export async function fillMeetingUrl(db, { orgId, clientId = null, providerUid = null, startsAt = null, url } = {}) {
+  requireOrg(orgId, "fillMeetingUrl");
+  const link = blankToNull(url);
+  if (!link) throw new BookingError("fillMeetingUrl: url is required");
+  const uid = normalizeProviderUid(providerUid);
+  const start = startsAt ? toTimestamp(startsAt, "fillMeetingUrl: startsAt") : null;
+  if (!uid && !(clientId && start)) return { bookings: 0, tasks: 0 };
+  const res = await db.query(
+    `UPDATE bookings
+        SET meeting_url = $5, updated_at = now()
+      WHERE org_id = $1
+        AND (($2::text IS NOT NULL AND provider_uid = $2::text)
+             OR ($3::uuid IS NOT NULL AND $4::timestamptz IS NOT NULL
+                 AND client_id = $3::uuid AND starts_at = $4::timestamptz))
+        AND btrim(COALESCE(meeting_url, '')) = ''
+      RETURNING provider_uid`,
+    [orgId, uid, clientId, start, link]
+  );
+  const rows = (res && res.rows) || [];
+  const uids = [...new Set([uid, ...rows.map((r) => r.provider_uid)].filter(Boolean))];
+  let tasks = 0;
+  if (clientId && uids.length) {
+    const t = await db.query(
+      `UPDATE tasks
+          SET meeting_url = $3, updated_at = now()
+        WHERE org_id = $4 AND client_id = $1 AND body = ANY($2::text[])
+          AND btrim(COALESCE(meeting_url, '')) = ''
+        RETURNING id`,
+      [clientId, uids, link, orgId]
+    );
+    tasks = ((t && t.rows) || []).length;
+  }
+  return { bookings: rows.length, tasks };
+}
+
+/**
  * What a saved booking says about one call time, asked by the jobs that wait
  * for that time (the 15-minute text, the no-show check). See bookingStateAt.
  */

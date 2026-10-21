@@ -9,6 +9,7 @@ import { leadsResetResults } from "./fin-b09-leads-reset.mjs";
 import { judgeLinkGate, linkGateState } from "./fin-b10-link-gate.mjs";
 import { HIDDEN_HEAD_CODE, judgeHiddenHeads, verifyHiddenHead } from "./fin-b19-hidden-head.mjs";
 import { ownerRemovedFor, ownerRemovedResults, ownerRemovedState } from "./fin-b21-owner-removed.mjs";
+import { countRealFunding, noRealFundingNa } from "../real-funding.mjs";
 
 // Compiled from the approved map and proof recipes at build time. Proof recipe
 // modules may read the checkout, so the live lane imports only their saved data.
@@ -31,7 +32,8 @@ function result(id, status, detail, suggestedFix = null, na = undefined) {
   return { id, status, detail, suggestedFix, ...(na ? { na } : {}) };
 }
 
-export function judgeDisplayResult(entry, stats = null) {
+// realFunding: { total } from countRealFunding, read once per run, or null when it was not read.
+export function judgeDisplayResult(entry, stats = null, realFunding = null) {
   if (entry.retired) {
     return result(entry.id, "na", `${entry.control}: the Decline Autopsy page is retired and redirected to the active offer menu.`, null, {
       code: "catalog-display-retired-autopsy",
@@ -69,6 +71,17 @@ export function judgeDisplayResult(entry, stats = null) {
     // A control nobody has used yet leaves nothing to judge. It is green until the first wrong result,
     // and it says so in plain words (owner-set 2026-10-14: deep checks that wait for the first real result).
     return result(entry.id, "PASS", `${entry.control}: no saved results yet, so none are wrong. This check goes red on the first wrong result. ${entry.contract.requirement}${held}`);
+  }
+  if (samples === 0 && entry.contract.emptyAs === "no-real-funding") {
+    // Owner fact 2026-10-20: there are zero real funding rounds. With no real round, receipt or bank
+    // decision there is nothing to judge, and the morning audit re-counts before this may stand
+    // (na-conditions.mjs "no-real-funding-round"). Real work with no receipt here stays red below.
+    if (!realFunding || !Number.isFinite(Number(realFunding.total))) {
+      return result(entry.id, "skip", `${entry.control} was not read: the count of real funding rounds could not be read.`);
+    }
+    if (Number(realFunding.total) === 0) {
+      return result(entry.id, "na", `${entry.control}: no real funding round exists yet, so there is nothing to judge. Test rounds are not judged.`, null, noRealFundingNa(entry.orgId));
+    }
   }
   if (samples === 0) {
     return result(
@@ -237,6 +250,7 @@ export async function gapChecks(ctx = {}, runtime = null) {
   // Controls the owner took off the phone on purpose (fin-b21-owner-removed.mjs): read live, GET only.
   const removed = await ownerRemovedResults(trackingCases, liveFileReader(ctx));
   const gate = gateRead ? await gateRead : null;
+  let realFunding = null;
   const judge = (entry, stats) => {
     if (retiredControls.has(entry.id)) return retiredControls.get(entry.id);
     if (notShipped.has(entry.id)) return notShipped.get(entry.id);
@@ -244,7 +258,7 @@ export async function gapChecks(ctx = {}, runtime = null) {
     if (hiddenHeads.has(entry.id)) return hiddenHeads.get(entry.id);
     if (removed.has(entry.id)) return removed.get(entry.id);
     if (entry.contract?.mode === "link-gate") return judgeLinkGate(entry, gate);
-    if (!entry.retired || retired?.status === "na") return judgeDisplayResult(entry, stats);
+    if (!entry.retired || retired?.status === "na") return judgeDisplayResult({ ...entry, orgId: ctx.orgId }, stats, realFunding);
     return result(entry.id, retired.status, `${entry.control}: ${retired.detail}`,
       retired.status === "FAIL" ? "Restore the retired-page redirect and active menu. Do not auto-fix. Chris fixes reds." : null);
   };
@@ -276,6 +290,17 @@ export async function gapChecks(ctx = {}, runtime = null) {
       batch.forEach((sql, index) => bySql.set(sql, indexed.get(index)));
     } catch (error) {
       batch.forEach((sql) => bySql.set(sql, { error }));
+    }
+  }
+
+  // One read of how much REAL funding work exists, only when a funding contract has nothing saved.
+  const needsRealFunding = trackingCases.some((entry) => entry.contract?.emptyAs === "no-real-funding"
+    && Number(bySql.get(entry.contract.sql)?.sample_count || 0) === 0 && !bySql.get(entry.contract.sql)?.error);
+  if (needsRealFunding) {
+    try {
+      realFunding = await run((db) => countRealFunding(async (text, params) => (await db.query(text, params)).rows, ctx.orgId));
+    } catch {
+      realFunding = null;
     }
   }
 
