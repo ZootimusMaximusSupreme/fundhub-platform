@@ -295,7 +295,7 @@ const contractTables = () => ({
   contracts: [{
     id: CONTRACT, org_id: ORG, client_id: CLIENT, template_id: TEMPLATE, template_key: "FUNDING-AGREEMENT",
     status: "sent", sent_at: RECENT, sent_by: STAFF, link_expires_at: "2026-10-20T20:00:00.000Z", document_id: id(260),
-    merge_values: { deposit: "$3,000", success_fee: "10% of funded amount", fee_due: "within 7 days of funding" },
+    merge_values: { deposit: "$3,000", success_fee: "10% of approved funding", fee_due: "within 7 days of funding" },
     source_kind: "text", is_demo: false
   }],
   contract_templates: [{
@@ -927,11 +927,18 @@ add("contract-blanks", CONTRACT_BLANKS_SQL, contractTables,
     ["a second required blank is empty", (t) => {
       t.contract_templates[0].manual_fields.push({ key: "days", label: "Days", required: true });
     }],
-    ["the deposit was typed as 1, not the price list's figure", (t) => { t.contracts[0].merge_values.deposit = "1"; }],
+    ["the deposit was typed as 1, with no dollar sign", (t) => { t.contracts[0].merge_values.deposit = "1"; }],
     ["the deposit was typed as abc", (t) => { t.contracts[0].merge_values.deposit = "abc"; }],
     ["the deposit is the word undefined", (t) => { t.contracts[0].merge_values.deposit = "undefined"; }],
-    ["the deposit was typed as a lower figure", (t) => { t.contracts[0].merge_values.deposit = "$2,000"; }],
-    ["the success fee was typed as another percent", (t) => { t.contracts[0].merge_values.success_fee = "5% of funded amount"; }],
+    ["the deposit is zero dollars", (t) => { t.contracts[0].merge_values.deposit = "$0"; }],
+    ["the deposit has a bad comma", (t) => { t.contracts[0].merge_values.deposit = "$3,00"; }],
+    ["the success fee names the funded amount, not approved funding", (t) => {
+      t.contracts[0].merge_values.success_fee = "5% of funded amount";
+    }],
+    ["the success fee is zero percent", (t) => { t.contracts[0].merge_values.success_fee = "0% of approved funding"; }],
+    ["the success fee is over 100 percent", (t) => { t.contracts[0].merge_values.success_fee = "150% of approved funding"; }],
+    ["the success fee is missing on the funding agreement", (t) => { delete t.contracts[0].merge_values.success_fee; }],
+    ["the success fee is words, not a percent", (t) => { t.contracts[0].merge_values.success_fee = "ten percent"; }],
     ["the due date wording was changed", (t) => { t.contracts[0].merge_values.fee_due = "on signing"; }],
     ["a repair agreement's fee was typed as a monthly figure", (t) => {
       useWording(t, "CREDIT-REPAIR-AGREEMENT");
@@ -941,7 +948,7 @@ add("contract-blanks", CONTRACT_BLANKS_SQL, contractTables,
     }],
     ["the repair-plus-funding agreement is missing the repair figure", (t) => {
       useWording(t, "REPAIR-AND-FUNDING-AGREEMENT");
-      t.contracts[0].merge_values = { deposit: "$3,000", success_fee: "10% of funded amount", fee_due: "within 7 days of funding" };
+      t.contracts[0].merge_values = { deposit: "$3,000", success_fee: "10% of approved funding", fee_due: "within 7 days of funding" };
     }],
     ...CONTRACT_WORDING_BREAKS,
     ...CONTRACT_WORDING_BREAKS_BY_OFFER,
@@ -955,6 +962,21 @@ add("contract-blanks", CONTRACT_BLANKS_SQL, contractTables,
   ],
   { ok: [
     ["an optional blank may stay empty", (t) => { t.contracts[0].merge_values.note = ""; }],
+    // Owner-set 2026-10-20: the closer may set the deposit and the success-fee percent on the call.
+    ["the closer set a lower deposit on the call", (t) => { t.contracts[0].merge_values.deposit = "$2,000"; }],
+    ["the closer set a larger deposit without commas", (t) => { t.contracts[0].merge_values.deposit = "$10000.00"; }],
+    ["the closer set another percent of approved funding", (t) => {
+      t.contracts[0].merge_values.success_fee = "12.5% of approved funding";
+    }],
+    ["the closer typed the percent alone", (t) => { t.contracts[0].merge_values.success_fee = "8%"; }],
+    ["the combined agreement carries closer-set figures", (t) => {
+      useWording(t, "REPAIR-AND-FUNDING-AGREEMENT");
+      t.contracts[0].merge_values = {
+        deposit: "$1,500", repair_fee: "$1,000", success_fee: "15% of approved funding", fee_due: "within 7 days of funding",
+        term_days: "180", repair_scope: "Parallel credit repair on limiting bureaus while funding rounds run.",
+        funding_scope: "Full done-for-you funding program: matching, rounds, and inquiry sweeps."
+      };
+    }],
     ["a blank the price list does not fill may hold any words", (t) => { t.contracts[0].merge_values.note = "Call after 3 pm"; }],
     ["a wording the price list has no values for keeps what was typed", (t) => {
       useWording(t, "PARTNER-LICENSE");
@@ -964,7 +986,7 @@ add("contract-blanks", CONTRACT_BLANKS_SQL, contractTables,
     ["the repair-plus-funding agreement holds every figure", (t) => {
       useWording(t, "REPAIR-AND-FUNDING-AGREEMENT");
       t.contracts[0].merge_values = {
-        deposit: "$3,000", repair_fee: "$1,000", success_fee: "10% of funded amount", fee_due: "within 7 days of funding",
+        deposit: "$3,000", repair_fee: "$1,000", success_fee: "10% of approved funding", fee_due: "within 7 days of funding",
         term_days: "180", repair_scope: "Parallel credit repair on limiting bureaus while funding rounds run.",
         funding_scope: "Full done-for-you funding program: matching, rounds, and inquiry sweeps."
       };

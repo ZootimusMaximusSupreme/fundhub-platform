@@ -678,6 +678,7 @@ describe("every client agreement carries the consent", () => {
   test("staff, partner and soft-pull wordings are not client service agreements and are untouched", () => {
     for (const [key, tpl] of TEMPLATES) {
       if (CLIENT_AGREEMENT_KEYS.includes(key)) continue;
+      if (!before.has(key)) continue; // a wording first created after 492 (the 493 disclosure)
       assert.equal(tpl.body, upTo492.get(key)?.body, `${key} changed after 492`);
       assert.equal(tpl.body, before.get(key)?.body, `${key} changed`);
       assert.equal(tpl.body.includes(CONSENT_MARKERS.callRecording), false, `${key} gained the clause`);
@@ -778,5 +779,44 @@ describe("the heartbeat's wording checks pass on the real words", () => {
       assert.deepEqual(judge(sql, TEMPLATES), { sample: 1, bad: 0 });
       assert.deepEqual(judge(sql, before492), { sample: 1, bad: 1 });
     }
+  });
+});
+
+/* 15 U.S.C. 1679c: the Consumer Credit File Rights statement, given to a credit
+   repair client before any agreement is signed, as its own document (493). The
+   words were copied from govinfo.gov; the repo copy is
+   docs/agreements/CREDIT-FILE-RIGHTS-DISCLOSURE.txt. */
+describe("the credit file rights disclosure is its own wording", () => {
+  const KEY = "CREDIT-FILE-RIGHTS-DISCLOSURE";
+  const file = fs.readFileSync(path.join(ROOT, "docs/agreements/CREDIT-FILE-RIGHTS-DISCLOSURE.txt"), "utf8").trimEnd();
+
+  test("the wording is exactly the repo copy of the statement", () => {
+    assert.equal(TEMPLATES.get(KEY)?.body, file);
+    assert.deepEqual(TEMPLATES.get(KEY).fields, []);
+  });
+
+  test("it carries the statute's title, every right, and the FTC address", () => {
+    const body = TEMPLATES.get(KEY).body;
+    assert.ok(body.startsWith("Consumer Credit File Rights Under State and Federal Law\n"));
+    for (const line of [
+      "You have a right to dispute inaccurate information in your credit report by contacting the credit bureau directly.",
+      "You have a right to obtain a copy of your credit report from a credit bureau.",
+      "You have a right to sue a credit repair organization that violates the Credit Repair Organization Act.",
+      "You have the right to cancel your contract with any credit repair organization for any reason within 3 business days from the date you signed it.",
+      "Credit bureaus are required to follow reasonable procedures to ensure that the information they report is accurate.",
+      "You may, on your own, notify a credit bureau in writing that you dispute the accuracy of information in your credit file.",
+      "If the credit bureau's reinvestigation does not resolve the dispute to your satisfaction",
+      "The Public Reference Branch\nFederal Trade Commission\nWashington, D.C. 20580"
+    ]) assert.ok(body.includes(line), line);
+    assert.match(body, /\nSIGNATURES\n/);
+    assert.match(body, /Signed by: _{6,}/);
+  });
+
+  test("it is a separate document, never inside the agreement", () => {
+    assert.equal(TEMPLATES.get("CREDIT-REPAIR-AGREEMENT").body.includes("Consumer Credit File Rights"), false);
+    const sql = fs.readFileSync(path.join(ROOT, "db/migrations/493_funding_and_repair_agreement_text.sql"), "utf8");
+    assert.match(sql, /'authorization',\s*'credit_file_rights_disclosure'/);
+    assert.match(sql, /ON CONFLICT \(org_id, template_key\) DO NOTHING/);
+    assert.match(sql, /govinfo\.gov\/content\/pkg\/USCODE-2023-title15/);
   });
 });
