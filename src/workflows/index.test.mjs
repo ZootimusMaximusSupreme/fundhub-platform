@@ -82,6 +82,7 @@ const EXPECTED_WORKFLOW_IDS = [
   "ai-set-04-3way-handoff",
   "ar-collections",
   "at-01-first-touch-capture",
+  "bank-outreach-automation",
   "bank-outreach-checkins",
   "bc-01-customer-responsiveness",
   "bc-02-customer-friction",
@@ -235,9 +236,14 @@ test("index serves exactly the workflows on disk, and the count is pinned", asyn
 
      Moved every cron to the Netlify clock (2026-10-20, owner: "stop burning ingests"). The
      registry `functions` is unchanged in meaning — every workflow that runs — but Inngest is now
-     given only `inngestFunctions` (the event workflows); the 38 scheduled jobs run from
+     given only `inngestFunctions` (the event workflows); the scheduled jobs (39 that day, bank-outreach-automation included) run from
      src/workflows/scheduled.mjs on netlify/functions/cron-clock.mjs. commas-inbox-drain and
      whop-billing-inbox-drain left the served set (see DELIBERATELY_UNSERVED).
+
+     Added bank-outreach-automation (2026-10-20) — every 15 minutes it finds
+     bankers by search engine query, queues the three cold bank emails (only
+     with approved copy and mail settings) and reads banker replies. It sends
+     nothing itself: messages rows go through the shared dispatcher.
 
      Added bank-outreach-checkins (2026-10-19) — daily Arizona partner next
      actions for the approved bank relationship workspace. It never sends

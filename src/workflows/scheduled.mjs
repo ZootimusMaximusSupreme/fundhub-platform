@@ -34,6 +34,7 @@ import { invoiceSentRecovery } from './invoice-sent-recovery.mjs';
 import { hiringBenchSweeper } from './hiring-bench-sweeper.mjs';
 import { hiringOutreachCadence } from './hiring-outreach-cadence.mjs';
 import { bankOutreachCheckins } from './bank-outreach-checkins.mjs';
+import { bankOutreachAutomation } from './bank-outreach-automation.mjs';
 import { waypointNudgeSweeper } from './waypoint-nudge-sweeper.mjs';
 import { blueprintCloserReadySweeper } from './blueprint-closer-ready-sweeper.mjs';
 import { financeOsPullSweeper } from './finance-os-pull-sweeper.mjs';
@@ -64,6 +65,9 @@ import { metaCampaignSyncHourly } from './meta-campaign-sync-sweeper.mjs';
 
 export const scheduled = [
   bankOutreachCheckins,
+  /* Bank outreach automation (2026-10-20), every 15 minutes: find bankers by search, queue the
+     three cold emails, read banker replies. It sends nothing itself; the dispatcher does. */
+  bankOutreachAutomation,
   af01AffiliateDrip,
   /* Blake referral mail → staff text to Chris (name + phone). Never texts the lead. */
   blakeLeadWatch,
