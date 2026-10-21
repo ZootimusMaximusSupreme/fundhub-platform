@@ -52,6 +52,15 @@ describe("the file", () => {
     assert.ok(src.includes('noteScheduledRun(db, "pulse-hourly"'));
   });
 
+  test("it runs ONLY its shift (shift A of src/pulse/beats/shifts.mjs) through the runner", async () => {
+    const mod = await import(pathToFileURL(FILE).href);
+    const { SHIFTS } = await import(pathToFileURL(path.join(ROOT, "src/pulse/beats/shifts.mjs")).href);
+    assert.deepEqual([...mod.BEATS], [...SHIFTS["pulse-hourly"].beats]);
+    assert.ok(mod.BEATS.length > 0);
+    assert.match(src, /export const BEATS = shiftBeats\("pulse-hourly"\);/);
+    assert.match(src, /runPulse\(\{ env: process\.env, only: \[\.\.\.BEATS\] \}\)/);
+  });
+
   test("it registers the unhandledRejection guard, and names no credentials/ path", () => {
     assert.ok(src.includes('process.on("unhandledRejection"'));
     const code = src.split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");
@@ -64,10 +73,15 @@ describe("the file", () => {
     assert.deepEqual(imports.sort(), [
       "../../src/db.mjs",
       "../../src/lib/outbound-fetch.mjs",
+      "../../src/pulse/beats/shifts.mjs",
       "../../src/pulse/heartbeats.mjs",
       "../../src/pulse/runner.mjs",
       "../../src/pulse/scheduled-shell.mjs"
     ]);
+    // The shift list is a plain list: it imports nothing, so it cannot reach a sender or a beat either.
+    const shifts = readFileSync(path.join(ROOT, "src/pulse/beats/shifts.mjs"), "utf8").split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+    assert.doesNotMatch(shifts, /^\s*import\s/m);
+    assert.doesNotMatch(shifts, /\bimport\(/);
   });
 });
 

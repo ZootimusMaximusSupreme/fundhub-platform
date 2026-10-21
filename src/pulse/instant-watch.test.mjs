@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { SHIFT_JOBS } from "./beats/shifts.mjs";
 import {
+  PULSE_RUNNER_JOBS,
   PULSE_RUNNER_STALE_MS,
   checkPulseRunnerReceipt,
   formatInstantSms,
@@ -117,6 +119,63 @@ test("backup pulse circuit passes when pulse-hourly left a fresh receipt", async
     fetchImpl: allDoorsPass
   });
   assert.equal(result.failures.some((item) => item.id === "pulse:runner-stale"), false);
+});
+
+/* The hourly pulse runs in two shifts (src/pulse/beats/shifts.mjs). A receipt fake that answers per job. */
+function shiftReceiptDb(lastAtByJob) {
+  const asked = [];
+  return {
+    asked,
+    query: async (sql, params) => {
+      if (/FROM job_heartbeats/.test(sql)) {
+        asked.push(params[0]);
+        return { rows: [{ last_at: lastAtByJob[params[0]] ?? null }] };
+      }
+      throw new Error(`unexpected query: ${String(sql).slice(0, 80)}`);
+    }
+  };
+}
+
+test("backup pulse circuit reads a receipt for every hourly shift, and closes only when both are fresh", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const fresh = new Date(now.getTime() - 60 * 60 * 1000);
+  assert.deepEqual([...PULSE_RUNNER_JOBS], [...SHIFT_JOBS]);
+  assert.deepEqual([...PULSE_RUNNER_JOBS], ["pulse-hourly", "pulse-hourly-b"]);
+  const db = shiftReceiptDb({ "pulse-hourly": fresh, "pulse-hourly-b": fresh });
+  const row = await checkPulseRunnerReceipt(db, { now });
+  assert.deepEqual(db.asked, ["pulse-hourly", "pulse-hourly-b"]);
+  assert.equal(row.status, "PASS");
+  assert.match(row.detail, /Both hourly pulse shifts left a fresh receipt/);
+});
+
+test("backup pulse circuit goes red when only shift B stops, and names it", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const row = await checkPulseRunnerReceipt(shiftReceiptDb({
+    "pulse-hourly": new Date(now.getTime() - 60 * 60 * 1000),
+    "pulse-hourly-b": new Date(now.getTime() - PULSE_RUNNER_STALE_MS - 60 * 60 * 1000)
+  }), { now });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /^The hourly pulse \(pulse-hourly-b\) has not run for 4 h\. The backup pulse circuit did not close\.$/);
+  assert.match(row.suggestedFix, /pulse-hourly-b function log/);
+});
+
+test("backup pulse circuit goes red when both shifts stop, and names both", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const old = new Date(now.getTime() - PULSE_RUNNER_STALE_MS - 1);
+  const row = await checkPulseRunnerReceipt(shiftReceiptDb({ "pulse-hourly": old, "pulse-hourly-b": old }), { now });
+  assert.equal(row.status, "FAIL");
+  assert.match(row.detail, /^The hourly pulse has not run for 3 h\. pulse-hourly-b has not run for 3 h either\./);
+  assert.match(row.suggestedFix, /pulse-hourly and pulse-hourly-b function log/);
+});
+
+test("before shift B has ever run, shift A alone is judged; before either has run there is nothing to judge", async () => {
+  const now = new Date("2026-10-09T19:00:00.000Z");
+  const onlyA = await checkPulseRunnerReceipt(shiftReceiptDb({ "pulse-hourly": new Date(now.getTime() - 60 * 60 * 1000) }), { now });
+  assert.equal(onlyA.status, "PASS");
+  assert.match(onlyA.detail, /^The hourly pulse left a fresh receipt/);
+  const staleA = await checkPulseRunnerReceipt(shiftReceiptDb({ "pulse-hourly": new Date(now.getTime() - PULSE_RUNNER_STALE_MS - 1) }), { now });
+  assert.equal(staleA.status, "FAIL");
+  assert.equal(await checkPulseRunnerReceipt(shiftReceiptDb({}), { now }), null);
 });
 
 test("backup pulse circuit goes red when pulse-hourly does not return", async () => {
