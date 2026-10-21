@@ -605,6 +605,8 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     },
     ignored: [
       ["a draft is not an approval", (t) => { const b = find(t.partner_brand, u(1)); b.approval_status = "draft"; b.approved_at = null; b.review_note = "fix"; }],
+      // The demo seed approves its brand with no send-for-review time; demo partners are left out, as in the sibling checks.
+      ["the brand belongs to a demo partner", (t) => { find(t.partners, u(500)).is_demo = true; find(t.partner_brand, u(1)).submitted_at = null; }],
       ["a brand approved before the review trail has no sender or approver", (t) => { const b = find(t.partner_brand, u(2)); b.approved_by = null; b.submitted_at = null; }],
       ["an approver who was demoted long after a decision older than 90 days is not a wrong result", (t) => {
         const b = find(t.partner_brand, u(1));

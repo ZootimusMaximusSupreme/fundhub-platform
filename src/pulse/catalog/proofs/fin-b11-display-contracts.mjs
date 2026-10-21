@@ -371,7 +371,9 @@ check({
   requirement: "Every approved brand must carry its approval time, name an approver who is a staff member of the same company, have been sent for review before it was approved, hold no leftover reason note, and belong to a partner of this company. A brand approved by a person must have been sent for review first, and in the last 90 days its approver must be an owner or admin of this company.",
   from: `partner_brand b
   LEFT JOIN partners p ON p.id = b.partner_id`,
-  where: `b.org_id = $1::uuid AND b.approval_status = 'approved'`,
+  // Demo partners are left out, as in the sibling brand, social and recording checks: the demo seed
+  // (db/migrations/094_demo_logins.sql) approves its brand without a send-for-review time.
+  where: `b.org_id = $1::uuid AND b.approval_status = 'approved' AND COALESCE(p.is_demo, false) = false`,
   bad: [
     ["no approval time",
       `b.approved_at IS NULL`],
