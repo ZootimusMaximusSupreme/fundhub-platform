@@ -25,6 +25,24 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — sales-floor Recording rows — code_bug
+- Cause: the Drive sync read any UUID in a file name as a client id and saved it without checking the client exists. iPhone exports are named `<UUID>.mp4`, so 14 recordings pointed at clients that exist nowhere.
+- Fix: `upsertExtractedFile` keeps a sniffed client id only when that client exists in the same company, else NULL (src/company-brain/store.mjs). Migration 499 clears the 14 saved rows (client_id to NULL only; no delete). The Drive files and links are untouched.
+- Guard added: src/company-brain/store.test.mjs (kept both ways, non-UUID never queried) and src/company-brain/brain-client-id-migration.test.mjs (what 499 may touch). The check itself already goes red on a made-up client id.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — staff-reset-link — code_bug
+- Cause: a new invite or reset link ended the person's earlier unused links with `used_at = now()` even when the earlier link had already run out, so it read as "used after it ran out".
+- Fix: the three "end the earlier link" UPDATEs in src/auth/invite.mjs only touch links that are still live (`expires_at > now()`). Old rows age out; nothing was rewritten.
+- Guard added: src/auth/invite.test.mjs (live link ended, expired link left alone, for invite, staff reset and affiliate reset) and a real-database case in src/auth/auth.pg.test.mjs.
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
+## 2026-10-20 — sales-floor Flag belief — code_bug
+- Cause: the writer saved a belief flag with an outcome count of 0 and no lead source or setter ("pain this period 0 vs last 0"). Such a flag can never match a real call.
+- Fix: `createMarketingFlag` (src/sales/call-outcomes.mjs) refuses it with a plain 400: "There are no calls behind this belief yet, so there is nothing to flag." The page shows it through its existing error alert; its look did not change.
+- Guard added: src/http/marketing-flags-handler.test.mjs (nine refused shapes, one stored).
+- Incident: none (6:02 a.m. scorecard row, not an hourly incident)  PR: claude/w6-staff-fixes-2026-10-20
+
 ## 2026-10-20 — bureau-config:complete — pulse_false_alarm
 - Cause: the check read an empty CRM table. The AI caller never reads that table. Its numbers and phone menus live in its own call scripts (vendor/inquiry-remover/src/agents/*-prompt.js) and the *_DISPUTE_NUMBER settings.
 - Fix: the check reads what the caller really dials (src/inquiry-ops/bureau-dial-plan.mjs). Red only when neither the script nor the table has a number and a menu.
