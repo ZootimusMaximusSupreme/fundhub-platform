@@ -118,6 +118,55 @@ are routine and have to stay harmless.
 
 ---
 
+## A bank answer, and who it is saved against (2026-10-20)
+
+Files: `api/applications.mjs`, `src/applications/status.mjs`, `db/migrations/494_application_decision_staff.sql`,
+`public/app/client-control-panel.html`.
+
+```mermaid
+flowchart TD
+    BTN[Lender row on the Client Control Panel:<br/>Bank yes + Approved $, Bank no,<br/>Doesn't count, or Count again] --> WHO{Signed-in staff member<br/>with a staff id?}
+    WHO -->|No| R0[Refused — staff_required<br/>NOTHING IS WRITTEN]
+    WHO -->|Yes| KIND{Which button?}
+    KIND -->|Bank yes / Bank no| ROUND[Find the client's CURRENT round<br/>the newest round number]
+    ROUND --> APP{Application for this bank<br/>on THAT round?}
+    APP -->|Yes| SAVE[Update that application:<br/>status, and the Approved $ when one was typed]
+    APP -->|No| MAKE[Make the application on the current round,<br/>then update it]
+    MAKE --> SAVE
+    KIND -->|Doesn't count / Count again| WHY{Reason typed?}
+    WHY -->|No| R1[Refused — reason_required<br/>NOTHING IS WRITTEN]
+    WHY -->|Yes| EX[Mark the approval not counting, or counting again]
+    SAVE --> LOG[application_decisions row:<br/>the application, the time, the staff name AND staff id]
+    EX --> LOG2[application_decisions row:<br/>the application, the time, the staff name AND staff id, the reason]
+```
+
+* **The answer belongs to the current round.** Before 2026-10-20 a Bank yes looked for the newest
+  application for this client and bank on ANY round. A funding sequence has about six rounds, often
+  at the same banks, so a round-2 approval and its dollar amount landed on the round-1 application:
+  round 2 billed nothing for it and round 1's settled bill moved.
+* **"Doesn't count / Count again" is not a bank answer.** It takes a bank yes out of this round's
+  success-fee bill (the client never used the card, or the bank pulled it), or puts it back. The
+  bank's yes stays as it was. Both ways now ask for a reason, and a filler sentence is never saved
+  in place of one.
+* **The database holds the rule.** Migration 494 adds `application_decisions.staff_id` and refuses a
+  new bank-answer, not-counting or counting-again row with no staff id or name, and a not-counting or
+  counting-again row with no reason.
+* **The bank's email is a suggestion only.** A bank email that reaches the client's Fundhub funding
+  inbox (`bank_inbox`, Mailgun `mail.response`) offers its dollar figures as buttons beside every
+  lender row. Nothing ties an email to one bank or one application, and nothing saves from it. A
+  person taps the figure beside the right bank and presses Bank yes. No Zoho mail link exists in the
+  code (Zoho appears only in hiring).
+
+## Closing a round is one round done (2026-10-20)
+
+`round.closeout` from the Closed column carries `stage: "closed"` and `engagementComplete: false`.
+Owner rule: closing a round is one round done, not the job done. A funding sequence has about six
+rounds, and the whole engagement is complete only when the sequence closes. No control closes a
+sequence yet, so no event claims it. N-04 and the inquiry gate read `stage: "closed"`, so they behave
+as before.
+
+---
+
 ## Where the "Approved" figure comes from, and who is allowed to write it
 
 `funding_rounds.approved_amount` is a **summary**. Since

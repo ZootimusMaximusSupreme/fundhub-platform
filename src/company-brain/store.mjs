@@ -11,6 +11,23 @@ function sha256(text) {
   return crypto.createHash("sha256").update(String(text || ""), "utf8").digest("hex");
 }
 
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * A Drive file name can hold any UUID (an iPhone export is named <UUID>.mp4), so the
+ * id sniffed from a name is only a guess. Keep it only when that client exists in this
+ * company. Otherwise the file is saved with no client (NULL) and counts as unattached.
+ */
+async function clientIdThatExists(db, orgId, clientId) {
+  const id = String(clientId || "").trim().toLowerCase();
+  if (!UUID_SHAPE.test(id)) return null;
+  const res = await db.query(
+    `SELECT id FROM clients WHERE id = $1 AND org_id = $2 LIMIT 1`,
+    [id, orgId]
+  );
+  return res.rows?.[0]?.id ? id : null;
+}
+
 /**
  * Upsert one extracted file + its chunks.
  * `extracted` is the shape from extractFromDriveFile / walkDriveAndExtract.
@@ -19,7 +36,7 @@ function sha256(text) {
  */
 export async function upsertExtractedFile(db, {
   orgId,
-  extracted,
+  extracted: extractedIn,
   accessTier = "owner", // fail-closed default before classification
   env = process.env,
   fetchImpl,
@@ -28,7 +45,14 @@ export async function upsertExtractedFile(db, {
   classifyFn = null
 } = {}) {
   if (!orgId) return { ok: false, reason: "org_id_required" };
-  if (!extracted?.fileId) return { ok: false, reason: "drive_file_id_required" };
+  if (!extractedIn?.fileId) return { ok: false, reason: "drive_file_id_required" };
+
+  // Never save a client id that points at no client of this company.
+  let extracted = extractedIn;
+  if (extractedIn.clientId) {
+    const clientId = await clientIdThatExists(db, orgId, extractedIn.clientId);
+    if (!clientId) extracted = { ...extractedIn, clientId: null, unattached: true };
+  }
 
   const tier = ACCESS_TIER_OR_OWNER(accessTier);
   const text = String(extracted.text || "");

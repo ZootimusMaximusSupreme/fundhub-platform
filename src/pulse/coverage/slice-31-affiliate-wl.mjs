@@ -6,7 +6,7 @@
 // silent for 3 times its schedule (heartbeats for */15 jobs; DB stamps for monthly).
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
-import { INNGEST_JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
+import { CRON_JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
 import { ROUTES } from "../../../netlify/functions/api.mjs";
 import {
   SWEEP_CRON as AF01_CRON,
@@ -78,7 +78,7 @@ export const INNGEST_CRON_IDS = Object.freeze([
 ]);
 
 const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
-const heartbeatJobs = new Map(INNGEST_JOBS.map(([job, cron]) => [job, cron]));
+const heartbeatJobs = new Map(CRON_JOBS.map(([job, cron]) => [job, cron]));
 
 function door(id, schedule = "daily") {
   const alreadyInRegistry = listed.has(id);
@@ -125,10 +125,10 @@ function inngestCron(id, schedule, cron) {
   let proof;
   if (alreadyInRegistry) {
     proof =
-      `PASS — job ${id} is on INNGEST_JOBS (cron ${cron}); red after ${schedule === "15m" ? "3x 15m" : `3x ${schedule}`} with no heartbeat or monthly DB stamp.`;
+      `PASS — job ${id} is on the cron job list (cron ${cron}); red after ${schedule === "15m" ? "3x 15m" : `3x ${schedule}`} with no heartbeat or monthly DB stamp.`;
   } else {
     proof =
-      `Add ${id} to INNGEST_JOBS in src/pulse/heartbeats.mjs (cron ${cron}). ` +
+      `Add ${id} to CLOCK_JOBS in src/pulse/heartbeats.mjs and to src/workflows/scheduled.mjs (cron ${cron}). ` +
       "Do not auto-fix from this slice.";
   }
   return {

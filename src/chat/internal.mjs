@@ -4,10 +4,66 @@
 // (spec §4.3 — internal pings are not client outbound). Visually distinct via
 // conversations.kind = 'internal'.
 
-function pairKey(a, b) {
+import { ROLE_TEST_STAFF } from "../auth/seed-role-accounts.mjs";
+
+/** The one key an internal thread between two staff members is stored under. */
+export function pairKey(a, b) {
   const x = String(a);
   const y = String(b);
   return x < y ? `${x}:${y}` : `${y}:${x}`;
+}
+
+/* WHO IS A TEAMMATE IN THE CHAT LIST (owner, 2026-10-20): only active, working
+   employees. Not a suspended or switched-off login, not a demo row, not one of
+   the seeded "TEST — <Role>" logins agents use to prove each role, not a
+   fixture on a test domain (example.com and friends), and not a principal
+   kind (partner, client, affiliate) that happens to live in the staff table. */
+export const NOT_TEAMMATE_ROLES = Object.freeze(["partner", "client", "affiliate"]);
+export const ROLE_TEST_EMAILS = Object.freeze(ROLE_TEST_STAFF.map((s) => String(s.email).toLowerCase()));
+export const TEST_EMAIL_DOMAIN_RE = "(^|\\.)(example\\.(com|org|net)|local|localhost|test|invalid)$";
+
+/**
+ * listWorkingTeammates(db, { orgId, staffId }) → [{ id, name, email, role }]
+ * Everyone the signed-in staff member may message, never themselves.
+ */
+export async function listWorkingTeammates(db, { orgId, staffId, limit = 200 } = {}) {
+  const r = await db.query(
+    `SELECT id, name, email, role
+       FROM staff
+      WHERE org_id = $1
+        AND status = 'active'
+        AND active IS NOT FALSE
+        AND id <> $2
+        AND COALESCE(is_demo, false) = false
+        AND lower(COALESCE(role, '')) <> ALL($3::text[])
+        AND lower(btrim(COALESCE(email, ''))) <> ALL($4::text[])
+        AND split_part(lower(btrim(COALESCE(email, ''))), '@', 2) !~ $5
+      ORDER BY name ASC
+      LIMIT $6`,
+    [orgId, staffId, [...NOT_TEAMMATE_ROLES], [...ROLE_TEST_EMAILS], TEST_EMAIL_DOMAIN_RE, limit]
+  );
+  return r.rows;
+}
+
+/**
+ * listAssignedClients(db, { orgId, staffId }) → [{ id, name, client_code }]
+ * The clients this staff member is the assigned CSM for (owner, 2026-10-20:
+ * "the clients assigned to them"). Real clients only. No phone, no email.
+ */
+export async function listAssignedClients(db, { orgId, staffId, limit = 200 } = {}) {
+  const r = await db.query(
+    `SELECT c.id,
+            NULLIF(btrim(concat_ws(' ', c.first_name, c.last_name)), '') AS name,
+            c.client_code
+       FROM clients c
+      WHERE c.org_id = $1
+        AND c.assigned_csm_staff_id = $2
+        AND COALESCE(c.is_demo, false) = false
+      ORDER BY name ASC NULLS LAST, c.client_code ASC NULLS LAST
+      LIMIT $3`,
+    [orgId, staffId, limit]
+  );
+  return r.rows;
 }
 
 /**

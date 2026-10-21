@@ -69,6 +69,7 @@ import {
   WaypointError
 } from "../waypoints/store.mjs";
 import { priceDisputeRound, sumComponents } from "../waypoints/pricing.mjs";
+import { SERVICE_KEY, roundPriceList } from "../pulse/beats/lib/paid-round-prices.mjs";
 import { onRepairPath } from "../repair/on-repair-path.mjs";
 import { negativeKeysFromResult } from "../crs/snapshot-negatives.mjs";
 import { requestSoftPull } from "../finance/soft-pulls.mjs";
@@ -77,7 +78,6 @@ import { checkoutExpiresAt } from "./link-ttl.mjs";
 import { REFUSAL, refuse, refusalMessage } from "./refusals.mjs";
 
 export const SERVICE_KIND = "dispute_round";
-export const SERVICE_KEY = "paid_round";
 
 /** Statuses that mean "this request is still going somewhere". A second press
  *  while one of these is on file is refused. `failed`, `cancelled`, `refunded`
@@ -103,42 +103,10 @@ export function quoteRound({ creditorLetter = false, escalationFilings = false }
   return { components, totalCents };
 }
 
-/** The price list a screen renders before anything is bought.
- *
- *  The `key` and `priceCents` are the facts. `label` is a short receipt line
- *  and is here because the orchestrator's contract for
- *  /api/read/client-progress carries one — it names the add-on, it is not
- *  marketing copy, and the sentences around the button still live in the front
- *  end. Owner-set branding applies to it like everything else client-facing.
- *
- *  Each add-on's price is derived by SUBTRACTION from the priced round rather
- *  than restated as a constant, so this list cannot drift away from what a
- *  client is actually charged. */
-export function roundPriceList() {
-  const base = priceDisputeRound({});
-  const withCreditor = priceDisputeRound({ creditorLetter: true });
-  const withEscalation = priceDisputeRound({ escalationFilings: true });
-  return [
-    {
-      key: "base",
-      label: "Three bureaus",
-      priceCents: base.totalCents,
-      required: true
-    },
-    {
-      key: "creditor",
-      label: "Creditor letter",
-      priceCents: withCreditor.totalCents - base.totalCents,
-      required: false
-    },
-    {
-      key: "cfpb_and_ag",
-      label: "CFPB and state attorney general",
-      priceCents: withEscalation.totalCents - base.totalCents,
-      required: false
-    }
-  ];
-}
+/* SERVICE_KEY and roundPriceList live in src/pulse/beats/lib/paid-round-prices.mjs (2026-10-20), unchanged, so the
+   hourly beat client-progress quotes the self-serve round exactly as the progress page and GET /api/paid-services
+   do. One copy; imported back above and re-exported here. */
+export { SERVICE_KEY, roundPriceList };
 
 /* ── eligibility ─────────────────────────────────────────────────────────── */
 

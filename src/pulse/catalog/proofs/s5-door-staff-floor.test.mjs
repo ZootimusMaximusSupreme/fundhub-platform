@@ -164,14 +164,29 @@ test("chat/peers lists active teammates except the caller, never demo rows", asy
     { id: TARGET, name: "Ada Admin", email: "ada.admin@fundhub.ai", role: "admin" },
     { id: "5b000000-0000-4000-8000-0000000000a2", name: "Cal Closer", email: "cal.closer@fundhub.ai", role: "closer" },
   ];
-  const done = await hit(peersHandler, { role: "closer", rules: [[/FROM staff\s+WHERE org_id = \$1/, peers]] });
+  const mine = [{ id: "5c000000-0000-4000-8000-0000000000c1", name: "Pat Client", client_code: "FH-000900" }];
+  const done = await hit(peersHandler, { role: "closer", rules: [
+    [/FROM staff\s+WHERE org_id = \$1/, peers],
+    [/FROM clients c\s+WHERE c\.org_id = \$1\s+AND c\.assigned_csm_staff_id = \$2/, mine],
+  ] });
   assert.equal(done.status, 200);
-  assert.deepEqual(done.body, { ok: true, staff: peers });
+  assert.deepEqual(done.body, { ok: true, staff: peers, clients: mine });
   const [call] = sqlCalls(done, /FROM staff\s+WHERE org_id = \$1/);
-  assert.deepEqual(call.params, [ORG_ID, STAFF_ID]);
+  assert.deepEqual(call.params.slice(0, 2), [ORG_ID, STAFF_ID]);
   assert.match(call.sql, /status = 'active'/);
+  assert.match(call.sql, /active IS NOT FALSE/);
   assert.match(call.sql, /id <> \$2/);
   assert.match(call.sql, /COALESCE\(is_demo, false\) = false/);
+  // Only working employees: no principal kinds, no seeded role-test logins, no test-domain fixtures.
+  assert.deepEqual(call.params[2], ["partner", "client", "affiliate"]);
+  assert.ok(call.params[3].includes("owner@fundhub.ai") && call.params[3].includes("closer@fundhub.ai"));
+  assert.ok(new RegExp(call.params[4]).test("example.com"));
+  assert.ok(!new RegExp(call.params[4]).test("fundhub.ai"));
+  // Clients: only the ones this person is the assigned CSM for.
+  const [mineCall] = sqlCalls(done, /FROM clients c/);
+  assert.deepEqual(mineCall.params.slice(0, 2), [ORG_ID, STAFF_ID]);
+  assert.match(mineCall.sql, /COALESCE\(c\.is_demo, false\) = false/);
+  assert.doesNotMatch(mineCall.sql, /phone|email/);
 
   const signedOut = await hit(peersHandler, { anonymous: true });
   assert.equal(signedOut.status, 401);

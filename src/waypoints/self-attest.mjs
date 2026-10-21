@@ -36,31 +36,11 @@
 // assertCanReadRow: saying a record exists but is not yours is itself a leak).
 
 import { completeWaypoint, markWaypointState } from "./store.mjs";
+import { tickRefusal, closedBy } from "../pulse/beats/lib/waypoints-read.mjs";
 
-/** Why a row may not be ticked by the client, or null when it may.
- *  Pure — takes a client_waypoints row. */
-export function tickRefusal(row) {
-  if (!row) return "not_found";
-  if (row.owner_kind !== "client") return "our_step";
-  const kind = row.verify_kind ?? null;
-  if (kind === "paydown") return "closes_on_credit_report";
-  if (kind === "no_new_credit") return "ongoing_rule";
-  if (kind !== null) return "machine_checked";
-  return null;
-}
-
-/** How a step gets closed, as a fact the progress page can draw.
- *  'client'         — the client ticks it.
- *  'credit_report'  — the next credit report closes it (paydown).
- *  'ongoing'        — a rule to keep; it is never ticked (no_new_credit).
- *  'fundhub'        — anything else: our step, or a machine check. */
-export function closedBy(row) {
-  const refusal = tickRefusal(row);
-  if (refusal === null) return "client";
-  if (refusal === "closes_on_credit_report") return "credit_report";
-  if (refusal === "ongoing_rule") return "ongoing";
-  return "fundhub";
-}
+/* tickRefusal and closedBy live in src/pulse/beats/lib/waypoints-read.mjs (2026-10-20), unchanged, so the hourly
+   beat client-progress says how each step closes the same way the progress page does. One copy; re-exported. */
+export { tickRefusal, closedBy };
 
 /** The sentence a refused tick carries. One place, so a screen never invents
  *  its own wording for "why can't I tick this". */

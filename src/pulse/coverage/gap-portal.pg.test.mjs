@@ -53,8 +53,8 @@ const SHADOWS = {
     rec: "org_id uuid, client_id uuid, kind text, is_demo boolean, generated_at timestamptz, created_at timestamptz"
   },
   clients: {
-    cols: "id, org_id, email, custom_fields, is_demo",
-    rec: "id uuid, org_id uuid, email text, custom_fields jsonb, is_demo boolean"
+    cols: "id, org_id, email, custom_fields, is_demo, client_code",
+    rec: "id uuid, org_id uuid, email text, custom_fields jsonb, is_demo boolean, client_code text"
   },
   transactions: {
     cols: "org_id, client_id, status, is_demo, created_at",
@@ -149,7 +149,8 @@ function client(over = {}) {
     org_id: over.org_id || ORG,
     email: over.email === undefined ? `maria.${id.slice(0, 6)}@gmail.com` : over.email,
     custom_fields: over.custom_fields || {},
-    is_demo: over.is_demo ?? false
+    is_demo: over.is_demo ?? false,
+    client_code: over.client_code ?? null
   };
 }
 
@@ -226,6 +227,10 @@ test("portal SQL, sign-in: who holds access, and how long", { skip: !HAS_DB }, a
   const c = client();
   await expectListed(t, "RED: access 5 days ago, paid through the door, never signed in", buyer(c), c, {
     is_test: false, paid_through_door: true, signed_in: false, asked_since_access: false
+  });
+  await t.test("the row carries the client code the owner hold is judged on", async () => {
+    const held = client({ client_code: "FH-000507" });
+    assert.equal(forClient(await signInRows(buyer(held)), held).client_code, "FH-000507");
   });
   await t.test("days_held is in DAYS (5 days of access reads about 5)", async () => {
     const row = forClient(await signInRows(buyer(c)), c);

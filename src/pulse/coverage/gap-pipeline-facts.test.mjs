@@ -46,8 +46,11 @@ import { STAGE_SLA } from "../../repair/sla.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../..");
 // Code only. The header comments name the things this file refuses to do.
-const SRC = fs
-  .readFileSync(path.join(HERE, "gap-pipeline-facts.mjs"), "utf8")
+// Both files: the lane and the truth it moved into (src/pulse/beats/lib/pipeline-facts-truth.mjs).
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-pipeline-facts.mjs"), "utf8"),
+  fs.readFileSync(path.join(ROOT, "src/pulse/beats/lib/pipeline-facts-truth.mjs"), "utf8")
+].join("\n")
   .split("\n")
   .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
   .join("\n");

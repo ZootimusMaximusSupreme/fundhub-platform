@@ -53,18 +53,23 @@ import { proposeTransfer as defaultProposeTransfer } from "./money-transfer-seam
 import { recordDecline as defaultRecordDecline } from "../blueprint/decline-defense.mjs";
 import { isCapitalBlueprintBuyer } from "../blueprint/coach-exception.mjs";
 import { recordShadow as defaultRecordShadow, recordRun as defaultRecordRun } from "../agents/shadow-log.mjs";
-import { byCode } from "../agents/registry.mjs";
 import { callModel as defaultCallModel } from "../agents/model.mjs";
 import { dollars, shortDate } from "../banking/card-due-reminders.mjs";
 import {
-  AGENT_CODE, AGENT_NAME, HELPER_PROMPT, HELPER_GUARDRAILS, BRAIN_AI,
+  AGENT_CODE, HELPER_PROMPT, HELPER_GUARDRAILS, BRAIN_AI,
   decideTurn, readRecentTurns, runnerMode, classifyInbound, addDaysIso
 } from "./money-agent-ai.mjs";
 import { readDeclinePaste, MAX_PASTE_CHARS } from "./money-decline.mjs";
+/* THE SCREEN'S READ LIVES IN THE BEAT LIBRARY (2026-10-20): the agent row, the thread,
+   the turn view and the bridge read moved, unchanged, to src/pulse/beats/lib/money-helper-read.mjs,
+   so the hourly beat money-tasks judges the helper screen with the same read
+   (finance-os:helper). Every name is re-exported here, so callers import from this file as before. */
+import {
+  BRIDGE_NAME, BRIDGE_FRESH_MS, TURN_COLS, isObj, list,
+  loadAgent as loadAgentRow, helperIsOn, threadState, readThread, reasonWords, viewTurn, bridgeStatus
+} from "../pulse/beats/lib/money-helper-read.mjs";
 
-export const BRIDGE_NAME = "money-helper-mac";
-/** A heartbeat younger than this means the Mac runner is on. It beats every 15 s. */
-export const BRIDGE_FRESH_MS = 60_000;
+export { BRIDGE_NAME, BRIDGE_FRESH_MS, helperIsOn, threadState, readThread, reasonWords, viewTurn, bridgeStatus };
 /** A queued turn older than this, with the Mac off, is answered by rules on the next read. */
 export const ORPHAN_AFTER_MS = 20_000;
 /** A running turn whose runner went quiet this long is taken back. */
@@ -81,8 +86,6 @@ export const TASK_SOURCE = "money-agent";
 /** money_agent_tasks.claimed_by when the helper takes a "Do task" row. */
 export const TASK_CLAIMER = "money-helper";
 
-const isObj = (v) => v != null && typeof v === "object" && !Array.isArray(v);
-const list = (v) => (Array.isArray(v) ? v : []);
 const clip = (s, n) => (s == null ? null : String(s).replace(/\s+/g, " ").trim().slice(0, n));
 const centsOrNull = (v) => (v === null || v === undefined || v === "" ? null : Number.isSafeInteger(Number(v)) ? Number(v) : null);
 
@@ -91,22 +94,10 @@ const centsOrNull = (v) => (v === null || v === undefined || v === "" ? null : N
    ═════════════════════════════════════════════════════════════════════════ */
 
 /** The FOS-01 row for this org, with the in-code prompt and guardrails as the
- *  fallback when the row holds none. A missing row is an agent that is off. */
+ *  fallback when the row holds none. A missing row is an agent that is off.
+ *  (The read itself is src/pulse/beats/lib/money-helper-read.mjs loadAgent.) */
 export async function loadAgent(db, { orgId }) {
-  let row = null;
-  try { row = await byCode(db, { orgId, code: AGENT_CODE }); } catch { row = null; }
-  if (!row) return { code: AGENT_CODE, name: AGENT_NAME, status: null, prompt: HELPER_PROMPT, guardrails: HELPER_GUARDRAILS, fromRow: false };
-  const g = isObj(row.guardrails) && Object.keys(row.guardrails).length ? row.guardrails : HELPER_GUARDRAILS;
-  return {
-    code: row.code, name: row.name || AGENT_NAME, status: row.status,
-    prompt: row.prompt && String(row.prompt).trim() ? row.prompt : HELPER_PROMPT,
-    guardrails: g, fromRow: true
-  };
-}
-
-/** Running means shadow or live. Shadow answers in the app and never texts. */
-export function helperIsOn(agent) {
-  return !!agent && (agent.status === "shadow" || agent.status === "live");
+  return loadAgentRow(db, { orgId, prompt: HELPER_PROMPT, guardrails: HELPER_GUARDRAILS });
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -206,18 +197,6 @@ export async function readContext(db, { orgId, clientId, asOf = new Date(), env 
    THE THREAD
    ═════════════════════════════════════════════════════════════════════════ */
 
-const TURN_COLS = `id, org_id, client_id, kind, actor, staff_id, input, task_id, status, reply, actions,
-                   brain, model, reason, attempts, claimed_at, answered_at, created_at`;
-
-export async function threadState(db, { orgId, clientId }) {
-  const r = await db.query(
-    `SELECT halted_at, halt_reason FROM money_helper_threads WHERE client_id = $1 AND org_id = $2`,
-    [clientId, orgId]
-  );
-  const row = r.rows[0];
-  return { halted_at: row && row.halted_at ? new Date(row.halted_at).toISOString() : null, halt_reason: (row && row.halt_reason) || null };
-}
-
 export async function haltThread(db, { orgId, clientId, reason }) {
   await db.query(
     `INSERT INTO money_helper_threads (client_id, org_id, halted_at, halt_reason)
@@ -226,18 +205,6 @@ export async function haltThread(db, { orgId, clientId, reason }) {
                                             halt_reason = COALESCE(money_helper_threads.halt_reason, EXCLUDED.halt_reason)`,
     [clientId, orgId, reason]
   );
-}
-
-/** The thread for the screen, oldest first. */
-export async function readThread(db, { orgId, clientId, limit = 50 }) {
-  const r = await db.query(
-    `SELECT ${TURN_COLS} FROM money_helper_turns
-      WHERE org_id = $1 AND client_id = $2
-      ORDER BY created_at DESC, id DESC
-      LIMIT $3`,
-    [orgId, clientId, Math.max(1, Math.min(200, Number(limit) || 50))]
-  );
-  return r.rows.slice().reverse();
 }
 
 export async function turnsToday(db, { orgId, clientId, now = new Date() }) {
@@ -263,46 +230,6 @@ export async function insertTurn(db, { orgId, clientId, kind, actor, staffId = n
   return r.rows[0];
 }
 
-const REASON_WORDS = [
-  [/^bridge_off/, "Answered by the rules helper: the AI helper's computer is off right now."],
-  [/^rules_(mode|only)/, "Answered by the rules helper."],
-  [/^ai_unavailable/, "Answered by the rules helper: the AI could not be reached."],
-  [/^ai_blocked/, "Answered by the rules helper: the AI's answer broke one of its rules."],
-  [/^ai_gave_up/, "Answered by the rules helper: the AI took too long."],
-  [/^intent:stop/, "Stopped because you said STOP."],
-  [/^intent:legal/, "Stopped and handed to a person."],
-  [/^intent:person/, "Handed to a person."],
-  [/^intent:/, "Answered by the rules helper."]
-];
-
-export function reasonWords(reason) {
-  if (!reason) return null;
-  for (const [re, words] of REASON_WORDS) if (re.test(String(reason))) return words;
-  return "Answered by the rules helper.";
-}
-
-/** One turn as the screen reads it. The full reason (which rule an AI answer
- *  broke) is for staff; a client gets it in plain words. */
-export function viewTurn(row, { staff = false } = {}) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    kind: row.kind,
-    actor: row.actor,
-    input: row.input,
-    task_id: row.task_id || null,
-    status: row.status,
-    reply: row.reply || null,
-    actions: list(row.actions).map((a) => ({ ...a })),
-    brain: row.brain || null,
-    model: row.model || null,
-    reason_words: reasonWords(row.reason),
-    ...(staff ? { reason: row.reason || null } : {}),
-    created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
-    answered_at: row.answered_at ? new Date(row.answered_at).toISOString() : null
-  };
-}
-
 /* ═════════════════════════════════════════════════════════════════════════
    THE BRIDGE — is the Mac runner on?
    ═════════════════════════════════════════════════════════════════════════ */
@@ -322,16 +249,6 @@ export async function bridgeOff(db) {
     `UPDATE agent_bridge_heartbeats SET last_at = now() - interval '1 hour' WHERE name = $1`,
     [BRIDGE_NAME]
   );
-}
-
-export async function bridgeStatus(db, { now = new Date() } = {}) {
-  try {
-    const r = await db.query(`SELECT last_at FROM agent_bridge_heartbeats WHERE name = $1`, [BRIDGE_NAME]);
-    const last = r.rows[0] && r.rows[0].last_at ? new Date(r.rows[0].last_at) : null;
-    return { on: !!last && new Date(now).getTime() - last.getTime() < BRIDGE_FRESH_MS, last_at: last ? last.toISOString() : null };
-  } catch {
-    return { on: false, last_at: null };
-  }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════

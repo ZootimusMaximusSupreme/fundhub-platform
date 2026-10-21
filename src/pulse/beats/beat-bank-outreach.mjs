@@ -3,11 +3,11 @@
 export const id = "bank-outreach";
 export const title = "Verified bank products stay usable";
 export const kind = "probe";
-export const covers = ["desk:bank-outreach.html", "route:bank-outreach", "route:read/bank-outreach", "job:bank-outreach-checkins"];
+export const covers = ["desk:bank-outreach.html", "route:bank-outreach", "route:read/bank-outreach", "job:bank-outreach-checkins", "job:bank-outreach-automation"];
 export const box = false;
 export const reads = [{ host: "SITE", methods: ["GET"] }];
-export const steps = ["read-door", "verified-result"];
-export const checkIds = ["bank-outreach:verified-product"];
+export const steps = ["read-door", "verified-result", "email-safety"];
+export const checkIds = ["bank-outreach:verified-product", "bank-outreach:email-safety"];
 export const damp = 2;
 export const deadlineMs = 5000;
 
@@ -104,6 +104,21 @@ SELECT count(*)::int AS total,
   ) expected ON true
  WHERE program.key = 'bank_relationships' AND p.verified_at IS NOT NULL`;
 
+// Same question as gap-bank-outreach:email-safety, asked every hour.
+export const EMAIL_SAFETY_SQL = `/* beat-bank-outreach:email-safety */
+SELECT count(*)::int AS total,
+       count(*) FILTER (WHERE c.id IS NULL OR lower(btrim(c.email)) IS DISTINCT FROM lower(btrim(m.to_address))
+         OR (c.email_opt_out_at IS NOT NULL AND c.email_opt_out_at < m.created_at)
+         OR (m.provider_ref ~ ':step[1-3]$' AND EXISTS (
+           SELECT 1 FROM outreach_inbound_emails r
+            WHERE r.org_id = m.org_id AND r.contact_id = c.id AND r.received_at < m.created_at
+              AND COALESCE(r.kind, 'other') <> 'auto_reply')))::int AS unsafe
+  FROM messages m
+  LEFT JOIN outreach_contacts c ON c.org_id = m.org_id AND c.id::text = split_part(m.provider_ref, ':', 2)
+ WHERE m.template_key LIKE 'EMAIL-BANK-OUTREACH-%' AND m.direction = 'outbound'
+   AND m.status NOT IN ('queued', 'sending', 'blocked', 'failed')
+   AND m.created_at > now() - interval '30 days'`;
+
 export async function run(ctx) {
   if (ctx.live) {
     await ctx.step("read-door", async () => {
@@ -124,9 +139,18 @@ export async function run(ctx) {
     if (!Number.isFinite(total) || !Number.isFinite(broken)) throw ctx.fail("verified-result", "Verified bank product counts were not returned.");
     if (broken > 0) throw ctx.fail("verified-result", `${broken} of ${total} verified bank products lack a sound lender, evidence, banker, application path, or facts.`);
   });
+  await ctx.step("email-safety", async () => {
+    let data;
+    try { data = (await ctx.read(EMAIL_SAFETY_SQL)).rows?.[0]; }
+    catch (error) { throw ctx.fail("email-safety", `Bank outreach email data could not be read: ${String(error?.message || error).slice(0, 100)}`); }
+    const total = data?.total == null ? NaN : Number(data.total);
+    const unsafe = data?.unsafe == null ? NaN : Number(data.unsafe);
+    if (!Number.isFinite(total) || !Number.isFinite(unsafe)) throw ctx.fail("email-safety", "Bank outreach email counts were not returned.");
+    if (unsafe > 0) throw ctx.fail("email-safety", `${unsafe} of ${total} bank outreach emails went to an unsaved banker, after a stop, or after a reply.`);
+  });
   return ctx.done(ctx.live
-    ? "Bank outreach read door is protected and verified bank product records are sound."
-    : "Verified bank product records are sound; the read door awaits the live release.");
+    ? "Bank outreach read door is protected, verified bank product records are sound, and bank emails respect stops and replies."
+    : "Verified bank product records are sound and bank emails respect stops and replies; the read door awaits the live release.");
 }
 
 export const fixGuide = [
@@ -136,19 +160,27 @@ export const fixGuide = [
   "- A lender row was changed or removed after product verification, breaking the saved result.",
   "- The bank outreach read route is missing or no longer requires staff sign-in.",
   "- Source evidence, a reachable banker, facts, or an application path disappeared.",
+  "- A bank outreach email went to an unsaved address, after the banker said stop, or a cold step after they replied.",
   "Steps:",
   "- Run node scripts/pulse/run-beat.mjs bank-outreach and read the failed step.",
   "- Compare the verified outreach product with its linked lender and banker contact in the same org.",
   "- Repair the missing source or route, then rerun the beat. Do not promote a product without evidence.",
-  "Files: src/pulse/coverage/gap-bank-outreach.mjs, src/outreach/store.mjs, netlify/functions/api.mjs"
+  "- For email-safety: read stopReasonFor in src/outreach/automation.mjs and the banker branch in src/messaging/gate.mjs. Do not resend.",
+  "Files: src/pulse/coverage/gap-bank-outreach.mjs, src/outreach/store.mjs, src/outreach/automation.mjs, netlify/functions/api.mjs"
 ].join("\n");
 
 const healthy = () => ({
   env: { NETLIFY: "true" },
   http: { "GET https://fundhub.ai/api/read/bank-outreach": { status: 401, body: '{"ok":false}' } },
-  read: [{ match: /beat-bank-outreach:verified-result/, rows: [{ total: 2, broken: 0 }] }]
+  read: [
+    { match: /beat-bank-outreach:verified-result/, rows: [{ total: 2, broken: 0 }] },
+    { match: /beat-bank-outreach:email-safety/, rows: [{ total: 5, unsafe: 0 }] }
+  ]
 });
 export const selfTest = {
   pass: healthy,
-  fail: () => ({ ...healthy(), read: [{ match: /beat-bank-outreach:verified-result/, rows: [{ total: 2, broken: 1 }] }] })
+  fail: () => ({ ...healthy(), read: [
+    { match: /beat-bank-outreach:verified-result/, rows: [{ total: 2, broken: 1 }] },
+    { match: /beat-bank-outreach:email-safety/, rows: [{ total: 5, unsafe: 0 }] }
+  ] })
 };

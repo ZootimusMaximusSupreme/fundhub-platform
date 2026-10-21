@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { CHECKS, SLICE_ID, gaps } from "./slice-26-client-journey.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
-import { SWEEP_CRON as COMMAS_CRON } from "../../workflows/commas-inbox-drain.mjs";
+import { JOBS } from "../heartbeats.mjs";
 import { SWEEP_CRON as CHECKOUT_EXPIRY_CRON } from "../../workflows/paid-checkout-expiry-sweeper.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -21,7 +21,7 @@ const EXPECTED_IDS = [
   "s-02-incomplete-survey-nudge",
   "public/funnel-checkout",
   "payment-success.html",
-  "commas-inbox-drain",
+  "commas-inbox-sweeper",
   "paid-checkout-expiry-sweeper",
   "slo-paid-form-nudge",
   "auth/magic-link",
@@ -64,7 +64,7 @@ const EXPECTED_IDS = [
 const EXPECTED_GAP_IDS = [
   "s-01-new-lead-intake",
   "s-02-incomplete-survey-nudge",
-  "commas-inbox-drain",
+  "commas-inbox-sweeper",
   "paid-checkout-expiry-sweeper",
   "slo-paid-form-nudge",
   "contracts/sign",
@@ -108,11 +108,15 @@ test("slice 26-client-journey: every check has id, schedule, redAfter, alreadyIn
 });
 
 test("slice 26-client-journey: pay sweepers and gaps match registry and machine today", () => {
-  assert.equal(COMMAS_CRON, "* * * * *");
+  // The Commas queue's only clock since 2026-10-20 (the Inngest commas-inbox-drain is retired).
+  const commas = JOBS.find((j) => j.job === "commas-inbox-sweeper");
+  assert.equal(commas.runner, "netlify");
+  assert.equal(commas.cron, "*/5 * * * *");
+  assert.equal(CHECKS.find((r) => r.id === "commas-inbox-sweeper").cron, commas.cron);
   assert.equal(CHECKOUT_EXPIRY_CRON, "0 * * * *");
 
   const machineFiles = new Set(MACHINE_CHECKS.map((r) => r.file));
-  for (const id of ["commas-inbox-drain", "paid-checkout-expiry-sweeper"]) {
+  for (const id of ["commas-inbox-sweeper", "paid-checkout-expiry-sweeper"]) {
     const row = CHECKS.find((r) => r.id === id);
     assert.ok(row);
     assert.equal(row.alreadyInRegistry, false);

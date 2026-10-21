@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
-import { INNGEST_JOBS, NETLIFY_JOBS } from "../heartbeats.mjs";
+import { CRON_JOBS, NETLIFY_JOBS } from "../heartbeats.mjs";
 import { functions } from "../../workflows/index.mjs";
 import { SLO_PULL_PATH } from "../../slo/offer.mjs";
 import { CHECKS, SLICE_ID, gaps } from "./slice-40-more.mjs";
@@ -74,7 +74,7 @@ test("slice 40-more: not in the registry, machine list, or heartbeat clocks", ()
   const listed = new Set(PULSE_REGISTRY.map((row) => coverageKey(row)));
   const machineIds = new Set(MACHINE_CHECKS.map((row) => row.id));
   const clocks = new Set([
-    ...INNGEST_JOBS.map(([job]) => job),
+    ...CRON_JOBS.map(([job]) => job),
     ...NETLIFY_JOBS.map(([job]) => job)
   ]);
   for (const row of CHECKS) {

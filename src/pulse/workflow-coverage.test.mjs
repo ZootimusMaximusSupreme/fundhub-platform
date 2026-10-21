@@ -10,8 +10,8 @@
 //      unless the name is on EVENT_NAME_ALLOW_LIST below with a written reason;
 //   3. it has no trigger, or is switched off, and is not on NOT_LIVE_WORKFLOWS
 //      (src/pulse/workflow-runs.mjs), so a workflow cannot go dark by accident;
-//   4. it is a cron and is not on INNGEST_JOBS (src/pulse/heartbeats.mjs), so it
-//      would have no job: row;
+//   4. it is a cron and is not on INNGEST_JOBS or CLOCK_JOBS (src/pulse/heartbeats.mjs),
+//      so it would have no job: row;
 //   5. the shared client does not list the "Run evidence" add-on (Ship 2), so no
 //      run of an event workflow would leave a receipt in workflow_runs;
 //   6. a workflow with cancelOn (its run can be cancelled mid-sleep and stay open)
@@ -27,7 +27,7 @@ import assert from "node:assert/strict";
 import { functions } from "../workflows/index.mjs";
 import { inngest } from "../workflows/client.mjs";
 import { CANONICAL_EVENTS } from "../events/canonical.mjs";
-import { INNGEST_JOBS } from "./heartbeats.mjs";
+import { INNGEST_JOBS, CLOCK_JOBS } from "./heartbeats.mjs";
 import { NOT_LIVE_WORKFLOWS, SLEEPERS, workflowTriggers } from "./workflow-runs.mjs";
 import { RUN_EVIDENCE_NAME } from "./run-evidence.mjs";
 
@@ -44,7 +44,7 @@ function findGaps({
   canonical = new Set(CANONICAL_EVENTS),
   allow = EVENT_NAME_ALLOW_LIST,
   notLive = NOT_LIVE_WORKFLOWS,
-  jobs = new Set(INNGEST_JOBS.map(([job]) => job)),
+  jobs = new Set([...INNGEST_JOBS, ...CLOCK_JOBS].map(([job]) => job)),
   addOns = middlewareOf(client),
   sleepers = SLEEPERS
 }) {
@@ -74,7 +74,7 @@ function findGaps({
       gaps.push(`${id}: has no trigger or is switched off, but is not on NOT_LIVE_WORKFLOWS`);
     }
     if (t.crons.length > 0 && !jobs.has(id)) {
-      gaps.push(`${id}: is a cron but is not on INNGEST_JOBS, so it has no job: row`);
+      gaps.push(`${id}: is a cron but is not on INNGEST_JOBS or CLOCK_JOBS, so it has no job: row`);
     }
     if (fn.opts && fn.opts.cancelOn && !Object.prototype.hasOwnProperty.call(sleepers, id)) {
       gaps.push(`${id}: has cancelOn but is not on SLEEPERS, so a cancelled run would be called lost`);
@@ -124,9 +124,9 @@ test("workflow coverage: every dark function in the bundle is on NOT_LIVE_WORKFL
   assert.deepEqual(dark, Object.keys(NOT_LIVE_WORKFLOWS).sort());
 });
 
-test("workflow coverage: every cron function is on INNGEST_JOBS, and nothing on it is missing from the bundle", () => {
+test("workflow coverage: every cron function is on INNGEST_JOBS or CLOCK_JOBS, and nothing on them is missing from the bundle", () => {
   const crons = functions.map(workflowTriggers).filter((t) => t.crons.length > 0).map((t) => t.id).sort();
-  assert.deepEqual(crons, INNGEST_JOBS.map(([job]) => job).sort());
+  assert.deepEqual(crons, [...INNGEST_JOBS, ...CLOCK_JOBS].map(([job]) => job).sort());
 });
 
 test("workflow coverage: the allow-list reasons are 40+ characters", () => {

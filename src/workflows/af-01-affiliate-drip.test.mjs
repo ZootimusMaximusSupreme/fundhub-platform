@@ -8,8 +8,9 @@ import { sweep, SWEEP_CRON, af01AffiliateDrip } from "./af-01-affiliate-drip.mjs
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 test("affiliate drip sweeper is registered and uses plus-tag SQL", () => {
-  const index = fs.readFileSync(path.join(HERE, "index.mjs"), "utf8");
-  assert.ok(/af01AffiliateDrip/.test(index));
+  // A cron is registered on the Netlify clock's list since 2026-10-20 (Inngest serves events only).
+  const scheduled = fs.readFileSync(path.join(HERE, "scheduled.mjs"), "utf8");
+  assert.ok(/^\s*af01AffiliateDrip,$/m.test(scheduled));
   const drip = fs.readFileSync(path.join(HERE, "../affiliates/drip.mjs"), "utf8");
   assert.match(drip, /\+aff-/);
   assert.match(drip, /\+sim-/);

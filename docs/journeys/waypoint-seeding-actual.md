@@ -180,7 +180,7 @@ flowchart TD
     F -->|"the new file reports no cards at all"| F1["OPEN — no_accounts_reported.<br/>A thin pull is not a client closing every card."]
     F -->|"a card matches nothing by name,<br/>but its PRINT matches one we knew about"| F4["the same card, renamed.<br/>NOTHING HAPPENS."]
     F -->|"a card matches nothing, and it has no print —<br/>or the enrolment file had a card we could not identify"| F5["UNKNOWN. Nothing happens, and the run<br/>records which fact was missing.<br/>Unknown is never an accusation."]
-    F -->|"a card with its own print that the baseline<br/>positively did not have"| F2["markWaypointState blocked<br/>state_reason: 'Your credit file now shows an<br/>account that was not on it when you enrolled: X.<br/>Let your advisor know if this is not yours.'<br/>completed_at stays NULL"]
+    F -->|"a card with its own print that the baseline<br/>positively did not have"| F2["markWaypointState blocked<br/>state_reason: 'Your credit file now shows an<br/>account that was not on it when you enrolled: X.<br/>Let our team know if this is not yours.'<br/>completed_at stays NULL"]
     F -->|"no new cards, and the row is BLOCKED"| F6["back to not_started, state_reason cleared.<br/>The evidence has gone, so the flag goes."]
     F -->|"no new cards"| F3["OPEN — no_new_accounts_seen.<br/>NEVER completed: keeping a rule is not provable."]
 

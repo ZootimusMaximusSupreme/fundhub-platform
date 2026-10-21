@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cronIntervalMs, checkJobHeartbeats, STALE_MULTIPLE, INNGEST_JOBS, NETLIFY_JOBS, JOBS } from "./heartbeats.mjs";
+import { cronIntervalMs, checkJobHeartbeats, STALE_MULTIPLE, INNGEST_JOBS, NETLIFY_JOBS, CLOCK_JOBS, CLOCK_FUNCTION, JOBS } from "./heartbeats.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -110,17 +110,36 @@ test("an Arizona cron still has a one-day gap", () => {
 });
 
 test("the heartbeat list matches the scheduled jobs, and it never fixes them", async () => {
-  const { functions } = await import("../workflows/index.mjs");
-  const live = [];
-  for (const fn of functions) {
-    const id = fn.id();
-    for (const trigger of fn.opts?.triggers || []) {
-      if (trigger && trigger.cron) live.push([id, trigger.cron]);
+  const { functions, inngestFunctions, scheduled: clockList } = await import("../workflows/index.mjs");
+  const cronsOf = (list) => {
+    const out = [];
+    for (const fn of list) {
+      for (const trigger of fn.opts?.triggers || []) {
+        if (trigger && trigger.cron) out.push([fn.id(), trigger.cron]);
+      }
     }
-  }
+    return out;
+  };
+  /* Crons served to Inngest: exactly INNGEST_JOBS (none since 2026-10-20). */
+  const live = cronsOf(inngestFunctions);
   const listed = new Map(INNGEST_JOBS);
   assert.equal(listed.size, live.length);
   for (const [id, cron] of live) assert.equal(listed.get(id), cron, id);
+
+  /* Crons the Netlify clock runs: exactly CLOCK_JOBS, same ids and schedules, in both directions. */
+  const clockLive = cronsOf(clockList);
+  const clockListed = new Map(CLOCK_JOBS);
+  assert.equal(clockListed.size, CLOCK_JOBS.length, "CLOCK_JOBS names a job twice");
+  assert.equal(clockLive.length, clockList.length, "every scheduled job has exactly one cron");
+  assert.deepEqual([...clockListed.keys()].sort(), clockLive.map(([id]) => id).sort(),
+    "CLOCK_JOBS must name every job in src/workflows/scheduled.mjs, and no extra");
+  for (const [id, cron] of clockLive) assert.equal(clockListed.get(id), cron, id);
+  assert.ok(JOBS.filter((j) => j.via === CLOCK_FUNCTION).every((j) => j.runner === "netlify"));
+
+  /* Every cron in the whole registry is on one of the two lists. */
+  const all = cronsOf(functions);
+  assert.equal(all.length, live.length + clockLive.length);
+  for (const [id] of all) assert.ok(listed.has(id) || clockListed.has(id), `${id} is a cron on no heartbeat list`);
 
   const scheduled = netlifySchedules(fs.readFileSync(path.resolve(HERE, "../../netlify.toml"), "utf8"));
   const netlify = new Map(NETLIFY_JOBS);
@@ -161,3 +180,18 @@ function netlifySchedules(toml) {
   }
   return jobs;
 }
+
+test("a clock job that is late names the clock in its fix line, not a function of its own", async () => {
+  const now = new Date("2026-10-21T12:00:00Z");
+  const rows = await checkJobHeartbeats({
+    db: heartbeatDb({
+      firstEver: "2026-10-01T00:00:00Z",
+      rows: [{ job: "message-dispatch-sweeper", last_at: "2026-10-21T11:30:00Z", last_outcome: "ok", last_error: null, first_ever: "2026-10-01T00:00:00Z" }]
+    }),
+    now,
+    jobs: JOBS.filter((j) => j.job === "message-dispatch-sweeper")
+  });
+  assert.equal(rows[0].status, "FAIL");
+  assert.match(rows[0].suggestedFix, /netlify\/functions\/cron-clock\.mjs and cron-worker-background\.mjs/);
+  assert.match(rows[0].suggestedFix, /Do not re-run/);
+});

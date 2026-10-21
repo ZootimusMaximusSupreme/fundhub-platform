@@ -24,6 +24,11 @@
 
 import { parseBureaus } from "../lenders/match.mjs";
 import { maskSsn } from "../pii/index.mjs";
+/* pickCreditScore, asArray and asInt live in src/pulse/beats/lib/lenders-credit.mjs (2026-10-20) so the
+   hourly lender-book beat reads the credit file the same way. One copy; re-exported below. */
+import { asArray, asInt, pickCreditScore } from "../pulse/beats/lib/lenders-credit.mjs";
+
+export { pickCreditScore };
 
 /** Bureau codes, in the order a merged payload lists them. */
 export const BUREAU_CODES = Object.freeze(["TU", "EX", "EQ"]);
@@ -36,16 +41,6 @@ const SCORE_KEY = Object.freeze({ TU: "tu", EX: "ex", EQ: "eq" });
 export function bureauOf(sourceType) {
   const codes = parseBureaus(sourceType);
   return codes.find((c) => BUREAU_CODES.includes(c)) || null;
-}
-
-function asArray(v) {
-  return Array.isArray(v) ? v : [];
-}
-
-function asInt(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(String(value).trim());
-  return Number.isInteger(n) ? n : null;
 }
 
 function isoDate(value) {
@@ -110,45 +105,6 @@ export function classifyBureauReport(report) {
   if (raw.some((s) => /freeze|frozen/i.test(s))) return BUREAU_FILE_STATUS.FROZEN;
   if (raw.some((s) => /^nofile/i.test(s))) return BUREAU_FILE_STATUS.NO_FILE;
   return BUREAU_FILE_STATUS.FILE_RETURNED;
-}
-
-/**
- * pickCreditScore — the credit score out of a bureau's `scores` array.
- *
- * A bureau returns several models and only some of them are credit scores. The
- * sandbox's TransUnion file carries FICO 9 twice AND a "CreditVision Income
- * Estimator" whose scoreValue is the string "47 B"; Experian carries its FICO 9
- * equivalent plus an "Income Insight".
- *
- * THE FILTER IS READ OFF THE DATA, NOT INVENTED. In every sample the vendor
- * ships, exactly the credit-score models carry BOTH an integer scoreValue and an
- * integer scoreMaximumValue; the income estimators carry a null maximum and a
- * non-numeric value. So: keep the entries that have both, then prefer a model
- * whose name says FICO or Fair Isaac.
- *
- * The fallback matters because Equifax's model name is not in any sample this
- * repo has seen. Rather than guess the string, an unnamed-but-numerically-valid
- * score is accepted AND the model name is recorded alongside it, so a human can
- * confirm what was read instead of trusting that it was right.
- */
-export function pickCreditScore(scores) {
-  const rows = asArray(scores).map((s) => ({
-    value: asInt(s?.scoreValue),
-    max: asInt(s?.scoreMaximumValue),
-    model: String(s?.modelName ?? "").trim()
-  }));
-
-  /* FICO / Fair Isaac wins even when the bureau omits scoreMaximumValue.
-     Equifax live files do that, and the old "must have a max" filter then
-     picked IncomeView (81) over FICO 9. */
-  const fico = rows.find((s) =>
-    s.value !== null && s.value >= 300 && s.value <= 850 && /fico|fair\s*isaac/i.test(s.model)
-  );
-  if (fico) return { value: fico.value, model: fico.model || null };
-
-  const candidates = rows.filter((s) => s.value !== null && s.max !== null && s.value >= 300 && s.value <= 850);
-  if (!candidates.length) return { value: null, model: null };
-  return { value: candidates[0].value, model: candidates[0].model || null };
 }
 
 /* redactRequestEcho — CRS echoes the identity it was asked about, SSN included,

@@ -8,7 +8,7 @@
 // watch it" by the machine rows and the job list, all imported.
 
 import { functions } from "../../workflows/index.mjs";
-import { INNGEST_JOBS } from "../heartbeats.mjs";
+import { CRON_JOBS } from "../heartbeats.mjs";
 import { MACHINE_CHECKS } from "../machine.mjs";
 
 export const SLICE_ID = "06-briefs";
@@ -29,7 +29,7 @@ const machineWorkflowFiles = new Set(MACHINE_CHECKS.map((row) => row.file));
 const registeredIds = new Set(functions.map((fn) => fn && fn.opts && fn.opts.id).filter(Boolean));
 
 /** Job ids the pulse job list (heartbeats.mjs) already reads. */
-const pulseJobIds = new Set(INNGEST_JOBS.map(([job]) => job));
+const pulseJobIds = new Set(CRON_JOBS.map(([job]) => job));
 
 function machineRowForWorkflowFile(workflowFile) {
   return MACHINE_CHECKS.find((row) => row.file === workflowFile) ?? null;

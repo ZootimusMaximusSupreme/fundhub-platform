@@ -336,6 +336,7 @@ export function clientContextLines(client) {
     `Client on file — business name: ${biz}`,
     `Today's date (UTC): ${today}. A statement period ending on or before today is not "future-dated".`,
     "You are reviewing ONE uploaded file of the stated type. Judge only that file for that type.",
+    "FIRST confirm the file really IS the stated type: a real government ID card or passport for id_document, a real Social Security card for ssn_card, a real utility bill or bank statement for proof_of_address. If it is a different document, a selfie, a blank or unrelated page, a screenshot of something else, or a sample or specimen, the outcome must be request_more: say what the file actually shows and what the client needs to send instead. If it looks fake, edited or altered, the outcome must be hold.",
     "Do not request other document types (for example Articles) when reviewing a single ID, bank statement, or SSN card.",
     "If the address printed on the ID or statement matches the personal address on file (ignore case and punctuation), treat the address as matching.",
     "ZIP+4 extras on an ID (for example 85233-1901 or 85233+1901) still match when street, city, state, and the 5-digit ZIP agree with the address on file.",

@@ -64,7 +64,7 @@ flowchart TD
     PROVE -->|OK| SHIP["npm run ship"]
     PROVE -->|Problem| BUILD
 
-    SHIP --> SIX["6:00 a.m. Arizona<br/>Inngest job daily-pulse"]
+    SHIP --> SIX["6:00 a.m. Arizona<br/>clock job daily-pulse<br/>(cron-clock starts it in cron-worker-background)"]
     SIX --> ORG["Step coverage-org"]
     ORG --> SLICES["Step coverage-slices"]
     SLICES --> LANES["One step per gap lane<br/>each under 26 s"]
@@ -77,21 +77,44 @@ flowchart TD
 
     LANES -.->|a lane that dies| SKIP["One skip row, the text still goes"]
 
-    FIVE["Every 5 minutes<br/>instant watch"] --> CRIT{"health, login, apply,<br/>roadmap sales, outbound,<br/>hourly pulse receipt still OK?"}
+    FIVE["Every 5 minutes<br/>instant watch"] --> CRIT{"health, login, apply,<br/>roadmap sales, outbound,<br/>both hourly shift receipts still OK?"}
     CRIT -->|No| NOW["Text Chris now<br/>at most once an hour per break"]
 ```
 
-The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest `pulse-hourly` receipt. If the hourly pulse has not returned a receipt for more than three hours, `pulse:runner-stale` goes red and uses the instant watch's owner alert. Before the first hourly receipt ever exists, it waits instead of inventing a pass or a break.
+The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest receipt of each hourly shift (`pulse-hourly`, `pulse-hourly-b`, `pulse-hourly-c` and `pulse-hourly-d`). If either shift has not returned a receipt for more than three hours, `pulse:runner-stale` goes red, names that shift, and uses the instant watch's owner alert. Before a shift's first receipt ever exists, it waits for that shift instead of inventing a pass or a break.
 
-## The hourly pulse (added 2026-10-09)
+## Where the crons run (changed 2026-10-20)
 
-Every hour at minute 7 a small Netlify scheduled function (`netlify/functions/pulse-hourly.mjs`, outside Inngest, so it runs even if Inngest is down) tests the company on purpose. The pulse is the **read-only half** (15 beats): each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+Every cron used to run on Inngest. Its free plan is 50,000 executions a month and the crons cost
+about 300,000, so on 2026-10-20 (owner: "stop burning ingests") every cron moved to one Netlify
+clock. Inngest now runs event workflows only (`inngestFunctions` in `src/workflows/index.mjs`).
+Board: `ops/workflows/inngest-diet-2026-10-20.md`.
 
 ```mermaid
 flowchart TD
-    CLOCK["Every hour at minute 7<br/>pulse-hourly (Netlify scheduled function)"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
+    TICK["Every 5 minutes<br/>netlify/functions/cron-clock.mjs"] --> DUE{"Which CLOCK_JOBS crons<br/>name a minute in this slot?"}
+    DUE -->|none| CR["job:cron-clock receipt"]
+    DUE -->|each due job| POST["POST /.netlify/functions/cron-worker-background<br/>job + slot, signed with CRON_WORKER_SECRET"]
+    POST -->|202| WORK["Worker checks the signature and slot,<br/>runs the job's own handler (15 min limit)"]
+    POST -->|refused or no answer| ERR["Error receipt for that job<br/>naming why"]
+    WORK --> REC["job_heartbeats row<br/>same job id, runner netlify"]
+    REC --> PULSE["Morning pulse: red at 3x the schedule<br/>engine-alive beat: red after 20 quiet minutes"]
+    ERR --> PULSE
+    CR --> PULSE
+```
+
+The two payment queues keep their own Netlify sweepers (`commas-inbox-sweeper`,
+`whop-billing-inbox-sweeper`), now every 5 minutes; their Inngest twins are retired.
+
+## The hourly pulse (added 2026-10-09)
+
+Every hour four small Netlify scheduled functions (outside Inngest, so they run even if Inngest is down) test the company on purpose. **Shifts (two on 2026-10-20, four on 2026-10-21):** the beats no longer fit one run's 13 s window, so they are split in one literal list, `src/pulse/beats/shifts.mjs`. `netlify/functions/pulse-hourly.mjs` runs shift A at minute 7, `netlify/functions/pulse-hourly-d.mjs` runs shift D at minute 22, `netlify/functions/pulse-hourly-b.mjs` runs shift B at minute 37 and `netlify/functions/pulse-hourly-c.mjs` runs shift C at minute 52. A beat whose file has not landed waits on `PENDING_SHIFT_BEATS` with its shift. Every beat is in exactly one shift (a test and the ship proof fail otherwise), so each beat still runs once an hour, and each shift gets its own 13 s window and 22 s budget. The pulse is the **read-only half**: each beat reads data through one of three boxes where Postgres itself refuses writes, and reads the web with GET and HEAD only. A beat cannot save, send or call a vendor with a write.
+
+```mermaid
+flowchart TD
+    CLOCK["Every hour, four shifts (src/pulse/beats/shifts.mjs)<br/>pulse-hourly :07, pulse-hourly-d :22, pulse-hourly-b :37, pulse-hourly-c :52<br/>each runs only its own beats, same runner"] --> PRE["Prefetch: default org, open incidents,<br/>last results, saved bank links (2 s)"]
     PRE --> BOX["Open up to 3 read boxes<br/>never more boxes than beats<br/>BEGIN READ ONLY, staff scope, always rolled back"]
-    BOX --> BEATS["Three workers pull 15 beats from one shared queue<br/>each beat gets its own deadline when it starts<br/>13 s phase inside the 22 s run"]
+    BOX --> BEATS["Three workers pull this shift's beats from one shared queue<br/>each beat gets its own deadline when it starts<br/>13 s phase inside the 22 s run"]
     BEATS --> B1["apply-links<br/>40 bank Apply pages an hour"]
     BEATS --> B2["pay-webhook<br/>door, sweeper, stuck inbox"]
     BEATS --> B3["vendor-keys<br/>Twilio, Resend, Commas accept the keys"]
@@ -112,13 +135,14 @@ flowchart TD
     B9 --> DECIDE
     DECIDE --> TEXT["TEXT FIRST (6 s): Chris, and ntfy if the text fails"]
     TEXT --> REC["Then save (2.5 s): pulse_beats, pulse_incidents, pulse_bank_links"]
-    REC --> BEAT["job heartbeat pulse-hourly<br/>red at the 6 a.m. check if it stops for 3 hours"]
+    REC --> BEAT["job heartbeats pulse-hourly, -b, -c, -d<br/>each red at the 6 a.m. check if it stops for 3 hours"]
     DECIDE -.->|database down| FALL["No state: text every hour while red"]
 ```
 
 - **`checkout-doors` (added 2026-10-10, coverage batch W2).** Every hour it asks three questions a buyer would feel, read only: does the funnel till (`GET /api/public/funnel-checkout`) say checkout is ready with a price and a live buy button for autopsy, board and trial; does the repair checkout door answer a GET with its own 405 (so the route is mounted); and do the newest waiting paid-service checkout links answer a HEAD. It never presses Pay and never charges a card. Its `damp` is 2. The morning twin is `src/pulse/coverage/gap-checkout.mjs`, and both judge with `src/pulse/beats/lib/checkout-doors.mjs`.
 - **`blueprint-delivery` and `whop-billing` (2026-10-20 candidate, not live proof).** The hourly reads check real assigned Blueprint advisors, unfinished monthly-result delivery, overdue Whop inbox receipts and paid Whop orders missing canonical access. Daily twins are `gap-blueprint.mjs` and `gap-whop-billing.mjs`. These beats do not create a pull, payment, provider call, client message or repair, and do not prove a financed buyer or owner alert was received.
 - Up to three workers each own one read-only box and pull the next beat from one shared queue. A slow beat holds only its worker; the other workers keep taking later beats. A beat's deadline starts only when a worker takes it, never while it waits in the queue. Runs with fewer than three beats open only as many boxes as they need, and every opened box closes in a guaranteed cleanup step.
+- **One text per break across the shifts.** Incidents, damping and the 50-minute claim are per beat, and a run only judges the beats it ran. A beat lives in one shift, so one run an hour touches its incident; the other shift never texts, claims or closes it. Beats that break from one cause (the message templates and keys; the bank links; the lead pipe; the checkout doors and pay links; the funding and partner money and pages; the roadmap pull, pack and pages; sign-in and the portal; the pipeline boards and facts; the repair and inquiry trips) sit in the same shift, so one cause is one text. With the whole database down there is no saved state, so each shift says so in its own run.
 - A beat with `damp 2` (vendor keys, doors, bank links) must be red twice in a row before it texts, so one vendor blip does not wake Chris.
 - A break texts at once, texts again every hour ("still broken, hour N") and texts once when fixed.
 - **Texting hours (owner law 2026-10-09):** every text and buzz to Chris goes out only from 6:00 a.m. to 10:00 p.m. Arizona time (`inTextWindow` in `src/pulse/quiet-hours.mjs`). At night the hourly pulse still checks, opens the incident and damps, but sends nothing and claims nothing; the 6:07 a.m. run sends one text ("BROKEN since 2:07 a.m."). A break that opens and heals at night gets no "fixed" text. A break he WAS told about that heals at night stays open, and the 6:07 a.m. run sends its one FIXED text and closes it. The 5-minute watch skips the text and writes no alert row, so a door still down at 6:00 a.m. is texted on that run. The briefs, the finished-ad text, `/api/ops/notify-owner` (202 held) and the teleprompter text hold the same way. `src/pulse/quiet-hours.test.mjs` fails the build if a file that texts Chris's number skips the check.

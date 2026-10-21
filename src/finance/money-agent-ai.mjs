@@ -54,8 +54,14 @@ import {
   declineRulesReply, declineFollowUpReply, DECLINE_TOPIC_RE, bankInText, textHas, MAX_DECLINE_REPLY_CHARS, MAX_PROMPT_LETTER_CHARS
 } from "./money-decline.mjs";
 
-export const AGENT_CODE = "FOS-01";
-export const AGENT_NAME = "FinanceOS Money Helper";
+/* AGENT_CODE, AGENT_NAME, RUNNER_ENV and RUNNER_MODES moved, unchanged, to
+   src/pulse/beats/lib/money-helper-read.mjs (2026-10-20), with runnerMode's rule, so the
+   hourly beat money-tasks reads the helper screen with the same code. Re-exported here. */
+import {
+  AGENT_CODE, AGENT_NAME, RUNNER_ENV, RUNNER_MODES, runnerMode as runnerModeOf
+} from "../pulse/beats/lib/money-helper-read.mjs";
+
+export { AGENT_CODE, AGENT_NAME, RUNNER_ENV, RUNNER_MODES };
 
 /** Which brain wrote an answer (money_helper_turns.brain). */
 export const BRAIN_AI = "ai";
@@ -122,12 +128,8 @@ export const HELPER_GUARDRAILS = Object.freeze({
              and the daily ladder uses the AI brain too.
      rules   no model at all. */
 
-export const RUNNER_ENV = "MONEY_HELPER_RUNNER";
-export const RUNNER_MODES = Object.freeze(["mac", "server", "rules"]);
-
 export function runnerMode(env = process.env) {
-  const v = String((env && env[RUNNER_ENV]) || "").trim().toLowerCase();
-  return RUNNER_MODES.includes(v) ? v : "mac";
+  return runnerModeOf(env);
 }
 
 /* ═════════════════════════════════════════════════════════════════════════

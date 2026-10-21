@@ -50,7 +50,7 @@
 // either way.) Piece C's pointAuditClaims second fold is not needed for this
 // claim; if it runs anyway it finds nothing left to fold.
 
-import { INNGEST_JOBS, JOBS } from "./heartbeats.mjs";
+import { INNGEST_JOBS, CLOCK_JOBS, JOBS } from "./heartbeats.mjs";
 import { MACHINE_CHECKS } from "./machine.mjs";
 import { PULSE_REGISTRY } from "./registry.mjs";
 import { countChecks, phoenixDate, toContractCheck } from "./scorecard.mjs";
@@ -930,7 +930,9 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
       return auditRow(id, "skip", `The shared workflow client would not load (${clip((err && err.message) || err, 120)}).`);
     }
   }
-  const cronJobs = new Set(INNGEST_JOBS.map(([job]) => job));
+  // A cron has a job: row when it is on either heartbeat list: Inngest (none since 2026-10-20) or the
+  // Netlify clock (CLOCK_JOBS), which runs every scheduled job since the Inngest free plan ran out.
+  const cronJobs = new Set([...INNGEST_JOBS, ...CLOCK_JOBS].map(([job]) => job));
   const have = new Set(rows.filter(Boolean).map((r) => String(r.id)));
   const problems = [];
   // The shared client must carry the run recorder, or no event workflow leaves a receipt.
@@ -944,7 +946,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
     }
     if (fn.client !== client) problems.push(`${fid} (not built on the shared Inngest client in src/workflows/client.mjs)`);
     if (isCronFn(fn)) {
-      if (!cronJobs.has(fid)) problems.push(`${fid} (a cron that is not on INNGEST_JOBS)`);
+      if (!cronJobs.has(fid)) problems.push(`${fid} (a cron that is not on INNGEST_JOBS or CLOCK_JOBS)`);
     } else if (!have.has(`wf:${fid}`)) {
       problems.push(`${fid} (no wf: row)`);
     }
@@ -955,7 +957,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
       "FAIL",
       `${problems.length} workflow ${plural(problems.length, "problem", "problems")}: ${listIds(problems)}.`,
       {
-        fix: `Build each workflow on the shared client in src/workflows/client.mjs, keep the "${RUN_EVIDENCE_NAME}" add-on on that client, list each cron in INNGEST_JOBS in src/pulse/heartbeats.mjs, and give each other workflow a wf: row.`,
+        fix: `Build each workflow on the shared client in src/workflows/client.mjs, keep the "${RUN_EVIDENCE_NAME}" add-on on that client, list each cron in CLOCK_JOBS in src/pulse/heartbeats.mjs (and in src/workflows/scheduled.mjs), and give each other workflow a wf: row.`,
         sees: UNWATCHED
       }
     );
@@ -963,7 +965,7 @@ async function judgeWorkflowCoverage(rows, functions, sharedClient) {
   return auditRow(
     id,
     "PASS",
-    `${functions.length === 1 ? "The 1 bundled workflow is" : `All ${functions.length} bundled workflows are`} on the shared client, the client carries the ${RUN_EVIDENCE_NAME} add-on, every cron is on INNGEST_JOBS, and every other workflow has a wf: row.`
+    `${functions.length === 1 ? "The 1 bundled workflow is" : `All ${functions.length} bundled workflows are`} on the shared client, the client carries the ${RUN_EVIDENCE_NAME} add-on, every cron is on a heartbeat list (INNGEST_JOBS or CLOCK_JOBS), and every other workflow has a wf: row.`
   );
 }
 

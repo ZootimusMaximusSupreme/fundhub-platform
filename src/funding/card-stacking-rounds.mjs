@@ -10,7 +10,8 @@
 //   funded          → round.funded  (hard-requires funded_amount > 0, AND every
 //                     bank yes on the round either priced or explicitly excluded,
 //                     AND at least one priced bank yes to bill against)
-//   closed          → round.closeout  (staff marks the engagement complete)
+//   closed          → round.closeout  (staff closes ONE round; the engagement is
+//                     complete only when the whole funding sequence closes)
 //
 // Idempotency key includes roundNumber so round 2 can re-enter the same stages.
 
@@ -305,7 +306,12 @@ function buildPayload({
     source: "card_stacking",
     product: PRODUCT,
     roundNumber,
-    engagementComplete: stageKey === "closed",
+    /* Closing a round is ONE round done, not the job done (owner, 2026-10-20). A
+       funding sequence has about six rounds, and the whole engagement is complete
+       only when the sequence closes. No control closes a sequence yet, so no round
+       event claims it. The Closed column still says stage "closed", which is what
+       N-04 and the inquiry gate read. */
+    engagementComplete: false,
     // Only round.funded carries these three, and only they make an invoice
     // possible. Without feePercent, F-07 made a task instead of a bill for
     // every funded round this system has ever had. In PERCENT UNITS: 10 = 10%.

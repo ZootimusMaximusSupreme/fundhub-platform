@@ -49,6 +49,10 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     "ad-video-sweeper",
     "commas-inbox-sweeper",
     "creative-job-runner",
+    /* Added 2026-10-20 (owner: "stop burning ingests"). Every 5 minutes: starts each scheduled job
+       due in that slot in cron-worker-background (15 minutes). The jobs used to be Inngest crons.
+       With no site URL or secret (this test's child run) it starts nothing and still answers 200. */
+    "cron-clock",
     "hubstaff-poll-sweeper",
     /* Added 2026-10-06 (marketing machine, plan unit U22). The 15-minute clock: reads,
        writes its heartbeat and wakes marketing-worker-background; no real work. */
@@ -56,6 +60,15 @@ test("netlify.toml schedules the timed jobs this test covers", () => {
     /* Added 2026-10-09 (pulse v1). The hourly pulse: runs every beat read-only and texts Chris
        on a break. With no DATABASE_URL (this test's child run) it does nothing at all. */
     "pulse-hourly",
+    /* Added 2026-10-20 (hourly capacity, fix 3). Shift B of the hourly pulse: the same runner, the other half of
+       the beats, at minute 37. With no DATABASE_URL it does nothing at all. */
+    "pulse-hourly-b",
+    /* Added 2026-10-21 (hourly capacity, fix 4). Shift C of the hourly pulse: the same runner, the third share of
+       the beats, at minute 52. With no DATABASE_URL it does nothing at all. */
+    "pulse-hourly-c",
+    /* Added 2026-10-21 (hourly capacity, fix 4). Shift D of the hourly pulse: the same runner, the fourth share of
+       the beats, at minute 22. With no DATABASE_URL it does nothing at all. */
+    "pulse-hourly-d",
     /* Added 2026-10-09 (outside watch). Every 5 minutes on Netlify's clock: runs the engine-alive beat
        and texts Chris if the 5-minute alarms stopped. With no DATABASE_URL it does nothing at all. */
     "pulse-outside-watch",
