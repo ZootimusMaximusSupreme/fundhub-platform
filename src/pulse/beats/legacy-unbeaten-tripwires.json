@@ -45,7 +45,6 @@
   "route:money/alerts",
   "route:money/connections",
   "route:money/helper",
-  "route:money/tasks",
   "route:partner-brand",
   "route:partner-pages",
   "route:pii",
