@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-21 — ads-metrics-false-zeros (Meta numbers pull) — vendor_changed
+- Cause: Meta started answering spend, impressions and clicks with "0" when one many-day, day-by-day request also asks for actions, link clicks or any *_actions field. The nightly pull saved those zeros over 12 days of real spend (2026-09-26 to 2026-10-07) and said ok, because a 0 looks like a real number.
+- Fix: the sync asks for the money on its own and the rest in a second request, joined on ad + day; money comes only from the first answer, and a day whose other half was cut off is held back, never written as 0 (api/campaigns/sync.mjs, fetchInsightPull / mergeInsightRows). The live rows heal at the next nightly pull after the ship (its 28 days reach back to 09-23).
+- Guard added: deep check ads-metrics-false-zeros in the morning ads lane, src/pulse/coverage/gap-ads.mjs (red on any saved day with 0 impressions, 0 spend and a click rate above 0; the morning pulse runs after the 07:00 UTC pull); src/http/campaigns-sync-false-zeros.test.mjs drives a fake Meta that answers the way Meta did and fails on the old single request.
+- Incident: none (found by hand from ad_metrics_daily, not an hourly incident)  PR: claude/meta-spend-zero-fix-2026-10-21
+
 ## 2026-10-21 — full morning ship proof (catalog-display Automation sidebar head) — pulse_false_alarm
 - Cause: the same Linux ship runner road, one step later. The live `/app/shell.js` sent its headers in 83 ms and then no more of its body for 15 s, so the hidden-head check's own 4 s read timed out in one of the proof's two runs. The proof compares the app-role run with the staff-access run, saw "na" against "skip", and stopped every ship (run 39552478955). Not data and not a role: the check reads the live file over the web, not the database.
 - Fix: `scripts/pulse/site-hedge.mjs` now also reads the whole body of a site GET. If the body is not complete 2 s after the answer started, it sends one more identical GET and keeps whichever full body arrives first; the stalled download is then cut off. The caller's own deadline still covers every request, and a body that never completes is still a failure. No check, gate or timeout changed. The live pulse is unchanged.

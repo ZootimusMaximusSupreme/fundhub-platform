@@ -143,15 +143,20 @@ describe("the hourly pass asks Meta for 3 days and never the whole history", () 
     });
     const after = adAccountDay(new Date());
 
+    /* Two requests (the money, then the rest — TWO INSIGHTS REQUESTS in
+       api/campaigns/sync.mjs), and both ask for the same 3 days. */
     const asked = insightUrls(meta.urls);
-    assert.equal(asked.length, 1, `the numbers were asked for ${asked.length} times`);
-    const q = asked[0].searchParams;
-    assert.equal(q.get("date_preset"), null, "the hourly pass asked Meta for the whole history");
-    const range = JSON.parse(q.get("time_range"));
-    assert.equal(dayCount(range.since, range.until), 3, `asked for ${range.since}..${range.until}`);
-    assert.ok([before, after].includes(range.until), "the last day is not today in Arizona");
-    assert.equal(q.get("time_increment"), "1", "one row per ad per day");
-    assert.equal(q.get("level"), "ad");
+    assert.equal(asked.length, 2, `the numbers were asked for ${asked.length} times`);
+    for (const u of asked) {
+      const q = u.searchParams;
+      assert.equal(q.get("date_preset"), null, "the hourly pass asked Meta for the whole history");
+      const range = JSON.parse(q.get("time_range"));
+      assert.equal(dayCount(range.since, range.until), 3, `asked for ${range.since}..${range.until}`);
+      assert.ok([before, after].includes(range.until), "the last day is not today in Arizona");
+      assert.equal(q.get("time_increment"), "1", "one row per ad per day");
+      assert.equal(q.get("level"), "ad");
+    }
+    assert.equal(asked[0].searchParams.get("time_range"), asked[1].searchParams.get("time_range"));
 
     assert.equal(stats.pass, "hourly");
     assert.deepEqual(stats.full_history, [], "the hourly pass took the whole-history path");
@@ -203,9 +208,11 @@ describe("the nightly pass (and the button) still read the whole history on a fi
       partnerId: PARTNER, deps: { fetch: meta.fetch }, scope: db.scope
     });
     const asked = insightUrls(meta.urls);
-    assert.equal(asked.length, 1);
-    assert.equal(asked[0].searchParams.get("date_preset"), "maximum",
-      "this harness would not have caught the hourly pass taking the path — the nightly pass did not take it either");
+    assert.equal(asked.length, 2, "the money and the rest, once each");
+    for (const u of asked) {
+      assert.equal(u.searchParams.get("date_preset"), "maximum",
+        "this harness would not have caught the hourly pass taking the path — the nightly pass did not take it either");
+    }
     assert.equal(stats.pass, "nightly");
     assert.deepEqual(stats.full_history, [{ connection: CONN, ok: true, days: 1 }]);
     assert.equal(db.statements.filter((s) => /min\(m\.date\)/.test(s)).length, 1);

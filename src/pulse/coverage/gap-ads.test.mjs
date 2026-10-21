@@ -8,6 +8,7 @@ import { HOURLY_WINDOW_DAYS as SYNC_WINDOW } from "../../../api/campaigns/sync.m
 import { DUE_PARTNERS_SQL } from "../../workflows/meta-campaign-sync-sweeper.mjs";
 import { FRESH_HOURS } from "../machine.mjs";
 import {
+  FALSE_ZEROS_SQL,
   HOURLY_RED_HOURS,
   HOURLY_WINDOW_DAYS,
   NEW_AD_GRACE_HOURS,
@@ -53,7 +54,8 @@ const HEALTHY = {
     running: 2
   },
   [UNMAPPED_SQL]: { unmapped: 0, with_spend: 4, names: null },
-  [RUNNING_BARE_SQL]: { last_synced_at: FRESH_SYNC, running: 2, bare: 0, names: null }
+  [RUNNING_BARE_SQL]: { last_synced_at: FRESH_SYNC, running: 2, bare: 0, names: null },
+  [FALSE_ZEROS_SQL]: { bad: 0, ads: 0, first_day: null, last_day: null, saved: 120 }
 };
 
 function assertShape(r) {
@@ -83,12 +85,12 @@ function assertShape(r) {
   }
 }
 
-test("gap ads: four checks, read-only sql, hourly window matches the sync", () => {
+test("gap ads: five checks, read-only sql, hourly window matches the sync", () => {
   assert.equal(HOURLY_WINDOW_DAYS, SYNC_WINDOW);
   assert.equal(HOURLY_WINDOW_DAYS, 3);
   assert.equal(HOURLY_RED_HOURS, 3);
   assert.equal(FRESH_HOURS, 36);
-  for (const sql of [SYNC_DUE_SQL, SPEND_DAYS_SQL, UNMAPPED_SQL, RUNNING_BARE_SQL]) {
+  for (const sql of [SYNC_DUE_SQL, SPEND_DAYS_SQL, UNMAPPED_SQL, RUNNING_BARE_SQL, FALSE_ZEROS_SQL]) {
     assert.match(sql.trim(), /^SELECT\b/i);
     assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP)\b/i);
   }
@@ -140,13 +142,14 @@ test("the number check looks only at ads that spent money in the 28-day window",
   assert.match(UNMAPPED_SQL, /btrim\(a\.fundhub_ad_number\) = ''/);
 });
 
-test("no database: four skips and nothing is read", async () => {
+test("no database: five skips and nothing is read", async () => {
   const rows = await gapChecks({ now: NOW });
   assert.deepEqual(rows.map((r) => r.id), [
     "ads-meta-sync-stale",
     "ads-spend-day-missing",
     "ads-number-unmapped",
-    "ads-running-no-metrics"
+    "ads-running-no-metrics",
+    "ads-metrics-false-zeros"
   ]);
   for (const r of rows) {
     assertShape(r);
@@ -155,11 +158,11 @@ test("no database: four skips and nothing is read", async () => {
   }
 });
 
-test("fresh sync, full days, mapped numbers, running ads with rows: four PASS", async () => {
+test("fresh sync, full days, mapped numbers, running ads with rows, no false zeros: five PASS", async () => {
   const seen = [];
   const rows = await gapChecks({ scope: scopeFor(HEALTHY, seen), now: NOW });
   for (const r of rows) assertShape(r);
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS"]);
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "PASS"]);
   const spend = seen.find((q) => q.sql === SPEND_DAYS_SQL);
   assert.deepEqual(spend.params, ["2026-10-04", "2026-10-05"]);
   const running = seen.find((q) => q.sql === RUNNING_BARE_SQL);
@@ -319,11 +322,11 @@ test("no running ad but the running count did not come back: stays a skip, never
 
 test("an ad is running: neither row is ever na (PASS or FAIL, as before)", async () => {
   const variants = [
-    [HEALTHY, ["PASS", "PASS", "PASS", "PASS"]],
-    [spendAnswer({ rows_0: 4, rows_1: 0, running: 1 }), ["PASS", "FAIL", "PASS", "PASS"]],
+    [HEALTHY, ["PASS", "PASS", "PASS", "PASS", "PASS"]],
+    [spendAnswer({ rows_0: 4, rows_1: 0, running: 1 }), ["PASS", "FAIL", "PASS", "PASS", "PASS"]],
     [
       { ...HEALTHY, [RUNNING_BARE_SQL]: { last_synced_at: FRESH_SYNC, running: 2, bare: 1, names: "SLO Ad 3" } },
-      ["PASS", "PASS", "PASS", "FAIL"]
+      ["PASS", "PASS", "PASS", "FAIL", "PASS"]
     ]
   ];
   for (const [answers, want] of variants) {
@@ -672,7 +675,7 @@ test("one broken query is its own FAIL and the other checks still run", async ()
     [UNMAPPED_SQL]: new Error("relation ads is missing")
   };
   const rows = await gapChecks({ scope: scopeFor(answers), now: NOW });
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "FAIL", "PASS"]);
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "FAIL", "PASS", "PASS"]);
   const broken = rows[2];
   assertShape(broken);
   assert.match(broken.detail, /could not read ad data/);
@@ -689,6 +692,65 @@ test("db.query works when scope is omitted", async () => {
     }
   };
   const rows = await gapChecks({ db, now: NOW });
-  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS"]);
-  assert.equal(seen.length, 4);
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "PASS"]);
+  assert.equal(seen.length, 5);
+});
+
+// ── Meta's false zeros (2026-10-21) ─────────────────────────────────────────
+
+test("the false-zeros read asks for the impossible day: 0 impressions, 0 spend, click rate above 0", () => {
+  assert.match(FALSE_ZEROS_SQL, /FROM ad_metrics_daily m/);
+  assert.match(FALSE_ZEROS_SQL, /m\.impressions = 0/);
+  assert.match(FALSE_ZEROS_SQL, /m\.spend_cents = 0/);
+  assert.match(FALSE_ZEROS_SQL, /m\.ctr > 0/);
+  assert.doesNotMatch(FALSE_ZEROS_SQL, /m\.date\s*[<>]=?/, "an old false zero must stay red, not age out of a window");
+});
+
+test("false zeros saved: FAIL names how many days, how many ads and the dates", async () => {
+  // The live shape on 2026-10-21: SLO ads from 09-26 to 10-07 rewritten with zeros.
+  const answers = {
+    ...HEALTHY,
+    [FALSE_ZEROS_SQL]: { bad: 31, ads: 4, first_day: "2026-09-26", last_day: "2026-10-07", saved: 120 }
+  };
+  const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-metrics-false-zeros"];
+  assertShape(r);
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /^31 saved ad days say 0 impressions and 0 spend but a click rate above 0 \(4 ads, from 2026-09-26 to 2026-10-07\)\./);
+  assert.match(r.detail, /Meta sent false zeros/);
+  assert.match(r.suggestedFix, /INSIGHT_CORE_FIELDS/);
+  assert.match(r.suggestedFix, /meta-backfill-ad-days\.mjs/);
+});
+
+test("one false-zero day is still FAIL, in the singular", async () => {
+  const answers = {
+    ...HEALTHY,
+    [FALSE_ZEROS_SQL]: { bad: 1, ads: 1, first_day: "2026-10-01", last_day: "2026-10-01", saved: 120 }
+  };
+  const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-metrics-false-zeros"];
+  assertShape(r);
+  assert.equal(r.status, "FAIL");
+  assert.match(r.detail, /^1 saved ad day says .* \(1 ad, on 2026-10-01\)/);
+});
+
+test("no false zeros: PASS says how many saved days were checked", async () => {
+  const r = byId(await gapChecks({ scope: scopeFor(HEALTHY), now: NOW }))["ads-metrics-false-zeros"];
+  assertShape(r);
+  assert.equal(r.status, "PASS");
+  assert.match(r.detail, /\(120 days checked\)/);
+});
+
+test("a read with no count is a skip, never a PASS", async () => {
+  for (const answer of [{}, { bad: null, saved: 120 }, { bad: 0 }, { bad: "x", saved: 3 }]) {
+    const answers = { ...HEALTHY, [FALSE_ZEROS_SQL]: answer };
+    const r = byId(await gapChecks({ scope: scopeFor(answers), now: NOW }))["ads-metrics-false-zeros"];
+    assertShape(r);
+    assert.equal(r.status, "skip", JSON.stringify(answer));
+  }
+});
+
+test("a broken false-zeros read is its own FAIL and the other four still run", async () => {
+  const answers = { ...HEALTHY, [FALSE_ZEROS_SQL]: new Error("relation ad_metrics_daily is missing") };
+  const rows = await gapChecks({ scope: scopeFor(answers), now: NOW });
+  assert.deepEqual(rows.map((r) => r.status), ["PASS", "PASS", "PASS", "PASS", "FAIL"]);
+  assert.match(rows[4].detail, /could not read ad data/);
 });

@@ -45,8 +45,10 @@ after(() => {
 describe("the default is v26.0 everywhere", () => {
   test("the sync's numbers and lists", () => {
     assert.equal(DEFAULT_META_API_VERSION, "v26.0");
-    const u = new URL(insightsRequestUrl(connection, { since: "2026-10-03", until: "2026-10-05" }));
-    assert.equal(u.pathname, "/v26.0/act_982103620742368/insights");
+    for (const part of ["core", "detail"]) {
+      const u = new URL(insightsRequestUrl(connection, { part, since: "2026-10-03", until: "2026-10-05" }));
+      assert.equal(u.pathname, "/v26.0/act_982103620742368/insights", part);
+    }
     assert.ok(metaListUrl("act_1/campaigns", "id").startsWith("https://graph.facebook.com/v26.0/act_1/campaigns?"));
   });
 
