@@ -10,27 +10,34 @@
 // connection on the ship runner is the runner's road, not a broken door, and it was stopping every Linux
 // ship at the hourly bundle proof with one GET stuck for the probe's whole 8 s.
 //
-// WHAT IT DOES: for a GET or HEAD to the site host only, if no answer has started after HEDGE_MS, it sends
-// ONE more identical request (which gets another connection, because the silent one is still busy) and
-// uses whichever answers first. Nothing else changes: the caller's abort signal and deadline cover both
-// requests, a fast error passes straight through, and a door that answers neither is still a failure.
+// The silence comes in clumps: 14 handshakes at once to the apex went silent 74 of 700 times, often 5 or 6
+// in the same instant, while Netlify's ordinary edge road lost 3 of 700 and one-at-a-time lost 0 of 150 on
+// both (run 39523413721). So a single retry 1 s later could land in the next bad instant: ship run
+// 39522194091 lost GET /roadmap on both connections. The tries are spread 1 s apart instead.
+//
+// WHAT IT DOES: for a GET or HEAD to the site host only, while no answer has started, it sends one more
+// identical request after HEDGE_MS and, if still nothing, one more after 2 x HEDGE_MS (MAX_EXTRA_REQUESTS
+// in all). Each new request gets another connection, because the silent ones are still busy. The first
+// answer wins. Nothing else changes: the caller's abort signal and deadline cover every request, a fast
+// error passes straight through, and a door that answers none of them is still a failure.
 // No beat deadline, no half-deadline rule and no probe timeout is raised or loosened.
 //
 // Proof tooling only (scripts/pulse/prove.mjs). The live pulse-probe provider is not changed.
 
 export const HEDGE_MS = 1000;
+export const MAX_EXTRA_REQUESTS = 2;
 
 const pathOf = (url) => {
   try { return new URL(url).pathname; } catch { return "?"; }
 };
 
 /**
- * Wrap a fetch so a silent first connection to `siteHost` gets one more try on another connection.
+ * Wrap a fetch so a silent connection to `siteHost` gets up to MAX_EXTRA_REQUESTS more tries, HEDGE_MS apart.
  * @param {Function} fetchImpl the real fetch
- * @param {{ siteHost: string, hedgeMs?: number, log?: Array<object> }} opts `log` gets one row per hedge
- *   ({ method, path, winner: 1 | 2 | 0, ms }); the path never holds a query string.
+ * @param {{ siteHost: string, hedgeMs?: number, maxExtra?: number, log?: Array<object> }} opts `log` gets one
+ *   row per hedged request ({ method, path, sent, winner: 1..sent or 0, ms }); the path never holds a query string.
  */
-export function hedgedSiteFetch(fetchImpl, { siteHost, hedgeMs = HEDGE_MS, log = [] } = {}) {
+export function hedgedSiteFetch(fetchImpl, { siteHost, hedgeMs = HEDGE_MS, maxExtra = MAX_EXTRA_REQUESTS, log = [] } = {}) {
   const host = String(siteHost || "").toLowerCase();
   return async function siteFetch(input, init = {}) {
     const url = typeof input === "string" ? input : (input && input.url) || String(input);
@@ -52,43 +59,45 @@ export function hedgedSiteFetch(fetchImpl, { siteHost, hedgeMs = HEDGE_MS, log =
         .then((res) => ({ res }), (err) => ({ err }));
     };
 
-    const first = attempt();
-    let timer;
-    const quiet = new Promise((resolve) => { timer = setTimeout(() => resolve(null), hedgeMs); });
-    const early = await Promise.race([first, quiet]);
-    clearTimeout(timer);
-    if (early) {
-      if (early.err) throw early.err;
-      return early.res;
-    }
-    if (outer && outer.aborted) {
-      const r = await first;
-      if (r.err) throw r.err;
-      return r.res;
-    }
-
-    // The first connection said nothing for hedgeMs. One more request; the first keeps its connection busy
-    // so the pool cannot hand that silent connection to the second request.
-    const row = { method, path: pathOf(url), winner: 0, ms: null };
-    log.push(row);
-    const second = attempt();
-    const tagged = [first.then((r) => ({ ...r, n: 1 })), second.then((r) => ({ ...r, n: 2 }))];
-    const settledFirst = await Promise.race(tagged);
-    let win = settledFirst.res ? settledFirst : null;
-    let lose = tagged[settledFirst.n === 1 ? 1 : 0];
-    if (!win) {
-      const other = await lose;
-      if (!other.res) {
-        row.ms = Date.now() - started;
-        throw (settledFirst.n === 1 ? settledFirst.err : other.err);
-      }
-      win = other;
-      lose = null;
-    }
-    row.winner = win.n;
-    row.ms = Date.now() - started;
-    // A late answer from the other request is read off and dropped, so its connection goes back to the pool.
-    if (lose) lose.then((r) => { if (r.res && r.res.body) r.res.body.cancel().catch(() => {}); }).catch(() => {});
-    return win.res;
+    let row = null;
+    const outcome = await new Promise((resolve) => {
+      let sent = 0;
+      let open = 0;
+      let firstErr = null;
+      let done = false;
+      let timer = null;
+      const finish = (value) => { if (done) return; done = true; clearTimeout(timer); resolve(value); };
+      const launch = () => {
+        const n = ++sent;
+        open++;
+        attempt().then((r) => {
+          open--;
+          if (done) {
+            // A late answer is read off and dropped, so its connection goes back to the pool.
+            if (r.res && r.res.body) r.res.body.cancel().catch(() => {});
+            return;
+          }
+          if (r.res) return finish({ res: r.res, n });
+          if (!firstErr) firstErr = r.err;
+          // Every request so far has failed outright (not gone silent): that is the answer.
+          if (open === 0) finish({ err: firstErr });
+        });
+      };
+      // While every request is still silent, one more after hedgeMs, up to maxExtra more.
+      const arm = () => {
+        timer = setTimeout(() => {
+          if (done || sent > maxExtra || (outer && outer.aborted)) return;
+          if (!row) { row = { method, path: pathOf(url), sent: 1, winner: 0, ms: null }; log.push(row); }
+          launch();
+          row.sent = sent;
+          if (sent <= maxExtra) arm();
+        }, hedgeMs);
+      };
+      launch();
+      arm();
+    });
+    if (row) { row.winner = outcome.n || 0; row.ms = Date.now() - started; }
+    if (outcome.err) throw outcome.err;
+    return outcome.res;
   };
 }

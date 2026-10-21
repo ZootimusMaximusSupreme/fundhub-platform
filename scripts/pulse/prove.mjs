@@ -49,9 +49,9 @@ const args = process.argv.slice(2);
 const FROM_REPO = args.includes("--repo");
 const LANES = (args.find((a) => a.startsWith("--lanes=")) || "").slice(8).split(",").filter(Boolean);
 const clip = (s, n = 200) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n);
-// The live site host. A request to it that stays silent gets one more connection (scripts/pulse/site-hedge.mjs).
+// The live site host. A request to it that stays silent gets up to two more connections (scripts/pulse/site-hedge.mjs).
 const SITE_HOST = new URL(process.env.URL || "https://fundhub.ai").host;
-const hedgeLine = (rows) => `  site requests that needed a second connection: ${rows.length}${rows.length ? ` (${rows.map((r) => `${r.method} ${r.path} -> ${r.winner ? `answer ${r.winner}` : "no answer"} ${r.ms} ms`).join("; ")})` : ""}`;
+const hedgeLine = (rows) => `  site requests that needed another connection: ${rows.length}${rows.length ? ` (${rows.map((r) => `${r.method} ${r.path} -> ${r.winner ? `answer ${r.winner}` : "no answer"} of ${r.sent}, ${r.ms} ms`).join("; ")})` : ""}`;
 
 /* The hourly pulse proof is a separate flow. It runs here, before the morning-pulse flow below, and exits. Everything
    it needs is a function declaration (hoisted) or a const above this line; it must not touch the consts below. */

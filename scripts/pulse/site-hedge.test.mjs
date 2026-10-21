@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hedgedSiteFetch, HEDGE_MS } from "./site-hedge.mjs";
+import { hedgedSiteFetch, HEDGE_MS, MAX_EXTRA_REQUESTS } from "./site-hedge.mjs";
 
 const SITE = "fundhub.ai";
 const ok = (text = "ok", status = 200) => new Response(text, { status });
@@ -24,8 +24,9 @@ function fakeFetch(plan) {
   return { impl, calls };
 }
 
-test("the hedge waits one second before trying again; that is the measured setting", () => {
+test("the measured settings: one second apart, at most two more requests", () => {
   assert.equal(HEDGE_MS, 1000);
+  assert.equal(MAX_EXTRA_REQUESTS, 2);
 });
 
 test("a site door that answers in time is asked once", async () => {
@@ -48,6 +49,7 @@ test("a silent first connection gets one more request, and the answer comes from
   assert.ok(Date.now() - t0 >= 35, "the second request waits for the hedge time");
   assert.equal(log.length, 1);
   assert.equal(log[0].winner, 2);
+  assert.equal(log[0].sent, 2, "the answer came before a third request was needed");
   assert.equal(log[0].path, "/roadmap/pay.html", "the log never holds the query string");
   assert.ok(calls[0].init.signal && calls[1].init.signal && calls[0].init.signal !== calls[1].init.signal);
   outer.abort();
@@ -57,14 +59,25 @@ test("a silent first connection gets one more request, and the answer comes from
 test("a slow first answer still wins when it arrives before the second", async () => {
   const { impl, calls } = fakeFetch([{ ms: 60, text: "first" }, { ms: 500, text: "second" }]);
   const log = [];
-  const res = await hedgedSiteFetch(impl, { siteHost: SITE, hedgeMs: 20, log })("https://fundhub.ai/api/public/slo-interest");
+  const res = await hedgedSiteFetch(impl, { siteHost: SITE, hedgeMs: 40, log })("https://fundhub.ai/api/public/slo-interest");
   assert.equal(await res.text(), "first");
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 2, "the first answered before a third request was due");
   assert.equal(log[0].winner, 1);
 });
 
-test("a door that answers neither request still fails, with the caller's timeout", async () => {
-  const { impl, calls } = fakeFetch(["silent", "silent"]);
+test("two silent connections: the third request, a second later, answers", async () => {
+  const { impl, calls } = fakeFetch(["silent", "silent", { ms: 5, text: "third" }]);
+  const log = [];
+  const t0 = Date.now();
+  const res = await hedgedSiteFetch(impl, { siteHost: SITE, hedgeMs: 40, log })("https://fundhub.ai/roadmap");
+  assert.equal(await res.text(), "third");
+  assert.equal(calls.length, 3);
+  assert.ok(Date.now() - t0 >= 75, "the third request waits two hedge times");
+  assert.deepEqual([log[0].winner, log[0].sent], [3, 3]);
+});
+
+test("a door that answers none of the requests still fails, with the caller's timeout", async () => {
+  const { impl, calls } = fakeFetch(["silent", "silent", "silent", "silent"]);
   const log = [];
   const stop = new AbortController();
   setTimeout(() => stop.abort(), 120);
@@ -73,8 +86,9 @@ test("a door that answers neither request still fails, with the caller's timeout
     hedgedSiteFetch(impl, { siteHost: SITE, hedgeMs: 30, log })("https://fundhub.ai/api/webhooks/commas", { signal: outer }),
     (err) => err.name === "AbortError"
   );
-  assert.equal(calls.length, 2, "exactly one more request, never a retry loop");
+  assert.equal(calls.length, 3, "at most two more requests, never a retry loop");
   assert.equal(log[0].winner, 0);
+  assert.equal(log[0].sent, 3);
 });
 
 test("a fast error passes straight through and is not retried", async () => {
