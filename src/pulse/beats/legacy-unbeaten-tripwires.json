@@ -39,7 +39,6 @@
   "route:inquiries",
   "route:inquiry",
   "route:inquiry-cases",
-  "route:marketing/funnels/push-live",
   "route:messages-outbound",
   "route:money/alerts",
   "route:money/connections",
