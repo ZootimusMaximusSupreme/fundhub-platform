@@ -90,6 +90,11 @@ all boards (built from the route's own SQL) + split into pipeline-boards / pipel
 the live server only (false red on the runner; live has netlify-blobs); db-health + consent-capture moved B→C.
 prove --beats OK normal and at --read-delay=120 (0 cut).
 
+### Live after ship b226e28a (read only, 2026-10-21 15:56 UTC)
+All four hourly shifts ran on schedule (job_heartbeats: pulse-hourly 15:07, -d 15:22, -b 15:37, -c 15:52) and
+all 48 beats saved a result in pulse_beats: 47 green, 1 red — apply-links (banklandmark.com, mybrb.bank 404;
+not this lane).
+
 ## Needs Chris: delete fake data (money lane)
 
 Chris said YES (2026-10-20). Session `delete-fake-data` is doing it. Exact ids: notes folder
