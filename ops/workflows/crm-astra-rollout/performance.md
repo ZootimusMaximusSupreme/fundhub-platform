@@ -1,6 +1,44 @@
 # Astra live-static speed proof — recovered measurement
 
-Status: **RECOVERED TOOL READY; WAITING FOR ROOT'S FINAL QUIET-WINDOW SIGNAL. No recovered live measurement has started.** Authenticated local canary and all six local fixtures passed. Earlier preparation and first-release measurements below are historical records, not newly recovered raw reports.
+Status: **COMPLETE — 18/18 valid live-static measurements, four failed median budgets retained.** The run finished at 11:58:33.744 UTC; all owned Chrome processes were closed. Earlier preparation and first-release measurements below remain historical records.
+
+## Final measured result — 2026-10-20
+
+All six targets completed three fresh cold contexts at **390×844, Slow4G, 4×CPU**. Total elapsed: **328.757s** (11:53:04.987–11:58:33.744 UTC). Exit code **1** correctly retains findings; it is not an invalid or incomplete measurement.
+
+| Page | Score | Median LCP ms | Median CLS | Median TTFB ms | TBT proxy ms | JS / page bytes | Failed numeric budget |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Portal login | 99 | **1558.464** | 0.000143 | 116.2 | 0 | 4727 / 90011 | LCP <1500ms |
+| Client portal | 98 | 1789.329 | 0.061804 | 196.2 | 19.586 | 70883 / 247238 | None in measured scope |
+| My Money | 99 | 1859.624 | 0.002454 | 320.2 | 0 | 28055 / 135494 | None in measured scope |
+| Affiliate | 84 | **4302.214** | 0.003120 | 122.5 | 0 | 70860 / 210945 | LCP <2500ms |
+| Team & access | 77 | 2341.313 | **0.400493** | 204.7 | 71.929 | 66666 / 200947 | CLS <0.1 |
+| Pipeline | 72 | 2412.056 | **1.070114** | 213.3 | 46.495 | 74348 / 241566 | CLS <0.1 |
+
+All other measured numeric budgets were within limits. **Field INP is UNMEASURED on all six pages**; TBT does not pass INP. These are live first-party static results with fictional intercepted APIs and blocked external resources, not authenticated backend, physical-device, native-iOS or whole-CRM certification.
+
+Source identities remain separate: fresh matched byte source **`2111e0424e7b3b403fdad3830b0c608aee7454f1`**; actual deployed application **`91486d44c5aaaa247a0af21b499ebcdf219acfe2`**; unchanged public tree **`1643991ee11be3595991ab93c171283edb5e813f`**; frozen proof tool commit **`cec0e64da6a8061855c6c1c087f2bea26fa9a57a`**, runner SHA-256 **`2a11f246a6fe10514e745388964e5204c241306c9a120612f49e7000ab38153c`**. Root's explicit 11:52 UTC board signal opened this measured window.
+
+Evidence root: [`evidence/performance-recovery/live-2111-01/`](evidence/performance-recovery/live-2111-01/). Each page/run contains the full original JSON and HTML, raw screenshot, guard log, source bytes, summary and CPU protocol receipt. There are **18 JSON reports, 18 HTML reports, 18 raw JPGs, and 327 independently hash-verified GET source captures**. There are **zero page/guard errors, warnings, unmapped reads, source mismatches or invalid/unmeasured runs**. All 18 CPU quiet observations met the unchanged threshold: **5402.1–5418.4ms**. CPU observer registration took **2–17ms**; quiet checks **152–165ms**. Effective settings and restoration passed; inspected installed-library files are unchanged.
+
+Exact medians/budgets: [`medians.json`](evidence/performance-recovery/live-2111-01/2111e0424e7b3b403fdad3830b0c608aee7454f1/medians.json). Independently checked resource, node, geometry and integrity evidence: [`integrity-and-resources.json`](evidence/performance-recovery/live-2111-01/review-verified/integrity-and-resources.json). Exact failed-budget evidence: [`verified-budget-findings.json`](evidence/performance-recovery/live-2111-01/review-verified/verified-budget-findings.json).
+
+## Findings and evidence limits
+
+| Finding | Evidence-backed location | Severity | Marked review |
+| --- | --- | --- | --- |
+| Login LCP 1558.464ms >1500ms | LCP is `p#lede`, the sign-in note. Timing miss is proved; source-level cause/savings are not. | MEDIUM | [Login LCP](evidence/performance-recovery/live-2111-01/review-verified/portal-login-lcpMs.html) |
+| Affiliate LCP 4302.214ms >2500ms | LCP is fictional chat `div.msg`; median run has 3877.344ms element render delay. Its final reported bounds are 0×0, so no element position is invented. | MEDIUM | [Affiliate LCP evidence](evidence/performance-recovery/live-2111-01/review-verified/affiliate-lcpMs.html) |
+| Team CLS 0.400493 >0.1 | Largest median-run shifted element is `.content.fh-maxw`, contribution 0.393365. Source-level trigger is not proved. | HIGH | [Team layout movement](evidence/performance-recovery/live-2111-01/review-verified/teams-cls.html) |
+| Pipeline CLS 1.070114 >0.1 | `.board-wrap` is the largest shifted element, with recorded contributions 0.372392, 0.323172 and 0.320942 in the representative median run. Source-level trigger is not proved. | HIGH | [Pipeline layout movement](evidence/performance-recovery/live-2111-01/review-verified/pipeline-cls.html) |
+
+Lighthouse also reports a shared render-blocking-resource pattern on all six pages: head counts **6/5/7/5/4/5** in the table's page order. Median guarded LCP savings estimates are **50/300/700/700/700/650ms** respectively; these rank the reported opportunity, not an implemented or guaranteed saving. The five app pages attempted the same legacy Google Fonts CSS; **30 requests were blocked**, so its 0-byte/blocked entries are **not measured third-party download costs**. No third-party script was allowed. The derived resource receipt ranks only entries with finite reported blocking durations (one to three per page/run); remaining resources are explicitly unmeasured for duration rather than fabricated to fill a top-five list. Raw Lighthouse reports and initial summaries remain unchanged.
+
+Inline-style counts are **0/15/2/197/155/20** in the same order. This is the existing PERF-STANDARDS cacheability finding; no timing cost is invented. No blocking `<head>` script was found by the post-audit DOM inspection. Request durations, render-blocking insight durations and long main-thread tasks remain separate in saved evidence.
+
+Raw Lighthouse final JPGs are **356×498 cropped trace backing-surface frames**; measured 390×844 geometry is proved by the actual readiness mark and effective LHR settings. Reviewed wrappers preserve native raw image size and mark visually checked pixel positions. They locate elements; the numerical LHR proves timing/motion. Affiliate's missing final rectangle is called out without a fake box. The first derived display draft incorrectly applied CSS viewport coordinates to the cropped image; it is retained and explicitly marked invalid in `live-2111-01/review/DRAFT-NOT-REVIEWED.md`. Use only `review-verified/` for visual evidence. No raw report or screenshot was altered.
+
+No application fix, new optimization, real login, customer/provider action, database change or deployment was performed in this lane. The four budget misses and every scope limitation remain open findings.
 
 This read-only lane uses `fundhub-perf-auditor`, the full `docs/rules/PERF-STANDARDS.md`, and the audit-versus-fix rule. Findings stay findings; no app/config/test/dependency/environment/Git/database/deployment changes are authorized here.
 
@@ -47,7 +85,7 @@ node ops/workflows/crm-astra-rollout/live-performance.mjs \
 - The existing four-second chat poll remains unchanged. Network quiet is explicitly **1000ms**; FCP, load and CPU quiet remain **5250ms**, with the **45000ms** load cap. Lighthouse 13.5 clamps these settings, so the runner changes only its exported in-process network minimum around each sequential call and restores it in `finally`. Actual LHR settings are asserted and recorded; installed library hashes must remain identical.
 - A total 120-second protocol/gather/audit watchdog and bounded cleanup prevent a hung tool from running forever. They do not change Lighthouse's page-load/CPU criteria or turn a timeout into a pass. Runtime or incomplete-load warnings invalidate the attempt.
 
-The runner requires explicit `--release-confirmed=<exact 40-character SHA>` and root's matching successful receipt at the original fixed repo-relative path `ops/workflows/crm-astra-rollout/evidence/live-responsive/asset-bytes.json`. Root's current source is `2111e0424e7b3b403fdad3830b0c608aee7454f1`, with unchanged app bytes from deployed `91486d44c5aaaa247a0af21b499ebcdf219acfe2`. The fresh receipt reports 67/67 matches at 11:33:35.682 UTC. Root must separately confirm the final quiet window after local canary readiness. A source-equivalent commit is not relabeled as the deployed commit.
+The runner requires explicit `--release-confirmed=<exact 40-character SHA>` and root's matching successful receipt at the original fixed repo-relative path `ops/workflows/crm-astra-rollout/evidence/live-responsive/asset-bytes.json`. The fresh receipt reports 67/67 matches at 11:33:35.682 UTC. Root confirmed the final quiet window at 11:52 UTC after local canary readiness. A source-equivalent commit is not relabeled as the deployed commit.
 
 ## Evidence and reporting
 
