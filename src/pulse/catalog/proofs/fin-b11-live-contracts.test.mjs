@@ -340,6 +340,8 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     },
     ignored: [
       ["a loader script (it names an ad number) needs no dictionary row", (t) => { t.ad_labels.length = 0; find(t.ad_scripts, u(1)).ad_id = u(1234); }],
+      // Demo partners are left out, as in the sibling brand, social and recording checks.
+      ["the script belongs to a demo partner", (t) => { find(t.partners, u(500)).is_demo = true; find(t.ad_scripts, u(1)).root_script_id = u(99); }],
       ["a script older than 60 days", (t) => {
         t.ad_scripts.push({ id: u(3), org_id: ORG, partner_id: u(999), version: 1, parent_script_id: null, root_script_id: u(98),
           body: "old", source: "chris", created_at: ago(61 * DAY) });
@@ -448,7 +450,11 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
         const j = find(t.generation_jobs, u(4));
         j.spec = { assetKind: "video", offerType: "funding" };
       }],
-      ["an empty prompt is allowed: the form lets that through on purpose", (t) => { find(t.generation_jobs, u(1)).spec.prompt = ""; }]
+      ["an empty prompt is allowed: the form lets that through on purpose", (t) => { find(t.generation_jobs, u(1)).spec.prompt = ""; }],
+      ["the job belongs to a demo partner", (t) => {
+        t.partners = [{ id: u(500), org_id: ORG, slug: "demo-partner", name: "Demo", is_demo: true }];
+        delete find(t.generation_jobs, u(1)).spec.assetKind;
+      }]
     ]
   });
 }
@@ -487,7 +493,11 @@ FIXTURES.set("brain-review-rejected", decisionFixture("rejected"));
     },
     ignored: [
       ["a job last touched more than 60 days ago", (t) => { find(t.generation_jobs, u(5)).started_at = ago(70 * DAY); find(t.generation_jobs, u(5)).updated_at = ago(70 * DAY); }],
-      ["another company's job", (t) => { find(t.generation_jobs, u(1)).org_id = OTHER; t.generation_job_assets.length = 0; }]
+      ["another company's job", (t) => { find(t.generation_jobs, u(1)).org_id = OTHER; t.generation_job_assets.length = 0; }],
+      ["the job belongs to a demo partner", (t) => {
+        t.partners = [{ id: u(500), org_id: ORG, slug: "demo-partner", name: "Demo", is_demo: true }];
+        find(t.generation_jobs, u(2)).error = " ";
+      }]
     ]
   });
 }

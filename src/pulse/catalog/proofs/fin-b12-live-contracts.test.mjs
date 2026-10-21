@@ -727,3 +727,18 @@ test("a check with no saved results at all reads 0 and 0, which the lane shows a
     assert.deepEqual(runOn(spec, []), want, spec.key);
   }
 });
+
+/* ── demo partners are not read (2026-10-20, records and staff lane) ── */
+
+test("cf-tiles and cf-script: a demo partner's broken row is not read; the same row on a real partner is red", () => {
+  const demo = { id: "p-demo", org_id: ORG, slug: "demo-partner", name: "Demo", is_demo: true };
+  const real = { id: "p-real", org_id: ORG, slug: "house", name: "House", is_demo: false };
+  const tiles = SPEC.get("cf-tiles");
+  const badJob = (partner) => job({ partner_id: partner.id, status: "failed", error: "   " });
+  assert.equal(runOn(tiles, T(R("partners", demo), R("generation_jobs", badJob(demo)))).bad_count, 0);
+  assert.equal(runOn(tiles, T(R("partners", real), R("generation_jobs", badJob(real)))).bad_count, 1);
+  const scripts = SPEC.get("cf-script");
+  const badScript = (partner) => script({ partner_id: partner.id, angle_key: "brand_new_angle" });
+  assert.equal(runOn(scripts, T(...LABELS.map((l) => R("ad_labels", l)), R("partners", demo), R("ad_scripts", badScript(demo)))).bad_count, 0);
+  assert.equal(runOn(scripts, T(...LABELS.map((l) => R("ad_labels", l)), R("partners", real), R("ad_scripts", badScript(real)))).bad_count, 1);
+});
