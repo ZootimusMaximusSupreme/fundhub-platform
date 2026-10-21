@@ -141,9 +141,13 @@ test("repair-trip: every surface it covers is a tripwire whose deep checks run h
     assert.ok(wire, `${surface} is not a tripwire`);
     for (const checkId of wire.checks) assert.ok(hourly.has(checkId), `${surface} needs ${checkId}, which no hourly beat runs`);
   }
-  // route:documents-upload needs documents:upload-store, which reads the file store back. That does not run hourly,
-  // so the surface is not on covers.
+  // route:documents-upload also needs documents:upload-store. Its store-setting half runs hourly in the beat
+  // upload-door (the byte read-back stays on the morning pulse), so the surface is upload-door's, not this beat's.
+  const beats = await loadBeats();
+  const uploadDoor = beats.find((b) => b.id === "upload-door");
   assert.ok(TRIPWIRES["route:documents-upload"].checks.includes("documents:upload-store"));
   assert.equal(beat.covers.includes("route:documents-upload"), false);
-  assert.equal(hourly.has("documents:upload-store"), false);
+  assert.ok(uploadDoor && uploadDoor.covers.includes("route:documents-upload"), "upload-door covers the upload door");
+  assert.ok(uploadDoor.checkIds.includes("documents:upload-store"));
+  assert.equal(beats.filter((b) => Array.isArray(b.checkIds) && b.checkIds.includes("documents:upload-store")).length, 1, "one hourly beat runs it");
 });
