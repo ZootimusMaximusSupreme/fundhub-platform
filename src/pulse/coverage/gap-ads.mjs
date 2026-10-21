@@ -1,6 +1,6 @@
 // Ad data gaps for the morning pulse. Report only. Never auto-fix.
 //
-// Four breaks the existing rows do not already decide:
+// Five breaks the existing rows do not already decide:
 //   ads-meta-sync-stale      hourly Meta pull is late (red after 3 h).
 //                            machine.mjs meta-sync still owns the 36 h nightly save.
 //   ads-spend-day-missing    a closed Arizona day in the hourly window has no
@@ -18,6 +18,10 @@
 //                            old enough to have synced has no ad_metrics_daily
 //                            row. The dying-ad scan joins metrics, so it cannot
 //                            see this ad.
+//   ads-metrics-false-zeros  a saved ad day says 0 impressions and 0 spend but a
+//                            click rate above 0. That cannot be true: the click
+//                            rate is clicks over impressions. It is Meta's false
+//                            zeros (2026-10-21), saved over real money.
 //
 // Reads go through ctx.scope (staff). ads, ad_sets, campaigns, ad_metrics_daily
 // and ad_platform_connections are row-security tables: the plain app role reads
@@ -250,6 +254,24 @@ export const RUNNING_BARE_SQL = `
                LIMIT 3
             ) s) AS names`;
 
+// META'S FALSE ZEROS (2026-10-21). Over a many-day window, one row per day,
+// Meta answered spend, impressions and clicks with "0" when the same request
+// also asked for actions, link clicks or any *_actions field — and kept ctr
+// real. The nightly sync wrote those zeros over every real day from 2026-09-26
+// to 2026-10-07 and said ok. 0 impressions with a click rate above 0 is
+// impossible, so ANY such row is red, however old. The sync now asks for the
+// money on its own (TWO INSIGHTS REQUESTS, api/campaigns/sync.mjs).
+export const FALSE_ZEROS_SQL = `
+  SELECT count(*)::int AS bad,
+         count(DISTINCT m.ad_id)::int AS ads,
+         min(m.date)::text AS first_day,
+         max(m.date)::text AS last_day,
+         (SELECT count(*)::int FROM ad_metrics_daily) AS saved
+    FROM ad_metrics_daily m
+   WHERE m.impressions = 0
+     AND m.spend_cents = 0
+     AND m.ctr > 0`;
+
 const SYNC_FIX = fix(
   "Read ad_platform_connections.last_synced_at and meta-campaign-sync-hourly (minute 30). " +
   "The 36 h nightly check stays on the machine meta-sync row."
@@ -266,6 +288,13 @@ const NUMBER_FIX = fix(
 const RUNNING_FIX = fix(
   "The ad, its ad set and its campaign are all ACTIVE, and Meta has sent no row for it. " +
   "Read ads.status, ad_sets.status and ad_metrics_daily, and the ad's delivery in Meta."
+);
+
+const FALSE_ZEROS_FIX = fix(
+  "Meta's false zeros were saved over real spend. The money must come from the sync's own money request " +
+  "(INSIGHT_CORE_FIELDS in api/campaigns/sync.mjs), never one list with the action fields. " +
+  "The nightly pull rewrites the last 28 days. Older days need " +
+  "scripts/meta-backfill-ad-days.mjs --since <first day> --write."
 );
 
 export async function checkMetaSyncStale({ run, now }) {
@@ -436,6 +465,38 @@ export async function checkRunningNoMetrics({ run, now }) {
   );
 }
 
+export async function checkMetricsFalseZeros({ run }) {
+  const id = "ads-metrics-false-zeros";
+  const r = await one(run, FALSE_ZEROS_SQL);
+  const bad = count(r.bad);
+  const saved = count(r.saved);
+  if (bad === null || saved === null) {
+    // A count the read did not send is not zero. Never PASS on no answer.
+    return row(id, "skip", "The read sent no count, so the saved ad days were not checked.");
+  }
+  if (bad === 0) {
+    const noun = saved === 1 ? "day" : "days";
+    return row(
+      id,
+      "PASS",
+      `No saved ad day says 0 impressions and 0 spend with a click rate above 0 (${saved} ${noun} checked).`
+    );
+  }
+  const ads = num(r.ads);
+  const first = r.first_day ? String(r.first_day).slice(0, 10) : "?";
+  const last = r.last_day ? String(r.last_day).slice(0, 10) : "?";
+  const span = first === last ? `on ${first}` : `from ${first} to ${last}`;
+  const days = bad === 1 ? "1 saved ad day says" : `${bad} saved ad days say`;
+  const adNoun = ads === 1 ? "1 ad" : `${ads} ads`;
+  return row(
+    id,
+    "FAIL",
+    `${days} 0 impressions and 0 spend but a click rate above 0 (${adNoun}, ${span}). ` +
+    "That cannot be true. Meta sent false zeros and the sync saved them over real money.",
+    FALSE_ZEROS_FIX
+  );
+}
+
 /**
  * The audit calls this to prove a "nothing to judge" row again. It reads with the
  * same SQL the lane used (SPEND_DAYS_SQL, RUNNING_BARE_SQL) and answers true only
@@ -469,7 +530,8 @@ const RUNNERS = [
   ["ads-meta-sync-stale", checkMetaSyncStale],
   ["ads-spend-day-missing", checkSpendDayMissing],
   ["ads-number-unmapped", checkAdNumberUnmapped],
-  ["ads-running-no-metrics", checkRunningNoMetrics]
+  ["ads-running-no-metrics", checkRunningNoMetrics],
+  ["ads-metrics-false-zeros", checkMetricsFalseZeros]
 ];
 
 /**

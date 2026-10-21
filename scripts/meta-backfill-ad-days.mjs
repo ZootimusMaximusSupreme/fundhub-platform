@@ -13,7 +13,7 @@
 //
 // WHAT IT TOUCHES.
 //   Meta:     GET only — the ad account's insights at level=ad, one row per ad
-//             per day (the same request the sync makes). Nothing is changed.
+//             per day (the same two requests the sync makes). Nothing is changed.
 //   Database: reads ad_platform_connections, ads and ad_metrics_daily; writes
 //             ad_metrics_daily ONLY, with the sync's own upsert
 //             (ON CONFLICT (ad_id, date) DO UPDATE). Never deletes. Never
@@ -45,8 +45,8 @@ import { decryptToken } from "../src/adplatforms/tokens.mjs";
 import { normalizeInsight } from "../src/adplatforms/meta.mjs";
 import { phoenixDay } from "../src/slo/visitor.mjs";
 import {
-  insightsRequestUrl,
-  fetchAllPages,
+  fetchInsightPull,
+  insightPullErrors,
   syncBlockReason,
   insightUpsertSql,
   insightUpsertParams,
@@ -196,8 +196,11 @@ export async function runBackfill({
     try {
       const token = decrypt(c);
       if (!token) throw new Error("connection has no access token");
-      const pull = await fetchAllPages({ url: insightsRequestUrl(c, range), token, ctx: { fetch } });
-      if (pull.truncated) entry.truncated = `stopped after ${pull.pages} pages; days past that were not read`;
+      /* The sync's own pull: the money and the rest as two requests, joined
+         on (ad, day). One combined request over many days gets false zeros
+         from Meta (2026-10-21, TWO INSIGHTS REQUESTS in api/campaigns/sync.mjs). */
+      const pull = await fetchInsightPull({ connection: c, token, ctx: { fetch }, ...range });
+      if (pull.truncated || pull.held > 0) entry.truncated = insightPullErrors(pull).join(" ");
 
       const { ourAds, ourDays } = await partnerScope(c.partner_id, async (tx) => ({
         ourAds: (await tx.query(

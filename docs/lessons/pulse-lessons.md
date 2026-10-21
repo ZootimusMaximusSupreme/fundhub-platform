@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-21 — ads-metrics-false-zeros (Meta numbers pull) — vendor_changed
+- Cause: Meta started answering spend, impressions and clicks with "0" when one many-day, day-by-day request also asks for actions, link clicks or any *_actions field. The nightly pull saved those zeros over 12 days of real spend (2026-09-26 to 2026-10-07) and said ok, because a 0 looks like a real number.
+- Fix: the sync asks for the money on its own and the rest in a second request, joined on ad + day; money comes only from the first answer, and a day whose other half was cut off is held back, never written as 0 (api/campaigns/sync.mjs, fetchInsightPull / mergeInsightRows). The live rows heal at the next nightly pull after the ship (its 28 days reach back to 09-23).
+- Guard added: deep check ads-metrics-false-zeros in the morning ads lane, src/pulse/coverage/gap-ads.mjs (red on any saved day with 0 impressions, 0 spend and a click rate above 0; the morning pulse runs after the 07:00 UTC pull); src/http/campaigns-sync-false-zeros.test.mjs drives a fake Meta that answers the way Meta did and fails on the old single request.
+- Incident: none (found by hand from ad_metrics_daily, not an hourly incident)  PR: claude/meta-spend-zero-fix-2026-10-21
+
 ## 2026-10-20 — sales-floor Recording rows — code_bug
 - Cause: the Drive sync read any UUID in a file name as a client id and saved it without checking the client exists. iPhone exports are named `<UUID>.mp4`, so 14 recordings pointed at clients that exist nowhere.
 - Fix: `upsertExtractedFile` keeps a sniffed client id only when that client exists in the same company, else NULL (src/company-brain/store.mjs). Migration 499 clears the 14 saved rows (client_id to NULL only; no delete). The Drive files and links are untouched.
