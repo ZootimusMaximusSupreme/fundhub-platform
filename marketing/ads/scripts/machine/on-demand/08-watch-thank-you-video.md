@@ -1,6 +1,6 @@
 ---
 ad: 104
-version: 2
+version: 3
 status: locked
 offer: funding_dfy
 funnel: null
@@ -9,15 +9,29 @@ style: null
 angle: null
 batch: null
 updated_by: null
-updated_at: 2026-10-13T22:59:46.070Z
+updated_at: 2026-10-21T19:59:21.101Z
 ---
-Your call is booked, so watch this whole video before your call. It takes about two minutes, and by the end you'll know exactly what happens on the call and what you'll leave with.
+Your call is BOOKED. Before anything else, open the confirmation email and accept the calendar invite, so the time your advisor is holding for you is locked in.
 
-The first thing we do on the call is review your file the way a lender does. Your funding advisor meets you on a live Google Meet and runs a tri-bureau soft pull with you. It's $32, which covers what the bureaus charge for the reports, and it has zero impact on your score.
+Here's exactly what happens on the call. Your advisor meets with you on a Google Meet and runs a 3-bureau report. You pay $32, and there's no impact on your score.
 
-Then you go through it together. You'll see how much we think you'll qualify for based on where you're at right now, what's holding your file back if anything, and the fastest way to get your file to the maximum amount of funding.
+We pull all THREE bureaus for a reason. ↑ Different banks pull different bureaus, so your information has to match on every report.
 
-Most of the people we work with are aiming for somewhere between $250,000 and $400,000. Some files are ready for that today, and a lot of them aren't there yet, which is completely normal. Wherever your file is right now, we have a path for that phase.
+When it doesn't match, only 1 in 3 banks approve you. When it MATCHES, it's 2 in 3, and sometimes 3 out of 3.
+
+Then UnderwriteIQ runs your file, and you see how much you qualify for based on where you're at right now.
+
+You also see what's holding your file back and the FASTEST way to the maximum amount of funding. That system is built on ten years of my own funding and hundreds of client files.
+
+Your advisor walks you through the options and pricing for your path, and EVERYTHING is in writing.
+
+Join from a COMPUTER somewhere quiet, because your advisor shares their screen and goes through your file with you.
+
+If you're going after business funding, have your entity name, how long you've been in business, and your average monthly revenue ready, so your advisor can run the business side too.
+
+If something comes up, use the reschedule link on this page, so you keep your spot.
+
+Thank you for booking, and I'll see you on the call.
 
 <!-- fundhub script data: parts, animation_plan and meta_copy. Change them in the app; the database wins. -->
 ```json
