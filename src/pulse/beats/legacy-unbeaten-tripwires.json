@@ -1,9 +1,7 @@
 [
   "desk:money-banks.html",
-  "desk:money-helper.html",
   "desk:sales-floor.html",
   "page:progress.html",
   "route:documents-upload",
-  "route:money/helper",
   "route:read/client-progress"
 ]
