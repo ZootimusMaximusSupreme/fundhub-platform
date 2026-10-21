@@ -158,11 +158,18 @@ describe("runBackfill against a fake Meta", () => {
     const dbx = fakeDb();
     const out = await run(meta, dbx);
     assert.equal(out.ok, true);
-    assert.equal(meta.calls.length, 1);
-    assert.equal(meta.calls[0].method, "GET");
-    assert.ok(meta.calls[0].url.includes("/act_982103620742368/insights?"));
-    assert.ok(decodeURIComponent(meta.calls[0].url).includes("date_preset=maximum"));
-    assert.ok(meta.calls[0].url.includes("level=ad"));
+    // Two requests, the money and the rest (TWO INSIGHTS REQUESTS in
+    // api/campaigns/sync.mjs): one combined request gets Meta's false zeros.
+    assert.equal(meta.calls.length, 2);
+    for (const call of meta.calls) {
+      assert.equal(call.method, "GET");
+      assert.ok(call.url.includes("/act_982103620742368/insights?"));
+      assert.ok(decodeURIComponent(call.url).includes("date_preset=maximum"));
+      assert.ok(call.url.includes("level=ad"));
+    }
+    const fields = meta.calls.map((call) => new URL(call.url).searchParams.get("fields").split(","));
+    assert.ok(fields[0].includes("spend") && !fields[0].includes("actions"), "the first request is not the money on its own");
+    assert.ok(fields[1].includes("actions") && !fields[1].includes("spend"), "the second request carries money");
     assert.equal(dbx.sqls.filter((s) => /^\s*(INSERT|UPDATE|DELETE|TRUNCATE)/i.test(s)).length, 0);
     assert.equal(out.connections[0].written, 0);
     assert.equal(out.connections[0].totals.new_days, 8);
@@ -222,9 +229,12 @@ describe("runBackfill against a fake Meta", () => {
     const meta = fakeMeta();
     const dbx = fakeDb();
     await run(meta, dbx, { since: "2026-08-01", now: new Date("2026-10-06T03:00:00Z") });
-    const url = decodeURIComponent(meta.calls[0].url);
-    assert.ok(url.includes('"since":"2026-08-01"') && url.includes('"until":"2026-10-05"'), url);
-    assert.ok(!url.includes("date_preset"));
+    assert.equal(meta.calls.length, 2);
+    for (const call of meta.calls) {
+      const url = decodeURIComponent(call.url);
+      assert.ok(url.includes('"since":"2026-08-01"') && url.includes('"until":"2026-10-05"'), url);
+      assert.ok(!url.includes("date_preset"));
+    }
   });
 
   test("Meta refuses: that account is reported FAILED, nothing written, ok false", async () => {

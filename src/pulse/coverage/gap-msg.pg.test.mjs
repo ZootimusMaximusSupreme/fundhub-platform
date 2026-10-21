@@ -31,9 +31,11 @@ import {
   RE_STAFF_COPY,
   STAFF_TEMPLATE_KEYS,
   STAFF_TO_CLIENT_SQL,
+  ROLE_TEST_CLIENT_KEY,
   TEMPLATE_PATH_SQL,
   buildEmailStepsSql
 } from "./gap-msg.mjs";
+import { PROVIDER_FAIL_SQL } from "./gap-email.mjs";
 import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
 
 const HAS_DB = !!process.env.DATABASE_URL;
@@ -48,12 +50,12 @@ const uuid = () => crypto.randomUUID();
 
 const SHADOWS = {
   messages: {
-    cols: "id, org_id, client_id, direction, channel, template_key, rendered_body, subject, status, created_at, last_attempt_at, to_address, is_demo, provider_ref, blocked_reason, sender_staff_id",
-    rec: "id uuid, org_id uuid, client_id uuid, direction text, channel text, template_key text, rendered_body text, subject text, status text, created_at timestamptz, last_attempt_at timestamptz, to_address text, is_demo boolean, provider_ref text, blocked_reason text, sender_staff_id uuid"
+    cols: "id, org_id, client_id, direction, channel, template_key, rendered_body, subject, status, created_at, last_attempt_at, to_address, is_demo, provider_ref, blocked_reason, sender_staff_id, updated_at, last_error",
+    rec: "id uuid, org_id uuid, client_id uuid, direction text, channel text, template_key text, rendered_body text, subject text, status text, created_at timestamptz, last_attempt_at timestamptz, to_address text, is_demo boolean, provider_ref text, blocked_reason text, sender_staff_id uuid, updated_at timestamptz, last_error text"
   },
   clients: {
-    cols: "id, org_id, email, phone, custom_fields, is_demo",
-    rec: "id uuid, org_id uuid, email text, phone text, custom_fields jsonb, is_demo boolean"
+    cols: "id, org_id, email, phone, custom_fields, is_demo, client_master_key",
+    rec: "id uuid, org_id uuid, email text, phone text, custom_fields jsonb, is_demo boolean, client_master_key text"
   },
   staff: {
     cols: "org_id, email, phone",
@@ -113,7 +115,7 @@ function client(over = {}) {
   const id = over.id || uuid();
   return {
     id, org_id: ORG, email: over.email ?? `maria.${id.slice(0, 6)}@gmail.com`, phone: over.phone ?? "+16025550142",
-    custom_fields: over.custom_fields || {}, is_demo: over.is_demo ?? false
+    custom_fields: over.custom_fields || {}, is_demo: over.is_demo ?? false, client_master_key: over.client_master_key ?? null
   };
 }
 
@@ -235,6 +237,39 @@ test("per-template path: each stage is counted per template, and a row younger t
   );
   assert.equal(got["T-ALIVE"].delivered_n, 1);
   assert.equal(got["T-HELD"], undefined, "a message our gate held is not part of the path");
+});
+
+test("per-template path: the App Store review login's bounced sign-in mail is not a customer's; the same mail to a customer still counts", { skip: SKIP }, async () => {
+  const review = client({ email: "client@fundhub.ai", client_master_key: ROLE_TEST_CLIENT_KEY });
+  const customer = client();
+  const bounced = (who, hours) => msg({
+    template_key: "EMAIL-PORTAL-MAGIC-LINK", status: "bounced", client_id: who.id, to_address: who.email, created_at: ago(hours * H)
+  });
+  const params = [ORG, ago(7 * D), ago(24 * H), TEST_ADDRESS_RE];
+  const reviewOnly = await rows(TEMPLATE_PATH_SQL, params, { messages: [bounced(review, 30), bounced(review, 60)], clients: [review] });
+  assert.deepEqual(reviewOnly, [], "the review login's mail is test traffic");
+  const withCustomer = BY_KEY(await rows(TEMPLATE_PATH_SQL, params, {
+    messages: [bounced(review, 30), bounced(review, 60), bounced(customer, 30), bounced(customer, 60)], clients: [review, customer]
+  }));
+  assert.deepEqual(
+    { aged: withCustomer["EMAIL-PORTAL-MAGIC-LINK"].aged_n, failed: withCustomer["EMAIL-PORTAL-MAGIC-LINK"].failed_n, delivered: withCustomer["EMAIL-PORTAL-MAGIC-LINK"].delivered_n },
+    { aged: 2, failed: 2, delivered: 0 },
+    "a customer's bounced mail is still counted, and only the customer's"
+  );
+});
+
+test("email provider-fail: a bounce to the App Store review login is left out; a customer's bounce and a provider give-up still count", { skip: SKIP }, async () => {
+  const review = client({ email: "client@fundhub.ai", client_master_key: ROLE_TEST_CLIENT_KEY });
+  const customer = client();
+  const out = (who, status, over = {}) => msg({ status, client_id: who.id, to_address: who.email, created_at: ago(5 * H), last_attempt_at: ago(5 * H), ...over });
+  const since = ago(3 * D);
+  const reviewOnly = await one(PROVIDER_FAIL_SQL, [ORG, since], { messages: [out(review, "bounced"), out(review, "bounced")], clients: [review] });
+  assert.deepEqual({ failed: reviewOnly.failed_n, bounced: reviewOnly.bounced_n }, { failed: 0, bounced: 0 });
+  const mixed = await one(PROVIDER_FAIL_SQL, [ORG, since], {
+    messages: [out(review, "bounced"), out(customer, "bounced"), out(customer, "failed", { last_error: "provider said no" })],
+    clients: [review, customer]
+  });
+  assert.deepEqual({ failed: mixed.failed_n, bounced: mixed.bounced_n }, { failed: 1, bounced: 1 });
 });
 
 test("per-template path: an event with no email is counted, an event with one is not, and each guard of the step holds", { skip: SKIP }, async () => {
