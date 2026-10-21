@@ -134,3 +134,52 @@ describe("/api/chat/messages", () => {
     assert.equal(fake.find(/INSERT INTO messages/).length, 0);
   });
 });
+
+/* Routing guards (Set A item 28, 2026-10-20): a thread id left over from the
+   last client or teammate must never carry a message to them. */
+describe("/api/chat/messages routes to the picked person only", () => {
+  const PEER = "5b000000-0000-4000-8000-0000000000b2";
+  const OTHER_PEER = "5b000000-0000-4000-8000-0000000000b3";
+  const pair = (a, b) => (String(a) < String(b) ? `${a}:${b}` : `${b}:${a}`);
+  const convoRow = (row) => [/SELECT kind, (client_id|internal_pair_key) FROM conversations WHERE id = \$1 AND org_id = \$2/, [row]];
+
+  test("client: a thread that belongs to another client is refused (409), nothing queued", async () => {
+    const { res, fake } = await call(
+      req("POST", { body: { kind: "client", client_id: CLIENT, conversation_id: CONVO, body: "Hi Dana" } }),
+      [staffSession({ role: "owner" }), convoRow({ kind: "client", client_id: OTHER_CLIENT }), clientInOrg, clientPhone, convoUpsert, msgInsert]
+    );
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "conversation_client_mismatch");
+    assert.equal(fake.find(/INSERT INTO messages/).length, 0);
+  });
+
+  test("client: an internal thread, or a thread from another company, is refused too", async () => {
+    for (const row of [{ kind: "internal", client_id: null }, null]) {
+      const rules = [staffSession({ role: "owner" }), clientInOrg, clientPhone, convoUpsert, msgInsert];
+      if (row) rules.splice(1, 0, convoRow(row));
+      const { res, fake } = await call(req("POST", { body: { kind: "client", client_id: CLIENT, conversation_id: CONVO, body: "Hi" } }), rules);
+      assert.equal(res.statusCode, 409, JSON.stringify(row));
+      assert.equal(fake.find(/INSERT INTO messages/).length, 0);
+    }
+  });
+
+  test("internal: a thread with another teammate is refused (409), nothing saved", async () => {
+    const { res, fake } = await call(
+      req("POST", { body: { kind: "internal", conversation_id: CONVO, peer_staff_id: PEER, body: "Are you on the 3pm?" } }),
+      [staffSession(), convoRow({ kind: "internal", internal_pair_key: pair(STAFF_ID, OTHER_PEER) })]
+    );
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.error, "conversation_peer_mismatch");
+    assert.equal(fake.find(/INSERT INTO messages/).length, 0);
+  });
+
+  test("internal: the thread between you and that teammate goes through to the participant check", async () => {
+    const { res, fake } = await call(
+      req("POST", { body: { kind: "internal", conversation_id: CONVO, peer_staff_id: PEER, body: "Are you on the 3pm?" } }),
+      [staffSession(), convoRow({ kind: "internal", internal_pair_key: pair(STAFF_ID, PEER) })]
+    );
+    // The guard let it pass; the next gate (are you on this thread?) answers, here with no participant row.
+    assert.notEqual(res.statusCode, 409);
+    assert.equal(fake.find(/FROM conversation_participants/).length, 1);
+  });
+});

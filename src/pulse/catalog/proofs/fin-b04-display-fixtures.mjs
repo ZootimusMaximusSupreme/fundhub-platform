@@ -603,7 +603,10 @@ add("chat-widget", CHAT_WIDGET_SQL, chatWidgetTables,
     ["a demo staff note is not judged", (t) => { t.messages[1].is_demo = true; t.messages[1].client_id = CLIENT; }],
     ["a staff note older than 30 days is not judged", (t) => { t.messages[1].created_at = LONG_AGO; t.messages[1].client_id = CLIENT; }],
     ["a message from a workflow is not a staff note", (t) => { t.messages[1].sender_kind = "system"; t.messages[1].client_id = CLIENT; }],
-    ["a staff voice row is not a text or a note", (t) => { t.messages[1].channel = "voice"; t.messages[1].client_id = CLIENT; }]
+    ["a staff voice row is not a text or a note", (t) => { t.messages[1].channel = "voice"; t.messages[1].client_id = CLIENT; }],
+    ["an owner-ops text to the owner's own phone is not a widget send", (t) => {
+      Object.assign(t.messages[1], { channel: "sms", client_id: null, conversation_id: null, provider: "twilio", provider_ref: "owner-ops:teleprompter-2026-10-07" });
+    }]
   ].map(([label, fn]) => [label, (t) => { fn(t); t.messages = [t.messages[1]]; }]) });
 
 const RULE = (extra = {}) => ({

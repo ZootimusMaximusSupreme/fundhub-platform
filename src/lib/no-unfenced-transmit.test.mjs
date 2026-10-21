@@ -128,6 +128,13 @@ const ALLOWED_RAW_FETCH = {
     + "the module exports no send function and issues no POST; gmailFetch() "
     + "defaults method to GET and every call site takes that default. Cannot "
     + "reach a client and cannot change a vendor record.",
+  "src/bookings/meet-link.mjs":
+    "Reads the host's Google Calendar to find the Meet link Google already put on a "
+    + "booked call (ClickFunnels' webhook carries none). One GET to calendar/v3 "
+    + "events with the host's own OAuth token; the token refresh goes through "
+    + "src/company-brain/auth.mjs above. Creates no event, sends no invite, writes "
+    + "nothing at Google and reaches no client. meet-link.test.mjs pins GET-only. "
+    + "Added 2026-10-20 (Set A item 11).",
   "src/handlers/inbound-mms-docs.mjs":
     "Downloads a photo the client already sent US, from the Twilio media URL "
     + "on the inbound webhook. Inbound only — GET with the account credentials, "
