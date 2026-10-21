@@ -4,13 +4,15 @@ Owner order (Chris, 2026-10-21): "make sure all changes are committed to main an
 
 Owner of this board: the sweep session (`unruffled-panini`). Started by the coordinator session. Read-only analysis was split across five analysts (prompts in the last section).
 
-Rules held the whole time: no force-push, no rewrite of main, no deleted branch or data, no weaker test, no secret in git, Braum FH-000507 untouched, nothing merged that changes dashboard design (Codex owns design).
+**This repository is PUBLIC** (coordinator, 2026-10-21): nothing goes to GitHub except reviewed code and docs headed for main. Unsaved work is bundled locally: `~/Backups/fundhub-2026-10-21/unsaved-work-all.bundle` (1.1 GB, verified; holds root, stashes, cortana-fee-invoices, dashboard-ux-polish, exciting-ramanujan, nervous-swanson, fin-b11, fin-b22, fin-b26). The 7 backup branches still on GitHub were scanned for personal emails, phones and keys (none; one fake test address) and are kept as the only remote copy.
+
+Rules held the whole time: no force-push, no rewrite of main, no deleted branch or data, no weaker test, no secret in git, the one real client untouched, nothing merged that changes dashboard design (Codex owns design).
 
 Main at the time of the sweep: `97860f770` → moved to `a21647dc2` while this ran (PRs #94, #101 merged by their own sessions).
 
 ## The short answer (4th grade English)
 
-- **Nothing is lost.** All unsaved work in 8 folders is on GitHub in `backup/*-2026-10-21` branches. All 39 old git stashes are saved too (`backup/stashes-2026-10-21`). No secret went into any backup.
+- **Nothing is lost.** All unsaved work in 8 folders is saved. 7 snapshots stay on GitHub as `backup/*-2026-10-21` branches. The root-checkout snapshot and the 39 old git stashes are saved on this Mac only, in `~/Backups/fundhub-2026-10-21/unsaved-work-all.bundle` (this repo is PUBLIC, so they were taken off GitHub). No key went into any backup.
 - **Most old branches are already on main.** 32 of the 88 unmerged branches and PRs are the same change that landed another way. 39 more are older versions of work that was redone. Merging them would undo newer fixes, so none was merged.
 - **What I moved onto main** (in one sweep PR, so there is only one deploy): the morning-brief line, the teleprompter camera rules and tests (PR #50), the ad tonality tool (PR #52), the Blueprint timelapse (PR #115), two money-screen guard tests, 11 test files from the fin-b26 worktree, an iPhone Prompter crash fix, the Apple App Review record from 10-20, three work boards, Chris's Crafty/MCA to-do lines, and this board. PRs #94 and #101 were merged by their own sessions while this ran.
 - **Closed because it is all on main already:** PRs #60 and #80.
@@ -24,7 +26,7 @@ Method: a temporary index file, `git add -A`, `write-tree`, `commit-tree` on top
 
 | Backup branch on GitHub | From folder (branch) | Files | Notes |
 |---|---|---|---|
-| `backup/root-2026-10-21` | root checkout `/Users/chrisstanbridge/Developer/fundhub-platform` (`codex/two-ios-apps-launch`) | 179 | The big one: Capital Blueprint / Whop, invoice checkout retirement, LNR report, docs, rules. Triage in section B. |
+| ~~`backup/root-2026-10-21`~~ (deleted from GitHub; local bundle only) | root checkout `/Users/chrisstanbridge/Developer/fundhub-platform` (`codex/two-ios-apps-launch`) | 179 | The big one: Capital Blueprint / Whop, invoice checkout retirement, LNR report, docs, rules. Triage in section C. Removed from GitHub because it held personal email addresses and the repo is public. |
 | `backup/cortana-fee-invoices-2026-10-21` | `~/.codex/worktrees/cortana-fee-invoices` (`claude/cortana-weighted-feed`) | 24 | Cortana payment feed |
 | `backup/dashboard-ux-polish-2026-10-21` | `~/.codex/worktrees/dashboard-ux-polish` (`codex/crm-astra-phone-stability`) | 3 | Three ops docs |
 | `backup/exciting-ramanujan-2026-10-21` | `.claude/worktrees/exciting-ramanujan-40ff0e` | 16 | `.agents/skills/**`, `.codex/hooks.json` |
@@ -33,7 +35,7 @@ Method: a temporary index file, `git add -A`, `write-tree`, `commit-tree` on top
 | `backup/fin-b22-2026-10-21` | `.claude/worktrees/fin-b22` | 1 | One proof file |
 | `backup/fin-b26-2026-10-21` | `.claude/worktrees/fin-b26` | 13 | Old read-contract tests |
 | `backup/client-portal-ios-redo-local-2026-10-21` | local branch `codex/client-portal-ios-redo` | — | Local copy was 4 commits behind the remote copy, so nothing unique; saved anyway. |
-| `backup/stashes-2026-10-21` | the shared stash stack (39 stashes, 2026-10-05 → 10-08) | 39 | One commit that has all 39 stash commits as parents, so each stays reachable. Scanned: no secrets. |
+| ~~`backup/stashes-2026-10-21`~~ (deleted from GitHub; local bundle only) | the shared stash stack (39 stashes, 2026-10-05 → 10-08) | 39 | One commit that has all 39 stash commits as parents. Removed from GitHub for the same reason. |
 
 Left out on purpose (never in any backup):
 - `.env*` files and `credentials/` (ignored anyway; only the names-only `.env.example` change was kept).
@@ -70,9 +72,9 @@ Of the 15 class-2 items: **9 were carried to main or merged** (brief line, PR #5
 
 | PR | Branch | Class | After the sweep |
 |---|---|---|---|
-| #50 | `claude/teleprompter-lock` | 2 needed | CARRIED to main in the sweep PR (both commits). PR #50 closes as carried. |
-| #52 | `claude/ad-tonality-system` | 2 needed | CARRIED to main in the sweep PR (the tool + first report; the old TODO.md commit was left out). PR #52 closes as carried. |
-| #53 | `todo/mca-flow-2026-10-16` | 4 obsolete | CARRIED: Chris's three 10-16 items copied word for word into TODO.md. Chris, say if they are still open. PR #53 closes as carried. |
+| #50 | `claude/teleprompter-lock` | 2 needed | CARRIED to main in the sweep PR (both commits). PR #50 closed as carried (PR #121). |
+| #52 | `claude/ad-tonality-system` | 2 needed | CARRIED to main in the sweep PR (the tool + first report; the old TODO.md commit was left out). PR #52 closed as carried (PR #121). |
+| #53 | `todo/mca-flow-2026-10-16` | 4 obsolete | CARRIED: Chris's three 10-16 items copied word for word into TODO.md. Chris, say if they are still open. PR #53 closed as carried (PR #121). |
 | #54 | `codex/company-app-funnel-download` | 3 design | WAITING FOR CODEX: changes a public funnel page (visible words). App is not live yet. |
 | #55 | `codex/fundhub-prompter-appstore` | 4 obsolete | Crash fix CARRIED to main (empty scroll track no longer stops the iPhone Prompter app; proved by running it). The rest is obsolete (login was removed). |
 | #60 | `codex/appstore-release-records` | 1 on main | CLOSED by the sweep: all of it is already on main (7 of 8 commits match main commits; the 8th only drops the word "now"). |
@@ -85,7 +87,7 @@ Of the 15 class-2 items: **9 were carried to main or merged** (brief line, PR #5
 | #88 | `feat/mac-bridge-v1` | 2 needed | WAITING FOR CHRIS: draft, all new files, CI 28/28, nothing deploys. Needs a yes because v2 lets the phone start tasks on the Mac, the helper listens on all network interfaces over plain HTTP with a token, the PR text is out of date, and 26 files are an iPhone app (Codex owns iPhone screens). |
 | #94 | `claude/silly-elion-fb36a2` | 2 needed | MERGED to main by its own session (908cca964) while this sweep ran. |
 | #101 | `claude/awesome-shaw-4103bc` | 2 needed | MERGED to main by its own session (a21647dc2) while this sweep ran. |
-| #115 | `demo/blueprint-timelapse` | 2 needed | CARRIED to main in the sweep PR (script, fixtures, 4K video, 3 stills; adds 8.6 MB). PR #115 closes as carried. |
+| #115 | `demo/blueprint-timelapse` | 2 needed | CARRIED to main in the sweep PR (script, fixtures, 4K video, 3 stills; adds 8.6 MB). PR #115 closed as carried (PR #121). |
 
 ### All items
 
@@ -160,11 +162,11 @@ Of the 15 class-2 items: **9 were carried to main or merged** (brief line, PR #5
 | `codex/portal-release-evidence (PR #62)` | 4 obsolete | A dated note that the 10-17 release was blocked on one expired deploy credential. | Obsolete / superseded. Marked, not deleted. |
 | `codex/netlify-modern-ad-video-worker` | 2 needed | A one-line history note: PR #79 merged, ship passed, site healthy. | CARRIED to main in the sweep PR (one true doc line). |
 | `codex/outreach-network-diagnosis` | 4 obsolete | A one-off experiment to find why the hourly proof stalled on the release runner. | Obsolete / superseded. Marked, not deleted. |
-| `claude/teleprompter-lock (PR #50, open)` | 2 needed | Adds tests that lock the owner's camera rules (front camera saved mirrored, back camera not, no editor on long-press) and writes the rule for Claude and Cursor. No app code changes. | CARRIED to main in the sweep PR (both commits). PR #50 closes as carried. |
-| `claude/ad-tonality-system (PR #52, draft)` | 2 needed | A Python tool that listens to the filmed ad takes and scores pace, pauses, pitch and loudness against the script marks, plus the first report on 17 takes. | CARRIED to main in the sweep PR (the tool + first report; the old TODO.md commit was left out). PR #52 closes as carried. |
-| `todo/mca-flow-2026-10-16 (PR #53, open)` | 4 obsolete | A dated TODO block: get a new MCA referral link from Crafty, set up the MCA email flow, push the MCA and SBA deals. | CARRIED: Chris's three 10-16 items copied word for word into TODO.md. Chris, say if they are still open. PR #53 closes as carried. |
+| `claude/teleprompter-lock (PR #50, open)` | 2 needed | Adds tests that lock the owner's camera rules (front camera saved mirrored, back camera not, no editor on long-press) and writes the rule for Claude and Cursor. No app code changes. | CARRIED to main in the sweep PR (both commits). PR #50 closed as carried (PR #121). |
+| `claude/ad-tonality-system (PR #52, draft)` | 2 needed | A Python tool that listens to the filmed ad takes and scores pace, pauses, pitch and loudness against the script marks, plus the first report on 17 takes. | CARRIED to main in the sweep PR (the tool + first report; the old TODO.md commit was left out). PR #52 closed as carried (PR #121). |
+| `todo/mca-flow-2026-10-16 (PR #53, open)` | 4 obsolete | A dated TODO block: get a new MCA referral link from Crafty, set up the MCA email flow, push the MCA and SBA deals. | CARRIED: Chris's three 10-16 items copied word for word into TODO.md. Chris, say if they are still open. PR #53 closed as carried (PR #121). |
 | `feat/mac-bridge-v1 (PR #88, draft)` | 2 needed | A Mac helper plus an iPhone app that shows Claude/Codex/Cursor chats and commands, and (v2) lets Chris start a task from the phone. | WAITING FOR CHRIS: draft, all new files, CI 28/28, nothing deploys. Needs a yes because v2 lets the phone start tasks on the Mac, the helper listens on all network interfaces over plain HTTP with a token, the PR text is out of date, and 26 files are an iPhone app (Codex owns iPhone screens). |
-| `demo/blueprint-timelapse (PR #115, draft)` | 2 needed | A demo script and a 20-second 4K timelapse of six months of the Capital Blueprint, driven on the real portal screens with fake data. | CARRIED to main in the sweep PR (script, fixtures, 4K video, 3 stills; adds 8.6 MB). PR #115 closes as carried. |
+| `demo/blueprint-timelapse (PR #115, draft)` | 2 needed | A demo script and a 20-second 4K timelapse of six months of the Capital Blueprint, driven on the real portal screens with fake data. | CARRIED to main in the sweep PR (script, fixtures, 4K video, 3 stills; adds 8.6 MB). PR #115 closed as carried (PR #121). |
 | `claude/silly-elion-fb36a2 (PR #94, open)` | 2 needed | Docs: a lesson that the morning scorecard never stopped saving, plus the board listing that day's red ids. | MERGED to main by its own session (908cca964) while this sweep ran. |
 | `claude/awesome-shaw-4103bc (PR #101, open)` | 2 needed | Records the owner-approved delete of the fake test data (100 clients, 817 rows) with the plan and the scripts, plus a one-minute clock-flake fix in one test. | MERGED to main by its own session (a21647dc2) while this sweep ran. |
 | `claude/inngest-stop-2026-10-20 (PR #109, CLOSED 2026-10-21 17:04:47Z)` | 4 obsolete | An older fix for the Inngest free-plan overrun: run the timed jobs less often. | Obsolete / superseded. Marked, not deleted. |
@@ -237,3 +239,58 @@ Of the 15 class-2 items: **9 were carried to main or merged** (brief line, PR #5
 - Back-ups: temporary index file → `commit-tree` on top of each folder's HEAD → push to `refs/heads/backup/...`. Each snapshot was scanned for key/token/private-key/password patterns before pushing.
 - Triage: five read-only analysts (one per group), then spot-checked by the sweep session. Each claim in a table has a commit sha, a PR number or a file behind it.
 - Carry-over: every carried piece was run before it went in (brief tests 40/40; money tests 37/37; fin-b26 152/152; `npm run lint` clean; the Prompter fix compiled and run on this Mac: main's code stops with "Range requires lowerBound <= upperBound", the fixed code returns zeros). The PR's CI (28 checks) is the gate for the rest.
+
+## G. Final lists (every branch and PR sorted)
+
+**88 branches and PRs** (plus the 28 local `fin/*` branches, all in main), by what happened to them:
+
+| | Count |
+|---|---|
+| (a) Merged and live — carried or merged by the sweep and the sessions that own them | 9 |
+| (a) Already on main and live — same change landed another way | 32 (+28 `fin/*`) |
+| (b) Waiting on Chris or Codex | 8 |
+| (c) Obsolete / superseded — marked, not deleted | 39 |
+| **Total** | **88** |
+
+### (a) Merged and live — by the sweep or their own sessions
+
+- `fix/brief-whole-suite`
+- `codex/two-ios-apps-launch` (PR #68) — the App Review record and boards only; the iPhone shell stays with Codex
+- `codex/netlify-modern-ad-video-worker`
+- `claude/teleprompter-lock` (PR #50)
+- `claude/ad-tonality-system` (PR #52)
+- `demo/blueprint-timelapse` (PR #115)
+- `claude/silly-elion-fb36a2` (PR #94) — merged by its own session
+- `claude/awesome-shaw-4103bc` (PR #101) — merged by its own session
+- `backup/fin-b26-2026-10-21`
+
+All of it went live in ship runs `a21647dc` (the two own-session merges) and `57a07b58` (the sweep PR #121). Live health: ok, 420 applied, pending 0.
+
+### (a) Already on main (same change landed another way)
+
+`codex/heartbeat-catalog-guards-c`, `codex/heartbeat-crm-staff-display-2026-10-18`, `codex/heartbeat-customer-journey-d-handoff`, `codex/heartbeat-display-proof-f`, `codex/heartbeat-flow-read-proof`, `codex/heartbeat-galaxy-teams-links-2026-10-18`, `codex/heartbeat-money-b`, `codex/heartbeat-money-workspace`, `codex/heartbeat-route-proofs`, `codex/heartbeat-route-repair-j`, `codex/heartbeat-stale-expectations-a`, `codex/ship-admin-migrations` (PR #61), `codex/heartbeat-messaging-c-main`, `codex/heartbeat-public-links`, `codex/heartbeat-shell-sidebar-current-main`, `codex/heartbeat-display-20-25`, `codex/heartbeat-display-26-33`, `codex/heartbeat-display-34-36`, `codex/heartbeat-display-37-45`, `codex/heartbeat-display-repair-i`, `codex/recover-contracts`, `codex/recover-csm-queue`, `codex/recover-finance-os`, `codex/recover-lenders`, `codex/recover-my-numbers`, `codex/recover-sales-floor`, `codex/crm-portal-layout-professional` (PR #69), `PR #80 codex/astra-team-access-comparison` (PR #80), `codex/appstore-release-records` (PR #60), `board/blueprint-launch`, `claude/funny-sinoussi-765e2b`, `lp/r15-csm-picker-no-demo`. Plus the 28 local `fin/b01`..`fin/b26`, `fin/base`, `fin/integrate`.
+
+### (b) Waiting on Chris or Codex
+
+- `codex/live-ios-teleprompter` (PR #72) — Codex (iPhone screens)
+- `codex/call-invite-push` (PR #64) — Codex (needs its pulse row + portal Join Call card)
+- `codex/company-app-funnel-download` (PR #54) — Codex (public funnel page words)
+- `feat/mac-bridge-v1` (PR #88) — Chris (publish decision)
+- `backup/cortana-fee-invoices-2026-10-21` — Chris (finish and ship? sends customer data to Cortana)
+- `backup/dashboard-ux-polish-2026-10-21` — Codex
+- `backup/exciting-ramanujan-2026-10-21` — Codex
+- `backup/fin-b11-2026-10-21` — an agent with a browser
+- From the root-checkout snapshot (local bundle only): permanent portal invite links (Chris, auth + migration), LNR business report desk (Chris/Codex), Prompter thank-you card (Codex).
+
+### (c) Obsolete / superseded (marked, nothing deleted)
+
+`codex/heartbeat-catalog-four`, `codex/heartbeat-display-13-19-work`, `codex/heartbeat-messaging-c`, `codex/heartbeat-customer-journey-d`, `fix/display-lane-time`, `codex/home-upload-retry-reconcile`, `codex/recover-automations`, `codex/recover-consent-capture`, `codex/recover-inquiry-remover`, `codex/recover-journeys`, `codex/recover-ops-admin`, `codex/recover-payment-success`, `codex/recover-reset-password`, `codex/recover-staff-teams`, `codex/crm-live-font-reconcile` (PR #74), `codex/fundhub-crm-html-export`, `codex/client-portal-ios-redo` (PR #67), `backup/client-portal-ios-redo-local-2026-10-21`, `codex/crm-reconcile-scan`, `codex/crm-reconcile-scan-39158495327`, `codex/crm-reconcile-scan-39158754152`, `codex/crm-reconcile-scan-39160267751`, `codex/crm-reconcile-scan-39160775087`, `codex/crm-reconcile-scan-39162023133`, `codex/crm-reconcile-scan-39163499187`, `codex/crm-reconcile-scan-39164009036`, `codex/crm-reconcile-scan-39164519842`, `codex/crm-reconcile-scan-39164782650`, `codex/crm-reconcile-scan-39165734460`, `codex/crm-reconcile-scan-39166186746`, `codex/crm-reconcile-scan-39167073054`, `codex/fundhub-prompter-appstore` (PR #55), `codex/portal-release-evidence` (PR #62), `codex/outreach-network-diagnosis`, `todo/mca-flow-2026-10-16` (PR #53), `claude/inngest-stop-2026-10-20` (PR #109), `diag/linux-get-stall-fix`, `backup/nervous-swanson-2026-10-21`, `backup/fin-b22-2026-10-21`.
+
+Of these, PR #53 and PR #55 each had one small piece carried (Chris's Crafty/MCA lines; the Prompter crash fix). The 13 `crm-reconcile-scan-*` branches are one bot report copied 13 times.
+
+### Pull requests at the end of the sweep
+
+- **Merged:** #94, #101 (own sessions), #121 (the sweep).
+- **Closed because it is all on main:** #60, #80.
+- **Closed as carried by #121:** #50, #52, #53, #115.
+- **Still open:** #54, #55, #62, #64, #68, #72, #74, #88 (waiting or obsolete, none merged). PR #120 (apply-links timing) belongs to another session.
