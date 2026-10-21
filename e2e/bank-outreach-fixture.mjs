@@ -2,36 +2,122 @@ import { expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openScreen, OWNER, json } from './harness.mjs';
+import { STATE_CODES } from '../src/outreach/model.mjs';
 
 // Shared fictional data for Chromium and WebKit. Never reaches a live API.
 const REP = { ok: true, staff: { ...OWNER.staff, id: 'rep-1', role: 'outbound_rep', name: 'Casey Reed' } };
 const account = i => ({ id: 'bank-' + i, name: ['Mesa Community Bank', 'Coastal Business Credit Union', 'Pacific Commercial Bank'][i % 3] + (i > 2 ? ' ' + (i + 1) : ''), source: 'fdic', external_id: String(1000 + i), state: ['AZ', 'SC', 'FL', 'CA'][i % 4], city: 'Phoenix', website: 'https://bank.example', assigned_staff_id: 'rep-1', assigned_staff_name: 'Casey Reed', status: 'researching', partner_activity: 'active', next_action: 'Confirm business line requirements with banker', next_due_at: '2026-01-01T15:00:00Z' });
-const summary = { verified_products_week: 7, verified_products_previous_week: 4, verified_partners: 12, missing_next_action: 0, due_now: 18, total: 27 };
+const summary = { verified_products_week: 7, verified_products_previous_week: 4, verified_partners: 12, missing_next_action: 0, due_now: 18, total: 27, leads_waiting: 0, replies_waiting: 0 };
 const contacts = [{ id: 'contact-1', name: 'Avery Lane', title: 'Business banker', email: 'avery@bank.example', phone: '+16025550101', linkedin_url: 'https://www.linkedin.com/in/avery-fixture' }];
 export const facts = { minimum_score: 'unknown', minimum_time_in_business_years: 2, minimum_revenue_threshold: 250000, bureaus_pulled: ['EX', 'EQ'], inquiry_tolerance: 'Up to 3 in 6 months', stated_income: false, eligible_states: ['AZ', 'CA'], application_url: 'https://bank.example/apply', paper_application_url: 'unknown' };
 const product = { id: 'product-1', product_name: 'Business working capital line', lender_table: 'BizLOC_Documented', facts, evidence: 'Avery Lane · banker email · October 19, 2026', verified_at: null };
 
-export async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false } = {}) {
-  const posts = [], reads = [], faults = { detail: false, team: false }, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
+// Automation data for one fictional bank (bank-0). Every row agrees with the others:
+// the two bankers who replied have stopped emails, the STOP reply opted Riley out,
+// and the queue counts match the found bankers and replies still waiting.
+const autoCounts = i => ({ leads_waiting: i === 0 ? 2 : i % 6 === 2 ? 1 : 0, replies_waiting: i === 0 ? 2 : i % 9 === 4 ? 1 : 0 });
+const autoTotals = Array.from({ length: 27 }, (_, i) => autoCounts(i)).reduce((sum, c) => ({ leads_waiting: sum.leads_waiting + c.leads_waiting, replies_waiting: sum.replies_waiting + c.replies_waiting }), { leads_waiting: 0, replies_waiting: 0 });
+const autoData = () => ({
+  account: { ...account(0), status: 'engaged', next_action: "Apply the banker's facts and save the product", next_due_at: '2026-10-17T20:10:00Z' },
+  contacts: [
+    { ...contacts[0], email_opt_out_at: null },
+    { id: 'contact-2', name: 'Jordan Pike', title: 'Business relationship manager', email: 'jordan.pike@bank.example', phone: '', linkedin_url: 'https://www.linkedin.com/in/jordan-pike-fixture', email_opt_out_at: null },
+    { id: 'contact-3', name: 'Morgan Hale', title: 'Small business lending officer', email: 'morgan.hale@bank.example', phone: '+16025550133', linkedin_url: '', email_opt_out_at: null },
+    { id: 'contact-4', name: 'Riley Shaw', title: 'Branch manager', email: 'riley.shaw@bank.example', phone: '', linkedin_url: '', email_opt_out_at: '2026-10-16T17:20:00Z' }
+  ],
+  leads: [
+    { id: 'lead-1', name: 'Taylor Brooks', title: 'Business banking officer', employer: 'Mesa Community Bank', linkedin_url: 'https://www.linkedin.com/in/taylor-brooks-fixture', snippet: 'Business banking officer at Mesa Community Bank in Phoenix. Helps local owners with business cards and lines of credit.', confidence: 'high', status: 'suggested', contact_id: null, created_at: '2026-10-20T15:15:00Z' },
+    { id: 'lead-2', name: 'Dana Ruiz', title: 'Commercial lending assistant', employer: 'Mesa Community Bank', linkedin_url: 'https://www.linkedin.com/in/dana-ruiz-fixture', snippet: 'Commercial lending team, Mesa Community Bank, Tempe, Arizona.', confidence: 'medium', status: 'suggested', contact_id: null, created_at: '2026-10-20T15:15:00Z' },
+    { id: 'lead-3', name: 'Jordan Pike', title: 'Business relationship manager', employer: 'Mesa Community Bank', linkedin_url: 'https://www.linkedin.com/in/jordan-pike-fixture', snippet: 'Business relationship manager at Mesa Community Bank.', confidence: 'high', status: 'accepted', contact_id: 'contact-2', created_at: '2026-10-06T15:15:00Z' },
+    { id: 'lead-4', name: 'Sam Ortiz', title: 'Teller', employer: 'Mesa Community Bank', linkedin_url: 'https://www.linkedin.com/in/sam-ortiz-fixture', snippet: 'Teller at a Mesa Community Bank branch.', confidence: 'medium', status: 'dismissed', contact_id: null, created_at: '2026-10-06T15:15:00Z' }
+  ],
+  sequences: [
+    { id: 'seq-1', contact_id: 'contact-1', status: 'active', step: 1, next_due_at: '2026-10-24T16:00:00Z', last_sent_at: '2026-10-20T16:05:00Z', stopped_at: null, stop_reason: null },
+    { id: 'seq-2', contact_id: 'contact-2', status: 'stopped', step: 2, next_due_at: '2026-10-19T16:00:00Z', last_sent_at: '2026-10-14T16:05:00Z', stopped_at: '2026-10-15T18:40:00Z', stop_reason: 'replied' },
+    { id: 'seq-3', contact_id: 'contact-3', status: 'stopped', step: 1, next_due_at: '2026-10-17T16:00:00Z', last_sent_at: '2026-10-13T16:05:00Z', stopped_at: '2026-10-17T20:10:00Z', stop_reason: 'replied' },
+    { id: 'seq-4', contact_id: 'contact-4', status: 'stopped', step: 1, next_due_at: '2026-10-17T16:00:00Z', last_sent_at: '2026-10-13T16:05:00Z', stopped_at: '2026-10-16T17:20:00Z', stop_reason: 'opted_out' }
+  ],
+  replies: [
+    { id: 'reply-2', contact_id: 'contact-3', from_address: 'morgan.hale@bank.example', subject: 'Re: Fundhub referrals', body: 'Can we set up a call next week?\nOur Business Platinum Card needs 3 years in business and $250,000 in yearly revenue.\n\nMorgan', received_at: '2026-10-17T20:10:00Z', status: 'needs_human', kind: 'call', ai_mode: 'shadow', summary: 'Banker asked for a call and shared card rules.', suggested: { product_name: 'Business Platinum Card', lender_table: 'OnlineBizCC', facts: { minimum_time_in_business_years: 3, minimum_revenue_threshold: 250000 }, evidence_quote: 'Our Business Platinum Card needs 3 years in business and $250,000 in yearly revenue.', referral: null }, suggestion_status: 'pending', draft_reply: { template_key: 'EMAIL-BANK-OUTREACH-REPLY-CALL', subject: 'Re: Fundhub referrals', body: 'Thanks, Morgan.\nA call works. Pick a time that suits you this week.', approved: false, queued_message_id: null, reason: 'shadow_mode' }, reply_message_id: null, error: null, processed_at: '2026-10-17T20:12:00Z' },
+    { id: 'reply-3', contact_id: 'contact-4', from_address: 'riley.shaw@bank.example', subject: 'STOP', body: 'STOP', received_at: '2026-10-16T17:20:00Z', status: 'handled', kind: 'opt_out', ai_mode: 'rules', summary: null, suggested: null, suggestion_status: 'none', draft_reply: null, reply_message_id: null, error: null, processed_at: '2026-10-16T17:21:00Z' },
+    { id: 'reply-1', contact_id: 'contact-2', from_address: 'jordan.pike@bank.example', subject: 'Re: Business clients for Mesa Community Bank', body: 'Hi Casey,\nWe approve business cards from a 680 score with 2 years in business.\nWe pull Experian only. Apply here: https://bank.example/business-card\n<b>Not markup</b>\n\nJordan', received_at: '2026-10-15T18:40:00Z', status: 'needs_human', kind: 'data', ai_mode: 'shadow', summary: 'Banker shared business card rules and an application link.', suggested: { product_name: null, lender_table: null, facts: { minimum_score: 680, minimum_time_in_business_years: 2, bureaus_pulled: ['EX'], application_url: 'https://bank.example/business-card' }, evidence_quote: 'We approve business cards from a 680 score with 2 years in business.', referral: null }, suggestion_status: 'pending', draft_reply: { template_key: 'EMAIL-BANK-OUTREACH-REPLY-ASK', subject: 'Re: Business clients for Mesa Community Bank', body: 'Thanks, Jordan.\n1. What minimum yearly revenue do you need?\n2. How many recent credit inquiries do you accept?', approved: false, queued_message_id: null, reason: 'shadow_mode' }, reply_message_id: null, error: null, processed_at: '2026-10-15T18:42:00Z' }
+  ],
+  activities: [
+    { id: 'act-4', actor: 'automation', staff_id: null, staff_name: null, channel: 'email', outcome: 'auto_email_step_1', note: 'Automatic email 1 of 3 queued', next_action: "Apply the banker's facts and save the product", next_due_at: '2026-10-17T20:10:00Z', created_at: '2026-10-20T16:05:00Z' },
+    { id: 'act-3', actor: 'automation', staff_id: null, staff_name: null, channel: 'linkedin', outcome: 'bankers_found', note: '2 bankers found by a LinkedIn search', next_action: "Apply the banker's facts and save the product", next_due_at: '2026-10-17T20:10:00Z', created_at: '2026-10-20T15:15:00Z' },
+    { id: 'act-2', actor: 'automation', staff_id: null, staff_name: null, channel: 'email', outcome: 'banker_reply:call', note: 'Banker asked for a call and shared card rules. Reply not sent (shadow_mode).', next_action: "Apply the banker's facts and save the product", next_due_at: '2026-10-17T20:10:00Z', created_at: '2026-10-17T20:12:00Z' },
+    { id: 'act-1', actor: 'staff', staff_id: 'rep-1', staff_name: 'Casey Reed', channel: 'linkedin', outcome: 'contact_saved', note: 'Jordan Pike', next_action: 'Contact banker', next_due_at: '2026-10-06T16:00:00Z', created_at: '2026-10-06T16:00:00Z' }
+  ]
+});
+const automationViewFor = (config, empty) => empty
+  ? { search: { configured: true, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 0, never_searched: 0, accounts: 0 }, email: { configured: true, missing: [], in_send_window: true, per_day_cap: 40, sent_today: 0, templates_approved: 3, templates_total: 7, active_sequences: 0, sequences: 0 }, replies: { agent_status: 'shadow', waiting: 0, needs_human: 0 } }
+  : config === 'unset'
+    ? { search: { configured: false, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 0, never_searched: 27, accounts: 27 }, email: { configured: false, missing: ['BANK_OUTREACH_FROM', 'BANK_OUTREACH_POSTAL_ADDRESS'], in_send_window: false, per_day_cap: 40, sent_today: 0, templates_approved: 0, templates_total: 7, active_sequences: 0, sequences: 0 }, replies: { agent_status: 'draft', waiting: 0, needs_human: 0 } }
+    : { search: { configured: true, signup_url: 'https://serper.dev', per_day_cap: 80, used_today: 12, never_searched: 9, accounts: 27 }, email: { configured: true, missing: [], in_send_window: true, per_day_cap: 40, sent_today: 1, templates_approved: 3, templates_total: 7, active_sequences: 1, sequences: 4 }, replies: { agent_status: 'shadow', waiting: 0, needs_human: 2 } };
+// 'approved': every setting saved and all 7 bank emails approved.
+const automationView = (config, empty) => {
+  const view = automationViewFor(config === 'approved' ? 'ready' : config, empty);
+  if (config === 'approved') view.email.templates_approved = view.email.templates_total;
+  return view;
+};
+// The store's own 409 words for a second review of the same row.
+const CONFLICT = { accept_lead: 'This found banker was already reviewed', dismiss_lead: 'This found banker was already reviewed', apply_reply_suggestion: 'This reply has no facts waiting', dismiss_reply_suggestion: 'This reply has no facts waiting' };
+
+export async function fixture(page, { manager = false, state = 'full', failWrite = false, published = false, draft = false, filteredEmpty = false, filteredInactive = false, automation = false, autoConfig = 'ready', states = STATE_CODES } = {}) {
+  const posts = [], reads = [], faults = { detail: false, team: false, automation: false, conflict: null }, gates = {}, data = { account: account(0), contacts: structuredClone(contacts), products: [{ ...structuredClone(product), verified_at: published ? '2026-10-19T15:00:00Z' : null }] };
+  if (automation) Object.assign(data, autoData());
+  const hold = name => { let open; gates[name] = new Promise(resolve => { open = resolve; }); return () => { delete gates[name]; open(); }; };
   if (draft) data.products[0].draft = { ...structuredClone(product), product_name: 'Proposed business line', facts: { ...facts, minimum_score: 680 } };
   let release; const pending = new Promise(resolve => { release = resolve; });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, route => route.abort());
-  const base = { ok: true, canManage: manager, program: { states: ['AZ', 'SC', 'FL', 'CA'] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
+  const base = { ok: true, canManage: manager, program: { states: [...states] }, summary: state === 'empty' ? Object.fromEntries(Object.keys(summary).map(key => [key, 0])) : automation ? { ...summary, ...autoTotals } : summary, reps: [{ id: 'rep-1', name: 'Casey Reed' }, { id: 'rep-2', name: 'Morgan Ellis' }] };
+  const item = i => (automation ? { ...account(i), ...autoCounts(i), ...(i === 0 ? { status: data.account.status, next_action: data.account.next_action, next_due_at: data.account.next_due_at } : {}) } : account(i));
   await openScreen(page, '/app/bank-outreach.html', manager ? OWNER : REP, {
     '/api/read/bank-outreach': async (route, { url }) => {
       const query = Object.fromEntries(new URL(url).searchParams); reads.push(query);
       if (query.id) return faults.detail ? { ok: false, message: 'Banker details could not load.' } : { ...base, ...data };
       if (query.view === 'team' && faults.team) return { ok: false, message: 'Team results could not load.' };
+      if (query.view === 'automation') {
+        if (!manager) return json(route, { ok: false, message: 'A manager must do this' }, 403);
+        if (gates.automation) await gates.automation;
+        if (faults.automation) return { ok: false, message: 'Automation status could not load.' };
+        return { ...base, automation: automationView(autoConfig, state === 'empty') };
+      }
       if (query.view === 'team') return { ...base, byRep: state === 'empty' ? [] : [{ staff_id: 'rep-1', name: 'Casey Reed', total: 14, verified_partners: 7, due_now: 8 }, { staff_id: 'rep-2', name: 'Morgan Ellis', total: 13, verified_partners: 5, due_now: 10 }], byState: state === 'empty' ? [] : ['AZ', 'SC', 'FL', 'CA'].map(state => ({ state, total: 7, verified_partners: 3, due_now: 4 })) };
       if (state === 'loading') await pending;
       if (state === 'error') return { ok: false, message: 'The bank list is temporarily unavailable.' };
       if (filteredEmpty && (query.q || query.state || query.status)) return { ...base, total: 0, items: [] };
       if (filteredInactive && ['paused', 'closed'].includes(query.status)) { data.account = { ...account(0), status: query.status }; return { ...base, total: 1, items: [data.account] }; }
-      return { ...base, total: state === 'empty' ? 0 : 27, items: state === 'empty' ? [] : Array.from({ length: Number(query.offset || 0) ? 2 : 25 }, (_, i) => account(i + Number(query.offset || 0))) };
+      return { ...base, total: state === 'empty' ? 0 : 27, items: state === 'empty' ? [] : Array.from({ length: Number(query.offset || 0) ? 2 : 25 }, (_, i) => item(i + Number(query.offset || 0))) };
     },
     '/api/bank-outreach': async route => {
       const body = JSON.parse(route.request().postData()); posts.push(body);
       if (failWrite) return json(route, { ok: false, message: 'Save failed. Your notes are still here.' }, 500);
+      if (automation && CONFLICT[body.action] && faults.conflict === body.action) {
+        // Another teammate reviewed it first: the saved row changed, and this save is refused.
+        const lead = data.leads.find(l => l.id === body.lead_id), reply = data.replies.find(r => r.id === body.reply_id);
+        if (lead) lead.status = body.action === 'accept_lead' ? 'accepted' : 'dismissed';
+        if (reply) Object.assign(reply, { suggestion_status: body.action === 'apply_reply_suggestion' ? 'applied' : 'dismissed' });
+        return json(route, { ok: false, message: CONFLICT[body.action] }, 409);
+      }
+      if (body.action === 'accept_lead' || body.action === 'dismiss_lead') {
+        const lead = data.leads.find(l => l.id === body.lead_id);
+        if (lead.status !== 'suggested') return json(route, { ok: false, message: CONFLICT[body.action] }, 409);
+        if (body.action === 'accept_lead') { const contact = { id: 'contact-' + (data.contacts.length + 1), name: lead.name, title: lead.title, email: null, phone: null, linkedin_url: lead.linkedin_url, email_opt_out_at: null }; data.contacts.push(contact); Object.assign(lead, { status: 'accepted', contact_id: contact.id }); }
+        else lead.status = 'dismissed';
+      }
+      if (body.action === 'stop_emails') Object.assign(data.sequences.find(s => s.contact_id === body.contact_id && s.status === 'active'), { status: 'stopped', stop_reason: 'manual', stopped_at: '2026-10-20T19:00:00Z' });
+      if (['apply_reply_suggestion', 'dismiss_reply_suggestion', 'mark_reply_handled'].includes(body.action)) {
+        const reply = data.replies.find(r => r.id === body.reply_id);
+        if (body.action === 'mark_reply_handled') reply.status = 'handled';
+        else if (reply.suggestion_status !== 'pending') return json(route, { ok: false, message: CONFLICT[body.action] }, 409);
+        else if (body.action === 'dismiss_reply_suggestion') reply.suggestion_status = 'dismissed';
+        else {
+          const s = reply.suggested;
+          data.products.push({ id: 'product-' + (data.products.length + 1), product_name: body.product_name ?? s.product_name, lender_table: body.lender_table ?? s.lender_table, facts: s.facts, evidence: `Banker email from ${reply.from_address} on ${reply.received_at.slice(0, 10)}: "${s.evidence_quote}"`, verified_at: null });
+          Object.assign(reply, { suggestion_status: 'applied', status: 'handled' });
+        }
+      }
       if (body.action === 'save_contact') { const contact = { ...body, id: body.id || 'contact-2' }; const index = data.contacts.findIndex(c => c.id === contact.id); if (index < 0) data.contacts.push(contact); else data.contacts[index] = contact; }
       if (body.action === 'log_touch') { data.account.next_action = body.next_action; }
       if (body.action === 'save_product') { data.products = [{ ...body, id: body.id || 'product-2', verified_at: null }]; }
@@ -41,7 +127,7 @@ export async function fixture(page, { manager = false, state = 'full', failWrite
       return json(route, { ...base, imported: 3, existing: 2, skipped: 1 });
     }
   });
-  return { posts, reads, faults, data, release };
+  return { posts, reads, faults, data, release, hold };
 }
 
 export async function astraMeasurements(page, scope = 'body') {
