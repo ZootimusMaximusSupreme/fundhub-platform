@@ -398,9 +398,9 @@ table.grid th:nth-child(3),table.grid th:nth-child(5),table.grid th:nth-child(6)
     <p class="note" id="apPaidWho" style="margin-bottom:12px"></p>
     <p class="note" style="margin-bottom:12px">This does not send money. It records that you already paid.</p>
     <div class="field"><label for="apMethod">How you paid</label>
-      <select id="apMethod" required style="min-height:44px"><option value="ach">ACH from the bank</option><option value="wire">Wire</option><option value="check">Check</option><option value="manual">Other</option></select></div>
+      <select id="apMethod" style="min-height:44px"><option value="ach">ACH from the bank</option><option value="wire">Wire</option><option value="check">Check</option><option value="manual">Other</option></select></div>
     <div class="field" style="margin-top:10px"><label for="apRef">Reference</label>
-      <input id="apRef" required maxlength="200" placeholder="Bank trace, wire or check number" style="min-height:44px"></div>
+      <input id="apRef" maxlength="200" placeholder="Bank trace, wire or check number" style="min-height:44px"></div>
     <div class="field" style="margin-top:10px"><label for="apDate">Paid on</label>
       <input id="apDate" type="date" style="min-height:44px"></div>
     <p class="note" id="apPaidErr" role="alert" style="margin-top:10px;color:var(--alert)" hidden></p>

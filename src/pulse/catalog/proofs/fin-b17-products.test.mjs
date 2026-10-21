@@ -452,17 +452,19 @@ test("the Products and Commission rules tabs swap their panes, and SLO connectio
   await proof.check(/^Tabs: Products, Commission rules, SLO connections/, async () => {
     const { page, errors, log } = await openPage({ session: asRole("owner") });
     await page.waitForFunction(() => !document.getElementById("sloTab").hidden);
+    // 492: finance staff (the owner here) also get the Affiliate payouts tab.
+    await page.waitForFunction(() => !document.getElementById("affPayTab").hidden);
     assert.deepEqual(await paneState(page), {
-      tabs: [["products", "Products", true], ["rules", "Commission rules", false], ["slo", "SLO connections", false]],
+      tabs: [["products", "Products", true], ["rules", "Commission rules", false], ["slo", "SLO connections", false], ["affpay", "Affiliate payouts", false]],
       panes: ["tab-products"],
     });
     await page.locator('.tab[data-tab="rules"]').click();
     assert.deepEqual((await paneState(page)).panes, ["tab-rules"]);
-    assert.deepEqual((await paneState(page)).tabs.map((t) => t[2]), [false, true, false]);
+    assert.deepEqual((await paneState(page)).tabs.map((t) => t[2]), [false, true, false, false]);
     assert.equal(await visible(page, "#ruleList"), true);
     await page.locator('.tab[data-tab="slo"]').click();
     assert.deepEqual((await paneState(page)).panes, ["tab-slo"]);
-    assert.deepEqual((await paneState(page)).tabs.map((t) => t[2]), [false, false, true]);
+    assert.deepEqual((await paneState(page)).tabs.map((t) => t[2]), [false, false, true, false]);
     assert.match(await page.locator("#sloBody").innerText(), /Course SLO/);
     await page.locator('.tab[data-tab="products"]').click();
     assert.deepEqual((await paneState(page)).panes, ["tab-products"]);
