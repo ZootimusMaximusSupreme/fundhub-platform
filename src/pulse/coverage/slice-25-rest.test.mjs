@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { functions } from "../../workflows/index.mjs";
-import { INNGEST_JOBS, NETLIFY_JOBS } from "../heartbeats.mjs";
+import { CRON_JOBS, NETLIFY_JOBS } from "../heartbeats.mjs";
 import { coverageKey, PULSE_REGISTRY } from "../registry.mjs";
 import {
   CHECKS,
@@ -75,7 +75,7 @@ test("slice 25-rest: leftover crons from index, plus u-05", () => {
 });
 
 test("slice 25-rest: workflow files exist and schedules match the cron", () => {
-  const heartbeat = new Map([...INNGEST_JOBS, ...NETLIFY_JOBS]);
+  const heartbeat = new Map([...CRON_JOBS, ...NETLIFY_JOBS]);
   for (const row of CHECKS) {
     if (row.id === U05_ID) {
       assert.equal(row.schedule, "analysis.completed");

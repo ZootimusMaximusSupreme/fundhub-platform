@@ -112,7 +112,9 @@ test("both watched jobs are on the job list and run every 5 minutes", () => {
   for (const w of WATCHED_JOBS) {
     const hit = JOBS.find((j) => j.job === w.job);
     assert.ok(hit, `${w.job} left the job list: update this lane`);
-    assert.equal(hit.runner, "inngest");
+    // Both run on the Netlify cron clock since 2026-10-20 (the Inngest free plan ran out).
+    assert.equal(hit.runner, "netlify");
+    assert.equal(hit.via, "cron-clock", `${w.job} must run on the cron clock, so its receipts say the clock is alive`);
     assert.equal(cronIntervalMs(hit.cron), TICK_MS, `${w.job} no longer runs every 5 minutes`);
   }
   assert.equal(DARK_AFTER_MS, 20 * MIN);

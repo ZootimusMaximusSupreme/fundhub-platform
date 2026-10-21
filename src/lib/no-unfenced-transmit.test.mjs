@@ -86,6 +86,13 @@ const ALLOWED_RAW_FETCH = {
     "owner's own session, to start the 15-minute writer the 26 s /api function cannot " +
     "hold (spec docs/specs/marketing-machine-2026-10-04.md §6 Step 4 names this wake). " +
     "Added 2026-10-05.",
+  "src/cron/clock.mjs":
+    "The cron clock's start call (owner 2026-10-20: every cron left Inngest for the Netlify clock). " +
+    "Its ONE call is a POST to our own deploy (process.env.URL or DEPLOY_URL) at " +
+    "/.netlify/functions/cron-worker-background with { job, slot } and an HMAC of them made with " +
+    "CRON_WORKER_SECRET, to start the 15-minute worker. Same shape as ad-video-sweeper above. " +
+    "Nothing leaves fundhub.ai and no vendor is reached; every job's own sends and vendor calls run " +
+    "inside the worker, through the providers and the fence, exactly as they did on Inngest.",
   "src/marketing/wake.mjs":
     "The marketing machine's wake (spec docs/specs/marketing-machine-2026-10-04.md §6 " +
     "Step 2: a save writes its outbox row, then wakes the worker). Its ONE call is a POST " +

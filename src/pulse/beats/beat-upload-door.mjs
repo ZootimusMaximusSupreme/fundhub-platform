@@ -20,6 +20,7 @@
 
 import { laneSelfTest, runLaneBeat } from "./lib/money-hourly.mjs";
 import { ID_STORE, judgeUploadStore } from "./lib/documents-upload-truth.mjs";
+import { settingsGate } from "./lib/keys-truth.mjs";
 
 export const HOURLY_CHECK_IDS = Object.freeze([ID_STORE]);
 
@@ -30,11 +31,14 @@ export const RUNS_ELSEWHERE = Object.freeze({
 
 export const LANE = Object.freeze({
   checks: Object.freeze(HOURLY_CHECK_IDS.map((checkId) => Object.freeze({ id: checkId, step: checkId.replaceAll(":", "-") }))),
-  run: async (io) => [judgeUploadStore(io.env)],
+  // The store is read from the settings, so it is judged only where they are the live site's (a Netlify or Lambda
+  // marker; the same gate as the launch keys). On the ship runner or a laptop the settings are a copy, so the step
+  // is a skip with the reason, never a red and never a green (ship 2026-10-21 showed a false red on the runner).
+  run: async (io) => [settingsGate(ID_STORE, io.env) || judgeUploadStore(io.env)],
   selfTest: Object.freeze({
-    passEnv: Object.freeze({ DOCUMENT_STORE_PROVIDER: "netlify-blobs" }),
-    // The setting is gone, so uploads fall back to memory: stop at documents-upload-store.
-    failEnv: Object.freeze({})
+    passEnv: Object.freeze({ LAMBDA_TASK_ROOT: "/var/task", DOCUMENT_STORE_PROVIDER: "netlify-blobs" }),
+    // The setting is gone on the live server, so uploads fall back to memory: stop at documents-upload-store.
+    failEnv: Object.freeze({ LAMBDA_TASK_ROOT: "/var/task" })
   })
 });
 

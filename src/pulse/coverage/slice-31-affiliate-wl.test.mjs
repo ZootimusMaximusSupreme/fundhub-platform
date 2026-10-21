@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { INNGEST_JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
+import { CRON_JOBS, STALE_MULTIPLE, cronIntervalMs } from "../heartbeats.mjs";
 import { SWEEP_CRON as AF01_CRON } from "../../workflows/af-01-affiliate-drip.mjs";
 import { PAYOUT_CRON } from "../../workflows/affiliate-payout-run.mjs";
 import { REVIEW_CRON as PARTNER_FLOOR_CRON } from "../../workflows/partner-production-floor.mjs";
@@ -64,9 +64,10 @@ test("slice 31-affiliate-wl: workflow files exist and crons match modules", () =
   for (const [id, file] of Object.entries(WORKFLOW_FILES)) {
     assert.ok(fs.existsSync(path.join(ROOT, file)), `${id} workflow file missing`);
   }
-  const heartbeatIds = new Set(INNGEST_JOBS.map(([j]) => j));
+  // Workflow crons run on the Netlify clock since 2026-10-20; CRON_JOBS is the cron job list.
+  const heartbeatIds = new Set(CRON_JOBS.map(([j]) => j));
   for (const id of INNGEST_CRON_IDS) {
-    assert.ok(heartbeatIds.has(id), `${id} must be on INNGEST_JOBS`);
+    assert.ok(heartbeatIds.has(id), `${id} must be on the cron job list (CLOCK_JOBS)`);
   }
 });
 

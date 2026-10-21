@@ -7,8 +7,13 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { sweep, SWEEP_CRON, BATCH, commasInboxDrain } from "./commas-inbox-drain.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /* A queue with nothing waiting. claim() is an UPDATE ... RETURNING *, so an
    empty result is "nothing to do". */
@@ -175,13 +180,21 @@ describe("the payment inbox drain", () => {
 
   /* THE POINT OF THE WHOLE FILE. GAP 5: a $2,500 receipt was accepted and its
      invoice never closed, because the only thing draining the queue was a
-     Netlify cron that had stopped firing. This asserts the drain is on the
-     scheduler that is running. */
-  test("THE DRAIN IS SERVED — it is in the registered workflow set", async () => {
+     Netlify cron that had stopped firing. This asserts the drain is on a
+     scheduler that is running.
+
+     2026-10-20 (owner: "stop burning ingests"): the Inngest twin of this pass is
+     retired, so the one clock under the queue is the Netlify scheduled function
+     commas-inbox-sweeper, every 5 minutes, with its own job row (red at 3x) and
+     the hourly pay-webhook beat watching it. */
+  test("THE DRAIN IS SERVED — the Netlify sweeper is on the clock and watched; the Inngest twin is retired", async () => {
+    const { NETLIFY_JOBS } = await import("../pulse/heartbeats.mjs");
+    assert.deepStrictEqual(NETLIFY_JOBS.find(([job]) => job === "commas-inbox-sweeper"), ["commas-inbox-sweeper", "*/5 * * * *"],
+      "nothing drains the payment queue on a watched clock, so a client who paid stays unpaid on screen");
+    const toml = fs.readFileSync(path.resolve(HERE, "../../netlify.toml"), "utf8");
+    assert.match(toml, /\[functions\."commas-inbox-sweeper"\]\s*\n\s*schedule = "\*\/5 \* \* \* \*"/);
     const { functions } = await import("./index.mjs");
-    const ids = functions.map((fn) => fn.id());
-    assert.ok(ids.includes(commasInboxDrain.id()),
-      "the payment inbox drain is not registered, so nothing drains the payment " +
-      "queue on this clock and a client who paid stays unpaid on screen");
+    assert.ok(!functions.map((fn) => fn.id()).includes(commasInboxDrain.id()),
+      "the retired Inngest twin is registered again — two clocks on one queue, and 86,400 Inngest executions a month");
   });
 });

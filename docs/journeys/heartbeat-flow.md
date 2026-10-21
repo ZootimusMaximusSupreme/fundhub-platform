@@ -64,7 +64,7 @@ flowchart TD
     PROVE -->|OK| SHIP["npm run ship"]
     PROVE -->|Problem| BUILD
 
-    SHIP --> SIX["6:00 a.m. Arizona<br/>Inngest job daily-pulse"]
+    SHIP --> SIX["6:00 a.m. Arizona<br/>clock job daily-pulse<br/>(cron-clock starts it in cron-worker-background)"]
     SIX --> ORG["Step coverage-org"]
     ORG --> SLICES["Step coverage-slices"]
     SLICES --> LANES["One step per gap lane<br/>each under 26 s"]
@@ -82,6 +82,29 @@ flowchart TD
 ```
 
 The two pulse clocks close a circuit. The hourly pulse checks that the 5-minute workflow clock is alive. The 5-minute instant watch reads the newest receipt of each hourly shift (`pulse-hourly`, `pulse-hourly-b`, `pulse-hourly-c` and `pulse-hourly-d`). If either shift has not returned a receipt for more than three hours, `pulse:runner-stale` goes red, names that shift, and uses the instant watch's owner alert. Before a shift's first receipt ever exists, it waits for that shift instead of inventing a pass or a break.
+
+## Where the crons run (changed 2026-10-20)
+
+Every cron used to run on Inngest. Its free plan is 50,000 executions a month and the crons cost
+about 300,000, so on 2026-10-20 (owner: "stop burning ingests") every cron moved to one Netlify
+clock. Inngest now runs event workflows only (`inngestFunctions` in `src/workflows/index.mjs`).
+Board: `ops/workflows/inngest-diet-2026-10-20.md`.
+
+```mermaid
+flowchart TD
+    TICK["Every 5 minutes<br/>netlify/functions/cron-clock.mjs"] --> DUE{"Which CLOCK_JOBS crons<br/>name a minute in this slot?"}
+    DUE -->|none| CR["job:cron-clock receipt"]
+    DUE -->|each due job| POST["POST /.netlify/functions/cron-worker-background<br/>job + slot, signed with CRON_WORKER_SECRET"]
+    POST -->|202| WORK["Worker checks the signature and slot,<br/>runs the job's own handler (15 min limit)"]
+    POST -->|refused or no answer| ERR["Error receipt for that job<br/>naming why"]
+    WORK --> REC["job_heartbeats row<br/>same job id, runner netlify"]
+    REC --> PULSE["Morning pulse: red at 3x the schedule<br/>engine-alive beat: red after 20 quiet minutes"]
+    ERR --> PULSE
+    CR --> PULSE
+```
+
+The two payment queues keep their own Netlify sweepers (`commas-inbox-sweeper`,
+`whop-billing-inbox-sweeper`), now every 5 minutes; their Inngest twins are retired.
 
 ## The hourly pulse (added 2026-10-09)
 
