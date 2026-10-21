@@ -13,11 +13,19 @@
 //              a bad address (a space in it, http://) is class BAD_URL and costs no network
 //   pick       up to 40 addresses: suspects first, then oldest last_checked_at (never-checked first);
 //              at most 6 per issuer tracking host, 2 per other host
-//   fetch      GET them, 20 at a time; no new read starts after 4 s; a read is dropped after 4.5 s
-//   classify   OK / WALL / HARD / SLOW / BAD_URL (lib/bank-classify.mjs)
+//   fetch      GET all of them at once; every read must end by 3 s from the start of the beat and gets at most
+//              2.5 s (lib/bank-classify.mjs TIMING). A bank that gives no answer in time is UNANSWERED, never broken
+//   classify   OK / WALL / HARD / SLOW / BAD_URL (lib/bank-classify.mjs); an unanswered read keeps its place in line
+//              and is read again first next hour (unansweredRow), so the links really checked each day do not drop
 //   confirm    an address that WAS good (it has a last_good_at) and reads HARD or BAD_URL is read ONCE MORE,
-//              right away, for at most 5 addresses. Both reads broken = RED, and the beat stops here.
+//              right away, for at most 5 addresses, and that read must end by 4.2 s. Both reads broken = RED, and the
+//              beat stops here. A second read with no answer proves nothing: the first read stays on record (still a
+//              suspect, read first next hour) and the beat stays green.
 //   verdict    green: counts per class
+//
+// WHY HARD ENDS. A ship needs every beat under half its deadline (6 s). Before 2026-10-21 one bank that never
+// answered held its read for 4.5 s, and with two waves of 20 reads the beat took up to 5.9 s live and 6.4 s on the
+// GitHub runner. With hard ends the slowest possible run ends near 4.2 s.
 //
 // WHY AN ADDRESS THAT IS BROKEN IS READ AGAIN EVERY HOUR. The alert rule (damp 2) needs two red runs in a row.
 // A rotation that reads each address once a day would be red for one hour and never alert. So a "suspect"
@@ -41,8 +49,8 @@
 // "pick" ("nothing can go red"). Only an empty table that exists is a true first pass.
 
 import {
-  CAPS, TIMING, checkShape, classifyRead, isBroken, pickLinks, buildRow, buildShapeRow, breakDetail,
-  runPool, withinMs
+  CAPS, TIMING, checkShape, classifyRead, isBroken, pickLinks, buildRow, buildShapeRow, unansweredRow, breakDetail,
+  runPool, withinMs, readBudgetMs, isUnanswered
 } from "./lib/bank-classify.mjs";
 
 export const id = "apply-links";
@@ -108,9 +116,12 @@ export async function run(ctx) {
   const firstPass = stateByHash.size === 0;
   const saved = new Map(); // urlHash -> the row the runner saves
 
-  // One read of one address. Never throws. A read that takes too long is given up on, not waited for.
-  const readOnce = async (address) => {
-    try { return await withinMs(ctx.http.get(address), TIMING.readLimitMs); } catch {
+  // One read of one address, which must end by `endMs` from the start of the beat (TIMING). Never throws. A read with no
+  // answer in its time is given up on, not waited for: class "timeout", which this beat treats as UNANSWERED.
+  const readOnce = async (address, endMs) => {
+    const budget = readBudgetMs(elapsed(), endMs);
+    if (budget <= 0) return { ok: false, status: 0, finalHost: null, error: "no time left to read", class: "timeout" };
+    try { return await withinMs(ctx.http.get(address), budget); } catch {
       return { ok: false, status: 0, finalHost: null, error: "the read did not finish", class: "timeout" };
     }
   };
@@ -165,18 +176,18 @@ export async function run(ctx) {
   const earlyConfirms = new Map();
   const answers = await ctx.step("fetch", async () => {
     const out = await runPool(plan.picks, async (p) => {
-      const answer = await readOnce(p.url);
-      // A previously good link that now gives a real broken response can start its second read while the other banks finish,
-      // but keep the same confirmation cap and start cutoff. A positive status also means the
+      const answer = await readOnce(p.url, TIMING.fetchEndMs);
+      // A previously good link that now gives a real broken response starts its second read while the other banks finish,
+      // within the same confirmation cap and the second-read end. A positive status also means the
       // pulse is not blind; an all-dead web connection must still fail without extra reads.
       if (p.prev && p.prev.lastGoodAt && answer.status > 0 && isBroken(classifyRead(answer).cls) &&
-          elapsed() <= TIMING.confirmStartMs && earlyConfirms.size < CAPS.maxConfirms) {
-        earlyConfirms.set(p.urlHash, readOnce(p.url));
+          readBudgetMs(elapsed(), TIMING.confirmEndMs) > 0 && earlyConfirms.size < CAPS.maxConfirms) {
+        earlyConfirms.set(p.urlHash, readOnce(p.url, TIMING.confirmEndMs));
       }
       return answer;
     }, {
       concurrency: CAPS.concurrency,
-      canStart: () => elapsed() < TIMING.stopStartMs
+      canStart: () => readBudgetMs(elapsed(), TIMING.fetchEndMs) > 0
     });
     const done = out.filter(Boolean);
     if (done.length > 0 && done.every((r) => r.class === "blocked")) {
@@ -193,10 +204,15 @@ export async function run(ctx) {
   const checked = await ctx.step("classify", async () => {
     const list = [];
     plan.picks.forEach((p, i) => {
-      if (!answers[i]) return; // never started (the 4 s stop): keeps its old date and goes first next hour
+      if (!answers[i]) return; // never started (no time left): keeps its old date and goes first next hour
+      const unanswered = isUnanswered(answers[i]);
       const read = classifyRead(answers[i]);
-      list.push({ p, read });
-      saved.set(p.urlHash, buildRow({ cand: p, prev: p.prev, read, nowIso }));
+      list.push({ p, read, unanswered });
+      // No answer in time is not judged: unansweredRow keeps the address in line to be read again (or null: save nothing).
+      const row = unanswered
+        ? unansweredRow({ cand: p, prev: p.prev, read, nowIso })
+        : buildRow({ cand: p, prev: p.prev, read, nowIso });
+      if (row) saved.set(p.urlHash, row);
     });
     return list;
   });
@@ -205,19 +221,23 @@ export async function run(ctx) {
   const confirmInfo = await ctx.step("confirm", async () => {
     const wasGood = checked.filter((c) => isBroken(c.read.cls) && c.p.prev && c.p.prev.lastGoodAt);
     const early = wasGood.filter((c) => earlyConfirms.has(c.p.urlHash));
-    const remaining = elapsed() > TIMING.confirmStartMs
-      ? []
-      : wasGood.filter((c) => !earlyConfirms.has(c.p.urlHash)).slice(0, CAPS.maxConfirms - early.length);
+    const remaining = readBudgetMs(elapsed(), TIMING.confirmEndMs) > 0
+      ? wasGood.filter((c) => !earlyConfirms.has(c.p.urlHash)).slice(0, CAPS.maxConfirms - early.length)
+      : [];
     const toConfirm = [...early, ...remaining];
-    const second = await Promise.all(toConfirm.map((c) => earlyConfirms.get(c.p.urlHash) || readOnce(c.p.url)));
+    const second = await Promise.all(toConfirm.map((c) => earlyConfirms.get(c.p.urlHash) || readOnce(c.p.url, TIMING.confirmEndMs)));
     const confirmed = [];
+    let secondUnanswered = 0;
     toConfirm.forEach((c, i) => {
+      // No answer to the second read proves nothing: the first read stays on record (still a suspect, read first
+      // next hour) and this run does not go red on it.
+      if (isUnanswered(second[i])) { secondUnanswered += 1; return; }
       const read = classifyRead(second[i]);
       saved.set(c.p.urlHash, buildRow({ cand: c.p, prev: c.p.prev, read, nowIso }));
       c.read = read; // the second read is the one on record
       if (isBroken(read.cls)) confirmed.push(c);
     });
-    const unconfirmed = wasGood.length - toConfirm.length;
+    const unconfirmed = wasGood.length - toConfirm.length + secondUnanswered;
     if (confirmed.length > 0) {
       const items = confirmed.map((c) => ({
         lenderId: c.p.lenderIds[0],
@@ -244,12 +264,14 @@ export async function run(ctx) {
       if (isBroken(c.read.cls) && !(c.p.prev && c.p.prev.lastGoodAt)) debt += 1;
     }
     const notStarted = plan.picks.length - checked.length;
+    const unanswered = checked.filter((c) => c.unanswered).length;
     const parts = [
       `read ${checked.length} of ${book.total} Apply links`,
       COUNT_KEYS.filter((k) => counts[k] > 0).map((k) => `${k} ${counts[k]}`).join(", ") || "none read",
       firstPass ? "first pass: filled the list, raised nothing" : null,
       debt > 0 ? `${debt} never worked (not an alarm)` : null,
       book.badCount > 0 ? `${book.badCount} stored address${book.badCount === 1 ? "" : "es"} cannot be opened (space or http)` : null,
+      unanswered > 0 ? `${unanswered} gave no answer in time (not an alarm)` : null,
       confirmInfo.unconfirmed > 0 ? `${confirmInfo.unconfirmed} broken not confirmed yet` : null,
       notStarted > 0 ? `${notStarted} not started (time)` : null
     ].filter(Boolean);
@@ -257,6 +279,7 @@ export async function run(ctx) {
       bankLinks: [...saved.values()],
       counts,
       read: checked.length,
+      unanswered,
       total: book.total,
       firstPass
     });

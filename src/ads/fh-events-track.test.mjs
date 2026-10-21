@@ -416,6 +416,86 @@ describe("framed calendar relay", () => {
   });
 });
 
+// The app-download card on /thank-you ends in one link to Apple. The tracker
+// recognises the link, not the card (docs/tracking/tracking-spec.md, "App
+// download tap"). The card itself is run in src/ads/fh-events-cortana.test.mjs.
+describe("app_download_tap", () => {
+  const SID = "sess-abcdef12";
+  const TESTFLIGHT = "https://testflight.apple.com/join/AbC123xyz";
+  const link = (p, href, words = "Download for iPhone") =>
+    p.addHtml(`<section id="app-card"><a class="btn" href="${href}" target="_blank" rel="noopener noreferrer">${words} <span aria-hidden="true">→</span></a></section>`)[0].children[0];
+  const thanks = () => makePage({ pathname: "/thank-you", storage: { fh_sid: SID } }).run();
+  const taps = (p) => p.events("app_download_tap");
+
+  test("a press on an Apple link sends app_download_tap after its click, with no props; every press is sent", () => {
+    const p = thanks();
+    const a = link(p, TESTFLIGHT);
+    p.click(a.children[0]); // the arrow inside the link
+    assert.deepEqual(p.bodies().map((b) => [b.event, b.seq]), [["page_view", 1], ["click", 2], ["app_download_tap", 3]]);
+    assert.deepEqual(taps(p)[0], {
+      kind: "track", event: "app_download_tap", seq: 3, session_id: SID, page: "/thank-you", props: {},
+      webdriver: false, url: "https://apply.fundhub.ai/thank-you",
+    });
+    p.click(a);
+    assert.equal(taps(p).length, 2, "a second real press is saved again, as a click is");
+    assert.equal(p.events("click").length, 2);
+  });
+
+  test("the App Store, TestFlight and iTunes hosts count, however the address is cased", () => {
+    const p = thanks();
+    const hrefs = [
+      TESTFLIGHT,
+      "https://apps.apple.com/us/app/fundhub/id1234567890",
+      "https://apps.apple.com/app/id1234567890?l=en",
+      "https://itunes.apple.com/us/app/fundhub/id1234567890",
+      "  HTTPS://TestFlight.Apple.com/join/AbC123xyz",
+    ];
+    for (const href of hrefs) p.click(link(p, href));
+    assert.equal(taps(p).length, hrefs.length);
+  });
+
+  test("any other link on /thank-you sends no tap, and a look-alike host is not Apple", () => {
+    const p = thanks();
+    const others = [
+      "https://apply.fundhub.ai/watch", "mailto:team@example.com", "tel:+15555550100", "#top",
+      "https://calendar.apple.com/event/1", "https://support.apple.com/en-us/HT201222",
+      "http://testflight.apple.com/join/AbC123xyz", // not https
+      "https://testflight.apple.com.example.com/join/AbC123xyz",
+      "https://apps.apple.com@example.com/us/app/id1",
+      "https://example.com/?next=https://apps.apple.com/us/app/id1",
+      "https://notapps.apple.com/us/app/id1",
+    ];
+    for (const href of others) p.click(link(p, href, "Open"));
+    assert.equal(taps(p).length, 0);
+    assert.equal(p.events("click").length, others.length, "they are still ordinary clicks");
+    // A press on the card but off its link, and on a link with no address.
+    p.click(p.document.getElementById("app-card"));
+    p.click(p.addHtml('<button id="plain">Download</button>')[0]);
+    assert.equal(taps(p).length, 0);
+  });
+
+  test("only /thank-you: the same Apple link on any other page sends no tap", () => {
+    for (const pathname of ["/watch", "/apply", "/funding-book-call", "/roadmap", "/roadmap-book", "/roadmap-thank-you", "/order"]) {
+      const p = makePage({ pathname, storage: { fh_sid: SID } }).run();
+      p.click(link(p, TESTFLIGHT));
+      assert.equal(taps(p).length, 0, pathname);
+      assert.equal(p.events("click").length, 1, `${pathname}: the press is still a click`);
+    }
+  });
+
+  test("the framed page cannot send it: a relayed message is not on the relay list", () => {
+    const p = thanks();
+    p.fireWin("message", { origin: "https://apply.fundhub.ai", data: { fh: "track", event: "app_download_tap", props: {} } });
+    assert.equal(taps(p).length, 0);
+  });
+
+  test("an automated browser still sends the Fundhub event, marked webdriver", () => {
+    const p = makePage({ pathname: "/thank-you", webdriver: true, storage: { fh_sid: SID } }).run();
+    p.click(link(p, TESTFLIGHT));
+    assert.deepEqual(taps(p).map((b) => b.webdriver), [true]);
+  });
+});
+
 describe("privacy", () => {
   test("no form field value is ever read, and typing is never listened to", () => {
     const p = makePage({ pathname: "/roadmap" });

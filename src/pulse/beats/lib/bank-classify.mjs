@@ -48,15 +48,34 @@ export const CAPS = Object.freeze({
   perOtherHost: 2,
   maxSuspects: 10,
   maxConfirms: 5,
-  concurrency: 20
+  // All 40 reads start together. Two waves of 20 let a slow read in the second wave set the run's time.
+  concurrency: 40
 });
 
-/* All times are from the start of the beat. The beat's own deadline is 12 s (the contract maximum) and the
-   probe takes up to 8 s for one read, so "stop starting reads at 12 s" would be cut off by the deadline.
-   Instead: no new read starts after stopStartMs; a read is given up on after readLimitMs; the second-read
-   phase only starts before confirmStartMs. Worst case: 4.0 + 4.5 = 8.5 s for the first phase, and
-   6.0 + 4.5 = 10.5 s for the second. Both end before the 12 s deadline. */
-export const TIMING = Object.freeze({ readLimitMs: 4500, stopStartMs: 4000, confirmStartMs: 6000 });
+/* All times are from the start of the beat, and every phase has a HARD END, not a start cutoff.
+   The beat's deadline is 12 s, and a ship needs every beat under half of it (scripts/pulse/prove.mjs). Measured
+   2026-10-21 over 30 live runs: the fetch step took 2.0 to 5.5 s, and every slow run was one bank that never
+   answered, read until the old 4.5 s limit (about 2 of every 100 reads); on the GitHub runner that crossed 6 s.
+   Now: a first read must end by fetchEndMs, a second read (the "is it really dead?" read) by confirmEndMs, and
+   no read gets more than readLimitMs or starts with less than minReadMs left. So the slowest possible run ends
+   near confirmEndMs (4.2 s), and a run with no second read near fetchEndMs (3 s). Normal bank pages answer in
+   under 1.5 s. A read cut by these limits is UNANSWERED: never broken, and read again first next hour
+   (unansweredRow). The probe's own 8 s limit is longer than all of these. */
+export const TIMING = Object.freeze({ readLimitMs: 2500, minReadMs: 500, fetchEndMs: 3000, confirmEndMs: 4200 });
+
+/**
+ * Pure. How long one read may take if it starts `elapsedMs` into the beat and must end by `endMs`:
+ * at most readLimitMs, and 0 (do not start it) when less than minReadMs is left.
+ */
+export function readBudgetMs(elapsedMs, endMs, timing = TIMING) {
+  const left = Math.min(timing.readLimitMs, endMs - elapsedMs);
+  return left >= timing.minReadMs ? Math.floor(left) : 0;
+}
+
+/** A read that gave no answer in its time (ours or the probe's own). Unanswered is never broken. */
+export function isUnanswered(answer) {
+  return Boolean(answer && typeof answer === "object" && answer.class === "timeout");
+}
 
 const HOST_MAX = 255;
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -325,6 +344,23 @@ export function buildRow({ cand, prev, read, nowIso }) {
     lastDetail: describeRead(read),
     finalHost: read.finalHost || null
   };
+}
+
+/**
+ * The row to save for an UNANSWERED read (isUnanswered), or null to save nothing. A bank that gives no answer in
+ * time is not judged, and it is read again soon, so the count of links really checked each day does not drop:
+ *   - a suspect (was good, last read HARD or BAD_URL): save nothing. It stays a suspect, and suspects are read
+ *     first every hour;
+ *   - its last read was already SLOW: a SLOW row dated now (as before this rule), so a bank that never answers
+ *     goes to the back of the line instead of holding one of the 40 places every hour;
+ *   - anything else: a SLOW row that keeps the OLD check date (none if it was never read), so it stays at the
+ *     front of the line and is read again next hour. The SLOW class is the marker for the rule above.
+ */
+export function unansweredRow({ cand, prev, read, nowIso }) {
+  if (isSuspect(prev)) return null;
+  const row = buildRow({ cand, prev, read, nowIso });
+  if (!(prev && prev.lastClass === "SLOW")) row.lastCheckedAt = (prev && prev.lastCheckedAt) || null;
+  return row;
 }
 
 /** A row for an address that failed the shape check (class BAD_URL, no network). */

@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  BANK_CLASSES, CAPS, TIMING, TRACKING_DOMAINS, cleanText, hostOf, trackingDomain, capKey, capFor, pageTitle, checkShape,
+  BANK_CLASSES, CAPS, TIMING, TRACKING_DOMAINS, readBudgetMs, isUnanswered, unansweredRow, cleanText, hostOf, trackingDomain, capKey, capFor, pageTitle, checkShape,
   classifyRead, looksLikeWall, visibleText, isBroken, describeRead, isSuspect, pickLinks, buildRow, buildShapeRow, breakDetail, runPool, withinMs
 } from "./bank-classify.mjs";
 
@@ -199,12 +199,57 @@ test("hostOf, trackingDomain, capKey, capFor", () => {
   assert.equal(capKey("www.otherbank.com"), "www.otherbank.com");
   assert.equal(capFor("www.mycardapply.com"), 6);
   assert.equal(capFor("www.otherbank.com"), 2);
-  assert.deepEqual({ ...CAPS }, { perRun: 40, perTrackingHost: 6, perOtherHost: 2, maxSuspects: 10, maxConfirms: 5, concurrency: 20 });
+  assert.deepEqual({ ...CAPS }, { perRun: 40, perTrackingHost: 6, perOtherHost: 2, maxSuspects: 10, maxConfirms: 5, concurrency: 40 });
 });
 
-test("TIMING: both phases end before the beat's own 12 s deadline", () => {
-  assert.ok(TIMING.stopStartMs + TIMING.readLimitMs < 12000);
-  assert.ok(TIMING.confirmStartMs + TIMING.readLimitMs < 12000);
+test("TIMING: every phase has a hard end, and the slowest run ends well under half the beat's 12 s deadline", () => {
+  assert.deepEqual({ ...TIMING }, { readLimitMs: 2500, minReadMs: 500, fetchEndMs: 3000, confirmEndMs: 4200 });
+  assert.ok(TIMING.readLimitMs <= TIMING.fetchEndMs);
+  assert.ok(TIMING.fetchEndMs < TIMING.confirmEndMs);
+  assert.ok(TIMING.confirmEndMs <= 4500, "a ship needs every beat under 6 s; keep room for a slow runner");
+  assert.ok(TIMING.minReadMs > 0 && TIMING.minReadMs < TIMING.readLimitMs);
+  assert.equal(CAPS.concurrency, CAPS.perRun, "all reads of a run start together");
+});
+
+test("readBudgetMs: at most the read limit, never past the end, and 0 when less than minReadMs is left", () => {
+  assert.equal(readBudgetMs(0, TIMING.fetchEndMs), 2500);
+  assert.equal(readBudgetMs(400, TIMING.fetchEndMs), 2500);
+  assert.equal(readBudgetMs(900, TIMING.fetchEndMs), 2100);
+  assert.equal(readBudgetMs(2499, TIMING.fetchEndMs), 501);
+  assert.equal(readBudgetMs(2501, TIMING.fetchEndMs), 0, "under 0.5 s left: do not start");
+  assert.equal(readBudgetMs(5000, TIMING.fetchEndMs), 0, "past the end: do not start");
+  assert.equal(readBudgetMs(2400, TIMING.confirmEndMs), 1800);
+  assert.equal(readBudgetMs(3800, TIMING.confirmEndMs), 0);
+});
+
+test("isUnanswered: only a read with no answer in time (class timeout); a real answer never is", () => {
+  assert.equal(isUnanswered({ class: "timeout", status: 0 }), true);
+  for (const r of [{ class: "ok", status: 200 }, { class: "http_4xx", status: 404 }, { class: "network", status: 0 }, { class: "refused" }, null, undefined, "timeout"]) {
+    assert.equal(isUnanswered(r), false, JSON.stringify(r));
+  }
+});
+
+test("unansweredRow: keeps the old date, rotates a second silence, and leaves a suspect alone", () => {
+  const cand = { urlHash: "a".repeat(64), host: "www.bank.example.com", lenderIds: ["00000000-0000-4000-8000-000000000001"] };
+  const read = { cls: "SLOW", status: 0, why: "no answer in 2.5 s", title: "", finalHost: null };
+  const nowIso = "2026-10-21T19:07:00.000Z";
+  const was = (over) => ({ lastCheckedAt: "2026-10-20T19:07:00.000Z", lastGoodAt: "2026-10-20T19:07:00.000Z", lastClass: "OK", ...over });
+  // first silence after a good read: SLOW, old date (front of the line), good time kept
+  const first = unansweredRow({ cand, prev: was(), read, nowIso });
+  assert.equal(first.lastClass, "SLOW");
+  assert.equal(first.lastCheckedAt, "2026-10-20T19:07:00.000Z");
+  assert.equal(first.lastGoodAt, "2026-10-20T19:07:00.000Z");
+  // the same for a wall or a page that was never good
+  assert.equal(unansweredRow({ cand, prev: was({ lastClass: "WALL" }), read, nowIso }).lastCheckedAt, "2026-10-20T19:07:00.000Z");
+  // never read: SLOW, no date (still never checked)
+  assert.equal(unansweredRow({ cand, prev: null, read, nowIso }).lastCheckedAt, null);
+  // a second silence in a row: dated now, back of the line
+  assert.equal(unansweredRow({ cand, prev: was({ lastClass: "SLOW" }), read, nowIso }).lastCheckedAt, nowIso);
+  // a suspect (was good, last read broken): nothing saved, it stays a suspect
+  assert.equal(unansweredRow({ cand, prev: was({ lastClass: "HARD" }), read, nowIso }), null);
+  assert.equal(unansweredRow({ cand, prev: was({ lastClass: "BAD_URL" }), read, nowIso }), null);
+  // a dead link that was never good is not a suspect: it gets the old-date row like any other
+  assert.equal(unansweredRow({ cand, prev: was({ lastClass: "BAD_URL", lastGoodAt: null }), read, nowIso }).lastClass, "SLOW");
 });
 
 /* ---------------- checkShape ---------------- */
