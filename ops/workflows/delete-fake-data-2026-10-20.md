@@ -122,6 +122,7 @@ The lanes found fake rows with no client link, so round 1 could not reach them. 
    - 4 fake Meta and 17 fake TikTok ad accounts, with their 9 ads, campaigns, ad sets and metrics
    - 10 test social_posts
    - 1 demo marketing_content_queue row
+   - Read-only map (`plan3.cjs`): the 32 Oct-12 test partners and affiliate AFF-000180 reach 233 rows. 14 partners can go completely. 18 own rows the database locks forever (action_log 11, creative_assets 10, compliance_screenings 9, creative_usage_events 4), so those partner rows would stay, marked demo.
 
 ## Restore
 
