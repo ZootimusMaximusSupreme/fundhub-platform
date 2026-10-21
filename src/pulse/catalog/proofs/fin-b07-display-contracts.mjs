@@ -21,6 +21,7 @@
 // and fin-b07-sql-misc.mjs (this file imports only those). It is read at build time by
 // scripts/pulse/compile-catalog.mjs, and the live bundle reads the compiled copy in generated.json.
 
+import { ownerHoldNote } from "../../owner-holds.mjs";
 import {
   CASE_CLOSE_SQL,
   CASE_CLEARED_SQL,
@@ -152,6 +153,11 @@ function contract(rowKey, requirement, key, body) {
   });
 }
 
+// The repair stage columns leave files on owner hold out of their count (stageSql), and their green line says so.
+function stageContract(rowKey, requirement, key, body) {
+  return Object.freeze({ ...contract(rowKey, requirement, key, body), heldNote: ownerHoldNote() });
+}
+
 const CONTRACTS = Object.freeze([
   // Case drawer
   contract("close", "Every Canceled case must carry a closed stamp and a real client, and a case canceled without ever completing must have no inquiry.removed receipt.", "fin-b07-case-close", CASE_CLOSE_SQL),
@@ -173,18 +179,18 @@ const CONTRACTS = Object.freeze([
   // Repair queue
   contract("repairQueue", "Every card on the optimization board must name a client in this company and a stage that belongs to that board, and every active repair program must have a card on that board, a program word the desk knows and at least one round.", "fin-b07-repair-queue", REPAIR_QUEUE_SQL),
   contract("repairRow", "Every open dispute case touched in the last 60 days must hold only letters of its own client and its own round, a client in this company, and no timeline entry that points at another client's case.", "fin-b07-repair-row", REPAIR_ROW_SQL),
-  contract("stIntake", "Every file in intake must be within three business days of entering it (judged at five calendar days).", "fin-b07-stage-intake", STAGE_INTAKE_SQL),
-  contract("stAwaitDocs", "Every file waiting on papers must be within fourteen days of entering the stage.", "fin-b07-stage-await-docs", STAGE_AWAIT_DOCS_SQL),
-  contract("stAnalysis", "Every file in analysis must be within one hour of entering the stage.", "fin-b07-stage-analysis", STAGE_ANALYSIS_SQL),
-  contract("stLettersGen", "Every file in letters made must be within thirty minutes of entering the stage and must hold at least one dispute letter.", "fin-b07-stage-letters-generated", STAGE_LETTERS_GEN_SQL),
-  contract("stReady", "Every file in ready to send must be within four hours of entering the stage and must hold a letter that is generated or ready.", "fin-b07-stage-ready", STAGE_READY_SQL),
-  contract("stTransit", "Every file in the mail must be within ten days of entering the stage and must hold a letter that was sent or delivered.", "fin-b07-stage-transit", STAGE_TRANSIT_SQL),
-  contract("stAwaitResp", "Every file waiting on a bureau must hold an open case of its CURRENT round with a response due time, and no open case of that round may be more than five days past due (an older round's overdue case does not count).", "fin-b07-stage-await-response", STAGE_AWAIT_RESP_SQL),
-  contract("stRespRecv", "Every file with an answer in must be within twenty-four hours of entering the stage and must hold a saved bureau response.", "fin-b07-stage-response-received", STAGE_RESP_RECV_SQL),
-  contract("stRoundComplete", "Every file shown as round done must hold a saved bureau response or a round complete or response parsed receipt.", "fin-b07-stage-round-complete", STAGE_ROUND_DONE_SQL),
-  contract("stStalled", "Every stuck file must hold a recorded stall decision or a dispute case marked stalled, so the human queue says why.", "fin-b07-stage-stalled", STAGE_STALLED_SQL),
-  contract("stProgramComplete", "Every file shown as done must belong to a client whose repair program is complete or upsell pending, or hold the program complete receipt.", "fin-b07-stage-program-complete", STAGE_PROGRAM_DONE_SQL),
-  contract("stCancelled", "A file shown as cancelled must never belong to a client whose repair program is still active.", "fin-b07-stage-cancelled", STAGE_CANCELLED_SQL),
+  stageContract("stIntake", "Every file in intake must be within three business days of entering it (judged at five calendar days).", "fin-b07-stage-intake", STAGE_INTAKE_SQL),
+  stageContract("stAwaitDocs", "Every file waiting on papers must be within fourteen days of entering the stage.", "fin-b07-stage-await-docs", STAGE_AWAIT_DOCS_SQL),
+  stageContract("stAnalysis", "Every file in analysis must be within one hour of entering the stage.", "fin-b07-stage-analysis", STAGE_ANALYSIS_SQL),
+  stageContract("stLettersGen", "Every file in letters made must be within thirty minutes of entering the stage and must hold at least one dispute letter.", "fin-b07-stage-letters-generated", STAGE_LETTERS_GEN_SQL),
+  stageContract("stReady", "Every file in ready to send must be within four hours of entering the stage and must hold a letter that is generated or ready.", "fin-b07-stage-ready", STAGE_READY_SQL),
+  stageContract("stTransit", "Every file in the mail must be within ten days of entering the stage and must hold a letter that was sent or delivered.", "fin-b07-stage-transit", STAGE_TRANSIT_SQL),
+  stageContract("stAwaitResp", "Every file waiting on a bureau must hold an open case of its CURRENT round with a response due time, and no open case of that round may be more than five days past due (an older round's overdue case does not count).", "fin-b07-stage-await-response", STAGE_AWAIT_RESP_SQL),
+  stageContract("stRespRecv", "Every file with an answer in must be within twenty-four hours of entering the stage and must hold a saved bureau response.", "fin-b07-stage-response-received", STAGE_RESP_RECV_SQL),
+  stageContract("stRoundComplete", "Every file shown as round done must hold a saved bureau response or a round complete or response parsed receipt.", "fin-b07-stage-round-complete", STAGE_ROUND_DONE_SQL),
+  stageContract("stStalled", "Every stuck file must hold a recorded stall decision or a dispute case marked stalled, so the human queue says why.", "fin-b07-stage-stalled", STAGE_STALLED_SQL),
+  stageContract("stProgramComplete", "Every file shown as done must belong to a client whose repair program is complete or upsell pending, or hold the program complete receipt.", "fin-b07-stage-program-complete", STAGE_PROGRAM_DONE_SQL),
+  stageContract("stCancelled", "A file shown as cancelled must never belong to a client whose repair program is still active.", "fin-b07-stage-cancelled", STAGE_CANCELLED_SQL),
   contract("rowSend", "Every mailed letter must carry both mailing stamps and a case whose bureau clock started, and no letter may sit claimed and not mailed for more than a day.", "fin-b07-row-send", ROW_SEND_SQL),
   contract("letterSendOne", "Every mailed letter must have a bureau and, for a furnisher, an address; no other letter of the same case, bureau, round and target may also be out (mailed stamp, or sending, sent or delivered); and no provider letter id may be recorded on two letters.", "fin-b07-letter-send-one", LETTER_ONE_SQL),
   contract("rowStage", "Every staged letter must belong to a case of the same client, hold its words, carry a furnisher address when it goes to a furnisher, and be unmailed.", "fin-b07-row-stage", ROW_STAGE_SQL),

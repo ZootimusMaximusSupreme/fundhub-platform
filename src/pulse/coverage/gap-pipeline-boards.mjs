@@ -26,6 +26,7 @@ import { BOARD_CARDS_SQL, BOARD_STAGES_SQL } from "./gap-crm-links.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
 import { orgDemoModeEnabled } from "../../demo/exclude-demo.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-holds.mjs";
 
 export const CHECK_IDS = Object.freeze([
   "pipeline:count-true",
@@ -188,6 +189,7 @@ export const AGE_SQL = `
          s.key AS stage,
          s.name AS stage_name,
          cd.id::text AS card_id,
+         c.client_code AS client_code,
          cd.entered_at,
          CASE WHEN p.key = 'optimization' THEN (
            SELECT min(dc.response_due_at)
@@ -565,7 +567,14 @@ async function checkAge(run, orgId, now) {
   const fix = `Open Pipeline and read the stage the card sits in. The time limit is written in code; a card past it is not moving. ${NO_AUTOFIX}`;
   const read1 = await read(run, AGE_SQL, [orgId, TEST_CLIENT_EMAIL_RE]);
   if (read1.error) return row(id, "skip", `could not read the cards and their ages: ${read1.error}`);
-  const { over, judged } = judgeAges(read1.rows, now);
+  // A card for a file the owner put on hold (src/pulse/owner-holds.mjs) is not judged. When the held cards are
+  // the only ones past a limit, the row names them instead of red or green.
+  const { open, held } = splitHeld(read1.rows, (r) => r.client_code);
+  const { over, judged } = judgeAges(open, now);
+  if (!over.length && held.length) {
+    const late = held.filter((r) => judgeAges([r], now).over.length > 0);
+    if (late.length) return ownerHoldRow(id, orgId, heldCodesOf(late, (r) => r.client_code));
+  }
   if (over.length) {
     const byGroup = new Map();
     for (const o of over) {
@@ -688,6 +697,15 @@ async function checkNobodyLost(run, orgId, now) {
 
 /** The audit asks the lane to prove a "nothing to judge" row again. Same SQL, same keys. */
 export const naVerify = Object.freeze({
+  [OWNER_HOLD_CODE]: async (args, ctx = {}) => {
+    if (!args || args.check !== "pipeline:age") return false;
+    const run = bind(ctx);
+    if (!run) return false;
+    const orgId = args.orgId || ctx.orgId || null;
+    if (!orgId || !UUID_RE.test(String(orgId))) return false;
+    const now = ctx.now instanceof Date ? ctx.now : new Date();
+    return stillOwnerHold(await checkAge(run, String(orgId), now), args);
+  },
   "no-card-on-stage": async (args, ctx = {}) => {
     if (!args || args.check !== "pipeline:dead-stage") return false;
     const run = bind(ctx);

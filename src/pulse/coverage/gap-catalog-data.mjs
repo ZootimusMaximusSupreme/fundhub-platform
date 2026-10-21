@@ -3,6 +3,8 @@
 // Empty tables are a verified "nothing to judge" result. A populated row with
 // no usable business result is red.
 
+import { CF_SVY_TYPED_COLUMNS } from "../../handlers/client-custom-fields.mjs";
+
 export const TABLE_RULES = Object.freeze({
   action_log: { all: ["org_id", "target_type", "target_id"], any: ["after", "execute_error", "executed_at"] },
   affiliate_commission_rules: { all: ["org_id", "calc_method"], any: ["percent", "flat_amount", "max_amount"] },
@@ -25,7 +27,10 @@ export const TABLE_RULES = Object.freeze({
   cashflow_settings: { all: ["org_id", "min_buffer_cents", "confidence_floor", "settlement_lead_days"] },
   client_authorized_reps: { all: ["org_id", "account_id", "client_id"] },
   client_cards: { all: ["org_id", "client_id", "provider", "provider_token", "last4"] },
-  client_custom_fields: { all: ["org_id", "client_id", "ai_call_enabled"] },
+  // The only writer (src/handlers/client-custom-fields.mjs, upsertSurveyCarbonCopy) saves typed survey answers and
+  // writes nothing when there are none, so a row's business result is at least one answer. ai_call_enabled was
+  // required here before 2026-10-20, but no code writes it, so every real survey row would have read red.
+  client_custom_fields: { all: ["org_id", "client_id"], any: [...CF_SVY_TYPED_COLUMNS] },
   client_escalations: { all: ["org_id", "client_id", "said_at", "matched_pattern"] },
   client_push_subscriptions: { all: ["org_id", "client_id", "endpoint_hash", "encrypted_endpoint"] },
   commission_rule_tiers: { all: ["org_id", "rule_id"], any: ["percent", "flat_amount", "per_unit_amount"] },

@@ -33,6 +33,7 @@ import { JOBS, lastMonthlyFire } from "./heartbeats.mjs";
 import { hasWork, readWaitingWork, workerKinds } from "../marketing/clock.mjs";
 import { netlifyRegistry } from "../marketing/ai-runner.mjs";
 import { JOB_KINDS } from "../marketing/job-kinds.mjs";
+import { isHeldCode, ownerHoldSay } from "./owner-holds.mjs";
 
 const PHOENIX = "America/Phoenix";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -451,6 +452,24 @@ export const NA_CONDITIONS = Object.freeze({
       return Array.isArray(args.stages) && args.stages.length > 0 && args.stages.every(isText)
         ? null
         : "stages is not a list of board/stage keys";
+    },
+    verify: "lane"
+  }),
+
+  /* A late client file the owner put on hold (src/pulse/owner-holds.mjs; owner 2026-10-09 and 2026-10-20). True while
+     the lane that made the row runs the same read again and finds that the only late files are still the held ones
+     it named. The day another client's file is late, or the hold is lifted, the claim fails and the row goes red. */
+  "owner-hold": Object.freeze({
+    say(args = {}) {
+      return ownerHoldSay(Array.isArray(args.clients) ? args.clients : []);
+    },
+    claim() {
+      return "The only late files are still the ones on owner hold.";
+    },
+    problem(args) {
+      if (!isText(args?.check)) return "check is missing";
+      if (!Array.isArray(args.clients) || !args.clients.length) return "clients is not a list";
+      return args.clients.every(isHeldCode) ? null : "a named client is not on the owner hold list";
     },
     verify: "lane"
   }),

@@ -42,6 +42,15 @@ function gap(control, requirement) {
   return Object.freeze({ control, mode: "always-red", requirement, sql: null });
 }
 
+// Owner rule 2026-10-14: a deep check waits for the first real result. A control nobody has used yet reads
+// green with "no saved results yet" and goes red on the first wrong one (emptyAs "quiet", judged in
+// src/pulse/coverage/gap-catalog-display.mjs). Applied 2026-10-20 to the first-batch record and staff
+// controls below: Braum (FH-000507) is the only real client, and he has no funding round, lender decision,
+// PDF wording, saved insight or helper turn, so an empty table here means "not used yet", not a break.
+function quietQuery(control, requirement, key, body) {
+  return Object.freeze({ ...query(control, requirement, key, body), emptyAs: "quiet" });
+}
+
 const ROUND_SUBMITTED_SQL = `
 SELECT count(*)::int AS sample_count,
        count(*) FILTER (WHERE client_id IS NULL OR payload->>'stage' IS DISTINCT FROM 'round_submitted'
@@ -49,7 +58,8 @@ SELECT count(*)::int AS sample_count,
          OR COALESCE(payload->>'roundNumber', '') !~ '^[1-9][0-9]*$')::int AS bad_count
   FROM events
  WHERE org_id = $1::uuid AND name = 'round.submitted'
-   AND payload->>'source' = 'card_stacking'`;
+   AND payload->>'source' = 'card_stacking'
+   AND COALESCE(is_demo, false) = false`;
 
 const ROUND_FUNDED_SQL = `
 SELECT count(*)::int AS sample_count,
@@ -291,26 +301,26 @@ SELECT count(*)::int AS sample_count,
 export const DISPLAY_RESULT_CONTRACTS = Object.freeze([
   ...FIN_B13_DISPLAY_CONTRACTS,
   ...FIN_B21_DISPLAY_CONTRACTS,
-  query("Mark round submitted button", "A card-stacking round.submitted receipt must carry the client, stage, source, and round number.", "round-submitted", ROUND_SUBMITTED_SQL),
+  quietQuery("Mark round submitted button", "A card-stacking round.submitted receipt must carry the client, stage, source, and round number.", "round-submitted", ROUND_SUBMITTED_SQL),
   query("Mark funded… button, amount box, Save funded, Cancel", "The round.funded receipt must link to the same funding round and preserve the exact funded amount.", "round-funded", ROUND_FUNDED_SQL),
-  query("Close round button", "A card-stacking round.closeout receipt must name the closed stage and engagement-complete result.", "round-closed", ROUND_CLOSED_SQL),
-  query("Lender row: Approved $ amount input", "An Approved bank-decision receipt must link to an application with a positive saved approved amount.", "approved-amount", APPROVED_AMOUNT_SQL),
-  query("Lender row: Approved button", "An Approved bank-decision receipt must link to the exact application and named staff actor.", "approved-decision", APPROVED_DECISION_SQL),
-  query("Lender row: Declined button", "A Denied bank-decision receipt must link to the exact application and named staff actor.", "denied-decision", DENIED_DECISION_SQL),
-  query("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "The exclusion or reinstatement receipt must link the application, actor, time, and saved reason.", "approval-exclusion", EXCLUSION_SQL),
+  quietQuery("Close round button", "A card-stacking round.closeout receipt must name the closed stage and engagement-complete result.", "round-closed", ROUND_CLOSED_SQL),
+  quietQuery("Lender row: Approved $ amount input", "An Approved bank-decision receipt must link to an application with a positive saved approved amount.", "approved-amount", APPROVED_AMOUNT_SQL),
+  quietQuery("Lender row: Approved button", "An Approved bank-decision receipt must link to the exact application and named staff actor.", "approved-decision", APPROVED_DECISION_SQL),
+  quietQuery("Lender row: Declined button", "A Denied bank-decision receipt must link to the exact application and named staff actor.", "denied-decision", DENIED_DECISION_SQL),
+  quietQuery("Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)", "The exclusion or reinstatement receipt must link the application, actor, time, and saved reason.", "approval-exclusion", EXCLUSION_SQL),
   query("Send: message box, Send button, Enter key (20,000 character cap)", "A saved helper turn must retain the input and a completed reply, brain, and answer time on the same row.", "helper-send", HELPER_TURN_SQL),
-  query("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
+  quietQuery("Suggestion buttons (3: due this week, which card first, got declined paste the letter)", "Each exact suggestion input must finish on the same helper-turn row with a reply, brain, and answer time.", "helper-suggestions", HELPER_SUGGESTION_SQL),
   query("'Do task' button on a step the helper or a person can do", "The task-assigned log must link the exact money task, client, task key, assignee, and idempotency key.", "do-task", DO_TASK_SQL),
   query("'I'm ready to get funded' button (opens the Capital Blueprint closing-prep call task)", "The ready-to-fund log must link the exact Blueprint prep task, client, round, process, and FinanceOS source.", "ready-to-fund", READY_TO_FUND_SQL),
   query("Tier assignment: one welcome-video select per product tier and one for Default", "Every saved tier selection must link to a real video in the same company with a title and storage object.", "content-tier-map", CONTENT_VIDEO_MAP_SQL),
   query("Upload welcome video: Upload button (then saves the tier map)", "The saved tier map must link the uploaded video row to its title and storage object in the same company.", "content-video-upload", CONTENT_VIDEO_MAP_SQL),
   query("Page itself loads; lists contract wordings", "Every active wording shown by the library must have the exact text-or-PDF shape the endpoint returns.", "contract-library", CONTRACT_LIBRARY_SQL),
-  query("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
-  query("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
+  quietQuery("Wording list: click a row to edit it", "Each PDF wording row must link to its document and have one stored page size per page.", "contract-pdf", CONTRACT_PDF_SQL),
+  quietQuery("PDF editor: Save boxes", "A saved PDF wording must contain real boxes whose page, signer, type, and label are valid.", "contract-fields", CONTRACT_FIELDS_SQL),
   query("Record consent: call_recording", "The saved consent must be the call_recording kind with frozen words, version, capture method, and one exact granter.", "consent-call-recording", consentSql("call_recording")),
   query("Record consent: marketing_use (permission to use what the client said in ads)", "The saved consent must be the marketing_use kind with frozen words, version, capture method, and one exact granter.", "consent-marketing-use", consentSql("marketing_use")),
   query("History table: 'live / not live' state and Withdraw button (asks for a reason in a prompt)", "Every revoked consent must preserve its reason and exactly one revoking actor.", "consent-revoke", CONSENT_REVOKE_SQL),
-  query("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
+  quietQuery("Save these answers button (needs at least one answer)", "A saved insight must link the client, recorder, non-empty answers, and task when one was submitted.", "customer-insight", INSIGHT_SQL),
   query("Funded amount prompt (window.prompt, up to 3 tries; blank or cancel abandons the move, never sends zero)", "A valid prompt submission must reach the round.funded receipt and equal the amount saved on that funding round.", "funded-prompt", ROUND_FUNDED_SQL),
   query("Page open: commission ledger (ACCRUED and PAID MTD tiles, payout table)", "Every non-demo ledger row returned to the page must link staff and carry a valid state with its required timestamps and payout reference.", "commission-ledger", COMMISSION_LEDGER_SQL),
   query("Page open: commission rules and versions", "Every rule returned to the page must carry the exact method fields and valid product, staff, or tier links it names.", "commission-rules", COMMISSION_RULES_SQL),
