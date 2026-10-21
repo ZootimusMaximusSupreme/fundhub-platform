@@ -32,6 +32,7 @@ export const BEAT_FILES = Object.freeze([
   ["beat-money-operations.mjs", () => import("./beat-money-operations.mjs")],
   ["beat-native-push.mjs", () => import("./beat-native-push.mjs")],
   ["beat-partner-trip.mjs", () => import("./beat-partner-trip.mjs")],
+  ["beat-pay-links.mjs", () => import("./beat-pay-links.mjs")],
   ["beat-pay-webhook.mjs", () => import("./beat-pay-webhook.mjs")],
   ["beat-text-path.mjs", () => import("./beat-text-path.mjs")],
   ["beat-vendor-keys.mjs", () => import("./beat-vendor-keys.mjs")],
