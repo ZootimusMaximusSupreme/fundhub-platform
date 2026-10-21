@@ -42,11 +42,14 @@
 // Three skips are a measured "too quiet to judge", and now return status "na"
 // with na: { code, args } so the audit can prove the claim again:
 //   lead:pipe-cut-with-traffic            low-traffic  (ads sent fewer than MIN_AD_CLICKS)
+//   lead:pipe-cut-with-traffic            no-running-ad (no ad row, the Meta sync pulled after the two
+//                                                        days closed, and no ad is switched on)
 //   lead:clickfunnels-posts-silent        low-traffic  (fewer than MIN_FORM_PAGE_VIEWS opened a form page)
 //   lead:slo-contact-not-in-clickfunnels  no-real-lead (no real roadmap lead in the window)
-// `naVerify` re-reads with the same SQL and the same minimums. Every other quiet
-// reason (no ad row at all, receipts off, a read that failed, a lead still waiting)
-// stays "skip": "we cannot see it" is never a nothing-to-judge condition.
+// `naVerify` re-reads with the same SQL and the same minimums. No ad row with a
+// sync that has not pulled since the days closed, or with ads switched on, is red
+// (it points at meta-sync): "we cannot see it" is never a nothing-to-judge
+// condition. Receipts off, a read that failed and a lead still waiting stay "skip".
 
 import { AD_ACCOUNT_TZ, adAccountDay } from "../../lib/ad-account-day.mjs";
 
@@ -256,6 +259,38 @@ export const CONTACTS_SQL = `
    ORDER BY e.created_at DESC
    LIMIT 300`;
 
+/**
+ * Read only when the ad table has no row for the two ad days. It tells "no ad ran" from
+ * "we cannot see the ads". $1 org (or null), $2 the last closed Arizona day.
+ *   pulled_at      the newest time Meta answered the sync (ad_platform_connections.last_synced_at is
+ *                  stamped only after Meta answers; api/campaigns/sync.mjs). The hourly pass reads
+ *                  today and the 2 days before it, the nightly pass 28 days, so a pull after the
+ *                  window closed has asked Meta about both ad days.
+ *   running        ads switched on in Meta: the ad, its ad set and its campaign all ACTIVE (the same
+ *                  rule as src/pulse/parked-features.mjs).
+ *   window_closed  midnight Arizona after $2: the moment both ad days were over.
+ * Meta returns no insights row for a day an ad did not deliver. So no row, with a pull after the
+ * window closed and no ad switched on, means no ad ran: nothing to judge. Anything else is red.
+ * Measured 2026-10-20: 7 real ads PAUSED, the Meta connection pulled at 00:30 UTC, the newest ad
+ * day 2026-10-11, and the ad table empty for 10-18 and 10-19.
+ */
+export const AD_SYNC_SQL = `
+  /* gap:lead-ad-sync */
+  SELECT
+    (SELECT max(pc.last_synced_at)
+       FROM ad_platform_connections pc
+      WHERE pc.platform = 'meta'
+        AND ($1::uuid IS NULL OR pc.org_id = $1::uuid)) AS pulled_at,
+    (SELECT count(*)::int
+       FROM ads a
+       JOIN ad_sets s ON s.id = a.ad_set_id
+       JOIN campaigns c ON c.id = a.campaign_id
+      WHERE ($1::uuid IS NULL OR a.org_id = $1::uuid)
+        AND upper(COALESCE(a.status, '')) = 'ACTIVE'
+        AND upper(COALESCE(s.status, '')) = 'ACTIVE'
+        AND upper(COALESCE(c.status, '')) = 'ACTIVE') AS running,
+    ((($2::date + 1)::timestamp) AT TIME ZONE '${AD_ACCOUNT_TZ}') AS window_closed`;
+
 function row(id, status, detail, suggestedFix = null) {
   return { id, status, detail, suggestedFix };
 }
@@ -374,6 +409,23 @@ async function readFacts(run, orgId, now) {
   return facts;
 }
 
+/** The Meta sync facts for an empty ad table. Throws when the read does not answer. */
+async function readAdSync(run, orgId, lastDay) {
+  const out = await run((tx) => tx.query(AD_SYNC_SQL, [orgId, lastDay]));
+  const r = out && out.rows && out.rows[0];
+  if (!r) throw new Error("the Meta sync read came back with no row");
+  const running = num(r.running);
+  const windowClosed = toDate(r.window_closed);
+  if (running == null) throw new Error("the Meta sync read came back without running");
+  if (!windowClosed) throw new Error("the Meta sync read came back without window_closed");
+  return { pulledAt: toDate(r.pulled_at), running, windowClosed };
+}
+
+/** True when the sync proves no ad ran in the window: a pull after the window closed, and no ad switched on. */
+function noAdRan(sync) {
+  return !!sync && sync.running === 0 && !!sync.pulledAt && sync.pulledAt.getTime() >= sync.windowClosed.getTime();
+}
+
 // ---------------------------------------------------------------------------
 // 1. Ads sent plenty of people and no real lead was saved.
 //
@@ -390,7 +442,49 @@ const PIPE_FIX =
   "If the ads sent clicks and nobody opened a page, the ad link or the page tracker is the cut. " +
   BANS;
 
-export function pipeCheck(f, now) {
+const AD_SYNC_FIX =
+  "Read the meta-sync row first: last_synced_at and last_error on the Meta row of ad_platform_connections, " +
+  "and the meta-campaign-sync-sweeper runs (hourly at minute 30, nightly at 07:00 UTC). " +
+  "If the sync is current and ads are switched on, read ad_metrics_daily for the two days named and the insights part of api/campaigns/sync.mjs. " +
+  BANS;
+
+/**
+ * The ad table has no row for the two ad days. `sync` is what readAdSync found, { error } when that
+ * read failed, or nothing when it was not read (then the old answer stands: we cannot see the ads).
+ */
+function noAdRowCheck(id, f, now, sync, cfNote) {
+  const blind = `The ad table has no row for ${f.first} or ${f.last}`;
+  const noLead = `Zero real people saved on /roadmap since ${f.first}.${cfNote}`;
+  if (!sync) return row(id, "skip", `${blind}, so we cannot tell if ads sent people. ${noLead}`);
+  if (sync.error) {
+    return row(id, "skip", `${blind}, and the Meta sync could not be read (${sync.error}), so we cannot tell if ads sent people. ${noLead}`);
+  }
+  if (sync.running > 0) {
+    return row(
+      id,
+      "FAIL",
+      `${plural(sync.running, "Meta ad is", "Meta ads are")} switched on, but ${blind.charAt(0).toLowerCase()}${blind.slice(1)}. Either the ads are not delivering or the sync is not saving their numbers. ${noLead}`,
+      AD_SYNC_FIX
+    );
+  }
+  if (!noAdRan(sync)) {
+    const pulled = sync.pulledAt ? `has not pulled since ${when(sync.pulledAt, now)}` : "has never pulled";
+    return row(
+      id,
+      "FAIL",
+      `${blind}, and the Meta sync ${pulled}, before ${f.last} closed. So we cannot tell if ads sent people. Fix the meta-sync row first. ${noLead}`,
+      AD_SYNC_FIX
+    );
+  }
+  return naRow(
+    id,
+    "no-running-ad",
+    withOrg({ check: id, first: f.first, last: f.last, pulledAt: sync.pulledAt.toISOString() }, f.orgId),
+    `No Meta ad ran on ${f.first} or ${f.last}: the Meta sync pulled ${when(sync.pulledAt, now)}, after both days closed, and no ad is switched on. ${noLead} Judged the day an ad runs.`
+  );
+}
+
+export function pipeCheck(f, now, sync = null) {
   const id = "lead:pipe-cut-with-traffic";
   const door = f.roadViews >= ROADMAP_DOOR_VIEWS;
   const viewed = f.roadViews > 0 ? `${people(f.roadViews)} opened /roadmap` : "the page tracker saw no one open /roadmap";
@@ -411,13 +505,7 @@ export function pipeCheck(f, now) {
     );
   }
   const cfNote = f.cfLeads > 0 ? ` ${people(f.cfLeads)} came through ClickFunnels forms, but none saved on /roadmap.` : "";
-  if (f.adRows === 0) {
-    return row(
-      id,
-      "skip",
-      `The ad table has no row for ${f.first} or ${f.last}, so we cannot tell if ads sent people. Zero real people saved on /roadmap since ${f.first}.${cfNote}`
-    );
-  }
+  if (f.adRows === 0) return noAdRowCheck(id, f, now, sync, cfNote);
   if (f.adClicks < MIN_AD_CLICKS) {
     // Ads did send a measured number of clicks, and it is under the minimum. Nothing to judge.
     return naRow(
@@ -638,6 +726,17 @@ export const naVerify = Object.freeze({
     if (check === CHECK_IDS[0]) return f.adRows > 0 && f.adClicks < MIN_AD_CLICKS;
     return f.formViews < MIN_FORM_PAGE_VIEWS;
   },
+  /* The ad table is still empty for the two ad days, the Meta sync pulled after they closed,
+     and no ad is switched on. Same two reads, same rule, as the lane. */
+  "no-running-ad": async (args, ctx = {}) => {
+    if (!args || args.check !== CHECK_IDS[0]) return false;
+    const run = bind(ctx);
+    if (!run) return false;
+    const orgId = orgOf(args, ctx);
+    const f = await readFacts(run, orgId, nowOf(ctx));
+    if (f.adRows !== 0) return false;
+    return noAdRan(await readAdSync(run, orgId, f.last));
+  },
   "no-real-lead": async (args, ctx = {}) => {
     if (!args || args.check !== CHECK_IDS[2]) return false;
     const run = bind(ctx);
@@ -669,7 +768,15 @@ export async function gapChecks(ctx = {}) {
     factsError = clip(err && err.message, 180);
   }
   if (facts) {
-    out.push(pipeCheck(facts, now));
+    let sync = null;
+    if (facts.adRows === 0) {
+      try {
+        sync = await readAdSync(run, orgId, facts.last);
+      } catch (err) {
+        sync = { error: clip(err && err.message, 160) };
+      }
+    }
+    out.push(pipeCheck(facts, now, sync));
     out.push(postsCheck(facts, now));
   } else {
     out.push(row(CHECK_IDS[0], "skip", `could not read ads, leads and ClickFunnels posts: ${factsError}`));

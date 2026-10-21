@@ -84,7 +84,8 @@ export async function checkLivePlaywright({ db, now = new Date() }) {
       "live-playwright:desks",
       "FAIL",
       `Last desk sweep was ${ageHours}h ago (score ${score}/100, ${passed}/${total} passed). Too old.`,
-      "Run node scripts/live-playwright-sweep.mjs on the Mac and wire a nightly launchd/cron."
+      "Run node scripts/live-playwright-sweep.mjs on the Mac. The nightly job file is " +
+        "ops/launchd/ai.fundhub.live-playwright-sweep.plist (install commands are in its header comment)."
     );
   }
   if (row.outcome === "fail" || failed > 0 || score < 100) {

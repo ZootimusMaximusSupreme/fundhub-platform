@@ -57,6 +57,9 @@ const NO_ORG_COLUMN = new Map([
      boundary are checked below; real cross-org reads also run in
      src/outreach/store.pg.test.mjs. */
   ["bank-outreach.mjs", "scoped in src/outreach/store.mjs readOutreach(), which revalidates the session identity and binds its org"],
+  /* Writes no SQL of its own. payoutsView() in src/affiliates/payout-rail.mjs
+     runs PAYOUTS_VIEW_SQL, which binds p.org_id = $1, and throws without an org. */
+  ["affiliate-payouts.mjs", "scoped in src/affiliates/payout-rail.mjs payoutsView(), which binds p.org_id = $1 and throws without an org"],
   /* These two write no SQL of their own. Both call listTradelines() from
      src/tradelines/store.mjs and pass `orgId: staff.org_id` from the session,
      and that function THROWS when the org is missing rather than quietly
