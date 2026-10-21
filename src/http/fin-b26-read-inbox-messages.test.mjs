@@ -128,6 +128,17 @@ function rulesFor(t) {
   ];
 }
 
+// Every column a message line carries out of the door, in the order the statement lists them. The row the
+// door answers must be EXACTLY this: a column the statement stops selecting is missing here and the test
+// goes red, and a column added (an address, a provider key) is extra and goes red too.
+const WIRE_COLUMNS = ["id", "conversation_id", "client_id", "direction", "channel", "rendered_body", "subject", "status",
+  "provider", "blocked_reason", "last_error", "scheduled_at", "sender_staff_id", "sender_name", "created_at"];
+const wireRow = (t, id) => {
+  const m = t.messages.find((x) => x.id === id);
+  const sender = t.staff.find((x) => x.id === m.sender_staff_id);
+  return Object.fromEntries(WIRE_COLUMNS.map((k) => [k, k === "sender_name" ? (sender ? sender.name : null) : m[k]]));
+};
+
 const getInbox = (who, query = {}, t = world()) => run(inbox, req("GET", { query }), [...who, ...rulesFor(t)]);
 const getMessages = (who, query = {}, t = world({ reuseThreadId: true })) => run(messages, req("GET", { query }), [...who, ...rulesFor(t)]);
 
@@ -224,8 +235,13 @@ describe("GET /api/read/inbox", () => {
 
 describe("GET /api/read/messages", () => {
   test("one thread, both directions, newest first, with who sent each reply; no phone number or provider key leaves the door", async () => {
-    const { res, fake } = await getMessages(asRole("closer"), { conversation_id: CV(1) });
+    const t = world({ reuseThreadId: true });
+    const { res, fake } = await getMessages(asRole("closer"), { conversation_id: CV(1) }, t);
     assert.equal(res.statusCode, 200);
+    // Whole lines, every column: its own id, thread, client, direction, channel, words, subject, status,
+    // provider, why it was held, the last error, when it is due, who sent it, their name, and when it was made.
+    assert.deepEqual(res.body.items, [wireRow(t, MS(2)), wireRow(t, MS(1)), wireRow(t, MS(5))],
+      "each line carries exactly the fifteen columns the statement names, with the stored values");
     assert.deepEqual(res.body.items.map((m) => [m.id, m.direction]), [[MS(2), "inbound"], [MS(1), "outbound"], [MS(5), "outbound"]]);
     assert.ok(res.body.items.every((m) => m.id !== MS(6)), "another company's message with the same thread id is not shown");
     const reply = res.body.items.find((m) => m.id === MS(1));
@@ -267,6 +283,9 @@ describe("GET /api/read/messages", () => {
     assert.ok(res.body.items.every((m) => m.status === "blocked" && m.id !== MS(7)));
     assert.deepEqual(res.body.items.map((m) => m.blocked_reason), ["quiet_hours", "compliance"]);
     assert.equal(res.body.items[1].last_error, "gate said no");
+    // Whole lines, every column, from the blocked statement's own list.
+    assert.deepEqual(res.body.items, [wireRow(world(), MS(5)), wireRow(world(), MS(8))],
+      "each blocked line carries exactly the fifteen columns the statement names, with the stored values");
     // The words, the sender and the block reason are read from the statement's own SELECT list.
     assert.deepEqual(res.body.items.map((m) => [m.rendered_body, m.sender_name, m.subject, m.channel, m.direction]),
       [["Held for quiet hours", "Olive Owner", null, "sms", "outbound"], ["Blocked by the gate", null, "x", "email", "outbound"]]);

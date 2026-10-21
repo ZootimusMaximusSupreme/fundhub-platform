@@ -14,6 +14,8 @@
 //   runUpdate / runInsert       an UPDATE or INSERT ... ON CONFLICT DO UPDATE ... RETURNING applied to
 //                               stand-in rows by what the statement says.
 //   orderRows                   ORDER BY as the statement spells it (direction, NULLS LAST).
+//   joinOf / joinRows           a JOIN as the statement spells it: the ON text decides which rows meet,
+//                               so an ON that is changed (to another column, or to TRUE) changes the answer.
 //
 // RULE OF THE FILE: anything it cannot read, it throws. A statement the product changed into a shape
 // this file does not know is a red test, never a quiet pass.
@@ -711,6 +713,48 @@ export function whereOf(sql) {
   const text = cleanSql(sql);
   const parts = sections(text, ["WHERE", "GROUP BY", "ORDER BY", "LIMIT", "RETURNING", "FOR UPDATE"]);
   return parts.WHERE === undefined ? null : parts.WHERE;
+}
+
+/**
+ * One JOIN of a top-level statement, as written: { kind: "left" | "inner", table, alias, on }.
+ * `pick` is the nth JOIN (from 0) or the table name. Throws when the statement has none that matches.
+ */
+export function joinOf(sql, pick = 0) {
+  const text = cleanSql(sql);
+  const re = /\b(LEFT\s+|INNER\s+)?JOIN\s+(\w+)(?:\s+(?:AS\s+)?(?!ON\b)(\w+))?\s+ON\s+/gi;
+  const found = [];
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const start = m.index + m[0].length;
+    let end = text.length;
+    for (const word of ["LEFT JOIN", "INNER JOIN", "JOIN", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "HAVING"]) {
+      const at = findTop(text, word, start);
+      if (at !== -1 && at < end) end = at;
+    }
+    found.push({
+      kind: /^left/i.test(m[1] || "") ? "left" : "inner",
+      table: m[2].toLowerCase(),
+      alias: (m[3] || m[2]).toLowerCase(),
+      on: text.slice(start, end).trim(),
+    });
+  }
+  const hit = typeof pick === "number" ? found[pick] : found.find((j) => j.table === pick || j.alias === pick);
+  if (!hit) throw new Error(`stand-in SQL reader: no JOIN matching ${String(pick)} in: ${plainSql(sql)}`);
+  return hit;
+}
+
+/**
+ * Join rows the way the statement's ON text says. `lefts` are evaluation scopes ({ params, now, rows });
+ * every right row the ON text keeps meets each left. A LEFT JOIN with no match keeps the left with the
+ * right side null; an INNER JOIN drops it. So `ON TRUE` multiplies rows and a wrong column matches none.
+ */
+export function joinRows(lefts, rights, join, { params, now } = {}) {
+  const out = [];
+  for (const env of lefts) {
+    const hits = rights.filter((r) => evalSql(join.on, { params, now, ...env, rows: { ...env.rows, [join.alias]: r } }) === true);
+    const list = hits.length ? hits : (join.kind === "left" ? [null] : []);
+    for (const r of list) out.push({ ...env, params, now, rows: { ...env.rows, [join.alias]: r } });
+  }
+  return out;
 }
 
 /** The text after ORDER BY (before LIMIT), or null. */

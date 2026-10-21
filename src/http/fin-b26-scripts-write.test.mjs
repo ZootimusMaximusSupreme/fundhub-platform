@@ -35,6 +35,8 @@ function world(over = {}) {
       script(S(5), { version: 1, archived_at: "2026-10-01T00:00:00.000Z", root_script_id: S(5), ad_id: 45 }),
       script(S(6), { version: 2, root_script_id: S(5), parent_script_id: S(5), ad_id: 45 }),
       script(S(7), { org_id: OTHER_ORG_ID, partner_id: FOREIGN_PARTNER, ad_id: 47 }),
+      // A script a white-label partner owns (not the house): its rewrite stays with that partner.
+      script(S(8), { partner_id: PARTNER, ad_id: 48 }),
     ],
     partners: [
       { id: HOUSE, org_id: ORG_ID, slug: "fundhub-house" },
@@ -194,6 +196,58 @@ describe("POST /api/scripts/write: a rewrite", () => {
     assert.equal(fake.calls.filter((c) => /^\s*BEGIN/.test(c.sql)).length, 1, "one transaction");
   });
 
+  test("the version is the parent's plus one, whatever it is: a rewrite of version two is version three", async () => {
+    const t = world();
+    // S(6) is the live version 2 of the script whose root is S(5).
+    const { res } = await post({ body: "third words", parent_script_id: S(6) }, asRole("closer"), { t });
+    assert.equal(res.statusCode, 200);
+    const row = added(t)[0];
+    assert.equal(row.version, 3, "the next number after the live version, not a fixed 2");
+    assert.equal(res.body.script.version, 3);
+    assert.equal(row.parent_script_id, S(6));
+    assert.equal(row.root_script_id, S(5), "the root of the whole chain");
+    assert.equal(row.ad_id, 45);
+    assert.ok(find(t, S(6)).archived_at, "version two stops being live");
+    assert.equal(find(t, S(5)).version, 1);
+    // And one more step: the new version 3 can itself be rewritten to version 4.
+    const next = await post({ body: "fourth words", parent_script_id: row.id }, asRole("closer"), { t });
+    assert.equal(next.res.statusCode, 200);
+    assert.equal(added(t)[1].version, 4);
+    assert.equal(added(t)[1].root_script_id, S(5));
+  });
+
+  test("a rewrite stays with its parent's own partner, not the house; naming the same partner is fine, naming another is refused", async () => {
+    const t = world();
+    const { res } = await post({ body: "words for acme", parent_script_id: S(8) }, asRole("closer"), { t });
+    assert.equal(res.statusCode, 200);
+    const row = added(t)[0];
+    assert.equal(row.partner_id, PARTNER, "the rewrite of a partner's script is filed under that partner");
+    assert.equal(res.body.script.partner_id, PARTNER);
+    assert.notEqual(row.partner_id, HOUSE);
+    const named = await post({ body: "again", parent_script_id: S(8), partner_id: PARTNER }, asRole("closer"), { t: world() });
+    assert.equal(named.res.statusCode, 200, "the parent's own partner may be named");
+    assert.equal(added(named.t)[0].partner_id, PARTNER);
+    const house = await post({ body: "x", parent_script_id: S(8), partner_id: HOUSE });
+    assert.equal(house.res.statusCode, 400);
+    assert.equal(house.res.body.error, "partner_id_mismatch");
+    assert.equal(added(house.t).length, 0);
+  });
+
+  test("the camelCase spelling of the parent is a rewrite too: the parent is archived and the new row points at it", async () => {
+    const t = world();
+    const { res } = await post({ body: "a better opening", parentScriptId: S(1) }, asRole("closer"), { t });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.is_rewrite, true, "not a second, unrelated script");
+    const row = added(t)[0];
+    assert.equal(row.parent_script_id, S(1));
+    assert.equal(row.version, 2);
+    assert.equal(row.root_script_id, ROOT);
+    assert.ok(find(t, S(1)).archived_at);
+    const bad = await post({ body: "x", parentScriptId: "not-a-uuid" });
+    assert.equal(bad.res.statusCode, 400);
+    assert.equal(bad.res.body.error, "parent_script_id_invalid");
+  });
+
   test("a locked or filmed parent keeps its number and its rewrite lands locked; a machine-written parent becomes superseded", async () => {
     for (const parent of [S(2), S(3)]) {
       const t = world();
@@ -234,6 +288,25 @@ describe("POST /api/scripts/write: a rewrite", () => {
     assert.equal(b.res.body.error, "stale");
     assert.equal(find(u, S(1)).archived_at, null, "the archive rolled back with the failed insert");
     assert.equal(u.ad_labels.length, 0);
+  });
+
+  test("a unique-index loss on EITHER version index is the stale answer; any other unique violation is not", async () => {
+    for (const constraint of ["ad_scripts_one_live_per_root_uq", "ad_scripts_root_version_uq"]) {
+      const t = world();
+      const dup = Object.assign(new Error("duplicate key"), { code: "23505", constraint });
+      const { res } = await post({ body: "again", parent_script_id: S(1) }, asRole("closer"), { t, failInsertOn: dup });
+      assert.equal(res.statusCode, 409, constraint);
+      assert.equal(res.body.error, "stale", constraint);
+      assert.equal(res.body.current, null);
+      assert.equal(find(t, S(1)).archived_at, null, `${constraint}: the archive rolled back with the failed insert`);
+    }
+    // A unique violation on some other index is a fault, not "somebody saved first".
+    const t = world();
+    const other = Object.assign(new Error("duplicate key"), { code: "23505", constraint: "ad_scripts_ad_number_uq" });
+    const { res } = await post({ body: "again", parent_script_id: S(1) }, asRole("closer"), { t, failInsertOn: other });
+    assert.equal(res.statusCode, 500);
+    assert.notEqual(res.body.error, "stale");
+    assert.equal(find(t, S(1)).archived_at, null);
   });
 
   test("a failed insert rolls the archive back and answers 500 without the database error", async () => {

@@ -72,7 +72,7 @@ function world(over = {}) {
  * column list, and the named columns of the queue read. Nothing about a stored status, an approver or
  * a returned row is written by hand here.
  */
-function rulesFor(t) {
+function rulesFor(t, { settingsVanish = false } = {}) {
   const tx = txTables(t);
   let n = 0;
   const q = (re, fn) => [re, fn];
@@ -90,8 +90,9 @@ function rulesFor(t) {
       const ordered = orderRows(kept, orderOf(sql), (r) => ({ row: r }));
       return project("marketing_content_queue", sql, p, ordered.slice(0, limit));
     }),
-    q(/FROM partner_module_settings\s+WHERE partner_id = \$1$/i, select("partner_module_settings", t.partner_module_settings)),
-    q(/SELECT approve_before_launch FROM partner_module_settings/i, select("partner_module_settings", t.partner_module_settings)),
+    q(/SELECT marketing_suite_enabled[\s\S]*FROM partner_module_settings\s+WHERE partner_id = \$1$/i, select("partner_module_settings", t.partner_module_settings)),
+    // settingsVanish plays a race honestly: the row the suite check read is gone by the time the scheduler reads it.
+    q(/SELECT approve_before_launch FROM partner_module_settings/i, settingsVanish ? [] : select("partner_module_settings", t.partner_module_settings)),
     q(/SELECT org_id FROM partners WHERE id = \$1/i, select("partners", t.partners)),
     q(/^\s*SELECT \* FROM marketing_content_queue/i, select("marketing_content_queue", t.marketing_content_queue)),
     q(/^\s*UPDATE social_posts\b/i, (sql, p) => runUpdate(sql, p, t.social_posts)),
@@ -105,10 +106,15 @@ function rulesFor(t) {
   ];
 }
 
-const call = (method, who, { query = {}, body = {} } = {}, t = world()) => {
+const call = (method, who, { query = {}, body = {} } = {}, t = world(), opts = {}) => {
   clearRuleCache();
-  return run(handler, req(method, { query, body }), [...who, ...rulesFor(t)]).then((out) => ({ ...out, t }));
+  return run(handler, req(method, { query, body }), [...who, ...rulesFor(t, opts)]).then((out) => ({ ...out, t }));
 };
+/** The identity every statement of a call ran as: what set_config stamped as the actor and as the partner. */
+const ranAs = (fake) => ({
+  actors: fake.calls.filter((c) => /set_config\('fundhub\.actor'/.test(c.sql)).map((c) => c.params[0]),
+  partners: fake.calls.filter((c) => /set_config\('fundhub\.partner_id'/.test(c.sql)).map((c) => c.params[0]),
+});
 const find = (t, table, id) => t[table].find((r) => r.id === id);
 const owner = asRole("owner");
 
@@ -137,6 +143,14 @@ describe("GET /api/social/posts (the queue read)", () => {
     assert.deepEqual(read.params, [PARTNER]);
     pinned(read.sql, "this partner, newest first, 100 at most", "WHERE partner_id = $1 ORDER BY created_at DESC LIMIT 100");
     assert.equal(wrote(fake), false);
+    // The read runs inside that partner's own scope: stamped as a partner, bound to the partner's id.
+    assert.deepEqual(ranAs(fake), { actors: ["partner"], partners: [PARTNER] }, "row-level security sees a partner, not staff");
+  });
+
+  test("a staff member reading a partner's queue runs as that partner, not as staff with the keys to every row", async () => {
+    const { res, fake } = await call("GET", asRole("closer"), { query: { partner_id: OTHER_PARTNER } });
+    assert.deepEqual(res.body.items.map((i) => i.id), [Q(5)]);
+    assert.deepEqual(ranAs(fake), { actors: ["partner"], partners: [OTHER_PARTNER] });
   });
 
   test("a long queue reads the newest hundred and no more", async () => {
@@ -182,6 +196,7 @@ describe("POST /api/social/posts", () => {
     assert.equal(find(t, "marketing_content_queue", Q(1)).status, "discarded");
     assert.equal(t.social_posts.length, 3, "no post was made");
     assert.equal(writes(fake).length, 1);
+    assert.deepEqual(ranAs(fake), { actors: ["partner"], partners: [PARTNER] }, "the write runs inside the partner's own scope");
   });
 
   test("queue with no account puts the draft in the queue with the new send time and makes no post", async () => {
@@ -209,6 +224,56 @@ describe("POST /api/social/posts", () => {
     assert.equal(t.compliance_screenings[0].subject_id, post.id);
     const inserted = sqlOf(fake, /INSERT INTO social_posts/)[0];
     assert.deepEqual([inserted.params[0], inserted.params[1]], [ORG_ID, PARTNER], "the company is the partner's own company");
+    // What the post and its screening record say about it.
+    assert.equal(post.offer_type, "funding", "the post carries the offer it was written for");
+    assert.equal(post.scheduled_for, "2026-10-20T16:00:00.000Z", "the send time the queue row already had");
+    const screening = t.compliance_screenings[0];
+    assert.deepEqual(
+      [screening.org_id, screening.partner_id, screening.subject_type, screening.offer_type, screening.state, screening.screened_text],
+      [ORG_ID, PARTNER, "social_post", "funding", "passed", "Ask us how repair works"],
+      "the screening record names who, what, the offer, the verdict and the exact words that were screened");
+    assert.deepEqual(screening.reasons, [], "a clean post has no reasons");
+    assert.deepEqual(ranAs(fake), { actors: ["partner"], partners: [PARTNER] });
+  });
+
+  test("scheduling keeps the send time the person chose: the post and the queue row both carry it", async () => {
+    const t = world();
+    t.partner_module_settings.find((r) => r.partner_id === PARTNER).approve_before_launch = false;
+    const when = "2026-11-03T15:30:00.000Z";
+    const { res, fake } = await call("POST", asPartner(PARTNER), { body: { id: Q(1), channel_id: CHANNEL, scheduled_for: when } }, t);
+    assert.equal(res.statusCode, 200);
+    const post = t.social_posts.at(-1);
+    assert.equal(post.scheduled_for, when, "the chosen time, not the one the draft had (2026-10-20)");
+    assert.equal(find(t, "marketing_content_queue", Q(1)).scheduled_for, when, "the screen row says the same time");
+    assert.equal(res.body.item.scheduled_for, when);
+    assert.equal(sqlOf(fake, /INSERT INTO social_posts/)[0].params[6], when);
+  });
+
+  test("with no time on the draft and none chosen, the post takes the channel's next slot: in the future, on a configured time", async () => {
+    const t = world();
+    t.partner_module_settings.find((r) => r.partner_id === PARTNER).approve_before_launch = false;
+    find(t, "marketing_content_queue", Q(1)).scheduled_for = null;
+    t.social_channels[0].best_times = Object.fromEntries(["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((d) => [d, ["21:41", "03:07"]]));
+    const before = Date.now();
+    const { res } = await call("POST", asPartner(PARTNER), { body: { id: Q(1), channel_id: CHANNEL } }, t);
+    assert.equal(res.statusCode, 200);
+    const post = t.social_posts.at(-1);
+    const when = new Date(post.scheduled_for);
+    assert.ok(Number.isFinite(when.getTime()), `a real time, got ${post.scheduled_for}`);
+    assert.ok(when.getTime() > before, "a slot still to come, never one that has already gone");
+    assert.ok(when.getTime() - before <= 19 * 3600e3, "the next one: slots are at most 18 hours apart");
+    assert.ok(["03:07:00", "21:41:00"].includes(when.toISOString().slice(11, 19)), `on one of the configured times, got ${when.toISOString()}`);
+    assert.equal(find(t, "marketing_content_queue", Q(1)).scheduled_for, null, "the draft itself is left without a time");
+    assert.equal(post.status, "queued");
+  });
+
+  test("if the partner's settings row is gone when the post is screened, the post is held for a person, never published", async () => {
+    const t = world();
+    const { res } = await call("POST", asPartner(PARTNER), { body: { id: Q(1), channel_id: CHANNEL } }, t, { settingsVanish: true });
+    assert.equal(res.statusCode, 200);
+    assert.equal(t.social_posts.at(-1).status, "awaiting_approval", "no setting on file means a person looks first");
+    assert.equal(res.body.item.status, "awaiting_approval");
+    assert.equal(t.social_posts.some((p) => p.status === "queued" && p.caption === "Ask us how repair works"), false);
   });
 
   test("scheduling a post the setting holds for a person makes it awaiting approval, and says so on the queue", async () => {
@@ -229,6 +294,15 @@ describe("POST /api/social/posts", () => {
     assert.equal(t.social_posts.at(-1).status, "blocked");
     assert.equal(res.body.item.blocked_reasons[0].code, "no-guarantees");
     assert.equal(t.social_posts.some((p) => p.status === "queued" && p.caption === "Guaranteed approval for everyone"), false);
+    // The post itself keeps the reasons it was stopped for, and so does the screening record.
+    const stored = t.social_posts.at(-1);
+    assert.deepEqual(stored.blocked_reasons.map((r) => r.code), ["no-guarantees"], "the reasons are on the post, not only on the screen row");
+    assert.equal(stored.blocked_reasons[0].message, "No approval guarantees.");
+    const screening = t.compliance_screenings.at(-1);
+    assert.deepEqual([screening.state, screening.subject_id, screening.offer_type, screening.screened_text],
+      ["blocked", stored.id, "funding", "Guaranteed approval for everyone"], "the words that were screened are kept");
+    assert.deepEqual(screening.reasons.map((r) => r.code), ["no-guarantees"]);
+    assert.equal(t.social_posts.at(-1).offer_type, "funding");
   });
 
   test("an owner or an admin approves a held post: it is signed, queued for the sender, and the screen row follows", async () => {
@@ -245,6 +319,7 @@ describe("POST /api/social/posts", () => {
       const lookup = sqlOf(fake, /FROM marketing_content_queue\s+WHERE id/)[0];
       assert.deepEqual(lookup.params, [Q(2), PARTNER, ORG_ID], "the caller's own company is bound on an approval");
       assert.equal(res.body.item.id, Q(2), "the answer is the queue row that was approved");
+      assert.deepEqual(ranAs(fake), { actors: ["partner"], partners: [PARTNER] }, `${role}: runs inside the named partner's scope`);
     }
     // A company id sent in the address or the body is never the company that is bound.
     const hostile = world();

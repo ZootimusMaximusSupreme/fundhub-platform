@@ -13,14 +13,27 @@ import {
   ORG_ID, OTHER_ORG_ID, PARTNER, ALL_STAFF_ROLES, STAFF_ID,
 } from "../testing/fin-b26-kit.mjs";
 import { cleanSql, selectList, projectRow, evalSql, orderRows, orderOf, whereOf, keep, splitTop } from "../testing/fin-b26-sql.mjs";
+import { OWNER_SET_CLOSER } from "../sales/metrics.mjs";
 
 const OTHER_CLOSER = "5b000000-0000-4000-8000-000000000002";
+const TIE_CLOSER = "5b000000-0000-4000-8000-000000000003";     // same cash as the signed-in closer, fewer deposits
+const EDGE_CLOSER = "5b000000-0000-4000-8000-000000000004";    // rows on the edges of the month
+const SETTER = "5b000000-0000-4000-8000-000000000005";         // a setter with logged calls: not on the closers' board
+const OWNER_ROLE = "5b000000-0000-4000-8000-000000000006";     // an owner with logged calls: not on the board
+const BY_EMAIL = "5b000000-0000-4000-8000-000000000007";       // the owner-set closer, found by email (role is owner)
+const BY_NAME = "5b000000-0000-4000-8000-000000000008";        // the owner-set closer, found by name (role is admin)
+const PADDED = "5b000000-0000-4000-8000-000000000009";         // a closer whose role is typed with spaces and capitals
 const NOW = new Date();
 const monthStart = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
 const inMonth = (hours) => new Date(monthStart.getTime() + hours * 3600e3).toISOString();
 const lastMonth = (hours) => new Date(monthStart.getTime() - hours * 3600e3).toISOString();
 // 32 days after the first of this month is always inside NEXT month, whatever this month's length.
 const nextMonth = (hours) => new Date(monthStart.getTime() + 32 * 86400e3 + hours * 3600e3).toISOString();
+// The edges of this month, built from the calendar and not from a fixed length.
+const nextMonthStart = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 1));
+const lastHourOfMonth = new Date(nextMonthStart.getTime() - 3600e3).toISOString();
+// Older than the prior month whatever the length of the months (a month is at most 31 days).
+const longAgo = new Date(monthStart.getTime() - 45 * 86400e3).toISOString();
 
 const call = (staff, outcome, cash, loggedAt, over = {}) => ({
   org_id: ORG_ID, staff_id: staff, outcome, cash_collected_cents: cash, logged_at: loggedAt, is_demo: false, ...over,
@@ -31,8 +44,20 @@ function world({ withDemo = false } = {}) {
     staff: [
       { id: STAFF_ID, org_id: ORG_ID, name: "Casey Closer", role: "closer", email: "casey@example.test" },
       { id: OTHER_CLOSER, org_id: ORG_ID, name: "Other Closer", role: "closer", email: "other@example.test" },
+      { id: TIE_CLOSER, org_id: ORG_ID, name: "Tie Closer", role: "closer", email: "tie@example.test" },
+      { id: EDGE_CLOSER, org_id: ORG_ID, name: "Edge Closer", role: "closer", email: "edge@example.test" },
+      { id: SETTER, org_id: ORG_ID, name: "Sam Setter", role: "setter", email: "sam@example.test" },
+      { id: OWNER_ROLE, org_id: ORG_ID, name: "Olive Owner", role: "owner", email: "olive@example.test" },
+      // The owner-set closer is on the board whatever role the staff row carries (by email, by name).
+      { id: BY_EMAIL, org_id: ORG_ID, name: "Email Found", role: "owner", email: `  ${OWNER_SET_CLOSER.email.toUpperCase()} ` },
+      { id: BY_NAME, org_id: ORG_ID, name: ` ${OWNER_SET_CLOSER.name.toUpperCase()}`, role: "admin", email: "name@example.test" },
+      { id: PADDED, org_id: ORG_ID, name: "Pad Closer", role: "  Closer ", email: "pad@example.test" },
     ],
     call_outcomes: [
+      // First in the table on purpose: with the same cash as the signed-in closer, only the statement's
+      // own tie-break (deposits, highest first) puts the signed-in closer ahead of this one.
+      call(TIE_CLOSER, "deposit", 200000, inMonth(9)),
+      call(TIE_CLOSER, "downsell", 20000, inMonth(10)),
       // This closer, this month: 2 deposits, a downsell and a no-sale held; two no-shows.
       call(STAFF_ID, "deposit", 150000, inMonth(1)),
       call(STAFF_ID, "deposit", 50000, inMonth(2)),
@@ -51,6 +76,21 @@ function world({ withDemo = false } = {}) {
       call(OTHER_CLOSER, "deposit", 300000, inMonth(1)),
       call(OTHER_CLOSER, "deposit", 100000, inMonth(2)),
       call(OTHER_CLOSER, "no_show", 0, inMonth(3)),
+      // The edges of the month. The first instant belongs to this month; the last hour of the last day
+      // does too; the first instant of next month and the last hour of last month do not; a call from
+      // a month and a half ago is not last month's either.
+      call(EDGE_CLOSER, "deposit", 10000, monthStart.toISOString()),
+      call(EDGE_CLOSER, "deposit", 20000, lastHourOfMonth),
+      call(EDGE_CLOSER, "deposit", 30000, nextMonthStart.toISOString()),
+      call(EDGE_CLOSER, "deposit", 40000, lastMonth(1)),
+      call(EDGE_CLOSER, "deposit", 50000, longAgo),
+      // People who are not closers, with calls logged this month: they are not on the closers' board.
+      call(SETTER, "deposit", 900000, inMonth(11)),
+      call(OWNER_ROLE, "deposit", 800000, inMonth(12)),
+      // The owner-set closer is on it, found by email or by name; a role typed " Closer " is a closer.
+      call(BY_EMAIL, "deposit", 70000, inMonth(13)),
+      call(BY_NAME, "deposit", 25000, inMonth(14)),
+      call(PADDED, "deposit", 10001, inMonth(15)),
     ],
   };
 }
@@ -123,12 +163,18 @@ describe("GET /api/read/my-numbers", () => {
     // held, a no-show is not a call held), and this closer's rank in it.
     // (Its cash counts demo rows that this closer's own cash line leaves out: a product finding written
     // in the manifest. This world has no demo row, so that difference is not judged here.)
-    assert.equal(res.body.pace.team_size, 2);
-    assert.deepEqual(res.body.team.map((m) => [m.rank, m.staff_id, m.name, m.cash_cents, m.deposits, m.close_rate]), [
-      [1, OTHER_CLOSER, "Other Closer", 400000, 2, 1],
-      [2, STAFF_ID, "Casey Closer", 220000, 2, 0.5],
-    ], "the team, ranked by cash");
-    assert.equal(res.body.pace.rank, 2, "this closer is second");
+    assert.equal(res.body.pace.team_size, 7, "closers by role (spaces and capitals ignored) plus the owner-set closer by email and by name");
+    assert.deepEqual(res.body.team.map((m) => [m.rank, m.staff_id, m.cash_cents, m.deposits, m.close_rate]), [
+      [1, OTHER_CLOSER, 400000, 2, 1],
+      [2, STAFF_ID, 220000, 2, 0.5],
+      [3, TIE_CLOSER, 220000, 1, 0.5],
+      [4, BY_EMAIL, 70000, 1, 1],
+      [5, EDGE_CLOSER, 30000, 2, 1],
+      [6, BY_NAME, 25000, 1, 1],
+      [7, PADDED, 10001, 1, 1],
+    ], "the team, ranked by cash and then by deposits; no setter and no owner is on it; the edges of the month are judged");
+    assert.equal(res.body.team.find((m) => m.staff_id === BY_NAME).name, ` ${OWNER_SET_CLOSER.name.toUpperCase()}`);
+    assert.equal(res.body.pace.rank, 2, "this closer is second, ahead of the closer with the same cash and fewer deposits");
     // The words of the count, as the statement must spell them.
     const q = sqlOf(fake, /FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2/);
     assert.equal(q.length, 2, "this month and last month");
@@ -157,6 +203,22 @@ describe("GET /api/read/my-numbers", () => {
     for (const call of sqlOf(fake, /FROM call_outcomes/)) assert.equal(call.params[0], ORG_ID, "every read is bound to the signed-in company");
     const finance = await get(asRole("owner"), { staff_id: OTHER_CLOSER, org_id: OTHER_ORG_ID });
     assert.equal(finance.res.body.pace.cash_cents, 400000);
+  });
+
+  test("the month is the calendar month: its first instant and its last hour are in it, next month's first instant and last month's last hour are not, and the prior month is only one month back", async () => {
+    const { res, fake } = await get(asRole("owner"), { staff_id: EDGE_CLOSER });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.staff_id, EDGE_CLOSER);
+    assert.equal(res.body.month.deposits_closed, 2, "the deposit at the first instant and the one in the last hour");
+    assert.equal(res.body.pace.cash_cents, 30000, "10,000 + 20,000; not next month's 30,000, not last month's 40,000");
+    assert.equal(res.body.month.calls_held, 2);
+    assert.equal(new Date(res.body.period.end).getTime(), nextMonthStart.getTime(), "the window ends where next month begins");
+    assert.deepEqual(res.body.month.prior, { deposits: 1, close_rate: 1 }, "last month holds one deposit; a call from a month and a half ago is not last month's");
+    const windows = sqlOf(fake, /FROM call_outcomes\s+WHERE org_id = \$1 AND staff_id = \$2/);
+    assert.deepEqual(windows[0].params.slice(2, 4), [monthStart.toISOString(), nextMonthStart.toISOString()]);
+    assert.equal(windows[1].params[3], monthStart.toISOString(), "the prior month ends where this one begins");
+    assert.ok(Date.parse(windows[1].params[2]) < monthStart.getTime() && Date.parse(windows[1].params[2]) > Date.parse(longAgo),
+      "and starts one month before, not two");
   });
 
   test("a closer cannot ask for another closer; the address changes nothing and nothing is read", async () => {

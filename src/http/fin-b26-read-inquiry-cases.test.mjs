@@ -17,11 +17,15 @@ import {
   ORG_ID, OTHER_ORG_ID, PARTNER, CLIENT, OTHER_CLIENT, FOREIGN_CLIENT, ALL_STAFF_ROLES,
 } from "../testing/fin-b26-kit.mjs";
 import {
-  cleanSql, selectList, projectRow, orderRows, orderOf, whereOf, keep,
+  cleanSql, selectList, projectRow, orderRows, orderOf, whereOf, keep, joinOf, joinRows, evalSql,
 } from "../testing/fin-b26-sql.mjs";
 
 const NO_ID_CLIENT = "c3000000-0000-4000-8000-000000000003";   // address paper and a signature, no photo ID
-const DECOY_CLIENT = "c4000000-0000-4000-8000-000000000004";   // papers of the wrong kind, consents of the wrong kind
+const DECOY_CLIENT = "c4000000-0000-4000-8000-000000000004";   // papers of the wrong kind, consents that do not count
+const PAPER_CLIENT = "c6000000-0000-4000-8000-000000000006";   // the signature is a paper of the authorization kind
+const LABEL_CLIENT = "c7000000-0000-4000-8000-000000000007";   // the signature is an upload labelled soft_pull_consent
+const K_PAPER = "ee00000b-0000-4000-8000-00000000000b";
+const K_LABEL = "ee00000c-0000-4000-8000-00000000000c";
 const K = (n) => `ee00000${n}-0000-4000-8000-00000000000${n}`;
 const DESK = ["owner", "admin", "inquiry_specialist", "funding_advisor"];
 const NOW = "2026-10-14T00:00:00.000Z";
@@ -50,17 +54,24 @@ function world(over = {}) {
       // A client with two open cases: the newest request is the answer.
       kase(K(8), DECOY_CLIENT, "Blocked", "2026-10-06T00:00:00.000Z"),
       kase("ee00000a-0000-4000-8000-00000000000a", DECOY_CLIENT, "Queued", "2026-10-02T00:00:00.000Z"),
+      // A count that arrives as text (a bigint does) is a number on the way out; no count is zero, not "unknown".
+      kase(K_PAPER, PAPER_CLIENT, "Queued", "2026-10-07T00:00:00.000Z", { open_inquiry_count: "3" }),
+      kase(K_LABEL, LABEL_CLIENT, "Queued", "2026-10-08T00:00:00.000Z", { open_inquiry_count: null }),
     ],
     clients: [
       { id: CLIENT, org_id: ORG_ID, first_name: "Dana", last_name: "Whitfield", email: "dana@example.test" },
       { id: OTHER_CLIENT, org_id: ORG_ID, first_name: "Eli", last_name: "Park", email: "eli@example.test" },
       { id: NO_ID_CLIENT, org_id: ORG_ID, first_name: "Noa", last_name: "Idless", email: "noa@example.test" },
       { id: DECOY_CLIENT, org_id: ORG_ID, first_name: "Dex", last_name: "Decoy", email: "dex@example.test" },
+      { id: PAPER_CLIENT, org_id: ORG_ID, first_name: "Pia", last_name: "Paper", email: "pia@example.test" },
+      { id: LABEL_CLIENT, org_id: ORG_ID, first_name: "Lou", last_name: "Label", email: "lou@example.test" },
       { id: FOREIGN_CLIENT, org_id: OTHER_ORG_ID, first_name: "Far", last_name: "Away", email: "far@example.test" },
     ],
     documents: [
-      doc(CLIENT, "id_document"), doc(CLIENT, "proof_of_address"),
-      doc(OTHER_CLIENT, "id_document"),
+      // CLIENT's address paper is a bank statement: that stands in for proof of address.
+      doc(CLIENT, "id_document"), doc(CLIENT, "bank_statement"),
+      // OTHER_CLIENT sent the ID through the inquiry door (kind inquiry_doc): that is still the ID.
+      doc(OTHER_CLIENT, "id_document", { kind: "inquiry_doc" }),
       // Another company's papers for the same client id, and an expired one: neither counts.
       doc(OTHER_CLIENT, "proof_of_address", { org_id: OTHER_ORG_ID }),
       doc(OTHER_CLIENT, "proof_of_address", { expires_at: "2020-01-01T00:00:00.000Z" }),
@@ -69,14 +80,26 @@ function world(over = {}) {
       // A paper of the wrong KIND that carries the right subtype label does not count as the ID.
       doc(DECOY_CLIENT, "id_document", { kind: "deliverable" }),
       doc(DECOY_CLIENT, "proof_of_address"),
+      // The signature as a PAPER: a document of the authorization kind counts whatever its subtype says.
+      doc(PAPER_CLIENT, "id_document"), doc(PAPER_CLIENT, "proof_of_address"),
+      doc(PAPER_CLIENT, "dispute_authorization", { kind: "authorization" }),
+      // The signature as an upload labelled soft_pull_consent counts too.
+      doc(LABEL_CLIENT, "id_document"), doc(LABEL_CLIENT, "proof_of_address"), doc(LABEL_CLIENT, "soft_pull_consent"),
     ],
     client_consents: [
-      consent(CLIENT, "dispute_authorization"),
+      // Given at exactly this instant: a consent is live from the instant it is given.
+      consent(CLIENT, "dispute_authorization", { granted_at: NOW }),
       consent(OTHER_CLIENT, "dispute_authorization", { revoked_at: "2026-10-01T00:00:00.000Z" }),
-      consent(NO_ID_CLIENT, "dispute_authorization"),
+      // A signature that runs out next year is still live today.
+      consent(NO_ID_CLIENT, "dispute_authorization", { expires_at: "2027-06-01T00:00:00.000Z" }),
       // Live consents of OTHER kinds are not the authorization this desk needs.
       consent(DECOY_CLIENT, "call_recording"),
       consent(DECOY_CLIENT, "marketing_use"),
+      // The right kind, but it ran out last month, and one that is not yet in force: neither counts.
+      consent(DECOY_CLIENT, "dispute_authorization", { expires_at: "2026-09-15T00:00:00.000Z" }),
+      consent(DECOY_CLIENT, "soft_pull_consent", { granted_at: "2026-12-01T00:00:00.000Z" }),
+      // Runs out at exactly this instant: a consent expires AT its expiry, not after it.
+      consent(DECOY_CLIENT, "dispute_authorization", { expires_at: NOW }),
     ],
     ...over,
   };
@@ -90,12 +113,16 @@ function rulesFor(t, { documentsFail = false } = {}) {
   return [
     [/FROM inquiry_removal_cases c\s+LEFT JOIN clients cl/i, (sql, p) => {
       const items = selectList(sql, 0);
-      const kept = keep(t.inquiry_removal_cases, whereOf(sql), p, { alias: "c", now: NOW });
-      const ordered = orderRows(kept, orderOf(sql), (c) => ({ params: p, rows: { c } }));
+      // The join first, as SQL does: the statement's own ON text decides which client meets which case
+      // (so `ON TRUE` multiplies the rows and a wrong column finds nobody), then WHERE, ORDER BY, LIMIT.
+      const lefts = t.inquiry_removal_cases.map((c) => ({ params: p, now: NOW, rows: { c } }));
+      const joined = joinRows(lefts, t.clients, joinOf(sql, 0), { params: p, now: NOW });
+      const where = whereOf(sql);
+      const kept = where ? joined.filter((env) => evalSql(where, env) === true) : joined;
+      const ordered = orderRows(kept, orderOf(sql), (env) => env);
       const lim = /LIMIT \$(\d+) OFFSET \$(\d+)/i.exec(cleanSql(sql));
       const limit = p[Number(lim[1]) - 1]; const offset = p[Number(lim[2]) - 1];
-      const win = ordered.map((c) => ({ params: p, rows: { c, cl: t.clients.find((x) => x.id === c.client_id) || null } }));
-      return win.slice(offset, offset + limit).map((ctx) => projectRow(items, { ...ctx, window: win, group: win }));
+      return ordered.slice(offset, offset + limit).map((env) => projectRow(items, { ...env, window: ordered, group: ordered }));
     }],
     [/^\s*SELECT \*\s+FROM inquiry_removal_cases\s+WHERE org_id = \$1::uuid\s+AND client_id = \$2::uuid/i, (sql, p) => {
       const kept = keep(t.inquiry_removal_cases, whereOf(sql), p, { alias: "inquiry_removal_cases", now: NOW });
@@ -117,14 +144,15 @@ function rulesFor(t, { documentsFail = false } = {}) {
 const get = (who, query = {}, { t = world(), ...opts } = {}) =>
   run(handler, req("GET", { query }), [...who, ...rulesFor(t, opts)]);
 const desk = () => asRole("inquiry_specialist");
-const ACTIVE_ORDER = [K(2), "ee00000a-0000-4000-8000-00000000000a", K(1), K(7), K(8), K(3)];
+const ACTIVE_ORDER = [K(2), "ee00000a-0000-4000-8000-00000000000a", K(1), K(7), K(8), K_PAPER, K_LABEL, K(3)];
 
 describe("GET /api/read/inquiry-cases", () => {
   test("the queue is this company's active cases, oldest request first, with the whole queue's size beside it", async () => {
     const { res, fake } = await get(desk());
     assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
     assert.deepEqual(res.body.cases.map((c) => c.id), ACTIVE_ORDER, "oldest first; a case with no request date goes last");
-    assert.equal(res.body.total, 6, "the whole queue, counted by the statement's own window count");
+    assert.equal(res.body.total, 8, "the whole queue, counted by the statement's own window count");
     assert.ok(res.body.cases.every((c) => !["Completed", "Canceled"].includes(c.case_status)), "closed cases are not in the queue");
     assert.ok(res.body.cases.every((c) => c.org_id === ORG_ID), "another company's case is not shown");
     const byId = Object.fromEntries(res.body.cases.map((c) => [c.id, c]));
@@ -133,6 +161,8 @@ describe("GET /api/read/inquiry-cases", () => {
       ["Dana Whitfield", "Dana", "Whitfield", "dana@example.test"], "who the case is for, from the statement's own client columns");
     assert.deepEqual([byId[K(2)].client_name, byId[K(2)].client_email], ["Eli Park", "eli@example.test"]);
     assert.equal(dana.open_inquiry_count, 2);
+    assert.strictEqual(byId[K_PAPER].open_inquiry_count, 3, "a count that came as text is a number");
+    assert.strictEqual(byId[K_LABEL].open_inquiry_count, 0, "no count reads as zero");
     assert.equal(dana.case_status, "Queued");
     assert.equal(dana.assigned_remover, null);
     assert.equal(byId[K(2)].assigned_remover, "pat");
@@ -174,13 +204,22 @@ describe("GET /api/read/inquiry-cases", () => {
     assert.equal(byId[K(8)].docs_complete, false);
     assert.deepEqual(byId[K(8)].docs_missing, ["id_document", "authorization"],
       "a wrong-kind paper is not the ID, and a call-recording or marketing consent is not the authorization");
+    // The same client also holds an authorization that ran out and one that is not yet in force: neither is a live signature.
+    // CLIENT's address paper is a bank statement and OTHER_CLIENT's ID came through the inquiry door: both count.
+    assert.equal(byId[K(1)].docs_complete, true, "a bank statement stands in for proof of address");
+    assert.deepEqual(byId[K(2)].docs_missing, ["proof_of_address", "authorization"], "an ID sent through the inquiry door is still the ID");
+    // A signature that runs out next year is live today.
+    assert.equal(byId[K(7)].docs_missing.includes("authorization"), false, "a signature that expires later still counts");
+    // The signature as a paper of the authorization kind, and as an upload labelled soft_pull_consent, each count on their own.
+    assert.deepEqual([byId[K_PAPER].docs_complete, byId[K_PAPER].docs_missing], [true, []], "an authorization-kind paper is the signature");
+    assert.deepEqual([byId[K_LABEL].docs_complete, byId[K_LABEL].docs_missing], [true, []], "an upload labelled soft_pull_consent is the signature");
   });
 
   test("the packet read names this company and the page's clients only, hides expired papers and revoked consents, and asks for the two authorization kinds only", async () => {
     const { fake } = await get(desk());
     const docs = sqlOf(fake, /FROM documents/)[0];
     assert.equal(docs.params[0], ORG_ID);
-    assert.deepEqual([...docs.params[1]].sort(), [CLIENT, OTHER_CLIENT, NO_ID_CLIENT, DECOY_CLIENT].sort());
+    assert.deepEqual([...docs.params[1]].sort(), [CLIENT, OTHER_CLIENT, NO_ID_CLIENT, DECOY_CLIENT, PAPER_CLIENT, LABEL_CLIENT].sort());
     pinned(docs.sql, "this company and these clients", "WHERE org_id = $1::uuid AND client_id = ANY($2::uuid[])");
     pinned(docs.sql, "live papers only", "AND (expires_at IS NULL OR expires_at > now())");
     const consents = sqlOf(fake, /FROM client_consents/)[0];
@@ -190,6 +229,34 @@ describe("GET /api/read/inquiry-cases", () => {
     assert.deepEqual([...AUTHORIZATION_CONSENT_KINDS], ["dispute_authorization", "soft_pull_consent"]);
   });
 
+  test("an empty queue is zero cases and zero in total, and no packet is looked for", async () => {
+    const { res, fake } = await get(desk(), { case_status: "Completed", assigned_remover: "nobody" });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.cases, []);
+    assert.strictEqual(res.body.total, 0, "no rows is an honest zero");
+    assert.equal(res.body.ok, true);
+    assert.equal(sqlOf(fake, /FROM documents/).length, 0, "no cases, so no document read is made");
+    assert.equal(sqlOf(fake, /FROM client_consents/).length, 0, "and no consent read either");
+  });
+
+  test("when the signatures cannot be read the case says nothing about its papers either, never 'incomplete'", async () => {
+    const rules = [...desk(), ...rulesFor(world()).filter(([re]) => !/client_consents/.test(String(re))),
+      [/SELECT DISTINCT client_id\s+FROM client_consents/i, new Error("consents unreadable")]];
+    const { res } = await run(handler, req("GET", { query: {} }), rules);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.cases.length, 8);
+    for (const c of res.body.cases) {
+      assert.equal("docs_complete" in c, false, "a papers answer built on an unread signature is not an answer");
+      assert.equal("docs_missing" in c, false);
+    }
+  });
+
+  test("an unexpected failure is not swallowed into an answer: it is raised", async () => {
+    await assert.rejects(
+      run(handler, req("GET"), [...desk(), [/FROM inquiry_removal_cases c\s+LEFT JOIN clients cl/i, new Error("boom")], ...rulesFor(world())]),
+      /boom/);
+  });
+
   test("when the papers cannot be read the case says nothing about them, never 'incomplete'", async () => {
     const { res } = await get(desk(), {}, { documentsFail: true });
     assert.equal(res.statusCode, 200);
@@ -197,7 +264,7 @@ describe("GET /api/read/inquiry-cases", () => {
       assert.equal("docs_complete" in c, false, "not checked is not false");
       assert.equal("docs_missing" in c, false);
     }
-    assert.equal(res.body.total, 6);
+    assert.equal(res.body.total, 8);
   });
 
   test("filters: an exact status, a remover, closed cases on request; an unknown status falls back to the active queue; limits are bounded", async () => {
@@ -208,13 +275,13 @@ describe("GET /api/read/inquiry-cases", () => {
     assert.deepEqual(mine.res.body.cases.map((c) => c.id), [K(2)]);
     const all = await get(desk(), { active_only: "false" });
     assert.deepEqual(all.res.body.cases.map((c) => c.id).sort(),
-      [K(1), K(2), K(3), K(4), K(5), K(7), K(8), K(9), "ee00000a-0000-4000-8000-00000000000a"].sort());
-    assert.equal(all.res.body.total, 9);
+      [K(1), K(2), K(3), K(4), K(5), K(7), K(8), K(9), "ee00000a-0000-4000-8000-00000000000a", K_PAPER, K_LABEL].sort());
+    assert.equal(all.res.body.total, 11);
     const typo = await get(desk(), { case_status: "Wrapped Up" });
     assert.deepEqual(typo.res.body.cases.map((c) => c.id), ACTIVE_ORDER);
     const page = await get(desk(), { limit: "1", offset: "1" });
     assert.deepEqual(page.res.body.cases.map((c) => c.id), ["ee00000a-0000-4000-8000-00000000000a"]);
-    assert.equal(page.res.body.total, 6, "the page is a slice; the total is the whole queue");
+    assert.equal(page.res.body.total, 8, "the page is a slice; the total is the whole queue");
     const params = sqlOf(page.fake, /FROM inquiry_removal_cases c\s+LEFT JOIN/)[0].params;
     assert.deepEqual(params.slice(-2), [1, 1]);
     // The limit has a ceiling and a floor; the offset has a floor; nothing sent means a hundred from the top.
@@ -224,6 +291,20 @@ describe("GET /api/read/inquiry-cases", () => {
     assert.deepEqual(sqlOf(negative.fake, /FROM inquiry_removal_cases c\s+LEFT JOIN/)[0].params.slice(-2), [1, 0]);
     const none = await get(desk(), { limit: "0" });
     assert.deepEqual(sqlOf(none.fake, /FROM inquiry_removal_cases c\s+LEFT JOIN/)[0].params.slice(-2), [100, 0], "zero is 'not sent'");
+    // The queue library's own defaults, for any other caller that reaches it: active cases only unless told otherwise,
+    // and a client filter that narrows to that client.
+    const dflt = strictFakeDb(rulesFor(world()));
+    await listCases(dflt, { orgId: ORG_ID });
+    assert.deepEqual(sqlOf(dflt, /FROM inquiry_removal_cases c/)[0].params[1], ["Queued", "Scheduled", "In Progress", "Escalated", "Blocked"],
+      "active only by default");
+    const everything = strictFakeDb(rulesFor(world()));
+    await listCases(everything, { orgId: ORG_ID, activeOnly: false });
+    assert.equal(sqlOf(everything, /FROM inquiry_removal_cases c/)[0].params.some((v) => Array.isArray(v)), false, "activeOnly false asks for every status");
+    const forClient = strictFakeDb(rulesFor(world()));
+    const mine = await listCases(forClient, { orgId: ORG_ID, clientId: OTHER_CLIENT });
+    assert.deepEqual(mine.cases.map((c) => c.id).sort(), [K(2), K(3)].sort(), "only that client's open cases");
+    assert.ok(sqlOf(forClient, /FROM inquiry_removal_cases c/)[0].params.includes(OTHER_CLIENT));
+    pinned(sqlOf(forClient, /FROM inquiry_removal_cases c/)[0].sql, "the client filter", "c.client_id = $3::uuid");
     // The queue library has the same bounds of its own, for any other caller that reaches it.
     for (const [args, want] of [[{}, [100, 0]], [{ limit: 0 }, [100, 0]], [{ limit: 90000 }, [500, 0]], [{ limit: -3, offset: -9 }, [1, 0]], [{ limit: 7, offset: 4 }, [7, 4]]]) {
       const lib = strictFakeDb(rulesFor(world()));
@@ -235,6 +316,7 @@ describe("GET /api/read/inquiry-cases", () => {
   test("one client's open case is the newest OPEN request, inside this company; a malformed client id is a 400", async () => {
     const { res, fake } = await get(desk(), { client_id: CLIENT });
     assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
     assert.equal(res.body.case.id, K(1));
     const q = sqlOf(fake, /FROM inquiry_removal_cases\s+WHERE org_id/)[0];
     assert.deepEqual([q.params[0], q.params[1]], [ORG_ID, CLIENT]);
@@ -255,6 +337,7 @@ describe("GET /api/read/inquiry-cases", () => {
     assert.equal(closedOnly.res.body.case, null);
     const bad = await get(desk(), { client_id: "nope" });
     assert.equal(bad.res.statusCode, 400);
+    assert.deepEqual([bad.res.body.ok, bad.res.body.error], [false, "client_id must be a uuid"]);
     assert.equal(sqlOf(bad.fake, /FROM inquiry_removal_cases/).length, 0);
   });
 
@@ -263,6 +346,7 @@ describe("GET /api/read/inquiry-cases", () => {
       const { res, fake } = await get(asRole(role));
       const allowed = DESK.includes(role);
       assert.equal(res.statusCode, allowed ? 200 : 403, role);
+      assert.equal(res.body.ok, allowed, role);
       if (!allowed) assert.equal(sqlOf(fake, /FROM inquiry_removal_cases/).length, 0, role);
     }
     for (const role of ["partner", "affiliate", "viewer"]) {
@@ -276,11 +360,13 @@ describe("GET /api/read/inquiry-cases", () => {
     }
     const noOrg = await get(asRole("owner", { org_id: null }));
     assert.equal(noOrg.res.statusCode, 403);
+    assert.deepEqual([noOrg.res.body.ok, noOrg.res.body.error], [false, "forbidden"]);
     assert.equal(sqlOf(noOrg.fake, /FROM inquiry_removal_cases/).length, 0);
     const nobody = await run(handler, req("GET"), rulesFor(world()));
     assert.equal(nobody.res.statusCode, 401);
     const post = await run(handler, req("POST", { body: {} }), [...asRole("owner"), ...rulesFor(world())]);
     assert.equal(post.res.statusCode, 405);
+    assert.deepEqual([post.res.body.ok, post.res.body.error], [false, "method_not_allowed"]);
     assert.equal(post.res.headers.allow, "GET");
   });
 
