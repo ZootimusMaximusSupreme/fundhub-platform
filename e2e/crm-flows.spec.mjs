@@ -244,15 +244,17 @@ test.describe("persist edge cases", () => {
      "Open Credit Snapshot", a link to the closer deck for this client, and the
      bank control opens the client's bank inbox right here instead of leaving
      the screen. Re-pointed 2026-10-05. */
-  /* The link is built for this client. It is not clicked here: shell.js hides
-     every present.html link for every role today (the note above
-     #ccp-link-present in the screen, reported 2026-09-06; which roles may open
-     the closer deck is an owner call), so a click would wait on a hidden row. */
+  /* The link is built for this client. Since 2026-10-20 (Set A items 21/22)
+     shell.js lets the owner, admin, closer and sales manager open the closer
+     deck (CLOSER_DECK, matching CLOSER_DECK_ROLES on the deck API), so the
+     owner sees the link and it opens the deck for this client. */
   test("CCP credit snapshot points at the deck for this client", async ({ page }) => {
     await openScreen(page, `/app/client-control-panel.html?id=${CLIENT_ID}`, OWNER);
     await page.locator("details.more > summary").click();
     await expect(page.locator("#ccp-link-present2"))
       .toHaveAttribute("href", new RegExp(`present\\.html\\?contact=${CLIENT_ID}`), { timeout: 10_000 });
+    await expect(page.locator("#ccp-link-present2")).toBeVisible();
+    await expect(page.locator("#ccp-link-present")).toBeVisible();
   });
 
   test("CCP bank button opens this client's bank inbox in place", async ({ page }) => {

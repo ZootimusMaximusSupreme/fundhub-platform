@@ -100,7 +100,8 @@ test("PASS-capable contracts use exact read-only links, never generic completene
 });
 
 test("query contracts pass only with a real exact sample and no broken links", () => {
-  const entry = DISPLAY_RESULT_CASES.find((item) => item.contract.mode === "query");
+  // A strict contract (no emptyAs): no saved result at all is red.
+  const entry = DISPLAY_RESULT_CASES.find((item) => item.contract.mode === "query" && !item.contract.emptyAs);
   assert.ok(entry);
 
   const clean = judgeDisplayResult(entry, { sample_count: 2, bad_count: 0 });
@@ -263,4 +264,91 @@ test("emptyAs quiet: a control with no saved results yet is green, and red on th
   // Without emptyAs the old rule stands: no result at all is red.
   const strict = { ...entry, contract: { ...entry.contract, emptyAs: undefined } };
   assert.equal(judgeDisplayResult(strict, { sample_count: 0, bad_count: 0 }).status, "FAIL");
+});
+
+/* Set A 2026-10-20, items 14-20. Owner fact: "There are zero funding rounds." The round and lender-row
+   contracts judge real rows only; with no real funding work they are "nothing to judge" with a reason
+   the morning audit re-checks, and the first wrong real result is red. */
+const FUNDING_CONTROLS = [
+  "Mark round submitted button",
+  "Mark funded… button, amount box, Save funded, Cancel",
+  "Close round button",
+  "Lender row: Approved $ amount input",
+  "Lender row: Approved button",
+  "Lender row: Declined button",
+  "Lender row: Doesn't count / Count again button (exclude or reinstate an approval, asks for a reason)",
+];
+
+test("funding round contracts judge real rows only and say nothing-to-judge only with no real funding work", () => {
+  for (const control of FUNDING_CONTROLS) {
+    const entry = DISPLAY_RESULT_CASES.find((item) => item.control === control);
+    assert.ok(entry, control);
+    assert.equal(entry.contract.emptyAs, "no-real-funding", control);
+    assert.match(entry.contract.sql, /is_demo, false\) = true/, `${control} leaves test rows out`);
+    const scoped = { ...entry, orgId: ORG };
+    const na = judgeDisplayResult(scoped, { sample_count: 0, bad_count: 0 }, { total: 0 });
+    assert.equal(na.status, "na", control);
+    assert.deepEqual(na.na, { code: "no-real-funding-round", args: { orgId: ORG } });
+    // Real funding work with no receipt for this control is still red.
+    assert.equal(judgeDisplayResult(scoped, { sample_count: 0, bad_count: 0 }, { total: 3 }).status, "FAIL", control);
+    // The count could not be read: unchecked, never green.
+    assert.equal(judgeDisplayResult(scoped, { sample_count: 0, bad_count: 0 }, null).status, "skip", control);
+    assert.equal(judgeDisplayResult(scoped, { sample_count: 2, bad_count: 1 }, { total: 2 }).status, "FAIL", control);
+    assert.equal(judgeDisplayResult(scoped, { sample_count: 2, bad_count: 0 }, { total: 2 }).status, "PASS", control);
+  }
+});
+
+test("Close round: a round close may never claim the whole engagement is complete", () => {
+  const entry = DISPLAY_RESULT_CASES.find((item) => item.control === "Close round button");
+  assert.match(entry.contract.sql, /lower\(COALESCE\(e\.payload->>'engagementComplete', ''\)\) = 'true'/);
+  assert.doesNotMatch(entry.contract.sql, /engagementComplete' IS DISTINCT FROM 'true'/);
+  assert.match(entry.contract.requirement, /funding sequence closes/);
+});
+
+test("Mark funded: the receipt must name the same round by client and round number, and the same amount", () => {
+  const entry = DISPLAY_RESULT_CASES.find((item) => item.control === "Mark funded… button, amount box, Save funded, Cancel");
+  assert.match(entry.contract.sql, /e\.client_id IS DISTINCT FROM fr\.client_id/);
+  assert.match(entry.contract.sql, /IS DISTINCT FROM fr\.round_number/);
+  assert.match(entry.contract.sql, /fr\.funded_amount IS DISTINCT FROM/);
+});
+
+test("bank decisions and Doesn't count must name the staff member by id in the same company", () => {
+  for (const control of FUNDING_CONTROLS.slice(4)) {
+    const entry = DISPLAY_RESULT_CASES.find((item) => item.control === control);
+    assert.match(entry.contract.sql, /LEFT JOIN staff s ON s\.org_id = d\.org_id AND s\.id = d\.staff_id/, control);
+    assert.match(entry.contract.sql, /OR s\.id IS NULL/, control);
+  }
+  const exclusion = DISPLAY_RESULT_CASES.find((item) => item.control === FUNDING_CONTROLS[6]);
+  assert.match(exclusion.contract.sql, /d\.notes/);
+});
+
+test("the lane reads the real-funding count once, only when a funding contract has nothing saved", async () => {
+  const fundingKeys = new Set(DISPLAY_RESULT_CASES
+    .filter((entry) => entry.contract.emptyAs === "no-real-funding")
+    .map((entry) => marker(entry.contract.sql)));
+  const empty = Object.fromEntries([...fundingKeys].map((key) => [key, { sample_count: 0, bad_count: 0 }]));
+  const counted = [];
+  const db = {
+    calls: [],
+    async query(sql, params) {
+      const keys = [...sql.matchAll(/\/\* display-result:([^*\s]+) \*\//g)].map((match) => match[1]);
+      this.calls.push({ keys, sql, params });
+      if (/AS rounds/.test(sql) && /AS receipts/.test(sql)) {
+        counted.push(params);
+        return { rows: [{ rounds: 0, receipts: 0, decisions: 0 }] };
+      }
+      return { rows: keys.map((key, probe_index) => ({ probe_index, sample_count: 1, bad_count: 0, ...(empty[key] || {}) })) };
+    },
+  };
+  const rows = await gapChecks({ db, orgId: ORG, fetchImpl: liveRedirect() });
+  assert.equal(counted.length, 1);
+  assert.deepEqual(counted[0], [ORG]);
+  for (const control of FUNDING_CONTROLS) {
+    const row = rows.find((item) => item.id.endsWith(`:${control}`));
+    assert.equal(row.status, "na", control);
+    assert.equal(row.na.code, "no-real-funding-round");
+  }
+  // Not one other saved-result contract changed colour because of it.
+  const queryIds = new Set(DISPLAY_RESULT_CASES.filter((entry) => entry.contract.mode === "query").map((entry) => entry.id));
+  assert.deepEqual(rows.filter((row) => queryIds.has(row.id) && row.status === "FAIL").map((row) => row.id), []);
 });

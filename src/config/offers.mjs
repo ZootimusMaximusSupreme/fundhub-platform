@@ -528,10 +528,13 @@ export function defaultContractValues({ offerKey = null, tier = null, templateKe
     return { one_time_fee: price || "$1,000" };
   }
   if (key === "FUNDING-AGREEMENT") {
+    /* "of approved funding", never "of funded amount": the fee base is the
+       approved figure, not what is drawn (owner-set 2026-10-20: $100,000
+       approved, $10,000 drawn -> the fee is on $100,000). */
     const pct = (o && o.successFeePercent) || 10;
     return {
       deposit: price || "$3,000",
-      success_fee: `${pct}% of funded amount`,
+      success_fee: `${pct}% of approved funding`,
       fee_due: "within 7 days of funding"
     };
   }
@@ -542,7 +545,7 @@ export function defaultContractValues({ offerKey = null, tier = null, templateKe
     return {
       deposit: formatCents(fund && fund.priceCents) || "$3,000",
       repair_fee: formatCents(repair && repair.priceCents) || "$1,000",
-      success_fee: `${pct}% of funded amount`,
+      success_fee: `${pct}% of approved funding`,
       fee_due: "within 7 days of funding",
       term_days: "180",
       repair_scope: "Parallel credit repair on limiting bureaus while funding rounds run.",

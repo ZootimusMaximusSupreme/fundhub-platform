@@ -25,7 +25,21 @@ export const TABLE_RULES = Object.freeze({
   cashflow_settings: { all: ["org_id", "min_buffer_cents", "confidence_floor", "settlement_lead_days"] },
   client_authorized_reps: { all: ["org_id", "account_id", "client_id"] },
   client_cards: { all: ["org_id", "client_id", "provider", "provider_token", "last4"] },
-  client_custom_fields: { all: ["org_id", "client_id", "ai_call_enabled"] },
+  // The only writer is the survey carbon copy (src/handlers/client-custom-fields.mjs).
+  // It saves the cf_svy_* typed answers a lead gave on the survey, and nothing else.
+  // The business result of a row is therefore "at least one survey answer". The old
+  // rule demanded ai_call_enabled, a call-agent checkbox no code writes, so every
+  // lead row looked broken. The list is the writer's own list; a test pins them equal.
+  client_custom_fields: {
+    all: ["org_id", "client_id"],
+    any: [
+      "cf_svy_tried_restoration_before", "cf_svy_your_why", "cf_svy_planned_use",
+      "cf_svy_annual_income_range", "cf_svy_money_change_now", "cf_svy_income_verifiable",
+      "cf_svy_what_matters_most", "cf_svy_self_reported_fico", "cf_svy_funding_target_amount",
+      "cf_svy_clarity_first", "cf_svy_has_business", "cf_svy_business_revenue",
+      "cf_svy_revenue_verifiable", "cf_svy_available_capital", "cf_svy_has_negatives",
+    ],
+  },
   client_escalations: { all: ["org_id", "client_id", "said_at", "matched_pattern"] },
   client_push_subscriptions: { all: ["org_id", "client_id", "endpoint_hash", "encrypted_endpoint"] },
   commission_rule_tiers: { all: ["org_id", "rule_id"], any: ["percent", "flat_amount", "per_unit_amount"] },
@@ -65,7 +79,11 @@ export const TABLE_RULES = Object.freeze({
   recurring_bill_transactions: { all: ["recurring_bill_id", "bank_transaction_id"] },
   recurring_bills: { all: ["org_id", "client_id", "merchant_key", "cadence", "typical_amount_cents", "confidence_pct"] },
   regulator_complaints: { all: ["org_id", "client_id", "kind", "state"] },
-  repair_decision_log: { all: ["org_id", "client_id", "case_id", "decision", "payload"] },
+  // case_id is NOT required: a decision about the whole client (repair.stalled,
+  // repair.response.retake) has no single case, and src/repair/handlers.mjs saves it
+  // that way on purpose. Every decision must still name its client, or the client's
+  // timeline can never show it.
+  repair_decision_log: { all: ["org_id", "client_id", "decision", "payload"] },
   sale_payments: { all: ["org_id", "sale_id", "kind", "amount", "paid_at"] },
   snapshots: { all: ["org_id", "client_id", "source", "data"], any: ["score", "bureau"] },
   social_posts: { all: ["org_id", "partner_id", "caption", "status"], any: ["scheduled_for", "posted_at", "blocked_reasons", "last_error"] },
