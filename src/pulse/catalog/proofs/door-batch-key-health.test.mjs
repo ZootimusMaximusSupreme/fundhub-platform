@@ -272,6 +272,7 @@ const PROOF = {
   LENDFLOW_API_BASE: { "src/adapters/lendflow.mjs": /env\.LENDFLOW_API_BASE \|\| DEFAULT_API_BASE/ },
   LENDFLOW_API_KEY: {
     "src/adapters/lendflow.mjs": /if \(!apiKey\) missing\.push\("LENDFLOW_API_KEY"\);/,
+    "src/pulse/beats/lib/keys-truth.mjs": /env: Object\.freeze\(\["LENDFLOW_WEBHOOK_SECRET", "LENDFLOW_API_KEY"\]\)/,
     "src/pulse/parked-features.mjs": /env: Object\.freeze\(\["LENDFLOW_WEBHOOK_SECRET", "LENDFLOW_API_KEY"\]\)/,
   },
   MAILGUN_INBOUND_DOMAIN: { "src/mail/monitor-address.mjs": /env\.MAILGUN_SEND_DOMAIN \|\| env\.MAILGUN_INBOUND_DOMAIN/ },

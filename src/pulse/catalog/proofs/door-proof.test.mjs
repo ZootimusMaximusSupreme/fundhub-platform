@@ -175,7 +175,7 @@ test("door proof totals are deliberate", () => {
     "routes-1.json": 159,
     "routes-2.json": 96,
     "routes-3.json": 52,
-    "jobs.json": 83,
+    "jobs.json": 86,
     "webhooks.json": 29,
     "keys.json": 428,
   });
