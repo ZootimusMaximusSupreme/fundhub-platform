@@ -23,6 +23,7 @@
 //    the step the screen shows. It is a different symptom, not a copy.
 
 import { STAGE_SLA, isBreached } from "../../repair/sla.mjs";
+import { OWNER_HOLD_CODE, heldCodesOf, ownerHoldRow, splitHeld, stillOwnerHold } from "../owner-hold.mjs";
 
 const FENCE =
   "Recon (AG-07) is the only tripwire. Do not add a second watchdog. " +
@@ -74,6 +75,7 @@ SELECT dc.id::text AS id
 export const CLOCK_CARDS_SQL = `
 SELECT c.id::text AS id,
        c.client_id::text AS client_id,
+       cl.client_code AS client_code,
        ps.key AS stage_key,
        c.entered_at,
        c.updated_at,
@@ -102,7 +104,7 @@ SELECT c.id::text AS id,
 
 // Any letter row counts as written. This check does not read letter words.
 export const OPEN_CASE_NO_LETTER_SQL = `
-SELECT dc.id::text AS id, dc.round AS round
+SELECT dc.id::text AS id, dc.round AS round, cl.client_code AS client_code
   FROM dispute_cases dc
   JOIN clients cl ON cl.id = dc.client_id AND cl.org_id = dc.org_id
  WHERE dc.org_id = $1::uuid
@@ -126,7 +128,7 @@ SELECT dc.id::text AS id, dc.round AS round
 `;
 
 export const CARD_NO_LETTER_SQL = `
-SELECT c.id::text AS id, ps.key AS stage_key
+SELECT c.id::text AS id, ps.key AS stage_key, cl.client_code AS client_code
   FROM cards c
   JOIN pipeline_stages ps ON ps.id = c.stage_id
   JOIN pipelines p
@@ -247,10 +249,18 @@ async function letterCheck(db, orgId, now) {
   try {
     const grace = new Date(now.getTime() - LETTER_GRACE_MS);
     const inAnalysis = await readRows(db, CLOCK_CARDS_SQL, [orgId, [ENGINE_STAGE]]);
-    const engine = breachedCards(inAnalysis, now);
-    const cases = await readRows(db, OPEN_CASE_NO_LETTER_SQL, [orgId, grace]);
-    const cards = await readRows(db, CARD_NO_LETTER_SQL, [orgId]);
+    // A file the owner put on hold (src/pulse/owner-hold.mjs) is not judged. When the only waiting rounds
+    // are held files, the row says so by name instead of red or green.
+    const codeOf = (row) => row.client_code;
+    const engineAll = splitHeld(breachedCards(inAnalysis, now), codeOf);
+    const casesAll = splitHeld(await readRows(db, OPEN_CASE_NO_LETTER_SQL, [orgId, grace]), codeOf);
+    const cardsAll = splitHeld(await readRows(db, CARD_NO_LETTER_SQL, [orgId]), codeOf);
+    const engine = engineAll.open;
+    const cases = casesAll.open;
+    const cards = cardsAll.open;
     if (engine.length === 0 && cases.length === 0 && cards.length === 0) {
+      const held = [...engineAll.held, ...casesAll.held, ...cardsAll.held];
+      if (held.length > 0) return ownerHoldRow("repair-letter-round", orgId, heldCodesOf(held, codeOf));
       return check("repair-letter-round", "PASS", "no letter round is waiting to be written", null);
     }
     return check("repair-letter-round", "FAIL", letterDetail(cases, cards, engine), LETTER_FIX);
@@ -258,6 +268,18 @@ async function letterCheck(db, orgId, now) {
     return check("repair-letter-round", "FAIL", `could not read repair rows: ${clip(err)}`, LETTER_FIX);
   }
 }
+
+/** The audit asks the lane to prove a "nothing to judge" row again: the same three reads, the same clock. */
+export const naVerify = Object.freeze({
+  [OWNER_HOLD_CODE]: async (args, ctx = {}) => {
+    if (!args || args.check !== "repair-letter-round") return false;
+    const db = ctx.db || null;
+    const orgId = args.orgId || ctx.orgId || null;
+    if (!db || typeof db.query !== "function" || !orgId) return false;
+    const now = ctx.now instanceof Date ? ctx.now : new Date();
+    return stillOwnerHold(await letterCheck(db, orgId, now), args);
+  }
+});
 
 /**
  * Live credit-repair breakage. Two checks. SELECT only.
