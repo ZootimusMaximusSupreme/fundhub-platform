@@ -8,7 +8,13 @@ import { CHECK_IDS, gapChecks, joshReady } from "./gap-calls.mjs";
 import { db as pgDb, close as closePg } from "../../db.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-calls.mjs"), "utf8");
+// The lane and the truth it imports back (booked-no-outcome and booked-no-join-link moved to beats/lib on
+// 2026-10-20): every guard on what this lane may do reads both files.
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-calls.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/calls-truth.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/calls-identity.mjs"), "utf8")
+].join("\n");
 const ORG = "11111111-1111-4111-8111-111111111111";
 const NOW = new Date("2026-10-08T20:00:00.000Z"); // 1 pm Arizona, outside quiet hours
 const OPEN_ENV = { MESSAGING_DRY_RUN: "0" };
