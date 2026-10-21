@@ -73,3 +73,47 @@ one cause in the same shift. Until it has a shift, `shifts.test.mjs` and the shi
 
 Leftover (not done here): the 120 ms delay proof shows `apply-links` red at "pick" because the 2 s prefetch cannot
 load the 990 saved bank links through the delayed proof connection. That was true before the split too.
+
+## Fix 4 — built 2026-10-21 (four hourly shifts)
+
+43 beats once W5, W6 and W7 landed. Asked for a third shift; measured that three are not enough for the 120 ms
+read-delay proof, so there are four, a quarter hour apart. Same runner, same guards, every beat in exactly one shift.
+
+| Shift | Minute | Beats |
+|---|---|---|
+| pulse-hourly | 7 | apply-links, bank-links, bank-outreach, funding-trip, money-funding, money-operations, money-tasks, partner-pages, partner-trip |
+| pulse-hourly-d | 22 | brief-link, customer-records, doors-live, engine-alive, invoice-checkout-retirement, invoice-notice-recovery, pipeline-boards, pipeline-facts, roadmap-delivery, roadmap-pages, soft-pull |
+| pulse-hourly-b | 37 | auth-links, call-bookings, checkout-doors, client-portal, consent-capture, db-health, lead-handoff, lead-pipe, money-alerts, money-checkout, pay-links, pay-webhook |
+| pulse-hourly-c | 52 | blueprint-delivery, built-funnels, contract-signing, email-path, inquiry-trip, message-health, native-push, repair-trip, text-path, vendor-keys, whop-billing |
+
+Why four, in numbers (sum of each beat's own time; each shift has 39 s):
+
+- Normal run estimate (live p90 for the 21 live beats, the builders' unloaded Mac times for the 22 new ones): 66.6 s in
+  all. Three shifts would be 57% each, four are 43% each.
+- 120 ms delay (this Mac): about 114 s in all. Three shifts hold 117 s (97% even if perfectly packed; a three-shift run
+  cut 4 beats: text-path, whop-billing, pipeline-boards, repair-trip). Four hold 156 s (73%).
+
+Per shift (estimate normal / measured delay / when the last beat ends with 3 workers):
+
+| Shift | Normal estimate | Delay estimate | Measured normal (3 bundle runs) | Measured 120 ms (2 runs) |
+|---|---|---|---|---|
+| pulse-hourly | 18.3 s (47%) | 27.2 s (70%) | 10.9 to 11.6 s (28 to 30%) | 22.3 to 22.9 s (57 to 59%) |
+| pulse-hourly-b | 18.3 s (47%) | 29.5 s (76%) | 9.1 to 19.9 s (23 to 51%) | 28.8 to 30.1 s (74 to 77%) |
+| pulse-hourly-c | 12.3 s (31%) | 28.0 s (72%) | 8.2 to 11.5 s (21 to 29%) | 27.5 s (70%) |
+| pulse-hourly-d | 17.6 s (45%) | 29.2 s (75%) | 10.6 to 14.8 s (27 to 38%) | 25.1 to 26.2 s (64 to 67%) |
+
+All 5 proofs OK (load 25 to 125). Heavy-load proof (`--slow-apply-links=10500 --read-delay=120`) OK, 66 to 85%.
+Room for W8 (~6 to 8 s): every shift has at least 20 s free in a normal run; put W8's beats in pulse-hourly-c first
+(most room), then pulse-hourly-d.
+
+Same-cause beats stay together: messages (text-path, email-path, vendor-keys, message-health) in C; banks plus
+funding and partner money (apply-links, bank-links, bank-outreach, money-funding, funding-trip, partner-trip,
+partner-pages) in A; lead pipe (lead-pipe, lead-handoff, call-bookings), checkout (money-checkout, checkout-doors,
+pay-links, pay-webhook) and sign-in (auth-links, client-portal) in B; roadmap (soft-pull, roadmap-delivery,
+roadmap-pages) and pipeline (pipeline-boards, pipeline-facts) in D; trips (repair-trip, inquiry-trip) in C.
+
+Known, not a shift problem: pipeline-boards makes about 25 reads. At 120 ms per round trip it uses its own time budget
+and skips its count-true and dead-stage steps (green, 9.0 s, with skips). Fewer reads in that beat would fix it.
+
+`PENDING_SHIFT_BEATS` (src/pulse/beats/shifts.mjs) is empty now; a beat whose file has not landed can wait there with
+its shift, and the test names the shift when it lands.

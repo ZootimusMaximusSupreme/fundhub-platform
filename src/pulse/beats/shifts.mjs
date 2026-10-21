@@ -56,9 +56,10 @@
 //   pulse-hourly-b   18.3 s (47%), 12   29.5 s (76%)       6.6 s / 10.3 s
 //   pulse-hourly-c   12.3 s (31%), 11   28.0 s (72%)       4.4 s / 10.2 s
 //   pulse-hourly-d   17.6 s (45%), 11   29.2 s (75%)       6.6 s / 6.2 s
-// Every shift is under 50% normal, and has about 20 s free for the next beats. pipeline-boards makes about 25 reads,
-// so 120 ms per round trip adds about 9 s on its own: it reaches its own 10 s deadline in the delayed proof in any
-// shift. That is the beat's read count, not the shift.
+// Every shift is under 50% normal, and has about 20 s free for the next beats. Measured from the built bundles on
+// this Mac (load 25 to 125): normal runs 21 to 51% of box time (3 runs); 120 ms delay 57 to 77%, no beat cut and no
+// deadline hit (2 runs). pipeline-boards makes about 25 reads, so at 120 ms it uses its own time budget and skips its
+// count-true and dead-stage steps (9.0 s, green with skips). That is the beat's read count, not the shift.
 //
 // NO IMPORTS. The 5-minute instant watch reads SHIFT_JOBS to check every shift left a fresh receipt.
 
