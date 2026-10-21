@@ -37,6 +37,7 @@ export const TRIPWIRES = Object.freeze({
   "route:read/bank-outreach": { impact: "money", checks: ["bank-outreach:verified-product"] },
   "desk:bank-outreach.html": { impact: "money", checks: ["bank-outreach:verified-product", "bank-outreach:next-action"] },
   "job:bank-outreach-checkins": { impact: "money", checks: ["bank-outreach:next-action"] },
+  "job:bank-outreach-automation": { impact: "money", checks: ["bank-outreach:email-safety", "bank-outreach:reply-waiting"] },
   // Launch day, 2026-10-09: the path a new customer walks, each with the deep checks that go red
   // when it breaks. Proven read-only on live data and from a built bundle before they were listed.
   "route:public/slo-checkout": { impact: "money", checks: ["payments:checkout-started-no-link", "keys:checkout-key-read"] },
@@ -161,7 +162,6 @@ export const TRIPWIRES = Object.freeze({
   "route:pipeline-clients": { impact: "customer", checks: ["pipeline:count-true", "pipeline:nobody-lost"] },
   "route:inquiry-cases": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:dead-stage"] },
   "desk:inquiry-remover.html": { impact: "customer", checks: ["pipeline:stage-vs-fact", "pipeline:two-records"] },
-  "desk:hiring.html": { impact: "customer", checks: ["pipeline:count-true", "pipeline:dead-stage"] },
   "desk:csm-queue.html": { impact: "customer", checks: ["csm:overdue-unassigned", "csm:missing-step", "blueprint:real-advisor"] },
   "desk:sales-floor.html": { impact: "money", checks: ["sales-manager:totals", "pipeline:two-records"] },
   // W4 messages truth, 2026-10-10 (ops/workflows/coverage-every-surface-2026-10-10.md). What a customer reads
@@ -196,7 +196,14 @@ export const TRIPWIRES = Object.freeze({
   "route:inquiry": { impact: "customer", checks: ["trip:inquiry", "inquiry:case-stuck"] },
   "route:partners/approve": { impact: "customer", checks: ["trip:partner", "partner-pages:live"] },
   "route:public/affiliate-click": { impact: "customer", checks: ["trip:partner", "partners:referral-link"] },
-  "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck"] }
+  "job:affiliate-payout-run": { impact: "money", checks: ["trip:partner", "partners:commission-payable", "partners:payout-stuck", "partners:payout-overdue"] },
+  // Affiliate payouts through Plaid (495, 2026-10-20). Each goes red when an
+  // earned commission is past its due day and not paid, or a paid Plaid payout
+  // came back from the bank.
+  "route:affiliates/payouts": { impact: "money", checks: ["partners:payout-overdue", "partners:payout-returned", "partners:payout-stuck"] },
+  "route:affiliates/payout-account": { impact: "money", checks: ["partners:payout-overdue"] },
+  "route:read/affiliate-payouts": { impact: "money", checks: ["partners:payout-overdue"] },
+  "job:affiliate-payout-autopay": { impact: "money", checks: ["partners:payout-stuck", "partners:payout-overdue", "partners:payout-returned"] }
 });
 
 export const NOT_CUSTOMER_FACING = Object.freeze({
@@ -207,7 +214,7 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
   "route:public/morning-brief":
     "Owner-only report data behind a secret link code, answers the same 404 to everyone without the exact code, never reaches a customer. Its guard is the brief-link beat.",
   "send:src/pulse/alerts.mjs":
-    "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. Its heartbeat is job pulse-hourly.",
+    "Owner-only: the hourly pulse's alert texts and buzzes go to Chris's own number and ntfy topic. It never reaches a customer. All four hourly shifts send through it; their heartbeats are jobs pulse-hourly, pulse-hourly-b, pulse-hourly-c and pulse-hourly-d.",
   "route:ops/notify-owner":
     "Owner-only: one text to Chris's own pulse number for an agent on the Mac, behind a secret. It never reaches a customer. Its ping is reg:ops/notify-owner.",
   // W4 messages truth, 2026-10-10. Each of these sends to Chris or to a staff member. A wrong address is
@@ -228,6 +235,12 @@ export const NOT_CUSTOMER_FACING = Object.freeze({
     "Staff-only: tells a closer or sales manager their commission was paid or a deal closed. Never a customer. msg:staff-template-to-client reads the text half for a wrong address.",
   "send:src/workflows/ad-video-sweeper.mjs":
     "Owner-only: the sweeper's ready-ad buzz goes to Chris through notify-fanout. It never reaches a customer. Its heartbeat is job ad-video-sweeper.",
+  // Hourly coverage pass, 2026-10-20. hiring.html was on TRIPWIRES as "customer", but it is the staff
+  // recruiting desk: it reads and writes only job applicants through /api/hiring/* (postings, candidates,
+  // decisions, bench, funnel). The routes behind it are staff-only on the baseline. The daily lane
+  // gap-pipeline-boards.mjs still reads the hiring board's truth (pipeline:count-true, pipeline:dead-stage).
+  "desk:hiring.html":
+    "Staff-only recruiting desk: it shows job applicants from /api/hiring/* and moves them between hiring stages. No client, lead, payment or customer message is read or written there.",
   "send:src/push/send.mjs":
     "Dead today: nothing in the app calls sendToClient (only scripts/push/send-test-push.mjs does), so no customer is sent anything through it. Move this entry to TRIPWIRES the day a caller is added.",
 });

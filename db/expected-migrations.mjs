@@ -353,7 +353,16 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "migrations/489_blueprint_coach_call_ledger.sql",
   "migrations/490_blueprint_ai_csm_copy.sql",
   "migrations/491_blueprint_agreement_fundhub_team.sql",
-  "migrations/497_blue_ridge_bank_apply_link.sql",
+  "migrations/492_client_agreement_consent_clauses.sql",
+  "migrations/493_funding_and_repair_agreement_text.sql",
+  "migrations/494_application_decision_staff.sql",
+  "migrations/495_affiliate_payout_rail.sql",
+  "migrations/495_bank_outreach_automation.sql",
+  "migrations/496_credit_repair_fee_upfront.sql",
+  "migrations/497_restore_missing_sql_templates.sql",
+  "migrations/498_waypoint_steps_fundhub_team.sql",
+  "migrations/499_brain_files_clear_made_up_client_ids.sql",
+  "migrations/502_bank_apply_links_2026_10_21.sql",
   "seed/002_pipelines.sql",
   "seed/006_message_templates_source_doc.sql",
   "seed/007_contract_templates.sql",
@@ -386,10 +395,12 @@ export const EXPECTED_MIGRATIONS = Object.freeze([
   "seed/032_slo_first_text_meet.sql",
   "seed/033_slo_texts_voice.sql",
   "seed/034_slo_first5_reply.sql",
+  "seed/035_client_agreement_consent_clauses.sql",
+  "seed/036_funding_and_repair_agreement_text.sql",
+  "seed/037_credit_repair_fee_upfront.sql",
   "seed/295_sms_copy_2026_09.sql",
   "seed/296_marketing_copy_writer_house.sql",
-  "seed/297_marketing_funnels.sql",
-  "seed/298_restore_launch_templates_2026_10_20.sql"
+  "seed/297_marketing_funnels.sql"
 ]);
 
 export default EXPECTED_MIGRATIONS;

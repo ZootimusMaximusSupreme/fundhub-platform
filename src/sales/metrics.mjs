@@ -9,12 +9,12 @@ import { isDemoEmail } from "../auth/demo-logins.mjs";
 import { demoClause, orgDemoModeEnabled } from "../demo/exclude-demo.mjs";
 import { listRecentRecordings } from "./recordings.mjs";
 import { closerOfferStack, floorOfferStack, zeroStackFrom } from "./offer-stack.mjs";
-
-function monthWindow(now = new Date()) {
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  return { start, end };
-}
+/* The floor's team totals (team cash, the funnel, deposit to funded) and the month they cover live in the beat
+   library, so the hourly pulse beat sales-totals runs the same SQL and math this page runs (a beat may import
+   only from src/pulse/beats/lib). One copy; this file imports it back. */
+import {
+  depositToFunded, floorTotals, formatUsdFromCents, monthWindow, rate
+} from "../pulse/beats/lib/sales-totals-truth.mjs";
 
 /** Civil date in America/Phoenix as YYYY-MM-DD.
 
@@ -39,17 +39,6 @@ function priorWindow({ start, end }) {
   };
 }
 
-function rate(n, d) {
-  if (!d) return null;
-  return n / d;
-}
-
-function formatUsdFromCents(cents) {
-  if (cents == null || !Number.isFinite(Number(cents))) return null;
-  const n = Number(cents) / 100;
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
-
 async function staffCashCents(db, { orgId, staffId, start, end }) {
   const r = await db.query(
     `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents,
@@ -65,39 +54,6 @@ async function staffCashCents(db, { orgId, staffId, start, end }) {
     [orgId, staffId, start.toISOString(), end.toISOString()]
   );
   return r.rows[0];
-}
-
-async function depositToFunded(db, { orgId, staffId = null, start, end }) {
-  // Deposits this period whose client has funded=true OR a funding_closeout
-  // via funding_rounds.
-  const params = [orgId, start.toISOString(), end.toISOString()];
-  let staffClause = "";
-  if (staffId) {
-    params.push(staffId);
-    staffClause = `AND o.staff_id = $${params.length}`;
-  }
-  const r = await db.query(
-    `SELECT count(*)::int AS deposits,
-            count(*) FILTER (
-              WHERE c.funded IS TRUE
-                 OR EXISTS (
-                      SELECT 1
-                        FROM funding_rounds fr
-                        JOIN funding_closeout fc ON fc.funding_round_id = fr.id
-                       WHERE fr.client_id = o.client_id AND fr.org_id = o.org_id
-                    )
-            )::int AS funded
-       FROM call_outcomes o
-       JOIN clients c ON c.id = o.client_id AND c.org_id = o.org_id
-      WHERE o.org_id = $1
-        AND o.outcome = 'deposit'
-        AND o.logged_at >= $2 AND o.logged_at < $3
-        ${staffClause}`,
-    params
-  );
-  const deposits = Number(r.rows[0]?.deposits || 0);
-  const funded = Number(r.rows[0]?.funded || 0);
-  return { deposits, funded, rate: rate(funded, deposits) };
 }
 
 async function commissionBuckets(db, { orgId, staffId }) {
@@ -463,16 +419,10 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
   const window = monthWindow(now);
 
   const todayYmd = localDateString(now);
-  const [cash, funnel, todayFunnel, d2f, closers, beliefs, unlogged, unrecordedList, cold, shiftsLate, recordings, offer] = await Promise.all([
-    db.query(
-      `SELECT COALESCE(SUM(cash_collected_cents), 0)::bigint AS cents
-         FROM call_outcomes
-        WHERE org_id = $1 AND logged_at >= $2 AND logged_at < $3`,
-      [orgId, window.start.toISOString(), window.end.toISOString()]
-    ),
-    floorFunnel(db, { orgId, ...window }),
+  const [totals, todayFunnel, closers, beliefs, unlogged, unrecordedList, cold, shiftsLate, recordings, offer] = await Promise.all([
+    // Team cash, the funnel and deposit to funded (src/pulse/beats/lib/sales-totals-truth.mjs).
+    floorTotals(db, { orgId, ...window }),
     floorFunnelDay(db, { orgId, day: todayYmd }),
-    depositToFunded(db, { orgId, ...window }),
     closerRoster(db, { orgId, ...window, now }),
     beliefAnalytics(db, { orgId, ...window }),
     countUnlogged(db, { orgId }),
@@ -491,7 +441,7 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
       ?? zeroStackFrom(offer.products, { start: window.start, end: window.end })
   }));
 
-  const cashCents = Number(cash.rows[0]?.cents || 0);
+  const { cashCents, funnel, d2f } = totals;
   const [target, dailyTarget] = await Promise.all([
     db.query(
       `SELECT target_value FROM staff_targets
@@ -573,45 +523,6 @@ export async function salesFloor(db, { orgId, now = new Date(), env = process.en
       avg_log_lag_days: null,
       avg_log_lag_reason: "Average time-to-log needs booking end timestamps joined to logged_at — booking end not on call_outcomes yet"
     }
-  };
-}
-
-async function floorFunnel(db, { orgId, start, end }) {
-  const [booked, outcomes] = await Promise.all([
-    db.query(
-      `SELECT count(DISTINCT client_id)::int AS n
-         FROM events
-        WHERE org_id = $1 AND name = 'booking.created'
-          AND created_at >= $2 AND created_at < $3
-          AND client_id IS NOT NULL`,
-      [orgId, start.toISOString(), end.toISOString()]
-    ),
-    db.query(
-      `SELECT count(*) FILTER (WHERE outcome <> 'no_show')::int AS held,
-              count(*) FILTER (WHERE outcome = 'deposit')::int AS deposits,
-              count(*) FILTER (WHERE outcome = 'downsell')::int AS downsells,
-              COALESCE(SUM(cash_collected_cents) FILTER (WHERE outcome = 'downsell'), 0)::bigint AS downsell_cents
-         FROM call_outcomes
-        WHERE org_id = $1 AND logged_at >= $2 AND logged_at < $3`,
-      [orgId, start.toISOString(), end.toISOString()]
-    )
-  ]);
-  const bookedN = Number(booked.rows[0]?.n || 0);
-  const held = Number(outcomes.rows[0]?.held || 0);
-  const bookedOut = Math.max(bookedN, held);
-  const deposits = Number(outcomes.rows[0]?.deposits || 0);
-  const d2f = await depositToFunded(db, { orgId, start, end });
-  return {
-    booked: bookedOut,
-    held,
-    show_rate: rate(held, bookedOut),
-    deposits,
-    close_rate: rate(deposits, held),
-    funded: d2f.funded,
-    funded_of_deposits: d2f.rate,
-    downsells: Number(outcomes.rows[0]?.downsells || 0),
-    downsell_cash_cents: Number(outcomes.rows[0]?.downsell_cents || 0),
-    downsell_cash_display: formatUsdFromCents(outcomes.rows[0]?.downsell_cents)
   };
 }
 

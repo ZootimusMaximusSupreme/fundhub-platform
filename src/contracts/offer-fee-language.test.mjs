@@ -46,6 +46,12 @@ import {
   defaultContractValues
 } from "../config/offers.mjs";
 import { tagsIn, missingRequired, normaliseManualFields } from "./render.mjs";
+import {
+  CLIENT_AGREEMENT_KEYS, CONSENT_MARKERS, CONSENT_SECTION_NUMBERED, CONSENT_SECTION_PLAIN, NUMBERED_AGREEMENT_KEYS
+} from "./consent-clauses.mjs";
+import { readColumnCatalog, runContractSql } from "../pulse/catalog/proofs/fin-b04-sql-lite.mjs";
+import { CONTRACT_DECK_SEND_SQL, CONTRACT_WORDINGS_SQL } from "../pulse/catalog/proofs/fin-b04-sql-flows.mjs";
+import { CONSENT_CALL_RECORDING_SQL, CONSENT_MARKETING_USE_SQL } from "../pulse/catalog/proofs/consent-from-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -203,7 +209,8 @@ function readTemplatesFromDb({ omitMigrations = new Set() } = {}) {
     const full = path.join(ROOT, "db", dir);
     if (!fs.existsSync(full)) continue;
     for (const name of fs.readdirSync(full).filter((f) => f.endsWith(".sql")).sort()) {
-      if (dir === "migrations" && omitMigrations.has(name)) continue;
+      // A seed file may be left out too (492's fresh-database half lives in db/seed).
+      if ((dir === "migrations" || dir === "seed") && omitMigrations.has(name)) continue;
       const sql = fs.readFileSync(path.join(full, name), "utf8");
       if (!/contract_templates/.test(sql)) continue;
       const blocks = stripComments(sql)
@@ -634,5 +641,183 @@ describe("the live defect, named", () => {
       defaultContractValues({ tier: "FUNDING_PLUS_REPAIR" }).repair_fee,
       formatCents(OFFERS.REPAIR_DFY.priceCents)
     );
+  });
+});
+
+/* THE SIGNED CONTRACT IS THE CONSENT (owner decision 2026-10-20). Every client
+   agreement carries one section saying calls may be recorded, Fundhub uses AI,
+   and Fundhub may use the client's words, results and testimonial in marketing
+   (db/migrations/492 and its fresh-database half db/seed/035). The heartbeat
+   reads the same sentences in each signed copy. */
+describe("every client agreement carries the consent", () => {
+  // 493 (and its seed half 036) later replace the two placeholder bodies whole, so
+  // 492 is judged on the wordings as they stood before 493.
+  const LATER = ["493_funding_and_repair_agreement_text.sql", "036_funding_and_repair_agreement_text.sql"];
+  const WITHOUT_492 = new Set(["492_client_agreement_consent_clauses.sql", "035_client_agreement_consent_clauses.sql", ...LATER]);
+  const before = readTemplatesFromDb({ omitMigrations: WITHOUT_492 });
+  const upTo492 = readTemplatesFromDb({ omitMigrations: new Set(LATER) });
+
+  for (const key of CLIENT_AGREEMENT_KEYS) {
+    test(`${key} says it once: recorded calls, AI, and marketing use`, () => {
+      const body = TEMPLATES.get(key).body;
+      for (const marker of Object.values(CONSENT_MARKERS)) {
+        assert.equal(body.split(marker).length - 1, 1, `${key}: "${marker}" must appear exactly once`);
+      }
+    });
+
+    test(`${key}: 492 adds the one section and changes no other word`, () => {
+      const after = upTo492.get(key).body;
+      const numbered = NUMBERED_AGREEMENT_KEYS.includes(key);
+      const inserted = numbered ? `\n${CONSENT_SECTION_NUMBERED}\nAcknowledgement\n` : `\n\n${CONSENT_SECTION_PLAIN}\n\nSIGNATURES\n`;
+      assert.ok(after.includes(inserted), `${key}: the section is not just above the signature block`);
+      const removed = after.replace(numbered ? `\n${CONSENT_SECTION_NUMBERED}` : `\n\n${CONSENT_SECTION_PLAIN}`, "");
+      assert.equal(removed, before.get(key).body);
+    });
+  }
+
+  test("staff, partner and soft-pull wordings are not client service agreements and are untouched", () => {
+    for (const [key, tpl] of TEMPLATES) {
+      if (CLIENT_AGREEMENT_KEYS.includes(key)) continue;
+      if (!before.has(key)) continue; // a wording first created after 492 (the 493 disclosure)
+      assert.equal(tpl.body, upTo492.get(key)?.body, `${key} changed after 492`);
+      assert.equal(tpl.body, before.get(key)?.body, `${key} changed`);
+      assert.equal(tpl.body.includes(CONSENT_MARKERS.callRecording), false, `${key} gained the clause`);
+    }
+  });
+});
+
+/* NO CLIENT AGREEMENT IS A PLACEHOLDER (493, owner direction 2026-10-20). The
+   Funding Agreement is the owner-approved ready-to-send text; the Credit Repair
+   Agreement's placeholder block is replaced by finished terms, everything around
+   it kept. */
+describe("the two placeholder agreements carry real words", () => {
+  const PLACEHOLDER = /NOT THE REAL AGREEMENT TEXT|>>>\s*PLACEHOLDER/i;
+  const without493 = readTemplatesFromDb({ omitMigrations: new Set([
+    "493_funding_and_repair_agreement_text.sql", "036_funding_and_repair_agreement_text.sql"
+  ]) });
+
+  test("before 493 both were placeholders, so the guard has something to catch", () => {
+    assert.match(without493.get("FUNDING-AGREEMENT").body, PLACEHOLDER);
+    assert.match(without493.get("CREDIT-REPAIR-AGREEMENT").body, PLACEHOLDER);
+  });
+
+  for (const key of CLIENT_AGREEMENT_KEYS) {
+    test(`${key} carries no placeholder text`, () => {
+      assert.doesNotMatch(TEMPLATES.get(key).body, PLACEHOLDER);
+    });
+  }
+
+  test("the Funding Agreement is the owner-approved ready-to-send text, with the system's signature block", () => {
+    const body = TEMPLATES.get("FUNDING-AGREEMENT").body;
+    const approved = fs.readFileSync(path.join(ROOT, "docs/agreements/FUNDING-AGREEMENT-ready-to-send.txt"), "utf8");
+    const sections = approved.split("\n\nFundhub LLC\nAuthorized signer:")[0];
+    const oldBody = without493.get("FUNDING-AGREEMENT").body;
+    assert.ok(body.startsWith(sections), "the approved sections 1-8 are not the body, word for word");
+    assert.equal(body.slice(sections.length), "\n\n" + oldBody.slice(oldBody.indexOf("SIGNATURES\n")));
+    assert.match(body, /\{\{field\.deposit\}\}/);
+    assert.match(body, /\{\{field\.success_fee\}\}/);
+  });
+
+  test("the Credit Repair Agreement changes only its placeholder block", () => {
+    const old = without493.get("CREDIT-REPAIR-AGREEMENT").body;
+    const now = TEMPLATES.get("CREDIT-REPAIR-AGREEMENT").body;
+    const endMark = ">>> END OF PLACEHOLDER <<<";
+    const start = old.indexOf(">>> PLACEHOLDER.");
+    const end = old.indexOf(endMark) + endMark.length;
+    assert.ok(start > 0 && end > start);
+    assert.ok(now.startsWith(old.slice(0, start)), "the words before the block changed");
+    assert.ok(now.endsWith(old.slice(end)), "the words after the block changed");
+    const terms = now.slice(start, now.length - (old.length - end));
+    assert.match(terms, /Round one goes out the day you sign this agreement/);
+    assert.match(terms, /up to six dispute rounds/);
+    assert.match(terms, /30 to 45 days/);
+    assert.match(terms, /The fee in WHAT YOU PAY below is charged when you sign this agreement/);
+    assert.doesNotMatch(terms, /not charged or received until all services/);
+    assert.match(terms, /you may request return of the fee you paid/);
+    assert.match(terms, /THIRD BUSINESS DAY AFTER THE DATE YOU SIGNED IT/);
+    assert.match(terms, /support@tryfundhub\.com/);
+  });
+});
+
+/* The heartbeat judges these same words. Run the live checks' own SQL over the
+   wordings rebuilt from db/: the send panel's wording check and the deck's Send
+   contract check go green only after 493, and the two consent checks only after
+   492. PASS and FAIL both shown. */
+describe("the heartbeat's wording checks pass on the real words", () => {
+  const ORG = "11111111-1111-4111-8111-111111111111";
+  const CATALOG = readColumnCatalog(ROOT);
+  const rows = (templates) => [...templates].map(([key, tpl], i) => ({
+    id: `00000000-0000-4000-8000-${String(700 + i).padStart(12, "0")}`, org_id: ORG, template_key: key, name: key,
+    active: true, is_demo: false, source_kind: "text", body: tpl.body, signature_statement: "I agree."
+  }));
+  const judge = (sql, templates) => {
+    const out = runContractSql(sql, {
+      tables: { orgs: [{ id: ORG }], contract_templates: rows(templates), contracts: [], clients: [], client_consents: [] },
+      params: [ORG], now: "2026-10-20T20:00:00.000Z", catalog: CATALOG
+    });
+    return { sample: out.sample_count, bad: out.bad_count };
+  };
+  const before493 = readTemplatesFromDb({ omitMigrations: new Set([
+    "493_funding_and_repair_agreement_text.sql", "036_funding_and_repair_agreement_text.sql"
+  ]) });
+  const before492 = readTemplatesFromDb({ omitMigrations: new Set([
+    "492_client_agreement_consent_clauses.sql", "035_client_agreement_consent_clauses.sql",
+    "493_funding_and_repair_agreement_text.sql", "036_funding_and_repair_agreement_text.sql"
+  ]) });
+
+  test("send panel wordings: PASS now, FAIL with the two placeholders", () => {
+    assert.equal(judge(CONTRACT_WORDINGS_SQL, TEMPLATES).bad, 0);
+    assert.equal(judge(CONTRACT_WORDINGS_SQL, before493).bad, 2);
+  });
+
+  test("deck Send contract: PASS now, FAIL with the two placeholders", () => {
+    assert.deepEqual(judge(CONTRACT_DECK_SEND_SQL, TEMPLATES), { sample: 1, bad: 0 });
+    assert.deepEqual(judge(CONTRACT_DECK_SEND_SQL, before493), { sample: 1, bad: 1 });
+  });
+
+  test("consent from the contract: PASS now, FAIL before 492", () => {
+    for (const sql of [CONSENT_CALL_RECORDING_SQL, CONSENT_MARKETING_USE_SQL]) {
+      assert.deepEqual(judge(sql, TEMPLATES), { sample: 1, bad: 0 });
+      assert.deepEqual(judge(sql, before492), { sample: 1, bad: 1 });
+    }
+  });
+});
+
+/* 15 U.S.C. 1679c: the Consumer Credit File Rights statement, given to a credit
+   repair client before any agreement is signed, as its own document (493). The
+   words were copied from govinfo.gov; the repo copy is
+   docs/agreements/CREDIT-FILE-RIGHTS-DISCLOSURE.txt. */
+describe("the credit file rights disclosure is its own wording", () => {
+  const KEY = "CREDIT-FILE-RIGHTS-DISCLOSURE";
+  const file = fs.readFileSync(path.join(ROOT, "docs/agreements/CREDIT-FILE-RIGHTS-DISCLOSURE.txt"), "utf8").trimEnd();
+
+  test("the wording is exactly the repo copy of the statement", () => {
+    assert.equal(TEMPLATES.get(KEY)?.body, file);
+    assert.deepEqual(TEMPLATES.get(KEY).fields, []);
+  });
+
+  test("it carries the statute's title, every right, and the FTC address", () => {
+    const body = TEMPLATES.get(KEY).body;
+    assert.ok(body.startsWith("Consumer Credit File Rights Under State and Federal Law\n"));
+    for (const line of [
+      "You have a right to dispute inaccurate information in your credit report by contacting the credit bureau directly.",
+      "You have a right to obtain a copy of your credit report from a credit bureau.",
+      "You have a right to sue a credit repair organization that violates the Credit Repair Organization Act.",
+      "You have the right to cancel your contract with any credit repair organization for any reason within 3 business days from the date you signed it.",
+      "Credit bureaus are required to follow reasonable procedures to ensure that the information they report is accurate.",
+      "You may, on your own, notify a credit bureau in writing that you dispute the accuracy of information in your credit file.",
+      "If the credit bureau's reinvestigation does not resolve the dispute to your satisfaction",
+      "The Public Reference Branch\nFederal Trade Commission\nWashington, D.C. 20580"
+    ]) assert.ok(body.includes(line), line);
+    assert.match(body, /\nSIGNATURES\n/);
+    assert.match(body, /Signed by: _{6,}/);
+  });
+
+  test("it is a separate document, never inside the agreement", () => {
+    assert.equal(TEMPLATES.get("CREDIT-REPAIR-AGREEMENT").body.includes("Consumer Credit File Rights"), false);
+    const sql = fs.readFileSync(path.join(ROOT, "db/migrations/493_funding_and_repair_agreement_text.sql"), "utf8");
+    assert.match(sql, /'authorization',\s*'credit_file_rights_disclosure'/);
+    assert.match(sql, /ON CONFLICT \(org_id, template_key\) DO NOTHING/);
+    assert.match(sql, /govinfo\.gov\/content\/pkg\/USCODE-2023-title15/);
   });
 });

@@ -13,6 +13,8 @@
 // behaviour is worse than leaving them blank. needsAttention() is how that gap
 // stays visible rather than being forgotten.
 
+import { byCode } from "../pulse/beats/lib/money-helper-read.mjs";
+
 const STATUSES = new Set(["draft", "shadow", "live", "retired"]);
 const RUNNING = new Set(["live", "shadow"]);
 
@@ -43,15 +45,10 @@ export async function list(db, { orgId, status = null, agentClass = null } = {})
   return rows;
 }
 
-/* byCode — one agent, or null. */
-export async function byCode(db, { orgId, code } = {}) {
-  if (!orgId || !code) return null;
-  const { rows } = await db.query(
-    `SELECT * FROM agents WHERE org_id = $1 AND code = $2`,
-    [orgId, String(code).trim().toUpperCase()]
-  );
-  return rows[0] || null;
-}
+/* byCode — one agent, or null. Moved, unchanged, to src/pulse/beats/lib/money-helper-read.mjs
+   (2026-10-20): the hourly beat money-tasks loads the money helper's row with it, and a beat may
+   import only from the beat library. Re-exported here; setStatus below uses it as before. */
+export { byCode };
 
 /* live — what is actually acting on clients right now. The question an ops screen
    leads with, so it gets its own call rather than a filter argument. */

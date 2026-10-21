@@ -341,31 +341,38 @@ describe("ad video drop-off metrics", { skip: !HAS_DB ? "no DATABASE_URL" : fals
     assert.deepEqual(r.body.errors, [], "the sync reported errors");
     assert.ok(r.body.insights >= 1, "no insight rows were stored");
 
-    /* ONE insights call for the whole ad account, not one per ad. This used to
-       be a separate call for every single ad, which on a real account is
-       hundreds of calls in a row and does not finish in time. */
+    /* TWO insights calls for the whole ad account — the money, then the rest
+       (2026-10-21: Meta answers the combined list over many days with false
+       zeros, TWO INSIGHTS REQUESTS in api/campaigns/sync.mjs) — and never one
+       per ad. One call per ad was hundreds of calls in a row on a real
+       account, and did not finish in time. */
     const insightsCalls = requestedUrls.filter((u) => u.includes("/insights?"));
-    assert.equal(insightsCalls.length, 1,
-      `the numbers were pulled with ${insightsCalls.length} calls — it must be one call for the whole ad account`);
-    const insightsUrl = insightsCalls[0];
-    const decodedInsightsUrl = decodeURIComponent(insightsUrl);
-    assert.ok(/act_[^/]+\/insights/.test(decodedInsightsUrl),
-      `the numbers were asked of ${insightsUrl} — it must be the ad account, not one ad`);
-    assert.ok(decodedInsightsUrl.includes("level=ad"),
-      "the request did not ask for level=ad, so Meta would not return a row per ad");
-    assert.ok(decodedInsightsUrl.includes("ad_id"),
-      "the request never asked for ad_id, so the rows cannot be tied back to an ad");
+    assert.equal(insightsCalls.length, 2,
+      `the numbers were pulled with ${insightsCalls.length} calls — it must be two calls for the whole ad account`);
+    for (const insightsUrl of insightsCalls) {
+      const decodedInsightsUrl = decodeURIComponent(insightsUrl);
+      assert.ok(/act_[^/]+\/insights/.test(decodedInsightsUrl),
+        `the numbers were asked of ${insightsUrl} — it must be the ad account, not one ad`);
+      assert.ok(decodedInsightsUrl.includes("level=ad"),
+        "the request did not ask for level=ad, so Meta would not return a row per ad");
+      assert.ok(decodedInsightsUrl.includes("ad_id"),
+        "the request never asked for ad_id, so the rows cannot be tied back to an ad");
 
-    for (const field of META_FIELDS) {
-      assert.ok(insightsUrl.includes(field), `the request never asked Meta for ${field}`);
+      /* THE ONE THAT WOULD HAVE CAUGHT THE BUG. A field name Meta does not know
+         makes Meta refuse the ENTIRE request, so spend, clicks and impressions
+         come back empty too and the connection looks completely broken. Meta has
+         no 3-second field in any spelling. */
+      assert.ok(!/3_?sec/i.test(decodedInsightsUrl),
+        "the request asks Meta for a 3-second field, which does not exist — Meta would refuse the whole call");
     }
-
-    /* THE ONE THAT WOULD HAVE CAUGHT THE BUG. A field name Meta does not know
-       makes Meta refuse the ENTIRE request, so spend, clicks and impressions
-       come back empty too and the connection looks completely broken. Meta has
-       no 3-second field in any spelling. */
-    assert.ok(!/3_?sec/i.test(decodeURIComponent(insightsUrl)),
-      "the request asks Meta for a 3-second field, which does not exist — Meta would refuse the whole call");
+    const fieldsOf = (u) => new URL(u).searchParams.get("fields").split(",");
+    const videoCall = insightsCalls.find((u) => fieldsOf(u).includes("video_play_actions"));
+    assert.ok(videoCall, "no request asked Meta for the video fields");
+    for (const field of META_FIELDS) {
+      assert.ok(videoCall.includes(field), `the request never asked Meta for ${field}`);
+    }
+    assert.equal(fieldsOf(videoCall).includes("spend"), false,
+      "spend is on the video request — Meta answers that combined list with false zeros");
 
     const row = await asStaff((tx) => tx.query(
       `SELECT m.* FROM ad_metrics_daily m

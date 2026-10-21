@@ -19,6 +19,14 @@
 // follows at most 5 redirects BY HAND, takes at most 8 seconds in all, sends the
 // honest user agent below, and NEVER THROWS.
 //
+// ONE WIDER CAP (2026-10-20). Our own funnel pages on apply.fundhub.ai are big:
+// /roadmap is about 268 KB with the card box script tag near byte 195,000, and the
+// old /order checkout is about 290 KB with its price near byte 101,000. A 64 KB read
+// cannot see either. So that ONE host, and only that host, is read up to 512 KB
+// (LARGE_PAGE_HOSTS). Every other host, bank and vendor sites included, keeps 64 KB.
+// The cap is chosen per request from the address being read, so a redirect from
+// apply.fundhub.ai to another host is read at 64 KB.
+//
 // THE FENCE. Every request goes through transmit() behind the ADAPTERS fence
 // (src/lib/outbound-fetch.mjs). With ADAPTERS_DRY_RUN not set to an off value,
 // the answer is class "blocked" and nothing leaves. Production has it off.
@@ -37,6 +45,15 @@ export const TRANSMITS = true;
 
 export const USER_AGENT = "FundhubPulse/1.0 (+https://fundhub.ai)";
 export const MAX_BODY_BYTES = 64 * 1024;
+/** Hosts read past 64 KB, with their cap. Our own funnel pages only. Nothing else may be added without a test. */
+export const LARGE_PAGE_HOSTS = Object.freeze({ "apply.fundhub.ai": 512 * 1024 });
+
+/** The most bytes the probe reads from this address. Pure. */
+export function bodyCapFor(address) {
+  let host = "";
+  try { host = new URL(String(address)).hostname.toLowerCase().replace(/\.+$/, ""); } catch { host = ""; }
+  return Object.prototype.hasOwnProperty.call(LARGE_PAGE_HOSTS, host) ? LARGE_PAGE_HOSTS[host] : MAX_BODY_BYTES;
+}
 export const SNIPPET_CHARS = 2048;
 export const MAX_REDIRECTS = 5;
 export const DEFAULT_TIMEOUT_MS = 8000;
@@ -85,11 +102,13 @@ const cleanHeaders = (headers, { crossHost = false } = {}) => {
 
 /* limitedFetch — wraps the real fetch so a page is read only up to the cap.
    transmit() reads a whole body; a page that answers 200 MB must not fill the
-   heap. This reads chunk by chunk and cancels the stream at the cap. */
+   heap. This reads chunk by chunk and cancels the stream at the cap. The cap
+   comes from the address being read (bodyCapFor). */
 function limitedFetch(base) {
   return async (input, init) => {
     const res = await base(input, init);
     const method = String(init?.method || "GET").toUpperCase();
+    const cap = bodyCapFor(typeof input === "string" ? input : input?.url);
     let bytes = new Uint8Array(0);
     let truncated = false;
 
@@ -102,7 +121,7 @@ function limitedFetch(base) {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
-          const room = MAX_BODY_BYTES - total;
+          const room = cap - total;
           if (chunk.byteLength > room) {
             chunks.push(chunk.subarray(0, room));
             total += room;
@@ -118,8 +137,8 @@ function limitedFetch(base) {
         for (const c of chunks) { bytes.set(c, at); at += c.byteLength; }
       } else if (typeof res.arrayBuffer === "function") {
         const all = new Uint8Array(await res.arrayBuffer());
-        truncated = all.byteLength > MAX_BODY_BYTES;
-        bytes = truncated ? all.subarray(0, MAX_BODY_BYTES) : all;
+        truncated = all.byteLength > cap;
+        bytes = truncated ? all.subarray(0, cap) : all;
       }
     }
 
@@ -144,7 +163,7 @@ const outHeaders = (all) => {
 };
 
 const emptyResult = (over) => ({
-  ok: false, status: 0, ms: 0, finalHost: null, bodySnippet: "", body: "", truncated: false, bytes: 0,
+  ok: false, status: 0, ms: 0, finalHost: null, finalUrl: null, bodySnippet: "", body: "", truncated: false, bytes: 0,
   headers: {}, redirects: 0, error: null, class: "network", ...over
 });
 
@@ -213,6 +232,9 @@ async function probe(method, address, opts = {}) {
       const ok = status >= 200 && status < 300;
       return done({
         ok, status, finalHost, redirects: hops,
+        // Where the read ended, after any redirect: scheme, host and path only. The query string
+        // (bank campaign codes) is left off, the same as the log line.
+        finalUrl: `${target.url.origin}${target.url.pathname}`,
         body: text, bodySnippet: text.slice(0, SNIPPET_CHARS),
         truncated: r.headers["x-pulse-truncated"] === "1",
         bytes: Number(r.headers["x-pulse-bytes"]) || Buffer.byteLength(text),

@@ -1,11 +1,9 @@
 export function andNotDemo(alias = "c") {
   return `AND COALESCE(${alias}.is_demo, false) = false`;
 }
-export async function orgDemoModeEnabled(db, orgId) {
-  if (!orgId) return false;
-  const r = await db.query(`SELECT demo_mode_enabled FROM orgs WHERE id = $1`, [orgId]);
-  return r.rows[0]?.demo_mode_enabled === true;
-}
+/* orgDemoModeEnabled lives in src/pulse/beats/lib/org-demo-mode.mjs (2026-10-20) so the hourly
+   lender-book beat asks the same question the lender reads ask. One copy; re-exported here. */
+export { orgDemoModeEnabled } from "../pulse/beats/lib/org-demo-mode.mjs";
 export function crmDemoFilterSQL(alias = "c", { demoMode = false } = {}) {
   if (demoMode) return "";
   return `AND COALESCE(${alias}.is_demo, false) = false`;

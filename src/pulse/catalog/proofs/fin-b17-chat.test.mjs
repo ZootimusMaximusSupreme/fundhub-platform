@@ -28,7 +28,7 @@ const blankPage = (page) => page.route(`**${BLANK}`, (route) => route.fulfill({
 }));
 
 /** The widget mounted for staff on a blank page. `calls` holds every /api request the widget makes. */
-async function openWidget({ ask = null, peers = [{ id: PEER, name: PEER_NAME, email: "casey@example.test" }], threads = [], thread = [], post = null, clock = false } = {}) {
+async function openWidget({ ask = null, peers = [{ id: PEER, name: PEER_NAME, email: "casey@example.test" }], clients = [], threads = [], thread = [], post = null, clock = false, url = BLANK, before = blankPage } = {}) {
   const calls = [];
   const handlers = {
     "/api/auth/session": async (route) => { calls.push("GET /api/auth/session"); return json(route, OWNER); },
@@ -37,7 +37,7 @@ async function openWidget({ ask = null, peers = [{ id: PEER, name: PEER_NAME, em
       calls.push({ post: "ask", body });
       return json(route, ask ? ask(body) : { ok: true, answer: { text: "Open the contract in Contracts and press Send." }, sources: [{ title: "How to send a contract", href: "/app/contracts.html" }, { title: "Contract SOP" }] });
     },
-    "/api/chat/peers": async (route) => { calls.push("GET /api/chat/peers"); return json(route, { ok: true, staff: peers }); },
+    "/api/chat/peers": async (route) => { calls.push("GET /api/chat/peers"); return json(route, { ok: true, staff: peers, clients }); },
     "/api/chat/messages": async (route, { url, method }) => {
       if (method === "POST") {
         const body = bodyOf(route);
@@ -50,7 +50,7 @@ async function openWidget({ ask = null, peers = [{ id: PEER, name: PEER_NAME, em
       return json(route, { ok: true, kind: "internal", threads });
     },
   };
-  const { page, errors } = await screens.open(BLANK, { session: OWNER, handlers, before: blankPage, clock });
+  const { page, errors } = await screens.open(url, { session: OWNER, handlers, before, clock });
   await page.addScriptTag({ url: "/app/chat-widget.js" });
   await page.evaluate(() => window.FHChat.mount({ portal: false, demo: false, hadCall: false, autoOpenPrecall: false }));
   const out = {
@@ -290,7 +290,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Great, see you there.");
     await w.page.locator("#fh-chat-input").press("Enter");
     await waitFor(() => w.posts().length === 2, "the second message");
-    assert.deepEqual(w.posts()[1], { kind: "internal", body: "Great, see you there.", conversation_id: "conv-1" });
+    assert.deepEqual(w.posts()[1], { kind: "internal", body: "Great, see you there.", conversation_id: "conv-1", peer_staff_id: PEER }, "the thread and the teammate it is with ride together, so the server can refuse a mismatch");
     await waitFor(async () => (await w.bubbles()).filter((b) => b[0] === "me").length === 2, "both bubbles");
     assert.deepEqual(w.errors, []);
     await w.page.close();
@@ -319,7 +319,7 @@ test("Message to staff: pick a teammate, send, and the thread opens; a second se
     await w.type("Yes.");
     await w.page.locator("#fh-chat-send").click();
     await waitFor(() => w.posts().length === 1, "the send");
-    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Yes.", conversation_id: "conv-9" });
+    assert.deepEqual(w.posts()[0], { kind: "internal", body: "Yes.", conversation_id: "conv-9", peer_staff_id: PEER });
     await w.page.close();
   });
 
@@ -399,6 +399,103 @@ test("an open internal thread is read again every 4 seconds, and a closed panel 
     assert.equal(reads(), 3, "a closed panel does not poll");
     await w.page.close();
   });
+});
+
+// ───────────────────────────── Message > Client: your own clients, and only the picked one ─────────────────────────────
+
+const CLIENT_A = "c1000000-0000-4000-8000-0000000000a1";
+const CLIENT_B = "c1000000-0000-4000-8000-0000000000b2";
+const PAGE_CLIENT = "c1000000-0000-4000-8000-0000000000c3";
+const MY_CLIENTS = [{ id: CLIENT_A, name: "Ana Diaz", client_code: "FH-000901" }, { id: CLIENT_B, name: "Ben Ito", client_code: null }];
+const clientMode = async (w) => {
+  await w.open();
+  await mode(w, "Message");
+  await w.page.locator("#fh-chat-kind").selectOption("client");
+  await waitFor(async () => (await w.page.locator("#fh-chat-client option").count()) >= 2, "the client list");
+};
+
+test("Message > Client lists the clients assigned to you, and each text goes to the client on the picker and no one else", { timeout: 120_000 }, async () => {
+  const w = await openWidget({
+    clients: MY_CLIENTS,
+    post: (body) => ({ ok: true, kind: "client", conversation_id: `conv-${body.client_id}`, outcome: "queued" }),
+  });
+  await clientMode(w);
+  assert.deepEqual(await w.page.locator("#fh-chat-client option").allInnerTexts(), ["Pick one of your clients…", "Ana Diaz (FH-000901)", "Ben Ito"]);
+  assert.equal(await w.page.locator("#fh-chat-client").evaluate((el) => el.tagName), "SELECT", "a list, not a box to paste an id into");
+
+  // nobody picked: nothing is sent
+  await w.type("Hi there");
+  await w.page.locator("#fh-chat-send").click();
+  await w.page.locator("#fh-chat-body .msg", { hasText: "Pick one of your clients first." }).waitFor();
+  assert.equal(w.posts().length, 0);
+
+  // Ana, then Ben: the second text names Ben only and carries no thread from Ana
+  await w.page.locator("#fh-chat-client").selectOption(CLIENT_A);
+  await w.type("Ana: your call is at 3.");
+  await w.page.locator("#fh-chat-send").click();
+  await waitFor(() => w.posts().length === 1, "the first text");
+  assert.deepEqual(w.posts()[0], { kind: "client", body: "Ana: your call is at 3.", client_id: CLIENT_A, channel: "sms" });
+  await w.page.locator("#fh-chat-client").selectOption(CLIENT_B);
+  await w.type("Ben: can we move to 4?");
+  await w.page.locator("#fh-chat-send").click();
+  await waitFor(() => w.posts().length === 2, "the second text");
+  assert.deepEqual(w.posts()[1], { kind: "client", body: "Ben: can we move to 4?", client_id: CLIENT_B, channel: "sms" }, "Ben's text never rides Ana's thread");
+  assert.deepEqual(w.errors, []);
+  await w.page.close();
+});
+
+test("Message > Client says so when no client is assigned to you, and offers the client open on this page", { timeout: 120_000 }, async () => {
+  const none = await openWidget({ clients: [] });
+  await none.open();
+  await mode(none, "Message");
+  await none.page.locator("#fh-chat-kind").selectOption("client");
+  await waitFor(async () => (await none.page.locator("#fh-chat-client option").allInnerTexts()).includes("No clients are assigned to you yet"), "the empty list");
+  await none.page.close();
+
+  const routeBlank = (page) => page.route(/__fin_b17_blank\.html/, (route) => route.fulfill({
+    status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>blank</title></head><body></body></html>",
+  }));
+  const w = await openWidget({ clients: MY_CLIENTS, url: `${BLANK}?client_id=${PAGE_CLIENT}`, before: routeBlank });
+  await clientMode(w);
+  assert.deepEqual(await w.page.locator("#fh-chat-client option").allInnerTexts(),
+    ["Pick one of your clients…", "The client open on this page", "Ana Diaz (FH-000901)", "Ben Ito"]);
+  assert.equal(await w.page.locator("#fh-chat-client").inputValue(), PAGE_CLIENT, "the page's client is picked to start");
+  await w.type("Hello from your file.");
+  await w.page.locator("#fh-chat-send").click();
+  await waitFor(() => w.posts().length === 1, "the text");
+  assert.deepEqual(w.posts()[0], { kind: "client", body: "Hello from your file.", client_id: PAGE_CLIENT, channel: "sms" });
+  await w.page.close();
+});
+
+test("a slow answer to the note for the last teammate never sets the thread for the teammate picked now", { timeout: 120_000 }, async () => {
+  // The note to Casey is answered late; Sam is picked before the answer lands. The next note, to Sam, must not
+  // carry Casey's thread (it used to: the late answer set the widget's thread to Casey's).
+  let releaseCasey;
+  const caseyGate = new Promise((resolve) => { releaseCasey = resolve; });
+  const w = await openWidget({ peers: [{ id: PEER, name: PEER_NAME }, { id: PEER_2, name: PEER_2_NAME }] });
+  const sent = [];
+  await w.page.route(/\/api\/chat\/messages$/, async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const body = JSON.parse(route.request().postData() || "{}");
+    sent.push(body);
+    if (sent.length === 1) await caseyGate;
+    return json(route, { ok: true, kind: "internal", conversation_id: body.peer_staff_id === PEER_2 ? "conv-sam" : "conv-casey", message: { id: "m-x" }, deduped: false });
+  });
+  await w.open();
+  await mode(w, "Message");
+  await waitFor(async () => (await w.page.locator("#fh-chat-peer option").count()) === 3, "the teammate list");
+  await w.page.locator("#fh-chat-peer").selectOption(PEER);
+  await w.type("Casey: are you on the 3pm?");
+  await w.page.locator("#fh-chat-send").click();
+  await waitFor(() => sent.length === 1, "Casey's note is on its way");
+  await w.page.locator("#fh-chat-peer").selectOption(PEER_2);
+  releaseCasey();
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  await w.type("Sam: can you cover Friday?");
+  await w.page.locator("#fh-chat-send").click();
+  await waitFor(() => sent.length === 2, "Sam's note");
+  assert.deepEqual(sent[1], { kind: "internal", body: "Sam: can you cover Friday?", peer_staff_id: PEER_2 }, "no thread id from Casey");
+  await w.page.close();
 });
 
 test("every listed row was exercised", () => {

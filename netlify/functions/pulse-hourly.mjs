@@ -1,4 +1,10 @@
-// The hourly pulse. Every hour the system tests itself on purpose and texts Chris if a step does not come back.
+// The hourly pulse, shift A. Every hour the system tests itself on purpose and texts Chris if a step does not come back.
+//
+// SHIFTS (ops/workflows/hourly-beats-capacity-2026-10-14.md, fixes 3 and 4). The beats are split between this function
+// (minute 7), netlify/functions/pulse-hourly-d.mjs (minute 22), netlify/functions/pulse-hourly-b.mjs (minute 37) and
+// netlify/functions/pulse-hourly-c.mjs (minute 52), so each run fits its 13 s beat window and 22 s budget. Which beat
+// runs where is ONE literal list, src/pulse/beats/shifts.mjs; every beat is in exactly one shift. This file runs only
+// its own shift (`only`), through the same runner as the other shifts.
 //
 // Pulse v1 (ops/workflows/pulse-layer-2026-10-09-v1.md): the READ-ONLY half. Every beat reads data through one
 // READ ONLY box and reads the web with GET and HEAD. Nothing here saves a customer record, sends to a customer,
@@ -27,13 +33,17 @@
 import { db } from "../../src/db.mjs";
 import { noteScheduledRun } from "../../src/pulse/heartbeats.mjs";
 import { runPulse, publicSummary, missingEnv } from "../../src/pulse/runner.mjs";
+import { shiftBeats } from "../../src/pulse/beats/shifts.mjs";
 import { redact } from "../../src/lib/outbound-fetch.mjs";
 import { RECEIPT_DEADLINE_MS, RECEIPT_MAX_MS, saveReceipt, makeLateRejectionHandler, jsonSummary } from "../../src/pulse/scheduled-shell.mjs";
 
 export { RECEIPT_DEADLINE_MS, RECEIPT_MAX_MS, saveReceipt };
 
-/** Hourly at minute 7, UTC. Same as netlify.toml. */
+/** Hourly at minute 7, UTC. Same as netlify.toml and as this shift's cron in src/pulse/beats/shifts.mjs. */
 export const SWEEP_CRON = "7 * * * *";
+
+/** The beats this function runs: shift A of src/pulse/beats/shifts.mjs. */
+export const BEATS = shiftBeats("pulse-hourly");
 
 /** A cut beat may reject late; log it without ending this scheduled run. */
 export const onLateRejection = makeLateRejectionHandler("pulse-hourly");
@@ -43,7 +53,7 @@ export default async function pulseHourly() {
   const startedAt = Date.now();
   let result;
   try {
-    result = await runPulse({ env: process.env });
+    result = await runPulse({ env: process.env, only: [...BEATS] });
   } catch (err) {
     result = { ok: false, error: redact(String((err && err.message) || err)).slice(0, 200), ran: 0, failed: 0 };
   }

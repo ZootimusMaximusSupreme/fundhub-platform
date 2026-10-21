@@ -13,7 +13,9 @@
    Inngest crons (src/workflows/index.mjs) or from netlify.toml. */
 export const INNGEST_JOBS = Object.freeze([
   ["af-01-affiliate-drip", "*/15 * * * *"],
+  ["affiliate-payout-autopay", "*/15 * * * *"],
   ["affiliate-payout-run", "0 3 1 * *"],
+  ["bank-outreach-automation", "*/15 * * * *"],
   ["bank-outreach-checkins", "TZ=America/Phoenix 0 7 * * *"],
   ["blake-lead-watch", "*/5 * * * *"],
   ["blueprint-closer-ready-sweeper", "0 * * * *"],
@@ -63,6 +65,9 @@ export const NETLIFY_JOBS = Object.freeze([
   ["whop-billing-inbox-sweeper", "* * * * *"],
   ["marketing-clock", "*/15 * * * *"],
   ["pulse-hourly", "7 * * * *"],
+  ["pulse-hourly-b", "37 * * * *"],
+  ["pulse-hourly-c", "52 * * * *"],
+  ["pulse-hourly-d", "22 * * * *"],
   ["pulse-outside-watch", "*/5 * * * *"]
 ]);
 

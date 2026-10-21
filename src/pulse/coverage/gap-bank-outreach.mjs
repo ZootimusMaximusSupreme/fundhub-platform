@@ -1,7 +1,9 @@
 // Bank outreach saved results. Read-only; no outreach or lender writes.
 export const CHECK_IDS = Object.freeze([
   "bank-outreach:verified-product",
-  "bank-outreach:next-action"
+  "bank-outreach:next-action",
+  "bank-outreach:email-safety",
+  "bank-outreach:reply-waiting"
 ]);
 
 // A verification is useful only while its promoted lender, source facts, evidence,
@@ -107,6 +109,30 @@ SELECT count(*)::int AS active,
  WHERE program.key = 'bank_relationships'
    AND a.status IN ('researching','contacted','engaged','product_pending','verified_partner')`;
 
+// Automatic bank email (495) that left the building in the last 30 days: every
+// one must go to a saved banker, never after they said stop, and a cold step
+// never after they wrote back. A real banker would feel each of these.
+export const EMAIL_SAFETY_SQL = `/* gap-bank-outreach:email-safety */
+SELECT count(*)::int AS total,
+       count(*) FILTER (WHERE c.id IS NULL OR lower(btrim(c.email)) IS DISTINCT FROM lower(btrim(m.to_address)))::int AS unknown_recipient,
+       count(*) FILTER (WHERE c.email_opt_out_at IS NOT NULL AND c.email_opt_out_at < m.created_at)::int AS after_opt_out,
+       count(*) FILTER (WHERE m.provider_ref ~ ':step[1-3]$' AND EXISTS (
+         SELECT 1 FROM outreach_inbound_emails r
+          WHERE r.org_id = m.org_id AND r.contact_id = c.id AND r.received_at < m.created_at
+            AND COALESCE(r.kind, 'other') <> 'auto_reply'))::int AS after_reply
+  FROM messages m
+  LEFT JOIN outreach_contacts c ON c.org_id = m.org_id AND c.id::text = split_part(m.provider_ref, ':', 2)
+ WHERE m.template_key LIKE 'EMAIL-BANK-OUTREACH-%' AND m.direction = 'outbound'
+   AND m.status NOT IN ('queued', 'sending', 'blocked', 'failed')
+   AND m.created_at > now() - interval '30 days'`;
+
+// A banker reply the machine has not read within an hour is a stuck reader.
+// Replies waiting for a person are work due, not a broken machine.
+export const REPLY_WAITING_SQL = `/* gap-bank-outreach:reply-waiting */
+SELECT count(*)::int AS waiting,
+       count(*) FILTER (WHERE received_at < now() - interval '1 hour')::int AS stuck
+  FROM outreach_inbound_emails WHERE status = 'new'`;
+
 const row = (id, status, detail, suggestedFix = null) => ({ id, status, detail, suggestedFix });
 const count = (value) => value == null || !Number.isFinite(Number(value)) ? null : Number(value);
 
@@ -126,11 +152,32 @@ export function judgeNextAction(result) {
   return row(CHECK_IDS[1], "PASS", `${active} active bank accounts have a saved next action and due time.`);
 }
 
+export function judgeEmailSafety(result) {
+  const total = count(result?.total);
+  const parts = ["unknown_recipient", "after_opt_out", "after_reply"].map((k) => count(result?.[k]));
+  if (total === null || parts.some((v) => v === null)) return row(CHECK_IDS[2], "skip", "Bank outreach email counts were not returned.");
+  const [unknown, afterOptOut, afterReply] = parts;
+  if (unknown + afterOptOut + afterReply > 0) {
+    return row(CHECK_IDS[2], "FAIL", `${total} bank outreach emails sent in 30 days: ${unknown} not to a saved banker, ${afterOptOut} after the banker said stop, ${afterReply} cold emails after the banker replied.`, "Stop the bank outreach job, read src/outreach/automation.mjs stopReasonFor and the gate's banker branch in src/messaging/gate.mjs, then fix the cause. Do not resend.");
+  }
+  return row(CHECK_IDS[2], "PASS", `${total} bank outreach emails sent in 30 days, all to saved bankers who had not said stop or replied.`);
+}
+
+export function judgeReplyWaiting(result) {
+  const waiting = count(result?.waiting);
+  const stuck = count(result?.stuck);
+  if (waiting === null || stuck === null) return row(CHECK_IDS[3], "skip", "Banker reply counts were not returned.");
+  if (stuck > 0) return row(CHECK_IDS[3], "FAIL", `${stuck} banker replies have waited over an hour for the reply reader.`, "Check the bank-outreach-automation job's read-replies step and its saved error on outreach_inbound_emails.");
+  return row(CHECK_IDS[3], "PASS", `${waiting} banker replies are waiting to be read; none for over an hour.`);
+}
+
 export async function gapChecks({ db } = {}) {
   if (!db?.query) return CHECK_IDS.map((id) => row(id, "skip", "No database was available for bank outreach checks."));
   const checks = [
     [VERIFIED_SQL, judgeVerified, CHECK_IDS[0]],
-    [NEXT_ACTION_SQL, judgeNextAction, CHECK_IDS[1]]
+    [NEXT_ACTION_SQL, judgeNextAction, CHECK_IDS[1]],
+    [EMAIL_SAFETY_SQL, judgeEmailSafety, CHECK_IDS[2]],
+    [REPLY_WAITING_SQL, judgeReplyWaiting, CHECK_IDS[3]]
   ];
   return Promise.all(checks.map(async ([sql, judge, id]) => {
     try { return judge((await db.query(sql)).rows?.[0]); }

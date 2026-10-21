@@ -5,11 +5,14 @@
 //   npm run pulse:prove                 build the api bundle, run every coverage step from inside it
 //   npm run pulse:prove -- --repo       skip the build, run from this checkout (faster, less true)
 //   npm run pulse:prove -- --lanes=gap-sms,gap-email
-//   npm run pulse:prove -- --beats      the HOURLY pulse: build netlify/functions/pulse-hourly.mjs the way Netlify does,
-//                                       unzip it, run the beats from inside it (see proveBeats() at the bottom)
+//   npm run pulse:prove -- --beats      the HOURLY pulse: build every hourly shift (netlify/functions/pulse-hourly.mjs,
+//                                       pulse-hourly-b.mjs, -c.mjs, -d.mjs) the way Netlify does, unzip them, and
+//                                       run each shift's beats from inside the bundle, one shift after the other, each
+//                                       in its own budget
+//                                       (see proveBeats() at the bottom)
 //   npm run pulse:prove -- --beats --read-delay=120  add 120 ms before every database round trip
 //   npm run pulse:prove -- --beats --slow-apply-links=10500 --read-delay=120
-//                                                      hold one worker for 10.5 s while the other 14 beats still run
+//                                                      hold one worker for 10.5 s while the rest of its shift still runs
 //   npm run pulse:prove -- --beats --fixture       also run one built-in fixture beat (green) through the runner
 //   npm run pulse:prove -- --beats --fixture=red   the same fixture, forced red: proves the text path with a fake sink
 //
@@ -40,6 +43,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { DB_SETTINGS_SQL } from "../../src/pulse/beats/readbox.mjs";
 import { isPartialLaneOnlyNotChecked, isRunnerOnlyNotChecked, unknownRequestedLanes } from "./prove-policy.mjs";
 import { formatProofFetchTrace, makeProofFetchTrace, proofFetch } from "./prove-fetch-trace.mjs";
+import { hedgedSiteFetch } from "./site-hedge.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const STEP_LIMIT_MS = 20000;
@@ -48,6 +52,9 @@ const args = process.argv.slice(2);
 const FROM_REPO = args.includes("--repo");
 const LANES = (args.find((a) => a.startsWith("--lanes=")) || "").slice(8).split(",").filter(Boolean);
 const clip = (s, n = 200) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n);
+// The live site host. A request to it that stays silent gets up to two more connections (scripts/pulse/site-hedge.mjs).
+const SITE_HOST = new URL(process.env.URL || "https://fundhub.ai").host;
+const hedgeLine = (rows) => `  site requests that needed another connection: ${rows.length}${rows.length ? ` (${rows.map((r) => `${r.method} ${r.path}${r.phase === "body" ? " (body stalled)" : ""} -> ${r.winner ? `answer ${r.winner}` : "no answer"} of ${r.sent}, ${r.ms} ms`).join("; ")})` : ""}`;
 
 /* The hourly pulse proof is a separate flow. It runs here, before the morning-pulse flow below, and exits. Everything
    it needs is a function declaration (hoisted) or a const above this line; it must not touch the consts below. */
@@ -66,7 +73,8 @@ if (!REAL_DATABASE_URL) fail("DATABASE_URL is not set (.env).");
 process.env.DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
 process.env.MIGRATION_DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
 const pg = createRequire(path.join(REPO, "package.json"))("pg");
-const realFetch = globalThis.fetch;
+const siteHedges = [];
+const realFetch = hedgedSiteFetch(globalThis.fetch, { siteHost: SITE_HOST, log: siteHedges });
 
 const root = FROM_REPO ? REPO : buildBundle();
 const listed = (await import(pathToFileURL(path.join(REPO, "src/pulse/coverage/modules.mjs")).href));
@@ -191,6 +199,7 @@ const problems = [
   ...log.refused.map((x) => `refused: ${x}`),
   ...blindRows.map((r) => `${r.id} is ${r.status} on the app role but ${byId.get(r.id)} with staff access — the check cannot see the rows`)
 ];
+if (siteHedges.length || problems.length) console.log(hedgeLine(siteHedges));
 if (problems.length) {
   for (const entry of webTrace.slowOrFailed()) console.log(`  web timing: ${formatProofFetchTrace(entry)}`);
   console.log(`\nPROBLEMS (${problems.length}):`);
@@ -324,9 +333,14 @@ function guardedFetch() {
 /* =====================================================================================================
    --beats : prove the HOURLY pulse from a built bundle, against live data, READ ONLY.
 
-   WHAT RUNS. The pulse-hourly function is built the way Netlify builds it (same bundler, same netlify.toml
-   settings), unzipped, and src/pulse/runner.mjs is imported from INSIDE the unzipped folder. Then
-   runPulse({ mode: "prove", sinks: fakes }) runs every listed beat:
+   WHAT RUNS. Every hourly shift function (pulse-hourly at minute 7, pulse-hourly-d at 22, pulse-hourly-b at 37,
+   pulse-hourly-c at 52; the
+   literal SHIFT_FUNCTIONS list below) is built the way
+   Netlify builds them (same bundler, same netlify.toml settings), unzipped, and src/pulse/runner.mjs is imported from
+   INSIDE an unzipped folder. Every beat must be in exactly one shift (src/pulse/beats/shifts.mjs), and each
+   function's BEATS must be its shift. Then, ONE SHIFT AT A TIME, the way the server runs them (two invocations half
+   an hour apart), runPulse({ mode: "prove", sinks: fakes, only: <that shift> }) runs the shift's beats, and every
+   guard below is judged for that shift on its own: its own 22 s budget, its own 13 s beat window, its own boxes:
      - the read box is REAL: BEGIN READ ONLY on DATABASE_URL, rolled back, destroyed (src/pulse/beats/readbox.mjs)
      - the GET and HEAD probes are REAL (the live site and, for a bank beat, the bank's own page)
      - the text and the buzz go to RECORDING FAKES. The runner is not live, so it could not build a real sender
@@ -338,8 +352,10 @@ function guardedFetch() {
    no model call, no Plaid, no credit pull, no card charge.
 
    EXIT 1 when: the beat list is empty; a beat file on disk is not on the list; a listed beat file is missing from the
-   bundle; the beat list does not load; the bundle cannot load the function or the runner; a beat hit its deadline or was cut; any read was refused as SQL; anything tried to
-   send through anything but the declared sinks (a non-GET/HEAD fetch); the run took more than 22 s; the cold load
+   bundle; the beat list does not load; a beat is in no shift or in two, or a shift names a beat that is not listed;
+   a shift function's schedule or BEATS disagree with shifts.mjs; the bundle cannot load a function or the runner; a
+   beat hit its deadline or was cut; any read was refused as SQL; anything tried to
+   send through anything but the declared sinks (a non-GET/HEAD fetch); a shift's run took more than 22 s; the cold load
    took more than 8 s; the process crashed. A RED beat is printed, not a failure of the proof: red means the proof
    saw a real break (or this laptop's masked key), and that is the pulse doing its job.
    ===================================================================================================== */
@@ -377,7 +393,9 @@ async function proveBeats() {
   process.env.DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
   process.env.MIGRATION_DATABASE_URL = "postgres://escape-blocked.invalid:5432/blocked";
   const pgMod = createRequire(path.join(REPO, "package.json"))("pg");
-  const realFetch = globalThis.fetch;
+  const nativeFetch = globalThis.fetch;
+  const siteHedges = [];
+  const realFetch = hedgedSiteFetch(nativeFetch, { siteHost: SITE_HOST, log: siteHedges });
 
   process.on("uncaughtException", (err) => { crashes.push(`uncaught exception: ${clip(err && err.message)}`); });
   const lateRejections = [];
@@ -393,13 +411,22 @@ async function proveBeats() {
        B. a proof entry that re-exports runPulse, the fake sinks and the beat list from the same repo files, built
           with the same settings. Same bundler, same graph, so the code inside B is the code inside A. */
   const href = (dir, rel) => pathToFileURL(path.join(dir, rel)).href;
+  /* The hourly shift functions and the schedule each must have. src/pulse/beats/shifts.mjs must name exactly these,
+     in this order; each function must run exactly its shift. */
+  const SHIFT_FUNCTIONS = Object.freeze([
+    ["pulse-hourly", "7 * * * *"], ["pulse-hourly-b", "37 * * * *"], ["pulse-hourly-c", "52 * * * *"], ["pulse-hourly-d", "22 * * * *"]
+  ]);
   let rootFn = REPO;
+  const shiftRoots = new Map(SHIFT_FUNCTIONS.map(([job]) => [job, REPO]));
   let rootWatch = REPO;
   let rootProof = REPO;
   let proofEntryFile = null;
   if (!FROM_REPO) {
     try {
       rootFn = buildBundle("netlify/functions/pulse-hourly.mjs");
+      shiftRoots.set("pulse-hourly", rootFn);
+      // Every other hourly shift is its own function (src/pulse/beats/shifts.mjs): build each the same way.
+      for (const [job] of SHIFT_FUNCTIONS.slice(1)) shiftRoots.set(job, buildBundle(`netlify/functions/${job}.mjs`));
       // The 5-minute outside watch (one beat, the same runner) is a second function: build it the same way.
       rootWatch = buildBundle("netlify/functions/pulse-outside-watch.mjs");
       // The entry sits inside the repo for the few seconds of the build (the bundler needs it under its base path)
@@ -410,6 +437,7 @@ async function proveBeats() {
         `export { runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS, READ_BOX_COUNT } from ${rel("src/pulse/runner.mjs")};`,
         `export { recordingSinks } from ${rel("src/pulse/alerts.mjs")};`,
         `export { BEAT_FILES, loadBeats } from ${rel("src/pulse/beats/index.mjs")};`,
+        `export { SHIFTS, shiftProblems } from ${rel("src/pulse/beats/shifts.mjs")};`,
         ""
       ].join("\n"));
       rootProof = buildBundle(proofEntryFile);
@@ -422,19 +450,27 @@ async function proveBeats() {
     }
   }
   const t0 = Date.now();
-  let BEAT_FILES, loadBeats, runPulse, recordingSinks, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, READ_BOX_COUNT = 3, entryModule;
+  let BEAT_FILES, loadBeats, runPulse, recordingSinks, SHIFTS, shiftProblems, RUN_BUDGET_MS = BEAT_RUN_LIMIT_MS, BEATS_PHASE_MS = 13000, READ_BOX_COUNT = 3, entryModule;
+  const shiftModules = new Map();
   const fnRel = "netlify/functions/pulse-hourly.mjs";
   try {
     if (!fs.existsSync(path.join(rootFn, fnRel))) problems.push("the function bundle does not hold netlify/functions/pulse-hourly.mjs");
     else entryModule = await import(href(rootFn, fnRel));
+    shiftModules.set("pulse-hourly", entryModule);
+    for (const [job] of SHIFT_FUNCTIONS.slice(1)) {
+      const rel = `netlify/functions/${job}.mjs`;
+      if (!fs.existsSync(path.join(shiftRoots.get(job), rel))) problems.push(`the ${job} bundle does not hold ${rel}`);
+      else shiftModules.set(job, await import(href(shiftRoots.get(job), rel)));
+    }
     if (FROM_REPO) {
       ({ BEAT_FILES, loadBeats } = await import(href(REPO, "src/pulse/beats/index.mjs")));
-      ({ runPulse, RUN_BUDGET_MS, READ_BOX_COUNT } = await import(href(REPO, "src/pulse/runner.mjs")));
+      ({ SHIFTS, shiftProblems } = await import(href(REPO, "src/pulse/beats/shifts.mjs")));
+      ({ runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS, READ_BOX_COUNT } = await import(href(REPO, "src/pulse/runner.mjs")));
       ({ recordingSinks } = await import(href(REPO, "src/pulse/alerts.mjs")));
     } else {
       const entryOut = fs.readdirSync(rootProof, { recursive: true }).map(String).find((f) => /(^|\/)\.prove-entry-\d+\.m?js$/.test(f));
       if (!entryOut) throw new Error(`the proof bundle holds no proof entry (it holds: ${fs.readdirSync(rootProof).slice(0, 8).join(", ")})`);
-      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, READ_BOX_COUNT, recordingSinks } = await import(href(rootProof, entryOut)));
+      ({ BEAT_FILES, loadBeats, runPulse, RUN_BUDGET_MS, BEATS_PHASE_MS, READ_BOX_COUNT, recordingSinks, SHIFTS, shiftProblems } = await import(href(rootProof, entryOut)));
     }
   } catch (err) {
     console.log(`  the bundle could not be loaded: ${clip(err && err.stack ? err.stack.split("\n").slice(0, 3).join(" | ") : err, 400)}`);
@@ -456,6 +492,24 @@ async function proveBeats() {
   if (unlisted.length) problems.push(`${unlisted.length} beat file(s) are on disk but not on the list, so they would ship nowhere: ${unlisted.join(", ")}`);
   if (entryModule && entryModule.SWEEP_CRON !== "7 * * * *") problems.push(`pulse-hourly SWEEP_CRON is ${entryModule.SWEEP_CRON}`);
   if (entryModule && typeof entryModule.default !== "function") problems.push("the bundled pulse-hourly has no default export");
+  for (const [job, cron] of SHIFT_FUNCTIONS.slice(1)) {
+    const mod = shiftModules.get(job);
+    if (mod && mod.SWEEP_CRON !== cron) problems.push(`${job} SWEEP_CRON is ${mod.SWEEP_CRON}`);
+    if (mod && typeof mod.default !== "function") problems.push(`the bundled ${job} has no default export`);
+  }
+  // The two hourly shifts. Every listed beat is in exactly one shift, and each function runs exactly its own shift,
+  // on its own shift's schedule. A beat in no shift would ship and never run; that fails here, before any ship.
+  const shiftJobs = Object.keys(SHIFTS || {});
+  for (const p of shiftProblems ? shiftProblems(loadedBeats.map((b) => b.id)) : ["the shift list did not load"]) problems.push(`shifts: ${p}`);
+  const shiftFunctions = SHIFT_FUNCTIONS.map(([job]) => [job, shiftModules.get(job)]);
+  if (shiftJobs.join(",") !== shiftFunctions.map(([job]) => job).join(",")) problems.push(`the shift list names ${shiftJobs.join(", ") || "no shift"}, expected ${SHIFT_FUNCTIONS.map(([job]) => job).join(", ")}`);
+  for (const [job, mod] of shiftFunctions) {
+    const shift = SHIFTS?.[job];
+    if (!mod || !shift) continue;
+    if (mod.SWEEP_CRON !== shift.cron) problems.push(`${job} runs at "${mod.SWEEP_CRON}" but its shift says "${shift.cron}"`);
+    if (JSON.stringify([...(mod.BEATS || [])]) !== JSON.stringify([...shift.beats])) problems.push(`the bundled ${job} runs ${(mod.BEATS || []).length} beat(s) that are not exactly its shift in src/pulse/beats/shifts.mjs`);
+  }
+  for (const job of shiftJobs) console.log(`  shift ${job} (${SHIFTS[job].cron}): ${SHIFTS[job].beats.length} beat(s): ${SHIFTS[job].beats.join(", ")}`);
   // The outside watch: it must build, load from its own zip, tick every 5 minutes and run only a beat that is listed.
   if (!FROM_REPO) {
     const watchRel = "netlify/functions/pulse-outside-watch.mjs";
@@ -638,36 +692,58 @@ async function proveBeats() {
   delete env.AWS_LAMBDA_FUNCTION_NAME;
   delete env.NETLIFY;
 
-  let out;
-  const t1 = Date.now();
-  try {
-    out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(proofBeats ? { beats: proofBeats } : {}) });
-  } catch (err) {
-    crashes.push(`runPulse threw: ${clip(err && err.message)}`);
+  // 5. The runs. With a fixture: one run of the fixture alone (it proves the guards have teeth). Otherwise each hourly
+  // shift, one after the other, the way the server runs them: its own runPulse call with `only` set to its shift,
+  // its own 22 s budget, its own 13 s beat window and its own three boxes. The runner loads the beats from the bundle
+  // itself, as the live function does, unless a capacity fixture replaced one.
+  const runs = FIXTURE
+    ? [{ label: "fixture", only: null }]
+    : shiftJobs.map((job) => ({ label: `shift ${job}`, only: [...SHIFTS[job].beats] }));
+  for (const run of runs) {
+    const t1 = Date.now();
+    try {
+      run.out = await runPulse({ env, mode: "prove", sinks, rdb, connect, ...(proofBeats ? { beats: proofBeats } : {}), ...(run.only ? { only: run.only } : {}) });
+    } catch (err) {
+      crashes.push(`runPulse threw (${run.label}): ${clip(err && err.message)}`);
+    }
+    run.ms = Date.now() - t1;
+    // Every box the run opened must be destroyed before the next shift starts.
+    run.pool = { total: boxPool.totalCount, idle: boxPool.idleCount, waiting: boxPool.waitingCount };
   }
-  const runMs = Date.now() - t1;
   try { await queryRoundTrip(client, "ROLLBACK"); } catch { /* closing */ }
   try { await client.end(); } catch { /* closing */ }
   if (plainSettings) { try { await plainSettings.end(); } catch { /* closing */ } }
-  const poolBefore = { total: boxPool.totalCount, idle: boxPool.idleCount, waiting: boxPool.waitingCount };
   try { await boxPool.end(); } catch { /* closing */ }
-  globalThis.fetch = realFetch;
+  globalThis.fetch = nativeFetch;
 
-  // 5. Judge.
-  if (out) {
-    console.log(`  run: ${out.ran} beat(s), ${out.failed} red, ${out.timedOut} cut, ${runMs} ms (budget ${RUN_BUDGET_MS / 1000} s), database ${out.ran === 0 ? "not checked (no beats)" : out.dbUp ? "up" : "NOT answering"}`);
+  // 6. Judge, one run at a time. Every guard holds for each shift on its own.
+  let ranTotal = 0;
+  for (const { label, only, out, ms: runMs, pool: poolBefore } of runs) {
+    if (!out) continue;
+    ranTotal += out.ran;
+    const judgedBeats = (proofBeats || loadedBeats).filter((beat) => !only || only.includes(beat.id));
+    const where = runs.length > 1 ? ` (${label})` : "";
+    console.log(`\n  ${label}: ${out.ran} beat(s), ${out.failed} red, ${out.timedOut} cut, ${runMs} ms (budget ${RUN_BUDGET_MS / 1000} s), database ${out.ran === 0 ? "not checked (no beats)" : out.dbUp ? "up" : "NOT answering"}`);
     for (const r of out.results) {
       const mark = r.ok ? "green" : "RED";
       console.log(`  ${mark.padEnd(5)} ${r.beatId} ${r.ms === null ? "(cut)" : `${r.ms} ms`}${r.skipped?.length ? ` skipped: ${r.skipped.join(",")}` : ""}${r.ok ? "" : `  at "${r.step}": ${clip(r.detail, 140)}`}`);
     }
+    // How much room the shift has. Box time is each beat's own measured time (its worker is busy for all of it,
+    // web reads included); the shift has READ_BOX_COUNT workers for the BEATS_PHASE_MS beat window. A cut beat has
+    // no time (null), so a run with a cut says so instead of hiding it in the sum.
+    const measured = out.results.filter((r) => r.ms !== null);
+    const workerMs = measured.reduce((sum, r) => sum + r.ms, 0);
+    const capacityMs = READ_BOX_COUNT * BEATS_PHASE_MS;
+    const slowest = measured.reduce((top, r) => (r.ms > top.ms ? r : top), { beatId: "none", ms: 0 });
+    console.log(`  box time used${where}: ${(workerMs / 1000).toFixed(1)} s of ${(capacityMs / 1000).toFixed(0)} s (${Math.round((100 * workerMs) / capacityMs)}%${measured.length < out.results.length ? `, ${out.results.length - measured.length} cut beat(s) not counted` : ""}); slowest ${slowest.beatId} ${(slowest.ms / 1000).toFixed(1)} s; run ${(runMs / 1000).toFixed(1)} s of ${RUN_BUDGET_MS / 1000} s`);
     if (out.alerts?.body) console.log(`  the text the pulse WOULD send (fake sink, nothing sent): ${out.alerts.body}`);
     if (out.box) console.log(`  box pool after the run: ${poolBefore.total} open, ${poolBefore.idle} idle, ${poolBefore.waiting} waiting`);
     if (out.box) console.log(`  read boxes: ${out.box.count}, ${out.box.reads} reads, ${out.box.errors} errors, ${out.box.refused.length} refused, commitsSent ${out.box.commitsSent}, readOnlyAtClose ${out.box.readOnlyAtClose}, rolledBack ${out.box.rolledBack}, destroyed ${out.box.destroyed}`);
-    if (out.error && !/^records:/.test(out.error)) problems.push(`the run reported: ${clip(out.error, 200)}`);
-    if (!out.dbUp && out.ran) problems.push("the runner could not read the database before the beats ran");
-    if (runMs > RUN_BUDGET_MS) problems.push(`the run took ${(runMs / 1000).toFixed(1)} s (budget ${RUN_BUDGET_MS / 1000} s)`);
-    if (out.timedOut) problems.push(`${out.timedOut} beat(s) were cut at the beats-phase budget`);
-    const judgedBeats = proofBeats || loadedBeats;
+    if (out.error && !/^records:/.test(out.error)) problems.push(`the run reported${where}: ${clip(out.error, 200)}`);
+    if (!out.dbUp && out.ran) problems.push(`the runner could not read the database before the beats ran${where}`);
+    if (runMs > RUN_BUDGET_MS) problems.push(`the run took ${(runMs / 1000).toFixed(1)} s (budget ${RUN_BUDGET_MS / 1000} s)${where}`);
+    if (out.timedOut) problems.push(`${out.timedOut} beat(s) were cut at the beats-phase budget${where}`);
+    if (only && out.ran !== judgedBeats.length) problems.push(`${label} ran ${out.ran} beat(s), expected its ${judgedBeats.length}`);
     const deadlines = new Map(judgedBeats.map((beat) => [beat.id, beat.deadlineMs]));
     for (const r of out.results) {
       if (/^deadline \d+ ms passed/.test(String(r.detail))) problems.push(`beat ${r.beatId} hit its own deadline: ${clip(r.detail, 120)}`);
@@ -688,24 +764,33 @@ async function proveBeats() {
         }
       }
     }
-    if (SLOW_APPLY_LINKS_MS && out.ran !== loadedBeats.length) problems.push(`the slow apply-links capacity proof ran ${out.ran} beat(s), expected the full ${loadedBeats.length}`);
-    if (!out.box) problems.push("the runner returned no read-box report");
+    if (!out.box) problems.push(`the runner returned no read-box report${where}`);
     else {
       const expectedBoxCount = Math.min(READ_BOX_COUNT, judgedBeats.length);
       if (out.box.count !== expectedBoxCount || out.box.reports?.length !== expectedBoxCount) {
-        problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${expectedBoxCount}`);
+        problems.push(`the runner opened ${out.box.count} read box(es), expected exactly ${expectedBoxCount}${where}`);
       }
     }
     for (const [lane, report] of (out.box?.reports || []).entries()) {
-      for (const x of report.refused || []) if (x.kind === "sql") problems.push(`read box ${lane + 1} refused SQL: ${clip(x.what, 120)}`);
-      if (!report.began || !report.readOnlyVerified) problems.push(`read box ${lane + 1} did not prove BEGIN READ ONLY`);
-      if (report.commitsSent !== 0) problems.push(`read box ${lane + 1} saw ${report.commitsSent} COMMIT(s)`);
-      if (report.leaked) problems.push(`read box ${lane + 1} leaked out of READ ONLY`);
-      if (report.began && !report.rolledBack) problems.push(`read box ${lane + 1} did not ROLLBACK`);
-      if (!report.destroyed) problems.push(`read box ${lane + 1} was not destroyed`);
+      for (const x of report.refused || []) if (x.kind === "sql") problems.push(`read box ${lane + 1}${where} refused SQL: ${clip(x.what, 120)}`);
+      if (!report.began || !report.readOnlyVerified) problems.push(`read box ${lane + 1}${where} did not prove BEGIN READ ONLY`);
+      if (report.commitsSent !== 0) problems.push(`read box ${lane + 1}${where} saw ${report.commitsSent} COMMIT(s)`);
+      if (report.leaked) problems.push(`read box ${lane + 1}${where} leaked out of READ ONLY`);
+      if (report.began && !report.rolledBack) problems.push(`read box ${lane + 1}${where} did not ROLLBACK`);
+      if (!report.destroyed) problems.push(`read box ${lane + 1}${where} was not destroyed`);
     }
-    if (out.records?.written) problems.push("a non-live run wrote records");
-    if (poolBefore.total > 0) problems.push(`the run left ${poolBefore.total} connection(s) open in the box pool (all three boxes must destroy theirs)`);
+    if (out.records?.written) problems.push(`a non-live run wrote records${where}`);
+    if (poolBefore.total > 0) problems.push(`the run left ${poolBefore.total} connection(s) open in the box pool (all three boxes must destroy theirs)${where}`);
+  }
+  // The capacity fixture holds one worker in apply-links' shift; the whole beat list must still run across the shifts.
+  if (SLOW_APPLY_LINKS_MS && ranTotal !== loadedBeats.length) problems.push(`the slow apply-links capacity proof ran ${ranTotal} beat(s), expected the full ${loadedBeats.length}`);
+  // Across the shifts every listed beat ran exactly once (a beat in no shift never runs; one in two runs twice).
+  if (!FIXTURE && runs.every((run) => run.out)) {
+    const ranIds = runs.flatMap((run) => run.out.results.map((r) => r.beatId));
+    const missing = loadedBeats.map((b) => b.id).filter((id) => !ranIds.includes(id));
+    const twice = [...new Set(ranIds.filter((id, i) => ranIds.indexOf(id) !== i))];
+    if (missing.length) problems.push(`these beats ran in no shift: ${missing.join(", ")}`);
+    if (twice.length) problems.push(`these beats ran in more than one shift: ${twice.join(", ")}`);
   }
   for (const s of sendLog) problems.push(`something tried to send outside the declared sinks: ${s}`);
   for (const c of crashes) problems.push(c);
@@ -713,6 +798,7 @@ async function proveBeats() {
   for (const q of refusedReads) problems.push(`Postgres refused a write on the reading connection: ${q.sql}`);
   if (lateRejections.length) console.log(`  note: ${lateRejections.length} late rejection(s) were caught by the function's guard (not a failure): ${lateRejections.slice(0, 2).join(" | ")}`);
   console.log(`  web reads made: ${fetchLog.length}${fetchLog.length ? ` (${[...new Set(fetchLog)].slice(0, 4).join(", ")})` : ""}; sink calls: text ${sinks.calls.text.length}, buzz ${sinks.calls.ntfy.length}`);
+  console.log(hedgeLine(siteHedges));
 
   if (problems.length) {
     for (const trace of siteFetchTrace) console.log(`  site fetch headers: ${trace.path} ${trace.status} ${trace.ms} ms${trace.error ? ` (${trace.error}${trace.code ? ` ${trace.code}` : ""}; aborted=${trace.aborted})` : ""}`);
@@ -720,6 +806,6 @@ async function proveBeats() {
     for (const p of problems) console.log(`  - ${p}`);
     process.exit(1);
   }
-  console.log("\nOK: every listed beat is in the bundle, the runner and the function load, no beat hit its deadline, nothing was refused as SQL, nothing sent outside the fakes, the run fit its budget, nothing crashed.");
+  console.log(`\nOK: every listed beat is in the bundle${FIXTURE ? "" : " and in exactly one shift"}, the runner and the functions load, no beat hit its deadline, nothing was refused as SQL, nothing sent outside the fakes, ${FIXTURE ? "the run" : "each shift"} fit its budget, nothing crashed.`);
   process.exit(0);
 }

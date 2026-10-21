@@ -25,9 +25,12 @@ import { tagMeta } from "../../marketing/funnel-tracking.mjs";
 import { FUNNEL_ROLES } from "../../marketing/funnel-paths.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// Code only. The header comments name the things this file refuses to do.
-const SRC = fs
-  .readFileSync(path.join(HERE, "gap-built-funnels.mjs"), "utf8")
+// Code only. The header comments name the things this file refuses to do. The lane and the shared
+// truth it imports (src/pulse/beats/lib/built-funnels-truth.mjs) are read together.
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-built-funnels.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/built-funnels-truth.mjs"), "utf8")
+].join("\n")
   .split("\n")
   .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
   .join("\n");

@@ -240,10 +240,13 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
     const first = await syncPartnerConnections({ partnerId, deps: { fetch: fakeFetch } });
     refuseMaximum = false;
     assert.deepEqual(first.errors, [], JSON.stringify(first.errors));
+    /* The money request for the whole history is refused, so its second
+       request is never sent; then the window, as two requests (the money and
+       the rest — TWO INSIGHTS REQUESTS in api/campaigns/sync.mjs). */
     const firstInsights = metaUrls.filter((u) => u.includes("/insights?"));
-    assert.equal(firstInsights.length, 2, "whole history, then the window");
+    assert.equal(firstInsights.length, 3, "whole history (refused), then the window's two requests");
     assert.ok(firstInsights[0].includes("date_preset=maximum"));
-    assert.ok(decodeURIComponent(firstInsights[1]).includes('"since":'));
+    for (const u of firstInsights.slice(1)) assert.ok(decodeURIComponent(u).includes('"since":'));
     assert.equal(first.full_history.length, 1);
     assert.equal(first.full_history[0].ok, false);
     assert.match(first.full_history[0].error, /whole history refused/);
@@ -258,7 +261,7 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
     const retry = await syncPartnerConnections({ partnerId, deps: { fetch: fakeFetch } });
     assert.deepEqual(retry.errors, []);
     assert.equal(retry.full_history[0]?.ok, true, JSON.stringify(retry.full_history));
-    assert.equal(metaUrls.filter((u) => u.includes("/insights?")).length, 1);
+    assert.equal(metaUrls.filter((u) => u.includes("/insights?")).length, 2, "the money and the rest, once each");
 
     // A person numbers the ads (what 407 did for the four live SLO ads).
     await asStaff(async (tx) => {
@@ -318,8 +321,8 @@ describe("ad numbers from Meta tags, Meta money numbers, payments per ad", { ski
     assert.deepEqual(out.errors, []);
     assert.deepEqual(out.full_history, []);
     const insights = metaUrls.filter((u) => u.includes("/insights?"));
-    assert.equal(insights.length, 1);
-    assert.ok(!insights[0].includes("date_preset"), "asked for the whole history again");
+    assert.equal(insights.length, 2, "the money and the rest, once each");
+    for (const u of insights) assert.ok(!u.includes("date_preset"), "asked for the whole history again");
   });
 
   // ── 3. the shared case table through the real trigger ────────────────────

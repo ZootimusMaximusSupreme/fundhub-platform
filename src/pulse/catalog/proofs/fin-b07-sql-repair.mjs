@@ -1,7 +1,10 @@
 // Finish-853 batch 07: the read-only SQL texts for the Repair queue, stage columns and repair letters live checks.
 // Each takes the company as $1::uuid and answers sample_count and bad_count. The common subset of
 // Postgres and SQLite on purpose (see fin-b07-display-contracts.mjs), so the test can run the text.
-// Imports nothing.
+// Imports only the owner's hold list (src/pulse/owner-hold.mjs, pure): a file on hold is not counted by the
+// stage columns.
+
+import { heldCodesSqlList } from "../../owner-hold.mjs";
 
 const W60 = "now() - interval '60 days'";
 const W30 = "now() - interval '30 days'";
@@ -74,7 +77,8 @@ SELECT count(*)::int AS sample_count,
   JOIN pipelines p ON p.org_id = c.org_id AND p.id = c.pipeline_id AND p.key = 'optimization'
   JOIN pipeline_stages ps ON ps.org_id = c.org_id AND ps.id = c.stage_id AND ps.key = '${stageKey}'
   JOIN clients cl ON cl.org_id = c.org_id AND cl.id = c.client_id
- WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false AND COALESCE(cl.is_demo, false) = false`;
+ WHERE c.org_id = $1::uuid AND COALESCE(c.is_demo, false) = false AND COALESCE(cl.is_demo, false) = false
+   AND upper(COALESCE(cl.client_code, '')) NOT IN ${heldCodesSqlList()}`;
 }
 
 const CLOCK = "COALESCE(c.entered_at, c.updated_at)";

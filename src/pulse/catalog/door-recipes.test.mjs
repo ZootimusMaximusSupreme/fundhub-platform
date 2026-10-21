@@ -84,7 +84,9 @@ test("every mapped door gets a complete recipe", async () => {
     }
   }
 
-  assert.equal(recipeCount, 1_017);
+  // 1,018 since 2026-10-20: function:pulse-hourly-b, shift B of the hourly pulse (src/pulse/beats/shifts.mjs).
+  // 1,020 since 2026-10-21: function:pulse-hourly-c and function:pulse-hourly-d, shifts C and D.
+  assert.equal(recipeCount, 1_020);
 });
 
 test("route recipes use route methods and keep writes out of read-only mode", async () => {

@@ -5,136 +5,14 @@
 // Pure functions over rows that endpoint already fetches, so this is testable
 // without a database and adds no queries.
 
-import { pickCreditScore } from "../finance/crs-map.mjs";
-//
-// NOTHING IS INVENTED. Every value is derived from something the analyzer
-// actually stored. crs_results.result is the raw analysis.completed payload
-// (src/handlers/client-lifecycle.mjs:135), so `scores` and `utilization` are read
-// from there if the analyzer sent them and reported as null if it did not — a
-// screen showing "—" is correct; a screen showing a made-up 720 is not.
+/* triMerge, utilisation, isSampleResult, UTILISATION_BANDS and the small readers they share live in
+   src/pulse/beats/lib/lenders-credit.mjs (2026-10-20) so the hourly lender-book beat runs the same lender
+   match. One copy; the public names are re-exported below. */
+import {
+  byNewest, isSampleResult, num, safeObject, triMerge, UTILISATION_BANDS, utilisation
+} from "../pulse/beats/lib/lenders-credit.mjs";
 
-/* FICO range only. IncomeView / other bureau add-ons (e.g. Equifax 42) are
-   not credit scores and must not paint on a card. */
-const FICO_MIN = 300;
-const FICO_MAX = 850;
-const FICO_MODEL = /fico|fair\s*isaac/i;
-
-function ficoOf(value, model) {
-  const n = num(value);
-  if (n === null || n < FICO_MIN || n > FICO_MAX) return null;
-  if (model && String(model).trim() && !FICO_MODEL.test(String(model))) return null;
-  return n;
-}
-
-function scoresFromResult(result) {
-  const s = (result && result.scores) || {};
-  const m = (result && (result.scoreModels || result.score_models)) || {};
-  const fromCache = {
-    experian: ficoOf(s.ex ?? s.experian, m.ex ?? m.experian),
-    equifax: ficoOf(s.eq ?? s.equifax, m.eq ?? m.equifax),
-    transunion: ficoOf(s.tu ?? s.transunion, m.tu ?? m.transunion)
-  };
-  const bureaus = result && result.bureaus;
-  if (!bureaus || typeof bureaus !== "object") return fromCache;
-  return {
-    experian: fromCache.experian ?? ficoFromBureau(bureaus.EX),
-    equifax: fromCache.equifax ?? ficoFromBureau(bureaus.EQ),
-    transunion: fromCache.transunion ?? ficoFromBureau(bureaus.TU)
-  };
-}
-
-function ficoFromBureau(report) {
-  if (!report || typeof report !== "object") return null;
-  const { value, model } = pickCreditScore(report.scores);
-  return ficoOf(value, model);
-}
-
-/* isSampleResult — was this stored report a walkthrough's SAMPLE, never a
-   bureau pull? scripts/sim/push-credit.mjs and src/demo/simulate-client.mjs
-   stamp it environment "simulated" (push-credit also sets simulated:true) so
-   every screen can tell. The same test as isSampleReport() in
-   public/app/client-control-panel.html (live hole 23). Unreadable answers
-   false, so a real pull is never labelled. Never throws. */
-export function isSampleResult(result) {
-  const r = safeObject(result);
-  if (!r || typeof r !== "object") return false;
-  return r.simulated === true || String(r.environment || "").toLowerCase() === "simulated";
-}
-
-/* triMerge — the three bureau FICOs from the most recent CRS result that
-   actually has one. Returns { experian, equifax, transunion, spread, asOf,
-   source, sample } with nulls where the analyzer sent nothing usable.
-   `sample` is true when that result is a sample report (isSampleResult). */
-export function triMerge(crsResults = []) {
-  const empty = { experian: null, equifax: null, transunion: null,
-                  spread: null, asOf: null, source: null, sample: false };
-  const latest = latestWithScores(crsResults);
-  if (!latest) return empty;
-
-  const { experian, equifax, transunion } = latest.scores;
-  const present = [experian, equifax, transunion].filter((v) => v !== null);
-  return {
-    experian, equifax, transunion,
-    spread: present.length >= 2 ? Math.max(...present) - Math.min(...present) : null,
-    asOf: latest.created_at || null,
-    source: present.length ? "crs_results" : null,
-    sample: isSampleResult(latest.result)
-  };
-}
-
-function latestWithScores(crsResults) {
-  for (const r of [...(crsResults || [])].sort(byNewest)) {
-    const result = safeObject(r.result);
-    if (!result) continue;
-    // Sandbox fixtures are not this person's credit file. Never paint them.
-    if (String(result.environment || "").toLowerCase() === "sandbox") continue;
-    const scores = scoresFromResult(result);
-    if (scores.experian != null || scores.equifax != null || scores.transunion != null) {
-      return { ...r, result, scores };
-    }
-  }
-  return null;
-}
-
-function byNewest(a, b) {
-  return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-}
-
-function safeObject(v) {
-  if (!v) return null;
-  if (typeof v === "object") return v;
-  try { return JSON.parse(v); } catch { return null; }
-}
-
-function num(v) {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-/* UTILISATION BANDS. The thresholds are the standard credit-utilisation bands
-   the roadmap is written against; they are a presentation grouping over a number
-   the analyzer supplied, not a scoring model of our own. A missing utilisation
-   yields band null rather than "unknown" masquerading as a band. */
-export const UTILISATION_BANDS = [
-  { band: "excellent", max: 10 },
-  { band: "good",      max: 30 },
-  { band: "high",      max: 50 },
-  { band: "severe",    max: Infinity }
-];
-
-export function utilisation(crsResults = [], client = {}) {
-  const latest = [...(crsResults || [])].sort(byNewest)
-    .map((r) => ({ ...r, result: safeObject(r.result) }))
-    .find((r) => r.result && r.result.utilization !== undefined);
-
-  const pct = latest ? num(latest.result.utilization)
-                     : num(client && client.custom_fields && client.custom_fields.utilization);
-  if (pct === null) return { percent: null, band: null, asOf: null };
-
-  const band = UTILISATION_BANDS.find((b) => pct <= b.max).band;
-  return { percent: pct, band, asOf: latest ? latest.created_at || null : null };
-}
+export { isSampleResult, triMerge, UTILISATION_BANDS, utilisation };
 
 /* TIER REASONING. Why this client landed on this tier, in the words of the data
    that decided it. Deliberately NOT a re-derivation of the tier: re-running the

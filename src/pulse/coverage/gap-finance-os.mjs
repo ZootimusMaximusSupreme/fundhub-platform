@@ -17,9 +17,18 @@
 //   * The seven doors ran one after another (about 12 to 20 seconds). The step
 //     is cut at 26 seconds, so they now run side by side.
 //   * The skip line said "no database" even when the org id was the missing part.
+//
+// ONE VERDICT, TWO CLOCKS (2026-10-20). The linked-client read, the door verdict and the money
+// helper's read-only payload live in src/pulse/beats/lib/ (money-helper-door.mjs and
+// money-helper-read.mjs), so the hourly beat money-tasks judges finance-os:helper with the same
+// client pick, the same read and the same words. This lane still opens the real handlers.
 
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import {
+  HELPER_DOOR, row, clip, fix, scoreDoor, linkedClientId
+} from "../beats/lib/money-helper-door.mjs";
+import { helperView } from "../beats/lib/money-helper-read.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -30,45 +39,12 @@ export const DOORS = Object.freeze([
   { id: "finance-os:vault", route: "money/vault", page: "/app/money-vault.html", label: "vault", file: "api/money/vault.mjs", load: () => import("../../../api/money/vault.mjs") },
   { id: "finance-os:transfers", route: "money/transfers", page: "/app/money-transfers.html", label: "transfers", file: "api/money/transfers.mjs", load: () => import("../../../api/money/transfers.mjs") },
   { id: "finance-os:payments", route: "money/payments", page: "/app/money-payments.html", label: "payments schedule", file: "api/money/payments.mjs", load: () => import("../../../api/money/payments.mjs") },
-  { id: "finance-os:helper", route: "money/helper", page: "/app/money-helper.html", label: "money helper", file: "api/money/helper.mjs", load: () => import("../../../api/money/helper.mjs") }
+  { ...HELPER_DOOR, load: () => import("../../../api/money/helper.mjs") }
 ]);
 
 export const CHECK_IDS = Object.freeze(DOORS.map((door) => door.id));
 
-const RECON =
-  "Recon (AG-07) is the one tripwire. Leave that agent on the morning pulse. " +
-  "Do not auto-fix. Do not call Plaid. Do not move money. Do not add another watcher.";
-
-const LINKED_CLIENT_SQL = `
-  /* gap:finance-os-linked-client */
-  SELECT c.id::text AS id
-    FROM clients c
-   WHERE c.org_id = $1::uuid
-     AND EXISTS (
-       SELECT 1
-         FROM plaid_items p
-        WHERE p.org_id = c.org_id
-          AND p.client_id = c.id
-          AND p.link_state = 'active'
-     )
-   ORDER BY c.created_at DESC
-   LIMIT 1
-`;
-
 const handlers = new Map();
-
-function row(id, status, detail, suggestedFix = null) {
-  return { id, status, detail, suggestedFix };
-}
-
-function clip(err, n = 180) {
-  const msg = err && err.message ? err.message : err;
-  return String(msg == null ? "" : msg).replace(/\s+/g, " ").trim().slice(0, n);
-}
-
-function fix(door) {
-  return `${RECON} Open GET /api/${door.route} for that linked client (${door.page}).`;
-}
 
 function mockRes() {
   return {
@@ -95,46 +71,13 @@ function staffGate(orgId) {
 
 /**
  * The helper GET also answers queued turns. That write stays off here.
- * The same selects the page uses still run, so a broken read still fails.
+ * The same selects the page uses still run, so a broken read still fails:
+ * this is the page's own payload read (helperView) with no step before the reads.
  */
 export async function readOnlyHelperPayload(database, {
   orgId, clientId, staff = false, env = process.env, now = new Date()
 } = {}) {
-  const helper = await import("../../finance/money-helper.mjs");
-  const { runnerMode } = await import("../../finance/money-agent-ai.mjs");
-  const found = await database.query(
-    `SELECT id, first_name, last_name FROM clients WHERE id = $1 AND org_id = $2`,
-    [clientId, orgId]
-  );
-  const client = found.rows[0];
-  if (!client) return null;
-  const [agent, state, turns, bridge] = await Promise.all([
-    helper.loadAgent(database, { orgId }),
-    helper.threadState(database, { orgId, clientId }),
-    helper.readThread(database, { orgId, clientId, limit: 60 }),
-    helper.bridgeStatus(database, { now })
-  ]);
-  const view = turns.map((turn) => helper.viewTurn(turn, { staff }));
-  const name = [client.first_name, client.last_name].filter((part) => part && String(part).trim()).join(" ") || null;
-  return {
-    ok: true,
-    client: { id: String(client.id), name },
-    viewer: staff ? "staff" : "client",
-    today: new Date(now).toISOString().slice(0, 10),
-    helper: {
-      code: agent.code,
-      name: agent.name,
-      status: agent.status,
-      on: helper.helperIsOn(agent),
-      sends_texts: false,
-      brain: runnerMode(env),
-      bridge_on: bridge.on,
-      halted: !!state.halted_at,
-      halt_reason: state.halt_reason
-    },
-    turns: view,
-    pending: view.filter((turn) => turn.status === "queued" || turn.status === "running").length
-  };
+  return helperView(database, { orgId, clientId, staff, env, now });
 }
 
 async function loadHandler(door) {
@@ -171,32 +114,6 @@ export async function openReadDoor(door, {
   } catch (err) {
     return { status: res.statusCode, body: res.body, thrown: err, method: req.method };
   }
-}
-
-function scoreDoor(door, clientId, outcome) {
-  const name = `${door.label} (GET /api/${door.route})`;
-  const who = `linked client ${clientId}`;
-  if (outcome && outcome.thrown) {
-    return row(door.id, "FAIL", `${name} threw for ${who}: ${clip(outcome.thrown)}`, fix(door));
-  }
-  const status = Number(outcome && outcome.status) || 0;
-  const body = outcome ? outcome.body : null;
-  const errorText = body && (body.error || body.message) ? clip(body.error || body.message, 120) : "";
-  const bad = status === 0 || status >= 400 || (body && body.ok === false) || (body && body.error);
-  if (!bad && status >= 200 && status < 300) {
-    return row(door.id, "PASS", `${name} answered ${status} for ${who}`);
-  }
-  const why = errorText ? ` (${errorText})` : "";
-  const detail = status
-    ? `${name} answered ${status} for ${who}${why}`
-    : `${name} returned no status for ${who}${why}`;
-  return row(door.id, "FAIL", detail, fix(door));
-}
-
-async function linkedClientId(db, orgId) {
-  const result = await db.query(LINKED_CLIENT_SQL, [orgId]);
-  const id = result?.rows?.[0]?.id;
-  return id ? String(id) : null;
 }
 
 async function runDoor(door, args, ctx) {

@@ -26,16 +26,19 @@
 // api/public/affiliate-click.mjs and forwards to the apply funnel with the code
 // attached. So this is the existing front door, not a new one.
 
+/* THE LINK RULE LIVES IN src/pulse/beats/lib/share-link.mjs (2026-10-20), unchanged, so the hourly beat
+   client-progress builds the referral link the same way the progress page does (a beat may import only from
+   src/pulse/beats/lib, and may not read process.env, so the env is handed in). This wrapper keeps the
+   process.env default. One copy. */
+import { shareUrlFor as shareUrlFrom } from "../pulse/beats/lib/share-link.mjs";
+
 /**
  * shareUrlFor(code, env?) → the public URL that attributes a signup to `code`.
  * Returns null for a missing code rather than a link with an empty ref, which
  * would attribute a real signup to nobody and read as a working link.
  */
 export function shareUrlFor(code, env = process.env) {
-  const c = code == null ? "" : String(code).trim();
-  if (!c) return null;
-  const base = String(env.APP_BASE_URL || env.URL || "https://fundhub.ai").replace(/\/+$/, "");
-  return `${base}/start.html?ref=${encodeURIComponent(c)}`;
+  return shareUrlFrom(code, env);
 }
 
 export default shareUrlFor;

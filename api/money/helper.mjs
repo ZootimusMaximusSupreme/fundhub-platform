@@ -29,10 +29,10 @@ import { ROLE_SETS, requireRole, isUuid, CLIENT_DATA_ERRORS } from "../../src/ht
 import { requireClientInOrg } from "../../src/http/client-scope.mjs";
 import { readBody } from "../banking/sync-accounts.mjs";
 import { dbDown } from "../../src/http/db-down.mjs";
-import {
-  loadAgent, helperIsOn, threadState, readThread, viewTurn, bridgeStatus, answerOrphans, submitMessage
-} from "../../src/finance/money-helper.mjs";
-import { runnerMode } from "../../src/finance/money-agent-ai.mjs";
+import { loadAgent, viewTurn, answerOrphans, submitMessage } from "../../src/finance/money-helper.mjs";
+/* The payload's reads and shape live in the beat library (2026-10-20), so the hourly beat
+   money-tasks judges this screen with the same read (finance-os:helper). */
+import { helperView } from "../../src/pulse/beats/lib/money-helper-read.mjs";
 
 const ACTIONS = new Set(["send"]);
 
@@ -64,40 +64,14 @@ async function scope(req, res, { database, gate, body }) {
   return { orgId: staff.org_id, clientId, kind: "staff", staffId: isUuid(staff.id) ? staff.id : null };
 }
 
-/** GET payload — exported for tests and the fixture server. */
+/** GET payload — exported for tests and the fixture server. Answers turns left queued
+ *  with the Mac off (answerOrphans) after the client is found, then reads the thread. */
 export async function helperPayload(database, { orgId, clientId, staff = false, env = process.env, now = new Date(), deps = {} }) {
-  const c = await database.query(`SELECT id, first_name, last_name FROM clients WHERE id = $1 AND org_id = $2`, [clientId, orgId]);
-  const client = c.rows[0];
-  if (!client) return null;
-  await answerOrphans(database, { orgId, clientId, env, now, deps });
-  const [agent, state, rows, bridge] = await Promise.all([
-    loadAgent(database, { orgId }),
-    threadState(database, { orgId, clientId }),
-    readThread(database, { orgId, clientId, limit: 60 }),
-    bridgeStatus(database, { now })
-  ]);
-  const turns = rows.map((r) => viewTurn(r, { staff }));
-  const name = [client.first_name, client.last_name].filter((x) => x && String(x).trim()).join(" ") || null;
-  return {
-    ok: true,
-    client: { id: String(client.id), name },
-    viewer: staff ? "staff" : "client",
-    today: new Date(now).toISOString().slice(0, 10),
-    helper: {
-      code: agent.code,
-      name: agent.name,
-      status: agent.status,
-      on: helperIsOn(agent),
-      // Shadow answers here only; nothing is texted. Live texting is not built.
-      sends_texts: false,
-      brain: runnerMode(env),
-      bridge_on: bridge.on,
-      halted: !!state.halted_at,
-      halt_reason: state.halt_reason
-    },
-    turns,
-    pending: turns.filter((t) => t.status === "queued" || t.status === "running").length
-  };
+  return helperView(database, {
+    orgId, clientId, staff, env, now,
+    agentLoader: loadAgent,
+    beforeRead: () => answerOrphans(database, { orgId, clientId, env, now, deps })
+  });
 }
 
 const ERROR_STATUS = {

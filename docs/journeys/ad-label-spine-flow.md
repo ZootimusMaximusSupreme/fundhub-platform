@@ -54,7 +54,7 @@ flowchart TD
 
     B -->|"picked in the Script list on<br/>Generate and decide, sent as spec.scriptId<br/>POST /api/creative/generate"| D["creative_assets row<br/>script_id points at the script<br/>src/creative/generate.mjs:248"]
 
-    E["Paul builds the ad in Meta"] -->|"a person presses Sync on<br/>public/app/campaign-manager.html"| E2["ONE call for the WHOLE ad account,<br/>level=ad, 28 days, a row per ad per day<br/>— or the WHOLE history (date_preset=maximum)<br/>when nothing older than the 28 days is stored;<br/>if Meta refuses that, the 28 days in the same run<br/>needsFullHistory(), api/campaigns/sync.mjs:365<br/>insightsRequestUrl(), :315<br/>follows Meta's next-page link, up to 100 pages<br/>fetchAllPages()"]
+    E["Paul builds the ad in Meta"] -->|"a person presses Sync on<br/>public/app/campaign-manager.html"| E2["TWO calls for the WHOLE ad account (since 2026-10-21):<br/>the money on its own, then the rest,<br/>joined on ad + day, money only from the first<br/>fetchInsightPull() + mergeInsightRows()<br/>level=ad, 28 days, a row per ad per day<br/>— or the WHOLE history (date_preset=maximum)<br/>when nothing older than the 28 days is stored;<br/>if Meta refuses that, the 28 days in the same run<br/>needsFullHistory(), api/campaigns/sync.mjs:365<br/>insightsRequestUrl(), :315<br/>follows Meta's next-page link, up to 100 pages<br/>fetchAllPages()"]
     E2 --> E3["THE ACCOUNT IS SWITCHED ON HERE,<br/>the moment Meta answers — not after the walk<br/>pending becomes active<br/>the switch-on UPDATE inside syncPartnerConnections()<br/>api/campaigns/sync.mjs:721-735"]
     E3 --> E4["Meta's own word on business verification<br/>is written straight through.<br/>No answer = nothing written, badge stays unverified<br/>readVerificationState(), :261-270<br/>the write inside syncPartnerConnections(), :743-751"]
     E3 --> E5["EVERY LIST IS READ TO ITS END<br/>campaigns, ad sets and ads, not just<br/>the first page Meta hands back<br/>metaList(), api/campaigns/sync.mjs:359-361<br/>→ fetchAllPages(), :328-344<br/>capped at 50 pages of 100 = 5,000 rows each<br/>a list cut short is named in the answer,<br/>never dropped in silence"]
@@ -179,7 +179,12 @@ the corrected one immediately.
   at `:348`) follows Meta's own next-page link up to 100 pages so a big account does
   not quietly lose days. A line with no `ad_id` is dropped rather than guessed at
   (`groupInsightsByAd()`, `:374-383`). Hundreds of calls in a row used to run the page out
-  of time before it finished.
+  of time before it finished. **Since 2026-10-21 that one ask is two:** the money
+  (`INSIGHT_CORE_FIELDS`) on its own, then the video and results fields
+  (`INSIGHT_DETAIL_FIELDS`), joined back on ad + day by `mergeInsightRows()`. Over many days
+  Meta answered the single combined ask with 0 spend, 0 impressions and 0 clicks, and the
+  sync saved those zeros over real history. A day whose other half was on a page Meta never
+  sent is held back and named in the answer, never written with a guessed 0.
 - **Since 2026-09-09, every list Meta answers is read to its end, not just its first
   page.** Meta hands back a page of rows plus a link to the next page. The campaign, ad set
   and ad reads asked for a page and never followed that link, so an ad account with more
