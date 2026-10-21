@@ -117,6 +117,7 @@ export const fixGuide = [
   "The 5-minute alarms stopped or went quiet. Texts and the instant door alarm were not running in that stretch.",
   "",
   "Likely causes:",
+  "- The Inngest plan ran out of runs for the month (Free plan is 50,000). Inngest then stops calling with no error and no backlog. Search Gmail for mail from inngest.com about the monthly execution limit; fix is a plan upgrade at https://app.inngest.com/billing (2026-10-20).",
   "- The workflow engine (Inngest) paused or fell behind. Its dashboard shows the stretch. A burst of catch-up runs afterward is the sign.",
   "- A deploy or re-register changed the app address and the engine could not reach the functions for a while.",
   "- The database was slow or down, so receipts could not be saved (check db-health and the site health door).",
