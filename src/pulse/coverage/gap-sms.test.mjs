@@ -23,7 +23,12 @@ import { TEST_CLIENT_EMAIL_RE as CONSENT_TEST_RE } from "./gap-consent.mjs";
 import { DRAFT_RE } from "../../messaging/draft-guard.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-sms.mjs"), "utf8");
+// The lane is a thin adapter; its SQL and verdicts live in the beat-safe truth file (2026-10-20).
+// Every source check below reads both, so moving a line between them cannot hide it.
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-sms.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/sms-truth.mjs"), "utf8")
+].join("\n");
 const ORG = "11111111-1111-4111-8111-111111111111";
 const KEYS = ["id", "status", "detail", "suggestedFix"];
 
