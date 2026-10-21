@@ -20,7 +20,12 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../..");
-const SRC = fs.readFileSync(path.join(HERE, "gap-inquiry.mjs"), "utf8");
+// The lane and the truth it imports back (the stuck-case check moved to beats/lib on 2026-10-20): every guard
+// on what this lane may do reads both files.
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-inquiry.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/inquiry-truth.mjs"), "utf8")
+].join("\n");
 const ORG = "11111111-1111-1111-1111-111111111111";
 const NOW = new Date("2026-10-08T18:00:00Z");
 

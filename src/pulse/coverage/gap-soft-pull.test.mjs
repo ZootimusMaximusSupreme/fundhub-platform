@@ -242,7 +242,9 @@ test("a bad read body fails and the approval shape passes", async () => {
 });
 
 test("the file only reads the approve door", () => {
-  const text = fs.readFileSync(path.join(HERE, "gap-soft-pull.mjs"), "utf8");
+  // The lane and the shared truth it imports (src/pulse/beats/lib/soft-pull-truth.mjs) are read together.
+  const text = fs.readFileSync(path.join(HERE, "gap-soft-pull.mjs"), "utf8") +
+    fs.readFileSync(path.join(HERE, "../beats/lib/soft-pull-truth.mjs"), "utf8");
   assert.doesNotMatch(text, /\b(INSERT|UPDATE|DELETE|DROP)\b/);
   assert.doesNotMatch(text, /method:\s*["']POST["']/);
   assert.doesNotMatch(text, /requestSoftPull|finance\/soft-pull|postgrid|PostGrid/i);

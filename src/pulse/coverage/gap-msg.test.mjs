@@ -42,7 +42,12 @@ import { TEST_ADDRESS_RE } from "./gap-sms.mjs";
 import { PROVIDER_FAIL_SQL } from "./gap-email.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-msg.mjs"), "utf8");
+// Five of the nine checks live in the beat-safe truth file (2026-10-20). Every source check below reads both
+// files, so moving a line between them cannot hide it.
+const SRC = [
+  fs.readFileSync(path.join(HERE, "gap-msg.mjs"), "utf8"),
+  fs.readFileSync(path.join(HERE, "../beats/lib/msg-truth.mjs"), "utf8")
+].join("\n");
 const ORG = "11111111-1111-4111-8111-111111111111";
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const STEPS_SQL = buildEmailStepsSql();

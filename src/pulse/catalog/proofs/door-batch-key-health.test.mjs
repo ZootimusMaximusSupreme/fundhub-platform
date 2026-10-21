@@ -13,6 +13,7 @@ import {
   keyNamesFromCatalog,
 } from "../../coverage/gap-door-batch-keys.mjs";
 import { PARKED_FEATURES } from "../../parked-features.mjs";
+import { providerFromEnv } from "../../../documents/store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MAP = path.join(ROOT, "ops/workflows/coverage-every-surface-2026-10-10/keys.json");
@@ -211,7 +212,9 @@ const PROOF = {
     "src/inquiry-ops/bureau-call.mjs": /env\.BLAND_WEBHOOK_URL \|\| ""\)\.trim\(\) \|\| undefined/,
     "vendor/inquiry-remover/src/lib/bland-client.js": /return DEFAULT_BLAND_WEBHOOK_URL;/,
   },
-  BLOB_READ_WRITE_TOKEN: { "src/documents/store.mjs": /const name = env\.DOCUMENT_STORE_PROVIDER \|\| "memory";/ },
+  // store.mjs picks its store with the beat library's rule (2026-10-20, lib/documents-upload-truth.mjs):
+  // DOCUMENT_STORE_PROVIDER, else memory. The BLOB_READ_WRITE_TOKEN test below runs it with no store and no token.
+  BLOB_READ_WRITE_TOKEN: { "src/documents/store.mjs": /const name = storeNameFromEnv\(env\);/ },
   CLICKFUNNELS_WORKSPACE_ID: {
     "src/adapters/clickfunnels.mjs": /if \(workspaceId\) ctx\.workspaceId = workspaceId;/,
     "src/slo/cf-contact.mjs": /if \(workspaceId\) ctx\.workspaceId = workspaceId;/,
@@ -269,6 +272,7 @@ const PROOF = {
   LENDFLOW_API_BASE: { "src/adapters/lendflow.mjs": /env\.LENDFLOW_API_BASE \|\| DEFAULT_API_BASE/ },
   LENDFLOW_API_KEY: {
     "src/adapters/lendflow.mjs": /if \(!apiKey\) missing\.push\("LENDFLOW_API_KEY"\);/,
+    "src/pulse/beats/lib/keys-truth.mjs": /env: Object\.freeze\(\["LENDFLOW_WEBHOOK_SECRET", "LENDFLOW_API_KEY"\]\)/,
     "src/pulse/parked-features.mjs": /env: Object\.freeze\(\["LENDFLOW_WEBHOOK_SECRET", "LENDFLOW_API_KEY"\]\)/,
   },
   MAILGUN_INBOUND_DOMAIN: { "src/mail/monitor-address.mjs": /env\.MAILGUN_SEND_DOMAIN \|\| env\.MAILGUN_INBOUND_DOMAIN/ },
@@ -464,6 +468,11 @@ test("a fallback key holds only while the key it falls back to is set, well shap
   assert.deepEqual(await run({ MAILGUN_SEND_DOMAIN: "" }), ["MAILGUN_INBOUND_DOMAIN", "MAILGUN_SEND_DOMAIN"]);
   const [row] = await gapChecks({ env: liveShapeEnv({ ...BOOKED, DOCUMENT_URL_SECRET: "" }), catalog: GENERATED, scope: parkedScope() });
   assert.match(row.detail, /CONTRACT_URL_SECRET \(value is missing, and so is a usable DOCUMENT_URL_SECRET\)/);
+});
+
+test("BLOB_READ_WRITE_TOKEN: with no store set and no blob token, the document store falls back to memory", () => {
+  assert.equal(providerFromEnv({}, { objects: new Map() }).name, "memory");
+  assert.equal(providerFromEnv({ DOCUMENT_STORE_PROVIDER: "" }, { objects: new Map() }).name, "memory");
 });
 
 test("only-when: the blob token is needed the day documents move to the vercel-blob store", async () => {

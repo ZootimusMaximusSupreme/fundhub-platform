@@ -302,7 +302,11 @@ test("sign link: a fetch that throws is a fail, and an unreadable route map lean
   assert.equal(byId(down, "contracts:sign-route").status, "FAIL");
   assert.match(byId(down, "contracts:sign-route").detail, /socket closed/);
 
+  // The route map is the router's own ROUTES table, read in process (no repo file at run time).
+  assert.equal(signRouteIsWired(null, null), null, "no route map to read is null, not a guess");
   assert.equal(signRouteIsWired(null, () => { throw new Error("ENOENT"); }), null);
+  assert.equal(signRouteIsWired(null, {}), false);
+  assert.equal(signRouteIsWired(null, { "contracts/sign": () => {} }), true);
   assert.equal(signRouteIsWired('const ROUTES = { "contracts/sign": contractsSign }'), true);
   assert.equal(signRouteIsWired("const ROUTES = {}"), false);
 
@@ -406,7 +410,11 @@ test("the hash in the query is the hash the sign door computes", () => {
 });
 
 test("the file does not sign, edit a page, read Recon, or send", () => {
-  const src = fs.readFileSync(path.join(HERE, "gap-contracts.mjs"), "utf8");
+  // The lane and the shared truth it imports (src/pulse/beats/lib/contracts-truth.mjs) are read together.
+  const lane = fs.readFileSync(path.join(HERE, "gap-contracts.mjs"), "utf8");
+  const src = lane + fs.readFileSync(path.join(HERE, "../beats/lib/contracts-truth.mjs"), "utf8");
+  // The live bundle carries no repo files, so the lane reads none at run time.
+  assert.doesNotMatch(lane, /node:fs|readFileSync|existsSync/);
   assert.doesNotMatch(src, /\b(INSERT|UPDATE|DELETE)\b/);
   assert.doesNotMatch(src, /\.html/);
   assert.doesNotMatch(src, /method:\s*["']POST["']/);

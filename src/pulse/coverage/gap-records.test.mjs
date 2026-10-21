@@ -29,7 +29,9 @@ import { CONSENT_VALID_SQL } from "../../consent/index.mjs";
 import { TEST_CLIENT_EMAIL_RE } from "./gap-consent.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-records.mjs"), "utf8");
+// The lane and the shared truth it imports (src/pulse/beats/lib/records-truth.mjs) are read together.
+const SRC = fs.readFileSync(path.join(HERE, "gap-records.mjs"), "utf8") +
+  fs.readFileSync(path.join(HERE, "../beats/lib/records-truth.mjs"), "utf8");
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const ORG = "11111111-1111-4111-8111-111111111111";
 

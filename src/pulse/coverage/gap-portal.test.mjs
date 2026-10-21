@@ -33,8 +33,11 @@ import {
   checkPageScripts,
   checkProgressRead,
   checkPaidNeverSignedIn,
-  naVerify
+  naVerify,
+  LIBRARY_SQL,
+  readClientLibrary
 } from "./gap-portal.mjs";
+import { listClientLibrary } from "../../documents/retrieve.mjs";
 import { verifyNa } from "../na-conditions.mjs";
 import { OWNER_HOLD_CLIENTS } from "../owner-hold.mjs";
 import { PULSE_REGISTRY } from "./../registry.mjs";
@@ -351,6 +354,21 @@ test("no real client on file skips the summary reads, it does not pass them", as
   assert.match(row.detail, /no real client/);
 });
 
+test("the copied documents read sends exactly what listClientLibrary sends", async () => {
+  // The hourly beat cannot import src/documents/retrieve.mjs, so the portal truth carries
+  // the documents read as text. Run the real function and the copy against the same
+  // database and compare every byte of the SQL and every parameter.
+  const sent = [];
+  const db = { query: async (sql, params) => { sent.push({ sql, params }); return { rows: [] }; } };
+  await listClientLibrary(db, { orgId: ORG, clientId: CLIENT, sign: false });
+  await readClientLibrary(db, { orgId: ORG, clientId: CLIENT });
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].sql, sent[0].sql, "src/documents/retrieve.mjs changed its read: copy it into LIBRARY_SQL in src/pulse/beats/lib/portal-truth.mjs");
+  assert.deepEqual(sent[1].params, sent[0].params);
+  assert.equal(LIBRARY_SQL, sent[0].sql);
+  await assert.rejects(() => readClientLibrary(db, { orgId: ORG }), /requires orgId and clientId/);
+});
+
 test("the copied summary reads still match the handler word for word", () => {
   // If api/read/portal-summary.mjs changes one of these selects, this fails until
   // gap-portal.mjs follows. That is what keeps the mirror honest.
@@ -542,7 +560,9 @@ test("the org is read once when the run does not pass one", async () => {
 });
 
 test("the module does not write, log in, or add a second watchdog", () => {
-  const src = fs.readFileSync(path.join(HERE, "gap-portal.mjs"), "utf8");
+  // The SQL and verdicts live in the shared hourly truth file, so this reads both files.
+  const src = fs.readFileSync(path.join(HERE, "gap-portal.mjs"), "utf8") + "\n" +
+    fs.readFileSync(path.join(HERE, "../beats/lib/portal-truth.mjs"), "utf8");
   assert.doesNotMatch(src, /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP)\b/);
   assert.doesNotMatch(src, /slice-26-client-journey/);
   // The only two places this file may say "password" are the reset page's own

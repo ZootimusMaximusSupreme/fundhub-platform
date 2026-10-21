@@ -32,6 +32,13 @@
 //     NOT unique in the schema.
 
 import { createHash, timingSafeEqual } from "node:crypto";
+/* THE SELECTION RULE LIVES IN THE BEAT LIBRARY (2026-10-20): the store names, the
+   DOCUMENT_STORE_PROVIDER-or-memory rule and the unknown-name words, so the hourly beat
+   upload-door judges the store this door would pick with the same rule (a beat may import only
+   from src/pulse/beats/lib). One copy; providerFromEnv below uses it. */
+import {
+  STORE_NAMES, storeNameFromEnv, unknownStoreMessage
+} from "../pulse/beats/lib/documents-upload-truth.mjs";
 
 // ---------------------------------------------------------------------------
 // bytes + keys
@@ -389,9 +396,9 @@ export function netlifyBlobsProvider({
 // ---------------------------------------------------------------------------
 
 export const PROVIDERS = Object.freeze({
-  memory: memoryProvider,
-  "vercel-blob": vercelBlobProvider,
-  "netlify-blobs": netlifyBlobsProvider
+  [STORE_NAMES.MEMORY]: memoryProvider,
+  [STORE_NAMES.VERCEL_BLOB]: vercelBlobProvider,
+  [STORE_NAMES.NETLIFY_BLOBS]: netlifyBlobsProvider
 });
 
 /**
@@ -411,11 +418,10 @@ export const PROVIDERS = Object.freeze({
  * by this) or by passing `{ objects: new Map() }` here.
  */
 export function providerFromEnv(env = process.env, opts = {}) {
-  const name = env.DOCUMENT_STORE_PROVIDER || "memory";
+  const name = storeNameFromEnv(env);
   const factory = PROVIDERS[name];
   if (!factory) {
-    throw new Error(
-      `unknown DOCUMENT_STORE_PROVIDER "${name}" — expected one of ${Object.keys(PROVIDERS).join(", ")}`);
+    throw new Error(unknownStoreMessage(name, Object.keys(PROVIDERS)));
   }
   if (name === "memory" && !opts.objects) {
     return factory({ ...opts, objects: storeMemoryObjects() });

@@ -175,7 +175,9 @@ test("every SQL this file sends is a SELECT with no write word", () => {
     assert.match(sql, /^\s*SELECT/i);
     assert.doesNotMatch(sql, /\b(INSERT|UPDATE|DELETE|DROP|ALTER)\b/i);
   }
-  const text = fs.readFileSync(path.join(HERE, "gap-underwrite.mjs"), "utf8");
+  // The lane and the shared truth it imports (src/pulse/beats/lib/underwrite-truth.mjs) are read together.
+  const text = fs.readFileSync(path.join(HERE, "gap-underwrite.mjs"), "utf8") +
+    fs.readFileSync(path.join(HERE, "../beats/lib/underwrite-truth.mjs"), "utf8");
   assert.doesNotMatch(text, /\bfetch\s*\(/);
   assert.doesNotMatch(text, /method:\s*["']POST["']/);
 });
@@ -451,7 +453,9 @@ test("every new SQL is one SELECT, reads only, and never carries a write word", 
   assert.match(PACK_FILES_SQL, /d\.byte_size = 0/);
   assert.match(PACK_FILES_SQL, /metadata->>'engine' = 'pdf-lib'/);
   assert.match(PACK_EMAIL_SQL, /m\.template_key = \$4/);
-  const text = fs.readFileSync(path.join(HERE, "gap-underwrite.mjs"), "utf8");
+  // The lane and the shared truth it imports (src/pulse/beats/lib/underwrite-truth.mjs) are read together.
+  const text = fs.readFileSync(path.join(HERE, "gap-underwrite.mjs"), "utf8") +
+    fs.readFileSync(path.join(HERE, "../beats/lib/underwrite-truth.mjs"), "utf8");
   assert.doesNotMatch(text, /\bfetch\s*\(/);
   assert.doesNotMatch(text, /\b(BEGIN|COMMIT|ROLLBACK)\b\s*["'`]/);
 });

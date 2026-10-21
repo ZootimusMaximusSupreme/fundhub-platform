@@ -20,7 +20,9 @@ import {
 import { NOT_LIVE_HTML, parsePath } from "../../../netlify/functions/partner-site.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SRC = fs.readFileSync(path.join(HERE, "gap-partner-pages.mjs"), "utf8");
+// The lane and the shared truth it imports (src/pulse/beats/lib/partner-pages-truth.mjs) are read together.
+const SRC = fs.readFileSync(path.join(HERE, "gap-partner-pages.mjs"), "utf8") +
+  fs.readFileSync(path.join(HERE, "../beats/lib/partner-pages-truth.mjs"), "utf8");
 const NOW = new Date("2026-10-10T13:00:00.000Z");
 const ORG = "11111111-1111-4111-8111-111111111111";
 
