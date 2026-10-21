@@ -25,6 +25,12 @@ WHERE closed_at > now() - interval '90 days'
 GROUP BY 1, 2 ORDER BY breaks DESC;
 ```
 
+## 2026-10-20 — morning scorecard "stopped on 10-12" — pulse_false_alarm
+- Cause: no break. A session reported that the newest `pulse_scorecards` row was 2026-10-12 (691 green, 76 red, 0 not checked, 35 n/a). The live database, read as `fundhub_app` on the same pooler, has 13 rows, one every morning from 2026-10-08 to 2026-10-20. Today's row was saved at 13:02 UTC (6:02 a.m. Arizona). There is one org, one table (`public.pulse_scorecards`), and its read rule is `true`, so no one is hidden from newer rows. The 10-12 numbers are real, but they come from an older row, not the newest one.
+- Fix: none. Before you call the morning scorecard stale, run `SELECT scorecard_date::text, ran_at, green_count, red_count, not_checked_count, na_count FROM pulse_scorecards ORDER BY scorecard_date DESC LIMIT 3` inside `BEGIN READ ONLY` on the live `DATABASE_URL`. Paste the full rows you got. The board file `ops/workflows/pulse-<date>.md` is a local Mac copy and is not in git (on 2026-10-20 the newest one on the Mac was 10-18). The server's copy is never committed, so that file is not proof of what the server saved.
+- Guard added: none: nothing broke. The save already has its own guards (`src/pulse/scorecard.test.mjs`, `scorecard.pg.test.mjs`).
+- Incident: none.  PR: see `ops/workflows/morning-scorecard-2026-10-20.md`
+
 ## 2026-10-12 — full catalog ship proof — timeout_or_capacity
 - Cause: the full catalog added 1,762 honest red findings. The proof printed every red line, which overflowed the GitHub ship log. A dead old live site also made the rotating CRM file check take 45 seconds.
 - Fix: the proof prints the first 80 findings plus the remaining count. Live red and not-checked results stay in the scorecard but do not pretend the proof engine crashed. CRM file reads stop after two seconds, and the 51-logo sample runs in batches of 20 so a slow GitHub network still leaves room for the rest of the lane.
