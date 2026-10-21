@@ -26,7 +26,8 @@ ALTER TABLE outreach_activities ADD COLUMN IF NOT EXISTS actor text NOT NULL DEF
 ALTER TABLE outreach_activities ALTER COLUMN staff_id DROP NOT NULL;
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outreach_activities_actor_ck') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outreach_activities_actor_ck'
+                   AND conrelid = 'outreach_activities'::regclass) THEN
     ALTER TABLE outreach_activities ADD CONSTRAINT outreach_activities_actor_ck
       CHECK (actor IN ('staff', 'automation') AND ((actor = 'staff') = (staff_id IS NOT NULL)));
   END IF;

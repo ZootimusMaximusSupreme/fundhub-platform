@@ -55,11 +55,16 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
   // twenty-third: FOS-01, the FinanceOS Money Helper, client_facing, seeded
   // shadow (the beforeEach below resets it to draft like every other row).
   // 488 adds the two draft Blueprint coaches without changing any existing row.
-  test("the twenty-five seeded agents are registered", async () => {
+  // 495 adds the twenty-sixth: BANK-OUTREACH-REPLY, an ops agent seeded draft,
+  // so src/agents/select.mjs (client_facing only) can never pick it for a client.
+  test("the twenty-six seeded agents are registered", async () => {
     const rows = await list(db, { orgId: org });
-    assert.equal(rows.length, 25);
+    assert.equal(rows.length, 26);
     assert.equal(rows.filter((r) => r.agent_class === "client_facing").length, 20);
-    assert.equal(rows.filter((r) => r.agent_class === "ops").length, 5);
+    assert.equal(rows.filter((r) => r.agent_class === "ops").length, 6);
+    assert.deepEqual(rows.filter((r) => r.code === "BANK-OUTREACH-REPLY").map(({ agent_class, channel, status }) => ({ agent_class, channel, status })), [
+      { agent_class: "ops", channel: "email", status: "draft" },
+    ]);
     assert.ok(rows.some((r) => r.code === "FOS-01" && r.name === "FinanceOS Money Helper" && r.channel === "sms"));
     assert.deepEqual(rows.filter((r) => r.code.startsWith("BP-COACH")).map(({ code, channel, status }) => ({ code, channel, status })), [
       { code: "BP-COACH", channel: "sms_email", status: "draft" },
@@ -73,7 +78,7 @@ describe("agent registry", { skip: !HAVE_DB ? "no DATABASE_URL" : false }, () =>
     assert.deepEqual(running.map((r) => r.name).sort(),
       ["Inquiry Removal AI", "Setter Josh"]);
     // The screen marks eleven as live; that must not have been believed.
-    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 23);
+    assert.equal((await list(db, { orgId: org, status: "draft" })).length, 24);
   });
 
   test("both live agents record where they actually run", async () => {
