@@ -17,7 +17,7 @@ rows listed under "Needs Chris: delete fake data". **C** check aimed at an old s
 | Unit | Owner | Status |
 |---|---|---|
 | W1: 6 data checks + 2 Meta checks | this session | done (PR pending) |
-| W2: 8 screen checks (catalog-display) | agent B | claimed |
+| W2: 8 screen checks (catalog-display) | agent B | done (merged into PR #102) |
 | W3: `catalog:hourly-proof-linked` | agent C | claimed |
 
 No dependencies; all three run at once.
@@ -28,21 +28,21 @@ No dependencies; all three run at once.
 |---|---|---:|---|---|---|
 | 1 | `meta-sync` | 9 | W1 | B | fake: 4 test Meta accounts (2026-10-12) with bogus tokens; real account fine → on delete list |
 | 2 | `ads-number-unmapped` | 9 | W1 | B | fake: ads "AD", "Adspine numberless" on test accounts; 4 real ads all numbered → on delete list |
-| 3 | `funding:round-stuck` | 6 | W1 | fixed | PR #97 (shipped d1de88a1) judges real rounds only; not red live |
-| 4 | `partners:commission-payable` | 8 | W1 | B | fake affiliate AFF-000180 "payoutrun basic" → on delete list |
-| 5 | `payments:invoice-stuck` | 8 | W1 | B | 7 invoices on demo client FH-000841 → on delete list |
-| 6 | `payments:paid-product-unmapped` | 1 | W1 | B | 2 client-less gauntlet test payments (2026-10-07) → on delete list |
+| 3 | `funding:round-stuck` | 6 | W1 | fixed | verified N/A live (`no-real-funding-round`), PR #97 shipped |
+| 4 | `partners:commission-payable` | 8 | W1 | B | GREEN live 10-21 02:2x UTC after the fake referrals were deleted |
+| 5 | `payments:invoice-stuck` | 8 | W1 | B | GREEN live after FH-000841's invoices were deleted |
+| 6 | `payments:paid-product-unmapped` | 1 | W1 | B | GREEN live after the 2 test payments were deleted |
 | 7 | `portal:paid-client-never-signed-in` | 12 | W1 | owner hold | the 1 is Braum FH-000507 (real, no-contact). Verified N/A `owner-hold-client`, re-checked every run; any other client stays red. Commit d39a27ae5 |
 | 8 | `gap-underwrite:uw-pack-email-not-queued` | 9 | W1 | A | template EMAIL-U02 deleted by the Oct test run; restored byte for byte by seed/299. Commit 3594cdd47 |
 | 9 | `catalog:hourly-proof-linked` | 7 | W3 | | pending |
-| 10 | display: Mark funded (client-control-panel) | 7 | W2 | | pending |
-| 11 | display: Do task (financeos#next) | 7 | W2 | | pending |
-| 12 | display: I'm ready to get funded (financeos#next) | 7 | W2 | | pending |
-| 13 | display: Funded amount prompt (pipeline) | 7 | W2 | | pending |
-| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | | pending |
-| 15 | display: Approve selected (commissions) | 7 | W2 | | pending |
-| 16 | display: Mark paid (commissions) | 7 | W2 | | pending |
-| 17 | display: soft-pull approve submit | 3 | W2 | | pending |
+| 10 | display: Mark funded (client-control-panel) | 7 | W2 | fixed | verified N/A live (no real round), PR #97 |
+| 11 | display: Do task (financeos#next) | 7 | W2 | C | live button, never pressed → quiet until first wrong result (owner 10-14). GREEN in branch, PR #102 |
+| 12 | display: I'm ready to get funded (financeos#next) | 7 | W2 | C | same as 11. GREEN in branch, PR #102 |
+| 13 | display: Funded amount prompt (pipeline) | 7 | W2 | fixed | verified N/A live (no real round), PR #97 |
+| 14 | display: Commission rule Close vN / open vN+1 | 7 | W2 | B | 2 test-fixture rules "MC …" (2026-08-21) → delete list, waiting on Chris's yes for non-client rows |
+| 15 | display: Approve selected (commissions) | 7 | W2 | C | never pressed → quiet; also now red if an approved row lacks its receipt. GREEN in branch, PR #102 |
+| 16 | display: Mark paid (commissions) | 7 | W2 | C | same as 15. GREEN in branch, PR #102 |
+| 17 | display: soft-pull approve submit | 3 | W2 | B | fake consent on FH-000522 already deleted → GREEN live |
 
 ## Copy-paste prompts (if a unit must be re-run in its own session)
 
