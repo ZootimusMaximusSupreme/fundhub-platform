@@ -172,6 +172,12 @@ SELECT count(DISTINCT m.id)::int AS sample_count,
 // client" (the same send path as the Send button above, and judged the same way).
 // Ask and Knowledge return an answer to the page and save nothing; the route that
 // answers them is held by a practice test (fin-b04-chat-ask.test.mjs).
+//
+// An owner-ops text (provider_ref 'owner-ops:...') is not a widget send: it is a
+// note an agent texted to the owner's own phone (2026-10-07, the teleprompter
+// link), with no client and no thread. It was the one "bad" row on 2026-10-18.
+// The widget's client texts always name a client and its internal notes are
+// channel 'internal', so leaving that marker out hides no widget row.
 export const CHAT_WIDGET_SQL = `
 SELECT count(DISTINCT m.id)::int AS sample_count,
        count(DISTINCT m.id) FILTER (WHERE
@@ -187,6 +193,7 @@ SELECT count(DISTINCT m.id)::int AS sample_count,
        AND cp.staff_id = m.sender_staff_id
  WHERE m.org_id = $1::uuid AND m.sender_kind = 'staff'
    AND m.channel IN ('internal', 'sms', 'email') AND m.is_demo = false
+   AND COALESCE(m.provider_ref, '') NOT LIKE 'owner-ops:%'
    AND m.created_at > now() - interval '30 days'`;
 
 // Written by src/messaging/gate.mjs gateAndRecord (status, blocked_reason,

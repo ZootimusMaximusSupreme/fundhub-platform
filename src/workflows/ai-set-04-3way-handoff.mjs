@@ -19,7 +19,8 @@ import { sendTemplated } from "./messaging.mjs";
 import { createTask } from "../lib/create-task.mjs";
 import { appointmentContext, REMINDER_SKEW_MS } from "./s-04b-booking-reminders.mjs";
 import { portalLoginUrl } from "../auth/magic-link.mjs";
-import { bookingStateAt, SLOT_STATE } from "../bookings/store.mjs";
+import { bookingStateAt, SLOT_STATE, fillMeetingUrl } from "../bookings/store.mjs";
+import { findMeetLink } from "../bookings/meet-link.mjs";
 import { CANCEL_RULES, RESCHEDULE_CANCEL_RULES } from "./booking-cancel-rules.mjs";
 
 export const SMS_TEMPLATE_KEY = "SMS-AISET04-HANDOFF";
@@ -30,18 +31,21 @@ const SOURCE_WORKFLOW = "ai-set-04-3way-handoff";
  * workflow passed no context at all, so the tag rendered as nothing and the
  * customer was handed a full stop.
  *
- * Context alone is not enough, because the ClickFunnels adapter sets
- * meetingUrl: null on every booking it takes, so the honest answer is often
- * "the webhook did not carry one". Three places are asked, in order of how
- * specific they are, and the last one always answers:
+ * Context alone is not enough, because the ClickFunnels webhook carries no
+ * link (the adapter sets meetingUrl: null). The real link is the Google Meet
+ * link on the host's calendar event for this call (src/bookings/meet-link.mjs),
+ * which the early step in handle() keeps on the booking a couple of minutes
+ * after it is made. Places are asked in order of how specific they are, and the
+ * last one always answers:
  *   1. the booking event's own payload,
- *   2. the saved booking row for this appointment, or this client's most recent
- *      one, which a later webhook may have filled in,
- *   3. the customer's portal sign-in page — a door they can actually open.
- * There is no fourth branch that returns nothing. A link in this text is either
- * real or the text does not go.
+ *   2. the saved booking row for this appointment,
+ *   3. the host calendar event for this exact call, read now and kept,
+ *   4. this client's most recent saved booking link,
+ *   5. the customer's portal sign-in page — a door they can actually open.
+ * There is no branch that returns nothing. A link in this text is either real
+ * or the text does not go.
  */
-async function meetingLinkFor(db, { orgId, clientId, payload = {} }) {
+async function meetingLinkFor(db, { orgId, clientId, payload = {}, findLink = findMeetLink }) {
   const fromPayload =
     payload.meetingUrl || payload.meeting_url || payload.meeting_location || null;
   if (fromPayload) return { url: String(fromPayload), from: "payload" };
@@ -56,6 +60,14 @@ async function meetingLinkFor(db, { orgId, clientId, payload = {} }) {
       );
       if (byUid.rows[0]?.meeting_url) return { url: String(byUid.rows[0].meeting_url), from: "booking_uid" };
     }
+  } catch (err) {
+    console.warn(`[ai-set-04] could not read a meeting link: ${String(err?.message || err)}`);
+  }
+
+  const fromCalendar = await meetLinkFromHostCalendar(db, { orgId, clientId, payload, findLink });
+  if (fromCalendar.ok) return { url: fromCalendar.url, from: "host_calendar" };
+
+  try {
     const byClient = await db.query(
       `SELECT meeting_url FROM bookings
         WHERE org_id = $1 AND client_id = $2 AND meeting_url IS NOT NULL
@@ -69,6 +81,44 @@ async function meetingLinkFor(db, { orgId, clientId, payload = {} }) {
   }
 
   return { url: portalLoginUrl(), from: "portal_sign_in" };
+}
+
+/* THE CALL'S OWN MEET LINK, READ FROM THE HOST CALENDAR AND KEPT.
+ *
+ * Used by the early step (a couple of minutes after booking, so the closer's
+ * Join call button and the pulse see the link) and by the 15-minute text (in
+ * case the early read missed). Never throws: a miss returns its reason, and that
+ * is the step's recorded answer, so the run log says why a booking has no link.
+ * Saving is a fill-the-blank write on the booking and its call task
+ * (src/bookings/store.mjs fillMeetingUrl). A save that fails still hands back
+ * the link it found. */
+export async function meetLinkFromHostCalendar(db, { orgId, clientId, payload = {}, findLink = findMeetLink }) {
+  let email = String(payload.email || payload.attendeeEmail || "").trim();
+  try {
+    if (!email && clientId) {
+      const r = await db.query(`SELECT email FROM clients WHERE id = $1 LIMIT 1`, [clientId]);
+      email = String(r.rows[0]?.email || "").trim();
+    }
+  } catch (err) {
+    return { ok: false, reason: `client_email_unreadable:${String(err?.message || err).slice(0, 120)}` };
+  }
+  const startTime = payload.startTime || payload.start_time || null;
+  let found;
+  try {
+    found = await findLink({ email, startTime });
+  } catch (err) {
+    found = { ok: false, reason: `lookup_threw:${String(err?.message || err).slice(0, 120)}` };
+  }
+  if (!found || !found.ok || !found.url) return { ok: false, reason: (found && found.reason) || "not_found" };
+  let saved;
+  try {
+    saved = await fillMeetingUrl(db, {
+      orgId, clientId, providerUid: payload.bookingUid || null, startsAt: startTime, url: found.url
+    });
+  } catch (err) {
+    saved = { error: String(err?.message || err).slice(0, 160) };
+  }
+  return { ok: true, url: found.url, source: found.source || null, saved };
 }
 
 async function createAdvisorTaskOnce(db, { orgId, clientId, eventId }) {
@@ -85,13 +135,26 @@ async function createAdvisorTaskOnce(db, { orgId, clientId, eventId }) {
   return { created: true };
 }
 
-export async function handle({ event, db, step, now = () => Date.now() }) {
+export async function handle({ event, db, step, now = () => Date.now(), findLink = findMeetLink }) {
   const clientId = await step.run("resolve-client", () => resolveClient(db, event));
   if (!clientId) return { done: false, reason: "no_client" };
 
   const payload = event.payload || {};
   const startTime = payload.startTime;
   if (!startTime) return { done: false, reason: "no_start_time" };
+  const orgId = event.orgId;
+
+  /* THE JOIN LINK, KEPT ON THE BOOKING SOON AFTER IT IS MADE.
+   *
+   * ClickFunnels puts the call on the host's Google Calendar about a second
+   * after its webhook, and the form post that starts this run can arrive before
+   * that (measured 2026-10-10: form post 19:42:42.4, calendar event 19:42:43).
+   * So the run waits two minutes, reads the host calendar once, and keeps the
+   * Meet link on the booking and the closer's call task. The 15-minute text
+   * reads it from there, and asks the calendar again if this read missed. */
+  await step.sleep("wait-for-host-calendar", "2m");
+  const joinLink = await step.run("keep-meet-link", () =>
+    meetLinkFromHostCalendar(db, { orgId, clientId, payload, findLink }));
 
   /* WHEN THIS TEXT IS ALLOWED TO GO, decided once and written down.
    *
@@ -122,10 +185,8 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     if (targetMs <= nowMs + REMINDER_SKEW_MS) return { ok: false, reason: "booked_inside_15m" };
     return { ok: true, at: new Date(targetMs).toISOString() };
   });
-  if (!plan.ok) return { done: false, reason: plan.reason };
+  if (!plan.ok) return { done: false, reason: plan.reason, joinLink };
   await step.sleepUntil("wait-until-t-minus-15", new Date(plan.at));
-
-  const orgId = event.orgId;
 
   /* A MOVED OR CANCELLED CALL GETS NO "STARTS IN 15 MINUTES" AT ITS OLD TIME.
    *
@@ -149,7 +210,7 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
    * clock — so it is the same on every replay. */
   const eventId = sendKeyFor(clientId, startTime);
   const link = await step.run("resolve-meeting-link", () =>
-    meetingLinkFor(db, { orgId, clientId, payload }));
+    meetingLinkFor(db, { orgId, clientId, payload, findLink }));
   const context = appointmentContext({ ...payload, meetingUrl: link.url });
   const sms = await step.run("send-handoff-sms", () =>
     sendTemplated(db, {
@@ -157,7 +218,7 @@ export async function handle({ event, db, step, now = () => Date.now() }) {
     }));
   const task = await step.run("create-advisor-task", () => createAdvisorTaskOnce(db, { orgId, clientId, eventId }));
 
-  return { done: true, sms, task, link };
+  return { done: true, sms, task, link, joinLink };
 }
 
 /** The one-per-call-time key for the text and the advisor task. */

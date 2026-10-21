@@ -194,15 +194,24 @@
 
     function loadInternalThread() {
       if (isPortal || state.mode !== "message" || state.msgKind !== "internal") return;
+      /* THE TEAMMATE THIS LOOKUP IS FOR. Every answer below lands later; if the
+         pick changed meanwhile, the answer is about someone else. It must not
+         paint that person's thread under the new pick, or set its thread id as
+         the one the next note is sent into. */
+      var forPeer = state.peerId;
+      function stale() {
+        return state.peerId !== forPeer || state.msgKind !== "internal" || state.mode !== "message";
+      }
       ensureStaffId(function () {
         function fetchMsgs(cid) {
+          if (stale()) return;
           if (!cid) {
             paintBodyWelcome();
             return;
           }
           state.conversationId = cid;
           api("/api/chat/messages?conversation_id=" + encodeURIComponent(cid)).then(function (res) {
-            if (!res || !res.ok) return;
+            if (!res || !res.ok || stale()) return;
             paintThread(res.messages || []);
           });
         }
@@ -215,6 +224,7 @@
           return;
         }
         api("/api/chat/messages?kind=internal").then(function (res) {
+          if (stale()) return;
           if (!res || !res.ok) {
             paintBodyWelcome();
             return;
@@ -331,18 +341,51 @@
           if (state.peerId) loadInternalThread();
         });
       } else {
+        /* THE CLIENT LIST IS YOUR CLIENTS (owner, 2026-10-20): the clients you
+           are the assigned CSM for, from /api/chat/peers. The client this page
+           is open on is offered too, so a message from a client's own screen
+           still works. Picking a different client drops the old thread, so a
+           message can only go to the client on the picker. */
         hint.textContent = "Client message — compliance gate applies.";
-        row.innerHTML = '<input id="fh-chat-client" placeholder="Client id (uuid)" value="' + esc(state.clientId) + '">';
-        var inp = document.getElementById("fh-chat-client");
-        inp.onchange = function () { state.clientId = inp.value.trim(); };
-        try {
-          var u = new URL(location.href);
-          var cid = u.searchParams.get("client_id");
-          if (cid && !state.clientId) {
-            state.clientId = cid;
-            inp.value = cid;
+        row.innerHTML = '<select id="fh-chat-client"><option value="">Pick one of your clients…</option></select>';
+        var pageClient = pageClientId();
+        if (pageClient && !state.clientId) state.clientId = pageClient;
+        api("/api/chat/peers").then(function (res) {
+          var sel = document.getElementById("fh-chat-client");
+          if (!sel) return;
+          var items = (res && res.ok && res.clients) || [];
+          var opts = items.map(function (c) {
+            var label = c.name || c.client_code || "Client";
+            if (c.name && c.client_code) label += " (" + c.client_code + ")";
+            return '<option value="' + esc(c.id) + '">' + esc(label) + "</option>";
+          });
+          var listed = items.some(function (c) { return c.id === pageClient; });
+          if (pageClient && !listed) {
+            opts.unshift('<option value="' + esc(pageClient) + '">The client open on this page</option>');
           }
-        } catch (e) { /* ignore */ }
+          sel.innerHTML = '<option value="">' +
+            (opts.length ? "Pick one of your clients…" : "No clients are assigned to you yet") +
+            "</option>" + opts.join("");
+          sel.value = state.clientId || "";
+          if (sel.value !== state.clientId) state.clientId = "";
+          sel.onchange = function () {
+            if (sel.value !== state.clientId) state.conversationId = null;
+            state.clientId = sel.value;
+          };
+        });
+      }
+    }
+
+    /* The client the current screen is open on: ?client_id=, or ?id= on the
+       Client Control Panel. A uuid or nothing. */
+    function pageClientId() {
+      try {
+        var u = new URL(location.href);
+        var cid = u.searchParams.get("client_id") ||
+          (/client-control-panel\.html$/.test(u.pathname) ? u.searchParams.get("id") : "");
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid || "") ? cid : "";
+      } catch (e) {
+        return "";
       }
     }
 
@@ -397,14 +440,18 @@
           addMsg("Pick a teammate first.");
           return;
         }
+        /* The teammate always rides along, so the server can refuse a thread
+           that is not between you and them (api/chat/messages.mjs). */
         var payload = { kind: "internal", body: q };
         if (state.conversationId) payload.conversation_id = state.conversationId;
-        else payload.peer_staff_id = state.peerId;
+        if (state.peerId) payload.peer_staff_id = state.peerId;
+        var sentTo = state.peerId;
         api("/api/chat/messages", { method: "POST", body: JSON.stringify(payload) }).then(function (res) {
           if (!res || !res.ok) {
             addMsg("Not sent (" + esc((res && res.error) || "error") + ").", "internal");
             return;
           }
+          if (state.peerId !== sentTo) return;
           state.conversationId = res.conversation_id;
           loadInternalThread();
           syncPoll();
@@ -412,8 +459,11 @@
         return;
       }
 
-      if (!state.clientId && !state.conversationId) {
-        addMsg("Need a client id (open Finance OS or Pipeline with a client, or paste the uuid).");
+      /* Only the picked client. The server finds that client's own text thread
+         from the client id, so no thread id is sent and an old one can never
+         carry the message to somebody else. */
+      if (!state.clientId) {
+        addMsg("Pick one of your clients first.");
         return;
       }
       api("/api/chat/messages", {
@@ -421,8 +471,7 @@
         body: JSON.stringify({
           kind: "client",
           body: q,
-          client_id: state.clientId || null,
-          conversation_id: state.conversationId || null,
+          client_id: state.clientId,
           channel: "sms"
         })
       }).then(function (res) {

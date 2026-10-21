@@ -322,3 +322,105 @@ test("no saved booking speaks to this time: the text still goes (acts as before)
   assert.equal(res.done, true);
   assert.equal(base.messages.length, 1);
 });
+
+/* ── The real join link: the Meet link on the host's calendar event ──────────
+ *
+ * ClickFunnels books the call on the host's Google Calendar, and Google puts a
+ * Meet link on that event. The webhook carries none. So the run reads the host
+ * calendar (src/bookings/meet-link.mjs, injected here as findLink — no network)
+ * and keeps the link on the booking and the closer's call task.
+ */
+const MEET = "https://meet.google.com/kcz-tqvb-xyz";
+
+function linkDb() {
+  const base = pgFake({
+    clients: [{ id: "cl-1", org_id: "org-1", email: "lead@acme.com" }],
+    templates: handoffTemplates()
+  });
+  const writes = [];
+  const db = {
+    ...base,
+    async query(sql, params) {
+      if (/UPDATE bookings\s+SET meeting_url/.test(sql)) {
+        writes.push({ table: "bookings", params });
+        return { rows: [{ provider_uid: "74249" }] };
+      }
+      if (/UPDATE tasks\s+SET meeting_url/.test(sql)) {
+        writes.push({ table: "tasks", params });
+        return { rows: [{ id: "t-1" }] };
+      }
+      return base.query(sql, params);
+    }
+  };
+  return { base, db, writes };
+}
+
+test("join link: soon after booking, the host calendar's Meet link is kept on the booking and the call task", async () => {
+  const { db, writes } = linkDb();
+  const asked = [];
+  const start = inHours(30);
+  const steps = [];
+  const step = { ...fakeStep(), run: async (id, fn) => { steps.push(id); return fn(); }, sleep: async (id) => { steps.push(id); } };
+  const res = await handle({
+    event: ev("booking.created", { startTime: start, email: "lead@acme.com", bookingUid: "form-msg-1" }, { clientId: "cl-1" }),
+    db, step,
+    findLink: async (q) => { asked.push(q); return { ok: true, url: MEET, source: "GOOGLE_GMAIL_OAUTH_TOKEN_JSON" }; }
+  });
+  // The wait comes before the read, and both come before the 15-minute plan.
+  assert.ok(steps.indexOf("wait-for-host-calendar") < steps.indexOf("keep-meet-link"));
+  assert.ok(steps.indexOf("keep-meet-link") < steps.indexOf("plan-handoff"));
+  assert.deepEqual(asked[0], { email: "lead@acme.com", startTime: start });
+  assert.equal(res.joinLink.ok, true);
+  assert.equal(res.joinLink.url, MEET);
+  const b = writes.find((w) => w.table === "bookings");
+  assert.equal(b.params[1], "form-msg-1");
+  assert.equal(b.params[2], "cl-1");
+  assert.equal(b.params[3], new Date(start).toISOString());
+  assert.equal(b.params[4], MEET);
+  // The task is found by every id the booking was saved under: the form id and the call id.
+  const t = writes.find((w) => w.table === "tasks");
+  assert.deepEqual(t.params[1].sort(), ["74249", "form-msg-1"]);
+  assert.equal(t.params[2], MEET);
+});
+
+test("join link: the 15-minute text uses the host calendar's Meet link, not the portal sign-in page", async () => {
+  const { base, db } = linkDb();
+  let calls = 0;
+  const res = await handle({
+    event: ev("booking.created", { startTime: inHours(3), email: "lead@acme.com", bookingUid: "74249" }, { clientId: "cl-1" }),
+    db, step: fakeStep(),
+    // The early read missed (calendar slow); the read at T-15 finds it.
+    findLink: async () => (++calls === 1 ? { ok: false, reason: "no_matching_event" } : { ok: true, url: MEET })
+  });
+  assert.equal(res.joinLink.ok, false);
+  assert.equal(res.joinLink.reason, "no_matching_event");
+  assert.equal(res.link.from, "host_calendar");
+  assert.equal(res.link.url, MEET);
+  assert.ok(base.messages[0].rendered_body.includes(MEET));
+  assert.doesNotMatch(base.messages[0].rendered_body, /portal|login/i);
+});
+
+test("join link: when the calendar has no event the text still carries a real door, and the miss says why", async () => {
+  const { base, db, writes } = linkDb();
+  const res = await handle({
+    event: ev("booking.created", { startTime: inHours(3), email: "lead@acme.com", bookingUid: "74249" }, { clientId: "cl-1" }),
+    db, step: fakeStep(),
+    findLink: async () => ({ ok: false, reason: "GOOGLE_GMAIL_OAUTH_TOKEN_JSON:no_calendar_scope" })
+  });
+  assert.equal(res.joinLink.reason, "GOOGLE_GMAIL_OAUTH_TOKEN_JSON:no_calendar_scope");
+  assert.equal(res.link.from, "portal_sign_in");
+  assert.equal(writes.length, 0, "nothing is written when no link was found");
+  assert.ok(base.messages[0].rendered_body.includes(res.link.url));
+});
+
+test("join link: a lookup that throws never stops the run", async () => {
+  const { base, db } = linkDb();
+  const res = await handle({
+    event: ev("booking.created", { startTime: inHours(3), email: "lead@acme.com" }, { clientId: "cl-1" }),
+    db, step: fakeStep(),
+    findLink: async () => { throw new Error("socket hang up"); }
+  });
+  assert.equal(res.done, true);
+  assert.match(res.joinLink.reason, /lookup_threw:socket hang up/);
+  assert.equal(base.messages.length, 1);
+});

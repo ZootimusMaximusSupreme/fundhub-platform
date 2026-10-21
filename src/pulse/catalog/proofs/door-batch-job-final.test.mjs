@@ -436,7 +436,12 @@ test("the job lane accepts the live scope function and a direct database", async
     const checks = await gapChecks(ctx);
 
     assert.equal(checks.length, CHECK_IDS.length, kind);
-    assert.equal(db.calls.length, 1, kind);
+    // One ad-video read. With the live staff scope there is also one read-only
+    // "is AI bureau calling still parked?" read (owner answer B6); it answers
+    // nothing here, so nothing is parked and every gap row stays red.
+    const parkReads = db.calls.filter((call) => /parked:bureau-calls/.test(call.sql));
+    assert.equal(db.calls.length - parkReads.length, 1, kind);
+    assert.equal(parkReads.length, kind === "scope" ? 1 : 0, kind);
     assert.equal(checks[0].id, "door-batch:ad-video-worker-result", kind);
     assert.equal(checks[0].status, "PASS", kind);
     assert.deepEqual(

@@ -229,6 +229,17 @@
     "money-strategy.html", "money-fundability.html", "money-next.html", "money-helper.html",
     "money-transfers.html", "money-declines.html", "money-alerts.html", "money-vault.html"];
 
+  /* The closer deck (present.html) — the Client Control Panel's "Open Closer
+     Deck" and "Open Credit Snapshot" links, and the closer call screen's deck
+     button, all open it. NOT in ALL on purpose, like STAFF_MONEY: it has no
+     sidebar row and loads no shell.js. Before this list it was in no role's
+     list at all, so gateLinks() hid both control-panel links from EVERY role,
+     the owner included (pulse finding 2026-10-18, Set A items 21 and 22).
+     The roles match CLOSER_DECK_ROLES in api/read/closer-deck.mjs and
+     api/closer-deck.mjs — closer, sales_manager, owner, admin. MOVE A GATE AND
+     MOVE ITS ROW. Navigation, not a gate: the deck's own reads hold the gate. */
+  var CLOSER_DECK = ["present.html"];
+
   /* Consent desk — the credit-pull permission screen. api/consent/capture.mjs
      gates on CONSENT_ROLES = owner, admin, closer, funding_advisor, and that
      set has to stay identical to SOFT_PULL_ROLES in api/finance/soft-pull.mjs
@@ -516,13 +527,13 @@
   function allowedFor(role) {
     if (!role) return [];
     var m = ROLE_TABS[role];
-    if (m === "*") return ALL.concat(STAFF_MONEY);
+    if (m === "*") return ALL.concat(STAFF_MONEY).concat(CLOSER_DECK);
     if (m === "admin") {
-      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; }).concat(STAFF_MONEY);
+      return ALL.filter(function (s) { return ADMIN_BLOCKED.indexOf(s) === -1; }).concat(STAFF_MONEY).concat(CLOSER_DECK);
     }
-    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY).concat(STAFF_MONEY);
+    if (m === "closer") return staffTabs().concat(CLOSER_DESK_ONLY).concat(CONSENT_DESK_ONLY).concat(STAFF_MONEY).concat(CLOSER_DECK);
     if (m === "funding_advisor") return staffTabs().concat(ADVISOR_ONLY).concat(CONSENT_DESK_ONLY);
-    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY);
+    if (m === "sales_manager") return staffTabs().concat(SALES_FLOOR_ONLY).concat(FINANCE_ONLY).concat(STAFF_MONEY).concat(CLOSER_DECK);
     if (m === "csm") return staffTabs().concat(CONSENT_DESK_ONLY);
     if (m === "staff" || !m) return staffTabs();
     return m.slice();
