@@ -15,7 +15,7 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 2 | `gap:sms-sending-stuck` | B, already cleared | GREEN | Same delete. Lane run: "No customer or staff text is stuck on sending". |
 | 3 | `email:provider-fail` | C, fixed in this PR | GREEN with PR | Both bounces were sign-in links to the App Store review login FH-000844 (client@fundhub.ai, no mailbox, Resend blocks it). Check now skips that one login. |
 | 4 | `msg:per-template-path` | C, fixed in this PR | GREEN with PR | Same two bounces were the only email in 7 days. Same fix. |
-| 5 | `handoff:lead-first-touches-missing` | A + B | red until delete | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored by seed 299 in this PR. The red row itself is fake lead FH-000843 → delete. |
+| 5 | `handoff:lead-first-touches-missing` | A + B | GREEN (after delete) | Real: 7 lead templates were deleted on live (finish-application email + 6 never-booked chase messages). Restored by seed 299 in this PR. The red row itself is fake lead FH-000843 → delete. |
 | 6 | `consent:dispute-required` | Needs Chris | red | The 1 row is Braum (FH-000507): repair program active since 10-05, no signed agreement of any kind, no consent row. Braum is no-contact / no-change. |
 | 7 | `calls:booked-no-join-link` | C, fixed in this PR | GREEN with PR | Set A (PR #97, live) saves the Google Meet link on new bookings. The check still judged old bookings, which can never carry a link (19 August ClickFunnels bookings with real-looking emails stay; the delete session kept them). Owner: "Old bookings do not matter. Only new bookings." The feed now counts from the fix's ship (2026-10-21 01:38 UTC); a call ahead with no link is still red. Live: PASS. |
 | 8 | Closer desk: Send contract button | fixed by Set A | GREEN | Migration 493 (PR #97) put the real Funding and Credit Repair agreement words live. 12 wordings, 0 bad. |
@@ -27,16 +27,14 @@ Every result below was read live, read-only (`BEGIN READ ONLY`, role `fundhub_ap
 | 14 | Consent: history / Withdraw | fixed by Set A | GREEN | Quiet until the first withdrawal. |
 | 15 | Chat widget on every desk (desks-c) | fixed by Set A | GREEN | Same as 11. |
 | 16 | Messaging: Send button | C, fixed in this PR | GREEN with PR | The one bad row was an owner-ops text to Chris's own phone (2026-10-07). Staff-reply check now skips `owner-ops:` like the widget check. |
-| 17 | Pipeline: New Client | B | red until delete | Fake lead FH-000843 (made 10-17 from the New Client button; no welcome because the templates were gone). |
-| 18 | Pipeline: pipeline-clients (server) | B | red until delete | Same row. |
+| 17 | Pipeline: New Client | B | GREEN (after delete) | Fake lead FH-000843 (made 10-17 from the New Client button; no welcome because the templates were gone). |
+| 18 | Pipeline: pipeline-clients (server) | B | GREEN (after delete) | Same row. |
 | 19 | Chat widget: Message > Client | C, fixed in this PR | GREEN with PR | Same as 16. |
 | 20 | Present deck: Send contract | fixed by Set A | GREEN | Real agreement words live; the fake Sim contract is not counted. 1 result, 0 bad. |
-| 21 | Social Studio: Queue it | B | red until delete | Queued row `60735863-198a-402e-9cf7-5204bef5c93f` of "DEMO Partner — Northlight Capital" (marked demo). |
-| 22 | Social Studio: Approve it | B | red until delete | Post `ca70eef7-d5e4-431f-b61b-309240342b03`, one of 10 test posts made 2026-10-12 18:12 UTC for test partners clean/blocked/croa/unscreened/hold/holddue/holdgate/nohold/publish/failing. |
+| 21 | Social Studio: Queue it | B | GREEN (after delete) | Queued row `60735863-198a-402e-9cf7-5204bef5c93f` of "DEMO Partner — Northlight Capital" (marked demo). |
+| 22 | Social Studio: Approve it | B | GREEN (after delete) | Post `ca70eef7-d5e4-431f-b61b-309240342b03`, one of 10 test posts made 2026-10-12 18:12 UTC for test partners clean/blocked/croa/unscreened/hold/holddue/holdgate/nohold/publish/failing. |
 
-Count: 11 green now · 5 green with this PR (3, 4, 7, 16, 19) · 5 wait on the fake-data delete (5, 17, 18, 21, 22) · 1 Needs Chris (6).
-
-Delete status (session `delete-fake-data`, PR #101): FH-000843 is HELD as one of 21 real-looking clients waiting on Chris (ids 5, 17, 18 wait on that answer). Social rows (21, 22) are outside its brief; asked the coordinator for Chris's yes/no.
+Count (re-read live 2026-10-21 ~02:30 UTC, after the fake-data delete removed FH-000843, its events and the social test rows): 16 green now · 5 green once this PR ships (3, 4, 7, 16, 19; each reads green live with this branch's code) · 1 Needs Chris (6).
 
 ## Needs Chris: delete fake data (rows behind my reds)
 
