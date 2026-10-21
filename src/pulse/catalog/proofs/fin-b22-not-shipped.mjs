@@ -110,7 +110,6 @@ export const NOT_SHIPPED_CLAIMS = Object.freeze([
     noun: "the $32 Business Financial Assessment gate and its button",
     pages: CLIMATE_PAGES,
     anchors: CLIMATE_ANCHORS,
-    identity: CLIMATE_IDENTITY,
     markers: Object.freeze([
       "Business Financial Assessment", "Get the full list", "more names are in the full list", "/api/public/optimize",
     ]),
