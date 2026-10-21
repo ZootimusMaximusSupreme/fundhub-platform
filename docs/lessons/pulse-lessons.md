@@ -31,6 +31,12 @@ GROUP BY 1, 2 ORDER BY breaks DESC;
 - Guard added: deep check ads-metrics-false-zeros in the morning ads lane, src/pulse/coverage/gap-ads.mjs (red on any saved day with 0 impressions, 0 spend and a click rate above 0; the morning pulse runs after the 07:00 UTC pull); src/http/campaigns-sync-false-zeros.test.mjs drives a fake Meta that answers the way Meta did and fails on the old single request.
 - Incident: none (found by hand from ad_metrics_daily, not an hourly incident)  PR: claude/meta-spend-zero-fix-2026-10-21
 
+## 2026-10-21 — full morning ship proof (catalog-display Automation sidebar head) — pulse_false_alarm
+- Cause: the same Linux ship runner road, one step later. The live `/app/shell.js` sent its headers in 83 ms and then no more of its body for 15 s, so the hidden-head check's own 4 s read timed out in one of the proof's two runs. The proof compares the app-role run with the staff-access run, saw "na" against "skip", and stopped every ship (run 39552478955). Not data and not a role: the check reads the live file over the web, not the database.
+- Fix: `scripts/pulse/site-hedge.mjs` now also reads the whole body of a site GET. If the body is not complete 2 s after the answer started, it sends one more identical GET and keeps whichever full body arrives first; the stalled download is then cut off. The caller's own deadline still covers every request, and a body that never completes is still a failure. No check, gate or timeout changed. The live pulse is unchanged.
+- Guard added: `scripts/pulse/site-hedge.test.mjs` (a stalled body gets exactly one more request and the full body comes from it; a body that never completes on either request still fails by the caller's deadline; a fast body is read once; a redirect keeps its status and location). Every proof run lists body hedges in "site requests that needed a second connection".
+- Incident: none (caught by GitHub ship run 39552478955)  PR: claude/hedge-body-stall-2026-10-21
+
 ## 2026-10-20 — sales-floor Recording rows — code_bug
 - Cause: the Drive sync read any UUID in a file name as a client id and saved it without checking the client exists. iPhone exports are named `<UUID>.mp4`, so 14 recordings pointed at clients that exist nowhere.
 - Fix: `upsertExtractedFile` keeps a sniffed client id only when that client exists in the same company, else NULL (src/company-brain/store.mjs). Migration 499 clears the 14 saved rows (client_id to NULL only; no delete). The Drive files and links are untouched.
