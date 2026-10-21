@@ -27,6 +27,7 @@ import {
   READER_UNREAD_MS,
   RECEIVED_KINDS,
   REQUEST_FIELD,
+  SAMPLE_SQL,
   STORE_TIMEOUT_MS,
   VAULT_ASK_SOURCE,
   VAULT_RED_MS,
@@ -319,7 +320,8 @@ test("the open reads leave demo rows out and only ask about the current version'
   assert.match(open, /v\.id = d\.current_version_id/);
   assert.match(open, /v\.document_id = d\.id/);
   assert.match(open, /nullif\(btrim\(v\.storage_key\), ''\) IS NOT NULL/);
-  const sample = SRC.slice(SRC.indexOf("const SAMPLE_SQL"), SRC.indexOf("/** Is each sampled file"));
+  // SAMPLE_SQL moved to src/pulse/beats/lib/documents-upload-truth.mjs (2026-10-20); the lane re-exports it.
+  const sample = SAMPLE_SQL;
   assert.match(sample, /d\.is_demo IS NOT TRUE/);
   assert.match(sample, /ORDER BY v\.created_at DESC/);
   assert.match(sample, /LIMIT \$2::int/);

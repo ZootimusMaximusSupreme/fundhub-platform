@@ -1,5 +1,4 @@
 [
   "page:progress.html",
-  "route:documents-upload",
   "route:read/client-progress"
 ]

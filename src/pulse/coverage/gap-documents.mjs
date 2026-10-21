@@ -25,8 +25,15 @@ import {
 } from "../beats/lib/documents-truth.mjs";
 
 export { ID_STUCK, READER_HANDLER, STUCK_DELIVERY_SQL, STUCK_READER_SQL } from "../beats/lib/documents-truth.mjs";
+// documents:upload-store's store setting (the rule, the store names, the two bad-store rows) and the
+// newest-file read live in src/pulse/beats/lib/documents-upload-truth.mjs, so the hourly beat upload-door
+// judges the store setting with the same code. The READ-BACK of the newest file stays here: it goes through
+// the store's own package, which a beat may not load. Morning only.
+import {
+  ID_STORE, SAMPLE_SQL, notRealStoreRow, unknownStoreRow
+} from "../beats/lib/documents-upload-truth.mjs";
 
-export const ID_STORE = "documents:upload-store";
+export { ID_STORE, REAL_STORES, SAMPLE_SQL } from "../beats/lib/documents-upload-truth.mjs";
 export const ID_UNCHASED = "documents:required-unchased";
 export const ID_OPEN = "documents:cannot-open";
 
@@ -70,9 +77,6 @@ export const STAFF_CHASE_SOURCES = Object.freeze([
   "doc-check"
 ]);
 
-/** The store names that keep files after a cold start. "memory" does not. */
-export const REAL_STORES = Object.freeze(["netlify-blobs", "vercel-blob"]);
-
 /** How many of the newest saved files are read back from the store. */
 export const OPEN_SAMPLE = 5;
 
@@ -94,16 +98,6 @@ async function storeOf(ctx) {
   const { providerFromEnv } = await import("../../documents/store.mjs");
   return providerFromEnv(ctx.env || process.env);
 }
-
-const SAMPLE_SQL = `
-SELECT d.id::text AS document_id, v.storage_key
-  FROM documents d
-  JOIN document_versions v ON v.id = d.current_version_id AND v.document_id = d.id
- WHERE d.org_id = $1::uuid
-   AND d.is_demo IS NOT TRUE
-   AND nullif(btrim(v.storage_key), '') IS NOT NULL
- ORDER BY v.created_at DESC
- LIMIT $2::int`;
 
 function withTimeout(promise, ms) {
   let timer;
@@ -138,21 +132,10 @@ async function checkUploadStore(ctx) {
   try {
     store = await storeOf(ctx);
   } catch (err) {
-    return check(
-      ID_STORE,
-      "FAIL",
-      `the document store setting is not one the upload door knows: ${clip(err)}`,
-      fix("Set DOCUMENT_STORE_PROVIDER to netlify-blobs. Uploads cannot be saved without it.")
-    );
+    return unknownStoreRow(clip(err));
   }
-  if (!REAL_STORES.includes(store.name)) {
-    return check(
-      ID_STORE,
-      "FAIL",
-      `uploads are going to the ${store.name} store. It keeps files in memory only, so every upload is lost at the next cold start.`,
-      fix("Set DOCUMENT_STORE_PROVIDER to netlify-blobs on the live site.")
-    );
-  }
+  const notReal = notRealStoreRow(store.name);
+  if (notReal) return notReal;
   const newest = (await selectOnly(ctx.db, SAMPLE_SQL, [ctx.orgId, 1])).rows || [];
   if (newest.length === 0) {
     return check(ID_STORE, "PASS", `uploads go to the ${store.name} store. No saved file to read back yet.`);

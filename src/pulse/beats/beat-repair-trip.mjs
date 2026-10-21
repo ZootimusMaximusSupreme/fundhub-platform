@@ -19,8 +19,9 @@
 //   route:repair/generate                                 trip:repair and repair-letter-round
 //   route:repair/inbound-mail, route:repair/send          trip:repair and repair-case-stuck
 //   send:src/metro2/delivery/send.mjs                     pipeline:repair and repair-case-stuck
-// Not on covers: route:documents-upload. Its documents:upload-store check reads the newest file back from
-// the file store through the store's own package, which a beat may not load; half of that check is not it.
+// Not on covers: route:documents-upload. Beat upload-door covers it: it runs documents:upload-store's store
+// setting hourly and leans on this beat's documents:stuck-processing step (its RUNS_ELSEWHERE). The newest
+// file's read-back from the store stays on the morning pulse.
 //
 // Read only: every read goes through ctx.read (the read box). No send, no write, no web call.
 
