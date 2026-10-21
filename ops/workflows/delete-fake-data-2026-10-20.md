@@ -134,6 +134,10 @@ Each round ran as one transaction with the same guards: rebuild the plan inside 
 - Ad accounts 1 (the real Meta account). Partners 31 (19 demo; real ones are fundhub-house, fundhub-direct, gpn-funding).
 - Affiliates 24, staff 35. Neither is touched yet; see below.
 
+**Round 5 (committed):** 2 raw ClickFunnels booking captures in `webhook_captures` (`843d2310…`, `32ae1125…`, Oct 10, provider uids 74249 and 74237). Both were for FH-000567, a client deleted in round 3. With the booking gone, calls:booking-webhook counted them as lost bookings. Checked first: insureboost and the uids are in the payload, there is no booking or client left, and nothing links to them. Only those 2 rows changed. Backup: `.../round5/`. Other raw webhook captures for deleted clients were not swept.
+
+**Waiting on Chris (asked in chat):** the 2 test commission rules from the Aug 21 money-chain test. `bdd28f6e` "MC advisor 0.25% funded" is active and has no end date. It is the only funding-advisor rule on Card Stacking DFY, so a real funded deal would pay from it. `f7578579` "MC closer flat deposit" closed on 2026-08-23. They are listed with the fake staff and fake affiliates.
+
 ## Left over (not done here)
 
 1. **Fake staff and fake affiliates.** Chris asked about these after rounds 3 and 4. They were outside every round so far. They are listed for his yes or no:
